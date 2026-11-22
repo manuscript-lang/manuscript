@@ -4,7 +4,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _ignored := stdout().write(text)
+    _ignored := stdout().write(text.clone())
 
 fn keep(text: String) List[String]:
     var out: List[String] = []

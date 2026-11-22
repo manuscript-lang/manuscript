@@ -21,7 +21,7 @@ type Pair:
     b: Door
 
 fn maybe(n: String) Door?:
-    return Door(n)
+    return Door(n.clone())
 
 fn doors() List[Door]:
     return [Door("l1"), Door("l2")]

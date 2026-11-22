@@ -3,16 +3,6 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-/* Whether `value` is the result of the instruction just emitted and an owned one. */
-static bool is_fresh_owner(const LowerFn *fn, MirValue value) {
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  MirMode mode = MM_BORROW;
-  if (insts->len == 0 || insts->ptr[insts->len - 1].res != value) {
-    return false;
-  }
-  return mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) && mode == MM_MOVE;
-}
-
 MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
   MirTy list_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirTyData *data = mir_ty_data(fn->cx->module, list_ty);
@@ -39,7 +29,7 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
     if (!mir_needs_drop(fn->cx->module, data->elem)) {
       continue;
     }
-    if (is_fresh_owner(fn, items[index])) {
+    if (fn_fresh_owner(fn, items[index])) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &items[index], 1, (MirImm){0}, MIR_NONE); /* the list owns it */
     } else {
       items[index] = fn_implicit_clone(fn, items[index], false);

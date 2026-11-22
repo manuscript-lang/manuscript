@@ -38,8 +38,9 @@ export type Error:
 // The runtime reports a failed native as a status number; lowering builds the `Error`
 // from these rows (`// ms: status <number> <kind> <words>`, built by
 // crates/ms-lower/build.rs). The message is `<domain>: <words>`, and `-` words mean the
-// native's own text is the whole message. An `extern fn` that words a status differently
-// carries `@words=<number> "<words>"` on the line above its declaration.
+// native's own text is the whole message. A module that words a status differently
+// declares `// ms: words <number> <words>` at the top of its file, covering the externs
+// that file declares.
 // ms: status 1 EINVAL invalid input
 // ms: status 2 ERANGE value out of range
 // ms: status 3 EOVERFLOW limit exceeded
@@ -100,8 +101,9 @@ fn status_words(status: Int) String:
 
 // The `Error` of a failed runtime native: `status` is the native's status number, `domain` names what it works
 // on, and `said` is the text the native explained itself in, or empty. `overrides` holds the
-// `@words` line of the native's declaration (`NUMBER TEXT`), which takes the place of the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
-fn msstd_status_error(status: UInt8, domain: String, said: String, overrides: String) Error:
+// `// ms: words NUMBER TEXT` lines of the file that declares the native, one per line, and takes the place of
+// the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
+fn msstd_status_error(status: UInt8, domain: String, move said: String, overrides: String) Error:
 	number := status.to_int()
 	kind := status_kind(number)
 	words := override_words(overrides, number).get_or(status_words(number))
@@ -113,7 +115,7 @@ fn override_words(overrides: String, number: Int) String?:
 		if words := line.cut_prefix(f"{number} "): return words
 	return none
 
-fn status_error_text(words: String, kind: String, domain: String, said: String) Error:
+fn status_error_text(words: String, move kind: String, domain: String, move said: String) Error:
 	if words == "-":
 		if said.length() > 0: return Error(said, kind: kind)
 		return Error(f"{domain}: failed", kind: kind)
@@ -246,7 +248,7 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used.
-fn Optional[T].ok_or[E](cause: E) move T!E:
+fn Optional[T].ok_or[E](move cause: E) move T!E:
 	if self.is_none(): return error(cause)
 	return ok(self.get())
 
@@ -303,9 +305,10 @@ fn Result[T, E].err() E:
 
 // Returns the successful payload; for an error, calls `create` once with that error
 // and returns its value.
-fn Result[T, E].get_or_else(create: fn(E) T) T:
-	if self.is_error(): return create(self.err())
-	return self.get()
+fn move Result[T, E].get_or_else(create: fn(E) T) T:
+	match self:
+		ok(value): return value
+		error(cause): return create(cause)
 
 // Returns this result when it is successful; for an error, calls `create` once with
 // that error and returns the Result it produces.

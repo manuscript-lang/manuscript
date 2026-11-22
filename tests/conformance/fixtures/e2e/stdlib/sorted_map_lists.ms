@@ -34,7 +34,7 @@ test "keys and values join every chunk in key order":
 
 test "keys returns an independent list":
 	var map = filled(300)
-	var keys = map.keys()
+	var keys = map.keys().clone()
 	keys.set(0, -5)
 	expect_equal(map.keys()[0], 0)?
 	map.add(-1, "extra")

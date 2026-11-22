@@ -34,7 +34,7 @@ void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t cou
   ms_list_free(replacement);
 }
 
-/* `fill(value, start, end)`: `value` is lent and copied into each slot. */
+/* `fill(value, start, end)`: `value` is borrowed and copied into each slot. */
 void msrt_list_fill(MsList *v, const MsTypeDesc *d, const uint8_t *value, int64_t start, int64_t end) {
   msrt_check_bounds("List.fill", v->len, start, end);
   for (size_t i = (size_t)start; i < (size_t)end; i++) {

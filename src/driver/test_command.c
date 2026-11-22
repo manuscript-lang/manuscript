@@ -342,7 +342,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
   MsTestOptions options;
   ms_test_options_parse(&invocation->arguments, &options);
   MsSpanList names = {0};
-  ms_checked_input_test_names(arena, &checked, &names);
+  ms_checked_input_test_names(arena, &checked, false, &names);
   Plan plan = {0};
   if (!select_tests(arena, &names, &options, &plan)) {
     status = STATUS_FAILED;

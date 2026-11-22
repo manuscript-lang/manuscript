@@ -14,6 +14,7 @@ typedef struct Uses {
   MsFacts *facts;
   const MsNames *names;
   uint32_t moving; /* the parameters of the callable being marked that it owns, by index */
+  MsBindingList moved; /* the locals a name moves in the callable being marked */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
 } Uses;
 
@@ -25,6 +26,16 @@ static bool place_root(const Uses *pass, const MsExpr *expr) {
   }
   uint32_t binding = 0;
   return at->kind == MS_E_NAME && ms_bind_of(pass->facts, at->id, &binding);
+}
+
+/* Whether `scrutinee` names a local or a parameter the callable owns: the arms of a match over it take its payload. */
+static bool owned_name(const Uses *pass, const MsExpr *scrutinee) {
+  if (scrutinee->kind == MS_E_CALL) { /* a call's result is a new owner: its arms own what they bind */
+    return true;
+  }
+  const MsRef *ref = scrutinee->kind == MS_E_NAME ? ms_facts_ref(pass->facts, scrutinee->id) : NULL;
+  return ref != NULL && (ref->kind == MS_REF_LOCAL || (ref->kind == MS_REF_PARAM && ref->local < 32 &&
+                                                       (pass->moving >> ref->local & 1u) != 0));
 }
 
 /* Whether `expr` reads a name an arm of a match binds: it views the scrutinee, which stays its owner. */
@@ -79,7 +90,11 @@ static const MsCallArg *arg_for(const MsCall *call, const MsExpr *value) {
 }
 
 static bool is_constructor(const Uses *pass, const MsExpr *call) {
-  const MsRef *ref = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
+    callee = callee->u.apply.left;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, callee->id);
   return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
 }
 
@@ -221,7 +236,9 @@ static void borrow_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_NAME && ms_bind_of(pass->facts, expr->id, &binding)) {
     pass->facts->uses[expr->id] = MS_USE_BORROW;
   }
-  for (uint32_t arm = 0; expr->kind == MS_E_MATCH && arm < expr->u.match.arms.len; arm++) {
+  for (uint32_t arm = 0; expr->kind == MS_E_MATCH && !owned_name(pass, expr->u.match.scrutinee) &&
+                         arm < expr->u.match.arms.len;
+       arm++) {
     const MsArm *one = expr->u.match.arms.ptr[arm];
     const MsRef *bound = ms_facts_ref(pass->facts, one->id);
     for (uint32_t at = 0; bound != NULL && bound->kind == MS_REF_CASE && at < one->bindings.len; at++) {
@@ -230,10 +247,39 @@ static void borrow_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* A match over a name the callable owns hands its payload to an arm's binding that the arm moves on: the scrutinee
+ * is consumed. */
+static void note_moved_names(void *ctx, const MsExpr *expr) {
+  Uses *pass = ctx;
+  const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && pass->facts->uses[expr->id] == MS_USE_MOVE) {
+    ms_binding_list_push(&pass->moved, ref->local);
+  }
+}
+
+static void consume_scrutinees(void *ctx, const MsExpr *expr) {
+  Uses *pass = ctx;
+  if (expr->kind != MS_E_MATCH || expr->u.match.scrutinee->kind != MS_E_NAME || !owned_name(pass, expr->u.match.scrutinee)) {
+    return;
+  }
+  for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
+    const MsArm *one = expr->u.match.arms.ptr[arm];
+    const MsRef *bound = ms_facts_ref(pass->facts, one->id);
+    for (uint32_t at = 0; bound != NULL && bound->kind == MS_REF_CASE && at < one->bindings.len; at++) {
+      for (size_t index = 0; index < pass->moved.len; index++) {
+        if (pass->moved.ptr[index] == bound->local + at) {
+          pass->facts->uses[expr->u.match.scrutinee->id] = MS_USE_MOVE;
+        }
+      }
+    }
+  }
+}
+
 /* Marks one function or method: the arms' locals are numbered per callable, so each is walked on its own. */
-static void mark_callable(Uses *pass, MsParams params, MsStmts body) {
+static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consuming) {
   pass->arms.len = 0;
-  pass->moving = 0;
+  pass->moved.len = 0;
+  pass->moving = consuming ? 1u : 0u; /* the receiver of a consuming method is parameter 0 */
   for (uint32_t at = 0; at < params.len; at++) {
     const MsRef *ref = ms_facts_ref(pass->facts, params.ptr[at]->id);
     if (params.ptr[at]->moving && ref != NULL && ref->kind == MS_REF_PARAM && ref->local < 32) {
@@ -242,16 +288,19 @@ static void mark_callable(Uses *pass, MsParams params, MsStmts body) {
   }
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = collect_views, .expr = borrow_expr}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, params, body);
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = note_moved_names}, params, body);
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = consume_scrutinees}, params, body);
 }
 
 static void mark_module(Uses *pass, const MsModule *tree) {
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     if (decl->kind == MS_D_FN) {
-      mark_callable(pass, decl->u.fn.params, decl->u.fn.body);
+      mark_callable(pass, decl->u.fn.params, decl->u.fn.body, false);
     } else if (decl->kind == MS_D_IMPL) {
       for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
-        mark_callable(pass, decl->u.impl.methods.ptr[at]->func.params, decl->u.impl.methods.ptr[at]->func.body);
+        mark_callable(pass, decl->u.impl.methods.ptr[at]->func.params, decl->u.impl.methods.ptr[at]->func.body,
+                    decl->u.impl.methods.ptr[at]->consuming);
       }
     } else {
       ms_walk_decl(&(MsVisitor){.ctx = pass, .stmt = collect_views, .expr = borrow_expr}, decl);
@@ -270,6 +319,7 @@ void ms_own_uses(MsCheckProgram *program) {
     }
     mark_module(&pass, program->modules.ptr[module].tree);
     ms_binding_list_free(&pass.arms);
+    ms_binding_list_free(&pass.moved);
   }
   ms_class_free(&classes);
 }

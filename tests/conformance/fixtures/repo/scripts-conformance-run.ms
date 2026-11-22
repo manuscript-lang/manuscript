@@ -144,7 +144,7 @@ fn run_conformance(args: List[String]) Result[Void, Error]:
 
 fn run_file(ms: String, file: String) Result[Void, Error]:
     output := run(
-        ms, ["test", file, "--json", "--timeout=30s"],
+        ms, ["test", file.clone(), "--json", "--timeout=30s"],
         RunOptions(timeout: 3.minutes(), max_output_bytes: 16000000)
     ).wait()?
     text := output.stdout.decode_utf8() | expect_some?

@@ -6,6 +6,7 @@
 #include "base/message.h"
 #include "base/sort.h"
 #include "compiler/own/own.h"
+#include "compiler/syntax/diag_json.h"
 
 static void add_finding(MsArena *arena, FindingList *findings, MsSpan file, const char *phase, MsPos pos,
                         MsSpan message) {
@@ -124,14 +125,14 @@ bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filen
   return checked->findings.len == 0;
 }
 
-void ms_checked_input_test_names(MsArena *arena, const MsCheckedInput *checked, MsSpanList *names) {
+void ms_checked_input_test_names(MsArena *arena, const MsCheckedInput *checked, bool benches, MsSpanList *names) {
   const MsCheckProgram *program = &checked->program;
   for (uint32_t m = 0; m < program->user_modules; m++) {
     const MsModuleInfo *module = &program->modules.ptr[m];
     const MsSpan file = ms_names_span(program->names, module->file);
     for (uint32_t d = 0; d < module->tree->ndecls; d++) {
       const MsDecl *decl = module->tree->decls[d];
-      if (decl->kind == MS_D_TEST && !decl->u.test.bench) {
+      if (decl->kind == MS_D_TEST && decl->u.test.bench == benches) {
         ms_span_list_push(names, ms_message_format(arena, "%S::%S", file, decl->u.test.name));
       }
     }
@@ -143,13 +144,26 @@ int ms_checked_input_report(const MsCheckedInput *checked) {
   for (size_t i = 0; i < checked->findings.len; i++) {
     finding_list_push(&sorted, checked->findings.ptr[i]);
   }
-  ms_sort((uint8_t *)sorted.ptr, sorted.len, sizeof(Finding), finding_compare, NULL);
   MsStrBuild err = ms_strbuild_new();
   finding_terminal_text(&err, checked->graph.source_root, &sorted, false);
   const MsSpan text = ms_strbuild_span(&err);
   (void)fwrite(text.ptr, 1, text.len, stderr);
   ms_strbuild_free(&err);
   finding_list_free(&sorted);
+  return 1;
+}
+
+int ms_checked_input_report_json(const MsCheckedInput *checked) {
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_text(&out, "{\n  \"format\": 1,\n  \"diagnostics\": [");
+  for (size_t i = 0; i < checked->findings.len; i++) {
+    ms_strbuild_append_text(&out, i == 0 ? "\n" : ",\n");
+    ms_json_diag(&out, checked->findings.ptr[i].file, checked->findings.ptr[i].phase, &checked->findings.ptr[i].diag);
+  }
+  ms_strbuild_append_text(&out, checked->findings.len == 0 ? "]\n}\n" : "\n  ]\n}\n");
+  const MsSpan text = ms_strbuild_span(&out);
+  (void)fwrite(text.ptr, 1, text.len, stdout);
+  ms_strbuild_free(&out);
   return 1;
 }
 

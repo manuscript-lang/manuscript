@@ -81,6 +81,21 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
   return true;
 }
 
+/* Whether a call reads a value that dies with the statement (`make().get()`): a result that borrows from it
+ * cannot outlive the statement. */
+static bool call_reads_temporary(const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_CALL) {
+    return true;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    if (call->u.call.args.ptr[index].value->kind == MS_E_CALL) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -95,14 +110,24 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   }
   /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
-  const bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
+  bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
+  const bool from_call = !stmt->u.bind.is_mutable && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
   const MirTy saved_hint = fn->hint;
   if (kind == MS_E_NAME && bound_ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, bound_ty) == MS_TY_FUNCTION) {
     fn->hint = fn_type(fn, bound_ty);
   }
-  const MirValue value = borrow ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
+    if (call_reads_temporary(stmt->u.bind.value) &&
+        fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
+      /* A temporary resource closes where its statement ends, so a part kept past it is a copy. */
+      value = fn_implicit_clone(fn, value, true);
+    } else {
+      borrow = true;
+    }
+  }
   fn->hint = saved_hint;
   if (value == MIR_NONE) {
     return false;
@@ -126,6 +151,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     disown(fn, value);
     mir_b_def_var(&fn->b, fn->vars[local] - 1, value);
     return fn_scope_own_var(fn, fn->vars[local] - 1) && !fn->failed;
+  }
+  if (fn->local_owns != NULL && local < fn->nvars && (!borrow || fresh) && !stmt->u.bind.is_mutable &&
+      mir_needs_drop(fn->cx->module, ty)) {
+    fn->local_owns[local] = 1; /* a value the scope owns: an escaping closure may take it */
   }
   mir_b_def_var(&fn->b, fn_local(fn, local, ty), value);
   return !fn->failed;
@@ -378,6 +407,39 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   return !fn->failed;
 }
 
+/* `m[key] op= value` on a map: the compound assignment read the entry, so it exists and the new value replaces the
+ * old one at the entry's address; the key is not stored again, so it is not copied. False when `place` is not a map entry. */
+static bool update_map_entry(LowerFn *fn, const MsExpr *place, MirValue value, bool *done) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  *done = false;
+  if (!ms_expr_index(place, &container, &key)) {
+    return true;
+  }
+  const MirValue map = fn_expr(fn, container, LW_BORROW);
+  if (map == MIR_NONE) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, map));
+  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
+    return true;
+  }
+  MirTy entry_ty = MIR_VOID;
+  const MirValue address = fn_entry_address(fn, map, key, &entry_ty);
+  if (address == MIR_NONE) {
+    return false;
+  }
+  const bool owns = mir_needs_drop(fn->cx->module, entry_ty);
+  if (owns) {
+    const MirValue old = mir_b_emit(&fn->b, MOP_Take, &address, 1, (MirImm){.tag = MI_TY, .a = entry_ty}, entry_ty);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue stored[2] = {address, value};
+  (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  *done = true;
+  return !fn->failed;
+}
+
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
@@ -386,6 +448,10 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     }
     if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
       disown(fn, value);
+    }
+    bool done = false;
+    if (stmt->u.assign.has_compound && (!update_map_entry(fn, stmt->u.assign.target, value, &done) || done)) {
+      return done && !fn->failed;
     }
     return fn_put_place(fn, stmt->u.assign.target, value);
   }
@@ -435,7 +501,7 @@ MirValue fn_default_result(LowerFn *fn) {
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL) {
-    value = take_value(fn, stmt->u.expr);
+    value = fn->returns_borrow ? fn_expr(fn, stmt->u.expr, LW_BORROW) : take_value(fn, stmt->u.expr);
     if (fn->terminated) { /* the expression never returns: `return panic(...)` */
       return !fn->failed;
     }
@@ -589,7 +655,7 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   return fn_fail(fn, "unknown statement");
 }
 
-/* A statement whose calls lend temporary resources lowers in a scope of its own: they close where it ends. */
+/* A statement whose calls borrow temporary resources lowers in a scope of its own: they close where it ends. */
 static bool lower_scoped(LowerFn *fn, const MsStmt *stmt) {
   if (fn->temps || !fn_stmt_has_temporary(fn, stmt)) {
     return lower_stmt(fn, stmt);

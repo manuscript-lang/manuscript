@@ -616,7 +616,7 @@ export fn glob(
 
 // The native walk calls its filter with the fields of a `PathEntry`; this adapts the
 // caller's predicate.
-fn excluding(exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool) Bool)?:
+fn excluding(move exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool) Bool)?:
 	if keep := exclude:
 		return fn(path: String, name: String, directory: Bool, symlink: Bool) Bool:
 			return keep(

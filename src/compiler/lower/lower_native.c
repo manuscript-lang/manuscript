@@ -325,20 +325,17 @@ static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
 
 /* The local a call's receiver names, or NULL when the receiver is not a plain local. */
 
-/* An owned operand in a new slot of its own: the runtime function takes the value from the slot's address. */
-static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
-  MirValue value = fn_expr(fn, expr, LW_MOVE);
+/* An operand in a new slot of its own: the runtime function takes the value from the slot's address. A `lookup`
+ * only reads the value (a map key it searches for), so the slot borrows it and nothing is copied. */
+static MirValue operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
+  MirValue value = fn_expr(fn, expr, lookup ? LW_BORROW : LW_MOVE);
   if (value == MIR_NONE) {
     return MIR_NONE;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
-  const bool owns = mir_needs_drop(fn->cx->module, ty);
+  const bool owns = !lookup && mir_needs_drop(fn->cx->module, ty);
   if (owns) {
-    const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-    MirMode mode = MM_BORROW;
-    const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
-                       mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
-                       mode == MM_MOVE;
+    const bool fresh = fn_fresh_owner(fn, value);
     value = fresh ? value : fn_implicit_clone(fn, value, false);
     if (fresh) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
@@ -372,8 +369,8 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
   const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
   const MsName add = mir_name(fn->cx->module, ms_span_of_text("msrt_map_add"));
   for (uint32_t at = 0; at < expr->u.map.len; at++) {
-    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key);
-    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value);
+    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key, false);
+    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value, false);
     if (value == MIR_NONE) {
       return MIR_NONE;
     }
@@ -388,7 +385,7 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  const MirValue key = operand_slot(fn, key_expr);
+  const MirValue key = operand_slot(fn, key_expr, true);
   if (key == MIR_NONE) {
     return MIR_NONE;
   }
@@ -399,7 +396,6 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   const MirValue out = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, value_ty, MIR_PTR);
   const MirValue operands[5] = {map, key_desc, value_desc, key, out};
   const MirValue found = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get")), operands, 5, MIR_BOOL);
-  const bool owns_key = mir_needs_drop(fn->cx->module, data->args[0]);
   const bool owns_value = mir_needs_drop(fn->cx->module, data->args[1]);
   const MirBlock hit = mir_b_new_block(&fn->b);
   const MirBlock miss = mir_b_new_block(&fn->b);
@@ -407,7 +403,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_seal_block(&fn->b, hit);
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
-  const MirValue missing = mir_b_emit(&fn->b, owns_key ? MOP_Take : MOP_Load, &key, 1, key_ty, data->args[0]);
+  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, key_ty, data->args[0]);
   const MirValue text = fn_value_repr(fn, missing, data->args[0]);
   const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
                                          (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
@@ -417,10 +413,6 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
   mir_b_unreachable(&fn->b);
   mir_b_switch_to(&fn->b, hit);
-  if (owns_key) {
-    const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
-    (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
-  }
   return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
 
@@ -430,7 +422,7 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
   const MirTy ty = mir_b_ty(&fn->b, container);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
-    const MirValue key = operand_slot(fn, key_expr);
+    const MirValue key = operand_slot(fn, key_expr, true);
     if (key == MIR_NONE) {
       return MIR_NONE;
     }
@@ -440,10 +432,6 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
     const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
     const MirValue operands[4] = {container, key_desc, value_desc, key};
     const MirValue address = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get_ptr")), operands, 4, MIR_PTR);
-    if (mir_needs_drop(fn->cx->module, data->args[0])) {
-      const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
-      (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
-    }
     *entry_ty = data->args[1];
     return address;
   }
@@ -539,6 +527,30 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
 }
 
 /* `list.get(index)`: the element, a negative index counting from the end; an index out of range faults. */
+/* A native declared `@op=<name>` is one MIR instruction on Int operands: the standard wrapper has already checked a
+ * shift count, and a rotation takes its count modulo 64. */
+bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, uint32_t argc, MirValue *out) {
+  static const struct {
+    const char *name;
+    MirOp op;
+    uint32_t operands;
+  } ops[] = {{"and", MOP_And, 2},       {"or", MOP_Or, 2},     {"xor", MOP_Xor, 2},       {"shl", MOP_Shl, 2},
+             {"sshr", MOP_Sshr, 2},     {"ushr", MOP_Ushr, 2}, {"rotl", MOP_Rotl, 2},     {"rotr", MOP_Rotr, 2},
+             {"popcnt", MOP_Popcnt, 1}, {"clz", MOP_Clz, 1}};
+  for (size_t at = 0; at < MS_COUNT_OF(ops); at++) {
+    if (!ms_span_is_text(ms_span_of_text(name), ops[at].name) || argc != ops[at].operands) {
+      continue;
+    }
+    if (mir_b_ty(&fn->b, args[0]) != MIR_INT) {
+      return false;
+    }
+    *out = argc == 2 ? mir_b_binop(&fn->b, ops[at].op, args[0], args[1])
+                     : mir_b_emit(&fn->b, ops[at].op, args, 1, (MirImm){0}, MIR_INT);
+    return true;
+  }
+  return false;
+}
+
 static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
   const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
   const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
@@ -643,12 +655,15 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
   }
+  if (sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, argc, out)) {
+    return true;
+  }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = list_get(fn, args[0], args[1], ret);
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
-      fn_status_call(fn, name, NULL, args, argc, ret, out)) {
+      fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
   }
   MirValue wanted[NS_MAX_PARAMS];

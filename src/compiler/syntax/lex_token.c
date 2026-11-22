@@ -132,8 +132,6 @@ static MsTok single_char_kind(uint8_t b) {
     return MS_T_Amp;
   case '|':
     return MS_T_Pipe;
-  case '@':
-    return MS_T_At;
   default:
     return MS_T_Eof;
   }
@@ -218,10 +216,7 @@ static bool scan_symbol(Scanner *s, const LineInfo *info, MsPos pos, uint8_t b) 
   if (b == '!' && bang_is_result_suffix(s)) {
     kind = MS_T_Bang;
   }
-  /* `@` begins only the annotations `@repr=` and `@words=` at the start of a line; anywhere else it is no
-   * Manuscript character. */
-  const bool annotation = s->column == 1 && (lex_starts_with(s, s->offset, "@repr=") || lex_starts_with(s, s->offset, "@words="));
-  if (kind == MS_T_Eof || (kind == MS_T_At && !annotation)) {
+  if (kind == MS_T_Eof) {
     return fail_unexpected_char(s, b);
   }
   if (b == '(' || b == '[' || b == '{') {

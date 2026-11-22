@@ -22,4 +22,8 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
  * declaration order. Needs the runner module in `program`. */
 bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *error);
 
+/* The same for the program's `bench` blocks: each runs as a test whose body is `run_bench_block(body, operations)`
+ * of stdlib/test/bench.ms, which repeats and times it. Needs the runner and the bench driver modules in `program`. */
+bool ms_lower_benches(MsCheckProgram *program, MirModule *module, MsStrBuild *error);
+
 #endif

@@ -98,7 +98,7 @@ void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const
 
 /* Appends an entry for a borrowed key: the entry owns a copy of the key, and `val` is moved in. Returns the
  * value slot. */
-static uint8_t *append_lent(MsMap *m, const MsMapLayout *layout, uint64_t hash, const MsTypeDesc *kd,
+static uint8_t *append_borrowed(MsMap *m, const MsMapLayout *layout, uint64_t hash, const MsTypeDesc *kd,
                             const uint8_t *key, const uint8_t *val) {
   uint8_t *entry = ms_table_next_entry(m, layout);
   ms_store64(entry, hash);
@@ -112,13 +112,13 @@ static uint8_t *append_lent(MsMap *m, const MsMapLayout *layout, uint64_t hash, 
  * default is consumed either way: stored when the entry is new, dropped when it exists. One hash and probe
  * serve a read-modify-write: the caller reads and writes through the returned pointer before the map is
  * used again. */
-uint8_t *msrt_map_slot_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+uint8_t *msrt_map_slot_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                             uint8_t *default_value) {
   kd = ms_map_key_desc(m, kd);
   const MsMapLayout layout = ms_map_layout(kd, vd);
   const MsMapProbe probe = ms_map_probe(m, kd, &layout, key);
   if (probe.entry == MS_MAP_NO_ENTRY) {
-    return append_lent(m, &layout, probe.hash, kd, key, default_value);
+    return append_borrowed(m, &layout, probe.hash, kd, key, default_value);
   }
   ms_slot_drop(vd, default_value);
   return ms_table_entry(m, &layout, probe.entry) + layout.value_offset;
@@ -126,13 +126,13 @@ uint8_t *msrt_map_slot_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd
 
 /* `add(key, value)` with a borrowed key: it is copied only when the entry is absent, so replacing the value
  * of an existing key allocates nothing. */
-void msrt_map_add_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+void msrt_map_add_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                        uint8_t *val) {
   kd = ms_map_key_desc(m, kd);
   const MsMapLayout layout = ms_map_layout(kd, vd);
   const MsMapProbe probe = ms_map_probe(m, kd, &layout, key);
   if (probe.entry == MS_MAP_NO_ENTRY) {
-    (void)append_lent(m, &layout, probe.hash, kd, key, val);
+    (void)append_borrowed(m, &layout, probe.hash, kd, key, val);
     return;
   }
   uint8_t *value = ms_table_entry(m, &layout, probe.entry) + layout.value_offset;
@@ -141,13 +141,13 @@ void msrt_map_add_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, con
 }
 
 /* `add_default(key, value)` with a borrowed key: nothing is copied or stored when the entry exists. */
-void msrt_map_add_default_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+void msrt_map_add_default_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                                uint8_t *val) {
   kd = ms_map_key_desc(m, kd);
   const MsMapLayout layout = ms_map_layout(kd, vd);
   const MsMapProbe probe = ms_map_probe(m, kd, &layout, key);
   if (probe.entry == MS_MAP_NO_ENTRY) {
-    (void)append_lent(m, &layout, probe.hash, kd, key, val);
+    (void)append_borrowed(m, &layout, probe.hash, kd, key, val);
     return;
   }
   ms_slot_drop(vd, val);

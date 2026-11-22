@@ -275,7 +275,7 @@ static const char *mvt_alt_ctor(const MvtCx *c) {
   }
   MVT_TRY(mvt_want(c->has_res && mvt_is_kind_id(c, c->res, MK_ALT, im->a),
           "alt.new yields the alternative type"));
-  /* A borrowing variant lends exactly its borrowed cases: alt.view fills one, alt.new the others. */
+  /* A borrowing variant borrows exactly its borrowed cases: alt.view fills one, alt.new the others. */
   if (alt->borrowed != 0) {
     MVT_TRY(mvt_want(mvt_borrows(alt, im->b) == (c->in->op == MOP_AltView),
             "a borrowing variant is filled by alt.view in its borrowed cases and alt.new in the others"));

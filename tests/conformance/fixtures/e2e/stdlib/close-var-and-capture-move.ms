@@ -13,7 +13,7 @@ fn Door.id() Int:
     return 1
 
 fn open_handle(name: String) Door:
-    return Door(name)
+    return Door(name.clone())
 
 fn consume(d: Door) Int:
     owned := d

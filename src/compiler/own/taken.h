@@ -1,5 +1,5 @@
 /* compiler/own/taken.h: the resource parameters a body takes. A parameter not declared `move` whose body hands it on
- * (returns it, stores it, binds it) is the callee's to own, and the caller hands it over instead of lending it. The
+ * (returns it, stores it, binds it) is the callee's to own, and the caller hands it over instead of borrowing it. The
  * `taken` fact holds one bit per parameter for each function and method declaration. */
 #ifndef MS_COMPILER_OWN_TAKEN_H
 #define MS_COMPILER_OWN_TAKEN_H

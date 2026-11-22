@@ -10,8 +10,9 @@
 
 #include "compiler/check/program.h"
 
-/* Reports each function of `module` whose body can fall off its end, in the type phase. */
-void ms_check_fallthrough(MsCheckProgram *program, uint32_t module);
+/* Reports `decl` when it is a function of a user module whose body can fall off its end, in the type phase. Runs
+ * right after the declaration's body is checked, so the diagnostics come in the oracle's order. */
+void ms_check_fallthrough(MsCheckProgram *program, uint32_t module, const MsDecl *decl);
 
 /* Printing of a written result type (fallthrough_type.c); false when its display is not certain yet. */
 bool ms_fall_type_text(const MsCheckProgram *program, uint32_t module, const MsFunc *func, const MsTypeRef *type,

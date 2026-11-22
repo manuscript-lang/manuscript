@@ -382,7 +382,7 @@ static bool mentions_vars(const MsTyTable *types, MsTy ty, const MsTyList *vars)
 }
 
 /* A function-typed argument with the parameter modes (`move`, `var`) its context declares: a function value
- * passes where the callee's parameter type differs from its own only in how the arguments are lent. */
+ * passes where the callee's parameter type differs from its own only in how the arguments are borrowed. */
 static MsTy with_context_modes(Body *body, MsTy param, MsTy arg) {
   const MsTyTable *types = &body->program->types;
   if (arg == MS_TY_NONE || param == MS_TY_NONE || ms_ty_kind(types, arg) != MS_TY_FUNCTION ||

@@ -5,15 +5,20 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "base/sort.h"
 #include "driver/snippet.h"
 
 
+/* The parser lists lexical errors apart from syntax errors, so the graph's diagnostics are put in source order; the
+ * checker's keep the order it found them in, which is the oracle's. */
 void finding_add_graph(const MsGraph *graph, FindingList *findings) {
+  const size_t first = findings->len;
   for (size_t i = 0; i < graph->diagnostic_count; i++) {
     const MsGraphDiag *diag = &graph->diagnostics[i];
     const char *phase = diag->phase == MS_GRAPH_PARSE ? "parse" : "resolution";
     finding_list_push(findings, (Finding){.file = diag->file, .phase = phase, .diag = diag->diag});
   }
+  ms_sort((uint8_t *)(findings->ptr + first), findings->len - first, sizeof(Finding), finding_compare, NULL);
 }
 
 /* Diagnostics by file, line and column; the sort is stable, so ties keep the order the phases produced them in. */

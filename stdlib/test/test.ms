@@ -36,8 +36,8 @@ export fn caller_site() String:
 // the failing call's position in `details["site"]`.
 fn failure(message: String, site: String) Error:
 	var details = Map[String, String]()
-	details.add("site", site)
-	return Error(message, kind: "EIO", details: details)
+	details.add("site", site.clone())
+	return Error(message.clone(), kind: "EIO", details: details)
 
 // Returns the debug text of a value, with strings quoted and records and collections
 // spelled out.
@@ -130,7 +130,7 @@ export fn expect_contains(
 	return error(failure(f"expected {repr(actual)} to contain {repr(expected)}", site))
 
 // Fails on `none`; otherwise returns the payload.
-export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
+export fn expect_some[T](move actual: T?, site: String = caller_site()) T!:
 	if value := actual: return ok(value)
 	return error(failure("expected some, got none", site))
 

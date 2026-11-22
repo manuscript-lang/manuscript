@@ -1,6 +1,7 @@
 /* compiler/lower/lower_match.c: `match`. An alternative or an Optional is switched on its tag; a number, text or
  * boolean is compared with each literal arm in turn. An arm's bindings read the case's payload in place, and its
  * value joins the other arms' through a variable. */
+#include "compiler/check/properties.h"
 #include "compiler/lower/lower_fn.h"
 
 typedef struct Match {
@@ -11,6 +12,7 @@ typedef struct Match {
   bool has_result;
   MirBlock join;
   bool joined; /* an arm falls through to the join */
+  bool consumed; /* the scrutinee is a name the match moves: its arms own the payload they bind */
 } Match;
 
 static bool is_literal(const MsExpr *path) {
@@ -46,6 +48,37 @@ static bool arm_case(const LowerFn *fn, const Match *match, const MsArm *arm, ui
   return true;
 }
 
+/* An arm over a consumed scrutinee owns the payload it binds: the scrutinee is released but for the bound fields,
+ * which the arm drops unless it moves them on. */
+static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
+  const MirModule *module = fn->cx->module;
+  const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &match->scrutinee, 1, (MirImm){0}, MIR_NONE);
+  if (match->kind == MK_OPT) {
+    const MirTy elem = mir_ty_data(module, match->ty)->elem;
+    const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &match->scrutinee, 1, (MirImm){0}, elem);
+    if (mir_needs_drop(module, elem)) {
+      fn_own(fn, fn_scope(fn), item);
+    }
+    mir_b_def_var(&fn->b, fn_local(fn, ref->local, elem), item);
+    return;
+  }
+  const uint32_t id = mir_ty_data(module, match->ty)->id;
+  const MirCaseDef *def = &module->alts.ptr[id].cases[kase];
+  uint32_t mask = 0;
+  for (uint32_t at = 0; at < arm->bindings.len && at < def->nfields; at++) {
+    const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
+    const MirValue field = mir_b_emit(&fn->b, MOP_AltTake, &match->scrutinee, 1, imm, def->fields[at].ty);
+    if (mir_needs_drop(module, def->fields[at].ty)) {
+      fn_own(fn, fn_scope(fn), field);
+    }
+    mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
+    mask |= UINT32_C(1) << at;
+  }
+  const MirImm taken = {.tag = MI_ALTMASK, .a = id, .b = kase, .c = mask};
+  (void)mir_b_emit(&fn->b, MOP_AltRelease, &match->scrutinee, 1, taken, MIR_NONE);
+}
+
 static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
   const MirModule *module = fn->cx->module;
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
@@ -71,7 +104,11 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   const bool named = arm_case(fn, match, arm, &kase);
   (void)fn_scope_begin(fn);
   if (named && arm->bindings.len > 0) {
-    bind_payload(fn, match, arm, kase);
+    if (match->consumed && !(match->kind == MK_OPT && kase != 1)) {
+      take_payload(fn, match, arm, kase);
+    } else {
+      bind_payload(fn, match, arm, kase);
+    }
   }
   bool ok = fn_stmts(fn, arm->body);
   if (!fn->terminated && arm->value != NULL) {
@@ -163,6 +200,11 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   }
   match.ty = mir_b_ty(&fn->b, match.scrutinee);
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
+  const MsExpr *subject = expr->u.match.scrutinee;
+  match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||
+                    (subject->kind == MS_E_CALL && fn_fresh_owner(fn, match.scrutinee))) &&
+                   (match.kind == MK_ALT || match.kind == MK_OPT) &&
+                   !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id));
   const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL;
   if (match.kind != MK_ALT && match.kind != MK_OPT && !literal) {
     (void)fn_fail(fn, "`match` over this type is not lowered yet");

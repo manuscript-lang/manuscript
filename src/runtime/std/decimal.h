@@ -14,6 +14,7 @@ typedef struct MsDecimal {
   int64_t high;     /* its high 64 bits, signed */
   int64_t exponent; /* 0 when the coefficient is 0 */
 } MsDecimal;
+/* ms-repr: Decimal inline24 */
 
 /* ms-sig: msstd_decimal_add(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number @leaf */
 void msstd_decimal_add(const MsDecimal *a, const MsDecimal *b, MsDecimal *out);

@@ -324,15 +324,25 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
  * A `var` lives in a slot the maker keeps, and a borrowed parameter is not the maker's to give away. */
 static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
   if (capture->kind == MS_REF_LOCAL) {
-    if (capture->index >= fn->nvars || fn->vars[capture->index] == 0 || (fn->closing != NULL && fn->closing_var[capture->index])) {
-      return false;
-    }
-    const MirVarInfo *info = &fn->b.vars.ptr[fn->vars[capture->index] - 1];
-    return info->mode == MM_MOVE && info->single; /* a loop element or pattern binding is a view; a reassigned `var` re-owns */
+    /* A binding the maker's scope owns; a loop element or pattern binding is a view, a `var` re-owns. */
+    return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] != 0 &&
+           (fn->closing == NULL || !fn->closing_var[capture->index]);
   }
   return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&
          (fn->closing == NULL || capture->index >= LOWER_MAX_CLOSING_PARAMS ||
           !fn->closing_var[fn->nvars + capture->index]);
+}
+
+/* Whether the captured local or parameter lives in a slot the maker's scope owns, so an escaping closure takes it out. */
+static bool fn_capture_slot_owned(const LowerFn *fn, const LowerCapture *capture) {
+  if (fn->closing == NULL) {
+    return false;
+  }
+  if (capture->kind == MS_REF_LOCAL) {
+    return capture->index < fn->nvars && fn->closing_var[capture->index];
+  }
+  return capture->index < fn->b.func.nparams && capture->index < LOWER_MAX_CLOSING_PARAMS &&
+         fn->b.func.params[capture->index].mode == MM_MOVE && fn->closing_var[fn->nvars + capture->index];
 }
 
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
@@ -364,7 +374,12 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       if (!escapes) {
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
       } else if (!fn_capture_moves(fn, &captures[index])) {
-        value = fn_implicit_clone(fn, value, false);
+        MirValue taken = MIR_NONE;
+        if (fn_capture_slot_owned(fn, &captures[index]) && fn_closing_take(fn, &ref, value, &taken)) {
+          value = taken; /* a resource or var in a slot gives its value to the closure */
+        } else {
+          value = fn_implicit_clone(fn, value, false);
+        }
       }
     }
     out[index] = value;
@@ -516,6 +531,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   }
   fn.nvars = lambda.nvars;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, lambda.expr->u.lambda.body);
   bool ok = bind_captures(&fn, &lambda, values[0]);

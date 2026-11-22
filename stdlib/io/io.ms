@@ -129,7 +129,7 @@ export type WriteStream[T]:
 
 // Sends `value` to the sink, which may wait; returns sink errors, including `EBADF`
 // for a closed pipe reader.
-fn var WriteStream[T].write(value: T) Void!:
+fn var WriteStream[T].write(move value: T) Void!:
 	return self.sink.write(value)
 
 // Returns once the sink has drained what was written; a pipe may still hold up to

@@ -11,7 +11,7 @@ fn move Door.close() Void!:
     print(f"closed {self.name}")
 
 fn nested(n: String) Door??:
-    inner: Door? := Door(n)
+    inner: Door? := Door(n.clone())
     return inner
 
 fn main() Void:

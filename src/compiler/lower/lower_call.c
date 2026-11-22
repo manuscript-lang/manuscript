@@ -1,6 +1,7 @@
 /* compiler/lower/lower_call.c: calls to module functions (with their type arguments and default arguments)
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/lower/native_sigs.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
@@ -136,8 +137,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MsExpr *index_key = NULL;
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
+  MirValue record = MIR_NONE;
   if (is_place) {
-    if (!fn_take_place(fn, place, &owned)) {
+    /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
+    if (!fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
       return MIR_NONE;
     }
   } else {
@@ -155,7 +158,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty, MIR_NONE, MIR_NONE};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, MIR_NONE};
   return slot;
 }
 
@@ -175,7 +178,8 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }
-    } else if (!fn_put_place(fn, slots[at].place, updated)) {
+    } else if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, updated)
+                                              : fn_put_place(fn, slots[at].place, updated))) {
       return false;
     }
   }
@@ -188,7 +192,7 @@ static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
   return entry != NULL && entry->source->consuming;
 }
 
-/* Whether the call hands argument `index` (written as `written`) to its callee, rather than lending it. */
+/* Whether the call hands argument `index` (written as `written`) to its callee, rather than borrowing it. */
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
   const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
   const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
@@ -544,7 +548,7 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   }
   MirValue checked = MIR_NONE;
   if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
-                     fn->cx->program->symbols.ptr[id].decl, args, call->arg_count, ret, &checked)) {
+                     fn->cx->program->symbols.ptr[id].module, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
@@ -554,6 +558,10 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
     return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig != NULL && sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, call->arg_count, &checked)) {
+    return checked;
+  }
   const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
   fn_own_result(fn, result);
   return result;

@@ -7,7 +7,7 @@ fn bump(var counts: Map[String, Int], key: String) Void:
     if var n = counts.get(key):
         n += 1
     else:
-        counts[key] = 1
+        counts[key.clone()] = 1
 
 fn main() Void:
     var m = Map[String, Int]()
