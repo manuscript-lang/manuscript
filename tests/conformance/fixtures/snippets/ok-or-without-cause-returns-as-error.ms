@@ -4,10 +4,10 @@
 import stdout from "@std/io/io.ms"
 
 fn a(s: String) Int!:
-    return s.parse_int().ok_or()
+    return s.parse_int().ok_or(Error("missing"))
 
 fn b(s: String) Result[Int, Error]:
-    return s.parse_int().ok_or()
+    return s.parse_int().ok_or(Error("missing"))
 
 fn main() Void:
     stdout().write(f"{a("4").get_or(0)} {b("x").is_ok()}\n").get()

@@ -57,7 +57,7 @@ test "generic callers and direct calls keep their invocation lines":
 		"missing value at bound-missing-value-source.ms:7",
 	)?
 
-	direct := absent.ok_or()
+	direct := absent.ok_or(Error("missing"))
 	expect_equal(
 		direct.err().message,
 		"missing value at bound-missing-value-source.ms:60",
@@ -114,7 +114,7 @@ test "supplied none remains supplied and nested Optional errors remain intact":
 	expect_true(bound_fault.contains("Optional.get() on none"))?
 	expect_true(direct_fault.contains("Optional.get() on none"))?
 
-	supplied := absent.ok_or().err()
+	supplied := absent.ok_or(Error("missing")).err()
 	expect_equal(convert(supplied).err().message, supplied.message)?
 
 	nested := absent.ok_or[Int?]

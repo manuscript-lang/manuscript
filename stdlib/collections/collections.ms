@@ -169,7 +169,9 @@ fn List[T].all(predicate: fn(T) Bool) Bool:
 // writes can affect later calls. A callback that takes its parameter as `var` changes
 // the element in place, and the receiver must then be `var`; a reading callback works
 // on any list.
-fn List[T].for_each(operation: fn(var T) Void) Void: ...
+fn List[T].for_each(operation: fn(var T) Void) Void:
+	for index in 0..self.length():
+		operation(self[index])
 
 // Returns a new list holding `transform` applied to each element in order; the
 // receiver is unchanged.
@@ -676,11 +678,9 @@ fn Map[T, U].keys() List[T]: ...
 // Calls `operation(key, value)` for each entry in insertion order.
 // A callback that takes `value` as `var` changes it in place, and the receiver must
 // then be `var`.
-fn Map[T: Hashable & Clonable, U: Clonable].for_each(operation: fn(T, var U) Void) Void:
+fn Map[T: Hashable, U].for_each(operation: fn(T, var U) Void) Void:
 	for key in self.keys():
-		var value = self.get(key).get()
-		operation(key, value)
-		self.add(key.clone(), value)
+		operation(key, self[key])
 
 // Reports whether an equal key is present, using the key type's `Hashable`
 // implementation.
@@ -701,7 +701,7 @@ fn var Map[T, U].add(move key: T, move value: U) Void: ...
 fn var Map[T, U].remove(move key: T) Void: ...
 
 // Returns a deep copy with independent map and nested value storage.
-fn Map[T: Hashable & Clonable, U: Clonable].clone() Map[T, U]:
+fn Map[T: Hashable & Clonable, U: Clonable].clone() move Map[T, U]:
 	var out = Map[T, U]()
 	for key in self.keys():
 		out.add(key.clone(), self.get(key).get())
@@ -803,7 +803,7 @@ export type MapEntry[T: Hashable, U]:
 export extern type Set[T: Hashable]
 
 // Returns a deep copy with independent storage, in the same insertion order.
-fn Set[T: Hashable & Clonable].clone() Set[T]:
+fn Set[T: Hashable & Clonable].clone() move Set[T]:
 	var out = Set[T]()
 	for value in self.values():
 		out.add(value.clone())

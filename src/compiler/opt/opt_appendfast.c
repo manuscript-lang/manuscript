@@ -6,7 +6,7 @@
  * and copies. An owned string records its spare room in its second word, so the common case is
  * decided from the two words: an owned receiver, a piece of 1 to 16 bytes (inline, or flat not
  * inside the receiver), room for it, and an ASCII flag that stays true. That case writes the
- * piece, the NUL and the new length word. Every other case calls the runtime.
+ * piece and the new length word. Every other case calls the runtime.
  *
  * The fast path is one generated function marked `inline(always)`, shared by every call site.
  * The bit layout is src/runtime/include/ms_rt/string.h. */
@@ -156,7 +156,7 @@ static MirValue af_take(MirBuilder *b, MirValue slot) {
   return mir_b_emit(b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR);
 }
 
-/* The fast block: copy the piece, write the NUL and the new length word, return the string. */
+/* The fast block: copy the piece and write the new length word, return the string. */
 static void af_fast_block(MirBuilder *b, const AfWords *w, MirValue la, MirValue lb,
              MirValue inline_piece) {
   const MirValue text = ob_load(b, w->slot_a, 0, MIR_PTR);
@@ -164,7 +164,6 @@ static void af_fast_block(MirBuilder *b, const AfWords *w, MirValue la, MirValue
   const MirValue from = mir_b_select(b, inline_piece, w->slot_b, flat_from);
   const MirValue dst = ob_past(b, text, la);
   af_copy_short(b, from, dst, lb);
-  af_storeu(b, ob_past(b, dst, lb), w->zero, 1);
   const MirValue grown = mir_b_binop(b, MOP_IAdd, w->aw1, lb);
   const MirValue used = ob_int(b, MOP_Shl, lb, AF_SPARE_SHIFT);
   const MirValue tagged = mir_b_binop(b, MOP_ISub, grown, used);

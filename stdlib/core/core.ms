@@ -245,9 +245,10 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 		none: return create()
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
-// call whether or not it is used. Without a cause, `E` is `Error` with kind `ENOENT`
-// and a message naming the calling source file and line.
-fn Optional[T].ok_or[E = Error](cause: E?) move T!E: ...
+// call whether or not it is used.
+fn Optional[T].ok_or[E](cause: E) move T!E:
+	if self.is_none(): return error(cause)
+	return ok(self.get())
 
 // Returns `ok` with the payload; for `none`, calls `create` once and returns its
 // error.
@@ -408,12 +409,12 @@ export fn join_errors(errors: List[Error]) Error?:
 	return Error(text, none, {"count": errors.length().to_string()})
 
 // An Optional copies its payload; `none` stays `none`.
-fn Optional[T: Clonable].clone() T?:
+fn Optional[T: Clonable].clone() move T?:
 	match self:
 		value: return value.clone()
 		none: return none
 
-fn Error.clone() Error:
+fn Error.clone() move Error:
 	return Error(self.message.clone(), self.kind.clone(), self.details.clone())
 
 // A String is its own text.

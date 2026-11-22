@@ -12,7 +12,7 @@ import (
 type ListSource[T]:
 	items: List[T]
 
-fn var ListSource[T].next() T?!:
+fn var ListSource[T].next() move T?!:
 	return ok(self.items.pop())
 
 fn move ListSource[T].close() Void!:
@@ -32,7 +32,7 @@ type BytesSource:
 	at: Int
 	chunk: Int
 
-fn var BytesSource.next() Bytes?!:
+fn var BytesSource.next() move Bytes?!:
 	if self.chunk < 1:
 		return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
 	if self.at >= self.data.length(): return ok(none)

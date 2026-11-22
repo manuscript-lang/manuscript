@@ -153,5 +153,5 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
     }
   }
   ms_span_list_free(&names);
-  ms_check_report(body->program, body->module, member->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  ms_check_report(body->program, body->module, member->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
 }

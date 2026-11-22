@@ -58,7 +58,13 @@ bool ms_string_equal(const MsString *a, const MsString *b) {
   if (a->low_bits == b->low_bits && a->tagged == b->tagged) {
     return true;
   }
-  return ms_span_equal(ms_string_span(a), ms_string_span(b));
+  const size_t length = ms_string_length(a);
+  if (length != ms_string_length(b)) {
+    return false;
+  }
+  const uint8_t *left = ms_string_is_inline(a) ? a->inline_bytes : a->borrow;
+  const uint8_t *right = ms_string_is_inline(b) ? b->inline_bytes : b->borrow;
+  return length == 0 || __builtin_memcmp(left, right, length) == 0;
 }
 
 int ms_string_compare(const MsString *a, const MsString *b) {

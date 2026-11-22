@@ -171,8 +171,32 @@ static uint32_t parameter_names(const MsFunc *func, bool method, uint32_t positi
   return len;
 }
 
+static bool name_in(const MsName *names, uint32_t len, MsName name) {
+  for (uint32_t index = 0; index < len; index++) {
+    if (names[index] == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* The type variables `func` declares: its own and, for a method, its receiver's. */
+static uint32_t declared_variables(const MsFunc *func, bool method, MsName *out) {
+  uint32_t len = 0;
+  for (uint32_t index = 0; index < func->type_params.len && len < NAME_CAP; index++) {
+    out[len++] = func->type_params.ptr[index]->name;
+  }
+  if (method) {
+    const MsMethod *owner = ms_method_of_func(func);
+    for (uint32_t index = 0; index < owner->receiver_args.len; index++) {
+      type_names(owner->receiver_args.ptr[index], out, &len, NAME_CAP);
+    }
+  }
+  return len;
+}
+
 /* Whether the callee's declared result can hold what its argument number `position` carries: a declaration
- * with a body lends only through a type its parameter and its result both mention; one the runtime provides
+ * with a body lends only through a type variable its parameter and its result both mention; one the runtime provides
  * lends from any argument. */
 static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t position) {
   const MsRef *callee = &fact->callee;
@@ -184,15 +208,34 @@ static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t positio
   MsName mine[NAME_CAP];
   uint32_t result_len = 0;
   type_names(func->result, result, &result_len, NAME_CAP);
+  MsName variables[NAME_CAP];
+  const uint32_t variable_len = declared_variables(func, callee->kind == MS_REF_METHOD, variables);
   const uint32_t mine_len = parameter_names(func, callee->kind == MS_REF_METHOD, position, mine);
   for (uint32_t at = 0; at < mine_len; at++) {
     for (uint32_t index = 0; index < result_len; index++) {
-      if (mine[at] == result[index]) {
+      if (mine[at] == result[index] && name_in(variables, variable_len, mine[at])) {
         return true;
       }
     }
   }
   return false;
+}
+
+/* Whether `call` takes the payload out of an optional or result held in a place: its result is the receiver's
+ * first type argument. An owned `T?` owns its payload or nothing, so the payload leaves with the value. */
+static bool takes_payload(Borrows *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind != MS_E_MEMBER) {
+    return false;
+  }
+  const MsExpr *receiver = callee->u.member.left;
+  const MsTyTable *types = &pass->program->types;
+  const MsTy held = ms_facts_type(pass->facts, receiver->id);
+  if (held == MS_TY_NONE || ms_ty_arg_count(types, held) == 0 ||
+      (!ms_ty_is(types, held, MS_BUILTIN_Optional) && !ms_ty_is(types, held, MS_BUILTIN_Result))) {
+    return false;
+  }
+  return ms_facts_type(pass->facts, call->id) == ms_ty_args(types, held)[0];
 }
 
 /* A call whose result is not declared `move` borrows from its first argument that has an origin. */
@@ -204,6 +247,9 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   }
   const MsExpr *callee = call->u.call.callee;
   const bool receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION;
+  if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
+    return false;
+  }
   bool found = receiver && lends_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
   for (uint32_t index = 0; !found && index < call->u.call.args.len; index++) {
     found = lends_from(pass, fact, index + (receiver ? 1u : 0u)) &&

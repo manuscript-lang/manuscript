@@ -178,19 +178,17 @@ Through a `:=` binding or a parameter not declared `var`, `counter?.bump()` is r
 
 ## Converting absence to a Result
 
-- `ok_or[E = Error](cause: E?) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
+- `ok_or[E](cause: E) Result[T, E]`: `ok` with the payload, or `error` with `cause` when absent. `cause` is evaluated eagerly; `E` may be any value type.
 - `ok_or_else[E](create: fn() E) Result[T, E]`: calls `create` once, only on absence.
 
-Omitting the cause yields an `Error` of kind `"ENOENT"` (the [default type argument](generics.md#default-type-arguments)). Its message records the source file and line of the `ok_or()` call, such as `missing value at src/main.ms:12`. Any function whose error type is `Error` can `?` it:
+Pass the error explicitly. Any function whose error type is `Error` can `?` the result:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn port_number(text: String) Int!:
-    port := text.parse_int().ok_or()?
+    port := text.parse_int().ok_or(Error("missing port"))?
     return ok(port)
 ```
-
-When fixing another error type, such as `Result[Int, ParseFailure]`, supply a cause explicitly.
 
 To keep the success value and discard the error, use [Result.to_optional](../errors/results.md#converting-success-to-an-optional).
 

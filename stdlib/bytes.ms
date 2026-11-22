@@ -25,7 +25,7 @@ fn Bytes.as_bytes() Bytes:
 	return self.clone()
 
 // Copies byte storage without changing the receiver.
-fn Bytes.clone() Bytes:
+fn Bytes.clone() move Bytes:
 	return self.concat(self.view(0, 0))
 
 // Tests whether `value` occurs as a byte subsequence.

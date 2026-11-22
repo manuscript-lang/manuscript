@@ -46,7 +46,7 @@ Both calls return normally. The second returns an error value, and `show` choose
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn parse_port(text: String) Int!:
-    port := text.parse_int().ok_or()?
+    port := text.parse_int().ok_or(Error("missing port"))?
     return ok(port)
 ```
 

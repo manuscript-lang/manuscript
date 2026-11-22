@@ -25,14 +25,14 @@
           "file": "golden-0471.ms",
           "line": 5,
           "column": 17,
-          "offset": 215
+          "offset": 231
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0471.ms:3:41: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 3 | fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()\n   |                                         ^\n<DIR>/golden-0471.ms:5:17: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 5 | fn widen(cause: MissingValue) Error: cause\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0471.ms:3:41: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 3 | fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or(Error(\"missing\"))\n   |                                         ^\n<DIR>/golden-0471.ms:5:17: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 5 | fn widen(cause: MissingValue) Error: cause\n   |                 ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
