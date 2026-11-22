@@ -35,8 +35,8 @@ uint8_t msstd_json_parse(const MsString *text, uint8_t has_max_bytes, int64_t ma
 /* Parses `text` straight into a value of the recursive alternative described by `desc`, built by `ctor` (see
  * the notes above), written to `out` on success. */
 /* ms-sig: msstd_json_parse_tree(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth:
- * HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, desc: *const TypeDesc, ctor: unsafe extern
- * "C-unwind" fn(i64, *mut u8, *mut u8) -> i64, out: *mut u8, err: ErrSlot) -> u8 @leaf */
+ * HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, desc: ValueDesc, ctor: TreeCtor, out: *mut
+ * u8, err: ErrSlot) -> u8 @domain=JSON @leaf */
 uint8_t msstd_json_parse_tree(const MsString *text, uint8_t has_max_bytes, int64_t max_bytes,
                               uint8_t has_max_depth, int64_t max_depth, uint8_t has_max_values,
                               int64_t max_values, const MsTypeDesc *desc, JsonCtorFn ctor, uint8_t *out,
