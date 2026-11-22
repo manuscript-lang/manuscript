@@ -85,6 +85,9 @@ static void walk_match(MsLivePass *pass, const MsExpr *expr, MsLiveSet *live) {
       ms_live_expr(pass, arm->value, &arm_live);
     }
     arm_live = ms_live_block(pass, arm->body, arm_live);
+    if (arm->bindings.len != 0) {
+      ms_live_kill(&arm_live, arm->id); /* the arm's payload bindings start here: their value does not reach the scrutinee */
+    }
     ms_live_join(&joined, &arm_live);
     ms_live_set_free(&arm_live);
   }
