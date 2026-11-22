@@ -560,7 +560,9 @@ MirValue fn_default_result(LowerFn *fn) {
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL) {
+    fn->borrow_ctor = fn->returns_borrow && stmt->u.expr->kind == MS_E_CALL;
     value = fn->returns_borrow ? fn_expr(fn, stmt->u.expr, LW_BORROW) : take_value(fn, stmt->u.expr);
+    fn->borrow_ctor = false;
     if (fn->terminated) { /* the expression never returns: `return panic(...)` */
       return !fn->failed;
     }

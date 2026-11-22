@@ -80,6 +80,7 @@ typedef struct LowerFn {
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
   uint32_t nwritebacks;
   bool failed;
+  bool borrow_ctor; /* the `return` being lowered hands back a borrowed result: a `ok(part)` around a place shares it */
   bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
   uint32_t comparing[8]; /* the alternatives whose equality is being written out, innermost last */
   uint32_t ncomparing;

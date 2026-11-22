@@ -209,6 +209,28 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   return returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
 }
 
+/* `ok(part)`, `some(part)`: a case of a Result or Optional built around one place or borrowing call, which the
+ * wrapper then shares instead of owning. */
+static bool wraps_place(const PlaceReturns *counts, const MsExpr *value) {
+  const MsCall *call = ms_facts_call(counts->facts, value->id);
+  if (call == NULL || call->callee.kind != MS_REF_CASE || value->u.call.args.len != 1) {
+    return false;
+  }
+  const MsTyTable *types = &counts->cx->program->types;
+  if (!ms_ty_is(types, call->callee.owner, MS_BUILTIN_Result) && !ms_ty_is(types, call->callee.owner, MS_BUILTIN_Optional)) {
+    return false;
+  }
+  const MsExpr *arg = value->u.call.args.ptr[0].value;
+  if (arg->kind == MS_E_NAME) {
+    const MsRef *ref = ms_facts_ref(counts->facts, arg->id);
+    return ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL);
+  }
+  if (arg->kind == MS_E_CALL) {
+    return call_borrows(counts, arg);
+  }
+  return arg->kind == MS_E_MEMBER || arg->kind == MS_E_INDEX;
+}
+
 static void count_place_returns(void *ctx, const MsStmt *stmt) {
   PlaceReturns *counts = ctx;
   if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
@@ -232,7 +254,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
     const MsRef *ref = ms_facts_ref(counts->facts, value->id);
     counts->places += ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL) ? 1u : 0u;
   } else if (value->kind == MS_E_CALL) {
-    counts->places += call_borrows(counts, value) ? 1u : 0u;
+    counts->places += call_borrows(counts, value) || wraps_place(counts, value) ? 1u : 0u;
   } else {
     counts->places += value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY ? 1u : 0u;
   }

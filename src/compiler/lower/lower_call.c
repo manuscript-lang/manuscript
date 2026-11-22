@@ -240,6 +240,9 @@ static bool owning_constructor(const MsCall *call) {
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
   uint32_t order[LOWER_MAX_ARGS];
+  /* `return ok(part)` in a function whose result borrows: the case shares the place it wraps. */
+  const bool borrowed_case = fn->borrow_ctor && call->callee.kind == MS_REF_CASE;
+  fn->borrow_ctor = false;
   MirValue pending[LOWER_MAX_ARGS];
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
@@ -269,7 +272,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     } else if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
-      const LowerWant want = fn_arg_moves(fn, expr, call, index, written) ? LW_MOVE : LW_BORROW;
+      const LowerWant want = !borrowed_case && fn_arg_moves(fn, expr, call, index, written) ? LW_MOVE : LW_BORROW;
       /* A literal the checker left open takes its type from the parameter. */
       const MirTy saved_hint = fn->hint;
       const MsTyTable *types = &fn->cx->program->types;
