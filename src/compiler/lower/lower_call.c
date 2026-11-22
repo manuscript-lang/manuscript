@@ -235,6 +235,10 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
     return result;
   }
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
+  const MirValue structural = fn_value_operation(fn, operation, args, call->arg_count, ret);
+  if (structural != MIR_NONE) {
+    return structural;
+  }
   if (call->arg_count != 1 || ret != mir_b_ty(&fn->b, args[0])) {
     (void)fn_fail(fn, "the operation `%.*s` on a bound value is not lowered yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;

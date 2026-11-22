@@ -23,6 +23,7 @@ typedef struct TestOutcome {
 typedef struct TestJob {
   MsArena *arena;
   MsSpan executable, working;
+  MsSpan source_root; /* the directory the `--json` document names */
   const MsSpanList *names;
   const MsTestOptions *options;
 } TestJob;
