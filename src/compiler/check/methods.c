@@ -122,14 +122,85 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
 
 /* ---- one method ---- */
 
-static bool declared_twice(const MsCheckProgram *program, MsTy receiver, MsName name, uint32_t module) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->receiver == receiver && entry->name == name && entry->module == module) {
-      return true;
+/* How two receiver forms of one type compare: they could never match the same application, they could, or they
+ * are the same form written twice (bare type parameters at the same positions, the same arguments elsewhere, the
+ * same written bounds). Only forms under the same bounds can overlap. */
+typedef enum FormRelation { FORM_DISJOINT, FORM_OVERLAP, FORM_SAME } FormRelation;
+
+static bool is_variable(const MsTyTable *types, MsTy ty) {
+  return ms_ty_kind(types, ty) == MS_TY_VARIABLE;
+}
+
+static bool same_bounds(MsCheckProgram *program, MsTy mine, MsTy theirs, const MsTy *from, const MsTy *to,
+                        size_t count) {
+  const MsTyVariable *a = ms_ty_variable(&program->types, mine);
+  const MsTyVariable *b = ms_ty_variable(&program->types, theirs);
+  if (a->bounds.len != b->bounds.len) {
+    return false;
+  }
+  for (size_t index = 0; index < a->bounds.len; index++) {
+    const MsTy bound = ms_ty_subst(&program->types, a->bounds.ptr[index], from, to, count);
+    bool found = false;
+    for (size_t at = 0; at < b->bounds.len && !found; at++) {
+      found = b->bounds.ptr[at] == bound;
+    }
+    if (!found) {
+      return false;
     }
   }
-  return false;
+  return true;
+}
+
+static FormRelation relate_forms(MsCheckProgram *program, MsTy mine, const MsMethodEntry *other) {
+  const MsTyTable *types = &program->types;
+  const MsTy theirs = other->receiver;
+  if (ms_ty_row(types, mine)->id != ms_ty_row(types, theirs)->id || ms_ty_arg_count(types, mine) != ms_ty_arg_count(types, theirs)) {
+    return FORM_DISJOINT;
+  }
+  bool same = true;
+  MsTyList from = {0};
+  MsTyList to = {0};
+  for (size_t index = 0; index < ms_ty_arg_count(types, mine); index++) {
+    const MsTy a = ms_ty_args(types, mine)[index];
+    const MsTy b = ms_ty_args(types, theirs)[index];
+    if (is_variable(types, a) && is_variable(types, b)) {
+      ms_ty_list_push(&from, a);
+      ms_ty_list_push(&to, b);
+    } else if (a != b) {
+      same = false;
+      if (!ms_ty_has_variable(types, a) && !ms_ty_has_variable(types, b)) {
+        ms_ty_list_free(&from);
+        ms_ty_list_free(&to);
+        return FORM_DISJOINT;
+      }
+    }
+  }
+  bool bounds = true;
+  for (size_t index = 0; bounds && index < from.len; index++) {
+    bounds = same_bounds(program, from.ptr[index], to.ptr[index], from.ptr, to.ptr, from.len);
+  }
+  ms_ty_list_free(&from);
+  ms_ty_list_free(&to);
+  if (!bounds) {
+    return FORM_DISJOINT;
+  }
+  return same ? FORM_SAME : FORM_OVERLAP;
+}
+
+/* The relation of the strongest earlier form of this module that declares `name`. */
+static FormRelation earlier_form(MsCheckProgram *program, MsTy receiver, MsName name, uint32_t module) {
+  FormRelation result = FORM_DISJOINT;
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *entry = &program->methods.ptr[index];
+    if (entry->name != name || entry->module != module) {
+      continue;
+    }
+    const FormRelation relation = entry->receiver == receiver ? FORM_SAME : relate_forms(program, receiver, entry);
+    if (relation > result) {
+      result = relation;
+    }
+  }
+  return result;
 }
 
 /* The method's own type parameters, entered in scope and bounded; a name the receiver form already uses is
@@ -172,10 +243,19 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
     MsTyList own = {0};
     enter_own_variables(context, method, &own);
     const MsTy signature = resolver_function(resolver, method->func.params, method->func.result);
-    if (declared_twice(program, receiver, method->func.name, context->module)) {
+    const FormRelation relation = earlier_form(program, receiver, method->func.name, context->module);
+    if (relation == FORM_SAME) {
       report(context, method->pos, "duplicate operation ", method->func.name, "; rename or remove one of them");
       report(context, method->pos, "duplicate implementation operation ", method->func.name,
              "; define each operation once per impl");
+    } else if (relation == FORM_OVERLAP) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "duplicate or overlapping implementation of ");
+      ms_strbuild_append(&text, ms_names_span(program->names, method->func.name));
+      ms_strbuild_append_text(&text, " on ");
+      ms_strbuild_append(&text, ms_names_span(program->names, ms_ty_row(&program->types, receiver)->name));
+      ms_strbuild_append_text(&text, ": another receiver form of the same type could match the same application");
+      ms_check_report(program, context->module, method->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     }
     MsMethodEntry entry = {.name = method->func.name, .receiver = receiver, .ty = signature,
                            .module = context->module, .source = method};
