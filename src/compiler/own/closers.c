@@ -91,6 +91,16 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     }
     return;
   }
+  if (stmt->kind == MS_S_FOR && ms_facts_use(pass->facts, stmt->u.each.iter->id) == MS_USE_MOVE) {
+    /* A loop that consumes its list owns each element in its round. */
+    const MsRef *item = ms_facts_ref(pass->facts, stmt->id);
+    const MsTyTable *types = &pass->program->types;
+    const MsTy list = ms_facts_type(pass->facts, stmt->u.each.iter->id);
+    if (item != NULL && item->kind == MS_REF_LOCAL && list != MS_TY_NONE && ms_ty_arg_count(types, list) == 1) {
+      add_closer(pass, stmt->id, MS_REF_LOCAL, item->local, ms_ty_args(types, list)[0]);
+    }
+    return;
+  }
   if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
     return;
   }

@@ -368,6 +368,41 @@ static void note_swap_expr(void *ctx, const MsExpr *expr) {
 }
 
 /* Marks one function or method: the arms' locals are numbered per callable, so each is walked on its own. */
+typedef struct Moved {
+  const Uses *pass;
+  uint32_t local;
+  bool found;
+} Moved;
+
+static void find_moved_loop_name(void *ctx, const MsExpr *expr) {
+  Moved *moved = ctx;
+  const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(moved->pass->facts, expr->id) : NULL;
+  moved->found = moved->found || (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local == moved->local &&
+                                  moved->pass->facts->uses[expr->id] == MS_USE_MOVE);
+}
+
+/* `for item in items:` over a local list of resources whose body moves `item` on: the loop owns the elements, so each
+ * one is closed in its round unless the body moves it away. */
+static void consume_loops(void *ctx, const MsStmt *stmt) {
+  Uses *pass = ctx;
+  const MsRef *binding = stmt->kind == MS_S_FOR ? ms_facts_ref(pass->facts, stmt->id) : NULL;
+  const MsExpr *iter = stmt->kind == MS_S_FOR ? stmt->u.each.iter : NULL;
+  if (binding == NULL || binding->kind != MS_REF_LOCAL || iter->kind != MS_E_NAME || !place_root(pass, iter)) {
+    return;
+  }
+  const MsTyTable *types = &pass->program->types;
+  const MsTy list = ms_facts_type(pass->facts, iter->id);
+  if (list == MS_TY_NONE || !ms_ty_is(types, list, MS_BUILTIN_List) || ms_ty_arg_count(types, list) != 1 ||
+      !ms_check_holds_resource(pass->program, ms_ty_args(types, list)[0])) {
+    return;
+  }
+  Moved moved = {.pass = pass, .local = binding->local};
+  ms_walk_block(&(MsVisitor){.ctx = &moved, .expr = find_moved_loop_name}, stmt->u.each.body);
+  if (moved.found) {
+    pass->facts->uses[iter->id] = MS_USE_MOVE;
+  }
+}
+
 static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consuming) {
   pass->arms.len = 0;
   pass->moved.len = 0;
@@ -386,6 +421,7 @@ static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consum
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = note_moved_names}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = consume_scrutinees}, params, body);
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = consume_loops}, params, body);
 }
 
 static void mark_module(Uses *pass, const MsModule *tree) {
