@@ -487,6 +487,18 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
   }
   bool ok = found != NULL || lower_fail(&cx, "the program has no `main` function");
   if (ok) {
+    /* The module is named for the entry file's stem (`src/main.ms` is `main`). */
+    MsSpan stem = ms_names_span(program->names, program->modules.ptr[entry_module].file);
+    for (size_t at = stem.len; at > 0; at--) {
+      if (stem.ptr[at - 1] == '/' || stem.ptr[at - 1] == '\\') {
+        stem = (MsSpan){stem.ptr + at, stem.len - at};
+        break;
+      }
+    }
+    if (stem.len > 3 && ms_span_is_text((MsSpan){stem.ptr + stem.len - 3, 3}, ".ms")) {
+      stem.len -= 3;
+    }
+    module->name = mir_name(module, stem);
     LowerTarget target = lower_symbol_target(&cx, *found);
     const uint32_t entry = lower_instance(&cx, &target, NULL, 0, NULL);
     ok = entry != MIR_NONE && lower_pending(&cx);
