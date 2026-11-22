@@ -50,6 +50,34 @@ static MsSpan number_text(const Body *body, const MsExpr *expr) {
   return ms_names_span(body->program->names, expr->u.sym);
 }
 
+/* Whether `ty` is a type variable bounded by a set of number types that all admit an `integer` or fractional
+ * literal: `T: Numeric` takes `0` (the set holds integers), a set of floats takes `0.5`. */
+static bool numeric_variable(Body *body, MsTy ty, bool integer) {
+  MsTyTable *types = &body->program->types;
+  if (ty == MS_TY_NONE || ms_ty_kind(types, ty) != MS_TY_VARIABLE) {
+    return false;
+  }
+  const MsTyVariable *record = ms_ty_variable(types, ty);
+  for (size_t index = 0; record != NULL && index < record->bounds.len; index++) {
+    const MsTy bound = record->bounds.ptr[index];
+    if (!ms_ty_is(types, bound, MS_BUILTIN_TypeSet) || ms_ty_arg_count(types, bound) == 0) {
+      continue;
+    }
+    bool admits = true;
+    bool has_integer = false;
+    for (size_t at = 0; at < ms_ty_arg_count(types, bound); at++) {
+      const MsBuiltin member = ms_ty_builtin(types, ms_ty_args(types, bound)[at]);
+      has_integer = has_integer || ms_builtin_is_int(member);
+      admits = admits && (ms_builtin_is_int(member) || ms_builtin_is_float(member)) &&
+               (integer || ms_builtin_is_float(member));
+    }
+    if (admits && (!integer || has_integer)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* The type of a number literal: a sized type from `expected` when the literal kind matches it. */
 static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTyTable *types = &body->program->types;
@@ -62,9 +90,11 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
     return decimal != NULL ? decimal->ty : MS_TY_NONE;
   }
   if (kind == NUMBER_FLOAT) {
-    return is_sized_float(body, expected) ? expected : body_primitive(body, MS_BUILTIN_Float);
+    return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
+                                                                                   : body_primitive(body, MS_BUILTIN_Float);
   }
-  return is_sized_int(body, expected) ? expected : body_primitive(body, MS_BUILTIN_Int);
+  return is_sized_int(body, expected) || numeric_variable(body, expected, true) ? expected
+                                                                                 : body_primitive(body, MS_BUILTIN_Int);
 }
 
 /* ---- text ---- */
