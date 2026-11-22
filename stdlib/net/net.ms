@@ -782,7 +782,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 // Starts one worker on the least loaded thread. A returned promise owns what it
 // captures, so the share of the serving and the pipe belong to the worker for as long
 // as it runs.
-fn start_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Promise[Void]:
+fn start_worker(move spec: NativeWorkerSpec, move input: Pipe[Int]) Promise[Void]:
 	return promise(
 		fn: serve_worker(spec, input),
 		options: PromiseOptions(placement: Placement.Spread)

@@ -133,6 +133,11 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
     return fn_try_var_slot(fn, place, out);
   }
+  MirValue element;
+  if (fn_list_element_addr(fn, place, &element)) {
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    return element;
+  }
   MsExpr *indexed = NULL;
   MsExpr *index_key = NULL;
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
@@ -158,18 +163,26 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, MIR_NONE};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, false, MIR_NONE, MIR_NONE};
   return slot;
 }
 
 /* After the call: each slot's value goes back into the place it came from. */
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
+    if (slots[at].in_place) {
+      continue;
+    }
     const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
     const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
                                         &slots[at].slot, 1, of_type, slots[at].ty);
     if (slots[at].optional != MIR_NONE) {
       const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
+      if (slots[at].home != MIR_NONE) {
+        const MirValue stored[2] = {slots[at].home, wrapped};
+        (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+        continue;
+      }
       if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, wrapped)
                                          : fn_put_place(fn, slots[at].place, wrapped))) {
         return false;

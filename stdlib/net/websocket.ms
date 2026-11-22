@@ -95,7 +95,7 @@ fn move WebSocket.close() Void!:
 	return self.output.close()
 
 // Wraps a native WebSocket into a `WebSocket`.
-export fn web_socket_from(native: NativeWebSocket) WebSocket:
+export fn web_socket_from(move native: NativeWebSocket) WebSocket:
 	subprotocol := msstd_websocket_subprotocol(native)
 	other := msstd_websocket_share(native)
 	return WebSocket(
