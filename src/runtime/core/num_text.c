@@ -54,17 +54,6 @@ static void put_formatted(bool fitted, const uint8_t *buffer, size_t length, MsS
   *out = msrt_string_make(ms_span_of(buffer, length));
 }
 
-/* The radix of `to_string_radix`, which faults outside 2..=36. */
-static uint32_t checked_radix(int64_t radix) {
-  if (radix < 2 || radix > 36) {
-    MsStrBuild message = ms_strbuild_new();
-    ms_strbuild_append_text(&message, "to_string_radix: radix must be between 2 and 36, found ");
-    ms_strbuild_append_i64(&message, radix);
-    ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
-  }
-  return (uint32_t)radix;
-}
-
 void msrt_int_to_string(int64_t v, MsString *out) {
   uint8_t buffer[MS_FMT_INTEGER_CAPACITY];
   const size_t length = ms_fmt_i64_fixed(v, buffer);
@@ -77,20 +66,28 @@ void msrt_uint_to_string(int64_t v, MsString *out) {
   put_formatted(ms_fmt_u64((uint64_t)v, buffer, sizeof buffer, &length), buffer, length, out);
 }
 
-void msrt_int_to_string_radix(int64_t v, int64_t radix, MsString *out) {
-  const uint32_t base = checked_radix(radix);
+uint8_t msrt_int_to_string_radix(int64_t v, int64_t radix, MsString *out) {
+  if (radix < 2 || radix > 36) {
+    return 0;
+  }
+  const uint32_t base = (uint32_t)radix;
   uint8_t buffer[MS_FMT_RADIX_CAPACITY];
   size_t length = 0;
   /* The magnitude of INT64_MIN needs the unsigned negation. */
   const uint64_t magnitude = v < 0 ? (uint64_t)0 - (uint64_t)v : (uint64_t)v;
   put_formatted(ms_fmt_radix(magnitude, base, v < 0, buffer, sizeof buffer, &length), buffer, length, out);
+  return 1;
 }
 
-void msrt_uint_to_string_radix(int64_t v, int64_t radix, MsString *out) {
-  const uint32_t base = checked_radix(radix);
+uint8_t msrt_uint_to_string_radix(int64_t v, int64_t radix, MsString *out) {
+  if (radix < 2 || radix > 36) {
+    return 0;
+  }
+  const uint32_t base = (uint32_t)radix;
   uint8_t buffer[MS_FMT_RADIX_CAPACITY];
   size_t length = 0;
   put_formatted(ms_fmt_radix((uint64_t)v, base, false, buffer, sizeof buffer, &length), buffer, length, out);
+  return 1;
 }
 
 void msrt_float_to_string(double v, MsString *out) {
