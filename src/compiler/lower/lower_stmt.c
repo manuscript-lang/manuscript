@@ -62,6 +62,10 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   if (ref->kind != MS_REF_PARAM) {
     return false;
   }
+  if (var_owns(fn, fn->param_vars[ref->local])) {
+    *out = fn->param_vars[ref->local]; /* a `move` parameter the body assigns into */
+    return true;
+  }
   for (uint32_t at = 0; at < fn->nvar_params; at++) {
     if (fn->var_params[at].var == fn->param_vars[ref->local]) {
       *out = fn->var_params[at].var;
@@ -69,6 +73,19 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
     }
   }
   return false;
+}
+
+/* A resource parameter lives in a slot its scope owns, and its variable is a view of that slot: the slot and
+ * variable of the parameter `place` names, or false. */
+static bool closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirVar *var) {
+  const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_PARAM || fn->closing == NULL ||
+      fn->nvars + ref->local >= fn->nvars + LOWER_MAX_CLOSING_PARAMS || fn->closing[fn->nvars + ref->local] == MIR_NONE) {
+    return false;
+  }
+  *slot = fn->closing[fn->nvars + ref->local];
+  *var = fn->param_vars[ref->local];
+  return true;
 }
 
 /* Whether `place` is a `var` local, a `var` parameter or a member path rooted in one: the places `fn_put_place` stores into. */
@@ -85,8 +102,14 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     *out = mir_b_use_var(&fn->b, var);
     return true;
   }
+  MirValue slot;
+  if (closing_param(fn, base, &slot, &var)) {
+    const MirTy ty = mir_b_ty(&fn->b, mir_b_use_var(&fn->b, var));
+    *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+    return true;
+  }
   if (base->kind != MS_E_MEMBER && base->kind != MS_E_INDEX) {
-    return fn_fail(fn, "assignment into this place is not lowered yet");
+    return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
   }
   const MirValue inner = fn_expr(fn, base, LW_BORROW);
   if (inner == MIR_NONE) {
@@ -130,6 +153,14 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   MirVar var;
   if (place->kind == MS_E_MEMBER) {
     return set_member(fn, place, value);
+  }
+  MirValue slot;
+  if (closing_param(fn, place, &slot, &var)) {
+    const MirTy ty = mir_b_ty(&fn->b, value);
+    const MirValue stored[2] = {slot, value};
+    (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+    mir_b_def_var(&fn->b, var, mir_b_emit(&fn->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty));
+    return !fn->failed;
   }
   if (!owned_local(fn, place, &var)) {
     return fn_fail(fn, "an assignment does not name an owning local");
