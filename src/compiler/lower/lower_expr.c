@@ -84,7 +84,23 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (ref != NULL && ref->kind == MS_REF_FUNCTION) {
     return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   }
-  (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function");
+  const MsTy checked = ms_facts_type(fn->facts, expr->id);
+  if (checked == MS_TY_NONE || (ref != NULL && ref->kind != MS_REF_NONE && ref->kind != MS_REF_CASE)) {
+    (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d, type %s)", expr->pos.line,
+                  expr->pos.column, ref != NULL ? (int)ref->kind : -1, checked == MS_TY_NONE ? "unrecorded" : "recorded");
+    return MIR_NONE;
+  }
+  const MirTy ty = fn_type(fn, checked);
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind == MK_OPT && (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none` */
+  }
+  if (data->kind == MK_ALT && ref != NULL && ref->kind == MS_REF_CASE) {
+    const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = ref->index};
+    return fn_emit(fn, MOP_AltNew, NULL, 0, imm, ty); /* a case with no fields */
+  }
+  (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d)", expr->pos.line, expr->pos.column,
+                ref != NULL ? (int)ref->kind : -1);
   return MIR_NONE;
 }
 
