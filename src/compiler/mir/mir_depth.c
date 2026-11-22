@@ -202,3 +202,141 @@ bool mir_depth_lower(MirModule *m) {
   }
   return true;
 }
+
+/* ---- marking recursive functions ---- */
+
+typedef struct DpGraph {
+  const MirModule *m;
+  uint32_t *index, *low, *stack, *frame_func, *frame_next;
+  bool *on_stack, *recursive;
+  uint32_t counter;
+} DpGraph;
+
+/* The next function `func` calls directly after the instruction at `*cursor` (a flat walk over its
+ * blocks), or UINT32_MAX when there is none. */
+static uint32_t dp_next_callee(const MirFunc *func, uint32_t *cursor) {
+  uint32_t at = 0;
+  for (uint32_t b = 0; b < func->blocks.len; b++) {
+    const MirInstList *insts = &func->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++, at++) {
+      const MirInst *inst = &insts->ptr[i];
+      if (at >= *cursor && inst->op == MOP_Call && inst->imm.tag == MI_FUNC) {
+        *cursor = at + 1;
+        return inst->imm.a;
+      }
+    }
+  }
+  *cursor = at;
+  return UINT32_MAX;
+}
+
+/* Whether the function runs code that can reach any function through a pointer: it then may recurse
+ * through one. */
+static bool dp_calls_indirectly(const MirFunc *func) {
+  for (uint32_t b = 0; b < func->blocks.len; b++) {
+    const MirInstList *insts = &func->blocks.ptr[b].insts;
+    for (uint32_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].op == MOP_CallInd || insts->ptr[i].op == MOP_CallMethod) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* Tarjan's strongly connected components over direct calls, without recursion of its own: a function in a
+ * component of two or more, or calling itself, is recursive. */
+static void dp_scc(DpGraph *g, uint32_t root) {
+  uint32_t depth = 0, top = 0;
+  g->frame_func[0] = root;
+  g->frame_next[0] = 0;
+  g->index[root] = g->low[root] = ++g->counter;
+  g->stack[top++] = root;
+  g->on_stack[root] = true;
+  depth = 1;
+  while (depth > 0) {
+    const uint32_t f = g->frame_func[depth - 1];
+    const uint32_t callee = dp_next_callee(&g->m->funcs.ptr[f], &g->frame_next[depth - 1]);
+    if (callee != UINT32_MAX) {
+      if (callee == f) {
+        g->recursive[f] = true;
+      }
+      if (g->index[callee] == 0) {
+        g->index[callee] = g->low[callee] = ++g->counter;
+        g->stack[top++] = callee;
+        g->on_stack[callee] = true;
+        g->frame_func[depth] = callee;
+        g->frame_next[depth] = 0;
+        depth++;
+      } else if (g->on_stack[callee] && g->index[callee] < g->low[f]) {
+        g->low[f] = g->index[callee];
+      }
+      continue;
+    }
+    depth--;
+    if (depth > 0) {
+      const uint32_t parent = g->frame_func[depth - 1];
+      g->low[parent] = g->low[f] < g->low[parent] ? g->low[f] : g->low[parent];
+    }
+    if (g->low[f] != g->index[f]) {
+      continue;
+    }
+    uint32_t members = 0;
+    for (uint32_t k = top; k > 0; k--) {
+      members++;
+      if (g->stack[k - 1] == f) {
+        break;
+      }
+    }
+    for (uint32_t k = 0; k < members; k++) {
+      const uint32_t member = g->stack[--top];
+      g->on_stack[member] = false;
+      g->recursive[member] = g->recursive[member] || members > 1;
+    }
+  }
+}
+
+bool mir_depth_mark(MirModule *m) {
+  const uint32_t count = (uint32_t)m->funcs.len;
+  if (count == 0) {
+    return false;
+  }
+  MsArena *arena = &m->arena;
+  DpGraph g = {.m = m,
+               .index = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
+               .low = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
+               .stack = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
+               .frame_func = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
+               .frame_next = MS_ARENA_NEW_ARRAY(arena, uint32_t, count),
+               .on_stack = MS_ARENA_NEW_ARRAY(arena, bool, count),
+               .recursive = MS_ARENA_NEW_ARRAY(arena, bool, count)};
+  for (uint32_t f = 0; f < count; f++) {
+    g.index[f] = g.low[f] = 0;
+    g.on_stack[f] = g.recursive[f] = false;
+  }
+  for (uint32_t f = 0; f < count; f++) {
+    if (g.index[f] == 0 && m->funcs.ptr[f].blocks.len > 0) {
+      dp_scc(&g, f);
+    }
+  }
+  bool changed = false;
+  for (uint32_t f = 0; f < count; f++) {
+    MirFunc *func = &m->funcs.ptr[f];
+    if (func->blocks.len == 0 || func->unwind_only || !(g.recursive[f] || dp_calls_indirectly(func))) {
+      continue;
+    }
+    MirBlockData *entry = &func->blocks.ptr[0];
+    if (entry->insts.len > 0 && entry->insts.ptr[0].op == MOP_DepthEnter) {
+      continue;
+    }
+    MirInstList out = {0};
+    mir_inst_list_push(&out, mir_inst(MOP_DepthEnter, mir_imm_none(), MIR_NONE, MIR_LOC_NONE, NULL, 0));
+    for (uint32_t i = 0; i < entry->insts.len; i++) {
+      mir_inst_list_push(&out, entry->insts.ptr[i]);
+    }
+    mir_inst_list_free(&entry->insts);
+    entry->insts = out;
+    changed = true;
+  }
+  return changed;
+}
