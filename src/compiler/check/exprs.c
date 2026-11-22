@@ -348,5 +348,6 @@ MsTy body_expr(Body *body, const MsExpr *expr, MsTy expected) {
     break;
   }
   body_set_type(body, expr->id, ty);
+  body_convert(body, expr, ty, expected);
   return ty;
 }
