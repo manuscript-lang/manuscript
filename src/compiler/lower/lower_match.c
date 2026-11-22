@@ -6,6 +6,7 @@
 
 typedef struct Match {
   MirValue scrutinee;
+  MsTy checked; /* the scrutinee's checked type */
   MirTy ty;
   uint8_t kind; /* MK_ALT, MK_OPT, or MK_INT and the like for literals */
   MirVar result;
@@ -48,6 +49,15 @@ static bool arm_case(const LowerFn *fn, const Match *match, const MsArm *arm, ui
   return true;
 }
 
+/* The checked type of what an arm of a Result or an Optional binds, or none for another alternative. */
+static MsTy payload_type(const LowerFn *fn, const Match *match, uint32_t kase) {
+  const MsTyTable *types = &fn->cx->program->types;
+  const bool result = ms_ty_is(types, match->checked, MS_BUILTIN_Result);
+  const uint32_t which = result ? kase : 0;
+  const bool known = result || ms_ty_is(types, match->checked, MS_BUILTIN_Optional);
+  return known && ms_ty_arg_count(types, match->checked) > which ? ms_ty_args(types, match->checked)[which] : MS_TY_NONE;
+}
+
 /* An arm over a consumed scrutinee owns the payload it binds: the scrutinee is released but for the bound fields,
  * which the arm drops unless it moves them on. */
 static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
@@ -57,6 +67,11 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   if (match->kind == MK_OPT) {
     const MirTy elem = mir_ty_data(module, match->ty)->elem;
     const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &match->scrutinee, 1, (MirImm){0}, elem);
+    const MsTy payload = payload_type(fn, match, 1);
+    if (payload != MS_TY_NONE && fn_closer_for(fn, ms_facts_closer(fn->facts, arm->id), payload)) {
+      (void)fn_bind_closing(fn, ref->local, payload, item, false); /* the arm closes it where it ends */
+      return;
+    }
     if (mir_needs_drop(module, elem)) {
       fn_own(fn, fn_scope(fn), item);
     }
@@ -69,11 +84,16 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   for (uint32_t at = 0; at < arm->bindings.len && at < def->nfields; at++) {
     const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
     const MirValue field = mir_b_emit(&fn->b, MOP_AltTake, &match->scrutinee, 1, imm, def->fields[at].ty);
+    const MsTy payload = payload_type(fn, match, kase);
+    mask |= UINT32_C(1) << at;
+    if (at == 0 && payload != MS_TY_NONE && fn_closer_for(fn, ms_facts_closer(fn->facts, arm->id), payload)) {
+      (void)fn_bind_closing(fn, ref->local, payload, field, false); /* the arm closes it where it ends */
+      continue;
+    }
     if (mir_needs_drop(module, def->fields[at].ty)) {
       fn_own(fn, fn_scope(fn), field);
     }
     mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
-    mask |= UINT32_C(1) << at;
   }
   const MirImm taken = {.tag = MI_ALTMASK, .a = id, .b = kase, .c = mask};
   (void)mir_b_emit(&fn->b, MOP_AltRelease, &match->scrutinee, 1, taken, MIR_NONE);
@@ -199,6 +219,7 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   match.ty = mir_b_ty(&fn->b, match.scrutinee);
+  match.checked = ms_facts_type(fn->facts, expr->u.match.scrutinee->id);
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
   const MsExpr *subject = expr->u.match.scrutinee;
   match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||

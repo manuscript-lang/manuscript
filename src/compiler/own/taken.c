@@ -20,6 +20,19 @@ static void scan_expr(void *ctx, const MsExpr *expr) {
   scan->found |= names_param(scan, expr) && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE;
 }
 
+/* A generic parameter a constructor stores (`ok(value)`) is handed on: its type may be a resource. */
+static void scan_stored(void *ctx, const MsExpr *expr) {
+  Scan *scan = ctx;
+  if (expr->kind != MS_E_CALL) {
+    return;
+  }
+  const MsRef *callee = ms_facts_ref(scan->facts, expr->u.call.callee->id);
+  for (uint32_t index = 0; callee != NULL && (callee->kind == MS_REF_TYPE || callee->kind == MS_REF_CASE) &&
+                           index < expr->u.call.args.len; index++) {
+    scan->found |= names_param(scan, expr->u.call.args.ptr[index].value);
+  }
+}
+
 /* A parameter bound to a name or assigned is handed on, though a plain bind only borrows it in the source. */
 static void scan_stmt(void *ctx, const MsStmt *stmt) {
   Scan *scan = ctx;
@@ -34,11 +47,12 @@ static uint32_t mask_of(MsCheckProgram *program, const MsFacts *facts, MsParams 
     const MsRef *ref = ms_facts_ref(facts, param->id);
     const MsTy ty = ms_facts_type(facts, param->id);
     if (param->moving || ref == NULL || ref->kind != MS_REF_PARAM || ty == MS_TY_NONE ||
-        !ms_check_holds_resource(program, ty)) {
+        (ms_ty_kind(&program->types, ty) != MS_TY_VARIABLE && !ms_check_holds_resource(program, ty))) {
       continue;
     }
     Scan scan = {facts, ref->local, false};
-    const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
+    const bool generic = ms_ty_kind(&program->types, ty) == MS_TY_VARIABLE;
+    const MsVisitor visitor = {.ctx = &scan, .stmt = generic ? NULL : scan_stmt, .expr = generic ? scan_stored : scan_expr};
     ms_walk_callable(&visitor, params, body);
     mask |= scan.found ? 1u << index : 0;
   }

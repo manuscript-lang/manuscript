@@ -755,7 +755,7 @@ fn same_text(windows: Bool, left: String, right: String) Bool:
 // Builds a path from `parts`: `directory` (else `root`), then `base` (else `name` plus
 // `extension`), joined by the dialect's separator.
 fn format_in(windows: Bool, parts: PathParts) String:
-	directory := if parts.directory.is_empty(): parts.root else: parts.directory
+	directory := if parts.directory.is_empty(): parts.root.clone() else: parts.directory.clone()
 	var base = parts.base.clone()
 
 	if base.is_empty():
