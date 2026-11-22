@@ -289,7 +289,21 @@ static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *ca
   if (data->kind != MK_IFACE) {
     return call_bound_operation(fn, expr, call, args, ret);
   }
-  const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = call->callee.index};
+  /* The operation is named by the member written; the checker's index does not say which one it is. */
+  const MsExpr *callee = expr->u.call.callee;
+  uint32_t index = call->callee.index;
+  if (callee->kind == MS_E_MEMBER) {
+    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+    const MsTyRow *row = ms_ty_row(&fn->cx->program->types, receiver);
+    const MsDef *def = row->def != 0 ? ms_defs_get(&fn->cx->program->defs, row->def) : NULL;
+    for (uint32_t at = 0; def != NULL && at < def->operations.len; at++) {
+      if (def->operations.ptr[at].name == callee->u.member.name) {
+        index = at;
+      }
+    }
+  }
+  const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = index};
   return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
 }
 

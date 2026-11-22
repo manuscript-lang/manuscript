@@ -90,6 +90,9 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
   const size_t before = pass->facts->closers.len;
   add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));
+  if (stmt->u.bind.is_mutable && pass->facts->closers.len > before) {
+    pass->facts->closers.ptr[before].flags |= MS_CLOSER_VAR;
+  }
   if (stmt->u.bind.is_mutable && pass->facts->closers.len == before) {
     /* A `var` holds its value in a slot that drops it, so that a move out of the `var` leaves nothing to drop. */
     const MsCloser drop = {.node = node, .ref_kind = MS_REF_LOCAL, .local = ref->local,
