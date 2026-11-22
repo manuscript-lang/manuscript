@@ -446,7 +446,7 @@ uint8_t msstd_fs_file_stat(MsObj *handle, MsFsInfo *out, MsString *err) {
   if (ms_stream_admit(stream, MS_STREAM_ANY, &fail)) {
     uv_stat_t stat;
     const int code = ms_fs_fstat(stream->fd, &stat);
-    const MsSpan base = ms_fs_path_base(ms_string_span(&stream->name));
+    const MsSpan base = ms_path_base(ms_string_span(&stream->name));
     if (code != 0) {
       fail_file(stream, &fail, "stat", code);
     } else if (!ms_fs_text_ok(base)) {

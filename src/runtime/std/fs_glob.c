@@ -214,17 +214,17 @@ static bool any_hit(GlobWalk *walk, const PatternList *patterns, bool names_dire
 
 /* The next element of a cleaned path; an absolute path's root is an element of its own ("/"). */
 static bool next_element(MsSpan path, size_t *cursor, MsSpan *element) {
-  if (*cursor == 0 && path.len > 0 && ms_fs_is_separator(path.ptr[0])) {
+  if (*cursor == 0 && path.len > 0 && ms_path_is_separator(path.ptr[0])) {
     *cursor = 1;
     *element = ms_span_of(path.ptr, 1);
     return true;
   }
   while (*cursor < path.len) {
-    while (*cursor < path.len && ms_fs_is_separator(path.ptr[*cursor])) {
+    while (*cursor < path.len && ms_path_is_separator(path.ptr[*cursor])) {
       *cursor += 1;
     }
     const size_t start = *cursor;
-    while (*cursor < path.len && !ms_fs_is_separator(path.ptr[*cursor])) {
+    while (*cursor < path.len && !ms_path_is_separator(path.ptr[*cursor])) {
       *cursor += 1;
     }
     const size_t length = *cursor - start;
@@ -237,7 +237,7 @@ static bool next_element(MsSpan path, size_t *cursor, MsSpan *element) {
 }
 
 static bool elements_equal(MsSpan a, MsSpan b) {
-  if (a.len == 1 && b.len == 1 && ms_fs_is_separator(a.ptr[0]) && ms_fs_is_separator(b.ptr[0])) {
+  if (a.len == 1 && b.len == 1 && ms_path_is_separator(a.ptr[0]) && ms_path_is_separator(b.ptr[0])) {
     return true;
   }
   return ms_span_equal(a, b);
@@ -255,8 +255,8 @@ static void append_element(MsStrBuild *out, MsSpan element) {
 static void relative_path(MsSpan root, MsSpan path, MsStrBuild *out) {
   MsStrBuild clean_root = ms_strbuild_new();
   MsStrBuild clean_path = ms_strbuild_new();
-  ms_fs_path_clean(root, &clean_root);
-  ms_fs_path_clean(path, &clean_path);
+  ms_path_clean(&clean_root, root);
+  ms_path_clean(&clean_path, path);
   const MsSpan from = ms_strbuild_span(&clean_root);
   const MsSpan to = ms_strbuild_span(&clean_path);
   size_t from_cursor = 0;
@@ -319,7 +319,7 @@ static void visit_fill(GlobWalk *walk, MsSpan path, const uv_stat_t *info, Visit
   MsStrBuild raw = ms_strbuild_new();
   relative_path(ms_strbuild_span(&walk->root), path, &raw);
   ms_fs_append_lossy(&visit->relative, ms_strbuild_span(&raw));
-  ms_fs_append_lossy(&visit->name, ms_fs_path_base(path));
+  ms_fs_append_lossy(&visit->name, ms_path_base(path));
   ms_fs_append_lossy(&visit->absolute, path);
   ms_strbuild_free(&raw);
   visit->directory = ms_fs_is_directory(info);
@@ -376,7 +376,7 @@ static bool visit_children(GlobWalk *walk, MsSpan path, size_t depth) {
   MsSpan name;
   while (ok && ms_fs_names_next(ms_strbuild_span(&names), &cursor, &name)) {
     MsStrBuild child = ms_strbuild_new();
-    ms_fs_path_join(path, name, &child);
+    ms_path_join(path, name, &child);
     ok = visit_path(walk, ms_strbuild_span(&child), depth + 1);
     ms_strbuild_free(&child);
   }
@@ -473,7 +473,7 @@ static bool has_glob_character(MsSpan part) {
 static void pattern_base(GlobWalk *walk, MsSpan pattern, MsStrBuild *base) {
   ms_strbuild_append(base, ms_strbuild_span(&walk->root));
   size_t start = 0;
-  if (ms_fs_is_absolute(pattern)) {
+  if (ms_path_is_absolute(pattern)) {
     ms_strbuild_clear(base);
     ms_strbuild_append_byte(base, '/');
     while (start < pattern.len && pattern.ptr[start] == '/') {
@@ -494,9 +494,9 @@ static void pattern_base(GlobWalk *walk, MsSpan pattern, MsStrBuild *base) {
     }
     MsStrBuild next = ms_strbuild_new();
     if (ms_span_is_text(part, "..")) {
-      ms_fs_path_dir(ms_strbuild_span(base), &next);
+      ms_path_dir(ms_strbuild_span(base), &next);
     } else {
-      ms_fs_path_join(ms_strbuild_span(base), part, &next);
+      ms_path_join(ms_strbuild_span(base), part, &next);
     }
     ms_strbuild_free(base);
     *base = next;
@@ -516,7 +516,7 @@ static void collect_starts(GlobWalk *walk, const MsList *patterns, MsStrBuild *s
       ms_fs_names_push(starts, ms_strbuild_span(&base));
     } else if (!ms_span_equal(ms_strbuild_span(&base), ms_strbuild_span(&walk->root))) {
       MsStrBuild parent = ms_strbuild_new();
-      ms_fs_path_dir(ms_strbuild_span(&base), &parent);
+      ms_path_dir(ms_strbuild_span(&base), &parent);
       ms_fs_names_push(starts, ms_strbuild_span(&parent));
       ms_strbuild_free(&parent);
     }
