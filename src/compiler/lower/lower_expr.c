@@ -586,7 +586,7 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_borrowed_view(fn, value) &&
       mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     /* A call that answers a view of something else (`list.get(i)`) gives its new owner a copy. */
-    return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+    return fn_implicit_clone(fn, value, true);
   }
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
@@ -599,8 +599,7 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   if (!borrowed_param && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     return value;
   }
-  const MirImm none = {0};
-  return fn_emit(fn, MOP_Clone, &value, 1, none, mir_b_ty(&fn->b, value));
+  return fn_implicit_clone(fn, value, true);
 }
 
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {

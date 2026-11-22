@@ -19,7 +19,7 @@ MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem
   mir_b_switch_to(&fn->b, some_block);
   MirValue value = mir_b_emit(&fn->b, MOP_OptGet, &opt, 1, (MirImm){0}, elem);
   if (owns) {
-    value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, elem);
+    value = fn_implicit_clone(fn, value, false);
   }
   mir_b_br(&fn->b, join, &value, 1);
   mir_b_switch_to(&fn->b, none_block);
@@ -59,7 +59,7 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
     (void)fn_fail(fn, "a function value of another shape cannot be adapted");
     return MIR_NONE;
   }
-  const MirValue held = mir_needs_drop(cx->module, from_ty) ? fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, from_ty) : value;
+  const MirValue held = mir_needs_drop(cx->module, from_ty) ? fn_implicit_clone(fn, value, true) : value;
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = from_ty};
   const uint32_t slot = lower_closure_func(cx, to_ty, &capture, 1);
   const MirFunc reserved = cx->module->funcs.ptr[slot];

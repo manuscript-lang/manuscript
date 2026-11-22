@@ -78,7 +78,7 @@ MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
                      mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
                      mode == MM_MOVE;
   if (!fresh) {
-    value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+    value = fn_implicit_clone(fn, value, false);
   }
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   return value;
@@ -298,7 +298,7 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
     const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
                        mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
                        mode == MM_MOVE;
-    value = fresh ? value : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
+    value = fresh ? value : fn_implicit_clone(fn, value, false);
     if (fresh) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
     }
