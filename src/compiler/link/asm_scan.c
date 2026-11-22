@@ -172,6 +172,14 @@ static bool indented(AsmScan *scan, MsSpan line) {
 
 static void scan_line(AsmScan *scan, MsSpan line) {
   bool drop = false;
+  /* A COFF function that needs no unwind info has no `.seh_endproc`: the `.Lfunc_end` label closes it. */
+  if (scan->format == ASM_COFF && scan->current != UINT32_MAX && starts(line, ".Lfunc_end") &&
+      line.ptr[line.len - 1] == ':') {
+    ms_strbuild_append(&scan->out, line);
+    ms_strbuild_append_byte(&scan->out, '\n');
+    end_function(scan);
+    return;
+  }
   if (line.len > 0 && line.ptr[0] == '\t') {
     drop = indented(scan, line);
   } else if (line.len > 0 && line.ptr[0] != '.' && line.ptr[0] != '#' && line.ptr[0] != ' ') {
