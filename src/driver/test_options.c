@@ -50,6 +50,16 @@ static bool apply(MsTestOptions *options, MsSpan name, MsSpan value) {
     options->seed = integer(value);
   } else if (ms_span_is_text(name, "--fuzz")) {
     options->fuzz_ms = milliseconds(value);
+  } else if (ms_span_is_text(name, "--time")) {
+    options->bench_time_ms = milliseconds(value);
+  } else if (ms_span_is_text(name, "--samples")) {
+    options->bench_samples = integer(value);
+  } else if (ms_span_is_text(name, "--iterations")) {
+    options->bench_iterations = integer(value);
+  } else if (ms_span_is_text(name, "--baseline")) {
+    options->baseline = value;
+  } else if (ms_span_is_text(name, "--fail-over")) {
+    options->has_fail_over = true;
   } else if (ms_span_is_text(name, "--timeout")) {
     options->timeout_set = true;
     options->timeout_ms = milliseconds(value);
@@ -74,6 +84,8 @@ void ms_test_options_parse(const MsSpanList *arguments, MsTestOptions *out) {
       out->list = true;
     } else if (ms_span_is_text(arg, "--fail-fast")) {
       out->fail_fast = true;
+    } else if (ms_span_is_text(arg, "--ops")) {
+      out->ops = true;
     } else if (!split_option(arg, &name, &value) || !apply(out, name, value)) {
       break;
     }

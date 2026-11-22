@@ -18,6 +18,9 @@ typedef struct MsTestOptions {
   bool timeout_set;
   int64_t runs, seed, fuzz_ms; /* 0 when unset (a seed of 0 is set when `has_seed`) */
   bool has_seed;
+  int64_t bench_time_ms, bench_samples, bench_iterations; /* `ms bench`; 0 when unset */
+  MsSpan baseline;
+  bool ops, has_fail_over;
   MsSpan program[64];    /* the program's own arguments */
   size_t program_count;
 } MsTestOptions;
