@@ -200,7 +200,9 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
     return fn_fail(fn, "`for` iterates a list or a range for now");
   }
   const MirTy elem = mir_ty_data(module, list_ty)->elem;
-  const bool fresh = fn_fresh_owner(fn, list);
+  /* A name or field reads a value its binding owns, though the instruction that made it may still be in reach. */
+  const bool place = iter->kind == MS_E_NAME || iter->kind == MS_E_MEMBER;
+  const bool fresh = !place && fn_fresh_owner(fn, list);
   *src = (ForSource){.elem = elem, .list_ty = list_ty, .list = list};
   if ((moved || fresh) && mir_needs_drop(module, elem)) {
     if (fresh) {
