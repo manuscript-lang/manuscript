@@ -33,9 +33,9 @@ static MsBigNumber big_from_unsigned(uint64_t value) {
 MS_NODISCARD static bool big_multiply(MsBigNumber *number, uint32_t multiplier) {
   uint64_t carry = 0;
   for (size_t i = 0; i < number->count; i++) {
-    const MsU128 product = (MsU128)number->limbs[i] * multiplier + carry;
+    const uint64_t product = (uint64_t)number->limbs[i] * multiplier + carry; /* limbs are below 10^9, so this fits */
     number->limbs[i] = (uint32_t)(product % MS_LIMB_BASE);
-    carry = (uint64_t)(product / MS_LIMB_BASE);
+    carry = product / MS_LIMB_BASE;
   }
   for (; carry != 0; carry /= MS_LIMB_BASE) {
     if (number->count >= MS_LIMB_CAPACITY) {
