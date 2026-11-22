@@ -2,6 +2,7 @@
  * types descriptors point at, and the closure objects it makes. A type missing here only keeps the back end's
  * own function. Types are sets: a bit per unscoped type id, so a walk in id order is sorted and unique. */
 #include "compiler/mir/mir_glue_demand.h"
+#include "compiler/mir/mir_data_internal.h"
 
 static void want(MirBits *set, MirTy ty) {
   if (ty != MIR_NONE) {
@@ -90,6 +91,8 @@ static void descriptor_types(const MirModule *module, MirBits *slots, MirBits *b
         const MirInst *inst = &block->insts.ptr[ii];
         if (inst->op == MOP_TypeDesc && inst->imm.tag == MI_TY) {
           mir_idlist_push(&keys, inst->imm.a);
+        } else if (inst->op == MOP_Shape && inst->imm.tag == MI_TY) {
+          mir_shape_desc_types(module, &layouts, inst->imm.a, &keys);
         }
       }
     }

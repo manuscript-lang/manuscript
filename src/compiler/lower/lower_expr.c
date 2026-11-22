@@ -3,18 +3,33 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-/* The value of a number spelling: decimal digits with `_` separators. */
-static bool number_value(MsSpan text, int64_t *out) {
-  int64_t value = 0;
-  for (size_t index = 0; index < text.len; index++) {
-    const uint8_t byte = (uint8_t)text.ptr[index];
+/* The value of a number spelling: decimal, `0x`, `0b` or `0o` digits with `_` separators, up to 64 bits (a
+ * literal above Int's range is the bit pattern of its two's complement, so `-9223372036854775808` negates it). */
+bool fn_number_bits(MsSpan text, uint64_t *out) {
+  uint64_t radix = 10;
+  size_t at = 0;
+  if (text.len > 2 && text.ptr[0] == '0' && (text.ptr[1] == 'x' || text.ptr[1] == 'b' || text.ptr[1] == 'o')) {
+    radix = text.ptr[1] == 'x' ? 16 : (text.ptr[1] == 'b' ? 2 : 8);
+    at = 2;
+  }
+  uint64_t value = 0;
+  for (; at < text.len; at++) {
+    const uint8_t byte = (uint8_t)text.ptr[at];
     if (byte == '_') {
       continue;
     }
-    if (byte < '0' || byte > '9' || value > (INT64_MAX - (int64_t)(byte - '0')) / 10) {
+    uint64_t digit = radix;
+    if (byte >= '0' && byte <= '9') {
+      digit = (uint64_t)(byte - '0');
+    } else if (byte >= 'a' && byte <= 'f') {
+      digit = (uint64_t)(byte - 'a') + 10;
+    } else if (byte >= 'A' && byte <= 'F') {
+      digit = (uint64_t)(byte - 'A') + 10;
+    }
+    if (digit >= radix || value > (UINT64_MAX - digit) / radix) {
       return false;
     }
-    value = value * 10 + (int64_t)(byte - '0');
+    value = value * radix + digit;
   }
   *out = value;
   return true;
@@ -37,11 +52,12 @@ static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
   if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
     return lower_float(fn, text, ty);
   }
-  int64_t value = 0;
-  if (!number_value(text, &value)) {
-    (void)fn_fail(fn, "a number literal is not a whole number that fits its type");
+  uint64_t bits = 0;
+  if (!fn_number_bits(text, &bits)) {
+    (void)fn_fail(fn, "a number literal is not a whole number that fits 64 bits");
     return MIR_NONE;
   }
+  const int64_t value = (int64_t)bits;
   if (ty == MIR_INT) {
     return mir_b_iconst(&fn->b, value);
   }
@@ -85,6 +101,11 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   }
   const MsTy checked = ms_facts_type(fn->facts, expr->id);
+  if (checked == MS_TY_NONE && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_OPT &&
+      (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
+    /* A default value the checker did not type: `none` for an optional parameter or field. */
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, fn->hint);
+  }
   if (checked == MS_TY_NONE || (ref != NULL && ref->kind != MS_REF_NONE && ref->kind != MS_REF_CASE)) {
     (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d, type %s)", expr->pos.line,
                   expr->pos.column, ref != NULL ? (int)ref->kind : -1, checked == MS_TY_NONE ? "unrecorded" : "recorded");
@@ -173,7 +194,40 @@ static MirValue float_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, M
   return ty == MIR_FLOAT32 ? fn_emit(fn, MOP_F32Round, &result, 1, (MirImm){0}, ty) : result;
 }
 
+/* `left && right` and `left || right`: the right operand runs only when the left does not decide the result. */
+static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
+  const bool is_and = expr->op == MS_B_AND;
+  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  if (left == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirBlock rhs = mir_b_new_block(&fn->b);
+  const MirBlock decided = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, MIR_BOOL, MM_BORROW);
+  mir_b_br_if(&fn->b, left, is_and ? rhs : decided, NULL, 0, is_and ? decided : rhs, NULL, 0);
+  mir_b_seal_block(&fn->b, rhs);
+  mir_b_seal_block(&fn->b, decided);
+  mir_b_switch_to(&fn->b, decided);
+  const MirValue known = mir_b_bconst(&fn->b, !is_and);
+  mir_b_br(&fn->b, join, &known, 1);
+  mir_b_switch_to(&fn->b, rhs);
+  (void)fn_scope_begin(fn);
+  const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  fn_scope_end(fn);
+  if (right == MIR_NONE) {
+    return MIR_NONE;
+  }
+  mir_b_br(&fn->b, join, &right, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return result;
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
+  if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
+    return lower_logical(fn, expr);
+  }
   BinaryOps ops;
   if (!binary_ops((MsBinaryOp)expr->op, &ops)) {
     (void)fn_fail(fn, "this binary operator is not lowered yet");

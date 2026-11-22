@@ -3,6 +3,7 @@
  * an integer, which the join writes in decimal. At most six pieces go in one call; a longer text joins the
  * first group, then that result and the next pieces. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
 enum { TEXT_MAX_JOIN = 6 };
@@ -20,7 +21,19 @@ static MirValue call_join(LowerFn *fn, const char *prefix, uint32_t count, const
   } else {
     ms_strbuild_printf(&name, "%s%u", prefix, count);
   }
-  const uint32_t ext = mir_extern_get(fn->cx->module, ms_strbuild_span(&name), params, nparams, MIR_STR, true, role);
+  /* Each pattern of integer and string pieces is its own signature of the one runtime function. */
+  MirParam *wanted = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nparams + 1);
+  for (uint32_t at = 0; at < nparams; at++) {
+    wanted[at] = (MirParam){params[at], (uint8_t)MM_BORROW};
+  }
+  const MirExtern def = {.name = mir_name(fn->cx->module, ms_strbuild_span(&name)),
+                         .params = wanted,
+                         .nparams = nparams,
+                         .ret = MIR_STR,
+                         .fresh = true,
+                         .leaf = true,
+                         .role = (uint8_t)role};
+  const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
   ms_strbuild_free(&name);
   const MirValue result = mir_b_call_rt(&fn->b, ext, args, nparams);
   fn_own_result(fn, result);
@@ -73,6 +86,18 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
   return joined;
 }
 
+/* Any other value is written by the runtime's walker over the value's shape table: the value goes into a stack
+ * slot (a borrow, so nothing is dropped) and the walker reads it through the table. */
+static MirValue value_text(LowerFn *fn, MirValue value, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue store[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+  const MirValue table = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
+  const MirValue args[2] = {table, slot};
+  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msstd_value_text")), args, 2, MIR_STR);
+}
+
 static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   if (part->expr == NULL) {
     const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, part->lit)};
@@ -84,11 +109,13 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
     return false;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
-  if (ty != MIR_INT && ty != MIR_STR) {
-    return fn_fail(fn, "interpolating this type is not lowered yet");
+  if (ty == MIR_INT || ty == MIR_STR) {
+    *out = (TextPiece){value, ty == MIR_INT};
+    return true;
   }
-  *out = (TextPiece){value, ty == MIR_INT};
-  return true;
+  const MirValue text = value_text(fn, value, ty);
+  *out = (TextPiece){text, false};
+  return text != MIR_NONE;
 }
 
 MirValue fn_text(LowerFn *fn, const MsExpr *expr) {

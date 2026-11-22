@@ -32,6 +32,7 @@ typedef struct LowerFn {
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   uint32_t nopen;
   bool failed;
+  MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
   uint32_t nloops;
@@ -66,6 +67,8 @@ void fn_own_result(LowerFn *fn, MirValue result);
 
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
 MirValue fn_default_result(LowerFn *fn);
+/* The 64 bits of a number literal's spelling (decimal, 0x, 0b, 0o; `_` ignored); false when it has more. */
+bool fn_number_bits(MsSpan text, uint64_t *out);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */

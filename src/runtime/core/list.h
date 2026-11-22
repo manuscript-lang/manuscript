@@ -20,6 +20,19 @@ void msrt_list_with_capacity(const MsTypeDesc *d, int64_t cap, MsList *out);
 void msrt_list_drop(MsList *v, const MsTypeDesc *d);
 /* ms-sig: msrt_list_copy(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf */
 void msrt_list_copy(const MsList *v, const MsTypeDesc *d, MsList *out);
+/* `List.clone()`: the same deep copy as msrt_list_copy. */
+/* ms-sig: msrt_list_clone(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf */
+void msrt_list_clone(const MsList *v, const MsTypeDesc *d, MsList *out);
+/* `List.chunks(size)`: consecutive copies of `size` elements, the last possibly shorter; empty for a `size` of
+ * zero or less. `out` is a list of lists. */
+/* ms-sig: msrt_list_chunks(v: *const VecVal, d: ElemDesc, size: i64, out: *mut VecVal) @domain=collection
+ * @leaf */
+void msrt_list_chunks(const MsList *v, const MsTypeDesc *d, int64_t size, MsList *out);
+/* `List.windows(size)`: every run of `size` consecutive elements as an overlapping copy; empty when the list is
+ * shorter than `size` or `size` is zero or less. */
+/* ms-sig: msrt_list_windows(v: *const VecVal, d: ElemDesc, size: i64, out: *mut VecVal) @domain=collection
+ * @leaf */
+void msrt_list_windows(const MsList *v, const MsTypeDesc *d, int64_t size, MsList *out);
 /* ms-sig: msrt_list_shadow(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @leaf */
 void msrt_list_shadow(const MsList *v, const MsTypeDesc *d, MsList *out);
 /* ms-sig: msrt_list_free_raw(v: *mut VecVal) @domain=collection @leaf */

@@ -27,6 +27,15 @@ void mird_each_inst(DataCx *cx, MirdInstFn visit);
 /* An id list of `count` entries, all MIR_NONE. */
 void mird_fill_none(MirIdList *list, size_t count);
 
+/* The descriptor target of `key`, built when it is new. */
+MirRef mird_descriptor(DataCx *cx, MirTy key);
+
+/* Builds the ShapeTable of the type a `shape` instruction names (mir_shape_table.c). */
+void mird_visit_shape(DataCx *cx, const MirFunc *func, const MirInst *inst);
+
+/* The types of the collection shapes inside the shape table of `ty`: each needs a descriptor. */
+void mir_shape_desc_types(const MirModule *module, MirLayouts *layouts, MirTy ty, MirIdList *out);
+
 /* One symbol per long string literal, constant byte string and constant list that a function uses. */
 void mird_constants(DataCx *cx);
 

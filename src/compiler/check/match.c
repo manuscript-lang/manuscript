@@ -28,6 +28,14 @@ static MsTy payload(Body *body, MsTy scrutinee, const MsTyCase *kase, uint32_t a
                      ms_ty_args(&body->program->types, scrutinee), row->arg_count);
 }
 
+/* `value:` on an optional names the payload. */
+static MsTy bare_payload(const Body *body, const MsArm *arm, MsTy scrutinee) {
+  const MsTyTable *types = &body->program->types;
+  return arm->bare && ms_ty_is(types, scrutinee, MS_BUILTIN_Optional) && ms_ty_arg_count(types, scrutinee) == 1
+             ? ms_ty_args(types, scrutinee)[0]
+             : MS_TY_NONE;
+}
+
 static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expected) {
   const size_t mark = body_scope_mark(body);
   uint32_t index = 0;
@@ -37,8 +45,11 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
     body_set_ref(body, arm->id,
                  (MsRef){.kind = MS_REF_CASE, .index = index, .local = body->next_local, .owner = scrutinee});
   }
+  if (kase == NULL && bare_payload(body, arm, scrutinee) != MS_TY_NONE) {
+    body_set_ref(body, arm->id, (MsRef){.kind = MS_REF_CASE, .index = 1, .local = body->next_local, .owner = scrutinee});
+  }
   for (uint32_t at = 0; at < arm->bindings.len; at++) {
-    const MsTy ty = kase != NULL ? payload(body, scrutinee, kase, at) : MS_TY_NONE;
+    const MsTy ty = kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
     (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false);
   }
   body_block(body, arm->body);

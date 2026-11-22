@@ -41,20 +41,36 @@ static const MsExpr *written_arg(const MsExpr *call, MsNode node) {
   return callee->kind == MS_E_MEMBER && callee->u.member.left->id == node ? callee->u.member.left : NULL;
 }
 
+/* The parameter or field of declaration `decl` whose default expression is node `node`. */
+static const MsParam *declared_default(const MsDecl *decl, uint32_t case_index, MsNode node) {
+  const MsParams *list = NULL;
+  if (decl != NULL && decl->kind == MS_D_FN) {
+    list = &decl->u.fn.params;
+  } else if (decl != NULL && decl->kind == MS_D_TYPE) {
+    list = &decl->u.type.fields;
+  } else if (decl != NULL && decl->kind == MS_D_ENUM && case_index < decl->u.enumeration.cases.len) {
+    list = &decl->u.enumeration.cases.ptr[case_index]->fields;
+  }
+  for (uint32_t index = 0; list != NULL && index < list->len; index++) {
+    if (list->ptr[index]->def != NULL && list->ptr[index]->def->id == node) {
+      return list->ptr[index];
+    }
+  }
+  return NULL;
+}
+
 /* A default argument is written in the callee's module: its names and types come from that module's facts. */
-static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *arg) {
+static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
   const MsFacts *saved_facts = fn->facts;
   const uint32_t saved_file = fn->file;
   fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
   fn->file = lower_file(fn->cx, arg->node.module);
-  const MsParam *param = NULL;
   const MsSymbol *callee = &fn->cx->program->symbols.ptr[fn_symbol_at(fn->cx, call->callee.decl)];
-  for (uint32_t index = 0; callee->decl != NULL && index < callee->decl->u.fn.params.len; index++) {
-    if (callee->decl->u.fn.params.ptr[index]->def != NULL && callee->decl->u.fn.params.ptr[index]->def->id == arg->node.node) {
-      param = callee->decl->u.fn.params.ptr[index];
-    }
-  }
+  const MsParam *param = declared_default(callee->decl, call->callee.index, arg->node.node);
+  const MirTy saved_hint = fn->hint;
+  fn->hint = expected;
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
   return value;
@@ -78,7 +94,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
         out[index] = fn_emit(fn, MOP_Clone, &out[index], 1, (MirImm){0}, mir_b_ty(&fn->b, out[index]));
       }
     } else if (arg->source == MS_ARG_DEFAULT) {
-      out[index] = default_arg(fn, call, arg);
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = ms_ty_param_count(types, call->callee_ty);
+      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      out[index] = default_arg(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty));
     } else {
       const MsTy param = ms_ty_params(&fn->cx->program->types, call->callee_ty)[index].ty;
       const MirTy ty = fn_type(fn, param);
@@ -169,8 +188,21 @@ static MirValue construct_case(LowerFn *fn, const MsCall *call, const MirValue *
 /* `Type(fields...)`: the record built from its arguments in field order. */
 static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind == MK_LIST) {
+    /* `List[T](reserve: n)`: the optional reserve is the starting capacity, none reserves nothing. */
+    MirValue capacity = mir_b_iconst(&fn->b, 0);
+    if (call->arg_count == 1 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_OPT) {
+      const MirValue present = fn_emit(fn, MOP_OptIsSome, &args[0], 1, (MirImm){0}, MIR_BOOL);
+      const MirValue wanted = fn_emit(fn, MOP_OptGet, &args[0], 1, (MirImm){0}, MIR_INT);
+      capacity = mir_b_select(&fn->b, present, wanted, capacity);
+    }
+    return mir_b_list_new(&fn->b, data->elem, capacity);
+  }
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
+    return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  }
   if (data->kind != MK_TYPE) {
-    (void)fn_fail(fn, "only a record can be built by its name for now");
+    (void)fn_fail(fn, "a value of this type cannot be built by its name yet (MIR kind %d, %u arguments, first source %d)", (int)data->kind, call->arg_count, call->arg_count > 0 ? (int)call->args[0].source : -1);
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_TYPE, .a = data->id};

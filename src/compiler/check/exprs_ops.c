@@ -52,6 +52,10 @@ static MsSpan number_text(const Body *body, const MsExpr *expr) {
 
 /* The type of a number literal: a sized type from `expected` when the literal kind matches it. */
 static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
+  const MsTyTable *types = &body->program->types;
+  if (expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1) {
+    expected = ms_ty_args(types, expected)[0]; /* a literal takes the sized type an optional wraps */
+  }
   const NumberKind kind = number_kind(number_text(body, expr));
   if (kind == NUMBER_DECIMAL) {
     const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
@@ -144,6 +148,7 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
     const MsTy hint = signed_op ? literal_hint(body, operand, expected) : MS_TY_NONE;
     const MsTy value = body_expr(body, operand, hint);
     if (op == MS_U_NOT) {
+      body_check_not(body, expr, value);
       ty = body_primitive(body, MS_BUILTIN_Bool);
     } else if (op == MS_U_TRY) {
       ty = try_type(body, value);
@@ -252,6 +257,7 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   operand_types(body, expr, expected, &left, &right);
   MsTy ty = MS_TY_NONE;
   if (is_logical(op)) {
+    body_check_logical(body, expr, left, right);
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else if (is_invalid(body, left) || is_invalid(body, right)) {
     ty = is_comparison(op) ? body_primitive(body, MS_BUILTIN_Bool) : MS_TY_NONE;
@@ -263,6 +269,7 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else {
     ty = arithmetic_type(body, op, left, right);
+    body_check_constant_arithmetic(body, expr, ty);
   }
   body_set_type(body, expr->id, ty);
   return ty;

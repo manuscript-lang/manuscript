@@ -93,6 +93,14 @@ MirValue fn_unary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_U_TRY) {
     return fn_try(fn, expr);
   }
+  const MsExpr *inner = expr->u.bin.left;
+  uint64_t bits = 0;
+  if (expr->op == MS_U_NEG && inner->kind == MS_E_NUMBER &&
+      fn_type(fn, ms_facts_type(fn->facts, inner->id)) == MIR_INT &&
+      fn_number_bits(ms_names_span(fn->cx->program->names, inner->u.sym), &bits)) {
+    /* A negative literal is one constant, so Int's lowest value needs no overflowing negation. */
+    return mir_b_iconst(&fn->b, (int64_t)(0 - bits));
+  }
   const MirValue operand = fn_expr(fn, expr->u.bin.left, LW_BORROW);
   if (operand == MIR_NONE || expr->op == MS_U_PLUS) {
     return operand;

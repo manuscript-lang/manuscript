@@ -44,10 +44,12 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
   target->ref = body_symbol_ref(body, symbol);
   if (symbol->kind == MS_SYMBOL_TYPE) {
     const MsDef *def = body_def(body, symbol->ty);
-    if (def == NULL || ms_ty_kind(&body->program->types, symbol->ty) != MS_TY_TYPE) {
+    const MsTyKind kind = ms_ty_kind(&body->program->types, symbol->ty);
+    if (def == NULL || (kind != MS_TY_TYPE && kind != MS_TY_NATIVE)) {
       return false;
     }
     constructor_target(body, target, symbol->ty, &def->fields);
+    target->builtin = kind == MS_TY_NATIVE;
     if (symbol->decl != NULL && symbol->decl->kind == MS_D_TYPE) {
       target->ast = &symbol->decl->u.type.fields;
       target->ast_module = symbol->module;
@@ -126,13 +128,32 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
          case_target(body, callee, callee->u.sym, owner, target);
 }
 
+/* The match whose parameters a call of `nargs` arguments fills; the first when none does. */
+static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchList *found, size_t nargs) {
+  for (size_t index = 0; index < found->len; index++) {
+    const MsMethodMatch *match = &found->ptr[index];
+    const size_t total = ms_ty_param_count(&body->program->types, match->ty);
+    size_t required = 0;
+    for (size_t at = 0; at < total; at++) {
+      const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
+      const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
+      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL && at < ast->len && ast->ptr[at]->def != NULL);
+      required += defaulted ? 0 : 1;
+    }
+    if (nargs >= required && nargs <= total) {
+      return match;
+    }
+  }
+  return &found->ptr[0];
+}
+
 /* A method of the receiver's type or an operation of its interface. */
 static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Target *target) {
   MsMethodMatchList found = {0};
   ms_check_find_method(body->program, receiver, callee->u.member.name, &found);
   bool ok = found.len != 0;
   if (ok) {
-    const MsMethodMatch *match = &found.ptr[0];
+    const MsMethodMatch *match = pick_overload(body, &found, target->nargs);
     target->sig = match->ty;
     target->receiver = callee->u.member.left;
     target->ref = body_method_ref(match, receiver);
@@ -403,6 +424,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   target.name_text = ms_strbuild_new();
   append_callee_name(body, &target.name_text, callee);
   target.name = ms_strbuild_span(&target.name_text);
+  target.nargs = expr->u.call.args.len;
   if (resolve_target(body, callee, expected, &target)) {
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1),

@@ -334,7 +334,7 @@ const MvtRule mvt_rules_ops[MOP_COUNT] = {
   [MOP_PtrAdd] = mvt_ptr_add, [MOP_PtrNull] = mvt_ptr_null, [MOP_PtrLoadU] = mvt_ptr_load_u,
   [MOP_PtrStoreU] = mvt_ptr_store_u, [MOP_PtrField] = mvt_ptr_field, [MOP_Load] = mvt_load,
   [MOP_Take] = mvt_take, [MOP_Put] = mvt_put, [MOP_Store] = mvt_store, [MOP_FuncAddr] = mvt_func_addr,
-  [MOP_TypeDesc] = mvt_type_desc, [MOP_Poll] = mvt_no_operands, [MOP_DepthEnter] = mvt_no_operands,
+  [MOP_TypeDesc] = mvt_type_desc, [MOP_Shape] = mvt_type_desc, [MOP_Poll] = mvt_no_operands, [MOP_DepthEnter] = mvt_no_operands,
   [MOP_DepthLeave] = mvt_no_operands, [MOP_StackLow] = mvt_stack_low, [MOP_StackNear] = mvt_stack_near,
   [MOP_CleanupRun] = mvt_cleanup_run, [MOP_CleanupPush] = mvt_cleanup_push,
   [MOP_GlobalGet] = mvt_global_get, [MOP_GlobalSet] = mvt_global_set, [MOP_ScopeBegin] = mvt_scope_marker,
