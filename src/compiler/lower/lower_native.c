@@ -88,7 +88,7 @@ MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
 static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   /* A closure or interface value is a pointer the runtime copies by address, as it does a scalar. */
-  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32 && !spilled_by_address(fn, value)) {
+  if (!mir_is_scalar(fn->cx->module, ty) && !spilled_by_address(fn, value)) {
     return value;
   }
   const MirImm of_type = {.tag = MI_TY, .a = ty};
@@ -165,7 +165,7 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
   const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
-  if (!(scalar || optional) || (last != NS_ADDR_MUT && !text)) {
+  if (!(scalar || optional) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
