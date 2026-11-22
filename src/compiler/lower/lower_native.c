@@ -299,9 +299,12 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
                                (uint8_t)(index < 32 && (fn->native_moves >> index & 1u) != 0 ? MM_MOVE : MM_BORROW)};
   }
   fn->native_moves = 0;
+  const MsSpan text = ms_names_span(&fn->cx->module->names, name);
+  const MsNativeSig *sig = ms_native_sig_find(text);
+  const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
-                         .fresh = mir_needs_drop(fn->cx->module, ret),
-                         .role = (uint8_t)string_role(ms_names_span(&fn->cx->module->names, name))};
+                         .fresh = !views && mir_needs_drop(fn->cx->module, ret),
+                         .role = (uint8_t)(views ? MR_VIEW_RESULT : string_role(text))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
