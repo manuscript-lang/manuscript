@@ -15,6 +15,8 @@ typedef struct MsWebSocketMessage {
 
 /* A session over `connection` (a connection handle, which the session owns), after the handshake: `leftover`
  * are the bytes read past the handshake head. `config` is consumed. */
+/* A connection handle of @std/net as a stream; the transport owns the handle. */
+MsWsTransport ms_net_connection_transport(MsObj *connection);
 MsWsSession *ms_ws_connection_session(MsObj *connection, MsWsConfig *config, MsSpan leftover);
 /* A handle (a new reference) on `session`. */
 MsObj *ms_ws_handle_new(MsWsSession *session);

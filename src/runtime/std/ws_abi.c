@@ -47,18 +47,29 @@ static bool conn_is_closed(void *context) {
   return atomic_load(&ms_net_handle_core(context)->closed);
 }
 
+static void conn_shutdown_write(void *context) {
+  MsString err = ms_string_empty();
+  (void)msstd_net_connection_shutdown_write(context, &err);
+  ms_string_release(&err);
+}
+
 static void conn_release(void *context) {
   MsObj *connection = context;
   connection->drop(connection);
 }
 
+MsWsTransport ms_net_connection_transport(MsObj *connection) {
+  return (MsWsTransport){.context = connection,
+                         .read = conn_read,
+                         .write = conn_write,
+                         .close = conn_close,
+                         .is_closed = conn_is_closed,
+                         .release = conn_release,
+                         .shutdown_write = conn_shutdown_write};
+}
+
 MsWsSession *ms_ws_connection_session(MsObj *connection, MsWsConfig *config, MsSpan leftover) {
-  const MsWsTransport transport = {.context = connection,
-                                   .read = conn_read,
-                                   .write = conn_write,
-                                   .close = conn_close,
-                                   .is_closed = conn_is_closed,
-                                   .release = conn_release};
+  const MsWsTransport transport = ms_net_connection_transport(connection);
   return ms_ws_session_new(&transport, config, leftover);
 }
 
