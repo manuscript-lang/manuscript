@@ -56,6 +56,9 @@ static MsTy element_type(Body *body, MsTy iterable) {
       ms_ty_arg_count(types, iterable) == 1) {
     return ms_ty_args(types, iterable)[0];
   }
+  if (ms_ty_is(types, iterable, MS_BUILTIN_Map) && ms_ty_arg_count(types, iterable) == 2) {
+    return body_std_type(body, "MapEntry", ms_ty_args(types, iterable), 2); /* a map yields its entries */
+  }
   MsMethodMatchList found = {0};
   const MsName next = ms_names_intern(body->program->names, ms_span_of_text("next"));
   ms_check_find_method(body->program, iterable, next, &found);
