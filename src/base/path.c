@@ -36,8 +36,16 @@ MsSpan ms_path_parent(MsSpan path) {
   return end == path.len ? ms_span_of(path.ptr, 0) : ms_span_of(path.ptr, end);
 }
 
+/* Rooted at `/`, or on Windows at a drive such as `D:/`. */
 bool ms_path_is_absolute(MsSpan path) {
-  return path.len > 0 && path.ptr[0] == '/';
+  if (path.len > 0 && path.ptr[0] == '/') {
+    return true;
+  }
+#ifdef _WIN32
+  return path.len >= 3 && ((path.ptr[0] | 0x20) >= 'a' && (path.ptr[0] | 0x20) <= 'z') && path.ptr[1] == ':' && path.ptr[2] == '/';
+#else
+  return false;
+#endif
 }
 
 MsSpan ms_path_ext(MsSpan path) {
@@ -70,7 +78,8 @@ static bool next_element(MsSpan path, size_t *at, MsSpan *element) {
 void ms_path_clean(MsStrBuild *out, MsSpan path) {
   const bool rooted = ms_path_is_absolute(path);
   PathParts parts = {0};
-  size_t at = 0;
+  const bool drive = rooted && path.ptr[0] != '/';
+  size_t at = drive ? 2 : 0;
   MsSpan element = {0};
   while (next_element(path, &at, &element)) {
     if (ms_span_is_text(element, ".")) {
@@ -83,6 +92,9 @@ void ms_path_clean(MsStrBuild *out, MsSpan path) {
     } else if (!up || !rooted) {
       path_parts_push(&parts, element);
     }
+  }
+  if (drive) {
+    ms_strbuild_append(out, ms_span_of(path.ptr, 2));
   }
   if (rooted) {
     ms_strbuild_append_byte(out, '/');
