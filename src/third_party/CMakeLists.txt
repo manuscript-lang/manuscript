@@ -11,6 +11,12 @@ add_library(mimalloc STATIC mimalloc/src/static.c)
 target_include_directories(mimalloc SYSTEM PUBLIC mimalloc/include)
 target_include_directories(mimalloc PRIVATE mimalloc/src)
 target_compile_definitions(mimalloc PRIVATE MI_STATIC_LIB)
+if(WIN32)
+  # Windows links the UCRT. Without this mimalloc 3.6.1 attaches twice on mingw (the TLS callback and the
+  # constructor), and the second attach writes a stray newline to stderr (#6208). Remove it when mimalloc no
+  # longer initializes twice on mingw without the macro.
+  target_compile_definitions(mimalloc PRIVATE MI_MINGW_UCRT64)
+endif()
 target_link_libraries(mimalloc PUBLIC Threads::Threads)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(mimalloc PUBLIC rt)
