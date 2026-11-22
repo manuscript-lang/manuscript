@@ -230,7 +230,7 @@ Returns a second handle over a duplicate of the file's descriptor, which closes 
 Both share the file position, so a read or write through one moves the other; bytes this handle already read ahead stay with it.
 A closed handle returns EBADF.
 */
-fn FileHandle.clone() FileHandle!:
+fn FileHandle.clone() move FileHandle!:
 	return msstd_fs_file_clone(self.native)
 
 // Duplicates this handle for chunk reads; the stream closes its own descriptor
