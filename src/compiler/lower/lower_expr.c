@@ -227,7 +227,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
   }
   if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_OPERATION)) {
-    return fn_bound_method(fn, expr, ref); /* `value.method`, a method used as a value */
+    return fn_bound_method(fn, expr, ref, expr); /* `value.method`, a method used as a value */
   }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
@@ -504,6 +504,10 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_INDEX:
     case MS_E_APPLY: {
       const MsRef *named = expr->kind == MS_E_APPLY && expr->u.apply.types.len != 0 ? ms_facts_ref(fn->facts, expr->id) : NULL;
+      if (named != NULL && expr->u.apply.left->kind == MS_E_MEMBER &&
+          (named->kind == MS_REF_METHOD || named->kind == MS_REF_NATIVE || named->kind == MS_REF_OPERATION)) {
+        return fn_bound_method(fn, expr->u.apply.left, named, expr); /* `value.method[Args]`, instantiated */
+      }
       return named != NULL && named->kind == MS_REF_FUNCTION ? fn_function_value(fn, expr, named) : fn_index(fn, expr, want);
     }
     case MS_E_LAMBDA: return fn_lambda(fn, expr);
@@ -524,6 +528,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   }
   if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && fn_closing_move(fn, expr, value, &taken)) {
     return taken;
+  }
+  if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_borrowed_view(fn, value) &&
+      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    /* A call that answers a view of something else (`list.get(i)`) gives its new owner a copy. */
+    return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
