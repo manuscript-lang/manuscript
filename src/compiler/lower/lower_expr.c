@@ -32,7 +32,7 @@ static MirValue lower_text(LowerFn *fn, const MsExpr *expr) {
     return fn_text(fn, expr);
   }
   const MsSpan text = expr->u.text.len == 0 ? ms_span_of_text("") : expr->u.text.ptr[0].lit;
-  const MirImm imm = {.tag = MI_STR, .a = mir_name(fn->cx->module, text)};
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, text)};
   return fn_emit(fn, MOP_StrLit, NULL, 0, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
 }
 
@@ -107,6 +107,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_BINARY: return lower_binary(fn, expr);
     case MS_E_CALL: return fn_call(fn, expr, want);
     case MS_E_MATCH: return fn_match(fn, expr);
+    case MS_E_LIST: return fn_list(fn, expr);
     default:
       (void)fn_fail(fn, "this expression is not lowered yet");
       return MIR_NONE;

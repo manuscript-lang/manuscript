@@ -2,9 +2,7 @@
 #ifndef MS_DRIVER_BUILD_TYPE_H
 #define MS_DRIVER_BUILD_TYPE_H
 
-#include "base/safe.h"
-
-typedef enum MsBuildType { MS_BUILD_DEBUG, MS_BUILD_RELEASE, MS_BUILD_MINSIZEREL } MsBuildType;
+#include "driver/pipeline.h"
 
 /* "Debug", "Release" or "MinSizeRel". */
 const char *ms_build_type_name(MsBuildType type);

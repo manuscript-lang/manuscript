@@ -125,7 +125,10 @@ static void walk_expr(Walk *pass, const MsExpr *expr) {
   case MS_E_APPLY:
     walk_expr(pass, expr->u.apply.left);
     if (expr->u.apply.value != NULL) {
+      /* `f[T]` reads T as a value too; when it is a bare name it may be a type the value reading cannot see. */
+      pass->site.type_reading = expr->u.apply.value->kind == MS_E_NAME;
       walk_expr(pass, expr->u.apply.value);
+      pass->site.type_reading = false;
     }
     return;
   case MS_E_INDEX:

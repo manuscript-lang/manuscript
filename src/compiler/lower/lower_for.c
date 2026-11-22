@@ -106,13 +106,13 @@ static bool is_fresh_owner(LowerFn *fn, MirValue value) {
   return mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) && mode == MM_MOVE;
 }
 
-/* `range(from, to)` written as the iterable. */
+/* `from..to` (the call `..`) written as the iterable. */
 static bool is_range(const LowerFn *fn, const MsExpr *iter) {
   if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || iter->u.call.callee->kind != MS_E_NAME) {
     return false;
   }
   const MsSpan name = ms_names_span(fn->cx->program->names, iter->u.call.callee->u.sym);
-  return ms_span_is_text(name, "range");
+  return ms_span_is_text(name, "..");
 }
 
 static bool source_range(LowerFn *fn, const MsExpr *iter, ForSource *src) {

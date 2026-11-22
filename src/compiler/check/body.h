@@ -84,6 +84,12 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected);
 
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected);
 
+/* ---- conversions.c ---- */
+
+/* Records the implicit conversion (interface view, optional wrap, function value) an expression of type `actual`
+ * needs where `expected` is wanted; nothing when none applies or the types already agree. */
+void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected);
+
 /* ---- exprs_ops.c ---- */
 
 /* Literals (number, bool, void, text) and the unary and binary operators. */
