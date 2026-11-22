@@ -340,8 +340,8 @@ fn EmbeddedTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 // directory (the root, the empty string, included) and the function that returns the
 // bytes of a file number.
 export fn embedded_tree(
-	indexes: Map[String, Int],
-	directories: Set[String],
+	move indexes: Map[String, Int],
+	move directories: Set[String],
 	load: fn(Int) Bytes
 ) EmbeddedTree:
 	var kids = Map[String, List[String]]()

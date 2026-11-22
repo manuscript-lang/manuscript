@@ -202,7 +202,7 @@ fn main() Int:
 
 		for spec in commands(shape.clone()):
 			command := spec[0].clone()
-			extra: List[String] := spec.slice(1, spec.length()).get_or([])
+			extra: List[String] := spec.slice(1, spec.length()).clone().get_or([])
 
 			// The smallest input is the fixed cost, and its first run pays for starting
 			// the tools a build uses: take the faster of two.
