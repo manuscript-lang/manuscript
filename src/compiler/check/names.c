@@ -6,6 +6,7 @@
 typedef struct Names {
   MsCheckProgram *program;
   uint32_t module;
+  const MsExpr *unknown; /* the last name read that was reported unknown */
 } Names;
 
 static const char *const ALWAYS_KNOWN[] = {"..", "_", "self",     "fixture",  "print",     "__LINE__", "__FILE__", "Equal",
@@ -59,6 +60,11 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
     return;
   }
   ms_unknown_name_report(pass->program, pass->module, expr->pos, name, scope, site);
+  ((Names *)context)->unknown = expr;
+}
+
+static bool was_reported(void *context, const MsExpr *expr) {
+  return ((const Names *)context)->unknown == expr;
 }
 
 /* A parameter whose written type already failed to resolve: a diagnostic sits at the type. */
@@ -79,6 +85,6 @@ static bool has_broken_type(void *context, const MsParam *param) {
 
 void ms_check_names(MsCheckProgram *program, uint32_t module) {
   Names pass = {.program = program, .module = module};
-  const MsScopeVisitor visitor = {.context = &pass, .name = read_name, .invalid_param = has_broken_type};
+  const MsScopeVisitor visitor = {.context = &pass, .name = read_name, .invalid_param = has_broken_type, .unknown = was_reported};
   ms_scope_walk_module(program->modules.ptr[module].tree, &visitor, program->names);
 }
