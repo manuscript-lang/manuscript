@@ -77,7 +77,7 @@ typedef struct LowerFn {
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
   uint32_t nwritebacks;
   bool failed;
-  bool lends; /* the function lends its result: `return` hands back the reference, no copy */
+  bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
   uint32_t comparing[8]; /* the alternatives whose equality is being written out, innermost last */
   uint32_t ncomparing;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
@@ -85,7 +85,7 @@ typedef struct LowerFn {
   bool terminated;
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
-  bool temps; /* a statement scope is open for the temporaries its calls lend */
+  bool temps; /* a statement scope is open for the temporaries its calls borrow */
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
   const LowerLambda *lambda; /* the lambda whose body this is, or NULL */
