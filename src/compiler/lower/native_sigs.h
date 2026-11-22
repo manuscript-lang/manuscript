@@ -41,6 +41,7 @@ typedef struct MsNativeSig {
   const char *domain; /* what a failure names (`filesystem`), or NULL */
   bool status;        /* returns a u8 */
   const char *inline_op; /* `@inline=` the operation lowering writes out as MIR instead of calling the native, else NULL */
+  bool borrows;          /* `@borrows`: the result is a view into an argument, not a fresh owner */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];
