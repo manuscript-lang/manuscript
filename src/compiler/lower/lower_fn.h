@@ -53,6 +53,7 @@ typedef struct LowerFn {
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
+  uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
@@ -138,6 +139,8 @@ bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t 
 /* After the close of a part returned `result`: faults when it is an error, else drops it. */
 void lower_close_check(MirBuilder *b, MirValue result);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
+/* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
+void fn_init_closing(LowerFn *fn);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
 bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view);
@@ -213,6 +216,8 @@ bool fn_end_is_reachable(LowerFn *fn);
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
+/* Marks the locals of `body` that a lambda written in it changes: they live in slots the lambda borrows. */
+void fn_find_shared(LowerFn *fn, MsStmts body);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);

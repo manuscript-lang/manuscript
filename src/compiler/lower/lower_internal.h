@@ -43,12 +43,18 @@ typedef struct LowerSubst {
 
 /* A value a closure takes from the function that makes it: a parameter or a local, by its index there and the
  * name written at its first use (parameters of nested functions share indices). */
+/* `LowerFn.shared` of a local a lambda changes: it is bound in a slot (SHARED), whose slot has no owner when the
+ * value is plain data (PLAIN), or is the maker's, borrowed through a closure's environment (BORROWED). */
+enum { LOWER_SHARED = 1, LOWER_SHARED_PLAIN = 2, LOWER_SHARED_BORROWED = 3 };
+
 typedef struct LowerCapture {
   uint8_t kind; /* MS_REF_PARAM or MS_REF_LOCAL */
   uint32_t index;
   MsName name;
   const MsExpr *use; /* the first use, which the maker lowers to read the value */
   MirTy ty;
+  bool shared;  /* the lambda changes this local: it takes the address of the maker's slot, which holds a `elem` */
+  MirTy elem;
 } LowerCapture;
 
 /* A lambda whose body is lowered after the function that makes it. */
