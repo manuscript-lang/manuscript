@@ -328,11 +328,39 @@ static bool explicit_function_value(Body *body, const MsExpr *expr, MsTy *ty) {
   return true;
 }
 
+/* `receiver.method[Args]` named as a value: the method at those type arguments for its own type variables. */
+static bool explicit_method_value(Body *body, const MsExpr *expr, MsTy *ty) {
+  const MsExpr *member = expr->kind == MS_E_APPLY ? expr->u.apply.left : NULL;
+  if (member == NULL || expr->u.apply.types.len == 0 || member->kind != MS_E_MEMBER) {
+    return false;
+  }
+  const MsTy method = member_expr(body, member, MS_TY_NONE);
+  body_set_type(body, member->id, method);
+  const MsTy receiver = ms_facts_type(body->facts, member->u.member.left->id);
+  MsMethodMatchList found = {0};
+  ms_check_find_method(body->program, receiver, member->u.member.name, &found);
+  const MsMethodEntry *entry = found.len != 0 ? found.ptr[0].entry : NULL;
+  const size_t own = entry != NULL ? entry->variables.len - entry->shared : 0;
+  if (entry == NULL || own != expr->u.apply.types.len) {
+    ms_method_match_list_free(&found);
+    return false;
+  }
+  MsTyList args = {0};
+  for (uint32_t index = 0; index < expr->u.apply.types.len; index++) {
+    ms_ty_list_push(&args, resolver_type(&body->resolver, expr->u.apply.types.ptr[index]));
+  }
+  body_set_ref(body, expr->id, *ms_facts_ref(body->facts, member->id));
+  *ty = ms_ty_subst(&body->program->types, method, entry->variables.ptr + entry->shared, args.ptr, args.len);
+  ms_ty_list_free(&args);
+  ms_method_match_list_free(&found);
+  return true;
+}
+
 static MsTy index_expr(Body *body, const MsExpr *expr) {
   MsExpr *left = NULL;
   MsExpr *index = NULL;
   MsTy function = MS_TY_NONE;
-  if (explicit_function_value(body, expr, &function)) {
+  if (explicit_function_value(body, expr, &function) || explicit_method_value(body, expr, &function)) {
     return function;
   }
   if (!ms_expr_index(expr, &left, &index)) {

@@ -59,7 +59,9 @@ static MirTy lower_function(Lower *cx, MsTy ty) {
   uint64_t owned = 0;
   for (size_t index = 0; index < count; index++) {
     const bool by_address = (params[index].flags & MS_PARAM_VAR) != 0 && index < 32;
-    tys[index] = by_address ? MIR_PTR : lower_type(cx, NULL, params[index].ty);
+    /* A parameter a function value may leave out crosses it as an optional. */
+    const MirTy held = by_address ? MIR_PTR : lower_type(cx, NULL, params[index].ty);
+    tys[index] = (params[index].flags & MS_PARAM_LIFTED) != 0 && !by_address ? mir_ty_opt(cx->module, held) : held;
     owned |= (params[index].flags & MS_PARAM_MOVE) != 0 && index < 32 ? UINT64_C(1) << index : 0;
     owned |= by_address ? UINT64_C(1) << (MIR_FN_VAR_SHIFT + index) : 0;
   }

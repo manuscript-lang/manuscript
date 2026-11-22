@@ -67,6 +67,10 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected) {
   }
   if (interface_assignable(body->program, actual, expected)) {
     record(body, expr, MS_CONV_INTERFACE_VIEW, actual, expected);
+  } else if (ms_ty_kind(types, actual) == MS_TY_FUNCTION && ms_ty_kind(types, expected) == MS_TY_FUNCTION &&
+             ms_ty_shape(&body->program->types, actual) == ms_ty_shape(&body->program->types, expected)) {
+    /* The same function type, but one side lets a call leave parameters out: a function value crosses them as optionals. */
+    record(body, expr, MS_CONV_FUNCTION_VALUE, actual, expected);
   } else if (reads_where_var_expected(types, actual, expected)) {
     record(body, expr, MS_CONV_FUNCTION_VALUE, actual, expected);
   }

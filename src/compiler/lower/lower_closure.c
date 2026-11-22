@@ -143,6 +143,11 @@ static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out,
   Scan scan = {.fn = fn, .root = lambda, .nvars = fn->nvars};
   scan.declared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
   const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
+  for (size_t at = 0; at < lambda->u.lambda.params.len; at++) {
+    if (lambda->u.lambda.params.ptr[at]->def != NULL) { /* a default is evaluated in the closure */
+      ms_walk_expr(&visitor, lambda->u.lambda.params.ptr[at]->def);
+    }
+  }
   ms_walk_block(&visitor, lambda->u.lambda.body);
   if (scan.nested) {
     return fn_fail(fn, "a lambda holds too many lambdas to lower");
@@ -207,6 +212,11 @@ static bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCaptur
   scan.ncaptures = count;
   scan.changed = changed;
   const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_var_args};
+  for (size_t at = 0; at < lambda->u.lambda.params.len; at++) {
+    if (lambda->u.lambda.params.ptr[at]->def != NULL) {
+      ms_walk_expr(&visitor, lambda->u.lambda.params.ptr[at]->def);
+    }
+  }
   ms_walk_block(&visitor, lambda->u.lambda.body);
   bool any = false;
   for (uint32_t at = 0; at < count; at++) {
@@ -444,6 +454,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   fn.param_vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)reserved.nparams + 1);
   const MirTy lambda_ty = fn_type(&fn, ms_facts_type(fn.facts, lambda.expr->id));
   const MirTyData *lambda_data = mir_ty_data(cx->module, lambda_ty);
+  bool lifted[LOWER_MAX_ARGS + 1] = {false};
   const MsTy source_ty = ms_ty_subst(&cx->program->types, ms_facts_type(fn.facts, lambda.expr->id), lambda.subst.vars,
                                      lambda.subst.args, lambda.subst.count);
   for (uint32_t at = 1; at < reserved.nparams; at++) {
@@ -457,10 +468,21 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
       fn.var_params[fn.nvar_params++] = (LowerVarParam){fn.param_vars[at - 1], values[at], held_ty};
       continue;
     }
-    const MirTy ty = mir_b_ty(&fn.b, values[at]);
-    fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, (MirMode)reserved.params[at].mode);
-    mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
-    if (reserved.params[at].mode == MM_MOVE && mir_needs_drop(cx->module, ty)) {
+    MirValue param = values[at];
+    MirTy ty = mir_b_ty(&fn.b, param);
+    MirMode mode = (MirMode)reserved.params[at].mode;
+    const MsParam *written = at - 1 < lambda.expr->u.lambda.params.len ? lambda.expr->u.lambda.params.ptr[at - 1] : NULL;
+    const MirTy declared = fn_type(&fn, ms_ty_params(&cx->program->types, source_ty)[at - 1].ty);
+    if (written != NULL && written->def != NULL && mir_ty_data(cx->module, ty)->kind == MK_OPT && ty != declared) {
+      /* A parameter the function type lets the caller omit arrives as an optional: the default, which may read
+       * a capture, fills a none once the captures are bound. */
+      fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, declared, MM_MOVE);
+      lifted[at] = true;
+      continue;
+    }
+    fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, mode);
+    mir_b_def_var(&fn.b, fn.param_vars[at - 1], param);
+    if (reserved.params[at].mode == MM_MOVE && mir_needs_drop(cx->module, ty) && param == values[at]) {
       fn_own(&fn, fn_scope(&fn), values[at]);
     }
   }
@@ -468,7 +490,18 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, lambda.expr->u.lambda.body);
-  bool ok = bind_captures(&fn, &lambda, values[0]) && fn_stmts(&fn, lambda.expr->u.lambda.body) && !fn.failed;
+  bool ok = bind_captures(&fn, &lambda, values[0]);
+  for (uint32_t at = 1; ok && at < reserved.nparams && at <= LOWER_MAX_ARGS; at++) {
+    if (lifted[at]) {
+      const MirTy declared = fn_type(&fn, ms_ty_params(&cx->program->types, source_ty)[at - 1].ty);
+      const MirValue filled = fn_unlift(&fn, values[at], lambda.expr->u.lambda.params.ptr[at - 1]->def, declared);
+      ok = filled != MIR_NONE;
+      if (ok) {
+        mir_b_def_var(&fn.b, fn.param_vars[at - 1], filled);
+      }
+    }
+  }
+  ok = ok && fn_stmts(&fn, lambda.expr->u.lambda.body) && !fn.failed;
   if (!fn.terminated) {
     fn_scope_unwind(&fn, 0);
     mir_b_ret(&fn.b, MIR_NONE);
@@ -523,10 +556,61 @@ uint32_t lower_forwarding_closure(Lower *cx, MirTy fn_ty, uint32_t callee) {
   return slot;
 }
 
+/* A forwarding closure whose type makes some parameters optional: a none is filled with the declared default of the
+ * function `id`, whose copy `callee` the closure calls. */
+static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee, MsSymbolId id) {
+  const MsSymbol *symbol = &cx->program->symbols.ptr[id];
+  const uint32_t slot = lower_closure_func(cx, fn_ty, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = {.cx = cx,
+                .facts = &cx->program->modules.ptr[symbol->module].facts,
+                .module_index = symbol->module,
+                .file = lower_file(cx, symbol->module),
+                .ret = reserved.ret};
+  mir_b_init(&fn.b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  fn.b.func.kind = MFK_CLOSURE;
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  mir_b_params(&fn.b, values, reserved.nparams);
+  MirValue *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  const MirFunc target = cx->module->funcs.ptr[callee];
+  const MsParams *declared = &symbol->decl->u.fn.params;
+  for (uint32_t at = 1; at < reserved.nparams; at++) {
+    args[at - 1] = values[at];
+    const MirTy want = target.params[at - 1].ty;
+    if (reserved.params[at].ty == want) {
+      continue;
+    }
+    const MsParam *written = at - 1 < declared->len ? declared->ptr[at - 1] : NULL;
+    args[at - 1] = fn_unlift(&fn, values[at], written != NULL ? written->def : NULL, want);
+    if (args[at - 1] == MIR_NONE) {
+      return MIR_NONE;
+    }
+  }
+  const MirValue result = mir_b_call(&fn.b, callee, args, reserved.nparams - 1);
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  MirFunc built;
+  if (fn.failed || !mir_b_into_func(&fn.b, &built)) {
+    return MIR_NONE;
+  }
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+  return slot;
+}
+
 /* A module function used as a value: a closure with no captures whose body calls it. */
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   Lower *cx = fn->cx;
-  const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  /* The type a binding gives the value may make parameters optional. */
+  if (fn->hint != MIR_VOID && mir_ty_data(cx->module, fn->hint)->kind == MK_FN &&
+      mir_ty_data(cx->module, fn->hint)->nargs == mir_ty_data(cx->module, fn_ty)->nargs) {
+    fn_ty = fn->hint;
+  }
   const MirTyData *data = mir_ty_data(cx->module, fn_ty);
   const MsSymbolId id = fn_symbol_at(cx, ref->decl);
   if (data->kind != MK_FN || id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
@@ -548,7 +632,11 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (callee == MIR_NONE) {
     return MIR_NONE;
   }
-  const uint32_t slot = lower_forwarding_closure(cx, fn_ty, callee);
+  bool lifted = false;
+  for (uint32_t at = 0; at < data->nargs && at < cx->module->funcs.ptr[callee].nparams; at++) {
+    lifted = lifted || data->args[at] != cx->module->funcs.ptr[callee].params[at].ty;
+  }
+  const uint32_t slot = lifted ? lower_defaulting_closure(cx, fn_ty, callee, id) : lower_forwarding_closure(cx, fn_ty, callee);
   if (slot == MIR_NONE) {
     (void)fn_fail(fn, "a function value could not be built");
     return MIR_NONE;
@@ -780,36 +868,4 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
   return fn_emit(fn, MOP_ClosureNew, &receiver, 1, imm, fn_ty);
-}
-
-/* ---- calling a function value ---- */
-
-MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
-  const MirValue callee = ref != NULL ? fn_name_ref(fn, expr->u.call.callee, ref) : fn_expr(fn, expr->u.call.callee, LW_BORROW);
-  if (callee == MIR_NONE) {
-    return MIR_NONE;
-  }
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, callee));
-  if (data->kind != MK_FN || expr->u.call.args.len != data->nargs || data->nargs > 15) {
-    (void)fn_fail(fn, "a call of a function value does not match its type");
-    return MIR_NONE;
-  }
-  MirValue args[16];
-  VarSlot slots[16];
-  uint32_t nslots = 0;
-  args[0] = callee;
-  for (uint32_t index = 0; index < data->nargs; index++) {
-    const MsExpr *written = expr->u.call.args.ptr[index].value;
-    if (mir_param_is_var(data->owned, index)) {
-      args[index + 1] = fn_var_slot(fn, written, &slots[nslots++]);
-    } else {
-      args[index + 1] = fn_expr(fn, written, mir_owns(data->owned, index) ? LW_MOVE : LW_BORROW);
-    }
-    if (args[index + 1] == MIR_NONE) {
-      return MIR_NONE;
-    }
-  }
-  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
-  const MirValue result = fn_emit(fn, MOP_CallInd, args, data->nargs + 1, (MirImm){0}, data->elem);
-  return fn_var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
 }

@@ -101,6 +101,11 @@ void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
+/* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
+MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
+/* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value
+ * may leave out. The result is owned when its type needs a drop. */
+MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem);
 /* Makes the scope `scope` own `value` (kind 0 drops it). */
 void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 
@@ -237,6 +242,8 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 /* The position of the interface operation the member `callee` names (`index` when it is not a member). */
 uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+/* `value` as a function value of type `to`, which differs from its own only in the parameters a call may leave out. */
+MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
 typedef struct VarSlot {
