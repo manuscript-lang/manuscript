@@ -119,3 +119,22 @@ void ms_json_diag(MsStrBuild *out, MsSpan file, const char *phase, const MsDiag 
   }
   ms_strbuild_append_text(out, "\n    }");
 }
+
+void ms_json_lint(MsStrBuild *out, MsSpan file, const char *code, const char *severity, const MsDiag *diag) {
+  ms_strbuild_append_text(out, "    {\n      \"code\": ");
+  ms_json_string(out, ms_span_of_text(code));
+  ms_strbuild_append_text(out, ",\n      \"severity\": ");
+  ms_json_string(out, ms_span_of_text(severity));
+  ms_strbuild_append_text(out, ",\n      \"message\": ");
+  ms_json_string(out, diag->message);
+  ms_strbuild_append_text(out, ",\n      \"position\": ");
+  ms_json_position(out, file, diag->pos, 3);
+  if (diag->has_end) {
+    ms_strbuild_append_text(out, ",\n      \"end\": ");
+    ms_json_position(out, file, diag->end, 3);
+  }
+  if (diag->has_fix) {
+    fix_object(out, file, diag);
+  }
+  ms_strbuild_append_text(out, "\n    }");
+}
