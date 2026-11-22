@@ -7,20 +7,40 @@ static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
   return value;
 }
 
+/* A `var` local of a type that needs a drop owns its current value: assignment moves the new value in and drops
+ * the old one, and the scope that declared it owns what it holds where the scope ends. */
+static bool var_owns(const LowerFn *fn, MirVar var) {
+  return fn->b.vars.ptr[var].mode == MM_MOVE;
+}
+
+static void disown(LowerFn *fn, MirValue value) {
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
     return fn_fail(fn, "only a name can be bound for now");
   }
-  /* A name bound to another name borrows it; anything else is a new owner. */
+  /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
-  const MirValue value = kind == MS_E_NAME || kind == MS_E_MEMBER ? fn_expr(fn, stmt->u.bind.value, LW_BORROW)
-                                                                   : take_value(fn, stmt->u.bind.value);
+  const bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
+  const MirValue value = borrow ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   if (value == MIR_NONE) {
     return false;
   }
-  const MirVar var = fn_local(fn, ms_facts_ref(fn->facts, pattern->id)->local, mir_b_ty(&fn->b, value));
-  mir_b_def_var(&fn->b, var, value);
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
+  if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
+    if (local >= fn->nvars) {
+      return fn_fail(fn, "a local binding is outside the function's locals");
+    }
+    fn->vars[local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
+    disown(fn, value);
+    mir_b_def_var(&fn->b, fn->vars[local] - 1, value);
+    return fn_scope_own_var(fn, fn->vars[local] - 1) && !fn->failed;
+  }
+  mir_b_def_var(&fn->b, fn_local(fn, local, ty), value);
   return !fn->failed;
 }
 
@@ -37,6 +57,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;
+  }
+  if (var_owns(fn, var)) {
+    const MirValue old = mir_b_use_var(&fn->b, var);
+    disown(fn, value);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
   }
   /* A compound assignment's value already reads the target (`a += b` is `a = a + b`). */
   mir_b_def_var(&fn->b, var, value);
