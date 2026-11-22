@@ -111,6 +111,9 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
 /* `left op right` on a BigInt through its runtime function; false when the operands are not a value object. */
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out);
 
+/* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
+MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
+
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */

@@ -531,6 +531,7 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bo
   MsStmts none = {NULL, 0};
   if (parse_kind(p) == MS_T_Ellipsis && fn_body) {
     p->at++;
+    p->ellipsis_body = true;
     if (!parse_end(p))
       return false;
     *out = none;
