@@ -80,7 +80,7 @@ static MsSymbolId find_symbol(const Resolver *resolver, MsName name, bool *known
   }
   const MsSymbolId *imported = ms_scope_get(&module->imports, name);
   if (imported != NULL) {
-    *known = *imported == 0;
+    *known = false; /* a failed import leaves its name unknown here too */
     return *imported != 0 && program->symbols.ptr[*imported].kind != MS_SYMBOL_FN ? *imported : 0;
   }
   return resolver_prelude_symbol(program, name);
