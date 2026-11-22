@@ -262,6 +262,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_TEXT: return lower_text(fn, expr);
     case MS_E_NAME: return lower_name(fn, expr);
     case MS_E_MEMBER: return lower_member(fn, expr);
+    case MS_E_MAP: return fn_map_literal(fn, expr);
     case MS_E_BINARY: return lower_binary(fn, expr);
     case MS_E_CALL: return fn_call(fn, expr, want);
     case MS_E_MATCH: return fn_match(fn, expr);

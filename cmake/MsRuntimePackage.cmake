@@ -58,6 +58,12 @@ function(ms_package_runtime executable runtime)
   endforeach()
   list(JOIN paths "${separator}" joined)
   set(files "$<TARGET_FILE_DIR:${executable}>/files")
+  # On Windows the toolchain is the compiler's own MSYS2 prefix (`<msys64>/clang64`) unless MS_MINGW_DIR says otherwise.
+  set(mingw_dir "${MS_MINGW_DIR}")
+  if(WIN32 AND NOT mingw_dir)
+    get_filename_component(compiler_bin "${CMAKE_C_COMPILER}" DIRECTORY)
+    get_filename_component(mingw_dir "${compiler_bin}/.." ABSOLUTE)
+  endif()
   # The `--static` runtime is the same archives built by the inner musl build, at the same place under its tree.
   set(musl_joined "")
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND MS_BUILD_MUSL)
@@ -85,7 +91,7 @@ function(ms_package_runtime executable runtime)
       "-DOS=${CMAKE_SYSTEM_NAME}"
       "-DARCH=${CMAKE_SYSTEM_PROCESSOR}"
       "-DMUSL_SYSROOT=${MS_MUSL_SYSROOT}"
-      "-DMINGW_DIR=${MS_MINGW_DIR}"
+      "-DMINGW_DIR=${mingw_dir}"
       -P "${CMAKE_SOURCE_DIR}/cmake/MsFiles.cmake"
     COMMENT "Filling the startup-files directory")
 endfunction()

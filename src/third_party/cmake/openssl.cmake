@@ -1,21 +1,24 @@
 # OpenSSL 3.5.4, static libssl and libcrypto, built out of tree with its own Configure (perl) so the vendored
 # source is never written to. Libraries only: no apps, tests, docs, shared objects, engines or modules.
-# Unix builds with make; Windows (VC-WIN64A, nmake and NASM) is written from upstream's notes, not built here.
+# Everything builds with make. Windows is the mingw-w64 ABI (what ms links programs with): MSYS2 clang, with its own perl
+# and make as a pair (Git's perl lacks modules Configure loads, and records paths only MSYS2 make resolves).
 include(ExternalProject)
 find_program(MS_PERL perl REQUIRED)
 set(OPENSSL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openssl)
 set(OPENSSL_BUILD ${CMAKE_CURRENT_BINARY_DIR}/openssl_build)
 set(OPENSSL_OPTIONS no-shared no-tests no-apps no-docs no-module no-engine no-dso no-legacy no-comp no-ssl3
   no-weak-ssl-ciphers no-autoload-config no-ui-console no-deprecated)
+set(OPENSSL_MAKE make)
+set(OPENSSL_LIB_SUFFIX .a)
+set(OPENSSL_LIB_PREFIX lib)
+set(OPENSSL_TOOLS)
 if(WIN32)
-  set(OPENSSL_TARGET VC-WIN64A)
-  set(OPENSSL_MAKE nmake)
-  set(OPENSSL_LIB_SUFFIX .lib)
-  set(OPENSSL_LIB_PREFIX "")
+  set(OPENSSL_TARGET mingw64)
+  set(OPENSSL_TOOLS AR=llvm-ar RANLIB=llvm-ranlib RC=llvm-windres)
+  if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64")
+    list(APPEND OPENSSL_OPTIONS no-asm)
+  endif()
 else()
-  set(OPENSSL_MAKE make)
-  set(OPENSSL_LIB_SUFFIX .a)
-  set(OPENSSL_LIB_PREFIX lib)
   if(APPLE)
     set(OPENSSL_TARGET darwin64-${CMAKE_SYSTEM_PROCESSOR}-cc)
     if(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
@@ -37,7 +40,7 @@ file(MAKE_DIRECTORY ${OPENSSL_BUILD}/include)
 ExternalProject_Add(openssl_build
   SOURCE_DIR ${OPENSSL_DIR}
   BINARY_DIR ${OPENSSL_BUILD}
-  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${OPENSSL_CC}
+  CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${OPENSSL_CC} ${OPENSSL_TOOLS}
     ${MS_PERL} ${OPENSSL_DIR}/Configure ${OPENSSL_TARGET} ${OPENSSL_OPTIONS} -fPIC ${MS_GLIBC_FLOOR_FLAGS}
   BUILD_COMMAND ${OPENSSL_MAKE} build_libs
   INSTALL_COMMAND ""
