@@ -357,12 +357,23 @@ static void enter(LowerFn *fn, MirBlock block) {
 }
 
 static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
-  const bool owns = stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
-  MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns ? LW_MOVE : LW_BORROW);
-  if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
-    fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */
+  const bool probes = stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_PROBE;
+  const bool owns = !probes && stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
+  MirValue entry = MIR_NONE;
+  MirTy entry_ty = MIR_VOID;
+  MirValue cond = MIR_NONE;
+  if (probes) {
+    if (!fn_probe_begin(fn, stmt, &cond, &entry, &entry_ty)) {
+      return false;
+    }
+  } else {
+    MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns ? LW_MOVE : LW_BORROW);
+    if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
+      fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */
+    }
+    cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
+    entry = tested;
   }
-  const MirValue cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
   if (cond == MIR_NONE) {
     return false;
   }
@@ -374,10 +385,16 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   mir_b_seal_block(&fn->b, otherwise);
   enter(fn, then);
   (void)fn_scope_begin(fn);
-  if (stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, tested, owns)) {
+  if (probes && !fn_probe_bind(fn, stmt, entry, entry_ty)) {
+    return false;
+  }
+  if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
     return false;
   }
   bool ok = fn_stmts(fn, stmt->u.branch.body);
+  if (probes) {
+    fn_probe_end(fn, !fn->terminated);
+  }
   if (!fn->terminated) {
     fn_scope_end(fn);
   } else {

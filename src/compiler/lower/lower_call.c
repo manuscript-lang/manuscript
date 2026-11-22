@@ -431,7 +431,7 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
 
 static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);
-  /* A callee that is a parameter or local, or any expression with no declaration behind it (`fs[i]()`), is a value. */
+  /* A callee that is a parameter, a local or a function-valued field, or any expression with no declaration behind it (`fs[i]()`), is a value. */
   const bool named = expr->u.call.callee->kind == MS_E_NAME;
   const bool value_callee = call == NULL || call->callee.kind == MS_REF_NONE || call->callee.kind == MS_REF_FIELD ||
                             (named && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL));
