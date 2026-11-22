@@ -245,7 +245,11 @@ static void note_keep(Borrows *pass, const MsExpr *kept) {
 }
 
 static bool is_constructor(const Borrows *pass, const MsExpr *call) {
-  const MsRef *ref = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
+    callee = callee->u.apply.left;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, callee->id);
   return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
 }
 

@@ -14,7 +14,7 @@ fn Point.with_x(x: Int) Self:
 
 fn Box[T].added(item: T) Self:
     var xs = self.items.clone()
-    xs.append(item)
+    xs.append(item.clone())
 
     b: Self := Box[T](items: xs)
     return b

@@ -17,7 +17,7 @@ fn maybe(n: String) Door?:
     return Door(n.clone())
 
 fn open(n: String) Door!Error:
-    return ok(Door(n))
+    return ok(Door(n.clone()))
 
 fn main() Void:
     var doors = [Door("first")]
