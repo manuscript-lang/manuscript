@@ -28,6 +28,7 @@ add_library(ms_values STATIC
   map.c
   map_build.c
   num.c
+  num_sized.c
   num_text.c
   set.c
   slot.c

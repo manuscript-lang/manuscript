@@ -44,19 +44,29 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   return !fn->failed;
 }
 
-/* The local that owns the value a name place holds, or false when `place` is not an owning `var` local. */
+/* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
 static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
-  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->vars[ref->local] == 0 ||
-      !var_owns(fn, fn->vars[ref->local] - 1)) {
+  if (ref == NULL) {
     return false;
   }
-  *out = fn->vars[ref->local] - 1;
-  return true;
+  if (ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
+    *out = fn->vars[ref->local] - 1;
+    return true;
+  }
+  if (ref->kind != MS_REF_PARAM) {
+    return false;
+  }
+  for (uint32_t at = 0; at < fn->nvar_params; at++) {
+    if (fn->var_params[at].var == fn->param_vars[ref->local]) {
+      *out = fn->var_params[at].var;
+      return true;
+    }
+  }
+  return false;
 }
 
-
-/* Whether `place` is an owning `var` local or a member path rooted in one: the places `fn_put_place` stores into. */
+/* Whether `place` is a `var` local, a `var` parameter or a member path rooted in one: the places `fn_put_place` stores into. */
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
   return owned_local(fn, place, &var) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
@@ -136,10 +146,14 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   }
   /* A name target records its local on the statement, a member target on its expression. */
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
-  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->vars[ref->local] == 0) {
+  MirVar var = 0;
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
+    var = fn->vars[ref->local] - 1;
+  } else if (ref != NULL && ref->kind == MS_REF_PARAM) {
+    var = fn->param_vars[ref->local];
+  } else {
     return fn_fail(fn, "an assignment does not name a local");
   }
-  const MirVar var = fn->vars[ref->local] - 1;
   const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;

@@ -31,6 +31,7 @@ typedef struct MsNativeSig {
   const char *name;
   uint8_t count;
   uint8_t kinds[NS_MAX_PARAMS];
+  const char *method; /* `Type.operation` when the runtime name differs from `msrt_<type>_<operation>`, else NULL */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];
@@ -38,5 +39,8 @@ extern const unsigned ms_native_sig_count;
 
 /* The signature of the native called `name`, or NULL. */
 const MsNativeSig *ms_native_sig_find(MsSpan name);
+
+/* The native an operation of a type is declared `@method=` for (`List`, `drop`), or NULL. */
+const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation);
 
 #endif
