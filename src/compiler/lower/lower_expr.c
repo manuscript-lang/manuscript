@@ -108,6 +108,22 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   return value;
 }
 
+/* A parameter named by a default argument: the value the call passes for it, which must already be known. */
+static MirValue default_param(LowerFn *fn, const MsRef *ref) {
+  const MsCall *call = fn->default_call;
+  const size_t declared = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
+  const uint32_t at = ref->local + (uint32_t)(call->arg_count - declared);
+  if (at >= call->arg_count || (call->args[at].flags & MS_PARAM_VAR) != 0) {
+    (void)fn_fail(fn, "a default argument that reads a `var` parameter is not lowered yet");
+    return MIR_NONE;
+  }
+  const MirValue value = fn->default_args[at];
+  if (value == MIR_NONE) {
+    (void)fn_fail(fn, "a default argument reads a parameter that has no value yet");
+  }
+  return value;
+}
+
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   MirValue captured = MIR_NONE;
   if (fn_lambda_name(fn, expr, ref, &captured)) {
@@ -115,6 +131,9 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   }
   if (fn_closing_read(fn, ref, &captured)) {
     return captured;
+  }
+  if (ref != NULL && ref->kind == MS_REF_PARAM && fn->default_call != NULL) {
+    return default_param(fn, ref);
   }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
     return mir_b_use_var(&fn->b, fn->param_vars[ref->local]);
@@ -162,6 +181,9 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   if (ref != NULL && ref->kind == MS_REF_CASE) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
+  }
+  if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE)) {
+    return fn_bound_method(fn, expr, ref); /* `value.method`, a method used as a value */
   }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,

@@ -62,10 +62,33 @@ static bool is_result_kind(uint8_t kind) {
          kind == NS_OUT_SCALAR;
 }
 
+/* Whether `value` is a closure, an interface or an optional of plain data, which a native is given by address
+ * though its leaves would pass by value. */
+static bool spilled_by_address(LowerFn *fn, MirValue value) {
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, ty)->kind;
+  return kind == MK_FN || kind == MK_IFACE || (kind == MK_OPT && !mir_needs_drop(fn->cx->module, ty));
+}
+
+/* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
+static MirValue move_out_of_scope(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  MirMode mode = MM_BORROW;
+  const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
+                     mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
+                     mode == MM_MOVE;
+  if (!fresh) {
+    value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+  }
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  return value;
+}
+
 /* A scalar operand a native reads through an address (`e: *const u8`): it goes into a stack slot. */
 static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
-  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32) {
+  /* A closure or interface value is a pointer the runtime copies by address, as it does a scalar. */
+  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32 && !spilled_by_address(fn, value)) {
     return value;
   }
   const MirImm of_type = {.tag = MI_TY, .a = ty};
@@ -120,7 +143,11 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
           mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
         fn->native_moves |= 1u << used;
       }
-      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
+      MirValue operand = args[next];
+      if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
+        operand = move_out_of_scope(fn, operand);
+      }
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand) : operand;
       next++;
     } else {
       return false;
@@ -708,14 +735,9 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     return false;
   }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
-  uint32_t pairs = 0; /* each `HasRaw` pair takes two parameters for one source operand */
-  for (uint32_t at = 0; at < sig->count; at++) {
-    pairs += sig->kinds[at] == NS_HAS_RAW ? 1 : 0;
-  }
-  const uint32_t expanded = nargs + pairs;
-  const uint32_t extras = sig->count > expanded ? sig->count - expanded : 0;
-  const bool has_out = extras == (has_err ? 2u : 1u) && payload_ty != MIR_VOID;
-  if (sig->count < expanded || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
+  const bool has_out = payload_ty != MIR_VOID;
+  const uint32_t tail = (has_err ? 1u : 0u) + (has_out ? 1u : 0u);
+  if (sig->count < tail) {
     return false;
   }
   const uint32_t error_function = status_error_function(fn);
@@ -724,15 +746,71 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
-  for (uint32_t source = 0; source < nargs; source++) {
-    if (count < sig->count && sig->kinds[count] == NS_HAS_RAW) {
-      if (count + 2 > NS_MAX_PARAMS - 2 || !has_raw_pair(fn, args[source], &wanted[count])) {
-        return false;
-      }
-      count += 2;
-    } else {
-      wanted[count++] = args[source];
+  uint32_t source = 0;
+  uint32_t shape_at = NS_MAX_PARAMS;
+  MirTy shape_ty = payload_ty;
+  bool shape_from_operand = false;
+  bool by_shape = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    by_shape = by_shape || sig->kinds[at] == NS_SHAPE;
+  }
+  for (uint32_t at = 0; at < sig->count - tail; at++) {
+    const uint8_t kind = sig->kinds[at];
+    if (count + 4 > NS_MAX_PARAMS) {
+      return false;
     }
+    if (kind == NS_SHAPE) {
+      shape_at = count++;
+    } else if (kind == NS_HAS_RAW && source < nargs) {
+      const MirValue operand = args[source++];
+      const MirTyData *record = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, operand));
+      if (record->kind != MK_TYPE) {
+        if (!has_raw_pair(fn, operand, &wanted[count])) {
+          return false;
+        }
+        count += 2;
+        at++;
+        continue;
+      }
+      /* A record of optional Ints (`JsonLimits`) is one operand for one pair per field. */
+      const MirTypeDef *def = &fn->cx->module->type_defs.ptr[record->id];
+      for (uint32_t field = 0; field < def->nfields; field++) {
+        if (at + 1 >= sig->count - tail || sig->kinds[at] != NS_HAS_RAW || count + 4 > NS_MAX_PARAMS) {
+          return false;
+        }
+        const MirImm imm = {.tag = MI_FIELD, .a = record->id, .b = field};
+        const MirValue value = mir_b_emit(&fn->b, MOP_TypeGet, &operand, 1, imm, def->fields[field].ty);
+        if (!has_raw_pair(fn, value, &wanted[count])) {
+          return false;
+        }
+        count += 2;
+        at += 2;
+      }
+      at--;
+    } else if (kind == NS_ADDR_IN && by_shape && source < nargs) {
+      const MirValue operand = args[source++];
+      const MirTy ty = mir_b_ty(&fn->b, operand);
+      if (!shape_from_operand) {
+        shape_ty = ty;
+        shape_from_operand = true;
+      }
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue store[2] = {slot, operand};
+      (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+      wanted[count++] = slot;
+    } else if (source < nargs) {
+      wanted[count++] = args[source++];
+    } else {
+      return false;
+    }
+  }
+  if (source != nargs) {
+    return false;
+  }
+  if (shape_at != NS_MAX_PARAMS) {
+    const MirImm of_type = {.tag = MI_TY, .a = shape_ty};
+    wanted[shape_at] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
   }
   MirValue out_slot = MIR_NONE;
   MirValue err_slot = MIR_NONE;
@@ -784,6 +862,37 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     fn_own(fn, fn_scope(fn), result);
   }
   *out = result;
+  return true;
+}
+
+/* ---- externs that read a value through its shape ---- */
+
+/* `msstd_test_repr[T](value)`: a native whose first parameter is the shape table gets the table of its first
+ * operand's type, and an operand it reads through an address goes into a slot (a borrow). False when `sig` does not
+ * take a shape table. */
+bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || sig->status || sig->count == 0 || sig->kinds[0] != NS_SHAPE || nargs == 0 || nargs + 2 > NS_MAX_PARAMS) {
+    return false;
+  }
+  const MirTy shape_ty = mir_b_ty(&fn->b, args[0]);
+  const MirImm shape_type = {.tag = MI_TY, .a = shape_ty};
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  wanted[count++] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, shape_type, MIR_PTR);
+  for (uint32_t source = 0; source < nargs; source++) {
+    const MirTy ty = mir_b_ty(&fn->b, args[source]);
+    if (count < sig->count && sig->kinds[count] == NS_ADDR_IN) {
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue store[2] = {slot, args[source]};
+      (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+      wanted[count++] = slot;
+    } else {
+      wanted[count++] = args[source];
+    }
+  }
+  *out = fn_runtime_call(fn, name, wanted, count, ret);
   return true;
 }
 
