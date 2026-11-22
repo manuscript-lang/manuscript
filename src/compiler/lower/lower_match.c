@@ -1,17 +1,42 @@
-/* compiler/lower/lower_match.c: `match` over an alternative. The tag selects the arm; an arm's bindings read the
- * case's payload fields in place, and its value joins the other arms' through a variable. */
+/* compiler/lower/lower_match.c: `match`. An alternative or an Optional is switched on its tag; a number, text or
+ * boolean is compared with each literal arm in turn. An arm's bindings read the case's payload in place, and its
+ * value joins the other arms' through a variable. */
 #include "compiler/lower/lower_fn.h"
 
-typedef struct MatchArms {
-  MirBlock *blocks; /* by arm */
-  MirCase *cases;
-  uint32_t ncases;
-  MirBlock fallback;
-  bool has_fallback;
-} MatchArms;
+typedef struct Match {
+  MirValue scrutinee;
+  MirTy ty;
+  uint8_t kind; /* MK_ALT, MK_OPT, or MK_INT and the like for literals */
+  MirVar result;
+  bool has_result;
+  MirBlock join;
+} Match;
 
-/* The case number the arm names, or false for the wildcard. */
-static bool arm_case(const LowerFn *fn, const MsArm *arm, uint32_t *index) {
+static bool is_literal(const MsExpr *path) {
+  return path != NULL && (path->kind == MS_E_NUMBER || path->kind == MS_E_BOOL ||
+                          (path->kind == MS_E_UNARY && path->op == MS_U_NEG));
+}
+
+/* The case number an arm names: the facts' case for an alternative, `none` 0 and `some` 1 for an Optional. False
+ * for the wildcard (and for a literal). */
+static bool arm_case(const LowerFn *fn, const Match *match, const MsArm *arm, uint32_t *index) {
+  if (match->kind == MK_OPT) {
+    if (arm->bare) {
+      *index = 1;
+      return true;
+    }
+    const MsExpr *path = arm->path;
+    const MsName name = path == NULL ? 0 : path->kind == MS_E_MEMBER ? path->u.member.name : path->u.sym;
+    if (path == NULL || (path->kind != MS_E_NAME && path->kind != MS_E_MEMBER)) {
+      return false;
+    }
+    const MsSpan text = ms_names_span(fn->cx->program->names, name);
+    if (ms_span_is_text(text, "none") || ms_span_is_text(text, "some")) {
+      *index = ms_span_is_text(text, "some") ? 1 : 0;
+      return true;
+    }
+    return false;
+  }
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
   if (ref == NULL || ref->kind != MS_REF_CASE) {
     return false;
@@ -20,30 +45,42 @@ static bool arm_case(const LowerFn *fn, const MsArm *arm, uint32_t *index) {
   return true;
 }
 
-static bool lower_arm(LowerFn *fn, const MsArm *arm, MirValue scrutinee, MirTy alt_ty, MirVar result,
-                      bool has_result, MirBlock join) {
+static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
   const MirModule *module = fn->cx->module;
-  const MirAltDef *alt = &module->alts.ptr[mir_ty_data(module, alt_ty)->id];
+  const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
+  if (match->kind == MK_OPT) {
+    if (arm->bindings.len > 0 && kase == 1) {
+      const MirTy elem = mir_ty_data(module, match->ty)->elem;
+      const MirValue item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
+      mir_b_def_var(&fn->b, fn_local(fn, ref->local, elem), item);
+    }
+    return;
+  }
+  const uint32_t id = mir_ty_data(module, match->ty)->id;
+  const MirCaseDef *def = &module->alts.ptr[id].cases[kase];
+  for (uint32_t at = 0; at < arm->bindings.len && at < def->nfields; at++) {
+    const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
+    const MirValue field = mir_b_emit(&fn->b, MOP_AltGet, &match->scrutinee, 1, imm, def->fields[at].ty);
+    mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
+  }
+}
+
+static bool lower_arm(LowerFn *fn, const Match *match, const MsArm *arm) {
   uint32_t kase = 0;
-  const bool named = arm_case(fn, arm, &kase);
+  const bool named = arm_case(fn, match, arm, &kase);
   (void)fn_scope_begin(fn);
   if (named && arm->bindings.len > 0) {
-    const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
-    for (uint32_t at = 0; at < arm->bindings.len && at < alt->cases[kase].nfields; at++) {
-      const MirImm imm = {.tag = MI_ALTFIELD, .a = mir_ty_data(module, alt_ty)->id, .b = kase, .c = at};
-      const MirTy ty = alt->cases[kase].fields[at].ty;
-      const MirValue field = mir_b_emit(&fn->b, MOP_AltGet, &scrutinee, 1, imm, ty);
-      mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, ty), field);
-    }
+    bind_payload(fn, match, arm, kase);
   }
   bool ok = fn_stmts(fn, arm->body);
   if (!fn->terminated && arm->value != NULL) {
     const MirValue value = fn_expr(fn, arm->value, LW_MOVE);
     ok = ok && value != MIR_NONE;
-    if (has_result && value != MIR_NONE) {
-      const MirImm none = {0};
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, none, MIR_NONE);
-      mir_b_def_var(&fn->b, result, value);
+    if (match->has_result && value != MIR_NONE) {
+      if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+      }
+      mir_b_def_var(&fn->b, match->result, value);
     }
   }
   if (fn->terminated) {
@@ -51,58 +88,106 @@ static bool lower_arm(LowerFn *fn, const MsArm *arm, MirValue scrutinee, MirTy a
     return ok;
   }
   fn_scope_end(fn);
-  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_br(&fn->b, match->join, NULL, 0);
   return ok;
 }
 
+static void enter(LowerFn *fn, MirBlock block) {
+  mir_b_seal_block(&fn->b, block);
+  mir_b_switch_to(&fn->b, block);
+  fn->terminated = false;
+}
+
+/* Switches on the scrutinee's tag to the arms' blocks. */
+static void dispatch_tag(LowerFn *fn, const Match *match, const MsExpr *expr, const MirBlock *blocks) {
+  MsArena *arena = &fn->cx->module->arena;
+  const uint32_t narms = expr->u.match.arms.len;
+  MirCase *cases = MS_ARENA_NEW_ARRAY(arena, MirCase, narms + 1);
+  uint32_t ncases = 0;
+  MirBlock fallback = MIR_NONE;
+  for (uint32_t index = 0; index < narms; index++) {
+    uint32_t kase = 0;
+    if (arm_case(fn, match, expr->u.match.arms.ptr[index], &kase)) {
+      cases[ncases++] = (MirCase){(int64_t)kase, {blocks[index], NULL, 0}};
+    } else if (fallback == MIR_NONE) {
+      fallback = blocks[index];
+    }
+  }
+  MirValue tag = MIR_NONE;
+  if (match->kind == MK_OPT) {
+    const MirValue some = mir_b_emit(&fn->b, MOP_OptIsSome, &match->scrutinee, 1, (MirImm){0}, MIR_BOOL);
+    tag = mir_b_select(&fn->b, some, mir_b_iconst(&fn->b, 1), mir_b_iconst(&fn->b, 0));
+  } else {
+    tag = mir_b_emit(&fn->b, MOP_AltTag, &match->scrutinee, 1, (MirImm){0}, MIR_INT);
+  }
+  const MirBlock none = fallback == MIR_NONE ? mir_b_new_block(&fn->b) : fallback;
+  mir_b_switch(&fn->b, tag, cases, ncases, none);
+  if (fallback == MIR_NONE) {
+    enter(fn, none);
+    mir_b_unreachable(&fn->b);
+  }
+}
+
+/* Tests each literal arm in turn, then falls to the wildcard arm. */
+static bool dispatch_literals(LowerFn *fn, const Match *match, const MsExpr *expr, const MirBlock *blocks) {
+  MirBlock fallback = MIR_NONE;
+  for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    const MsExpr *path = expr->u.match.arms.ptr[index]->path;
+    if (!is_literal(path)) {
+      fallback = fallback == MIR_NONE ? blocks[index] : fallback;
+      continue;
+    }
+    const MirValue literal = fn_expr(fn, path, LW_BORROW);
+    if (literal == MIR_NONE) {
+      return false;
+    }
+    const MirValue same = mir_b_icmp(&fn->b, MCC_EQ, match->scrutinee, literal);
+    const MirBlock next = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, same, blocks[index], NULL, 0, next, NULL, 0);
+    enter(fn, next);
+  }
+  if (fallback == MIR_NONE) {
+    mir_b_unreachable(&fn->b);
+  } else {
+    mir_b_br(&fn->b, fallback, NULL, 0);
+  }
+  return true;
+}
+
 MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
-  const MirValue scrutinee = fn_expr(fn, expr->u.match.scrutinee, LW_BORROW);
-  if (scrutinee == MIR_NONE) {
+  Match match = {.scrutinee = fn_expr(fn, expr->u.match.scrutinee, LW_BORROW)};
+  if (match.scrutinee == MIR_NONE) {
     return MIR_NONE;
   }
-  const MirTy alt_ty = mir_b_ty(&fn->b, scrutinee);
-  if (mir_ty_data(fn->cx->module, alt_ty)->kind != MK_ALT) {
+  match.ty = mir_b_ty(&fn->b, match.scrutinee);
+  match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
+  const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL;
+  if (match.kind != MK_ALT && match.kind != MK_OPT && !literal) {
     (void)fn_fail(fn, "`match` over this type is not lowered yet");
     return MIR_NONE;
   }
   const uint32_t narms = expr->u.match.arms.len;
-  MsArena *arena = &fn->cx->module->arena;
-  MatchArms arms = {.blocks = MS_ARENA_NEW_ARRAY(arena, MirBlock, narms + 1),
-                    .cases = MS_ARENA_NEW_ARRAY(arena, MirCase, narms + 1)};
+  MirBlock *blocks = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirBlock, narms + 1);
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
-  const bool has_result = result_ty != MIR_VOID;
-  const MirVar result = has_result ? mir_b_declare_var(&fn->b, result_ty, MM_MOVE) : 0;
-  const MirBlock join = mir_b_new_block(&fn->b);
+  match.has_result = result_ty != MIR_VOID;
+  match.result = match.has_result ? mir_b_declare_var(&fn->b, result_ty, MM_MOVE) : 0;
+  match.join = mir_b_new_block(&fn->b);
   for (uint32_t index = 0; index < narms; index++) {
-    uint32_t kase = 0;
-    arms.blocks[index] = mir_b_new_block(&fn->b);
-    if (arm_case(fn, expr->u.match.arms.ptr[index], &kase)) {
-      arms.cases[arms.ncases++] = (MirCase){(int64_t)kase, {arms.blocks[index], NULL, 0}};
-    } else if (!arms.has_fallback) {
-      arms.fallback = arms.blocks[index];
-      arms.has_fallback = true;
-    }
+    blocks[index] = mir_b_new_block(&fn->b);
   }
-  const MirValue tag = mir_b_emit(&fn->b, MOP_AltTag, &scrutinee, 1, (MirImm){0}, MIR_INT);
-  const MirBlock none = arms.has_fallback ? MIR_NONE : mir_b_new_block(&fn->b);
-  mir_b_switch(&fn->b, tag, arms.cases, arms.ncases, arms.has_fallback ? arms.fallback : none);
   bool ok = true;
-  for (uint32_t index = 0; index < narms; index++) {
-    mir_b_seal_block(&fn->b, arms.blocks[index]);
-    mir_b_switch_to(&fn->b, arms.blocks[index]);
-    fn->terminated = false;
-    ok = lower_arm(fn, expr->u.match.arms.ptr[index], scrutinee, alt_ty, result, has_result, join) && ok;
+  if (literal) {
+    ok = dispatch_literals(fn, &match, expr, blocks);
+  } else {
+    dispatch_tag(fn, &match, expr, blocks);
   }
-  if (!arms.has_fallback) {
-    mir_b_seal_block(&fn->b, none);
-    mir_b_switch_to(&fn->b, none);
-    mir_b_unreachable(&fn->b);
+  for (uint32_t index = 0; index < narms && ok; index++) {
+    enter(fn, blocks[index]);
+    ok = lower_arm(fn, &match, expr->u.match.arms.ptr[index]);
   }
-  mir_b_seal_block(&fn->b, join);
-  mir_b_switch_to(&fn->b, join);
-  fn->terminated = false;
+  enter(fn, match.join);
   if (!ok) {
     return MIR_NONE;
   }
-  return has_result ? mir_b_use_var(&fn->b, result) : mir_b_unit(&fn->b);
+  return match.has_result ? mir_b_use_var(&fn->b, match.result) : mir_b_unit(&fn->b);
 }
