@@ -129,7 +129,7 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (fn_lambda_name(fn, expr, ref, &captured)) {
     return captured;
   }
-  if (fn_closing_read(fn, ref, &captured)) {
+  if (fn_closing_read(fn, ref, expr != NULL && expr->kind == MS_E_NAME ? expr->u.sym : 0, &captured)) {
     return captured;
   }
   if (ref != NULL && ref->kind == MS_REF_PARAM && fn->default_call != NULL) {
