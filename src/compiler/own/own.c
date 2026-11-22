@@ -5,6 +5,7 @@
 #include "compiler/own/changes.h"
 #include "compiler/own/closers.h"
 #include "compiler/own/escapes.h"
+#include "compiler/own/lends.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/taken.h"
 #include "compiler/own/unused.h"
@@ -17,6 +18,7 @@ void ms_own_check(MsCheckProgram *program) {
     ms_own_uses(program);
   }
   ms_own_escapes(program);
+  ms_own_lends(program);
   ms_own_closers(program);
   ms_own_unused(program);
   ms_own_changes(program);
