@@ -56,6 +56,9 @@ static MsTy element_type(Body *body, MsTy iterable) {
       ms_ty_arg_count(types, iterable) == 1) {
     return ms_ty_args(types, iterable)[0];
   }
+  if (ms_ty_is(types, iterable, MS_BUILTIN_Map) && ms_ty_arg_count(types, iterable) == 2) {
+    return body_std_type(body, "MapEntry", ms_ty_args(types, iterable), 2); /* a map yields its entries */
+  }
   MsMethodMatchList found = {0};
   const MsName next = ms_names_intern(body->program->names, ms_span_of_text("next"));
   ms_check_find_method(body->program, iterable, next, &found);
@@ -333,10 +336,16 @@ static void declaration(Body *body, const MsDecl *decl) {
       method_decl(body, decl->u.impl.methods.ptr[index]);
     }
     break;
-  case MS_D_TEST:
+  case MS_D_TEST: {
+    /* A test returns `Void!`: `return error(...)` fails it. */
+    const MsTy error = body_std_type(body, "Error", NULL, 0);
+    const MsTy args[2] = {body_primitive(body, MS_BUILTIN_Void), error};
+    body->result = error == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Result", args, 2);
     body_block(body, decl->u.test.body);
+    body->result = MS_TY_NONE;
     body->facts->local_counts[decl->id] = body->next_local;
     break;
+  }
   case MS_D_CONST: {
     body->quiet = true;
     body->resolver.report = false; /* a constant's annotation is reported with the constant's own diagnostics */

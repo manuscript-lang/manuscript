@@ -2,6 +2,7 @@
 #include "compiler/own/uses.h"
 
 #include "compiler/check/methods.h"
+#include "compiler/check/properties.h"
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
 #include "compiler/syntax/walk.h"
@@ -25,7 +26,16 @@ static bool place_root(const Uses *pass, const MsExpr *expr) {
 
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
-  if (expr == NULL || (expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr)) {
+  if (expr == NULL) {
+    return;
+  }
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) { /* `r?` hands the payload of the local `r` on */
+    if (expr->u.bin.left->kind == MS_E_NAME && place_root(pass, expr->u.bin.left)) {
+      pass->facts->uses[expr->id] = MS_USE_MOVE;
+    }
+    return;
+  }
+  if ((expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr)) {
     return;
   }
   const MsTy ty = ms_facts_type(pass->facts, expr->id);
@@ -136,6 +146,10 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.bind.value);
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
+  } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+             !stmt->u.branch.is_mutable &&
+             ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, stmt->u.branch.cond->id))) {
+    mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
   }
 }
 

@@ -293,6 +293,21 @@ static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue ri
 
 /* The operator `op` over two values of one standard type: strings by the runtime, value objects by their operation
  * word, Floats and UInt64 by their own instructions, everything else as integers. */
+/* `a == b` on lists: the runtime compares the two element by element by the list's type descriptor. */
+static MirValue list_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, of_type, MIR_PTR);
+  const MirValue left_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue right_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue left_stored[2] = {left_slot, left};
+  const MirValue right_stored[2] = {right_slot, right};
+  (void)mir_b_emit(&fn->b, MOP_Store, left_stored, 2, (MirImm){0}, MIR_NONE);
+  (void)mir_b_emit(&fn->b, MOP_Store, right_stored, 2, (MirImm){0}, MIR_NONE);
+  const MirValue operands[3] = {desc, left_slot, right_slot};
+  const MirValue same = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_slot_eq")), operands, 3, MIR_BOOL);
+  return negate ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
+}
+
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right) {
   BinaryOps ops;
   if (!binary_ops(op, &ops)) {
@@ -307,6 +322,9 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
     return object;
   }
   const MirTy operand = mir_b_ty(&fn->b, left);
+  if (ops.compare && (op == MS_B_EQ || op == MS_B_NE) && mir_ty_data(fn->cx->module, operand)->kind == MK_LIST) {
+    return list_equality(fn, op == MS_B_NE, left, right, operand);
+  }
   if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
     return float_binary(fn, &ops, left, right, operand);
   }
@@ -353,7 +371,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_INDEX:
     case MS_E_APPLY: return fn_index(fn, expr, want);
     case MS_E_LAMBDA: return fn_lambda(fn, expr);
-    case MS_E_UNARY: return fn_unary(fn, expr);
+    case MS_E_UNARY: return fn_unary(fn, expr, want);
     default:
       (void)fn_fail(fn, "this expression (kind %d) is not lowered yet at %u:%u", (int)expr->kind, expr->pos.line, expr->pos.column);
       return MIR_NONE;

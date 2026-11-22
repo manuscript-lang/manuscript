@@ -30,7 +30,32 @@ MirValue fn_iflet_test(LowerFn *fn, MirValue value) {
   return mir_b_icmp(&fn->b, MCC_EQ, tag, mir_b_iconst(&fn->b, OK_CASE));
 }
 
-bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value) {
+bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt) {
+  const MsPattern *pattern = stmt->u.branch.binding;
+  const MsExpr *cond = stmt->u.branch.cond;
+  const MsCloser *closer = pattern->kind == MS_P_NAME ? ms_facts_closer(fn->facts, pattern->id) : NULL;
+  const bool fresh = cond->kind == MS_E_CALL || (cond->kind == MS_E_NAME && ms_facts_use(fn->facts, cond->id) == MS_USE_MOVE);
+  return closer != NULL && fresh && !stmt->u.branch.is_mutable &&
+         fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id));
+}
+
+/* The payload of the Optional or Result `value`, taken out of it: `value` is released but for the payload. */
+static MirValue take_payload(LowerFn *fn, MirValue value, MirTy *ty) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value));
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  if (data->kind == MK_OPT) {
+    *ty = data->elem;
+    return mir_b_emit(&fn->b, MOP_OptUnbox, &value, 1, (MirImm){0}, *ty);
+  }
+  *ty = fn->cx->module->alts.ptr[data->id].cases[OK_CASE].fields[0].ty;
+  const MirImm field = {.tag = MI_ALTFIELD, .a = data->id, .b = OK_CASE, .c = 0};
+  const MirValue payload = mir_b_emit(&fn->b, MOP_AltTake, &value, 1, field, *ty);
+  const MirImm taken = {.tag = MI_ALTMASK, .a = data->id, .b = OK_CASE, .c = 1};
+  (void)mir_b_emit(&fn->b, MOP_AltRelease, &value, 1, taken, MIR_NONE);
+  return payload;
+}
+
+bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns) {
   const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
   if (pattern->kind != MS_P_NAME || ref == NULL || ref->kind != MS_REF_LOCAL) {
     return fn_fail(fn, "only a name can be bound by `if` for now");
@@ -39,6 +64,10 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value) {
   const MirTyData *data = mir_ty_data(module, mir_b_ty(&fn->b, value));
   MirValue payload = MIR_NONE;
   MirTy ty = MIR_VOID;
+  if (owns) {
+    payload = take_payload(fn, value, &ty);
+    return fn_bind_closing(fn, ref->local, ms_facts_type(fn->facts, pattern->id), payload, false);
+  }
   if (data->kind == MK_OPT) {
     ty = data->elem;
     payload = mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, ty);
@@ -50,4 +79,65 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value) {
   }
   mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), payload);
   return !fn->failed;
+}
+
+/* `if var name = place[key]?:` tests whether the entry exists. `address` is the entry's address (null when absent) and
+ * `cond` says it is not. */
+bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty) {
+  const MsExpr *probe = stmt->u.branch.cond;
+  MsExpr *left = NULL;
+  MsExpr *index = NULL;
+  if (!ms_expr_index(probe->u.bin.left, &left, &index)) {
+    return fn_fail(fn, "this bracket is not an index");
+  }
+  const MirValue container = fn_expr(fn, left, LW_BORROW);
+  if (container == MIR_NONE) {
+    return false;
+  }
+  *address = fn_entry_address(fn, container, index, ty);
+  if (*address == MIR_NONE) {
+    return false;
+  }
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, address, 1, (MirImm){0}, MIR_BOOL);
+  *cond = mir_b_emit(&fn->b, MOP_Not, &absent, 1, (MirImm){0}, MIR_BOOL);
+  return true;
+}
+
+/* Binds the name to the entry's current value and registers the store back to the entry. */
+bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty) {
+  const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.branch.binding->id);
+  if (stmt->u.branch.binding->kind != MS_P_NAME || ref == NULL || ref->kind != MS_REF_LOCAL) {
+    return fn_fail(fn, "only a name can be bound by `if` for now");
+  }
+  if (fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
+    return fn_fail(fn, "`if var` entries nest too deeply");
+  }
+  const MirVar var = fn_local(fn, ref->local, ty);
+  const MirValue value = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+  mir_b_def_var(&fn->b, var, value);
+  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){var, address, ty, fn->nopen};
+  return !fn->failed;
+}
+
+static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
+  const MirValue stored[2] = {back->address, mir_b_use_var(&fn->b, back->var)};
+  (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+}
+
+/* Stores each entry binding opened inside the scopes above `keep` back to its entry: a return, break or continue
+ * leaving the body. */
+void fn_writebacks_put(LowerFn *fn, uint32_t keep) {
+  for (uint32_t at = fn->nwritebacks; at > 0; at--) {
+    if (fn->writebacks[at - 1].depth > keep) {
+      put_writeback(fn, &fn->writebacks[at - 1]);
+    }
+  }
+}
+
+/* The body is over: forget the newest binding, storing it back when the body falls out of its end. */
+void fn_probe_end(LowerFn *fn, bool falls_out) {
+  const LowerWriteback *back = &fn->writebacks[--fn->nwritebacks];
+  if (falls_out) {
+    put_writeback(fn, back);
+  }
 }

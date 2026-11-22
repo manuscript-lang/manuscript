@@ -292,6 +292,7 @@ typedef struct MirTypeDef {
   MirField *fields; /* in the module arena */
   uint32_t nfields;
   bool indirect; /* one pointer to a heap block */
+  bool native;   /* an extern type the runtime reads and writes by address (`@repr=inline<N>`): words, no fields to name */
 } MirTypeDef;
 
 MS_LIST_DEFINE(MirTypeDefList, mir_type_def_list, MirTypeDef)

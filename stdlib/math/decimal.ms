@@ -18,6 +18,7 @@ export enum RoundingMode:
 	Floor  // Rounds toward negative infinity.
 	Ceil  // Rounds toward positive infinity.
 
+@repr=inline24
 // An exact decimal value. Conversions are explicit because binary floats may round.
 // ms: data
 export extern type Decimal

@@ -80,6 +80,14 @@ static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t 
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+      !stmt->u.branch.is_mutable) { /* `if r := value:` owns the payload it binds */
+    const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
+    if (bound != NULL && bound->kind == MS_REF_LOCAL) {
+      add_closer(pass, stmt->u.branch.binding->id, MS_REF_LOCAL, bound->local, ms_facts_type(pass->facts, stmt->u.branch.binding->id));
+    }
+    return;
+  }
   if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
     return;
   }
@@ -90,6 +98,9 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
   const size_t before = pass->facts->closers.len;
   add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));
+  if (stmt->u.bind.is_mutable && pass->facts->closers.len > before) {
+    pass->facts->closers.ptr[before].flags |= MS_CLOSER_VAR;
+  }
   if (stmt->u.bind.is_mutable && pass->facts->closers.len == before) {
     /* A `var` holds its value in a slot that drops it, so that a move out of the `var` leaves nothing to drop. */
     const MsCloser drop = {.node = node, .ref_kind = MS_REF_LOCAL, .local = ref->local,
@@ -233,6 +244,10 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_CALL && expr->u.call.args.len == 0 && expr->u.call.callee->kind == MS_E_MEMBER &&
       expr->u.call.callee->u.member.name == pass->close && expr->u.call.callee->u.member.left->kind == MS_E_NAME) {
     flag(pass, ms_facts_ref(pass->facts, expr->u.call.callee->u.member.left->id), MS_CLOSER_EXPLICIT);
+  }
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY && expr->u.bin.left->kind == MS_E_NAME &&
+      ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) { /* `r?` moves the payload out of the Result `r` */
+    flag(pass, ms_facts_ref(pass->facts, expr->u.bin.left->id), MS_CLOSER_PARTIAL);
   }
   const MsExpr *root = expr;
   while (root->kind == MS_E_MEMBER) {

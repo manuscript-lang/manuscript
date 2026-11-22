@@ -115,11 +115,42 @@ static bool source_range(LowerFn *fn, const MsExpr *iter, ForSource *src) {
   return true;
 }
 
+/* A map or set walks the list of its entries or values, a copy the loop owns: the `entries` of a map, the `values`
+ * of a set. MIR_NONE when `value` is neither. */
+static MirValue collection_items(LowerFn *fn, const MsExpr *iter, MirValue value) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy type = ms_ty_subst(types, ms_facts_type(fn->facts, iter->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const bool map = ms_ty_is(types, type, MS_BUILTIN_Map);
+  if (!map && !ms_ty_is(types, type, MS_BUILTIN_Set)) {
+    return MIR_NONE;
+  }
+  const uint32_t method = lower_named_method(fn->cx, type, map ? "entries" : "values");
+  if (method != MIR_NONE) {
+    const MirValue items = mir_b_call(&fn->b, method, &value, 1);
+    fn_own_result(fn, items);
+    return items;
+  }
+  /* a bodiless `values` is the runtime's own */
+  const MirTyData *set = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value));
+  MirValue items = MIR_NONE;
+  const MirTy list_ty = set->nargs == 1 ? mir_ty_list(fn->cx->module, set->args[0]) : MIR_NONE;
+  const MsSpan operation = ms_span_of_text("values");
+  if (list_ty == MIR_NONE || !fn_native_on(fn, iter, type, operation, 1, &value, list_ty, &items)) {
+    return MIR_NONE;
+  }
+  return items;
+}
+
 static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
-  const bool moved = ms_facts_use(fn->facts, iter->id) == MS_USE_MOVE;
-  const MirValue list = fn_expr(fn, iter, moved ? LW_MOVE : LW_BORROW);
+  bool moved = ms_facts_use(fn->facts, iter->id) == MS_USE_MOVE;
+  MirValue list = fn_expr(fn, iter, moved ? LW_MOVE : LW_BORROW);
   if (list == MIR_NONE) {
     return false;
+  }
+  const MirValue items = collection_items(fn, iter, list);
+  if (items != MIR_NONE) {
+    list = items;
+    moved = false;
   }
   const MirModule *module = fn->cx->module;
   const MirTy list_ty = mir_b_ty(&fn->b, list);
@@ -247,32 +278,41 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (next == MIR_NONE) {
     return fn_fail(fn, "`for` needs a list, a range, or a value whose `next` has a body");
   }
-  if (fn_place_changeable(fn, iter)) {
-    return fn_fail(fn, "`for` over an iterator variable is not lowered yet");
-  }
-  MirValue value = fn_expr(fn, iter, LW_MOVE);
-  if (value == MIR_NONE) {
-    return false;
-  }
-  const MirTy iter_ty = mir_b_ty(&fn->b, value);
-  const bool owns = mir_needs_drop(fn->cx->module, iter_ty);
-  if (owns) {
-    if (fn_fresh_owner(fn, value)) {
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
-    } else {
-      value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, iter_ty);
+  /* An iterator held in a variable is advanced in place: its value sits in a slot for the loop, and goes back
+   * to the variable when the loop ends. */
+  const bool on_variable = fn_place_changeable(fn, iter);
+  VarSlot held = {0};
+  MirValue slot = MIR_NONE;
+  if (on_variable) {
+    slot = fn_var_slot(fn, iter, &held);
+    if (slot == MIR_NONE) {
+      return false;
     }
-  }
-  const MirValue slot = emit(fn, MOP_Slot, NULL, 0, imm_ty(iter_ty), MIR_PTR);
-  const MirValue stored[2] = {slot, value};
-  (void)emit(fn, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  if (owns) {
-    const uint32_t close = drop_close_for(fn->cx, iter_ty);
-    if (close == MIR_NONE) {
-      return fn_fail(fn, "the iterator close function was not built");
+  } else {
+    MirValue value = fn_expr(fn, iter, LW_MOVE);
+    if (value == MIR_NONE) {
+      return false;
     }
-    const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = close + 2};
-    (void)emit(fn, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+    const MirTy iter_ty = mir_b_ty(&fn->b, value);
+    const bool owns = mir_needs_drop(fn->cx->module, iter_ty);
+    if (owns) {
+      if (fn_fresh_owner(fn, value)) {
+        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+      } else {
+        value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, iter_ty);
+      }
+    }
+    slot = emit(fn, MOP_Slot, NULL, 0, imm_ty(iter_ty), MIR_PTR);
+    const MirValue stored[2] = {slot, value};
+    (void)emit(fn, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    if (owns) {
+      const uint32_t close = drop_close_for(fn->cx, iter_ty);
+      if (close == MIR_NONE) {
+        return fn_fail(fn, "the iterator close function was not built");
+      }
+      const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = close + 2};
+      (void)emit(fn, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+    }
   }
   const MirBlock head = mir_b_new_block(&fn->b);
   const MirBlock body = mir_b_new_block(&fn->b);
@@ -290,7 +330,22 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (more == MIR_NONE) {
     return false;
   }
-  mir_b_br_if(&fn->b, more, body, NULL, 0, done, NULL, 0);
+  /* A source that can fail answers `T?!`: an error ends the loop, as does `none` inside an ok. */
+  const MirTyData *answer = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, result));
+  MirValue payload = result;
+  if (answer->kind == MK_ALT) {
+    const MirCaseDef *ok_case = &fn->cx->module->alts.ptr[answer->id].cases[0];
+    const MirTy payload_ty = ok_case->nfields > 0 ? ok_case->fields[0].ty : MIR_VOID;
+    const MirBlock inner = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, more, inner, NULL, 0, done, NULL, 0);
+    mir_b_seal_block(&fn->b, inner);
+    enter(fn, inner);
+    const MirImm field = {.tag = MI_ALTFIELD, .a = answer->id, .b = 0, .c = 0};
+    payload = mir_b_emit(&fn->b, MOP_AltGet, &result, 1, field, payload_ty);
+    mir_b_br_if(&fn->b, mir_b_emit(&fn->b, MOP_OptIsSome, &payload, 1, (MirImm){0}, MIR_BOOL), body, NULL, 0, done, NULL, 0);
+  } else {
+    mir_b_br_if(&fn->b, more, body, NULL, 0, done, NULL, 0);
+  }
   mir_b_seal_block(&fn->b, body);
   mir_b_seal_block(&fn->b, done);
   enter(fn, done);
@@ -304,8 +359,8 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (result_owned) {
     fn_own(fn, fn_scope(fn), result);
   }
-  const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, result));
-  const MirValue item = emit(fn, MOP_OptGet, &result, 1, (MirImm){0}, opt->elem);
+  const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
+  const MirValue item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   mir_b_def_var(&fn->b, fn_local(fn, binding->local, opt->elem), item);
   bool ok = fn_stmts(fn, stmt->u.each.body);
   if (!fn->terminated) {
@@ -320,6 +375,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   mir_b_seal_block(&fn->b, head);
   mir_b_seal_block(&fn->b, exit);
   enter(fn, exit);
+  if (on_variable && !fn_var_slots_back(fn, &held, 1)) {
+    return false;
+  }
   fn_scope_end(fn);
   return ok && !fn->failed;
 }
@@ -335,7 +393,9 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *iter = stmt->u.each.iter;
   (void)fn_scope_begin(fn);
   const MirTy iter_ty = is_range(fn, iter) ? MIR_INT : fn_type(fn, ms_facts_type(fn->facts, iter->id));
-  if (iter_ty != MIR_INT && mir_ty_data(fn->cx->module, iter_ty)->kind != MK_LIST) {
+  const MirTyData *iter_data = mir_ty_data(fn->cx->module, iter_ty);
+  const bool collection = iter_data->kind == MK_OBJ && iter_data->obj_class == MIR_OBJ_COLLECTION;
+  if (iter_ty != MIR_INT && iter_data->kind != MK_LIST && !collection) {
     return for_iterator(fn, stmt, binding);
   }
   ForSource src;

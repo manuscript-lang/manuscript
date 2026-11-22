@@ -107,7 +107,7 @@ static void stat_job(void *data) {
     return;
   }
   /* The name is the last element of the path, as text. */
-  ms_fs_append_lossy(&job->text, ms_fs_path_base(job->path));
+  ms_fs_append_lossy(&job->text, ms_path_base(job->path));
 }
 
 uint8_t msstd_fs_stat(const MsString *path, uint8_t follow, MsFsInfo *out, MsString *err) {
@@ -214,7 +214,7 @@ void ms_fs_entry_kind(MsSpan directory, MsSpan name, int type, bool *is_director
     return;
   }
   MsStrBuild full = ms_strbuild_new();
-  ms_fs_path_join(directory, name, &full);
+  ms_path_join(directory, name, &full);
   MsOsText text = ms_os_text_new(ms_strbuild_span(&full));
   uv_stat_t stat;
   if (ms_fs_stat_path(text.ptr, false, &stat) == 0) {
