@@ -117,6 +117,18 @@ static bool is_plain_enum(const MirModule *module, MirTy ty) {
  * and the value (the case index for an enum; 0 when none). False when the operand is neither. */
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, optional));
+  if (data->kind == MK_OPT && data->elem == MIR_STR) {
+    /* A `String?`: whether it holds a value, and the address of the text (read only when it does). */
+    const MirValue held = fn_emit(fn, MOP_OptIsSome, &optional, 1, (MirImm){0}, MIR_BOOL);
+    const MirValue text = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, MIR_STR);
+    const MirImm of_type = {.tag = MI_TY, .a = MIR_STR};
+    const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    const MirValue store[2] = {slot, text};
+    (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+    out[0] = held;
+    out[1] = slot;
+    return true;
+  }
   if (data->kind != MK_OPT || (data->elem != MIR_INT && !is_plain_enum(fn->cx->module, data->elem))) {
     return false;
   }
