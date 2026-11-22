@@ -138,6 +138,33 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   return slot;
 }
 
+/* Leaves the function with the error of the failed Result `value`: its scope is unwound and the error is the function's. */
+bool fn_return_error(LowerFn *fn, MirValue value) {
+  uint32_t alt = 0;
+  const MirAltDef *def = result_def(fn, mir_b_ty(&fn->b, value), &alt);
+  uint32_t ret_alt = 0;
+  if (def == NULL || result_def(fn, fn->ret, &ret_alt) == NULL || def->cases[ERR_CASE].nfields == 0) {
+    return fn_fail(fn, "`try` needs a Result operand in a function that returns a Result");
+  }
+  const MirTy err_ty = def->cases[ERR_CASE].fields[0].ty;
+  const MirTy ret_err = fn->cx->module->alts.ptr[ret_alt].cases[ERR_CASE].nfields > 0
+                            ? fn->cx->module->alts.ptr[ret_alt].cases[ERR_CASE].fields[0].ty
+                            : MIR_VOID;
+  if (err_ty != ret_err) {
+    return fn_fail(fn, "`try` of a Result whose error type differs from the function's is not lowered yet");
+  }
+  const MirImm err_imm = {.tag = MI_ALTFIELD, .a = alt, .b = ERR_CASE, .c = 0};
+  /* The error moves out of the operand, which the function scope then drops without it. */
+  const MirOp take = mir_needs_drop(fn->cx->module, err_ty) ? MOP_AltTake : MOP_AltGet;
+  const MirValue err = mir_b_emit(&fn->b, take, &value, 1, err_imm, err_ty);
+  const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, fn->ret);
+  const MirImm none = {0};
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
+  fn_scope_unwind(fn, 0);
+  mir_b_ret(&fn->b, failed);
+  return true;
+}
+
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
   const bool fresh = want == LW_MOVE && value != MIR_NONE && fn_fresh_owner(fn, value);
@@ -149,17 +176,8 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     return try_optional(fn, expr, value);
   }
   const MirAltDef *def = result_def(fn, mir_b_ty(&fn->b, value), &alt);
-  uint32_t ret_alt = 0;
-  if (def == NULL || result_def(fn, fn->ret, &ret_alt) == NULL || def->cases[ERR_CASE].nfields == 0) {
+  if (def == NULL) {
     (void)fn_fail(fn, "`try` needs a Result operand in a function that returns a Result");
-    return MIR_NONE;
-  }
-  const MirTy err_ty = def->cases[ERR_CASE].fields[0].ty;
-  const MirTy ret_err = fn->cx->module->alts.ptr[ret_alt].cases[ERR_CASE].nfields > 0
-                            ? fn->cx->module->alts.ptr[ret_alt].cases[ERR_CASE].fields[0].ty
-                            : MIR_VOID;
-  if (err_ty != ret_err) {
-    (void)fn_fail(fn, "`try` of a Result whose error type differs from the function's is not lowered yet");
     return MIR_NONE;
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
@@ -171,15 +189,9 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   mir_b_seal_block(&fn->b, ok_block);
   mir_b_seal_block(&fn->b, err_block);
   mir_b_switch_to(&fn->b, err_block);
-  const MirImm err_imm = {.tag = MI_ALTFIELD, .a = alt, .b = ERR_CASE, .c = 0};
-  /* The error moves out of the operand, which the function scope then drops without it. */
-  const MirOp take = mir_needs_drop(fn->cx->module, err_ty) ? MOP_AltTake : MOP_AltGet;
-  const MirValue err = mir_b_emit(&fn->b, take, &value, 1, err_imm, err_ty);
-  const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, fn->ret);
-  const MirImm none = {0};
-  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
-  fn_scope_unwind(fn, 0);
-  mir_b_ret(&fn->b, failed);
+  if (!fn_return_error(fn, value)) {
+    return MIR_NONE;
+  }
   mir_b_switch_to(&fn->b, ok_block);
   const MirCaseDef *ok = &def->cases[OK_CASE];
   if (ok->nfields == 0) {
