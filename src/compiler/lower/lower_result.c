@@ -86,6 +86,49 @@ static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
   return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
 }
 
+/* `place?.change()`: the optional `place` holds is taken; absent, the function returns as `?` does (the
+ * optional put back); present, its payload moves into a slot the method changes, and `fn_var_slots_back`
+ * wraps it and stores it into `place` again. */
+MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
+  const MsExpr *place = expr->u.bin.left;
+  const MirTyData *ret = mir_ty_data(fn->cx->module, fn->ret);
+  MirValue taken;
+  MirValue record = MIR_NONE;
+  if (!fn_take_field(fn, place, &record, &taken) && !fn_take_place(fn, place, &taken)) {
+    return MIR_NONE;
+  }
+  const MirTy opt_ty = mir_b_ty(&fn->b, taken);
+  const MirTyData *opt = mir_ty_data(fn->cx->module, opt_ty);
+  if (opt->kind != MK_OPT || (ret->kind != MK_OPT && fn->ret != MIR_VOID && !fn->decl_void)) {
+    return fn_fail(fn, "`?` on an Optional needs a function that returns an Optional or nothing") ? MIR_NONE : MIR_NONE;
+  }
+  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+  const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &taken, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, none_block);
+  if (!(record != MIR_NONE ? fn_put_field(fn, place, record, taken) : fn_put_place(fn, place, taken))) {
+    return MIR_NONE;
+  }
+  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
+  if (absent != MIR_NONE) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &absent, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(fn, 0);
+  mir_b_ret(&fn->b, absent);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirValue payload = mir_b_emit(&fn->b, MOP_OptGet, &taken, 1, (MirImm){0}, opt->elem);
+  const MirImm of_type = {.tag = MI_TY, .a = opt->elem};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue stored[2] = {slot, payload};
+  (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, opt->elem) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  *out = (VarSlot){place, slot, opt->elem, record, opt_ty};
+  return slot;
+}
+
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
   const bool fresh = want == LW_MOVE && value != MIR_NONE && fn_fresh_owner(fn, value);
@@ -162,6 +205,10 @@ MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   }
   if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
     return mir_b_emit(&fn->b, MOP_FNeg, &operand, 1, (MirImm){0}, ty);
+  }
+  MirValue negated;
+  if (expr->op == MS_U_NEG && fn_object_negate(fn, operand, &negated)) {
+    return negated;
   }
   return fn_emit(fn, MOP_INegChk, &operand, 1, (MirImm){0}, ty);
 }

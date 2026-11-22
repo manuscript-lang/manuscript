@@ -211,8 +211,9 @@ export fn set_options[T](
 
 // Internal: the result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
-	if value := msrt_promise_take[V](id): return ok(value)
-	return error(outcome(id, 4))
+	taken := msrt_promise_take[V](id)
+	if taken.is_none(): return error(outcome(id, 4))
+	return ok(taken.get())
 
 // Internal: the error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
@@ -228,12 +229,11 @@ fn failure(id: Int, code: Int) Error:
 	return outcome(id, code)
 
 // Stores how the work ended (its result or error) in the promise `id`.
-export fn complete[U](id: Int, result: U!) Void:
-	match result:
-		ok(value):
-			msrt_promise_put(id, value, 0)
-		error(cause):
-			msrt_promise_put(id, cause, 1)
+export fn complete[U](id: Int, move result: U!) Void:
+	if result.is_error():
+		msrt_promise_put(id, result.err(), 1)
+	else:
+		msrt_promise_put(id, result.get(), 0)
 
 // Starts `entry` like a `Placement.Here` promise, except that when no other task is
 // running it runs in the task that first waits on it, which saves the cost of a task

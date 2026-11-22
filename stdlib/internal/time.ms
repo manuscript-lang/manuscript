@@ -28,15 +28,15 @@ export extern fn msstd_time_duration_to_hours(value: Int) Float
 // The bundled zone database's entry for an exact name (a TZif version 2+ block, or an
 // IANA name for
 // `windows/<key>`), or empty Bytes when there is none.
-export extern fn msstd_time_zone_data(name: String) Bytes
+export extern fn msstd_time_zone_data(name: String) move Bytes
 
 // How the host names its zone: `tz:NAME` from the TZ setting, `link:NAME` from
 // /etc/localtime, `windows:KEY` from the system setting, or `` when it does not.
-export extern fn msstd_time_system_zone() String
+export extern fn msstd_time_system_zone() move String
 
 // The whole of the system zone file (/etc/localtime), or empty Bytes when there is
 // none.
-export extern fn msstd_time_system_zone_file() Bytes!
+export extern fn msstd_time_system_zone_file() move Bytes!
 
 // Validates calendar fields and returns their local seconds (the fields read as UTC); a
 // field out of its range returns `ERANGE`.
@@ -57,7 +57,7 @@ export extern fn msstd_time_from_local(
 	local: Int,
 	nanosecond: Int,
 	offset: Int,
-) Timestamp!
+) move Timestamp!
 
 export extern fn msstd_time_instant_shift(value: Instant, duration: Int) Instant
 
@@ -65,23 +65,23 @@ export extern fn msstd_time_instant_difference(value: Instant, other: Instant) I
 
 export extern fn msstd_time_instant_compare(value: Instant, other: Instant) Int
 
-export extern fn msstd_time_timestamp_to_string(value: Timestamp) String
+export extern fn msstd_time_timestamp_to_string(value: Timestamp) move String
 
 export extern fn msstd_time_timestamp_calendar(
 	value: Timestamp,
 	offset: Int,
 	zone: String,
-) Date
+) move Date
 
 export extern fn msstd_time_timestamp_format(
 	value: Timestamp,
 	pattern: String,
 	offset: Int,
 	zone: String,
-) String
+) move String
 
-export extern fn msstd_time_parse_timestamp(text: String) Timestamp!
+export extern fn msstd_time_parse_timestamp(text: String) move Timestamp!
 
 export extern fn msstd_time_clock_now() Instant
 
-export extern fn msstd_time_wall_clock_now() Timestamp
+export extern fn msstd_time_wall_clock_now() move Timestamp

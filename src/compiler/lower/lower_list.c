@@ -14,8 +14,13 @@ static bool is_fresh_owner(const LowerFn *fn, MirValue value) {
 }
 
 MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
-  const MirTy list_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  MirTy list_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirTyData *data = mir_ty_data(fn->cx->module, list_ty);
+  if (data->kind != MK_LIST && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_LIST) {
+    /* The checker left the literal's type open (`get_or([])`): the parameter it fills gives it. */
+    list_ty = fn->hint;
+    data = mir_ty_data(fn->cx->module, list_ty);
+  }
   if (data->kind != MK_LIST) {
     (void)fn_fail(fn, "a list literal is not typed as a list");
     return MIR_NONE;
@@ -37,7 +42,7 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
     if (is_fresh_owner(fn, items[index])) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &items[index], 1, (MirImm){0}, MIR_NONE); /* the list owns it */
     } else {
-      items[index] = mir_b_emit(&fn->b, MOP_Clone, &items[index], 1, (MirImm){0}, data->elem);
+      items[index] = fn_implicit_clone(fn, items[index], false);
     }
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
@@ -79,7 +84,7 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue args[2] = {list, at};
   const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
   if (want == LW_MOVE && mir_needs_drop(fn->cx->module, data->elem)) {
-    return fn_emit(fn, MOP_Clone, &element, 1, (MirImm){0}, data->elem);
+    return fn_implicit_clone(fn, element, true);
   }
   return element;
 }

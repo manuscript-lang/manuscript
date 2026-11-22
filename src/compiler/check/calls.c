@@ -125,7 +125,7 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
   }
   MsTy owner = MS_TY_NONE;
   uint32_t index = 0;
-  return body_find_case(body, callee->u.sym, expected, &owner, &index) &&
+  return body_find_case(body, callee->u.sym, expected, &callee->pos, &owner, &index) &&
          case_target(body, callee, callee->u.sym, owner, target);
 }
 
@@ -443,13 +443,24 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
   }
   /* An argument checked while the callee's variables were open meets its final parameter type only now. */
   for (size_t index = 0; index < matched->count; index++) {
-    if (matched->slot[index] < 0 || arg_tys[index] == MS_TY_NONE) {
+    if (matched->slot[index] < 0) {
       continue;
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     if (mentions_vars(types, param, &target->vars)) {
-      body_convert(body, call->u.call.args.ptr[matched->slot[index]].value, arg_tys[index],
-                   expected_param(body, target, param, bound));
+      const MsExpr *value = call->u.call.args.ptr[matched->slot[index]].value;
+      const MsTy final = expected_param(body, target, param, bound);
+      if ((arg_tys[index] == MS_TY_NONE || body_has_foreign_variable(body, arg_tys[index])) && !mentions_vars(types, final, &target->vars)) {
+        /* An argument typed while a variable was open (`Box(none)` beside `Box(value)`) is typed again at its final type. */
+        const bool quiet = body->quiet;
+        body->quiet = true;
+        const MsTy again = body_expr(body, value, final);
+        body->quiet = quiet;
+        arg_tys[index] = again != MS_TY_NONE ? again : arg_tys[index];
+      }
+      if (arg_tys[index] != MS_TY_NONE) {
+        body_convert(body, value, arg_tys[index], final);
+      }
     }
   }
 }

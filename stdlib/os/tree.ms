@@ -25,10 +25,10 @@ fn names(tree: FileTree) List[String]:
 export interface FileTree:
 	// Reads a whole file; more than `max_bytes` bytes returns `EOVERFLOW`. A missing
 	// path is `ENOENT`.
-	fn read(path: String, max_bytes: Int?) Bytes!
+	fn read(path: String, max_bytes: Int?) move Bytes!
 	// Lists a directory's children, sorted by name. A missing path is `ENOENT`, a file
 	// is `EINVAL`, and more than `max_entries` children (when given) is `EOVERFLOW`.
-	fn children(path: String, max_entries: Int?) List[DirectoryEntry]!
+	fn children(path: String, max_entries: Int?) move List[DirectoryEntry]!
 
 // Normalizes `path` to a clean path under the root: its parts joined by `/`, with the
 // root as the empty string. A NUL byte or a `..` that would leave the root is `EINVAL`.
@@ -280,7 +280,7 @@ Bytes held in the program's read-only data. `[embed]` modules call this with the
 string literal; the compiler decodes the text when it builds the program, so the running program holds the raw bytes
 and a read decodes nothing. The argument must be a string literal.
 */
-export extern fn msstd_embed_bytes(encoded: String) Bytes
+export extern fn msstd_embed_bytes(encoded: String) move Bytes
 
 /*
 A read-only tree over files held in the program. Generated modules for `[embed]` in `ms.toml` build one with

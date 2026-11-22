@@ -58,6 +58,7 @@ struct MsTypeRef {
   MsTypeRefs args;   /* named */
   MsParams params;   /* fn */
   MsTypeRef *result; /* fn */
+  bool result_moves; /* fn: the result is written `move T`, owned memory handed over */
 };
 
 struct MsParam {
@@ -179,6 +180,7 @@ struct MsExpr {
     struct {
       MsParams params;
       MsTypeRef *result;
+      bool result_moves;
       MsStmts body;
     } lambda;
     struct {
@@ -298,9 +300,13 @@ typedef struct MsFunc {
   MsTypeParams type_params;
   MsParams params;
   MsTypeRef *result;
+  bool result_moves; /* `fn f() move T`: the result hands over owned memory; an unmarked result borrows */
   MsStmts body;
   bool external;
   bool bodiless; /* declared with the body `...`: the runtime provides it */
+  /* `@words=<status> "<text>"` on an extern fn: how this native words that failure status; words_status 0 when absent */
+  uint32_t words_status;
+  MsSpan words_text;
 } MsFunc;
 
 typedef struct MsMethod {

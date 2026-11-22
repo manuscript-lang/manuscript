@@ -243,6 +243,24 @@ static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const
   ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
 }
 
+/* The prelude's constructor names: a module declaration cannot reuse one. */
+static bool is_prelude_constructor(const MsCheckProgram *program, MsName name) {
+  const MsSpan text = ms_names_span(program->names, name);
+  return ms_span_is_text(text, "some") || ms_span_is_text(text, "none") || ms_span_is_text(text, "ok") ||
+         ms_span_is_text(text, "error");
+}
+
+static void report_constructor_reuse(MsCheckProgram *program, uint32_t module, const MsDecl *decl, MsName name) {
+  MsStrBuild text = ms_strbuild_new();
+  const MsSpan span = ms_names_span(program->names, name);
+  ms_strbuild_append_text(&text, "declaration ");
+  ms_strbuild_append(&text, span);
+  ms_strbuild_append_text(&text, " reuses a prelude constructor name; rename it, because ");
+  ms_strbuild_append(&text, span);
+  ms_strbuild_append_text(&text, " always refers to the prelude case");
+  ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+}
+
 void ms_check_declare(MsCheckProgram *program, uint32_t module) {
   const MsModule *tree = program->modules.ptr[module].tree;
   for (uint32_t index = 0; index < tree->ndecls; index++) {
@@ -251,11 +269,15 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
     if (!ms_check_declared_name(decl, &name)) {
       continue;
     }
+    if (module < program->user_modules && is_prelude_constructor(program, name)) {
+      report_constructor_reuse(program, module, decl, name);
+    }
     if (module < program->user_modules && is_prelude_name(program, name)) {
       report_prelude_reuse(program, module, decl, name);
       continue;
     }
-    if (ms_scope_has(&program->modules.ptr[module].scope, name)) {
+    if (ms_builtin_primitive(ms_names_span(program->names, name)) != MS_BUILTIN_NONE ||
+        ms_scope_has(&program->modules.ptr[module].scope, name)) {
       report_duplicate(program, module, decl, name);
       continue;
     }

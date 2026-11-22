@@ -1,0 +1,105 @@
+<DIR>/main.ms:5:20: MSL118: Use is_empty() instead of comparing length() with 0
+   |
+ 5 |     if xs.length() == 0:
+   |                    ^
+<DIR>/main.ms:7:19: MSL118: Use is_empty() instead of comparing length() with 0
+   |
+ 7 |     if m.length() > 0:
+   |                   ^
+<DIR>/main.ms:9:26: MSL118: Use is_empty() instead of comparing length() with 0
+   |
+ 9 |     return text.length() == 0
+   |                          ^
+<DIR>/main.ms:12:15: MSL119: Index the list with xs[i] instead of xs.get(i)
+    |
+ 12 |     return xs.get(0)
+    |               ^
+<DIR>/main.ms:16:22: MSL120: Use map.get_or(key, default) instead of map.get(key).get_or(default)
+    |
+ 16 |     total = m.get(k).get_or(0)
+    |                      ^
+<DIR>/main.ms:17:5: MSL127: Update the map entry in place with `m[k] op= value`
+    |
+ 17 |     m[k.clone()] = m.get(k).get() + 1
+    |     ^
+<DIR>/main.ms:17:29: warning MSL110: Optional.get() without a default faults when the value is absent; use 'if value := ...:', use get_or(default), or get_or_else
+    |
+ 17 |     m[k.clone()] = m.get(k).get() + 1
+    |                             ^
+<DIR>/main.ms:18:5: warning MSL116: `counts` reaches std.console.write: counts -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+    |
+ 18 |     print(total)
+    |     ^
+<DIR>/main.ms:21:5: MSL121: Write the default and the override as one `x := if c: b else: a`
+    |
+ 21 |     var x = 1
+    |     ^
+<DIR>/main.ms:27:5: MSL126: Return the value directly instead of binding it first
+    |
+ 27 |     r := n + 1
+    |     ^
+<DIR>/main.ms:31:5: MSL122: Count with `for i in start..end:` instead of a `var` and a `while` with `i += 1`
+    |
+ 31 |     var i = 0
+    |     ^
+<DIR>/main.ms:36:5: warning MSL123: Loop over the list directly: `for item in xs:` instead of indexing xs[j]
+    |
+ 36 |     for j in 0..xs.length():
+    |     ^
+<DIR>/main.ms:38:5: warning MSL124: Build the list with `xs.map(fn x: ...)` or `xs.filter(fn x: ...)` instead of a loop that appends
+    |
+ 38 |     var out: List[Int] = []
+    |     ^
+<DIR>/main.ms:39:5: warning MSL125: Append every element with `out.extend(xs)` instead of a loop
+    |
+ 39 |     for x in xs:
+    |     ^
+<DIR>/main.ms:44:14: warning MSL134: `ys` would hold Void: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, or use sorted() or reversed() for a new list
+    |
+ 44 |     ys := xs.sort()
+    |              ^
+<DIR>/main.ms:45:5: warning MSL116: `sorted` reaches std.console.write: sorted -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+    |
+ 45 |     print(xs.reverse())
+    |     ^
+<DIR>/main.ms:45:14: warning MSL134: this prints `void`: the call returns nothing, and sort() and reverse() change their receiver in place; call it as a statement, then print the list
+    |
+ 45 |     print(xs.reverse())
+    |              ^
+<DIR>/main.ms:49:5: warning MSL116: `nothing` reaches std.console.write: nothing -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+    |
+ 49 |     print("x")
+    |     ^
+<DIR>/main.ms:50:5: MSL128: Drop the final return: the end of the function already returns it
+    |
+ 50 |     return ok()
+    |     ^
+<DIR>/main.ms:53:14: warning MSL135: `to_string()` on Bytes gives `Bytes(104, 105)`, not the text; `decode_utf8()` returns the text as a `String?`, so write `.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?`
+    |
+ 53 |     return b.to_string()
+    |              ^
+<DIR>/main.ms:62:27: warning MSL132: `slice(..).get_or(..)` returns the fallback for any bad range, including an end past the length; use `?` to report it, or clamp the end with `min(end, xs.length())` first
+    |
+ 62 |     return xs.slice(1, 3).get_or([]).clone()
+    |                           ^
+<DIR>/main.ms:66:7: warning MSL130: A statement `result.get()` faults when the call fails; write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome
+    |
+ 66 |     r.get()
+    |       ^
+<DIR>/main.ms:67:12: MSL129: Use `void result` to ignore a Void! outcome instead of result.get_or(none)
+    |
+ 67 |     unit().get_or(none)
+    |            ^
+<DIR>/main.ms:68:5: warning MSL116: `run` reaches std.console.write: run -> print; permit it with `// ms: allow_effect std.console.write`, move the call to the caller, or take a capability parameter
+    |
+ 68 |     print(parse("2"))
+    |     ^
+<DIR>/main.ms:68:5: warning MSL131: `print` of a Result shows the `ok(...)` wrapper; write `call()?` in a function that returns a Result, or `if value := call():` to read the success
+    |
+ 68 |     print(parse("2"))
+    |     ^
+<DIR>/main.ms:70:5: MSL128: Drop the final return: the end of the function already returns it
+    |
+ 70 |     return ok()
+    |     ^
+14 warnings; warnings do not fail ms lint; pass --deny-warnings to fail on them

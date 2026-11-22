@@ -38,8 +38,14 @@ typedef struct Body {
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
+  MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
   MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
+
+/* ---- test_fixture.c ---- */
+
+/* Checks the module's `make_fixture`, and sets `body->fixture_ty`. */
+void ms_check_test_fixture(Body *body);
 
 /* ---- bodies.c ---- */
 
@@ -73,8 +79,8 @@ const MsDef *body_def(const Body *body, MsTy ty);
 bool body_field(Body *body, MsTy receiver, MsName name, MsTy *ty, uint32_t *index);
 /* The case `name` of the enum `owner`, or NULL. */
 const MsTyCase *body_case_of(Body *body, MsTy owner, MsName name, uint32_t *index);
-/* A visible enum that has a case `name`; `expected` picks the instance when it is that enum. */
-bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_t *index);
+/* A visible enum that has a case `name`; `expected` picks the instance when it is that enum. Two visible enums with the case are reported at `at` (when given), and none is found. */
+bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsTy *owner, uint32_t *index);
 /* The reference a use of `symbol` records. */
 /* The reference a found method or operation gives its call: a native when the compiler or runtime provides it. */
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver);

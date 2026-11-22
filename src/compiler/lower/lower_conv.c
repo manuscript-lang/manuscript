@@ -140,7 +140,7 @@ uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy if
 static MirValue view_as_interface(LowerFn *fn, const MsConversion *conversion, MirValue value) {
   const uint32_t vtable = lower_vtable(fn->cx, &fn->subst, conversion->from, conversion->to);
   if (vtable == MIR_NONE) {
-    fn->failed = true;
+    (void)fn_fail(fn, "a value cannot be viewed as this interface: a method of the interface has no body for its type");
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_VTABLE, .a = vtable};
@@ -158,6 +158,9 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
   if (conversion->kind == MS_CONV_OPTIONAL_WRAP) {
     const MirImm none = {0};
     return fn_emit(fn, MOP_OptSome, &value, 1, none, fn_type(fn, conversion->to));
+  }
+  if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
+    return fn_adapt_function(fn, value, fn_type(fn, conversion->to));
   }
   (void)fn_fail(fn, "this conversion (kind %d) is not lowered yet", (int)conversion->kind);
   return MIR_NONE;

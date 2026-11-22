@@ -83,12 +83,12 @@ static bool is_constructor(const Uses *pass, const MsExpr *call) {
 }
 
 /* Whether the callee is a method declared `move fn`, which takes its receiver. */
-static bool consuming_method(const Uses *pass, const MsRef *callee) {
+bool ms_own_consuming_method(const MsCheckProgram *program, const MsRef *callee) {
   if (callee->kind != MS_REF_METHOD) {
     return false;
   }
-  for (size_t index = 0; index < pass->program->methods.len; index++) {
-    const MsMethodEntry *entry = &pass->program->methods.ptr[index];
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *entry = &program->methods.ptr[index];
     if (entry->module == callee->decl.module && entry->source->id == callee->decl.node) {
       return entry->source->consuming;
     }
@@ -117,7 +117,7 @@ static void visit_call(Uses *pass, const MsExpr *call) {
   }
   if (fact != NULL && fact->arg_count != 0 && callee->kind == MS_E_MEMBER && fact->args[0].source == MS_ARG_WRITTEN &&
       fact->args[0].node.node == callee->u.member.left->id &&
-      ((fact->args[0].flags & MS_PARAM_MOVE) != 0 || consuming_method(pass, &fact->callee))) {
+      ((fact->args[0].flags & MS_PARAM_MOVE) != 0 || ms_own_consuming_method(pass->program, &fact->callee))) {
     mark_move(pass, callee->u.member.left);
   }
 }

@@ -54,6 +54,10 @@ typedef struct LowerFn {
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
+  MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
+  MirTy default_record_ty;
+  uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
+  uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
@@ -70,6 +74,8 @@ typedef struct LowerFn {
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
   uint32_t nwritebacks;
   bool failed;
+  uint32_t comparing[8]; /* the alternatives whose equality is being written out, innermost last */
+  uint32_t ncomparing;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
@@ -102,15 +108,31 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var);
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
 void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
+/* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
+bool fn_is_list(LowerFn *fn, const MsExpr *expr);
+MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
+bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
+bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
+bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
+/* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
+MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
+/* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value
+ * may leave out. The result is owned when its type needs a drop. */
+MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem);
 /* Makes the scope `scope` own `value` (kind 0 drops it). */
 void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 
 /* Emits an instruction; when its result is an owned value the innermost scope owns it. */
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
+/* A copy the source did not ask for (`.clone()` is the only explicit one): a borrowed value an owner takes. Every such
+ * copy goes through here so the rule against hidden copies has one place to be enforced; `own` makes the scope own it. */
+MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own);
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
 
 /* Whether `value` is the owned result of the instruction just emitted, held by the innermost scope. */
+/* Whether `value` is the result of the instruction just emitted and a borrowed view of something that owns it. */
+bool fn_is_borrowed_view(LowerFn *fn, MirValue value);
 bool fn_fresh_owner(LowerFn *fn, MirValue value);
 
 /* ---- resources closed at scope end (lower_close.c) ---- */
@@ -144,11 +166,15 @@ bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t 
 /* After the close of a part returned `result`: faults when it is an error, else drops it. */
 void lower_close_check(MirBuilder *b, MirValue result);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
+/* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
+void fn_init_closing(LowerFn *fn);
+/* The index in the closing tables of the `var` variable (local or parameter) `ref` names that lives in a slot, or UINT32_MAX. */
+uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
-bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view);
+bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view);
 /* `name = value` where `name` is a `var` resource: the value it holds is closed, then `value` takes its place. */
-bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done);
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
@@ -178,10 +204,19 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
+bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
 bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
                   MirTy ret, MirValue *out);
+/* The same for a receiver that lives at the address `slot` (args[0] is a view of it): a native that changes its receiver
+ * writes through the slot. */
+bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
+                       MirTy ret, MirValue *out);
+/* Whether the native `operation` of `owner` writes its receiver in place. */
+bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret);
 /* `left op right` over two values of one standard type (lower_expr.c). */
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
@@ -191,12 +226,15 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, Mi
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* `left op right` on a BigInt through its runtime function; false when the operands are not a value object. */
+/* `-value` on a value object or inline native record that has a runtime `negate`. */
+bool fn_object_negate(LowerFn *fn, MirValue operand, MirValue *out);
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out);
 
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and
  * writes the ok payload (and the failure's text) through trailing addresses. False when `name` has no such
  * signature, and nothing was emitted. */
-bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
+                    MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 
@@ -219,22 +257,31 @@ bool fn_end_is_reachable(LowerFn *fn);
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
+/* Marks the locals of `body` that a lambda written in it changes: they live in slots the lambda borrows. */
+void fn_find_shared(LowerFn *fn, MsStmts body);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
+/* The position of the interface operation the member `callee` names (`index` when it is not a member). */
+uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+/* `value` as a function value of type `to`, which differs from its own only in the parameters a call may leave out. */
+MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
 typedef struct VarSlot {
   const MsExpr *place;
   MirValue slot;
   MirTy ty;
+  MirValue record; /* the record `place` is a field of, taken out of its variable by `fn_take_field`, else MIR_NONE */
+  MirTy optional; /* the optional `place` holds when `ty` is the payload a `place?` receiver changed, else MIR_NONE */
 } VarSlot;
+MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
-MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
-MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
+MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
+MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, const MsExpr *typed);
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node);
 /* A parameter name inside a lambda body that is one of its captures: its value in `out`. */

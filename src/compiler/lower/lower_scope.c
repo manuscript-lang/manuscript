@@ -128,6 +128,31 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
   return result;
 }
 
+bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  if (insts->len == 0) {
+    return false;
+  }
+  const MirInst *last = &insts->ptr[insts->len - 1];
+  MirMode mode = MM_MOVE;
+  return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;
+}
+
+/* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error. */
+static const bool implicit_clone_is_error = false;
+
+MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
+  if (value == MIR_NONE) {
+    return MIR_NONE;
+  }
+  if (implicit_clone_is_error) {
+    (void)fn_fail(fn, "a value is copied where the source does not say `.clone()`; move it or borrow it");
+    return MIR_NONE;
+  }
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  return own ? fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty) : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
+}
+
 bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   if (insts->len == 0) {

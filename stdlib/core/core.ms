@@ -38,9 +38,8 @@ export type Error:
 // The runtime reports a failed native as a status number; lowering builds the `Error`
 // from these rows (`// ms: status <number> <kind> <words>`, built by
 // crates/ms-lower/build.rs). The message is `<domain>: <words>`, and `-` words mean the
-// native's own text is the whole message. A module that words a status differently
-// declares `// ms: words <number> <words>` at the top of its file, covering the externs
-// that file declares.
+// native's own text is the whole message. An `extern fn` that words a status differently
+// carries `@words=<number> "<words>"` on the line above its declaration.
 // ms: status 1 EINVAL invalid input
 // ms: status 2 ERANGE value out of range
 // ms: status 3 EOVERFLOW limit exceeded
@@ -100,14 +99,19 @@ fn status_words(status: Int) String:
 	return "authentication failed"
 
 // The `Error` of a failed runtime native: `status` is the native's status number, `domain` names what it works
-// on, and `said` is the text the native explained itself in, or empty. Lowering calls this for every `extern fn`
-// that returns `T!`. The filesystem words a missing path differently.
-fn msstd_status_error(status: UInt8, domain: String, said: String) Error:
+// on, and `said` is the text the native explained itself in, or empty. `overrides` holds the
+// `@words` line of the native's declaration (`NUMBER TEXT`), which takes the place of the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
+fn msstd_status_error(status: UInt8, domain: String, said: String, overrides: String) Error:
 	number := status.to_int()
 	kind := status_kind(number)
-	words := status_words(number)
-	if domain == "filesystem" and number == 5: return status_error_text("file or directory not found", kind, domain, said)
+	words := override_words(overrides, number).get_or(status_words(number))
 	return status_error_text(words, kind, domain, said)
+
+// The words `overrides` gives `number`, if any.
+fn override_words(overrides: String, number: Int) String?:
+	for line in overrides.split("\n"):
+		if words := line.cut_prefix(f"{number} "): return words
+	return none
 
 fn status_error_text(words: String, kind: String, domain: String, said: String) Error:
 	if words == "-":
@@ -147,7 +151,7 @@ Text is written as its UTF-8 encoding.
 */
 export interface Writable:
 	// The bytes to write, as a new value the writer may keep.
-	fn as_bytes() Bytes
+	fn as_bytes() move Bytes
 
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
@@ -243,7 +247,7 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used. Without a cause, `E` is `Error` with kind `ENOENT`
 // and a message naming the calling source file and line.
-fn Optional[T].ok_or[E = Error](cause: E?) T!E: ...
+fn Optional[T].ok_or[E = Error](cause: E?) move T!E: ...
 
 // Returns `ok` with the payload; for `none`, calls `create` once and returns its
 // error.
@@ -352,7 +356,7 @@ export interface Comparable:
 // parameter.
 export interface Clonable:
 	// Returns an independent deep copy of this value.
-	fn clone() Self
+	fn clone() move Self
 
 /*
 A type whose values are plain data: no resource, function, interface value or runtime handle
@@ -372,7 +376,7 @@ export interface Data: ...
 // declaring `to_string`.
 export interface Stringable:
 	// Returns this value as text.
-	fn to_string() String
+	fn to_string() move String
 
 // A type with a stable hash that is consistent with its `Equal` implementation.
 export interface Hashable:

@@ -127,6 +127,12 @@ MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix);
  * carries them as arguments. */
 void ms_check_type_variables(MsCheckProgram *program, uint32_t module);
 
+/* Whether a type parameter may not take `name`: it is a primitive or one of the reserved prelude interfaces. */
+bool ms_check_intrinsic_type_param(const MsCheckProgram *program, MsName name);
+
+/* Reports a type parameter that repeats a name or takes an intrinsic one. */
+void ms_check_report_type_param(MsCheckProgram *program, uint32_t module, const MsTypeParam *param);
+
 /* Resolves the bounds and defaults of the module's type variables, then the signatures of its types and
  * functions into checked types. Unknown type names are reported for the program's own modules. */
 void ms_check_signatures(MsCheckProgram *program, uint32_t module);
@@ -138,6 +144,11 @@ void ms_check_load_std(MsCheckProgram *program);
 bool ms_check_std_path(MsSpan path, MsSpan *name);
 
 /* Explains the imports of `module` that name nothing usable, and the redundant prelude imports. */
+/* Rejects declarations whose recursive generic applications change their type arguments. */
+void ms_check_finite_types(MsCheckProgram *program);
+/* The same for generic functions and types followed through the calls in their bodies; runs after the bodies. */
+void ms_check_finite_functions(MsCheckProgram *program);
+
 void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */

@@ -121,7 +121,8 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
   if (!parse_parameters(p, true, false, &params))
     return false;
   MsTypeRef *result = NULL;
-  if (!parse_result_type(p, &result))
+  bool result_moves = false;
+  if (!parse_result_type(p, &result, &result_moves))
     return false;
   MsStmts body = {0};
   p->ellipsis_body = false;
@@ -133,6 +134,7 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
   d->u.fn.type_params = tps;
   d->u.fn.params = params;
   d->u.fn.result = result;
+  d->u.fn.result_moves = result_moves;
   d->u.fn.body = body;
   d->u.fn.bodiless = bodiless;
   *out = d;
@@ -183,7 +185,8 @@ MS_NODISCARD static bool extern_fn_declaration(Parser *p, MsToken token, MsDecl 
   if (!parse_parameters(p, true, false, &params))
     return false;
   MsTypeRef *result = NULL;
-  if (!parse_result_type(p, &result))
+  bool result_moves = false;
+  if (!parse_result_type(p, &result, &result_moves))
     return false;
   if (parse_kind(p) == MS_T_Colon) {
     parse_fail(p, parse_peek(p), ms_span_of_text("an extern fn has no body; remove the ':'"));
@@ -196,6 +199,7 @@ MS_NODISCARD static bool extern_fn_declaration(Parser *p, MsToken token, MsDecl 
   d->u.fn.type_params = tps;
   d->u.fn.params = params;
   d->u.fn.result = result;
+  d->u.fn.result_moves = result_moves;
   d->u.fn.external = true;
   *out = d;
   return true;

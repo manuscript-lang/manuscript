@@ -6,8 +6,17 @@
 #include "base/alloc.h"
 
 static void cell_drop(MsObj *object) {
-  ms_re_free(((MsRegexCell *)object)->re);
+  MsRegexCell *cell = (MsRegexCell *)object;
+  if (atomic_fetch_sub(&cell->refs, 1) != 1) {
+    return;
+  }
+  ms_re_free(cell->re);
   ms_free(object);
+}
+
+static MsObj *cell_clone(MsObj *object) {
+  atomic_fetch_add(&((MsRegexCell *)object)->refs, 1);
+  return object;
 }
 
 uint8_t msstd_regex_compile(const MsString *pattern, void **out, MsString *err) {
@@ -21,7 +30,7 @@ uint8_t msstd_regex_compile(const MsString *pattern, void **out, MsString *err) 
     return MS_STATUS_INVALID_DATA;
   }
   MsRegexCell *cell = ms_alloc(sizeof *cell);
-  *cell = (MsRegexCell){.header = {.clone = NULL, .drop = cell_drop}, .re = re};
+  *cell = (MsRegexCell){.header = {.clone = cell_clone, .drop = cell_drop}, .re = re, .refs = 1};
   *out = cell;
   return MS_STATUS_OK;
 }

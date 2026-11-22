@@ -254,6 +254,25 @@ bool ms_check_shape_gap(MsCheckProgram *program, MsTy receiver, MsTy contract, M
   return true;
 }
 
+bool ms_check_shape_optional(MsCheckProgram *program, MsTy receiver, MsTy contract) {
+  const MsTyKind kind = ms_ty_kind(&program->types, receiver);
+  const MsDef *def = contract_def(program, contract);
+  if ((kind != MS_TY_TYPE && kind != MS_TY_ALTERNATIVE && kind != MS_TY_NATIVE && kind != MS_TY_PRIMITIVE) || def == NULL) {
+    return false;
+  }
+  MsStrBuild why = ms_strbuild_new();
+  bool met = true;
+  for (size_t index = 0; met && index < def->operations.len; index++) {
+    MsMethodMatchList own = {0};
+    own_methods(program, receiver, def->operations.ptr[index].name, &own);
+    const bool declared = own.len > 0;
+    ms_method_match_list_free(&own);
+    met = !declared || operation_met(program, receiver, contract, def, &def->operations.ptr[index], &why);
+  }
+  ms_strbuild_free(&why);
+  return met;
+}
+
 /* ---- implements ---- */
 
 static bool type_set_admits(MsTyTable *types, MsTy ty, MsTy set) {

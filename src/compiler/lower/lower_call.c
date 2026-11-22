@@ -94,8 +94,10 @@ static MirValue caller_position(LowerFn *fn) {
 static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
   const MsFacts *saved_facts = fn->facts;
   const uint32_t saved_file = fn->file;
+  const uint32_t saved_module = fn->module_index;
   fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
   fn->file = lower_file(fn->cx, arg->node.module);
+  fn->module_index = arg->node.module;
   const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
                                     ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
                                     : NULL;
@@ -106,6 +108,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
     fn->facts = saved_facts;
     fn->file = saved_file;
+    fn->module_index = saved_module;
     return caller_position(fn);
   }
   const MirTy saved_hint = fn->hint;
@@ -114,6 +117,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
+  fn->module_index = saved_module;
   return value;
 }
 
@@ -125,7 +129,13 @@ bool fn_is_text_literal(const MsExpr *expr) {
 /* Moves the value of `place` into a new slot and returns the slot's address. */
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MirValue owned;
-  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || place->kind == MS_E_INDEX;
+  if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
+    return fn_try_var_slot(fn, place, out);
+  }
+  MsExpr *indexed = NULL;
+  MsExpr *index_key = NULL;
+  /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
+  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
   if (is_place) {
     if (!fn_take_place(fn, place, &owned)) {
       return MIR_NONE;
@@ -145,7 +155,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, MIR_NONE, MIR_NONE};
   return slot;
 }
 
@@ -155,7 +165,13 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
     const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
     const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
                                         &slots[at].slot, 1, of_type, slots[at].ty);
-    if (slots[at].place == NULL) {
+    if (slots[at].optional != MIR_NONE) {
+      const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
+      if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, wrapped)
+                                         : fn_put_place(fn, slots[at].place, wrapped))) {
+        return false;
+      }
+    } else if (slots[at].place == NULL) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }
@@ -224,7 +240,26 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
       const LowerWant want = fn_arg_moves(fn, expr, call, index, written) ? LW_MOVE : LW_BORROW;
+      /* A literal the checker left open takes its type from the parameter. */
+      const MirTy saved_hint = fn->hint;
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = call->callee_ty != MS_TY_NONE && ms_ty_kind(types, call->callee_ty) == MS_TY_FUNCTION
+                                  ? ms_ty_param_count(types, call->callee_ty)
+                                  : 0;
+      if (written != NULL && (written->kind == MS_E_LIST || written->kind == MS_E_MAP) && index + declared >= call->arg_count &&
+          index + declared - call->arg_count < declared) {
+        fn->hint = fn_type(fn, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty);
+      }
+      const MirTy wanted = fn->hint;
+      if (wanted != saved_hint && mir_ty_data(fn->cx->module, wanted)->kind == MK_OPT) {
+        fn->hint = mir_ty_data(fn->cx->module, wanted)->elem; /* a literal for an optional parameter is its payload */
+      }
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
+      fn->hint = saved_hint;
+      if (wanted != saved_hint && out[index] != MIR_NONE && mir_ty_data(fn->cx->module, wanted)->kind == MK_OPT &&
+          mir_b_ty(&fn->b, out[index]) == mir_ty_data(fn->cx->module, wanted)->elem) {
+        out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, wanted);
+      }
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
@@ -341,15 +376,8 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
   return mir_needs_drop(fn->cx->module, ret) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, ret) : args[0];
 }
 
-/* A call of an interface operation: dispatched through the receiver's vtable. */
-static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
-  if (data->kind != MK_IFACE) {
-    return call_bound_operation(fn, expr, call, args, ret);
-  }
-  /* The operation is named by the member written; the checker's index does not say which one it is. */
-  const MsExpr *callee = expr->u.call.callee;
-  uint32_t index = call->callee.index;
+/* The operation is named by the member written; the checker's index does not say which one it is. */
+uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index) {
   if (callee->kind == MS_E_MEMBER) {
     const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);
@@ -361,6 +389,16 @@ static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *ca
       }
     }
   }
+  return index;
+}
+
+/* A call of an interface operation: dispatched through the receiver's vtable. */
+static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (data->kind != MK_IFACE) {
+    return call_bound_operation(fn, expr, call, args, ret);
+  }
+  const uint32_t index = fn_operation_index(fn, expr->u.call.callee, call->callee.index);
   const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = index};
   return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
 }
@@ -440,12 +478,13 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
   }
   MirValue checked = MIR_NONE;
   if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
-                     args, call->arg_count, ret, &checked)) {
+                     fn->cx->program->symbols.ptr[id].decl, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
   if (fn_shape_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
-      fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
+      fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
+      fn_signature_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);

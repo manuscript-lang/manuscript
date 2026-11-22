@@ -13,8 +13,10 @@ static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
     MsTyVariable *variable =
         ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + index]);
     for (uint32_t bound = 0; bound < params.ptr[index]->bounds.len; bound++) {
-      const MsTy resolved = resolver_type(resolver, params.ptr[index]->bounds.ptr[bound]);
-      ms_ty_list_push(&variable->bounds, resolved);
+      const MsTy resolved = resolver_bound(resolver, params.ptr[index]->bounds.ptr[bound]);
+      if (resolved != MS_TY_NONE) {
+        ms_ty_list_push(&variable->bounds, resolved);
+      }
     }
     if (params.ptr[index]->def != NULL) {
       variable->default_ty = resolver_type(resolver, params.ptr[index]->def);
@@ -49,7 +51,10 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
       const MsTypeParam *param = method->func.type_params.ptr[at];
       MsTyVariable *record = ms_ty_variable(&resolver->program->types, own.ptr[at]);
       for (uint32_t bound = 0; bound < param->bounds.len; bound++) {
-        ms_ty_list_push(&record->bounds, resolver_type(resolver, param->bounds.ptr[bound]));
+        const MsTy resolved = resolver_bound(resolver, param->bounds.ptr[bound]);
+        if (resolved != MS_TY_NONE) {
+          ms_ty_list_push(&record->bounds, resolved);
+        }
       }
       if (param->def != NULL) {
         record->default_ty = resolver_type(resolver, param->def);
@@ -59,7 +64,7 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     ms_operation_list_push(&def->operations, (MsOperation){.name = method->func.name, .ty = ty,
-                                                           .decl = {0, method->id}, .variables = own});
+                                                           .decl = {resolver->module, method->id}, .variables = own});
   }
   resolver->self = MS_TY_NONE;
 }

@@ -20,7 +20,7 @@ export extern fn msstd_process_command_run(
 	cwd: String?,
 	env_names: List[String],
 	env_values: List[String],
-) CommandOutput!
+) move CommandOutput!
 
 export extern fn msstd_process_command_spawn(
 	program: String,
@@ -31,7 +31,7 @@ export extern fn msstd_process_command_spawn(
 	cwd: String?,
 	env_names: List[String],
 	env_values: List[String],
-) Subprocess!
+) move Subprocess!
 
 // The runtime stream-table id of the child's pipe: 0 stdin, 1 stdout, 2 stderr; -1 when
 // there is no pipe.
@@ -53,13 +53,13 @@ export extern fn msstd_process_subprocess_kill(handle: NativeSubprocess) Void
 
 export extern fn msstd_process_subprocess_close(handle: NativeSubprocess) Void
 
-export extern fn msstd_process_cpu_usage() CpuUsage!
+export extern fn msstd_process_cpu_usage() move CpuUsage!
 
-export extern fn msstd_process_groups() List[Int]!
+export extern fn msstd_process_groups() move List[Int]!
 
 export extern fn msstd_process_initialize_groups(username: String, gid: Int) Void!
 
-export extern fn msstd_process_resource_usage() ResourceUsage!
+export extern fn msstd_process_resource_usage() move ResourceUsage!
 
 export extern fn msstd_process_send_signal(pid: Int, signal: Int) Void!
 
@@ -69,14 +69,14 @@ export extern fn msstd_process_set_identity(kind: String, id: Int) Void!
 
 export extern fn msstd_process_set_title(title: String) Void!
 
-export extern fn msstd_process_title() String!
+export extern fn msstd_process_title() move String!
 
 export extern fn msstd_process_umask(mask: Int) Int!
 
 export extern fn msstd_process_watch_signals(
 	signals: List[Int],
 	capacity: Int?,
-) NativeSignals!
+) move NativeSignals!
 
 export extern fn msstd_process_signal_next(signals: NativeSignals) Int!
 
@@ -93,4 +93,4 @@ export extern fn msstd_process_replace(
 	env_values: List[String],
 ) Void!
 
-export extern fn msstd_process_info() ProcessInfo!
+export extern fn msstd_process_info() move ProcessInfo!

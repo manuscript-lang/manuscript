@@ -188,7 +188,7 @@ static void lookup_hint(MsCheckProgram *program, uint32_t module, MsName name, c
     return;
   }
   MsStrBuild module_path = ms_strbuild_new();
-  if (ms_std_exporter(program, text, &module_path)) {
+  if (ms_std_exporter(program, text, false, &module_path)) {
     ms_strbuild_append_text(&hint->text, "; add: import ");
     ms_strbuild_append(&hint->text, text);
     ms_strbuild_append_text(&hint->text, " from \"");

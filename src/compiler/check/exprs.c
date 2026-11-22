@@ -90,7 +90,7 @@ const MsTyCase *body_case_of(Body *body, MsTy owner, MsName name, uint32_t *inde
 }
 
 /* Whether a visible enum has a case `name`: its type (as `expected` fixes it) and the case. */
-bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_t *index) {
+bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsTy *owner, uint32_t *index) {
   MsCheckProgram *program = body->program;
   const MsModuleInfo *module = &program->modules.ptr[body->module];
   MsSymbolList seen = {0};
@@ -105,21 +105,33 @@ bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_
     ms_symbol_list_push(&seen, program->symbols.ptr[*id]);
   }
   static const char *const PRELUDE[] = {"Optional", "Result"};
-  for (size_t at = 0; at < MS_COUNT_OF(PRELUDE); at++) {
-    ms_symbol_list_push(&seen, program->symbols.ptr[resolver_prelude_symbol(program, intern(body, PRELUDE[at]))]);
+  for (size_t position = 0; position < MS_COUNT_OF(PRELUDE); position++) {
+    ms_symbol_list_push(&seen, program->symbols.ptr[resolver_prelude_symbol(program, intern(body, PRELUDE[position]))]);
   }
-  bool found = false;
-  for (size_t at = 0; at < seen.len && !found; at++) {
-    const MsSymbol *symbol = &seen.ptr[at];
-    if (symbol->ty == MS_TY_NONE || ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE) {
+  size_t matches = 0;
+  for (size_t position = 0; position < seen.len; position++) {
+    const MsSymbol *symbol = &seen.ptr[position];
+    uint32_t found_at = 0;
+    if (symbol->ty == MS_TY_NONE || ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE ||
+        body_case_of(body, symbol->ty, name, &found_at) == NULL) {
       continue;
     }
-    found = body_case_of(body, symbol->ty, name, index) != NULL;
-    *owner = symbol->ty;
+    matches += matches == 0 || *owner != symbol->ty ? 1 : 0;
+    *owner = matches == 1 ? symbol->ty : *owner;
+    *index = matches == 1 ? found_at : *index;
   }
   ms_symbol_list_free(&seen);
   (void)expected;
-  return found;
+  if (matches > 1 && at != NULL && !body->quiet && body->module < program->user_modules) {
+    MsStrBuild text = ms_strbuild_new();
+    const MsSpan written = ms_names_span(program->names, name);
+    ms_strbuild_append_text(&text, "ambiguous alternative case ");
+    ms_strbuild_append(&text, written);
+    ms_strbuild_append_text(&text, "; qualify it with its type, e.g. Type.");
+    ms_strbuild_append(&text, written);
+    ms_check_report(program, body->module, *at, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  }
+  return matches == 1;
 }
 
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver) {
@@ -148,6 +160,27 @@ MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol) {
   return (MsRef){.kind = kind, .decl = {symbol->module, symbol->decl != NULL ? symbol->decl->id : 0}};
 }
 
+/* A generic function named as a value takes the type arguments its expected function type fixes; without one it keeps
+ * its generic type. */
+static MsTy generic_as_value(Body *body, const MsSymbol *symbol, MsTy expected) {
+  MsTyTable *types = &body->program->types;
+  if (symbol->kind != MS_SYMBOL_FN || symbol->var_count == 0 || symbol->var_count > 16 || expected == MS_TY_NONE ||
+      ms_ty_row(types, expected)->id != ms_ty_row(types, symbol->ty)->id) {
+    return symbol->ty;
+  }
+  const MsTy *vars = body->program->symbol_vars.ptr + symbol->var_at;
+  MsTy bound[16] = {0};
+  if (!ms_check_unify(types, symbol->ty, expected, vars, symbol->var_count, bound)) {
+    return symbol->ty;
+  }
+  for (uint32_t index = 0; index < symbol->var_count; index++) {
+    if (bound[index] == MS_TY_NONE) {
+      return symbol->ty;
+    }
+  }
+  return ms_ty_subst(types, symbol->ty, vars, bound, symbol->var_count);
+}
+
 static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsName name = expr->u.sym;
   const MsLocal *local = body_find_local(body, name);
@@ -159,7 +192,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
-    return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : symbol->ty;
+    return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : generic_as_value(body, symbol, expected);
   }
   const MsSpan text = ms_names_span(body->program->names, name);
   if (ms_span_is_text(text, "__LINE__")) {
@@ -168,9 +201,14 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (ms_span_is_text(text, "__FILE__")) {
     return body_primitive(body, MS_BUILTIN_String);
   }
+  if (ms_span_is_text(text, "fixture") && !body->quiet) {
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION,
+                    ms_string_from_span(ms_span_of_text("fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file")));
+    return MS_TY_NONE;
+  }
   MsTy owner = MS_TY_NONE;
   uint32_t index = 0;
-  if (body_find_case(body, name, expected, &owner, &index)) {
+  if (body_find_case(body, name, expected, &expr->pos, &owner, &index)) {
     const bool fits = expected != MS_TY_NONE && ms_ty_row(&body->program->types, expected)->id == ms_ty_row(&body->program->types, owner)->id;
     owner = fits ? expected : owner;
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
@@ -280,9 +318,63 @@ static MsTy map_expr(Body *body, const MsExpr *expr, MsTy expected) {
   return args[0] == MS_TY_NONE || args[1] == MS_TY_NONE ? expected : body_std_type(body, "Map", args, 2);
 }
 
+/* `generic_function[Args]` named as a value: the function at those type arguments. */
+static bool explicit_function_value(Body *body, const MsExpr *expr, MsTy *ty) {
+  if (expr->kind != MS_E_APPLY || expr->u.apply.types.len == 0 || expr->u.apply.left->kind != MS_E_NAME ||
+      body_find_local(body, expr->u.apply.left->u.sym) != NULL) {
+    return false;
+  }
+  const MsSymbol *symbol = body_find_symbol(body, expr->u.apply.left->u.sym);
+  if (symbol == NULL || symbol->kind != MS_SYMBOL_FN || symbol->var_count != expr->u.apply.types.len || symbol->ty == MS_TY_NONE) {
+    return false;
+  }
+  MsTyList args = {0};
+  for (uint32_t index = 0; index < expr->u.apply.types.len; index++) {
+    ms_ty_list_push(&args, resolver_type(&body->resolver, expr->u.apply.types.ptr[index]));
+  }
+  const MsRef ref = body_symbol_ref(body, symbol);
+  body_set_ref(body, expr->u.apply.left->id, ref);
+  body_set_ref(body, expr->id, ref);
+  *ty = ms_ty_subst(&body->program->types, symbol->ty, body->program->symbol_vars.ptr + symbol->var_at, args.ptr, args.len);
+  ms_ty_list_free(&args);
+  return true;
+}
+
+/* `receiver.method[Args]` named as a value: the method at those type arguments for its own type variables. */
+static bool explicit_method_value(Body *body, const MsExpr *expr, MsTy *ty) {
+  const MsExpr *member = expr->kind == MS_E_APPLY ? expr->u.apply.left : NULL;
+  if (member == NULL || expr->u.apply.types.len == 0 || member->kind != MS_E_MEMBER) {
+    return false;
+  }
+  const MsTy method = member_expr(body, member, MS_TY_NONE);
+  body_set_type(body, member->id, method);
+  const MsTy receiver = ms_facts_type(body->facts, member->u.member.left->id);
+  MsMethodMatchList found = {0};
+  ms_check_find_method(body->program, receiver, member->u.member.name, &found);
+  const MsMethodEntry *entry = found.len != 0 ? found.ptr[0].entry : NULL;
+  const size_t own = entry != NULL ? entry->variables.len - entry->shared : 0;
+  if (entry == NULL || own != expr->u.apply.types.len) {
+    ms_method_match_list_free(&found);
+    return false;
+  }
+  MsTyList args = {0};
+  for (uint32_t index = 0; index < expr->u.apply.types.len; index++) {
+    ms_ty_list_push(&args, resolver_type(&body->resolver, expr->u.apply.types.ptr[index]));
+  }
+  body_set_ref(body, expr->id, *ms_facts_ref(body->facts, member->id));
+  *ty = ms_ty_subst(&body->program->types, method, entry->variables.ptr + entry->shared, args.ptr, args.len);
+  ms_ty_list_free(&args);
+  ms_method_match_list_free(&found);
+  return true;
+}
+
 static MsTy index_expr(Body *body, const MsExpr *expr) {
   MsExpr *left = NULL;
   MsExpr *index = NULL;
+  MsTy function = MS_TY_NONE;
+  if (explicit_function_value(body, expr, &function) || explicit_method_value(body, expr, &function)) {
+    return function;
+  }
   if (!ms_expr_index(expr, &left, &index)) {
     return MS_TY_NONE;
   }

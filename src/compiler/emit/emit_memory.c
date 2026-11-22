@@ -101,6 +101,26 @@ void emit_pointer(EmitCx *cx, MirValue value, char *name, size_t capacity) {
 void emit_copy_leaf(EmitCx *cx, MirValue dst, uint32_t out_index, MirValue src, uint32_t src_index) {
   MsStrBuild *out = cx->out;
   const char *type = emit_leaf_type(emit_value_leaves(cx, dst).ptr[out_index]);
+  const char *from = emit_leaf_type(emit_value_leaves(cx, src).ptr[src_index]);
+  if (type[0] != from[0] || type[1] != from[1]) {
+    /* A slot an alternative's cases share has the widest leaf type: read a narrower payload out of it. */
+    ms_strbuild_append_text(out, "  ");
+    emit_name(out, dst, out_index);
+    if (type[1] == '1') {
+      ms_strbuild_printf(out, " = icmp ne %s ", from);
+    } else if (from[1] == '1') {
+      ms_strbuild_printf(out, " = zext i1 ");
+    } else {
+      ms_strbuild_printf(out, " = bitcast %s ", from);
+    }
+    emit_name(out, src, src_index);
+    if (type[1] == '1') {
+      ms_strbuild_append_text(out, ", 0\n");
+    } else {
+      ms_strbuild_printf(out, " to %s\n", type);
+    }
+    return;
+  }
   const char *operation = " = or ";
   const char *identity = ", 0\n";
   if (type[0] == 'd') {

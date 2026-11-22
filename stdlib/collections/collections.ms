@@ -48,7 +48,7 @@ fn var List[T].prepend(move value: T) Void: ...
 fn var List[T].insert(index: Int, move value: T) Void: ...
 
 // Removes and returns the last element in place, or `none` for an empty list.
-fn var List[T].pop() T?: ...
+fn var List[T].pop() move T?: ...
 
 // Replaces an element in place; negative indexes count from the end.
 // Invalid indexes fault.
@@ -56,7 +56,7 @@ fn var List[T].set(index: Int, move value: T) Void: ...
 
 // Stores `value` at `index` in place and returns the element that was there. Both
 // move without copying. Negative indexes count from the end; invalid indexes fault.
-fn var List[T].replace(index: Int, move value: T) T: ...
+fn var List[T].replace(index: Int, move value: T) move T: ...
 
 // Exchanges the elements at `i` and `j` in place without copying them; equal indexes
 // change nothing. Negative indexes count from the end; invalid indexes fault.
@@ -230,7 +230,7 @@ fn List[T: Numeric].sum() T:
 	return total
 
 // Returns a deep copy with independent list and nested value storage.
-fn List[T: Clonable].clone() List[T]: ...
+fn List[T: Clonable].clone() move List[T]: ...
 
 // Returns a new list containing copies of the elements in [start, end).
 // Negative bounds are relative to the end; bounds outside 0 <= start <= end <=
@@ -240,11 +240,11 @@ fn List[T: Clonable].slice(start: Int, end: Int) List[T]!: ...
 // Returns a new list with copies of the first `count` elements, or of all of them
 // when `count` exceeds the length. The receiver is unchanged; a count of zero or
 // below gives an empty list.
-fn List[T: Clonable].take(count: Int) List[T]: ...
+fn List[T: Clonable].take(count: Int) move List[T]: ...
 
 // Returns a new list with copies of the elements after the first `count`. The
 // receiver is unchanged; a count of zero or below drops nothing.
-fn List[T: Clonable].drop(count: Int) List[T]: ...
+fn List[T: Clonable].drop(count: Int) move List[T]: ...
 
 // Copies the leading elements for which `predicate` holds, stopping at the first one
 // that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
@@ -260,12 +260,12 @@ fn List[T: Clonable].drop_while(predicate: fn(T) Bool) List[T]:
 // Splits the list into consecutive chunks of `size` elements, as copies. The last
 // chunk may be shorter. An empty list, or a `size` of zero or less, gives an empty
 // list.
-fn List[T: Clonable].chunks(size: Int) List[List[T]]: ...
+fn List[T: Clonable].chunks(size: Int) move List[List[T]]: ...
 
 // Returns each run of `size` consecutive elements as an overlapping copy, in order.
 // A list shorter than `size`, or a `size` of zero or less, gives an empty list.
 // Windows are copies; `slice` and `take` do not borrow.
-fn List[T: Clonable].windows(size: Int) List[List[T]]: ...
+fn List[T: Clonable].windows(size: Int) move List[List[T]]: ...
 
 // Calls `predicate` once per element in order and splits the elements into those
 // that matched and the rest, each in the original order.
@@ -339,7 +339,7 @@ fn List[T: Clonable].entries() List[ListEntry[T]]:
 
 // Returns a new list holding this list's elements followed by `other`; neither
 // operand is changed.
-fn List[T: Clonable].concat(other: List[T]) List[T]: ...
+fn List[T: Clonable].concat(other: List[T]) move List[T]: ...
 
 // Pairs elements by position into fresh `Pair` records, stopping at the shorter
 // list; both lists are unchanged.
@@ -353,7 +353,7 @@ fn List[T: Clonable].zip[U: Clonable](other: List[U]) List[Pair[T, U]]:
 // Calls `key` once per element in order and returns a map from each distinct key to
 // the elements that produced it. Keys appear in first-seen order, and each group
 // keeps the original element order.
-fn List[T: Clonable].group_by[K: Hashable](key: fn(T) K) Map[K, List[T]]: ...
+fn List[T: Clonable].group_by[K: Hashable](key: fn(T) K) move Map[K, List[T]]: ...
 
 // Counts how many times each distinct element occurs. Keys appear in first-seen order.
 // Example: `["a", "b", "a"].counts()` maps `"a"` to 2 and `"b"` to 1.
@@ -662,7 +662,10 @@ fn var Map[T, U].add_default(move key: T, move value: U) Void: ...
 
 // Inserts `create(key)` only when the key is absent, calling `create` once. An
 // existing key keeps its value and position, and `create` is not called.
-fn var Map[T, U].add_default_from(move key: T, create: fn(T) U) Void: ...
+fn var Map[T, U].add_default_from(move key: T, create: fn(T) U) Void:
+	if self.contains(key): return
+	value := create(key)
+	self.add(key, value)
 
 // Removes every entry in place.
 fn var Map[T, U].clear() Void: ...
@@ -726,7 +729,7 @@ fn Map[T: Hashable & Clonable, U: Clonable].map_keys[W: Hashable](transform: fn(
 
 // Returns the stored value, or `fallback` when the key is absent. The fallback is
 // always evaluated, and the map is not changed.
-fn Map[T: Hashable, U: Clonable].get_or(key: T, fallback: U) U: ...
+fn Map[T: Hashable, U: Clonable].get_or(key: T, fallback: U) move U: ...
 
 // Returns the first entry for which `predicate` is true as a new `MapEntry` holding
 // copies of the key and value, or `none`.
@@ -807,7 +810,8 @@ fn Set[T: Hashable & Clonable].clone() Set[T]:
 	return out
 
 // Reports whether this set has no elements.
-fn Set[T].is_empty() Bool: ...
+fn Set[T].is_empty() Bool:
+	return self.length() == 0
 
 // Returns a new set of copies of the elements for which `predicate` is true, in
 // insertion order. The callback borrows the receiver, so changing the set during the
@@ -876,19 +880,19 @@ fn Set[T].all(predicate: fn(T) Bool) Bool:
 
 // Returns a new set with this set's values followed by the values only in `other`,
 // in insertion order.
-fn Set[T].union(other: Set[T]) Set[T]: ...
+fn Set[T].union(other: Set[T]) move Set[T]: ...
 
 // Returns a new set of this set's values that are also in `other`, in this set's
 // insertion order.
-fn Set[T].intersection(other: Set[T]) Set[T]: ...
+fn Set[T].intersection(other: Set[T]) move Set[T]: ...
 
 // Returns a new set of this set's values that are not in `other`, in this set's
 // insertion order.
-fn Set[T].difference(other: Set[T]) Set[T]: ...
+fn Set[T].difference(other: Set[T]) move Set[T]: ...
 
 // Returns a new set of the values that are in exactly one of the two sets. Neither
 // set changes.
-fn Set[T].symmetric_difference(other: Set[T]) Set[T]: ...
+fn Set[T].symmetric_difference(other: Set[T]) move Set[T]: ...
 
 // Reports whether every value of this set is also in `other`.
 fn Set[T].is_subset_of(other: Set[T]) Bool: ...
@@ -1016,7 +1020,7 @@ export fn range_by(
 
 // Builds a map from a list of entries. For duplicate keys, a later entry replaces the
 // value of an earlier one.
-export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) Map[K, V]: ...
+export fn map_from_entries[K: Hashable, V](entries: List[MapEntry[K, V]]) move Map[K, V]: ...
 
 // Copies the inner lists' elements in order into one new list; elements must be
 // Clonable. Example: `flatten([[1, 2], [3]])` returns `[1, 2, 3]`.

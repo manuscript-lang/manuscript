@@ -4,6 +4,7 @@
  * types, its imports, then the prelude. A qualified name (`mod.Type`) is not resolved yet and is invalid
  * without a diagnostic. A name given type arguments becomes the nominal type applied to them. */
 #include "compiler/check/resolve_internal.h"
+#include "compiler/check/std_exports.h"
 
 static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",
@@ -80,26 +81,84 @@ static MsSymbolId find_symbol(const Resolver *resolver, MsName name, bool *known
   }
   const MsSymbolId *imported = ms_scope_get(&module->imports, name);
   if (imported != NULL) {
-    *known = *imported == 0;
+    *known = false; /* a failed import leaves its name unknown here too */
     return *imported != 0 && program->symbols.ptr[*imported].kind != MS_SYMBOL_FN ? *imported : 0;
   }
   return resolver_prelude_symbol(program, name);
 }
 
+/* The built-in type a habit from another language names (`str` for `String`), or an empty span. */
+static MsSpan type_habit(MsSpan name) {
+  static const struct {
+    const char *habit;
+    const char *builtin;
+  } TABLE[] = {
+      {"Integer", "Int"},  {"long", "Int"},       {"Long", "Int"},      {"i64", "Int"},        {"int64", "Int"},
+      {"number", "Int"},   {"Number", "Int"},     {"double", "Float"},  {"Double", "Float"},   {"f64", "Float"},
+      {"float64", "Float"}, {"str", "String"},    {"Str", "String"},    {"string", "String"},  {"char", "String"},
+      {"Char", "String"},  {"Text", "String"},    {"boolean", "Bool"},  {"Boolean", "Bool"},   {"bool", "Bool"},
+      {"void", "Void"},    {"None", "Void"},      {"NoneType", "Void"}, {"Vec", "List"},       {"Vector", "List"},
+      {"Array", "List"},   {"ArrayList", "List"}, {"array", "List"},    {"Dict", "Map"},       {"Dictionary", "Map"},
+      {"HashMap", "Map"},  {"dict", "Map"},       {"TreeMap", "Map"},   {"HashSet", "Set"},    {"TreeSet", "Set"}};
+  for (size_t index = 0; index < MS_COUNT_OF(TABLE); index++) {
+    if (ms_span_is_text(name, TABLE[index].habit)) {
+      return ms_span_of_text(TABLE[index].builtin);
+    }
+  }
+  return (MsSpan){0};
+}
+
+/* Appends the oracle's advice for an unknown type; fills `statement` with the import it names, when it does. */
+static void unknown_type_advice(MsCheckProgram *program, MsSpan name, MsStrBuild *text, MsStrBuild *statement) {
+  MsStrBuild module_path = ms_strbuild_new();
+  const MsSpan habit = type_habit(name);
+  if (ms_std_exporter(program, name, true, &module_path)) {
+    ms_strbuild_append_text(text, "; add: import ");
+    ms_strbuild_append(text, name);
+    ms_strbuild_append_text(text, " from \"");
+    ms_strbuild_append(text, ms_strbuild_span(&module_path));
+    ms_strbuild_append_text(text, "\"");
+    ms_strbuild_append_text(statement, "import ");
+    ms_strbuild_append(statement, name);
+    ms_strbuild_append_text(statement, " from \"");
+    ms_strbuild_append(statement, ms_strbuild_span(&module_path));
+    ms_strbuild_append_text(statement, "\"\n");
+  } else if (ms_span_is_text(name, "Callable") || ms_span_is_text(name, "Function") || ms_span_is_text(name, "Func") ||
+             ms_span_is_text(name, "Fn")) {
+    ms_strbuild_append_text(text, "; function types are written fn(Int) Int: parameter types in parentheses, then the result type");
+  } else if (ms_span_is_text(name, "Option") || ms_span_is_text(name, "Maybe")) {
+    ms_strbuild_append_text(text, "; an optional type is written T?, e.g. Int? or (fn(Int) Int)?");
+  } else if (habit.len != 0) {
+    ms_strbuild_append_text(text, "; did you mean '");
+    ms_strbuild_append(text, habit);
+    ms_strbuild_append_text(text, "'?");
+  } else {
+    ms_strbuild_append_text(text, "; declare it with 'type ");
+    ms_strbuild_append(text, name);
+    ms_strbuild_append_text(text, ":' / 'enum ");
+    ms_strbuild_append(text, name);
+    ms_strbuild_append_text(text, ":' / 'interface ");
+    ms_strbuild_append(text, name);
+    ms_strbuild_append_text(text, ":', declare it as a type parameter, or import it");
+  }
+  ms_strbuild_free(&module_path);
+}
+
 static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
   MsStrBuild text = ms_strbuild_new();
+  MsStrBuild statement = ms_strbuild_new();
   const MsSpan name = ms_names_span(program->names, type->name);
   ms_strbuild_append_text(&text, "unknown type ");
   ms_strbuild_append(&text, name);
-  ms_strbuild_append_text(&text, "; declare it with 'type ");
-  ms_strbuild_append(&text, name);
-  ms_strbuild_append_text(&text, ":' / 'enum ");
-  ms_strbuild_append(&text, name);
-  ms_strbuild_append_text(&text, ":' / 'interface ");
-  ms_strbuild_append(&text, name);
-  ms_strbuild_append_text(&text, ":', declare it as a type parameter, or import it");
+  unknown_type_advice(program, name, &text, &statement);
   ms_check_report(program, resolver->module, type->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  if (ms_strbuild_length(&statement) != 0) {
+    const MsPos start = {.offset = 0, .line = 1, .column = 1};
+    ms_check_attach_fix(program, start, start, ms_strbuild_finish(&statement));
+  } else {
+    ms_strbuild_free(&statement);
+  }
 }
 
 MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t count) {
@@ -164,6 +223,25 @@ static MsTy named_type(Resolver *resolver, const MsTypeRef *type) {
   if (!known && resolver->report) {
     report_unknown(resolver, type);
   }
+  return MS_TY_NONE;
+}
+
+MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound) {
+  MsCheckProgram *program = resolver->program;
+  const MsTy resolved = resolver_type(resolver, bound);
+  const MsTyKind kind = resolved == MS_TY_NONE ? MS_TY_INVALID : ms_ty_kind(&program->types, resolved);
+  if (kind == MS_TY_CONTRACT || resolved == MS_TY_NONE || !resolver->report) {
+    return resolved;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  if (kind == MS_TY_VARIABLE) {
+    ms_strbuild_append_text(&text, "a bound must be an interface, but ");
+    ms_strbuild_append(&text, ms_names_span(program->names, bound->name));
+    ms_strbuild_append_text(&text, " resolves to a type parameter; rename the type parameter or name an interface");
+  } else {
+    ms_strbuild_append_text(&text, "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'");
+  }
+  ms_check_report(program, resolver->module, bound->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   return MS_TY_NONE;
 }
 

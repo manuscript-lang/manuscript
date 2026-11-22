@@ -307,8 +307,31 @@ bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, Mir
   return !fn->failed;
 }
 
+void fn_init_closing(LowerFn *fn) {
+  const size_t count = (size_t)fn->nvars + LOWER_MAX_CLOSING_PARAMS + 1;
+  fn->closing = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, count);
+  fn->closing_var = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, count);
+  fn->closing_types = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirTy, count);
+  for (size_t at = 0; at < count; at++) {
+    fn->closing[at] = MIR_NONE;
+    fn->closing_var[at] = false;
+    fn->closing_types[at] = MIR_VOID;
+  }
+}
+
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
+  if (fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !mir_needs_drop(fn->cx->module, ty)) {
+    /* A variable of plain data that a lambda changes: a slot nothing closes. */
+    fn->shared[local] = LOWER_SHARED_PLAIN;
+    const MirValue plain = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
+    const MirValue stored[2] = {plain, value};
+    (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    fn->closing[local] = plain;
+    fn->closing_var[local] = true;
+    fn->closing_types[local] = ty;
+    return !fn->failed;
+  }
   uint32_t silent = MIR_NONE;
   if (!prepare(fn, checked, ty, &silent)) {
     return false;
@@ -348,27 +371,44 @@ MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
   return mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
 }
 
-/* The slot of the `var` resource a local reference names, or MIR_NONE. */
-static MirValue var_slot_of(const LowerFn *fn, const MsRef *ref) {
-  if (fn->closing == NULL || ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars ||
-      !fn->closing_var[ref->local]) {
-    return MIR_NONE;
+uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name) {
+  if (fn->closing == NULL || ref == NULL) {
+    return UINT32_MAX;
   }
-  return fn->closing[ref->local];
+  if (ref->kind == MS_REF_PARAM && fn->lambda != NULL) {
+    /* A lambda's own parameters share indices with the captured ones: only a captured name is one of these. */
+    const MsParams *own = (const MsParams *)&fn->lambda->expr->u.lambda.params;
+    if (ref->local < own->len && own->ptr[ref->local]->name == name) {
+      return UINT32_MAX;
+    }
+  }
+  uint32_t at = UINT32_MAX;
+  if (ref->kind == MS_REF_LOCAL && ref->local < fn->nvars) {
+    at = ref->local;
+  } else if (ref->kind == MS_REF_PARAM && ref->local < LOWER_MAX_CLOSING_PARAMS) {
+    at = fn->nvars + ref->local; /* a `var` parameter a lambda changes stays in the caller's slot */
+  }
+  return at != UINT32_MAX && fn->closing_var[at] ? at : UINT32_MAX;
 }
 
-bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view) {
-  const MirValue slot = var_slot_of(fn, ref);
+/* The slot of the `var` resource a local reference names, or MIR_NONE. */
+static MirValue var_slot_of(const LowerFn *fn, const MsRef *ref, MsName name) {
+  const uint32_t at = fn_closing_at(fn, ref, name);
+  return at == UINT32_MAX ? MIR_NONE : fn->closing[at];
+}
+
+bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view) {
+  const MirValue slot = var_slot_of(fn, ref, name);
   if (slot == MIR_NONE) {
     return false;
   }
-  const MirTy ty = fn->closing_types[ref->local];
+  const MirTy ty = fn->closing_types[fn_closing_at(fn, ref, name)];
   *view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
   return true;
 }
 
-bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done) {
-  const MirValue slot = var_slot_of(fn, ref);
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done) {
+  const MirValue slot = var_slot_of(fn, ref, name);
   *done = slot != MIR_NONE;
   if (slot == MIR_NONE) {
     return true;
@@ -378,9 +418,16 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done
   if (owns) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
-  /* The slot closes what it holds, and holds the new value from here. */
-  const MirImm refill = {.tag = MI_INT, .i = 2};
-  (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+  const uint8_t kind = fn->shared != NULL && ref->kind == MS_REF_LOCAL ? fn->shared[ref->local] : (ref->kind == MS_REF_PARAM ? LOWER_SHARED_BORROWED : 0);
+  if (kind == LOWER_SHARED_BORROWED && owns) {
+    /* The slot belongs to the function that made the closure: what it holds is dropped here. */
+    const MirValue old = mir_b_emit(&fn->b, MOP_Take, &slot, 1, imm_ty(ty), ty);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+  } else if (kind != LOWER_SHARED_PLAIN && kind != LOWER_SHARED_BORROWED) {
+    /* The slot closes what it holds, and holds the new value from here. */
+    const MirImm refill = {.tag = MI_INT, .i = 2};
+    (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+  }
   const MirValue stored[2] = {slot, value};
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
   return !fn->failed;

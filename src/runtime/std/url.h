@@ -44,7 +44,7 @@ uint8_t msstd_url_parse(const MsString *text, MsUrl *out);
 uint8_t msstd_url_resolve(const MsUrl *base, const MsString *reference, MsUrl *out);
 /* ms-sig: msstd_url_format(value: *const UrlType, out: *mut StrVal) -> u8 @domain=URL @leaf */
 uint8_t msstd_url_format(const MsUrl *value, MsString *out);
-/* ms-sig: msstd_url_parse_query(text: *const StrVal, has_max: u8, max: i64, out: *mut VecVal) -> u8
+/* ms-sig: msstd_url_parse_query(text: *const StrVal, has_max: HasRaw, max: i64, out: *mut VecVal) -> u8
  * @domain=URL @leaf */
 uint8_t msstd_url_parse_query(const MsString *text, uint8_t has_max, int64_t max, MsBytes *out);
 /* ms-sig: msstd_url_format_query(entries: *const VecVal, out: *mut StrVal) @domain=URL @leaf */
