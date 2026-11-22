@@ -115,9 +115,10 @@ void mir_desc_glue(MirModule *module) {
   cx.hash_extern = declare(&cx, "msstd_value_hash", 2, MIR_INT);
   const size_t count = module->funcs.len; /* the functions made here have no typedesc */
   for (size_t f = 0; f < count; f++) {
-    const MirFunc *func = &module->funcs.ptr[f];
-    for (uint32_t b = 0; b < func->blocks.len; b++) {
-      const MirBlockData *block = &func->blocks.ptr[b];
+    /* Visiting a type adds functions, which may move the function table: read this function's blocks first. */
+    const MirBlockList blocks = module->funcs.ptr[f].blocks;
+    for (uint32_t b = 0; b < blocks.len; b++) {
+      const MirBlockData *block = &blocks.ptr[b];
       for (uint32_t i = 0; i < block->insts.len; i++) {
         const MirInst *inst = &block->insts.ptr[i];
         if (inst->op == MOP_TypeDesc && inst->imm.tag == MI_TY) {
