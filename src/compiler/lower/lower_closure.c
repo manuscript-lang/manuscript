@@ -151,9 +151,7 @@ static bool assigns_capture(LowerFn *fn, const MsExpr *lambda, const LowerCaptur
 
 /* ---- making the closure ---- */
 
-static uint32_t reserve_closure(LowerFn *fn, const MsExpr *expr, MirTy fn_ty, const LowerCapture *captures,
-                                uint32_t count) {
-  Lower *cx = fn->cx;
+uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count) {
   const MirTyData *data = mir_ty_data(cx->module, fn_ty);
   MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)data->nargs + 1);
   params[0] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
@@ -173,7 +171,6 @@ static uint32_t reserve_closure(LowerFn *fn, const MsExpr *expr, MirTy fn_ty, co
     func.captures[index] = captures[index].ty;
   }
   func.ncaptures = count;
-  (void)expr;
   return mir_add_func(cx->module, &func);
 }
 
@@ -213,7 +210,7 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   if (!capture_values(fn, captures, count, values)) {
     return MIR_NONE;
   }
-  const uint32_t func = reserve_closure(fn, expr, fn_ty, captures, count);
+  const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
   LowerSubst subst = fn->subst;
   MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, subst.count * 2 + 1);
   for (size_t index = 0; index < subst.count; index++) {
@@ -348,7 +345,7 @@ MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty) {
   if (callee == MIR_NONE) {
     return MIR_NONE;
   }
-  const uint32_t slot = reserve_closure(fn, NULL, fn_ty, NULL, 0);
+  const uint32_t slot = lower_closure_func(cx, fn_ty, NULL, 0);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);

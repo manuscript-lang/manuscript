@@ -79,6 +79,10 @@ typedef struct Lower {
 
 /* ---- instances and the driver (lower_func.c) ---- */
 
+/* The driver steps (lower_func.c): set up, lower every function reached so far (and their lambdas), tear down. */
+void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error);
+bool lower_pending(Lower *cx);
+void lower_release(Lower *cx);
 /* The target of a module-level function symbol. */
 LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol);
 

@@ -8,6 +8,7 @@
 typedef struct BackendOptions {
   bool optimize; /* the full optimiser pipeline instead of the small one */
   bool verify;   /* verify the module after every pass */
+  bool tests;    /* start at the test entry (ms_lower_tests) instead of `main` */
 } BackendOptions;
 
 /* Lowers the program from the `main` of module `entry_module`, runs the MIR passes and emits LLVM IR text

@@ -178,7 +178,7 @@ static bool build_tests(MsFront *front, const MsInvocation *invocation, MsSpan p
   const MsLinkRequest request = {.program = &front->program, .entry = front->entry,
                                  .build_type = invocation->build_type, .output = path,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
-                                 .static_libc = invocation->static_libc};
+                                 .static_libc = invocation->static_libc, .tests = true};
   return ms_pipeline_link(&request, error);
 }
 

@@ -83,6 +83,8 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr);
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
+/* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
+uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
@@ -93,6 +95,7 @@ bool fn_lambda_name(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirValue 
 /* Lowers the bodies of the lambdas made so far; `*progressed` is set when it lowered any. */
 bool lower_lambda_bodies(Lower *cx, bool *progressed);
 /* A list literal (lower_list.c). */
+MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 /* `if x := value:` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
