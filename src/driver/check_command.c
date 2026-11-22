@@ -149,10 +149,15 @@ static void add_check_findings(const MsCheckProgram *program, const MsNames *nam
   }
 }
 
+/* Whether a diagnostic's file is a fetched package's: `@id/path`, which has no place in the project's directory. */
+static bool is_package_file(MsSpan file) {
+  return ms_span_starts_with(file, ms_span_of_text("@")) && !ms_span_starts_with(file, ms_span_of_text("@std/"));
+}
+
 /* The excerpt under a diagnostic: the file is read again from `root`, as the Rust CLI does. */
 static void append_excerpt(MsStrBuild *out, MsSpan root, const Finding *finding) {
   MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, root, finding->file);
+  ms_path_append_joined(&path, is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
   MsBytes bytes = {0};
   if (ms_file_read(ms_strbuild_span(&path), &bytes)) {
     ms_snippet_excerpt(out, ms_bytes_span(&bytes), finding->diag.pos, finding->diag.has_end, finding->diag.end);
@@ -164,7 +169,7 @@ static void append_excerpt(MsStrBuild *out, MsSpan root, const Finding *finding)
 static void append_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *findings) {
   for (size_t i = 0; i < findings->len; i++) {
     const Finding *finding = &findings->ptr[i];
-    ms_path_append_joined(err, root, finding->file);
+    ms_path_append_joined(err, is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
     ms_strbuild_printf(err, ":%u:%u: %s: ", finding->diag.pos.line, finding->diag.pos.column, finding->phase);
     ms_strbuild_append(err, finding->diag.message);
     append_excerpt(err, root, finding);
@@ -210,7 +215,7 @@ static Finding kept(MsArena *arena, Finding finding, MsSpan file) {
 
 /* A collection shows a file relative to the working directory. */
 static MsSpan shown(MsArena *arena, const CheckSelection *selection, MsSpan root, MsSpan file) {
-  if (!selection->collection || ms_span_starts_with(file, ms_span_of_text("@std/"))) {
+  if (!selection->collection || ms_span_starts_with(file, ms_span_of_text("@std/")) || is_package_file(file)) {
     return ms_arena_copy(arena, file);
   }
   if (root.len != 0 && !ms_path_is_absolute(file)) {

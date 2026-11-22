@@ -38,6 +38,23 @@ typedef struct MsAllowedEffects {
 MS_LIST_DEFINE(AllowedEffectsList, allowed_effects_list, MsAllowedEffects)
 MS_LIST_DEFINE(ManifestSpanList, manifest_span_list, MsSpan)
 
+/* A package a project reaches: a fetched copy checked against the lock, or a workspace member. */
+typedef struct MsPackageFile {
+  MsSpan path; /* below the package root, `/` separated */
+  MsSpan hash; /* the expected SHA-256, lowercase hex */
+} MsPackageFile;
+
+typedef struct MsPackage {
+  MsSpan id;   /* `github.com/acme/wire@v1.4.2`, or `workspace/<member>` */
+  MsSpan key;  /* what diagnostics call the copy: `@` and its id */
+  MsSpan spec; /* the lock's `url#tag`, or `workspace member <name>` */
+  MsSpan root; /* the canonical directory holding the package files */
+  struct MsManifest *manifest;
+  MsPackageFile *files; /* the verified index; none for a member */
+  size_t nfiles;
+  bool member; /* a workspace member: its files are the project's own, so they are not hashed */
+} MsPackage;
+
 typedef struct MsManifest {
   MsSpan root;          /* canonical directory of the manifest */
   MsSpan file;          /* the manifest's file name */
@@ -51,6 +68,9 @@ typedef struct MsManifest {
   DependencyList dependencies;          /* sorted by name */
   ManifestNameList path_dependencies;   /* `{ path = "../util" }`: name and canonical member directory, sorted */
   AllowedEffectsList allowed_effects;   /* sorted by name */
+  ManifestNameList deps;                /* dependency names and the source directory of the package each reaches */
+  MsPackage *packages;                  /* every package reached, however deep, sorted by id; only in a project */
+  size_t npackages;
   bool is_workspace;                    /* a [workspace] table is present */
   ManifestSpanList members;             /* [workspace] members, as written */
   bool has_version;                     /* [project] version */
@@ -63,6 +83,12 @@ typedef struct MsManifest {
 MS_NODISCARD bool ms_manifest_read(MsArena *arena, MsSpan filename, MsManifest *out, MsProjectError *error);
 
 void ms_manifest_free(MsManifest *manifest);
+
+/* The package that holds `path` (the longest matching root), or NULL. */
+const MsPackage *ms_manifest_package_of(const MsManifest *manifest, MsSpan path);
+
+/* The manifest whose aliases and dependencies apply to imports written in `importer`. */
+const MsManifest *ms_manifest_scope(const MsManifest *manifest, MsSpan importer);
 
 /* The dependency named `name` (with its `@`), or NULL. */
 const MsDependency *ms_manifest_dependency(const MsManifest *manifest, MsSpan name);
