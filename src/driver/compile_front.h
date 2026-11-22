@@ -8,6 +8,11 @@
 #include "compiler/check/program.h"
 #include "driver/findings.h"
 
+typedef enum MsFrontTarget {
+  MS_FRONT_PROGRAM, /* an executable: it needs an entry `main` */
+  MS_FRONT_TESTS    /* the test executable: the project's test files too, and no entry */
+} MsFrontTarget;
+
 typedef struct MsFront {
   MsNames names;
   MsGraph graph;
@@ -19,7 +24,7 @@ typedef struct MsFront {
 
 /* Loads and checks `filename` for an executable. True when it can be lowered; false leaves the diagnostics in
  * `findings`. Texts live in `arena`; `ms_front_free` releases the rest. */
-MS_NODISCARD bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename);
+MS_NODISCARD bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename, MsFrontTarget target);
 
 /* The terminal report of the failure, with the count line, on stderr. Returns the status 1. */
 int ms_front_report(const MsFront *front);

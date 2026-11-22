@@ -187,7 +187,7 @@ static int build(MsArena *arena, const MsInvocation *invocation) {
   report.output = absolute(arena, report.display);
   MsFront front = {0};
   int status = 0;
-  if (!ms_front_compile(arena, &front, invocation->filename)) {
+  if (!ms_front_compile(arena, &front, invocation->filename, MS_FRONT_PROGRAM)) {
     report.source_root = front.graph.source_root;
     if (invocation->json) {
       print_document(&report, &(BuildOutcome){.findings = &front.findings});
