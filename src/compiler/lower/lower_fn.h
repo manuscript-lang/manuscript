@@ -90,9 +90,9 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
 
 /* ---- resources closed at scope end (lower_close.c) ---- */
 
-/* Whether lowering closes a binding with this closer: a `move fn close` that nothing moves, closes by hand or
- * changes in place. */
-bool fn_closer_lowerable(const MsCloser *closer);
+/* Whether lowering closes a binding with this closer (NULL for none), of checker type `checked`: a `move fn close`
+ * that no use closes by hand, changes in place or splits. */
+bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a

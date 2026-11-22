@@ -1,6 +1,7 @@
 /* compiler/own/uses.c: fills the `uses` fact column (see uses.h). */
 #include "compiler/own/uses.h"
 
+#include "compiler/check/methods.h"
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
 #include "compiler/syntax/walk.h"
@@ -54,6 +55,20 @@ static bool is_constructor(const Uses *pass, const MsExpr *call) {
   return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
 }
 
+/* Whether the callee is a method declared `move fn`, which takes its receiver. */
+static bool consuming_method(const Uses *pass, const MsRef *callee) {
+  if (callee->kind != MS_REF_METHOD) {
+    return false;
+  }
+  for (size_t index = 0; index < pass->program->methods.len; index++) {
+    const MsMethodEntry *entry = &pass->program->methods.ptr[index];
+    if (entry->module == callee->decl.module && entry->source->id == callee->decl.node) {
+      return entry->source->consuming;
+    }
+  }
+  return false;
+}
+
 static void visit_call(Uses *pass, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
   if (is_clone(pass, call)) {
@@ -73,7 +88,8 @@ static void visit_call(Uses *pass, const MsExpr *call) {
     }
   }
   if (fact != NULL && fact->arg_count != 0 && callee->kind == MS_E_MEMBER && fact->args[0].source == MS_ARG_WRITTEN &&
-      fact->args[0].node.node == callee->u.member.left->id && (fact->args[0].flags & MS_PARAM_MOVE) != 0) {
+      fact->args[0].node.node == callee->u.member.left->id &&
+      ((fact->args[0].flags & MS_PARAM_MOVE) != 0 || consuming_method(pass, &fact->callee))) {
     mark_move(pass, callee->u.member.left);
   }
 }
