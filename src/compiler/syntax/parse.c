@@ -114,57 +114,6 @@ MS_NODISCARD static bool import_statement(Parser *p, ImportList *imports) {
   return true;
 }
 
-/* The annotation on the line above a declaration: `@repr=<name>` (an extern type's runtime representation) or
- * `@words=<status> "<text>"` (an extern fn's wording of one failure status). */
-typedef struct Annotation {
-  MsSpan repr;
-  uint32_t words_status;
-  MsSpan words_text;
-} Annotation;
-
-MS_NODISCARD static bool annotation(Parser *p, Annotation *out) {
-  if (!parse_take(p, MS_T_At)) {
-    return true;
-  }
-  MsToken key = {0};
-  MsToken value = {0};
-  if (!parse_need_token(p, MS_T_Name, &key)) {
-    return false;
-  }
-  const bool repr = parse_text_is(p, key, "repr");
-  if (!repr && !parse_text_is(p, key, "words")) {
-    parse_fail(p, key, ms_span_of_text("the annotations are @repr=<representation> and @words=<status> \"<text>\""));
-    return false;
-  }
-  if (!parse_need(p, MS_T_Assign)) {
-    return false;
-  }
-  if (repr) {
-    if (!parse_need_token(p, MS_T_Name, &value) || !parse_end(p)) {
-      return false;
-    }
-    out->repr = parse_text(p, value);
-    return true;
-  }
-  MsToken text = {0};
-  if (!parse_need_token(p, MS_T_Number, &value) || !parse_need_token(p, MS_T_String, &text) || !parse_end(p)) {
-    return false;
-  }
-  const MsSpan digits = parse_text(p, value);
-  uint32_t status = 0;
-  for (size_t at = 0; at < digits.len && digits.ptr[at] >= '0' && digits.ptr[at] <= '9'; at++) {
-    status = status * 10 + (uint32_t)(digits.ptr[at] - '0');
-  }
-  const MsSpan quoted = parse_text(p, text);
-  if (status == 0 || quoted.len < 2) {
-    parse_fail(p, value, ms_span_of_text("@words names a failure status number and its text"));
-    return false;
-  }
-  out->words_status = status;
-  out->words_text = ms_span_of(quoted.ptr + 1, quoted.len - 2);
-  return true;
-}
-
 MS_NODISCARD static bool parse_module(Parser *p, ImportList *imports, DeclList *decls) {
   while (parse_kind(p) != MS_T_Eof) {
     parse_newlines(p);
@@ -181,33 +130,11 @@ MS_NODISCARD static bool parse_module(Parser *p, ImportList *imports, DeclList *
       parse_fail(p, parse_peek(p), ms_span_of_text("imports read: import name, other from \"path.ms\""));
       return false;
     }
-    const MsToken annotation_at = parse_peek(p);
-    Annotation note = {0};
-    if (!annotation(p, &note))
-      return false;
-    const MsSpan repr = note.repr;
     MsToken export_tok = parse_peek(p);
     bool exported = parse_take(p, MS_T_Export);
     MsDecl *d = NULL;
     if (!parse_declaration(p, &d))
       return false;
-    if (note.words_status != 0) {
-      if (d->kind != MS_D_FN || !d->u.fn.external) {
-        parse_fail(p, annotation_at, ms_span_of_text("@words applies to an `extern fn`; put it on the line above"));
-        return false;
-      }
-      d->u.fn.words_status = note.words_status;
-      d->u.fn.words_text = note.words_text;
-      d->pos = annotation_at.pos;
-    }
-    if (repr.len != 0) {
-      if (d->kind != MS_D_TYPE || !d->u.type.external) {
-        parse_fail(p, annotation_at, ms_span_of_text("@repr applies to an extern type; put it on the line above `extern type`"));
-        return false;
-      }
-      d->u.type.repr = repr;
-      d->pos = annotation_at.pos; /* the declaration, and the comment above it, start at the annotation */
-    }
     if (exported && (d->kind == MS_D_IMPL || d->kind == MS_D_TEST)) {
       parse_fail(
           p, export_tok,

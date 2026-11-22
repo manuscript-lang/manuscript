@@ -49,6 +49,17 @@ extern const unsigned ms_native_sig_count;
 /* The signature of the native called `name`, or NULL. */
 const MsNativeSig *ms_native_sig_find(MsSpan name);
 
+/* How the runtime represents an extern type, from its `ms-repr: <Type> <repr>` comment: `bytes_buffer` (a Bytes buffer)
+ * or `inline<N>` (a plain value of N bytes it reads and writes by address). NULL for a type with no comment. */
+typedef struct MsNativeRepr {
+  const char *type;
+  const char *repr;
+} MsNativeRepr;
+
+extern const MsNativeRepr ms_native_reprs[];
+
+const char *ms_native_repr_find(MsSpan type);
+
 /* The native an operation of a type is declared `@method=` for (`List`, `drop`), or NULL. */
 const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation);
 

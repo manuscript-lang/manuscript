@@ -22,7 +22,7 @@
                                       X(Lt, "<") X(Gt, ">") X(Assign, "=") X(Amp, "&") X(Pipe, "|")          \
                                           X(Ellipsis, "...") X(DotDot, "..") X(Question, "?") X(Bang, "!")   \
                                               X(ColonAssign, ":=") X(Arrow, "->") X(EqEq, "==")              \
-                                                  X(NotEq, "!=") X(Le, "<=") X(Ge, ">=") X(At, "@")
+                                                  X(NotEq, "!=") X(Le, "<=") X(Ge, ">=")
 
 typedef enum MsTok {
 #define X(name, text) MS_T_##name,

@@ -25,3 +25,12 @@ const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation) {
   }
   return NULL;
 }
+
+const char *ms_native_repr_find(MsSpan type) {
+  for (const MsNativeRepr *row = ms_native_reprs; row->type != NULL; row++) {
+    if (ms_span_is_text(type, row->type)) {
+      return row->repr;
+    }
+  }
+  return NULL;
+}

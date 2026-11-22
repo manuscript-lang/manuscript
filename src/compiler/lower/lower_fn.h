@@ -237,7 +237,7 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
  * signature, and nothing was emitted. */
 /* The runtime's descriptor operand of kind `kind` (NS_ELEM_DESC...) for the collection among `args`. */
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
-bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
+bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
