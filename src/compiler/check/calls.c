@@ -100,7 +100,7 @@ MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
   bool lifted = false;
   for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
     MsTyParam param = ms_ty_params(types, ty)[index];
-    if (index < ast->len && ast->ptr[index]->def != NULL) {
+    if (index < ast->len && body_param_omittable(body, ast->ptr[index])) {
       param.flags |= MS_PARAM_LIFTED;
       lifted = true;
     }
@@ -138,7 +138,8 @@ static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchL
     for (size_t at = 0; at < total; at++) {
       const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
       const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
-      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL && at < ast->len && ast->ptr[at]->def != NULL);
+      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
+                                                                         : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
       required += defaulted ? 0 : 1;
     }
     if (nargs >= required && nargs <= total) {

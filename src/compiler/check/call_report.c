@@ -114,13 +114,24 @@ static void report_labelled(Body *body, const Target *target, const MsArg *arg, 
   ms_strbuild_free(&text);
 }
 
+/* Whether a call may leave `param` out: it has a default, or its type is optional (a `T?` parameter defaults to none). */
+bool body_param_omittable(const Body *body, const MsParam *param) {
+  if (param->def != NULL) {
+    return true;
+  }
+  const MsTypeRef *ty = param->ty;
+  return ty != NULL && ty->kind == MS_TYPE_NAMED && ty->args.len == 1 &&
+         ms_span_is_text(ms_names_span(body->program->names, ty->name), "Optional");
+}
+
 /* A parameter a call may leave out: lifted, declared with a default, or the only payload of a case, a Void. */
 static bool omittable(const Body *body, const Target *target, const MsTyParam *param, size_t index) {
   const MsTyTable *types = &body->program->types;
   const bool void_payload = target->ref.kind == MS_REF_CASE && ms_ty_param_count(types, target->sig) == 1 &&
                             (ms_ty_is(types, param->ty, MS_BUILTIN_Void) || ms_ty_kind(types, param->ty) == MS_TY_VARIABLE);
   return void_payload || (param->flags & MS_PARAM_LIFTED) != 0 ||
-         (target->ast != NULL && index < target->ast->len && target->ast->ptr[index]->def != NULL);
+         (target->ast != NULL ? index < target->ast->len && body_param_omittable(body, target->ast->ptr[index])
+                              : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
 }
 
 static void report_missing(Body *body, const Target *target, const MsExpr *call, size_t index) {
