@@ -565,6 +565,55 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   return fn_emit(fn, MOP_ClosureNew, &receiver, 1, imm, fn_ty);
 }
 
+/* `view.operation` where `view` is an interface value: a closure that holds a copy of the view and dispatches the
+ * operation through it when called. */
+static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirTy fn_ty) {
+  Lower *cx = fn->cx;
+  const MirTyData *data = mir_ty_data(cx->module, fn_ty);
+  MirValue receiver = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  if (receiver == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
+  const MirTyData *view = mir_ty_data(cx->module, receiver_ty);
+  if (data->kind != MK_FN || view->kind != MK_IFACE) {
+    (void)fn_fail(fn, "an operation of a bound type cannot be used as a value yet (at %u:%u)", expr->pos.line, expr->pos.column);
+    return MIR_NONE;
+  }
+  if (mir_needs_drop(cx->module, receiver_ty)) {
+    receiver = fn_emit(fn, MOP_Clone, &receiver, 1, (MirImm){0}, receiver_ty);
+  }
+  const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
+  const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  MirBuilder b;
+  mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  mir_b_params(&b, values, reserved.nparams);
+  MirValue *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  const MirImm cap_imm = {.tag = MI_IDX, .a = 0};
+  args[0] = mir_b_emit(&b, MOP_ClosureCap, &values[0], 1, cap_imm, receiver_ty);
+  for (uint32_t at = 1; at < reserved.nparams; at++) {
+    args[at] = values[at];
+  }
+  const MirImm method = {.tag = MI_METHOD, .a = view->id, .b = fn_operation_index(fn, expr, ref->index)};
+  const MirValue result = mir_b_emit(&b, MOP_CallMethod, args, reserved.nparams, method, reserved.ret);
+  mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  MirFunc built;
+  if (!mir_b_into_func(&b, &built)) {
+    (void)fn_fail(fn, "a bound operation could not be built");
+    return MIR_NONE;
+  }
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  built.captures = reserved.captures;
+  built.ncaptures = reserved.ncaptures;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+  const MirImm imm = {.tag = MI_FUNC, .a = slot};
+  return fn_emit(fn, MOP_ClosureNew, &receiver, 1, imm, fn_ty);
+}
+
 /* `receiver.method` used as a value: a closure that holds a copy of the receiver and calls the method with it. A
  * method that changes its receiver would have to share the receiver's storage, which a copy does not. */
 MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
@@ -576,6 +625,9 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (data->kind == MK_FN && (ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_METHOD) &&
       !fn_callee_target(fn, &call, &target)) {
     return bound_native_method(fn, expr, fn_ty);
+  }
+  if (ref->kind == MS_REF_OPERATION) {
+    return bound_operation(fn, expr, ref, fn_ty);
   }
   if (data->kind != MK_FN || ref->kind != MS_REF_METHOD) {
     (void)fn_fail(fn, "this method cannot be used as a value yet (reference kind %d at %u:%u)", (int)ref->kind, expr->pos.line,

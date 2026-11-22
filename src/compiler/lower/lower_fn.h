@@ -53,6 +53,8 @@ typedef struct LowerFn {
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
+  MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
+  MirTy default_record_ty;
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
@@ -221,6 +223,8 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 void fn_find_shared(LowerFn *fn, MsStmts body);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
+/* The position of the interface operation the member `callee` names (`index` when it is not a member). */
+uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */

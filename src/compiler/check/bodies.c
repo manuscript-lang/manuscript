@@ -302,19 +302,23 @@ static const MsSymbol *symbol_of(const MsCheckProgram *program, uint32_t module,
 static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
   const MsDef *def = owner != NULL && owner->ty != MS_TY_NONE ? body_def(body, owner->ty) : NULL;
   const size_t mark = body->resolver.names.len;
+  const size_t scope = body_scope_mark(body);
   if (owner != NULL) {
     resolver_enter_symbol(&body->resolver, owner);
   }
   for (uint32_t index = 0; index < fields.len; index++) {
     const MsParam *field = fields.ptr[index];
-    if (field->def == NULL) {
-      continue;
-    }
     const MsTy ty = def != NULL && index < def->fields.len
                         ? def->fields.ptr[index].ty
                         : (field->ty != NULL ? resolver_type(&body->resolver, field->ty) : MS_TY_NONE);
-    (void)body_expr(body, field->def, ty);
+    if (field->def != NULL) {
+      (void)body_expr(body, field->def, ty);
+    }
+    /* A default may use the fields before it, which it reads as the constructor's arguments. */
+    MsLocal *local = body_declare(body, field->name, ty, MS_REF_PARAM, false);
+    local->id = index;
   }
+  body_scope_reset(body, scope);
   ms_name_list_truncate(&body->resolver.names, mark);
   ms_ty_list_truncate(&body->resolver.types, mark);
 }
