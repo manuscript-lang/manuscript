@@ -5,7 +5,10 @@
 // and counts the fixtures whose observation equals the recorded one. The frozen Rust runner
 // stays as the cross-check until both give the same counts.
 //
-// Recording, fuzz and harvest are not ported (#6224, #6225, #6226). MS names the ms under
+// `--record` writes each selected fixture's expectation from the ms under test instead of
+// comparing (`--only-missing` keeps recorded ones, `--no-stable-check` skips the second
+// observation, `--prune` deletes fixtures that cannot be recorded). Fuzz and harvest are
+// not ported (#6225, #6226). MS names the ms under
 // test (default target/release/ms). CONFORM_BUILD_TYPE picks the build type of run and
 // test (default Release). Fixtures tagged `aliasing` are left out of check, run and test
 // as the gate does (`--exclude-tag aliasing`).
@@ -14,7 +17,7 @@
 // Prints `<phase>: passed/total` and one `FAIL <id>` line per difference.
 import (
 	Bytes from "@std/bytes.ms",
-	JsonValue, parse, stringify from "@std/data/json.ms",
+	JsonValue, StringifyOptions, parse, stringify from "@std/data/json.ms",
 	Promise, promise from "@std/concurrency/promise.ms",
 	arguments, environment, working_directory from "@std/os/env.ms",
 	CopyOptions,
@@ -25,7 +28,8 @@ import (
 	glob,
 	read_file,
 	remove,
-	temporary from "@std/os/fs.ms",
+	temporary,
+	write_file from "@std/os/fs.ms",
 	CommandOutput, RunOptions, run from "@std/os/process.ms",
 	seconds from "@std/time.ms",
 
@@ -44,6 +48,8 @@ type Fixture:
 	stdin: Bytes
 	timeout: Int
 	tags: List[String]
+	deterministic: Bool
+	sidecar: String
 	expected: JsonValue
 
 // The `// conform:` header of a fixture.
@@ -53,6 +59,7 @@ type Meta:
 	args: List[String]
 	timeout: Int
 	entry: String
+	deterministic: Bool
 
 // What one run of ms left: its exit status and streams, as text.
 type Process:
@@ -81,7 +88,7 @@ fn parent_length(path: String) Int:
 // The header lines of `text`: `// conform: key=value`, up to the first line that is not a
 // comment or blank.
 fn parse_meta(text: String) Meta:
-	var meta = Meta(tags: [], phase: "", args: [], timeout: 0, entry: "")
+	var meta = Meta(tags: [], phase: "", args: [], timeout: 0, entry: "", deterministic: false)
 	for line in text.split("\n"):
 		trimmed := line.trim()
 		if trimmed == "" or trimmed.starts_with("#"): continue
@@ -103,6 +110,7 @@ fn parse_meta(text: String) Meta:
 		else if key == "phase": meta.phase = value.clone()
 		else if key == "timeout": meta.timeout = value.parse_int().get_or(0)
 		else if key == "entry": meta.entry = value.clone()
+		else if key == "deterministic": meta.deterministic = value == "true"
 		else if key == "args":
 			if document := parse(value).get_or(JsonValue.Null).as_list():
 				for item in document: meta.args.append(item.as_string().get_or("").clone())
@@ -174,6 +182,8 @@ fn fixtures(root: String, phase: String, filters: List[String]) List[Fixture]:
 				stdin: stdin,
 				timeout: meta.timeout,
 				tags: meta.tags.clone(),
+				deterministic: meta.deterministic,
+				sidecar: sidecar.clone(),
 				expected: expected.clone(),
 			),
 		)
@@ -477,10 +487,72 @@ fn sweep(ms: String, build_type: String, chunk: List[Fixture]) List[String]:
 		else: lines.append(f"FAIL {fx.id}")
 	return lines
 
+// The text of `ms version`, stored in each expectation for provenance.
+fn oracle_version(ms: String) String:
+	result := run(ms, ["version"], RunOptions(timeout: seconds(30))).wait()
+	match result:
+		ok(out): return text_of(out.stdout).trim().clone()
+		error(_): return ""
+
+// Why `observed` cannot be recorded, or "".
+fn unrecordable(observed: JsonValue) String:
+	for key in ["harness_error", "spawn_error", "timed_out", "unparsable_json"]:
+		if observed.get(key).is_some(): return f"observation has {key}"
+
+	if report := observed.get("report"):
+		if report.get("unparsable_json").is_some(): return "ms test did not print JSON"
+	return ""
+
+// Records each fixture of `chunk`: one `wrote`, `same`, `kept` or `REJECT <id>: <why>` line apiece.
+fn record_chunk(
+	ms: String,
+	build_type: String,
+	chunk: List[Fixture],
+	version: String,
+	stable: Bool,
+	only_missing: Bool,
+	prune: Bool,
+) List[String]:
+	var lines = List[String]()
+	for fx in chunk:
+		if only_missing and access(fx.sidecar, 0).is_ok():
+			lines.append("kept")
+			continue
+
+		first := observe(ms, fx, build_type)
+		why := unrecordable(first)
+		var rejected = why
+		if rejected == "" and stable and not fx.deterministic:
+			if not same(first, observe(ms, fx, build_type)): rejected = "unstable between runs"
+
+		if rejected != "":
+			if prune: void remove(fx.path, recursive: true)
+			if prune and not fx.is_dir: void remove(fx.sidecar)
+			lines.append(f"REJECT {fx.id}: {rejected}")
+			continue
+
+		var document = Map[String, JsonValue]()
+		document.add("format", number(1))
+		document.add("phase", text_value(fx.phase))
+		document.add("oracle", text_value(version))
+		document.add("expected", first)
+		text := stringify(JsonValue.ObjectValue(document), StringifyOptions(indent: 2)).get() + "\n"
+		if read_text(fx.sidecar) == text:
+			lines.append("same")
+			continue
+
+		write_file(fx.sidecar, text, replace: true).wait().get()
+		lines.append("wrote")
+	return lines
+
 fn main() Int:
 	root := working_directory().get()
 	var phase = "parse"
 	var jobs = 8
+	var recording = false
+	var only_missing = false
+	var stable = true
+	var prune = false
 	var filters = List[String]()
 	var words = List[String]()
 	for word in arguments(): words.append(word.clone())
@@ -493,6 +565,10 @@ fn main() Int:
 		else if words[at] == "--jobs":
 			at += 1
 			jobs = words[at].parse_int().get_or(8)
+		else if words[at] == "--record": recording = true
+		else if words[at] == "--only-missing": only_missing = true
+		else if words[at] == "--no-stable-check": stable = false
+		else if words[at] == "--prune": prune = true
 		else: filters.append(words[at].clone())
 		at += 1
 
@@ -520,6 +596,34 @@ fn main() Int:
 		for index in 0..chosen.length():
 			if index % jobs_count == worker: mine.append(chosen[index].clone())
 		chunks.append(mine)
+
+	if recording:
+		version := oracle_version(ms.clone())
+		var recorders = List[Promise[List[String]]]()
+		for worker in 0..jobs_count:
+			recorders.append(
+				promise(
+					fn: ok(
+						record_chunk(
+							ms, build_type, chunks[worker], version, stable, only_missing, prune
+						)
+					)
+				)
+			)
+
+		var counts = Map[String, Int]()
+		for task in recorders:
+			for line in task.wait().get_or(List[String]()):
+				if line.starts_with("REJECT"):
+					print(line)
+					counts.add("rejected", counts.get("rejected").get_or(0) + 1)
+				else: counts.add(line.clone(), counts.get(line).get_or(0) + 1)
+		print(
+			f"{phase}: wrote {counts.get("wrote").get_or(0)}, same {counts.get("same").get_or(0)}, kept {counts.get("kept").get_or(0)}, rejected {counts.get("rejected").get_or(0)}"
+		)
+		if counts.get("rejected").get_or(0) > 0: return 1
+
+		return 0
 
 	var tasks = List[Promise[List[String]]]()
 	for worker in 0..jobs_count:
