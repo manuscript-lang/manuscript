@@ -127,6 +127,7 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected);
 /* ---- exprs_ops.c ---- */
 
 /* Literals (number, bool, void, text) and the unary and binary operators. */
+void body_report_decimal_literals(Body *body, const MsExpr *expr);
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
