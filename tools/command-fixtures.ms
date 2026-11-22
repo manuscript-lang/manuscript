@@ -144,10 +144,24 @@ fn expected_text(case_dir: String, name: String) String:
 		read_file(f"{case_dir}/expected/{name}").wait().get_or("".to_bytes())
 	)
 
+// `text` on one line, cut to 400 bytes, for a failure message.
+fn brief(text: String) String:
+	flat := text.replace("\n", "\\n").replace("\r", "\\r")
+	if flat.length() <= 400: return flat
+	return flat.slice(0, 400) + "..."
+
+// A failure message naming the stream and showing both texts.
+fn stream_difference(stream: String, expected: String, observed: String) String:
+	return f"{stream} differs\n  expected: {brief(expected)}\n  observed: {brief(observed)}"
+
 // The first difference between the recorded and the observed outcome, or "".
 fn difference(case_dir: String, outcome: Outcome) String:
-	if expected_text(case_dir, "stdout") != outcome.stdout: return "stdout differs"
-	if expected_text(case_dir, "stderr") != outcome.stderr: return "stderr differs"
+	stdout := expected_text(case_dir, "stdout")
+	if stdout != outcome.stdout: return stream_difference("stdout", stdout, outcome.stdout)
+
+	stderr := expected_text(case_dir, "stderr")
+	if stderr != outcome.stderr: return stream_difference("stderr", stderr, outcome.stderr)
+
 	if expected_text(case_dir, "status") != f"{outcome.status}\n": return f"status {outcome.status}"
 
 	tree := f"{case_dir}/expected/tree"

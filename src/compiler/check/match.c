@@ -146,6 +146,9 @@ static void check_exhaustive(Body *body, const MsExpr *expr, MsTy scrutinee) {
 MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy scrutinee = body_expr(body, expr->u.match.scrutinee, MS_TY_NONE);
   check_scrutinee(body, expr, scrutinee);
+  if (ms_ty_kind(&body->program->types, scrutinee) == MS_TY_ALTERNATIVE) {
+    (void)body_opaque_denied(body, expr->pos, scrutinee, ms_span_of_text("its cases cannot be matched here"));
+  }
   /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
   MsTy result = expected != MS_TY_NONE && body_has_foreign_variable(body, expected) ? MS_TY_NONE : expected;
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {

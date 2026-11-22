@@ -15,6 +15,7 @@ typedef struct Builder {
   const MsMethodEntry ***method_at;     /* the method a method node declares */
   MsSpan **param_key;                   /* the key of the parameter or field a node declares */
   MsTy **written;                       /* the checked type of a written type node */
+  bool **instantiated;                  /* a function name written with explicit type arguments, `f[Int]`: the index leaves it out */
   bool **assigned;                      /* an expression that is the target of an assignment */
   uint32_t module;                      /* the module being walked */
   struct TypeSites *sink;               /* where the written-type collectors append */

@@ -114,7 +114,13 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
+  /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
+   * would let the default's `var _resource` stand for a caller local with the same number. */
+  const LowerFnLocals saved_locals = fn_locals_save(fn);
+  const uint32_t counted = fn->facts->local_counts != NULL ? fn->facts->local_counts[call->callee.decl.node] : 0;
+  fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  fn_locals_restore(fn, &saved_locals);
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
@@ -474,6 +480,10 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
     const MirImm blob = {.tag = MI_INT, .i = (int64_t)fn->cx->module->blobs.len - 1};
     const MirValue empty = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
     return fn_emit(fn, MOP_Clone, &empty, 1, (MirImm){0}, MIR_BYTES);
+  }
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs == 1 && written != NULL && !empty_list) {
+    const MirValue values = fn_expr(fn, written, LW_BORROW);
+    return values == MIR_NONE ? MIR_NONE : fn_set_from_list(fn, values, ty);
   }
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);

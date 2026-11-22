@@ -67,4 +67,7 @@ MS_NODISCARD bool ms_check_data_blocker(MsCheckProgram *program, MsTy ty, MsStrB
 void ms_check_data_message(const MsCheckProgram *program, MsTy ty, MsDataReason reason, MsTy part, MsSpan path,
                            MsStrBuild *out);
 
+/* Whether `def` is declared `opaque`. */
+bool ms_check_def_opaque(const MsCheckProgram *program, const MsDef *def);
+
 #endif

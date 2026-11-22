@@ -129,7 +129,7 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   const MsTy source = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, part->expr->id), fn->subst.vars,
                                   fn->subst.args, fn->subst.count);
   const uint32_t own = lower_named_method(fn->cx, source, "to_string");
-  if (own != MIR_NONE) { /* a type with its own `to_string` is written by it */
+  if (own != MIR_NONE && fn->cx->module->funcs.ptr[own].ret == MIR_STR) { /* a type with its own text-valued `to_string` is written by it */
     const MirValue text = mir_b_call(&fn->b, own, &value, 1);
     fn_own_result(fn, text);
     *out = (TextPiece){text, false};

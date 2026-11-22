@@ -33,7 +33,12 @@ static void emit_type_sites(Builder *b, const TypeSites *sites) {
   for (size_t index = 0; index < sites->len; index++) {
     const TypeSite *site = &sites->ptr[index];
     const MsTy resolved = site->id < b->program->modules.ptr[b->module].tree->node_count ? b->written[b->module][site->id] : MS_TY_NONE;
-    const MsSymbolId symbol = site->named ? ms_occ_type_symbol(b, resolved) : 0;
+    MsSymbolId symbol = site->named ? ms_occ_type_symbol(b, resolved) : 0;
+    /* `Self` in an interface is the contract's marker, not a mention of the interface. */
+    if (symbol != 0 && ms_span_is_text(ms_occ_name_text(b, site->name), "Self") && b->program->symbols.ptr[symbol].decl != NULL &&
+        b->program->symbols.ptr[symbol].decl->kind == MS_D_INTERFACE) {
+      symbol = 0;
+    }
     if (symbol != 0) {
       ms_occ_add(b, ms_occ_symbol_key(b, symbol), ms_occ_name_text(b, site->name), b->module, site->offset, false, false, resolved, symbol, false);
     }
