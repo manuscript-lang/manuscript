@@ -44,7 +44,7 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
 }
 
 /* The modules whose types every module sees without an import. */
-static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms"};
+static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms", "@std/intrinsics.ms"};
 
 void ms_check_load_std(MsCheckProgram *program) {
   for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_MODULES); index++) {

@@ -118,6 +118,19 @@ bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_
   return found;
 }
 
+MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver) {
+  const MsMethodEntry *entry = match->entry;
+  MsRef ref = {.kind = MS_REF_METHOD, .owner = receiver};
+  if (entry != NULL) {
+    ref.decl = (MsNodeRef){entry->module, entry->source->id};
+    ref.kind = entry->source->func.body.len == 0 ? MS_REF_NATIVE : MS_REF_METHOD;
+  } else if (match->operation != NULL) {
+    ref.kind = match->native ? MS_REF_NATIVE : MS_REF_OPERATION;
+    ref.decl = (MsNodeRef){match->operation->decl.file, match->operation->decl.node};
+  }
+  return ref;
+}
+
 MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol) {
   MsRefKind kind = MS_REF_FUNCTION;
   if (symbol->kind == MS_SYMBOL_TYPE) {
@@ -199,9 +212,7 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   ms_check_find_method(body->program, receiver, expr->u.member.name, &found);
   if (found.len != 0) {
     ty = found.ptr[0].ty;
-    const MsMethodEntry *entry = found.ptr[0].entry;
-    body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_METHOD, .owner = receiver,
-                                          .decl = {entry != NULL ? entry->module : 0, entry != NULL ? entry->source->id : 0}});
+    body_set_ref(body, expr->id, body_method_ref(&found.ptr[0], receiver));
   }
   ms_method_match_list_free(&found);
   return ty;

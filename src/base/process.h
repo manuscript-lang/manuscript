@@ -16,6 +16,9 @@ typedef struct MsProcessSpec {
   size_t envc;
   MsSpan log_path;    /* the file that receives the output */
   MsSpan error_path;  /* when set, the file that receives the error output instead of `log_path` */
+  bool inherit_error; /* only the error output is shared with this process; the output still goes to `log_path` */
+  bool (*supervise)(void *context); /* called about every 10 ms while the child runs; true kills the child */
+  void *supervise_context;
   bool inherit;       /* the child shares this process's standard streams; `log_path` is unused, and a signal ends it
                          with the shell's status 128 + signal */
 } MsProcessSpec;

@@ -75,6 +75,8 @@ const MsTyCase *body_case_of(Body *body, MsTy owner, MsName name, uint32_t *inde
 /* A visible enum that has a case `name`; `expected` picks the instance when it is that enum. */
 bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_t *index);
 /* The reference a use of `symbol` records. */
+/* The reference a found method or operation gives its call: a native when the compiler or runtime provides it. */
+MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver);
 MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol);
 /* A prelude type (`List`, `Map`, `Optional`, ...) applied to `count` arguments. */
 MsTy body_std_type(Body *body, const char *name, const MsTy *args, size_t count);
@@ -107,5 +109,10 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected);
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
+
+/* ---- exprs_mismatch.c ---- */
+
+/* Reports binary operands that cannot share a type (`Int + String`, `Int + Int?`); false when they can. */
+bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 
 #endif
