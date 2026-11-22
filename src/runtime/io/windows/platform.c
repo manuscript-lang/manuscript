@@ -10,11 +10,12 @@
  * Compiled by the Windows legs only; the PR checks are Linux.
  */
 #include <signal.h>
-#include <windows.h>
 
 #include "base/alloc.h"
 #include "base/list.h"
 #include "runtime/io/reactor_internal.h"
+
+#include <windows.h>
 
 enum {
   SPIN_BELOW_NANOSECONDS = 1000000, /* the timer's own latency would overshoot a shorter wait */

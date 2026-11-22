@@ -38,7 +38,7 @@ int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_na
 
 int ms_sys_fs_seek(int fd, int64_t offset, int origin, int64_t *position) {
   static const int whence[] = {SEEK_SET, SEEK_CUR, SEEK_END};
-  const __int64 moved = _lseeki64(fd, offset, whence[origin]);
+  const int64_t moved = _lseeki64(fd, offset, whence[origin]);
   if (moved < 0) {
     return uv_translate_sys_error(errno);
   }
@@ -105,10 +105,10 @@ const char *ms_sys_fs_watch_ready_prefix(void) {
 int ms_sys_fs_redirect_null(int which) {
   const int null = _open("NUL", _O_RDWR);
   if (null < 0) {
-    return uv_translate_sys_error(GetLastError());
+    return uv_translate_sys_error((int)GetLastError());
   }
   const int moved = _dup2(null, which);
-  const int code = moved < 0 ? uv_translate_sys_error(GetLastError()) : 0;
+  const int code = moved < 0 ? uv_translate_sys_error((int)GetLastError()) : 0;
   (void)_close(null);
   return code;
 }

@@ -380,7 +380,7 @@ uint8_t msstd_system_metrics(MsMetrics *out, MsString *err) {
       .total_memory = clamp_to_int64(uv_get_total_memory()),
       .free_memory = free_memory,
       .available_memory = free_memory,
-      .uptime_nanos = (int64_t)(uptime * NANOS_PER_SECOND),
+      .uptime_nanos = (int64_t)(uptime * (double)NANOS_PER_SECOND),
       .load_1 = load[0],
       .load_5 = load[1],
       .load_15 = load[2],
