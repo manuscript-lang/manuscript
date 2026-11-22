@@ -39,6 +39,14 @@ static MsSpan setting(const char *name, const char *fallback, MsString *storage)
   return ms_span_of_text(fallback);
 }
 
+/* `MS_COUNT_OPS` set to anything but 0 counts operations in every build. */
+static bool ops_from_environment(void) {
+  MsString value = ms_string_empty();
+  const bool set = ms_env_get("MS_COUNT_OPS", &value) && !ms_span_is_text(ms_string_span(&value), "0");
+  ms_string_release(&value);
+  return set;
+}
+
 /* The `MS_RUNTIME` archives followed by the request's own files. */
 static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *inputs) {
   size_t count = 0;
@@ -75,7 +83,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
   const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false,
-                                  .tests = request->tests, .bench = request->bench};
+                                  .tests = request->tests, .bench = request->bench,
+                                  .count_ops = request->count_ops || ops_from_environment()};
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));

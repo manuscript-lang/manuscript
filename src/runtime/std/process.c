@@ -366,7 +366,8 @@ uint8_t msstd_process_memory_usage(MsProcessMemory *out, MsString *err) {
 }
 
 uint8_t msstd_process_runtime_counts(MsProcessCounts *out) {
-  *out = (MsProcessCounts){0}; /* a counting build keeps these; the plain runtime has none */
+  /* The allocation and copy counters are kept only by a counting build; the executed operations by an `--ops` build. */
+  *out = (MsProcessCounts){.operations = ms_core_operations()};
   return MS_STATUS_OK;
 }
 
