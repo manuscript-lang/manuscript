@@ -228,7 +228,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
-MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
+MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node);

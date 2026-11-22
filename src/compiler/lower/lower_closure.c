@@ -405,8 +405,9 @@ uint32_t lower_forwarding_closure(Lower *cx, MirTy fn_ty, uint32_t callee) {
 }
 
 /* A module function used as a value: a closure with no captures whose body calls it. */
-MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty) {
+MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   Lower *cx = fn->cx;
+  const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirTyData *data = mir_ty_data(cx->module, fn_ty);
   const MsSymbolId id = fn_symbol_at(cx, ref->decl);
   if (data->kind != MK_FN || id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
@@ -414,11 +415,17 @@ MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty) {
     return MIR_NONE;
   }
   const LowerTarget target = lower_symbol_target(cx, id);
+  MsTy bound[16] = {0};
   if (target.nvariables != 0) {
-    (void)fn_fail(fn, "a generic function as a value is not lowered yet");
-    return MIR_NONE;
+    const MsTy actual = ms_ty_subst(&cx->program->types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args,
+                                    fn->subst.count);
+    if (target.nvariables > 16 || !ms_check_unify(&cx->program->types, target.ty, actual, target.variables,
+                                                  target.nvariables, bound)) {
+      (void)fn_fail(fn, "a generic function's type arguments could not be found from its use as a value");
+      return MIR_NONE;
+    }
   }
-  const uint32_t callee = lower_instance(cx, &target, NULL, 0, &fn->subst);
+  const uint32_t callee = lower_instance(cx, &target, target.nvariables != 0 ? bound : NULL, target.nvariables, &fn->subst);
   if (callee == MIR_NONE) {
     return MIR_NONE;
   }
