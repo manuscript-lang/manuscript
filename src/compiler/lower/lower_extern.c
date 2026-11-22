@@ -202,6 +202,9 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
   const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, module)};
   const MirValue error = mir_b_call(&fn->b, error_function, error_args, 4);
+  if (has_err) { /* the callee only borrows the text it was said, so the caller closes it */
+    (void)mir_b_emit(&fn->b, MOP_Drop, &said, 1, (MirImm){0}, MIR_NONE);
+  }
   const MirValue failure = build_result(fn, alt, 1, error, ret);
   mir_b_br(&fn->b, join, &failure, 1);
   mir_b_seal_block(&fn->b, join);
