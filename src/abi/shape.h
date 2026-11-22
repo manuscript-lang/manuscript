@@ -164,7 +164,7 @@ static inline const uint8_t *ms_shape_some(const MsShape *shape, const uint8_t *
   if ((shape->flags & MS_SHAPE_NULLABLE) != 0) {
     return *(const uint64_t *)(const void *)slot != 0 ? slot : NULL;
   }
-  return *slot != 0 ? slot + shape->extra : NULL;
+  return *slot != 0 ? slot + (int32_t)shape->extra : NULL; /* signed: inside an alternative's image the payload can lie before the flag */
 }
 
 /* The case of an ALTERNATIVE value at `base` that its tag selects. */
