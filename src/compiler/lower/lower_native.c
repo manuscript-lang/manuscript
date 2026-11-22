@@ -492,17 +492,30 @@ MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, 
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
 
-bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
-                  MirTy ret, MirValue *out) {
+/* The runtime signature of `operation` on `owner`, and the runtime function's name. */
+static const MsNativeSig *native_sig_of(LowerFn *fn, MsTy owner, MsSpan operation, MsName *name) {
   const MsTyTable *types = &fn->cx->program->types;
   /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
   const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, owner));
   const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
                                                    : ms_names_span(fn->cx->program->names, ms_ty_row(types, owner)->name);
   const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
-  const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
-                                    : runtime_name(fn, owner, operation);
-  const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  *name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name)) : runtime_name(fn, owner, operation);
+  return named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, *name));
+}
+
+bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret) {
+  MsName name;
+  const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
+  return sig != NULL && mutates_receiver(sig, ret);
+}
+
+/* `slot` is the address of the receiver's storage when the receiver is not a place of this function (a bound
+ * method value): a native that changes its receiver writes through it. */
+static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+                      const MirValue *args, MirTy ret, MirValue *out) {
+  MsName name;
+  const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
   if (sig == NULL) {
     /* An operation every value has (`to_string`) is done by the walker over its shape. */
     if (argc == 0 || mir_is_scalar(fn->cx->module, mir_b_ty(&fn->b, args[0]))) {
@@ -518,7 +531,10 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (argc <= NS_MAX_PARAMS && signature_arguments(fn, sig, args, argc, ret, wanted, &count)) {
-    if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+    if (slot != MIR_NONE && mutates_receiver(sig, ret)) {
+      wanted[0] = slot;
+      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    } else if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
@@ -527,6 +543,16 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
   }
   *out = fn_runtime_call(fn, name, args, argc, ret);
   return true;
+}
+
+bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
+                  MirTy ret, MirValue *out) {
+  return native_on(fn, place, MIR_NONE, owner, operation, argc, args, ret, out);
+}
+
+bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
+                       MirTy ret, MirValue *out) {
+  return native_on(fn, NULL, slot, owner, operation, argc, args, ret, out);
 }
 
 /* Whether `operation` is one the checker gives every value of the receiver type (`ValueOperations`,

@@ -65,6 +65,20 @@ static bool has_tests(const MsCheckProgram *program) {
   return false;
 }
 
+/* Whether a module declaring a `test` also declares `make_fixture`: the fixture contract lives in @std/test/test.ms. */
+static bool has_fixture(const MsCheckProgram *program) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    const MsModule *tree = program->modules.ptr[module].tree;
+    for (uint32_t index = 0; index < tree->ndecls; index++) {
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN && ms_span_is_text(ms_names_span(program->names, decl->u.fn.name), "make_fixture")) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void ms_check_load_std(MsCheckProgram *program) {
   for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_MODULES); index++) {
     uint32_t loaded = 0;
@@ -73,6 +87,9 @@ void ms_check_load_std(MsCheckProgram *program) {
   if (has_tests(program)) {
     uint32_t loaded = 0;
     (void)load_std_module(program, ms_span_of_text("@std/internal/test_runner.ms"), &loaded);
+    if (has_fixture(program)) {
+      (void)load_std_module(program, ms_span_of_text("@std/test/test.ms"), &loaded);
+    }
   }
   for (uint32_t module = 0; module < program->modules.len; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
