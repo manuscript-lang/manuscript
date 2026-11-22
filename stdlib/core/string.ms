@@ -88,7 +88,14 @@ export enum NormalizationForm:
 // Normalizes `text` to this form, with the same budget and errors as
 // `String.normalize`. When `max_bytes` is omitted or `none` the output is not
 // bounded; a supplied bound counts UTF-8 bytes.
-fn NormalizationForm.normalize(text: String, max_bytes: Int?) String!: ...
+fn NormalizationForm.normalize(text: String, max_bytes: Int?) String!:
+	name := match self:
+		Nfc: "NFC"
+		Nfd: "NFD"
+		Nfkc: "NFKC"
+		Nfkd: "NFKD"
+
+	return text.normalize(name, max_bytes)
 
 // Builds text from Unicode scalar values. Invalid scalars return `EINVAL`.
 export fn from_scalars(values: List[Int]) String!:
