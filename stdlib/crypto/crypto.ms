@@ -43,7 +43,7 @@ import (
 	msstd_crypto_verify from "@std/internal/crypto.ms",
 )
 
-extern type NativeHasher
+export extern type NativeHasher
 
 fn NativeHasher.update(data: Bytes) Void:
 	msstd_crypto_hasher_update(self, data)

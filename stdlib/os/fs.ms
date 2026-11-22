@@ -211,7 +211,7 @@ fn FileInfo.is_symlink() Bool:
 
 // The directory walks that run natively, so the runtime can call the caller's predicate
 // closures.
-interface FileSystem:
+export interface FileSystem:
 	// Returns entries matching the supplied include and exclude patterns.
 	fn glob(
 		path: String,
@@ -793,7 +793,7 @@ export fn write_file(path: String, data: Writable, replace: Bool = false) Promis
 // write ends, not when the promise is dropped: `permit` is a local that closes at the
 // end of the call.
 fn write_held(path: String, data: Bytes, replace: Bool, held: Bool) Void!:
-	permit := WritePermit(held: held)
+	_permit := WritePermit(held: held)
 	return msstd_fs_write_file(path, data, replace)
 
 // Checks that the process may access `path` in `mode`, from 0 through 7: 0 checks
@@ -818,7 +818,7 @@ export fn append_file(path: String, data: Writable) Promise[Void]:
 	)
 
 fn append_held(path: String, data: Bytes, held: Bool) Void!:
-	permit := WritePermit(held: held)
+	_permit := WritePermit(held: held)
 	return msstd_fs_append_file(path, data)
 
 // Sets the permission bits of `path` to `mode`, from 0 through 4095. `follow_links`

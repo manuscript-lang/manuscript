@@ -881,7 +881,7 @@ fn with_access_log(
 		bytes: sent.bytes,
 		duration_ms: monotonic().difference(started).to_milliseconds(),
 	)
-	logged := logger.info("request", entry)
+	void logger.info("request", entry)
 	return result
 
 fn answered(status: Int, succeeded: Bool) Int:
