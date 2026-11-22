@@ -444,32 +444,33 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
  * against zero; `==` and `!=` use `equal`. */
 typedef struct ObjectOp {
   const char *word;
+  const char *fallback; /* the word a type without `word` has instead, or NULL */
   MirCc cc;
   bool compare;
 } ObjectOp;
 
 static bool object_op(MsBinaryOp op, ObjectOp *out) {
   switch (op) {
-    case MS_B_ADD: *out = (ObjectOp){"add", MCC_EQ, false}; return true;
-    case MS_B_SUB: *out = (ObjectOp){"subtract", MCC_EQ, false}; return true;
-    case MS_B_MUL: *out = (ObjectOp){"multiply", MCC_EQ, false}; return true;
-    case MS_B_DIV: *out = (ObjectOp){"quotient", MCC_EQ, false}; return true;
-    case MS_B_REM: *out = (ObjectOp){"modulo", MCC_EQ, false}; return true;
-    case MS_B_EQ: *out = (ObjectOp){"equal", MCC_EQ, false}; return true;
-    case MS_B_NE: *out = (ObjectOp){"equal", MCC_NE, false}; return true;
-    case MS_B_LT: *out = (ObjectOp){"compare", MCC_LT, true}; return true;
-    case MS_B_GT: *out = (ObjectOp){"compare", MCC_GT, true}; return true;
-    case MS_B_LE: *out = (ObjectOp){"compare", MCC_LE, true}; return true;
-    case MS_B_GE: *out = (ObjectOp){"compare", MCC_GE, true}; return true;
+    case MS_B_ADD: *out = (ObjectOp){"add", NULL, MCC_EQ, false}; return true;
+    case MS_B_SUB: *out = (ObjectOp){"subtract", NULL, MCC_EQ, false}; return true;
+    case MS_B_MUL: *out = (ObjectOp){"multiply", NULL, MCC_EQ, false}; return true;
+    case MS_B_DIV: *out = (ObjectOp){"quotient", "divide", MCC_EQ, false}; return true;
+    case MS_B_REM: *out = (ObjectOp){"modulo", "remainder", MCC_EQ, false}; return true;
+    case MS_B_EQ: *out = (ObjectOp){"equal", "compare", MCC_EQ, false}; return true;
+    case MS_B_NE: *out = (ObjectOp){"equal", "compare", MCC_NE, false}; return true;
+    case MS_B_LT: *out = (ObjectOp){"compare", NULL, MCC_LT, true}; return true;
+    case MS_B_GT: *out = (ObjectOp){"compare", NULL, MCC_GT, true}; return true;
+    case MS_B_LE: *out = (ObjectOp){"compare", NULL, MCC_LE, true}; return true;
+    case MS_B_GE: *out = (ObjectOp){"compare", NULL, MCC_GE, true}; return true;
     default: return false;
   }
 }
 
 /* `msstd_<type>_<word>` for the value object `type`. */
-static MsName object_function(LowerFn *fn, const MirTyData *type, const char *word) {
+static MsName object_function(LowerFn *fn, MsName type, const char *word) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "msstd_");
-  const MsSpan type_name = ms_names_span(&fn->cx->module->names, type->name);
+  const MsSpan type_name = ms_names_span(&fn->cx->module->names, type);
   for (size_t at = 0; at < type_name.len; at++) {
     const uint8_t byte = type_name.ptr[at];
     ms_strbuild_append_byte(&text, byte >= 'A' && byte <= 'Z' ? (uint8_t)(byte - 'A' + 'a') : byte);
@@ -481,18 +482,41 @@ static MsName object_function(LowerFn *fn, const MirTyData *type, const char *wo
   return name;
 }
 
+/* The name of a standard value type an operator is written on: a value object, or an inline native record. */
+static bool value_type_name(const LowerFn *fn, MirTy type, MsName *name) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, type);
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_VALUE) {
+    *name = data->name;
+    return true;
+  }
+  if (data->kind == MK_TYPE && fn->cx->module->type_defs.ptr[data->id].native) {
+    *name = fn->cx->module->type_defs.ptr[data->id].name;
+    return true;
+  }
+  return false;
+}
+
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out) {
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, left));
+  MsName type = MS_NAME_EMPTY;
   ObjectOp info;
-  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_VALUE || !object_op(op, &info)) {
+  if (!value_type_name(fn, mir_b_ty(&fn->b, left), &type) || !object_op(op, &info)) {
     return false;
   }
-  const MsName name = object_function(fn, data, info.word);
+  MsName name = object_function(fn, type, info.word);
   if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, name)) == NULL) {
-    return false;
+    if (info.fallback == NULL) {
+      return false;
+    }
+    name = object_function(fn, type, info.fallback);
+    if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, name)) == NULL) {
+      return false;
+    }
+    if (op == MS_B_EQ || op == MS_B_NE) {
+      info.compare = true; /* equal when `compare` is zero */
+    }
   }
   const MirValue operands[2] = {left, right};
-  const bool equality = op == MS_B_EQ || op == MS_B_NE;
+  const bool equality = !info.compare && (op == MS_B_EQ || op == MS_B_NE);
   const MirTy ret = info.compare ? MIR_INT : (equality ? MIR_BOOL : mir_b_ty(&fn->b, left));
   const MirValue result = fn_runtime_call(fn, name, operands, 2, ret);
   if (result == MIR_NONE) {
