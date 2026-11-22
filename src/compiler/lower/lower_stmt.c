@@ -108,9 +108,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     return source != MIR_NONE &&
            bind_parts(fn, pattern, source, from_var || fn_fresh_owner(fn, source), from_var ? &owner : NULL);
   }
-  /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
+  /* A name bound to another name borrows it unless the checker marked the read a move (the source is assigned while
+   * the binding lives); anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
-  bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
+  bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER) &&
+                ms_facts_use(fn->facts, stmt->u.bind.value->id) != MS_USE_MOVE;
   const bool from_call = !stmt->u.bind.is_mutable && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
