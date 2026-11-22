@@ -3,6 +3,7 @@
 #include "tooling/html.h"
 
 #include "base/message.h"
+#include "base/sort.h"
 #include "compiler/syntax/diag_json.h"
 #include "tooling/views.h"
 
@@ -180,7 +181,64 @@ static MsSpan source_of(const MsFactModel *model, MsSpan file) {
   return ms_span_of_text("");
 }
 
-static void data(MsArena *arena, const MsFactModel *model, const MsFindings *changes, MsStrBuild *out) {
+enum { HINT_CAP = 200000 };
+
+typedef struct HintRow {
+  size_t file, line, col, len, ty;
+} HintRow;
+
+static int64_t compare_row(uint8_t *env, const uint8_t *left, const uint8_t *right) {
+  (void)env;
+  const size_t *x = (const size_t *)(const void *)left;
+  const size_t *y = (const size_t *)(const void *)right;
+  for (size_t i = 0; i < 5; i++) {
+    if (x[i] != y[i]) {
+      return x[i] < y[i] ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+/* `[type table, [file index, line, column, length, type index, ...]]`, rows in source order. */
+static void hints_json(MsArena *arena, const Index *ix, const MsTypeHints *hints, MsStrBuild *out) {
+  MsSpans table = {0};
+  HintRow *rows = MS_ARENA_NEW_ARRAY(arena, HintRow, hints->len + 1);
+  size_t count = 0;
+  for (size_t i = 0; hints != NULL && i < hints->len && i < HINT_CAP; i++) {
+    const MsTypeHint *hint = &hints->ptr[i];
+    size_t file = 0;
+    if (!has_file(ix, hint->file, &file)) {
+      continue;
+    }
+    size_t ty = 0;
+    while (ty < table.len && !ms_span_equal(table.ptr[ty], hint->ty)) {
+      ty++;
+    }
+    if (ty == table.len) {
+      ms_spans_push(arena, &table, hint->ty);
+    }
+    rows[count++] = (HintRow){file, hint->line, hint->col, hint->len, ty};
+  }
+  ms_sort((uint8_t *)rows, count, sizeof(HintRow), compare_row, NULL);
+  ms_strbuild_append_byte(out, '[');
+  strings(out, &table);
+  ms_strbuild_append_text(out, ",[");
+  for (size_t i = 0; i < count; i++) {
+    ms_strbuild_append_text(out, i > 0 ? "," : "");
+    number(out, rows[i].file);
+    ms_strbuild_append_byte(out, ',');
+    number(out, rows[i].line);
+    ms_strbuild_append_byte(out, ',');
+    number(out, rows[i].col);
+    ms_strbuild_append_byte(out, ',');
+    number(out, rows[i].len);
+    ms_strbuild_append_byte(out, ',');
+    number(out, rows[i].ty);
+  }
+  ms_strbuild_append_text(out, "]]");
+}
+
+static void data(MsArena *arena, const MsFactModel *model, const MsFindings *changes, const MsTypeHints *hints, MsStrBuild *out) {
   Index ix = {.model = model};
   size_t at = 0;
   for (size_t i = 0; i < model->entities.len; i++) {
@@ -213,7 +271,8 @@ static void data(MsArena *arena, const MsFactModel *model, const MsFindings *cha
     ms_strbuild_append_text(out, i > 0 ? "," : "");
     entity(&ix, out, &model->entities.ptr[i]);
   }
-  ms_strbuild_append_text(out, "],\"t\":[[],[]]");
+  ms_strbuild_append_text(out, "],\"t\":");
+  hints_json(arena, &ix, hints, out);
   if (changes != NULL) {
     /* [entity index or -1 when removed, name, tier, what changed] */
     ms_strbuild_append_text(out, ",\"x\":[");
@@ -234,9 +293,9 @@ static void data(MsArena *arena, const MsFactModel *model, const MsFindings *cha
   ms_strbuild_append_byte(out, '}');
 }
 
-void ms_html_page(MsArena *arena, const MsFactModel *model, const MsFindings *changes, MsStrBuild *out) {
+void ms_html_page(MsArena *arena, const MsFactModel *model, const MsFindings *changes, const MsTypeHints *hints, MsStrBuild *out) {
   MsStrBuild json = ms_strbuild_new();
-  data(arena, model, changes, &json);
+  data(arena, model, changes, hints, &json);
   const MsSpan page = ms_span_of(ms_page_html, ms_page_html_size);
   size_t at = 0;
   if (!ms_span_find(page, ms_span_of_text("__DATA__"), &at)) {
