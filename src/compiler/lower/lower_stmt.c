@@ -96,15 +96,15 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
   bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
-  const bool lends = !stmt->u.bind.is_mutable && kind == MS_E_CALL;
+  const bool borrows = !stmt->u.bind.is_mutable && kind == MS_E_CALL;
   /* A function bound to a name may take the type that lets its omittable parameters be left out. */
   const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
   const MirTy saved_hint = fn->hint;
   if (kind == MS_E_NAME && bound_ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, bound_ty) == MS_TY_FUNCTION) {
     fn->hint = fn_type(fn, bound_ty);
   }
-  const MirValue value = borrow || lends ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
-  borrow = borrow || (lends && value != MIR_NONE && fn_is_borrowed_view(fn, value)); /* a lender's result borrows */
+  const MirValue value = borrow || borrows ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  borrow = borrow || (borrows && value != MIR_NONE && fn_is_borrowed_view(fn, value)); /* a borrowing callee's result borrows */
   fn->hint = saved_hint;
   if (value == MIR_NONE) {
     return false;
@@ -441,7 +441,7 @@ MirValue fn_default_result(LowerFn *fn) {
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL) {
-    value = fn->lends ? fn_expr(fn, stmt->u.expr, LW_BORROW) : take_value(fn, stmt->u.expr);
+    value = fn->result_borrowed ? fn_expr(fn, stmt->u.expr, LW_BORROW) : take_value(fn, stmt->u.expr);
     if (fn->terminated) { /* the expression never returns: `return panic(...)` */
       return !fn->failed;
     }
@@ -595,7 +595,7 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   return fn_fail(fn, "unknown statement");
 }
 
-/* A statement whose calls lend temporary resources lowers in a scope of its own: they close where it ends. */
+/* A statement whose calls borrow temporary resources lowers in a scope of its own: they close where it ends. */
 static bool lower_scoped(LowerFn *fn, const MsStmt *stmt) {
   if (fn->temps || !fn_stmt_has_temporary(fn, stmt)) {
     return lower_stmt(fn, stmt);
