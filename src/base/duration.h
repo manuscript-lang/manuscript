@@ -1,6 +1,6 @@
-/* driver/duration.h: command-line durations, in the syntax of the standard library's `time.parse_duration`. */
-#ifndef MS_DRIVER_DURATION_H
-#define MS_DRIVER_DURATION_H
+/* base/duration.h: durations, in the syntax of the standard library's `time.parse_duration`. */
+#ifndef MS_BASE_DURATION_H
+#define MS_BASE_DURATION_H
 
 #include "base/safe.h"
 
