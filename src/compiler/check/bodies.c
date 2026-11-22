@@ -345,13 +345,11 @@ static void declaration(Body *body, const MsDecl *decl) {
     const MsTy error = body_std_type(body, "Error", NULL, 0);
     const MsTy args[2] = {body_primitive(body, MS_BUILTIN_Void), error};
     body->result = error == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Result", args, 2);
-    /* With a `make_fixture` factory in the module, `fixture` names its value: a `var` parameter of the test. */
+    /* With a valid `make_fixture` factory in the module, `fixture` names its value: a `var` parameter of the test. */
     const size_t mark = body_scope_mark(body);
-    const MsName factory = ms_names_intern(body->program->names, ms_span_of_text("make_fixture"));
-    const MsSymbol *maker = body_find_symbol(body, factory);
-    if (maker != NULL && maker->kind == MS_SYMBOL_FN && maker->ty != MS_TY_NONE) {
+    if (body->fixture_ty != MS_TY_NONE && !decl->u.test.bench) {
       const MsName fixture = ms_names_intern(body->program->names, ms_span_of_text("fixture"));
-      (void)body_declare(body, fixture, ms_ty_result(&body->program->types, maker->ty), MS_REF_PARAM, true);
+      (void)body_declare(body, fixture, body->fixture_ty, MS_REF_PARAM, true);
     }
     body_block(body, decl->u.test.body);
     body_scope_reset(body, mark);
@@ -408,11 +406,23 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol) {
   return ty;
 }
 
+static bool has_test(const MsModule *tree) {
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    if (tree->decls[index]->kind == MS_D_TEST) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {
   MsModuleInfo *info = &program->modules.ptr[module];
   ms_facts_init(&info->facts, &program->arena, module, info->tree->node_count);
   Body body = {.program = program, .module = module, .facts = &info->facts, .source = source};
   resolver_init(&body.resolver, program, module);
+  if (has_test(info->tree)) {
+    ms_check_test_fixture(&body);
+  }
   for (uint32_t index = 0; index < info->tree->ndecls; index++) {
     declaration(&body, info->tree->decls[index]);
     body_scope_reset(&body, 0);

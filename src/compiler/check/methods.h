@@ -68,6 +68,10 @@ MS_NODISCARD bool ms_check_implements(MsCheckProgram *program, MsTy receiver, Ms
  * apply (a variable receiver, a contract with no operations). */
 MS_NODISCARD bool ms_check_shape_gap(MsCheckProgram *program, MsTy receiver, MsTy contract, MsStrBuild *why);
 
+/* Whether every operation of `contract` that `receiver` declares matches the interface; an operation the receiver
+ * leaves out is not a gap (an interface whose operations all default, such as TestHooks). */
+MS_NODISCARD bool ms_check_shape_optional(MsCheckProgram *program, MsTy receiver, MsTy contract);
+
 /* The operation `name` of interface `contract`, or NULL. */
 const MsOperation *ms_check_find_operation(const MsCheckProgram *program, MsTy contract, MsName name);
 

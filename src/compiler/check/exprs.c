@@ -189,6 +189,11 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (ms_span_is_text(text, "__FILE__")) {
     return body_primitive(body, MS_BUILTIN_String);
   }
+  if (ms_span_is_text(text, "fixture") && !body->quiet) {
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION,
+                    ms_string_from_span(ms_span_of_text("fixture is available only in tests with a local make_fixture factory; declare fn make_fixture() returning a concrete TestHooks implementer in this file")));
+    return MS_TY_NONE;
+  }
   MsTy owner = MS_TY_NONE;
   uint32_t index = 0;
   if (body_find_case(body, name, expected, &owner, &index)) {
