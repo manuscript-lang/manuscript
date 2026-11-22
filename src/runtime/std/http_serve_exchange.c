@@ -7,6 +7,7 @@
 #include "base/alloc.h"
 #include "base/chars.h"
 #include "runtime/std/http_serve_internal.h"
+#include "runtime/std/time_internal.h"
 
 enum { CHUNK = 65536, DRAIN_LIMIT = 256 * 1024 };
 
@@ -34,6 +35,9 @@ void ms_exchange_release(MsExchange *exchange) {
   ms_string_release(&exchange->query);
   ms_headers_free(exchange->headers);
   ms_headers_free(exchange->staged);
+  if (exchange->websocket != NULL) {
+    ms_ws_session_release(exchange->websocket);
+  }
   ms_h1_body_free(&exchange->body);
   ms_bytes_free(&exchange->decoded);
   ms_free(exchange);
@@ -92,6 +96,9 @@ static uint8_t send_bytes(MsExchange *exchange, MsSpan data, MsString *err) {
 
 void ms_exchange_close(MsExchange *exchange) {
   exchange->closed = true;
+  if (exchange->websocket != NULL) {
+    ms_ws_session_close(exchange->websocket);
+  }
 }
 
 /* ---- the request body ---- */
@@ -394,6 +401,77 @@ uint8_t ms_exchange_send(MsExchange *exchange, int64_t status, const MsHeaders *
   return MS_STATUS_OK;
 }
 
+/* ---- the WebSocket upgrade ---- */
+
+/* Answers a refused upgrade and marks the exchange. */
+static void reject_upgrade(MsExchange *exchange, const MsWsRejected *rejected) {
+  MsBytes response = {0};
+  ms_ws_rejected_response(rejected, ms_clock_realtime().seconds, false, &response);
+  MsString ignored = ms_string_empty();
+  (void)send_bytes(exchange, ms_bytes_span(&response), &ignored);
+  ms_string_release(&ignored);
+  ms_bytes_free(&response);
+  exchange->rejected = true;
+  exchange->close_conn = true;
+}
+
+uint8_t ms_exchange_upgrade(MsExchange *exchange, const MsSpan *origins, size_t origin_count,
+                            const MsSpan *subprotocols, size_t subprotocol_count, bool has_max, int64_t max,
+                            MsWsSession **out, MsString *err) {
+  if ((has_max && max <= 0) || exchange->closed || exchange->sent || exchange->upgraded ||
+      exchange->rejected || exchange->conn == NULL) {
+    return MS_STATUS_INVALID_INPUT;
+  }
+  for (size_t i = 0; i < subprotocol_count; i++) {
+    if (!ms_header_valid_name(subprotocols[i])) {
+      return MS_STATUS_INVALID_INPUT;
+    }
+  }
+  MsSpan host = ms_span_of(NULL, 0);
+  (void)ms_headers_first(exchange->headers, ms_span_of_text("Host"), &host);
+  const MsWsRequest request = {.method = ms_string_span(&exchange->method),
+                               .host = host,
+                               .tls = exchange->tls,
+                               .fields = exchange->headers};
+  const MsWsServerOptions options = {.allowed_origins = origins,
+                                     .allowed_origin_count = origin_count,
+                                     .subprotocols = subprotocols,
+                                     .subprotocol_count = subprotocol_count,
+                                     .compression = false};
+  MsWsAccepted accepted;
+  MsWsRejected rejected;
+  const bool http11 = exchange->minor == 1;
+  if (!http11) {
+    rejected = (MsWsRejected){400, "websocket: upgrade needs HTTP/1.1"};
+  }
+  if (!http11 || !ms_ws_accept(&request, &options, &accepted, &rejected)) {
+    reject_upgrade(exchange, &rejected);
+    set_text(err, rejected.message);
+    return MS_STATUS_FAILED;
+  }
+  const uint8_t sent = send_bytes(exchange, ms_bytes_span(&accepted.response), err);
+  if (sent != MS_STATUS_OK) {
+    ms_ws_accepted_release(&accepted);
+    return sent;
+  }
+  MsWsConfig config = {.client = false,
+                       .compress = accepted.compress,
+                       .has_limit = has_max,
+                       .max_message_bytes = (uint64_t)max,
+                       .subprotocol = accepted.subprotocol};
+  accepted.subprotocol = ms_string_empty();
+  MsServeConn *conn = exchange->conn;
+  *out = ms_ws_session_new(&conn->io, &config, ms_serve_unread(conn));
+  ms_serve_consume(conn, ms_serve_unread(conn).len);
+  conn->io = (MsWsTransport){0}; /* the session owns the stream now */
+  ms_ws_accepted_release(&accepted);
+  exchange->deadline = MS_NO_DEADLINE; /* a WebSocket outlives the request timeout */
+  ms_task_limit_current_at(MS_NO_DEADLINE);
+  exchange->upgraded = true;
+  exchange->websocket = ms_ws_session_retain(*out);
+  return MS_STATUS_OK;
+}
+
 /* ---- completing the request ---- */
 
 /* Skips what is left of the request body that is already buffered; false when more would have to be read. */
@@ -439,6 +517,11 @@ bool ms_exchange_finish(MsExchange *exchange, int failure) {
   const bool late = exchange->deadline != MS_NO_DEADLINE && ms_sched_now() > exchange->deadline;
   const bool failed = failure != 0 || late;
   exchange->closed = true;
+  if (exchange->upgraded) {
+    ms_ws_session_close(exchange->websocket); /* the WebSocket lives as long as the handler */
+    exchange->conn = NULL;
+    return false;
+  }
   MsStrBuild out = ms_strbuild_new();
   bool close = exchange->close_conn || conn->worker->closing;
   if (exchange->rejected) {

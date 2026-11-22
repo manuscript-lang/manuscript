@@ -58,8 +58,9 @@ struct MsExchange {
   bool closed;
   bool upgraded;
   bool rejected;
-  int failure;      /* how the handler ended: 0 ok, 1 error, 2 fault, 3 out of time or stopped */
-  int64_t deadline; /* on ms_sched_now's clock; MS_NO_DEADLINE: none */
+  MsWsSession *websocket; /* after an upgrade; closed when the handler returns */
+  int failure;            /* how the handler ended: 0 ok, 1 error, 2 fault, 3 out of time or stopped */
+  int64_t deadline;       /* on ms_sched_now's clock; MS_NO_DEADLINE: none */
 };
 
 /* Time left until `deadline` in nanoseconds, negative when there is none. */
@@ -96,6 +97,10 @@ uint8_t ms_exchange_send(MsExchange *exchange, int64_t status, const MsHeaders *
                          MsString *err);
 uint8_t ms_exchange_write(MsExchange *exchange, MsSpan data, MsString *err);
 void ms_exchange_close(MsExchange *exchange);
+/* The WebSocket handshake: on success the connection belongs to the returned session (one reference). */
+uint8_t ms_exchange_upgrade(MsExchange *exchange, const MsSpan *origins, size_t origin_count,
+                            const MsSpan *subprotocols, size_t subprotocol_count, bool has_max, int64_t max,
+                            MsWsSession **out, MsString *err);
 
 /* Completes the request after its handler ended (`failure`: 0 ok, 1 error, 2 fault, 3 timed out or stopped);
  * writes what the response still lacks and reports whether the connection stays open. */

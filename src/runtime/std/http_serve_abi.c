@@ -315,3 +315,31 @@ uint8_t msstd_http_exchange_write_bytes(const MsObj *object, const MsBytes *data
   MsString text = ms_string_empty();
   return finish(ms_exchange_write(exchange_of(object), ms_bytes_span(data), &text), &text, err);
 }
+
+/* The spans of a list of strings; free with ms_free. */
+static MsSpan *spans_of(const MsList *list) {
+  const MsString *items = (const MsString *)(const void *)list->ptr;
+  MsSpan *spans = ms_alloc_zeroed((list->len + 1) * sizeof *spans);
+  for (size_t i = 0; i < list->len; i++) {
+    spans[i] = ms_string_span(&items[i]);
+  }
+  return spans;
+}
+
+uint8_t msstd_http_exchange_upgrade(const MsObj *object, const MsList *origins, const MsList *subprotocols,
+                                    uint8_t has_max, int64_t max, MsObj **out, MsString *err) {
+  *err = ms_string_empty();
+  MsString text = ms_string_empty();
+  MsSpan *allowed = spans_of(origins);
+  MsSpan *offered = spans_of(subprotocols);
+  MsWsSession *session = NULL;
+  const uint8_t status = ms_exchange_upgrade(exchange_of(object), allowed, origins->len, offered,
+                                             subprotocols->len, has_max != 0, max, &session, &text);
+  ms_free(allowed);
+  ms_free(offered);
+  if (status == MS_STATUS_OK) {
+    *out = ms_ws_handle_new(session);
+    ms_ws_session_release(session);
+  }
+  return finish(status, &text, err);
+}
