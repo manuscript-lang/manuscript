@@ -34,6 +34,7 @@ typedef struct MsMethodMatch {
   MsTy contract;                /* the interface of an operation, else MS_TY_NONE */
   const MsMethodEntry *entry;   /* the method, NULL for an interface operation */
   const MsOperation *operation; /* the operation, NULL for a method */
+  bool native;                  /* the compiler or runtime provides it: `to_string`, a primitive's operation */
 } MsMethodMatch;
 
 MS_LIST_DEFINE(MsMethodMatchList, ms_method_match_list, MsMethodMatch)
@@ -45,6 +46,9 @@ void ms_methods_free(MsMethodList *methods);
 /* Appends the methods named `name` that apply to `receiver` to `out`: its own methods whose receiver form
  * matches, the operation of an interface-typed receiver, and the operations of a type variable's bounds. */
 void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
+
+/* Appends the operations `receiver` has without declaring them (native.c). */
+void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
 
 /* Matches `pattern` against `actual`, binding each of the `count` variables `vars[i]` to `bound[i]` (a slot
  * that holds MS_TY_NONE is free). A function type's parameter modes must agree. */
