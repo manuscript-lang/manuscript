@@ -1,6 +1,7 @@
 /* ms_lint: the rules that read C files and the repository file list.
  *
  * Owns what `ms_lint` checks: banned libc calls, layering from src/layers.txt, file size,
+ * portable paths (printable ASCII, no Windows-reserved names),
  * and scripts or workflow steps outside the baseline. Every violation is printed as
  * `path:line: rule: message` and counted. */
 #ifndef MS_LINT_LINT_H
