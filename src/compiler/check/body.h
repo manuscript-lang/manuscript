@@ -108,4 +108,9 @@ MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
 
+/* ---- exprs_mismatch.c ---- */
+
+/* Reports binary operands that cannot share a type (`Int + String`, `Int + Int?`); false when they can. */
+bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);
+
 #endif
