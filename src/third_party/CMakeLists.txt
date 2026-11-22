@@ -28,28 +28,19 @@ endif()
 add_library(llhttp STATIC llhttp/src/api.c llhttp/src/http.c llhttp/src/llhttp.c)
 target_include_directories(llhttp SYSTEM PUBLIC llhttp/include)
 
-# PCRE2, 8-bit with Unicode properties and no JIT. The generic headers and tables are copied at configure
-# time, so nothing in the vendored tree is edited.
-set(PCRE2_DIR ${CMAKE_CURRENT_SOURCE_DIR}/pcre2/src)
-set(PCRE2_GEN ${CMAKE_CURRENT_BINARY_DIR}/pcre2_gen)
-configure_file(${PCRE2_DIR}/pcre2.h.generic ${PCRE2_GEN}/pcre2.h COPYONLY)
-configure_file(${PCRE2_DIR}/config.h.generic ${PCRE2_GEN}/config.h COPYONLY)
-configure_file(${PCRE2_DIR}/pcre2_chartables.c.dist ${PCRE2_GEN}/pcre2_chartables.c COPYONLY)
-add_library(pcre2 STATIC
-  ${PCRE2_GEN}/pcre2_chartables.c
-  ${PCRE2_DIR}/pcre2_auto_possess.c ${PCRE2_DIR}/pcre2_chkdint.c ${PCRE2_DIR}/pcre2_compile.c
-  ${PCRE2_DIR}/pcre2_compile_cgroup.c ${PCRE2_DIR}/pcre2_compile_class.c ${PCRE2_DIR}/pcre2_config.c
-  ${PCRE2_DIR}/pcre2_context.c ${PCRE2_DIR}/pcre2_convert.c ${PCRE2_DIR}/pcre2_dfa_match.c
-  ${PCRE2_DIR}/pcre2_error.c ${PCRE2_DIR}/pcre2_extuni.c ${PCRE2_DIR}/pcre2_find_bracket.c
-  ${PCRE2_DIR}/pcre2_jit_compile.c ${PCRE2_DIR}/pcre2_maketables.c ${PCRE2_DIR}/pcre2_match.c
-  ${PCRE2_DIR}/pcre2_match_data.c ${PCRE2_DIR}/pcre2_match_next.c ${PCRE2_DIR}/pcre2_newline.c
-  ${PCRE2_DIR}/pcre2_ord2utf.c ${PCRE2_DIR}/pcre2_pattern_info.c ${PCRE2_DIR}/pcre2_script_run.c
-  ${PCRE2_DIR}/pcre2_serialize.c ${PCRE2_DIR}/pcre2_string_utils.c ${PCRE2_DIR}/pcre2_study.c
-  ${PCRE2_DIR}/pcre2_substitute.c ${PCRE2_DIR}/pcre2_substring.c ${PCRE2_DIR}/pcre2_tables.c
-  ${PCRE2_DIR}/pcre2_ucd.c ${PCRE2_DIR}/pcre2_valid_utf.c ${PCRE2_DIR}/pcre2_xclass.c)
-target_include_directories(pcre2 ${MS_THIRD_PARTY_SYSTEM} PUBLIC ${PCRE2_GEN} PRIVATE ${PCRE2_DIR})
-target_compile_definitions(pcre2 PUBLIC PCRE2_CODE_UNIT_WIDTH=8 PCRE2_STATIC
-  PRIVATE HAVE_CONFIG_H SUPPORT_PCRE2_8 SUPPORT_UNICODE)
+# PCRE2 builds with its own CMakeLists.txt: the 8-bit static library with Unicode properties and no JIT, no
+# pcre2grep or tests. Consumers define the code unit width themselves, which the target also exports.
+set(BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "" FORCE)
+set(PCRE2_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(PCRE2_SHOW_REPORT OFF CACHE BOOL "" FORCE)
+set(PCRE2_SUPPORT_JIT OFF CACHE BOOL "" FORCE)
+set(PCRE2_SUPPORT_UNICODE ON CACHE BOOL "" FORCE)
+add_subdirectory(pcre2 EXCLUDE_FROM_ALL)
+target_compile_definitions(pcre2-8-static PUBLIC PCRE2_CODE_UNIT_WIDTH=8)
+set_target_properties(pcre2-8-static PROPERTIES SYSTEM ON)
+add_library(pcre2 ALIAS pcre2-8-static)
 
 
 # zlib builds with its own CMakeLists.txt: the static library only, no examples, no install.
