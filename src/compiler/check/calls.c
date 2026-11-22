@@ -280,6 +280,25 @@ static void match_args(const Body *body, const Target *target, const MsExpr *cal
   }
 }
 
+/* A generic type still carrying its own declaration's variables, as `none` has before a target gives it one. */
+static bool unapplied(const Body *body, MsTy ty) {
+  const MsTyTable *types = &body->program->types;
+  if (ty == MS_TY_NONE || ms_ty_arg_count(types, ty) == 0) {
+    return false;
+  }
+  const uint32_t at = ms_ty_row(types, ty)->def;
+  const MsDef *def = at == 0 ? NULL : ms_defs_get(&body->program->defs, at);
+  if (def == NULL || def->variables.len != ms_ty_arg_count(types, ty)) {
+    return false;
+  }
+  for (size_t index = 0; index < def->variables.len; index++) {
+    if (ms_ty_args(types, ty)[index] != def->variables.ptr[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* The parameter type with the variables bound so far substituted. */
 static MsTy expected_param(Body *body, const Target *target, MsTy param, const MsTy *bound) {
   size_t known = 0;
@@ -358,10 +377,14 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     const bool open = mentions_vars(types, wanted, &target->vars);
     /* A collection literal is inferred from its entries, then unified with the open parameter type. */
     const bool literal = arg->value->kind == MS_E_LIST || arg->value->kind == MS_E_MAP;
-    arg_tys[index] = open ? body_expr(body, arg->value, literal ? MS_TY_NONE : wanted)
+    bool bare = false; /* the parameter is one of the callee's own variables: it says nothing the argument can use */
+    for (size_t at = 0; at < target->vars.len; at++) {
+      bare = bare || target->vars.ptr[at] == wanted;
+    }
+    arg_tys[index] = open ? body_expr(body, arg->value, literal || bare ? MS_TY_NONE : wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
     ms_strbuild_free(&context);
-    arg_tys[index] = with_context_modes(body, param, arg_tys[index]);
+    arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
@@ -424,6 +447,22 @@ static MsTy record_call(Body *body, const MsExpr *call, const Target *target, Ms
   return ms_ty_result(&body->program->types, instantiated);
 }
 
+/* An argument typed `T` for a parameter the expected result made `T?` is wrapped (`ok(3)` where `Int?!` is wanted). */
+static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsTy *arg_tys, const Matched *matched) {
+  const MsTyTable *types = &body->program->types;
+  for (size_t index = 0; index < matched->count; index++) {
+    const MsTy param = ms_ty_params(types, sig)[index].ty;
+    const MsExpr *value = matched->slot[index] >= 0 ? call->u.call.args.ptr[matched->slot[index]].value : NULL;
+    if (value != NULL && unapplied(body, ms_facts_type(body->facts, value->id))) {
+      body_set_type(body, value->id, param); /* `none` takes the type its target gives it */
+    }
+    if (matched->slot[index] >= 0 && arg_tys[index] != MS_TY_NONE && ms_ty_is(types, param, MS_BUILTIN_Optional) &&
+        ms_ty_arg_count(types, param) == 1 && ms_ty_args(types, param)[0] == arg_tys[index]) {
+      body_convert(body, call->u.call.args.ptr[matched->slot[index]].value, arg_tys[index], param);
+    }
+  }
+}
+
 /* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
 static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, size_t count,
                         size_t before, MsTy callee) {
@@ -454,6 +493,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
                              target->explicit_args.ptr, target->explicit_args.len, arg_tys, matched->count, expected,
                              &instance)) {
       sig = instance.ty;
+      wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
       if (uninferable(body, &instance, arg_tys, matched->count, diagnostics_before, target->sig)) {
