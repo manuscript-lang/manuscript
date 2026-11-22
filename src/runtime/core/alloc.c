@@ -2,6 +2,7 @@
 #include "runtime/core/alloc.h"
 
 #include <mimalloc.h>
+#include <stdatomic.h>
 
 #include "base/alloc.h"
 
@@ -26,4 +27,14 @@ void *msrt_realloc(void *block, size_t size) {
 
 void msrt_free(void *block) {
   ms_free(block);
+}
+
+static _Atomic int64_t operations;
+
+void msrt_ops_add(int64_t count) {
+  atomic_fetch_add_explicit(&operations, count, memory_order_relaxed);
+}
+
+int64_t ms_core_operations(void) {
+  return atomic_load_explicit(&operations, memory_order_relaxed);
 }
