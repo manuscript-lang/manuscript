@@ -24,7 +24,8 @@ enum {
   NS_ADDR_IN,   /* the address of one value, read */
   NS_ADDR_MUT,  /* the address of one value, written */
   NS_OUT_SCALAR, /* the address of a scalar result */
-  NS_ERR_SLOT   /* the address of the string a failing native explains itself in */
+  NS_ERR_SLOT,  /* the address of the string a failing native explains itself in */
+  NS_VALUE_DESC /* the descriptor of the one value the call moves in or takes out (`ValueDesc`) */
 };
 
 enum { NS_MAX_PARAMS = 24 };

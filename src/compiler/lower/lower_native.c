@@ -594,3 +594,93 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   *out = result;
   return true;
 }
+
+/* ---- externs that move one value of a generic type in or out ---- */
+
+/* A generic value `msrt_promise_put[T](id, move value: T, failed)` hands the runtime the address of an owned slot
+ * holding the value and the descriptor of its type; `msrt_promise_take[T](id) T?` gets a slot of the payload type
+ * and answers whether it filled it. Returns false when `sig` takes no value descriptor. */
+bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || sig->count > NS_MAX_PARAMS) {
+    return false;
+  }
+  bool described = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    described = described || sig->kinds[at] == NS_VALUE_DESC;
+  }
+  if (!described) {
+    return false;
+  }
+  const MirTyData *optional = mir_ty_data(fn->cx->module, ret);
+  const bool takes_out = optional->kind == MK_OPT && sig->count > 0 && sig->kinds[sig->count - 1] == NS_ADDR_MUT;
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t used = 0;
+  uint32_t next = 0;
+  MirTy value_ty = takes_out ? optional->elem : MIR_NONE;
+  MirValue out_slot = MIR_NONE;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    const uint8_t kind = sig->kinds[at];
+    if (kind == NS_VALUE_DESC) {
+      if (value_ty == MIR_NONE) {
+        for (uint32_t scan = at; scan < sig->count && value_ty == MIR_NONE; scan++) {
+          value_ty = sig->kinds[scan] == NS_ADDR_MUT && next < nargs ? mir_b_ty(&fn->b, args[next]) : MIR_NONE;
+        }
+        if (value_ty == MIR_NONE && next < nargs) {
+          value_ty = mir_b_ty(&fn->b, args[next]);
+        }
+      }
+      const MirImm imm = {.tag = MI_TY, .a = value_ty};
+      wanted[used++] = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, imm, MIR_PTR);
+    } else if (takes_out && at + 1 == sig->count) {
+      out_slot = stack_slot(fn, value_ty);
+      wanted[used++] = out_slot;
+    } else if (kind == NS_ADDR_MUT && next < nargs) {
+      const MirTy ty = mir_b_ty(&fn->b, args[next]);
+      value_ty = ty;
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue stored[2] = {slot, args[next++]};
+      (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+      wanted[used++] = slot;
+    } else if (next < nargs) {
+      wanted[used++] = args[next++];
+    } else {
+      return false;
+    }
+  }
+  if (next != nargs) {
+    return false;
+  }
+  if (!takes_out) {
+    *out = fn_runtime_call(fn, name, wanted, used, ret);
+    return true;
+  }
+  const uint32_t external = runtime_extern(fn, name, wanted, used, MIR_UINT8);
+  const MirValue status = mir_b_call_rt(&fn->b, external, wanted, used);
+  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
+  const MirValue present = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirImm of_type = {.tag = MI_TY, .a = value_ty};
+  const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, value_ty) ? MOP_Take : MOP_Load, &out_slot, 1,
+                                    of_type, value_ty);
+  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &some, 1);
+  mir_b_switch_to(&fn->b, none_block);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &none, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), result);
+  }
+  *out = result;
+  return true;
+}
