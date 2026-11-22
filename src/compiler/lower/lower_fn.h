@@ -105,6 +105,7 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
+MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 

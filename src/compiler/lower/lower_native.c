@@ -191,6 +191,45 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
   return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
 }
 
+/* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
+MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  const MirValue key = operand_slot(fn, key_expr);
+  if (key == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
+  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
+  const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
+  const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
+  const MirValue out = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, value_ty, MIR_PTR);
+  const MirValue operands[5] = {map, key_desc, value_desc, key, out};
+  const MirValue found = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get")), operands, 5, MIR_BOOL);
+  const bool owns_key = mir_needs_drop(fn->cx->module, data->args[0]);
+  const bool owns_value = mir_needs_drop(fn->cx->module, data->args[1]);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, found, hit, NULL, 0, miss, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue missing = mir_b_emit(&fn->b, owns_key ? MOP_Take : MOP_Load, &key, 1, key_ty, data->args[0]);
+  const MirValue text = fn_value_text(fn, missing, data->args[0]);
+  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
+                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
+                                         MIR_STR);
+  const MirValue parts[2] = {prefix_lit, text};
+  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
+  mir_b_unreachable(&fn->b);
+  mir_b_switch_to(&fn->b, hit);
+  if (owns_key) {
+    const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
+  }
+  return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
