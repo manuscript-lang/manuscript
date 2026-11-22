@@ -25,7 +25,16 @@ static bool place_root(const Uses *pass, const MsExpr *expr) {
 
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
-  if (expr == NULL || (expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr)) {
+  if (expr == NULL) {
+    return;
+  }
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) { /* `r?` hands the payload of the local `r` on */
+    if (expr->u.bin.left->kind == MS_E_NAME && place_root(pass, expr->u.bin.left)) {
+      pass->facts->uses[expr->id] = MS_USE_MOVE;
+    }
+    return;
+  }
+  if ((expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr)) {
     return;
   }
   const MsTy ty = ms_facts_type(pass->facts, expr->id);
