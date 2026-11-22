@@ -14,6 +14,7 @@
  *   `"#.SE".contains(c)`); a longer needle or text calls the runtime.
  * - `starts_with`, `ends_with`: an affix of up to sixteen bytes is compared with two overlapping reads (one to
  *   three bytes: three byte reads), so a short test needs no call and no `memcmp`.
+ * - `eq`: two strings of the same length up to sixteen bytes are compared like an affix; others call the runtime.
  * - `compare`: -1, 0 or 1; two inline strings from at most two word compares, a prefix of up to sixteen bytes byte
  *   by byte or eight at a time; a longer one calls the runtime.
  * - `scalar_at`, `scalar_step`: an offset inside the text decodes in place (the lead byte fixes the width, and a
@@ -244,7 +245,8 @@ static void sf_return_same(MirBuilder *b, MirValue diff) {
   mir_b_ret(b, mir_b_icmp(b, MCC_EQ, diff, mir_b_iconst(b, 0)));
 }
 
-static void sf_affix(MirBuilder *b, uint32_t slow_ext, bool end) {
+/* `end` selects the text's last bytes, `equal` makes the two strings the same length (`==`) instead of a prefix. */
+static void sf_affix(MirBuilder *b, uint32_t slow_ext, bool end, bool equal) {
   MirValue ps[2];
   mir_b_params(b, ps, 2);
   const MirValue text = ps[0], part = ps[1];
@@ -254,7 +256,7 @@ static void sf_affix(MirBuilder *b, uint32_t slow_ext, bool end) {
   const MirBlock four_check = mir_b_new_block(b), four = mir_b_new_block(b);
   const SfBytes t = sf_bytes_of(b, sf_slot_of(b, text));
   const SfBytes p = sf_bytes_of(b, sf_slot_of(b, part));
-  ob_br_if(b, mir_b_icmp(b, MCC_GT, p.len, t.len), no, check);
+  ob_br_if(b, mir_b_icmp(b, equal ? MCC_NE : MCC_GT, p.len, t.len), no, check);
   mir_b_switch_to(b, check);
   ob_br_if(b, sf_const_cmp(b, MCC_GT, p.len, 16), slow, fits);
   mir_b_switch_to(b, fits);
@@ -287,8 +289,9 @@ static void sf_affix(MirBuilder *b, uint32_t slow_ext, bool end) {
   sf_call_slow(b, slow_ext, ps, 2);
 }
 
-static void sf_starts_with(MirBuilder *b, uint32_t slow_ext) { sf_affix(b, slow_ext, false); }
-static void sf_ends_with(MirBuilder *b, uint32_t slow_ext) { sf_affix(b, slow_ext, true); }
+static void sf_starts_with(MirBuilder *b, uint32_t slow_ext) { sf_affix(b, slow_ext, false, false); }
+static void sf_ends_with(MirBuilder *b, uint32_t slow_ext) { sf_affix(b, slow_ext, true, false); }
+static void sf_equal(MirBuilder *b, uint32_t slow_ext) { sf_affix(b, slow_ext, false, true); }
 
 /* ---- compare ---- */
 
@@ -437,6 +440,7 @@ static const SfKind sf_kinds[] = {
   {MR_STRING_CONTAINS, "contains_byte", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_contains},
   {MR_STRING_STARTS_WITH, "starts_with", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_starts_with},
   {MR_STRING_ENDS_WITH, "ends_with", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_ends_with},
+  {MR_STRING_EQ, "string_equal", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_equal},
   {MR_STRING_COMPARE, "string_compare", 2, {MIR_STR, MIR_STR}, MIR_INT, sf_compare},
   {MR_STRING_SCALAR_STEP, "scalar_step", 2, {MIR_STR, MIR_INT}, MIR_INT, sf_scalar_step},
   {MR_STRING_SCALAR_AT, "scalar_at", 4, {MIR_STR, MIR_INT, MIR_BOOL, MIR_INT}, MIR_INT, sf_scalar_at},
