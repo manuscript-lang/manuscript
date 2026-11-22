@@ -12,7 +12,7 @@ fn compare(left: Int, right: Int) Int:
     return 0
 
 fn say(text: String) Void:
-    _ignored := stdout().write(text)
+    _ignored := stdout().write(text.clone())
 
 fn main() Void:
     var b = StringBuilder()

@@ -3,7 +3,7 @@
 // conform: origin=break and continue in if let bodies and else branches with condition temporaries
 
 fn maybe(name: String, present: Bool) List[String]?:
-    return if present: [name] else: none
+    return if present: [name.clone()] else: none
 
 fn stop_in_body() Void:
     for i in 0..3:

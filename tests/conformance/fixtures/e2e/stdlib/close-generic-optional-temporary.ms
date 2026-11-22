@@ -11,7 +11,7 @@ type Door:
 fn move Door.close() Void!:
     print(f"closed {self.name}")
 
-fn opt[T](v: T) T?: v
+fn opt[T](move v: T) T?: v
 
 fn main() Void:
     _a := opt(Door("temp"))

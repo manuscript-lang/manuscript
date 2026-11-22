@@ -14,7 +14,7 @@ fn say(s: String) Void:
     print(f"{s}")
 
 fn maybe(n: String) Door?:
-    return Door(n)
+    return Door(n.clone())
 
 fn open(n: String) Door!Error:
     return ok(Door(n))

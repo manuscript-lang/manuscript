@@ -405,6 +405,39 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   return !fn->failed;
 }
 
+/* `m[key] op= value` on a map: the compound assignment read the entry, so it exists and the new value replaces the
+ * old one at the entry's address; the key is not stored again, so it is not copied. False when `place` is not a map entry. */
+static bool update_map_entry(LowerFn *fn, const MsExpr *place, MirValue value, bool *done) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  *done = false;
+  if (!ms_expr_index(place, &container, &key)) {
+    return true;
+  }
+  const MirValue map = fn_expr(fn, container, LW_BORROW);
+  if (map == MIR_NONE) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, map));
+  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
+    return true;
+  }
+  MirTy entry_ty = MIR_VOID;
+  const MirValue address = fn_entry_address(fn, map, key, &entry_ty);
+  if (address == MIR_NONE) {
+    return false;
+  }
+  const bool owns = mir_needs_drop(fn->cx->module, entry_ty);
+  if (owns) {
+    const MirValue old = mir_b_emit(&fn->b, MOP_Take, &address, 1, (MirImm){.tag = MI_TY, .a = entry_ty}, entry_ty);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue stored[2] = {address, value};
+  (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  *done = true;
+  return !fn->failed;
+}
+
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
@@ -413,6 +446,10 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     }
     if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
       disown(fn, value);
+    }
+    bool done = false;
+    if (stmt->u.assign.has_compound && (!update_map_entry(fn, stmt->u.assign.target, value, &done) || done)) {
+      return done && !fn->failed;
     }
     return fn_put_place(fn, stmt->u.assign.target, value);
   }
