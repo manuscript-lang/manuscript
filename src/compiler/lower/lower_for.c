@@ -273,6 +273,9 @@ static bool for_body(LowerFn *fn, const MsStmt *stmt, const ForSource *src, MirV
   const MirValue item = element(fn, src, mir_b_use_var(&fn->b, index), one);
   bool ok = item != MIR_NONE;
   if (ok) {
+    if (!src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
+      fn->local_owns[local] = 2; /* an element of a list the loop only borrows: moving it out copies it */
+    }
     mir_b_def_var(&fn->b, fn_local(fn, local, src->elem), item);
     ok = fn_stmts(fn, stmt->u.each.body);
   }
@@ -390,15 +393,21 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (more == MIR_NONE) {
     return false;
   }
-  /* A source that can fail answers `T?!`: an error ends the loop, as does `none` inside an ok. */
+  /* A source that can fail answers `T?!`: an error leaves the function, `none` inside an ok ends the loop. */
   const MirTyData *answer = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, result));
   MirValue payload = result;
   if (answer->kind == MK_ALT) {
     const MirCaseDef *ok_case = &fn->cx->module->alts.ptr[answer->id].cases[0];
     const MirTy payload_ty = ok_case->nfields > 0 ? ok_case->fields[0].ty : MIR_VOID;
     const MirBlock inner = mir_b_new_block(&fn->b);
-    mir_b_br_if(&fn->b, more, inner, NULL, 0, done, NULL, 0);
+    const MirBlock failed = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, more, inner, NULL, 0, failed, NULL, 0);
     mir_b_seal_block(&fn->b, inner);
+    mir_b_seal_block(&fn->b, failed);
+    enter(fn, failed); /* a failed read leaves the loop with its error, as `?` would */
+    if (!fn_return_error(fn, result)) {
+      return false;
+    }
     enter(fn, inner);
     const MirImm field = {.tag = MI_ALTFIELD, .a = answer->id, .b = 0, .c = 0};
     payload = mir_b_emit(&fn->b, MOP_AltGet, &result, 1, field, payload_ty);
@@ -416,11 +425,23 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   enter(fn, body);
   fn->loops[fn->nloops++] = (LowerLoop){exit, head, fn->nopen};
   (void)fn_scope_begin(fn);
-  if (result_owned) {
-    fn_own(fn, fn_scope(fn), result);
+  MirValue item = MIR_NONE;
+  if (result_owned && answer->kind == MK_ALT) { /* the item leaves the owned answer: the loop variable owns it */
+    MirTy inner_ty = MIR_VOID;
+    const MirValue inner = fn_take_payload(fn, result, &inner_ty);
+    const MirTy elem = mir_ty_data(fn->cx->module, inner_ty)->elem;
+    item = emit(fn, MOP_OptUnbox, &inner, 1, (MirImm){0}, elem);
+    if (mir_needs_drop(fn->cx->module, elem)) {
+      fn_own(fn, fn_scope(fn), item);
+    }
+  } else {
+    if (result_owned) {
+      fn_own(fn, fn_scope(fn), result);
+    }
+    const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
+    item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   }
   const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
-  const MirValue item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   mir_b_def_var(&fn->b, fn_local(fn, binding->local, opt->elem), item);
   bool ok = fn_stmts(fn, stmt->u.each.body);
   if (!fn->terminated) {

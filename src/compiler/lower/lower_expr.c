@@ -794,7 +794,10 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
                            fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
   const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
                              fn_owned_local(fn, root, &root_var);
-  if (!borrowed_param && !in_var_record && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
+  const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
+                          ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
+  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

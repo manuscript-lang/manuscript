@@ -259,7 +259,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
-                         ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
+                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
     if (by_slot != (step >= call->arg_count)) {
       continue;
     }
@@ -661,7 +661,10 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
                       fn_callee_target(fn, call, &target);
   const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
-  if (!lower_args(fn, expr, call, args, source ? slots : NULL, &nslots, receiver_var)) {
+  /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
+  const bool dispatched = call->callee.kind == MS_REF_OPERATION && expr->u.call.callee->kind == MS_E_MEMBER &&
+                          mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, expr->u.call.callee->u.member.left->id)))->kind == MK_IFACE;
+  if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var)) {
     return MIR_NONE;
   }
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
@@ -670,7 +673,8 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     return construct(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_OPERATION) {
-    return call_operation(fn, expr, call, args, ret);
+    const MirValue answer = call_operation(fn, expr, call, args, ret);
+    return fn_var_slots_back(fn, slots, nslots) ? answer : MIR_NONE;
   }
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);
