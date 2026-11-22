@@ -1,6 +1,7 @@
 /* compiler/lower/lower_call.c: calls to module functions (with their type arguments and default arguments)
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/lower/native_sigs.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
@@ -554,6 +555,10 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
     return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig != NULL && sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, call->arg_count, &checked)) {
+    return checked;
+  }
   const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
   fn_own_result(fn, result);
   return result;
