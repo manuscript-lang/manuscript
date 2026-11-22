@@ -81,7 +81,14 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
   const bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
+  /* A function bound to a name may take the type that lets its omittable parameters be left out. */
+  const MsTy bound_ty = ms_facts_type(fn->facts, pattern->id);
+  const MirTy saved_hint = fn->hint;
+  if (kind == MS_E_NAME && bound_ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, bound_ty) == MS_TY_FUNCTION) {
+    fn->hint = fn_type(fn, bound_ty);
+  }
   const MirValue value = borrow ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  fn->hint = saved_hint;
   if (value == MIR_NONE) {
     return false;
   }
