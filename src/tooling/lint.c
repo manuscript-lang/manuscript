@@ -67,6 +67,13 @@ void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindin
   }
   if (program->diagnostics.len == 0) {
     const size_t lexical = findings->len;
+    for (uint32_t i = 0; i < program->modules.len; i++) {
+      if (!is_standard(ms_names_span(program->names, program->modules.ptr[i].file))) {
+        ms_lint_imports(arena, program, i, findings);
+        ms_lint_unreachable(arena, program, i, findings);
+        ms_lint_matches(arena, program, i, findings);
+      }
+    }
     ms_lint_effects(arena, program, findings);
     ms_sort((uint8_t *)(findings->ptr + lexical), findings->len - lexical, sizeof(MsLintFinding), compare_semantic,
             NULL);
