@@ -59,7 +59,3 @@ bool ms_builtin_is_int(MsBuiltin builtin) {
 bool ms_builtin_is_float(MsBuiltin builtin) {
   return builtin >= MS_BUILTIN_Float && builtin <= MS_BUILTIN_Float64;
 }
-
-bool ms_builtin_is_byte_buffer(MsBuiltin builtin) {
-  return builtin == MS_BUILTIN_BytesBuilder || builtin == MS_BUILTIN_StringBuilder;
-}

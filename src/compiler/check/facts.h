@@ -119,14 +119,17 @@ typedef enum MsCloserFlags {
   MS_CLOSER_WRITES_BACK = 4, /* `var fn close`: the receiver lives in memory and the close changes it */
   MS_CLOSER_EXPLICIT = 8,   /* the body also calls `.close()` on the binding by hand */
   MS_CLOSER_MOVED = 16,     /* a use moves the whole binding out of its scope */
-  MS_CLOSER_PARTIAL = 32    /* a field moves out alone, or a closure captures the binding */
+  MS_CLOSER_PARTIAL = 32,   /* a field moves out alone, or a closure captures the binding */
+  MS_CLOSER_GENERIC = 64    /* its type is a type variable: whether it closes is decided per instance */
 } MsCloserFlags;
 
-/* How a local binding of a Closeable type is closed where its scope ends. `node` is the binding site (the
- * pattern node a MS_REF_LOCAL reference names as its `decl`), `method` the declaration of its `close` method,
- * as a METHOD callee names it. */
+/* How a local binding or `move` parameter of a Closeable type is closed where its scope ends. `node` is its
+ * binding site (the pattern node of a local, the parameter node, or the method node for a method's receiver),
+ * `method` the declaration of its `close` method, as a METHOD callee names it. */
 typedef struct MsCloser {
   MsNode node;
+  MsRefKind ref_kind; /* MS_REF_LOCAL, or MS_REF_PARAM for a parameter or the receiver */
+  uint32_t local;     /* its id within the enclosing function, as a reference to it says */
   MsNodeRef method;
   uint8_t flags; /* MsCloserFlags */
 } MsCloser;

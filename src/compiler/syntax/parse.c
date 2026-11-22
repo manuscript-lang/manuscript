@@ -114,6 +114,27 @@ MS_NODISCARD static bool import_statement(Parser *p, ImportList *imports) {
   return true;
 }
 
+/* `@repr=<name>` on its own line before an extern type: the runtime representation of the type. */
+MS_NODISCARD static bool repr_annotation(Parser *p, MsSpan *repr) {
+  if (!parse_take(p, MS_T_At)) {
+    return true;
+  }
+  MsToken key = {0};
+  MsToken value = {0};
+  if (!parse_need_token(p, MS_T_Name, &key)) {
+    return false;
+  }
+  if (!parse_text_is(p, key, "repr")) {
+    parse_fail(p, key, ms_span_of_text("the only annotation is @repr=<representation>"));
+    return false;
+  }
+  if (!parse_need(p, MS_T_Assign) || !parse_need_token(p, MS_T_Name, &value) || !parse_end(p)) {
+    return false;
+  }
+  *repr = parse_text(p, value);
+  return true;
+}
+
 MS_NODISCARD static bool parse_module(Parser *p, ImportList *imports, DeclList *decls) {
   while (parse_kind(p) != MS_T_Eof) {
     parse_newlines(p);
@@ -130,11 +151,23 @@ MS_NODISCARD static bool parse_module(Parser *p, ImportList *imports, DeclList *
       parse_fail(p, parse_peek(p), ms_span_of_text("imports read: import name, other from \"path.ms\""));
       return false;
     }
+    const MsToken annotation = parse_peek(p);
+    MsSpan repr = {0};
+    if (!repr_annotation(p, &repr))
+      return false;
     MsToken export_tok = parse_peek(p);
     bool exported = parse_take(p, MS_T_Export);
     MsDecl *d = NULL;
     if (!parse_declaration(p, &d))
       return false;
+    if (repr.len != 0) {
+      if (d->kind != MS_D_TYPE || !d->u.type.external) {
+        parse_fail(p, annotation, ms_span_of_text("@repr applies to an extern type; put it on the line above `extern type`"));
+        return false;
+      }
+      d->u.type.repr = repr;
+      d->pos = annotation.pos; /* the declaration, and the comment above it, start at the annotation */
+    }
     if (exported && (d->kind == MS_D_IMPL || d->kind == MS_D_TEST)) {
       parse_fail(
           p, export_tok,

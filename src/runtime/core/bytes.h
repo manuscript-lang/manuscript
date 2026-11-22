@@ -57,9 +57,10 @@ void msrt_bytes_values(const MsList *b, MsList *out);
 void msrt_bytes_join(const MsList *parts, MsList *out);
 /* ms-sig: msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
 void msrt_bytes_from_values(const MsList *values, MsList *out);
-/* ms-sig: msrt_bytes_append(b: *mut VecVal, value: i64) @domain=binary @leaf */
+/* ms-sig: msrt_bytes_append(b: *mut VecVal, value: i64) @domain=binary @leaf @method=BytesBuilder.append */
 void msrt_bytes_append(MsList *b, int64_t value);
-/* ms-sig: msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) @domain=binary @leaf */
+/* ms-sig: msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) @domain=binary @leaf
+ * @method=BytesBuilder.append_bytes */
 void msrt_bytes_extend(MsList *b, const MsList *values);
 /* ms-sig: msrt_bytes_read_word(b: *const VecVal, at: i64, width: i64, little: u8, out: *mut i64) -> u8
  * @domain=binary @leaf @pure */
@@ -87,5 +88,10 @@ void msrt_strbuilder_append_int(MsList *b, int64_t n);
 /* ms-sig: msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf
  * @method=StringBuilder.build */
 void msrt_strbuilder_freeze(MsList *b, MsString *out);
+
+/* The builder's text moved out, leaving it empty. */
+/* ms-sig: msrt_strbuilder_drain(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf
+ * @method=StringBuilder.drain */
+void msrt_strbuilder_drain(MsList *b, MsString *out);
 
 #endif

@@ -202,11 +202,14 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
     const MsParam *declared = (params[index].flags & MS_PARAM_MOVE) != 0 && index >= offset && index - offset < target->func->params.len
                                   ? target->func->params.ptr[index - offset]
                                   : NULL;
-    const MsCloser *closer = declared == NULL ? NULL : ms_facts_closer(fn->facts, declared->id);
-    if (closer != NULL && fn->closing != NULL && fn_closer_lowerable(closer)) {
+    const bool receiver = offset == 1 && index == 0 && (params[index].flags & MS_PARAM_MOVE) != 0;
+    const MsNode site = receiver ? target->node : (declared == NULL ? 0 : declared->id);
+    const MsCloser *closer = site == 0 ? NULL : ms_facts_closer(fn->facts, site);
+    const MsTy checked = receiver ? target->receiver : (declared == NULL ? MS_TY_NONE : ms_facts_type(fn->facts, declared->id));
+    if (fn_closer_for(fn, closer, checked)) {
       /* A resource parameter is the body's to close: it lives in a slot its scope owns. */
       fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);
-      (void)fn_own_param(fn, index, ms_facts_type(fn->facts, declared->id), values[index], fn->param_vars[index]);
+      (void)fn_own_param(fn, index, checked, values[index], fn->param_vars[index]);
       continue;
     }
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));

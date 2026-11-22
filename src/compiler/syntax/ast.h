@@ -357,6 +357,7 @@ typedef struct MsDecl {
       MsTypeParams type_params;
       MsParams fields;
       bool external, opaque;
+      MsSpan repr; /* `@repr=<name>` on an extern type: the runtime representation; empty when absent */
     } type;
     struct {
       MsName name;

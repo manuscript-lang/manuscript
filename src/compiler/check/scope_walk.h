@@ -13,12 +13,17 @@
  * (parameters, loop variables, `self`). */
 typedef enum MsBindingOrigin { MS_BIND_OTHER, MS_BIND_LOCAL, MS_BIND_NARROWED, MS_BIND_PAYLOAD } MsBindingOrigin;
 
+/* What kind of name a binding is, for diagnostics that name it: a parameter the callee only borrows, a parameter it
+ * owns (`move`), a `:=`/`var` local, a loop variable, `self` of a method, or anything else. */
+typedef enum MsBindingKind { MS_BK_OTHER, MS_BK_PARAM, MS_BK_OWNED_PARAM, MS_BK_LOCAL, MS_BK_LOOP, MS_BK_SELF } MsBindingKind;
+
 typedef struct MsBinding {
   MsName name;
   MsPos decl;
   bool mutable_;
   bool invalid; /* its type is known to be wrong */
   MsBindingOrigin origin;
+  MsBindingKind kind;
 } MsBinding;
 
 MS_LIST_DEFINE(MsBindingList, ms_binding_list, MsBinding)
