@@ -95,6 +95,9 @@ double msstd_bigint_to_float(const MsBigCell *a);
 /* ms-sig: msstd_bigint_to_int(handle a: *const ObjCell<Big>, out: *mut i64) -> u8 @domain=big integer @leaf
  */
 uint8_t msstd_bigint_to_int(const MsBigCell *a, int64_t *out);
+/* `BigInt.to_string()`: the decimal digits. */
+/* ms-sig: msrt_bigint_to_string(handle a: *const ObjCell<Big>, out: *mut StrVal) @domain=big integer @leaf */
+void msrt_bigint_to_string(const MsBigCell *a, MsString *out);
 /* ms-sig: msstd_bigint_to_string_radix(handle a: *const ObjCell<Big>, radix: i64, out: *mut StrVal)
  * @domain=big integer @leaf */
 void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsString *out);

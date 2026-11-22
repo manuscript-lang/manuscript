@@ -72,6 +72,9 @@ void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindin
         ms_lint_imports(arena, program, i, findings);
         ms_lint_unreachable(arena, program, i, findings);
         ms_lint_matches(arena, program, i, findings);
+        ms_lint_calls(arena, program, i, findings);
+        ms_lint_promises(arena, program, i, findings);
+        ms_lint_recursion(arena, program, i, findings);
       }
     }
     ms_lint_effects(arena, program, findings);

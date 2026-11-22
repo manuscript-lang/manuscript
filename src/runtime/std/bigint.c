@@ -381,3 +381,7 @@ void msstd_bigint_to_string_radix(const MsBigCell *a, int64_t radix, MsString *o
   *out = ms_strbuild_finish(&text);
   ms_strbuild_free(&text);
 }
+
+void msrt_bigint_to_string(const MsBigCell *a, MsString *out) {
+  msstd_bigint_to_string_radix(a, 10, out);
+}

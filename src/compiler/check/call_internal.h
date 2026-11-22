@@ -14,6 +14,8 @@ typedef struct Target {
   MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
   MsSpan name;
   MsTyList explicit_args; /* owned: written type arguments */
+  size_t nargs;           /* the written argument count, to choose between methods of one name */
+  bool builtin;           /* a built-in type's constructor: its arguments are not matched to declared fields */
 } Target;
 
 /* How a written argument was matched. */
