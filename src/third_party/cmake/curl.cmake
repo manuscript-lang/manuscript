@@ -19,7 +19,70 @@ target_compile_definitions(curl PUBLIC CURL_STATICLIB PRIVATE BUILDING_LIBCURL U
 target_link_libraries(curl PUBLIC zlib nghttp2)
 
 if(WIN32)
-  target_compile_definitions(curl PRIVATE WIN32_LEAN_AND_MEAN USE_THREADS_WIN32 USE_OPENSSL HAVE_SSL_SET0_WBIO)
+  # curl's config-win32.h is for MSVC only; mingw-w64 gets the same settings from this generated header.
+  file(MAKE_DIRECTORY ${CURL_GEN})
+  file(GENERATE OUTPUT ${CURL_GEN}/curl_config.h CONTENT [=[
+#define HAVE_FCNTL_H 1
+#define HAVE_IO_H 1
+#define HAVE_LOCALE_H 1
+#define HAVE_STDBOOL_H 1
+#define HAVE_BOOL_T 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_SYS_UTIME_H 1
+#define HAVE_CLOSESOCKET 1
+#define HAVE_FREEADDRINFO 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_GETADDRINFO_THREADSAFE 1
+#define HAVE_GETHOSTNAME 1
+#define HAVE_GETPEERNAME 1
+#define HAVE_GETSOCKNAME 1
+#define HAVE_IOCTLSOCKET 1
+#define HAVE_IOCTLSOCKET_FIONBIO 1
+#define HAVE_SETLOCALE 1
+#define HAVE_SOCKET 1
+#define HAVE_UTIME 1
+#define HAVE_RECV 1
+#define RECV_TYPE_ARG1 SOCKET
+#define RECV_TYPE_ARG2 char *
+#define RECV_TYPE_ARG3 int
+#define RECV_TYPE_ARG4 int
+#define RECV_TYPE_RETV int
+#define HAVE_SEND 1
+#define SEND_TYPE_ARG1 SOCKET
+#define SEND_TYPE_ARG2 char *
+#define SEND_TYPE_ARG3 int
+#define SEND_TYPE_ARG4 int
+#define SEND_TYPE_RETV int
+#define HAVE_SIGNAL 1
+#define SIZEOF_INT 4
+#define SIZEOF_LONG 4
+#define SIZEOF_SIZE_T 8
+#define SIZEOF_CURL_OFF_T 8
+#define SIZEOF_TIME_T 8
+#define SIZEOF_OFF_T 4
+#define HAVE_STRUCT_SOCKADDR_STORAGE 1
+#define HAVE_STRUCT_TIMEVAL 1
+#define HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
+#define USE_RESOLV_THREADED 1
+
+#define USE_UNIX_SOCKETS 1
+#define CURL_DISABLE_DICT 1
+#define CURL_DISABLE_FILE 1
+#define CURL_DISABLE_FTP 1
+#define CURL_DISABLE_GOPHER 1
+#define CURL_DISABLE_IMAP 1
+#define CURL_DISABLE_LDAP 1
+#define CURL_DISABLE_LDAPS 1
+#define CURL_DISABLE_MQTT 1
+#define CURL_DISABLE_POP3 1
+#define CURL_DISABLE_RTSP 1
+#define CURL_DISABLE_SMTP 1
+#define CURL_DISABLE_TELNET 1
+#define CURL_DISABLE_TFTP 1
+#define CURL_DISABLE_SMB 1
+#define CURL_OS "mingw-w64"
+]=])
+  target_compile_definitions(curl PRIVATE HAVE_CONFIG_H WIN32_LEAN_AND_MEAN USE_THREADS_WIN32 USE_OPENSSL HAVE_SSL_SET0_WBIO)
   target_link_libraries(curl PUBLIC ws2_32 advapi32 crypt32 bcrypt iphlpapi openssl_ssl)
   add_dependencies(curl openssl_build)
 else()
@@ -27,13 +90,29 @@ else()
   include(CheckSymbolExists)
   include(CheckTypeSize)
   set(CURL_HEADERS arpa/inet.h fcntl.h ifaddrs.h libgen.h locale.h netdb.h netinet/in.h netinet/tcp.h
-    netinet/udp.h net/if.h poll.h pwd.h stdbool.h stdatomic.h strings.h sys/ioctl.h sys/param.h sys/poll.h
+    netinet/udp.h poll.h pwd.h stdbool.h stdatomic.h strings.h sys/ioctl.h sys/param.h sys/poll.h
     sys/resource.h sys/select.h sys/types.h sys/un.h termios.h unistd.h utime.h dirent.h sys/filio.h
-    sys/sockio.h linux/tcp.h sys/eventfd.h)
+    sys/sockio.h linux/tcp.h sys/eventfd.h
+    fnmatch.h sched.h signal.h sys/socket.h sys/stat.h sys/time.h sys/uio.h stdlib.h string.h time.h)
+  # The headers the function checks include, in this order, when the platform has them (a missing one would fail every
+  # check). net/if.h needs sys/socket.h first.
+  set(CURL_SYMBOL_HEADERS sys/types.h sys/socket.h sys/stat.h sys/time.h sys/uio.h sys/un.h sys/ioctl.h unistd.h fcntl.h
+    fnmatch.h libgen.h locale.h netdb.h net/if.h poll.h pwd.h sched.h signal.h stdlib.h string.h strings.h time.h utime.h
+    dirent.h ifaddrs.h sys/eventfd.h sys/resource.h)
+  set(CURL_FOUND_HEADERS)
+  include(CheckIncludeFiles)
+  check_include_files("sys/types.h;sys/socket.h;net/if.h" HAVE_NET_IF_H)
   foreach(header IN LISTS CURL_HEADERS)
     string(TOUPPER "HAVE_${header}" var)
     string(REGEX REPLACE "[/.]" "_" var "${var}")
     check_include_file(${header} ${var})
+  endforeach()
+  foreach(header IN LISTS CURL_SYMBOL_HEADERS)
+    string(TOUPPER "HAVE_${header}" var)
+    string(REGEX REPLACE "[/.]" "_" var "${var}")
+    if(${var})
+      list(APPEND CURL_FOUND_HEADERS ${header})
+    endif()
   endforeach()
   set(CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
   set(CURL_FUNCTIONS accept4 alarm arc4random basename closesocket fchmod fcntl fnmatch freeaddrinfo fseeko
@@ -43,9 +122,7 @@ else()
     socket socketpair strcasecmp strerror_r utime utimes eventfd memset_s)
   foreach(function IN LISTS CURL_FUNCTIONS)
     string(TOUPPER "HAVE_${function}" var)
-    check_symbol_exists(${function} "sys/types.h;sys/socket.h;sys/stat.h;sys/time.h;sys/uio.h;sys/un.h;\
-sys/ioctl.h;unistd.h;fcntl.h;fnmatch.h;libgen.h;locale.h;netdb.h;net/if.h;poll.h;pwd.h;sched.h;signal.h;\
-stdlib.h;string.h;strings.h;time.h;utime.h;dirent.h;ifaddrs.h;sys/eventfd.h;sys/resource.h" ${var})
+    check_symbol_exists(${function} "${CURL_FOUND_HEADERS}" ${var})
   endforeach()
   unset(CMAKE_REQUIRED_DEFINITIONS)
   check_symbol_exists(CLOCK_MONOTONIC "time.h" HAVE_CLOCK_GETTIME_MONOTONIC)
