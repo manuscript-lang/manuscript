@@ -106,6 +106,20 @@ void msrt_map_keys_view(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *
  * @leaf @view_of=msrt_map_values */
 void msrt_map_values_view(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
 
+/* ms-sig: msrt_set_add(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf */
+void msrt_set_add(MsMap *m, const MsTypeDesc *kd, const uint8_t *key);
+/* ms-sig: msrt_set_length(m: *const MapVal) -> i64 @domain=set @leaf @pure */
+int64_t msrt_set_length(const MsMap *m);
+/* ms-sig: msrt_set_contains(m: *const MapVal, kd: KeyDesc, key: *const u8) -> u8 @domain=set @leaf @pure */
+uint8_t msrt_set_contains(const MsMap *m, const MsTypeDesc *kd, const uint8_t *key);
+/* ms-sig: msrt_set_remove(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf */
+void msrt_set_remove(MsMap *m, const MsTypeDesc *kd, const uint8_t *key);
+/* ms-sig: msrt_set_clear(m: *mut MapVal, kd: KeyDesc) @domain=set @leaf */
+void msrt_set_clear(MsMap *m, const MsTypeDesc *kd);
+/* ms-sig: msrt_map_get_or(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, fallback: *const u8, out:
+ * *mut u8) @domain=map @leaf */
+void msrt_map_get_or(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+                     const uint8_t *fallback, uint8_t *out);
 /* ms-sig: msrt_set_values(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=set @leaf */
 void msrt_set_values(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
 /* ms-sig: msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf */

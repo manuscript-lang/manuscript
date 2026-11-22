@@ -21,6 +21,26 @@ void msrt_set_add_copy(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
   add_copy(m, ms_map_key_desc(m, kd), key, true);
 }
 
+void msrt_set_add(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
+  msrt_set_add_copy(m, kd, key);
+}
+
+int64_t msrt_set_length(const MsMap *m) {
+  return msrt_map_length(m);
+}
+
+uint8_t msrt_set_contains(const MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
+  return msrt_map_contains(m, kd, NULL, key);
+}
+
+void msrt_set_remove(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
+  msrt_map_remove(m, kd, NULL, key);
+}
+
+void msrt_set_clear(MsMap *m, const MsTypeDesc *kd) {
+  msrt_map_clear(m, kd, NULL);
+}
+
 void msrt_set_add_copy_w(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
   msrt_set_add_copy(m, kd, key);
 }
