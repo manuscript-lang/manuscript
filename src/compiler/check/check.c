@@ -5,6 +5,7 @@
 #include "compiler/check/methods.h"
 #include "compiler/check/mutate.h"
 #include "compiler/check/names.h"
+#include "compiler/check/returns.h"
 #include "compiler/check/program.h"
 
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
@@ -41,6 +42,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_constants(program, index);
     ms_check_mutation(program, index, graph->modules[index].source);
     ms_check_names(program, index);
+    ms_check_returns(program, index);
     ms_check_fallthrough(program, index);
   }
   for (uint32_t index = 0; index < program->modules.len; index++) {
