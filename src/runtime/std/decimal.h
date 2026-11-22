@@ -51,4 +51,15 @@ void msstd_decimal_to_string(const MsDecimal *a, MsString *out);
 /* ms-sig: msstd_decimal_truncate_to_int(a: *const DecType, out: *mut i64) -> u8 @domain=number @leaf */
 uint8_t msstd_decimal_truncate_to_int(const MsDecimal *a, int64_t *out);
 
+/* `to_decimal()` of each integer type. */
+void msrt_int_to_decimal(int64_t v, MsDecimal *out);
+void msrt_int8_to_decimal(int64_t v, MsDecimal *out);
+void msrt_int16_to_decimal(int64_t v, MsDecimal *out);
+void msrt_int32_to_decimal(int64_t v, MsDecimal *out);
+void msrt_int64_to_decimal(int64_t v, MsDecimal *out);
+void msrt_uint8_to_decimal(int64_t v, MsDecimal *out);
+void msrt_uint16_to_decimal(int64_t v, MsDecimal *out);
+void msrt_uint32_to_decimal(int64_t v, MsDecimal *out);
+void msrt_uint64_to_decimal(int64_t v, MsDecimal *out);
+
 #endif

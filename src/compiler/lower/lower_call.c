@@ -80,10 +80,66 @@ static bool is_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
 }
 
-static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out) {
+/* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
+typedef struct VarSlot {
+  const MsExpr *place;
+  MirValue slot;
+  MirTy ty;
+} VarSlot;
+
+/* Moves the value of `place` into a new slot and returns the slot's address. */
+static MirValue var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
+  MirValue owned;
+  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || place->kind == MS_E_INDEX;
+  if (is_place) {
+    if (!fn_take_place(fn, place, &owned)) {
+      return MIR_NONE;
+    }
+  } else {
+    /* A temporary: the callee changes it and what is left is dropped after the call. */
+    owned = fn_expr(fn, place, LW_MOVE);
+    if (owned != MIR_NONE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &owned, 1, (MirImm){0}, MIR_NONE);
+    }
+  }
+  if (owned == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTy ty = mir_b_ty(&fn->b, owned);
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue stored[2] = {slot, owned};
+  (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  *out = (VarSlot){is_place ? place : NULL, slot, ty};
+  return slot;
+}
+
+/* After the call: each slot's value goes back into the place it came from. */
+static bool var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
+  for (uint32_t at = 0; at < count; at++) {
+    const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
+    const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
+                                        &slots[at].slot, 1, of_type, slots[at].ty);
+    if (slots[at].place == NULL) {
+      if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
+        (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
+      }
+    } else if (!fn_put_place(fn, slots[at].place, updated)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
+                       uint32_t *nslots, bool receiver_var) {
   for (uint32_t index = 0; index < call->arg_count; index++) {
     const MsCallArg *arg = &call->args[index];
-    if (arg->source == MS_ARG_WRITTEN) {
+    if (arg->source == MS_ARG_WRITTEN && slots != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) &&
+        *nslots < 16) {
+      const MsExpr *place = written_arg(expr, arg->node.node);
+      out[index] = place != NULL ? var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
+    } else if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
       const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
@@ -242,7 +298,13 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     return MIR_NONE;
   }
   MirValue args[16];
-  if (!lower_args(fn, expr, call, args)) {
+  VarSlot slots[16];
+  uint32_t nslots = 0;
+  LowerTarget target;
+  const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
+                      callee_target(fn, call, &target);
+  const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
+  if (!lower_args(fn, expr, call, args, source ? slots : NULL, &nslots, receiver_var)) {
     return MIR_NONE;
   }
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
@@ -259,8 +321,7 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (call->callee.kind == MS_REF_NATIVE && callee_is_operation(fn, call)) {
     return fn_native_call(fn, expr, call, args, ret);
   }
-  LowerTarget target;
-  if (!callee_target(fn, call, &target)) {
+  if (!source) {
     return call_runtime(fn, call, args, ret);
   }
   MsTy bound[16] = {0};
@@ -282,5 +343,5 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   }
   const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
-  return result;
+  return var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
 }

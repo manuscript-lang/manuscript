@@ -68,7 +68,20 @@ void fn_scope_end(LowerFn *fn) {
   }
 }
 
+/* A return puts each `var` parameter's final value back into its caller's slot. */
+static void put_var_params(LowerFn *fn) {
+  for (uint32_t at = 0; at < fn->nvar_params; at++) {
+    const LowerVarParam *param = &fn->var_params[at];
+    const MirValue stored[2] = {param->slot, mir_b_use_var(&fn->b, param->var)};
+    (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, param->ty) ? MOP_Put : MOP_Store, stored, 2,
+                     (MirImm){0}, MIR_NONE);
+  }
+}
+
 void fn_scope_unwind(LowerFn *fn, uint32_t keep) {
+  if (keep == 0) {
+    put_var_params(fn);
+  }
   for (uint32_t depth = fn->nopen; depth > keep; depth--) {
     emit_end(fn, fn->open[depth - 1]);
   }
