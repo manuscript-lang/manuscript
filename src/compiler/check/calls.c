@@ -111,15 +111,13 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
     const MsMethodMatch *match = &found.ptr[0];
     target->sig = match->ty;
     target->receiver = callee->u.member.left;
-    target->ref = (MsRef){.kind = MS_REF_METHOD, .owner = receiver};
+    target->ref = body_method_ref(match, receiver);
     if (match->entry != NULL) {
-      target->ref.decl = (MsNodeRef){match->entry->module, match->entry->source->id};
       target->ast = &match->entry->source->func.params;
       target->ast_module = match->entry->module;
       copy_vars(target, match->entry->variables.ptr + match->entry->shared,
                 match->entry->variables.len - match->entry->shared);
     } else if (match->operation != NULL) {
-      target->ref.kind = MS_REF_OPERATION;
       copy_vars(target, match->operation->variables.ptr, match->operation->variables.len);
     }
   }

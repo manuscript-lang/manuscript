@@ -365,6 +365,7 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
   const MsTyKind kind = ms_ty_kind(&program->types, receiver);
   if (kind == MS_TY_CONTRACT) {
     find_in_contract(program, receiver, name, receiver, out);
+    ms_check_find_native(program, receiver, name, out);
     return;
   }
   if (kind == MS_TY_VARIABLE) {
@@ -374,6 +375,7 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
         find_in_contract(program, record->bounds.ptr[index], name, receiver, out);
       }
     }
+    ms_check_find_native(program, receiver, name, out);
     return;
   }
   for (size_t index = 0; index < program->methods.len; index++) {
@@ -395,4 +397,5 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     }
     ms_ty_list_free(&bound);
   }
+  ms_check_find_native(program, receiver, name, out);
 }
