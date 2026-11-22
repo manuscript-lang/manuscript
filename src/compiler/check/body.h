@@ -77,6 +77,8 @@ bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_
 /* The reference a use of `symbol` records. */
 /* The reference a found method or operation gives its call: a native when the compiler or runtime provides it. */
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver);
+/* The type of a function named as a value: its omittable parameters stay omittable. */
+MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty);
 MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol);
 /* A prelude type (`List`, `Map`, `Optional`, ...) applied to `count` arguments. */
 MsTy body_std_type(Body *body, const char *name, const MsTy *args, size_t count);
