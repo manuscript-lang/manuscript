@@ -137,8 +137,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MsExpr *index_key = NULL;
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
+  MirValue record = MIR_NONE;
   if (is_place) {
-    if (!fn_take_place(fn, place, &owned)) {
+    /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
+    if (!fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
       return MIR_NONE;
     }
   } else {
@@ -156,7 +158,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty, MIR_NONE, MIR_NONE};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, MIR_NONE};
   return slot;
 }
 
@@ -176,7 +178,8 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }
-    } else if (!fn_put_place(fn, slots[at].place, updated)) {
+    } else if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, updated)
+                                              : fn_put_place(fn, slots[at].place, updated))) {
       return false;
     }
   }
