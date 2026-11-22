@@ -143,6 +143,16 @@ static const MsRef *receiver_local(LowerFn *fn, const MsExpr *callee) {
   return ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0 ? ref : NULL;
 }
 
+/* `list.get(index)`: the element, a negative index counting from the end; an index out of range faults. */
+static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
+  const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
+  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, mir_b_iconst(&fn->b, 0));
+  const MirValue at = mir_b_select(&fn->b, negative, from_end, index);
+  const MirValue args[2] = {list, at};
+  return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -153,6 +163,9 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   if (name_is(operation, "to_string") && mir_b_ty(&fn->b, args[0]) == MIR_STR) {
     const MirImm none = {0};
     return fn_emit(fn, MOP_Clone, args, 1, none, MIR_STR);
+  }
+  if (name_is(operation, "get") && call->arg_count == 2 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_LIST) {
+    return list_get(fn, args[0], args[1], ret);
   }
   const MsName name = runtime_name(fn, call->callee.owner, operation);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
