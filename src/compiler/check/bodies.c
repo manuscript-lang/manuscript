@@ -108,10 +108,23 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable);
 }
 
+/* `x.field = ...` needs a field of a type value; a method, a case or an unknown member cannot be assigned. */
+static void check_field_target(Body *body, const MsExpr *target) {
+  const MsRef *ref = ms_facts_ref(body->facts, target->id);
+  if (target->kind != MS_E_MEMBER || (ref != NULL && ref->kind == MS_REF_FIELD) ||
+      body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  ms_check_report(body->program, body->module, target->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("assignment requires a type field; only fields of a type value can be assigned "
+                                      "with 'x.field = ...'")));
+}
+
 static void stmt_assign(Body *body, const MsStmt *stmt) {
   MsTy target = MS_TY_NONE;
   if (stmt->u.assign.target != NULL) {
     target = body_expr(body, stmt->u.assign.target, MS_TY_NONE);
+    check_field_target(body, stmt->u.assign.target);
   } else {
     const MsLocal *local = body_find_local(body, stmt->u.assign.name);
     if (local != NULL) {
@@ -245,7 +258,7 @@ static const MsMethodEntry *find_entry(const MsCheckProgram *program, const MsMe
 
 static void method_decl(Body *body, const MsMethod *method) {
   const MsMethodEntry *entry = find_entry(body->program, method);
-  if (entry == NULL || method->func.body.len == 0) {
+  if (entry == NULL) {
     return;
   }
   const size_t mark = body->resolver.names.len;
@@ -275,13 +288,34 @@ static const MsSymbol *symbol_of(const MsCheckProgram *program, uint32_t module,
   return NULL;
 }
 
+/* Types the default expressions of a type's fields or an enum case's payload slots. */
+static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
+  const MsDef *def = owner != NULL && owner->ty != MS_TY_NONE ? body_def(body, owner->ty) : NULL;
+  const size_t mark = body->resolver.names.len;
+  if (owner != NULL) {
+    resolver_enter_symbol(&body->resolver, owner);
+  }
+  for (uint32_t index = 0; index < fields.len; index++) {
+    const MsParam *field = fields.ptr[index];
+    if (field->def == NULL) {
+      continue;
+    }
+    const MsTy ty = def != NULL && index < def->fields.len
+                        ? def->fields.ptr[index].ty
+                        : (field->ty != NULL ? resolver_type(&body->resolver, field->ty) : MS_TY_NONE);
+    (void)body_expr(body, field->def, ty);
+  }
+  ms_name_list_truncate(&body->resolver.names, mark);
+  ms_ty_list_truncate(&body->resolver.types, mark);
+}
+
 static void declaration(Body *body, const MsDecl *decl) {
   body->next_local = 0;
   body->result = MS_TY_NONE;
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN: {
     const MsSymbol *symbol = symbol_of(body->program, body->module, decl);
-    if (symbol != NULL && symbol->ty != MS_TY_NONE && decl->u.fn.body.len != 0) {
+    if (symbol != NULL && symbol->ty != MS_TY_NONE) {
       function_decl(body, symbol);
     }
     break;
@@ -306,7 +340,13 @@ static void declaration(Body *body, const MsDecl *decl) {
     break;
   }
   case MS_D_TYPE:
+    field_defaults(body, decl->u.type.fields, symbol_of(body->program, body->module, decl));
+    break;
   case MS_D_ENUM:
+    for (uint32_t index = 0; index < decl->u.enumeration.cases.len; index++) {
+      field_defaults(body, decl->u.enumeration.cases.ptr[index]->fields, NULL);
+    }
+    break;
   case MS_D_ALIAS:
   case MS_D_INTERFACE:
     break;
