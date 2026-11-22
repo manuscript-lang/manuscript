@@ -146,18 +146,34 @@ static bool closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot
   return true;
 }
 
+/* The slot of the `var` resource local a name place assigns in, or false. */
+static bool closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirTy *ty) {
+  const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->closing == NULL ||
+      !fn->closing_var[ref->local]) {
+    return false;
+  }
+  *slot = fn->closing[ref->local];
+  *ty = fn->closing_types[ref->local];
+  return true;
+}
+
 /* Whether `place` is a `var` local, a `var` parameter or a member path rooted in one: the places `fn_put_place` stores into. */
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
-  return owned_local(fn, place, &var) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+  MirValue slot;
+  MirTy ty;
+  return owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
 bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
   MirVar var;
+  MirValue slot;
+  MirTy ty;
   if (place->kind == MS_E_MEMBER) {
     return fn_place_owns(fn, place->u.member.left);
   }
-  return owned_local(fn, place, &var) && var_owns(fn, var);
+  return closing_local(fn, place, &slot, &ty) ? mir_needs_drop(fn->cx->module, ty) : owned_local(fn, place, &var) && var_owns(fn, var);
 }
 
 /* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
@@ -169,6 +185,12 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     return true;
   }
   MirValue slot;
+  MirTy slot_ty;
+  if (closing_local(fn, base, &slot, &slot_ty)) {
+    *out = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Take : MOP_Load, &slot, 1,
+                      (MirImm){.tag = MI_TY, .a = slot_ty}, slot_ty);
+    return true;
+  }
   if (closing_param(fn, base, &slot, &var)) {
     const MirTy ty = mir_b_ty(&fn->b, mir_b_use_var(&fn->b, var));
     *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
@@ -221,6 +243,12 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
     return set_member(fn, place, value);
   }
   MirValue slot;
+  MirTy slot_ty;
+  if (closing_local(fn, place, &slot, &slot_ty)) {
+    const MirValue stored[2] = {slot, value};
+    (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    return !fn->failed;
+  }
   if (closing_param(fn, place, &slot, &var)) {
     const MirTy ty = mir_b_ty(&fn->b, value);
     const MirValue stored[2] = {slot, value};

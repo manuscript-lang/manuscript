@@ -123,7 +123,10 @@ typedef enum MsCloserFlags {
   MS_CLOSER_GENERIC = 64,   /* its type mentions a type variable: whether it closes is decided per instance */
   MS_CLOSER_PARTS = 128,    /* no close of its own: the resources it holds close, last field first */
   MS_CLOSER_TAKEN = 256,    /* a call that returns a resource may take a part of it out (only a parts closer cares) */
-  MS_CLOSER_IFACE = 512     /* an interface value: its `close` operation, called through the vtable */
+  MS_CLOSER_IFACE = 512,    /* an interface value: its `close` operation, called through the vtable */
+  MS_CLOSER_RECEIVER = 4096, /* a call moves it as its receiver: the callee changes or consumes it through its place */
+  MS_CLOSER_MUTATED = 2048, /* a member is assigned, or a `var` argument or mutating receiver changes it in place */
+  MS_CLOSER_DROP = 1024     /* a `var` of any type: its slot drops what it holds, so a move out of it leaves nothing to drop */
 } MsCloserFlags;
 
 /* How a local binding or `move` parameter of a Closeable type is closed where its scope ends. `node` is its
