@@ -618,7 +618,8 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
   const MsSpan message = ms_string_span(&instance->message);
   const MsTyTable *types = &body->program->types;
   size_t found = 0;
-  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found);
+  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found) ||
+                           ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
   if (body->module >= body->program->user_modules || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
       body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
