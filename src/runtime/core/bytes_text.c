@@ -106,3 +106,9 @@ void msrt_strbuilder_freeze(MsBytes *b, MsString *out) {
   *out = msrt_string_make(ms_bytes_span(b));
   ms_bytes_free(b);
 }
+
+/* `StringBuilder.drain()`: the text so far, leaving the builder empty and usable. */
+void msrt_strbuilder_drain(MsBytes *b, MsString *out) {
+  msrt_strbuilder_freeze(b, out);
+  *b = (MsBytes){0};
+}
