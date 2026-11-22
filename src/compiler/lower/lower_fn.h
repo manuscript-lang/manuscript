@@ -64,6 +64,8 @@ void fn_own_result(LowerFn *fn, MirValue result);
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
+/* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
+MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);

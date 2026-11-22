@@ -96,7 +96,7 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
 }
 
-MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   switch ((MsExprKind)expr->kind) {
     case MS_E_NUMBER: return lower_number(fn, expr);
@@ -110,4 +110,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       (void)fn_fail(fn, "this expression is not lowered yet");
       return MIR_NONE;
   }
+}
+
+MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  return fn_convert(fn, expr, expr_value(fn, expr, want));
 }

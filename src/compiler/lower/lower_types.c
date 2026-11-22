@@ -114,6 +114,9 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   const uint32_t id = mir_add_iface(cx->module, mir_type_name(cx, ty));
   const MirTy result = mir_ty_iface(cx->module, id);
   lower_ty_map_put(&cx->types, ty, result);
+  const size_t nargs = ms_ty_arg_count(&cx->program->types, ty);
+  const LowerSubst subst = {def->variables.ptr, ms_ty_args(&cx->program->types, ty),
+                            def->variables.len < nargs ? def->variables.len : nargs};
   MirMethodSig *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirMethodSig, def->operations.len + 1);
   for (size_t index = 0; index < def->operations.len; index++) {
     const MsOperation *operation = &def->operations.ptr[index];
@@ -124,10 +127,10 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     methods[index].params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);
     methods[index].nparams = (uint32_t)count;
     for (size_t p = 0; p < count; p++) {
-      methods[index].params[p] = lower_type(cx, NULL, params[p].ty);
+      methods[index].params[p] = lower_type(cx, &subst, params[p].ty);
       methods[index].owned |= (params[p].flags & MS_PARAM_MOVE) != 0 && p < 64 ? UINT64_C(1) << p : 0;
     }
-    methods[index].ret = lower_type(cx, NULL, ms_ty_result(&cx->program->types, fn));
+    methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
   }
   cx->module->ifaces.ptr[id].methods = methods;
   cx->module->ifaces.ptr[id].nmethods = (uint32_t)def->operations.len;
@@ -177,7 +180,12 @@ static MirTy lower_by_kind(Lower *cx, MsTy ty) {
   case MS_TY_INFERRED:
     break;
   }
-  (void)lower_fail(cx, "a type with no MIR form reached lowering");
+  MsStrBuild shown = ms_strbuild_new();
+  ms_ty_show(&shown, cx->program->names, &cx->program->types, ty);
+  const MsSpan text = ms_strbuild_span(&shown);
+  (void)lower_fail(cx, "a type with no MIR form reached lowering: %.*s (kind %s)", (int)text.len,
+                   (const char *)text.ptr, ms_ty_kind_name(ms_ty_kind(&cx->program->types, ty)));
+  ms_strbuild_free(&shown);
   return MIR_VOID;
 }
 
