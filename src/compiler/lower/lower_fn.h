@@ -56,6 +56,8 @@ typedef struct LowerFn {
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
+  const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
+  const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
   MirTy ret;
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */

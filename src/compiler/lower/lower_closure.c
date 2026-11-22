@@ -19,6 +19,10 @@ typedef struct Scan {
   const MsExpr **names;
   const MsRef **refs; /* parallel to names: the ref a call fact holds for a callee, else NULL */
   uint32_t nnames, cnames;
+  const MsExpr *inner[16]; /* lambdas written inside the root: their parameters are bound there */
+  uint32_t ninner;
+  const LowerCapture *captures;
+  uint32_t ncaptures;
   bool nested, assigns;
 } Scan;
 
@@ -74,7 +78,11 @@ static void push_name(Scan *scan, const MsExpr *name, const MsRef *ref) {
 static void scan_expr(void *ctx, const MsExpr *expr) {
   Scan *scan = ctx;
   if (expr->kind == MS_E_LAMBDA && expr != scan->root) {
-    scan->nested = true;
+    if (scan->ninner == 16) {
+      scan->nested = true; /* too many to track */
+    } else {
+      scan->inner[scan->ninner++] = expr;
+    }
   } else if (expr->kind == MS_E_MATCH) {
     for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
       const MsArm *arm = expr->u.match.arms.ptr[index];
@@ -115,7 +123,7 @@ static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out,
   const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
   ms_walk_block(&visitor, lambda->u.lambda.body);
   if (scan.nested) {
-    return fn_fail(fn, "a lambda inside a lambda is not lowered yet");
+    return fn_fail(fn, "a lambda holds too many lambdas to lower");
   }
   LowerCapture *captures = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, LowerCapture, (size_t)scan.nnames + 1);
   uint32_t used = 0;
@@ -125,8 +133,12 @@ static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out,
     if ((ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL)) {
       continue;
     }
-    if (ref->kind == MS_REF_PARAM ? is_own_param(fn, lambda, name, ref)
-                                   : (ref->local < fn->nvars && scan.declared[ref->local] != 0)) {
+    bool bound = ref->kind == MS_REF_PARAM ? is_own_param(fn, lambda, name, ref)
+                                            : (ref->local < fn->nvars && scan.declared[ref->local] != 0);
+    for (uint32_t at = 0; ref->kind == MS_REF_PARAM && !bound && at < scan.ninner; at++) {
+      bound = is_own_param(fn, scan.inner[at], name, ref);
+    }
+    if (bound) {
       continue;
     }
     if (!have_capture(captures, used, (uint8_t)ref->kind, ref->local, name->u.sym)) {
@@ -138,13 +150,43 @@ static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out,
   return true;
 }
 
+/* A call that hands a captured variable (or a part of it) on as a `var` argument changes it. */
+static void scan_var_args(void *ctx, const MsExpr *expr) {
+  Scan *scan = ctx;
+  if (expr->kind != MS_E_CALL) {
+    return;
+  }
+  const MsCall *call = fn_find_call(scan->fn->facts, expr->id);
+  for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
+    if ((call->args[index].flags & MS_PARAM_VAR) == 0 || call->args[index].source != MS_ARG_WRITTEN) {
+      continue;
+    }
+    const MsExpr *root = fn_written_arg(expr, call->args[index].node.node);
+    for (;;) {
+      MsExpr *left = NULL, *at = NULL;
+      if (root != NULL && root->kind == MS_E_MEMBER) {
+        root = root->u.member.left;
+      } else if (root != NULL && ms_expr_index(root, &left, &at)) {
+        root = left;
+      } else {
+        break;
+      }
+    }
+    const MsRef *ref = root != NULL && root->kind == MS_E_NAME ? ms_facts_ref(scan->fn->facts, root->id) : NULL;
+    for (uint32_t at = 0; ref != NULL && at < scan->ncaptures; at++) {
+      scan->assigns = scan->assigns || (scan->captures[at].kind == ref->kind && scan->captures[at].index == ref->local &&
+                                        scan->captures[at].name == root->u.sym);
+    }
+  }
+}
+
 /* A lambda that assigns to a captured local would have to share its storage. */
 static bool assigns_capture(LowerFn *fn, const MsExpr *lambda, const LowerCapture *captures, uint32_t count) {
   Scan scan = {.fn = fn, .root = lambda, .nvars = fn->nvars};
   scan.declared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
-  (void)captures;
-  (void)count;
-  const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt};
+  scan.captures = captures;
+  scan.ncaptures = count;
+  const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_var_args};
   ms_walk_block(&visitor, lambda->u.lambda.body);
   return scan.assigns && count > 0;
 }

@@ -117,7 +117,7 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
     *out = fn->vars[ref->local] - 1;
     return true;
   }
-  if (ref->kind != MS_REF_PARAM) {
+  if (ref->kind != MS_REF_PARAM || fn->default_call != NULL) { /* a default's parameters are the callee's, not this function's */
     return false;
   }
   if (fn->lambda != NULL) { /* a captured parameter is a variable of the closure body */

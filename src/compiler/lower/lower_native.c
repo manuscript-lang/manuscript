@@ -134,11 +134,45 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
  * type in place of the result, returned here, and the value is loaded from it once the call is made. */
 static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy ret) {
   const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
-  if (!scalar || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ret);
+  const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
+  if (!(scalar || optional) || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
     return MIR_NONE;
   }
-  const MirImm of_type = {.tag = MI_TY, .a = ret};
+  const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
   return fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+}
+
+static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+
+/* A native that answers whether it filled the payload slot `slot`: the Optional holds the payload, or is none. */
+static MirValue optional_from_status(LowerFn *fn, MsName name, MirValue *wanted, uint32_t count, MirTy ret, MirValue slot) {
+  const uint32_t external = runtime_extern(fn, name, wanted, count, MIR_UINT8);
+  const MirValue status = mir_b_call_rt(&fn->b, external, wanted, count);
+  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
+  const MirValue present = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirTy payload = mir_ty_data(fn->cx->module, ret)->elem;
+  const MirImm of_type = {.tag = MI_TY, .a = payload};
+  const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload) ? MOP_Take : MOP_Load, &slot, 1, of_type, payload);
+  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &some, 1);
+  mir_b_switch_to(&fn->b, none_block);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &none, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), result);
+  }
+  return result;
 }
 
 /* Calls `name` with `wanted`, through a result slot when `slot` is set. */
@@ -147,6 +181,10 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
     return fn_runtime_call(fn, name, wanted, count, ret);
   }
   wanted[count++] = slot;
+  const MirTyData *data = mir_ty_data(fn->cx->module, ret);
+  if (data->kind == MK_OPT) {
+    return optional_from_status(fn, name, wanted, count, ret, slot);
+  }
   (void)fn_runtime_call(fn, name, wanted, count, MIR_VOID);
   const MirImm of_type = {.tag = MI_TY, .a = ret};
   return fn_emit(fn, MOP_Load, &slot, 1, of_type, ret);
@@ -670,14 +708,9 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     return false;
   }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
-  uint32_t pairs = 0; /* each `HasRaw` pair takes two parameters for one source operand */
-  for (uint32_t at = 0; at < sig->count; at++) {
-    pairs += sig->kinds[at] == NS_HAS_RAW ? 1 : 0;
-  }
-  const uint32_t expanded = nargs + pairs;
-  const uint32_t extras = sig->count > expanded ? sig->count - expanded : 0;
-  const bool has_out = extras == (has_err ? 2u : 1u) && payload_ty != MIR_VOID;
-  if (sig->count < expanded || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
+  const bool has_out = payload_ty != MIR_VOID;
+  const uint32_t tail = (has_err ? 1u : 0u) + (has_out ? 1u : 0u);
+  if (sig->count < tail) {
     return false;
   }
   const uint32_t error_function = status_error_function(fn);
@@ -686,15 +719,71 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
-  for (uint32_t source = 0; source < nargs; source++) {
-    if (count < sig->count && sig->kinds[count] == NS_HAS_RAW) {
-      if (count + 2 > NS_MAX_PARAMS - 2 || !has_raw_pair(fn, args[source], &wanted[count])) {
-        return false;
-      }
-      count += 2;
-    } else {
-      wanted[count++] = args[source];
+  uint32_t source = 0;
+  uint32_t shape_at = NS_MAX_PARAMS;
+  MirTy shape_ty = payload_ty;
+  bool shape_from_operand = false;
+  bool by_shape = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    by_shape = by_shape || sig->kinds[at] == NS_SHAPE;
+  }
+  for (uint32_t at = 0; at < sig->count - tail; at++) {
+    const uint8_t kind = sig->kinds[at];
+    if (count + 4 > NS_MAX_PARAMS) {
+      return false;
     }
+    if (kind == NS_SHAPE) {
+      shape_at = count++;
+    } else if (kind == NS_HAS_RAW && source < nargs) {
+      const MirValue operand = args[source++];
+      const MirTyData *record = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, operand));
+      if (record->kind != MK_TYPE) {
+        if (!has_raw_pair(fn, operand, &wanted[count])) {
+          return false;
+        }
+        count += 2;
+        at++;
+        continue;
+      }
+      /* A record of optional Ints (`JsonLimits`) is one operand for one pair per field. */
+      const MirTypeDef *def = &fn->cx->module->type_defs.ptr[record->id];
+      for (uint32_t field = 0; field < def->nfields; field++) {
+        if (at + 1 >= sig->count - tail || sig->kinds[at] != NS_HAS_RAW || count + 4 > NS_MAX_PARAMS) {
+          return false;
+        }
+        const MirImm imm = {.tag = MI_FIELD, .a = record->id, .b = field};
+        const MirValue value = mir_b_emit(&fn->b, MOP_TypeGet, &operand, 1, imm, def->fields[field].ty);
+        if (!has_raw_pair(fn, value, &wanted[count])) {
+          return false;
+        }
+        count += 2;
+        at += 2;
+      }
+      at--;
+    } else if (kind == NS_ADDR_IN && by_shape && source < nargs) {
+      const MirValue operand = args[source++];
+      const MirTy ty = mir_b_ty(&fn->b, operand);
+      if (!shape_from_operand) {
+        shape_ty = ty;
+        shape_from_operand = true;
+      }
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue store[2] = {slot, operand};
+      (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+      wanted[count++] = slot;
+    } else if (source < nargs) {
+      wanted[count++] = args[source++];
+    } else {
+      return false;
+    }
+  }
+  if (source != nargs) {
+    return false;
+  }
+  if (shape_at != NS_MAX_PARAMS) {
+    const MirImm of_type = {.tag = MI_TY, .a = shape_ty};
+    wanted[shape_at] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
   }
   MirValue out_slot = MIR_NONE;
   MirValue err_slot = MIR_NONE;
