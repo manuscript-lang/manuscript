@@ -134,7 +134,7 @@ static void environment_free(Environment *environment, size_t envc) {
 static void fail_with(int code, MsStrBuild *error) { ms_strbuild_append_text(error, uv_strerror(code)); }
 
 /* Starts the program with the log as its output and waits for it; false with `error` set when it cannot run. */
-static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_status, MsStrBuild *error) {
+static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exit_status, MsStrBuild *error) {
   uv_loop_t loop;
   int code = uv_loop_init(&loop);
   if (code < 0) {
@@ -143,9 +143,9 @@ static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_stat
   }
   Arguments arguments = arguments_new(spec);
   MsOsText directory = ms_os_text_new(spec->directory);
-  uv_stdio_container_t stdio[3] = {{.flags = UV_IGNORE},
-                                   {.flags = UV_INHERIT_FD, .data.fd = log_fd},
-                                   {.flags = UV_INHERIT_FD, .data.fd = log_fd}};
+  uv_stdio_container_t stdio[3] = {{.flags = spec->inherit ? UV_INHERIT_FD : UV_IGNORE, .data.fd = 0},
+                                   {.flags = UV_INHERIT_FD, .data.fd = spec->inherit ? 1 : fds[0]},
+                                   {.flags = UV_INHERIT_FD, .data.fd = spec->inherit ? 2 : fds[1]}};
   Exit done = {.status = -1, .signal = 0};
   uv_process_t process = {.data = &done};
   Environment environment;
@@ -169,7 +169,7 @@ static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_stat
     fail_with(code, error);
   } else {
     (void)uv_run(&loop, UV_RUN_DEFAULT);
-    *exit_status = done.signal != 0 ? -1 : (int)done.status;
+    *exit_status = done.signal != 0 ? (spec->inherit ? 128 + done.signal : -1) : (int)done.status;
   }
   ms_os_text_free(&directory);
   arguments_free(&arguments);
@@ -178,21 +178,41 @@ static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_stat
   return code >= 0;
 }
 
-bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *error) {
-  MsOsText log = ms_os_text_new(spec->log_path);
-  uv_fs_t open_request;
-  const int log_fd = uv_fs_open(NULL, &open_request, log.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_TRUNC,
-                                LOG_MODE, NULL);
-  uv_fs_req_cleanup(&open_request);
+static int open_log(MsSpan path) {
+  MsOsText log = ms_os_text_new(path);
+  uv_fs_t request;
+  const int fd = uv_fs_open(NULL, &request, log.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_TRUNC, LOG_MODE, NULL);
+  uv_fs_req_cleanup(&request);
   ms_os_text_free(&log);
-  if (log_fd < 0) {
-    fail_with(log_fd, error);
-    return false;
+  return fd;
+}
+
+static void close_log(int fd) {
+  uv_fs_t request;
+  (void)uv_fs_close(NULL, &request, fd, NULL);
+  uv_fs_req_cleanup(&request);
+}
+
+bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *error) {
+  int fds[2] = {-1, -1};
+  if (!spec->inherit) {
+    fds[0] = open_log(spec->log_path);
+    fds[1] = spec->error_path.len > 0 && fds[0] >= 0 ? open_log(spec->error_path) : fds[0];
+    if (fds[0] < 0 || fds[1] < 0) {
+      fail_with(fds[0] < 0 ? fds[0] : fds[1], error);
+      if (fds[0] >= 0) {
+        close_log(fds[0]);
+      }
+      return false;
+    }
   }
-  const bool ok = spawn_and_wait(spec, log_fd, exit_status, error);
-  uv_fs_t close_request;
-  (void)uv_fs_close(NULL, &close_request, log_fd, NULL);
-  uv_fs_req_cleanup(&close_request);
+  const bool ok = spawn_and_wait(spec, fds, exit_status, error);
+  if (!spec->inherit) {
+    close_log(fds[0]);
+    if (fds[1] != fds[0]) {
+      close_log(fds[1]);
+    }
+  }
   return ok;
 }
 
