@@ -60,9 +60,10 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
 
 MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy scrutinee = body_expr(body, expr->u.match.scrutinee, MS_TY_NONE);
-  MsTy result = expected;
+  /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
+  MsTy result = expected != MS_TY_NONE && body_has_foreign_variable(body, expected) ? MS_TY_NONE : expected;
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
-    const MsTy value = arm_value(body, expr->u.match.arms.ptr[index], scrutinee, result);
+    const MsTy value = arm_value(body, expr->u.match.arms.ptr[index], scrutinee, result == MS_TY_NONE ? expected : result);
     result = result == MS_TY_NONE ? value : result;
   }
   return result;

@@ -292,7 +292,7 @@ static MsTy probe_expr(Body *body, const MsExpr *expr) {
 }
 
 /* Whether `ty` mentions a type variable that is not declared by the enclosing function: an inference slot. */
-static bool has_foreign_variable(const Body *body, MsTy ty) {
+bool body_has_foreign_variable(const Body *body, MsTy ty) {
   const MsTyTable *types = &body->program->types;
   if (!ms_ty_has_variable(types, ty)) {
     return false;
@@ -306,16 +306,16 @@ static bool has_foreign_variable(const Body *body, MsTy ty) {
     return true;
   }
   for (size_t index = 0; index < ms_ty_arg_count(types, ty); index++) {
-    if (has_foreign_variable(body, ms_ty_args(types, ty)[index])) {
+    if (body_has_foreign_variable(body, ms_ty_args(types, ty)[index])) {
       return true;
     }
   }
   for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
-    if (has_foreign_variable(body, ms_ty_params(types, ty)[index].ty)) {
+    if (body_has_foreign_variable(body, ms_ty_params(types, ty)[index].ty)) {
       return true;
     }
   }
-  return ms_ty_kind(types, ty) == MS_TY_FUNCTION && has_foreign_variable(body, ms_ty_result(types, ty));
+  return ms_ty_kind(types, ty) == MS_TY_FUNCTION && body_has_foreign_variable(body, ms_ty_result(types, ty));
 }
 
 /* The `move`/`var` modes the expected function type gives its parameter: a lambda takes them from its context. */
@@ -366,7 +366,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     }
   }
   MsTy result = expr->u.lambda.result != NULL ? resolver_type(&body->resolver, expr->u.lambda.result) : MS_TY_NONE;
-  result = result == MS_TY_NONE && shaped && !has_foreign_variable(body, ms_ty_result(types, expected))
+  result = result == MS_TY_NONE && shaped && !body_has_foreign_variable(body, ms_ty_result(types, expected))
                ? ms_ty_result(types, expected)
                : result;
   const MsTy saved_result = body->result;
