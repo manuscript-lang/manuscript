@@ -131,6 +131,12 @@ static bool var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
   return true;
 }
 
+/* Whether the method called is declared `move fn`: it takes its receiver. */
+static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
+  const MsMethodEntry *entry = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  return entry != NULL && entry->source->consuming;
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
   for (uint32_t index = 0; index < call->arg_count; index++) {
@@ -143,7 +149,9 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsExpr *written = written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
       const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
-      const LowerWant want = owning || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
+      const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD && written == expr->u.call.callee->u.member.left &&
+                                  consuming_receiver(fn, call);
+      const LowerWant want = owning || takes_receiver || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
       if (want == LW_MOVE && out[index] != MIR_NONE && is_literal(written)) {
         /* A literal is static, so what owns it holds a copy. */
@@ -327,8 +335,7 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
   return result;
 }
 
-MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  (void)want;
+static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   /* A callee that is a parameter or local, or any expression with no declaration behind it (`fs[i]()`), is a value. */
   const bool named = expr->u.call.callee->kind == MS_E_NAME;
@@ -398,4 +405,16 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
   return var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
+}
+
+/* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */
+MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  (void)want;
+  const MirValue result = call_expr(fn, expr);
+  const MsTy ty = ms_facts_type(fn->facts, expr->id);
+  if (!fn->failed && !fn->terminated && ty != MS_TY_NONE && ms_ty_is(&fn->cx->program->types, ty, MS_BUILTIN_Never)) {
+    mir_b_unreachable(&fn->b);
+    fn->terminated = true;
+  }
+  return result;
 }

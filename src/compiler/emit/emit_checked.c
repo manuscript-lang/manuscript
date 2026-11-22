@@ -18,6 +18,8 @@ uint32_t emit_pieces(const MirModule *module, const MirFunc *func, const MirInst
   case MOP_USubChk:
   case MOP_UMulChk:
   case MOP_SRemChk:
+  case MOP_UDivChk:
+  case MOP_URemChk:
   case MOP_NarrowChk:
   case MOP_IntOverflowIf:
   case MOP_Poll:
@@ -90,6 +92,18 @@ static void checked_arith(EmitCx *cx, const MirInst *inst, const Overflow *kind,
   int64_t hi = 0;
   bool sized = mir_sized_result_range(cx->module, cx->func, inst, &lo, &hi);
   emit_fault_if(cx, site, flag, sized ? "msrt_fault_int_range" : kind->fault, NULL, 0);
+}
+
+/* `udiv.chk` and `urem.chk` fault on a zero divisor; the quotient and remainder of two unsigned values always fit. */
+static void checked_unsigned_div(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
+  const MirValue *args = inst->args;
+  const bool is_div = inst->op == MOP_UDivChk;
+  uint32_t number = cx->next++;
+  char name[24];
+  ms_strbuild_printf(cx->out, "  %%z%u = icmp eq i64 %%v%u, 0\n", number, args[1]);
+  emit_register_name(name, sizeof name, "z", number);
+  emit_fault_if(cx, site, name, is_div ? "msrt_fault_div_zero" : "msrt_fault_rem_zero", NULL, 0);
+  ms_strbuild_printf(cx->out, "  %%v%u = %s i64 %%v%u, %%v%u\n", inst->res, is_div ? "udiv" : "urem", args[0], args[1]);
 }
 
 /* `sdiv.chk` faults on a zero divisor and on the one quotient that does not fit, `Int.min / -1`; `srem.chk`
@@ -309,6 +323,10 @@ bool emit_checked_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool
   case MOP_SDivChk:
   case MOP_SRemChk:
     checked_div(cx, inst, site);
+    return true;
+  case MOP_UDivChk:
+  case MOP_URemChk:
+    checked_unsigned_div(cx, inst, site);
     return true;
   case MOP_NarrowChk:
     narrow_chk(cx, inst, site);
