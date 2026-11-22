@@ -64,7 +64,10 @@ static MsTy element_type(Body *body, MsTy iterable) {
   ms_check_find_method(body->program, iterable, next, &found);
   MsTy element = MS_TY_NONE;
   if (found.len != 0) {
-    const MsTy result = ms_ty_result(types, found.ptr[0].ty);
+    MsTy result = ms_ty_result(types, found.ptr[0].ty);
+    if (ms_ty_is(types, result, MS_BUILTIN_Result) && ms_ty_arg_count(types, result) == 2) {
+      result = ms_ty_args(types, result)[0]; /* a stream's `next` may fail: the loop reads the items of its ok value */
+    }
     if (ms_ty_is(types, result, MS_BUILTIN_Optional) && ms_ty_arg_count(types, result) == 1) {
       element = ms_ty_args(types, result)[0];
     }
