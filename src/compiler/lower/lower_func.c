@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
 uint32_t lower_file(Lower *cx, uint32_t module) {
@@ -179,6 +180,36 @@ uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, 
 
 /* ---- bodies ---- */
 
+/* Whether the body assigns into the parameter `index` (`param.field = value`): such a parameter is an owned
+ * variable, like a `var` local, so the assignment can replace what it holds. */
+typedef struct ParamWrites {
+  const MsFacts *facts;
+  uint32_t index;
+  bool found;
+} ParamWrites;
+
+static void note_param_write(void *ctx, const MsStmt *stmt) {
+  ParamWrites *writes = ctx;
+  if (stmt->kind != MS_S_ASSIGN || !stmt->u.assign.member_target) {
+    return;
+  }
+  const MsExpr *root = stmt->u.assign.target;
+  while (root != NULL && root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  const MsRef *ref = root != NULL && root->kind == MS_E_NAME ? ms_facts_ref(writes->facts, root->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
+    writes->found = true;
+  }
+}
+
+static bool assigns_into_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
+  ParamWrites writes = {fn->facts, index, false};
+  const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write};
+  ms_walk_block(&visitor, target->func->body);
+  return writes.found;
+}
+
 /* Declares the parameters as variables and gives the function scope the owned ones. */
 static void bind_params(LowerFn *fn, const LowerTarget *target) {
   MsTyParam params[LOWER_MAX_PARAMS];
@@ -215,7 +246,11 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));
     mir_b_def_var(&fn->b, fn->param_vars[index], values[index]);
     if ((params[index].flags & MS_PARAM_MOVE) != 0 && mir_needs_drop(fn->cx->module, ty)) {
-      fn_own(fn, fn_scope(fn), values[index]);
+      if (assigns_into_param(fn, target, index)) {
+        (void)fn_scope_own_var(fn, fn->param_vars[index]); /* the variable owns what it holds */
+      } else {
+        fn_own(fn, fn_scope(fn), values[index]);
+      }
     }
   }
 }
