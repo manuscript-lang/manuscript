@@ -10,7 +10,8 @@
 
 typedef enum MsInputTarget {
   MS_INPUT_PROGRAM, /* an executable: it needs an entry `main` */
-  MS_INPUT_TESTS    /* the test executable: the project's test files too, and no entry */
+  MS_INPUT_TESTS,   /* the test executable: the project's test files too, and no entry */
+  MS_INPUT_ANALYSIS /* a program or library read, not built: no entry needed (inspect, diagram, review) */
 } MsInputTarget;
 
 typedef struct MsCheckedInput {

@@ -106,7 +106,7 @@ bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filen
   const MsLoadOptions load = {.tests = tests};
   ms_project_load(arena, &checked->names, filename, &load, &checked->graph);
   const MsGraph *graph = &checked->graph;
-  if (!tests && graph->project_root.len > 0 && graph->library && graph->diagnostic_count == 0) {
+  if (target == MS_INPUT_PROGRAM && graph->project_root.len > 0 && graph->library && graph->diagnostic_count == 0) {
     library_failure(arena, graph, &checked->findings);
     return false;
   }
@@ -119,7 +119,7 @@ bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filen
   checked->checked = true;
   finding_add_check(&checked->program, &checked->names, &checked->findings);
   checked->entry = entry_module(&checked->program, graph);
-  if (checked->findings.len == 0 && !tests) {
+  if (checked->findings.len == 0 && target == MS_INPUT_PROGRAM) {
     require_main(arena, checked);
   }
   return checked->findings.len == 0;
