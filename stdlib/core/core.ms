@@ -59,6 +59,63 @@ export type Error:
 // ms: status 17 EBUSY terminal is busy
 // ms: status 18 EAUTH authentication failed
 
+// The kind of the `Error` a runtime status stands for (see the rows above).
+fn status_kind(status: Int) String:
+	if status == 1: return "EINVAL"
+	if status == 2: return "ERANGE"
+	if status == 3: return "EOVERFLOW"
+	if status == 4: return "EBADMSG"
+	if status == 5: return "ENOENT"
+	if status == 6: return "EEXIST"
+	if status == 7: return "ENOTEMPTY"
+	if status == 8: return "EACCES"
+	if status == 9: return "ENOTSUP"
+	if status == 10: return "EBADF"
+	if status == 11: return "EIO"
+	if status == 12: return "EAGAIN"
+	if status == 13: return "ETIMEDOUT"
+	if status == 14: return "EOVERFLOW"
+	if status == 15: return "ENOTTY"
+	if status == 17: return "EBUSY"
+	return "EAUTH"
+
+// The words of a status; `-` means the native's own text is the whole message.
+fn status_words(status: Int) String:
+	if status == 1: return "invalid input"
+	if status == 2: return "value out of range"
+	if status == 3: return "limit exceeded"
+	if status == 4: return "invalid data"
+	if status == 5: return "not found"
+	if status == 6: return "already exists"
+	if status == 7: return "directory not empty"
+	if status == 8: return "permission denied"
+	if status == 9: return "operation not supported"
+	if status == 10: return "resource is closed"
+	if status == 11: return "-"
+	if status == 12: return "service unavailable"
+	if status == 13: return "operation timed out"
+	if status == 14: return "output limit exceeded"
+	if status == 15: return "not a terminal"
+	if status == 17: return "terminal is busy"
+	return "authentication failed"
+
+// The `Error` of a failed runtime native: `status` is the native's status number, `domain` names what it works
+// on, and `said` is the text the native explained itself in, or empty. Lowering calls this for every `extern fn`
+// that returns `T!`. The filesystem words a missing path differently.
+fn msstd_status_error(status: UInt8, domain: String, said: String) Error:
+	number := status.to_int()
+	kind := status_kind(number)
+	words := status_words(number)
+	if domain == "filesystem" and number == 5: return status_error_text("file or directory not found", kind, domain, said)
+	return status_error_text(words, kind, domain, said)
+
+fn status_error_text(words: String, kind: String, domain: String, said: String) Error:
+	if words == "-":
+		if said.length() > 0: return Error(said, kind: kind)
+		return Error(f"{domain}: failed", kind: kind)
+	if said.length() > 0: return Error(f"{domain}: {words}: {said}", kind: kind)
+	return Error(f"{domain}: {words}", kind: kind)
+
 // Raises a programming fault with the supplied message and stops the current operation.
 export fn panic(message: String) Never: ...
 

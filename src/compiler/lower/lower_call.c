@@ -309,6 +309,11 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
     (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;
   }
+  MirValue checked = MIR_NONE;
+  if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
+                     args, call->arg_count, ret, &checked)) {
+    return checked;
+  }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
   const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
   fn_own_result(fn, result);
