@@ -11,6 +11,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(MsWarnings)
 include(MsGlibcFloor)
+
+# Program links use lld without libgcc or compiler-rt, so no archive may call the out-of-line atomic helpers
+# (`__aarch64_swp8_relax` and friends) that clang uses on Linux arm64 by default.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+  set(MS_ATOMIC_FLAGS -mno-outline-atomics)
+  string(APPEND CMAKE_C_FLAGS " -mno-outline-atomics")
+endif()
 set(MS_MUSL_BUILD_DIR "${CMAKE_BINARY_DIR}/musl")
 
 # Compiler cache when installed (plan section 5).
