@@ -322,7 +322,12 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     body_set_type(body, param->id, ty);
     body_set_ref(body, param->id, (MsRef){.kind = MS_REF_PARAM, .local = index});
     ms_ty_param_list_push(&params, (MsTyParam){.name = param->name, .ty = ty,
-                                               .flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) | (param->moving ? MS_PARAM_MOVE : 0))});
+                                               .flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) |
+                                                                  (param->moving ? MS_PARAM_MOVE : 0) |
+                                                                  (param->def != NULL ? MS_PARAM_LIFTED : 0))});
+    if (param->def != NULL) {
+      (void)body_expr(body, param->def, ty);
+    }
   }
   MsTy result = expr->u.lambda.result != NULL ? resolver_type(&body->resolver, expr->u.lambda.result) : MS_TY_NONE;
   result = result == MS_TY_NONE && shaped && !has_foreign_variable(body, ms_ty_result(types, expected))
