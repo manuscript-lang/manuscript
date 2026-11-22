@@ -63,9 +63,6 @@ MsBuiltin ms_builtin_from_id(MsSpan id);
 /* The type `name` declared by the bundled module `module` that has a native layout, or MS_BUILTIN_NONE. */
 MsBuiltin ms_builtin_source(MsSpan module, MsSpan name);
 
-/* True for the builders, which the runtime represents as a Bytes buffer (`msrt_strbuilder_*` take a `VecVal`). */
-bool ms_builtin_is_byte_buffer(MsBuiltin builtin);
-
 bool ms_builtin_is_int(MsBuiltin builtin);
 bool ms_builtin_is_float(MsBuiltin builtin);
 
@@ -235,8 +232,14 @@ typedef struct MsOperation {
 MS_LIST_DEFINE(MsOperationList, ms_operation_list, MsOperation)
 
 /* A nominal type definition, owned by the type's symbol. */
+typedef enum MsRepr {
+  MS_REPR_DEFAULT = 0,
+  MS_REPR_BYTES_BUFFER /* a Bytes buffer to the runtime (`@repr=bytes_buffer`) */
+} MsRepr;
+
 typedef struct MsDef {
   MsTyKind kind; /* type, alternative, contract or native */
+  MsRepr repr;   /* the declared runtime representation of a native type */
   uint32_t symbol;
   MsTyList variables;       /* owned: declared type variables */
   MsTyParamList fields;     /* owned */
