@@ -863,6 +863,37 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   return true;
 }
 
+/* ---- externs that read a value through its shape ---- */
+
+/* `msstd_test_repr[T](value)`: a native whose first parameter is the shape table gets the table of its first
+ * operand's type, and an operand it reads through an address goes into a slot (a borrow). False when `sig` does not
+ * take a shape table. */
+bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || sig->status || sig->count == 0 || sig->kinds[0] != NS_SHAPE || nargs == 0 || nargs + 2 > NS_MAX_PARAMS) {
+    return false;
+  }
+  const MirTy shape_ty = mir_b_ty(&fn->b, args[0]);
+  const MirImm shape_type = {.tag = MI_TY, .a = shape_ty};
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  wanted[count++] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, shape_type, MIR_PTR);
+  for (uint32_t source = 0; source < nargs; source++) {
+    const MirTy ty = mir_b_ty(&fn->b, args[source]);
+    if (count < sig->count && sig->kinds[count] == NS_ADDR_IN) {
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue store[2] = {slot, args[source]};
+      (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+      wanted[count++] = slot;
+    } else {
+      wanted[count++] = args[source];
+    }
+  }
+  *out = fn_runtime_call(fn, name, wanted, count, ret);
+  return true;
+}
+
 /* ---- externs that move one value of a generic type in or out ---- */
 
 /* A generic value `msrt_promise_put[T](id, move value: T, failed)` hands the runtime the address of an owned slot

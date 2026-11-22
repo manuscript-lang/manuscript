@@ -75,7 +75,7 @@ static MirField *lower_fields(Lower *cx, MsTy ty, const MsDef *def, const MsTyPa
                                                          : ms_ty_arg_count(&cx->program->types, ty)};
   for (size_t index = 0; index < count; index++) {
     out[index] = (MirField){mir_name(cx->module, ms_names_span(cx->program->names, fields[index].name)),
-                            lower_type(cx, &subst, fields[index].ty)};
+                            lower_type(cx, &subst, fields[index].ty), 0};
   }
   return out;
 }
@@ -86,6 +86,19 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
   const MirTy result = mir_ty_type(cx->module, id);
   lower_ty_map_put(&cx->types, ty, result); /* a recursive field finds the type under construction */
   MirField *fields = lower_fields(cx, ty, def, def->fields.ptr, def->fields.len);
+  const MsDecl *decl = cx->program->symbols.ptr[def->symbol].decl;
+  if (decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.fields.len == def->fields.len) {
+    const size_t nargs = ms_ty_arg_count(&cx->program->types, ty);
+    const LowerSubst subst = {def->variables.ptr, ms_ty_args(&cx->program->types, ty),
+                              def->variables.len < nargs ? def->variables.len : nargs};
+    for (size_t index = 0; index < def->fields.len; index++) {
+      const MsExpr *value = decl->u.type.fields.ptr[index]->def;
+      if (value != NULL) {
+        fields[index].default_fn1 =
+            1 + lower_field_default(cx, cx->program->symbols.ptr[def->symbol].module, value, fields[index].ty, &subst);
+      }
+    }
+  }
   cx->module->type_defs.ptr[id].fields = fields;
   cx->module->type_defs.ptr[id].nfields = (uint32_t)def->fields.len;
   return result;
@@ -147,7 +160,7 @@ static MirTy lower_inline(Lower *cx, MsTy ty, uint32_t size) {
   const uint32_t words = size / 8;
   MirField *fields = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirField, (size_t)words + 1);
   for (uint32_t at = 0; at < words; at++) {
-    fields[at] = (MirField){mir_name(cx->module, ms_span_of_text("word")), MIR_INT};
+    fields[at] = (MirField){mir_name(cx->module, ms_span_of_text("word")), MIR_INT, 0};
   }
   cx->module->type_defs.ptr[id].fields = fields;
   cx->module->type_defs.ptr[id].nfields = words;
