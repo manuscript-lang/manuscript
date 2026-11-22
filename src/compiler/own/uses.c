@@ -184,9 +184,24 @@ static bool owns_place(const Uses *pass, const MsExpr *cond) {
                                                        (pass->moving >> ref->local & 1u) != 0));
 }
 
+/* The local a bind reads whole: `old := a`, or `n := cur.get()`, whose payload the binding takes from `cur`. */
+static const MsExpr *bound_local_source(const Uses *pass, const MsExpr *value) {
+  if (value->kind == MS_E_NAME) {
+    return value;
+  }
+  const MsExpr *callee = value->kind == MS_E_CALL ? value->u.call.callee : NULL;
+  if (callee == NULL || value->u.call.args.len != 0 || callee->kind != MS_E_MEMBER ||
+      callee->u.member.left->kind != MS_E_NAME ||
+      !ms_span_is_text(ms_names_span(pass->names, callee->u.member.name), "get")) {
+    return NULL;
+  }
+  return callee->u.member.left;
+}
+
 static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
-  for (size_t index = 0; index < pass->swapped.len; index++) {
-    if (pass->swapped.ptr[index] == expr->id) {
+  const MsExpr *source = bound_local_source(pass, expr);
+  for (size_t index = 0; source != NULL && index < pass->swapped.len; index++) {
+    if (pass->swapped.ptr[index] == source->id) {
       return true;
     }
   }
@@ -199,7 +214,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.expr);
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME &&
              (stmt->u.bind.is_mutable || binds_assigned_local(pass, stmt->u.bind.value))) {
-    mark_move(pass, stmt->u.bind.value);
+    mark_move(pass, stmt->u.bind.is_mutable ? stmt->u.bind.value : bound_local_source(pass, stmt->u.bind.value));
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
@@ -292,12 +307,12 @@ static void consume_scrutinees(void *ctx, const MsExpr *expr) {
  * or the assignment frees what the binding still reads. A read of `a` in between keeps the plain borrow. */
 static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
-  if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
-      stmt->u.bind.value->kind == MS_E_NAME) {
-    const MsRef *source = ms_facts_ref(pass->facts, stmt->u.bind.value->id);
+  if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    const MsExpr *source_name = bound_local_source(pass, stmt->u.bind.value);
+    const MsRef *source = source_name == NULL ? NULL : ms_facts_ref(pass->facts, source_name->id);
     if (source != NULL && source->kind == MS_REF_LOCAL) {
       ms_binding_list_push(&pass->cand_locals, source->local);
-      ms_binding_list_push(&pass->cand_nodes, stmt->u.bind.value->id);
+      ms_binding_list_push(&pass->cand_nodes, source_name->id);
     }
     return;
   }
