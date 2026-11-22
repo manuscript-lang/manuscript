@@ -79,6 +79,8 @@ MirValue fn_text(LowerFn *fn, const MsExpr *expr);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
+MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node);
 /* A parameter name inside a lambda body that is one of its captures: its value in `out`. */

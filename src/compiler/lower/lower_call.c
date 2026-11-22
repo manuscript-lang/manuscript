@@ -18,7 +18,7 @@ const MsCall *fn_find_call(const MsFacts *facts, MsNode node) {
 }
 
 /* The symbol a function reference names: the symbol declared by that node of that module. */
-static MsSymbolId symbol_at(const Lower *cx, MsNodeRef decl) {
+MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl) {
   const MsSymbolList *symbols = &cx->program->symbols;
   for (MsSymbolId id = 1; id < symbols->len; id++) {
     const MsSymbol *symbol = &symbols->ptr[id];
@@ -48,7 +48,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
   fn->file = lower_file(fn->cx, arg->node.module);
   const MsParam *param = NULL;
-  const MsSymbol *callee = &fn->cx->program->symbols.ptr[symbol_at(fn->cx, call->callee.decl)];
+  const MsSymbol *callee = &fn->cx->program->symbols.ptr[fn_symbol_at(fn->cx, call->callee.decl)];
   for (uint32_t index = 0; callee->decl != NULL && index < callee->decl->u.fn.params.len; index++) {
     if (callee->decl->u.fn.params.ptr[index]->def != NULL && callee->decl->u.fn.params.ptr[index]->def->id == arg->node.node) {
       param = callee->decl->u.fn.params.ptr[index];
@@ -113,7 +113,7 @@ static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode 
 static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   Lower *cx = fn->cx;
   if (call->callee.kind == MS_REF_FUNCTION) {
-    const MsSymbolId id = symbol_at(cx, call->callee.decl);
+    const MsSymbolId id = fn_symbol_at(cx, call->callee.decl);
     if (id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
       return false;
     }
@@ -156,12 +156,12 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
 
 /* Whether a native callee is an operation of a receiver (not an `extern fn`, which call_runtime handles). */
 static bool callee_is_operation(LowerFn *fn, const MsCall *call) {
-  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   return id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN;
 }
 
 static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
     (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;

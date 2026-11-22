@@ -60,7 +60,10 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     return mir_b_use_var(&fn->b, fn->vars[ref->local] - 1);
   }
-  (void)fn_fail(fn, "a name does not refer to a parameter or a local");
+  if (ref != NULL && ref->kind == MS_REF_FUNCTION) {
+    return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  }
+  (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function");
   return MIR_NONE;
 }
 
