@@ -32,6 +32,7 @@ typedef struct LowerFn {
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   uint32_t nopen;
   bool failed;
+  MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
   uint32_t nloops;
