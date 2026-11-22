@@ -51,6 +51,7 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
 void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
 
 /* Appends the names of a primitive's built-in operations (native.c). */
+bool ms_check_standard_operation(const MsCheckProgram *program, MsName name);
 void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *out);
 
 /* Matches `pattern` against `actual`, binding each of the `count` variables `vars[i]` to `bound[i]` (a slot

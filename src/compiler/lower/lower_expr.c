@@ -133,7 +133,8 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
 static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
-    (void)fn_fail(fn, "this member is not a record field");
+    (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
+                  expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
   const MirValue base = fn_expr(fn, expr->u.member.left, LW_BORROW);

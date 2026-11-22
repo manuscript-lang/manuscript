@@ -126,3 +126,23 @@ void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *o
     }
   }
 }
+
+/* Whether a standard interface declares an operation `name`: a value may have it natively (an equality, hash or
+ * resource operation) without a method that says so. */
+bool ms_check_standard_operation(const MsCheckProgram *program, MsName name) {
+  for (size_t index = 1; index < program->symbols.len; index++) {
+    const MsSymbol *symbol = &program->symbols.ptr[index];
+    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || symbol->module < program->user_modules ||
+        ms_ty_kind(&program->types, symbol->ty) != MS_TY_CONTRACT) {
+      continue;
+    }
+    const uint32_t at = program->types.rows.ptr[symbol->ty].def;
+    const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
+    for (size_t op = 0; def != NULL && op < def->operations.len; op++) {
+      if (def->operations.ptr[op].name == name) {
+        return true;
+      }
+    }
+  }
+  return false;
+}

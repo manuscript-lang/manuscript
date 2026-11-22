@@ -53,11 +53,19 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     return MIR_NONE;
   }
   const MirValue list = fn_expr(fn, left, LW_BORROW);
-  const MirValue at = list == MIR_NONE ? MIR_NONE : fn_expr(fn, index, LW_BORROW);
+  if (list == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTy container = mir_b_ty(&fn->b, list);
+  const MirTyData *data = mir_ty_data(fn->cx->module, container);
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
+    mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+    return fn_map_index(fn, list, index, container);
+  }
+  const MirValue at = fn_expr(fn, index, LW_BORROW);
   if (at == MIR_NONE) {
     return MIR_NONE;
   }
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, list));
   if (data->kind != MK_LIST) {
     (void)fn_fail(fn, "only a list can be indexed for now");
     return MIR_NONE;
