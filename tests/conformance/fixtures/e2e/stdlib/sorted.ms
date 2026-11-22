@@ -32,8 +32,8 @@ test "first last floor ceiling and pops":
     var map = SortedMap[Int, Int]()
     for key in [10, 20, 30]:
         map.add(key, key * 2)
-    expect_equal(map.first().get().key, 10)?
-    expect_equal(map.last().get().value, 60)?
+    expect_equal(map.first().get(), 10)?
+    expect_equal(map.get(map.last().get()), 60)?
     expect_equal(map.floor(25).get().key, 20)?
     expect_equal(map.floor(20).get().key, 20)?
     expect_equal(map.floor(5), none)?
@@ -94,7 +94,8 @@ test "many random operations agree with Map":
                 expected = candidate
 
         if found := sorted.floor(key):
-            expect_equal(found.key, expected)?
+            got: Int? := found.key
+            expect_equal(got, expected)?
         else:
             expect_equal(expected, none)?
 
