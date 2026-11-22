@@ -593,7 +593,16 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
 /* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
  * the updated list back. False when the receiver is neither (nothing is emitted then). */
 static bool list_changeable(LowerFn *fn, const MsExpr *place, MirValue slot) {
-  return slot != MIR_NONE || (place != NULL && fn_place_changeable(fn, place));
+  if (slot != MIR_NONE) {
+    return true;
+  }
+  /* An element of a list held in place changes where it lies (`call_changing`), not through a copy put back. */
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (place != NULL && ms_expr_index(place, &container, &key) && fn_is_list(fn, container) && lists_in_place(fn, container)) {
+    return false;
+  }
+  return place != NULL && fn_place_changeable(fn, place);
 }
 
 static bool list_take(LowerFn *fn, const MsExpr *place, MirValue slot, MirTy list_ty, MirValue *owned, MirValue *record) {

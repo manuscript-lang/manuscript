@@ -149,7 +149,9 @@ bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty) 
     return fn_fail(fn, "`if var` entries nest too deeply");
   }
   const MirVar var = fn_local(fn, ref->local, ty);
-  const MirValue value = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+  /* An entry that owns something is taken out of its place, and the writeback puts the changed value back. */
+  const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &address, 1,
+                                    (MirImm){.tag = MI_TY, .a = ty}, ty);
   mir_b_def_var(&fn->b, var, value);
   fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.var = var, .address = address, .ty = ty, .depth = fn->nopen};
   return !fn->failed;
@@ -180,7 +182,7 @@ static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
     return;
   }
   const MirValue stored[2] = {back->address, mir_b_use_var(&fn->b, back->var)};
-  (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, back->ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
 }
 
 /* Stores each entry binding opened inside the scopes above `keep` back to its entry: a return, break or continue
