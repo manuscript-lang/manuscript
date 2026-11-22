@@ -4,7 +4,7 @@ file(STRINGS ${CMAKE_SOURCE_DIR}/.msversion MS_VERSION_TEXT LIMIT_COUNT 1)
 target_compile_definitions(ms-c PRIVATE MS_VERSION="${MS_VERSION_TEXT}")
 target_link_libraries(ms-c PRIVATE ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link)
 
-set(MS_MUSL_DIR "" CACHE PATH "Directory with crt1.o crti.o crtn.o libc.a libunwind.a (default: rustc's musl sysroot)")
 set(MS_MINGW_DIR "" CACHE PATH "llvm-mingw root for Windows links (default: target/llvm-bundle/mingw)")
 include(MsRuntimePackage)
+ms_add_musl_runtime()
 ms_package_runtime(ms-c ms_runtime)

@@ -1,6 +1,6 @@
 # Fills the startup-files directory (MS_FILES) next to ms-c; run after each build by MsRuntimePackage.cmake.
 #   -DFILES=<dir> -DSOURCE_DIR=<repo> -DOS=<Linux|Darwin|Windows> -DARCH=<processor>
-#   -DMUSL_DIR=<dir with crt1.o crti.o crtn.o libc.a libunwind.a> -DMINGW_DIR=<llvm-mingw root>
+#   -DMUSL_SYSROOT=<the musl sysroot of cmake/MsMusl.cmake> -DMINGW_DIR=<llvm-mingw root>
 # Linux gets the glibc export table (and the musl and unwinder files for `--static` and the unwinder input);
 # Windows gets the mingw-w64 startup object and libraries; macOS needs only the directory (the SDK stubs are
 # made there on demand). A file that cannot be found is reported once and skipped.
@@ -23,15 +23,8 @@ endfunction()
 
 if(OS STREQUAL "Linux")
   ms_copy_file("${SOURCE_DIR}/toolchain/glibc/${arch}.symbols" glibc.symbols)
-  if(NOT MUSL_DIR)
-    find_program(rustc rustc)
-    if(rustc)
-      execute_process(COMMAND "${rustc}" --print sysroot OUTPUT_VARIABLE sysroot OUTPUT_STRIP_TRAILING_WHITESPACE)
-      set(MUSL_DIR "${sysroot}/lib/rustlib/${arch}-unknown-linux-musl/lib/self-contained")
-    endif()
-  endif()
   foreach(name crt1.o crti.o crtn.o libc.a libunwind.a)
-    ms_copy_file("${MUSL_DIR}/${name}" ${name})
+    ms_copy_file("${MUSL_SYSROOT}/usr/lib/${name}" ${name})
   endforeach()
 elseif(OS STREQUAL "Windows")
   if(NOT MINGW_DIR)
