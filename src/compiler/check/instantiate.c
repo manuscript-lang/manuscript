@@ -147,7 +147,24 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
   const MsTy result = ms_ty_result(types, callee);
   if (expected_result != MS_TY_NONE && !ms_ty_is_invalid(types, expected_result) && nvars > 0 &&
       ms_ty_has_variable(types, result)) {
-    (void)unify_commit(types, result, expected_result, variables, nvars, bound);
+    if (!unify_commit(types, result, expected_result, variables, nvars, bound)) {
+      /* Arguments already fixed one part of the result; the expected type still decides the parts they did not. */
+      const size_t parts = ms_ty_arg_count(types, result);
+      for (size_t part = 0; ms_ty_row(types, result)->id == ms_ty_row(types, expected_result)->id &&
+                            parts == ms_ty_arg_count(types, expected_result) && part < parts;
+           part++) {
+        const MsTy pattern = ms_ty_args(types, result)[part];
+        const MsTy wanted = ms_ty_args(types, expected_result)[part];
+        for (size_t at = 0; at < nvars; at++) {
+          /* An argument typed T where T? is expected converts, so the expected type wins. */
+          if (variables[at] == pattern && bound[at] != MS_TY_NONE && ms_ty_is(types, wanted, MS_BUILTIN_Optional) &&
+              ms_ty_arg_count(types, wanted) == 1 && ms_ty_args(types, wanted)[0] == bound[at]) {
+            bound[at] = wanted;
+          }
+        }
+        (void)unify_commit(types, pattern, wanted, variables, nvars, bound);
+      }
+    }
   }
   apply_defaults(program, variables, nvars, bound);
   for (size_t index = 0; index < nvars; index++) {
