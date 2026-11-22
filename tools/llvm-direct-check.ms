@@ -258,7 +258,7 @@ fn main() Int:
 		note(f"unknown mode {args[0]}")
 		return 2
 
-	var programs = args.slice(1, args.length()).get_or(List[String]()).clone()
+	var programs = args.slice(1, args.length()).clone().get_or(List[String]())
 	if programs.is_empty():
 		programs = [
 			"tools/llvm-direct/yaml.ms", "bench/perf/kernels/ms/ms.toml",

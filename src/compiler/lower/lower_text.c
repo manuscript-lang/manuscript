@@ -101,7 +101,7 @@ static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *f
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
   (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
-  const MirValue table = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
+  const MirValue table = fn_shape(fn, of_type.a);
   const MirValue args[2] = {table, slot};
   return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, MIR_STR);
 }
@@ -178,7 +178,7 @@ MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args,
   const MirTy ty = mir_b_ty(&fn->b, args[0]);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   MirValue operands[5];
-  operands[0] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
+  operands[0] = fn_shape(fn, of_type.a);
   for (uint32_t at = 0; at < nargs; at++) {
     const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
     const MirValue store[2] = {slot, args[at]};

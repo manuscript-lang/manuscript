@@ -416,6 +416,52 @@ static void add_discovered(Loader *loader, MsSpan file) {
   graph_diag_list_push(&loader->diagnostics, failure_diag(&failure, file, start_position()));
 }
 
+/* The absolute spelling of `file` with its directory resolved, or false with `error` set. */
+static bool real_file(MsArena *arena, MsSpan file, MsSpan *real, MsProjectError *error) {
+  MsSpan absolute = {0};
+  MsSpan directory = {0};
+  if (!absolute_name(arena, file, &absolute, error) || !canonical_root(arena, absolute, &directory, error)) {
+    return false;
+  }
+  MsStrBuild joined = ms_strbuild_new();
+  ms_path_append_joined(&joined, directory, ms_path_file_name(absolute));
+  *real = ms_project_text(arena, &joined);
+  return true;
+}
+
+/* Collects the extra files and widens the loader's root to hold them all. A standalone file's root is its directory, so
+ * files in other directories need their common ancestor. */
+static bool widen_for_extras(Loader *loader, MsSpan filename, const MsLoadOptions *options, bool is_manifest,
+                             MsSpanList *files, MsGraph *out) {
+  if (options == NULL || options->extra_count == 0 || is_manifest) {
+    return true;
+  }
+  MsProjectError error = {0};
+  for (size_t i = 0; i < options->extra_count; i++) {
+    MsSpan real = {0};
+    if (!real_file(loader->arena, options->extra_files[i], &real, &error)) {
+      ms_span_list_free(files);
+      fail_error(loader->arena, filename, &error, out);
+      return false;
+    }
+    ms_span_list_push(files, real);
+    MsStrBuild relative = ms_strbuild_new();
+    while (!(ms_path_relative(&relative, loader->root, ms_path_parent(real)) &&
+             !ms_path_escapes(ms_strbuild_span(&relative)))) {
+      const MsSpan parent = ms_path_parent(loader->root);
+      if (parent.len == 0 || parent.len == loader->root.len) {
+        break;
+      }
+      loader->root = parent;
+      ms_strbuild_free(&relative);
+      relative = ms_strbuild_new();
+    }
+    ms_strbuild_free(&relative);
+  }
+  out->source_root = loader->root;
+  return true;
+}
+
 static void load_discovered(Loader *loader, const MsManifest *manifest, bool include_source) {
   MsSpanList files = {0};
   MsProjectError error = {0};
@@ -436,16 +482,26 @@ static void load_graph(Loader *loader, MsSpan filename, MsSpan target, bool is_m
   MsSpan entry = {0};
   int32_t index = MS_NO_MODULE;
   Failure failure = {0};
+  MsSpanList extras = {0};
+  if (!widen_for_extras(loader, filename, options, is_manifest, &extras, out)) {
+    return;
+  }
   if (target.len != 0) {
     if (!ms_project_source_path(loader->arena, loader->root, target, loader->overlay, &entry, &error)) {
+      ms_span_list_free(&extras);
       fail_error(loader->arena, filename, &error, out);
       return;
     }
     if (!visit(loader, entry, &index, &failure)) {
+      ms_span_list_free(&extras);
       fail_load(loader, out, failure_diag(&failure, filename, start_position()));
       return;
     }
   }
+  for (size_t i = 0; i < extras.len; i++) {
+    add_discovered(loader, extras.ptr[i]);
+  }
+  ms_span_list_free(&extras);
   const bool tests = options != NULL && options->tests;
   const bool sources = options != NULL && options->project_sources;
   if (is_manifest && (target.len == 0 || tests || sources)) {

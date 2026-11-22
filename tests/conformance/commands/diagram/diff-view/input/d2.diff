@@ -1,0 +1,34 @@
+diff --git a/src/main.ms b/src/main.ms
+index 2c6273b..e329b9a 100644
+--- a/src/main.ms
++++ b/src/main.ms
+@@ -11,3 +11,6 @@ fn main() Int:
+ 
+ test "main total":
+ 	expect_equal(parse_total(["1", "2"]), 3)?
++
++test "more":
++	expect_equal(1, 1)?
+diff --git a/src/shapes.ms b/src/shapes.ms
+index b174c4f..5475d62 100644
+--- a/src/shapes.ms
++++ b/src/shapes.ms
+@@ -6,7 +6,7 @@ enum Failure:
+ 	Bad(text: String)
+ 
+ fn area(shape: Shape) Int:
+-	return shape.width * shape.height
++	return shape.width * shape.height + 1
+ 
+ fn read_number(text: String) Int!Failure:
+ 	if value := text.parse_int(): return ok(value)
+@@ -15,5 +15,8 @@ fn read_number(text: String) Int!Failure:
+ export fn parse_total(items: List[String]) Int:
+ 	var total = 0
+ 	for item in items:
+-		total += read_number(item).get_or(0)
++		total += read_number(item).get_or(1)
+ 	return total + area(Shape(1, 1)) - 1
++
++fn extra(a: Int) Int:
++	return a

@@ -17,6 +17,7 @@
 #include "driver/test_document.h"
 #include "driver/test_options.h"
 #include "driver/test_run.h"
+#include "driver/watch.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
@@ -100,7 +101,7 @@ static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, 
       print_outcome(arena, names->ptr[index], outcome);
       totals.passed += outcome->kind == TEST_PASSED;
       totals.nanos += outcome->nanos;
-      totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message,
+      totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message, .fault = outcome->fault,
                                                             .status = status_name(outcome->kind), .nanos = outcome->nanos};
       totals.failed += outcome->kind == TEST_FAILED;
       totals.skipped += outcome->kind == TEST_SKIPPED;
@@ -200,10 +201,15 @@ static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan 
 }
 
 /* Checks `input`, builds its tests and runs the plan. */
-static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input) {
+static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input, const MsSpanList *extras,
+                      MsSpanList *watched) {
   MsCheckedInput checked = {0};
   int status = 0;
-  if (!ms_checked_input_load(arena, &checked, input, MS_INPUT_TESTS)) {
+  const MsLoadOptions load = {.extra_files = extras == NULL ? NULL : extras->ptr, .extra_count = extras == NULL ? 0 : extras->len};
+  if (!ms_checked_input_load_with(arena, &checked, input, MS_INPUT_TESTS, &load)) {
+    if (watched != NULL) {
+      watch_add_inputs(arena, input, &checked.graph, watched);
+    }
     if (!test_capturing()) {
       status = ms_checked_input_report(&checked);
     } else {
@@ -215,6 +221,9 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
     }
     ms_checked_input_free(&checked);
     return status;
+  }
+  if (watched != NULL) {
+    watch_add_inputs(arena, input, &checked.graph, watched);
   }
   MsTestOptions options;
   ms_test_options_parse(&invocation->arguments, &options);
@@ -267,22 +276,23 @@ static bool is_manifest(MsSpan path) {
   return ms_span_is_text(ms_path_file_name(path), "ms.toml");
 }
 
-static int test_targets(MsArena *arena, const MsInvocation *invocation) {
+static int test_targets(MsArena *arena, const MsInvocation *invocation, MsSpanList *watched) {
   const MsSpanList *targets = &invocation->targets;
   bool members = targets->len > 1;
   for (size_t i = 0; i < targets->len; i++) {
     members = members && is_manifest(targets->ptr[i]);
   }
   if (targets->len > 1 && !members) {
-    print_text(stderr, ms_span_of_text("ms test: several test files in one executable are not implemented yet\n"));
-    return STATUS_NOT_IMPLEMENTED;
+    /* Several files: the first is the input, and the rest are built into the same executable. */
+    const MsSpanList more = {.ptr = targets->ptr + 1, .len = targets->len - 1};
+    return test_input(arena, invocation, targets->ptr[0], &more, watched);
   }
   int status = 0;
   for (size_t i = 0; i < targets->len; i++) {
     if (members) {
       print_text(stderr, ms_message_format(arena, "ms: testing %S\n", targets->ptr[i], (MsSpan){0}));
     }
-    const int result = test_input(arena, invocation, targets->ptr[i]);
+    const int result = test_input(arena, invocation, targets->ptr[i], NULL, watched);
     status = result > status ? result : status;
   }
   return status;
@@ -300,6 +310,29 @@ static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
   return valid;
 }
 
+/* `--watch`: runs the tests, waits for a change, and runs them again; a failing run keeps watching. */
+static int watch_tests(const MsInvocation *invocation, const MsTestOptions *options) {
+  for (;;) {
+    MsArena arena = ms_arena_new();
+    if (!selection_valid(&arena, options)) {
+      ms_arena_free(&arena);
+      return STATUS_USAGE;
+    }
+    MsSpanList watched = {0};
+    const uint64_t started = watch_now_ms();
+    MsStrBuild captured = ms_strbuild_new();
+    test_output_capture(invocation->json ? &captured : NULL);
+    (void)test_targets(&arena, invocation, &watched);
+    test_output_capture(NULL);
+    ms_strbuild_free(&captured);
+    print_text(stderr, ms_span_of_text("ms: waiting for changes\n"));
+    (void)fflush(stdout);
+    watch_wait(&watched, started);
+    ms_span_list_free(&watched);
+    ms_arena_free(&arena);
+  }
+}
+
 int ms_test_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -308,13 +341,12 @@ int ms_test_command(int argc, char **argv) {
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
   if (status == 0 && invocation.watch) {
-    print_text(stderr, ms_span_of_text("ms test: --watch is not implemented yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
+    status = watch_tests(&invocation, &options);
   } else if (status == 0 && !selection_valid(&arena, &options)) {
     status = STATUS_USAGE;
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
-    status = test_targets(&arena, &invocation);
+    status = test_targets(&arena, &invocation, NULL);
     test_output_capture(NULL);
   }
   ms_strbuild_free(&captured);

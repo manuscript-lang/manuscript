@@ -91,6 +91,16 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     }
     return;
   }
+  if (stmt->kind == MS_S_FOR && ms_facts_use(pass->facts, stmt->u.each.iter->id) == MS_USE_MOVE) {
+    /* A loop that consumes its list owns each element in its round. */
+    const MsRef *item = ms_facts_ref(pass->facts, stmt->id);
+    const MsTyTable *types = &pass->program->types;
+    const MsTy list = ms_facts_type(pass->facts, stmt->u.each.iter->id);
+    if (item != NULL && item->kind == MS_REF_LOCAL && list != MS_TY_NONE && ms_ty_arg_count(types, list) == 1) {
+      add_closer(pass, stmt->id, MS_REF_LOCAL, item->local, ms_ty_args(types, list)[0]);
+    }
+    return;
+  }
   if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
     return;
   }
@@ -109,6 +119,34 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     const MsCloser drop = {.node = node, .ref_kind = MS_REF_LOCAL, .local = ref->local,
                            .flags = MS_CLOSER_DROP | MS_CLOSER_CONSUMES};
     ms_closer_list_push(&pass->facts->closers, drop);
+  }
+}
+
+/* `match call():` over an Optional or a Result: an arm that binds the payload of a call's result owns it, so a
+ * resource it holds closes where the arm ends unless the arm moves it on. The closer is keyed on the arm. */
+static void visit_match(void *ctx, const MsExpr *expr) {
+  Closers *pass = ctx;
+  const MsTyTable *types = &pass->program->types;
+  const MsExpr *subject = expr->kind == MS_E_MATCH ? expr->u.match.scrutinee : NULL;
+  const MsTy scrutinee = subject != NULL && subject->kind == MS_E_CALL ? ms_facts_type(pass->facts, subject->id) : MS_TY_NONE;
+  const bool optional = scrutinee != MS_TY_NONE && ms_ty_is(types, scrutinee, MS_BUILTIN_Optional);
+  const bool result = scrutinee != MS_TY_NONE && ms_ty_is(types, scrutinee, MS_BUILTIN_Result);
+  if (!optional && !result) {
+    return;
+  }
+  for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    const MsArm *arm = expr->u.match.arms.ptr[index];
+    const MsRef *bound = ms_facts_ref(pass->facts, arm->id);
+    if (bound == NULL || bound->kind != MS_REF_CASE || arm->bindings.len != 1) {
+      continue;
+    }
+    /* A Result's cases are `ok` (0) and `error` (1) and carry its first and second type arguments; an Optional's
+     * `some` (1) carries its only one. */
+    const uint32_t which = result ? bound->index : 0;
+    if (ms_ty_arg_count(types, scrutinee) <= which) {
+      continue;
+    }
+    add_closer(pass, arm->id, MS_REF_LOCAL, bound->local, ms_ty_args(types, scrutinee)[which]);
   }
 }
 
@@ -307,7 +345,7 @@ static void callable(Closers *pass, MsNode node, const MsMethod *method, MsParam
     add_receiver(pass, method);
   }
   add_params(pass, params, ms_own_taken_mask(pass->program, pass->module, node));
-  const MsVisitor binds = {.ctx = pass, .stmt = visit_stmt};
+  const MsVisitor binds = {.ctx = pass, .stmt = visit_stmt, .expr = visit_match};
   ms_walk_callable(&binds, params, body);
   const MsVisitor uses = {.ctx = pass, .stmt = visit_stmt_changes, .expr = visit_expr, .leave_expr = leave_expr};
   ms_walk_callable(&uses, params, body);

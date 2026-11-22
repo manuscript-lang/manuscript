@@ -125,7 +125,7 @@ static MirValue lower_text(LowerFn *fn, const MsExpr *expr) {
   }
   const MsSpan text = expr->u.text.len == 0 ? ms_span_of_text("") : expr->u.text.ptr[0].lit;
   const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, text)};
-  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR); /* a text literal is a String, whether or not the checker typed it (a match arm's path) */
 }
 
 MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty) {
@@ -458,7 +458,7 @@ static MirValue optional_equality(LowerFn *fn, bool negate, MirValue left, MirVa
 }
 
 /* `a == b` on two records: every field equal, field by field, so padding bytes never take part. */
-static MirValue record_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+static MirValue record_fields_equal(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
   const MirTypeDef *def = &fn->cx->module->type_defs.ptr[mir_ty_data(fn->cx->module, ty)->id];
   MirValue all = mir_b_bconst(&fn->b, true);
   for (uint32_t field = 0; field < def->nfields; field++) {
@@ -474,6 +474,29 @@ static MirValue record_equality(LowerFn *fn, bool negate, MirValue left, MirValu
     all = mir_b_emit(&fn->b, MOP_And, pair, 2, (MirImm){0}, MIR_BOOL);
   }
   return negate ? mir_b_emit(&fn->b, MOP_Not, &all, 1, (MirImm){0}, MIR_BOOL) : all;
+}
+
+typedef MirValue (*FieldwiseEquality)(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty);
+
+/* A record or alternative is compared field by field, once: a type that reaches itself (a list node) is compared by
+ * the runtime through its descriptor where the walk meets it again. */
+static MirValue compare_once(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty, FieldwiseEquality fieldwise) {
+  for (uint32_t at = 0; at < fn->ncomparing; at++) {
+    if (fn->comparing[at] == ty) {
+      return structural_equality(fn, negate, left, right, ty);
+    }
+  }
+  if (fn->ncomparing == sizeof fn->comparing / sizeof fn->comparing[0]) {
+    return structural_equality(fn, negate, left, right, ty);
+  }
+  fn->comparing[fn->ncomparing++] = ty;
+  const MirValue result = fieldwise(fn, negate, left, right, ty);
+  fn->ncomparing--;
+  return result;
+}
+
+static MirValue record_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+  return compare_once(fn, negate, left, right, ty, record_fields_equal);
 }
 
 /* `a == b` on two alternatives: the same case, then every field of it equal, so unused payload bytes never take
@@ -531,19 +554,7 @@ static MirValue alt_equality_cases(LowerFn *fn, bool negate, MirValue left, MirV
 /* The equality of two alternatives, case by case. An alternative that holds itself (a tree) is written out once:
  * where its own equality is already being written, the comparison goes through the runtime's structural one. */
 static MirValue alt_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
-  const uint32_t id = mir_ty_data(fn->cx->module, ty)->id;
-  for (uint32_t at = 0; at < fn->ncomparing; at++) {
-    if (fn->comparing[at] == id) {
-      return structural_equality(fn, negate, left, right, ty);
-    }
-  }
-  if (fn->ncomparing == sizeof fn->comparing / sizeof fn->comparing[0]) {
-    return structural_equality(fn, negate, left, right, ty);
-  }
-  fn->comparing[fn->ncomparing++] = id;
-  const MirValue result = alt_equality_cases(fn, negate, left, right, ty);
-  fn->ncomparing--;
-  return result;
+  return compare_once(fn, negate, left, right, ty, alt_equality_cases);
 }
 
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right) {
@@ -794,7 +805,12 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
                            fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
   const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
                              fn_owned_local(fn, root, &root_var);
-  if (!borrowed_param && !in_var_record && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
+  const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
+                          ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
+  /* A field of a call's answer stays in that answer, which its owner or the scope drops; the field is copied. */
+  const bool in_call_result = expr->kind == MS_E_MEMBER && root->kind == MS_E_CALL;
+  if (!borrowed_param && !in_var_record && !view_local && !in_call_result && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

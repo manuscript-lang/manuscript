@@ -269,7 +269,7 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
   const uint8_t *value = ms_shape_resolve(shape, slot);
   if ((shape->flags & MS_SHAPE_TEXT_FORM) != 0 && hook != NULL && hook->to_text != NULL) {
     MsString piece = ms_string_empty();
-    hook->to_text(value, &piece);
+    hook->to_text(slot, &piece);
     append_owned(text, &piece);
     return;
   }

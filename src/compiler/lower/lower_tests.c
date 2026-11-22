@@ -3,6 +3,7 @@
  * selected test indices and the results path, and calls `run_plain_file` with the file's tests as closures that
  * return `Void!`, and their global indices. A file with a `make_fixture` factory calls `run_fixture_file` instead: its
  * tests take the fixture as a `var` parameter, and the fixture type's hook methods become closures. */
+#include "base/message.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_analysis.h"
@@ -105,7 +106,13 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
     fn_scope_unwind(&fn, 0);
     mir_b_ret(&fn.b, done);
   }
-  return end_fn(&fn, slot, ok) ? slot : MIR_NONE;
+  if (!end_fn(&fn, slot, ok)) {
+    return MIR_NONE;
+  }
+  /* A fault trace names the block as it is written: `test adds two numbers`, `bench sort`. */
+  cx->module->funcs.ptr[slot].display = mir_name(
+      cx->module, ms_message_format(&cx->module->arena, decl->u.test.bench ? "bench %S" : "test %S", decl->u.test.name, (MsSpan){0}));
+  return slot;
 }
 
 static MirValue closure_value(LowerFn *fn, uint32_t func, MirTy ty) {

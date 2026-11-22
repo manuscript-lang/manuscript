@@ -412,7 +412,9 @@ static void declaration(Body *body, const MsDecl *decl) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN: {
     const MsSymbol *symbol = symbol_of(body->program, body->module, decl);
-    if (symbol != NULL && symbol->ty != MS_TY_NONE) {
+    if (symbol != NULL && symbol->ty != MS_TY_NONE && decl->u.fn.external) {
+      body_check_extern(body, decl, symbol->ty);
+    } else if (symbol != NULL && symbol->ty != MS_TY_NONE) {
       function_decl(body, symbol);
     }
     break;
@@ -448,6 +450,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     body->quiet = true; /* the initializer is reported by the constants pass */
     (void)body_expr(body, decl->u.konst.value, declared);
     body->quiet = false;
+    body_report_decimal_literals(body, decl->u.konst.value);
     break;
   }
   case MS_D_TYPE:

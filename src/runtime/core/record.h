@@ -1,7 +1,8 @@
 /* The fault record the CLI reads: what a process leaves in the file MS_FAULT_RECORD names as it ends.
  *
- * Little endian: the magic, a version byte, the writer's pid, the kind code, a flags byte, then length-prefixed
- * byte strings and counts. The encoder is a cursor over a buffer that may be too small: it counts every byte it
+ * Little endian: the magic, a version byte (2), the writer's pid, the kind code, a flags byte, the message, the
+ * frames, the frames of where a task was started, the cleanup notes and the site, each list led by its count, strings
+ * length-prefixed. The encoder is a cursor over a buffer that may be too small: it counts every byte it
  * is given and stores only what fits, so one pass sizes the record and a second fills it. The text on standard
  * error is for people and is never parsed. */
 #ifndef MS_RUNTIME_CORE_RECORD_H

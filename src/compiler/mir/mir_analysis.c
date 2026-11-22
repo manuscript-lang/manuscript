@@ -107,7 +107,14 @@ void mir_arg_modes(const MirModule *module, const MirFunc *func, const MirInst *
   case MOP_ListSetU: case MOP_ListFill: case MOP_ListFillU: case MOP_ListPushU:
     fill_modes(out, count, MM_MOVE);
     return;
-  case MOP_OptSome: case MOP_IfaceNew: case MOP_Drop: case MOP_Forget: case MOP_ListRelease:
+  case MOP_IfaceNew:
+    if (inst->imm.tag == MI_VTABLE && inst->imm.b != 0) { /* a view of a binding that keeps its value */
+      fill_modes(out, count, MM_BORROW);
+      return;
+    }
+    one_moved(out, count, 0);
+    return;
+  case MOP_OptSome: case MOP_Drop: case MOP_Forget: case MOP_ListRelease:
   case MOP_GlobalSet: case MOP_AltUnbox: case MOP_AltRelease: case MOP_TypeRelease: case MOP_OptUnbox:
   case MOP_ListGrow:
     one_moved(out, count, 0);

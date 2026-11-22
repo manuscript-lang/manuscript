@@ -239,6 +239,7 @@ MS_LIST_DEFINE(MirNamedValueList, mir_named_value_list, MirNamedValue)
 
 typedef struct MirFunc {
   MsName name;
+  MsName display; /* what a fault trace calls the function, when that is not `name`: MS_NAME_EMPTY otherwise */
   MirParam *params; /* in the module arena */
   uint32_t nparams;
   MirTy ret;
@@ -295,6 +296,8 @@ typedef struct MirTypeDef {
   uint32_t nfields;
   bool indirect; /* one pointer to a heap block */
   bool native;   /* an extern type the runtime reads and writes by address (`@repr=inline<N>`): words, no fields to name */
+  uint32_t text_fn1; /* 1 + the function `fn(slot, out)` that writes the type's own `to_string` text, for its shape; 0 for none */
+  uint32_t json_fn1; /* 1 + the function `fn(slot, writer) -> u8` that writes its own `to_json` document; 0 for none */
 } MirTypeDef;
 
 MS_LIST_DEFINE(MirTypeDefList, mir_type_def_list, MirTypeDef)
@@ -313,6 +316,8 @@ typedef struct MirAltDef {
   MirCaseDef *cases; /* in the module arena */
   uint32_t ncases;
   uint64_t borrowed;
+  uint32_t text_fn1; /* as for MirTypeDef */
+  uint32_t json_fn1;
 } MirAltDef;
 
 MS_LIST_DEFINE(MirAltDefList, mir_alt_def_list, MirAltDef)

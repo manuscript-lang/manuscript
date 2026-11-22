@@ -4,6 +4,7 @@
 
 #include "base/file.h"
 
+#include <errno.h>
 #include <uv.h>
 
 #include "base/dir.h"
@@ -181,10 +182,24 @@ void ms_path_remove_tree(MsSpan path) {
   ms_path_remove(path);
 }
 
+/* The errno a libuv status stands for. libuv returns the status from realpath and sets errno only where it calls
+ * the C library, which the Windows implementation does not, so a caller reading errno would see a stale value. */
+static int errno_of_status(int status) {
+  switch (status) {
+  case UV_ENOENT: return ENOENT;
+  case UV_ENOTDIR: return ENOTDIR;
+  case UV_EACCES: return EACCES;
+  case UV_ELOOP: return ELOOP;
+  case UV_ENAMETOOLONG: return ENAMETOOLONG;
+  default: return EIO;
+  }
+}
+
 bool ms_file_real_path(MsSpan path, MsString *out) {
   MsOsText name = ms_os_text_new(path);
   uv_fs_t request;
-  const bool ok = uv_fs_realpath(NULL, &request, name.ptr, NULL) == 0;
+  const int status = uv_fs_realpath(NULL, &request, name.ptr, NULL);
+  const bool ok = status == 0;
   if (ok) {
     const MsSpan real = ms_span_of_text(request.ptr);
     ms_path_from_os(request.ptr, real.len);
@@ -193,6 +208,9 @@ bool ms_file_real_path(MsSpan path, MsString *out) {
   }
   uv_fs_req_cleanup(&request);
   ms_os_text_free(&name);
+  if (!ok) {
+    errno = errno_of_status(status);
+  }
   return ok;
 }
 
