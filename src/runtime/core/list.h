@@ -47,7 +47,7 @@ int64_t msrt_list_length(const MsList *v);
  * @seq=list.len:$0>int,iconst:#0>int,icmp.eq:%0:%1>bool */
 uint8_t msrt_list_is_empty(const MsList *v);
 /* ms-sig: msrt_list_append(v: *mut VecVal, d: ElemDesc, e: *const u8) @domain=collection @leaf @op=list.push
- */
+ * @inline=list_append */
 void msrt_list_append(MsList *v, const MsTypeDesc *d, const uint8_t *e);
 /* ms-sig: msrt_list_at(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8) -> *const u8
  * @domain=collection @leaf */
@@ -75,7 +75,7 @@ void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8
 void msrt_list_insert_copy(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
 /* ms-sig: msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @leaf */
 uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out);
-/* ms-sig: msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf */
+/* ms-sig: msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @leaf @inline=list_set */
 void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
 /* ms-sig: msrt_list_replace(v: *mut VecVal, d: ElemDesc, index: i64, e: *mut u8, out: *mut u8)
  * @domain=collection @leaf */

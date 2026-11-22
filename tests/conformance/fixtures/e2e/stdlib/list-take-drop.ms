@@ -70,8 +70,8 @@ test "List take and drop support generic and nested values":
 
 test "List take and drop bound methods read the retained receiver":
 	var values = [1, 2, 3, 4]
-	take := values.take
-	drop: fn(Int) List[Int] := values.drop
+	take := values.clone().take
+	drop: fn(Int) List[Int] := values.clone().drop
 	expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])?
 
 	var first = take(2)
