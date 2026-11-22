@@ -602,6 +602,18 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     return fn_string_concat(fn, left, right);
   }
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    /* A type that declares its own `equals` compares through it. */
+    const MsTy checked = lower_source_type(fn->cx, mir_b_ty(&fn->b, left));
+    const uint32_t method = checked == MS_TY_NONE || mir_b_ty(&fn->b, left) != mir_b_ty(&fn->b, right)
+                                ? MIR_NONE
+                                : lower_own_method(fn->cx, checked, MS_PROPERTY_EQUAL);
+    if (method != MIR_NONE) {
+      const MirValue operands[2] = {left, right};
+      const MirValue same = mir_b_call(&fn->b, method, operands, 2);
+      return expr->op == MS_B_NE ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
+    }
+  }
   return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
 
