@@ -6,6 +6,7 @@ if(MS_LIBC STREQUAL "musl")
   return() # the inner build of the `--static` runtime holds the runtime archives only
 endif()
 add_subdirectory(compiler)
+add_subdirectory(tooling)
 add_subdirectory(driver)
 add_subdirectory(lint)
 
