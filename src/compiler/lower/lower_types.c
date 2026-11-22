@@ -159,6 +159,8 @@ static MirTy lower_standard(Lower *cx, MsTy ty, MsBuiltin builtin) {
     return lower_args_type(cx, ty, mir_ty_opt);
   case MS_BUILTIN_List:
     return lower_args_type(cx, ty, mir_ty_list);
+  case MS_BUILTIN_Bytes:
+    return MIR_BYTES;
   default:
     return lower_native(cx, ty);
   }

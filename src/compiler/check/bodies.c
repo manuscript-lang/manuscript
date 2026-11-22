@@ -333,10 +333,16 @@ static void declaration(Body *body, const MsDecl *decl) {
       method_decl(body, decl->u.impl.methods.ptr[index]);
     }
     break;
-  case MS_D_TEST:
+  case MS_D_TEST: {
+    /* A test returns `Void!`: `return error(...)` fails it. */
+    const MsTy error = body_std_type(body, "Error", NULL, 0);
+    const MsTy args[2] = {body_primitive(body, MS_BUILTIN_Void), error};
+    body->result = error == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Result", args, 2);
     body_block(body, decl->u.test.body);
+    body->result = MS_TY_NONE;
     body->facts->local_counts[decl->id] = body->next_local;
     break;
+  }
   case MS_D_CONST: {
     body->quiet = true;
     body->resolver.report = false; /* a constant's annotation is reported with the constant's own diagnostics */

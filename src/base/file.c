@@ -180,13 +180,27 @@ void ms_path_remove_tree(MsSpan path) {
   ms_path_remove(path);
 }
 
+/* Paths are '/'-separated inside the toolchain; Windows reports them with '\\'. */
+static void slash_separators(char *text, size_t size) {
+#ifdef _WIN32
+  for (size_t at = 0; at < size; at++) {
+    text[at] = text[at] == '\\' ? '/' : text[at];
+  }
+#else
+  (void)text;
+  (void)size;
+#endif
+}
+
 bool ms_file_real_path(MsSpan path, MsString *out) {
   MsOsText name = ms_os_text_new(path);
   uv_fs_t request;
   const bool ok = uv_fs_realpath(NULL, &request, name.ptr, NULL) == 0;
   if (ok) {
+    const MsSpan real = ms_span_of_text(request.ptr);
+    slash_separators(request.ptr, real.len);
     ms_string_release(out);
-    *out = ms_string_from_span(ms_span_of_text(request.ptr));
+    *out = ms_string_from_span(real);
   }
   uv_fs_req_cleanup(&request);
   ms_os_text_free(&name);
@@ -199,6 +213,7 @@ bool ms_dir_current(MsString *path) {
   if (uv_cwd(buffer, &size) != 0) {
     return false;
   }
+  slash_separators(buffer, size);
   ms_string_release(path);
   *path = ms_string_from_span(ms_span_of((const uint8_t *)buffer, size));
   return true;

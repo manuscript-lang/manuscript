@@ -7,7 +7,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/own/closers.h"
 
-enum { MAX_PARTS = 32 };
+enum { MAX_PARTS = 32, OK_CASE = 0 };
 
 typedef struct Part {
   MirValue value;
@@ -23,6 +23,14 @@ static bool closes_by_value(MsCheckProgram *program, MsTy ty) {
   MsCloser closer;
   return ms_check_closeable(program, ty) && ms_own_closer_of(program, ty, &closer) &&
          (closer.flags & MS_CLOSER_CONSUMES) != 0 && (closer.flags & MS_CLOSER_WRITES_BACK) == 0;
+}
+
+static bool is_result(const MsCheckProgram *program, MsTy ty) {
+  return ms_ty_is(&program->types, ty, MS_BUILTIN_Result) && ms_ty_arg_count(&program->types, ty) == 2;
+}
+
+static bool is_map(const MsCheckProgram *program, MsTy ty) {
+  return ms_ty_is(&program->types, ty, MS_BUILTIN_Map) && ms_ty_arg_count(&program->types, ty) == 2;
 }
 
 /* Whether every resource `ty` holds closes by a helper this file can build. Types being checked count as
@@ -42,6 +50,14 @@ static bool supported(MsCheckProgram *program, MsTy ty, MsTyList *seen) {
   ms_ty_list_push(seen, ty);
   if (is_one_of(program, ty, MS_BUILTIN_Optional) || is_one_of(program, ty, MS_BUILTIN_List)) {
     return supported(program, ms_ty_args(&program->types, ty)[0], seen);
+  }
+  if (is_result(program, ty)) {
+    const MsTy *args = ms_ty_args(&program->types, ty);
+    return !ms_check_holds_resource(program, args[1]) && supported(program, args[0], seen);
+  }
+  if (is_map(program, ty)) {
+    const MsTy *args = ms_ty_args(&program->types, ty);
+    return !ms_check_holds_resource(program, args[0]) && supported(program, args[1], seen);
   }
   const MsDef *def = ms_check_def_of(program, ty);
   if (def == NULL || ms_ty_kind(&program->types, ty) != MS_TY_TYPE || def->fields.len >= MAX_PARTS) {
@@ -68,6 +84,9 @@ static uint32_t helper_for(Lower *cx, MsTy ty);
 static uint32_t part_close(Lower *cx, MsTy ty) {
   if (!ms_check_holds_resource(cx->program, ty)) {
     return MIR_NONE;
+  }
+  if (ms_ty_kind(&cx->program->types, ty) == MS_TY_CONTRACT) {
+    return lower_close_iface(cx, ty);
   }
   return ms_check_closeable(cx->program, ty) ? lower_named_method(cx, ty, "close") : helper_for(cx, ty);
 }
@@ -172,6 +191,87 @@ static void emit_list(Lower *cx, MirBuilder *b, MirValue holder, MsTy elem) {
   mir_b_ret(b, mir_b_unit(b));
 }
 
+/* A Result closes its ok payload; an error holds no resource. */
+static void emit_result(Lower *cx, MirBuilder *b, MirValue holder, MsTy ok_ty) {
+  const uint32_t alt = mir_ty_data(cx->module, mir_b_ty(b, holder))->id;
+  const MirTy payload = cx->module->alts.ptr[alt].cases[OK_CASE].fields[0].ty;
+  const MirValue tag = mir_b_emit(b, MOP_AltTag, &holder, 1, (MirImm){0}, MIR_INT);
+  const MirBlock yes = mir_b_new_block(b);
+  const MirBlock no = mir_b_new_block(b);
+  mir_b_br_if(b, mir_b_icmp(b, MCC_EQ, tag, mir_b_iconst(b, OK_CASE)), yes, NULL, 0, no, NULL, 0);
+  mir_b_seal_block(b, yes);
+  mir_b_seal_block(b, no);
+  mir_b_switch_to(b, no);
+  drop_value(b, holder);
+  mir_b_ret(b, mir_b_unit(b));
+  mir_b_switch_to(b, yes);
+  const MirImm field = {.tag = MI_ALTFIELD, .a = alt, .b = OK_CASE, .c = 0};
+  const bool owns = mir_needs_drop(cx->module, payload);
+  const MirValue value = mir_b_emit(b, owns ? MOP_AltTake : MOP_AltGet, &holder, 1, field, payload);
+  if (owns) {
+    const MirImm taken = {.tag = MI_ALTMASK, .a = alt, .b = OK_CASE, .c = 1};
+    (void)mir_b_emit(b, MOP_AltRelease, &holder, 1, taken, MIR_NONE);
+  }
+  const Part part = {value, part_close(cx, ok_ty)};
+  close_taken(b, &part, 1);
+}
+
+static uint32_t map_extern(Lower *cx, const char *name, const MirParam *params, uint32_t count, MirTy ret) {
+  MirParam *own = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, count);
+  for (uint32_t index = 0; index < count; index++) {
+    own[index] = params[index];
+  }
+  const MirExtern def = {.name = mir_name(cx->module, ms_span_of_text(name)), .params = own, .nparams = count, .ret = ret};
+  return mir_extern_intern(cx->module, &def);
+}
+
+/* The values of a map close last slot first; the map and its keys are freed once the values are gone. */
+static void emit_map(Lower *cx, MirBuilder *b, MirValue holder, MsTy value_ty) {
+  const MirTy map = mir_b_ty(b, holder);
+  const MirTy key_ty = mir_ty_data(cx->module, map)->args[0];
+  const MirTy val_ty = mir_ty_data(cx->module, map)->args[1];
+  const uint32_t close = part_close(cx, value_ty);
+  const MirParam on_map = {map, (uint8_t)MM_BORROW}, ptr = {MIR_PTR, (uint8_t)MM_BORROW}, num = {MIR_INT, (uint8_t)MM_BORROW};
+  const MirParam entry_params[] = {on_map, ptr, ptr, num, ptr, ptr};
+  const uint32_t count_fn = map_extern(cx, "msrt_map_slot_count", &on_map, 1, MIR_INT);
+  const uint32_t entry_fn = map_extern(cx, "msrt_map_entry_ptrs", entry_params, 6, MIR_BOOL);
+  const uint32_t drop_fn = map_extern(cx, "msrt_map_drop", entry_params, 3, MIR_VOID);
+  const MirImm key_imm = {.tag = MI_TY, .a = key_ty}, val_imm = {.tag = MI_TY, .a = val_ty};
+  const MirValue kd = mir_b_emit(b, MOP_TypeDesc, NULL, 0, key_imm, MIR_PTR);
+  const MirValue vd = mir_b_emit(b, MOP_TypeDesc, NULL, 0, val_imm, MIR_PTR);
+  const MirImm ptr_imm = {.tag = MI_TY, .a = MIR_PTR};
+  const MirValue kp = mir_b_emit(b, MOP_Slot, NULL, 0, ptr_imm, MIR_PTR);
+  const MirValue vp = mir_b_emit(b, MOP_Slot, NULL, 0, ptr_imm, MIR_PTR);
+  const MirVar index = mir_b_declare_var(b, MIR_INT, MM_BORROW);
+  mir_b_def_var(b, index, mir_b_call_rt(b, count_fn, &holder, 1));
+  const MirBlock header = mir_b_new_block(b), probe = mir_b_new_block(b);
+  const MirBlock body = mir_b_new_block(b), exit = mir_b_new_block(b);
+  mir_b_br(b, header, NULL, 0);
+  mir_b_switch_to(b, header);
+  const MirValue more = mir_b_icmp(b, MCC_GT, mir_b_use_var(b, index), mir_b_iconst(b, 0));
+  mir_b_br_if(b, more, probe, NULL, 0, exit, NULL, 0);
+  mir_b_seal_block(b, probe);
+  mir_b_switch_to(b, probe);
+  const MirValue at = mir_b_binop(b, MOP_ISub, mir_b_use_var(b, index), mir_b_iconst(b, 1));
+  mir_b_def_var(b, index, at);
+  const MirValue entry_args[] = {holder, kd, vd, at, kp, vp};
+  mir_b_br_if(b, mir_b_call_rt(b, entry_fn, entry_args, 6), body, NULL, 0, header, NULL, 0);
+  mir_b_seal_block(b, body);
+  mir_b_switch_to(b, body);
+  const MirValue addr = mir_b_emit(b, MOP_Load, &vp, 1, ptr_imm, MIR_PTR);
+  const MirValue item = mir_b_emit(b, mir_needs_drop(cx->module, val_ty) ? MOP_Take : MOP_Load, &addr, 1, val_imm, val_ty);
+  lower_close_check(b, mir_b_call(b, close, &item, 1));
+  mir_b_br(b, header, NULL, 0);
+  mir_b_seal_block(b, header);
+  mir_b_seal_block(b, exit);
+  mir_b_switch_to(b, exit);
+  const MirValue none = mir_b_emit(b, MOP_PtrNull, NULL, 0, (MirImm){0}, MIR_PTR);
+  const MirValue drop_args[] = {holder, kd, none};
+  (void)mir_b_call_rt(b, drop_fn, drop_args, 3);
+  (void)mir_b_emit(b, MOP_Forget, &holder, 1, (MirImm){0}, MIR_NONE);
+  mir_b_ret(b, mir_b_unit(b));
+}
+
 static MsName helper_name(Lower *cx, MsTy ty) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_printf(&text, "close.parts.%u", (unsigned)ty);
@@ -213,6 +313,10 @@ static uint32_t helper_for(Lower *cx, MsTy ty) {
     emit_optional(cx, &b, holder, ms_ty_args(types, ty)[0]);
   } else if (is_one_of(cx->program, ty, MS_BUILTIN_List)) {
     emit_list(cx, &b, holder, ms_ty_args(types, ty)[0]);
+  } else if (is_result(cx->program, ty)) {
+    emit_result(cx, &b, holder, ms_ty_args(types, ty)[0]);
+  } else if (is_map(cx->program, ty)) {
+    emit_map(cx, &b, holder, ms_ty_args(types, ty)[1]);
   } else {
     emit_record(cx, &b, holder, ty, mt);
   }
@@ -226,4 +330,45 @@ static uint32_t helper_for(Lower *cx, MsTy ty) {
 
 uint32_t lower_close_parts(Lower *cx, MsTy ty) {
   return lower_parts_supported(cx, ty) ? helper_for(cx, ty) : MIR_NONE;
+}
+
+/* ---- interface values ---- */
+
+/* The index of the `close` operation of the interface `def`, or the operation count when it has none. */
+static uint32_t close_operation(const Lower *cx, const MsDef *def) {
+  const MsName close = ms_names_intern(cx->program->names, ms_span_of_text("close"));
+  uint32_t index = 0;
+  while (index < def->operations.len && def->operations.ptr[index].name != close) {
+    index++;
+  }
+  return index;
+}
+
+uint32_t lower_close_iface(Lower *cx, MsTy ty) {
+  const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(&cx->program->types, ty)->def);
+  const LowerSubst none = {0};
+  const MirTy mt = lower_type(cx, &none, ty);
+  if (def == NULL || mir_ty_data(cx->module, mt)->kind != MK_IFACE || close_operation(cx, def) == def->operations.len) {
+    return MIR_NONE;
+  }
+  const uint32_t op = close_operation(cx, def);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "close.iface.%u", (unsigned)mt);
+  const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const uint32_t found = mir_func_by_name(cx->module, name);
+  if (found != MIR_NONE) {
+    return found;
+  }
+  const MirTy ret = lower_type(cx, &none, ms_ty_result(&cx->program->types, def->operations.ptr[op].ty));
+  const MirParam param = {mt, (uint8_t)MM_MOVE};
+  MirBuilder b;
+  mir_b_init(&b, cx->module, name, &param, 1, ret);
+  b.func.linkage = ML_INTERNAL;
+  MirValue value = MIR_NONE;
+  mir_b_params(&b, &value, 1);
+  const MirImm method = {.tag = MI_METHOD, .a = mir_ty_data(cx->module, mt)->id, .b = op};
+  mir_b_ret(&b, mir_b_emit(&b, MOP_CallMethod, &value, 1, method, ret));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }

@@ -75,6 +75,20 @@ static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   return slot;
 }
 
+/* An `Int?` operand as the two parameters of a `HasRaw` pair: whether it holds a value, and the value (0 when
+ * none). False when the operand is not an optional Int. */
+static bool has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, optional));
+  if (data->kind != MK_OPT || data->elem != MIR_INT) {
+    return false;
+  }
+  const MirValue present = fn_emit(fn, MOP_OptIsSome, &optional, 1, (MirImm){0}, MIR_BOOL);
+  const MirValue payload = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, MIR_INT);
+  out[0] = present;
+  out[1] = mir_b_select(&fn->b, present, payload, mir_b_iconst(&fn->b, 0));
+  return true;
+}
+
 /* The operands the runtime function `sig` wants for a call with the source operands `args`: the descriptors
  * its signature names are added after the collection they describe, and the trailing result parameter is the
  * call's result. False when the source operands do not fit the signature. */
@@ -86,13 +100,24 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
   }
   uint32_t next = 0;
   uint32_t used = 0;
+  fn->native_moves = 0;
   for (uint32_t at = 0; at < params; at++) {
     const uint8_t kind = sig->kinds[at];
     if (kind == NS_ELEM_DESC || kind == NS_KEY_DESC || kind == NS_VAL_DESC) {
       if (!descriptor_argument(fn, kind, args, nargs, &out[used++])) {
         return false;
       }
+    } else if (kind == NS_HAS_RAW && next < nargs) {
+      if (!has_raw_pair(fn, args[next++], &out[used])) {
+        return false;
+      }
+      used += 2;
+      at++; /* the payload parameter is the second half of the pair */
     } else if (next < nargs) {
+      /* The runtime takes an owned operand it is given by address (`msrt_map_add`'s key and value). */
+      if (kind == NS_ADDR_MUT && at > 0 && used < 32 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
+        fn->native_moves |= 1u << used;
+      }
       out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
       next++;
     } else {
@@ -129,8 +154,10 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
 static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
-    params[index] = (MirParam){mir_b_ty(&fn->b, args[index]), (uint8_t)MM_BORROW};
+    params[index] = (MirParam){mir_b_ty(&fn->b, args[index]),
+                               (uint8_t)(index < 32 && (fn->native_moves >> index & 1u) != 0 ? MM_MOVE : MM_BORROW)};
   }
+  fn->native_moves = 0;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .fresh = mir_needs_drop(fn->cx->module, ret)};
   return mir_extern_intern(fn->cx->module, &def);
@@ -232,7 +259,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
   const MirValue missing = mir_b_emit(&fn->b, owns_key ? MOP_Take : MOP_Load, &key, 1, key_ty, data->args[0]);
-  const MirValue text = fn_value_text(fn, missing, data->args[0]);
+  const MirValue text = fn_value_repr(fn, missing, data->args[0]);
   const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
                                          (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
                                          MIR_STR);
@@ -343,6 +370,38 @@ MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, 
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
 
+bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
+                  MirTy ret, MirValue *out) {
+  const MsTyTable *types = &fn->cx->program->types;
+  /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
+  const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, owner));
+  const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
+                                                   : ms_names_span(fn->cx->program->names, ms_ty_row(types, owner)->name);
+  const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
+  const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
+                                    : runtime_name(fn, owner, operation);
+  const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL) {
+    return false;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
+    *out = list_get(fn, args[0], args[1], ret);
+    return true;
+  }
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  if (argc <= NS_MAX_PARAMS && signature_arguments(fn, sig, args, argc, ret, wanted, &count)) {
+    if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+      *out = call_changing(fn, place, name, wanted, count, ret);
+    } else {
+      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    }
+    return true;
+  }
+  *out = fn_runtime_call(fn, name, args, argc, ret);
+  return true;
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -350,36 +409,34 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     return MIR_NONE;
   }
   /* The declaration names the operation: a written `xs[i] = v` is a call of `set`, not of a member `[]=`. */
+  const MsTyTable *declared_types = &fn->cx->program->types;
   const MsMethodEntry *declared = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  /* An interface operation's declaration is not a method: only an entry of the callee's own type names the call. */
+  if (declared != NULL && ms_ty_row(declared_types, declared->receiver)->name != ms_ty_row(declared_types, call->callee.owner)->name) {
+    declared = NULL;
+  }
   const MsSpan operation = declared != NULL ? ms_names_span(fn->cx->program->names, declared->source->func.name)
                                             : ms_names_span(fn->cx->program->names, callee->u.member.name);
-  if (generic_receiver(fn, call)) {
-    return bound_native(fn, callee, call, args, ret);
-  }
-  const MsTyTable *types = &fn->cx->program->types;
-  /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
-  const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, call->callee.owner));
-  const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
-                                                   : ms_names_span(fn->cx->program->names, ms_ty_row(types, call->callee.owner)->name);
-  const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
-  const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
-                                    : runtime_name(fn, call->callee.owner, operation);
-  const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
-  if (sig != NULL && sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") &&
-      call->arg_count == 2) {
-    return list_get(fn, args[0], args[1], ret);
-  }
-  MirValue wanted[NS_MAX_PARAMS];
-  uint32_t count = 0;
-  if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
-      signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
-    const MsExpr *place = callee->u.member.left;
-    if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
-      return call_changing(fn, place, name, wanted, count, ret);
+  MsTy owner = call->callee.owner;
+  const bool via_bound = generic_receiver(fn, call);
+  if (via_bound) {
+    /* The instance knows the receiver: a standard type's operation is that type's own native. */
+    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+    const MsTyTable *table = &fn->cx->program->types;
+    if (ms_ty_kind(table, receiver) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(table, receiver))[0] == 0) {
+      return bound_native(fn, callee, call, args, ret);
     }
-    return call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    owner = receiver;
   }
-  return fn_runtime_call(fn, name, args, call->arg_count, ret);
+  MirValue result;
+  if (fn_native_on(fn, callee->u.member.left, owner, operation, call->arg_count, args, ret, &result)) {
+    return result;
+  }
+  if (standard_form(fn, args, call->arg_count, ret, &result) && via_bound) {
+    return result; /* the operation every value has, with no runtime function of its own */
+  }
+  return fn_runtime_call(fn, runtime_name(fn, owner, operation), args, call->arg_count, ret);
 }
 
 /* The operation word of a binary operator on a value object: its runtime function is `msstd_<type>_<word>`, the
@@ -503,9 +560,14 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     return false;
   }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
-  const uint32_t extras = sig->count > nargs ? sig->count - nargs : 0;
+  uint32_t pairs = 0; /* each `HasRaw` pair takes two parameters for one source operand */
+  for (uint32_t at = 0; at < sig->count; at++) {
+    pairs += sig->kinds[at] == NS_HAS_RAW ? 1 : 0;
+  }
+  const uint32_t expanded = nargs + pairs;
+  const uint32_t extras = sig->count > expanded ? sig->count - expanded : 0;
   const bool has_out = extras == (has_err ? 2u : 1u) && payload_ty != MIR_VOID;
-  if (sig->count < nargs || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
+  if (sig->count < expanded || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
     return false;
   }
   const uint32_t error_function = status_error_function(fn);
@@ -514,8 +576,15 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
-  for (; count < nargs; count++) {
-    wanted[count] = args[count];
+  for (uint32_t source = 0; source < nargs; source++) {
+    if (count < sig->count && sig->kinds[count] == NS_HAS_RAW) {
+      if (count + 2 > NS_MAX_PARAMS - 2 || !has_raw_pair(fn, args[source], &wanted[count])) {
+        return false;
+      }
+      count += 2;
+    } else {
+      wanted[count++] = args[source];
+    }
   }
   MirValue out_slot = MIR_NONE;
   MirValue err_slot = MIR_NONE;
@@ -561,6 +630,96 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   const MirValue error = mir_b_call(&fn->b, error_function, error_args, 3);
   const MirValue failure = build_result(fn, alt, 1, error, ret);
   mir_b_br(&fn->b, join, &failure, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), result);
+  }
+  *out = result;
+  return true;
+}
+
+/* ---- externs that move one value of a generic type in or out ---- */
+
+/* A generic value `msrt_promise_put[T](id, move value: T, failed)` hands the runtime the address of an owned slot
+ * holding the value and the descriptor of its type; `msrt_promise_take[T](id) T?` gets a slot of the payload type
+ * and answers whether it filled it. Returns false when `sig` takes no value descriptor. */
+bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || sig->count > NS_MAX_PARAMS) {
+    return false;
+  }
+  bool described = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    described = described || sig->kinds[at] == NS_VALUE_DESC;
+  }
+  if (!described) {
+    return false;
+  }
+  const MirTyData *optional = mir_ty_data(fn->cx->module, ret);
+  const bool takes_out = optional->kind == MK_OPT && sig->count > 0 && sig->kinds[sig->count - 1] == NS_ADDR_MUT;
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t used = 0;
+  uint32_t next = 0;
+  MirTy value_ty = takes_out ? optional->elem : MIR_NONE;
+  MirValue out_slot = MIR_NONE;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    const uint8_t kind = sig->kinds[at];
+    if (kind == NS_VALUE_DESC) {
+      if (value_ty == MIR_NONE) {
+        for (uint32_t scan = at; scan < sig->count && value_ty == MIR_NONE; scan++) {
+          value_ty = sig->kinds[scan] == NS_ADDR_MUT && next < nargs ? mir_b_ty(&fn->b, args[next]) : MIR_NONE;
+        }
+        if (value_ty == MIR_NONE && next < nargs) {
+          value_ty = mir_b_ty(&fn->b, args[next]);
+        }
+      }
+      const MirImm imm = {.tag = MI_TY, .a = value_ty};
+      wanted[used++] = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, imm, MIR_PTR);
+    } else if (takes_out && at + 1 == sig->count) {
+      out_slot = stack_slot(fn, value_ty);
+      wanted[used++] = out_slot;
+    } else if (kind == NS_ADDR_MUT && next < nargs) {
+      const MirTy ty = mir_b_ty(&fn->b, args[next]);
+      value_ty = ty;
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue stored[2] = {slot, args[next++]};
+      (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+      wanted[used++] = slot;
+    } else if (next < nargs) {
+      wanted[used++] = args[next++];
+    } else {
+      return false;
+    }
+  }
+  if (next != nargs) {
+    return false;
+  }
+  if (!takes_out) {
+    *out = fn_runtime_call(fn, name, wanted, used, ret);
+    return true;
+  }
+  const uint32_t external = runtime_extern(fn, name, wanted, used, MIR_UINT8);
+  const MirValue status = mir_b_call_rt(&fn->b, external, wanted, used);
+  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
+  const MirValue present = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirImm of_type = {.tag = MI_TY, .a = value_ty};
+  const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, value_ty) ? MOP_Take : MOP_Load, &out_slot, 1,
+                                    of_type, value_ty);
+  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &some, 1);
+  mir_b_switch_to(&fn->b, none_block);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &none, 1);
   mir_b_seal_block(&fn->b, join);
   mir_b_switch_to(&fn->b, join);
   if (mir_needs_drop(fn->cx->module, ret)) {

@@ -595,7 +595,13 @@ fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 // Returns a new list holding the elements `count` times over, in order. A `count` of
 // zero or below gives an empty list. Example: `[1, 2].repeated(2)` is
 // `[1, 2, 1, 2]`.
-fn List[T: Clonable].repeated(count: Int) List[T]: ...
+fn List[T: Clonable].repeated(count: Int) List[T]:
+	var out = List[T]()
+	var round = 0
+	while round < count:
+		out.extend(self)
+		round += 1
+	return out
 
 // Appends a copy of every element of `other`, in order, to this list in place;
 // `other` is unchanged. The argument cannot be the receiver. Example: after
@@ -983,7 +989,13 @@ MAX_LIST_ITEMS := 268435456
 // `end <= start`. A loop such as `for index in 0..count:` runs as a counter without
 // allocating the list. Storing a list of more than about 268 million items is a
 // fault; use `range_by` to bound the size with an error value instead.
-fn range(start: Int, end: Int) List[Int]: ...
+fn range(start: Int, end: Int) List[Int]:
+	var out = List[Int](reserve: if end > start: end - start else: 0)
+	var next = start
+	while next < end:
+		out.append(next)
+		next += 1
+	return out
 
 // Settings for `range_by`: an optional cap on the number of items.
 export type RangeOptions:

@@ -168,10 +168,11 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                   expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
-  const MirValue base = fn_expr(fn, expr->u.member.left, LW_BORROW);
-  if (base == MIR_NONE) {
+  const MirValue read = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  if (read == MIR_NONE) {
     return MIR_NONE;
   }
+  const MirValue base = fn_closing_base(fn, expr, read);
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, base));
   if (data->kind != MK_TYPE) {
     (void)fn_fail(fn, "a field is read from a record (found MIR kind %d)", (int)data->kind);
@@ -290,6 +291,31 @@ static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue ri
   return order == MIR_NONE ? order : mir_b_icmp(&fn->b, cc, order, mir_b_iconst(&fn->b, 0));
 }
 
+/* The operator `op` over two values of one standard type: strings by the runtime, value objects by their operation
+ * word, Floats and UInt64 by their own instructions, everything else as integers. */
+MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right) {
+  BinaryOps ops;
+  if (!binary_ops(op, &ops)) {
+    (void)fn_fail(fn, "this binary operator is not lowered yet");
+    return MIR_NONE;
+  }
+  if (ops.compare && mir_b_ty(&fn->b, left) == MIR_STR) {
+    return string_compare(fn, ops.cc, left, right);
+  }
+  MirValue object;
+  if (fn_object_binary(fn, op, left, right, &object)) {
+    return object;
+  }
+  const MirTy operand = mir_b_ty(&fn->b, left);
+  if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
+    return float_binary(fn, &ops, left, right, operand);
+  }
+  if (operand == MIR_UINT64) {
+    return unsigned_binary(fn, &ops, left, right);
+  }
+  return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
     return lower_logical(fn, expr);
@@ -308,21 +334,7 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
     const MirValue operands[2] = {left, right};
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), operands, 2, MIR_STR);
   }
-  if (ops.compare && mir_b_ty(&fn->b, left) == MIR_STR) {
-    return string_compare(fn, ops.cc, left, right);
-  }
-  MirValue object;
-  if (fn_object_binary(fn, (MsBinaryOp)expr->op, left, right, &object)) {
-    return object;
-  }
-  const MirTy operand = mir_b_ty(&fn->b, left);
-  if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
-    return float_binary(fn, &ops, left, right, operand);
-  }
-  if (operand == MIR_UINT64) {
-    return unsigned_binary(fn, &ops, left, right);
-  }
-  return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
+  return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
 
 static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {

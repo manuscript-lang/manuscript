@@ -198,9 +198,15 @@ void lower_close_check(MirBuilder *b, MirValue result) {
 
 /* ---- the binding ---- */
 
+/* A `var` slot that only drops serves a `var` that moves: the others keep their value in a variable. */
 static bool lowerable(uint16_t flags) {
+  if ((flags & MS_CLOSER_DROP) != 0 && ((flags & MS_CLOSER_MOVED) == 0 || (flags & MS_CLOSER_RECEIVER) != 0)) {
+    return false;
+  }
   const bool taken = (flags & MS_CLOSER_PARTS) != 0 && (flags & MS_CLOSER_TAKEN) != 0;
-  return (flags & MS_CLOSER_CONSUMES) != 0 && !taken &&
+  /* A `var` slot changes in place through its slot; any other closer must not be changed. */
+  const bool changed = (flags & MS_CLOSER_MUTATED) != 0 && (flags & (MS_CLOSER_DROP | MS_CLOSER_VAR)) == 0;
+  return (flags & MS_CLOSER_CONSUMES) != 0 && !taken && !changed &&
          (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_PARTIAL)) == 0;
 }
 
@@ -218,6 +224,9 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
     }
     flags = (uint16_t)((flags & ~MS_CLOSER_GENERIC) | instance.flags);
   }
+  if ((flags & MS_CLOSER_DROP) != 0 && !mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+    return false;
+  }
   return lowerable(flags) && ((flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, ty));
 }
 
@@ -233,13 +242,43 @@ static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent)
   return slot;
 }
 
+/* `fn(slot)`: takes the value the slot holds and drops it. */
+static uint32_t drop_thunk(Lower *cx, MirTy ty) {
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "close.drop.%u", (unsigned)ty);
+  const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const uint32_t found = mir_func_by_name(cx->module, name);
+  if (found != MIR_NONE) {
+    return found;
+  }
+  MirBuilder b;
+  const MirParam param = {MIR_PTR, (uint8_t)MM_BORROW};
+  mir_b_init(&b, cx->module, name, &param, 1, MIR_VOID);
+  b.func.linkage = ML_INTERNAL;
+  MirValue slot = MIR_NONE;
+  mir_b_params(&b, &slot, 1);
+  const MirValue value = take_from(&b, slot, ty, true);
+  (void)mir_b_emit(&b, MOP_Drop, &value, 1, (MirImm){0}, MIR_NONE);
+  mir_b_ret(&b, mir_b_unit(&b));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
 /* The silent close thunk for the type `checked` (in the function's terms), with its exits made. A type that is not
  * Closeable closes its parts. */
 static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
   Lower *cx = fn->cx;
   const MsTy concrete = ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
-  const bool parts = !ms_check_closeable(cx->program, concrete);
-  const uint32_t method = parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
+  MsCloser plain;
+  if (!ms_own_closer_of(cx->program, concrete, &plain)) { /* a `var` that only drops its value */
+    *silent = drop_thunk(cx, ty);
+    return *silent != MIR_NONE || fn_fail(fn, "the drop of a variable could not be lowered");
+  }
+  const bool parts = !ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT;
+  const bool iface = ms_ty_kind(&cx->program->types, concrete) == MS_TY_CONTRACT;
+  const uint32_t method = iface ? lower_close_iface(cx, concrete)
+                          : parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
   if (method == MIR_NONE || !close_thunks(cx, method, ty, silent)) {
     return fn_fail(fn, "the close of a resource binding could not be lowered");
   }
