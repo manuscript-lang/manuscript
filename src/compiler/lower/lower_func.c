@@ -143,12 +143,36 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
   return count;
 }
 
-/* A result that is a place of a parameter: the callee can hand back the reference itself. */
+/* A result that is a place of a parameter, or a call whose own result is such a place: the callee can hand back
+ * the reference itself. */
 typedef struct PlaceReturns {
+  const Lower *cx;
   const MsFacts *facts;
+  uint32_t depth;
   uint32_t returns;
   uint32_t places;
 } PlaceReturns;
+
+static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, uint32_t depth);
+
+/* A call to a function whose result borrows, whose parameters it does not take, and whose own returns are places. */
+static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
+  const MsCall *call = ms_facts_call(counts->facts, value->id);
+  if (call == NULL || counts->depth >= 4 || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
+    return false;
+  }
+  const MsFunc *callee = ms_own_find_func(counts->cx->program, &call->callee);
+  if (callee == NULL || !ms_own_result_is_borrowed(counts->cx->program, call->callee.decl.module, call->callee.decl.node) ||
+      (call->callee.kind == MS_REF_METHOD && ms_method_of_func(callee)->consuming)) {
+    return false;
+  }
+  for (uint32_t index = 0; index < callee->params.len; index++) {
+    if (callee->params.ptr[index]->moving) {
+      return false;
+    }
+  }
+  return returns_places(counts->cx, call->callee.decl.module, callee, counts->depth + 1);
+}
 
 static void count_place_returns(void *ctx, const MsStmt *stmt) {
   PlaceReturns *counts = ctx;
@@ -160,13 +184,22 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
     const MsRef *ref = ms_facts_ref(counts->facts, value->id);
     counts->places += ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL) ? 1u : 0u;
+  } else if (value->kind == MS_E_CALL) {
+    counts->places += call_borrows(counts, value) ? 1u : 0u;
   } else {
     counts->places += value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY ? 1u : 0u;
   }
 }
 
-/* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a parameter, and each
- * return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
+static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, uint32_t depth) {
+  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, depth, 0, 0};
+  const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
+  ms_walk_block(&visitor, func->body);
+  return counts.returns != 0 && counts.returns == counts.places;
+}
+
+/* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a
+ * parameter, and each return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
 static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
   if (target->entry || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
@@ -177,10 +210,7 @@ static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret
       return false; /* the body owns (and releases) a moved parameter: its part cannot outlive the call */
     }
   }
-  PlaceReturns counts = {&cx->program->modules.ptr[target->module].facts, 0, 0};
-  const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
-  ms_walk_block(&visitor, target->func->body);
-  return counts.returns != 0 && counts.returns == counts.places;
+  return returns_places(cx, target->module, target->func, 0);
 }
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
