@@ -169,11 +169,7 @@ fn List[T].all(predicate: fn(T) Bool) Bool:
 // writes can affect later calls. A callback that takes its parameter as `var` changes
 // the element in place, and the receiver must then be `var`; a reading callback works
 // on any list.
-fn List[T].for_each(operation: fn(var T) Void) Void:
-	for index in 0..self.length():
-		var item = self[index]
-		operation(item)
-		self[index] = item
+fn List[T].for_each(operation: fn(var T) Void) Void: ...
 
 // Returns a new list holding `transform` applied to each element in order; the
 // receiver is unchanged.
@@ -666,7 +662,7 @@ fn var Map[T, U].add_default(move key: T, move value: U) Void: ...
 
 // Inserts `create(key)` only when the key is absent, calling `create` once. An
 // existing key keeps its value and position, and `create` is not called.
-fn var Map[T: Clonable, U].add_default_from(move key: T, create: fn(T) U) Void:
+fn var Map[T, U].add_default_from(move key: T, create: fn(T) U) Void:
 	if self.contains(key): return
 	value := create(key)
 	self.add(key, value)
