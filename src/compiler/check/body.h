@@ -115,6 +115,10 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
 /* ---- exprs_mismatch.c ---- */
 
 /* Reports binary operands that cannot share a type (`Int + String`, `Int + Int?`); false when they can. */
+/* operands.c: operands that cannot work whatever their values. */
+void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);
+void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty);
 bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 
 #endif
