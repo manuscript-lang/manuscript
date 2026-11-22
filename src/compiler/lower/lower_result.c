@@ -25,6 +25,19 @@ static MirValue build_case(LowerFn *fn, uint32_t alt, uint32_t which, MirValue p
   return fn_emit(fn, MOP_AltNew, &payload, payload == MIR_NONE ? 0 : 1, imm, ty);
 }
 
+/* Whether the end of the body may be reached: a function that returns a value has returned on every path the
+ * checker allows, so what follows its last statement is unreachable. A Result whose ok case holds nothing, a
+ * Void function and an Optional (which returns `none`) end by returning. */
+bool fn_end_is_reachable(LowerFn *fn) {
+  uint32_t alt = 0;
+  const MirAltDef *def = result_def(fn, fn->ret, &alt);
+  if (def != NULL) {
+    const MirCaseDef *ok = &def->cases[OK_CASE];
+    return ok->nfields == 0 || ok->fields[0].ty == MIR_VOID;
+  }
+  return fn->ret == MIR_VOID || fn->decl_void || mir_ty_data(fn->cx->module, fn->ret)->kind == MK_OPT;
+}
+
 MirValue fn_result_wrap(LowerFn *fn, MirValue value) {
   uint32_t alt = 0;
   const MirAltDef *def = result_def(fn, fn->ret, &alt);

@@ -321,7 +321,20 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   mir_b_br(&fn->b, head, NULL, 0);
   enter(fn, head);
   mir_b_set_loc(&fn->b, fn_loc(fn, stmt->pos));
-  const MirValue result = mir_b_call(&fn->b, next, &slot, 1);
+  /* The iterator is the receiver; each other parameter of `next` is an optional the loop leaves out. */
+  const MirFunc *next_fn = &fn->cx->module->funcs.ptr[next];
+  MirValue next_args[LOWER_MAX_ARGS] = {slot};
+  if (next_fn->nparams > LOWER_MAX_ARGS) {
+    return fn_fail(fn, "`next` takes too many parameters");
+  }
+  for (uint32_t at = 1; at < next_fn->nparams; at++) {
+    const MirTy param_ty = next_fn->params[at].ty;
+    if (param_ty != MIR_VOID && mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT) {
+      return fn_fail(fn, "`next` of a `for` source takes only optional parameters");
+    }
+    next_args[at] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
+  }
+  const MirValue result = mir_b_call(&fn->b, next, next_args, next_fn->nparams);
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   MirMode mode = MM_BORROW;
   const bool result_owned = result != MIR_NONE && mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&

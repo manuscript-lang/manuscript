@@ -134,11 +134,45 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
  * type in place of the result, returned here, and the value is loaded from it once the call is made. */
 static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy ret) {
   const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
-  if (!scalar || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ret);
+  const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
+  if (!(scalar || optional) || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
     return MIR_NONE;
   }
-  const MirImm of_type = {.tag = MI_TY, .a = ret};
+  const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
   return fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+}
+
+static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+
+/* A native that answers whether it filled the payload slot `slot`: the Optional holds the payload, or is none. */
+static MirValue optional_from_status(LowerFn *fn, MsName name, MirValue *wanted, uint32_t count, MirTy ret, MirValue slot) {
+  const uint32_t external = runtime_extern(fn, name, wanted, count, MIR_UINT8);
+  const MirValue status = mir_b_call_rt(&fn->b, external, wanted, count);
+  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
+  const MirValue present = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirTy payload = mir_ty_data(fn->cx->module, ret)->elem;
+  const MirImm of_type = {.tag = MI_TY, .a = payload};
+  const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload) ? MOP_Take : MOP_Load, &slot, 1, of_type, payload);
+  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &some, 1);
+  mir_b_switch_to(&fn->b, none_block);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &none, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), result);
+  }
+  return result;
 }
 
 /* Calls `name` with `wanted`, through a result slot when `slot` is set. */
@@ -147,6 +181,10 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
     return fn_runtime_call(fn, name, wanted, count, ret);
   }
   wanted[count++] = slot;
+  const MirTyData *data = mir_ty_data(fn->cx->module, ret);
+  if (data->kind == MK_OPT) {
+    return optional_from_status(fn, name, wanted, count, ret, slot);
+  }
   (void)fn_runtime_call(fn, name, wanted, count, MIR_VOID);
   const MirImm of_type = {.tag = MI_TY, .a = ret};
   return fn_emit(fn, MOP_Load, &slot, 1, of_type, ret);
