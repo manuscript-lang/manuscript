@@ -190,9 +190,12 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
   const MsCall *call = fn_find_call(fn->facts, expr->id);
-  const bool value_callee = call != NULL && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL);
-  if ((call == NULL || value_callee) && expr->u.call.callee->kind == MS_E_NAME) {
-    return fn_call_value(fn, expr, call != NULL ? &call->callee : NULL);
+  /* A callee that is a parameter or local, or any expression with no declaration behind it (`fs[i]()`), is a value. */
+  const bool named = expr->u.call.callee->kind == MS_E_NAME;
+  const bool value_callee = call == NULL || call->callee.kind == MS_REF_NONE ||
+                            (named && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL));
+  if (value_callee && (named || call != NULL)) {
+    return fn_call_value(fn, expr, call != NULL && named && call->callee.kind != MS_REF_NONE ? &call->callee : NULL);
   }
   if (call == NULL || call->arg_count > 16) {
     (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);

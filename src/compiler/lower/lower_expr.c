@@ -145,10 +145,12 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_CALL: return fn_call(fn, expr, want);
     case MS_E_MATCH: return fn_match(fn, expr);
     case MS_E_LIST: return fn_list(fn, expr);
+    case MS_E_INDEX:
+    case MS_E_APPLY: return fn_index(fn, expr, want);
     case MS_E_LAMBDA: return fn_lambda(fn, expr);
     case MS_E_UNARY: return fn_unary(fn, expr);
     default:
-      (void)fn_fail(fn, "this expression is not lowered yet");
+      (void)fn_fail(fn, "this expression (kind %d) is not lowered yet at %u:%u", (int)expr->kind, expr->pos.line, expr->pos.column);
       return MIR_NONE;
   }
 }

@@ -245,7 +245,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   return true;
 }
 
-static bool lower_pending(Lower *cx) {
+bool lower_pending(Lower *cx) {
   bool progressed = true;
   while (progressed) {
     progressed = false;
@@ -265,7 +265,7 @@ static bool lower_pending(Lower *cx) {
   return true;
 }
 
-static void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
+void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
   *cx = (Lower){.program = program, .module = module, .error = error};
   ms_names_init(&cx->instance_keys);
   ms_names_init(&cx->vtable_keys);
@@ -293,7 +293,7 @@ static uint32_t entry_status(Lower *cx, uint32_t main_func) {
   return mir_add_func(cx->module, &built);
 }
 
-static void lower_release(Lower *cx) {
+void lower_release(Lower *cx) {
   lower_ty_map_free(&cx->types);
   ms_names_free(&cx->instance_keys);
   ms_names_free(&cx->vtable_keys);
