@@ -63,6 +63,9 @@ MsBuiltin ms_builtin_from_id(MsSpan id);
 /* The type `name` declared by the bundled module `module` that has a native layout, or MS_BUILTIN_NONE. */
 MsBuiltin ms_builtin_source(MsSpan module, MsSpan name);
 
+/* True for the builders, which the runtime represents as a Bytes buffer (`msrt_strbuilder_*` take a `VecVal`). */
+bool ms_builtin_is_byte_buffer(MsBuiltin builtin);
+
 bool ms_builtin_is_int(MsBuiltin builtin);
 bool ms_builtin_is_float(MsBuiltin builtin);
 
