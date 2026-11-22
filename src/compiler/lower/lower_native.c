@@ -571,6 +571,27 @@ bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation,
   return native_on(fn, NULL, slot, owner, operation, argc, args, ret, out);
 }
 
+/* An extern function a standard-library body calls by its runtime name (`msrt_list_distinct(self)`): when its
+ * signature names element, key or value descriptors, or a trailing result, the operands are built as for the
+ * method it implements. False when the signature needs none of that. */
+bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || nargs > NS_MAX_PARAMS) {
+    return false;
+  }
+  bool described = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    described = described || sig->kinds[at] == NS_ELEM_DESC || sig->kinds[at] == NS_KEY_DESC || sig->kinds[at] == NS_VAL_DESC;
+  }
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  if (!described || !signature_arguments(fn, sig, args, nargs, ret, wanted, &count)) {
+    return false;
+  }
+  *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+  return true;
+}
+
 /* Whether `operation` is one the checker gives every value of the receiver type (`ValueOperations`,
  * `CloneOperations` of intrinsics.ms): it has no runtime function of its own. */
 static bool is_universal_operation(const LowerFn *fn, MsTy receiver, MsSpan operation) {
