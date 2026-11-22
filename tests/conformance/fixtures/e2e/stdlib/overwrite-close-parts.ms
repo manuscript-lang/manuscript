@@ -25,7 +25,7 @@ type Pair:
 	first: Tracked
 	second: Tracked
 
-fn replaces_field(log: String) Int:
+fn replaces_field(move log: String) Int:
 	var p = Pair(track(log.clone(), 1), track(log.clone(), 2))
 	p.first = track(log, 3)
 	return p.first.id

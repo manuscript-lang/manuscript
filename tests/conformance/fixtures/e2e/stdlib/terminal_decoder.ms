@@ -9,7 +9,7 @@ import (
 fn key(move name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
 	return TerminalEvent.Key(name, ctrl, alt, shift)
 
-fn plain(name: String) TerminalEvent:
+fn plain(move name: String) TerminalEvent:
 	return key(name, false, false, false)
 
 // Joins adjacent text events, so a split read compares equal to a whole one.

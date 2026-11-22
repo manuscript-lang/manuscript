@@ -31,7 +31,7 @@ test "replacement stays owned while the discarded entry closes":
 	events := read_file(log).wait().get().decode_utf8().get_or("")
 	expect_equal(events, "1,9,")?
 
-fn replace_in_map(log: String) Void:
+fn replace_in_map(move log: String) Void:
 	var doors: Map[Int, Door] = {}
 	doors.add(0, Door(1, log.clone(), fail: true))
 	doors.add(0, Door(9, log))

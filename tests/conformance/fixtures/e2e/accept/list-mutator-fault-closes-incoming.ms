@@ -17,7 +17,7 @@ fn set_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.set(10, Item(2, log))
 
-fn insert_out(log: String) Void:
+fn insert_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.insert(10, Item(2, log))
 
