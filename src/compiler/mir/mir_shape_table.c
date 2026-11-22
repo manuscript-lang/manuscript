@@ -4,6 +4,7 @@
  * natives (the text form of a value, `repr`, JSON) walk the value through that table. */
 #include "abi/shape.h"
 #include "compiler/mir/mir_data_internal.h"
+#include "compiler/mir/mir_json_tree.h"
 
 MS_LIST_DEFINE(ShapeList, shape_list, MsShape)
 MS_LIST_DEFINE(MemberList, member_list, MsShapeMember)
@@ -35,6 +36,18 @@ static uint32_t add_name(ShapeBuild *build, MsSpan text) {
 
 static uint32_t add_mir_name(ShapeBuild *build, MsName name) {
   return add_name(build, ms_names_span(&build->module->names, name));
+}
+
+/* A type's name without its type arguments: `Pair[Int, Int]` is shown as `Pair`. */
+static uint32_t add_type_name(ShapeBuild *build, MsName name) {
+  MsSpan text = ms_names_span(&build->module->names, name);
+  for (size_t at = 0; at < text.len; at++) {
+    if (text.ptr[at] == '[') {
+      text.len = at;
+      break;
+    }
+  }
+  return add_name(build, text);
 }
 
 static MsShape scalar(MsShapeKind kind, uint32_t size) {
@@ -100,7 +113,7 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   MirLayouts *layouts = build->layouts;
   const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
   shape->kind = MS_SHAPE_RECORD;
-  shape->name = add_mir_name(build, def->name);
+  shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   uint32_t *kinds = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   if (def->indirect) {
@@ -149,7 +162,10 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   const bool boxed = mir_boxed_block_size(layouts, ty, &block_size);
   const uint32_t *offsets = alt_offsets(build, ty, boxed);
   shape->kind = MS_SHAPE_ALTERNATIVE;
-  shape->name = add_mir_name(build, def->name);
+  if (mir_json_tree_shape(build->module, ty)) {
+    shape->flags |= MS_SHAPE_JSON_TREE;
+  }
+  shape->name = add_type_name(build, def->name);
   shape->extra = 0; /* the tag is the first leaf */
   if (boxed) {
     shape->flags |= MS_SHAPE_BOXED;

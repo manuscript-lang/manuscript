@@ -18,7 +18,7 @@
 #include "driver/test_options.h"
 #include "driver/test_run.h"
 
-enum { STATUS_FAILED = 1, STATUS_NOT_IMPLEMENTED = 70 };
+enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
 typedef TestPlan Plan;
 
@@ -133,7 +133,7 @@ static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
     test_plan_shuffle(plan, options->shuffle_seed);
     print_text(stdout, ms_message_format(arena, "shuffle seed: %z\n", (size_t)options->shuffle_seed));
   }
-  const bool filtered = options->filter.len > 0 || options->names.len > 0;
+  const bool filtered = options->filter.len > 0 || options->names.len > 0 || options->matching.len > 0 || options->exclude.len > 0;
   if (plan->count == 0 && filtered) {
     print_text(stdout, ms_message_format(arena, "no tests match selection (%z tests available); use --list to find full "
                                                 "module::name identities\n",
@@ -288,6 +288,18 @@ static int test_targets(MsArena *arena, const MsInvocation *invocation) {
   return status;
 }
 
+/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
+static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
+  TestFilters filters = {0};
+  MsSpan error = {0};
+  const bool valid = test_filters_compile(arena, options, &filters, &error);
+  test_filters_free(&filters);
+  if (!valid) {
+    print_text(stderr, ms_message_format(arena, "%S\n", error));
+  }
+  return valid;
+}
+
 int ms_test_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -298,10 +310,8 @@ int ms_test_command(int argc, char **argv) {
   if (status == 0 && invocation.watch) {
     print_text(stderr, ms_span_of_text("ms test: --watch is not implemented yet\n"));
     status = STATUS_NOT_IMPLEMENTED;
-  } else if (status == 0 && (options.matching.len > 0 || options.exclude.len > 0)) {
-    print_text(stderr, ms_span_of_text("ms test: --match and --exclude need a regular-expression engine, which the "
-                                       "driver does not have yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
+  } else if (status == 0 && !selection_valid(&arena, &options)) {
+    status = STATUS_USAGE;
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
     status = test_targets(&arena, &invocation);

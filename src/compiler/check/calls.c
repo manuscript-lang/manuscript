@@ -612,12 +612,14 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
 }
 
 /* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
-static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, size_t count,
+static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, const Matched *matched,
                         size_t before, MsTy callee) {
+  const size_t count = matched->count;
   const MsSpan message = ms_string_span(&instance->message);
   const MsTyTable *types = &body->program->types;
   size_t found = 0;
-  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found);
+  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found) ||
+                           ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
   if (body->module >= body->program->user_modules || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
       body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
@@ -625,7 +627,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
     return false;
   }
   for (size_t index = 0; index < count; index++) {
-    if (holds_invalid(types, arg_tys[index], 6)) {
+    if (matched->slot[index] >= 0 && holds_invalid(types, arg_tys[index], 6)) { /* an omitted argument has no type */
       return false;
     }
   }
@@ -634,7 +636,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
 
 /* A constructor names each variable it could not infer; any other callee gets the one message. */
 static void report_uninferred(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance) {
-  if (!target->constructor) {
+  if (!target->constructor || instance->unbound.len == 0) { /* a constructor names each variable it left unbound */
     ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_string_span(&instance->message)));
     return;
@@ -662,7 +664,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
-      if (uninferable(body, &instance, arg_tys, matched->count, diagnostics_before, target->sig)) {
+      if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
       }
     }

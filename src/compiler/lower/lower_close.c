@@ -371,6 +371,27 @@ MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
   return mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
 }
 
+/* A constructor argument built before the arguments after it: a resource waits in a closing slot, so an early exit or a
+ * fault in a later argument closes it. `fn_pending_take` gives it up once the value is built. MIR_NONE when `value` is
+ * not a fresh owner of a type that closes. */
+MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value) {
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  uint32_t silent = MIR_NONE;
+  if (!fn_temp_closes(fn, checked) || fn_type(fn, checked) != ty ||
+      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) || !prepare(fn, checked, ty, &silent)) {
+    return MIR_NONE;
+  }
+  if (mir_needs_drop(fn->cx->module, ty)) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  }
+  return own_slot(fn, ty, value, silent);
+}
+
+MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty) {
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
+  return fn_emit(fn, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &slot, 1, imm_ty(ty), ty);
+}
+
 uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name) {
   if (fn->closing == NULL || ref == NULL) {
     return UINT32_MAX;
