@@ -38,4 +38,12 @@ uint8_t msstd_net_network_restrict(const MsObj *net, const MsList *hosts, const 
 /* ms-sig: msstd_net_network_with_resolver(handle net: *const ObjCell<NetH>, address: *const StrVal, out: *mut *mut ObjCell<NetH>, err: ErrSlot) -> u8 @domain=network */
 uint8_t msstd_net_network_with_resolver(const MsObj *net, const MsString *address, MsObj **out, MsString *err);
 
+#include "runtime/std/net_filter.h"
+
+/* The network's filter (a new reference; NULL when unrestricted). */
+MsNetFilter *ms_net_network_filter(const MsObj *net);
+/* Records `client`, an HTTP client handle the network now owns and closes with it; false (the caller closes it)
+ * when the network is closed. */
+bool ms_net_network_adopt_client(const MsObj *net, MsObj *client);
+
 #endif

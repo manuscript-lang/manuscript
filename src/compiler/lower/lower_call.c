@@ -36,7 +36,9 @@ static const MsExpr *written_arg(const MsExpr *call, MsNode node) {
       return call->u.call.args.ptr[index].value;
     }
   }
-  return NULL;
+  /* The receiver of a method call is written before the dot. */
+  const MsExpr *callee = call->u.call.callee;
+  return callee->kind == MS_E_MEMBER && callee->u.member.left->id == node ? callee->u.member.left : NULL;
 }
 
 /* A default argument is written in the callee's module: its names and types come from that module's facts. */
@@ -92,17 +94,64 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
   return mir_extern_intern(fn->cx->module, &def);
 }
 
+/* The method declared by `node` in `module`, and the `impl` that holds it. */
+static const MsMethod *find_method(const MsModule *tree, MsNode node, const MsDecl **owner) {
+  for (uint32_t decl = 0; decl < tree->ndecls; decl++) {
+    const MsDecl *item = tree->decls[decl];
+    for (uint32_t index = 0; item->kind == MS_D_IMPL && index < item->u.impl.methods.len; index++) {
+      if (item->u.impl.methods.ptr[index]->id == node) {
+        *owner = item;
+        return item->u.impl.methods.ptr[index];
+      }
+    }
+  }
+  return NULL;
+}
+
+/* What a call names, as something to lower: a module function or a method with a body. False for any other
+ * callee (a runtime function, an operation, a builtin). */
+static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
+  Lower *cx = fn->cx;
+  if (call->callee.kind == MS_REF_FUNCTION) {
+    const MsSymbolId id = symbol_at(cx, call->callee.decl);
+    if (id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
+      return false;
+    }
+    *out = lower_symbol_target(cx, id);
+    return true;
+  }
+  if (call->callee.kind != MS_REF_METHOD) {
+    return false;
+  }
+  const uint32_t module = call->callee.decl.module;
+  const MsDecl *owner = NULL;
+  const MsMethod *method = find_method(cx->program->modules.ptr[module].tree, call->callee.decl.node, &owner);
+  if (method == NULL || method->func.external) {
+    return false;
+  }
+  const MsFacts *facts = &cx->program->modules.ptr[module].facts;
+  *out = (LowerTarget){module, method->id, &method->func, method->func.name, ms_facts_type(facts, method->id),
+                       owner->u.impl.bounds};
+  return true;
+}
+
+static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
+  if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
+    (void)fn_fail(fn, "this callee is not lowered yet");
+    return MIR_NONE;
+  }
+  const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
+  const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
+  fn_own_result(fn, result);
+  return result;
+}
+
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
   const MsCall *call = find_call(fn->facts, expr->id);
   if (call == NULL || call->arg_count > 16) {
     (void)fn_fail(fn, "the checker recorded no usable call here");
-    return MIR_NONE;
-  }
-  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
-  const MsSymbol *callee = id != 0 ? &fn->cx->program->symbols.ptr[id] : NULL;
-  if (callee == NULL || callee->kind != MS_SYMBOL_FN) {
-    (void)fn_fail(fn, "a call does not name a module function yet");
     return MIR_NONE;
   }
   MirValue args[16];
@@ -111,16 +160,15 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   }
   const MirTy ret = fn_type(fn, ms_ty_result(&fn->cx->program->types, call->callee_ty));
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
-  if (callee->native == MS_NATIVE_EXTERN) {
-    const MirValue result = mir_b_call_rt(&fn->b, runtime_function(fn, callee, ret), args, call->arg_count);
-    fn_own_result(fn, result);
-    return result;
+  LowerTarget target;
+  if (!callee_target(fn, call, &target)) {
+    return call_runtime(fn, call, args, ret);
   }
-  const uint32_t target = lower_instance(fn->cx, id, call->type_args, call->type_arg_count, &fn->subst);
-  if (target == MIR_NONE) {
+  const uint32_t func = lower_instance(fn->cx, &target, call->type_args, call->type_arg_count, &fn->subst);
+  if (func == MIR_NONE) {
     return MIR_NONE;
   }
-  const MirValue result = mir_b_call(&fn->b, target, args, call->arg_count);
+  const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
   return result;
 }

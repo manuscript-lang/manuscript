@@ -26,6 +26,12 @@ void ms_http_url_free(MsHttpUrl *url);
 MsString ms_http_url_text(const MsHttpUrl *url);
 MsString ms_http_url_host(const MsHttpUrl *url); /* lower case; IPv6 without brackets */
 bool ms_http_url_is_https(const MsHttpUrl *url);
+/* "host:port" to dial (the default port when the URL has none; an IPv6 host in brackets). */
+MsString ms_http_url_dial_address(const MsHttpUrl *url);
+/* The Host value: the host as written, with the port when the URL names one. */
+MsString ms_http_url_authority(const MsHttpUrl *url);
+/* The request target: the path (at least "/") and the query. */
+MsString ms_http_url_target(const MsHttpUrl *url);
 /* The same scheme, host and port. */
 bool ms_http_url_same_origin(const MsHttpUrl *a, const MsHttpUrl *b);
 
@@ -77,6 +83,9 @@ typedef struct MsHttpRequest {
   int64_t timeout_ns;
   /* Called for the request's host and for every redirect target; false refuses. NULL allows all. */
   bool (*host_allowed)(void *context, MsSpan host);
+  /* Called with the address a connection reached, before anything is sent on it; false aborts the exchange.
+   * `address` is a struct sockaddr of the platform. NULL allows all. */
+  bool (*address_allowed)(void *context, const void *address);
   void *context;
 } MsHttpRequest;
 

@@ -29,8 +29,7 @@ static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
 
 static MirValue lower_text(LowerFn *fn, const MsExpr *expr) {
   if (expr->u.text.len > 1 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr != NULL)) {
-    (void)fn_fail(fn, "interpolated text is not lowered yet");
-    return MIR_NONE;
+    return fn_text(fn, expr);
   }
   const MsSpan text = expr->u.text.len == 0 ? ms_span_of_text("") : expr->u.text.ptr[0].lit;
   const MirImm imm = {.tag = MI_STR, .a = mir_name(fn->cx->module, text)};

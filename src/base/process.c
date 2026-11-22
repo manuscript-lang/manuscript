@@ -59,6 +59,78 @@ static void arguments_free(Arguments *arguments) {
   ms_free(arguments->pointers);
 }
 
+/* The child's environment: the inherited one with the spec's NAME=VALUE texts set. NULL (inherit) when there are none. */
+typedef struct Environment {
+  uv_env_item_t *items; /* the inherited variables, from libuv */
+  int count;
+  MsOsText *texts;      /* owned: the spec's own variables */
+  char **pointers;      /* owned: NULL-terminated */
+  char **joined;        /* owned strings for the inherited variables */
+  size_t joined_count;
+} Environment;
+
+static bool overridden(const MsProcessSpec *spec, const char *name) {
+  for (size_t i = 0; i < spec->envc; i++) {
+    size_t length = 0;
+    while (name[length] != 0 && name[length] != '=') {
+      length++;
+    }
+    if (spec->env[i].len > length && spec->env[i].ptr[length] == '=' &&
+        __builtin_strncmp((const char *)spec->env[i].ptr, name, length) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool environment_new(const MsProcessSpec *spec, Environment *environment) {
+  *environment = (Environment){0};
+  if (spec->envc == 0) {
+    return true;
+  }
+  if (uv_os_environ(&environment->items, &environment->count) < 0) {
+    return false;
+  }
+  const size_t slots = (size_t)environment->count + spec->envc + 1;
+  environment->pointers = ms_alloc(slots * sizeof(char *));
+  environment->joined = ms_alloc(((size_t)environment->count + 1) * sizeof(char *));
+  size_t used = 0;
+  for (int i = 0; i < environment->count; i++) {
+    const size_t name = __builtin_strlen(environment->items[i].name);
+    const size_t value = __builtin_strlen(environment->items[i].value);
+    char *entry = ms_alloc(name + value + 2);
+    __builtin_memcpy(entry, environment->items[i].name, name);
+    entry[name] = '=';
+    __builtin_memcpy(entry + name + 1, environment->items[i].value, value + 1);
+    environment->joined[environment->joined_count++] = entry;
+    if (!overridden(spec, entry)) {
+      environment->pointers[used++] = entry;
+    }
+  }
+  environment->texts = ms_alloc(spec->envc * sizeof(MsOsText));
+  for (size_t i = 0; i < spec->envc; i++) {
+    environment->texts[i] = ms_os_text_new(spec->env[i]);
+    environment->pointers[used++] = environment->texts[i].ptr;
+  }
+  environment->pointers[used] = NULL;
+  return true;
+}
+
+static void environment_free(Environment *environment, size_t envc) {
+  for (size_t i = 0; i < envc && environment->texts != NULL; i++) {
+    ms_os_text_free(&environment->texts[i]);
+  }
+  for (size_t i = 0; i < environment->joined_count; i++) {
+    ms_free(environment->joined[i]);
+  }
+  ms_free(environment->texts);
+  ms_free(environment->pointers);
+  ms_free(environment->joined);
+  if (environment->items != NULL) {
+    uv_os_free_environ(environment->items, environment->count);
+  }
+}
+
 static void fail_with(int code, MsStrBuild *error) { ms_strbuild_append_text(error, uv_strerror(code)); }
 
 /* Starts the program with the log as its output and waits for it; false with `error` set when it cannot run. */
@@ -76,9 +148,18 @@ static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_stat
                                    {.flags = UV_INHERIT_FD, .data.fd = log_fd}};
   Exit done = {.status = -1, .signal = 0};
   uv_process_t process = {.data = &done};
+  Environment environment;
+  if (!environment_new(spec, &environment)) {
+    fail_with(UV_ENOMEM, error);
+    arguments_free(&arguments);
+    ms_os_text_free(&directory);
+    (void)uv_loop_close(&loop);
+    return false;
+  }
   const uv_process_options_t options = {.exit_cb = on_exit,
                                         .file = arguments.pointers[0],
                                         .args = arguments.pointers,
+                                        .env = environment.pointers,
                                         .cwd = spec->directory.len == 0 ? NULL : directory.ptr,
                                         .flags = UV_PROCESS_WINDOWS_HIDE,
                                         .stdio_count = 3,
@@ -92,6 +173,7 @@ static bool spawn_and_wait(const MsProcessSpec *spec, int log_fd, int *exit_stat
   }
   ms_os_text_free(&directory);
   arguments_free(&arguments);
+  environment_free(&environment, spec->envc);
   (void)uv_loop_close(&loop);
   return code >= 0;
 }

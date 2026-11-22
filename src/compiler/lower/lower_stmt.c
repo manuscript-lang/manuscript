@@ -25,7 +25,7 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     return fn_fail(fn, "assignment to a member is not lowered yet");
   }
-  const MsRef *ref = ms_facts_ref(fn->facts, stmt->id);
+  const MsRef *ref = stmt->u.assign.target != NULL ? ms_facts_ref(fn->facts, stmt->u.assign.target->id) : NULL;
   if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->vars[ref->local] == 0) {
     return fn_fail(fn, "an assignment does not name a local");
   }
@@ -163,7 +163,7 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
     case MS_S_CONTINUE: return lower_jump(fn, false);
     case MS_S_IF: return lower_if(fn, stmt);
     case MS_S_WHILE: return lower_while(fn, stmt);
-    case MS_S_FOR: return fn_fail(fn, "`for` is not lowered yet");
+    case MS_S_FOR: return fn_for(fn, stmt);
   }
   return fn_fail(fn, "unknown statement");
 }
