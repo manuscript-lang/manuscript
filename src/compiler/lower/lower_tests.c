@@ -18,8 +18,7 @@ typedef struct TestRun {
 } TestRun;
 
 static bool has_suffix(MsSpan text, const char *suffix) {
-  const size_t length = strlen(suffix);
-  return text.len >= length && memcmp(text.ptr + text.len - length, suffix, length) == 0;
+  return ms_span_ends_with(text, ms_span_of_text(suffix));
 }
 
 /* The symbol `name` of the bundled test runner module, or 0. */

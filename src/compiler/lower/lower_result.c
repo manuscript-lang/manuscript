@@ -18,6 +18,10 @@ static const MirAltDef *result_def(const LowerFn *fn, MirTy ty, uint32_t *id) {
 
 static MirValue build_case(LowerFn *fn, uint32_t alt, uint32_t which, MirValue payload, MirTy ty) {
   const MirImm imm = {.tag = MI_CASE, .a = alt, .b = which};
+  const bool has_field = fn->cx->module->alts.ptr[alt].cases[which].nfields > 0;
+  if (payload == MIR_NONE && has_field) {
+    payload = mir_b_unit(&fn->b);
+  }
   return fn_emit(fn, MOP_AltNew, &payload, payload == MIR_NONE ? 0 : 1, imm, ty);
 }
 
@@ -30,10 +34,12 @@ MirValue fn_result_wrap(LowerFn *fn, MirValue value) {
   const MirCaseDef *ok = &def->cases[OK_CASE];
   const MirTy ok_ty = ok->nfields > 0 ? ok->fields[0].ty : MIR_VOID;
   const bool is_ok = value == MIR_NONE || ok_ty == MIR_VOID || mir_b_ty(&fn->b, value) == ok_ty;
-  if (is_ok && ok_ty == MIR_VOID) {
-    return build_case(fn, alt, OK_CASE, MIR_NONE, fn->ret);
-  }
-  return build_case(fn, alt, is_ok ? OK_CASE : ERR_CASE, value, fn->ret);
+  const bool empty = is_ok && ok_ty == MIR_VOID;
+  const MirValue wrapped = empty ? build_case(fn, alt, OK_CASE, MIR_NONE, fn->ret)
+                                 : build_case(fn, alt, is_ok ? OK_CASE : ERR_CASE, value, fn->ret);
+  /* The function returns it, so the scope that owns every fresh result must not drop it. */
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &wrapped, 1, (MirImm){0}, MIR_NONE);
+  return wrapped;
 }
 
 MirValue fn_try(LowerFn *fn, const MsExpr *expr) {

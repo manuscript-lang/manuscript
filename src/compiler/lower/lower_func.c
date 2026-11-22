@@ -275,24 +275,6 @@ void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuil
   lower_instance_list_push(&cx->instances, (LowerInstance){{0}, NULL, 0, MIR_NONE, true});
 }
 
-/* The process entry returns the exit status: a `main` that returns nothing is wrapped to return 0. */
-static uint32_t entry_status(Lower *cx, uint32_t main_func) {
-  const MirFunc *main = &cx->module->funcs.ptr[main_func];
-  if (main->ret != MIR_VOID || main->nparams != 0) {
-    return main_func;
-  }
-  MirBuilder b;
-  mir_b_init(&b, cx->module, mir_name(cx->module, ms_span_of_text("main.entry")), NULL, 0, MIR_INT);
-  (void)mir_b_call(&b, main_func, NULL, 0);
-  mir_b_ret(&b, mir_b_iconst(&b, 0));
-  MirFunc built;
-  if (!mir_b_into_func(&b, &built)) {
-    (void)lower_fail(cx, "the entry function could not be built");
-    return MIR_NONE;
-  }
-  return mir_add_func(cx->module, &built);
-}
-
 void lower_release(Lower *cx) {
   lower_ty_map_free(&cx->types);
   ms_names_free(&cx->instance_keys);
@@ -316,7 +298,7 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
     LowerTarget target = lower_symbol_target(&cx, *found);
     const uint32_t entry = lower_instance(&cx, &target, NULL, 0, NULL);
     ok = entry != MIR_NONE && lower_pending(&cx);
-    const uint32_t start = ok ? entry_status(&cx, entry) : entry;
+    const uint32_t start = ok ? lower_entry_status(&cx, entry) : entry;
     ok = ok && start != MIR_NONE;
     module->entry = start;
     if (start != MIR_NONE) {
