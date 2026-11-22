@@ -153,25 +153,67 @@ static int build_type_option(Parser *p, bool inline_value, MsSpan inline_text) {
 
 static int path_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_text) {
   MsSpan value = {0};
+  const bool out_dir = ms_span_is_text(flag, "--out-dir");
   if (!required_value(p, inline_value, inline_text, &value)) {
-    return usage(p, "%S requires a path argument, e.g. %S out.txt", flag, flag);
+    return ms_usage_error(p->arena, ms_message_format(p->arena, "%S requires a path argument, e.g. %S %s", flag, flag,
+                                                      out_dir ? "profile-bundle" : "out.txt"));
   }
-  if (ms_span_is_text(flag, "--out-dir")) {
+  const bool profile = ms_span_is_text(p->command, "profile");
+  if (out_dir && !profile) {
     return usage(p, "--out-dir is valid only for ms profile, not ms %S; use -o for commands that write a file",
                  p->command, (MsSpan){0});
   }
-  if (!ms_span_is_text(p->command, "build")) {
-    return usage(p, "-o and --output are valid only for ms build, emit, inspect, diagram, or profile, not ms %S; run "
-                    "'ms help %S' for its options",
-                 p->command, p->command);
+  if (!out_dir && profile) {
+    return usage(p, "%S is not valid for ms profile; use --out-dir for the bundle directory", flag, (MsSpan){0});
   }
   p->out->output = value;
   return 0;
 }
 
+/* `--format`, `--view`, `--entity`, `--diff`, `--depth` and `--top`: the options of `diagram` and `profile`. */
+static int tool_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_text) {
+  MsSpan value = {0};
+  if (ms_span_is_text(flag, "--format")) {
+    if (!required_value(p, inline_value, inline_text, &value)) {
+      return usage(p, "--format requires a name, e.g. --format mermaid", (MsSpan){0}, (MsSpan){0});
+    }
+    p->out->format = value;
+    return 0;
+  }
+  if (!required_value(p, inline_value, inline_text, &value)) {
+    return usage(p, "%S requires a value; run 'ms help %S' for examples", flag,
+                 ms_span_of_text(ms_span_is_text(flag, "--top") ? "profile" : "diagram"));
+  }
+  if (ms_span_is_text(flag, "--view")) {
+    p->out->view = value;
+  } else if (ms_span_is_text(flag, "--entity")) {
+    p->out->entity = value;
+  } else if (ms_span_is_text(flag, "--diff")) {
+    p->out->diff = value;
+  } else {
+    int64_t number = 0;
+    if (!ms_invocation_parse_int(value, &number) || number <= 0) {
+      return usage(p, "invalid %S; use a positive integer", flag, (MsSpan){0});
+    }
+    *(ms_span_is_text(flag, "--depth") ? &p->out->depth : &p->out->top) = number;
+  }
+  return 0;
+}
+
+static bool is_tool_option(MsSpan flag) {
+  static const char *const NAMES[] = {"--format", "--view", "--entity", "--diff", "--depth", "--top"};
+  for (size_t i = 0; i < sizeof NAMES / sizeof NAMES[0]; i++) {
+    if (ms_span_is_text(flag, NAMES[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* An argument that is no known option: another test input, or a usage error. */
 static int other_argument(Parser *p, MsSpan arg) {
-  const bool program_args = !ms_span_is_text(p->command, "build");
+  const bool program_args = ms_span_is_text(p->command, "run") || ms_span_is_text(p->command, "test") ||
+                            ms_span_is_text(p->command, "bench") || ms_span_is_text(p->command, "profile");
   if (arg.len == 0 || arg.ptr[0] != '-') {
     if (ms_span_is_text(p->command, "test")) {
       if (arg.len == 0) {
@@ -197,6 +239,8 @@ static int flag_option(Parser *p, MsSpan flag, bool inline_value, MsSpan value) 
     out->watch = true;
   } else if (ms_span_is_text(flag, "--static")) {
     out->static_libc = true;
+  } else if (ms_span_is_text(flag, "--allocs")) {
+    out->allocs = true;
   } else if (ms_span_is_text(flag, "--json")) {
     out->json = true;
   } else if (ms_span_is_text(flag, "--list") || ms_span_is_text(flag, "--fail-fast") || ms_span_is_text(flag, "--ops")) {
@@ -249,6 +293,9 @@ static int one_option(Parser *p, bool *done) {
   }
   if (ms_span_is_text(flag, "--timeout") || ms_span_is_text(flag, "--filter")) {
     return timeout_or_filter(p, flag, inline_value, value);
+  }
+  if (is_tool_option(flag)) {
+    return tool_option(p, flag, inline_value, value);
   }
   if (ms_span_is_text(flag, "-o") || ms_span_is_text(flag, "--output") || ms_span_is_text(flag, "--out-dir")) {
     return path_option(p, flag, inline_value, value);

@@ -188,18 +188,6 @@ static bool referenced(const MsFacts *facts, const MsSymbol *symbol) {
   return false;
 }
 
-static MsPos pos_at(MsSpan source, size_t offset) {
-  uint32_t line = 1;
-  size_t line_start = 0;
-  for (size_t i = 0; i < offset && i < source.len; i++) {
-    if (source.ptr[i] == '\n') {
-      line++;
-      line_start = i + 1;
-    }
-  }
-  return (MsPos){(uint32_t)offset, line, (uint32_t)(offset - line_start + 1)};
-}
-
 static bool is_blank(uint8_t c) {
   return c == ' ' || c == '\t';
 }
@@ -443,8 +431,8 @@ void ms_lint_imports(MsArena *arena, const MsCheckProgram *program, uint32_t mod
     }
     if (fixed) {
       found->has_fix = true;
-      found->fix_pos = pos_at(module->source, from);
-      found->fix_end = pos_at(module->source, to);
+      found->fix_pos = ms_lint_pos_at(module->source, from);
+      found->fix_end = ms_lint_pos_at(module->source, to);
       found->replacement = (MsSpan){0};
     }
   }

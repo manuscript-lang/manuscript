@@ -10,6 +10,7 @@
 #include "base/path.h"
 #include "base/strbuild.h"
 #include "compiler/project/project.h"
+#include "driver/help_command.h"
 
 enum { STATUS_FAILED = 1 };
 
@@ -42,6 +43,15 @@ bool ms_invocation_parse_int(MsSpan text, int64_t *out) {
   }
   *out = text.ptr[0] == '-' ? -value : value;
   return true;
+}
+
+static bool is_one_of(MsSpan command, const char *const *names, size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    if (ms_span_is_text(command, names[i])) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static bool is_value_option(MsSpan flag) {
@@ -90,10 +100,10 @@ static bool needs_default(int argc, char **argv) {
   return argc == 0 || argv[0][0] == '-' || ms_span_is_text(ms_span_of_text(argv[0]), "--");
 }
 
-static int missing_input(MsArena *arena, const char *command) {
-  return ms_usage_error(arena, ms_message_format(arena, "ms %s: missing the file argument; pass a .ms file or a project "
-                                                        "ms.toml, e.g. ms %s ms.toml",
-                                                 command, command));
+static int missing_input(const char *command) {
+  (void)fprintf(stderr, "ms %s: missing the file argument; pass a .ms file or a project ms.toml, e.g. ms %s ms.toml\n\n%s",
+                command, command, ms_help_page(ms_span_of_text(command)));
+  return 2;
 }
 
 /* A directory stands for its manifest. */
@@ -123,7 +133,7 @@ int ms_invocation_arguments(MsArena *arena, const char *command, int argc, char 
     }
   }
   if (out->len == 0) {
-    return missing_input(arena, command);
+    return missing_input(command);
   }
   const MsSpan name = ms_span_of_text(command);
   MsSpan filename = out->ptr[0];
@@ -217,33 +227,50 @@ static void test_arguments(MsArena *arena, MsInvocation *invocation, const MsRaw
   invocation->arguments = arguments;
 }
 
+static MsSpan option_name(MsSpan option) {
+  size_t name = 0;
+  while (name < option.len && option.ptr[name] != '=') {
+    name++;
+  }
+  return ms_span_of(option.ptr, name);
+}
+
+static bool is_test_only(MsSpan option) {
+  static const char *const NAMES[] = {"--runs", "--seed", "--fuzz", "--shuffle"};
+  return is_one_of(option_name(option), NAMES, 4);
+}
+
 static int selection_rules(MsArena *arena, MsInvocation *invocation, const MsRawOptions *raw) {
   const bool test = ms_span_is_text(invocation->command, "test");
-  if (!test && (raw->timeout.len > 0 || raw->filter.len > 0 || raw->test_options.len > 0)) {
+  const bool bench = ms_span_is_text(invocation->command, "bench");
+  if (!test && !bench && (raw->timeout.len > 0 || raw->filter.len > 0 || raw->test_options.len > 0)) {
     return ms_usage_error(arena, ms_message_format(arena, "test selection options are valid only for ms test and ms "
                                                           "bench, not ms %S; run 'ms help %S' for the options this "
                                                           "command accepts",
                                                    invocation->command, invocation->command));
   }
-  for (size_t i = 0; test && i < raw->test_options.len; i++) {
-    if (is_bench_only(raw->test_options.ptr[i])) {
-      size_t name = 0;
-      while (name < raw->test_options.ptr[i].len && raw->test_options.ptr[i].ptr[name] != '=') {
-        name++;
-      }
+  for (size_t i = 0; (test || bench) && i < raw->test_options.len; i++) {
+    const MsSpan option = raw->test_options.ptr[i];
+    if (test && is_bench_only(option)) {
       return ms_usage_error(arena, ms_message_format(arena, "%S is valid only for ms bench; run 'ms help test' for the "
                                                             "options this command accepts",
-                                                     ms_span_of(raw->test_options.ptr[i].ptr, name), (MsSpan){0}));
+                                                     option_name(option), (MsSpan){0}));
+    }
+    if (bench && is_test_only(option)) {
+      return ms_usage_error(arena, ms_message_format(arena, "%S is valid only for ms test; run 'ms help bench' for the "
+                                                            "options this command accepts",
+                                                     option_name(option), (MsSpan){0}));
     }
   }
-  if (test) {
+  if (test || bench) {
     test_arguments(arena, invocation, raw);
   }
   return 0;
 }
 
 static int build_type_rule(MsArena *arena, MsInvocation *invocation, const MsRawOptions *raw) {
-  const MsBuildType fallback = ms_span_is_text(invocation->command, "build") ? MS_BUILD_RELEASE : MS_BUILD_DEBUG;
+  const bool debug = ms_span_is_text(invocation->command, "run") || ms_span_is_text(invocation->command, "test");
+  const MsBuildType fallback = debug ? MS_BUILD_DEBUG : MS_BUILD_RELEASE;
   if (!ms_build_type_parse(raw->build_type_name, fallback, &invocation->build_type)) {
     return ms_usage_error(arena, ms_message_format(arena, "unknown build type %S; expected Debug, Release, or MinSizeRel",
                                                    ms_invocation_quote(arena, raw->build_type_name), (MsSpan){0}));
@@ -251,11 +278,86 @@ static int build_type_rule(MsArena *arena, MsInvocation *invocation, const MsRaw
   return 0;
 }
 
+static const char *const VIEWS[] = {"overview", "calls", "effects", "errors", "modules",
+                                    "flow",     "scope", "tasks",   "types",  "ownership"};
+
+/* Options of `diagram` and `profile` used on another command, and the rules that combine them. */
+static int tool_rules(MsArena *arena, MsInvocation *invocation) {
+  const MsSpan command = invocation->command;
+  const bool diagram = ms_span_is_text(command, "diagram");
+  const bool profile = ms_span_is_text(command, "profile");
+  const MsSpan hint = command;
+  if (invocation->format.len > 0 && !diagram) {
+    return ms_usage_error(arena, ms_message_format(arena, "--format is valid only for ms diagram and ms review, not ms %S; "
+                                                          "run 'ms help %S' for its options", command, hint));
+  }
+  if ((invocation->view.len > 0 || invocation->entity.len > 0 || invocation->depth != 0 || invocation->diff.len > 0) &&
+      !diagram) {
+    return ms_usage_error(arena, ms_message_format(arena, "--view, --entity, --depth, and --diff are valid only for ms "
+                                                          "diagram, not ms %S; run 'ms help %S' for its options",
+                                                   command, hint));
+  }
+  if (invocation->allocs && !profile) {
+    return ms_usage_error(arena, ms_message_format(arena, "--allocs is valid only for ms profile, not ms %S; run 'ms help "
+                                                          "%S' for its options", command, hint));
+  }
+  if (invocation->top != 0 && !profile) {
+    return ms_usage_error(arena, ms_message_format(arena, "--top is valid only for ms profile, not ms %S; run 'ms help %S' "
+                                                          "for its options", command, hint));
+  }
+  if (ms_span_is_text(invocation->view, "class")) {
+    invocation->view = ms_span_of_text("types");
+  } else if (ms_span_is_text(invocation->view, "mutability")) {
+    invocation->view = ms_span_of_text("ownership");
+  }
+  if (invocation->view.len > 0 && !is_one_of(invocation->view, VIEWS, sizeof VIEWS / sizeof VIEWS[0])) {
+    return ms_usage_error(arena, ms_message_format(arena, "unknown --view %S for ms diagram; use overview, calls, effects, "
+                                                          "errors, modules, flow, scope, tasks, types, ownership",
+                                                   ms_invocation_quote(arena, invocation->view), (MsSpan){0}));
+  }
+  const bool html = ms_span_is_text(invocation->format, "html");
+  const bool scoped = invocation->view.len > 0 || invocation->entity.len > 0;
+  if (invocation->diff.len > 0 && !scoped && !html) {
+    return ms_usage_error(arena, ms_message_format(arena, "--diff marks a scoped view; add --view or --entity, e.g. ms "
+                                                          "diagram ms.toml --view flow --entity save --diff change.patch",
+                                                   (MsSpan){0}, (MsSpan){0}));
+  }
+  if (invocation->depth != 0 && !scoped) {
+    return ms_usage_error(arena, ms_message_format(arena, "--depth needs --view or --entity; run 'ms help diagram' for "
+                                                          "examples", (MsSpan){0}, (MsSpan){0}));
+  }
+  if (diagram && invocation->json && invocation->format.len > 0) {
+    return ms_usage_error(arena, ms_message_format(arena, "--json and --format cannot be combined; --json emits the "
+                                                          "diagram tree", (MsSpan){0}, (MsSpan){0}));
+  }
+  if (diagram && html && scoped) {
+    return ms_usage_error(arena, ms_message_format(arena, "--format html covers every view in one page; drop --view and "
+                                                          "--entity", (MsSpan){0}, (MsSpan){0}));
+  }
+  static const char *const FORMATS[] = {"ascii", "mermaid", "html"};
+  if (diagram && invocation->format.len > 0 && !is_one_of(invocation->format, FORMATS, 3)) {
+    return ms_usage_error(arena, ms_message_format(arena, "unknown --format %S for ms diagram; use ascii, mermaid, or html",
+                                                   ms_invocation_quote(arena, invocation->format), (MsSpan){0}));
+  }
+  static const char *const WRITERS[] = {"build", "emit", "inspect", "diagram", "profile"};
+  if (invocation->output.len > 0 && !is_one_of(command, WRITERS, 5)) {
+    return ms_usage_error(arena, ms_message_format(arena, "-o and --output are valid only for ms build, emit, inspect, "
+                                                          "diagram, or profile, not ms %S; run 'ms help %S' for its options",
+                                                   command, hint));
+  }
+  return 0;
+}
+
 int ms_invocation_validate(MsArena *arena, MsInvocation *invocation, const MsRawOptions *raw) {
   const MsSpan command = invocation->command;
-  if (invocation->arguments.len > 0 && ms_span_is_text(command, "build")) {
-    return ms_usage_error(arena, ms_message_format(arena, "ms build does not run a program; remove the arguments after --",
-                                                   (MsSpan){0}, (MsSpan){0}));
+  static const char *const PROGRAMS[] = {"run", "test", "bench", "profile"};
+  if (invocation->arguments.len > 0 && !is_one_of(command, PROGRAMS, 4)) {
+    return ms_usage_error(arena, ms_message_format(arena, "ms %S does not run a program; remove the arguments after --",
+                                                   command, (MsSpan){0}));
+  }
+  const int tool = tool_rules(arena, invocation);
+  if (tool != 0) {
+    return tool;
   }
   const int selection = selection_rules(arena, invocation, raw);
   if (selection != 0) {
@@ -266,10 +368,24 @@ int ms_invocation_validate(MsArena *arena, MsInvocation *invocation, const MsRaw
                                                           "versioned result",
                                                    (MsSpan){0}, (MsSpan){0}));
   }
-  if (invocation->watch && ms_span_is_text(command, "build")) {
-    return ms_usage_error(arena, ms_message_format(arena, "--watch requires check, lint, run, or test, not build; use ms "
+  if (invocation->watch && !ms_span_is_text(command, "run") && !ms_span_is_text(command, "test")) {
+    return ms_usage_error(arena, ms_message_format(arena, "--watch requires check, lint, run, or test, not %S; use ms "
                                                           "check <file> --watch or ms run <file> --watch",
-                                                   (MsSpan){0}, (MsSpan){0}));
+                                                   command, (MsSpan){0}));
+  }
+  static const char *const EXECUTING[] = {"build", "run", "test", "bench"};
+  const bool builds = is_one_of(command, EXECUTING, 4);
+  if (invocation->static_libc && !builds) {
+    return ms_usage_error(arena, ms_message_format(arena, "--static requires build, run, test, or bench, not %S; remove "
+                                                          "the flag", command, (MsSpan){0}));
+  }
+  if (invocation->link.len > 0 && !builds) {
+    return ms_usage_error(arena, ms_message_format(arena, "--link requires build, run, test, or bench, not %S; remove "
+                                                          "the flag", command, (MsSpan){0}));
+  }
+  if (raw->build_type_name.len > 0 && !builds && !ms_span_is_text(command, "profile")) {
+    return ms_usage_error(arena, ms_message_format(arena, "--build-type requires build, run, test, bench, or profile, not "
+                                                          "%S; remove the flag", command, (MsSpan){0}));
   }
   const int type = build_type_rule(arena, invocation, raw);
 #ifndef __linux__
