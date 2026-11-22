@@ -8,6 +8,7 @@
 
 #include "base/dir.h"
 #include "base/ostext.h"
+#include "base/path.h"
 
 enum { READ_CHUNK = 16384, FILE_MODE = 0666, DIRECTORY_MODE = 0777, MS_PATH_BUFFER = 4096 };
 
@@ -180,25 +181,13 @@ void ms_path_remove_tree(MsSpan path) {
   ms_path_remove(path);
 }
 
-/* Paths are '/'-separated inside the toolchain; Windows reports them with '\\'. */
-static void slash_separators(char *text, size_t size) {
-#ifdef _WIN32
-  for (size_t at = 0; at < size; at++) {
-    text[at] = text[at] == '\\' ? '/' : text[at];
-  }
-#else
-  (void)text;
-  (void)size;
-#endif
-}
-
 bool ms_file_real_path(MsSpan path, MsString *out) {
   MsOsText name = ms_os_text_new(path);
   uv_fs_t request;
   const bool ok = uv_fs_realpath(NULL, &request, name.ptr, NULL) == 0;
   if (ok) {
     const MsSpan real = ms_span_of_text(request.ptr);
-    slash_separators(request.ptr, real.len);
+    ms_path_from_os(request.ptr, real.len);
     ms_string_release(out);
     *out = ms_string_from_span(real);
   }
@@ -213,7 +202,7 @@ bool ms_dir_current(MsString *path) {
   if (uv_cwd(buffer, &size) != 0) {
     return false;
   }
-  slash_separators(buffer, size);
+  ms_path_from_os(buffer, size);
   ms_string_release(path);
   *path = ms_string_from_span(ms_span_of((const uint8_t *)buffer, size));
   return true;
@@ -225,5 +214,6 @@ MsString ms_temp_dir(void) {
   if (uv_os_tmpdir(buffer, &size) != 0) {
     return ms_string_from_span(ms_span_of_text("/tmp"));
   }
+  ms_path_from_os(buffer, size);
   return ms_string_from_span(ms_span_of((const uint8_t *)buffer, size));
 }
