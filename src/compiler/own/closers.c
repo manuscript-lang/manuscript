@@ -43,6 +43,11 @@ bool ms_own_closer_of(MsCheckProgram *program, MsTy ty, MsCloser *out) {
   if (ty == MS_TY_NONE) {
     return false;
   }
+  if (ms_ty_kind(&program->types, ty) == MS_TY_CONTRACT) {
+    /* An interface value closes through its own `close` operation, which takes it. */
+    *out = (MsCloser){.flags = MS_CLOSER_IFACE | MS_CLOSER_CONSUMES | MS_CLOSER_FALLIBLE};
+    return ms_check_closeable(program, ty);
+  }
   if (!ms_check_closeable(program, ty)) {
     /* A holder without a close of its own closes the resources it holds. */
     *out = (MsCloser){.flags = MS_CLOSER_PARTS | MS_CLOSER_CONSUMES};

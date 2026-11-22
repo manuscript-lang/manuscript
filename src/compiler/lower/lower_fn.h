@@ -100,6 +100,8 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
  * when some part cannot be closed this way; and whether it exists. */
 uint32_t lower_close_parts(Lower *cx, MsTy ty);
 bool lower_parts_supported(Lower *cx, MsTy ty);
+/* The function `fn(move value)` that closes an interface value through its `close` operation. */
+uint32_t lower_close_iface(Lower *cx, MsTy ty);
 /* Whether a temporary of the type `checked` closes where its statement ends, and its owner: the value goes into a
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
@@ -108,6 +110,8 @@ MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
  * when it is a lent temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
+/* The base of the field read `member`, closed with its statement when it is a temporary. */
+MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);

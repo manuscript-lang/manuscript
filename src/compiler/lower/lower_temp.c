@@ -63,11 +63,35 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   if (declared != 0 && index + declared >= call->arg_count) {
     const MsTy param = ms_ty_subst(types, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty,
                                    fn->subst.vars, fn->subst.args, fn->subst.count);
-    if (ms_ty_is(types, param, MS_BUILTIN_Optional) && !ms_ty_is(types, *checked, MS_BUILTIN_Optional)) {
+    if ((ms_ty_is(types, param, MS_BUILTIN_Optional) && !ms_ty_is(types, *checked, MS_BUILTIN_Optional)) ||
+        ms_ty_kind(types, param) == MS_TY_CONTRACT) {
       *checked = param;
     }
   }
   return *checked != MS_TY_NONE && fn_temp_closes(fn, *checked);
+}
+
+/* The type of the call result a field is read from (`open().name`), which nothing else owns. */
+static bool member_temp_type(LowerFn *fn, const MsExpr *member, MsTy *checked) {
+  const MsExpr *base = member->u.member.left;
+  MsTyTable *types = &fn->cx->program->types;
+  const MsRef *ref = ms_facts_ref(fn->facts, member->id);
+  if (base->kind != MS_E_CALL || ref == NULL || ref->kind != MS_REF_FIELD) {
+    return false;
+  }
+  const MsTy field = ms_ty_subst(types, ms_facts_type(fn->facts, member->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  *checked = ms_ty_subst(types, ms_facts_type(fn->facts, base->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return field != MS_TY_NONE && !ms_check_holds_resource(fn->cx->program, field) && *checked != MS_TY_NONE &&
+         fn_temp_closes(fn, *checked);
+}
+
+MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base) {
+  MsTy checked = MS_TY_NONE;
+  if (!fn->temps || !member_temp_type(fn, member, &checked) || fn_type(fn, checked) != mir_b_ty(&fn->b, base) ||
+      (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, base)) && !fn_fresh_owner(fn, base))) {
+    return base;
+  }
+  return fn_own_temporary(fn, checked, base);
 }
 
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value) {
@@ -95,6 +119,8 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
   if (conditional(expr)) {
     scan->skip++;
   }
+  MsTy member = MS_TY_NONE;
+  scan->found |= expr->kind == MS_E_MEMBER && scan->skip == 0 && member_temp_type(scan->fn, expr, &member);
   const MsCall *call = expr->kind == MS_E_CALL && scan->skip == 0 ? fn_find_call(scan->fn->facts, expr->id) : NULL;
   for (uint32_t index = 0; call != NULL && !scan->found && index < call->arg_count; index++) {
     const MsExpr *written = call->args[index].source == MS_ARG_WRITTEN ? fn_written_arg(expr, call->args[index].node.node) : NULL;

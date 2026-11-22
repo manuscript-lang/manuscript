@@ -238,8 +238,10 @@ static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent)
 static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
   Lower *cx = fn->cx;
   const MsTy concrete = ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
-  const bool parts = !ms_check_closeable(cx->program, concrete);
-  const uint32_t method = parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
+  const bool parts = !ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT;
+  const bool iface = ms_ty_kind(&cx->program->types, concrete) == MS_TY_CONTRACT;
+  const uint32_t method = iface ? lower_close_iface(cx, concrete)
+                          : parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
   if (method == MIR_NONE || !close_thunks(cx, method, ty, silent)) {
     return fn_fail(fn, "the close of a resource binding could not be lowered");
   }

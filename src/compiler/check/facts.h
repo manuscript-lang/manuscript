@@ -122,7 +122,8 @@ typedef enum MsCloserFlags {
   MS_CLOSER_PARTIAL = 32,   /* a field moves out alone, or a closure captures the binding */
   MS_CLOSER_GENERIC = 64,   /* its type mentions a type variable: whether it closes is decided per instance */
   MS_CLOSER_PARTS = 128,    /* no close of its own: the resources it holds close, last field first */
-  MS_CLOSER_TAKEN = 256     /* a call that returns a resource may take a part of it out (only a parts closer cares) */
+  MS_CLOSER_TAKEN = 256,    /* a call that returns a resource may take a part of it out (only a parts closer cares) */
+  MS_CLOSER_IFACE = 512     /* an interface value: its `close` operation, called through the vtable */
 } MsCloserFlags;
 
 /* How a local binding or `move` parameter of a Closeable type is closed where its scope ends. `node` is its
