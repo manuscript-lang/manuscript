@@ -195,6 +195,9 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                        uint32_t *nslots, bool receiver_var) {
   uint32_t order[LOWER_MAX_ARGS];
   for (uint32_t at = 0; at < call->arg_count; at++) {
+    out[at] = MIR_NONE;
+  }
+  for (uint32_t at = 0; at < call->arg_count; at++) {
     uint32_t place = at;
     while (place > 0 && written_before(expr, call, at, order[place - 1])) {
       order[place] = order[place - 1];
@@ -221,7 +224,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
       const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      fn->default_call = call;
+      fn->default_args = out;
       out[index] = default_arg(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty));
+      fn->default_call = NULL;
+      fn->default_args = NULL;
     } else {
       const MsTy param = ms_ty_params(&fn->cx->program->types, call->callee_ty)[index].ty;
       const MirTy ty = fn_type(fn, param);
