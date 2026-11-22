@@ -6,6 +6,7 @@
  * reporting it is the job of the unknown-binding pass. */
 #include "compiler/check/body.h"
 #include "compiler/check/methods.h"
+#include "compiler/check/suggest.h"
 
 static MsName intern(const Body *body, const char *text) {
   return ms_names_intern(body->program->names, ms_span_of_text(text));
@@ -219,6 +220,28 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
 }
 
 /* `Type.Case` or `Type.member` where the left side names a type; false when it does not. */
+/* `Type.name` where the type has no such case: an enum lists its cases, any other type has none to name. */
+static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
+  const MsDef *def = body_def(body, owner);
+  if (body->module >= body->program->user_modules || body->quiet || def == NULL || def->cases.len == 0) {
+    return;
+  }
+  MsSpanList names = {0};
+  for (size_t index = 0; index < def->cases.len; index++) {
+    ms_span_list_push(&names, ms_names_span(body->program->names, def->cases.ptr[index].name));
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "unknown or non-nullary alternative case ");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, expr->u.member.name));
+  ms_strbuild_append_text(&text, " of ");
+  ms_ty_show(&text, body->program->names, &body->program->types, owner);
+  ms_strbuild_append_text(&text, "; cases: ");
+  ms_suggest_list(&text, &names, 12);
+  ms_strbuild_append_text(&text, " (cases with payloads need call syntax)");
+  ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  ms_span_list_free(&names);
+}
+
 static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
   const MsExpr *left = expr->u.member.left;
   /* `Type[Args].Case`: the type applied to its arguments. */
@@ -250,6 +273,7 @@ static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
     *ty = owner;
   } else {
     *ty = MS_TY_NONE;
+    report_unknown_case(body, expr, owner);
   }
   return true;
 }
