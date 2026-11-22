@@ -201,10 +201,12 @@ static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan 
 }
 
 /* Checks `input`, builds its tests and runs the plan. */
-static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input, MsSpanList *watched) {
+static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input, const MsSpanList *extras,
+                      MsSpanList *watched) {
   MsCheckedInput checked = {0};
   int status = 0;
-  if (!ms_checked_input_load(arena, &checked, input, MS_INPUT_TESTS)) {
+  const MsLoadOptions load = {.extra_files = extras == NULL ? NULL : extras->ptr, .extra_count = extras == NULL ? 0 : extras->len};
+  if (!ms_checked_input_load_with(arena, &checked, input, MS_INPUT_TESTS, &load)) {
     if (watched != NULL) {
       watch_add_inputs(arena, input, &checked.graph, watched);
     }
@@ -281,15 +283,16 @@ static int test_targets(MsArena *arena, const MsInvocation *invocation, MsSpanLi
     members = members && is_manifest(targets->ptr[i]);
   }
   if (targets->len > 1 && !members) {
-    print_text(stderr, ms_span_of_text("ms test: several test files in one executable are not implemented yet\n"));
-    return STATUS_NOT_IMPLEMENTED;
+    /* Several files: the first is the input, and the rest are built into the same executable. */
+    const MsSpanList more = {.ptr = targets->ptr + 1, .len = targets->len - 1};
+    return test_input(arena, invocation, targets->ptr[0], &more, watched);
   }
   int status = 0;
   for (size_t i = 0; i < targets->len; i++) {
     if (members) {
       print_text(stderr, ms_message_format(arena, "ms: testing %S\n", targets->ptr[i], (MsSpan){0}));
     }
-    const int result = test_input(arena, invocation, targets->ptr[i], watched);
+    const int result = test_input(arena, invocation, targets->ptr[i], NULL, watched);
     status = result > status ? result : status;
   }
   return status;
