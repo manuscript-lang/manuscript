@@ -8,7 +8,7 @@ enum State:
 
 // The payload `text` is last read inside the value assigned to `state`; the old value is only
 // released once that value is built, so the assignment does not conflict with the borrow.
-fn step(start: String) String:
+fn step(move start: String) String:
 	var state = State.Name(start)
 	match state:
 		Name(text):

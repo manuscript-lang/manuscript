@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn build(columns: List[Align], rows: List[List[String]]) Table!:
+fn build(move columns: List[Align], rows: List[List[String]]) Table!:
 	var table = Table(columns: columns)
 	for row in rows:
 		table.add(row.clone())?

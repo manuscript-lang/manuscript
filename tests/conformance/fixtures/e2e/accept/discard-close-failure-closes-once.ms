@@ -23,7 +23,7 @@ fn list_remove(log: String) Void:
 	var items = [Item(1, log.clone(), true)]
 	items.remove(0)
 
-fn map_add(log: String) Void:
+fn map_add(move log: String) Void:
 	var m = Map[String, Item]()
 	m.add("a", Item(1, log.clone(), true))
 	m.add("a", Item(2, log, false))

@@ -38,7 +38,7 @@ fn select(var events: List[Int]) Int:
 	events.append(1)
 	return 0
 
-fn replace(log: String, var calls: Int) Void:
+fn replace(move log: String, var calls: Int) Void:
 	var rows = [[Door(1, log.clone())], [Door(2, log.clone())]]
 	rows[next(calls)].set(0, Door(9, log))
 
