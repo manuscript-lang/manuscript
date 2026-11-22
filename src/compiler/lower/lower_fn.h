@@ -64,6 +64,11 @@ void fn_own_result(LowerFn *fn, MirValue result);
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
+/* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
+MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+/* A call recorded with a bodiless standard operation as its callee. */
+MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
+
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
