@@ -235,7 +235,7 @@ fn List[T: Clonable].clone() move List[T]: ...
 // Returns a new list containing copies of the elements in [start, end).
 // Negative bounds are relative to the end; bounds outside 0 <= start <= end <=
 // length() return an `Error` of kind `ERANGE`.
-fn List[T: Clonable].slice(start: Int, end: Int) move List[T]!: ...
+fn List[T: Clonable].slice(start: Int, end: Int) List[T]!: ...
 
 // Returns a new list with copies of the first `count` elements, or of all of them
 // when `count` exceeds the length. The receiver is unchanged; a count of zero or
@@ -751,7 +751,7 @@ fn Map[T: Hashable & Clonable, U: Clonable].find_last(predicate: fn(T, U) Bool) 
 	return none
 
 // Returns a new list of the values in insertion order.
-fn Map[T: Hashable, U: Clonable].values() move List[U]: ...
+fn Map[T: Hashable, U: Clonable].values() List[U]: ...
 
 // Returns a new list of `MapEntry` records in insertion order. Each record holds the
 // key and value without copying them.
