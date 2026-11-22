@@ -183,8 +183,9 @@ static void finish_body(LowerFn *fn) {
   if (fn->terminated) {
     return;
   }
+  const MirValue done = fn_result_wrap(fn, MIR_NONE);
   fn_scope_unwind(fn, 0);
-  mir_b_ret(&fn->b, MIR_NONE);
+  mir_b_ret(&fn->b, done);
 }
 
 static bool lower_body(Lower *cx, uint32_t index) {

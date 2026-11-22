@@ -76,6 +76,11 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
+/* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
+MirValue fn_unary(LowerFn *fn, const MsExpr *expr);
+MirValue fn_try(LowerFn *fn, const MsExpr *expr);
+/* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */
+MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);

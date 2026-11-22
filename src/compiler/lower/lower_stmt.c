@@ -53,6 +53,7 @@ static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
     const MirImm none = {0};
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, none, MIR_NONE);
   }
+  value = fn_result_wrap(fn, value);
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, value);
   fn->terminated = true;
