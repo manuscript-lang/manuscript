@@ -32,13 +32,23 @@ add_library(ms_std_data STATIC
 ms_target_defaults(ms_std_data)
 target_link_libraries(ms_std_data PUBLIC ms_base ms_values ms_std_compress zlib)
 
-# @std/time: durations, instants, clocks, RFC 3339 text, calendar fields and the host zone setting.
+# @std/time: durations, instants, clocks, RFC 3339 text, calendar fields, the host zone setting and the zone database
+# (tzdata.bin, built by tools/tzdata/pack.py).
+set(tzdata_c ${CMAKE_CURRENT_BINARY_DIR}/tzdata.c)
+add_custom_command(
+  OUTPUT ${tzdata_c}
+  COMMAND ${CMAKE_COMMAND} -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/tzdata.bin -DOUTPUT=${tzdata_c} -DSYMBOL=ms_tzdata
+          -P ${PROJECT_SOURCE_DIR}/cmake/EmbedBlob.cmake
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tzdata.bin ${PROJECT_SOURCE_DIR}/cmake/EmbedBlob.cmake
+  COMMENT "Embedding tzdata.bin")
 add_library(ms_std_time STATIC
   time.c
   time_civil.c
   time_clock.c
   time_system.c
-  time_text.c)
+  time_text.c
+  time_zone.c
+  ${tzdata_c})
 ms_target_defaults(ms_std_time)
 target_link_libraries(ms_std_time PUBLIC ms_base)
 
