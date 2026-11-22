@@ -125,7 +125,7 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
   }
   MsTy owner = MS_TY_NONE;
   uint32_t index = 0;
-  return body_find_case(body, callee->u.sym, expected, &owner, &index) &&
+  return body_find_case(body, callee->u.sym, expected, &callee->pos, &owner, &index) &&
          case_target(body, callee, callee->u.sym, owner, target);
 }
 
