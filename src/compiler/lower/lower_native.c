@@ -556,6 +556,18 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
   return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
+/* `list.set(index, value)` on a list of plain values: the element is stored where it lies, so the list's header
+ * does not change and nothing is written back. An element that owns something needs the runtime to drop the old one. */
+static bool list_set(LowerFn *fn, const MirValue *args, MirValue *out) {
+  const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (list->kind != MK_LIST || mir_needs_drop(fn->cx->module, list->elem) || mir_b_ty(&fn->b, args[2]) != list->elem) {
+    return false;
+  }
+  (void)mir_b_emit(&fn->b, MOP_ListSet, args, 3, (MirImm){0}, mir_b_ty(&fn->b, args[0]));
+  *out = MIR_NONE;
+  return true;
+}
+
 /* Whether the operation is declared on a type variable (`v.to_string()` with a bound): the native has no name of
  * its own, the concrete receiver of the instance decides. */
 static bool generic_receiver(const LowerFn *fn, const MsCall *call) {
@@ -656,6 +668,10 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = list_get(fn, args[0], args[1], ret);
+    return true;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_set") && argc == 3 &&
+      list_set(fn, args, out)) {
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
