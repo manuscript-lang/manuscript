@@ -330,7 +330,22 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (more == MIR_NONE) {
     return false;
   }
-  mir_b_br_if(&fn->b, more, body, NULL, 0, done, NULL, 0);
+  /* A source that can fail answers `T?!`: an error ends the loop, as does `none` inside an ok. */
+  const MirTyData *answer = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, result));
+  MirValue payload = result;
+  if (answer->kind == MK_ALT) {
+    const MirCaseDef *ok_case = &fn->cx->module->alts.ptr[answer->id].cases[0];
+    const MirTy payload_ty = ok_case->nfields > 0 ? ok_case->fields[0].ty : MIR_VOID;
+    const MirBlock inner = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, more, inner, NULL, 0, done, NULL, 0);
+    mir_b_seal_block(&fn->b, inner);
+    enter(fn, inner);
+    const MirImm field = {.tag = MI_ALTFIELD, .a = answer->id, .b = 0, .c = 0};
+    payload = mir_b_emit(&fn->b, MOP_AltGet, &result, 1, field, payload_ty);
+    mir_b_br_if(&fn->b, mir_b_emit(&fn->b, MOP_OptIsSome, &payload, 1, (MirImm){0}, MIR_BOOL), body, NULL, 0, done, NULL, 0);
+  } else {
+    mir_b_br_if(&fn->b, more, body, NULL, 0, done, NULL, 0);
+  }
   mir_b_seal_block(&fn->b, body);
   mir_b_seal_block(&fn->b, done);
   enter(fn, done);
@@ -344,8 +359,8 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (result_owned) {
     fn_own(fn, fn_scope(fn), result);
   }
-  const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, result));
-  const MirValue item = emit(fn, MOP_OptGet, &result, 1, (MirImm){0}, opt->elem);
+  const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
+  const MirValue item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   mir_b_def_var(&fn->b, fn_local(fn, binding->local, opt->elem), item);
   bool ok = fn_stmts(fn, stmt->u.each.body);
   if (!fn->terminated) {
