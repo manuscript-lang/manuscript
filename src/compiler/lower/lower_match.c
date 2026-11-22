@@ -16,7 +16,7 @@ typedef struct Match {
 } Match;
 
 static bool is_literal(const MsExpr *path) {
-  return path != NULL && (path->kind == MS_E_NUMBER || path->kind == MS_E_BOOL ||
+  return path != NULL && (path->kind == MS_E_NUMBER || path->kind == MS_E_BOOL || path->kind == MS_E_TEXT ||
                           (path->kind == MS_E_UNARY && path->op == MS_U_NEG));
 }
 
@@ -180,7 +180,8 @@ static bool dispatch_literals(LowerFn *fn, const Match *match, const MsExpr *exp
     if (literal == MIR_NONE) {
       return false;
     }
-    const MirValue same = mir_b_icmp(&fn->b, MCC_EQ, match->scrutinee, literal);
+    const MirValue same = match->ty == MIR_STR ? fn_compare_values(fn, MS_B_EQ, match->scrutinee, literal)
+                                               : mir_b_icmp(&fn->b, MCC_EQ, match->scrutinee, literal);
     const MirBlock next = mir_b_new_block(&fn->b);
     mir_b_br_if(&fn->b, same, blocks[index], NULL, 0, next, NULL, 0);
     enter(fn, next);
@@ -212,7 +213,7 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
     match.scrutinee = taken;
     match.consumed = true;
   }
-  const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL;
+  const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL || match.ty == MIR_STR;
   if (match.kind != MK_ALT && match.kind != MK_OPT && !literal) {
     (void)fn_fail(fn, "`match` over this type is not lowered yet");
     return MIR_NONE;

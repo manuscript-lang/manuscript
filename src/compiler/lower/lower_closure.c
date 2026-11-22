@@ -694,6 +694,39 @@ static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee
   return slot;
 }
 
+/* A function the standard library declares without a body, used as a value: a closure whose body is the runtime call. */
+static uint32_t lower_native_closure(Lower *cx, MirTy fn_ty, MsSymbolId id) {
+  const MsSymbol *symbol = &cx->program->symbols.ptr[id];
+  const uint32_t slot = lower_closure_func(cx, fn_ty, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = {.cx = cx,
+                .facts = &cx->program->modules.ptr[symbol->module].facts,
+                .module_index = symbol->module,
+                .file = lower_file(cx, symbol->module),
+                .ret = reserved.ret};
+  mir_b_init(&fn.b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  fn.b.func.kind = MFK_CLOSURE;
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  mir_b_params(&fn.b, values, reserved.nparams);
+  const MirValue result = fn_builtin_named(&fn, id, reserved.nparams - 1, values + 1, reserved.ret);
+  if (result != MIR_NONE && fn_fresh_owner(&fn, result)) {
+    (void)mir_b_emit(&fn.b, MOP_ScopeDisown, (MirValue[]){result}, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  MirFunc built;
+  if (fn.failed || !mir_b_into_func(&fn.b, &built)) {
+    return MIR_NONE;
+  }
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+  return slot;
+}
+
 /* A module function used as a value: a closure with no captures whose body calls it. */
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   Lower *cx = fn->cx;
@@ -708,6 +741,15 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (data->kind != MK_FN || id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
     (void)fn_fail(fn, "this function cannot be used as a value yet");
     return MIR_NONE;
+  }
+  const MsSymbol *named = &cx->program->symbols.ptr[id];
+  if (named->decl != NULL && named->decl->kind == MS_D_FN && named->decl->u.fn.bodiless) {
+    const uint32_t native = lower_native_closure(cx, fn_ty, id);
+    if (native == MIR_NONE) {
+      (void)fn_fail(fn, "a function value could not be built");
+      return MIR_NONE;
+    }
+    return fn_emit(fn, MOP_ClosureNew, NULL, 0, (MirImm){.tag = MI_FUNC, .a = native}, fn_ty);
   }
   const LowerTarget target = lower_symbol_target(cx, id);
   MsTy bound[16] = {0};

@@ -125,7 +125,7 @@ static MirValue lower_text(LowerFn *fn, const MsExpr *expr) {
   }
   const MsSpan text = expr->u.text.len == 0 ? ms_span_of_text("") : expr->u.text.ptr[0].lit;
   const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, text)};
-  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR); /* a text literal is a String, whether or not the checker typed it (a match arm's path) */
 }
 
 MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty) {
