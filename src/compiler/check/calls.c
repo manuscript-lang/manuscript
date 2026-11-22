@@ -443,9 +443,12 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected);
   } else {
+    const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
+    body->quiet = true;
     for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
       (void)body_expr(body, expr->u.call.args.ptr[index].value, MS_TY_NONE);
     }
+    body->quiet = quiet;
   }
   target_free(&target);
   return result;

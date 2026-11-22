@@ -306,6 +306,26 @@ static bool has_foreign_variable(const Body *body, MsTy ty) {
   return ms_ty_kind(types, ty) == MS_TY_FUNCTION && has_foreign_variable(body, ms_ty_result(types, ty));
 }
 
+/* The `move`/`var` modes the expected function type gives its parameter: a lambda takes them from its context. */
+static uint8_t context_modes(const MsTyTable *types, MsTy expected, bool shaped, uint32_t index) {
+  return shaped && index < ms_ty_param_count(types, expected)
+             ? (uint8_t)(ms_ty_params(types, expected)[index].flags & (MS_PARAM_VAR | MS_PARAM_MOVE))
+             : 0;
+}
+
+/* A callback parameter with no written type and no context to take one from. */
+static void report_uninferred_callback(Body *body, const MsParam *param) {
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "cannot infer callback parameter ");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, param->name));
+  ms_strbuild_append_text(&text, "; provide a type or a known function context: a closure bound to a variable has none, "
+                                 "so write the parameter types and result, as in `fn(n: Int) Int: n * 2`");
+  ms_check_report(body->program, body->module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 /* A lambda: parameters typed from the written annotation or the expected function type; the result is the
  * written result, the expected one, or the first returned value's type. */
 static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
@@ -317,6 +337,9 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     const MsParam *param = expr->u.lambda.params.ptr[index];
     MsTy ty = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
     ty = ty == MS_TY_NONE && shaped && index < ms_ty_param_count(types, expected) ? ms_ty_params(types, expected)[index].ty : ty;
+    if (ty == MS_TY_NONE && param->ty == NULL) {
+      report_uninferred_callback(body, param);
+    }
     MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable);
     local->id = index;
     body_set_type(body, param->id, ty);
@@ -324,7 +347,8 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     ms_ty_param_list_push(&params, (MsTyParam){.name = param->name, .ty = ty,
                                                .flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) |
                                                                   (param->moving ? MS_PARAM_MOVE : 0) |
-                                                                  (param->def != NULL ? MS_PARAM_LIFTED : 0))});
+                                                                  (param->def != NULL ? MS_PARAM_LIFTED : 0) |
+                                                                  context_modes(types, expected, shaped, index))});
     if (param->def != NULL) {
       (void)body_expr(body, param->def, ty);
     }
