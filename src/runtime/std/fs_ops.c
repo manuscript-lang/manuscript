@@ -52,6 +52,7 @@ int ms_fs_realpath(const char *path, MsStrBuild *out) {
   uv_fs_t request;
   const int code = uv_fs_realpath(NULL, &request, path, NULL);
   if (code == 0) {
+    ms_path_from_os(request.ptr, ms_span_of_text(request.ptr).len);
     ms_strbuild_append_text(out, (const char *)request.ptr);
   }
   uv_fs_req_cleanup(&request);
@@ -64,6 +65,7 @@ static int working_directory(MsStrBuild *out) {
   size_t size = sizeof buffer;
   int code = uv_cwd(buffer, &size);
   if (code == 0) {
+    ms_path_from_os(buffer, size);
     ms_strbuild_append(out, ms_span_of((const uint8_t *)buffer, size));
     return 0;
   }
@@ -73,6 +75,7 @@ static int working_directory(MsStrBuild *out) {
   char *big = ms_alloc(size);
   code = uv_cwd(big, &size);
   if (code == 0) {
+    ms_path_from_os(big, size);
     ms_strbuild_append(out, ms_span_of((const uint8_t *)big, size));
   }
   ms_free(big);
@@ -92,7 +95,7 @@ static int make_directories(MsSpan path, size_t depth) {
   int code = ms_fs_make_directory(text.ptr);
   if (code == UV_ENOENT && depth < MAX_DEPTH) {
     MsStrBuild parent = ms_strbuild_new();
-    ms_fs_path_dir(path, &parent);
+    ms_path_dir(path, &parent);
     const MsSpan up = ms_strbuild_span(&parent);
     if (up.len > 0 && !ms_span_equal(up, path)) {
       code = make_directories(up, depth + 1);
@@ -136,8 +139,8 @@ uint8_t msstd_fs_create_directory(const MsString *path, uint8_t recursive, MsStr
 /* `parent/name`, the child of a directory. */
 static void child_path(MsSpan parent, const char *name, MsStrBuild *out) {
   ms_strbuild_append(out, parent);
-  if (parent.len == 0 || !ms_fs_is_separator(parent.ptr[parent.len - 1])) {
-    ms_strbuild_append_byte(out, ms_fs_separator());
+  if (parent.len == 0 || !ms_path_is_separator(parent.ptr[parent.len - 1])) {
+    ms_strbuild_append_byte(out, '/');
   }
   ms_strbuild_append_text(out, name);
 }
@@ -212,18 +215,18 @@ void ms_fs_remove_tree(MsFail *fail, MsSpan path) {
 static bool removal_candidate(MsSpan given, MsSpan cwd, MsStrBuild *joined, MsFail *fail) {
   MsStrBuild clean = ms_strbuild_new();
   MsStrBuild parent = ms_strbuild_new();
-  if (ms_fs_is_absolute(given)) {
+  if (ms_path_is_absolute(given)) {
     ms_strbuild_append(joined, given);
   } else {
-    ms_fs_path_join(cwd, given, joined);
+    ms_path_join(cwd, given, joined);
   }
-  ms_fs_path_clean(ms_strbuild_span(joined), &clean);
-  ms_fs_path_dir(ms_strbuild_span(&clean), &parent);
+  ms_path_clean(&clean, ms_strbuild_span(joined));
+  ms_path_dir(ms_strbuild_span(&clean), &parent);
   bool ok = false;
   if (ms_span_equal(ms_strbuild_span(&parent), ms_strbuild_span(&clean))) {
     ms_fail_status(fail, MS_STATUS_INVALID_INPUT);
   } else {
-    while (joined->bytes.len > 1 && ms_fs_is_separator(joined->bytes.ptr[joined->bytes.len - 1])) {
+    while (joined->bytes.len > 1 && ms_path_is_separator(joined->bytes.ptr[joined->bytes.len - 1])) {
       joined->bytes.len--;
     }
     ok = true;
@@ -254,7 +257,7 @@ static bool refuse_ancestors(const uv_stat_t *info, MsSpan start, MsFail *fail) 
       break;
     }
     MsStrBuild next = ms_strbuild_new();
-    ms_fs_path_dir(ms_strbuild_span(&ancestor), &next);
+    ms_path_dir(ms_strbuild_span(&ancestor), &next);
     const bool done = ms_span_equal(ms_strbuild_span(&next), ms_strbuild_span(&ancestor));
     ms_strbuild_free(&ancestor);
     ancestor = next;
@@ -268,7 +271,7 @@ static bool refuse_ancestors(const uv_stat_t *info, MsSpan start, MsFail *fail) 
 
 /* The path to remove, in `out`: refuses the working directory, its ancestors and the root before anything is touched. */
 static bool removal_path(MsSpan given, MsStrBuild *out, MsFail *fail) {
-  const MsSpan base_name = ms_fs_path_base(given);
+  const MsSpan base_name = ms_path_base(given);
   if (given.len == 0 || ms_span_is_text(base_name, ".") || ms_span_is_text(base_name, "..")) {
     ms_fail_status(fail, MS_STATUS_INVALID_INPUT);
     return false;
@@ -506,14 +509,15 @@ static bool temporary_root(MsStrBuild *out) {
   if (uv_os_tmpdir(buffer, &size) != 0) {
     return false;
   }
+  ms_path_from_os(buffer, size);
   const MsSpan root = ms_span_of((const uint8_t *)buffer, size);
-  if (ms_fs_is_absolute(root)) {
+  if (ms_path_is_absolute(root)) {
     ms_strbuild_append(out, root);
     return true;
   }
   MsStrBuild cwd = ms_strbuild_new();
   if (working_directory(&cwd) == 0) {
-    ms_fs_path_join(ms_strbuild_span(&cwd), root, out);
+    ms_path_join(ms_strbuild_span(&cwd), root, out);
   } else {
     ms_strbuild_append(out, root);
   }
@@ -578,8 +582,8 @@ bool ms_fs_make_temporary_directory(MsFail *fail, MsSpan pattern, MsStrBuild *ou
     ms_fail_status(fail, MS_STATUS_UNAVAILABLE);
     return false;
   }
-  if (root.bytes.len > 0 && !ms_fs_is_separator(root.bytes.ptr[root.bytes.len - 1])) {
-    ms_strbuild_append_byte(&root, ms_fs_separator());
+  if (root.bytes.len > 0 && !ms_path_is_separator(root.bytes.ptr[root.bytes.len - 1])) {
+    ms_strbuild_append_byte(&root, '/');
   }
   int code = UV_EEXIST;
   for (int tries = 0; tries < 10000 && code == UV_EEXIST; tries++) {

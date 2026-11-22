@@ -18,10 +18,30 @@ void ms_path_from_os(char *text, size_t size);
 
 /* Lexical path operations as Go's path/filepath does them, with `/` the only separator. */
 
-/* Appends `path` cleaned: no `.` or empty elements, `..` folded where it can be, "." for an empty result. */
-void ms_path_clean(MsStrBuild *out, MsSpan path);
-/* Whether the path starts at the root. */
+/* Path rules: a Windows host also knows drives (`D:/x`), UNC and verbatim volumes and accepts `\` as a separator;
+ * every result is written with `/` (a verbatim `\\?\` path keeps its backslashes). One implementation, path_rules.c,
+ * serves the toolchain and @std/fs. */
+typedef enum MsPathRules { MS_PATH_RULES_UNIX, MS_PATH_RULES_WINDOWS } MsPathRules;
+
+bool ms_path_is_separator_with(MsPathRules rules, uint8_t byte);
+bool ms_path_is_absolute_with(MsPathRules rules, MsSpan path);
+/* The shortest equivalent path by lexical processing ("." for an empty result): repeated separators and "." go, ".."
+ * undoes the element before it and vanishes above a root. Appended to `out`. */
+void ms_path_clean_with(MsPathRules rules, MsSpan path, MsStrBuild *out);
+/* Two elements joined and cleaned; an absolute second element replaces the first. */
+void ms_path_join_with(MsPathRules rules, MsSpan first, MsSpan second, MsStrBuild *out);
+/* The last element: "." for an empty path, the root or volume for a bare one. A view into `path`, or a constant. */
+MsSpan ms_path_base_with(MsPathRules rules, MsSpan path);
+/* Everything but the last element, cleaned; a path without one (a root, a volume, empty) is cleaned itself. */
+void ms_path_dir_with(MsPathRules rules, MsSpan path, MsStrBuild *out);
+
+/* The same by the host's rules. */
+bool ms_path_is_separator(uint8_t byte);
 bool ms_path_is_absolute(MsSpan path);
+void ms_path_clean(MsStrBuild *out, MsSpan path);
+void ms_path_join(MsSpan first, MsSpan second, MsStrBuild *out);
+MsSpan ms_path_base(MsSpan path);
+void ms_path_dir(MsSpan path, MsStrBuild *out);
 /* The suffix from the last dot of the final element ("" when none). */
 MsSpan ms_path_ext(MsSpan path);
 /* Appends the cleaned path of `target` relative to `base`; false when it cannot be made relative (one is
