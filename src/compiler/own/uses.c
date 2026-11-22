@@ -198,9 +198,15 @@ static void note_pattern_views(Uses *pass, const MsPattern *pattern) {
   }
 }
 
-/* A destructuring of a place binds views of its parts; of a call's result, owners. */
+/* A destructuring of a place binds views of its parts; of a call's result, owners. So does an `if` binding of a
+ * place the callable does not own (a borrowed parameter or a field): returning it copies. */
 static void collect_views(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+      (stmt->u.branch.cond->kind == MS_E_NAME || stmt->u.branch.cond->kind == MS_E_MEMBER) &&
+      !owns_place(pass, stmt->u.branch.cond)) {
+    note_pattern_views(pass, stmt->u.branch.binding);
+  }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME &&
       (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
     note_pattern_views(pass, stmt->u.bind.pattern);
