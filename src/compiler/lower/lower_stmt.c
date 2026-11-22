@@ -90,8 +90,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
   const bool fresh = fn_fresh_owner(fn, value);
-  if ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
-      (!mir_needs_drop(fn->cx->module, ty) || fresh)) {
+  const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
+                      fn->closing != NULL;
+  if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+                 (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {

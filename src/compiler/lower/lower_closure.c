@@ -23,7 +23,8 @@ typedef struct Scan {
   uint32_t ninner;
   const LowerCapture *captures;
   uint32_t ncaptures;
-  bool nested, assigns;
+  bool *changed; /* parallel to captures: the lambda changes it */
+  bool nested;
 } Scan;
 
 static void declare(Scan *scan, uint32_t local) {
@@ -42,6 +43,15 @@ static void declare_pattern(Scan *scan, const MsPattern *pattern) {
   }
 }
 
+/* Notes that the lambda changes the captured variable `ref` names (`name`, 0 for a statement's own target). */
+static void mark_changed(Scan *scan, const MsRef *ref, MsName name) {
+  for (uint32_t at = 0; ref != NULL && scan->changed != NULL && at < scan->ncaptures; at++) {
+    const LowerCapture *capture = &scan->captures[at];
+    scan->changed[at] = scan->changed[at] ||
+                        (capture->kind == ref->kind && capture->index == ref->local && (name == 0 || capture->name == name));
+  }
+}
+
 static void scan_stmt(void *ctx, const MsStmt *stmt) {
   Scan *scan = ctx;
   const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->id);
@@ -52,7 +62,19 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_FOR && ref != NULL) {
     declare(scan, ref->local);
   } else if (stmt->kind == MS_S_ASSIGN) {
-    scan->assigns = true;
+    const MsExpr *root = stmt->u.assign.target;
+    while (root != NULL && root->kind == MS_E_MEMBER) {
+      root = root->u.member.left;
+    }
+    MsExpr *left = NULL, *at = NULL;
+    while (root != NULL && ms_expr_index(root, &left, &at)) {
+      root = left;
+      while (root != NULL && root->kind == MS_E_MEMBER) {
+        root = root->u.member.left;
+      }
+    }
+    const MsRef *target = ms_facts_ref(scan->fn->facts, root != NULL && root->kind == MS_E_NAME ? root->id : stmt->id);
+    mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : 0);
   }
 }
 
@@ -142,7 +164,7 @@ static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out,
       continue;
     }
     if (!have_capture(captures, used, (uint8_t)ref->kind, ref->local, name->u.sym)) {
-      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, name->u.sym, name, MIR_VOID};
+      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, name->u.sym, name, MIR_VOID, false, MIR_VOID};
     }
   }
   *out = captures;
@@ -172,23 +194,54 @@ static void scan_var_args(void *ctx, const MsExpr *expr) {
         break;
       }
     }
-    const MsRef *ref = root != NULL && root->kind == MS_E_NAME ? ms_facts_ref(scan->fn->facts, root->id) : NULL;
-    for (uint32_t at = 0; ref != NULL && at < scan->ncaptures; at++) {
-      scan->assigns = scan->assigns || (scan->captures[at].kind == ref->kind && scan->captures[at].index == ref->local &&
-                                        scan->captures[at].name == root->u.sym);
-    }
+    mark_changed(scan, root != NULL && root->kind == MS_E_NAME ? ms_facts_ref(scan->fn->facts, root->id) : NULL,
+                 root != NULL && root->kind == MS_E_NAME ? root->u.sym : 0);
   }
 }
 
-/* A lambda that assigns to a captured local would have to share its storage. */
-static bool assigns_capture(LowerFn *fn, const MsExpr *lambda, const LowerCapture *captures, uint32_t count) {
+/* Which of the captures the lambda changes (assigns, or hands on as a `var` argument): it shares their storage. */
+static bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCapture *captures, uint32_t count, bool *changed) {
   Scan scan = {.fn = fn, .root = lambda, .nvars = fn->nvars};
   scan.declared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
   scan.captures = captures;
   scan.ncaptures = count;
+  scan.changed = changed;
   const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_var_args};
   ms_walk_block(&visitor, lambda->u.lambda.body);
-  return scan.assigns && count > 0;
+  bool any = false;
+  for (uint32_t at = 0; at < count; at++) {
+    any = any || changed[at];
+  }
+  return any;
+}
+
+typedef struct SharedScan {
+  LowerFn *fn;
+} SharedScan;
+
+static void find_shared_expr(void *ctx, const MsExpr *expr) {
+  LowerFn *fn = ((SharedScan *)ctx)->fn;
+  LowerCapture *captures = NULL;
+  uint32_t count = 0;
+  if (expr->kind != MS_E_LAMBDA || fn->failed || !find_captures(fn, expr, &captures, &count) || count == 0) {
+    return;
+  }
+  bool *changed = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)count + 1);
+  if (!capture_changes(fn, expr, captures, count, changed)) {
+    return;
+  }
+  for (uint32_t at = 0; at < count; at++) {
+    if (changed[at] && captures[at].kind == MS_REF_LOCAL && captures[at].index < fn->nvars) {
+      fn->shared[captures[at].index] = LOWER_SHARED;
+    }
+  }
+}
+
+void fn_find_shared(LowerFn *fn, MsStmts body) {
+  fn->shared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
+  SharedScan scan = {fn};
+  const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr};
+  ms_walk_block(&visitor, body);
 }
 
 /* ---- making the closure ---- */
@@ -217,8 +270,21 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 }
 
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
-static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out) {
+static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed) {
   for (uint32_t index = 0; index < count; index++) {
+    if (changed[index]) {
+      /* A variable the lambda changes stays in the maker's slot, which the closure borrows. */
+      const bool slotted = captures[index].kind == MS_REF_LOCAL && captures[index].index < fn->nvars &&
+                           fn->closing != NULL && fn->closing_var[captures[index].index];
+      if (!slotted) {
+        return fn_fail(fn, "a lambda changes a captured variable that does not live in a slot (%s %u)", captures[index].kind == MS_REF_LOCAL ? "local" : "parameter", captures[index].index);
+      }
+      captures[index].shared = true;
+      captures[index].elem = fn->closing_types[captures[index].index];
+      captures[index].ty = MIR_PTR;
+      out[index] = fn->closing[captures[index].index];
+      continue;
+    }
     const MsRef ref = {.kind = captures[index].kind, .local = captures[index].index};
     MirValue value = fn_name_ref(fn, captures[index].use, &ref);
     if (value == MIR_NONE) {
@@ -244,12 +310,10 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   if (!find_captures(fn, expr, &captures, &count)) {
     return MIR_NONE;
   }
-  if (assigns_capture(fn, expr, captures, count)) {
-    (void)fn_fail(fn, "a lambda that assigns to a captured variable is not lowered yet");
-    return MIR_NONE;
-  }
+  bool *changed = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)count + 1);
+  (void)capture_changes(fn, expr, captures, count, changed);
   MirValue *values = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, (size_t)count + 1);
-  if (!capture_values(fn, captures, count, values)) {
+  if (!capture_values(fn, captures, count, values, changed)) {
     return MIR_NONE;
   }
   const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
@@ -276,6 +340,13 @@ static bool bind_captures(LowerFn *fn, const LowerLambda *lambda, MirValue env) 
     const LowerCapture *capture = &lambda->captures[index];
     const MirImm imm = {.tag = MI_IDX, .a = index};
     const MirValue value = mir_b_emit(&fn->b, MOP_ClosureCap, &env, 1, imm, capture->ty);
+    if (capture->shared && capture->kind == MS_REF_LOCAL && capture->index < fn->nvars) {
+      fn->closing[capture->index] = value;
+      fn->closing_var[capture->index] = true;
+      fn->closing_types[capture->index] = capture->elem;
+      fn->shared[capture->index] = LOWER_SHARED_BORROWED;
+      continue;
+    }
     fn->cap_vars[index] = mir_b_declare_var(&fn->b, capture->ty, MM_BORROW);
     mir_b_def_var(&fn->b, fn->cap_vars[index], value);
     if (capture->kind == MS_REF_LOCAL) {
@@ -349,6 +420,8 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   }
   fn.nvars = lambda.nvars;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn_init_closing(&fn);
+  fn_find_shared(&fn, lambda.expr->u.lambda.body);
   bool ok = bind_captures(&fn, &lambda, values[0]) && fn_stmts(&fn, lambda.expr->u.lambda.body) && !fn.failed;
   if (!fn.terminated) {
     fn_scope_unwind(&fn, 0);
