@@ -17,10 +17,29 @@ static bool is_sized_float(const Body *body, MsTy ty) {
   return ms_builtin_is_float(builtin) && builtin != MS_BUILTIN_Float;
 }
 
-static bool is_numeric(const Body *body, MsTy ty) {
-  const MsBuiltin builtin = ms_ty_builtin(&body->program->types, ty);
+static bool is_numeric_builtin(MsBuiltin builtin) {
   return ms_builtin_is_int(builtin) || ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_BigInt ||
          builtin == MS_BUILTIN_Decimal;
+}
+
+/* A number type, or a type variable bounded by a set whose every member is one. */
+static bool is_numeric(const Body *body, MsTy ty) {
+  MsTyTable *types = &body->program->types;
+  if (ms_ty_kind(types, ty) == MS_TY_VARIABLE) {
+    const MsTyVariable *record = ms_ty_variable(types, ty);
+    for (size_t index = 0; record != NULL && index < record->bounds.len; index++) {
+      const MsTy bound = record->bounds.ptr[index];
+      bool all = ms_ty_is(types, bound, MS_BUILTIN_TypeSet) && ms_ty_arg_count(types, bound) != 0;
+      for (size_t at = 0; all && at < ms_ty_arg_count(types, bound); at++) {
+        all = is_numeric_builtin(ms_ty_builtin(types, ms_ty_args(types, bound)[at]));
+      }
+      if (all) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return is_numeric_builtin(ms_ty_builtin(types, ty));
 }
 
 static bool is_invalid(const Body *body, MsTy ty) {
@@ -80,7 +99,7 @@ static bool numeric_variable(Body *body, MsTy ty, bool integer) {
 }
 
 /* The type of a number literal: a sized type from `expected` when the literal kind matches it. */
-static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
+static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool negated) {
   const MsTyTable *types = &body->program->types;
   if (expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1) {
     expected = ms_ty_args(types, expected)[0]; /* a literal takes the sized type an optional wraps */
@@ -94,8 +113,11 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
     return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
                                                                                    : body_primitive(body, MS_BUILTIN_Float);
   }
-  return is_sized_int(body, expected) || numeric_variable(body, expected, true) ? expected
-                                                                                 : body_primitive(body, MS_BUILTIN_Int);
+  if (is_sized_int(body, expected)) {
+    body_check_literal_range(body, expr, negated, expected);
+    return expected;
+  }
+  return numeric_variable(body, expected, true) ? expected : body_primitive(body, MS_BUILTIN_Int);
 }
 
 /* ---- text ---- */
@@ -112,7 +134,7 @@ static MsTy text_type(Body *body, const MsExpr *expr) {
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy ty = MS_TY_NONE;
   switch ((MsExprKind)expr->kind) {
-    case MS_E_NUMBER: ty = number_type(body, expr, expected); break;
+    case MS_E_NUMBER: ty = number_type(body, expr, expected, false); break;
     case MS_E_BOOL: ty = body_primitive(body, MS_BUILTIN_Bool); break;
     case MS_E_VOID: ty = body_primitive(body, MS_BUILTIN_Void); break;
     case MS_E_TEXT: ty = text_type(body, expr); break;
@@ -156,7 +178,7 @@ static MsTy literal_hint(const Body *body, const MsExpr *expr, MsTy other) {
 /* `-` on a number literal: the literal takes its sized type from `expected` (-128 fits Int8). */
 static MsTy negated_literal(Body *body, const MsExpr *expr, MsTy expected) {
   const MsExpr *operand = expr->u.bin.left;
-  const MsTy ty = number_type(body, operand, expected);
+  const MsTy ty = number_type(body, operand, expected, true);
   body_set_type(body, operand->id, ty);
   return ty;
 }
@@ -186,6 +208,16 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
       ty = try_type(body, value);
     } else if (is_numeric(body, value)) {
       ty = value;
+      const MsBuiltin builtin = ms_ty_builtin(&body->program->types, value);
+      if (op == MS_U_NEG && (builtin == MS_BUILTIN_UInt8 || builtin == MS_BUILTIN_UInt16 || builtin == MS_BUILTIN_UInt32 ||
+                             builtin == MS_BUILTIN_UInt64) &&
+          body->module < body->program->user_modules && !body->quiet) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "unary - is not defined for ");
+        ms_ty_show(&text, body->program->names, &body->program->types, value);
+        ms_strbuild_append_text(&text, "; subtract from zero with a wider signed type, e.g. 0 - x.to_int()");
+        ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
     }
   }
   body_set_type(body, expr->id, ty);

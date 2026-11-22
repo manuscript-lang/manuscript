@@ -1,7 +1,6 @@
 /* Owns `ms bench` (bench_command.h): reads the arguments, checks the input with its bench files, selects and plans the
  * bench blocks, builds the executable and runs each bench in its own process. Port of the bench half of
- * crates/ms-cli/src/engine/testing.rs. Not yet ported: `--match` and `--exclude` (they need a regular-expression
- * engine) and fault records (a crash is reported by its status and standard error). */
+ * crates/ms-cli/src/engine/testing.rs. */
 #include "driver/bench_command.h"
 
 #include <stdio.h>
@@ -13,14 +12,16 @@
 #include "base/path.h"
 #include "base/process.h"
 #include "driver/checked_input.h"
+#include "driver/fault_record.h"
 #include "driver/invocation.h"
 #include "driver/json_value.h"
 #include "driver/pipeline.h"
 #include "driver/test_document.h"
 #include "driver/test_options.h"
+#include "driver/test_records.h"
 #include "driver/watch.h"
 
-enum { STATUS_FAILED = 1, STATUS_NOT_IMPLEMENTED = 70, DEFAULT_BENCH_TIMEOUT_MS = 600000, NANOS_PER_MS = 1000000 };
+enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70, DEFAULT_BENCH_TIMEOUT_MS = 600000, NANOS_PER_MS = 1000000 };
 
 /* The counters a baseline compares: work done, not time, so a loaded machine does not flake. */
 static const char *const WORK_COUNTERS[] = {"mir_ops",   "allocations",  "allocated_bytes",   "list_copies",
@@ -171,6 +172,7 @@ static MsSpan describe_limit(MsArena *arena, int64_t ms) {
 typedef struct Outcome {
   bool measured;
   MsSpan message;
+  MsSpan fault; /* the `fault` object of a bench that faulted, or empty */
   const MsJson *stats;
 } Outcome;
 
@@ -188,7 +190,7 @@ static bool past_limit(void *context) {
 /* Runs bench `index` in its own process: only its statistics are kept, since its own output would repeat once per
  * iteration. */
 static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const MsTestOptions *options, size_t index,
-                       MsSpan folder, size_t round) {
+                       size_t total, MsSpan folder, size_t round) {
   const MsSpan printed = ms_message_format(arena, "%S/bench-stdout-%z", folder, round);
   const MsSpan errors = ms_message_format(arena, "%S/bench-stderr-%z", folder, round);
   const MsSpan results = ms_message_format(arena, "%S/bench-results-%z", folder, round);
@@ -237,10 +239,22 @@ static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const 
     if (text.len > 0) {
       test_print(stderr, ms_message_format(arena, "%S\n", text));
     }
-    outcome.stats = measurement(arena, read_text(arena, results));
+    const MsSpan written = read_text(arena, results);
+    outcome.stats = measurement(arena, written);
     outcome.measured = outcome.stats != NULL;
     if (!outcome.measured) {
       outcome.message = ms_span_of_text("the bench reported no statistics");
+      /* A faulting bench is caught by the test runner, which reports the fault in the results. */
+      TestRecords records;
+      test_records_init(&records, arena, total, total);
+      test_records_read(&records, written);
+      for (size_t file = 0; file < total; file++) {
+        if (records.faulted[file]) {
+          outcome.message = records.fault_message[file];
+          outcome.fault = records.fault_object[file];
+          break;
+        }
+      }
     }
   } else if (text.len > 0) {
     outcome.message = text;
@@ -367,7 +381,7 @@ static size_t run_plan(const Run *run, const MsTestOptions *options, size_t repe
     DocumentCase *row = &run->document->cases[p];
     print_line(arena, "RUN %S\n", name, (MsSpan){0});
     const uint64_t began = watch_now_ms();
-    const Outcome outcome = run_one(arena, run->executable, run->working, options, index, run->folder, p);
+    const Outcome outcome = run_one(arena, run->executable, run->working, options, index, run->names->len, run->folder, p);
     row->nanos = (int64_t)(watch_now_ms() - began) * NANOS_PER_MS;
     if (outcome.measured) {
       print_line(arena, "BENCH %S: ", name, (MsSpan){0});
@@ -380,6 +394,7 @@ static size_t run_plan(const Run *run, const MsTestOptions *options, size_t repe
       print_line(arena, "%S\n", outcome.message, (MsSpan){0});
       row->status = "failed";
       row->failure = outcome.message;
+      row->fault = outcome.fault;
     }
     if (failed > 0 && options->fail_fast) {
       *reason = "fail_fast";
@@ -507,7 +522,7 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
     for (size_t p = 0; p < document.count; p++) {
       document.cases[p] = (DocumentCase){.name = names.ptr[plan.selected[p % plan.count]], .status = "not_run"};
     }
-    const bool filtered = options.filter.len > 0 || options.names.len > 0;
+    const bool filtered = options.filter.len > 0 || options.names.len > 0 || options.matching.len > 0 || options.exclude.len > 0;
     if (plan.count == 0 && filtered) {
       test_print(stdout, ms_message_format(arena, "no benches match selection (%z benches available); use --list to find "
                                                   "full module::name identities\n", names.len));
@@ -552,6 +567,18 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   return status;
 }
 
+/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
+static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
+  TestFilters filters = {0};
+  MsSpan error = {0};
+  const bool valid = test_filters_compile(arena, options, &filters, &error);
+  test_filters_free(&filters);
+  if (!valid) {
+    test_print(stderr, ms_message_format(arena, "%S\n", error));
+  }
+  return valid;
+}
+
 int ms_bench_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -559,10 +586,8 @@ int ms_bench_command(int argc, char **argv) {
   MsTestOptions options;
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
-  if (status == 0 && (options.matching.len > 0 || options.exclude.len > 0)) {
-    test_print(stderr, ms_span_of_text("ms bench: --match and --exclude need a regular-expression engine, which the "
-                                       "driver does not have yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
+  if (status == 0 && !selection_valid(&arena, &options)) {
+    status = STATUS_USAGE;
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
     status = bench_input(&arena, &invocation);

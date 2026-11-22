@@ -39,6 +39,8 @@ MS_NODISCARD bool ms_check_property(MsCheckProgram *program, MsTy ty, MsProperty
 
 /* Whether `ty` is, or holds, a value that must be closed once. */
 MS_NODISCARD bool ms_check_closeable(MsCheckProgram *program, MsTy ty);
+/* Whether `ty` declares its own `equals(other: Self) Bool` (MS_PROPERTY_EQUAL) or `hash() Int` (MS_PROPERTY_HASHABLE). */
+MS_NODISCARD bool ms_check_decided_by_method(MsCheckProgram *program, MsTy ty, MsProperty property);
 
 /* Whether `ty` is, or holds anywhere in its arguments, fields or cases, a closeable value. */
 MS_NODISCARD bool ms_check_holds_resource(MsCheckProgram *program, MsTy ty);

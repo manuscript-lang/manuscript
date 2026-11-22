@@ -618,7 +618,8 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
   const MsSpan message = ms_string_span(&instance->message);
   const MsTyTable *types = &body->program->types;
   size_t found = 0;
-  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found);
+  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found) ||
+                           ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
   if (body->module >= body->program->user_modules || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
       body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
@@ -635,7 +636,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
 
 /* A constructor names each variable it could not infer; any other callee gets the one message. */
 static void report_uninferred(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance) {
-  if (!target->constructor) {
+  if (!target->constructor || instance->unbound.len == 0) { /* a constructor names each variable it left unbound */
     ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_string_span(&instance->message)));
     return;

@@ -89,6 +89,7 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
   const uint32_t id = mir_add_type(cx->module, mir_type_name(cx, ty));
   const MirTy result = mir_ty_type(cx->module, id);
   lower_ty_map_put(&cx->types, ty, result); /* a recursive field finds the type under construction */
+  lower_source_list_push(&cx->sources, (LowerSource){result, ty});
   MirField *fields = lower_fields(cx, ty, def, def->fields.ptr, def->fields.len);
   const MsDecl *decl = cx->program->symbols.ptr[def->symbol].decl;
   if (decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.fields.len == def->fields.len) {
@@ -113,6 +114,7 @@ static MirTy lower_alt(Lower *cx, MsTy ty) {
   const uint32_t id = mir_add_alt(cx->module, mir_type_name(cx, ty));
   const MirTy result = mir_ty_alt(cx->module, id);
   lower_ty_map_put(&cx->types, ty, result);
+  lower_source_list_push(&cx->sources, (LowerSource){result, ty});
   MirCaseDef *cases = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirCaseDef, def->cases.len + 1);
   for (size_t index = 0; index < def->cases.len; index++) {
     const MsTyCase *source = &def->cases.ptr[index];
@@ -262,4 +264,13 @@ MirTy lower_type(Lower *cx, const LowerSubst *subst, MsTy ty) {
   const MirTy result = lower_by_kind(cx, concrete);
   lower_ty_map_put(&cx->types, concrete, result);
   return result;
+}
+
+MsTy lower_source_type(const Lower *cx, MirTy ty) {
+  for (size_t index = 0; index < cx->sources.len; index++) {
+    if (cx->sources.ptr[index].mir == ty) {
+      return cx->sources.ptr[index].checked;
+    }
+  }
+  return MS_TY_NONE;
 }

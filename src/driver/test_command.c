@@ -17,8 +17,9 @@
 #include "driver/test_document.h"
 #include "driver/test_options.h"
 #include "driver/test_run.h"
+#include "driver/watch.h"
 
-enum { STATUS_FAILED = 1, STATUS_NOT_IMPLEMENTED = 70 };
+enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
 typedef TestPlan Plan;
 
@@ -100,7 +101,7 @@ static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, 
       print_outcome(arena, names->ptr[index], outcome);
       totals.passed += outcome->kind == TEST_PASSED;
       totals.nanos += outcome->nanos;
-      totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message,
+      totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message, .fault = outcome->fault,
                                                             .status = status_name(outcome->kind), .nanos = outcome->nanos};
       totals.failed += outcome->kind == TEST_FAILED;
       totals.skipped += outcome->kind == TEST_SKIPPED;
@@ -133,7 +134,7 @@ static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
     test_plan_shuffle(plan, options->shuffle_seed);
     print_text(stdout, ms_message_format(arena, "shuffle seed: %z\n", (size_t)options->shuffle_seed));
   }
-  const bool filtered = options->filter.len > 0 || options->names.len > 0;
+  const bool filtered = options->filter.len > 0 || options->names.len > 0 || options->matching.len > 0 || options->exclude.len > 0;
   if (plan->count == 0 && filtered) {
     print_text(stdout, ms_message_format(arena, "no tests match selection (%z tests available); use --list to find full "
                                                 "module::name identities\n",
@@ -200,10 +201,13 @@ static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan 
 }
 
 /* Checks `input`, builds its tests and runs the plan. */
-static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input) {
+static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input, MsSpanList *watched) {
   MsCheckedInput checked = {0};
   int status = 0;
   if (!ms_checked_input_load(arena, &checked, input, MS_INPUT_TESTS)) {
+    if (watched != NULL) {
+      watch_add_inputs(arena, input, &checked.graph, watched);
+    }
     if (!test_capturing()) {
       status = ms_checked_input_report(&checked);
     } else {
@@ -215,6 +219,9 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
     }
     ms_checked_input_free(&checked);
     return status;
+  }
+  if (watched != NULL) {
+    watch_add_inputs(arena, input, &checked.graph, watched);
   }
   MsTestOptions options;
   ms_test_options_parse(&invocation->arguments, &options);
@@ -267,7 +274,7 @@ static bool is_manifest(MsSpan path) {
   return ms_span_is_text(ms_path_file_name(path), "ms.toml");
 }
 
-static int test_targets(MsArena *arena, const MsInvocation *invocation) {
+static int test_targets(MsArena *arena, const MsInvocation *invocation, MsSpanList *watched) {
   const MsSpanList *targets = &invocation->targets;
   bool members = targets->len > 1;
   for (size_t i = 0; i < targets->len; i++) {
@@ -282,10 +289,45 @@ static int test_targets(MsArena *arena, const MsInvocation *invocation) {
     if (members) {
       print_text(stderr, ms_message_format(arena, "ms: testing %S\n", targets->ptr[i], (MsSpan){0}));
     }
-    const int result = test_input(arena, invocation, targets->ptr[i]);
+    const int result = test_input(arena, invocation, targets->ptr[i], watched);
     status = result > status ? result : status;
   }
   return status;
+}
+
+/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
+static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
+  TestFilters filters = {0};
+  MsSpan error = {0};
+  const bool valid = test_filters_compile(arena, options, &filters, &error);
+  test_filters_free(&filters);
+  if (!valid) {
+    print_text(stderr, ms_message_format(arena, "%S\n", error));
+  }
+  return valid;
+}
+
+/* `--watch`: runs the tests, waits for a change, and runs them again; a failing run keeps watching. */
+static int watch_tests(const MsInvocation *invocation, const MsTestOptions *options) {
+  for (;;) {
+    MsArena arena = ms_arena_new();
+    if (!selection_valid(&arena, options)) {
+      ms_arena_free(&arena);
+      return STATUS_USAGE;
+    }
+    MsSpanList watched = {0};
+    const uint64_t started = watch_now_ms();
+    MsStrBuild captured = ms_strbuild_new();
+    test_output_capture(invocation->json ? &captured : NULL);
+    (void)test_targets(&arena, invocation, &watched);
+    test_output_capture(NULL);
+    ms_strbuild_free(&captured);
+    print_text(stderr, ms_span_of_text("ms: waiting for changes\n"));
+    (void)fflush(stdout);
+    watch_wait(&watched, started);
+    ms_span_list_free(&watched);
+    ms_arena_free(&arena);
+  }
 }
 
 int ms_test_command(int argc, char **argv) {
@@ -296,15 +338,12 @@ int ms_test_command(int argc, char **argv) {
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
   if (status == 0 && invocation.watch) {
-    print_text(stderr, ms_span_of_text("ms test: --watch is not implemented yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
-  } else if (status == 0 && (options.matching.len > 0 || options.exclude.len > 0)) {
-    print_text(stderr, ms_span_of_text("ms test: --match and --exclude need a regular-expression engine, which the "
-                                       "driver does not have yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
+    status = watch_tests(&invocation, &options);
+  } else if (status == 0 && !selection_valid(&arena, &options)) {
+    status = STATUS_USAGE;
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
-    status = test_targets(&arena, &invocation);
+    status = test_targets(&arena, &invocation, NULL);
     test_output_capture(NULL);
   }
   ms_strbuild_free(&captured);

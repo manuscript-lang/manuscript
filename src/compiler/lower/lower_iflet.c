@@ -92,13 +92,38 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   return !fn->failed;
 }
 
+/* The container and key an `if` that edits an entry names: `if var name = place[key]?:`, or `if var name =
+ * place.get(key):` over a list or map, whose binding edits the entry itself (hack: matched by the method's name, see
+ * hacks-and-oddities). */
+bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index) {
+  const MsExpr *cond = stmt->u.branch.cond;
+  if (stmt->u.branch.binding == NULL) {
+    return false;
+  }
+  if (cond->kind == MS_E_PROBE) {
+    return ms_expr_index(cond->u.bin.left, left, index);
+  }
+  const MsExpr *callee = cond->kind == MS_E_CALL ? cond->u.call.callee : NULL;
+  if (!stmt->u.branch.is_mutable || callee == NULL || callee->kind != MS_E_MEMBER || cond->u.call.args.len != 1 ||
+      !ms_span_equal(ms_names_span(fn->cx->program->names, callee->u.member.name), ms_span_of_text("get"))) {
+    return false;
+  }
+  const MsTyTable *types = &fn->cx->program->types;
+  const MsTy held = ms_facts_type(fn->facts, callee->u.member.left->id);
+  if (held == MS_TY_NONE || (!ms_ty_is(types, held, MS_BUILTIN_Map) && !ms_ty_is(types, held, MS_BUILTIN_List))) {
+    return false;
+  }
+  *left = callee->u.member.left;
+  *index = cond->u.call.args.ptr[0].value;
+  return true;
+}
+
 /* `if var name = place[key]?:` tests whether the entry exists. `address` is the entry's address (null when absent) and
  * `cond` says it is not. */
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty) {
-  const MsExpr *probe = stmt->u.branch.cond;
   MsExpr *left = NULL;
   MsExpr *index = NULL;
-  if (!ms_expr_index(probe->u.bin.left, &left, &index)) {
+  if (!fn_probe_parts(fn, stmt, &left, &index)) {
     return fn_fail(fn, "this bracket is not an index");
   }
   const MirValue container = fn_expr(fn, left, LW_BORROW);

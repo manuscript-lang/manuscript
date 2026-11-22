@@ -107,9 +107,9 @@ static void test_record(void) {
   const MsFaultRecord record = {.pid = 7, .kind = MS_FAULT_KIND_DEADLOCK, .message = ms_span_of_text("boom")};
   uint8_t out[128];
   const size_t needed = ms_fault_record_encode(&record, NULL, 0);
-  CHECK(needed == 4 + 1 + 4 + 1 + 1 + 4 + 4 + 4 + 4);
+  CHECK(needed == 4 + 1 + 4 + 1 + 1 + 4 + 4 + 4 + 4 + 4);
   CHECK(ms_fault_record_encode(&record, out, sizeof out) == needed);
-  CHECK(out[0] == 'M' && out[4] == 1 && out[5] == 7 && out[9] == MS_FAULT_KIND_DEADLOCK);
+  CHECK(out[0] == 'M' && out[4] == 2 && out[5] == 7 && out[9] == MS_FAULT_KIND_DEADLOCK);
 }
 
 int main(void) {

@@ -8,6 +8,7 @@
 #include "base/strbuild.h"
 #include "driver/json_value.h"
 #include "driver/test_options.h"
+#include "runtime/std/regex_engine.h"
 
 /* The tests or benches a run executes: indices into the listing, in execution order. */
 typedef struct TestPlan {
@@ -20,12 +21,20 @@ typedef struct TestPlan {
 bool test_plan_select(MsArena *arena, const MsSpanList *names, const MsTestOptions *options, const char *noun,
                       TestPlan *plan, MsSpan *error);
 
+/* Compiles `--match` and `--exclude`. False when one is not a regular expression, with `error` the message the Rust
+ * CLI prints (`invalid --match: regex parse error: ...`); the regexes are released with `test_filters_free`. */
+typedef struct TestFilters {
+  MsRegex *matching, *exclude;
+} TestFilters;
+bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilters *out, MsSpan *error);
+void test_filters_free(TestFilters *filters);
+
 /* Seeded Fisher-Yates, as the Rust CLI does it. */
 void test_plan_shuffle(TestPlan *plan, int64_t seed);
 
 /* One planned test or bench. */
 typedef struct DocumentCase {
-  MsSpan name, failure;
+  MsSpan name, failure, fault; /* `fault`: the faulted test's fault object, or empty */
   const char *status; /* "passed", "failed", "skipped" or "not_run" */
   int64_t nanos;
   const MsJson *stats; /* a bench's statistics; NULL for a test */

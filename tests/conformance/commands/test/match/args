@@ -1,0 +1,6 @@
+test
+a_test.ms
+--match
+alpha
+--exclude
+three

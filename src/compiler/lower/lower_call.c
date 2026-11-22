@@ -232,11 +232,18 @@ static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, u
   return from.line != to.line ? from.line < to.line : from.column < to.column;
 }
 
+/* Whether the call builds a record or an alternative from its arguments. */
+static bool owning_constructor(const MsCall *call) {
+  return call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
   uint32_t order[LOWER_MAX_ARGS];
+  MirValue pending[LOWER_MAX_ARGS];
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
+    pending[at] = MIR_NONE;
   }
   for (uint32_t at = 0; at < call->arg_count; at++) {
     uint32_t place = at;
@@ -252,7 +259,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
-                         ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
+                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
     if (by_slot != (step >= call->arg_count)) {
       continue;
     }
@@ -286,6 +293,12 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
+      if (want == LW_MOVE && owning_constructor(call) && out[index] != MIR_NONE && written != NULL &&
+          written->kind == MS_E_CALL && step + 1 < call->arg_count) {
+        const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+                                         fn->subst.args, fn->subst.count);
+        pending[index] = fn_pending_own(fn, checked, out[index]);
+      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
@@ -304,6 +317,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     }
     if (out[index] == MIR_NONE) {
       return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);
+    }
+  }
+  for (uint32_t at = 0; at < call->arg_count; at++) {
+    if (pending[at] != MIR_NONE) {
+      out[at] = fn_pending_take(fn, pending[at], mir_b_ty(&fn->b, out[at]));
     }
   }
   return true;
@@ -352,6 +370,18 @@ bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
     return false;
   }
   const MsMethodEntry *entry = fn_method_entry(cx, call->callee.decl.module, call->callee.decl.node);
+  if (entry != NULL && ms_ty_param_count(&cx->program->types, call->callee_ty) > 0) {
+    /* A method declared once on a type set has an entry per member: the one whose receiver is the call's. */
+    const MsTy receiver = ms_ty_subst(&cx->program->types, ms_ty_params(&cx->program->types, call->callee_ty)[0].ty,
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+    for (size_t index = 0; index < cx->program->methods.len; index++) {
+      const MsMethodEntry *other = &cx->program->methods.ptr[index];
+      if (other->module == entry->module && other->source->id == entry->source->id && other->receiver == receiver) {
+        entry = other;
+        break;
+      }
+    }
+  }
   if (entry == NULL || entry->source->func.external) {
     return false;
   }
@@ -631,7 +661,10 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
                       fn_callee_target(fn, call, &target);
   const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
-  if (!lower_args(fn, expr, call, args, source ? slots : NULL, &nslots, receiver_var)) {
+  /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
+  const bool dispatched = call->callee.kind == MS_REF_OPERATION && expr->u.call.callee->kind == MS_E_MEMBER &&
+                          mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, expr->u.call.callee->u.member.left->id)))->kind == MK_IFACE;
+  if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var)) {
     return MIR_NONE;
   }
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
@@ -640,7 +673,8 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     return construct(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_OPERATION) {
-    return call_operation(fn, expr, call, args, ret);
+    const MirValue answer = call_operation(fn, expr, call, args, ret);
+    return fn_var_slots_back(fn, slots, nslots) ? answer : MIR_NONE;
   }
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);

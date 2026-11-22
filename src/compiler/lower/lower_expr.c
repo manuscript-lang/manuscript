@@ -1,6 +1,7 @@
 /* compiler/lower/lower_expr.c: expressions: literals, names, arithmetic and comparison. */
 #include "base/float_parse.h"
 #include "compiler/lower/lower_fn.h"
+#include <stdlib.h>
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/own/result_borrows.h"
@@ -46,7 +47,18 @@ static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
       ms_strbuild_append_byte(&digits, text.ptr[at]);
     }
   }
-  const bool fits = ms_parse_float(ms_strbuild_span(&digits), &value) == MS_PARSE_FLOAT_OK;
+  bool fits = ms_parse_float(ms_strbuild_span(&digits), &value) == MS_PARSE_FLOAT_OK;
+  if (fits && ty == MIR_FLOAT32) {
+    /* A Float32 literal rounds once, from its decimal text: rounding the Float first can land on the wrong neighbour. */
+    char buffer[128];
+    const MsSpan written = ms_strbuild_span(&digits);
+    fits = written.len < sizeof buffer;
+    if (fits) {
+      __builtin_memcpy(buffer, written.ptr, written.len);
+      buffer[written.len] = '\0';
+      value = (double)strtof(buffer, NULL);
+    }
+  }
   ms_strbuild_free(&digits);
   if (!fits) {
     (void)fn_fail(fn, "a number literal is not a Float that fits");
@@ -590,6 +602,18 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     return fn_string_concat(fn, left, right);
   }
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    /* A type that declares its own `equals` compares through it. */
+    const MsTy checked = lower_source_type(fn->cx, mir_b_ty(&fn->b, left));
+    const uint32_t method = checked == MS_TY_NONE || mir_b_ty(&fn->b, left) != mir_b_ty(&fn->b, right)
+                                ? MIR_NONE
+                                : lower_own_method(fn->cx, checked, MS_PROPERTY_EQUAL);
+    if (method != MIR_NONE) {
+      const MirValue operands[2] = {left, right};
+      const MirValue same = mir_b_call(&fn->b, method, operands, 2);
+      return expr->op == MS_B_NE ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
+    }
+  }
   return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
 
@@ -770,7 +794,10 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
                            fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
   const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
                              fn_owned_local(fn, root, &root_var);
-  if (!borrowed_param && !in_var_record && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
+  const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
+                          ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
+  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

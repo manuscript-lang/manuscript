@@ -487,7 +487,7 @@ fn extension_in(windows: Bool, text: String) String:
 
 	trimmed := trim_end_slashes(text)
 	slash_at := trimmed.last_index_of("/")
-	base := if slash_at.is_none(): trimmed else: trimmed.view(
+	base := if slash_at.is_none(): trimmed.clone() else: trimmed.view(
 		slash_at.get_or(0) + 1,
 		trimmed.length(),
 	)
@@ -691,7 +691,7 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 	)
 
 	base := slash(windows, base_resolved.get_or(""))
-	target := slash(windows, target_resolved.get_or(""))
+	target := slash(windows, target_resolved.clone().get_or(""))
 	base_root := root_of(windows, base)
 	target_root := root_of(windows, target)
 	if not same_text(windows, base_root, target_root): return ok(

@@ -128,7 +128,7 @@ fn move Mapped[T, U].close() Void!:
 
 // Returns a stream of `f` applied to each item of `input`. Closing it closes
 // `input`.
-export fn map[T, U](move input: ReadStream[T], f: fn(T) U) ReadStream[U]:
+export fn map[T, U](move input: ReadStream[T], move f: fn(T) U) ReadStream[U]:
 	return ReadStream[U](Mapped[T, U](input, f))
 
 type Filtered[T]:
