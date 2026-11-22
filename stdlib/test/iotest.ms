@@ -71,7 +71,7 @@ fn move FailAfter.close() Void!:
 export fn fail_after(
 	move input: ReadStream[Bytes],
 	after: Int,
-	cause: Error,
+	move cause: Error,
 ) ReadStream[Bytes]:
 	return ReadStream[Bytes](FailAfter(input, after, cause))
 
@@ -106,7 +106,7 @@ fn move FailingSink.close() Void!:
 export fn fail_writer_after(
 	move output: WriteStream[Bytes],
 	after: Int,
-	cause: Error,
+	move cause: Error,
 ) WriteStream[Bytes]:
 	return WriteStream[Bytes](FailingSink(output, after, cause))
 

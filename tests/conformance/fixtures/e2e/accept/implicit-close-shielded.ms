@@ -37,7 +37,7 @@ fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
 	void sleep(nanoseconds(5000000000)).wait()
 	return holder.id
 
-fn hold_and_fault(dir: String, id: Int) Void:
+fn hold_and_fault(move dir: String, id: Int) Void:
 	holder := Holder(dir, id, false, false)
 	panic("body fault")
 	void holder.id

@@ -26,7 +26,7 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
+fn chunks(move parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))
 
 // Splits at every byte boundary, one boundary at a time, plus one byte per chunk.

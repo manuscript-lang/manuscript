@@ -560,7 +560,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 			if not part.is_empty(): has_tail = true
 			start -= 1
 
-		anchor := if start == 0: base else: parts[start - 1]
+		anchor := if start == 0: base.clone() else: parts[start - 1].clone()
 
 		if not has_tail:
 			value = anchor.clone()
@@ -861,11 +861,11 @@ export fn with_extension(path: String, extension: String) String:
 
 	return format(
 		PathParts(
-			root: parts.root,
-			directory: parts.directory,
+			root: parts.root.clone(),
+			directory: parts.directory.clone(),
 			base: "",
 			extension: extension.clone(),
-			name: parts.name,
+			name: parts.name.clone(),
 		)
 	)
 

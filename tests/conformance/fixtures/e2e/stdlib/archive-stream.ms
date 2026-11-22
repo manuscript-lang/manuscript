@@ -37,7 +37,7 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 fn read_all(input: ReadStream[Bytes]) Bytes!:

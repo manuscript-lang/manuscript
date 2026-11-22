@@ -19,7 +19,7 @@ type Node:
 	name: String
 	next: Node?
 
-fn order(id: String, n: Int) Order:
+fn order(move id: String, n: Int) Order:
 	var items = List[Item]()
 	for i in 0..n:
 		items.append(Item(sku: f"{id}-{i}", qty: i + 1))
