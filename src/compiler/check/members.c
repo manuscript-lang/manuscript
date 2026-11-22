@@ -28,7 +28,8 @@ static void member_names(Body *body, MsTy receiver, MsSpanList *out) {
     for (uint32_t at = 0; at < entry->shared; at++) {
       ms_ty_list_push(&bound, MS_TY_NONE);
     }
-    if (ms_check_unify(&program->types, entry->receiver, receiver, entry->variables.ptr, entry->shared, bound.ptr)) {
+    if (ms_check_unify(&program->types, entry->receiver, receiver, entry->variables.ptr, entry->shared, bound.ptr) &&
+        ms_check_bounds_satisfied(program, entry->variables.ptr, entry->shared, bound.ptr)) {
       ms_span_list_push(out, ms_names_span(program->names, entry->name));
     }
     ms_ty_list_free(&bound);

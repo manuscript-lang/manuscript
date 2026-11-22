@@ -249,9 +249,9 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used.
-fn Optional[T].ok_or[E](move cause: E) move T!E:
-	if self.is_none(): return error(cause)
-	return ok(self.get())
+fn move Optional[T].ok_or[E](move cause: E) move T!E:
+	if value := self: return ok(value)
+	return error(cause)
 
 // Returns `ok` with the payload; for `none`, calls `create` once and returns its
 // error.

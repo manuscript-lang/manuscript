@@ -13,11 +13,11 @@ type Item:
 fn move Item.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
-fn set_out(log: String) Void:
+fn set_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.set(10, Item(2, log))
 
-fn insert_out(log: String) Void:
+fn insert_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.insert(10, Item(2, log))
 

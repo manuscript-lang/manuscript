@@ -23,7 +23,7 @@ fn list_remove(log: String) Void:
 	var items = [Item(1, log.clone(), true)]
 	items.remove(0)
 
-fn map_add(log: String) Void:
+fn map_add(move log: String) Void:
 	var m = Map[String, Item]()
 	m.add("a", Item(1, log.clone(), true))
 	m.add("a", Item(2, log, false))
@@ -61,7 +61,7 @@ test "splice over an entry whose close fails closes each once":
 	_f := expect_fault(fn: list_splice(log.clone()))?
 	expect_equal(events(log)?, "1,5,")?
 
-fn list_set(log: String) Void:
+fn list_set(move log: String) Void:
 	var items = [Item(1, log.clone(), true)]
 	items.set(0, Item(2, log, false))
 

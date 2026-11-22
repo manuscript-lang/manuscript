@@ -26,7 +26,7 @@ fn count(tree: Tree) Int:
         Gap: return 0
         Node(left, right): return count(left) + count(right)
 
-fn sum(chain: Chain) Int:
+fn sum(move chain: Chain) Int:
     match chain:
         End: return 0
         Link(value, rest): return value + sum(rest)

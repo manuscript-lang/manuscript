@@ -20,7 +20,7 @@ fn move Latch.close() Void!:
 		self.open = false
 		void append_file(self.log, f"{self.id},").wait()
 
-fn latch(log: String, id: Int) Latch:
+fn latch(move log: String, id: Int) Latch:
 	return Latch(log, id, true)
 
 fn closed(log: String) String:
@@ -35,7 +35,7 @@ enum Slot:
 	Full(inner: Latch)
 	Empty
 
-fn explicit_then_scope(log: String) Int!:
+fn explicit_then_scope(move log: String) Int!:
 	var one = latch(log, 1)
 	one.close()?
 	return ok(1)
