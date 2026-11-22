@@ -210,7 +210,7 @@ fn report(results: String, index: Int, started: Instant, outcome: Void!) Void:
 	msrt_test_deadline(false)
 	output(results, f"{index}", msrt_test_capture_take(msrt_test_capture_current()))
 
-	nanos := (monotonic() - started).nanos
+	nanos := monotonic().difference(started).nanos
 
 	if not outcome.is_error():
 		line(results, index, "pass", nanos, "", "")

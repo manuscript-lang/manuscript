@@ -170,35 +170,6 @@ static bool is_comparison(MsBinaryOp op) {
   return op >= MS_B_EQ && op <= MS_B_GE;
 }
 
-/* The standard `Duration` type, whether or not the module imports it. */
-static MsTy duration_type(const MsCheckProgram *program) {
-  for (MsSymbolId id = 1; id < program->symbols.len; id++) {
-    const MsSymbol *symbol = &program->symbols.ptr[id];
-    if (symbol->kind == MS_SYMBOL_TYPE && symbol->ty != MS_TY_NONE &&
-        ms_ty_builtin(&program->types, symbol->ty) == MS_BUILTIN_Duration) {
-      return symbol->ty;
-    }
-  }
-  return MS_TY_NONE;
-}
-
-/* The type of `Instant`/`Duration` arithmetic, or MS_TY_NONE when the operands select no row. */
-static MsTy time_type(const Body *body, MsBinaryOp op, MsTy left, MsTy right) {
-  const MsTyTable *types = &body->program->types;
-  const MsBuiltin a = ms_ty_builtin(types, left);
-  const MsBuiltin b = ms_ty_builtin(types, right);
-  if (a == MS_BUILTIN_Duration && b == MS_BUILTIN_Duration) {
-    return left;
-  }
-  if (a == MS_BUILTIN_Instant && b == MS_BUILTIN_Duration) {
-    return left;
-  }
-  if (a == MS_BUILTIN_Instant && b == MS_BUILTIN_Instant && op == MS_B_SUB) {
-    return duration_type(body->program);
-  }
-  return MS_TY_NONE;
-}
-
 /* Types the two operands. Literals beside a sized number take its type; arithmetic over literals alone takes the
  * expected sized type. */
 static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *left, MsTy *right) {
@@ -240,23 +211,15 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
   return body_primitive(body, MS_BUILTIN_Bool);
 }
 
-/* An operand is a Duration or an Instant: the time rows of the operator table decide, not the mismatch report. */
-static bool time_operands(const Body *body, MsTy left, MsTy right) {
-  const MsTyTable *types = &body->program->types;
-  return ms_ty_is(types, left, MS_BUILTIN_Duration) || ms_ty_is(types, left, MS_BUILTIN_Instant) ||
-         ms_ty_is(types, right, MS_BUILTIN_Duration) || ms_ty_is(types, right, MS_BUILTIN_Instant);
-}
-
-static MsTy arithmetic_type(Body *body, MsBinaryOp op, MsTy left, MsTy right) {
-  const bool time = ms_ty_is(&body->program->types, left, MS_BUILTIN_Duration) ||
-                    ms_ty_is(&body->program->types, left, MS_BUILTIN_Instant) ||
-                    ms_ty_is(&body->program->types, right, MS_BUILTIN_Duration);
-  if (time && (op == MS_B_ADD || op == MS_B_SUB)) {
-    return time_type(body, op, left, right);
-  }
+static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy left, MsTy right) {
   const bool text = ms_ty_is(&body->program->types, left, MS_BUILTIN_String);
   if (left != right || !(is_numeric(body, left) || (text && op == MS_B_ADD))) {
-    return MS_TY_NONE;
+    if (left == right && !holds_invalid(&body->program->types, left, 6) && body->module < body->program->user_modules &&
+        !body->quiet) {
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("arithmetic requires numeric operands")));
+    }
+    return left == right ? left : MS_TY_NONE;
   }
   return left;
 }
@@ -272,14 +235,14 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else if (is_invalid(body, left) || is_invalid(body, right)) {
     ty = is_comparison(op) ? body_primitive(body, MS_BUILTIN_Bool) : MS_TY_NONE;
-  } else if (!time_operands(body, left, right) && body_report_operand_mismatch(body, expr, left, right)) {
+  } else if (body_report_operand_mismatch(body, expr, left, right)) {
     ty = is_comparison(op) ? body_primitive(body, MS_BUILTIN_Bool) : MS_TY_NONE;
   } else if (op == MS_B_EQ || op == MS_B_NE) {
     ty = equality_type(body, expr, left, right);
   } else if (is_comparison(op)) {
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else {
-    ty = arithmetic_type(body, op, left, right);
+    ty = arithmetic_type(body, expr, op, left, right);
     body_check_constant_arithmetic(body, expr, ty);
   }
   body_set_type(body, expr->id, ty);
