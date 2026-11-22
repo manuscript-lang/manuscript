@@ -205,11 +205,17 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     }
     order[place] = at;
   }
-  for (uint32_t step = 0; step < call->arg_count; step++) {
-    const uint32_t index = order[step];
+  /* A `var` argument is the variable itself, taken into its slot once every other argument has run: a call
+   * among them that changes the variable is seen by the callee. */
+  for (uint32_t step = 0; step < 2 * call->arg_count; step++) {
+    const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
-    if (arg->source == MS_ARG_WRITTEN && slots != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) &&
-        *nslots < LOWER_MAX_ARGS) {
+    const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
+                         ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
+    if (by_slot != (step >= call->arg_count)) {
+      continue;
+    }
+    if (by_slot) {
       const MsExpr *place = fn_written_arg(expr, arg->node.node);
       out[index] = place != NULL ? fn_var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
     } else if (arg->source == MS_ARG_WRITTEN) {
@@ -436,7 +442,8 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
-  if (fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
+  if (fn_shape_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
+      fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);

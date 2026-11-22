@@ -62,10 +62,12 @@ static bool is_result_kind(uint8_t kind) {
          kind == NS_OUT_SCALAR;
 }
 
-/* Whether `value` is a closure or interface, which passes by value yet is given to a native by address. */
+/* Whether `value` is a closure, an interface or an optional of plain data, which a native is given by address
+ * though its leaves would pass by value. */
 static bool spilled_by_address(LowerFn *fn, MirValue value) {
-  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind;
-  return kind == MK_FN || kind == MK_IFACE;
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, ty)->kind;
+  return kind == MK_FN || kind == MK_IFACE || (kind == MK_OPT && !mir_needs_drop(fn->cx->module, ty));
 }
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
@@ -860,6 +862,37 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     fn_own(fn, fn_scope(fn), result);
   }
   *out = result;
+  return true;
+}
+
+/* ---- externs that read a value through its shape ---- */
+
+/* `msstd_test_repr[T](value)`: a native whose first parameter is the shape table gets the table of its first
+ * operand's type, and an operand it reads through an address goes into a slot (a borrow). False when `sig` does not
+ * take a shape table. */
+bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || sig->status || sig->count == 0 || sig->kinds[0] != NS_SHAPE || nargs == 0 || nargs + 2 > NS_MAX_PARAMS) {
+    return false;
+  }
+  const MirTy shape_ty = mir_b_ty(&fn->b, args[0]);
+  const MirImm shape_type = {.tag = MI_TY, .a = shape_ty};
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  wanted[count++] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, shape_type, MIR_PTR);
+  for (uint32_t source = 0; source < nargs; source++) {
+    const MirTy ty = mir_b_ty(&fn->b, args[source]);
+    if (count < sig->count && sig->kinds[count] == NS_ADDR_IN) {
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue store[2] = {slot, args[source]};
+      (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+      wanted[count++] = slot;
+    } else {
+      wanted[count++] = args[source];
+    }
+  }
+  *out = fn_runtime_call(fn, name, wanted, count, ret);
   return true;
 }
 
