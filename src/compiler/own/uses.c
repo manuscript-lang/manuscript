@@ -83,6 +83,13 @@ static bool part_of_fresh_call(const Uses *pass, const MsExpr *expr) {
   return at != expr && at->kind == MS_E_CALL && fresh_call(pass, at);
 }
 
+/* A parameter of a generic type that a constructor stores (`ok(value)`): it may be a resource, so the call takes it. */
+static bool stored_param(const Uses *pass, const MsExpr *expr) {
+  const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
+  const MsTy ty = ref != NULL && ref->kind == MS_REF_PARAM ? ms_facts_type(pass->facts, expr->id) : MS_TY_NONE;
+  return ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_VARIABLE;
+}
+
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr == NULL) {
@@ -157,6 +164,9 @@ static void visit_call(Uses *pass, const MsExpr *call) {
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value);
+    if (constructor && stored_param(pass, value)) {
+      pass->facts->uses[value->id] = MS_USE_MOVE;
+    }
     if (constructor || (arg != NULL && ((arg->flags & MS_PARAM_MOVE) != 0 ||
                                         ms_own_call_takes(pass->program, fact, (uint32_t)(arg - fact->args))))) {
       mark_move(pass, value);
