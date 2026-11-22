@@ -672,6 +672,19 @@ static bool value_type_name(const LowerFn *fn, MirTy type, MsName *name) {
   return false;
 }
 
+bool fn_object_negate(LowerFn *fn, MirValue operand, MirValue *out) {
+  MsName type = MS_NAME_EMPTY;
+  if (!value_type_name(fn, mir_b_ty(&fn->b, operand), &type)) {
+    return false;
+  }
+  const MsName name = object_function(fn, type, "negate");
+  if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, name)) == NULL) {
+    return false;
+  }
+  *out = fn_runtime_call(fn, name, &operand, 1, mir_b_ty(&fn->b, operand));
+  return true;
+}
+
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out) {
   MsName type = MS_NAME_EMPTY;
   ObjectOp info;

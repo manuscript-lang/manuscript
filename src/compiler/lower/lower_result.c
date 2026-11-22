@@ -163,5 +163,9 @@ MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
     return mir_b_emit(&fn->b, MOP_FNeg, &operand, 1, (MirImm){0}, ty);
   }
+  MirValue negated;
+  if (expr->op == MS_U_NEG && fn_object_negate(fn, operand, &negated)) {
+    return negated;
+  }
   return fn_emit(fn, MOP_INegChk, &operand, 1, (MirImm){0}, ty);
 }

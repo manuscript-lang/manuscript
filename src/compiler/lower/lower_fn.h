@@ -202,6 +202,8 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, Mi
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* `left op right` on a BigInt through its runtime function; false when the operands are not a value object. */
+/* `-value` on a value object or inline native record that has a runtime `negate`. */
+bool fn_object_negate(LowerFn *fn, MirValue operand, MirValue *out);
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out);
 
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and

@@ -46,9 +46,28 @@ static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
   return fn_emit(fn, MOP_FConst, NULL, 0, imm, ty);
 }
 
+/* A `Decimal` literal (`19.99d`): the runtime parses its text, which the checker has already shown valid. */
+static MirValue lower_decimal(LowerFn *fn, MsSpan text, MirTy ty) {
+  const MsSpan digits = ms_span_of(text.ptr, text.len - 1); /* without the `d` */
+  const MirImm literal = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, digits)};
+  const MirValue string = fn_emit(fn, MOP_StrLit, NULL, 0, literal, MIR_STR);
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue args[2] = {string, slot};
+  const MirValue name = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msstd_decimal_parse")), args, 2, MIR_UINT8);
+  if (name == MIR_NONE) {
+    return MIR_NONE;
+  }
+  return mir_b_emit(&fn->b, MOP_Load, &slot, 1, of_type, ty);
+}
+
 static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
   const MsSpan text = ms_names_span(fn->cx->program->names, expr->u.sym);
-  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MsTy checked = ms_facts_type(fn->facts, expr->id);
+  const MirTy ty = fn_type(fn, checked);
+  if (ms_ty_builtin(&fn->cx->program->types, checked) == MS_BUILTIN_Decimal && text.len > 1) {
+    return lower_decimal(fn, text, ty);
+  }
   if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
     return lower_float(fn, text, ty);
   }
