@@ -148,6 +148,7 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
     const MsTy hint = signed_op ? literal_hint(body, operand, expected) : MS_TY_NONE;
     const MsTy value = body_expr(body, operand, hint);
     if (op == MS_U_NOT) {
+      body_check_not(body, expr, value);
       ty = body_primitive(body, MS_BUILTIN_Bool);
     } else if (op == MS_U_TRY) {
       ty = try_type(body, value);
@@ -256,6 +257,7 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   operand_types(body, expr, expected, &left, &right);
   MsTy ty = MS_TY_NONE;
   if (is_logical(op)) {
+    body_check_logical(body, expr, left, right);
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else if (is_invalid(body, left) || is_invalid(body, right)) {
     ty = is_comparison(op) ? body_primitive(body, MS_BUILTIN_Bool) : MS_TY_NONE;
@@ -267,6 +269,7 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else {
     ty = arithmetic_type(body, op, left, right);
+    body_check_constant_arithmetic(body, expr, ty);
   }
   body_set_type(body, expr->id, ty);
   return ty;
