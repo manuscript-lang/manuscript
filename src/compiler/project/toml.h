@@ -1,6 +1,7 @@
 /* compiler/project/toml.h: the subset of TOML that ms.toml uses: `[table]` headers and `key = value` lines whose
  * values are strings, arrays (also across lines) or one-line inline tables. Any other value is kept as raw text so
- * the manifest can name its key in the error. Dotted keys, multi-line strings and array tables are not parsed. */
+ * the manifest can name its key in the error. `name.field = v` and `[dependencies.name]` fold into an inline-table
+ * entry; other dotted keys, multi-line strings and array tables are not parsed. */
 #ifndef MS_PROJECT_TOML_H
 #define MS_PROJECT_TOML_H
 

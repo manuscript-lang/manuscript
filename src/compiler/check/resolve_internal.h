@@ -37,4 +37,10 @@ MsTy resolver_function(Resolver *resolver, MsParams params, const MsTypeRef *res
 /* The primitive type spelled `name`, interned. */
 MsTy resolver_primitive(MsCheckProgram *program, MsBuiltin builtin);
 
+/* The prelude type `name` names (`List`, `Optional`, ...), or 0. */
+MsSymbolId resolver_prelude_symbol(const MsCheckProgram *program, MsName name);
+
+/* The nominal type `base` applied to `count` type arguments; `base` itself when there are none. */
+MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t count);
+
 #endif

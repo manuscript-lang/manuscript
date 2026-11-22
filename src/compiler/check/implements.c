@@ -65,15 +65,21 @@ const MsOperation *ms_check_find_operation(const MsCheckProgram *program, MsTy c
   return NULL;
 }
 
-MsTy ms_check_operation_type(MsCheckProgram *program, MsTy contract, const MsOperation *operation, MsTy implementor) {
+/* `ty` as an operation of `contract` sees it on `implementor`: `Self` is the implementor, the interface's type
+ * arguments are bound. */
+static MsTy bind_contract(MsCheckProgram *program, MsTy contract, MsTy ty, MsTy implementor) {
   const MsDef *def = contract_def(program, contract);
   const MsTy own = program->symbols.ptr[def->symbol].ty;
-  const MsTy bound = ms_check_replace_type(&program->types, operation->ty, own, implementor);
+  const MsTy bound = ms_check_replace_type(&program->types, ty, own, implementor);
   if (def->variables.len != ms_ty_arg_count(&program->types, contract)) {
     return bound;
   }
   return ms_ty_subst(&program->types, bound, def->variables.ptr, ms_ty_args(&program->types, contract),
                      def->variables.len);
+}
+
+MsTy ms_check_operation_type(MsCheckProgram *program, MsTy contract, const MsOperation *operation, MsTy implementor) {
+  return bind_contract(program, contract, operation->ty, implementor);
 }
 
 /* ---- shape ---- */
@@ -87,36 +93,6 @@ static const MsMethod *operation_method(const MsCheckProgram *program, const MsD
     }
   }
   return NULL;
-}
-
-/* Appends the variables `ty` mentions that are not in `known`, in order of first occurrence. */
-static void collect_open(const MsTyTable *types, MsTy ty, const MsTyList *known, MsTyList *out) {
-  if (!ms_ty_has_variable(types, ty)) {
-    return;
-  }
-  if (ms_ty_kind(types, ty) == MS_TY_VARIABLE) {
-    for (size_t index = 0; index < known->len; index++) {
-      if (known->ptr[index] == ty) {
-        return;
-      }
-    }
-    for (size_t index = 0; index < out->len; index++) {
-      if (out->ptr[index] == ty) {
-        return;
-      }
-    }
-    ms_ty_list_push(out, ty);
-    return;
-  }
-  for (size_t index = 0; index < ms_ty_arg_count(types, ty); index++) {
-    collect_open(types, ms_ty_args(types, ty)[index], known, out);
-  }
-  for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
-    collect_open(types, ms_ty_params(types, ty)[index].ty, known, out);
-  }
-  if (ms_ty_result(types, ty) != MS_TY_NONE) {
-    collect_open(types, ms_ty_result(types, ty), known, out);
-  }
 }
 
 /* `(name: Type, ...) Result`, with `T!` for a Result over Error. */
@@ -196,43 +172,54 @@ static void own_methods(MsCheckProgram *program, MsTy receiver, MsName name, MsM
   ms_method_match_list_free(&found);
 }
 
+/* Whether the method's own type parameters carry the operation's bounds, position by position. */
+static bool bounds_match(MsCheckProgram *program, MsTy receiver, MsTy contract, const MsOperation *operation,
+                         const MsMethodEntry *entry) {
+  const MsTy *own = entry->variables.ptr + entry->shared;
+  for (size_t index = 0; index < operation->variables.len; index++) {
+    const MsTyVariable *want = ms_ty_variable(&program->types, operation->variables.ptr[index]);
+    const MsTyVariable *have = ms_ty_variable(&program->types, own[index]);
+    if (want->bounds.len != have->bounds.len) {
+      return false;
+    }
+    for (size_t at = 0; at < want->bounds.len; at++) {
+      MsTy bound = bind_contract(program, contract, want->bounds.ptr[at], receiver);
+      bound = ms_ty_subst(&program->types, bound, operation->variables.ptr, own, operation->variables.len);
+      if (bound != have->bounds.ptr[at]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 /* Whether the one operation is met; false with the reason appended. */
 static bool operation_met(MsCheckProgram *program, MsTy receiver, MsTy contract, const MsDef *def,
                           const MsOperation *operation, MsStrBuild *why) {
-  MsTyTable *types = &program->types;
   MsMethodMatchList own = {0};
   own_methods(program, receiver, operation->name, &own);
   const MsMethod *declared = operation_method(program, def, operation);
-  MsTy wanted = ms_check_operation_type(program, contract, operation, receiver);
-  bool met = false;
+  const size_t declared_count = operation->variables.len;
   const MsMethodMatch *chosen = NULL;
-  /* An operation's own type parameters are met by the method's, position by position. */
-  MsTyList known = {0};
-  MsTyList open = {0};
-  ms_ty_list_push(&known, receiver);
-  for (size_t index = 0; index < def->variables.len; index++) {
-    ms_ty_list_push(&known, def->variables.ptr[index]);
-  }
-  collect_open(types, operation->ty, &known, &open);
-  const size_t declared_count = declared != NULL ? declared->func.type_params.len : 0;
-  if (own.len == 0) {
+  bool met = false;
+  if (own.len == 0 || (declared_count > 0 && own.len != 1)) {
     say(why, operation->name, program, " is missing");
-  } else if (own.len == 1 && declared_count > 0 &&
-             own.ptr[0].entry->variables.len - own.ptr[0].entry->shared != declared_count) {
+  } else if (declared_count > 0 && own.ptr[0].entry->variables.len - own.ptr[0].entry->shared != declared_count) {
     say(why, operation->name, program, " must declare the same type parameters as the interface");
+  } else if (declared_count > 0 && !bounds_match(program, receiver, contract, operation, own.ptr[0].entry)) {
+    say(why, operation->name, program, " must bound its type parameters like the interface");
   } else {
+    MsTy wanted = ms_check_operation_type(program, contract, operation, receiver);
+    if (declared_count > 0) { /* the operation's variables are met by the method's, position by position */
+      wanted = ms_ty_subst(&program->types, wanted, operation->variables.ptr,
+                           own.ptr[0].entry->variables.ptr + own.ptr[0].entry->shared, declared_count);
+    }
     for (size_t index = 0; index < own.len && chosen == NULL; index++) {
-      const MsMethodMatch *candidate = &own.ptr[index];
-      MsTy renamed = wanted;
-      if (declared_count > 0 && open.len == declared_count) {
-        renamed = ms_ty_subst(types, wanted, open.ptr, candidate->entry->variables.ptr + candidate->entry->shared,
-                              open.len);
-      }
-      if (candidate->ty == renamed || own.len == 1) {
-        chosen = candidate;
-        wanted = renamed;
+      if (own.ptr[index].ty == wanted) {
+        chosen = &own.ptr[index]; /* methods of one name may differ by their receiver's bounds: the exact one wins */
       }
     }
+    chosen = chosen != NULL ? chosen : (own.len == 1 ? &own.ptr[0] : NULL);
     if (chosen == NULL) {
       say(why, operation->name, program, " is missing");
     } else if (chosen->ty != wanted) {
@@ -243,8 +230,6 @@ static bool operation_met(MsCheckProgram *program, MsTy receiver, MsTy contract,
       met = matches_declaration(program, operation->name, chosen->entry->source, declared, why);
     }
   }
-  ms_ty_list_free(&known);
-  ms_ty_list_free(&open);
   ms_method_match_list_free(&own);
   return met;
 }

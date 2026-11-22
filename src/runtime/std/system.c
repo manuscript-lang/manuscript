@@ -6,6 +6,7 @@
 
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include <signal.h>
 #include <string.h>
 #include <uv.h>
 #if defined(_WIN32)
@@ -235,6 +236,25 @@ MS_NODISCARD static bool process_id(int64_t pid, uv_pid_t *out) {
   }
   *out = (uv_pid_t)pid;
   return true;
+}
+
+/* The host's signal numbers and the priority range by name; Windows has none. */
+void msstd_system_constants(MsMap *out) {
+  *out = (MsMap){0};
+#ifndef _WIN32
+  static const struct {
+    const char *name;
+    int64_t value;
+  } table[] = {{"SIGHUP", SIGHUP},   {"SIGINT", SIGINT},   {"SIGQUIT", SIGQUIT}, {"SIGABRT", SIGABRT},
+               {"SIGKILL", SIGKILL}, {"SIGUSR1", SIGUSR1}, {"SIGSEGV", SIGSEGV}, {"SIGUSR2", SIGUSR2},
+               {"SIGPIPE", SIGPIPE}, {"SIGALRM", SIGALRM}, {"SIGTERM", SIGTERM}, {"SIGCHLD", SIGCHLD},
+               {"SIGCONT", SIGCONT}, {"SIGSTOP", SIGSTOP}, {"PRIORITY_LOW", 19}, {"PRIORITY_HIGH", -20}};
+  for (size_t i = 0; i < sizeof table / sizeof table[0]; i++) {
+    MsString key = ms_string_from_span(ms_span_of_text(table[i].name));
+    int64_t value = table[i].value;
+    ms_map_insert(out, &ms_desc_string, &ms_desc_int, (uint8_t *)&key, (uint8_t *)&value);
+  }
+#endif
 }
 
 uint8_t msstd_system_get_priority(int64_t pid, int64_t *out, MsString *err) {

@@ -8,6 +8,7 @@
 
 #include "abi/status.h"
 #include "base/bytes.h"
+#include "base/map.h"
 #include "base/string.h"
 
 /* `SystemInfo`: the target's `os` and `architecture` names and the logical CPU count. */
@@ -39,6 +40,8 @@ typedef struct MsMetrics {
   int64_t available_parallelism;
 } MsMetrics;
 
+/* ms-sig: msstd_system_constants(out: *mut MapVal) @domain=system */
+void msstd_system_constants(MsMap *out);
 /* ms-sig: msstd_system_cpus(out: *mut VecVal, err: ErrSlot) -> u8 @domain=system */
 uint8_t msstd_system_cpus(MsBytes *out, MsString *err);
 /* ms-sig: msstd_system_dev_null(out: *mut StrVal) @domain=system */

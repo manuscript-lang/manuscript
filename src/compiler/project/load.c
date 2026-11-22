@@ -7,6 +7,7 @@
 #include "base/path.h"
 #include "base/utf8.h"
 #include "compiler/project/manifest.h"
+#include "compiler/project/package.h"
 #include "compiler/project/project_internal.h"
 #include "compiler/syntax/parse.h"
 
@@ -53,13 +54,24 @@ static MsGraphDiag failure_diag(const Failure *failure, MsSpan file, MsPos pos) 
   return failure->kind == FAIL_DIAGNOSTIC ? failure->diag : resolution(file, pos, failure->text);
 }
 
+/* The name diagnostics and metadata use for a canonical file: its path from the project root, or `@package/path` for a
+ * fetched package. */
 static MsSpan logical_name(Loader *loader, MsSpan canonical) {
+  const MsPackage *package = ms_manifest_package_of(loader->manifest, canonical);
   MsStrBuild relative = ms_strbuild_new();
-  if (!ms_path_relative(&relative, loader->root, canonical)) {
+  if (!ms_path_relative(&relative, package == NULL ? loader->root : package->root, canonical)) {
     ms_strbuild_free(&relative);
     return canonical;
   }
-  return ms_project_text(loader->arena, &relative);
+  if (package == NULL) {
+    return ms_project_text(loader->arena, &relative);
+  }
+  MsStrBuild named = ms_strbuild_new();
+  ms_strbuild_append(&named, package->key);
+  ms_strbuild_append_byte(&named, '/');
+  ms_strbuild_append(&named, ms_strbuild_span(&relative));
+  ms_strbuild_free(&relative);
+  return ms_project_text(loader->arena, &named);
 }
 
 static Failure cycle_failure(Loader *loader, size_t first, MsSpan canonical) {
@@ -95,6 +107,23 @@ static bool overlay_text(const MsOverlay *overlay, MsSpan path, MsSpan *text) {
   return false;
 }
 
+/* A package file is checked against the locked index as it is read. */
+static bool verify_package_file(Loader *loader, MsSpan canonical, MsSpan text, Failure *failure) {
+  const MsPackage *package = ms_manifest_package_of(loader->manifest, canonical);
+  if (package == NULL) {
+    return true;
+  }
+  MsStrBuild relative = ms_strbuild_new();
+  MsProjectError error = {0};
+  const bool ok = ms_path_relative(&relative, package->root, canonical) &&
+                  ms_package_verify_file(loader->arena, package, ms_strbuild_span(&relative), text, &error);
+  ms_strbuild_free(&relative);
+  if (!ok) {
+    *failure = failure_text(FAIL_ERROR, ms_project_error_text(loader->arena, &error));
+  }
+  return ok;
+}
+
 static bool read_source(Loader *loader, MsSpan canonical, MsSpan *text, Failure *failure) {
   if (overlay_text(loader->overlay, canonical, text)) {
     return true;
@@ -118,7 +147,7 @@ static bool read_source(Loader *loader, MsSpan canonical, MsSpan *text, Failure 
   }
   *text = ms_arena_copy(loader->arena, ms_bytes_span(&bytes));
   ms_bytes_free(&bytes);
-  return true;
+  return verify_package_file(loader, canonical, *text, failure);
 }
 
 static Failure parse_failure(MsSpan file, const MsDiag *diag) {
@@ -344,7 +373,7 @@ static bool read_governing_manifest(MsArena *arena, MsSpan absolute, MsSpan root
     *found = false;
     return true;
   }
-  return ms_manifest_read(arena, path, manifest, error);
+  return ms_manifest_read(arena, path, manifest, error) && ms_package_attach(arena, manifest, error);
 }
 
 static void describe_manifest(const MsManifest *manifest, MsGraph *out) {
@@ -353,6 +382,22 @@ static void describe_manifest(const MsManifest *manifest, MsGraph *out) {
   out->library = manifest->entry.len == 0;
   out->manifest_file = manifest->file;
   out->manifest_position = manifest->location;
+}
+
+/* The packages the graph reaches, with the effects each declares. */
+static void describe_packages(MsArena *arena, const MsManifest *manifest, MsGraph *out) {
+  out->package_count = manifest->npackages;
+  out->packages = ms_arena_alloc_array(arena, sizeof(MsGraphPackage), _Alignof(MsGraphPackage),
+                                       manifest->npackages == 0 ? 1 : manifest->npackages);
+  for (size_t i = 0; i < manifest->npackages; i++) {
+    const MsPackage *package = &manifest->packages[i];
+    MsStrBuild prefix = ms_strbuild_new();
+    ms_strbuild_append(&prefix, package->key);
+    ms_strbuild_append_byte(&prefix, '/');
+    out->packages[i] = (MsGraphPackage){.prefix = ms_project_text(arena, &prefix), .spec = package->spec,
+                                        .effects = package->manifest->effects,
+                                        .effect_count = package->manifest->neffects, .member = package->member};
+  }
 }
 
 /* Loads one discovered file; a failure is a diagnostic and the load goes on. */
@@ -434,6 +479,9 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
   const bool is_manifest = ms_span_is_text(ms_path_file_name(absolute), "ms.toml");
   if (is_manifest) {
     describe_manifest(&manifest, out);
+  }
+  if (governed) {
+    describe_packages(arena, &manifest, out);
   }
   load_graph(&loader, filename, is_manifest ? manifest.entry : absolute, is_manifest, options, out);
   module_list_free(&loader.modules);

@@ -44,6 +44,12 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
                           (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message});
 }
 
+void ms_check_attach_end(MsCheckProgram *program, MsPos end) {
+  MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
+  last->has_end = true;
+  last->end = end;
+}
+
 void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement) {
   MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
   last->has_fix = true;
@@ -73,7 +79,7 @@ MsTypeParams ms_check_decl_type_params(const MsDecl *decl) {
 }
 
 /* The name a declaration introduces, or false for impl and test declarations. */
-static bool declared_name(const MsDecl *decl, MsName *name) {
+bool ms_check_declared_name(const MsDecl *decl, MsName *name) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
     *name = decl->u.fn.name;
@@ -172,12 +178,42 @@ static void report_duplicate(MsCheckProgram *program, uint32_t module, const MsD
   ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
 }
 
+static const char *const PRELUDE_NAMES[] = {"Equal",    "Stringable", "Comparable", "Hashable", "Clonable",
+                                            "Optional", "Result",     "Error",      "List",     "Map",
+                                            "Set",      "ListEntry",  "MapEntry",   "print"};
+
+/* Whether `name` is declared by the prelude, which every module sees under that name. */
+static bool is_prelude_name(const MsCheckProgram *program, MsName name) {
+  const MsSpan text = ms_names_span(program->names, name);
+  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_NAMES); index++) {
+    if (ms_span_is_text(text, PRELUDE_NAMES[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const MsDecl *decl, MsName name) {
+  MsStrBuild text = ms_strbuild_new();
+  const MsSpan span = ms_names_span(program->names, name);
+  ms_strbuild_append_text(&text, "declaration ");
+  ms_strbuild_append(&text, span);
+  ms_strbuild_append_text(&text, " reuses a prelude name; rename it, because ");
+  ms_strbuild_append(&text, span);
+  ms_strbuild_append_text(&text, " always refers to the standard declaration");
+  ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+}
+
 void ms_check_declare(MsCheckProgram *program, uint32_t module) {
   const MsModule *tree = program->modules.ptr[module].tree;
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     MsName name = MS_NAME_EMPTY;
-    if (!declared_name(decl, &name)) {
+    if (!ms_check_declared_name(decl, &name)) {
+      continue;
+    }
+    if (module < program->user_modules && is_prelude_name(program, name)) {
+      report_prelude_reuse(program, module, decl, name);
       continue;
     }
     if (ms_scope_has(&program->modules.ptr[module].scope, name)) {

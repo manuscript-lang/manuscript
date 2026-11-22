@@ -10,7 +10,7 @@ import (
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	read_all from "@std/io/streams.ms",
 	TlsOptions from "@std/net/tls.ms",
-	NativeWebSocket, WebSocket, web_socket_from from "@std/net/websocket.ms",
+	WebSocket, web_socket_from from "@std/net/websocket.ms",
 	Duration from "@std/time.ms",
 
 	msstd_http_body_close,
@@ -19,6 +19,18 @@ import (
 	msstd_http_body_read_all,
 	msstd_http_client_close,
 	msstd_http_client_request_bytes,
+	msstd_http_exchange_close,
+	msstd_http_exchange_headers,
+	msstd_http_exchange_method,
+	msstd_http_exchange_path,
+	msstd_http_exchange_protocol,
+	msstd_http_exchange_query,
+	msstd_http_exchange_read,
+	msstd_http_exchange_send,
+	msstd_http_exchange_send_headers,
+	msstd_http_exchange_upgrade,
+	msstd_http_exchange_write,
+	msstd_http_exchange_write_bytes,
 	msstd_http_headers_append,
 	msstd_http_headers_clone,
 	msstd_http_headers_names,
@@ -304,28 +316,81 @@ export interface HttpExchange:
 	// Writes one chunk of raw bytes with the same rules as write.
 	var fn write_bytes(move data: Bytes) Void!
 
-// The runtime's side of `HttpExchange.upgrade`: it hands back the runtime socket
-// handle, which `exchange_upgrade` turns into a `WebSocket`. Handlers never see this
-// interface.
-export interface RawExchange:
-	// Switches the connection to a WebSocket like `HttpExchange.upgrade`, returning the
-	// runtime socket handle instead of a `WebSocket`.
-	var fn upgrade(
-		allowed_origins: List[String] = [],
-		subprotocols: List[String] = [],
-		max_message_bytes: Int? = none,
-	) NativeWebSocket!
+// The runtime handle of one request being served; `serve` hands it to the handler
+// wrapper `native_handler` builds, which presents it as an `HttpExchange`.
+export extern type NativeExchange
 
-// Runs `HttpExchange.upgrade` on a native exchange. The compiler's forwarder for that
-// call passes the exchange viewed as a `RawExchange`.
-fn exchange_upgrade(
-	var raw: RawExchange,
+// An `HttpExchange` over the runtime's exchange handle.
+type ServerExchange:
+	native: NativeExchange
+
+fn var ServerExchange.close() Void:
+	msstd_http_exchange_close(self.native)
+
+fn ServerExchange.headers() HttpHeaders:
+	return msstd_http_exchange_headers(self.native)
+
+fn ServerExchange.method() HttpMethod:
+	return method_of(msstd_http_exchange_method(self.native))
+
+fn ServerExchange.path() String:
+	return msstd_http_exchange_path(self.native)
+
+fn ServerExchange.protocol() String:
+	return msstd_http_exchange_protocol(self.native)
+
+fn ServerExchange.query() String:
+	return msstd_http_exchange_query(self.native)
+
+fn var ServerExchange.read(max_bytes: Int?) Bytes?!:
+	return msstd_http_exchange_read(self.native, max_bytes)
+
+fn var ServerExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:
+	return msstd_http_exchange_send(self.native, status, headers, body)
+
+fn var ServerExchange.send_headers(status: Int, headers: HttpHeaders) Void!:
+	return msstd_http_exchange_send_headers(self.native, status, headers)
+
+fn var ServerExchange.upgrade(
 	allowed_origins: List[String],
 	subprotocols: List[String],
 	max_message_bytes: Int?,
 ) WebSocket!:
-	native := raw.upgrade(allowed_origins, subprotocols, max_message_bytes)?
+	native := msstd_http_exchange_upgrade(
+		self.native,
+		allowed_origins,
+		subprotocols,
+		max_message_bytes,
+	)?
 	return ok(web_socket_from(native))
+
+fn var ServerExchange.write(move data: String) Void!:
+	return msstd_http_exchange_write(self.native, data)
+
+fn var ServerExchange.write_bytes(move data: Bytes) Void!:
+	return msstd_http_exchange_write_bytes(self.native, data)
+
+// The `HttpMethod` a request line names; a token that is not one of the nine standard
+// methods is `Custom`.
+fn method_of(text: String) HttpMethod:
+	if text == "GET": return HttpMethod.Get
+	if text == "HEAD": return HttpMethod.Head
+	if text == "POST": return HttpMethod.Post
+	if text == "PUT": return HttpMethod.Put
+	if text == "PATCH": return HttpMethod.Patch
+	if text == "DELETE": return HttpMethod.Delete
+	if text == "CONNECT": return HttpMethod.Connect
+	if text == "OPTIONS": return HttpMethod.Options
+	if text == "TRACE": return HttpMethod.Trace
+
+	return HttpMethod.Custom(value: text)
+
+// The closure the runtime calls for each request: it presents the native exchange as
+// an `HttpExchange` to the program's handler.
+export fn native_handler(
+	handler: fn(var HttpExchange) Void!
+) fn(var NativeExchange) Void!:
+	return fn(var native: NativeExchange): handler(ServerExchange(native: native))
 
 // Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:

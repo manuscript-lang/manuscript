@@ -220,11 +220,13 @@ typedef struct MsDeclRef {
   uint32_t node;
 } MsDeclRef;
 
-/* An interface or native operation: its name, signature and declaration. */
+/* An interface or native operation: its name, signature and declaration. `variables` are the operation's own
+ * type parameters, with their bounds and defaults. */
 typedef struct MsOperation {
   MsName name;
   MsTy ty;
   MsDeclRef decl;
+  MsTyList variables; /* owned */
 } MsOperation;
 
 MS_LIST_DEFINE(MsOperationList, ms_operation_list, MsOperation)

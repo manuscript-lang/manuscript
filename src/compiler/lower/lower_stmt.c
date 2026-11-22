@@ -25,21 +25,17 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     return fn_fail(fn, "assignment to a member is not lowered yet");
   }
-  const MsRef *ref = stmt->u.assign.target != NULL ? ms_facts_ref(fn->facts, stmt->u.assign.target->id) : NULL;
+  /* A name target records its local on the statement, a member target on its expression. */
+  const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
   if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->vars[ref->local] == 0) {
     return fn_fail(fn, "an assignment does not name a local");
   }
   const MirVar var = fn->vars[ref->local] - 1;
-  MirValue value = take_value(fn, stmt->u.assign.value);
+  const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;
   }
-  if (stmt->u.assign.has_compound) {
-    const MirValue old = mir_b_use_var(&fn->b, var);
-    const MirOp op = (MsBinaryOp)stmt->u.assign.compound == MS_B_ADD ? MOP_IAddChk
-                     : (MsBinaryOp)stmt->u.assign.compound == MS_B_SUB ? MOP_ISubChk : MOP_IMulChk;
-    value = mir_b_binop(&fn->b, op, old, value);
-  }
+  /* A compound assignment's value already reads the target (`a += b` is `a = a + b`). */
   mir_b_def_var(&fn->b, var, value);
   return !fn->failed;
 }

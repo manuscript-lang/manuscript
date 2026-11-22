@@ -4,12 +4,14 @@ import (
 	HttpHeaders,
 	HttpResponseMetadata,
 	HttpServerOptions,
+	NativeExchange,
 	NativeHttpClient,
 	NativeResponseBody,
 	NativeServing,
 	NativeWorker,
 	NativeWorkerSpec,
 	RawResponse from "@std/net/http.ms",
+	NativeWebSocket from "@std/net/websocket.ms",
 	Duration from "@std/time.ms",
 )
 
@@ -30,7 +32,7 @@ export extern fn msstd_http_client_request_bytes(
 export extern fn msstd_http_serving_new(
 	address: String,
 	options: HttpServerOptions,
-	move handler: fn(var HttpExchange) Void!
+	move handler: fn(var NativeExchange) Void!
 ) NativeServing!
 
 // Another handle on the same serving, for a connection promise to own.
@@ -51,6 +53,50 @@ export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) 
 export extern fn msstd_http_worker_close(worker: NativeWorker) Void
 
 export extern fn msstd_http_serving_release(serving: NativeServing) Void
+
+export extern fn msstd_http_exchange_close(handle: NativeExchange) Void
+
+export extern fn msstd_http_exchange_headers(handle: NativeExchange) HttpHeaders
+
+export extern fn msstd_http_exchange_method(handle: NativeExchange) String
+
+export extern fn msstd_http_exchange_path(handle: NativeExchange) String
+
+export extern fn msstd_http_exchange_protocol(handle: NativeExchange) String
+
+export extern fn msstd_http_exchange_query(handle: NativeExchange) String
+
+export extern fn msstd_http_exchange_read(
+	handle: NativeExchange,
+	max_bytes: Int?,
+) Bytes?!
+
+export extern fn msstd_http_exchange_send_headers(
+	handle: NativeExchange,
+	status: Int,
+	headers: HttpHeaders,
+) Void!
+
+export extern fn msstd_http_exchange_send(
+	handle: NativeExchange,
+	status: Int,
+	headers: HttpHeaders,
+	body: Bytes,
+) Void!
+
+export extern fn msstd_http_exchange_write(handle: NativeExchange, data: String) Void!
+
+export extern fn msstd_http_exchange_write_bytes(
+	handle: NativeExchange,
+	data: Bytes,
+) Void!
+
+export extern fn msstd_http_exchange_upgrade(
+	handle: NativeExchange,
+	allowed_origins: List[String],
+	subprotocols: List[String],
+	max_message_bytes: Int?,
+) NativeWebSocket!
 
 export extern fn msstd_http_body_close(handle: NativeResponseBody) Void
 

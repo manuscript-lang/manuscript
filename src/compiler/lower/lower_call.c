@@ -94,15 +94,12 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
   return mir_extern_intern(fn->cx->module, &def);
 }
 
-/* The method declared by `node` in `module`, and the `impl` that holds it. */
-static const MsMethod *find_method(const MsModule *tree, MsNode node, const MsDecl **owner) {
-  for (uint32_t decl = 0; decl < tree->ndecls; decl++) {
-    const MsDecl *item = tree->decls[decl];
-    for (uint32_t index = 0; item->kind == MS_D_IMPL && index < item->u.impl.methods.len; index++) {
-      if (item->u.impl.methods.ptr[index]->id == node) {
-        *owner = item;
-        return item->u.impl.methods.ptr[index];
-      }
+/* The method-table entry of the method declared by `node` in `module`. */
+static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode node) {
+  for (size_t index = 0; index < cx->program->methods.len; index++) {
+    const MsMethodEntry *entry = &cx->program->methods.ptr[index];
+    if (entry->module == module && entry->source->id == node) {
+      return entry;
     }
   }
   return NULL;
@@ -123,16 +120,24 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   if (call->callee.kind != MS_REF_METHOD) {
     return false;
   }
-  const uint32_t module = call->callee.decl.module;
-  const MsDecl *owner = NULL;
-  const MsMethod *method = find_method(cx->program->modules.ptr[module].tree, call->callee.decl.node, &owner);
-  if (method == NULL || method->func.external) {
+  const MsMethodEntry *entry = find_entry(cx, call->callee.decl.module, call->callee.decl.node);
+  if (entry == NULL || entry->source->func.external) {
     return false;
   }
-  const MsFacts *facts = &cx->program->modules.ptr[module].facts;
-  *out = (LowerTarget){module, method->id, &method->func, method->func.name, ms_facts_type(facts, method->id),
-                       owner->u.impl.bounds};
+  *out = (LowerTarget){entry->module, entry->source->id, &entry->source->func, entry->source->func.name, entry->ty,
+                       {NULL, 0}, entry->variables.ptr, (uint32_t)entry->variables.len};
   return true;
+}
+
+/* `Type(fields...)`: the record built from its arguments in field order. */
+static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind != MK_TYPE) {
+    (void)fn_fail(fn, "only a record can be built by its name for now");
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_TYPE, .a = data->id};
+  return fn_emit(fn, MOP_TypeNew, args, call->arg_count, imm, ty);
 }
 
 static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
@@ -151,20 +156,36 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
   const MsCall *call = find_call(fn->facts, expr->id);
   if (call == NULL || call->arg_count > 16) {
-    (void)fn_fail(fn, "the checker recorded no usable call here");
+    (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);
     return MIR_NONE;
   }
   MirValue args[16];
   if (!lower_args(fn, expr, call, args)) {
     return MIR_NONE;
   }
-  const MirTy ret = fn_type(fn, ms_ty_result(&fn->cx->program->types, call->callee_ty));
+  const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+  if (call->callee.kind == MS_REF_TYPE) {
+    return construct(fn, call, args, ret);
+  }
   LowerTarget target;
   if (!callee_target(fn, call, &target)) {
     return call_runtime(fn, call, args, ret);
   }
-  const uint32_t func = lower_instance(fn->cx, &target, call->type_args, call->type_arg_count, &fn->subst);
+  MsTy bound[16] = {0};
+  const MsTy *type_args = call->type_args;
+  uint32_t ntype_args = call->type_arg_count;
+  if (target.variables != NULL) {
+    /* A method's variables are the receiver form's and its own: bind them against the instantiated signature. */
+    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, call->callee_ty, target.variables,
+                                                  target.nvariables, bound)) {
+      (void)fn_fail(fn, "a method's type arguments could not be found from its call");
+      return MIR_NONE;
+    }
+    type_args = bound;
+    ntype_args = target.nvariables;
+  }
+  const uint32_t func = lower_instance(fn->cx, &target, type_args, ntype_args, &fn->subst);
   if (func == MIR_NONE) {
     return MIR_NONE;
   }
