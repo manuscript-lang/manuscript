@@ -34,6 +34,7 @@ typedef struct Body {
   uint32_t next_local;
   MsTy result;  /* the enclosing function's result type; MS_TY_NONE inside no function */
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
+  MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
 
 /* ---- bodies.c ---- */
@@ -61,6 +62,23 @@ MsTy body_primitive(Body *body, MsBuiltin builtin);
 MsTy body_expr(Body *body, const MsExpr *expr, MsTy expected);
 /* The type of a standard prelude or imported function, constant or type, when `name` denotes one. */
 const MsSymbol *body_find_symbol(const Body *body, MsName name);
+
+/* The definition of a nominal type, or NULL for any other type. */
+const MsDef *body_def(const Body *body, MsTy ty);
+/* The record field `name` of `receiver`: its type under the receiver's arguments and its index. */
+bool body_field(Body *body, MsTy receiver, MsName name, MsTy *ty, uint32_t *index);
+/* The case `name` of the enum `owner`, or NULL. */
+const MsTyCase *body_case_of(Body *body, MsTy owner, MsName name, uint32_t *index);
+/* A visible enum that has a case `name`; `expected` picks the instance when it is that enum. */
+bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_t *index);
+/* The reference a use of `symbol` records. */
+MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol);
+/* A prelude type (`List`, `Map`, `Optional`, ...) applied to `count` arguments. */
+MsTy body_std_type(Body *body, const char *name, const MsTy *args, size_t count);
+
+/* ---- match.c ---- */
+
+MsTy body_match(Body *body, const MsExpr *expr, MsTy expected);
 
 /* ---- calls.c ---- */
 

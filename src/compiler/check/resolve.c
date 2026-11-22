@@ -47,20 +47,8 @@ static bool find_variable(const Resolver *resolver, MsName name, MsTy *out) {
   return false;
 }
 
-/* The symbol a name denotes as a type in the module's scopes, or 0. `known` is set when the name is known even
- * though it has no symbol (an import that did not resolve). */
-static MsSymbolId find_symbol(const Resolver *resolver, MsName name, bool *known) {
-  const MsCheckProgram *program = resolver->program;
-  const MsModuleInfo *module = &program->modules.ptr[resolver->module];
-  const MsSymbolId *own = ms_scope_get(&module->scope, name);
-  if (own != NULL && program->symbols.ptr[*own].kind != MS_SYMBOL_FN) {
-    return *own;
-  }
-  const MsSymbolId *imported = ms_scope_get(&module->imports, name);
-  if (imported != NULL) {
-    *known = *imported == 0;
-    return *imported != 0 && program->symbols.ptr[*imported].kind != MS_SYMBOL_FN ? *imported : 0;
-  }
+/* The prelude type `name` names, or 0. */
+MsSymbolId resolver_prelude_symbol(const MsCheckProgram *program, MsName name) {
   const MsSpan text = ms_names_span(program->names, name);
   for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_TYPES); index++) {
     if (!ms_span_is_text(text, PRELUDE_TYPES[index])) {
@@ -81,6 +69,23 @@ static MsSymbolId find_symbol(const Resolver *resolver, MsName name, bool *known
   return 0;
 }
 
+/* The symbol a name denotes as a type in the module's scopes, or 0. `known` is set when the name is known even
+ * though it has no symbol (an import that did not resolve). */
+static MsSymbolId find_symbol(const Resolver *resolver, MsName name, bool *known) {
+  const MsCheckProgram *program = resolver->program;
+  const MsModuleInfo *module = &program->modules.ptr[resolver->module];
+  const MsSymbolId *own = ms_scope_get(&module->scope, name);
+  if (own != NULL && program->symbols.ptr[*own].kind != MS_SYMBOL_FN) {
+    return *own;
+  }
+  const MsSymbolId *imported = ms_scope_get(&module->imports, name);
+  if (imported != NULL) {
+    *known = *imported == 0;
+    return *imported != 0 && program->symbols.ptr[*imported].kind != MS_SYMBOL_FN ? *imported : 0;
+  }
+  return resolver_prelude_symbol(program, name);
+}
+
 static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
   MsStrBuild text = ms_strbuild_new();
@@ -97,20 +102,24 @@ static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   ms_check_report(program, resolver->module, type->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
 }
 
-/* The nominal type `base` applied to the arguments written after its name. */
-static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
-  if (type->args.len == 0) {
+MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t count) {
+  if (count == 0) {
     return base;
   }
+  const MsTyRow row = *ms_ty_row(&program->types, base);
+  const MsTyDesc desc = {.name = row.name, .id = row.id, .kind = (MsTyKind)row.kind,
+                         .builtin = (MsBuiltin)row.builtin, .def = row.def, .args = args,
+                         .arg_count = (uint32_t)count};
+  return ms_ty_intern(&program->types, &desc);
+}
+
+/* The nominal type `base` applied to the arguments written after its name. */
+static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   MsTyList args = {0};
   for (uint32_t index = 0; index < type->args.len; index++) {
     ms_ty_list_push(&args, resolver_type(resolver, type->args.ptr[index]));
   }
-  const MsTyRow row = *ms_ty_row(&resolver->program->types, base);
-  const MsTyDesc desc = {.name = row.name, .id = row.id, .kind = (MsTyKind)row.kind,
-                         .builtin = (MsBuiltin)row.builtin, .def = row.def, .args = args.ptr,
-                         .arg_count = (uint32_t)args.len};
-  const MsTy applied = ms_ty_intern(&resolver->program->types, &desc);
+  const MsTy applied = resolver_apply(resolver->program, base, args.ptr, args.len);
   ms_ty_list_free(&args);
   return applied;
 }
