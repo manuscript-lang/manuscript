@@ -73,19 +73,57 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
   return joined;
 }
 
+/* An integer type narrower than Int, widened so the join writes it in decimal. */
+static bool is_sized_int(MirTy ty) {
+  return ty == MIR_INT8 || ty == MIR_INT16 || ty == MIR_INT32 || ty == MIR_UINT8 || ty == MIR_UINT16 ||
+         ty == MIR_UINT32;
+}
+
+/* The text of a scalar the join does not write itself: Bool, Float, Float32 and UInt64 through the runtime's
+ * conversions. MIR_NONE for any other type. */
+static MirValue scalar_text(LowerFn *fn, MirValue value, MirTy ty) {
+  const char *name = NULL;
+  switch (ty) {
+  case MIR_BOOL:
+    name = "msrt_bool_to_string";
+    break;
+  case MIR_FLOAT:
+    name = "msrt_float_to_string";
+    break;
+  case MIR_FLOAT32:
+    name = "msrt_float32_to_string";
+    break;
+  case MIR_UINT64:
+    name = "msrt_uint_to_string";
+    break;
+  default:
+    return MIR_NONE;
+  }
+  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(name)), &value, 1, MIR_STR);
+}
+
 static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   if (part->expr == NULL) {
     const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, part->lit)};
     *out = (TextPiece){mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR), false};
     return true;
   }
-  const MirValue value = fn_expr(fn, part->expr, LW_BORROW);
+  MirValue value = fn_expr(fn, part->expr, LW_BORROW);
   if (value == MIR_NONE) {
     return false;
   }
-  const MirTy ty = mir_b_ty(&fn->b, value);
+  MirTy ty = mir_b_ty(&fn->b, value);
+  if (is_sized_int(ty)) {
+    value = mir_b_emit(&fn->b, MOP_Conv, &value, 1, (MirImm){0}, MIR_INT);
+    ty = MIR_INT;
+  }
   if (ty != MIR_INT && ty != MIR_STR) {
-    return fn_fail(fn, "interpolating this type is not lowered yet");
+    const MirValue text = scalar_text(fn, value, ty);
+    if (text == MIR_NONE) {
+      return fn_fail(fn, "interpolating this type is not lowered yet");
+    }
+    *out = (TextPiece){text, false};
+    return true;
   }
   *out = (TextPiece){value, ty == MIR_INT};
   return true;
