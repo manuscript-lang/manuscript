@@ -1,6 +1,7 @@
 # Vendors and verifies the C libraries pinned in src/third_party/c-libs.lock (plan section 5).
 # Fetch:  cmake -DSOURCE_DIR=<repo> -DMODE=fetch  -P cmake/FetchCLibs.cmake   (needs git and network)
 # Verify: cmake -DSOURCE_DIR=<repo> -DMODE=verify -P cmake/FetchCLibs.cmake   (default; offline)
+# Fetch one library only: add -DONLY=<name>.
 # Each lock line is `<name> key=value ...` with version, tag, url, commit, paths (comma separated) and
 # sha256. The sha256 covers the vendored files: the SHA-256 of the sorted lines "<file sha256>  <path>"
 # of every file under the library directory, so any edit to vendored code fails the check.
@@ -86,7 +87,8 @@ function(ms_fetch_lib)
   file(REMOVE_RECURSE "${target}")
   string(REPLACE "," ";" paths "${lib_paths}")
   foreach(path IN LISTS paths)
-    file(COPY "${root}/${path}" DESTINATION "${target}")
+    get_filename_component(parent "${path}" DIRECTORY)
+    file(COPY "${root}/${path}" DESTINATION "${target}/${parent}")
   endforeach()
   file(REMOVE_RECURSE "${work}")
 endfunction()
@@ -99,6 +101,9 @@ foreach(line IN LISTS lines)
   endif()
   unset(lib_tarball)
   ms_parse_lock_line("${line}" lib)
+  if(DEFINED ONLY AND NOT lib_name STREQUAL ONLY)
+    continue()
+  endif()
   if(MODE STREQUAL "fetch")
     ms_fetch_lib()
   endif()
