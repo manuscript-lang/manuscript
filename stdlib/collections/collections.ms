@@ -68,24 +68,48 @@ fn var List[T].reverse() Void: ...
 // Sorts the list in place, stably, in the order `compare` defines, as `sorted` does.
 // Comparable elements also have `sort()` without a comparator. Example:
 // `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
-fn var List[T].sort(compare: fn(T, T) Int) Void: ...
+fn var List[T].sort(compare: fn(T, T) Int) Void:
+	// A stable insertion sort on `swap`: elements move only past strictly greater ones.
+	for i in 1..self.length():
+		var j = i
+		while j > 0 and compare(self[j - 1], self[j]) > 0:
+			self.swap(j - 1, j)
+			j -= 1
 
 // Returns the zero-based index of the first element for which `predicate` is true,
 // or `none`.
-fn List[T].find_index(predicate: fn(T) Bool) Int?: ...
+fn List[T].find_index(predicate: fn(T) Bool) Int?:
+	for i in 0..self.length():
+		if predicate(self[i]): return i
+	return none
 
 // Searches from the end and returns the last matching zero-based index, or `none`.
-fn List[T].find_last_index(predicate: fn(T) Bool) Int?: ...
+fn List[T].find_last_index(predicate: fn(T) Bool) Int?:
+	var i = self.length() - 1
+	while i >= 0:
+		if predicate(self[i]): return i
+		i -= 1
+	return none
 
 // Counts the values for which `predicate` is true, calling it once per element in
 // order.
-fn List[T].count(predicate: fn(T) Bool) Int: ...
+fn List[T].count(predicate: fn(T) Bool) Int:
+	var total = 0
+	for item in self:
+		if predicate(item): total += 1
+	return total
 
 // Reports whether at least one value satisfies `predicate`.
-fn List[T].any(predicate: fn(T) Bool) Bool: ...
+fn List[T].any(predicate: fn(T) Bool) Bool:
+	for item in self:
+		if predicate(item): return true
+	return false
 
 // Reports whether every value satisfies `predicate`; an empty list returns true.
-fn List[T].all(predicate: fn(T) Bool) Bool: ...
+fn List[T].all(predicate: fn(T) Bool) Bool:
+	for item in self:
+		if not predicate(item): return false
+	return true
 
 // Calls `operation(value)` on each element in order. The traversal covers the list's
 // initial length, so an `append` during the loop does not extend it, while element
@@ -96,17 +120,35 @@ fn List[T].for_each(operation: fn(var T) Void) Void: ...
 
 // Returns a new list holding `transform` applied to each element in order; the
 // receiver is unchanged.
-fn List[T].map[U](transform: fn(T) U) List[U]: ...
+fn List[T].map[U](transform: fn(T) U) List[U]:
+	var out = List[U](reserve: self.length())
+	for item in self:
+		out.append(transform(item))
+	return out
 
 // Calls `transform` on each element in order and concatenates the returned lists
 // into one new list; the receiver is unchanged.
-fn List[T].flat_map[U](transform: fn(T) List[U]) List[U]: ...
+fn List[T].flat_map[U](transform: fn(T) List[U]) List[U]:
+	var out = List[U]()
+	for item in self:
+		out.splice(out.length(), 0, transform(item))
+	return out
 
 // Combines the values from left to right with `step`, starting with `initial`.
-fn List[T].fold[A](initial: A, step: fn(A, T) A) A: ...
+fn List[T].fold[A](initial: A, step: fn(A, T) A) A:
+	var acc = initial
+	for item in self:
+		acc = step(acc, item)
+	return acc
 
 // Combines the values from right to left with `step`, starting with `initial`.
-fn List[T].fold_right[A](initial: A, step: fn(A, T) A) A: ...
+fn List[T].fold_right[A](initial: A, step: fn(A, T) A) A:
+	var acc = initial
+	var i = self.length() - 1
+	while i >= 0:
+		acc = step(acc, self[i])
+		i -= 1
+	return acc
 
 /*
 Replaces `delete_count` elements starting at `start` in place with the elements of `replacement`, which is consumed.
