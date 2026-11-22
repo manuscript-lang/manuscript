@@ -63,10 +63,6 @@ static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
   if (ret->kind != MK_OPT && fn->ret != MIR_VOID && !fn->decl_void) {
     return fn_fail(fn, "`?` on an Optional needs a function that returns an Optional or nothing") ? MIR_NONE : MIR_NONE;
   }
-  if (fn_place_owns(fn, expr->u.bin.left)) {
-    (void)fn_fail(fn, "`?` on a `var` optional (changing its payload in place) is not lowered yet");
-    return MIR_NONE;
-  }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
   const MirBlock some_block = mir_b_new_block(&fn->b);
@@ -179,7 +175,7 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirImm ok_imm = {.tag = MI_ALTFIELD, .a = alt, .b = OK_CASE, .c = 0};
   /* A payload of a Result nothing else owns moves out of it, so that its new owner closes it. */
   const bool takes = fresh && mir_needs_drop(fn->cx->module, ok->fields[0].ty);
-  return mir_b_emit(&fn->b, takes ? MOP_AltTake : MOP_AltGet, &value, 1, ok_imm, ok->fields[0].ty);
+  return fn_emit(fn, takes ? MOP_AltTake : MOP_AltGet, &value, 1, ok_imm, ok->fields[0].ty);
 }
 
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want) {

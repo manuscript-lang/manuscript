@@ -85,12 +85,12 @@ static bool cursor_for(LowerFn *fn, MirTy list_ty, uint32_t *type, uint32_t *clo
     const uint32_t found = mir_type_by_name(cx->module, name);
     if (found == MIR_NONE) {
       *type = add_cursor_type(cx, name, list_ty);
-      *close = add_cursor_close(cx, numbered(cx, "close", n), *type, list_ty);
+      *close = add_cursor_close(cx, numbered(cx, "cursor.close", n), *type, list_ty);
       return *close != MIR_NONE || fn_fail(fn, "the loop cursor close function was not built");
     }
     if (cx->module->type_defs.ptr[found].fields[0].ty == list_ty) {
       *type = found;
-      *close = mir_func_by_name(cx->module, numbered(cx, "close", n));
+      *close = mir_func_by_name(cx->module, numbered(cx, "cursor.close", n));
       return *close != MIR_NONE;
     }
   }

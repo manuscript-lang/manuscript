@@ -483,6 +483,11 @@ static bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
   return ms_ty_is(types, owner, MS_BUILTIN_List) && lists_in_place(fn, container);
 }
 
+/* `place?` where `place` can be changed: the method changes the optional's payload in place. */
+static bool is_try_place(LowerFn *fn, const MsExpr *place) {
+  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left);
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
@@ -501,6 +506,16 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
       wanted[0] = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
       return call_native(fn, name, wanted, count, ret, result_slot);
     }
+  }
+  if (is_try_place(fn, place)) {
+    VarSlot var;
+    const MirValue slot = fn_try_var_slot(fn, place, &var);
+    if (slot == MIR_NONE) {
+      return MIR_NONE;
+    }
+    wanted[0] = slot;
+    const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
+    return fn_var_slots_back(fn, &var, 1) ? result : MIR_NONE;
   }
   MirValue owned;
   MirValue record = MIR_NONE;
@@ -554,6 +569,18 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
   const MirValue at = mir_b_select(&fn->b, negative, from_end, index);
   const MirValue args[2] = {list, at};
   return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
+}
+
+/* `list.set(index, value)` on a list of plain values: the element is stored where it lies, so the list's header
+ * does not change and nothing is written back. An element that owns something needs the runtime to drop the old one. */
+static bool list_set(LowerFn *fn, const MirValue *args, MirValue *out) {
+  const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (list->kind != MK_LIST || mir_needs_drop(fn->cx->module, list->elem) || mir_b_ty(&fn->b, args[2]) != list->elem) {
+    return false;
+  }
+  (void)mir_b_emit(&fn->b, MOP_ListSet, args, 3, (MirImm){0}, mir_b_ty(&fn->b, args[0]));
+  *out = MIR_NONE;
+  return true;
 }
 
 /* Whether the operation is declared on a type variable (`v.to_string()` with a bound): the native has no name of
@@ -658,6 +685,10 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     *out = list_get(fn, args[0], args[1], ret);
     return true;
   }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_set") && argc == 3 &&
+      list_set(fn, args, out)) {
+    return true;
+  }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
       fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
@@ -668,7 +699,7 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     if (slot != MIR_NONE && mutates_receiver(sig, ret)) {
       wanted[0] = slot;
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
-    } else if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+    } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
