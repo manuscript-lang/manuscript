@@ -5,6 +5,7 @@
 #include "compiler/check/properties.h"
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 
@@ -55,6 +56,33 @@ static bool is_view(const Uses *pass, const MsExpr *expr) {
   return false;
 }
 
+/* Whether `call` answers a new value: a function or method with a body whose result borrows none of its arguments. */
+static bool fresh_call(const Uses *pass, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
+    return false;
+  }
+  const MsFunc *func = ms_own_find_func(pass->program, &fact->callee);
+  if (func == NULL || func->bodiless || func->external) {
+    return false;
+  }
+  for (uint32_t index = 0; index < fact->arg_count; index++) {
+    if (ms_own_call_borrows(pass->program, fact, index)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* A field read of a temporary (`make().name`): the temporary dies with the statement, so the field moves out of it. */
+static bool part_of_fresh_call(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *at = expr;
+  while (at->kind == MS_E_MEMBER) {
+    at = at->u.member.left;
+  }
+  return at != expr && at->kind == MS_E_CALL && fresh_call(pass, at);
+}
+
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr == NULL) {
@@ -66,7 +94,8 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     }
     return;
   }
-  if ((expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr) || is_view(pass, expr)) {
+  const bool temporary = expr->kind == MS_E_MEMBER && part_of_fresh_call(pass, expr);
+  if (!temporary && ((expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr) || is_view(pass, expr))) {
     return;
   }
   const MsTy ty = ms_facts_type(pass->facts, expr->id);

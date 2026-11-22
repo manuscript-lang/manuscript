@@ -100,10 +100,10 @@ uint8_t msrt_map_get_sw8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc 
 void msrt_map_keys(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
 /* ms-sig: msrt_map_values(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=map @leaf */
 void msrt_map_values(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
-/* ms-sig: msrt_map_keys_view(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=map @leaf
+/* ms-sig: msrt_map_keys_view(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @borrows @domain=map @leaf
  * @view_of=msrt_map_keys */
 void msrt_map_keys_view(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
-/* ms-sig: msrt_map_values_view(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=map
+/* ms-sig: msrt_map_values_view(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @borrows @domain=map
  * @leaf @view_of=msrt_map_values */
 void msrt_map_values_view(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
 

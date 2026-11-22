@@ -1,6 +1,7 @@
 /* compiler/lower/lower_extern.c: calls to extern declarations whose runtime function takes more than the written
  * operands: a status and an out slot (`T!`), the shape table of the value it reads, or the descriptor and address
  * of a generic value. The extern's `ms-sig` header says which. */
+#include "abi/status.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/check/effects_directives.h"
 #include "compiler/mir/mir_json_tree.h"
@@ -97,6 +98,12 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     nargs--;
   }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
+  /* `T?!`: the runtime writes a `T` and answers `MS_STATUS_NONE` for none. */
+  const MirTy ok_ty = payload_ty;
+  const bool ends = mir_ty_data(fn->cx->module, ok_ty)->kind == MK_OPT;
+  if (ends) {
+    payload_ty = mir_ty_data(fn->cx->module, ok_ty)->elem;
+  }
   const bool has_out = payload_ty != MIR_VOID;
   const uint32_t tail = (has_err ? 1u : 0u) + (has_out ? 1u : 0u);
   if (sig->count < tail) {
@@ -211,7 +218,13 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   const uint32_t external = fn_runtime_extern(fn, name, wanted, count, MIR_UINT8);
   const MirValue status = mir_b_call_rt(&fn->b, external, wanted, count);
   const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
-  const MirValue failed = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  MirValue failed = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  if (ends) {
+    const MirValue end = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = MS_STATUS_NONE}, MIR_UINT8);
+    const MirValue other = mir_b_icmp(&fn->b, MCC_NE, status, end);
+    const MirValue pair[2] = {failed, other};
+    failed = mir_b_emit(&fn->b, MOP_And, pair, 2, (MirImm){0}, MIR_BOOL);
+  }
   const MirBlock ok_block = mir_b_new_block(&fn->b);
   const MirBlock fail_block = mir_b_new_block(&fn->b);
   const MirBlock join = mir_b_new_block(&fn->b);
@@ -226,7 +239,24 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload_ty) ? MOP_Take : MOP_Load, &out_slot, 1, of_type,
                        payload_ty);
   }
-  const MirValue success = build_result(fn, alt, 0, value, ret);
+  MirValue success;
+  if (ends) {
+    const MirValue some_ok = mir_b_icmp(&fn->b, MCC_EQ, status, zero);
+    const MirBlock some_block = mir_b_new_block(&fn->b);
+    const MirBlock none_block = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, some_ok, some_block, NULL, 0, none_block, NULL, 0);
+    mir_b_seal_block(&fn->b, some_block);
+    mir_b_seal_block(&fn->b, none_block);
+    mir_b_switch_to(&fn->b, some_block);
+    const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ok_ty);
+    const MirValue ok_some = build_result(fn, alt, 0, some, ret);
+    mir_b_br(&fn->b, join, &ok_some, 1);
+    mir_b_switch_to(&fn->b, none_block);
+    const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ok_ty);
+    success = build_result(fn, alt, 0, none, ret);
+  } else {
+    success = build_result(fn, alt, 0, value, ret);
+  }
   mir_b_br(&fn->b, join, &success, 1);
   mir_b_switch_to(&fn->b, fail_block);
   MirValue said = string_literal(fn, "");

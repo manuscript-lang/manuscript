@@ -258,9 +258,18 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   MirVar owner = 0;
-  if (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field)) &&
-      fn_owned_local(fn, expr->u.member.left, &owner)) {
+  const bool moves = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
+  if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
+  }
+  if (moves && expr->u.member.left->kind == MS_E_CALL && fn_fresh_owner(fn, base)) {
+    /* The field leaves a temporary that dies with the statement: the rest of the record is released with it. */
+    const MirTy field_ty = mir_b_ty(&fn->b, field);
+    const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &base, 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(&fn->b, MOP_TypeRelease, &base, 1, mask, MIR_NONE);
+    return taken;
   }
   return field;
 }
@@ -745,7 +754,20 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
   const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
                               fn->b.func.params[param_at].mode != MM_MOVE;
-  if (!borrowed_param && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  /* A field of a `var` binding stays in the record the binding puts back whole, so reading it as a move would free it
+   * twice; it is copied. */
+  MirVar root_var;
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  const MsRef *root_ref = root->kind == MS_E_NAME ? ms_facts_ref(fn->facts, root->id) : NULL;
+  const bool moved_param = root_ref != NULL && root_ref->kind == MS_REF_PARAM &&
+                           root_ref->local + (fn->lambda != NULL ? 1u : 0u) < fn->b.func.nparams &&
+                           fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
+  const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
+                             fn_owned_local(fn, root, &root_var);
+  if (!borrowed_param && !in_var_record && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

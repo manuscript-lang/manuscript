@@ -110,7 +110,7 @@ static void report_labelled(Body *body, const Target *target, const MsArg *arg, 
     ms_strbuild_append(&text, name);
     unknown_hint(body, target, name, &text);
   }
-  report_text(body, arg->pos, name.len, &text);
+  report_text(body, arg->pos, 0, &text);
   ms_strbuild_free(&text);
 }
 

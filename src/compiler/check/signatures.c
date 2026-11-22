@@ -98,9 +98,21 @@ static void resolve_symbol(Resolver *resolver, MsSymbol *symbol) {
 }
 
 /* An alias of a union is a type set: its members are the resolved targets. */
-static void resolve_alias(Resolver *resolver, MsSymbol *symbol) {
+void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   MsCheckProgram *program = resolver->program;
   const MsDecl *decl = symbol->decl;
+  if (symbol->alias_state == 2) {
+    return;
+  }
+  if (symbol->alias_state == 1) { /* reached again through its own target */
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "type alias ");
+    ms_strbuild_append(&text, ms_names_span(program->names, decl->u.alias.name));
+    ms_strbuild_append_text(&text, " refers to itself; an alias names another type, so break the cycle with a type or enum");
+    ms_check_report(program, resolver->module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+    return;
+  }
+  symbol->alias_state = 1;
   if (decl->u.alias.targets.len == 1) {
     /* A single target is another name for that type, over the alias's own variables. */
     const size_t mark = resolver->names.len;
@@ -108,6 +120,7 @@ static void resolve_alias(Resolver *resolver, MsSymbol *symbol) {
     symbol->ty = resolver_type(resolver, decl->u.alias.targets.ptr[0]);
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
+    symbol->alias_state = 2;
     return;
   }
   MsTyList members = {0};
@@ -117,6 +130,7 @@ static void resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   const MsTyDesc desc = {.name = decl->u.alias.name, .id = decl->u.alias.name, .kind = MS_TY_CONTRACT,
                          .builtin = MS_BUILTIN_TypeSet, .args = members.ptr, .arg_count = (uint32_t)members.len};
   symbol->ty = ms_ty_intern(&program->types, &desc);
+  symbol->alias_state = 2;
   ms_ty_list_free(&members);
 }
 
@@ -125,7 +139,7 @@ void ms_check_signatures(MsCheckProgram *program, uint32_t module) {
   resolver_init(&resolver, program, module);
   for (MsSymbolId id = 1; id < program->symbols.len; id++) {
     if (program->symbols.ptr[id].module == module && program->symbols.ptr[id].decl->kind == MS_D_ALIAS) {
-      resolve_alias(&resolver, &program->symbols.ptr[id]);
+      resolver_resolve_alias(&resolver, &program->symbols.ptr[id]);
     }
   }
   for (MsSymbolId id = 1; id < program->symbols.len; id++) {
