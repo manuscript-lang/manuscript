@@ -1197,8 +1197,7 @@ export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
 	var writer = Writer(StringBuilder(), started: false)
 	emit_table(writer, [], root)
 
-	{out} := writer
-	text := out.build()
+	text := writer.out.build()
 	if not within(text.length(), max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)

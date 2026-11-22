@@ -501,6 +501,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   const MirTy lambda_ty = fn_type(&fn, ms_facts_type(fn.facts, lambda.expr->id));
   const MirTyData *lambda_data = mir_ty_data(cx->module, lambda_ty);
   bool lifted[LOWER_MAX_ARGS + 1] = {false};
+  bool resource[LOWER_MAX_ARGS + 1] = {false};
   const MsTy source_ty = ms_ty_subst(&cx->program->types, ms_facts_type(fn.facts, lambda.expr->id), lambda.subst.vars,
                                      lambda.subst.args, lambda.subst.count);
   for (uint32_t at = 1; at < reserved.nparams; at++) {
@@ -526,6 +527,11 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
       lifted[at] = true;
       continue;
     }
+    if (written != NULL && mode == MM_MOVE && at - 1 < LOWER_MAX_CLOSING_PARAMS && ms_facts_closer(fn.facts, written->id) != NULL) {
+      resource[at] = true; /* may be the body's to close: settled once the closing slots exist */
+      fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, MM_BORROW);
+      continue;
+    }
     fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, mode);
     mir_b_def_var(&fn.b, fn.param_vars[at - 1], param);
     if (reserved.params[at].mode == MM_MOVE && mir_needs_drop(cx->module, ty) && param == values[at]) {
@@ -536,6 +542,23 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
   fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
+  for (uint32_t at = 1; at < reserved.nparams && at <= LOWER_MAX_ARGS; at++) {
+    if (!resource[at]) {
+      continue;
+    }
+    const MsParam *written = lambda.expr->u.lambda.params.ptr[at - 1];
+    const MsTy checked = ms_facts_type(fn.facts, written->id);
+    const MirTy ty = mir_b_ty(&fn.b, values[at]);
+    if (fn_closer_for(&fn, ms_facts_closer(fn.facts, written->id), checked)) {
+      /* A resource parameter is the body's to close: it lives in a slot the body's scope owns. */
+      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1]);
+    } else {
+      mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
+      if (mir_needs_drop(cx->module, ty)) {
+        fn_own(&fn, fn_scope(&fn), values[at]);
+      }
+    }
+  }
   fn_find_shared(&fn, lambda.expr->u.lambda.body);
   bool ok = bind_captures(&fn, &lambda, values[0]);
   for (uint32_t at = 1; ok && at < reserved.nparams && at <= LOWER_MAX_ARGS; at++) {
