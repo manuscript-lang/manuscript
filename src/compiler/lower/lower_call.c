@@ -131,11 +131,9 @@ static bool var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
   return true;
 }
 
-static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode node);
-
 /* Whether the method called is declared `move fn`: it takes its receiver. */
 static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
-  const MsMethodEntry *entry = find_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  const MsMethodEntry *entry = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
   return entry != NULL && entry->source->consuming;
 }
 
