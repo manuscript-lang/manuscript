@@ -35,11 +35,13 @@ import (
 fn text_of(data: Bytes) String:
 	return data.decode_utf8().get_or("").clone()
 
-// Replaces the working directory with <DIR> and the digits after `"duration_ns": ` with
+// Replaces the working directory, spelled as the oracle runtime names it or with forward
+// slashes as ms prints it on Windows, with <DIR> and the digits after `"duration_ns": ` with
 // 0, the only value that varies between runs.
 fn normalize(text: String, dir: String) String:
 	marker := "\"duration_ns\": "
-	parts := text.replace(dir, "<DIR>").split(marker)
+	slashed := dir.replace("\\", "/")
+	parts := text.replace(dir, "<DIR>").replace(slashed, "<DIR>").split(marker)
 	var out = parts[0].clone()
 
 	for index in 1..parts.length():
