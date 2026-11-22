@@ -215,13 +215,13 @@ static void rewrite_edges(MirModule *m, MirFunc *f, MirBlock si, const ParamSpli
       if (splits[s].block != target->block) {
         continue;
       }
+      /* The constructor is read before the inserts below, which may move the block's instructions. */
       const MirInst *ctor = def_inst(f, defs, target->args[splits[s].param]);
-      MirInst flag = bool_const(f, ctor != NULL && ctor->op == MOP_OptSome, blk->term_loc);
-      MirValue value = MIR_NONE;
+      const bool present = ctor != NULL && ctor->op == MOP_OptSome;
+      MirValue value = present ? ctor->args[0] : MIR_NONE;
+      MirInst flag = bool_const(f, present, blk->term_loc);
       mir_block_insert(&f->blocks.ptr[si], (uint32_t)f->blocks.ptr[si].insts.len, &flag);
-      if (ctor != NULL && ctor->op == MOP_OptSome) {
-        value = ctor->args[0];
-      } else {
+      if (!present) {
         MirInst zero = zero_const(m, f, splits[s].inner, blk->term_loc);
         value = zero.res;
         mir_block_insert(&f->blocks.ptr[si], (uint32_t)f->blocks.ptr[si].insts.len, &zero);
