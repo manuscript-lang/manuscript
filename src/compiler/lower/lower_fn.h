@@ -129,6 +129,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record constructor takes one per field */
 

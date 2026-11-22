@@ -285,6 +285,7 @@ MS_LIST_DEFINE(MirFuncList, mir_func_list, MirFunc)
 typedef struct MirField {
   MsName name;
   MirTy ty;
+  uint32_t default_fn1; /* 1 + the function that builds the field's default in place, `fn(out, record)`; 0 for none */
 } MirField;
 
 typedef struct MirTypeDef {
