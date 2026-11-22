@@ -6,6 +6,7 @@
 #include "base/message.h"
 #include "base/sort.h"
 #include "compiler/check/methods.h"
+#include "compiler/check/resolve_internal.h"
 #include "compiler/syntax/walk.h"
 #include "tooling/facts.h"
 
@@ -18,6 +19,7 @@ typedef struct Builder {
   const MsMethodEntry ***method_at;     /* the method a method node declares */
   MsSpan **param_key;                   /* the key of the parameter or field a node declares */
   MsTy **written;                       /* the checked type of a written type node */
+  bool **instantiated;                  /* a function name written with explicit type arguments, `f[Int]`: the index leaves it out */
   bool **assigned;                      /* an expression that is the target of an assignment */
   uint32_t module;                      /* the module being walked */
   struct TypeSites *sink;               /* where the written-type collectors append */
@@ -126,6 +128,16 @@ static void fold_receivers(Builder *b, uint32_t module) {
     }
     MsStrBuild text = ms_strbuild_new();
     type_form(b, &text, tree->decls[at]->u.impl.receiver);
+    const MsTypeParams bounds = tree->decls[at]->u.impl.bounds;
+    for (uint32_t index = 0; index < bounds.len; index++) {
+      /* `Box[T: Equal]` and `Box[T]` are two forms. */
+      ms_strbuild_append_text(&text, " ");
+      ms_strbuild_append(&text, ms_names_span(b->program->names, bounds.ptr[index]->name));
+      for (uint32_t bound = 0; bound < bounds.ptr[index]->bounds.len; bound++) {
+        ms_strbuild_append_text(&text, ":");
+        type_form(b, &text, bounds.ptr[index]->bounds.ptr[bound]);
+      }
+    }
     forms[at] = ms_arena_copy(b->arena, ms_strbuild_span(&text));
     ms_strbuild_free(&text);
     for (uint32_t earlier = 0; earlier < at; earlier++) {
@@ -224,7 +236,8 @@ static MsSpan operation_key(const Builder *b, MsSymbolId interface, MsName name)
   return ms_message_format(b->arena, "operation:%S:%u:%S", module_file(b, symbol->module), symbol->decl->pos.offset, name_text(b, name));
 }
 
-/* A method's identity. A type satisfies an interface by having its operations with the exact signature, so such a
+/* A method's identity. A type satisfies an interface by having its operations with the exact signature (an operation that
+ * writes `Self` is no exact match), so such a
  * method shares the operation's identity: renaming one renames the interface and every type that meets it. */
 static MsSpan method_key(Builder *b, const MsMethodEntry *entry) {
   MsCheckProgram *program = b->program;
@@ -251,7 +264,7 @@ static MsSpan method_key(Builder *b, const MsMethodEntry *entry) {
           }
           const MsTy shown = ms_check_operation_type(program, symbol->ty, operation, entry->receiver);
           const size_t count = ms_ty_param_count(&program->types, entry->ty);
-          if (shown != entry->ty || ms_ty_param_count(&program->types, operation->ty) != count) {
+          if (shown != entry->ty || shown != operation->ty || ms_ty_param_count(&program->types, operation->ty) != count) {
             continue;
           }
           bool same = true;
@@ -326,7 +339,10 @@ static void declare_symbols(Builder *b, uint32_t module) {
           }
           const MsSpan method_name = name_text(b, method->func.name);
           add(b, operation_key(b, id, method->func.name), method_name, module, header(source, method->pos.offset, method_name),
-              true, false, def->operations.ptr[op].ty, 0, true);
+              true, false,
+              ms_check_replace_type(&b->program->types, def->operations.ptr[op].ty, symbol->ty,
+                                    resolver_primitive(b->program, MS_BUILTIN_SelfType)),
+              0, true);
         }
       }
     }
@@ -534,7 +550,12 @@ static void emit_type_sites(Builder *b, const TypeSites *sites) {
   for (size_t index = 0; index < sites->len; index++) {
     const TypeSite *site = &sites->ptr[index];
     const MsTy resolved = site->id < b->program->modules.ptr[b->module].tree->node_count ? b->written[b->module][site->id] : MS_TY_NONE;
-    const MsSymbolId symbol = site->named ? type_symbol(b, resolved) : 0;
+    MsSymbolId symbol = site->named ? type_symbol(b, resolved) : 0;
+    /* `Self` in an interface is the contract's marker, not a mention of the interface. */
+    if (symbol != 0 && ms_span_is_text(name_text(b, site->name), "Self") && b->program->symbols.ptr[symbol].decl != NULL &&
+        b->program->symbols.ptr[symbol].decl->kind == MS_D_INTERFACE) {
+      symbol = 0;
+    }
     if (symbol != 0) {
       add(b, symbol_key(b, symbol), name_text(b, site->name), b->module, site->offset, false, false, resolved, symbol, false);
     }
@@ -1000,9 +1021,12 @@ static void use_call(Builder *b, const MsExpr *expr, MsTy ty) {
       add(b, ms_message_format(b->arena, "case:%S:%S", symbol_key(b, parent), name_text(b, case_name)), name_text(b, case_name),
           b->module, written->pos.offset, false, false, ty, 0, false);
       if (!member) {
-        /* A constructor named bare (`ok`, `Node`) is also a symbol of its own in the oracle's index. */
-        add(b, ms_message_format(b->arena, "native:%S", name_text(b, case_name)), name_text(b, case_name), b->module,
-            written->pos.offset, false, false, ty, 0, false);
+        /* A constructor named bare (`ok`, `Node`) is also a symbol of its own in the oracle's index: the standard
+         * one's native, a project one's enum. */
+        const MsSpan own = b->program->symbols.ptr[parent].module < b->program->user_modules ? symbol_key(b, parent)
+                                                                                           : ms_message_format(b->arena, "native:%S", name_text(b, case_name));
+        add(b, own, name_text(b, case_name), b->module, written->pos.offset, false, false, ty,
+            b->program->symbols.ptr[parent].module < b->program->user_modules ? parent : 0, false);
       }
       const MsExpr *root = member ? peel_apply(written->u.member.left) : NULL;
       if (root != NULL && root->kind == MS_E_NAME) {
@@ -1060,11 +1084,24 @@ static void match_case(Builder *b, const MsExpr *scrutinee, const MsExpr *path) 
     name = path->u.sym;
   } else if (path->kind == MS_E_MEMBER) {
     const MsExpr *qualifier = peel_apply(path->u.member.left);
-    const MsRef *ref = qualifier->kind == MS_E_NAME ? ms_facts_ref(facts, qualifier->id) : NULL;
-    if (ref == NULL || symbol_of_ref(b, ref) != parent) {
+    if (qualifier->kind != MS_E_NAME) {
+      return;
+    }
+    /* A match path bypasses inference, so its qualifier has no ref: read it from the module's scope. */
+    const MsRef *ref = ms_facts_ref(facts, qualifier->id);
+    const bool resolved = ref != NULL && ref->kind != MS_REF_NONE;
+    MsSymbolId named = resolved ? symbol_of_ref(b, ref) : 0;
+    if (!resolved) {
+      const MsModuleInfo *info = &b->program->modules.ptr[b->module];
+      const MsSymbolId *found = ms_scope_get(&info->scope, qualifier->u.sym);
+      found = found != NULL ? found : ms_scope_get(&info->imports, qualifier->u.sym);
+      named = found != NULL ? *found : 0;
+    }
+    if (named != parent) {
       return;
     }
     name = path->u.member.name;
+    add(b, symbol_key(b, parent), name_text(b, qualifier->u.sym), b->module, qualifier->pos.offset, false, false, ty, parent, false);
   } else {
     return;
   }
@@ -1076,6 +1113,23 @@ static void match_case(Builder *b, const MsExpr *scrutinee, const MsExpr *path) 
       return;
     }
   }
+}
+
+/* A match path over an interface value names the type it tests for. */
+static void match_type(Builder *b, MsTy scrutinee, const MsExpr *path) {
+  if (path->kind != MS_E_NAME || scrutinee == MS_TY_NONE || ms_ty_kind(&b->program->types, scrutinee) != MS_TY_CONTRACT) {
+    return;
+  }
+  const MsModuleInfo *info = &b->program->modules.ptr[b->module];
+  const MsSymbolId *found = ms_scope_get(&info->scope, path->u.sym);
+  if (found == NULL) {
+    found = ms_scope_get(&info->imports, path->u.sym);
+  }
+  if (found == NULL || *found == 0 || b->program->symbols.ptr[*found].kind != MS_SYMBOL_TYPE) {
+    return;
+  }
+  add(b, symbol_key(b, *found), name_text(b, path->u.sym), b->module, path->pos.offset, false, false, b->program->symbols.ptr[*found].ty, *found,
+      false);
 }
 
 /* Argument labels resolve to the parameters of a callee with a body, whichever module declares it. */
@@ -1118,8 +1172,13 @@ static void uses_expr(void *context, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(facts, expr->id);
   const MsTy ty = ms_facts_type(facts, expr->id);
   const bool write = b->assigned[b->module][expr->id];
+  if (expr->kind == MS_E_APPLY && expr->u.apply.left->kind == MS_E_NAME) {
+    b->instantiated[b->module][expr->u.apply.left->id] = true;
+  }
   if (expr->kind == MS_E_NAME && ref != NULL) {
-    use_name(b, expr, ref, ty, write);
+    if (!(ref->kind == MS_REF_FUNCTION && b->instantiated[b->module][expr->id])) {
+      use_name(b, expr, ref, ty, write);
+    }
   } else if (expr->kind == MS_E_MEMBER && ref != NULL) {
     use_member(b, expr, ref, ty, write);
   } else if (expr->kind == MS_E_CALL) {
@@ -1132,6 +1191,7 @@ static void uses_expr(void *context, const MsExpr *expr) {
       const bool optional = arm->bare && ms_ty_is(&b->program->types, scrutinee, MS_BUILTIN_Optional);
       if (!optional && !arm->from_if) {
         match_case(b, expr->u.match.scrutinee, arm->path);
+        match_type(b, scrutinee, arm->path);
       }
     }
   }
@@ -1187,6 +1247,7 @@ static void index_tables(Builder *b) {
   b->param_key = MS_ARENA_NEW_ARRAY(b->arena, MsSpan *, modules);
   b->written = MS_ARENA_NEW_ARRAY(b->arena, MsTy *, modules);
   b->assigned = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
+  b->instantiated = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
   b->folded_into = MS_ARENA_NEW_ARRAY(b->arena, uint32_t *, modules);
   for (size_t module = 0; module < modules; module++) {
     const uint32_t nodes = program->modules.ptr[module].tree->node_count + 1;
@@ -1195,6 +1256,7 @@ static void index_tables(Builder *b) {
     b->param_key[module] = MS_ARENA_NEW_ARRAY(b->arena, MsSpan, nodes);
     b->written[module] = MS_ARENA_NEW_ARRAY(b->arena, MsTy, nodes);
     b->assigned[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
+    b->instantiated[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
   }
   for (size_t module = 0; module < modules; module++) {
     fold_receivers(b, (uint32_t)module);
@@ -1305,4 +1367,16 @@ MsTypeHints ms_occurrence_type_hints(MsArena *arena, const MsCheckProgram *progr
                                     .len = utf16_length(source.ptr + entry->offset, entry->end - entry->offset)});
   }
   return hints;
+}
+
+void ms_source_position(MsSpan source, size_t offset, size_t *line, size_t *column) {
+  size_t start = 0;
+  *line = 0;
+  for (size_t at = 0; at < offset && at < source.len; at++) {
+    if (source.ptr[at] == '\n') {
+      (*line)++;
+      start = at + 1;
+    }
+  }
+  *column = utf16_length(source.ptr + start, (offset < source.len ? offset : source.len) - start);
 }
