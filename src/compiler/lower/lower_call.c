@@ -370,6 +370,18 @@ bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
     return false;
   }
   const MsMethodEntry *entry = fn_method_entry(cx, call->callee.decl.module, call->callee.decl.node);
+  if (entry != NULL && ms_ty_param_count(&cx->program->types, call->callee_ty) > 0) {
+    /* A method declared once on a type set has an entry per member: the one whose receiver is the call's. */
+    const MsTy receiver = ms_ty_subst(&cx->program->types, ms_ty_params(&cx->program->types, call->callee_ty)[0].ty,
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+    for (size_t index = 0; index < cx->program->methods.len; index++) {
+      const MsMethodEntry *other = &cx->program->methods.ptr[index];
+      if (other->module == entry->module && other->source->id == entry->source->id && other->receiver == receiver) {
+        entry = other;
+        break;
+      }
+    }
+  }
   if (entry == NULL || entry->source->func.external) {
     return false;
   }

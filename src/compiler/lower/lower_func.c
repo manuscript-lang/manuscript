@@ -100,6 +100,11 @@ static void instance_key(Lower *cx, const LowerTarget *target, const MsTy *args,
   ms_strbuild_append_u64(out, target->module);
   ms_strbuild_append_byte(out, '.');
   ms_strbuild_append_u64(out, target->node);
+  if (target->receiver != MS_TY_NONE) {
+    /* A method declared once on a union (`fn Ordered.min`) has an entry per member: each is an instance of its own. */
+    ms_strbuild_append_byte(out, '@');
+    ms_strbuild_append_u64(out, target->receiver);
+  }
   for (uint32_t index = 0; index < nargs; index++) {
     ms_strbuild_append_byte(out, index == 0 ? ':' : ',');
     ms_strbuild_append_u64(out, args[index]);
