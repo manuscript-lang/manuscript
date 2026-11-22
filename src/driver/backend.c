@@ -5,6 +5,7 @@
 #include "compiler/emit/emit.h"
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_pipeline.h"
+#include "compiler/mir/mir_print.h"
 #include "compiler/opt/opt.h"
 
 /* The passes from lowered MIR to a finished module; `glue` and `data` are the caller's to free. */
@@ -43,6 +44,24 @@ bool ms_backend_ir(MsCheckProgram *program, uint32_t entry_module, const Backend
   ok = ok && run_passes(&module, options, &glue, &data, why);
   ok = ok && emit_program(&module, &data, &glue, ir, why);
   mir_data_free(&data);
+  mir_glue_free(&glue);
+  mir_module_free(&module);
+  return ok;
+}
+
+bool ms_backend_mir(MsCheckProgram *program, uint32_t entry_module, const BackendOptions *options, MsStrBuild *text,
+                    MsStrBuild *why) {
+  MirModule module;
+  mir_module_init(&module);
+  const MirPipelineOptions pipeline = {.verify = options->verify};
+  MirGlue glue = {0};
+  bool ok = ms_lower_program(program, entry_module, &module, why);
+  ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
+  ok = ok && mir_optimize(&module, options->optimize ? MIR_OPT_SPEED : MIR_OPT_NONE, options->verify, why);
+  ok = ok && mir_pipeline_finish(&module, &pipeline, &glue, why);
+  if (ok) {
+    mir_print_module(&module, text);
+  }
   mir_glue_free(&glue);
   mir_module_free(&module);
   return ok;

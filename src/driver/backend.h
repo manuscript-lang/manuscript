@@ -15,4 +15,8 @@ typedef struct BackendOptions {
 bool ms_backend_ir(MsCheckProgram *program, uint32_t entry_module, const BackendOptions *options, MsStrBuild *ir,
                    MsStrBuild *why);
 
+/* The same lowering and passes up to the emitter, with the module printed as MIR text into `text`. */
+bool ms_backend_mir(MsCheckProgram *program, uint32_t entry_module, const BackendOptions *options, MsStrBuild *text,
+                    MsStrBuild *why);
+
 #endif
