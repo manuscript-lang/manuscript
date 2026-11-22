@@ -6,6 +6,7 @@
 
 #include "base/arena.h"
 #include "compiler/check/program.h"
+#include "compiler/project/project.h"
 #include "driver/findings.h"
 
 typedef enum MsInputTarget {
@@ -26,6 +27,10 @@ typedef struct MsCheckedInput {
 /* Loads and checks `filename` for an executable. True when it can be lowered; false leaves the diagnostics in
  * `findings`. Texts live in `arena`; `ms_checked_input_free` releases the rest. */
 MS_NODISCARD bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target);
+
+/* The same, with extra loader options (`project_sources`, an unsaved-contents `overlay`). */
+MS_NODISCARD bool ms_checked_input_load_with(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target,
+                                             const MsLoadOptions *extra);
 
 /* The names of the tests of the checked program, `file::name`, in the order `lower_tests` numbers them: user modules in
  * program order, then declaration order. With `benches` the bench blocks are named instead of the tests. */

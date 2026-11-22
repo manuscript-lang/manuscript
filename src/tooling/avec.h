@@ -23,4 +23,6 @@
     list->ptr[list->len++] = value;                                                                          \
   }
 
+MS_AVEC(MsSpans, ms_spans, MsSpan)
+
 #endif

@@ -281,18 +281,55 @@ static int build_type_rule(MsArena *arena, MsInvocation *invocation, const MsRaw
 static const char *const VIEWS[] = {"overview", "calls", "effects", "errors", "modules",
                                     "flow",     "scope", "tasks",   "types",  "ownership"};
 
+/* The rules of `ms review` options, in the order the Rust CLI checks them. */
+static int review_rules(MsArena *arena, MsInvocation *invocation) {
+  if (invocation->json && invocation->format.len > 0) {
+    return ms_usage_error(arena, ms_message_format(arena, "--json and --format cannot be combined; --json is the JSON report",
+                                                   (MsSpan){0}, (MsSpan){0}));
+  }
+  if (invocation->format.len > 0 && !ms_span_is_text(invocation->format, "ascii") &&
+      !ms_span_is_text(invocation->format, "markdown")) {
+    return ms_usage_error(arena, ms_message_format(arena, "unknown --format %S for ms review; use ascii or markdown (--json "
+                                                          "for JSON)",
+                                                   ms_invocation_quote(arena, invocation->format), (MsSpan){0}));
+  }
+  if (invocation->explain.len > 0 && invocation->diff.len == 0) {
+    return ms_usage_error(arena, ms_message_format(arena, "--explain needs --diff; it explains one finding of a diff report, "
+                                                          "e.g. ms review ms.toml --diff change.patch --explain 1",
+                                                   (MsSpan){0}, (MsSpan){0}));
+  }
+  if (invocation->effect.len > 0 && invocation->diff.len == 0) {
+    return ms_usage_error(arena, ms_message_format(arena, "--effect needs --diff; it keeps the findings that reach or permit "
+                                                          "one effect, e.g. ms review ms.toml --diff change.patch --effect "
+                                                          "std.net.*",
+                                                   (MsSpan){0}, (MsSpan){0}));
+  }
+  return 0;
+}
+
 /* Options of `diagram` and `profile` used on another command, and the rules that combine them. */
 static int tool_rules(MsArena *arena, MsInvocation *invocation) {
   const MsSpan command = invocation->command;
   const bool diagram = ms_span_is_text(command, "diagram");
   const bool profile = ms_span_is_text(command, "profile");
+  const bool review = ms_span_is_text(command, "review");
   const MsSpan hint = command;
-  if (invocation->format.len > 0 && !diagram) {
+  if (review) {
+    const int status = review_rules(arena, invocation);
+    if (status != 0) {
+      return status;
+    }
+  }
+  if ((invocation->explain.len > 0 || invocation->effect.len > 0 || invocation->all) && !review) {
+    return ms_usage_error(arena, ms_message_format(arena, "--all, --explain, and --effect are valid only for ms review, not "
+                                                          "ms %S; run 'ms help %S' for its options", command, hint));
+  }
+  if (invocation->format.len > 0 && !diagram && !review) {
     return ms_usage_error(arena, ms_message_format(arena, "--format is valid only for ms diagram and ms review, not ms %S; "
                                                           "run 'ms help %S' for its options", command, hint));
   }
-  if ((invocation->view.len > 0 || invocation->entity.len > 0 || invocation->depth != 0 || invocation->diff.len > 0) &&
-      !diagram) {
+  if ((invocation->view.len > 0 || invocation->entity.len > 0 || invocation->depth != 0 ||
+       (invocation->diff.len > 0 && !review)) && !diagram) {
     return ms_usage_error(arena, ms_message_format(arena, "--view, --entity, --depth, and --diff are valid only for ms "
                                                           "diagram, not ms %S; run 'ms help %S' for its options",
                                                    command, hint));
@@ -317,7 +354,7 @@ static int tool_rules(MsArena *arena, MsInvocation *invocation) {
   }
   const bool html = ms_span_is_text(invocation->format, "html");
   const bool scoped = invocation->view.len > 0 || invocation->entity.len > 0;
-  if (invocation->diff.len > 0 && !scoped && !html) {
+  if (diagram && invocation->diff.len > 0 && !scoped && !html) {
     return ms_usage_error(arena, ms_message_format(arena, "--diff marks a scoped view; add --view or --entity, e.g. ms "
                                                           "diagram ms.toml --view flow --entity save --diff change.patch",
                                                    (MsSpan){0}, (MsSpan){0}));
@@ -339,7 +376,7 @@ static int tool_rules(MsArena *arena, MsInvocation *invocation) {
     return ms_usage_error(arena, ms_message_format(arena, "unknown --format %S for ms diagram; use ascii, mermaid, or html",
                                                    ms_invocation_quote(arena, invocation->format), (MsSpan){0}));
   }
-  static const char *const WRITERS[] = {"build", "emit", "inspect", "diagram", "profile"};
+  static const char *const WRITERS[] = {"build", "emit", "inspect", "diagram", "review", "profile"};
   if (invocation->output.len > 0 && !is_one_of(command, WRITERS, 5)) {
     return ms_usage_error(arena, ms_message_format(arena, "-o and --output are valid only for ms build, emit, inspect, "
                                                           "diagram, or profile, not ms %S; run 'ms help %S' for its options",

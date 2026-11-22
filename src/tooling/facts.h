@@ -21,8 +21,6 @@ struct MsViewNode {
   MsViewNodes kids;
 };
 
-MS_AVEC(MsSpans, ms_spans, MsSpan)
-
 typedef enum MsParamMode { MS_MODE_BORROW, MS_MODE_COPY, MS_MODE_MOVE, MS_MODE_UNSPECIFIED } MsParamMode;
 typedef enum MsResultOwnership {
   MS_RESULT_OWNED,
