@@ -9,6 +9,7 @@
 #include "driver/build_command.h"
 #include "driver/check_command.h"
 #include "driver/emit_command.h"
+#include "driver/explain_command.h"
 #include "driver/fmt_command.h"
 #include "driver/help_command.h"
 #include "driver/init_command.h"
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   if (ms_cstr_equal(argv[1], "help")) return ms_help_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "explain")) return ms_explain_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "build")) return ms_build_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "run")) return ms_run_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "test")) return ms_test_command(argc - 2, argv + 2);
