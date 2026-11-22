@@ -24,4 +24,7 @@ int ms_invocation_parse(MsArena *arena, const char *command, int argc, char **ar
 
 void ms_invocation_free(MsInvocation *invocation);
 
+/* Whether `flag` is an option that consumes the next argument as its value. */
+bool ms_invocation_takes_value(MsSpan flag);
+
 #endif
