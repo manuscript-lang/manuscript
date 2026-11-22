@@ -172,7 +172,20 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (!callee_target(fn, call, &target)) {
     return call_runtime(fn, call, args, ret);
   }
-  const uint32_t func = lower_instance(fn->cx, &target, call->type_args, call->type_arg_count, &fn->subst);
+  MsTy bound[16] = {0};
+  const MsTy *type_args = call->type_args;
+  uint32_t ntype_args = call->type_arg_count;
+  if (target.variables != NULL) {
+    /* A method's variables are the receiver form's and its own: bind them against the instantiated signature. */
+    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, call->callee_ty, target.variables,
+                                                  target.nvariables, bound)) {
+      (void)fn_fail(fn, "a method's type arguments could not be found from its call");
+      return MIR_NONE;
+    }
+    type_args = bound;
+    ntype_args = target.nvariables;
+  }
+  const uint32_t func = lower_instance(fn->cx, &target, type_args, ntype_args, &fn->subst);
   if (func == MIR_NONE) {
     return MIR_NONE;
   }
