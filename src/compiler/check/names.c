@@ -43,7 +43,8 @@ bool ms_check_is_case_name(const MsCheckProgram *program, MsName name) {
 
 static bool is_declared(const Names *pass, MsName name) {
   const MsModuleInfo *info = &pass->program->modules.ptr[pass->module];
-  return ms_scope_has(&info->scope, name) || ms_scope_has(&info->imports, name);
+  const MsSymbolId *imported = ms_scope_get(&info->imports, name);
+  return ms_scope_has(&info->scope, name) || (imported != NULL && *imported != 0); /* a name whose import failed is unknown */
 }
 
 static void read_name(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site) {
