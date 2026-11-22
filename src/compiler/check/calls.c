@@ -561,7 +561,7 @@ static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *cal
 
 static MsTy record_call(Body *body, const MsExpr *call, const Target *target, MsTy instantiated, const MsTyList *type_args_list,
                         const Matched *matched) {
-  MsCall fact = {.node = call->id, .callee = target->ref, .callee_ty = instantiated};
+  MsCall fact = {.node = call->id, .callee = target->ref, .callee_ty = instantiated, .constructor = target->constructor};
   fact.args = build_args(body, target, call, matched, &fact.arg_count);
   if (type_args_list->len != 0) {
     MsTy *copy = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, type_args_list->len);
