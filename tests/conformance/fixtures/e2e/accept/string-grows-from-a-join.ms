@@ -17,7 +17,7 @@ fn wide(n: Int) String:
 	return out
 
 fn doubled(seed: String) String:
-	var out = seed
+	var out = seed.clone()
 	for i in 0..3:
 		out = out + f"<{out}>{i}"
 	return out
