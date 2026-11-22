@@ -59,6 +59,16 @@ static bool unchanged(const MsSpanList *paths, MsStrBuild *signature) {
   return same;
 }
 
+void watch_snapshot(const MsSpanList *paths, MsStrBuild *signature) { (void)snapshot(paths, UINT64_MAX, signature); }
+
+bool watch_changed(const MsSpanList *paths, MsStrBuild *signature) { return !unchanged(paths, signature); }
+
+void watch_settle(const MsSpanList *paths, MsStrBuild *signature) {
+  do {
+    uv_sleep(POLL_MS);
+  } while (watch_changed(paths, signature));
+}
+
 void watch_wait(const MsSpanList *paths, uint64_t started_ms) {
   MsStrBuild signature = ms_strbuild_new();
   if (!snapshot(paths, started_ms, &signature)) {
