@@ -34,7 +34,7 @@ void test_plan_shuffle(TestPlan *plan, int64_t seed);
 
 /* One planned test or bench. */
 typedef struct DocumentCase {
-  MsSpan name, failure;
+  MsSpan name, failure, fault; /* `fault`: the faulted test's fault object, or empty */
   const char *status; /* "passed", "failed", "skipped" or "not_run" */
   int64_t nanos;
   const MsJson *stats; /* a bench's statistics; NULL for a test */
