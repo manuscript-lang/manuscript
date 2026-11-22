@@ -36,7 +36,9 @@ static uint32_t shape(Builder *b, MsShape value) {
 static uint32_t scalar(Builder *b, MsShapeKind kind, uint32_t size) {
   return shape(b, (MsShape){.kind = (uint8_t)kind,
                             .size = size,
-                            .align = (uint16_t)(size == 0 ? 1 : size),
+                            .align = (uint16_t)(size == 0  ? 1
+                                                : size > 8 ? 8
+                                                           : size),
                             .name = MS_SHAPE_NONE,
                             .elem = MS_SHAPE_NONE,
                             .value = MS_SHAPE_NONE});
@@ -192,10 +194,134 @@ static void test_alternative(void) {
   free(b.image);
 }
 
+/* Decodes `text` into `out`; returns the status, with the failure reason in `reason`. */
+static uint8_t decode(const MsShapeTable *table, const char *text, bool ignore_unknown, void *out,
+                      MsString *reason) {
+  const MsString source = ms_string_static(ms_span_of_text(text));
+  *reason = ms_string_empty();
+  return msstd_json_decode(table, &source, 0, 0, 0, 0, 0, 0, ignore_unknown ? 1 : 0, out, reason);
+}
+
+static void expect_reason(const char *what, MsString *reason, const char *wanted) {
+  const MsSpan got = ms_string_span(reason);
+  if (!ms_span_is_text(got, wanted)) {
+    printf("FAIL %s: got '%.*s', wanted '%s'\n", what, (int)got.len, (const char *)got.ptr, wanted);
+    failures++;
+  }
+  ms_string_release(reason);
+}
+
+static void test_decode_record(void) {
+  Builder b = {0};
+  const uint32_t string_shape = scalar(&b, MS_SHAPE_STRING, sizeof(MsString));
+  const uint32_t int_shape = scalar(&b, MS_SHAPE_INT, 8);
+  const uint32_t first = member(&b, "name", string_shape, offsetof(Person, name));
+  member(&b, "age", int_shape, offsetof(Person, age));
+  const uint32_t root = shape(&b, (MsShape){.kind = MS_SHAPE_RECORD,
+                                            .size = sizeof(Person),
+                                            .align = 8,
+                                            .name = text(&b, "Person"),
+                                            .first = first,
+                                            .count = 2,
+                                            .elem = MS_SHAPE_NONE,
+                                            .value = MS_SHAPE_NONE});
+  const MsShapeTable table = finish(&b, root);
+  Person person;
+  MsString reason;
+  if (decode(&table, "{\"age\": 3, \"name\": \"Al\"}", false, &person, &reason) != 0) {
+    printf("FAIL decode record\n");
+    failures++;
+  } else {
+    MsString out;
+    ms_shape_text_of(&table, &person, true, &out);
+    expect("decoded record", &out, "Person(name: \"Al\", age: 3)");
+    ms_string_release(&person.name);
+  }
+  ms_string_release(&reason);
+  if (decode(&table, "{\"name\": \"Al\"}", false, &person, &reason) == 0) {
+    printf("FAIL missing field accepted\n");
+    failures++;
+  }
+  expect_reason("missing field", &reason, "JSON: invalid data: at $: missing field \"age\"");
+  if (decode(&table, "{\"name\": \"Al\", \"age\": 3, \"x\": 1}", false, &person, &reason) == 0) {
+    printf("FAIL unknown field accepted\n");
+    failures++;
+  }
+  ms_string_release(&reason);
+  if (decode(&table, "{\"name\": \"Al\", \"age\": 3, \"x\": 1}", true, &person, &reason) != 0) {
+    printf("FAIL unknown field not ignored\n");
+    failures++;
+  } else {
+    ms_string_release(&person.name);
+  }
+  ms_string_release(&reason);
+  if (decode(&table, "{\"name\": 5, \"age\": 3}", false, &person, &reason) == 0) {
+    printf("FAIL kind mismatch accepted\n");
+    failures++;
+  }
+  expect_reason("kind mismatch", &reason, "JSON: invalid data: at $.name: expected string, found number");
+  free(b.image);
+}
+
+static void test_decode_containers(void) {
+  Builder b = {0};
+  const uint32_t string_shape = scalar(&b, MS_SHAPE_STRING, sizeof(MsString));
+  const uint32_t int_shape = scalar(&b, MS_SHAPE_INT, 8);
+  const uint32_t list = shape(&b, (MsShape){.kind = MS_SHAPE_LIST,
+                                            .size = sizeof(MsList),
+                                            .align = 8,
+                                            .name = MS_SHAPE_NONE,
+                                            .elem = int_shape,
+                                            .value = MS_SHAPE_NONE});
+  const MsShapeTable list_table = finish(&b, list);
+  MsList numbers;
+  MsString reason;
+  if (decode(&list_table, "[1, 2, 3]", false, &numbers, &reason) != 0 || numbers.len != 3) {
+    printf("FAIL decode list\n");
+    failures++;
+  } else {
+    MsString out;
+    ms_shape_text_of(&list_table, &numbers, true, &out);
+    expect("decoded list", &out, "[1, 2, 3]");
+    ms_list_free(&numbers);
+  }
+  ms_string_release(&reason);
+  if (decode(&list_table, "[1, \"x\"]", false, &numbers, &reason) == 0) {
+    printf("FAIL bad list accepted\n");
+    failures++;
+  }
+  expect_reason("list element", &reason, "JSON: invalid data: at $[1]: expected number, found string");
+  free(b.image);
+
+  Builder m = {0};
+  const uint32_t key = scalar(&m, MS_SHAPE_STRING, sizeof(MsString));
+  const uint32_t value = scalar(&m, MS_SHAPE_INT, 8);
+  const uint32_t map = shape(&m, (MsShape){.kind = MS_SHAPE_MAP,
+                                           .size = sizeof(MsMap),
+                                           .align = 8,
+                                           .name = MS_SHAPE_NONE,
+                                           .elem = key,
+                                           .value = value});
+  const MsShapeTable map_table = finish(&m, map);
+  MsMap counts;
+  if (decode(&map_table, "{\"a\": 1, \"b\": 2}", false, &counts, &reason) != 0 || counts.len != 2) {
+    printf("FAIL decode map\n");
+    failures++;
+  } else {
+    json("map json", &map_table, &counts, "{\"a\":1,\"b\":2}");
+    ms_map_drop(&counts, &ms_desc_string, &ms_desc_int);
+  }
+  ms_string_release(&reason);
+  (void)string_shape;
+  free(m.image);
+}
+
 int main(void) {
   test_record();
   test_list_and_optional();
   test_alternative();
+  test_decode_record();
+  test_decode_containers();
   if (failures == 0) {
     printf("shape unit: ok\n");
   }

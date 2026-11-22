@@ -25,6 +25,7 @@ add_library(ms_std_data STATIC
   json_tree.c
   json_write.c
   shape_json_write.c
+  shape_json_read.c
   checksum.c
   encoding.c
   html.c

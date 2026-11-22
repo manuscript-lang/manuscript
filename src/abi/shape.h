@@ -83,7 +83,7 @@ typedef struct MsShape {
   uint32_t first; /* RECORD and ALTERNATIVE: the first member */
   uint32_t count; /* RECORD and ALTERNATIVE: the number of members */
   uint32_t elem;  /* LIST, SET, MAP (key), OPTIONAL: the element shape */
-  uint32_t value; /* MAP: the value shape */
+  uint32_t value; /* MAP: the value shape; BOXED RECORD and ALTERNATIVE: the size of the block */
   uint32_t extra; /* ALTERNATIVE: the tag offset; OPTIONAL: the payload offset when it has a presence byte */
 } MsShape;
 
@@ -127,8 +127,10 @@ typedef struct MsShapeHook {
 /* What a generic native receives: the image, and the hook arrays when the type needs any. */
 typedef struct MsShapeTable {
   const MsShapeImage *image;
-  const MsShapeHook *hooks;           /* per shape, or NULL */
-  void (*const *defaults)(void *out); /* per member, or NULL; builds a field's default value in place */
+  const MsShapeHook *hooks; /* per shape, or NULL */
+  /* per member, or NULL; builds a field's default value in place at `out`; `record` is the value being built,
+   * whose earlier fields are set (a default may read them) */
+  void (*const *defaults)(uint8_t *out, const uint8_t *record);
 } MsShapeTable;
 
 static inline const MsShape *ms_shape_at(const MsShapeTable *table, uint32_t index) {

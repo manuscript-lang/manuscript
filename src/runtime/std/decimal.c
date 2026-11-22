@@ -81,7 +81,7 @@ MsU128 ms_dec_magnitude_of(MsI128 value) {
 /* Strips trailing zeros of a coefficient into the exponent. */
 void ms_dec_normalize(MsU128 *magnitude, int64_t *exponent) {
   while (*magnitude >> 64 != 0) { /* wide values go down to 64 bits first */
-    const MsU128 tenth = *magnitude / 10;
+    const MsU128 tenth = ms_u128_div(*magnitude, 10);
     if (*magnitude != tenth * 10) {
       return;
     }
@@ -176,8 +176,8 @@ MS_NODISCARD static bool round_wide(MsU128 magnitude, bool negative, int64_t exp
       magnitude = 0;
     } else {
       const MsU128 unit = ms_dec_power_of_ten((unsigned)drop);
-      const MsU128 remainder = magnitude % unit;
-      magnitude /= unit;
+      const MsU128 remainder = ms_u128_mod(magnitude, unit);
+      magnitude = ms_u128_div(magnitude, unit);
       const MsU128 complement = unit - remainder;
       if (remainder > complement || (remainder == complement && (magnitude & 1) != 0)) {
         magnitude++;
@@ -562,7 +562,7 @@ uint8_t msstd_decimal_truncate_to_int(const MsDecimal *a, int64_t *out) {
     *out = 0; /* the coefficient has at most 34 digits */
     return 1;
   } else {
-    value = coefficient / (MsI128)ms_dec_power_of_ten((unsigned)-a->exponent);
+    value = ms_i128_div(coefficient, (MsI128)ms_dec_power_of_ten((unsigned)-a->exponent));
   }
   if (value < INT64_MIN || value > INT64_MAX) {
     return 0;

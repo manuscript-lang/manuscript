@@ -5,6 +5,7 @@
 
 #include "abi/status.h"
 #include "base/bytes.h"
+#include "base/wide.h"
 #include "runtime/std/stdmath.h"
 
 enum { MAX_SAFE_INTEGER_BITS = 53 };
@@ -193,10 +194,6 @@ void msstd_math_multiply_wide(uint64_t left, uint64_t right, MsWideProduct *out)
   out->low = (uint64_t)product;
 }
 
-static WideWord wide_of(uint64_t high, uint64_t low) {
-  return ((WideWord)high << 64) | low;
-}
-
 uint8_t msstd_math_divide_wide(uint64_t high, uint64_t low, uint64_t divisor, MsWordDivision *out) {
   if (divisor == 0) {
     return MS_STATUS_INVALID_INPUT;
@@ -204,9 +201,7 @@ uint8_t msstd_math_divide_wide(uint64_t high, uint64_t low, uint64_t divisor, Ms
   if (high >= divisor) {
     return MS_STATUS_OUT_OF_RANGE;
   }
-  const WideWord dividend = wide_of(high, low);
-  out->quotient = (uint64_t)(dividend / divisor);
-  out->remainder = (uint64_t)(dividend % divisor);
+  out->quotient = ms_wide_divide(high, low, divisor, &out->remainder);
   return MS_STATUS_OK;
 }
 
@@ -214,6 +209,6 @@ uint8_t msstd_math_remainder_wide(uint64_t high, uint64_t low, uint64_t divisor,
   if (divisor == 0) {
     return MS_STATUS_INVALID_INPUT;
   }
-  *out = (uint64_t)(wide_of(high, low) % divisor);
+  (void)ms_wide_divide(high % divisor, low, divisor, out);
   return MS_STATUS_OK;
 }
