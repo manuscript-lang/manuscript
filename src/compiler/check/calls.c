@@ -114,7 +114,7 @@ MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
 static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target *target) {
   const MsLocal *local = body_find_local(body, callee->u.sym);
   if (local != NULL) {
-    target->ref = (MsRef){.kind = local->kind, .local = local->id};
+    target->ref = body_local_ref(body, local);
     target->sig = local->ty;
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }

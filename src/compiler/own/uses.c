@@ -171,7 +171,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_RETURN) {
     mark_move(pass, stmt->u.expr);
-  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable) {
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     mark_move(pass, stmt->u.bind.value);
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
