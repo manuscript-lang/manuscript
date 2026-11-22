@@ -8,11 +8,11 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "base/strbuild.h"
-#include "compiler/check/effects_scan.h"
 #include "compiler/check/program.h"
 #include "compiler/own/own.h"
 #include "compiler/project/project.h"
 #include "compiler/syntax/format.h"
+#include "tooling/lint.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70, FINDING_LIMIT = 8 };
 
@@ -126,16 +126,15 @@ static bool formatted(const MsGraph *graph) {
   return clean;
 }
 
-/* The effects findings of the project's callables, in the order the scan reports them. */
-static void collect_effects(const MsCheckProgram *program, MsArena *arena, Findings *findings) {
-  const MsReach reach = ms_check_effects(program, arena);
-  for (uint32_t index = 0; index < reach.violation_count; index++) {
-    const MsReachViolation *violation = &reach.violations[index];
-    MsStrBuild message = ms_strbuild_new();
-    ms_effect_message(&message, violation->path[0], violation);
-    add_finding(findings, ms_names_span(program->names, violation->file), violation->pos, ms_strbuild_span(&message));
-    ms_strbuild_free(&message);
+/* Every lint finding of the checked project. */
+static void collect_lint(const MsCheckProgram *program, MsArena *arena, Findings *findings) {
+  MsLintFindingList lint = {0};
+  ms_lint_modules(arena, program, &lint);
+  for (size_t index = 0; index < lint.len; index++) {
+    const MsLintFinding *finding = &lint.ptr[index];
+    add_finding(findings, finding->file, finding->pos, finding->message);
   }
+  ms_lint_finding_list_free(&lint);
 }
 
 static void print_step(const char *name, const char *status) {
@@ -190,7 +189,7 @@ int ms_verify_command(int argc, char **argv) {
   }
   const bool checked = check.count == 0;
   if (checked) {
-    collect_effects(&program, &arena, &lint);
+    collect_lint(&program, &arena, &lint);
   }
   const int result = finish(&options, checked, formatted(&graph), &check, &lint);
   ms_strbuild_free(&check.text);
