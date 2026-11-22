@@ -36,5 +36,6 @@ bool target_positional(const Target *target, size_t index, const MsTyTable *type
 /* Reports the arguments that match no parameter and the parameters left without an argument, and types the
  * unmatched arguments. */
 void body_report_arguments(Body *body, const Target *target, const MsExpr *call, const Matched *matched);
+bool body_param_omittable(const Body *body, const MsParam *param);
 
 #endif
