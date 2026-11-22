@@ -19,7 +19,8 @@ import (
 	NativeServing,
 	NativeWorker,
 	NativeWorkerSpec,
-	headers from "@std/net/http.ms",
+	headers,
+	native_handler from "@std/net/http.ms",
 	Cidr, DnsKind, DnsRecord, IpAddress from "@std/net/ip.ms",
 	TlsInfo, TlsOptions from "@std/net/tls.ms",
 	WebSocket,
@@ -690,7 +691,7 @@ export fn serve(
 	if cores := options.cores:
 		if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
 
-	serving := msstd_http_serving_new(address, options, handler)?
+	serving := msstd_http_serving_new(address, options, native_handler(handler))?
 	bound := msstd_http_serving_address(serving)
 	listening := ServingHandle(serving: serving)
 	if cores := options.cores:
