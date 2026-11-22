@@ -137,14 +137,18 @@ uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy if
   return vtable;
 }
 
-static MirValue view_as_interface(LowerFn *fn, const MsConversion *conversion, MirValue value) {
+static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConversion *conversion, MirValue value) {
   const uint32_t vtable = lower_vtable(fn->cx, &fn->subst, conversion->from, conversion->to);
   if (vtable == MIR_NONE) {
     (void)fn_fail(fn, "a value cannot be viewed as this interface: a method of the interface has no body for its type");
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_VTABLE, .a = vtable};
-  return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, fn_type(fn, conversion->to));
+  const MirTy to = fn_type(fn, conversion->to);
+  /* A view of a binding that keeps its value does not own it; a fresh value or a moved one is the interface's. */
+  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  const bool views = place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
+  return views ? mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to) : fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
 }
 
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
@@ -153,7 +157,7 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     return value;
   }
   if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
-    return view_as_interface(fn, conversion, value);
+    return view_as_interface(fn, expr, conversion, value);
   }
   if (conversion->kind == MS_CONV_OPTIONAL_WRAP) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
