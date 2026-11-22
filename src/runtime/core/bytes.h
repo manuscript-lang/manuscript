@@ -89,6 +89,12 @@ void msrt_strbuilder_append_int(MsList *b, int64_t n);
  * @method=StringBuilder.build */
 void msrt_strbuilder_freeze(MsList *b, MsString *out);
 
+/* The bytes of a BytesBuilder moved out: `build` consumes the builder, `drain` leaves it empty. */
+/* ms-sig: msrt_bytesbuilder_build(b: *mut VecVal, out: *mut VecVal) @domain=binary @leaf @method=BytesBuilder.build */
+void msrt_bytesbuilder_build(MsList *b, MsList *out);
+/* ms-sig: msrt_bytesbuilder_drain(b: *mut VecVal, out: *mut VecVal) @domain=binary @leaf @method=BytesBuilder.drain */
+void msrt_bytesbuilder_drain(MsList *b, MsList *out);
+
 /* The builder's text moved out, leaving it empty. */
 /* ms-sig: msrt_strbuilder_drain(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf
  * @method=StringBuilder.drain */
