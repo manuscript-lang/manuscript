@@ -135,7 +135,7 @@ uint8_t msrt_string_index_any(const MsString *s, const MsString *set, int64_t *o
 void msrt_string_trim_chars(const MsString *s, const MsString *set, uint8_t from_start, uint8_t from_end,
                             MsString *out);
 /* ms-sig: msrt_string_scalar_at(s: *const StrVal, offset: i64, has_default: HasRaw, default: i64) -> i64
- * @domain=string @leaf @pure */
+ * @domain=string @leaf @pure @inline=scalar_at */
 int64_t msrt_string_scalar_at(const MsString *s, int64_t offset, uint8_t has_default, int64_t fallback);
 
 #endif

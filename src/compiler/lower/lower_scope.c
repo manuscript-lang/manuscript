@@ -141,8 +141,10 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
   return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;
 }
 
-/* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error. */
-static const bool implicit_clone_is_error = true;
+/* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error.
+ * Off while the stdlib and call sites that copy are made explicit (#6194); turn it back on once
+ * the test sweep shows no loss. */
+static const bool implicit_clone_is_error = false;
 
 MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   if (value == MIR_NONE) {

@@ -157,15 +157,42 @@ typedef struct PlaceReturns {
 
 static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
 
+/* A native whose result is a type argument of one of its arguments (`List[T].get` answers a `T` of a `List[T]`): it can
+ * only hand back a part of what it was given, so its result is a view. A native with any other result (a status, a
+ * count) builds a new value. */
+static bool native_returns_element(const PlaceReturns *counts, const MsCall *call, const MsExpr *value) {
+  const MsTyTable *types = &counts->cx->program->types;
+  const MsTy result = ms_facts_type(counts->facts, value->id);
+  for (uint32_t index = 0; index < call->arg_count; index++) {
+    if (call->args[index].node.node == 0) {
+      continue;
+    }
+    const MsFacts *facts = &counts->cx->program->modules.ptr[call->args[index].node.module].facts;
+    const MsTy arg = ms_facts_type(facts, call->args[index].node.node);
+    for (size_t at = 0; arg != MS_TY_NONE && at < ms_ty_arg_count(types, arg); at++) {
+      if (ms_ty_args(types, arg)[at] == result) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /* A call to a function whose result borrows, whose parameters it does not take, and whose own returns are places. */
 static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   const MsCall *call = ms_facts_call(counts->facts, value->id);
+  if (call != NULL && call->callee.kind == MS_REF_NATIVE) {
+    return native_returns_element(counts, call, value);
+  }
   if (call == NULL || counts->depth >= 4 || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
     return false;
   }
   const MsFunc *callee = ms_own_find_func(counts->cx->program, &call->callee);
   if (callee == counts->func) {
     return true; /* a recursive call answers what the function's other returns answer */
+  }
+  if (callee != NULL && (callee->bodiless || callee->external)) {
+    return native_returns_element(counts, call, value);
   }
   if (callee == NULL || !ms_own_result_is_borrowed(counts->cx->program, call->callee.decl.module, call->callee.decl.node) ||
       (call->callee.kind == MS_REF_METHOD && ms_method_of_func(callee)->consuming)) {
@@ -188,9 +215,18 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
     return;
   }
   const MsExpr *value = stmt->u.expr;
+  if (value->kind == MS_E_NAME && ms_span_is_text(ms_names_span(counts->cx->program->names, value->u.sym), "none")) {
+    const MsRef *ref = ms_facts_ref(counts->facts, value->id);
+    if (ref == NULL || (ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL)) {
+      return; /* `none` holds nothing to borrow or own */
+    }
+  }
   counts->returns++;
   if (counts->result != MS_TY_NONE && ms_facts_type(counts->facts, value->id) != counts->result) {
-    return; /* a conversion (`T` returned as `T?`) builds a new owner */
+    const MsConversion *conversion = ms_facts_conversion(counts->facts, value->id);
+    if (conversion == NULL || conversion->kind != MS_CONV_OPTIONAL_WRAP) {
+      return; /* any other conversion builds a new owner; a wrapped place stays a view of it */
+    }
   }
   if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
     const MsRef *ref = ms_facts_ref(counts->facts, value->id);
