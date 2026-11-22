@@ -308,9 +308,13 @@ static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
   }
   for (uint32_t index = 0; index < fields.len; index++) {
     const MsParam *field = fields.ptr[index];
+    /* A field without a default is reported with its declaration, not here (an enum case's variables are not in scope). */
+    const bool report = body->resolver.report;
+    body->resolver.report = report && field->def != NULL;
     const MsTy ty = def != NULL && index < def->fields.len
                         ? def->fields.ptr[index].ty
                         : (field->ty != NULL ? resolver_type(&body->resolver, field->ty) : MS_TY_NONE);
+    body->resolver.report = report;
     if (field->def != NULL) {
       (void)body_expr(body, field->def, ty);
     }
