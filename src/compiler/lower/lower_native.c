@@ -78,7 +78,7 @@ MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
                      mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
                      mode == MM_MOVE;
   if (!fresh) {
-    value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+    value = fn_implicit_clone(fn, value, false);
   }
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   return value;
@@ -117,6 +117,18 @@ static bool is_plain_enum(const MirModule *module, MirTy ty) {
  * and the value (the case index for an enum; 0 when none). False when the operand is neither. */
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, optional));
+  if (data->kind == MK_OPT && data->elem == MIR_STR) {
+    /* A `String?`: whether it holds a value, and the address of the text (read only when it does). */
+    const MirValue held = fn_emit(fn, MOP_OptIsSome, &optional, 1, (MirImm){0}, MIR_BOOL);
+    const MirValue text = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, MIR_STR);
+    const MirImm of_type = {.tag = MI_TY, .a = MIR_STR};
+    const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    const MirValue store[2] = {slot, text};
+    (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+    out[0] = held;
+    out[1] = slot;
+    return true;
+  }
   if (data->kind != MK_OPT || (data->elem != MIR_INT && !is_plain_enum(fn->cx->module, data->elem))) {
     return false;
   }
@@ -286,7 +298,7 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
     const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
                        mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
                        mode == MM_MOVE;
-    value = fresh ? value : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
+    value = fresh ? value : fn_implicit_clone(fn, value, false);
     if (fresh) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
     }
@@ -559,7 +571,7 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
-      fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
+      fn_status_call(fn, name, NULL, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
   }
   MirValue wanted[NS_MAX_PARAMS];

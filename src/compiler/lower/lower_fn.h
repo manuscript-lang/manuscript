@@ -111,6 +111,9 @@ void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 
 /* Emits an instruction; when its result is an owned value the innermost scope owns it. */
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
+/* A copy the source did not ask for (`.clone()` is the only explicit one): a borrowed value an owner takes. Every such
+ * copy goes through here so the rule against hidden copies has one place to be enforced; `own` makes the scope own it. */
+MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own);
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
 
@@ -217,7 +220,7 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and
  * writes the ok payload (and the failure's text) through trailing addresses. False when `name` has no such
  * signature, and nothing was emitted. */
-bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
+bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);

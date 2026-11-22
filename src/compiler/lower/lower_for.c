@@ -299,7 +299,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
       if (fn_fresh_owner(fn, value)) {
         (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
       } else {
-        value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, iter_ty);
+        value = fn_implicit_clone(fn, value, false);
       }
     }
     slot = emit(fn, MOP_Slot, NULL, 0, imm_ty(iter_ty), MIR_PTR);

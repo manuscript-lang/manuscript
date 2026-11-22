@@ -2,7 +2,6 @@
  * operands: a status and an out slot (`T!`), the shape table of the value it reads, or the descriptor and address
  * of a generic value. The extern's `ms-sig` header says which. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/check/effects_directives.h"
 #include "compiler/lower/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -55,26 +54,22 @@ static MirValue build_result(LowerFn *fn, uint32_t alt, uint32_t which, MirValue
   return mir_b_emit(&fn->b, MOP_AltNew, &payload, 1, imm, ret);
 }
 
-/* How the file that declares the native words a status: its `// ms: words NUMBER TEXT` header lines, one per line
- * of the string ("" when it has none or the native is the runtime's own). */
-static MirValue status_words_text(LowerFn *fn, uint32_t module) {
-  if (module >= fn->cx->program->modules.len) {
+/* How the native's declaration words a status: its `@words=<status> "<text>"` annotation as one `<status> <text>`
+ * line ("" when it has none, or the native is the runtime's own). */
+static MirValue status_words_text(LowerFn *fn, const MsDecl *decl) {
+  if (decl == NULL || decl->kind != MS_D_FN || decl->u.fn.words_status == 0) {
     return string_literal(fn, "");
   }
-  MsDirectives header = ms_directives_header(fn->cx->program->modules.ptr[module].source);
   MsStrBuild text = ms_strbuild_new();
-  for (size_t at = 0; at < header.words.len; at++) {
-    ms_strbuild_append(&text, header.words.ptr[at]);
-    ms_strbuild_append_text(&text, "\n");
-  }
-  ms_directives_free(&header);
+  ms_strbuild_printf(&text, "%u ", decl->u.fn.words_status);
+  ms_strbuild_append(&text, decl->u.fn.words_text);
   MsString owned = ms_strbuild_finish(&text);
   const MirValue literal = string_span_literal(fn, ms_string_span(&owned));
   ms_string_release(&owned);
   return literal;
 }
 
-bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
+bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out) {
   uint32_t alt = 0;
   MirTy payload_ty = MIR_VOID;
@@ -200,7 +195,7 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
   }
   const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
-  const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, module)};
+  const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, decl)};
   const MirValue error = mir_b_call(&fn->b, error_function, error_args, 4);
   if (has_err) { /* the callee only borrows the text it was said, so the caller closes it */
     (void)mir_b_emit(&fn->b, MOP_Drop, &said, 1, (MirImm){0}, MIR_NONE);
