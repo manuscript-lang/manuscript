@@ -44,6 +44,7 @@ typedef struct MsSymbol {
   uint32_t def;  /* MsDefs index of a nominal type, else 0 */
   uint32_t var_at;    /* the declared type variables: a range of the program's symbol_vars */
   uint32_t var_count;
+  uint8_t alias_state; /* an alias target: 0 not yet resolved, 1 resolving, 2 resolved */
   const MsDecl *decl;
 } MsSymbol;
 
