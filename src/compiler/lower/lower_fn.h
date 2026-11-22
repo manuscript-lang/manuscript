@@ -96,6 +96,22 @@ typedef struct LowerFn {
   uint32_t local_count; /* the current block ended in a return: the statements after it are unreachable */
 } LowerFn;
 
+/* The per-local tables of a function, set aside while the default argument of a callee (whose locals are numbered in
+ * that callee) is lowered with tables of its own. */
+typedef struct LowerFnLocals {
+  MirVar *vars;
+  uint8_t *local_owns;
+  MirValue *closing;
+  bool *closing_var;
+  uint8_t *shared;
+  MirTy *closing_types;
+  uint32_t nvars;
+} LowerFnLocals;
+LowerFnLocals fn_locals_save(const LowerFn *fn);
+/* Replaces the tables with empty ones for `nvars` locals (closing slots included). */
+void fn_locals_fresh(LowerFn *fn, uint32_t nvars);
+void fn_locals_restore(LowerFn *fn, const LowerFnLocals *saved);
+
 #define fn_fail(fn, ...) ((fn)->failed = true, lower_fail((fn)->cx, __VA_ARGS__))
 
 /* ---- scopes (lower_scope.c) ---- */
@@ -157,6 +173,8 @@ uint32_t lower_close_iface(Lower *cx, MsTy ty);
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
+MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value);
+MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty);
 /* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
  * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
@@ -227,6 +245,7 @@ bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation,
 bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret);
 /* `left op right` over two values of one standard type (lower_expr.c). */
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
+MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
 MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);

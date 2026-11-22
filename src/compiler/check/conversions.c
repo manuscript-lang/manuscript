@@ -60,7 +60,8 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected) {
     return;
   }
   if (is_optional(types, expected)) {
-    if (ms_ty_args(types, expected)[0] == actual) {
+    const MsTy payload = ms_ty_args(types, expected)[0];
+    if (payload == actual || interface_assignable(body->program, actual, payload)) { /* an implementor wraps as its interface first */
       record(body, expr, MS_CONV_OPTIONAL_WRAP, actual, expected);
     }
     return;

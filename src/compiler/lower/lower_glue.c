@@ -182,7 +182,13 @@ static bool lower_glue(Lower *cx, uint32_t index) {
   LowerFn eq = begin(cx, &eq_reserved);
   MirValue args[2];
   mir_b_params(&eq.b, args, 2);
-  const MirValue same = fn_compare_values(&eq, MS_B_EQ, load_at(&eq, args[0], glue.ty), load_at(&eq, args[1], glue.ty));
+  const MsTy checked = lower_source_type(cx, glue.ty);
+  const uint32_t own_equals = checked == MS_TY_NONE ? MIR_NONE : lower_own_method(cx, checked, MS_PROPERTY_EQUAL);
+  const MirValue left = load_at(&eq, args[0], glue.ty);
+  const MirValue right = load_at(&eq, args[1], glue.ty);
+  const MirValue operands[2] = {left, right};
+  const MirValue same = own_equals != MIR_NONE ? mir_b_call(&eq.b, own_equals, operands, 2)
+                                               : fn_compare_values(&eq, MS_B_EQ, left, right);
   if (!finish(cx, &eq, glue.eq, same)) {
     return false;
   }
@@ -192,7 +198,9 @@ static bool lower_glue(Lower *cx, uint32_t index) {
   mir_b_params(&hash.b, slot, 1);
   const MirValue value = load_at(&hash, slot[0], glue.ty);
   const uint8_t kind = mir_ty_data(cx->module, glue.ty)->kind;
-  const MirValue result = kind == MK_ALT   ? hash_alt(&hash, value, glue.ty)
+  const uint32_t own_hash = checked == MS_TY_NONE ? MIR_NONE : lower_own_method(cx, checked, MS_PROPERTY_HASHABLE);
+  const MirValue result = own_hash != MIR_NONE ? mir_b_call(&hash.b, own_hash, &value, 1)
+                          : kind == MK_ALT   ? hash_alt(&hash, value, glue.ty)
                           : kind == MK_OPT ? hash_opt(&hash, value, glue.ty)
                                            : hash_record(&hash, value, glue.ty);
   cx->glues.ptr[index].lowered = true;

@@ -731,7 +731,7 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
   const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
   const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name);
-  if (method != MIR_NONE) {
+  if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].ret == ret) { /* a method of another result type is not the operation */
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
     return result;
@@ -829,6 +829,18 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    } else if (mutates_receiver(sig, ret) && argc > 0 && wanted[0] == args[0] && fn_fresh_owner(fn, args[0])) {
+      /* A temporary receiver (`[0].append(9)`): the native may regrow it through its slot, so the temporary's owner
+       * becomes the value the slot holds afterwards. */
+      const MirTy ty = mir_b_ty(&fn->b, args[0]);
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue held = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue stored[2] = {held, args[0]};
+      (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);
+      wanted[0] = held;
+      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+      fn_own(fn, fn_scope(fn), mir_b_emit(&fn->b, MOP_Take, &held, 1, of_type, ty));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     }
@@ -918,7 +930,24 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   for (uint32_t index = 1; index < call->arg_count && index < 32; index++) {
     fn->native_arg_moves |= (call->args[index].flags & MS_PARAM_MOVE) != 0 ? 1u << index : 0;
   }
-  const bool done = fn_native_on(fn, callee->u.member.left, owner, operation, call->arg_count, args, ret, &result);
+  /* A `move fn` receiver in a closing slot was taken out of it when the arguments ran: the native consumes that value
+   * through a slot of its own, and nothing is put back. */
+  const MsExpr *receiver = callee->u.member.left;
+  const MsRef *receiver_ref = receiver->kind == MS_E_NAME ? ms_facts_ref(fn->facts, receiver->id) : NULL;
+  const bool taken = receiver_ref != NULL && fn_arg_moves(fn, expr, call, 0, receiver) &&
+                     fn_closing_at(fn, receiver_ref, receiver->u.sym) != UINT32_MAX && !via_bound &&
+                     fn_native_changes_receiver(fn, owner, operation, ret);
+  MirValue through = MIR_NONE;
+  if (taken) {
+    const MirTy receiver_ty = mir_b_ty(&fn->b, args[0]);
+    const MirImm of_type = {.tag = MI_TY, .a = receiver_ty};
+    through = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);
+    const MirValue stored[2] = {through, args[0]};
+    (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  }
+  const bool done = taken ? fn_native_through(fn, through, owner, operation, call->arg_count, args, ret, &result)
+                          : fn_native_on(fn, receiver, owner, operation, call->arg_count, args, ret, &result);
   fn->native_arg_moves = 0;
   if (done) {
     return result;

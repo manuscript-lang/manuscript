@@ -165,6 +165,31 @@ static const char *op_text(MsBinaryOp op) {
   return op == MS_B_ADD ? "+" : op == MS_B_SUB ? "-" : op == MS_B_MUL ? "*" : op == MS_B_DIV ? "/" : "%";
 }
 
+/* An integer literal written where a sized integer type is expected must fit it: `out.append(256)` for a UInt8. */
+void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty) {
+  Range range = {0};
+  Wide value = 0;
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  if (!reporting(body) || ms_ty_is(&body->program->types, ty, MS_BUILTIN_Int) || !int_range(body, ty, &range) ||
+      !literal_value(text, &value)) {
+    return;
+  }
+  const Wide signed_value = negated ? -value : value;
+  if (signed_value >= range.low && signed_value <= range.high) {
+    return;
+  }
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_text(&out, negated ? "literal -" : "literal ");
+  ms_strbuild_append(&out, text);
+  ms_strbuild_append_text(&out, " is out of range for ");
+  show(body, &out, ty);
+  ms_strbuild_append_text(&out, "; use a value between ");
+  append_wide(&out, range.low);
+  ms_strbuild_append_text(&out, " and ");
+  append_wide(&out, range.high);
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE, ms_strbuild_finish(&out));
+}
+
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty) {
   Range range = {0};
   const MsBinaryOp op = (MsBinaryOp)expr->op;

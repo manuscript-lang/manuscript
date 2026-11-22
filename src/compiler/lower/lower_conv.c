@@ -60,6 +60,22 @@ uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
   return lower_operation_method(cx, receiver, name);
 }
 
+uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property) {
+  const bool equal = property == MS_PROPERTY_EQUAL;
+  if (!ms_check_decided_by_method(cx->program, receiver, property)) {
+    return MIR_NONE;
+  }
+  const uint32_t method = lower_named_method(cx, receiver, equal ? "equals" : "hash");
+  if (method == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirFunc *func = &cx->module->funcs.ptr[method];
+  const bool fits = equal ? func->nparams == 2 && func->ret == MIR_BOOL && func->params[0].mode != MM_MOVE &&
+                                func->params[1].mode != MM_MOVE
+                          : func->nparams == 1 && func->ret == MIR_INT && func->params[0].mode != MM_MOVE;
+  return fits ? method : MIR_NONE;
+}
+
 static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsStrBuild *out) {
   ms_strbuild_append_text(out, "vtable ");
   lower_type_text(cx, subst, receiver, out);
@@ -171,6 +187,15 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
+    const MsTy payload = ms_ty_args(&fn->cx->program->types, conversion->to)[0];
+    if (payload != conversion->from) { /* an implementor of the interface the optional holds: seen as it first */
+      const MsConversion inner = {conversion->node, MS_CONV_INTERFACE_VIEW, conversion->from, payload};
+      value = view_as_interface(fn, expr, &inner, value);
+      if (value == MIR_NONE) {
+        return MIR_NONE;
+      }
+      return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
+    }
     /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
     if (fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);

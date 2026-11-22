@@ -79,6 +79,50 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   return element;
 }
 
+/* `Set[T](values)`: an empty set, then each element of the list added in order (the set keeps a copy of its keys). */
+MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty) {
+  MirModule *module = fn->cx->module;
+  const MirTyData *list = mir_ty_data(module, mir_b_ty(&fn->b, values));
+  const MirTyData *set = mir_ty_data(module, ty);
+  if (list->kind != MK_LIST || set->kind != MK_OBJ || set->nargs < 1 || set->args[0] != list->elem) {
+    (void)fn_fail(fn, "a set is built from a list of its elements");
+    return MIR_NONE;
+  }
+  const MirTy elem_ty = list->elem;
+  const MirImm set_imm = {.tag = MI_TY, .a = ty};
+  const MirImm elem_imm = {.tag = MI_TY, .a = elem_ty};
+  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
+  const MirValue set_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, set_imm, MIR_PTR);
+  const MirValue created[2] = {set_slot, empty};
+  (void)mir_b_emit(&fn->b, MOP_Put, created, 2, (MirImm){0}, MIR_NONE);
+  const MirValue desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, elem_imm, MIR_PTR);
+  const MirBlock head = mir_b_new_block(&fn->b);
+  const MirBlock body = mir_b_new_block(&fn->b);
+  const MirBlock exit = mir_b_new_block(&fn->b);
+  const MirValue index = mir_b_add_block_param(&fn->b, head, MIR_INT, MM_BORROW);
+  const MirValue zero = mir_b_iconst(&fn->b, 0);
+  mir_b_br(&fn->b, head, &zero, 1);
+  mir_b_switch_to(&fn->b, head);
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &values, 1, (MirImm){0}, MIR_INT);
+  mir_b_br_if(&fn->b, mir_b_icmp(&fn->b, MCC_LT, index, length), body, NULL, 0, exit, NULL, 0);
+  mir_b_seal_block(&fn->b, body);
+  mir_b_seal_block(&fn->b, exit);
+  mir_b_switch_to(&fn->b, body);
+  const MirValue at[2] = {values, index};
+  const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, at, 2, (MirImm){0}, elem_ty);
+  const MirValue key_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, elem_imm, MIR_PTR);
+  const MirValue stored[2] = {key_slot, element};
+  (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  const MirValue add_args[3] = {set_slot, desc, key_slot};
+  (void)fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_set_add_copy")), add_args, 3, MIR_VOID);
+  const MirValue stepped = mir_b_binop(&fn->b, MOP_IAdd, index, mir_b_iconst(&fn->b, 1));
+  mir_b_br(&fn->b, head, &stepped, 1);
+  mir_b_seal_block(&fn->b, head);
+  mir_b_switch_to(&fn->b, exit);
+  return fn_emit(fn, MOP_Take, &set_slot, 1, set_imm, ty);
+}
+
 /* `list.group_by(key)`: a map from each distinct key to the (cloned) elements that produced it, in first-seen order.
  * A closure cannot be called from the runtime, so the loop is expanded here: each element's key is looked up; a present
  * group is taken out of its entry, grown and put back where it lies, and an absent one starts as `[x]`. */

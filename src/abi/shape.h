@@ -60,7 +60,9 @@ enum {
   MS_SHAPE_NULLABLE = 1u << 1,  /* OPTIONAL: none is eight zero bytes and the payload is the slot itself */
   MS_SHAPE_TEXT_FORM = 1u << 2, /* the shape's hooks supply the text form (its own `to_string`) */
   MS_SHAPE_JSON_FORM =
-      1u << 3 /* the shape's hooks supply its JSON form (a JsonEncode, Url, Timestamp, ...) */
+      1u << 3, /* the shape's hooks supply its JSON form (a JsonEncode, Url, Timestamp, ...) */
+  MS_SHAPE_JSON_TREE = 1u << 4 /* ALTERNATIVE: the untyped JSON value (null, bool, number, string, array, object cases),
+                                  written as its own document */
 };
 
 typedef struct MsShapeImage {
