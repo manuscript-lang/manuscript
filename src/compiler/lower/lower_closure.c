@@ -233,6 +233,8 @@ static void find_shared_expr(void *ctx, const MsExpr *expr) {
   for (uint32_t at = 0; at < count; at++) {
     if (changed[at] && captures[at].kind == MS_REF_LOCAL && captures[at].index < fn->nvars) {
       fn->shared[captures[at].index] = LOWER_SHARED;
+    } else if (changed[at] && captures[at].kind == MS_REF_PARAM && captures[at].index < 32) {
+      fn->shared_params |= 1u << captures[at].index;
     }
   }
 }
@@ -274,15 +276,17 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
   for (uint32_t index = 0; index < count; index++) {
     if (changed[index]) {
       /* A variable the lambda changes stays in the maker's slot, which the closure borrows. */
-      const bool slotted = captures[index].kind == MS_REF_LOCAL && captures[index].index < fn->nvars &&
-                           fn->closing != NULL && fn->closing_var[captures[index].index];
+      const uint32_t at = captures[index].kind == MS_REF_LOCAL ? captures[index].index : fn->nvars + captures[index].index;
+      const bool in_range = captures[index].kind == MS_REF_LOCAL ? captures[index].index < fn->nvars
+                                                                 : captures[index].index < LOWER_MAX_CLOSING_PARAMS;
+      const bool slotted = in_range && fn->closing != NULL && fn->closing_var[at];
       if (!slotted) {
         return fn_fail(fn, "a lambda changes a captured variable that does not live in a slot (%s %u)", captures[index].kind == MS_REF_LOCAL ? "local" : "parameter", captures[index].index);
       }
       captures[index].shared = true;
-      captures[index].elem = fn->closing_types[captures[index].index];
+      captures[index].elem = fn->closing_types[at];
       captures[index].ty = MIR_PTR;
-      out[index] = fn->closing[captures[index].index];
+      out[index] = fn->closing[at];
       continue;
     }
     const MsRef ref = {.kind = captures[index].kind, .local = captures[index].index};
@@ -347,6 +351,13 @@ static bool bind_captures(LowerFn *fn, const LowerLambda *lambda, MirValue env) 
       fn->shared[capture->index] = LOWER_SHARED_BORROWED;
       continue;
     }
+    if (capture->shared && capture->kind == MS_REF_PARAM && capture->index < LOWER_MAX_CLOSING_PARAMS) {
+      /* The parameter's index is shared with the lambda's own parameters: the slot table cannot tell them apart. */
+      fn->closing[fn->nvars + capture->index] = value;
+      fn->closing_var[fn->nvars + capture->index] = true;
+      fn->closing_types[fn->nvars + capture->index] = capture->elem;
+      continue;
+    }
     fn->cap_vars[index] = mir_b_declare_var(&fn->b, capture->ty, MM_BORROW);
     mir_b_def_var(&fn->b, fn->cap_vars[index], value);
     if (capture->kind == MS_REF_LOCAL) {
@@ -369,7 +380,7 @@ bool fn_lambda_name(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirValue 
   }
   for (uint32_t index = 0; index < lambda->ncaptures; index++) {
     const LowerCapture *capture = &lambda->captures[index];
-    if (capture->kind == MS_REF_PARAM && capture->index == ref->local && capture->name == expr->u.sym) {
+    if (capture->kind == MS_REF_PARAM && capture->index == ref->local && capture->name == expr->u.sym && !capture->shared) {
       *out = mir_b_use_var(&fn->b, fn->cap_vars[index]);
       return true;
     }
