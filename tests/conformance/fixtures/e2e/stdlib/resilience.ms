@@ -84,7 +84,7 @@ test "rate limiter clamps an almost full maximum burst":
 		burst: 9223372036854775807,
 		tokens: 9223372036854775807 - 1,
 		interval: Duration(nanos: 1),
-		stamp: monotonic() - Duration(nanos: 1000),
+		stamp: monotonic().shift(Duration(nanos: -1000)),
 	)
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 9223372036854775807 - 1)?
@@ -94,7 +94,7 @@ test "rate limiter refills an empty bucket only up to its burst":
 		burst: 3,
 		tokens: 0,
 		interval: Duration(nanos: 1),
-		stamp: monotonic() - Duration(nanos: 1000),
+		stamp: monotonic().shift(Duration(nanos: -1000)),
 	)
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 2)?

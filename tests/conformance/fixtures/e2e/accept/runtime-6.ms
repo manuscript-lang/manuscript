@@ -25,4 +25,4 @@ test "numeric boundary rules":
 
     absent: Int? := none
     expect_equal(1e300.truncate_to_int(), absent)?
-    expect_equal((2.seconds() + 1.seconds()), 3.seconds())?
+    expect_equal(2.seconds().add(1.seconds()), 3.seconds())?

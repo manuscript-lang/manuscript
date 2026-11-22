@@ -209,7 +209,7 @@ test "WebSocket client options bound messages and reject bad values":
 
 	zero := web_socket(url, WebSocketOptions(max_message_bytes: 0))
 	expect_equal(zero.err().kind, "EINVAL")?
-	negative := web_socket(url, WebSocketOptions(timeout: 0.seconds() - 1.seconds()))
+	negative := web_socket(url, WebSocketOptions(timeout: 0.seconds().subtract(1.seconds())))
 	expect_equal(negative.err().kind, "EINVAL")?
 
 test "WebSocket upgrades need HTTP/1.1 and one key":

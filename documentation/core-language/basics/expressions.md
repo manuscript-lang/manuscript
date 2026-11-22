@@ -116,16 +116,13 @@ fn main() Int:
 | `not` | Bool | Bool |
 | `and`, `or` | Both Bool | Bool |
 | postfix `?` | Result[T, E], with a compatible enclosing Result error type | T on success; propagates E on failure |
-| `+`, `-` | Both Duration | Duration |
-| `+`, `-` | Instant left, Duration right | Instant |
-| `-` | Both Instant | Duration |
 | `<`, `<=`, `>`, `>=` | Both Duration or both Instant in the same clock domain | Bool |
 
 Decimal, BigInt, Duration, Instant, and Result rows apply only to the standard declarations; a local type with the same name does not enable them.
 
 - String ordering is lexicographic by Unicode scalar value, with no normalization, case folding, or collation.
 - Mixed numeric arithmetic, numeric truthiness, and operator overloads do not exist: `1 + 0.5`, `"a" + 1`, and `not 1` fail checking. Convert or interpolate instead.
-- `Instant + Instant`, `Duration + Instant`, and unary Duration signs are rejected.
+- Duration and Instant have no arithmetic operators; use their methods (`add`, `subtract`, `shift`, `difference`). Only the ordering operators apply to them.
 
 See [equality and hashing](../types/equality-and-hashing.md), [type rules](../types/compatibility.md), and [numeric outcomes](numbers-and-booleans.md#runtime-numeric-outcomes).
 
@@ -138,7 +135,7 @@ The operand types, not the expected result type, select the operator row.
 - Two Never operands cannot select a numeric, ordering, or equality row; unary signs and `?` need an independently known operand.
 - `not`, `and`, and `or` take Bool, so Never is fine.
 
-The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `instant - panic(...)` is rejected (Duration or Instant?), as is `x: Int := -panic(message: "stop")`.
+The result keeps the row's type: `1 + panic(message: "stop")` is Int; `1 == panic(message: "stop")` is Bool. `x: Int := -panic(message: "stop")` is rejected.
 
 See [compatibility](../types/compatibility.md) and [error propagation](../errors/propagation.md) for Never in calls, returns, and `?`.
 

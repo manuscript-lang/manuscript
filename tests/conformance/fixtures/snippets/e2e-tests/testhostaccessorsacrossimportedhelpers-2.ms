@@ -7,7 +7,7 @@ import monotonic from "@std/time.ms"
 
 export fn main() Int:
     before := now()
-    if monotonic() - before < 0.milliseconds():
+    if monotonic().difference(before) < 0.milliseconds():
         return 1
 
     close_output()
