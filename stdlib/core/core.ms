@@ -401,3 +401,37 @@ export fn join_errors(errors: List[Error]) Error?:
 		text += cause.message
 
 	return Error(text, none, {"count": errors.length().to_string()})
+
+// Plain numbers and flags copy by value: their `clone` is the value itself.
+fn Int.clone() Int:
+	return self
+
+fn Bool.clone() Bool:
+	return self
+
+fn Float.clone() Float:
+	return self
+
+fn Float32.clone() Float32:
+	return self
+
+fn Int8.clone() Int8:
+	return self
+
+fn Int16.clone() Int16:
+	return self
+
+fn Int32.clone() Int32:
+	return self
+
+fn UInt8.clone() UInt8:
+	return self
+
+fn UInt16.clone() UInt16:
+	return self
+
+fn UInt32.clone() UInt32:
+	return self
+
+fn UInt64.clone() UInt64:
+	return self

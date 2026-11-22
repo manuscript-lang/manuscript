@@ -350,7 +350,12 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     return MIR_NONE;
   }
   /* The declaration names the operation: a written `xs[i] = v` is a call of `set`, not of a member `[]=`. */
+  const MsTyTable *declared_types = &fn->cx->program->types;
   const MsMethodEntry *declared = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  /* An interface operation's declaration is not a method: only an entry of the callee's own type names the call. */
+  if (declared != NULL && ms_ty_row(declared_types, declared->receiver)->name != ms_ty_row(declared_types, call->callee.owner)->name) {
+    declared = NULL;
+  }
   const MsSpan operation = declared != NULL ? ms_names_span(fn->cx->program->names, declared->source->func.name)
                                             : ms_names_span(fn->cx->program->names, callee->u.member.name);
   if (generic_receiver(fn, call)) {
