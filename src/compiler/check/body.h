@@ -115,6 +115,9 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
 /* ---- exprs_mismatch.c ---- */
 
 /* Reports binary operands that cannot share a type (`Int + String`, `Int + Int?`); false when they can. */
+/* Whether `ty` is unknown or holds an invalid type, to depth `depth` (mismatch.c). */
+bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
+
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);

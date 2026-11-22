@@ -73,6 +73,15 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
 
+/* ---- places (lower_stmt.c) ---- */
+
+/* Whether `place` is an owning `var` local or a member path rooted in one. */
+bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
+/* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
+bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+/* Stores the owned `value` (held by no scope) into `place`. */
+bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
+
 /* ---- statements, expressions and calls ---- */
 
 bool fn_stmts(LowerFn *fn, MsStmts stmts);

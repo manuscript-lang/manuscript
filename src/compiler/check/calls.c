@@ -300,6 +300,26 @@ static bool mentions_vars(const MsTyTable *types, MsTy ty, const MsTyList *vars)
   return ms_ty_kind(types, ty) == MS_TY_FUNCTION && mentions_vars(types, ms_ty_result(types, ty), vars);
 }
 
+/* A function-typed argument with the parameter modes (`move`, `var`) its context declares: a function value
+ * passes where the callee's parameter type differs from its own only in how the arguments are lent. */
+static MsTy with_context_modes(Body *body, MsTy param, MsTy arg) {
+  const MsTyTable *types = &body->program->types;
+  if (arg == MS_TY_NONE || param == MS_TY_NONE || ms_ty_kind(types, arg) != MS_TY_FUNCTION ||
+      ms_ty_kind(types, param) != MS_TY_FUNCTION || ms_ty_param_count(types, arg) != ms_ty_param_count(types, param)) {
+    return arg;
+  }
+  MsTyParamList params = {0};
+  for (size_t index = 0; index < ms_ty_param_count(types, arg); index++) {
+    MsTyParam entry = ms_ty_params(types, arg)[index];
+    entry.flags = (uint8_t)((entry.flags & ~(MS_PARAM_VAR | MS_PARAM_MOVE)) |
+                            (ms_ty_params(types, param)[index].flags & (MS_PARAM_VAR | MS_PARAM_MOVE)));
+    ms_ty_param_list_push(&params, entry);
+  }
+  const MsTy adapted = function_type(body, &params, ms_ty_result(types, arg));
+  ms_ty_param_list_free(&params);
+  return adapted;
+}
+
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound) {
@@ -322,6 +342,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
                          ? body_expr(body, arg->value, wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
     ms_strbuild_free(&context);
+    arg_tys[index] = with_context_modes(body, param, arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
@@ -383,8 +404,27 @@ static MsTy record_call(Body *body, const MsExpr *call, const Target *target, Ms
   return ms_ty_result(&body->program->types, instantiated);
 }
 
+/* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
+static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, size_t count,
+                        size_t before, MsTy callee) {
+  const MsSpan message = ms_string_span(&instance->message);
+  const MsTyTable *types = &body->program->types;
+  if (body->module >= body->program->user_modules || body->quiet ||
+      !ms_span_starts_with(message, ms_span_of_text("cannot infer type argument")) ||
+      body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
+      holds_invalid(types, callee, 6)) {
+    return false;
+  }
+  for (size_t index = 0; index < count; index++) {
+    if (holds_invalid(types, arg_tys[index], 6)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const MsTy *arg_tys, const Matched *matched,
-                        MsTy expected) {
+                        MsTy expected, size_t diagnostics_before) {
   MsInstance instance = {0};
   MsTy sig = target->sig;
   bool instantiated = true;
@@ -396,6 +436,10 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       sig = instance.ty;
     } else {
       instantiated = false;
+      if (uninferable(body, &instance, arg_tys, matched->count, diagnostics_before, target->sig)) {
+        ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
+                        ms_string_from_span(ms_string_span(&instance.message)));
+      }
     }
   }
   MsTy result = record_call(body, call, target, sig, &instance.args, matched);
@@ -420,6 +464,7 @@ static void append_callee_name(const Body *body, MsStrBuild *out, const MsExpr *
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
+  const size_t diagnostics_before = body->program->diagnostics.len;
   const MsExpr *callee = expr->u.call.callee;
   target.name_text = ms_strbuild_new();
   append_callee_name(body, &target.name_text, callee);
@@ -441,7 +486,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     match_args(body, &target, expr, &matched);
     type_args(body, &target, expr, &matched, arg_tys, bound);
     body_report_arguments(body, &target, expr, &matched);
-    result = finish_call(body, expr, &target, arg_tys, &matched, expected);
+    result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
   } else {
     const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
     body->quiet = true;
