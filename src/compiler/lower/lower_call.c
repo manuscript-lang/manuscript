@@ -464,7 +464,7 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
   }
   MirValue checked = MIR_NONE;
   if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
-                     args, call->arg_count, ret, &checked)) {
+                     fn->cx->program->symbols.ptr[id].decl, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));

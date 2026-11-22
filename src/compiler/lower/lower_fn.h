@@ -115,6 +115,8 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
 void fn_own_result(LowerFn *fn, MirValue result);
 
 /* Whether `value` is the owned result of the instruction just emitted, held by the innermost scope. */
+/* Whether `value` is the result of the instruction just emitted and a borrowed view of something that owns it. */
+bool fn_is_borrowed_view(LowerFn *fn, MirValue value);
 bool fn_fresh_owner(LowerFn *fn, MirValue value);
 
 /* ---- resources closed at scope end (lower_close.c) ---- */
@@ -215,7 +217,8 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and
  * writes the ok payload (and the failure's text) through trailing addresses. False when `name` has no such
  * signature, and nothing was emitted. */
-bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
+                    MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 
@@ -259,7 +262,7 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
-MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
+MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, const MsExpr *typed);
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node);
 /* A parameter name inside a lambda body that is one of its captures: its value in `out`. */

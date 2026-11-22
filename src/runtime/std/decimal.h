@@ -36,11 +36,11 @@ uint8_t msstd_decimal_parse(const MsString *text, MsDecimal *out);
 void msstd_decimal_from_int(int64_t n, MsDecimal *out);
 /* ms-sig: msstd_decimal_from_uint(n: i64, out: *mut DecType) @domain=number @leaf */
 void msstd_decimal_from_uint(int64_t n, MsDecimal *out);
-/* ms-sig: msstd_decimal_round(value: *const DecType, places: i64, has_mode: uint8_t, mode: i64, out: *mut
+/* ms-sig: msstd_decimal_round(value: *const DecType, places: i64, has_mode: HasRaw, mode: i64, out: *mut
  * DecType) -> u8 @domain=number @leaf */
 uint8_t msstd_decimal_round(const MsDecimal *value, int64_t places, uint8_t has_mode, int64_t mode,
                             MsDecimal *out);
-/* ms-sig: msstd_decimal_to_fixed(value: *const DecType, digits: i64, has_mode: uint8_t, mode: i64, out: *mut
+/* ms-sig: msstd_decimal_to_fixed(value: *const DecType, digits: i64, has_mode: HasRaw, mode: i64, out: *mut
  * StrVal) -> u8 @domain=number @leaf */
 uint8_t msstd_decimal_to_fixed(const MsDecimal *value, int64_t digits, uint8_t has_mode, int64_t mode,
                                MsString *out);

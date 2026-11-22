@@ -27,9 +27,13 @@ static MirValue stack_slot(LowerFn *fn, MirTy ty) {
   return mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
 }
 
-static MirValue string_literal(LowerFn *fn, const char *text) {
-  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(text))};
+static MirValue string_span_literal(LowerFn *fn, MsSpan text) {
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, text)};
   return mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
+static MirValue string_literal(LowerFn *fn, const char *text) {
+  return string_span_literal(fn, ms_span_of_text(text));
 }
 
 /* The Result alternative of `ret` and its ok payload type, or false when `ret` is not a Result. */
@@ -50,7 +54,23 @@ static MirValue build_result(LowerFn *fn, uint32_t alt, uint32_t which, MirValue
   return mir_b_emit(&fn->b, MOP_AltNew, &payload, 1, imm, ret);
 }
 
-bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+/* How the native's declaration words a status: its `@words=<status> "<text>"` annotation as one `<status> <text>`
+ * line ("" when it has none, or the native is the runtime's own). */
+static MirValue status_words_text(LowerFn *fn, const MsDecl *decl) {
+  if (decl == NULL || decl->kind != MS_D_FN || decl->u.fn.words_status == 0) {
+    return string_literal(fn, "");
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "%u ", decl->u.fn.words_status);
+  ms_strbuild_append(&text, decl->u.fn.words_text);
+  MsString owned = ms_strbuild_finish(&text);
+  const MirValue literal = string_span_literal(fn, ms_string_span(&owned));
+  ms_string_release(&owned);
+  return literal;
+}
+
+bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
+                    MirValue *out) {
   uint32_t alt = 0;
   MirTy payload_ty = MIR_VOID;
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
@@ -175,8 +195,11 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
   }
   const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
-  const MirValue error_args[3] = {status, string_literal(fn, domain_text), said};
-  const MirValue error = mir_b_call(&fn->b, error_function, error_args, 3);
+  const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, decl)};
+  const MirValue error = mir_b_call(&fn->b, error_function, error_args, 4);
+  if (has_err) { /* the callee only borrows the text it was said, so the caller closes it */
+    (void)mir_b_emit(&fn->b, MOP_Drop, &said, 1, (MirImm){0}, MIR_NONE);
+  }
   const MirValue failure = build_result(fn, alt, 1, error, ret);
   mir_b_br(&fn->b, join, &failure, 1);
   mir_b_seal_block(&fn->b, join);

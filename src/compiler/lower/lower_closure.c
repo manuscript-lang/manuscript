@@ -228,6 +228,7 @@ static bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCaptur
 typedef struct SharedScan {
   LowerFn *fn;
   const MsExpr *callee; /* the callee of the call visited last: a method named there is called, not a value */
+  const MsExpr *applied; /* the type application visited last: it records the type of its member operand */
 } SharedScan;
 
 /* `local.method` used as a value where the method changes its receiver: the closure shares the local's slot. */
@@ -246,7 +247,8 @@ static void find_shared_method(SharedScan *scan, const MsExpr *expr) {
   if (ref->kind == MS_REF_METHOD && fn_callee_target(fn, &call, &target)) {
     changes = (target.receiver_flags & MS_PARAM_VAR) != 0;
   } else {
-    const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+    const MsExpr *typed = scan->applied != NULL && scan->applied->u.apply.left == expr ? scan->applied : expr;
+    const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, typed->id));
     const MirTyData *data = mir_ty_data(fn->cx->module, fn_ty);
     const MsTy owner = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, left->id), fn->subst.vars, fn->subst.args,
                                    fn->subst.count);
@@ -263,6 +265,8 @@ static void find_shared_expr(void *ctx, const MsExpr *expr) {
   LowerFn *fn = scan->fn;
   if (expr->kind == MS_E_CALL) {
     scan->callee = expr->u.call.callee;
+  } else if (expr->kind == MS_E_APPLY && expr->u.apply.types.len != 0) {
+    scan->applied = expr;
   } else if (expr->kind == MS_E_MEMBER && expr != scan->callee) {
     find_shared_method(scan, expr);
   }
@@ -286,7 +290,7 @@ static void find_shared_expr(void *ctx, const MsExpr *expr) {
 
 void fn_find_shared(LowerFn *fn, MsStmts body) {
   fn->shared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
-  SharedScan scan = {fn, NULL};
+  SharedScan scan = {fn, NULL, NULL};
   const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr};
   ms_walk_block(&visitor, body);
 }
@@ -778,11 +782,11 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
 
 /* `receiver.method` used as a value: a closure that holds a copy of the receiver and calls the method with it. A
  * method that changes its receiver would have to share the receiver's storage, which a copy does not. */
-MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
+MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, const MsExpr *typed) {
   Lower *cx = fn->cx;
-  const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, typed->id));
   const MirTyData *data = mir_ty_data(cx->module, fn_ty);
-  MsCall call = {.callee = *ref, .callee_ty = ms_facts_type(fn->facts, expr->id)};
+  MsCall call = {.callee = *ref, .callee_ty = ms_facts_type(fn->facts, typed->id)};
   LowerTarget target;
   if (data->kind == MK_FN && (ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_METHOD) &&
       !fn_callee_target(fn, &call, &target)) {

@@ -304,6 +304,9 @@ typedef struct MsFunc {
   MsStmts body;
   bool external;
   bool bodiless; /* declared with the body `...`: the runtime provides it */
+  /* `@words=<status> "<text>"` on an extern fn: how this native words that failure status; words_status 0 when absent */
+  uint32_t words_status;
+  MsSpan words_text;
 } MsFunc;
 
 typedef struct MsMethod {
