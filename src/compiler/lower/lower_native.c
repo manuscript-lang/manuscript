@@ -103,6 +103,28 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
   return next == nargs;
 }
 
+/* A scalar result a native writes through its trailing `*mut u8` parameter: the call gets a slot of the result's
+ * type in place of the result, returned here, and the value is loaded from it once the call is made. */
+static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy ret) {
+  const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
+  if (!scalar || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
+    return MIR_NONE;
+  }
+  const MirImm of_type = {.tag = MI_TY, .a = ret};
+  return fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+}
+
+/* Calls `name` with `wanted`, through a result slot when `slot` is set. */
+static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t count, MirTy ret, MirValue slot) {
+  if (slot == MIR_NONE) {
+    return fn_runtime_call(fn, name, wanted, count, ret);
+  }
+  wanted[count++] = slot;
+  (void)fn_runtime_call(fn, name, wanted, count, MIR_VOID);
+  const MirImm of_type = {.tag = MI_TY, .a = ret};
+  return fn_emit(fn, MOP_Load, &slot, 1, of_type, ret);
+}
+
 /* The runtime function `name` taking the types of `args` and returning `ret`. */
 static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
@@ -316,7 +338,7 @@ MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, 
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
       signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
-    return fn_runtime_call(fn, name, wanted, count, ret);
+    return call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
   }
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
@@ -355,7 +377,7 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
       return call_changing(fn, place, name, wanted, count, ret);
     }
-    return fn_runtime_call(fn, name, wanted, count, ret);
+    return call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
   }
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
