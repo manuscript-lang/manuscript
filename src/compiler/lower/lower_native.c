@@ -97,7 +97,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
         return false;
       }
     } else if (next < nargs) {
-      out[used++] = kind == NS_ADDR_IN ? spill_scalar(fn, args[next]) : args[next];
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
       next++;
     } else {
       return false;
@@ -181,8 +181,12 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   if (name_is(operation, "get") && call->arg_count == 2 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_LIST) {
     return list_get(fn, args[0], args[1], ret);
   }
-  const MsName name = runtime_name(fn, call->callee.owner, operation);
-  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  const MsTyTable *types = &fn->cx->program->types;
+  const MsSpan type_name = ms_span_of_text(ms_builtin_name(ms_ty_builtin(types, call->callee.owner)));
+  const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
+  const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
+                                    : runtime_name(fn, call->callee.owner, operation);
+  const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&

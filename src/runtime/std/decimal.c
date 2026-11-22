@@ -570,3 +570,19 @@ uint8_t msstd_decimal_truncate_to_int(const MsDecimal *a, int64_t *out) {
   *out = (int64_t)value;
   return 1;
 }
+
+/* `to_decimal()` of each integer type: the exactly equal Decimal. */
+#define TO_DECIMAL(name, from)                                                                                   \
+  void msrt_##name##_to_decimal(int64_t v, MsDecimal *out) {                                                   \
+    from(v, out);                                                                                              \
+  }
+
+TO_DECIMAL(int, msstd_decimal_from_int)
+TO_DECIMAL(int8, msstd_decimal_from_int)
+TO_DECIMAL(int16, msstd_decimal_from_int)
+TO_DECIMAL(int32, msstd_decimal_from_int)
+TO_DECIMAL(int64, msstd_decimal_from_int)
+TO_DECIMAL(uint8, msstd_decimal_from_int)
+TO_DECIMAL(uint16, msstd_decimal_from_int)
+TO_DECIMAL(uint32, msstd_decimal_from_int)
+TO_DECIMAL(uint64, msstd_decimal_from_uint)

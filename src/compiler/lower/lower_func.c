@@ -119,7 +119,7 @@ static MsName instance_name(Lower *cx, const LowerTarget *target, const MsTy *ar
 }
 
 static MirMode param_mode(uint8_t flags) {
-  return (flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : ((flags & MS_PARAM_VAR) != 0 ? MM_VAR : MM_BORROW);
+  return (flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : MM_BORROW;
 }
 
 enum { LOWER_MAX_PARAMS = 32 };
@@ -151,7 +151,9 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const uint32_t count = target_params(cx, target, params);
   MirParam *mir_params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
-    mir_params[index] = (MirParam){lower_type(cx, &subst, params[index].ty), (uint8_t)param_mode(params[index].flags)};
+    /* A `var` parameter travels as the address of a slot that holds its value. */
+    const MirTy ty = (params[index].flags & MS_PARAM_VAR) != 0 ? MIR_PTR : lower_type(cx, &subst, params[index].ty);
+    mir_params[index] = (MirParam){ty, (uint8_t)param_mode(params[index].flags)};
   }
   const MirTy declared = lower_type(cx, &subst, ms_ty_result(types, target->ty));
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
@@ -185,6 +187,16 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
   mir_b_params(&fn->b, values, count);
   fn->param_vars = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirVar, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
+    if ((params[index].flags & MS_PARAM_VAR) != 0 && fn->nvar_params < LOWER_MAX_VAR_PARAMS) {
+      const MirTy ty = fn_type(fn, params[index].ty);
+      const bool owns = mir_needs_drop(fn->cx->module, ty);
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue held = mir_b_emit(&fn->b, owns ? MOP_Take : MOP_Load, &values[index], 1, of_type, ty);
+      fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, owns ? MM_MOVE : MM_BORROW);
+      mir_b_def_var(&fn->b, fn->param_vars[index], held);
+      fn->var_params[fn->nvar_params++] = (LowerVarParam){fn->param_vars[index], values[index], ty};
+      continue;
+    }
     const MirTy ty = mir_b_ty(&fn->b, values[index]);
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));
     mir_b_def_var(&fn->b, fn->param_vars[index], values[index]);
