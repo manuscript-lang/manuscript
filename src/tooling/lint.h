@@ -27,6 +27,9 @@ MS_LIST_DEFINE(MsLintFindingList, ms_lint_finding_list, MsLintFinding)
  * semantic ones, ordered by file, line and column. */
 void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindingList *findings);
 
+/* The position of byte `offset` in `source`: its line and column, both counted from 1. */
+MsPos ms_lint_pos_at(MsSpan source, size_t offset);
+
 /* Internal to the rule files: appends a finding of `code` with the severity its rule declares. */
 MsLintFinding *ms_lint_add(MsLintFindingList *findings, const char *code, MsSpan file, MsPos pos, MsSpan message);
 
@@ -38,6 +41,7 @@ void ms_lint_matches(MsArena *arena, const MsCheckProgram *program, uint32_t mod
 void ms_lint_calls(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_promises(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_recursion(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
+void ms_lint_terse(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_effects(MsArena *arena, const MsCheckProgram *program, MsLintFindingList *findings);
 
 #endif
