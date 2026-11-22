@@ -76,6 +76,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "lint")) return ms_lint_command(argc - 2, argv + 2);
+  ms_verify_set_program(argv[0]);
   if (ms_cstr_equal(argv[1], "verify")) return ms_verify_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "init")) return ms_init_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "install")) return ms_install_command(argc - 2, argv + 2);
