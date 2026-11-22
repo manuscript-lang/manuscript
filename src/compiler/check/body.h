@@ -145,6 +145,7 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
 
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty);
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
 /* Reports `what` when `ty` is an opaque type declared in another module; true when it did. */
 bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what);
