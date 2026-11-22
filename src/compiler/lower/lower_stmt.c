@@ -81,6 +81,21 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
   return true;
 }
 
+/* Whether a call reads a value that dies with the statement (`make().get()`): a result that borrows from it
+ * cannot outlive the statement. */
+static bool call_reads_temporary(const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_CALL) {
+    return true;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    if (call->u.call.args.ptr[index].value->kind == MS_E_CALL) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -103,8 +118,14 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   if (kind == MS_E_NAME && bound_ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, bound_ty) == MS_TY_FUNCTION) {
     fn->hint = fn_type(fn, bound_ty);
   }
-  const MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
-  borrow = borrow || (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)); /* a call whose result borrows */
+  MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
+    if (call_reads_temporary(stmt->u.bind.value)) {
+      value = fn_implicit_clone(fn, value, true); /* the temporary dies here: its part cannot be borrowed */
+    } else {
+      borrow = true;
+    }
+  }
   fn->hint = saved_hint;
   if (value == MIR_NONE) {
     return false;
