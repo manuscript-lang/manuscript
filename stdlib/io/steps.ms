@@ -61,7 +61,7 @@ fn var Lines.take(stop: Int, terminated: Bool) String!:
 
 	return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
-fn var Lines.next() String?!:
+fn var Lines.next() move String?!:
 	while true:
 		if end := self.data.index_of_byte(10, self.start):
 			if self.pending_size > 0: return ok(self.take(end, true)?)
@@ -117,7 +117,7 @@ type Mapped[T, U]:
 	input: ReadStream[T]
 	f: fn(T) U
 
-fn var Mapped[T, U].next() U?!:
+fn var Mapped[T, U].next() move U?!:
 	item := self.input.next()?
 	if value := item: return ok(self.f(value))
 
@@ -135,7 +135,7 @@ type Filtered[T]:
 	input: ReadStream[T]
 	keep: fn(T) Bool
 
-fn var Filtered[T].next() T?!:
+fn var Filtered[T].next() move T?!:
 	while true:
 		item := self.input.next()?
 
@@ -157,7 +157,7 @@ type Taker[T]:
 	input: ReadStream[T]
 	left: Int
 
-fn var Taker[T].next() T?!:
+fn var Taker[T].next() move T?!:
 	if self.left <= 0: return ok(none)
 
 	item := self.input.next()?

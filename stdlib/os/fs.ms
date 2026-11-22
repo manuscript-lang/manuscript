@@ -363,7 +363,7 @@ fn FileHandle.read_lines(max_bytes: Int?, max_lines: Int?) List[String]!:
 type FileSource:
 	file: FileHandle
 
-fn var FileSource.next() Bytes?!:
+fn var FileSource.next() move Bytes?!:
 	return self.file.read(none)
 
 fn move FileSource.close() Void!:
@@ -413,7 +413,7 @@ fn Directory.read() DirectoryEntry?!:
 // A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path)?)`
 // yields its children in native order, so steps compose:
 // `... | filter(...) | collect(none)`. Closing the stream closes the directory.
-fn var Directory.next() DirectoryEntry?!:
+fn var Directory.next() move DirectoryEntry?!:
 	return msstd_fs_directory_read(self.native)
 
 // The runtime handle behind a `FileWatcher`.
@@ -433,7 +433,7 @@ type WatchSource:
 // Waits for the next change. none once the watched path itself has been removed (its
 // removal event comes first). A stream closed by the caller ends (`none`); a native
 // watcher that overflowed with policy `error` is `EOVERFLOW`.
-fn var WatchSource.next() FileEvent?!:
+fn var WatchSource.next() move FileEvent?!:
 	while true:
 		if event := self.pending.pop(): return ok(event)
 

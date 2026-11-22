@@ -221,6 +221,23 @@ static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t positio
   return false;
 }
 
+/* Whether `call` takes the payload out of an optional or result held in a place: its result is the receiver's
+ * first type argument. An owned `T?` owns its payload or nothing, so the payload leaves with the value. */
+static bool takes_payload(Borrows *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind != MS_E_MEMBER) {
+    return false;
+  }
+  const MsExpr *receiver = callee->u.member.left;
+  const MsTyTable *types = &pass->program->types;
+  const MsTy held = ms_facts_type(pass->facts, receiver->id);
+  if (held == MS_TY_NONE || ms_ty_arg_count(types, held) == 0 ||
+      (!ms_ty_is(types, held, MS_BUILTIN_Optional) && !ms_ty_is(types, held, MS_BUILTIN_Result))) {
+    return false;
+  }
+  return ms_facts_type(pass->facts, call->id) == ms_ty_args(types, held)[0];
+}
+
 /* A call whose result is not declared `move` borrows from its first argument that has an origin. */
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
@@ -230,6 +247,9 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   }
   const MsExpr *callee = call->u.call.callee;
   const bool receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION;
+  if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
+    return false;
+  }
   bool found = receiver && lends_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
   for (uint32_t index = 0; !found && index < call->u.call.args.len; index++) {
     found = lends_from(pass, fact, index + (receiver ? 1u : 0u)) &&
