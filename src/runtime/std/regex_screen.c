@@ -108,6 +108,35 @@ static const char *refused_group(uint8_t e, uint8_t f) {
   return e == 'C' ? "callouts are not supported" : NULL;
 }
 
+/* A flag group `(?flags)` or `(?flags:` at `open` that repeats a flag or its negation: why, with `s->at` at the
+ * second occurrence; NULL for any other group. */
+static const char *flag_flaw(Screen *s, size_t open) {
+  bool seen[256] = {false};
+  bool negated = false;
+  for (size_t j = open + 2; j < s->n; j++) {
+    const uint8_t c = s->p[j];
+    if (c == ')' || c == ':') {
+      return NULL;
+    }
+    if (c == '-') {
+      if (negated) {
+        s->at = j;
+        return "flag negation operator repeated";
+      }
+      negated = true;
+    } else if (c == 'i' || c == 'm' || c == 's' || c == 'x' || c == 'U' || c == 'u' || c == 'R') {
+      if (seen[c]) {
+        s->at = j;
+        return "duplicate flag";
+      }
+      seen[c] = true;
+    } else {
+      return NULL;
+    }
+  }
+  return NULL;
+}
+
 /* The parenthesis at `*i`: skips its opener, or returns why it is refused. */
 static const char *screen_group(Screen *s, size_t *i) {
   const uint8_t d = *i + 1 < s->n ? s->p[*i + 1] : 0;
@@ -121,6 +150,10 @@ static const char *screen_group(Screen *s, size_t *i) {
     const char *why = refused_group(e, f);
     if (why != NULL) {
       return why;
+    }
+    const char *flaws = flag_flaw(s, *i);
+    if (flaws != NULL) {
+      return flaws;
     }
     if (e == '#') { /* a comment: skip it */
       *i += 3;
@@ -157,9 +190,11 @@ const char *ms_re_screen(MsSpan pattern, size_t *at) {
 }
 
 size_t ms_re_column(MsSpan pattern, size_t offset) {
-  size_t column = 1;
+  size_t column = 1; /* counted in characters from the start of the pattern's line */
   for (size_t i = 0; i < offset && i < pattern.len; i++) {
-    if (!ms_utf8_is_continuation(pattern.ptr[i])) {
+    if (pattern.ptr[i] == '\n') {
+      column = 1;
+    } else if (!ms_utf8_is_continuation(pattern.ptr[i])) {
       column++;
     }
   }

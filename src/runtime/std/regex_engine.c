@@ -7,6 +7,7 @@
 #include "base/chars.h"
 
 #include <pcre2.h>
+#include <string.h>
 
 /* PCRE2 allocates through the runtime, so its memory is the program's memory. */
 static void *engine_alloc(PCRE2_SIZE size, void *unused) {
@@ -32,6 +33,85 @@ static void refuse(MsStrBuild *error, const char *reason, size_t column) {
   ms_strbuild_append_u64(error, column);
 }
 
+/* The offset of the innermost `(` a pattern leaves unclosed. */
+static size_t unclosed_group(MsSpan pattern) {
+  size_t stack[64];
+  size_t depth = 0;
+  bool in_class = false;
+  for (size_t at = 0; at < pattern.len; at++) {
+    const uint8_t byte = pattern.ptr[at];
+    if (byte == '\\') {
+      at++;
+    } else if (in_class) {
+      in_class = byte != ']';
+    } else if (byte == '[') {
+      in_class = true;
+      at += at + 1 < pattern.len && pattern.ptr[at + 1] == '^' ? 1 : 0;
+      at += at + 1 < pattern.len && pattern.ptr[at + 1] == ']' ? 1 : 0;
+    } else if (byte == '(' && depth < 64) {
+      stack[depth++] = at;
+    } else if (byte == ')' && depth > 0) {
+      depth--;
+    }
+  }
+  return depth > 0 ? stack[depth - 1] : 0;
+}
+
+/* The offset of the second `(?P<name>` or `(?<name>` that reuses a name. */
+static size_t duplicate_name(MsSpan pattern) {
+  size_t starts[64];
+  size_t ends[64];
+  size_t count = 0;
+  for (size_t at = 0; at + 3 < pattern.len; at++) {
+    if (pattern.ptr[at] == '\\') {
+      at++;
+      continue;
+    }
+    size_t name = 0;
+    if (pattern.ptr[at] == '(' && pattern.ptr[at + 1] == '?' && pattern.ptr[at + 2] == 'P' && pattern.ptr[at + 3] == '<') {
+      name = at + 4;
+    } else if (pattern.ptr[at] == '(' && pattern.ptr[at + 1] == '?' && pattern.ptr[at + 2] == '<' &&
+               pattern.ptr[at + 3] != '=' && pattern.ptr[at + 3] != '!') {
+      name = at + 3;
+    }
+    if (name == 0) {
+      continue;
+    }
+    size_t end = name;
+    while (end < pattern.len && pattern.ptr[end] != '>') {
+      end++;
+    }
+    for (size_t k = 0; k < count; k++) {
+      if (ends[k] - starts[k] == end - name && memcmp(pattern.ptr + starts[k], pattern.ptr + name, end - name) == 0) {
+        return name;
+      }
+    }
+    if (count < 64) {
+      starts[count] = name;
+      ends[count++] = end;
+    }
+  }
+  return 0;
+}
+
+/* The offset of the `[` that opens the character class a pattern leaves unclosed. */
+static size_t unclosed_class(MsSpan pattern) {
+  size_t open = 0;
+  bool in_class = false;
+  for (size_t at = 0; at < pattern.len; at++) {
+    const uint8_t byte = pattern.ptr[at];
+    if (byte == '\\') {
+      at++;
+    } else if (!in_class && byte == '[') {
+      in_class = true;
+      open = at;
+    } else if (in_class && byte == ']' && at > open + 1 && !(at == open + 2 && pattern.ptr[open + 1] == '^')) {
+      in_class = false;
+    }
+  }
+  return open;
+}
+
 /* Compiles with the dialect's options; NULL with the reason in `error`. */
 static pcre2_code *compile_code(pcre2_general_context *general, MsSpan pattern, MsStrBuild *error) {
   pcre2_compile_context *options = pcre2_compile_context_create(general);
@@ -46,7 +126,13 @@ static pcre2_code *compile_code(pcre2_general_context *general, MsSpan pattern, 
   pcre2_code *code =
       pcre2_compile((PCRE2_SPTR)pattern.ptr, pattern.len, flags, &code_error, &offset, options);
   pcre2_compile_context_free(options);
-  if (code == NULL) {
+  if (code == NULL && code_error == PCRE2_ERROR_MISSING_CLOSING_PARENTHESIS) {
+    refuse(error, "unclosed group", ms_re_column(pattern, unclosed_group(pattern)));
+  } else if (code == NULL && code_error == PCRE2_ERROR_DUPLICATE_SUBPATTERN_NAME) {
+    refuse(error, "duplicate capture group name", ms_re_column(pattern, duplicate_name(pattern)));
+  } else if (code == NULL && code_error == PCRE2_ERROR_MISSING_SQUARE_BRACKET) {
+    refuse(error, "unclosed character class", ms_re_column(pattern, unclosed_class(pattern)));
+  } else if (code == NULL) {
     PCRE2_UCHAR text[160];
     const bool known = pcre2_get_error_message(code_error, text, sizeof text) >= 0;
     refuse(error, known ? (const char *)text : "invalid pattern", ms_re_column(pattern, offset));

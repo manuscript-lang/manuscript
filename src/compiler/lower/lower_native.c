@@ -213,7 +213,8 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
   /* An optional that is the whole value (`replace` on a list of optionals): the native writes all of it. */
   const bool whole = data->kind == MK_OPT && !sig->status && sig->count > 0 && last == NS_ADDR_MUT;
-  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
+  const bool listed = optional && last == NS_VEC_MUT && data->elem != MIR_STR; /* `find_span`: a flag and a list */
+  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text && !listed)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
