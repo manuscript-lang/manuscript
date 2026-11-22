@@ -148,6 +148,7 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
+const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
 MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node);

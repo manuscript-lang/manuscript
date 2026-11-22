@@ -327,7 +327,10 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     (void)fn_fail(fn, "a standard operation is called through a receiver");
     return MIR_NONE;
   }
-  const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
+  /* The declaration names the operation: a written `xs[i] = v` is a call of `set`, not of a member `[]=`. */
+  const MsMethodEntry *declared = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  const MsSpan operation = declared != NULL ? ms_names_span(fn->cx->program->names, declared->source->func.name)
+                                            : ms_names_span(fn->cx->program->names, callee->u.member.name);
   if (generic_receiver(fn, call)) {
     return bound_native(fn, callee, call, args, ret);
   }
