@@ -595,7 +595,13 @@ fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 // Returns a new list holding the elements `count` times over, in order. A `count` of
 // zero or below gives an empty list. Example: `[1, 2].repeated(2)` is
 // `[1, 2, 1, 2]`.
-fn List[T: Clonable].repeated(count: Int) List[T]: ...
+fn List[T: Clonable].repeated(count: Int) List[T]:
+	var out = List[T]()
+	var round = 0
+	while round < count:
+		out.extend(self)
+		round += 1
+	return out
 
 // Appends a copy of every element of `other`, in order, to this list in place;
 // `other` is unchanged. The argument cannot be the receiver. Example: after

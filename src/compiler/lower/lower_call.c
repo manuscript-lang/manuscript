@@ -445,8 +445,14 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
   const MirValue result = call_expr(fn, expr);
-  const MsTy ty = ms_facts_type(fn->facts, expr->id);
-  if (!fn->failed && !fn->terminated && ty != MS_TY_NONE && ms_ty_is(&fn->cx->program->types, ty, MS_BUILTIN_Never)) {
+  /* The call's own result type: the checked type of the expression may be the one the context expects. */
+  const MsCall *call = fn_find_call(fn->facts, expr->id);
+  const MsTyTable *types = &fn->cx->program->types;
+  MsTy ty = ms_facts_type(fn->facts, expr->id);
+  if (call != NULL && call->callee_ty != MS_TY_NONE && ms_ty_kind(types, call->callee_ty) == MS_TY_FUNCTION) {
+    ty = ms_ty_result(types, call->callee_ty);
+  }
+  if (!fn->failed && !fn->terminated && ty != MS_TY_NONE && ms_ty_is(types, ty, MS_BUILTIN_Never)) {
     mir_b_unreachable(&fn->b);
     fn->terminated = true;
   }

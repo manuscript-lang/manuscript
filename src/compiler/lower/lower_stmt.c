@@ -285,6 +285,9 @@ static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL) {
     value = take_value(fn, stmt->u.expr);
+    if (fn->terminated) { /* the expression never returns: `return panic(...)` */
+      return !fn->failed;
+    }
     if (value == MIR_NONE) {
       return false;
     }
