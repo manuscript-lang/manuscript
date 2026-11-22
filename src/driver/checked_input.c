@@ -159,17 +159,33 @@ int ms_checked_input_report(const MsCheckedInput *checked) {
   return 1;
 }
 
-int ms_checked_input_report_json(const MsCheckedInput *checked) {
+MsSpan ms_checked_input_diagnostics_json(MsArena *arena, const MsCheckedInput *checked) {
   MsStrBuild out = ms_strbuild_new();
-  ms_strbuild_append_text(&out, "{\n  \"format\": 1,\n  \"diagnostics\": [");
   for (size_t i = 0; i < checked->findings.len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "\n" : ",\n");
+    ms_strbuild_append_text(&out, i == 0 ? "" : ",\n");
     ms_json_diag(&out, checked->findings.ptr[i].file, checked->findings.ptr[i].phase, &checked->findings.ptr[i].diag);
   }
-  ms_strbuild_append_text(&out, checked->findings.len == 0 ? "]\n}\n" : "\n  ]\n}\n");
+  const MsSpan entries = ms_arena_copy(arena, ms_strbuild_span(&out));
+  ms_strbuild_free(&out);
+  return entries;
+}
+
+int ms_checked_input_report_json(const MsCheckedInput *checked) {
+  MsArena arena = ms_arena_new();
+  const MsSpan entries = ms_checked_input_diagnostics_json(&arena, checked);
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_text(&out, "{\n  \"format\": 1,\n  \"diagnostics\": [");
+  if (entries.len > 0) {
+    ms_strbuild_append_byte(&out, '\n');
+    ms_strbuild_append(&out, entries);
+    ms_strbuild_append_text(&out, "\n  ]\n}\n");
+  } else {
+    ms_strbuild_append_text(&out, "]\n}\n");
+  }
   const MsSpan text = ms_strbuild_span(&out);
   (void)fwrite(text.ptr, 1, text.len, stdout);
   ms_strbuild_free(&out);
+  ms_arena_free(&arena);
   return 1;
 }
 
