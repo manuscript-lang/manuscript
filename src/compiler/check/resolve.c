@@ -200,6 +200,9 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
 /* A written use of an alias: its target with the written arguments in place of the alias's variables. */
 static MsTy alias_use(Resolver *resolver, const MsSymbol *alias, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
+  if (alias->ty == MS_TY_NONE && alias->module == resolver->module) { /* resolved on first use */
+    resolver_resolve_alias(resolver, &program->symbols.ptr[alias - program->symbols.ptr]);
+  }
   if (alias->ty == MS_TY_NONE || ms_ty_builtin(&program->types, alias->ty) == MS_BUILTIN_TypeSet) {
     return alias->ty;
   }

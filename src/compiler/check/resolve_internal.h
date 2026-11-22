@@ -27,6 +27,7 @@ void resolver_free(Resolver *resolver);
 void resolver_enter_symbol(Resolver *resolver, const MsSymbol *symbol);
 
 MsTy resolver_type(Resolver *resolver, const MsTypeRef *type);
+void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol);
 /* A written bound: an interface or a type set, else reported and MS_TY_NONE. */
 MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound);
 
