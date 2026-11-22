@@ -73,7 +73,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   }
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, base));
   if (data->kind != MK_TYPE) {
-    (void)fn_fail(fn, "a field is read from a record");
+    (void)fn_fail(fn, "a field is read from a record (found MIR kind %d)", (int)data->kind);
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};

@@ -32,6 +32,7 @@ typedef struct LowerFn {
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   uint32_t nopen;
   bool failed;
+  bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
@@ -62,6 +63,7 @@ void fn_own_result(LowerFn *fn, MirValue result);
 /* ---- statements, expressions and calls ---- */
 
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
+MirValue fn_default_result(LowerFn *fn);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */

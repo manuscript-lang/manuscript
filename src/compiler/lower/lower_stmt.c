@@ -43,6 +43,12 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   return !fn->failed;
 }
 
+/* What a function returns when it ends without a value: nothing, except the entry declared Void, which returns
+ * the status 0. */
+MirValue fn_default_result(LowerFn *fn) {
+  return fn->ret == MIR_INT && fn->b.func.ret == MIR_INT && fn->decl_void ? mir_b_iconst(&fn->b, 0) : MIR_NONE;
+}
+
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL) {
@@ -54,7 +60,7 @@ static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, none, MIR_NONE);
   }
   fn_scope_unwind(fn, 0);
-  mir_b_ret(&fn->b, value);
+  mir_b_ret(&fn->b, value == MIR_NONE ? fn_default_result(fn) : value);
   fn->terminated = true;
   return !fn->failed;
 }
