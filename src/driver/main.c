@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "base/cstr.h"
+#include "driver/bench_command.h"
 #include "driver/build_command.h"
 #include "driver/check_command.h"
 #include "driver/emit_command.h"
@@ -57,6 +58,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "build")) return ms_build_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "run")) return ms_run_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "test")) return ms_test_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "bench")) return ms_bench_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);

@@ -27,11 +27,14 @@ typedef struct MsCheckedInput {
 MS_NODISCARD bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target);
 
 /* The names of the tests of the checked program, `file::name`, in the order `lower_tests` numbers them: user modules in
- * program order, then declaration order; bench blocks are left out. */
-void ms_checked_input_test_names(MsArena *arena, const MsCheckedInput *checked, MsSpanList *names);
+ * program order, then declaration order. With `benches` the bench blocks are named instead of the tests. */
+void ms_checked_input_test_names(MsArena *arena, const MsCheckedInput *checked, bool benches, MsSpanList *names);
 
 /* The terminal report of the failure, with the count line, on stderr. Returns the status 1. */
 int ms_checked_input_report(const MsCheckedInput *checked);
+
+/* The same failure as the versioned `{format, diagnostics}` document on stdout, for `--json`. Returns the status 1. */
+int ms_checked_input_report_json(const MsCheckedInput *checked);
 
 void ms_checked_input_free(MsCheckedInput *checked);
 
