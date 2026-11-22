@@ -80,3 +80,7 @@ const MsConversion *ms_facts_conversion(const MsFacts *facts, MsNode node) {
 const MsConstant *ms_facts_constant(const MsFacts *facts, MsNode node) {
   FIND_BY_NODE(&facts->constants, node);
 }
+
+const MsCloser *ms_facts_closer(const MsFacts *facts, MsNode node) {
+  FIND_BY_NODE(&facts->closers, node);
+}
