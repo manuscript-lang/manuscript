@@ -89,14 +89,23 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
 
 /* Any other value is written by the runtime's walker over the value's shape table: the value goes into a stack
  * slot (a borrow, so nothing is dropped) and the walker reads it through the table. */
-MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty) {
+static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *function) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
   (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
   const MirValue table = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
   const MirValue args[2] = {table, slot};
-  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msstd_value_text")), args, 2, MIR_STR);
+  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, MIR_STR);
+}
+
+MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty) {
+  return value_shown(fn, value, ty, "msstd_value_text");
+}
+
+/* The quoted form a fault message shows (a String in quotes). */
+MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty) {
+  return value_shown(fn, value, ty, "msstd_test_repr");
 }
 
 static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {

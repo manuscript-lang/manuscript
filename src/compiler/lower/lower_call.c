@@ -318,6 +318,9 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
       const MirValue present = fn_emit(fn, MOP_OptIsSome, &args[0], 1, (MirImm){0}, MIR_BOOL);
       const MirValue wanted = fn_emit(fn, MOP_OptGet, &args[0], 1, (MirImm){0}, MIR_INT);
       capacity = mir_b_select(&fn->b, present, wanted, capacity);
+      /* a negative reserve reserves nothing */
+      capacity = mir_b_select(&fn->b, mir_b_icmp(&fn->b, MCC_LT, capacity, mir_b_iconst(&fn->b, 0)),
+                              mir_b_iconst(&fn->b, 0), capacity);
     }
     return mir_b_list_new(&fn->b, data->elem, capacity);
   }

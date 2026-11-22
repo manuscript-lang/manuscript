@@ -232,7 +232,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
   const MirValue missing = mir_b_emit(&fn->b, owns_key ? MOP_Take : MOP_Load, &key, 1, key_ty, data->args[0]);
-  const MirValue text = fn_value_text(fn, missing, data->args[0]);
+  const MirValue text = fn_value_repr(fn, missing, data->args[0]);
   const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
                                          (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
                                          MIR_STR);

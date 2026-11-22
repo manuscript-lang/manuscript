@@ -174,6 +174,7 @@ MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args,
 
 /* The text of `value` of MIR type `ty` through the type's shape (`msstd_value_text`). */
 MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty);
+MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 /* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr);
 MirValue fn_try(LowerFn *fn, const MsExpr *expr);
