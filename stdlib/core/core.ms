@@ -113,6 +113,7 @@ fn status_error_text(words: String, kind: String, domain: String, said: String) 
 	if words == "-":
 		if said.length() > 0: return Error(said, kind: kind)
 		return Error(f"{domain}: failed", kind: kind)
+	if said.starts_with(f"{domain}: "): return Error(said, kind: kind)
 	if said.length() > 0: return Error(f"{domain}: {words}: {said}", kind: kind)
 	return Error(f"{domain}: {words}", kind: kind)
 
