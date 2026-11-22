@@ -22,6 +22,15 @@ typedef struct LowerLoop {
   uint32_t depth;
 } LowerLoop;
 
+/* A `var` parameter: the callee takes its value out of the caller's slot at entry and puts it back at every return. */
+typedef struct LowerVarParam {
+  MirVar var;
+  MirValue slot;
+  MirTy ty;
+} LowerVarParam;
+
+enum { LOWER_MAX_VAR_PARAMS = 8 };
+
 typedef struct LowerFn {
   Lower *cx;
   MirBuilder b;
@@ -39,6 +48,8 @@ typedef struct LowerFn {
   uint32_t nopen;
   LowerOwnedVar owned_vars[LOWER_MAX_OWNED_VARS];
   uint32_t nowned_vars;
+  LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
+  uint32_t nvar_params;
   bool failed;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
