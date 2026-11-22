@@ -666,7 +666,10 @@ fn var Map[T, U].add_default(move key: T, move value: U) Void: ...
 
 // Inserts `create(key)` only when the key is absent, calling `create` once. An
 // existing key keeps its value and position, and `create` is not called.
-fn var Map[T, U].add_default_from(move key: T, create: fn(T) U) Void: ...
+fn var Map[T: Clonable, U].add_default_from(move key: T, create: fn(T) U) Void:
+	if self.contains(key): return
+	value := create(key)
+	self.add(key, value)
 
 // Removes every entry in place.
 fn var Map[T, U].clear() Void: ...
@@ -811,7 +814,8 @@ fn Set[T: Hashable & Clonable].clone() Set[T]:
 	return out
 
 // Reports whether this set has no elements.
-fn Set[T].is_empty() Bool: ...
+fn Set[T].is_empty() Bool:
+	return self.length() == 0
 
 // Returns a new set of copies of the elements for which `predicate` is true, in
 // insertion order. The callback borrows the receiver, so changing the set during the

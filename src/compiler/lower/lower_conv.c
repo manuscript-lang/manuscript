@@ -140,7 +140,7 @@ uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy if
 static MirValue view_as_interface(LowerFn *fn, const MsConversion *conversion, MirValue value) {
   const uint32_t vtable = lower_vtable(fn->cx, &fn->subst, conversion->from, conversion->to);
   if (vtable == MIR_NONE) {
-    fn->failed = true;
+    (void)fn_fail(fn, "a value cannot be viewed as this interface: a method of the interface has no body for its type");
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_VTABLE, .a = vtable};
