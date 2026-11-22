@@ -171,6 +171,15 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
+    const MsTy payload = ms_ty_args(&fn->cx->program->types, conversion->to)[0];
+    if (payload != conversion->from) { /* an implementor of the interface the optional holds: seen as it first */
+      const MsConversion inner = {conversion->node, MS_CONV_INTERFACE_VIEW, conversion->from, payload};
+      value = view_as_interface(fn, expr, &inner, value);
+      if (value == MIR_NONE) {
+        return MIR_NONE;
+      }
+      return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
+    }
     /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
     if (fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);

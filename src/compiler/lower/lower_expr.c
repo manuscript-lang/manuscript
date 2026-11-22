@@ -64,6 +64,9 @@ static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
     (void)fn_fail(fn, "a number literal is not a Float that fits");
     return MIR_NONE;
   }
+  if (ty == MIR_FLOAT32) {
+    value = (double)(float)value; /* a Float32 literal is the nearest single, kept widened in a double */
+  }
   MirImm imm = {.tag = MI_FLOAT};
   __builtin_memcpy(&imm.i, &value, sizeof value);
   return fn_emit(fn, MOP_FConst, NULL, 0, imm, ty);

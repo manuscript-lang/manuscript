@@ -38,4 +38,7 @@ MS_AVEC(MsTypeHints, ms_type_hints, MsTypeHint)
 /* The type of every identifier of the user's modules whose type resolved, in index order. */
 MsTypeHints ms_occurrence_type_hints(MsArena *arena, const MsCheckProgram *program, const MsOccurrences *index);
 
+/* The zero-based line and UTF-16 column of the byte `offset` of `source`. */
+void ms_source_position(MsSpan source, size_t offset, size_t *line, size_t *column);
+
 #endif

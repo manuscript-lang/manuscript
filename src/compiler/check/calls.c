@@ -35,6 +35,7 @@ static void copy_vars(Target *target, const MsTy *vars, size_t count) {
 /* A constructor: the fields (or payload slots) of `owner` are the parameters, the result is `owner`. */
 static void constructor_target(Body *body, Target *target, MsTy owner, const MsTyParamList *fields) {
   target->constructor = true;
+  target->nominal = owner;
   target->sig = function_type(body, fields, owner);
   const MsDef *def = body_def(body, owner);
   if (def != NULL) {
@@ -263,6 +264,25 @@ static bool resolve_target(Body *body, const MsExpr *callee, MsTy expected, Targ
   target->sig = body_expr(body, callee, MS_TY_NONE);
   target->ref = (MsRef){0};
   return target->sig != MS_TY_NONE && ms_ty_kind(&body->program->types, target->sig) == MS_TY_FUNCTION;
+}
+
+/* A constructor or case call of an opaque type outside its module. */
+static void deny_opaque_build(Body *body, const MsExpr *call, const Target *target) {
+  if (target->nominal == MS_TY_NONE) {
+    return;
+  }
+  if (target->ref.kind != MS_REF_CASE) {
+    (void)body_opaque_denied(body, call->pos, target->nominal, ms_span_of_text("it cannot be constructed here"));
+    return;
+  }
+  const MsExpr *callee = call->u.call.callee;
+  const MsName name = callee->kind == MS_E_MEMBER ? callee->u.member.name : callee->u.sym;
+  MsStrBuild what = ms_strbuild_new();
+  ms_strbuild_append_text(&what, "case ");
+  ms_strbuild_append(&what, ms_names_span(body->program->names, name));
+  ms_strbuild_append_text(&what, " cannot be built here");
+  (void)body_opaque_denied(body, call->pos, target->nominal, ms_strbuild_span(&what));
+  ms_strbuild_free(&what);
 }
 
 /* ---- arguments ---- */
@@ -592,8 +612,9 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
 }
 
 /* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
-static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, size_t count,
+static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, const Matched *matched,
                         size_t before, MsTy callee) {
+  const size_t count = matched->count;
   const MsSpan message = ms_string_span(&instance->message);
   const MsTyTable *types = &body->program->types;
   size_t found = 0;
@@ -605,7 +626,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
     return false;
   }
   for (size_t index = 0; index < count; index++) {
-    if (holds_invalid(types, arg_tys[index], 6)) {
+    if (matched->slot[index] >= 0 && holds_invalid(types, arg_tys[index], 6)) { /* an omitted argument has no type */
       return false;
     }
   }
@@ -614,7 +635,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
 
 /* A constructor names each variable it could not infer; any other callee gets the one message. */
 static void report_uninferred(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance) {
-  if (!target->constructor) {
+  if (!target->constructor || instance->unbound.len == 0) { /* a constructor names each variable it left unbound */
     ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_string_span(&instance->message)));
     return;
@@ -642,7 +663,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
-      if (uninferable(body, &instance, arg_tys, matched->count, diagnostics_before, target->sig)) {
+      if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
       }
     }
@@ -676,6 +697,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   target.name = ms_strbuild_span(&target.name_text);
   target.nargs = expr->u.call.args.len;
   if (resolve_target(body, callee, expected, &target)) {
+    deny_opaque_build(body, expr, &target);
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1),
                        .state = MS_ARENA_NEW_ARRAY(&body->program->arena, uint8_t, expr->u.call.args.len + 1),
