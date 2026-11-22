@@ -1,7 +1,7 @@
 /* Owns test_options.h. */
 #include "driver/test_options.h"
 
-#include "driver/duration.h"
+#include "base/duration.h"
 #include "driver/invocation_rules.h"
 
 enum { NANOS_PER_MS = 1000000 };

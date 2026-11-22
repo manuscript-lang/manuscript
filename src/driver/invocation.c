@@ -7,7 +7,7 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "compiler/project/project.h"
-#include "driver/duration.h"
+#include "base/duration.h"
 #include "driver/invocation_rules.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2 };
