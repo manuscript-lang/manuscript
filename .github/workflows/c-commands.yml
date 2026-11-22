@@ -62,6 +62,8 @@ jobs:
           github-token: ${{ github.token }}
       - if: runner.os != 'Windows'
         run: chmod +x .artifacts/oracle/ms .artifacts/oracle/ms-conform
+      - if: runner.os == 'macOS'
+        run: echo "TMPDIR=$(cd "$RUNNER_TEMP" && pwd -P)" >> "$GITHUB_ENV"
       - if: runner.os != 'Windows'
         run: cmake --preset debug
       - if: runner.os == 'Windows'

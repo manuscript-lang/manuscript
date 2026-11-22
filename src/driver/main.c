@@ -5,6 +5,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include "base/cstr.h"
 #include "driver/bench_command.h"
 #include "driver/build_command.h"
@@ -39,6 +44,12 @@ static bool is_command(const char *word) {
 }
 
 int main(int argc, char **argv) {
+#ifdef _WIN32
+  /* Recorded output is byte exact: no LF to CRLF translation on the standard streams. */
+  (void)_setmode(_fileno(stdin), _O_BINARY);
+  (void)_setmode(_fileno(stdout), _O_BINARY);
+  (void)_setmode(_fileno(stderr), _O_BINARY);
+#endif
   if (argc < 2 || ms_cstr_equal(argv[1], "--help") || ms_cstr_equal(argv[1], "-h")) {
     ms_help_print_top();
     return 0;
