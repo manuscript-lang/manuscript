@@ -227,6 +227,7 @@ bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation,
 bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret);
 /* `left op right` over two values of one standard type (lower_expr.c). */
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
+MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
 MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);
