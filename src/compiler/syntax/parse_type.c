@@ -80,7 +80,13 @@ MS_NODISCARD bool parse_type_args(Parser *p, MsTypeRefs *out) {
 }
 
 /* The type that follows a parameter list, rejecting the removed `->` and a missing type. */
-MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out) {
+/* The result type after a parameter list: `move T` hands over owned memory (`*moves`), `T` borrows. */
+MS_NODISCARD bool parse_move_type(Parser *p, MsTypeRef **out, bool *moves) {
+  *moves = parse_take_move(p, (const MsTok[]){MS_T_Name, MS_T_Fn, MS_T_LParen}, 3);
+  return parse_typ(p, out);
+}
+
+MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out, bool *moves) {
   MsToken t = parse_peek(p);
   if (t.kind == MS_T_Arrow) {
     parse_fail_fix(
@@ -106,7 +112,7 @@ MS_NODISCARD bool parse_result_type(Parser *p, MsTypeRef **out) {
         ms_span_of_text("every fn declares its result type after the parameter list, e.g. fn f() Void:"));
     return false;
   }
-  return parse_typ(p, out);
+  return parse_move_type(p, out, moves);
 }
 
 /* Wraps `t` once per trailing suffix: `T?` is Optional[T], `T!` is Result[T, Error], and `T!E`
@@ -201,7 +207,8 @@ MS_NODISCARD static bool fn_type(Parser *p, MsToken first, MsTypeRef **out) {
     params.ptr = parse_finish(p, m, &params.len, sizeof(void *), _Alignof(void *));
   }
   MsTypeRef *result = NULL;
-  if (!parse_typ(p, &result))
+  bool result_moves = false;
+  if (!parse_move_type(p, &result, &result_moves))
     return false;
   MsTypeRef *t = MS_ARENA_NEW(p->arena, MsTypeRef);
   t->id = parse_new_id(p);
@@ -209,6 +216,7 @@ MS_NODISCARD static bool fn_type(Parser *p, MsToken first, MsTypeRef **out) {
   t->kind = MS_TYPE_FN;
   t->params = params;
   t->result = result;
+  t->result_moves = result_moves;
   *out = t;
   return true;
 }

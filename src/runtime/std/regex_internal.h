@@ -3,6 +3,7 @@
 #ifndef MS_RUNTIME_STD_REGEX_INTERNAL_H
 #define MS_RUNTIME_STD_REGEX_INTERNAL_H
 
+#include <stdatomic.h>
 #include "base/desc.h"
 #include "runtime/std/regex.h"
 #include "runtime/std/regex_engine.h"
@@ -14,6 +15,7 @@ MS_LIST_DEFINE(MsListList, ms_list_list, MsList)
 typedef struct MsRegexCell {
   MsObj header;
   MsRegex *re; /* owned */
+  _Atomic uint32_t refs; /* a copy of the handle shares the pattern, which is never changed after compile */
 } MsRegexCell;
 
 /* The pattern behind a handle the runtime passes. */

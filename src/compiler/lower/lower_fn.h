@@ -187,6 +187,7 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
+bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
@@ -207,6 +208,8 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, Mi
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* `left op right` on a BigInt through its runtime function; false when the operands are not a value object. */
+/* `-value` on a value object or inline native record that has a runtime `negate`. */
+bool fn_object_negate(LowerFn *fn, MirValue operand, MirValue *out);
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out);
 
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and

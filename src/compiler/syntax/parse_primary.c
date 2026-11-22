@@ -361,7 +361,7 @@ MS_NODISCARD static bool bare_lambda_parameters(Parser *p, MsParams *params, Stm
 }
 
 /* The parameters in parentheses of `fn (a: Int) Int: ...`, and its optional result type. */
-MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef **result) {
+MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef **result, bool *moves) {
   if (!parse_parameters(p, true, true, params))
     return false;
   if (parse_kind(p) == MS_T_Arrow) {
@@ -372,16 +372,17 @@ MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef
     return false;
   }
   if (parse_kind(p) != MS_T_Colon) {
-    return parse_typ(p, result);
+    return parse_move_type(p, result, moves);
   }
   return true;
 }
 
 MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, MsExpr **out) {
   MsTypeRef *result = NULL;
+  bool result_moves = false;
   MsParams params = {0};
   StmtList destructured = {0};
-  bool ok = parse_kind(p) == MS_T_LParen ? lambda_signature(p, &params, &result)
+  bool ok = parse_kind(p) == MS_T_LParen ? lambda_signature(p, &params, &result, &result_moves)
                                          : bare_lambda_parameters(p, &params, &destructured);
   MsStmts body = {0};
   ok = ok && parse_statement_suite(p, true, false, &body);
@@ -400,6 +401,7 @@ MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, MsExpr **out) {
   MsExpr *e = parse_mk(p, t.pos, MS_E_LAMBDA);
   e->u.lambda.params = params;
   e->u.lambda.result = result;
+  e->u.lambda.result_moves = result_moves;
   e->u.lambda.body = body;
   *out = e;
   return true;

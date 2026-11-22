@@ -138,6 +138,11 @@ void ms_check_load_std(MsCheckProgram *program);
 bool ms_check_std_path(MsSpan path, MsSpan *name);
 
 /* Explains the imports of `module` that name nothing usable, and the redundant prelude imports. */
+/* Rejects declarations whose recursive generic applications change their type arguments. */
+void ms_check_finite_types(MsCheckProgram *program);
+/* The same for generic functions and types followed through the calls in their bodies; runs after the bodies. */
+void ms_check_finite_functions(MsCheckProgram *program);
+
 void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
