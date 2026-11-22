@@ -88,7 +88,7 @@ MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
 static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   /* A closure or interface value is a pointer the runtime copies by address, as it does a scalar. */
-  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32 && !spilled_by_address(fn, value)) {
+  if (!mir_is_scalar(fn->cx->module, ty) && !spilled_by_address(fn, value)) {
     return value;
   }
   const MirImm of_type = {.tag = MI_TY, .a = ty};
@@ -165,7 +165,7 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
   const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
-  if (!(scalar || optional) || (last != NS_ADDR_MUT && !text)) {
+  if (!(scalar || optional) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
@@ -541,7 +541,7 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
-      fn_status_call(fn, name, args, argc, ret, out)) {
+      fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
   }
   MirValue wanted[NS_MAX_PARAMS];
@@ -569,6 +569,27 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
 bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
                        MirTy ret, MirValue *out) {
   return native_on(fn, NULL, slot, owner, operation, argc, args, ret, out);
+}
+
+/* An extern function a standard-library body calls by its runtime name (`msrt_list_distinct(self)`): when its
+ * signature names element, key or value descriptors, or a trailing result, the operands are built as for the
+ * method it implements. False when the signature needs none of that. */
+bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || nargs > NS_MAX_PARAMS) {
+    return false;
+  }
+  bool described = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    described = described || sig->kinds[at] == NS_ELEM_DESC || sig->kinds[at] == NS_KEY_DESC || sig->kinds[at] == NS_VAL_DESC;
+  }
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  if (!described || !signature_arguments(fn, sig, args, nargs, ret, wanted, &count)) {
+    return false;
+  }
+  *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+  return true;
 }
 
 /* Whether `operation` is one the checker gives every value of the receiver type (`ValueOperations`,

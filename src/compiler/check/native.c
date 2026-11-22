@@ -12,14 +12,6 @@
 #include "compiler/check/resolve_internal.h"
 
 /* Generic interfaces of intrinsics.ms that a family of primitives shares; `T` is the receiver. */
-static const struct {
-  const char *interface;
-  const char *members[9];
-} SHARED[] = {
-    {"IntegerOperations", {"Int", "Int8", "Int16", "Int32", "UInt8", "UInt16", "UInt32", "UInt64", NULL}},
-    {"SignedIntegerOperations", {"Int", "Int8", "Int16", "Int32", NULL}},
-};
-
 /* The interface declared as `name` in the standard library, or MS_TY_NONE. */
 static MsTy standard_interface(MsCheckProgram *program, const char *name) {
   for (size_t index = 1; index < program->symbols.len; index++) {
@@ -33,10 +25,9 @@ static MsTy standard_interface(MsCheckProgram *program, const char *name) {
   return MS_TY_NONE;
 }
 
-/* The operation `name` of the standard interface `interface` applied to `receiver`, appended as a native match. */
-static bool add_operation(MsCheckProgram *program, const char *interface, MsTy receiver, MsName name,
-                          MsMethodMatchList *out) {
-  MsTy contract = standard_interface(program, interface);
+/* The operation `name` of the standard interface `contract` applied to `receiver`, appended as a native match. */
+static bool add_contract_operation(MsCheckProgram *program, MsTy contract, MsTy receiver, MsName name,
+                                   MsMethodMatchList *out) {
   if (contract == MS_TY_NONE) {
     return false;
   }
@@ -53,6 +44,33 @@ static bool add_operation(MsCheckProgram *program, const char *interface, MsTy r
       .ty = ms_check_operation_type(program, contract, operation, receiver), .contract = contract,
       .operation = operation, .native = true});
   return true;
+}
+
+static bool add_operation(MsCheckProgram *program, const char *interface, MsTy receiver, MsName name,
+                          MsMethodMatchList *out) {
+  return add_contract_operation(program, standard_interface(program, interface), receiver, name, out);
+}
+
+/* The standard interfaces that declare `receiver` a member: those whose one type parameter is bounded by a type set
+ * that lists it (`interface IntegerOperations[T: IntegerTypes]`). */
+static void shared_contracts(MsCheckProgram *program, MsTy receiver, MsTyList *out) {
+  MsTyTable *types = &program->types;
+  for (size_t index = 1; index < program->symbols.len; index++) {
+    const MsSymbol *symbol = &program->symbols.ptr[index];
+    if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || symbol->module < program->user_modules ||
+        ms_ty_kind(types, symbol->ty) != MS_TY_CONTRACT || symbol->var_count != 1) {
+      continue;
+    }
+    const MsTyVariable *variable = ms_ty_variable(types, program->symbol_vars.ptr[symbol->var_at]);
+    for (size_t at = 0; variable != NULL && at < variable->bounds.len; at++) {
+      const MsTy bound = variable->bounds.ptr[at];
+      for (size_t member = 0; ms_ty_is(types, bound, MS_BUILTIN_TypeSet) && member < ms_ty_arg_count(types, bound); member++) {
+        if (ms_ty_args(types, bound)[member] == receiver) {
+          ms_ty_list_push(out, symbol->ty);
+        }
+      }
+    }
+  }
 }
 
 static bool is_name(const MsCheckProgram *program, MsName name, const char *text) {
@@ -73,13 +91,14 @@ static void add_primitive(MsCheckProgram *program, MsTy receiver, MsName name, M
   if (add_operation(program, own, receiver, name, out)) {
     return;
   }
-  for (size_t index = 0; index < sizeof SHARED / sizeof SHARED[0]; index++) {
-    for (size_t at = 0; SHARED[index].members[at] != NULL; at++) {
-      if (ms_cstr_equal(SHARED[index].members[at], text) && add_operation(program, SHARED[index].interface, receiver, name, out)) {
-        return;
-      }
+  MsTyList shared = {0};
+  shared_contracts(program, receiver, &shared);
+  for (size_t index = 0; index < shared.len; index++) {
+    if (add_contract_operation(program, shared.ptr[index], receiver, name, out)) {
+      break;
     }
   }
+  ms_ty_list_free(&shared);
 }
 
 void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out) {
@@ -108,23 +127,18 @@ void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *o
   const char *text = ms_builtin_name((MsBuiltin)program->types.rows.ptr[receiver].builtin);
   char own[48];
   snprintf(own, sizeof own, "%sOperations", text);
-  const char *interfaces[4] = {own, NULL, NULL, NULL};
-  size_t count = 1;
-  for (size_t index = 0; index < sizeof SHARED / sizeof SHARED[0]; index++) {
-    for (size_t at = 0; SHARED[index].members[at] != NULL; at++) {
-      if (ms_cstr_equal(SHARED[index].members[at], text)) {
-        interfaces[count++] = SHARED[index].interface;
-      }
-    }
-  }
-  for (size_t index = 0; index < count; index++) {
-    MsTy contract = standard_interface(program, interfaces[index]);
+  MsTyList contracts = {0};
+  ms_ty_list_push(&contracts, standard_interface(program, own));
+  shared_contracts(program, receiver, &contracts);
+  for (size_t index = 0; index < contracts.len; index++) {
+    const MsTy contract = contracts.ptr[index];
     const uint32_t at = contract == MS_TY_NONE ? 0 : program->types.rows.ptr[contract].def;
     const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
     for (size_t op = 0; def != NULL && op < def->operations.len; op++) {
       ms_span_list_push(out, ms_names_span(program->names, def->operations.ptr[op].name));
     }
   }
+  ms_ty_list_free(&contracts);
 }
 
 /* Whether a standard interface declares an operation `name`: a value may have it natively (an equality, hash or

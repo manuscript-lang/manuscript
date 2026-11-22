@@ -464,12 +464,13 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
   }
   MirValue checked = MIR_NONE;
   if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
-                     args, call->arg_count, ret, &checked)) {
+                     fn->cx->program->symbols.ptr[id].module, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
   if (fn_shape_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
-      fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
+      fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
+      fn_signature_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);

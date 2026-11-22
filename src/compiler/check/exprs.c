@@ -90,7 +90,7 @@ const MsTyCase *body_case_of(Body *body, MsTy owner, MsName name, uint32_t *inde
 }
 
 /* Whether a visible enum has a case `name`: its type (as `expected` fixes it) and the case. */
-bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_t *index) {
+bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsTy *owner, uint32_t *index) {
   MsCheckProgram *program = body->program;
   const MsModuleInfo *module = &program->modules.ptr[body->module];
   MsSymbolList seen = {0};
@@ -105,21 +105,33 @@ bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_
     ms_symbol_list_push(&seen, program->symbols.ptr[*id]);
   }
   static const char *const PRELUDE[] = {"Optional", "Result"};
-  for (size_t at = 0; at < MS_COUNT_OF(PRELUDE); at++) {
-    ms_symbol_list_push(&seen, program->symbols.ptr[resolver_prelude_symbol(program, intern(body, PRELUDE[at]))]);
+  for (size_t position = 0; position < MS_COUNT_OF(PRELUDE); position++) {
+    ms_symbol_list_push(&seen, program->symbols.ptr[resolver_prelude_symbol(program, intern(body, PRELUDE[position]))]);
   }
-  bool found = false;
-  for (size_t at = 0; at < seen.len && !found; at++) {
-    const MsSymbol *symbol = &seen.ptr[at];
-    if (symbol->ty == MS_TY_NONE || ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE) {
+  size_t matches = 0;
+  for (size_t position = 0; position < seen.len; position++) {
+    const MsSymbol *symbol = &seen.ptr[position];
+    uint32_t found_at = 0;
+    if (symbol->ty == MS_TY_NONE || ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE ||
+        body_case_of(body, symbol->ty, name, &found_at) == NULL) {
       continue;
     }
-    found = body_case_of(body, symbol->ty, name, index) != NULL;
-    *owner = symbol->ty;
+    matches += matches == 0 || *owner != symbol->ty ? 1 : 0;
+    *owner = matches == 1 ? symbol->ty : *owner;
+    *index = matches == 1 ? found_at : *index;
   }
   ms_symbol_list_free(&seen);
   (void)expected;
-  return found;
+  if (matches > 1 && at != NULL && !body->quiet && body->module < program->user_modules) {
+    MsStrBuild text = ms_strbuild_new();
+    const MsSpan written = ms_names_span(program->names, name);
+    ms_strbuild_append_text(&text, "ambiguous alternative case ");
+    ms_strbuild_append(&text, written);
+    ms_strbuild_append_text(&text, "; qualify it with its type, e.g. Type.");
+    ms_strbuild_append(&text, written);
+    ms_check_report(program, body->module, *at, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  }
+  return matches == 1;
 }
 
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver) {
@@ -196,7 +208,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   }
   MsTy owner = MS_TY_NONE;
   uint32_t index = 0;
-  if (body_find_case(body, name, expected, &owner, &index)) {
+  if (body_find_case(body, name, expected, &expr->pos, &owner, &index)) {
     const bool fits = expected != MS_TY_NONE && ms_ty_row(&body->program->types, expected)->id == ms_ty_row(&body->program->types, owner)->id;
     owner = fits ? expected : owner;
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});

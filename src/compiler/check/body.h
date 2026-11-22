@@ -79,8 +79,8 @@ const MsDef *body_def(const Body *body, MsTy ty);
 bool body_field(Body *body, MsTy receiver, MsName name, MsTy *ty, uint32_t *index);
 /* The case `name` of the enum `owner`, or NULL. */
 const MsTyCase *body_case_of(Body *body, MsTy owner, MsName name, uint32_t *index);
-/* A visible enum that has a case `name`; `expected` picks the instance when it is that enum. */
-bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_t *index);
+/* A visible enum that has a case `name`; `expected` picks the instance when it is that enum. Two visible enums with the case are reported at `at` (when given), and none is found. */
+bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsTy *owner, uint32_t *index);
 /* The reference a use of `symbol` records. */
 /* The reference a found method or operation gives its call: a native when the compiler or runtime provides it. */
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver);

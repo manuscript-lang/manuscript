@@ -189,6 +189,7 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
+bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
@@ -216,7 +217,8 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and
  * writes the ok payload (and the failure's text) through trailing addresses. False when `name` has no such
  * signature, and nothing was emitted. */
-bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
+                    MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 

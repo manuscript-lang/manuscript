@@ -271,7 +271,8 @@ MS_NODISCARD static bool local_fn_statement(Parser *p, MsToken t, MsStmt *st, Ms
   if (!parse_parameters(p, true, false, &params))
     return false;
   MsTypeRef *result = NULL;
-  if (!parse_result_type(p, &result))
+  bool result_moves = false;
+  if (!parse_result_type(p, &result, &result_moves))
     return false;
   MsStmts body = {0};
   if (!parse_statement_suite(p, true, false, &body))
@@ -280,6 +281,7 @@ MS_NODISCARD static bool local_fn_statement(Parser *p, MsToken t, MsStmt *st, Ms
   MsExpr *value = parse_mk(p, t.pos, MS_E_LAMBDA);
   value->u.lambda.params = params;
   value->u.lambda.result = result;
+  value->u.lambda.result_moves = result_moves;
   value->u.lambda.body = body;
   MsPattern *pt = MS_ARENA_NEW(p->arena, MsPattern);
   pt->id = pid;
