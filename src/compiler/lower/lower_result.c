@@ -73,8 +73,9 @@ static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
   return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
 }
 
-MirValue fn_try(LowerFn *fn, const MsExpr *expr) {
+MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  const bool fresh = want == LW_MOVE && value != MIR_NONE && fn_fresh_owner(fn, value);
   uint32_t alt = 0;
   if (value == MIR_NONE) {
     return MIR_NONE;
@@ -120,12 +121,14 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr) {
     return mir_b_unit(&fn->b);
   }
   const MirImm ok_imm = {.tag = MI_ALTFIELD, .a = alt, .b = OK_CASE, .c = 0};
-  return mir_b_emit(&fn->b, MOP_AltGet, &value, 1, ok_imm, ok->fields[0].ty);
+  /* A payload of a Result nothing else owns moves out of it, so that its new owner closes it. */
+  const bool takes = fresh && mir_needs_drop(fn->cx->module, ok->fields[0].ty);
+  return mir_b_emit(&fn->b, takes ? MOP_AltTake : MOP_AltGet, &value, 1, ok_imm, ok->fields[0].ty);
 }
 
-MirValue fn_unary(LowerFn *fn, const MsExpr *expr) {
+MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (expr->op == MS_U_TRY) {
-    return fn_try(fn, expr);
+    return fn_try(fn, expr, want);
   }
   const MsExpr *inner = expr->u.bin.left;
   uint64_t bits = 0;

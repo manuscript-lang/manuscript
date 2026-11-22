@@ -80,6 +80,14 @@ static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t 
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+      !stmt->u.branch.is_mutable) { /* `if r := value:` owns the payload it binds */
+    const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
+    if (bound != NULL && bound->kind == MS_REF_LOCAL) {
+      add_closer(pass, stmt->u.branch.binding->id, MS_REF_LOCAL, bound->local, ms_facts_type(pass->facts, stmt->u.branch.binding->id));
+    }
+    return;
+  }
   if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
     return;
   }
