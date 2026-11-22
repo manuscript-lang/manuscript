@@ -128,7 +128,7 @@ fn output(exe_path: String) String!:
 			)
 		)
 
-	return ok(ran.stdout.decode_utf8().get_or(""))
+	return ok(ran.stdout.decode_utf8().get_or("").clone())
 
 // `name micros checksum` lines of a kernel program as `name checksum` and the times.
 fn parse_kernels(text: String) List[List[String]]:
@@ -154,7 +154,7 @@ fn runs_wanted() Int:
 
 fn keep_min(var best: Map[String, Int], name: String, micros: Int) Void:
 	if not best.contains(name) or micros < best.get_or(name, micros):
-		best.add(name, micros)
+		best.add(name.clone(), micros)
 
 // Smallest time of each kernel over `runs` interleaved runs of both builds, in input
 // order.
@@ -258,7 +258,7 @@ fn main() Int:
 		note(f"unknown mode {args[0]}")
 		return 2
 
-	var programs = args.slice(1, args.length()).get_or(List[String]())
+	var programs = args.slice(1, args.length()).get_or(List[String]()).clone()
 	if programs.is_empty():
 		programs = [
 			"tools/llvm-direct/yaml.ms", "bench/perf/kernels/ms/ms.toml",

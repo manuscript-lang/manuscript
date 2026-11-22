@@ -304,15 +304,20 @@ fn main() Int:
 
 	var tasks = List[Promise[List[String]]]()
 	for worker in 0..jobs:
+		ms_copy := ms.clone()
+		root_copy := root.clone()
+		chunk := chunks[worker].clone()
+		most_now := most
+		report_now := report
 		tasks.append(
 			promise(
 				fn: ok(
 					sweep(
-						ms.clone(),
-						root.clone(),
-						chunks[worker],
-						most,
-						report,
+						ms_copy,
+						root_copy,
+						chunk,
+						most_now,
+						report_now,
 					)
 				)
 			)

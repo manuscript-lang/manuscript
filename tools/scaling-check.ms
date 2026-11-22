@@ -156,7 +156,7 @@ fn growth(base: Float, mid: Float, big: Float, floor: Float) Float:
 	return (big - base) / denominator
 
 fn say(text: String) Void:
-	stdout().write(text).get()
+	stdout().write(text.clone()).get()
 
 fn show(ratio: Float) String:
 	tenths := (ratio * 10.0).truncate_to_int().get_or(0)
