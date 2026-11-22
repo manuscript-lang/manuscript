@@ -188,8 +188,21 @@ static MirValue construct_case(LowerFn *fn, const MsCall *call, const MirValue *
 /* `Type(fields...)`: the record built from its arguments in field order. */
 static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind == MK_LIST) {
+    /* `List[T](reserve: n)`: the optional reserve is the starting capacity, none reserves nothing. */
+    MirValue capacity = mir_b_iconst(&fn->b, 0);
+    if (call->arg_count == 1 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_OPT) {
+      const MirValue present = fn_emit(fn, MOP_OptIsSome, &args[0], 1, (MirImm){0}, MIR_BOOL);
+      const MirValue wanted = fn_emit(fn, MOP_OptGet, &args[0], 1, (MirImm){0}, MIR_INT);
+      capacity = mir_b_select(&fn->b, present, wanted, capacity);
+    }
+    return mir_b_list_new(&fn->b, data->elem, capacity);
+  }
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
+    return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  }
   if (data->kind != MK_TYPE) {
-    (void)fn_fail(fn, "only a record can be built by its name for now");
+    (void)fn_fail(fn, "a value of this type cannot be built by its name yet (MIR kind %d, %u arguments, first source %d)", (int)data->kind, call->arg_count, call->arg_count > 0 ? (int)call->args[0].source : -1);
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_TYPE, .a = data->id};
