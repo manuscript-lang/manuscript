@@ -219,18 +219,27 @@ fn List[T: Clonable].windows(size: Int) List[List[T]]: ...
 fn List[T: Clonable].partition(predicate: fn(T) Bool) Partition[T]: ...
 
 // Returns an independent reversed copy, including nested values.
-fn List[T: Clonable].reversed() List[T]: ...
+fn List[T: Clonable].reversed() List[T]:
+	var out = self.clone()
+	out.reverse()
+	return out
 
 /*
 Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
 A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
 Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
 */
-fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]: ...
+fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]:
+	var out = self.clone()
+	out.sort(compare)
+	return out
 
 // Returns a new list of the values for which `predicate` is true, in their original
 // order.
-fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]: ...
+fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]:
+	var out = self.clone()
+	out.retain(predicate)
+	return out
 
 // Returns a copy of the first element for which `predicate` is true, or `none`.
 // Later elements are not tested after a match.
