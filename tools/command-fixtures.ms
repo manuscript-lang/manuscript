@@ -159,7 +159,8 @@ fn stream_difference(stream: String, expected: String, observed: String) String:
 // The first difference between the recorded and the observed outcome, or "".
 fn difference(case_dir: String, outcome: Outcome) String:
 	stdout := expected_text(case_dir, "stdout")
-	if stdout != outcome.stdout: return stream_difference("stdout", stdout, outcome.stdout)
+	if stdout != outcome.stdout:
+		return stream_difference("stdout", stdout, outcome.stdout) + f"\n  stderr: {brief(outcome.stderr)}"
 
 	stderr := expected_text(case_dir, "stderr")
 	if stderr != outcome.stderr: return stream_difference("stderr", stderr, outcome.stderr)
