@@ -3,6 +3,7 @@
  * records the operand conversions the lowering needs; diagnostics for ill-typed operands come in a later change,
  * so an operand that does not fit yields the invalid type. */
 #include "compiler/check/body.h"
+#include "compiler/syntax/walk.h"
 
 /* ---- classifying types ---- */
 
@@ -254,8 +255,44 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
   return left;
 }
 
+static bool names_none(Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+}
+
+/* `x == none` and `x != none`: `none` takes its type from a target, and an operand is none. The other operand is
+ * typed alone; it is reported unless it is itself wrong. */
+static MsTy none_comparison(Body *body, const MsExpr *expr) {
+  const MsExpr *other = names_none(body, expr->u.bin.left) ? expr->u.bin.right : expr->u.bin.left;
+  const MsTy ty = body_expr(body, other, MS_TY_NONE);
+  if (ty != MS_TY_NONE && !is_invalid(body, ty) && body->module < body->program->user_modules && !body->quiet) {
+    const bool optional = ms_ty_is(&body->program->types, ty, MS_BUILTIN_Optional);
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
+                    ms_string_from_span(ms_span_of_text(
+                        "none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != "
+                        "none` is `x.is_some()`), or compare with the plain value, e.g. x == 3")));
+    MsSpan text = {0};
+    const MsPos start = ms_expr_start(other);
+    if (optional && other->end.offset > start.offset && ms_span_slice(body->source, start.offset, other->end.offset, &text)) {
+      MsStrBuild fix = ms_strbuild_new();
+      const bool parens = !body_expr_is_atomic(other);
+      ms_strbuild_append_text(&fix, parens ? "(" : "");
+      ms_strbuild_append(&fix, text);
+      ms_strbuild_append_text(&fix, parens ? ")" : "");
+      ms_strbuild_append_text(&fix, expr->op == MS_B_NE ? ".is_some()" : ".is_none()");
+      ms_check_attach_fix(body->program, ms_expr_start(expr), expr->end, ms_strbuild_finish(&fix));
+    }
+  }
+  return body_primitive(body, MS_BUILTIN_Bool);
+}
+
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   const MsBinaryOp op = (MsBinaryOp)expr->op;
+  if ((op == MS_B_EQ || op == MS_B_NE) && (names_none(body, expr->u.bin.left) || names_none(body, expr->u.bin.right))) {
+    const MsTy ty = none_comparison(body, expr);
+    body_set_type(body, expr->id, ty);
+    return ty;
+  }
   MsTy left = MS_TY_NONE;
   MsTy right = MS_TY_NONE;
   operand_types(body, expr, expected, &left, &right);
