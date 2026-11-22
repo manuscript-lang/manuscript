@@ -237,6 +237,10 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
       expr->u.call.callee->u.member.name == pass->close && expr->u.call.callee->u.member.left->kind == MS_E_NAME) {
     flag(pass, ms_facts_ref(pass->facts, expr->u.call.callee->u.member.left->id), MS_CLOSER_EXPLICIT);
   }
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY && expr->u.bin.left->kind == MS_E_NAME &&
+      ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) { /* `r?` moves the payload out of the Result `r` */
+    flag(pass, ms_facts_ref(pass->facts, expr->u.bin.left->id), MS_CLOSER_PARTIAL);
+  }
   const MsExpr *root = expr;
   while (root->kind == MS_E_MEMBER) {
     root = root->u.member.left;
