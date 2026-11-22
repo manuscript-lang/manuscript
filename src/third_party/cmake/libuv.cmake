@@ -6,7 +6,6 @@ add_library(uv STATIC
   ${UV_SRC}/uv-common.c ${UV_SRC}/uv-data-getter-setters.c ${UV_SRC}/version.c)
 target_include_directories(uv ${MS_THIRD_PARTY_SYSTEM} PUBLIC libuv/include)
 target_include_directories(uv PRIVATE libuv/src)
-target_compile_definitions(uv PUBLIC USING_UV_SHARED=0)
 if(WIN32)
   file(GLOB UV_WIN_SOURCES CONFIGURE_DEPENDS ${UV_SRC}/win/*.c)
   target_sources(uv PRIVATE ${UV_WIN_SOURCES})
