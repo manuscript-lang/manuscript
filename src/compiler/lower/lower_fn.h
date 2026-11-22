@@ -272,6 +272,9 @@ bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, ui
 bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
+/* The shape table of `ty`, with the hooks its types declare built first. */
+MirValue fn_shape(LowerFn *fn, MirTy ty);
+bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out);
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */

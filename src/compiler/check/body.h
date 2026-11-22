@@ -143,6 +143,9 @@ bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
 /* members.c: a member the receiver does not have. */
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver);
 
+/* externs.c: the signature of a user `extern fn`. */
+void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty);
+
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty);

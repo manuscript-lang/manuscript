@@ -115,6 +115,7 @@ typedef struct Lower {
   LowerSourceList sources;
   MsNames vtable_keys;         /* receiver and interface type text -> dense id, the index into `vtables` */
   MirIdList vtables;           /* the MIR vtable of each key */
+  MirIdList hooked;            /* the record and alternative types whose shape hooks were looked for */
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
 } Lower;
 
@@ -153,6 +154,8 @@ uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation);
 uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property);
 /* The checker type that MIR record or alternative type `ty` was made from, or MS_TY_NONE. */
 MsTy lower_source_type(const Lower *cx, MirTy ty);
+/* Builds the text and JSON hooks of the types a shape of `ty` describes that declare their own `to_string` or `to_json`. */
+void lower_shape_hooks(Lower *cx, MirTy ty);
 uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface);
 
 /* A closure of type `fn_ty` without captures whose body calls the MIR function `callee` (MIR_NONE on failure). */
