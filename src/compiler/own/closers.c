@@ -289,7 +289,7 @@ static void callable(Closers *pass, const MsMethod *method, MsParams params, MsS
 
 void ms_own_closers(MsCheckProgram *program) {
   Closers pass = {.program = program, .close = ms_names_intern(program->names, ms_span_of_text("close"))};
-  for (uint32_t module = 0; module < program->user_modules; module++) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
     pass.facts = &program->modules.ptr[module].facts;
     pass.module = module;
     const MsModule *tree = program->modules.ptr[module].tree;
