@@ -18,6 +18,7 @@
 #include "driver/check_fix.h"
 #include "driver/check_inputs.h"
 #include "driver/display.h"
+#include "driver/findings.h"
 #include "driver/snippet.h"
 #include "driver/watch.h"
 
@@ -30,14 +31,6 @@ typedef struct CheckOptions {
   TargetList targets;
 } CheckOptions;
 
-/* One diagnostic ready to print: the file it is in, its phase and its text. */
-typedef struct Finding {
-  MsSpan file;
-  const char *phase;
-  MsDiag diag;
-} Finding;
-
-MS_LIST_DEFINE(FindingList, finding_list, Finding)
 
 /* What checking the inputs found: their diagnostics, and the `Checked` lines of the inputs that passed. */
 typedef struct Analysis {
@@ -110,84 +103,6 @@ static size_t project_modules(const MsCheckProgram *program, const MsNames *name
   return count;
 }
 
-static void add_graph_findings(const MsGraph *graph, FindingList *findings) {
-  for (size_t i = 0; i < graph->diagnostic_count; i++) {
-    const MsGraphDiag *diag = &graph->diagnostics[i];
-    const char *phase = diag->phase == MS_GRAPH_PARSE ? "parse" : "resolution";
-    finding_list_push(findings, (Finding){.file = diag->file, .phase = phase, .diag = diag->diag});
-  }
-}
-
-/* Diagnostics by file, line and column; the sort is stable, so ties keep the order the phases produced them in. */
-static int64_t compare_findings(uint8_t *env, const uint8_t *left, const uint8_t *right) {
-  (void)env;
-  const Finding *a = (const void *)left;
-  const Finding *b = (const void *)right;
-  const size_t common = a->file.len < b->file.len ? a->file.len : b->file.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a->file.ptr, b->file.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  if (a->file.len != b->file.len) {
-    return a->file.len < b->file.len ? -1 : 1;
-  }
-  if (a->diag.pos.line != b->diag.pos.line) {
-    return a->diag.pos.line < b->diag.pos.line ? -1 : 1;
-  }
-  return a->diag.pos.column < b->diag.pos.column ? -1 : a->diag.pos.column > b->diag.pos.column;
-}
-
-static void add_check_findings(const MsCheckProgram *program, const MsNames *names, FindingList *findings) {
-  for (size_t i = 0; i < program->diagnostics.len; i++) {
-    const MsCheckDiag *issue = &program->diagnostics.ptr[i];
-    const MsSpan file = ms_names_span(names, program->modules.ptr[issue->module].file);
-    const char *phase = issue->phase == MS_CHECK_RESOLUTION ? "resolution" : "type";
-    MsDiag diag = {.pos = issue->pos, .message = ms_string_span(&issue->message)};
-    diag.has_end = issue->has_end;
-    diag.end = issue->end;
-    if (issue->has_fix) {
-      diag.has_fix = true;
-      diag.fix_pos = issue->fix_pos;
-      diag.fix_end = issue->fix_end;
-      diag.replacement = ms_string_span(&issue->fix_text);
-    }
-    finding_list_push(findings, (Finding){.file = file, .phase = phase, .diag = diag});
-  }
-}
-
-/* Whether a diagnostic's file is a fetched package's: `@id/path`, which has no place in the project's directory. */
-static bool is_package_file(MsSpan file) {
-  return ms_span_starts_with(file, ms_span_of_text("@")) && !ms_span_starts_with(file, ms_span_of_text("@std/"));
-}
-
-/* The excerpt under a diagnostic: the file is read again from `root`, as the Rust CLI does. */
-static void append_excerpt(MsStrBuild *out, MsSpan root, const Finding *finding) {
-  MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
-  MsBytes bytes = {0};
-  if (ms_file_read(ms_strbuild_span(&path), &bytes)) {
-    ms_snippet_excerpt(out, ms_bytes_span(&bytes), finding->diag.pos, finding->diag.has_end, finding->diag.end);
-  }
-  ms_bytes_free(&bytes);
-  ms_strbuild_free(&path);
-}
-
-static void append_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *findings) {
-  for (size_t i = 0; i < findings->len; i++) {
-    const Finding *finding = &findings->ptr[i];
-    ms_path_append_joined(err, is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
-    ms_strbuild_printf(err, ":%u:%u: %s: ", finding->diag.pos.line, finding->diag.pos.column, finding->phase);
-    ms_strbuild_append(err, finding->diag.message);
-    append_excerpt(err, root, finding);
-    ms_strbuild_append_byte(err, '\n');
-  }
-  if (findings->len != 0) {
-    ms_strbuild_printf(err, "%zu %s; fix them and re-run (ms check <file> --json gives the same diagnostics as "
-                            "structured data)\n",
-                       findings->len, findings->len == 1 ? "error" : "errors");
-  }
-}
-
 static void write_text_member(MsStrBuild *out, MsStrBuild *std_out, MsStrBuild *std_err) {
   ms_strbuild_append_text(out, ",\n  \"text\": {\n    \"stdout\": ");
   ms_json_string(out, ms_strbuild_span(std_out));
@@ -221,7 +136,7 @@ static Finding kept(MsArena *arena, Finding finding, MsSpan file) {
 
 /* A collection shows a file relative to the working directory. */
 static MsSpan shown(MsArena *arena, const CheckSelection *selection, MsSpan root, MsSpan file) {
-  if (!selection->collection || ms_span_starts_with(file, ms_span_of_text("@std/")) || is_package_file(file)) {
+  if (!selection->collection || ms_span_starts_with(file, ms_span_of_text("@std/")) || finding_is_package_file(file)) {
     return ms_arena_copy(arena, file);
   }
   if (root.len != 0 && !ms_path_is_absolute(file)) {
@@ -299,11 +214,11 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
   ms_project_load(arena, &names, input->path, &load, &graph);
   FindingList found = {0};
   MsCheckProgram program = {0};
-  add_graph_findings(&graph, &found);
+  finding_add_graph(&graph, &found);
   if (found.len == 0) {
     ms_check_graph(&program, &names, &graph);
     ms_own_check(&program);
-    add_check_findings(&program, &names, &found);
+    finding_add_check(&program, &names, &found);
   }
   if (!selection->collection) {
     analysis->root = ms_arena_copy(arena, graph.source_root);
@@ -335,7 +250,7 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
 
 /* A collection drops repeats, then orders by position, code and message. */
 static int64_t compare_collected(uint8_t *env, const uint8_t *left, const uint8_t *right) {
-  const int64_t order = compare_findings(env, left, right);
+  const int64_t order = finding_compare(env, left, right);
   if (order != 0) {
     return order;
   }
@@ -387,7 +302,7 @@ static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fi
   if (selection.collection) {
     collect_findings(&analysis->findings);
   } else if (analysis->findings.len > 1) {
-    ms_sort((uint8_t *)analysis->findings.ptr, analysis->findings.len, sizeof(Finding), compare_findings, NULL);
+    ms_sort((uint8_t *)analysis->findings.ptr, analysis->findings.len, sizeof(Finding), finding_compare, NULL);
   }
   check_selection_free(&selection);
 }
@@ -404,7 +319,7 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
     }
     ms_strbuild_append_byte(err, '\n');
   }
-  append_terminal_text(err, analysis->root, &analysis->findings);
+  finding_terminal_text(err, analysis->root, &analysis->findings);
   if (options->json) {
     write_document(document, &analysis->findings, options, out, err);
   }
