@@ -21,14 +21,18 @@ static MirValue call_join(LowerFn *fn, const char *prefix, uint32_t count, const
   } else {
     ms_strbuild_printf(&name, "%s%u", prefix, count);
   }
-  /* One extern per signature: the same join takes an Int or a String in each position. */
-  MirParam *mir_params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nparams + 1);
-  for (uint32_t index = 0; index < nparams; index++) {
-    mir_params[index] = (MirParam){params[index], (uint8_t)MM_BORROW};
+  /* Each pattern of integer and string pieces is its own signature of the one runtime function. */
+  MirParam *wanted = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nparams + 1);
+  for (uint32_t at = 0; at < nparams; at++) {
+    wanted[at] = (MirParam){params[at], (uint8_t)MM_BORROW};
   }
-  const MirExtern def = {.name = mir_name(fn->cx->module, ms_strbuild_span(&name)), .params = mir_params,
-                         .nparams = nparams, .ret = MIR_STR, .leaf = true, .role = (uint8_t)role,
-                         .fresh = true};
+  const MirExtern def = {.name = mir_name(fn->cx->module, ms_strbuild_span(&name)),
+                         .params = wanted,
+                         .nparams = nparams,
+                         .ret = MIR_STR,
+                         .fresh = true,
+                         .leaf = true,
+                         .role = (uint8_t)role};
   const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
   ms_strbuild_free(&name);
   const MirValue result = mir_b_call_rt(&fn->b, ext, args, nparams);
