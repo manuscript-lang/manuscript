@@ -147,7 +147,7 @@ Text is written as its UTF-8 encoding.
 */
 export interface Writable:
 	// The bytes to write, as a new value the writer may keep.
-	fn as_bytes() Bytes
+	fn as_bytes() move Bytes
 
 /*
 A resource that can be closed. A binding that holds one is closed when its scope ends, on every exit.
@@ -243,7 +243,7 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used. Without a cause, `E` is `Error` with kind `ENOENT`
 // and a message naming the calling source file and line.
-fn Optional[T].ok_or[E = Error](cause: E?) T!E: ...
+fn Optional[T].ok_or[E = Error](cause: E?) move T!E: ...
 
 // Returns `ok` with the payload; for `none`, calls `create` once and returns its
 // error.
@@ -352,7 +352,7 @@ export interface Comparable:
 // parameter.
 export interface Clonable:
 	// Returns an independent deep copy of this value.
-	fn clone() Self
+	fn clone() move Self
 
 /*
 A type whose values are plain data: no resource, function, interface value or runtime handle
@@ -372,7 +372,7 @@ export interface Data: ...
 // declaring `to_string`.
 export interface Stringable:
 	// Returns this value as text.
-	fn to_string() String
+	fn to_string() move String
 
 // A type with a stable hash that is consistent with its `Equal` implementation.
 export interface Hashable:

@@ -158,7 +158,7 @@ export interface Hasher:
 	fn update(data: Bytes) Void
 	// Returns the digest of all data supplied since creation or the last `finish`, then
 	// resets the state.
-	fn finish() Bytes
+	fn finish() move Bytes
 
 /*
 Reads `input` to the end and returns its digest under `algorithm`, as `HashAlgorithm.digest` does for bytes in

@@ -45,7 +45,7 @@ export interface Transport:
 	fn flush() Void!
 	// Returns a new transport onto the same destination with its own handle. Each
 	// child logger writes through one.
-	fn duplicate() Transport!
+	fn duplicate() move Transport!
 	// Releases owned resources. Later writes return `EBADF`.
 	move fn close() Void
 

@@ -42,13 +42,13 @@ export extern fn msstd_fs_glob_entries(
 	max_entries: Int?,
 	max_results: Int?,
 	filter: (fn(String, String, Bool, Bool) Bool)?,
-) List[PathEntry]!
+) move List[PathEntry]!
 
 export extern fn msstd_io_close(file: NativeFile) Void!
 
-export extern fn msstd_fs_file_clone(file: NativeFile) FileHandle!
+export extern fn msstd_fs_file_clone(file: NativeFile) move FileHandle!
 
-export extern fn msstd_io_read(file: NativeFile, max_bytes: Int?) Bytes?!
+export extern fn msstd_io_read(file: NativeFile, max_bytes: Int?) move Bytes?!
 
 export extern fn msstd_io_write(file: NativeFile, data: String) Void!
 
@@ -58,7 +58,7 @@ export extern fn msstd_fs_file_read_at(
 	file: NativeFile,
 	offset: Int,
 	max_bytes: Int?,
-) Bytes!
+) move Bytes!
 
 export extern fn msstd_fs_file_write_at(
 	file: NativeFile,
@@ -66,13 +66,13 @@ export extern fn msstd_fs_file_write_at(
 	data: Bytes,
 ) Void!
 
-export extern fn msstd_fs_file_read_file(file: NativeFile, max_bytes: Int?) Bytes!
+export extern fn msstd_fs_file_read_file(file: NativeFile, max_bytes: Int?) move Bytes!
 
 export extern fn msstd_fs_file_read_vectors(
 	file: NativeFile,
 	sizes: List[Int],
 	offset: Int,
-) List[Bytes]!
+) move List[Bytes]!
 
 export extern fn msstd_fs_file_write_vectors(
 	file: NativeFile,
@@ -82,7 +82,7 @@ export extern fn msstd_fs_file_write_vectors(
 
 export extern fn msstd_fs_file_seek(file: NativeFile, offset: Int, origin: Int) Int!
 
-export extern fn msstd_fs_file_stat(file: NativeFile) FileInfo!
+export extern fn msstd_fs_file_stat(file: NativeFile) move FileInfo!
 
 export extern fn msstd_fs_file_truncate(file: NativeFile, size: Int) Void!
 
@@ -108,39 +108,39 @@ export extern fn msstd_fs_file_read_lines(
 	file: NativeFile,
 	max_bytes: Int?,
 	max_lines: Int?,
-) List[String]!
+) move List[String]!
 
-export extern fn msstd_fs_directory_read(dir: NativeDirectory) DirectoryEntry?!
+export extern fn msstd_fs_directory_read(dir: NativeDirectory) move DirectoryEntry?!
 
-export extern fn msstd_fs_directory_path(dir: NativeDirectory) String
+export extern fn msstd_fs_directory_path(dir: NativeDirectory) move String
 
 export extern fn msstd_fs_directory_close(dir: NativeDirectory) Void
 
-export extern fn msstd_fs_watch_next(watcher: NativeWatcher) List[FileEvent]?!
+export extern fn msstd_fs_watch_next(watcher: NativeWatcher) move List[FileEvent]?!
 
 export extern fn msstd_fs_watch_close(watcher: NativeWatcher) Void
 
-export extern fn msstd_fs_temporary_path(temporary: NativeTemporary) String
+export extern fn msstd_fs_temporary_path(temporary: NativeTemporary) move String
 
 export extern fn msstd_fs_temporary_close(temporary: NativeTemporary) Void!
 
-export extern fn msstd_fs_canonicalize(path: String) String!
+export extern fn msstd_fs_canonicalize(path: String) move String!
 
 export extern fn msstd_fs_create_directory(path: String, recursive: Bool) Void!
 
 export extern fn msstd_fs_create_link(path: String, target: String) Void!
 
-export extern fn msstd_fs_read_file(path: String, max_bytes: Int?) Bytes!
+export extern fn msstd_fs_read_file(path: String, max_bytes: Int?) move Bytes!
 
-export extern fn msstd_fs_read_link(path: String) String!
+export extern fn msstd_fs_read_link(path: String) move String!
 
 export extern fn msstd_fs_remove(path: String, recursive: Bool) Void!
 
 export extern fn msstd_fs_rename(source: String, destination: String) Void!
 
-export extern fn msstd_fs_temporary_root() String
+export extern fn msstd_fs_temporary_root() move String
 
-export extern fn msstd_fs_temporary_directory(prefix: String) String!
+export extern fn msstd_fs_temporary_directory(prefix: String) move String!
 
 export extern fn msstd_fs_write_file(path: String, data: Bytes, replace: Bool) Void!
 
@@ -160,17 +160,17 @@ export extern fn msstd_fs_truncate(path: String, size: Int) Void!
 
 export extern fn msstd_fs_hard_link(source: String, destination: String) Void!
 
-export extern fn msstd_fs_open(path: String, flags: String, mode: Int) FileHandle!
+export extern fn msstd_fs_open(path: String, flags: String, mode: Int) move FileHandle!
 
-export extern fn msstd_fs_directory_open(path: String) Directory!
+export extern fn msstd_fs_directory_open(path: String) move Directory!
 
-export extern fn msstd_fs_temporary_open(prefix: String) TemporaryDirectory!
+export extern fn msstd_fs_temporary_open(prefix: String) move TemporaryDirectory!
 
-export extern fn msstd_fs_stat(path: String, follow: Bool) FileInfo!
+export extern fn msstd_fs_stat(path: String, follow: Bool) move FileInfo!
 
 export extern fn msstd_fs_exists(path: String, follow: Bool) Int!
 
-export extern fn msstd_fs_list(path: String, max_entries: Int?) List[DirectoryEntry]!
+export extern fn msstd_fs_list(path: String, max_entries: Int?) move List[DirectoryEntry]!
 
 export extern fn msstd_fs_set_times(
 	path: String,
@@ -179,14 +179,14 @@ export extern fn msstd_fs_set_times(
 	follow: Bool,
 ) Void!
 
-export extern fn msstd_fs_stat_filesystem(path: String) FileSystemInfo!
+export extern fn msstd_fs_stat_filesystem(path: String) move FileSystemInfo!
 
 export extern fn msstd_fs_watch(
 	path: String,
 	recursive: Bool,
 	interval: Duration,
 	max_entries: Int?,
-) RawWatcher!
+) move RawWatcher!
 
 export extern fn msstd_fs_watch_native(
 	path: String,
@@ -194,4 +194,4 @@ export extern fn msstd_fs_watch_native(
 	max_entries: Int?,
 	max_events: Int?,
 	overflow: String,
-) RawWatcher!
+) move RawWatcher!
