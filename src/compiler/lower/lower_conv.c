@@ -148,7 +148,12 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   /* A view of a binding that keeps its value does not own it; a fresh value or a moved one is the interface's. */
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   const bool views = place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
-  return views ? mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to) : fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
+  if (!views) {
+    return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
+  }
+  const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, (MirImm){0}, MIR_NONE);
+  return view;
 }
 
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
@@ -164,9 +169,14 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
     /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
-    return fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))
-               ? fn_emit(fn, MOP_OptSome, &value, 1, none, to)
-               : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);
+    if (fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+      return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
+    }
+    /* The elaborator owns every moved-in result; this view must not drop what the binding still owns, and
+     * an exit that closes the binding must not drop it a second time. */
+    const MirValue view = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, none, MIR_NONE);
+    return view;
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to));

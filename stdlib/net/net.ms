@@ -149,7 +149,7 @@ fn move Connection.close() Void!:
 	return self.output.close()
 
 // Wraps a native socket into a `Connection`.
-fn connection(native: NativeConnection) Connection:
+fn connection(move native: NativeConnection) Connection:
 	local := msstd_net_connection_local_address(native)
 	peer := msstd_net_connection_peer_address(native)
 	var tls: TlsInfo? = none
@@ -255,7 +255,7 @@ fn move DatagramSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
-fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
+fn datagram_socket(move native: NativeDatagramSocket) DatagramSocket:
 	address := msstd_net_datagram_address(native)
 	other := msstd_net_datagram_share(native)
 	return DatagramSocket(

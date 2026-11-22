@@ -41,7 +41,8 @@ uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModul
 void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsCheckPhase phase,
                      MsString message) {
   ms_check_diag_list_push(&program->diagnostics,
-                          (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message});
+                          (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message,
+                                        .stage = program->stage});
 }
 
 void ms_check_attach_end(MsCheckProgram *program, MsPos end) {

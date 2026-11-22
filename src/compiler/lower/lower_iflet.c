@@ -38,7 +38,7 @@ bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt) {
 }
 
 /* The payload of the Optional or Result `value`, taken out of it: `value` is released but for the payload. */
-static MirValue take_payload(LowerFn *fn, MirValue value, MirTy *ty) {
+MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value));
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   if (data->kind == MK_OPT) {
@@ -63,13 +63,16 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   MirValue payload = MIR_NONE;
   MirTy ty = MIR_VOID;
   if (owns) {
-    payload = take_payload(fn, value, &ty);
+    payload = fn_take_payload(fn, value, &ty);
     const MsTy checked = ms_facts_type(fn->facts, pattern->id);
     if (fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), checked)) {
       return fn_bind_closing(fn, ref->local, checked, payload, false);
     }
     if (mir_needs_drop(module, ty)) {
       fn_own(fn, fn_scope(fn), payload);
+      if (fn->local_owns != NULL && ref->local < fn->nvars) {
+        fn->local_owns[ref->local] = 1; /* a value the scope owns: an escaping closure may take it */
+      }
     }
     mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), payload);
     return !fn->failed;

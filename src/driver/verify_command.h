@@ -7,4 +7,7 @@
 /* Runs `ms verify` over the arguments after the command name; returns the process exit status. */
 int ms_verify_command(int argc, char **argv);
 
+/* The program the steps run: this one, as the user started it. */
+void ms_verify_set_program(const char *program);
+
 #endif

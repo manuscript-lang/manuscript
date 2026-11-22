@@ -4,6 +4,7 @@
 
 void ms_instance_free(MsInstance *instance) {
   ms_ty_list_free(&instance->args);
+  ms_ty_list_free(&instance->unbound);
   ms_string_release(&instance->message);
   *instance = (MsInstance){.message = ms_string_empty()};
 }
@@ -101,6 +102,7 @@ static void missing_message(MsCheckProgram *program, MsSpan name, const MsTy *va
       continue;
     }
     ms_strbuild_append(&parts, variable);
+    ms_ty_list_push(&out->unbound, vars[index]);
     if (missing++ > 0) {
       ms_strbuild_append_text(&list, ", ");
     }
