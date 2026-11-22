@@ -81,7 +81,7 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     return true;
   }
   if (base->kind != MS_E_MEMBER && base->kind != MS_E_INDEX) {
-    return fn_fail(fn, "assignment into this place is not lowered yet (kind %d, ref %d)", (int)base->kind, base->kind == MS_E_NAME && ms_facts_ref(fn->facts, base->id) != NULL ? (int)ms_facts_ref(fn->facts, base->id)->kind : -1);
+    return fn_fail(fn, "assignment into this place is not lowered yet");
   }
   const MirValue inner = fn_expr(fn, base, LW_BORROW);
   if (inner == MIR_NONE) {

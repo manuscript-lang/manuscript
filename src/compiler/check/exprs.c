@@ -233,14 +233,19 @@ static MsTy expected_arg(const Body *body, MsTy expected, MsBuiltin builtin, siz
 
 static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy element = expected_arg(body, expected, MS_BUILTIN_List, 0);
+  bool unknown = false;
   for (uint32_t index = 0; index < expr->u.list.len; index++) {
     MsStrBuild context = ms_strbuild_new();
     ms_strbuild_printf(&context, "entry %zu of the literal, whose entries share one type", (size_t)index + 1);
     const MsTy item = body_expect(body, expr->u.list.ptr[index], element, ms_strbuild_span(&context));
     ms_strbuild_free(&context);
+    unknown = unknown || item == MS_TY_NONE;
     element = element == MS_TY_NONE ? item : element;
   }
-  return element == MS_TY_NONE ? expected : body_std_type(body, "List", &element, 1);
+  if (element == MS_TY_NONE || unknown) {
+    return expr->u.list.len == 0 ? expected : MS_TY_NONE; /* an entry of unknown type leaves the literal unknown */
+  }
+  return body_std_type(body, "List", &element, 1);
 }
 
 static MsTy map_expr(Body *body, const MsExpr *expr, MsTy expected) {
