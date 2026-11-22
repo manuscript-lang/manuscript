@@ -37,16 +37,21 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_methods(program, index);
   }
   for (uint32_t index = 0; index < program->user_modules; index++) {
+    program->stage = MS_STAGE_IMPORTS;
     ms_check_report_imports(program, index, graph->modules[index].source);
+    program->stage = MS_STAGE_DECLARATIONS;
     ms_check_type_variables(program, index);
     ms_check_signatures(program, index);
     ms_check_methods(program, index);
     ms_check_constants(program, index);
+    program->stage = MS_STAGE_SIDE;
     ms_check_mutation(program, index, graph->modules[index].source);
     ms_check_names(program, index);
     ms_check_returns(program, index);
+    program->stage = MS_STAGE_DECLARATIONS;
   }
   ms_check_finite_types(program);
+  program->stage = MS_STAGE_WALK;
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
   }
