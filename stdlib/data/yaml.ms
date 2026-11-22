@@ -713,7 +713,7 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 		flow.pos += 1
 
 	// Slice once: appending each character to a string is quadratic on long scalars.
-	var text = blank_trim(flow.chars.slice(start, flow.pos).get_or([]).join(""))
+	var text = blank_trim(flow.chars.slice(start, flow.pos).clone().get_or([]).join(""))
 	if (
 		text.starts_with("?")
 		and (text.length() == 1 or " \t".contains(text.chars()[1]))

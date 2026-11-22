@@ -10,7 +10,7 @@ export type Case:
 export fn cases(source: String, table: String) List[Case]!:
 	root := parse(source)?
 	var out: List[Case] = []
-	items := root.get(table).get_or(JsonValue.Null).as_list().get_or([])
+	items := root.get(table).clone().get_or(JsonValue.Null).as_list().get_or([])
 
 	for item in items:
 		var fields = Map[String, String]()
