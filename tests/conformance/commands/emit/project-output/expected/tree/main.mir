@@ -1,244 +1,196 @@
 module "main"
 file 0 "src/main.ms"
-file 1 "@std/core.ms+source"
+file 1 "@std/core.ms"
 file 2 "src/shapes.ms"
-type ListCursor { list: list<str>, next: int }
 type Shape { width: int, height: int }
 alt Result[Int, Failure] { ok(value: int), error(cause: Failure) } result
 alt Failure { Bad(text: str) }
+alt Result[Int, ] { ok(value: int), error(cause: void) } result
 extern @msrt_string_fmt2(int, str, int) -> str fresh leaf string_join
-extern @msrt_io_write_stdout_line(str, str) -> void
-extern @msrt_string_parse_int(str, ptr) -> bool leaf
-extern @msrt_cleanup_discard(int) -> void leaf cleanup_discard
-extern @msrt_cleanup_cancel(int) -> void leaf
-extern @msrt_shield_enter() -> void leaf shield_enter
-extern @msrt_shield_exit() -> void leaf shield_exit
+extern @msstd_value_to_string(ptr, ptr) -> str fresh
+extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
+extern @msrt_io_write_stdout(str) -> void
+extern @msrt_string_parse_int(str, ptr) -> uint8
+extern @msrt_string_clone(str) -> str fresh
+extern @msrt_panic(str) -> void
 entry @main
 
-fn @main() -> int export !0:7:1 {
+fn @main() -> int export !0:0:0 {
 b0:
-  depth.enter
   %0: str = str "3" !0:8:5
-  %1: str = clone 1 %0 !0:8:5
+  %1: str = clone %0 !0:8:5
   %2: str = str "4" !0:8:5
-  %3: str = clone 1 %2 !0:8:5
+  %3: str = clone %2 !0:8:5
   %4: str = str "x" !0:8:5
-  %5: str = clone 1 %4 !0:8:5
-  %6: list<str> = list.lit %1, %3, %5 !0:8:5
-  %7: int = call @parse_total (%6) !0:8:5
+  %5: str = clone %4 !0:8:5
+  %6: list<str> = list.lit %1, %3, %5 !0:8:26
+  %7: int = call @parse_total (%6) !0:8:14
   %8: str = str "total " !0:9:5
-  %9: int = iconst 2 !0:9:5
-  %10: str = call.rt @msrt_string_fmt2 (%9, %8, %7) !0:9:5
-  %11: str = str "\n" !1:82:44
-  %12: void = call @print (%10, %11) !0:9:5
-  drop %10 !0:9:5
-  %13: int = iconst 0 !0:10:5
-  depth.leave !0:10:5
-  ret %13 !0:10:5
+  %9: int = iconst 2 !0:9:11
+  %10: str = call.rt @msrt_string_fmt2 (%9, %8, %7) !0:9:11
+  %11: str = str "\n" !0:9:11
+  %12: str = clone %11 !0:9:11
+  %13: void = call @print[String] (%10, %12) !0:9:5
+  %14: int = iconst 0 !0:10:5
+  drop %12
+  drop %10
+  drop %6
+  ret %14 !0:10:5
 }
 
-fn @parse_total(%0: move list<str>) -> int !2:15:8 {
+fn @parse_total(%0: list<str>) -> int !2:0:0 {
 b0:
-  depth.enter
   %1: int = iconst 0 !2:16:5
-  %2: ptr = slot ListCursor !2:17:5
-  %3: int = iconst 0 !2:17:5
-  %4: ListCursor = type.new ListCursor %0, %3 !2:17:5
-  put %2, %4 !2:17:5
-  %5: ptr = ptr.field ListCursor.list %2 !2:17:5
-  %6: list<str> = load list<str> %5 !2:17:5
-  %7: int = iconst 0 !2:17:5
-  %8: int = list.len %6 !2:17:5
-  %9: int = iconst 1 !2:17:5
-  %10: int = cleanup.push @close %2
-  br b1(%7, %1) !2:17:5
-b1(%11: int, %12: int):
-  %13: bool = icmp.lt %11, %8 !2:17:5
-  br_if %13, b2(), b7() !2:17:5
+  %2: int = iconst 0 !2:17:5
+  %3: int = list.len %0 !2:17:5
+  %4: int = iconst 1 !2:17:5
+  br b1(%2, %1) !2:17:5
+b1(%5: int, %6: int):
+  %7: bool = icmp.lt %5, %3 !2:17:5
+  br_if %7, b2(), b4() !2:17:5
 b2():
-  %14: int = iadd %11, %9 !2:17:5
-  %15: ptr = ptr.field ListCursor.next %2 !2:17:5
-  store %15, %14 !2:17:5
-  %16: ptr = ptr.field ListCursor.list %2 !2:17:5
-  %17: list<str> = load list<str> %16 !2:17:5
-  %18: str = list.take %17, %11 !2:17:5
-  %19: Result[Int, Failure] = call @read_number (%18) !2:18:9
-  %20: int = iconst 0 !2:18:9
-  %21: int = alt.tag %19 !2:18:9
-  %22: int = iconst 0 !2:18:9
-  %23: bool = icmp.eq %21, %22 !2:18:9
-  br_if %23, b3(), b4() !2:18:9
+  %8: str = list.get %0, %5 !2:17:5
+  %9: Result[Int, Failure] = call @read_number (%8) !2:18:18
+  %10: int = iconst 0 !2:18:18
+  %11: opt<int> = opt.some %10 !2:18:18
+  %12: int = call @get_or[Int,Failure] (%9, %11) !2:18:36
+  %13: int = iadd.chk %6, %12 !2:18:36
+  drop %9
+  br b3() !2:18:36
 b3():
-  %24: int = alt.take Result[Int, Failure].ok.value %19 !2:18:9
-  alt.release Result[Int, Failure].ok.value %19 !2:18:9
-  br b5(%24) !2:18:9
+  %14: int = iadd %5, %4 !2:17:5
+  br b1(%14, %13) !2:17:5
 b4():
-  drop %19 !2:18:9
-  br b5(%20) !2:18:9
-b5(%25: int):
-  %26: int = iadd.chk %12, %25 !2:18:9
-  br b6() !2:17:5
-b6():
-  %27: int = iadd %11, %9 !2:17:5
-  br b1(%27, %26) !2:17:5
-b7():
-  %28: void = call.rt @msrt_cleanup_discard (%10)
-  %29: void = call.rt @msrt_shield_enter ()
-  %30: void = call @close (%2)
-  %31: void = call.rt @msrt_shield_exit ()
-  %32: int = iconst 1 !2:19:5
-  %33: int = iconst 1 !2:19:5
-  %34: Shape = type.new Shape %32, %33 !2:19:5
-  %35: int = call @area (%34) !2:19:5
-  %36: int = iadd.chk %12, %35 !2:19:5
-  %37: int = iconst 1 !2:19:5
-  %38: int = isub.chk %36, %37 !2:19:5
-  depth.leave !2:19:5
-  ret %38 !2:19:5
+  %15: int = iconst 1 !2:19:5
+  %16: int = iconst 1 !2:19:5
+  %17: Shape = type.new Shape %15, %16 !2:19:25
+  %18: int = call @area (%17) !2:19:20
+  %19: int = iadd.chk %6, %18 !2:19:20
+  %20: int = iconst 1 !2:19:20
+  %21: int = isub.chk %19, %20 !2:19:20
+  ret %21 !2:19:20
 }
 
-fn @print(%0: str, %1: str) -> void !1:82:8 {
+fn @print[String](%0: str, %1: str) -> void !1:0:0 {
 b0:
-  depth.enter
-  %2: str = clone 1 %0 !1:83:5
-  %3: void = call.rt @msrt_io_write_stdout_line (%2, %1) !1:83:5
-  drop %2 !1:83:5
-  %4: void = void !1:83:5
-  depth.leave !1:83:5
-  ret %4 !1:83:5
+  %2: ptr = shape str !1:147:32
+  %3: ptr = slot str !1:147:32
+  store %3, %0 !1:147:32
+  %4: str = call.rt @msstd_value_to_string (%2, %3) !1:147:32
+  %5: str = call.rt @msrt_string_concat (%4, %1) !1:147:32
+  %6: void = call.rt @msrt_io_write_stdout (%5) !1:147:5
+  drop %5
+  drop %4
+  ret !1:147:5
 }
 
-fn @close(%0: ptr) -> void {
+fn @read_number(%0: str) -> Result[Int, Failure] !2:0:0 {
 b0:
-  %1: ptr = ptr.field ListCursor.list %0
-  %2: ptr = ptr.field ListCursor.next %0
-  %3: int = load int %2
-  %4: list<str> = take list<str> %1
-  list.release %4, %3
-  %5: void = void
-  ret %5
-}
-
-fn @read_number(%0: move str) -> Result[Int, Failure] !2:11:1 {
-b0:
-  depth.enter
-  %1: opt<str> = opt.some %0
-  %2: str = opt.get %1 !2:12:5
-  %3: str = opt.get %1 !2:12:5
-  %4: ptr = slot int !2:12:5
-  %5: bool = call @parse_int (%3, %4) !2:12:5
-  br_if %5, b1(), b2() !2:12:5
+  %1: ptr = slot int !2:12:22
+  %2: uint8 = call.rt @msrt_string_parse_int (%0, %1) !2:12:22
+  %3: uint8 = iconst 0 !2:12:22
+  %4: bool = icmp.ne %2, %3 !2:12:22
+  br_if %4, b1(), b2() !2:12:22
 b1():
-  %6: int = take int %4 !2:12:5
-  %7: opt<int> = opt.some %6 !2:12:5
-  br b3(%7) !2:12:5
+  %5: int = load int %1 !2:12:22
+  %6: opt<int> = opt.some %5 !2:12:22
+  br b3(%6) !2:12:22
 b2():
-  %8: opt<int> = opt.none_owned !2:12:5
-  br b3(%8) !2:12:5
-b3(%9: opt<int>):
-  %10: bool = opt.is_some %9 !2:12:5
-  br_if %10, b4(), b5() !2:12:5
+  %7: opt<int> = opt.none !2:12:22
+  br b3(%7) !2:12:22
+b3(%8: move opt<int>):
+  %9: bool = opt.is_some %8 !2:12:22
+  br_if %9, b4(), b5() !2:12:22
 b4():
-  %11: int = opt.get %9 !2:12:5
-  %12: Result[Int, Failure] = alt.new Result[Int, Failure].ok %11 !2:12:35
-  drop %1
-  depth.leave !2:12:35
-  ret %12 !2:12:35
+  %10: int = opt.unbox %8 !2:12:22
+  %11: Result[Int, Failure] = alt.new Result[Int, Failure].ok %10 !2:12:42
+  ret %11 !2:12:42
 b5():
-  br b6() !2:12:5
+  br b6() !2:12:42
 b6():
-  %13: str = opt.unbox %1 !2:13:5
-  %14: opt<str> = opt.none_owned !2:13:5
-  %15: Failure = alt.new Failure.Bad %13 !2:13:5
-  %16: Result[Int, Failure] = alt.new Result[Int, Failure].error %15 !2:13:5
-  drop %14
-  depth.leave !2:13:5
-  ret %16 !2:13:5
+  %12: str = call.rt @msrt_string_clone (%0) !2:13:35
+  %13: Failure = alt.new Failure.Bad %12 !2:13:26
+  %14: Result[Int, Failure] = alt.new Result[Int, Failure].error %13 !2:13:12
+  ret %14 !2:13:12
 }
 
-fn @area(%0: Shape) -> int !2:8:1 {
+fn @get_or[Int,Failure](%0: Result[Int, Failure], %1: opt<int>) -> int !1:0:0 {
 b0:
-  depth.enter
+  %2: bool = call @is_ok[Int,Failure] (%0) !1:296:13
+  br_if %2, b1(), b2() !1:296:13
+b1():
+  %3: int = call @get[Int,] (%0) !1:296:34
+  ret %3 !1:296:34
+b2():
+  br b3() !1:296:34
+b3():
+  %4: int = call @get[Int] (%1) !1:297:20
+  ret %4 !1:297:20
+}
+
+fn @area(%0: Shape) -> int !2:0:0 {
+b0:
   %1: int = type.get Shape.width %0 !2:9:5
   %2: int = type.get Shape.height %0 !2:9:5
   %3: int = imul.chk %1, %2 !2:9:5
-  depth.leave !2:9:5
   ret %3 !2:9:5
 }
 
-fn @parse_int(%0: str, %1: ptr) -> bool inline(always) {
+fn @is_ok[Int,Failure](%0: Result[Int, Failure]) -> bool !1:0:0 {
 b0:
-  %2: ptr = slot str
-  store %2, %0
-  %3: ptr = load ptr %2
-  %4: int = iconst 8
-  %5: ptr = ptr.add %2, %4
-  %6: int = load int %5
-  %7: int = iconst 62
-  %8: int = ushr %6, %7
-  %9: int = iconst 1
-  %10: bool = icmp.eq %8, %9
-  %11: int = iconst 56
-  %12: int = ushr %6, %11
-  %13: int = iconst 15
-  %14: int = and %12, %13
-  %15: int = iconst 2147483647
-  %16: int = and %6, %15
-  %17: int = select %10, %14, %16
-  %18: ptr = select %10, %2, %3
-  %19: int = iconst 0
-  %20: int = iconst 1
-  %21: bool = icmp.eq %17, %19
-  br_if %21, b1(), b8()
+  %1: int = alt.tag %0 !1:276:5
+  switch %1 [0: b2(), 1: b3()] default b4() !1:276:5
 b1():
-  %22: bool = bconst false
-  ret %22
+  %2: void = void !1:278:19
+  unreachable !1:278:19
 b2():
-  %23: bool = call.rt @msrt_string_parse_int (%0, %1)
-  ret %23
+  %3: int = alt.get Result[Int, Failure].ok.value %0 !1:276:5
+  %4: bool = bconst true !1:277:16
+  ret %4 !1:277:16
 b3():
-  br b4(%51, %19)
-b4(%24: int, %25: int):
-  %26: bool = icmp.lt %24, %17
-  br_if %26, b5(), b7()
-b5():
-  %27: ptr = ptr.add %18, %24
-  %28: int = ptr.loadu 1 %27
-  %29: int = iconst 48
-  %30: int = isub %28, %29
-  %31: bool = icmp.lt %30, %19
-  %32: int = iconst 9
-  %33: bool = icmp.gt %30, %32
-  %34: bool = select %31, %49, %33
-  br_if %34, b1(), b6()
-b6():
-  %35: int = iconst 10
-  %36: int = imul %25, %35
-  %37: int = iadd %36, %30
-  %38: int = iconst 1
-  %39: int = iadd %24, %38
-  br b4(%39, %37)
-b7():
-  %40: int = ineg %25
-  %41: int = select %47, %40, %25
-  store %1, %41
-  %42: bool = bconst true
-  ret %42
-b8():
-  %43: ptr = ptr.add %18, %19
-  %44: int = ptr.loadu 1 %43
-  %45: int = iconst 45
-  %46: int = iconst 43
-  %47: bool = icmp.eq %44, %45
-  %48: bool = icmp.eq %44, %46
-  %49: bool = bconst true
-  %50: bool = select %47, %49, %48
-  %51: int = select %50, %20, %19
-  %52: int = isub %17, %51
-  %53: bool = icmp.le %52, %19
-  br_if %53, b1(), b9()
-b9():
-  %54: int = iconst 18
-  %55: bool = icmp.gt %52, %54
-  br_if %55, b2(), b3()
+  %5: Failure = alt.get Result[Int, Failure].error.cause %0 !1:277:16
+  %6: bool = bconst false !1:278:19
+  ret %6 !1:278:19
+b4():
+  unreachable !1:276:5
+}
+
+fn @get[Int,](%0: Result[Int, ]) -> int !1:0:0 {
+b0:
+  %1: int = alt.tag %0 !1:289:5
+  switch %1 [0: b2(), 1: b3()] default b4() !1:289:5
+b1():
+  %2: void = void !1:291:19
+  unreachable !1:291:19
+b2():
+  %3: int = alt.get Result[Int, ].ok.value %0 !1:289:5
+  ret %3 !1:290:20
+b3():
+  %4: void = alt.get Result[Int, ].error.cause %0 !1:290:20
+  %5: str = str "called Result.get() on error; check is_ok first, or pass a default: get(default: ...)" !1:290:20
+  %6: void = call.rt @msrt_panic (%5) !1:291:19
+  unreachable !1:291:19
+b4():
+  unreachable !1:289:5
+}
+
+fn @get[Int](%0: opt<int>) -> int !1:0:0 {
+b0:
+  %1: bool = opt.is_some %0 !1:213:5
+  %2: int = iconst 1 !1:213:5
+  %3: int = iconst 0 !1:213:5
+  %4: int = select %1, %2, %3 !1:213:5
+  switch %4 [1: b2(), 0: b3()] default b4() !1:213:5
+b1():
+  %5: void = void !1:215:15
+  unreachable !1:215:15
+b2():
+  %6: int = opt.get %0 !1:213:5
+  ret %6 !1:214:16
+b3():
+  %7: str = str "called Optional.get() on none; check is_some first, or pass a default: get(default: ...)" !1:214:16
+  %8: void = call.rt @msrt_panic (%7) !1:215:15
+  unreachable !1:215:15
+b4():
+  unreachable !1:213:5
 }

@@ -57,7 +57,8 @@ void body_block(Body *body, MsStmts stmts); /* a nested scope */
 size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
 /* Declares a local or parameter in the current scope. */
-MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site);
+/* Declares a local; `pos` is where it is written, kept in the program's binding table for `ms inspect`. */
+MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site, MsPos pos);
 
 /* The reference a use of `local` records. */
 MsRef body_local_ref(const Body *body, const MsLocal *local);
@@ -144,6 +145,8 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
 
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty);
 bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);

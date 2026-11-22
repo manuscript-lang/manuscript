@@ -63,6 +63,7 @@ typedef struct MsEffectNames {
 
 typedef struct MsReach {
   MsEffectNames *declared; /* per node: the effects callers see, sorted by name */
+  MsEffectNames *permits;  /* per node: the `allow_effect` patterns of a project callable's own scope, as written */
   const MsReachViolation *violations; /* in node order, then effect order */
   uint32_t violation_count;
 } MsReach;

@@ -37,6 +37,9 @@ typedef struct LowerWriteback {
   MirValue address;
   MirTy ty;
   uint32_t depth;
+  MirVar owner;   /* with `rewrap`: the variable holding the Optional that the binding changes */
+  MirTy owner_ty; /* with `rewrap`: its type */
+  bool rewrap;    /* store back by making the Optional again, not by writing to `address` */
 } LowerWriteback;
 
 enum { LOWER_MAX_WRITEBACKS = 8 };
@@ -313,6 +316,7 @@ MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty);
 /* The value a call's new owner takes from a dying temporary the call answers (`id(make())`, `make().get()`), or MIR_NONE. */
 MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
+bool fn_iflet_writeback(LowerFn *fn, const MsStmt *stmt, MirValue entry);
 bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);
 void fn_writebacks_put(LowerFn *fn, uint32_t keep);

@@ -501,6 +501,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   const MirTy lambda_ty = fn_type(&fn, ms_facts_type(fn.facts, lambda.expr->id));
   const MirTyData *lambda_data = mir_ty_data(cx->module, lambda_ty);
   bool lifted[LOWER_MAX_ARGS + 1] = {false};
+  bool resource[LOWER_MAX_ARGS + 1] = {false};
   const MsTy source_ty = ms_ty_subst(&cx->program->types, ms_facts_type(fn.facts, lambda.expr->id), lambda.subst.vars,
                                      lambda.subst.args, lambda.subst.count);
   for (uint32_t at = 1; at < reserved.nparams; at++) {
@@ -526,6 +527,11 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
       lifted[at] = true;
       continue;
     }
+    if (written != NULL && mode == MM_MOVE && at - 1 < LOWER_MAX_CLOSING_PARAMS && ms_facts_closer(fn.facts, written->id) != NULL) {
+      resource[at] = true; /* may be the body's to close: settled once the closing slots exist */
+      fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, MM_BORROW);
+      continue;
+    }
     fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, mode);
     mir_b_def_var(&fn.b, fn.param_vars[at - 1], param);
     if (reserved.params[at].mode == MM_MOVE && mir_needs_drop(cx->module, ty) && param == values[at]) {
@@ -536,6 +542,23 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
   fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
+  for (uint32_t at = 1; at < reserved.nparams && at <= LOWER_MAX_ARGS; at++) {
+    if (!resource[at]) {
+      continue;
+    }
+    const MsParam *written = lambda.expr->u.lambda.params.ptr[at - 1];
+    const MsTy checked = ms_facts_type(fn.facts, written->id);
+    const MirTy ty = mir_b_ty(&fn.b, values[at]);
+    if (fn_closer_for(&fn, ms_facts_closer(fn.facts, written->id), checked)) {
+      /* A resource parameter is the body's to close: it lives in a slot the body's scope owns. */
+      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1]);
+    } else {
+      mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
+      if (mir_needs_drop(cx->module, ty)) {
+        fn_own(&fn, fn_scope(&fn), values[at]);
+      }
+    }
+  }
   fn_find_shared(&fn, lambda.expr->u.lambda.body);
   bool ok = bind_captures(&fn, &lambda, values[0]);
   for (uint32_t at = 1; ok && at < reserved.nparams && at <= LOWER_MAX_ARGS; at++) {
@@ -693,6 +716,16 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   return fn_emit(fn, MOP_ClosureNew, NULL, 0, imm, fn_ty);
 }
 
+/* The receiver a bound-method closure keeps: a dying temporary moves into the closure; a value some binding still owns
+ * is a hidden copy. */
+static MirValue fn_closure_owns(LowerFn *fn, MirValue receiver) {
+  if (!fn_fresh_owner(fn, receiver)) {
+    return fn_implicit_clone(fn, receiver, true);
+  }
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &receiver, 1, (MirImm){0}, MIR_NONE);
+  return receiver;
+}
+
 /* `receiver.operation` where the standard library declares the operation without a body: a closure holding a copy of
  * the receiver whose body is the runtime call, made as a call of the operation is. */
 static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty) {
@@ -723,7 +756,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   }
   const MirTy receiver_ty = changes ? slot_ty : mir_b_ty(&fn->b, receiver);
   if (!changes && mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_implicit_clone(fn, receiver, true);
+    receiver = fn_closure_owns(fn, receiver);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = changes ? MIR_PTR : receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
@@ -791,7 +824,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
     return MIR_NONE;
   }
   if (mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_implicit_clone(fn, receiver, true);
+    receiver = fn_closure_owns(fn, receiver);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
@@ -883,7 +916,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
   const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
   if (owns) {
-    receiver = fn_implicit_clone(fn, receiver, true);
+    receiver = fn_closure_owns(fn, receiver);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);

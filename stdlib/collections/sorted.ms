@@ -100,7 +100,7 @@ fn SortedMap[K, V].get_or(key: K, fallback: V) V:
 
 // Inserts a key or replaces the value of an equal key, which keeps its original
 // key.
-fn var SortedMap[K, V].add(key: K, value: V) Void:
+fn var SortedMap[K, V].add(move key: K, move value: V) Void:
 	if self.size == 0:
 		self.key_chunks = [[key.clone()]]
 		self.value_chunks = [[value]]

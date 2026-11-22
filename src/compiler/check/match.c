@@ -51,7 +51,7 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
   }
   for (uint32_t at = 0; at < arm->bindings.len; at++) {
     const MsTy ty = kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
-    (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id);
+    (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id, arm->pos);
   }
   body_block(body, arm->body);
   const MsTy value = arm->value != NULL ? body_expr(body, arm->value, expected) : MS_TY_NONE;

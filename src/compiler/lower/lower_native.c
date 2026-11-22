@@ -213,7 +213,8 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
   /* An optional that is the whole value (`replace` on a list of optionals): the native writes all of it. */
   const bool whole = data->kind == MK_OPT && !sig->status && sig->count > 0 && last == NS_ADDR_MUT;
-  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
+  const bool listed = optional && last == NS_VEC_MUT && data->elem != MIR_STR; /* `find_span`: a flag and a list */
+  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text && !listed)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
@@ -586,6 +587,115 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
   return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
+/* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
+ * the updated list back. False when the receiver is neither (nothing is emitted then). */
+static bool list_changeable(LowerFn *fn, const MsExpr *place, MirValue slot) {
+  return slot != MIR_NONE || (place != NULL && fn_place_changeable(fn, place));
+}
+
+static bool list_take(LowerFn *fn, const MsExpr *place, MirValue slot, MirTy list_ty, MirValue *owned, MirValue *record) {
+  *record = MIR_NONE;
+  if (slot != MIR_NONE) {
+    *owned = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = list_ty}, list_ty);
+    return true;
+  }
+  return fn_take_field(fn, place, record, owned) || fn_take_place(fn, place, owned);
+}
+
+static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue record, MirValue updated) {
+  if (record != MIR_NONE) {
+    return fn_put_field(fn, place, record, updated);
+  }
+  if (slot == MIR_NONE) {
+    return fn_put_place(fn, place, updated);
+  }
+  const MirValue stored[2] = {slot, updated};
+  (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  return true;
+}
+
+/* `list.append(value)`: the list grows in line (a full list calls the grow block) and the updated list goes back. */
+static bool list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out) {
+  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
+  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
+  MirValue owned;
+  MirValue record;
+  if (list->kind != MK_LIST || mir_b_ty(&fn->b, args[1]) != list->elem || !list_changeable(fn, place, slot) ||
+      (slot == MIR_NONE && place->kind != MS_E_NAME) ||
+      !list_take(fn, place, slot, list_ty, &owned, &record)) {
+    return false;
+  }
+  const MirValue operands[2] = {owned, args[1]};
+  const MirValue updated = mir_b_emit(&fn->b, MOP_ListPush, operands, 2, (MirImm){0}, list_ty);
+  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
+  return list_put(fn, place, slot, record, updated);
+}
+
+/* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the
+ * old one): the receiver is taken out of its place or slot, the index is checked with the runtime's `List.set`
+ * fault, the element is stored by `list.set.u`, and the updated list goes back. */
+static bool list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out) {
+  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
+  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
+  if (list->kind != MK_LIST || mir_needs_drop(fn->cx->module, list->elem) || mir_b_ty(&fn->b, args[2]) != list->elem) {
+    return false;
+  }
+  if (!list_changeable(fn, place, slot)) {
+    return false;
+  }
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
+  const MirValue zero = mir_b_iconst(&fn->b, 0);
+  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, args[1], zero);
+  const MirValue at = mir_b_select(&fn->b, negative, mir_b_binop(&fn->b, MOP_IAdd, args[1], length), args[1]);
+  const MirValue pair[2] = {at, length};
+  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue fault_args[3] = {mir_b_iconst(&fn->b, 2), args[1], length};
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_list_index_fault")), fault_args, 3, MIR_VOID);
+  mir_b_unreachable(&fn->b);
+  mir_b_switch_to(&fn->b, hit);
+  MirValue owned;
+  MirValue record;
+  if (!list_take(fn, place, slot, list_ty, &owned, &record)) {
+    return false;
+  }
+  const MirValue operands[3] = {owned, at, args[2]};
+  const MirValue updated = mir_b_emit(&fn->b, MOP_ListSetU, operands, 3, (MirImm){0}, list_ty);
+  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
+  return list_put(fn, place, slot, record, updated);
+}
+
+/* `String.scalar_at(offset)`: the scalar at a byte offset is the byte itself when it is ASCII, so that case is read
+ * in line; any other offset (inside a multibyte scalar, out of range, or a default to answer) calls the runtime. */
+static MirValue scalar_at_inline(LowerFn *fn, MsName name, const MsNativeSig *sig, const MirValue *args, MirValue *wanted,
+                                 uint32_t count, MirTy ret) {
+  const MirValue length = mir_b_emit(&fn->b, MOP_StrBytes, &args[0], 1, (MirImm){0}, MIR_INT);
+  const MirValue pair[2] = {args[1], length};
+  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
+  const MirBlock probe = mir_b_new_block(&fn->b);
+  const MirBlock slow = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, MIR_INT, MM_BORROW);
+  mir_b_br_if(&fn->b, inside, probe, NULL, 0, slow, NULL, 0);
+  mir_b_seal_block(&fn->b, probe);
+  mir_b_switch_to(&fn->b, probe);
+  const MirValue byte = mir_b_emit(&fn->b, MOP_StrByte, args, 2, (MirImm){0}, MIR_INT);
+  const MirValue ascii = mir_b_icmp(&fn->b, MCC_LT, byte, mir_b_iconst(&fn->b, 128));
+  mir_b_br_if(&fn->b, ascii, join, &byte, 1, slow, NULL, 0);
+  mir_b_seal_block(&fn->b, slow);
+  mir_b_switch_to(&fn->b, slow);
+  const MirValue other = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+  mir_b_br(&fn->b, join, &other, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return result;
+}
+
 /* Whether the operation is declared on a type variable (`v.to_string()` with a bound): the native has no name of
  * its own, the concrete receiver of the instance decides. */
 static bool generic_receiver(const LowerFn *fn, const MsCall *call) {
@@ -688,6 +798,14 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     *out = list_get(fn, args[0], args[1], ret);
     return true;
   }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_set") && argc == 3 &&
+      list_set(fn, place, slot, args, out)) {
+    return true;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_append") && argc == 2 &&
+      list_append(fn, place, slot, args, out)) {
+    return true;
+  }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
       fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
@@ -695,6 +813,11 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (argc <= NS_MAX_PARAMS && signature_arguments(fn, sig, args, argc, ret, wanted, &count)) {
+    if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "scalar_at") && argc >= 2 &&
+        ret == MIR_INT && mir_b_ty(&fn->b, args[0]) == MIR_STR) {
+      *out = scalar_at_inline(fn, name, sig, args, wanted, count, ret);
+      return true;
+    }
     if (slot != MIR_NONE && mutates_receiver(sig, ret)) {
       wanted[0] = slot;
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));

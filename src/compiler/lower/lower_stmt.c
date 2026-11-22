@@ -637,8 +637,10 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
     return false;
   }
+  const bool writes_back = !probes && !owns && stmt->u.branch.is_mutable && stmt->u.branch.binding != NULL &&
+                           fn_iflet_writeback(fn, stmt, entry);
   bool ok = fn_stmts(fn, stmt->u.branch.body);
-  if (probes) {
+  if (probes || writes_back) {
     fn_probe_end(fn, !fn->terminated);
   }
   if (!fn->terminated) {

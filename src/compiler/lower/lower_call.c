@@ -581,7 +581,19 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   if (sig != NULL && sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, call->arg_count, &checked)) {
     return checked;
   }
-  const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
+  /* A plain enum handed to a number parameter of the signature is its case index. */
+  MirValue scalars[NS_MAX_PARAMS];
+  const bool by_sig = sig != NULL && sig->count == call->arg_count && call->arg_count <= NS_MAX_PARAMS;
+  for (uint32_t at = 0; by_sig && at < call->arg_count; at++) {
+    scalars[at] = sig->kinds[at] == NS_VALUE ? fn_native_scalar(fn, args[at]) : args[at];
+  }
+  bool retyped = false;
+  for (uint32_t at = 0; by_sig && at < call->arg_count; at++) {
+    retyped = retyped || scalars[at] != args[at];
+  }
+  /* The extern's parameter was the enum; the number it now receives needs the matching declaration. */
+  const uint32_t callee = retyped ? fn_runtime_extern(fn, name, scalars, call->arg_count, ret) : external;
+  const MirValue result = mir_b_call_rt(&fn->b, callee, by_sig ? scalars : args, call->arg_count);
   fn_own_result(fn, result);
   return result;
 }

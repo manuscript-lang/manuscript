@@ -139,7 +139,7 @@ fn var PriorityQueue[T].sift_down(start: Int) Void:
 
 // Adds a value and returns true, or returns false when a bounded queue is full. A
 // capacity of zero or below is always full.
-fn var PriorityQueue[T].enqueue(value: T) Bool:
+fn var PriorityQueue[T].enqueue(move value: T) Bool:
 	if limit := self.capacity:
 		if self.heap.length() >= limit: return false
 	self.heap.append(HeapEntry(value: value, order: self.next_order))

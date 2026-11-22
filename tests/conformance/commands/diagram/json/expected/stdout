@@ -62,6 +62,15 @@
                     "children": []
                   },
                   {
+                    "label": "String.clone",
+                    "kind": "external",
+                    "reference": "String.clone",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  },
+                  {
                     "label": "String.parse_int",
                     "kind": "external",
                     "reference": "String.parse_int",
@@ -149,6 +158,15 @@
                     "label": "Result[Int, Failure]",
                     "kind": "external",
                     "reference": "Result[Int, Failure]",
+                    "file": "",
+                    "line": 0,
+                    "omitted": 0,
+                    "children": []
+                  },
+                  {
+                    "label": "String.clone",
+                    "kind": "external",
+                    "reference": "String.clone",
                     "file": "",
                     "line": 0,
                     "omitted": 0,

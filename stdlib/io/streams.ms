@@ -47,7 +47,7 @@ fn move BytesSource.close() Void!:
 
 // Returns a stream that yields `data` in chunks of at most `chunk_bytes` bytes and
 // then ends. A `chunk_bytes` below 1 makes the first read fail with `EINVAL`.
-export fn from_bytes(data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
+export fn from_bytes(move data: Bytes, chunk_bytes: Int = 65536) ReadStream[Bytes]:
 	return ReadStream[Bytes](BytesSource(data, 0, chunk_bytes))
 
 // Combines the items of `input` in order into one value: `f` takes the value so far

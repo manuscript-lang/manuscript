@@ -60,7 +60,7 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected) {
     return;
   }
   if (is_optional(types, expected)) {
-    if (ms_ty_args(types, expected)[0] == actual && expr->kind != MS_E_LAMBDA) {
+    if (ms_ty_args(types, expected)[0] == actual) {
       record(body, expr, MS_CONV_OPTIONAL_WRAP, actual, expected);
     }
     return;

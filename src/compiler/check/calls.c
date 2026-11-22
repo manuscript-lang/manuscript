@@ -561,7 +561,7 @@ static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *cal
 
 static MsTy record_call(Body *body, const MsExpr *call, const Target *target, MsTy instantiated, const MsTyList *type_args_list,
                         const Matched *matched) {
-  MsCall fact = {.node = call->id, .callee = target->ref, .callee_ty = instantiated};
+  MsCall fact = {.node = call->id, .callee = target->ref, .callee_ty = instantiated, .constructor = target->constructor};
   fact.args = build_args(body, target, call, matched, &fact.arg_count);
   if (type_args_list->len != 0) {
     MsTy *copy = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, type_args_list->len);
@@ -596,8 +596,10 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
                         size_t before, MsTy callee) {
   const MsSpan message = ms_string_span(&instance->message);
   const MsTyTable *types = &body->program->types;
+  size_t found = 0;
+  const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found);
   if (body->module >= body->program->user_modules || body->quiet ||
-      !ms_span_starts_with(message, ms_span_of_text("cannot infer type argument")) ||
+      !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
       body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
       holds_invalid(types, callee, 6)) {
     return false;
