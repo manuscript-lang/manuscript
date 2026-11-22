@@ -10,6 +10,7 @@
 /* The fields, operations and methods of `receiver`. */
 static void member_names(Body *body, MsTy receiver, MsSpanList *out) {
   MsCheckProgram *program = body->program;
+  const size_t first = out->len;
   const MsDef *def = body_def(body, receiver);
   if (def != NULL && ms_ty_kind(&program->types, receiver) == MS_TY_TYPE) {
     for (size_t index = 0; index < def->fields.len; index++) {
@@ -31,6 +32,17 @@ static void member_names(Body *body, MsTy receiver, MsSpanList *out) {
     }
     ms_ty_list_free(&bound);
   }
+  /* A primitive has no `clone` member (it is copied), and a String is its own text, so `to_string` is not listed. */
+  const bool primitive = ms_ty_kind(&program->types, receiver) == MS_TY_PRIMITIVE;
+  const bool text = ms_ty_is(&program->types, receiver, MS_BUILTIN_String);
+  size_t kept = first;
+  for (size_t index = first; index < out->len; index++) {
+    if (!(primitive && ms_span_is_text(out->ptr[index], "clone")) &&
+        !(text && ms_span_is_text(out->ptr[index], "to_string"))) {
+      out->ptr[kept++] = out->ptr[index];
+    }
+  }
+  out->len = kept;
 }
 
 /* Whether `names` holds `name`. */
