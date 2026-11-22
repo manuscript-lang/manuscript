@@ -103,7 +103,7 @@ fn status_words(status: Int) String:
 // on, and `said` is the text the native explained itself in, or empty. `overrides` holds the
 // `// ms: words NUMBER TEXT` lines of the file that declares the native, one per line, and takes the place of
 // the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
-fn msstd_status_error(status: UInt8, domain: String, said: String, overrides: String) Error:
+fn msstd_status_error(status: UInt8, domain: String, move said: String, overrides: String) Error:
 	number := status.to_int()
 	kind := status_kind(number)
 	words := override_words(overrides, number).get_or(status_words(number))
@@ -115,7 +115,7 @@ fn override_words(overrides: String, number: Int) String?:
 		if words := line.cut_prefix(f"{number} "): return words
 	return none
 
-fn status_error_text(words: String, kind: String, domain: String, said: String) Error:
+fn status_error_text(words: String, move kind: String, domain: String, move said: String) Error:
 	if words == "-":
 		if said.length() > 0: return Error(said, kind: kind)
 		return Error(f"{domain}: failed", kind: kind)

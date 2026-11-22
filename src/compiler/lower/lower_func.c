@@ -148,13 +148,13 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
 typedef struct PlaceReturns {
   const Lower *cx;
   const MsFacts *facts;
-  MsTy result;
+  MsTy result; /* the declared result type, or MS_TY_NONE when unknown */
   uint32_t depth;
   uint32_t returns;
   uint32_t places;
 } PlaceReturns;
 
-static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy ty, uint32_t depth);
+static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
 
 /* A call to a function whose result borrows, whose parameters it does not take, and whose own returns are places. */
 static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
@@ -172,7 +172,10 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
       return false;
     }
   }
-  return returns_places(counts->cx, call->callee.decl.module, callee, call->callee_ty, counts->depth + 1);
+  const MsTyTable *types = &counts->cx->program->types;
+  const MsTy signature = ms_facts_type(&counts->cx->program->modules.ptr[call->callee.decl.module].facts, call->callee.decl.node);
+  const MsTy result = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION ? ms_ty_result(types, signature) : MS_TY_NONE;
+  return returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
 }
 
 static void count_place_returns(void *ctx, const MsStmt *stmt) {
@@ -182,7 +185,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   }
   const MsExpr *value = stmt->u.expr;
   counts->returns++;
-  if (ms_facts_type(counts->facts, value->id) != ms_ty_result(&counts->cx->program->types, counts->result)) {
+  if (counts->result != MS_TY_NONE && ms_facts_type(counts->facts, value->id) != counts->result) {
     return; /* a conversion (`T` returned as `T?`) builds a new owner */
   }
   if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
@@ -195,8 +198,8 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   }
 }
 
-static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy ty, uint32_t depth) {
-  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, ty, depth, 0, 0};
+static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
+  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, result, depth, 0, 0};
   const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
   ms_walk_block(&visitor, func->body);
   return counts.returns != 0 && counts.returns == counts.places;
@@ -214,7 +217,7 @@ static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret
       return false; /* the body owns (and releases) a moved parameter: its part cannot outlive the call */
     }
   }
-  return returns_places(cx, target->module, target->func, target->ty, 0);
+  return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0);
 }
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
