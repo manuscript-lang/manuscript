@@ -16,8 +16,24 @@ typedef struct MsHttpMetadataOut {
   MsString protocol;
 } MsHttpMetadataOut;
 
-/* A handle on `client` (retained); the handle's drop releases it, it never closes the client. */
+/* What a network lets its clients reach: the hosts and addresses allowed, and the owner's reference. */
+typedef struct MsHttpPolicy {
+  bool (*host_allowed)(void *context, MsSpan host);
+  bool (*address_allowed)(void *context, const void *address);
+  void *context;
+  void *(*retain)(void *context);
+  void (*release)(void *context);
+} MsHttpPolicy;
+
+/* A handle on `client` (retained); the handle's drop releases it, it never closes the client. The policy, if
+ * any, is applied to every request sent through this handle or one shared from it. */
 MsObj *ms_http_client_handle(MsHttpClient *client);
+MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolicy *policy);
+/* Sends `request` through the handle's client under the handle's policy (see ms_http_client_send). */
+MS_NODISCARD uint8_t ms_http_handle_send(const MsObj *handle, const MsHttpRequest *request,
+                                         MsHttpResponse **out, MsString *err);
+/* Whether the client behind the handle was closed. */
+bool ms_http_client_handle_closed(const MsObj *handle);
 
 /* Makes http_client.h wait through scheduler tokens. Once per process, before any task runs. */
 void ms_http_install_task_waiter(void);

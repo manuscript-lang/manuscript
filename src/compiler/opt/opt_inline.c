@@ -735,6 +735,7 @@ bool opt_inline_small(MirModule *m) {
 
 bool opt_inline(MirModule *m) {
   bool changed = opt_inline_specialize_sort_thunks(m);
+  changed |= opt_sortgen(m);
   changed |= opt_inline_specialize_closure_args(m);
   /* A recursive cycle keeps one check; the unchecked functions on it then inline like any other. */
   changed |= il_strip_depth(m, true);

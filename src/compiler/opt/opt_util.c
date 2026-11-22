@@ -192,3 +192,13 @@ void opt_id_push(MsArena *a, OptIdList *l, uint32_t x) {
   }
   l->v[l->n++] = x;
 }
+
+void *opt_grow(MsArena *a, void *arr, uint32_t n, uint32_t *cap, size_t elem) {
+  const uint32_t ncap = *cap != 0 ? *cap * 2 : 8;
+  void *p = ms_arena_alloc_array(a, elem, 16, ncap);
+  if (n != 0) {
+    __builtin_memcpy(p, arr, (size_t)n * elem);
+  }
+  *cap = ncap;
+  return p;
+}

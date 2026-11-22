@@ -12,7 +12,7 @@
 #include "runtime/std/net_filter.h"
 #include "runtime/std/net_ip.h"
 
-enum { READ_DEFAULT = 64 * 1024, READ_LIMIT = 1024 * 1024 };
+enum { READ_DEFAULT = 64 * 1024, READ_LIMIT = 1024 * 1024, CIPHER_BYTES = 16 * 1024 };
 
 /* ---- dial ---- */
 
@@ -195,6 +195,7 @@ typedef struct ReadOp {
   MsNetOp op;
   MsNetCore *core; /* a reference */
   uint8_t *data;
+  uint8_t *cipher; /* TLS: the buffer the socket is read into */
   size_t capacity;
   size_t length;
 } ReadOp;
@@ -203,6 +204,7 @@ static void read_release(MsNetOp *op) {
   ReadOp *read = (ReadOp *)op;
   ms_net_core_unref(read->core);
   ms_free(read->data);
+  ms_free(read->cipher);
 }
 
 /* Keeps bytes a reader gave up on for the next one. */
@@ -215,7 +217,73 @@ static void stash_put(MsNetCore *core, const uint8_t *data, size_t length) {
 static void on_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buffer) {
   ReadOp *read = ((MsNetCore *)(void *)handle)->reading;
   (void)suggested;
+  if (read->cipher != NULL) {
+    *buffer = uv_buf_init((char *)read->cipher, CIPHER_BYTES);
+    return;
+  }
   *buffer = uv_buf_init((char *)read->data, (unsigned int)read->capacity);
+}
+
+/* The read has `read->length` bytes: hand them to the waiter, or keep them for the next read when it left. */
+static void read_deliver(ReadOp *read) {
+  if (atomic_load(&read->op.state) == MS_NET_OP_ABANDONED && read->length > 0) {
+    stash_put(read->core, read->data, read->length);
+    read->length = 0;
+  }
+  ms_net_op_done(&read->op, 0);
+}
+
+static void tls_read_step(ReadOp *read);
+
+/* TLS: ciphertext arrived (or the stream ended): feed the session and read again. */
+static void on_cipher(uv_stream_t *stream, ssize_t count, const uv_buf_t *buffer) {
+  MsNetCore *core = (MsNetCore *)(void *)stream;
+  ReadOp *read = core->reading;
+  (void)buffer;
+  if (count == 0 || read == NULL) {
+    return;
+  }
+  core->reading = NULL;
+  (void)uv_read_stop(stream);
+  if (count == UV_EOF) {
+    core->eof = true;
+    ms_net_op_done(&read->op, 0);
+  } else if (count < 0) {
+    ms_net_op_done(&read->op, (int)count);
+  } else {
+    ms_net_tls_incoming(core->tls, ms_span_of(read->cipher, (size_t)count));
+    tls_read_step(read);
+  }
+}
+
+static void tls_read_step(ReadOp *read) {
+  MsNetCore *core = read->core;
+  size_t count = 0;
+  switch (ms_net_tls_read(core->tls, read->data, read->capacity, &count)) {
+  case MS_NET_TLS_DONE:
+    read->length = count;
+    read_deliver(read);
+    return;
+  case MS_NET_TLS_CLOSED:
+    core->eof = true; /* the peer sent close_notify */
+    ms_net_op_done(&read->op, 0);
+    return;
+  case MS_NET_TLS_ERROR:
+    ms_net_op_done(&read->op, UV_EPROTO);
+    return;
+  case MS_NET_TLS_WANT_IO:
+    break;
+  }
+  (void)ms_net_cipher_flush(core, NULL, NULL);
+  if (read->cipher == NULL) {
+    read->cipher = ms_alloc(CIPHER_BYTES);
+  }
+  core->reading = read;
+  const int code = uv_read_start(&core->h.stream, on_alloc, on_cipher);
+  if (code != 0) {
+    core->reading = NULL;
+    ms_net_op_done(&read->op, code);
+  }
 }
 
 static void on_read(uv_stream_t *stream, ssize_t count, const uv_buf_t *buffer) {
@@ -237,11 +305,7 @@ static void on_read(uv_stream_t *stream, ssize_t count, const uv_buf_t *buffer) 
     return;
   }
   read->length = (size_t)count;
-  if (atomic_load(&read->op.state) == MS_NET_OP_ABANDONED) {
-    stash_put(core, read->data, read->length); /* nobody waits for it: the next read gets it */
-    read->length = 0;
-  }
-  ms_net_op_done(&read->op, 0);
+  read_deliver(read);
 }
 
 static void read_start(MsNetOp *op) {
@@ -259,6 +323,8 @@ static void read_start(MsNetOp *op) {
     ms_net_op_done(op, 0);
   } else if (core->reading != NULL) {
     ms_net_op_done(op, UV_EBUSY);
+  } else if (core->tls != NULL) {
+    tls_read_step(read);
   } else {
     core->reading = read;
     const int code = uv_read_start(&core->h.stream, on_alloc, on_read);
@@ -318,14 +384,42 @@ static void write_release(MsNetOp *op) {
   ms_free(write->data);
 }
 
+static void on_shutdown(uv_shutdown_t *request, int status);
+
 static void on_write(uv_write_t *request, int status) {
   WriteOp *write = request->data;
+  if (write->shutting && status == 0) { /* a TLS close_notify went out; now the socket's own half-close */
+    const int code = uv_shutdown(&write->shutdown, &write->core->h.stream, on_shutdown);
+    status = code;
+    if (code == 0) {
+      return;
+    }
+  }
   ms_net_op_done(&write->op, status);
 }
 
 static void on_shutdown(uv_shutdown_t *request, int status) {
   WriteOp *write = request->data;
   ms_net_op_done(&write->op, status);
+}
+
+/* TLS: turns the plaintext into ciphertext (or, for a shutdown, queues close_notify) and puts it in `data`. */
+static bool tls_seal(WriteOp *write) {
+  MsNetCore *core = write->core;
+  size_t offset = 0;
+  if (write->shutting) {
+    ms_net_tls_shutdown(core->tls);
+  }
+  while (offset < write->length) {
+    size_t count = 0;
+    if (ms_net_tls_write(core->tls, write->data + offset, write->length - offset, &count) != MS_NET_TLS_DONE) {
+      return false;
+    }
+    offset += count;
+  }
+  ms_free(write->data);
+  ms_net_cipher_collect(core, &write->data, &write->length);
+  return true;
 }
 
 static void write_start(MsNetOp *op) {
@@ -338,7 +432,11 @@ static void write_start(MsNetOp *op) {
   int code = 0;
   write->request.data = write;
   write->shutdown.data = write;
-  if (write->shutting) {
+  if (core->tls != NULL && !tls_seal(write)) {
+    ms_net_op_done(op, UV_EPROTO);
+    return;
+  }
+  if (write->shutting && write->length == 0) {
     code = uv_shutdown(&write->shutdown, &core->h.stream, on_shutdown);
   } else {
     uv_buf_t buffer = uv_buf_init((char *)write->data, (unsigned int)write->length);

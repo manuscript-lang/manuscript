@@ -2,7 +2,9 @@
  * and the response head and body that come back. The engine fills the head and stages the body under the
  * response's lock and wakes the caller; the caller pulls: curl is paused while enough is staged and resumed
  * by the next read. */
+#define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 #include <errno.h>
+#include <uv.h>
 
 #include "base/alloc.h"
 #include "base/chars.h"
@@ -379,6 +381,12 @@ static void set_tls(const MsHttpClient *client, CURL *easy) {
     const struct curl_blob roots = {(void *)(uintptr_t)o->roots_pem.ptr, o->roots_pem.len, CURL_BLOB_COPY};
     curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &roots);
   }
+#ifdef _WIN32
+  else {
+    /* No bundled roots on Windows: trust the system store, as OpenSSL elsewhere trusts its default path. */
+    curl_easy_setopt(easy, CURLOPT_SSL_OPTIONS, (long)CURLSSLOPT_NATIVE_CA);
+  }
+#endif
   if (o->certificate_pem.len > 0) {
     const struct curl_blob cert = {(void *)(uintptr_t)o->certificate_pem.ptr, o->certificate_pem.len,
                                    CURL_BLOB_COPY};
@@ -389,6 +397,21 @@ static void set_tls(const MsHttpClient *client, CURL *easy) {
     curl_easy_setopt(easy, CURLOPT_SSLKEY_BLOB, &key);
     curl_easy_setopt(easy, CURLOPT_SSLKEYTYPE, "PEM");
   }
+}
+
+/* Before a request is sent: the address the connection reached must be allowed. */
+static int on_connected(void *data, char *remote, char *local, int remote_port, int local_port) {
+  (void)local;
+  (void)local_port;
+  const MsHttpResponse *response = data;
+  union {
+    struct sockaddr_in v4;
+    struct sockaddr_in6 v6;
+  } address;
+  const bool known = uv_ip4_addr(remote, remote_port, &address.v4) == 0 ||
+                     uv_ip6_addr(remote, remote_port, &address.v6) == 0;
+  return known && response->address_allowed(response->context, &address) ? CURL_PREREQFUNC_OK
+                                                                         : CURL_PREREQFUNC_ABORT;
 }
 
 static void configure(MsHttpResponse *response, const HttpHop *hop) {
@@ -408,6 +431,10 @@ static void configure(MsHttpResponse *response, const HttpHop *hop) {
   curl_easy_setopt(easy, CURLOPT_ERRORBUFFER, response->error);
   curl_easy_setopt(easy, CURLOPT_SHARE, response->client->share);
   curl_easy_setopt(easy, CURLOPT_PRIVATE, response);
+  if (response->address_allowed != NULL) {
+    curl_easy_setopt(easy, CURLOPT_PREREQFUNCTION, on_connected);
+    curl_easy_setopt(easy, CURLOPT_PREREQDATA, response);
+  }
   if (response->client->options.expire_idle) {
     curl_easy_setopt(easy, CURLOPT_MAXAGE_CONN,
                      (long)((response->client->options.idle_timeout_ns + 999999999) / 1000000000));
@@ -455,6 +482,8 @@ MsHttpResponse *ms_http_response_new(MsHttpClient *client, const MsHttpRequest *
   response->limit = request->limit_response;
   response->max = request->limit_response ? (uint64_t)request->max_response : 0;
   response->has_deadline = request->has_timeout;
+  response->address_allowed = request->address_allowed;
+  response->context = request->context;
   if (request->has_timeout) {
     response->deadline_ns = ms_clock_monotonic_since_start() + request->timeout_ns;
   }
