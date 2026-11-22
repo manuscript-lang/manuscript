@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/contextual-generics.ms
 import expect_equal, expect_false from "@std/test/test.ms"
 
-fn fail[T](message: String) T!Error: error(Error(message))
+fn fail[T](move message: String) T!Error: error(Error(message))
 
 fn fail_cause[T, E](cause: E) T!E: error(cause)
 

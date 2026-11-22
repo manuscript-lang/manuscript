@@ -15,7 +15,7 @@ fn move Marker.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("cause close failed"))
 
-fn source(log: String) Marker?: Marker(1, log, false)
+fn source(move log: String) Marker?: Marker(1, log, false)
 
 fn discard(log: String) Void:
 	_kept := source(log.clone()).ok_or(Marker(2, log, true))

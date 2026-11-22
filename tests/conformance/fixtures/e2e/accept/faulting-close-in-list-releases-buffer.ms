@@ -16,7 +16,7 @@ type Marker:
 
 fn move Marker.close() Void!: error(Error("marker closed"))
 
-fn list_under_fault(label: String) Void:
+fn list_under_fault(move label: String) Void:
 	markers := [Marker(label)]
 	panic("body fault")
 	void markers.length()

@@ -6,7 +6,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn key(name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
+fn key(move name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
 	return TerminalEvent.Key(name, ctrl, alt, shift)
 
 fn plain(name: String) TerminalEvent:

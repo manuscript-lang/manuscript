@@ -71,7 +71,7 @@ fn Chain.step(n: Int) Int!Error:
 	return ok((self.parser.parse(n)?) + 1)
 
 fn code(r: Int!Error) Int:
-	return r.get_or(-1)
+	return r.clone().get_or(-1)
 
 fn run_direct(chain: Chain, n: Int) Int:
 	return chain.step(n) | code

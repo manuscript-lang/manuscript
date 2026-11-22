@@ -20,7 +20,7 @@ fn move Latch.close() Void!:
 		self.open = false
 		void append_file(self.log, f"{self.id},").wait()
 
-fn latch(log: String, id: Int) Latch:
+fn latch(move log: String, id: Int) Latch:
 	return Latch(log, id, true)
 
 fn closed(log: String) String:
