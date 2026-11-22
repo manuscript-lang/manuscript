@@ -38,10 +38,10 @@
     |
  46 |     return b.to_string()
     |              ^
-<DIR>/main.ms:55:27: warning MSL132: `slice(..).get_or(..)` returns the fallback for any bad range, including an end past the length; use `?` to report it, or clamp the end with `min(end, xs.length())` first
+<DIR>/main.ms:55:35: warning MSL132: `slice(..).get_or(..)` returns the fallback for any bad range, including an end past the length; use `?` to report it, or clamp the end with `min(end, xs.length())` first
     |
- 55 |     return xs.slice(1, 3).get_or([]).clone()
-    |                           ^
+ 55 |     return xs.clone().slice(1, 3).get_or([])
+    |                                   ^
 <DIR>/main.ms:59:7: warning MSL130: A statement `result.get()` faults when the call fails; write `call()?` in a function that returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome
     |
  59 |     r.get()
