@@ -2,7 +2,7 @@ add_executable(ms-c pipeline.c backend.c emit_command.c diagram_command.c review
 ms_target_defaults(ms-c)
 file(STRINGS ${CMAKE_SOURCE_DIR}/.msversion MS_VERSION_TEXT LIMIT_COUNT 1)
 target_compile_definitions(ms-c PRIVATE MS_VERSION="${MS_VERSION_TEXT}")
-target_link_libraries(ms-c PRIVATE ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link ms_tooling)
+target_link_libraries(ms-c PRIVATE ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link ms_tooling ms_std_text)
 
 set(MS_MINGW_DIR "" CACHE PATH "llvm-mingw root for Windows links (default: target/llvm-bundle/mingw)")
 include(MsRuntimePackage)
