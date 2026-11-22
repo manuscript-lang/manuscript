@@ -245,6 +245,14 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
       report_duplicate(program, module, decl, name);
       continue;
     }
+    if (module < program->user_modules && decl->kind == MS_D_TYPE && decl->u.type.external &&
+        decl->u.type.type_params.len != 0) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "extern type ");
+      ms_strbuild_append(&text, ms_names_span(program->names, name));
+      ms_strbuild_append_text(&text, " cannot be generic; declare one extern type per native handle");
+      ms_check_report(program, module, decl->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
     MsSymbol symbol = {.name = name, .id = ms_check_unique_id(program, "symbol"), .kind = symbol_kind(decl),
                        .native = decl->kind == MS_D_FN && decl->u.fn.external ? MS_NATIVE_EXTERN
                                                                                 : MS_NATIVE_SOURCE,

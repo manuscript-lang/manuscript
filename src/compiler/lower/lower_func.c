@@ -511,6 +511,7 @@ void lower_release(Lower *cx) {
   ms_names_free(&cx->instance_keys);
   ms_names_free(&cx->vtable_keys);
   mir_idlist_free(&cx->vtables);
+  mir_idlist_free(&cx->hooked);
   lower_instance_list_free(&cx->instances);
   lower_lambda_list_free(&cx->lambdas);
   lower_default_list_free(&cx->defaults);
