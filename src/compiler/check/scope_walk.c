@@ -6,6 +6,7 @@ typedef struct Walk {
   MsBindingList scope; /* innermost last */
   MsScopeSite site;
   MsName self;
+  uint32_t depth; /* the nesting the next binding is declared at */
 } Walk;
 
 static void walk_stmts(Walk *pass, MsStmts body);
@@ -17,10 +18,10 @@ static void set_kind(Walk *pass, MsBindingKind kind) {
 }
 
 static void declare(Walk *pass, MsName name, MsPos decl, bool mutable_, MsBindingOrigin origin) {
-  const MsBinding binding = {.name = name, .decl = decl, .mutable_ = mutable_, .origin = origin};
+  const MsBinding binding = {.name = name, .decl = decl, .mutable_ = mutable_, .origin = origin, .depth = pass->depth};
   ms_binding_list_push(&pass->scope, binding);
   if (pass->visitor->declared != NULL) {
-    pass->visitor->declared(pass->visitor->context, &binding);
+    pass->visitor->declared(pass->visitor->context, &binding, &pass->scope);
   }
 }
 
@@ -74,8 +75,10 @@ static void walk_exprs(Walk *pass, const MsExpr *const *items, uint32_t count) {
 
 static void walk_lambda(Walk *pass, const MsExpr *expr) {
   const size_t mark = pass->scope.len;
+  pass->depth++;
   declare_params(pass, expr->u.lambda.params);
   walk_stmts(pass, expr->u.lambda.body);
+  pass->depth--;
   ms_binding_list_truncate(&pass->scope, mark);
 }
 
@@ -99,6 +102,7 @@ static void walk_match(Walk *pass, const MsExpr *expr) {
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
     const MsArm *arm = expr->u.match.arms.ptr[index];
     const size_t mark = pass->scope.len;
+    pass->depth++;
     for (uint32_t at = 0; at < arm->bindings.len; at++) {
       declare(pass, arm->bindings.ptr[at].name, arm->bindings.ptr[at].pos, false, MS_BIND_PAYLOAD);
     }
@@ -106,6 +110,7 @@ static void walk_match(Walk *pass, const MsExpr *expr) {
     if (arm->value != NULL) {
       walk_expr(pass, arm->value);
     }
+    pass->depth--;
     ms_binding_list_truncate(&pass->scope, mark);
   }
 }
@@ -203,7 +208,9 @@ static bool unknown_callee(const Walk *pass, const MsExpr *callee) {
 
 static void walk_scoped(Walk *pass, MsStmts body) {
   const size_t mark = pass->scope.len;
+  pass->depth++;
   walk_stmts(pass, body);
+  pass->depth--;
   ms_binding_list_truncate(&pass->scope, mark);
 }
 
@@ -211,7 +218,9 @@ static void walk_branch(Walk *pass, const MsStmt *stmt) {
   walk_expr(pass, stmt->u.branch.cond);
   const size_t mark = pass->scope.len;
   if (stmt->u.branch.binding != NULL) {
+    pass->depth++;
     declare_pattern(pass, stmt->u.branch.binding, stmt->u.branch.is_mutable, MS_BIND_NARROWED);
+    pass->depth--;
   }
   walk_scoped(pass, stmt->u.branch.body);
   ms_binding_list_truncate(&pass->scope, mark);
@@ -255,7 +264,9 @@ static void walk_stmt(Walk *pass, const MsStmt *stmt) {
   case MS_S_FOR: {
     walk_expr(pass, stmt->u.each.iter);
     const size_t mark = pass->scope.len;
+    pass->depth++;
     declare(pass, stmt->u.each.name, stmt->pos, false, MS_BIND_OTHER);
+    pass->depth--;
     set_kind(pass, MS_BK_LOOP);
     walk_scoped(pass, stmt->u.each.body);
     ms_binding_list_truncate(&pass->scope, mark);

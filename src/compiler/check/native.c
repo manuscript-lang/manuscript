@@ -77,8 +77,23 @@ static bool is_name(const MsCheckProgram *program, MsName name, const char *text
   return ms_span_is_text(ms_names_span(program->names, name), text);
 }
 
-static bool clonable(const MsCheckProgram *program, MsTy receiver) {
+/* Whether a type parameter has a bound that makes it clonable: `Clonable`, `Data` or `Hashable`. */
+static bool variable_clonable(MsCheckProgram *program, MsTy receiver) {
+  const MsTyVariable *variable = ms_ty_variable(&program->types, receiver);
+  for (size_t index = 0; variable != NULL && index < variable->bounds.len; index++) {
+    const MsBuiltin bound = ms_ty_builtin(&program->types, variable->bounds.ptr[index]);
+    if (bound == MS_BUILTIN_Clonable || bound == MS_BUILTIN_Data || bound == MS_BUILTIN_Hashable) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool clonable(MsCheckProgram *program, MsTy receiver) {
   const MsTyKind kind = ms_ty_kind(&program->types, receiver);
+  if (kind == MS_TY_VARIABLE) {
+    return variable_clonable(program, receiver);
+  }
   const MsBuiltin builtin = (MsBuiltin)program->types.rows.ptr[receiver].builtin;
   return kind == MS_TY_TYPE || kind == MS_TY_ALTERNATIVE || kind == MS_TY_PRIMITIVE || builtin == MS_BUILTIN_List ||
          builtin == MS_BUILTIN_Map || builtin == MS_BUILTIN_Set || builtin == MS_BUILTIN_Bytes;
