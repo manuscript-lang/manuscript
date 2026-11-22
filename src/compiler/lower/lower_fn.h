@@ -101,6 +101,8 @@ void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
+bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
+bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value

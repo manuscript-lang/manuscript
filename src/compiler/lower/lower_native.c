@@ -195,7 +195,9 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
   const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
-  if (!(scalar || optional) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
+  /* An optional that is the whole value (`replace` on a list of optionals): the native writes all of it. */
+  const bool whole = data->kind == MK_OPT && !sig->status && sig->count > 0 && last == NS_ADDR_MUT;
+  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
@@ -246,7 +248,8 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
   }
   wanted[count++] = slot;
   const MirTyData *data = mir_ty_data(fn->cx->module, ret);
-  if (data->kind == MK_OPT) {
+  const MsNativeSig *answers = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (data->kind == MK_OPT && (answers == NULL || answers->status)) {
     return optional_from_status(fn, name, wanted, count, ret, slot);
   }
   (void)fn_runtime_call(fn, name, wanted, count, MIR_VOID);
@@ -444,7 +447,9 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
                               MirTy ret, MirValue result_slot) {
   MirValue owned;
-  if (!fn_take_place(fn, place, &owned)) {
+  MirValue record = MIR_NONE;
+  const bool in_place = fn_take_field(fn, place, &record, &owned);
+  if (!in_place && !fn_take_place(fn, place, &owned)) {
     return MIR_NONE;
   }
   const MirTy ty = mir_b_ty(&fn->b, owned);
@@ -455,7 +460,7 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
   wanted[0] = slot;
   const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
   const MirValue updated = mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
-  if (!fn_put_place(fn, place, updated)) {
+  if (in_place ? !fn_put_field(fn, place, record, updated) : !fn_put_place(fn, place, updated)) {
     return MIR_NONE;
   }
   return result;

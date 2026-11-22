@@ -239,6 +239,44 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
   return true;
 }
 
+/* A field of an owning local or parameter, taken without a copy for a native that changes it in place: `record` is the
+ * record, taken out of its variable, and `field` the field's value, which shares its storage with the record until
+ * `fn_put_field` stores the changed one. False when `place` is not such a field. */
+bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field) {
+  const MsRef *ref = place->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_FIELD) {
+    return false;
+  }
+  const MsExpr *base = place->u.member.left;
+  MirVar var;
+  MirValue slot;
+  MirTy slot_ty;
+  if (!owned_local(fn, base, &var) && !closing_local(fn, base, &slot, &slot_ty) && !closing_param(fn, base, &slot, &var)) {
+    return false;
+  }
+  if (!fn_take_place(fn, base, record)) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, *record));
+  if (data->kind != MK_TYPE) {
+    return false;
+  }
+  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+  *field = mir_b_emit(&fn->b, MOP_TypeGet, record, 1, imm, fn_type(fn, ms_facts_type(fn->facts, place->id)));
+  return true;
+}
+
+/* Stores `field`, the changed value of the field `fn_take_field` took, back: the old one shares its storage, so it is
+ * not dropped. */
+bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {
+  const MsRef *ref = ms_facts_ref(fn->facts, place->id);
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, record));
+  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+  const MirValue operands[2] = {record, field};
+  const MirValue updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, record));
+  return fn_put_place(fn, place->u.member.left, updated);
+}
+
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
  * (a path's inner record is copied), the old field is dropped, `type.set` makes the updated record and that is
  * stored back into the place of `base`. `value` is owned and held by no scope. */
