@@ -1,3 +1,5 @@
+import Bytes from "@std/bytes.ms"
+
 import Date, Instant, Timestamp from "@std/time.ms"
 
 export extern fn msstd_time_duration_add(value: Int, other: Int) Int
