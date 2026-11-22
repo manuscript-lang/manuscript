@@ -11,6 +11,10 @@ typedef struct Walk {
 static void walk_stmts(Walk *pass, MsStmts body);
 static void walk_expr(Walk *pass, const MsExpr *expr);
 
+static void set_kind(Walk *pass, MsBindingKind kind) {
+  pass->scope.ptr[pass->scope.len - 1].kind = kind;
+}
+
 static void declare(Walk *pass, MsName name, MsPos decl, bool mutable_, MsBindingOrigin origin) {
   const MsBinding binding = {.name = name, .decl = decl, .mutable_ = mutable_, .origin = origin};
   ms_binding_list_push(&pass->scope, binding);
@@ -54,6 +58,7 @@ static void declare_params(Walk *pass, MsParams params) {
       walk_expr(pass, param->def);
     }
     declare(pass, param->name, param->pos, param->is_mutable, MS_BIND_OTHER);
+    set_kind(pass, param->moving ? MS_BK_OWNED_PARAM : MS_BK_PARAM);
     if (pass->visitor->invalid_param != NULL && pass->visitor->invalid_param(pass->visitor->context, param)) {
       pass->scope.ptr[pass->scope.len - 1].invalid = true;
     }
@@ -222,6 +227,7 @@ static void walk_stmt(Walk *pass, const MsStmt *stmt) {
     walk_expr(pass, stmt->u.each.iter);
     const size_t mark = pass->scope.len;
     declare(pass, stmt->u.each.name, stmt->pos, false, MS_BIND_OTHER);
+    set_kind(pass, MS_BK_LOOP);
     walk_scoped(pass, stmt->u.each.body);
     ms_binding_list_truncate(&pass->scope, mark);
     return;
@@ -239,6 +245,7 @@ static void walk_callable(Walk *pass, const MsFunc *func, const MsMethod *method
   const size_t mark = pass->scope.len;
   if (method != NULL) {
     declare(pass, pass->self, method->pos, method->mutating, MS_BIND_OTHER);
+    set_kind(pass, method->consuming ? MS_BK_OWNED_PARAM : MS_BK_SELF);
   }
   declare_params(pass, func->params);
   walk_stmts(pass, func->body);

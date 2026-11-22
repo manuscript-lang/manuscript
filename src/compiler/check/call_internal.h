@@ -11,6 +11,7 @@ typedef struct Target {
   const MsParams *ast;    /* the declared parameters (for defaults), or NULL */
   uint32_t ast_module;
   const MsExpr *receiver; /* the written receiver of a method call */
+  uint8_t receiver_flags; /* MS_PARAM_VAR or MS_PARAM_MOVE: how the method takes its receiver */
   MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
   MsSpan name;
   MsTyList explicit_args; /* owned: written type arguments */

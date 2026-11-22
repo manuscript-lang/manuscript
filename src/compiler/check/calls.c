@@ -172,6 +172,8 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
     if (match->entry != NULL) {
       target->ast = &match->entry->source->func.params;
       target->ast_module = match->entry->module;
+      target->receiver_flags = (uint8_t)((match->entry->source->mutating ? MS_PARAM_VAR : 0) |
+                                         (match->entry->source->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->entry->variables.ptr + match->entry->shared,
                 match->entry->variables.len - match->entry->shared);
     } else if (match->operation != NULL) {
@@ -384,7 +386,8 @@ static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *cal
   const size_t offset = target->receiver != NULL ? 1 : 0;
   MsCallArg *args = MS_ARENA_NEW_ARRAY(&body->program->arena, MsCallArg, matched->count + offset);
   if (offset != 0) {
-    args[0] = (MsCallArg){.source = MS_ARG_WRITTEN, .node = {body->module, target->receiver->id}};
+    args[0] = (MsCallArg){.source = MS_ARG_WRITTEN, .node = {body->module, target->receiver->id},
+                          .flags = target->receiver_flags};
   }
   for (size_t index = 0; index < matched->count; index++) {
     const MsTyParam *param = &ms_ty_params(types, target->sig)[index];
