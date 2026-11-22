@@ -160,7 +160,6 @@ void mirgl_demand_closures(MsArena *arena, const MirModule *module, GlDemand *de
   demand->closure_clones = mir_bits_new(arena, nfuncs);
   for (uint32_t fi = 0; fi < nfuncs; fi++) {
     const MirFunc *func = &module->funcs.ptr[fi];
-    const bool *framed = mir_framed_closures(arena, module, func);
     for (size_t bi = 0; bi < func->blocks.len; bi++) {
       const MirBlockData *block = &func->blocks.ptr[bi];
       for (size_t ii = 0; ii < block->insts.len; ii++) {
@@ -168,8 +167,10 @@ void mirgl_demand_closures(MsArena *arena, const MirModule *module, GlDemand *de
         if (inst->op != MOP_ClosureNew || inst->imm.tag != MI_FUNC || inst->res == MIR_NONE) {
           continue;
         }
-        const bool in_frame = framed != NULL && framed[inst->res];
-        mir_bits_set(in_frame ? &demand->framed_drops : &demand->heap_drops, inst->imm.a);
+        /* The emitter decides again, on the module after the lowering of ops, whether the object lives in its
+         * maker's frame, and a use that lowering adds or removes can change the answer: both drops are made. */
+        mir_bits_set(&demand->heap_drops, inst->imm.a);
+        mir_bits_set(&demand->framed_drops, inst->imm.a);
         mir_bits_set(&demand->closure_clones, inst->imm.a);
       }
     }
