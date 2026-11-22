@@ -77,6 +77,9 @@ typedef struct MsHttpRequest {
   int64_t timeout_ns;
   /* Called for the request's host and for every redirect target; false refuses. NULL allows all. */
   bool (*host_allowed)(void *context, MsSpan host);
+  /* Called with the address a connection reached, before anything is sent on it; false aborts the exchange.
+   * `address` is a struct sockaddr of the platform. NULL allows all. */
+  bool (*address_allowed)(void *context, const void *address);
   void *context;
 } MsHttpRequest;
 

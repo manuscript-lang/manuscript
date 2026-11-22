@@ -47,6 +47,8 @@ struct MsHttpResponse {
   bool request_head; /* a HEAD request: no body to decode */
   bool add_gzip;     /* the request asked for gzip */
   bool has_deadline;
+  bool (*address_allowed)(void *context, const void *address);
+  void *context;
   int64_t deadline_ns;
   size_t max_head_bytes;
   bool limit;
