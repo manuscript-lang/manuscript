@@ -417,7 +417,7 @@ static MirValue construct_case(LowerFn *fn, const MsCall *call, const MirValue *
 }
 
 /* `Type(fields...)`: the record built from its arguments in field order. */
-static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
+static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_LIST) {
     /* `List[T](reserve: n)`: the optional reserve is the starting capacity, none reserves nothing. */
@@ -431,6 +431,22 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
                               mir_b_iconst(&fn->b, 0), capacity);
     }
     return mir_b_list_new(&fn->b, data->elem, capacity);
+  }
+  const MsExpr *written = expr->u.call.args.len == 1 ? expr->u.call.args.ptr[0].value : NULL;
+  const bool empty_list = written != NULL && written->kind == MS_E_LIST && written->u.list.len == 0;
+  if (data->kind == MK_BYTES && written != NULL && !empty_list) {
+    /* `Bytes(values)`: the runtime narrows each element of the list to a byte, into a slot it writes. */
+    const MirImm of_type = {.tag = MI_TY, .a = ty};
+    const MirValue values = fn_expr(fn, written, LW_BORROW);
+    if (values == MIR_NONE) {
+      return MIR_NONE;
+    }
+    const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    MirValue wanted[2] = {values, slot};
+    const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, values));
+    const char *native = list->kind == MK_LIST && list->elem == MIR_UINT8 ? "msrt_bytes_from_values" : "msrt_bytes_from_ints";
+    (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(native)), wanted, 2, MIR_VOID);
+    return fn_emit(fn, MOP_Take, &slot, 1, of_type, ty);
   }
   if (data->kind == MK_BYTES) {
     /* A builder starts as an empty buffer of its own. */
@@ -569,7 +585,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   if (call->callee.kind == MS_REF_TYPE) {
-    return construct(fn, call, args, ret);
+    return construct(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_OPERATION) {
     return call_operation(fn, expr, call, args, ret);

@@ -228,6 +228,18 @@ void msrt_bytes_from_values(const MsBytes *values, MsBytes *out) {
   msrt_bytes_copy(values, out);
 }
 
+/* `Bytes([...])` of a list of Ints: each element narrowed to its low byte. */
+void msrt_bytes_from_ints(const MsList *values, MsBytes *out) {
+  uint8_t *narrowed = ms_alloc(values->len + 1);
+  for (size_t at = 0; at < values->len; at++) {
+    int64_t element;
+    __builtin_memcpy(&element, values->ptr + at * sizeof element, sizeof element);
+    narrowed[at] = (uint8_t)element;
+  }
+  *out = ms_bytes_from_span(ms_span_of(narrowed, values->len));
+  ms_free(narrowed);
+}
+
 static MsBytes part_at(const MsList *parts, size_t index) {
   MsBytes part;
   __builtin_memcpy(&part, parts->ptr + index * sizeof part, sizeof part);
