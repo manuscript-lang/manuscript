@@ -128,6 +128,9 @@ bool fn_is_text_literal(const MsExpr *expr) {
 /* Moves the value of `place` into a new slot and returns the slot's address. */
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MirValue owned;
+  if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
+    return fn_try_var_slot(fn, place, out);
+  }
   MsExpr *indexed = NULL;
   MsExpr *index_key = NULL;
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
@@ -151,7 +154,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, MIR_NONE, MIR_NONE};
   return slot;
 }
 
@@ -161,7 +164,13 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
     const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
     const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
                                         &slots[at].slot, 1, of_type, slots[at].ty);
-    if (slots[at].place == NULL) {
+    if (slots[at].optional != MIR_NONE) {
+      const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
+      if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, wrapped)
+                                         : fn_put_place(fn, slots[at].place, wrapped))) {
+        return false;
+      }
+    } else if (slots[at].place == NULL) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }

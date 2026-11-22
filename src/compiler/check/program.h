@@ -127,6 +127,12 @@ MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix);
  * carries them as arguments. */
 void ms_check_type_variables(MsCheckProgram *program, uint32_t module);
 
+/* Whether a type parameter may not take `name`: it is a primitive or one of the reserved prelude interfaces. */
+bool ms_check_intrinsic_type_param(const MsCheckProgram *program, MsName name);
+
+/* Reports a type parameter that repeats a name or takes an intrinsic one. */
+void ms_check_report_type_param(MsCheckProgram *program, uint32_t module, const MsTypeParam *param);
+
 /* Resolves the bounds and defaults of the module's type variables, then the signatures of its types and
  * functions into checked types. Unknown type names are reported for the program's own modules. */
 void ms_check_signatures(MsCheckProgram *program, uint32_t module);
