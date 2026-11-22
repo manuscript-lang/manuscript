@@ -1,6 +1,7 @@
 /* compiler/lower/lower_expr.c: expressions: literals, names, arithmetic and comparison. */
 #include "base/float_parse.h"
 #include "compiler/lower/lower_fn.h"
+#include <stdlib.h>
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/own/result_borrows.h"
@@ -46,7 +47,18 @@ static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
       ms_strbuild_append_byte(&digits, text.ptr[at]);
     }
   }
-  const bool fits = ms_parse_float(ms_strbuild_span(&digits), &value) == MS_PARSE_FLOAT_OK;
+  bool fits = ms_parse_float(ms_strbuild_span(&digits), &value) == MS_PARSE_FLOAT_OK;
+  if (fits && ty == MIR_FLOAT32) {
+    /* A Float32 literal rounds once, from its decimal text: rounding the Float first can land on the wrong neighbour. */
+    char buffer[128];
+    const MsSpan written = ms_strbuild_span(&digits);
+    fits = written.len < sizeof buffer;
+    if (fits) {
+      __builtin_memcpy(buffer, written.ptr, written.len);
+      buffer[written.len] = '\0';
+      value = (double)strtof(buffer, NULL);
+    }
+  }
   ms_strbuild_free(&digits);
   if (!fits) {
     (void)fn_fail(fn, "a number literal is not a Float that fits");
