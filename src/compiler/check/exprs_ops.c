@@ -170,6 +170,18 @@ static bool is_comparison(MsBinaryOp op) {
   return op >= MS_B_EQ && op <= MS_B_GE;
 }
 
+/* The standard `Duration` type, whether or not the module imports it. */
+static MsTy duration_type(const MsCheckProgram *program) {
+  for (MsSymbolId id = 1; id < program->symbols.len; id++) {
+    const MsSymbol *symbol = &program->symbols.ptr[id];
+    if (symbol->kind == MS_SYMBOL_TYPE && symbol->ty != MS_TY_NONE &&
+        ms_ty_builtin(&program->types, symbol->ty) == MS_BUILTIN_Duration) {
+      return symbol->ty;
+    }
+  }
+  return MS_TY_NONE;
+}
+
 /* The type of `Instant`/`Duration` arithmetic, or MS_TY_NONE when the operands select no row. */
 static MsTy time_type(const Body *body, MsBinaryOp op, MsTy left, MsTy right) {
   const MsTyTable *types = &body->program->types;
@@ -182,8 +194,7 @@ static MsTy time_type(const Body *body, MsBinaryOp op, MsTy left, MsTy right) {
     return left;
   }
   if (a == MS_BUILTIN_Instant && b == MS_BUILTIN_Instant && op == MS_B_SUB) {
-    const MsSymbol *duration = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Duration")));
-    return duration != NULL ? duration->ty : MS_TY_NONE;
+    return duration_type(body->program);
   }
   return MS_TY_NONE;
 }

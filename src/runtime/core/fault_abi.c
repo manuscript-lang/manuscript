@@ -18,6 +18,10 @@ void msrt_fault_string(const MsString *message) {
   ms_fault(MS_FAULT_KIND_FAULT, ms_string_span(message));
 }
 
+void msrt_panic(const MsString *message) {
+  msrt_fault_string(message);
+}
+
 void msrt_fault_depth(void) {
   /* Cleanups run calls in the reserve, so the limit moves down before the report is built. */
   MsUnwind *const unwind = running();

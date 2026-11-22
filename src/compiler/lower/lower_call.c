@@ -278,6 +278,13 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
     }
     return mir_b_list_new(&fn->b, data->elem, capacity);
   }
+  if (data->kind == MK_BYTES) {
+    /* A builder starts as an empty buffer of its own. */
+    ms_span_list_push(&fn->cx->module->blobs, ms_span_of_text(""));
+    const MirImm blob = {.tag = MI_INT, .i = (int64_t)fn->cx->module->blobs.len - 1};
+    const MirValue empty = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
+    return fn_emit(fn, MOP_Clone, &empty, 1, (MirImm){0}, MIR_BYTES);
+  }
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
   }
@@ -295,11 +302,24 @@ static bool callee_is_operation(LowerFn *fn, const MsCall *call) {
   return id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN;
 }
 
+/* Whether the callee is a function of the standard library declared without a body (`fn panic(message) Never: ...`):
+ * the runtime provides it, as `msrt_<name>`. */
+static bool is_bodiless_function(LowerFn *fn, const MsCall *call) {
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
+  const MsSymbol *symbol = id == 0 ? NULL : &fn->cx->program->symbols.ptr[id];
+  return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless;
+}
+
 static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
     (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;
+  }
+  MirValue checked = MIR_NONE;
+  if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
+                     args, call->arg_count, ret, &checked)) {
+    return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
   const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
@@ -345,6 +365,9 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (call->callee.kind == MS_REF_NATIVE && callee_is_operation(fn, call)) {
     return fn_native_call(fn, expr, call, args, ret);
   }
+  if (call->callee.kind == MS_REF_FUNCTION && is_bodiless_function(fn, call)) {
+    return fn_builtin_call(fn, call, args, ret);
+  }
   if (!source) {
     return call_runtime(fn, call, args, ret);
   }
@@ -357,6 +380,13 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
                                                   target.nvariables, bound)) {
       (void)fn_fail(fn, "a method's type arguments could not be found from its call");
       return MIR_NONE;
+    }
+    /* The receiver form binds the variables the signature does not mention (`List[T].join(separator)`). */
+    const MsExpr *callee = expr->u.call.callee;
+    if (call->callee.kind == MS_REF_METHOD && target.receiver != MS_TY_NONE && callee->kind == MS_E_MEMBER) {
+      const MsTy actual = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+      (void)ms_check_unify(&fn->cx->program->types, target.receiver, actual, target.variables, target.nvariables, bound);
     }
     type_args = bound;
     ntype_args = target.nvariables;

@@ -76,14 +76,16 @@ uint8_t msrt_bytes_decode_utf8_take(MsList *b, MsString *out);
 uint8_t msrt_bytes_decode_utf8_range(const MsList *b, int64_t start, int64_t end, MsString *out);
 
 /* The string builder: a Bytes buffer that strings are appended to (src/runtime/core/bytes_text.c). */
-/* ms-sig: msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf */
+/* ms-sig: msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf
+ * @method=StringBuilder.append */
 void msrt_strbuilder_append(MsList *b, const MsString *s);
 /* ms-sig: msrt_strbuilder_append_slow(b: *mut VecVal, s: *const StrVal) @domain=collection @leaf */
 void msrt_strbuilder_append_slow(MsList *b, const MsString *s);
 /* ms-sig: msrt_strbuilder_append_int(b: *mut VecVal, n: i64) @domain=collection @leaf */
 void msrt_strbuilder_append_int(MsList *b, int64_t n);
 /* Builds the string and consumes the builder. */
-/* ms-sig: msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf */
+/* ms-sig: msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @domain=collection @leaf
+ * @method=StringBuilder.build */
 void msrt_strbuilder_freeze(MsList *b, MsString *out);
 
 #endif

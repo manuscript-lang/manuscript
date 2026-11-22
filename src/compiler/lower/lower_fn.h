@@ -105,11 +105,19 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
+MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* `left op right` on a BigInt through its runtime function; false when the operands are not a value object. */
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out);
+
+/* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and
+ * writes the ok payload (and the failure's text) through trailing addresses. False when `name` has no such
+ * signature, and nothing was emitted. */
+bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+/* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
+MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);

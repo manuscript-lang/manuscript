@@ -191,6 +191,45 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
   return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
 }
 
+/* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
+MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  const MirValue key = operand_slot(fn, key_expr);
+  if (key == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
+  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
+  const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
+  const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
+  const MirValue out = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, value_ty, MIR_PTR);
+  const MirValue operands[5] = {map, key_desc, value_desc, key, out};
+  const MirValue found = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get")), operands, 5, MIR_BOOL);
+  const bool owns_key = mir_needs_drop(fn->cx->module, data->args[0]);
+  const bool owns_value = mir_needs_drop(fn->cx->module, data->args[1]);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, found, hit, NULL, 0, miss, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue missing = mir_b_emit(&fn->b, owns_key ? MOP_Take : MOP_Load, &key, 1, key_ty, data->args[0]);
+  const MirValue text = fn_value_text(fn, missing, data->args[0]);
+  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
+                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
+                                         MIR_STR);
+  const MirValue parts[2] = {prefix_lit, text};
+  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
+  mir_b_unreachable(&fn->b);
+  mir_b_switch_to(&fn->b, hit);
+  if (owns_key) {
+    const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
+  }
+  return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
@@ -226,7 +265,8 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
 /* Whether the operation is declared on a type variable (`v.to_string()` with a bound): the native has no name of
  * its own, the concrete receiver of the instance decides. */
 static bool generic_receiver(const LowerFn *fn, const MsCall *call) {
-  return ms_builtin_name(ms_ty_builtin(&fn->cx->program->types, call->callee.owner))[0] == '\0';
+  const MsTyTable *types = &fn->cx->program->types;
+  return ms_ty_kind(types, call->callee.owner) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(types, call->callee.owner))[0] == 0;
 }
 
 /* `to_string` and `clone` on a value whose type the instance knows: the type's own method when it has one,
@@ -253,6 +293,24 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
   return MIR_NONE;
 }
 
+MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
+  const MsSymbol *symbol = &fn->cx->program->symbols.ptr[id];
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "msrt_");
+  ms_strbuild_append(&text, ms_names_span(fn->cx->program->names, symbol->name));
+  const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
+      signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
+    return fn_runtime_call(fn, name, wanted, count, ret);
+  }
+  return fn_runtime_call(fn, name, args, call->arg_count, ret);
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -264,18 +322,22 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     const MirImm none = {0};
     return fn_emit(fn, MOP_Clone, args, 1, none, MIR_STR);
   }
-  if (name_is(operation, "get") && call->arg_count == 2 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_LIST) {
-    return list_get(fn, args[0], args[1], ret);
-  }
   if (generic_receiver(fn, call)) {
     return bound_native(fn, callee, call, args, ret);
   }
   const MsTyTable *types = &fn->cx->program->types;
-  const MsSpan type_name = ms_span_of_text(ms_builtin_name(ms_ty_builtin(types, call->callee.owner)));
+  /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
+  const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, call->callee.owner));
+  const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
+                                                   : ms_names_span(fn->cx->program->names, ms_ty_row(types, call->callee.owner)->name);
   const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
   const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
                                     : runtime_name(fn, call->callee.owner, operation);
   const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig != NULL && sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") &&
+      call->arg_count == 2) {
+    return list_get(fn, args[0], args[1], ret);
+  }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
@@ -289,28 +351,46 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
 
-/* The runtime function of a BigInt operator, and whether its result is a comparison against zero. */
+/* The operation word of a binary operator on a value object: its runtime function is `msstd_<type>_<word>`, the
+ * receiver type's lowercase name as for every standard operation. A comparison reads the result of `compare`
+ * against zero; `==` and `!=` use `equal`. */
 typedef struct ObjectOp {
-  const char *name;
+  const char *word;
   MirCc cc;
   bool compare;
 } ObjectOp;
 
 static bool object_op(MsBinaryOp op, ObjectOp *out) {
   switch (op) {
-    case MS_B_ADD: *out = (ObjectOp){"msstd_bigint_add", MCC_EQ, false}; return true;
-    case MS_B_SUB: *out = (ObjectOp){"msstd_bigint_subtract", MCC_EQ, false}; return true;
-    case MS_B_MUL: *out = (ObjectOp){"msstd_bigint_multiply", MCC_EQ, false}; return true;
-    case MS_B_DIV: *out = (ObjectOp){"msstd_bigint_quotient", MCC_EQ, false}; return true;
-    case MS_B_REM: *out = (ObjectOp){"msstd_bigint_modulo", MCC_EQ, false}; return true;
-    case MS_B_EQ: *out = (ObjectOp){"msstd_bigint_equal", MCC_EQ, false}; return true;
-    case MS_B_NE: *out = (ObjectOp){"msstd_bigint_equal", MCC_NE, false}; return true;
-    case MS_B_LT: *out = (ObjectOp){"msstd_bigint_compare", MCC_LT, true}; return true;
-    case MS_B_GT: *out = (ObjectOp){"msstd_bigint_compare", MCC_GT, true}; return true;
-    case MS_B_LE: *out = (ObjectOp){"msstd_bigint_compare", MCC_LE, true}; return true;
-    case MS_B_GE: *out = (ObjectOp){"msstd_bigint_compare", MCC_GE, true}; return true;
+    case MS_B_ADD: *out = (ObjectOp){"add", MCC_EQ, false}; return true;
+    case MS_B_SUB: *out = (ObjectOp){"subtract", MCC_EQ, false}; return true;
+    case MS_B_MUL: *out = (ObjectOp){"multiply", MCC_EQ, false}; return true;
+    case MS_B_DIV: *out = (ObjectOp){"quotient", MCC_EQ, false}; return true;
+    case MS_B_REM: *out = (ObjectOp){"modulo", MCC_EQ, false}; return true;
+    case MS_B_EQ: *out = (ObjectOp){"equal", MCC_EQ, false}; return true;
+    case MS_B_NE: *out = (ObjectOp){"equal", MCC_NE, false}; return true;
+    case MS_B_LT: *out = (ObjectOp){"compare", MCC_LT, true}; return true;
+    case MS_B_GT: *out = (ObjectOp){"compare", MCC_GT, true}; return true;
+    case MS_B_LE: *out = (ObjectOp){"compare", MCC_LE, true}; return true;
+    case MS_B_GE: *out = (ObjectOp){"compare", MCC_GE, true}; return true;
     default: return false;
   }
+}
+
+/* `msstd_<type>_<word>` for the value object `type`. */
+static MsName object_function(LowerFn *fn, const MirTyData *type, const char *word) {
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "msstd_");
+  const MsSpan type_name = ms_names_span(&fn->cx->module->names, type->name);
+  for (size_t at = 0; at < type_name.len; at++) {
+    const uint8_t byte = type_name.ptr[at];
+    ms_strbuild_append_byte(&text, byte >= 'A' && byte <= 'Z' ? (uint8_t)(byte - 'A' + 'a') : byte);
+  }
+  ms_strbuild_append_byte(&text, '_');
+  ms_strbuild_append_text(&text, word);
+  const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  return name;
 }
 
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out) {
@@ -319,10 +399,14 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
   if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_VALUE || !object_op(op, &info)) {
     return false;
   }
+  const MsName name = object_function(fn, data, info.word);
+  if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, name)) == NULL) {
+    return false;
+  }
   const MirValue operands[2] = {left, right};
-  const MirTy ret = info.compare ? MIR_INT : (op == MS_B_EQ || op == MS_B_NE ? MIR_BOOL : mir_b_ty(&fn->b, left));
-  const MirValue result =
-      fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(info.name)), operands, 2, ret);
+  const bool equality = op == MS_B_EQ || op == MS_B_NE;
+  const MirTy ret = info.compare ? MIR_INT : (equality ? MIR_BOOL : mir_b_ty(&fn->b, left));
+  const MirValue result = fn_runtime_call(fn, name, operands, 2, ret);
   if (result == MIR_NONE) {
     *out = MIR_NONE;
   } else if (info.compare) {
@@ -332,5 +416,125 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
   } else {
     *out = result;
   }
+  return true;
+}
+
+/* ---- externs that return `T!` ---- */
+
+/* The stdlib function that builds the `Error` of a failed status, or MIR_NONE when core is not loaded. */
+static uint32_t status_error_function(LowerFn *fn) {
+  Lower *cx = fn->cx;
+  const MsSymbolList *symbols = &cx->program->symbols;
+  for (MsSymbolId id = 1; id < symbols->len; id++) {
+    const MsSymbol *symbol = &symbols->ptr[id];
+    if (symbol->kind == MS_SYMBOL_FN && symbol->native == MS_NATIVE_SOURCE &&
+        ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "msstd_status_error")) {
+      const LowerTarget target = lower_symbol_target(cx, id);
+      return lower_instance(cx, &target, NULL, 0, &fn->subst);
+    }
+  }
+  return MIR_NONE;
+}
+
+static MirValue stack_slot(LowerFn *fn, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  return mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+}
+
+static MirValue string_literal(LowerFn *fn, const char *text) {
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(text))};
+  return mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
+/* The Result alternative of `ret` and its ok payload type, or false when `ret` is not a Result. */
+static bool result_alt(const LowerFn *fn, MirTy ret, uint32_t *alt, MirTy *payload) {
+  const MirModule *module = fn->cx->module;
+  const MirTyData *data = mir_ty_data(module, ret);
+  if (data->kind != MK_ALT || module->alts.ptr[data->id].std != MSTD_RESULT) {
+    return false;
+  }
+  const MirCaseDef *ok = &module->alts.ptr[data->id].cases[0];
+  *alt = data->id;
+  *payload = ok->nfields > 0 ? ok->fields[0].ty : MIR_VOID;
+  return true;
+}
+
+static MirValue build_result(LowerFn *fn, uint32_t alt, uint32_t which, MirValue payload, MirTy ret) {
+  const MirImm imm = {.tag = MI_CASE, .a = alt, .b = which};
+  return mir_b_emit(&fn->b, MOP_AltNew, &payload, 1, imm, ret);
+}
+
+bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  uint32_t alt = 0;
+  MirTy payload_ty = MIR_VOID;
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || !sig->status || !result_alt(fn, ret, &alt, &payload_ty) || nargs + 2 > NS_MAX_PARAMS) {
+    return false;
+  }
+  const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
+  const uint32_t extras = sig->count > nargs ? sig->count - nargs : 0;
+  const bool has_out = extras == (has_err ? 2u : 1u) && payload_ty != MIR_VOID;
+  if (sig->count < nargs || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
+    return false;
+  }
+  const uint32_t error_function = status_error_function(fn);
+  if (error_function == MIR_NONE) {
+    return false;
+  }
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  for (; count < nargs; count++) {
+    wanted[count] = args[count];
+  }
+  MirValue out_slot = MIR_NONE;
+  MirValue err_slot = MIR_NONE;
+  if (has_out) {
+    out_slot = stack_slot(fn, payload_ty);
+    wanted[count++] = out_slot;
+  }
+  if (has_err) {
+    err_slot = stack_slot(fn, MIR_STR);
+    const MirValue empty = string_literal(fn, "");
+    const MirValue store[2] = {err_slot, empty};
+    (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+    wanted[count++] = err_slot;
+  }
+  const uint32_t external = runtime_extern(fn, name, wanted, count, MIR_UINT8);
+  const MirValue status = mir_b_call_rt(&fn->b, external, wanted, count);
+  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
+  const MirValue failed = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  const MirBlock ok_block = mir_b_new_block(&fn->b);
+  const MirBlock fail_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  mir_b_br_if(&fn->b, failed, fail_block, NULL, 0, ok_block, NULL, 0);
+  mir_b_seal_block(&fn->b, ok_block);
+  mir_b_seal_block(&fn->b, fail_block);
+  mir_b_switch_to(&fn->b, ok_block);
+  MirValue value = mir_b_unit(&fn->b);
+  if (has_out) {
+    const MirImm of_type = {.tag = MI_TY, .a = payload_ty};
+    value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload_ty) ? MOP_Take : MOP_Load, &out_slot, 1, of_type,
+                       payload_ty);
+  }
+  const MirValue success = build_result(fn, alt, 0, value, ret);
+  mir_b_br(&fn->b, join, &success, 1);
+  mir_b_switch_to(&fn->b, fail_block);
+  MirValue said = string_literal(fn, "");
+  if (has_err) {
+    const MirImm of_type = {.tag = MI_TY, .a = MIR_STR};
+    said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
+  }
+  const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
+  const MirValue error_args[3] = {status, string_literal(fn, domain_text), said};
+  const MirValue error = mir_b_call(&fn->b, error_function, error_args, 3);
+  const MirValue failure = build_result(fn, alt, 1, error, ret);
+  mir_b_br(&fn->b, join, &failure, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), result);
+  }
+  *out = result;
   return true;
 }

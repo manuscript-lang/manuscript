@@ -124,14 +124,17 @@ MS_NODISCARD static bool fn_declaration(Parser *p, MsToken token, MsDecl **out) 
   if (!parse_result_type(p, &result))
     return false;
   MsStmts body = {0};
+  p->ellipsis_body = false;
   if (!parse_statement_suite(p, false, true, &body))
     return false;
+  const bool bodiless = p->ellipsis_body;
   MsDecl *d = parse_new_decl(p, token.pos, MS_D_FN);
   d->u.fn.name = parse_sym(p, name);
   d->u.fn.type_params = tps;
   d->u.fn.params = params;
   d->u.fn.result = result;
   d->u.fn.body = body;
+  d->u.fn.bodiless = bodiless;
   *out = d;
   return true;
 }
