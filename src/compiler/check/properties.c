@@ -50,6 +50,12 @@ static const MsDecl *decl_of(const MsCheckProgram *program, const MsDef *def) {
   return def != NULL ? program->symbols.ptr[def->symbol].decl : NULL;
 }
 
+static bool is_opaque(const MsCheckProgram *program, const MsDef *def);
+
+bool ms_check_def_opaque(const MsCheckProgram *program, const MsDef *def) {
+  return is_opaque(program, def);
+}
+
 static bool is_opaque(const MsCheckProgram *program, const MsDef *def) {
   const MsDecl *decl = decl_of(program, def);
   if (decl == NULL) {
