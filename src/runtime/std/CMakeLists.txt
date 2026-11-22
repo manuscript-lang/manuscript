@@ -14,7 +14,12 @@ target_link_libraries(ms_std_text PUBLIC ms_base ms_values pcre2)
 
 add_executable(shape_unit shape_unit.c)
 ms_target_defaults(shape_unit)
-target_link_libraries(shape_unit PRIVATE "$<LINK_GROUP:RESCAN,ms_std_text,ms_std_data,ms_std_compress,zlib,ms_values,ms_core,ms_sys>" m)
+# ld64 resolves archive members in any order, and CMake has no RESCAN link group for it.
+if(APPLE)
+  target_link_libraries(shape_unit PRIVATE ms_std_text ms_std_data ms_std_compress zlib ms_values ms_core ms_sys m)
+else()
+  target_link_libraries(shape_unit PRIVATE "$<LINK_GROUP:RESCAN,ms_std_text,ms_std_data,ms_std_compress,zlib,ms_values,ms_core,ms_sys>" m)
+endif()
 add_test(NAME std_shape COMMAND shape_unit)
 
 # @std/data: json (scanner, document handle, tree builder, writer), checksum (zlib), encoding, html, url and archive.

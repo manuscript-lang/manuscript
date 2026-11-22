@@ -226,7 +226,8 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
 /* Whether the operation is declared on a type variable (`v.to_string()` with a bound): the native has no name of
  * its own, the concrete receiver of the instance decides. */
 static bool generic_receiver(const LowerFn *fn, const MsCall *call) {
-  return ms_builtin_name(ms_ty_builtin(&fn->cx->program->types, call->callee.owner))[0] == '\0';
+  const MsTyTable *types = &fn->cx->program->types;
+  return ms_ty_kind(types, call->callee.owner) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(types, call->callee.owner))[0] == 0;
 }
 
 /* `to_string` and `clone` on a value whose type the instance knows: the type's own method when it has one,
@@ -289,7 +290,10 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     return bound_native(fn, callee, call, args, ret);
   }
   const MsTyTable *types = &fn->cx->program->types;
-  const MsSpan type_name = ms_span_of_text(ms_builtin_name(ms_ty_builtin(types, call->callee.owner)));
+  /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
+  const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, call->callee.owner));
+  const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
+                                                   : ms_names_span(fn->cx->program->names, ms_ty_row(types, call->callee.owner)->name);
   const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
   const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
                                     : runtime_name(fn, call->callee.owner, operation);

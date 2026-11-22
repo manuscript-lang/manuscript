@@ -278,6 +278,13 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
     }
     return mir_b_list_new(&fn->b, data->elem, capacity);
   }
+  if (data->kind == MK_BYTES) {
+    /* A builder starts as an empty buffer of its own. */
+    ms_span_list_push(&fn->cx->module->blobs, ms_span_of_text(""));
+    const MirImm blob = {.tag = MI_INT, .i = (int64_t)fn->cx->module->blobs.len - 1};
+    const MirValue empty = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
+    return fn_emit(fn, MOP_Clone, &empty, 1, (MirImm){0}, MIR_BYTES);
+  }
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
   }
@@ -373,6 +380,13 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
                                                   target.nvariables, bound)) {
       (void)fn_fail(fn, "a method's type arguments could not be found from its call");
       return MIR_NONE;
+    }
+    /* The receiver form binds the variables the signature does not mention (`List[T].join(separator)`). */
+    const MsExpr *callee = expr->u.call.callee;
+    if (call->callee.kind == MS_REF_METHOD && target.receiver != MS_TY_NONE && callee->kind == MS_E_MEMBER) {
+      const MsTy actual = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+      (void)ms_check_unify(&fn->cx->program->types, target.receiver, actual, target.variables, target.nvariables, bound);
     }
     type_args = bound;
     ntype_args = target.nvariables;
