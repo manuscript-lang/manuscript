@@ -366,11 +366,12 @@ static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue ri
 /* The operator `op` over two values of one standard type: strings by the runtime, value objects by their operation
  * word, Floats and UInt64 by their own instructions, everything else as integers. */
 static bool is_structural(const LowerFn *fn, MirTy ty) {
-  const MirTyKind kind = mir_ty_data(fn->cx->module, ty)->kind;
-  return kind == MK_LIST || kind == MK_BYTES || kind == MK_OPT || kind == MK_TYPE || kind == MK_ALT;
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  return data->kind == MK_LIST || data->kind == MK_BYTES || data->kind == MK_OPT || data->kind == MK_TYPE ||
+         data->kind == MK_ALT || (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION);
 }
 
-/* `a == b` on a list, bytes, an optional, a record or an alternative: the runtime compares the two by the type's descriptor. */
+/* `a == b` on a list, bytes, a map or set, an optional, a record or an alternative: the runtime compares the two by the type's descriptor. */
 static MirValue structural_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, of_type, MIR_PTR);
