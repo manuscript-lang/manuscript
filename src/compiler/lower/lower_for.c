@@ -273,10 +273,21 @@ static bool for_body(LowerFn *fn, const MsStmt *stmt, const ForSource *src, MirV
   const MirValue item = element(fn, src, mir_b_use_var(&fn->b, index), one);
   bool ok = item != MIR_NONE;
   if (ok) {
-    if (!src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
-      fn->local_owns[local] = 2; /* an element of a list the loop only borrows: moving it out copies it */
+    MsTyTable *types = &fn->cx->program->types;
+    const MsTy list = ms_ty_subst(types, ms_facts_type(fn->facts, stmt->u.each.iter->id), fn->subst.vars, fn->subst.args,
+                                  fn->subst.count);
+    const bool closes = src->cursor && ms_ty_arg_count(types, list) == 1 &&
+                        fn_closer_for(fn, ms_facts_closer(fn->facts, stmt->id), ms_ty_args(types, list)[0]);
+    if (closes) { /* each element of a consumed list closes in its round unless the body moves it on */
+      ok = fn_bind_closing(fn, local, ms_ty_args(types, list)[0], item, false);
+    } else {
+      if (!src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
+        fn->local_owns[local] = 2; /* an element of a list the loop only borrows: moving it out copies it */
+      }
+      mir_b_def_var(&fn->b, fn_local(fn, local, src->elem), item);
     }
-    mir_b_def_var(&fn->b, fn_local(fn, local, src->elem), item);
+  }
+  if (ok) {
     ok = fn_stmts(fn, stmt->u.each.body);
   }
   if (!fn->terminated) {

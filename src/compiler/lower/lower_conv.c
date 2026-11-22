@@ -222,7 +222,8 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
     }
     return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
   }
-  const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to);
+  const MirImm kept = {.tag = MI_VTABLE, .a = vtable, .b = 1}; /* the operand stays with its binding */
+  const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, kept, to);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, (MirImm){0}, MIR_NONE);
   return view;
 }
