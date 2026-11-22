@@ -327,7 +327,7 @@ fn make_part(section: Bytes) Part!:
 	headers := parse_headers(header_text.get_or(""))?
 	var part = Part(
 		headers: headers,
-		data: inner.slice(data_start, inner.length()).get_or("".to_bytes()).clone(),
+		data: inner.slice(data_start, inner.length()).clone().get_or("".to_bytes()),
 	)
 
 	if disposition := part.headers.get("Content-Disposition"):

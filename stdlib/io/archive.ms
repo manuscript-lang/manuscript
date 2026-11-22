@@ -248,7 +248,7 @@ fn pax_size(data: Bytes) Int:
 		eq := data.index_of_byte(61, space.get() + 1)
 
 		if eq.is_some() and eq.get() < end:
-			key := data.slice(space.get() + 1, eq.get()).get_or("".to_bytes())
+			key := data.slice(space.get() + 1, eq.get()).clone().get_or("".to_bytes())
 
 			if key == "size".to_bytes():
 				var value = 0
