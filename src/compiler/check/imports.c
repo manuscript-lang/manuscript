@@ -4,6 +4,7 @@
  * like any other module. An import of `@std/<path>` names the module `<path>` of the bundled sources; a local
  * import names the graph module the loader resolved. An import binds to the exported symbol of that name; an
  * import that does not resolve binds to symbol 0 so later passes do not report it a second time. */
+#include "base/message.h"
 #include "compiler/check/program.h"
 #include "compiler/syntax/parse.h"
 
@@ -35,11 +36,16 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
   }
   MsModule *tree = MS_ARENA_NEW(&program->arena, MsModule);
   MsDiag diag = {0};
-  if (!ms_parse(&program->arena, program->names, source.text, tree, &diag)) {
-    return false;
+  const bool parsed = ms_parse(&program->arena, program->names, source.text, tree, &diag);
+  if (!parsed) {
+    *tree = (MsModule){0}; /* an empty module keeps the importer's bindings; the parse error is reported below */
   }
   *out = ms_check_add_module(program, file, tree);
   program->modules.ptr[*out].source = source.text;
+  if (!parsed) {
+    ms_check_report(program, *out, diag.pos, MS_CHECK_RESOLUTION,
+                    ms_string_from_span(ms_message_format(&program->arena, "parse: %S (in the bundled standard library)", diag.message, (MsSpan){0})));
+  }
   return true;
 }
 

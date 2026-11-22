@@ -70,9 +70,38 @@ static MsCloser *find(Closers *pass, MsNode node) {
   return NULL;
 }
 
-/* `x.close()` by hand on a closed binding. */
+static void flag(Closers *pass, MsNode binding, uint8_t flags) {
+  MsCloser *closer = find(pass, binding);
+  if (closer != NULL) {
+    closer->flags = (uint8_t)(closer->flags | flags);
+  }
+}
+
+/* A use that moves the binding, or a closure that captures it. */
+static void note_use(Closers *pass, const MsExpr *expr) {
+  uint32_t binding = 0;
+  if (expr->kind == MS_E_LAMBDA) {
+    MsBindingList captures = ms_bind_captures(pass->facts, expr);
+    for (size_t index = 0; index < captures.len; index++) {
+      flag(pass, captures.ptr[index], MS_CLOSER_MOVED);
+    }
+    ms_binding_list_free(&captures);
+    return;
+  }
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if ((expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER) && ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE &&
+      root->kind == MS_E_NAME && ms_bind_of(pass->facts, root->id, &binding)) {
+    flag(pass, binding, MS_CLOSER_MOVED);
+  }
+}
+
+/* `x.close()` by hand on a closed binding, and the uses that move one. */
 static void visit_expr(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
+  note_use(pass, expr);
   if (expr->kind != MS_E_CALL || expr->u.call.args.len != 0 || expr->u.call.callee->kind != MS_E_MEMBER ||
       expr->u.call.callee->u.member.name != pass->close) {
     return;
@@ -82,10 +111,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (receiver->kind != MS_E_NAME || !ms_bind_of(pass->facts, receiver->id, &binding)) {
     return;
   }
-  MsCloser *closer = find(pass, binding);
-  if (closer != NULL) {
-    closer->flags |= MS_CLOSER_EXPLICIT;
-  }
+  flag(pass, binding, MS_CLOSER_EXPLICIT);
 }
 
 void ms_own_closers(MsCheckProgram *program) {
