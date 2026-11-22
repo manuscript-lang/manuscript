@@ -14,7 +14,7 @@ type Tracked:
 fn move Tracked.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn track(log: String, id: Int) Tracked:
+fn track(move log: String, id: Int) Tracked:
 	return Tracked(log, id)
 
 fn closed(log: String) String:

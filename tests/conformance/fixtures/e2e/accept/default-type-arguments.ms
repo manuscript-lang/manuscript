@@ -13,7 +13,7 @@ fn pick[T = Int](values: List[T]) Int:
 fn make[T = String]() T?:
     return none
 
-fn pair[A, B = A](first: A, second: B) Box[A, B]:
+fn pair[A, B = A](first: A, move second: B) Box[A, B]:
     return Box[A, B](first, second)
 
 test "omitted trailing type arguments use their defaults":

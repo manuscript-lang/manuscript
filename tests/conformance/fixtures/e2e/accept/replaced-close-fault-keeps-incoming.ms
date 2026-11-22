@@ -18,7 +18,7 @@ fn move Door.close() Void!:
 		append_file(self.log, f"{self.id},").wait()?
 		if self.fail: return error(Error("close failed"))
 
-fn replace(log: String) Void:
+fn replace(move log: String) Void:
 	var doors = [Door(1, log.clone(), fail: true)]
 	doors.set(0, Door(9, log))
 

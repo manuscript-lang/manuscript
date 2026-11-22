@@ -21,7 +21,7 @@ fn move Door.close() Void!:
 fn events(log: String) String!:
 	return ok((read_file(log).wait()?).decode_utf8().get_or(""))
 
-fn named(log: String, op: Int, index: Int, fail: Bool = false) Void:
+fn named(move log: String, op: Int, index: Int, fail: Bool = false) Void:
 	var items = [Door(1, log.clone(), fail: fail)]
 
 	if op == 0: items.set(index, Door(2, log))

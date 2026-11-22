@@ -30,7 +30,7 @@ fn move Resource.close() Void!:
 	inner_closed := read_file(f"{self.dir}/2").wait().is_ok()
 	void write_file(f"{self.dir}/{self.id}", f"{inner_closed}", true).wait()
 
-fn leave(dir: String) Int:
+fn leave(move dir: String) Int:
 	_outer := Resource(dir.clone(), 1)
 	_inner := Resource(dir, 2)
 	return 42
