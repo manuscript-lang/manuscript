@@ -135,8 +135,8 @@ fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 		var start = -1
 		var i = 0
 
-		while i < self.length():
-			if is_separator(self.view(i, i + 1)):
+		for c in self.chars():
+			if is_separator(c):
 				if start >= 0:
 					out.append(self.view(start, i).clone())
 					start = -1
