@@ -32,6 +32,9 @@ MsLintFinding *ms_lint_add(MsLintFindingList *findings, const char *code, MsSpan
 
 /* Rule groups. `ms_lint_source` is the lexical rules of one file's text. */
 void ms_lint_source(MsArena *arena, MsSpan file, MsSpan source, MsLintFindingList *findings);
+void ms_lint_imports(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
+void ms_lint_unreachable(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
+void ms_lint_matches(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_effects(MsArena *arena, const MsCheckProgram *program, MsLintFindingList *findings);
 
 #endif
