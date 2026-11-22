@@ -48,4 +48,7 @@ const MsNativeSig *ms_native_sig_find(MsSpan name);
 /* The native an operation of a type is declared `@method=` for (`List`, `drop`), or NULL. */
 const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation);
 
+/* Whether the runtime's operations of the extern type `type` take it as a list or bytes buffer (`VecVal`). */
+bool ms_native_sig_is_vec_type(MsSpan type);
+
 #endif

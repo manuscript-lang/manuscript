@@ -25,3 +25,17 @@ const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation) {
   }
   return NULL;
 }
+
+bool ms_native_sig_is_vec_type(MsSpan type) {
+  for (unsigned at = 0; at < ms_native_sig_count; at++) {
+    const MsNativeSig *sig = &ms_native_sigs[at];
+    if (sig->method == NULL || sig->count == 0 || (sig->kinds[0] != NS_VEC_IN && sig->kinds[0] != NS_VEC_MUT)) {
+      continue;
+    }
+    const MsSpan full = ms_span_of_text(sig->method);
+    if (ms_span_starts_with(full, type) && full.len > type.len && full.ptr[type.len] == '.') {
+      return true;
+    }
+  }
+  return false;
+}
