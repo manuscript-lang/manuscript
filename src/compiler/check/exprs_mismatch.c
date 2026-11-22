@@ -242,6 +242,9 @@ bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsT
   if (!operands_differ(body, op, left, right)) {
     return false;
   }
+  if (body->quiet || body->module >= body->program->user_modules) {
+    return true;
+  }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "operator operands require the same independently known type, found ");
   append_type(body, &text, left);
