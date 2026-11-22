@@ -96,6 +96,9 @@ void body_check_assignable(Body *body, const MsExpr *expr, MsTy actual, MsTy exp
 
 MsTy body_match(Body *body, const MsExpr *expr, MsTy expected);
 
+/* Whether `ty` names a type variable the enclosing body does not own: an open variable of a call being inferred. */
+bool body_has_foreign_variable(const Body *body, MsTy ty);
+
 /* ---- calls.c ---- */
 
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected);
