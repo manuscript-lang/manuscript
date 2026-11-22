@@ -43,9 +43,11 @@ const MsExpr *fn_written_arg(const MsExpr *call, MsNode node) {
 }
 
 /* The parameter or field of declaration `decl` whose default expression is node `node`. */
-static const MsParam *declared_default(const MsDecl *decl, uint32_t case_index, MsNode node) {
-  const MsParams *list = NULL;
-  if (decl != NULL && decl->kind == MS_D_FN) {
+static const MsParam *declared_default(const MsDecl *decl, const MsParams *method, uint32_t case_index, MsNode node) {
+  const MsParams *list = method;
+  if (method != NULL) {
+    /* a method's parameters are its own */
+  } else if (decl != NULL && decl->kind == MS_D_FN) {
     list = &decl->u.fn.params;
   } else if (decl != NULL && decl->kind == MS_D_TYPE) {
     list = &decl->u.type.fields;
@@ -66,8 +68,13 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   const uint32_t saved_file = fn->file;
   fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
   fn->file = lower_file(fn->cx, arg->node.module);
-  const MsSymbol *callee = &fn->cx->program->symbols.ptr[fn_symbol_at(fn->cx, call->callee.decl)];
-  const MsParam *param = declared_default(callee->decl, call->callee.index, arg->node.node);
+  const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
+                                    ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
+                                    : NULL;
+  const MsSymbolId callee_id = method != NULL ? 0 : fn_symbol_at(fn->cx, call->callee.decl);
+  const MsDecl *callee_decl = callee_id != 0 ? fn->cx->program->symbols.ptr[callee_id].decl : NULL;
+  const MsParam *param = declared_default(callee_decl, method != NULL ? &method->source->func.params : NULL,
+                                          call->callee.index, arg->node.node);
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
@@ -189,7 +196,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       out[index] = ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
     }
     if (out[index] == MIR_NONE) {
-      return fn_fail(fn, "an argument has no value");
+      return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);
     }
   }
   return true;
@@ -275,6 +282,10 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
   const MirValue structural = fn_value_operation(fn, operation, args, call->arg_count, ret);
   if (structural != MIR_NONE) {
     return structural;
+  }
+  const bool standard = ms_ty_kind(table, receiver) == MS_TY_NATIVE || ms_builtin_name(ms_ty_builtin(table, receiver))[0] != 0;
+  if (standard && (call->arg_count != 1 || ret != mir_b_ty(&fn->b, args[0]))) {
+    return fn_native_call(fn, expr, call, args, ret); /* the runtime's `msrt_<type>_<operation>` of that receiver */
   }
   if (call->arg_count != 1 || ret != mir_b_ty(&fn->b, args[0])) {
     (void)fn_fail(fn, "the operation `%.*s` on a bound value is not lowered yet (receiver kind %d, builtin %d)", (int)operation.len, (const char *)operation.ptr, (int)ms_ty_kind(table, receiver), (int)ms_ty_builtin(table, receiver));

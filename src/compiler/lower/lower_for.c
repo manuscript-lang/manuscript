@@ -115,11 +115,34 @@ static bool source_range(LowerFn *fn, const MsExpr *iter, ForSource *src) {
   return true;
 }
 
+/* A map or set walks the list of its entries or values, a copy the loop owns: the `entries` of a map, the `values`
+ * of a set. MIR_NONE when `value` is neither. */
+static MirValue collection_items(LowerFn *fn, const MsExpr *iter, MirValue value) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy type = ms_ty_subst(types, ms_facts_type(fn->facts, iter->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const bool map = ms_ty_is(types, type, MS_BUILTIN_Map);
+  if (!map && !ms_ty_is(types, type, MS_BUILTIN_Set)) {
+    return MIR_NONE;
+  }
+  const uint32_t method = lower_named_method(fn->cx, type, map ? "entries" : "values");
+  if (method == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirValue items = mir_b_call(&fn->b, method, &value, 1);
+  fn_own_result(fn, items);
+  return items;
+}
+
 static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
-  const bool moved = ms_facts_use(fn->facts, iter->id) == MS_USE_MOVE;
-  const MirValue list = fn_expr(fn, iter, moved ? LW_MOVE : LW_BORROW);
+  bool moved = ms_facts_use(fn->facts, iter->id) == MS_USE_MOVE;
+  MirValue list = fn_expr(fn, iter, moved ? LW_MOVE : LW_BORROW);
   if (list == MIR_NONE) {
     return false;
+  }
+  const MirValue items = collection_items(fn, iter, list);
+  if (items != MIR_NONE) {
+    list = items;
+    moved = false;
   }
   const MirModule *module = fn->cx->module;
   const MirTy list_ty = mir_b_ty(&fn->b, list);
@@ -335,7 +358,9 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *iter = stmt->u.each.iter;
   (void)fn_scope_begin(fn);
   const MirTy iter_ty = is_range(fn, iter) ? MIR_INT : fn_type(fn, ms_facts_type(fn->facts, iter->id));
-  if (iter_ty != MIR_INT && mir_ty_data(fn->cx->module, iter_ty)->kind != MK_LIST) {
+  const MirTyData *iter_data = mir_ty_data(fn->cx->module, iter_ty);
+  const bool collection = iter_data->kind == MK_OBJ && iter_data->obj_class == MIR_OBJ_COLLECTION;
+  if (iter_ty != MIR_INT && iter_data->kind != MK_LIST && !collection) {
     return for_iterator(fn, stmt, binding);
   }
   ForSource src;
