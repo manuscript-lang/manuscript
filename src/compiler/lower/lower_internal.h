@@ -77,6 +77,7 @@ typedef struct LowerDefault {
   uint32_t module;
   uint32_t func; /* the reserved MIR function `fn(out, record) Void` */
   MirTy ty;      /* the field's type */
+  MirTy record;  /* the record type, whose earlier fields the default may read */
   LowerSubst subst;
   bool lowered;
 } LowerDefault;
@@ -103,7 +104,7 @@ typedef struct Lower {
 
 /* The function that builds a record field's default `expr` (written in `module`) in place; its body is lowered
  * later (lower_default.c). */
-uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, const LowerSubst *subst);
+uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, MirTy record, const LowerSubst *subst);
 bool lower_default_bodies(Lower *cx, bool *progressed);
 
 /* The driver steps (lower_func.c): set up, lower every function reached so far (and their lambdas), tear down. */

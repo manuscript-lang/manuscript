@@ -135,6 +135,22 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (ref != NULL && ref->kind == MS_REF_PARAM && fn->default_call != NULL) {
     return default_param(fn, ref);
   }
+  if (ref != NULL && ref->kind == MS_REF_PARAM && fn->param_vars == NULL) {
+    /* A field default reads an earlier field of the record under construction, in place. */
+    if (fn->default_base == MIR_NONE) {
+      (void)fn_fail(fn, "a name read outside a function has no value");
+      return MIR_NONE;
+    }
+    const MirImm of_record = {.tag = MI_TY, .a = fn->default_record_ty};
+    const MirValue record = fn_emit(fn, MOP_Load, &fn->default_base, 1, of_record, fn->default_record_ty);
+    const MirTyData *data = mir_ty_data(fn->cx->module, fn->default_record_ty);
+    if (data->kind != MK_TYPE || ref->local >= fn->cx->module->type_defs.ptr[data->id].nfields) {
+      (void)fn_fail(fn, "a field default reads a field its record does not have");
+      return MIR_NONE;
+    }
+    const MirImm field = {.tag = MI_FIELD, .a = data->id, .b = ref->local};
+    return fn_emit(fn, MOP_TypeGet, &record, 1, field, fn->cx->module->type_defs.ptr[data->id].fields[ref->local].ty);
+  }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
     return mir_b_use_var(&fn->b, fn->param_vars[ref->local]);
   }
@@ -182,7 +198,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   if (ref != NULL && ref->kind == MS_REF_CASE) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
   }
-  if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE)) {
+  if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_OPERATION)) {
     return fn_bound_method(fn, expr, ref); /* `value.method`, a method used as a value */
   }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {

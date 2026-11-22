@@ -95,7 +95,7 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
       const MsExpr *value = decl->u.type.fields.ptr[index]->def;
       if (value != NULL) {
         fields[index].default_fn1 =
-            1 + lower_field_default(cx, cx->program->symbols.ptr[def->symbol].module, value, fields[index].ty, &subst);
+            1 + lower_field_default(cx, cx->program->symbols.ptr[def->symbol].module, value, fields[index].ty, result, &subst);
       }
     }
   }
