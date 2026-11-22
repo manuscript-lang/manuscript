@@ -15,6 +15,7 @@
 #include "driver/build_command.h"
 #include "driver/check_command.h"
 #include "driver/diagram_command.h"
+#include "driver/inspect_command.h"
 #include "driver/emit_command.h"
 #include "driver/explain_command.h"
 #include "driver/fmt_command.h"
@@ -78,6 +79,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "search_symbol")) return ms_search_symbol_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "review")) return ms_review_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "inspect")) return ms_inspect_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "diagram")) return ms_diagram_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);

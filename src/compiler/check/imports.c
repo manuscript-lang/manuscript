@@ -65,6 +65,19 @@ static bool has_tests(const MsCheckProgram *program) {
   return false;
 }
 
+/* Whether a module of the program declares a `bench` block: the bench runner then needs the bench driver. */
+static bool has_bench(const MsCheckProgram *program) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    const MsModule *tree = program->modules.ptr[module].tree;
+    for (uint32_t index = 0; index < tree->ndecls; index++) {
+      if (tree->decls[index]->kind == MS_D_TEST && tree->decls[index]->u.test.bench) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /* Whether a module declaring a `test` also declares `make_fixture`: the fixture contract lives in @std/test/test.ms. */
 static bool has_fixture(const MsCheckProgram *program) {
   for (uint32_t module = 0; module < program->modules.len; module++) {
@@ -87,6 +100,9 @@ void ms_check_load_std(MsCheckProgram *program) {
   if (has_tests(program)) {
     uint32_t loaded = 0;
     (void)load_std_module(program, ms_span_of_text("@std/internal/test_runner.ms"), &loaded);
+    if (has_bench(program)) {
+      (void)load_std_module(program, ms_span_of_text("@std/test/bench.ms"), &loaded);
+    }
     if (has_fixture(program)) {
       (void)load_std_module(program, ms_span_of_text("@std/test/test.ms"), &loaded);
     }
