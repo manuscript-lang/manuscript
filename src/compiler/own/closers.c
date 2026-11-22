@@ -13,6 +13,7 @@ typedef struct Closers {
   MsName close;
   size_t first;        /* the first closer of the callable being walked */
   uint32_t lambdas;    /* lambdas open around the node being visited */
+  MsNode receiver;     /* the receiver name of the call being visited */
 } Closers;
 
 /* The `close()` method `ty` implements, or NULL. */
@@ -84,8 +85,16 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
   const MsNode node = stmt->u.bind.pattern->id;
   const MsRef *ref = ms_facts_ref(pass->facts, node);
-  if (ref != NULL && ref->kind == MS_REF_LOCAL) {
-    add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));
+  if (ref == NULL || ref->kind != MS_REF_LOCAL) {
+    return;
+  }
+  const size_t before = pass->facts->closers.len;
+  add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));
+  if (stmt->u.bind.is_mutable && pass->facts->closers.len == before) {
+    /* A `var` holds its value in a slot that drops it, so that a move out of the `var` leaves nothing to drop. */
+    const MsCloser drop = {.node = node, .ref_kind = MS_REF_LOCAL, .local = ref->local,
+                           .flags = MS_CLOSER_DROP | MS_CLOSER_CONSUMES};
+    ms_closer_list_push(&pass->facts->closers, drop);
   }
 }
 
@@ -197,7 +206,7 @@ static void visit_call_changes(Closers *pass, const MsExpr *call) {
       }
     }
     if (written != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (entry != NULL && entry->source->mutating))) {
-      flag_root(pass, written, MS_CLOSER_PARTIAL);
+      flag_root(pass, written, MS_CLOSER_MUTATED);
     }
   }
 }
@@ -205,7 +214,7 @@ static void visit_call_changes(Closers *pass, const MsExpr *call) {
 static void visit_stmt_changes(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
   if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.member_target && stmt->u.assign.target != NULL) {
-    flag_root(pass, stmt->u.assign.target, MS_CLOSER_PARTIAL);
+    flag_root(pass, stmt->u.assign.target, MS_CLOSER_MUTATED);
   }
 }
 
@@ -219,6 +228,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_CALL) {
     visit_call_changes(pass, expr);
     flag_taken_by(pass, expr);
+    pass->receiver = expr->u.call.callee->kind == MS_E_MEMBER ? expr->u.call.callee->u.member.left->id : 0;
   }
   if (expr->kind == MS_E_CALL && expr->u.call.args.len == 0 && expr->u.call.callee->kind == MS_E_MEMBER &&
       expr->u.call.callee->u.member.name == pass->close && expr->u.call.callee->u.member.left->kind == MS_E_NAME) {
@@ -238,7 +248,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (pass->lambdas != 0) {
     flag(pass, ref, MS_CLOSER_PARTIAL);
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
-    flag(pass, ref, expr->kind == MS_E_NAME ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
+    flag(pass, ref, expr->kind != MS_E_NAME ? MS_CLOSER_PARTIAL : expr->id == pass->receiver ? MS_CLOSER_MOVED | MS_CLOSER_RECEIVER : MS_CLOSER_MOVED);
   }
 }
 

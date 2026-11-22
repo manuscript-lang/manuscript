@@ -86,6 +86,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
   }
   uint32_t next = 0;
   uint32_t used = 0;
+  fn->native_moves = 0;
   for (uint32_t at = 0; at < params; at++) {
     const uint8_t kind = sig->kinds[at];
     if (kind == NS_ELEM_DESC || kind == NS_KEY_DESC || kind == NS_VAL_DESC) {
@@ -93,6 +94,10 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
         return false;
       }
     } else if (next < nargs) {
+      /* The runtime takes an owned operand it is given by address (`msrt_map_add`'s key and value). */
+      if (kind == NS_ADDR_MUT && at > 0 && used < 32 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
+        fn->native_moves |= 1u << used;
+      }
       out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
       next++;
     } else {
@@ -129,8 +134,10 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
 static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
-    params[index] = (MirParam){mir_b_ty(&fn->b, args[index]), (uint8_t)MM_BORROW};
+    params[index] = (MirParam){mir_b_ty(&fn->b, args[index]),
+                               (uint8_t)(index < 32 && (fn->native_moves >> index & 1u) != 0 ? MM_MOVE : MM_BORROW)};
   }
+  fn->native_moves = 0;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .fresh = mir_needs_drop(fn->cx->module, ret)};
   return mir_extern_intern(fn->cx->module, &def);
