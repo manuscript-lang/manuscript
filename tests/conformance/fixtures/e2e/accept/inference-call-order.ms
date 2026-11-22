@@ -3,9 +3,9 @@
 // conform: origin=tests/e2e/testdata/accept/inference-call-order.ms
 import expect_equal from "@std/test/test.ms"
 
-fn identity[T](value: T) T: value
+fn identity[T](move value: T) T: value
 
-fn first[T](left: T, right: T) T: left
+fn first[T](move left: T, right: T) T: left
 
 fn optional[T](fallback: T, value: T?) T: value.get_or(fallback)
 

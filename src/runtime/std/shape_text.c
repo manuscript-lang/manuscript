@@ -246,7 +246,10 @@ static void emit_record(Text *text, const MsShape *shape, const uint8_t *base, i
 static void emit_alternative(Text *text, const MsShape *shape, const uint8_t *base, int depth) {
   const MsShapeMember *which = ms_shape_active_case(text->table, shape, base);
   const char *type_name = ms_shape_text(text->table, shape->name);
-  const bool is_result = strncmp(type_name, "Result", 6) == 0 && (type_name[6] == '\0' || type_name[6] == '[');
+  const MsSpan name = ms_span_of_text(type_name);
+  const MsSpan result = ms_span_of_text("Result");
+  const bool is_result = name.len >= result.len && __builtin_memcmp(name.ptr, result.ptr, result.len) == 0 &&
+                         (name.len == result.len || name.ptr[result.len] == '[');
   if (!text->repr && !is_result) {
     ms_strbuild_append_text(&text->out, type_name);
     ms_strbuild_append_byte(&text->out, '.');

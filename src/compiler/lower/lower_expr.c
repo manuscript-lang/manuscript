@@ -606,7 +606,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     /* A call that answers a view of something else (`list.get(i)`) gives its new owner a copy. */
     return fn_implicit_clone(fn, value, true);
   }
-  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  const MsRef *name_ref = expr->kind == MS_E_NAME ? ms_facts_ref(fn->facts, expr->id) : NULL;
+  /* `none` and a case name build a fresh value; only a binding, a parameter or a constant names storage. */
+  const bool names_storage = name_ref != NULL && (name_ref->kind == MS_REF_LOCAL || name_ref->kind == MS_REF_PARAM ||
+                                                  name_ref->kind == MS_REF_CONSTANT);
+  const bool place = names_storage || expr->kind == MS_E_MEMBER;
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     return value;
   }
