@@ -14,6 +14,9 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
     cap += m->vtables.ptr[v].nmethods;
   }
   cap += 2 * (size_t)m->desc_glue.len;
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    cap += m->type_defs.ptr[t].nfields;
+  }
   for (uint32_t i = 0; i < m->funcs.len; i++) {
     cap += m->funcs.ptr[i].ncapture_closers;
     for (uint32_t b = 0; b < m->funcs.ptr[i].blocks.len; b++) {
@@ -41,6 +44,14 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
   for (uint32_t g = 0; g < m->desc_glue.len; g++) {
     il_push_root(stack, &n, m->desc_glue.ptr[g].eq);
     il_push_root(stack, &n, m->desc_glue.ptr[g].hash);
+  }
+  /* A field default is named by the shape table of its type, which is made after this pass. */
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    for (uint32_t f = 0; f < m->type_defs.ptr[t].nfields; f++) {
+      if (m->type_defs.ptr[t].fields[f].default_fn1 != 0) {
+        il_push_root(stack, &n, m->type_defs.ptr[t].fields[f].default_fn1 - 1);
+      }
+    }
   }
   const bool any = n > 0;
   while (n > 0) {
@@ -88,6 +99,12 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
   for (uint32_t g = 0; g < m->desc_glue.len; g++) {
     m->desc_glue.ptr[g].eq = map[m->desc_glue.ptr[g].eq];
     m->desc_glue.ptr[g].hash = map[m->desc_glue.ptr[g].hash];
+  }
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    for (uint32_t f = 0; f < m->type_defs.ptr[t].nfields; f++) {
+      MirField *field = &m->type_defs.ptr[t].fields[f];
+      field->default_fn1 = field->default_fn1 != 0 ? map[field->default_fn1 - 1] + 1 : 0;
+    }
   }
   m->entry = m->entry == MIR_NONE ? MIR_NONE : map[m->entry];
   m->close = m->close == MIR_NONE ? MIR_NONE : map[m->close];

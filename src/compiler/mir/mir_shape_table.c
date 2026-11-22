@@ -125,7 +125,9 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   shape->count = def->nfields;
   for (uint32_t index = 0; index < def->nfields; index++) {
     const MsShapeMember member = {.name = add_mir_name(build, def->fields[index].name), .shape = kinds[index],
-                                  .offset = offsets[index], .tag = 0, .first = 0, .count = 0};
+                                  .offset = offsets[index], .tag = 0, .first = 0, .count = 0,
+                                  .flags = def->fields[index].default_fn1 != 0 ? MS_SHAPE_MEMBER_DEFAULT : 0,
+                                  .reserved = def->fields[index].default_fn1}; /* the build's note; the image keeps 0 */
     member_list_push(&build->members, member);
   }
 }
@@ -263,7 +265,7 @@ static void put_shape(uint8_t *at, const MsShape *shape) {
 
 static void put_member(uint8_t *at, const MsShapeMember *member) {
   const uint32_t words[8] = {member->name, member->shape, member->offset, member->tag,
-                             member->first, member->count, member->flags, member->reserved};
+                             member->first, member->count, member->flags, 0};
   for (uint32_t index = 0; index < 8; index++) {
     put32(at + 4 * index, words[index]);
   }
@@ -313,17 +315,41 @@ static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
   return mird_add_sym(cx, &sym);
 }
 
+/* The default builders: one function pointer per member, null for a member with no default. */
+static uint32_t defaults_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
+  uint32_t wanted = 0;
+  for (size_t index = 0; index < build->members.len; index++) {
+    wanted += build->members.ptr[index].reserved != 0 ? 1 : 0;
+  }
+  if (wanted == 0) {
+    return MIR_NONE;
+  }
+  MirDataSym sym = {.name = mird_name(cx, "shape.defaults", number), .size = (uint32_t)build->members.len * 8, .align = 8,
+                    .relocs = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirReloc, wanted)};
+  for (size_t index = 0; index < build->members.len; index++) {
+    if (build->members.ptr[index].reserved != 0) {
+      sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)index * 8, {.kind = MREF_FUNC, .index = build->members.ptr[index].reserved - 1}};
+    }
+  }
+  return mird_add_sym(cx, &sym);
+}
+
 static uint32_t table_symbol(DataCx *cx, ShapeBuild *build, MsSpan image) {
   const uint32_t number = (uint32_t)cx->data->syms.len;
   const MirDataSym image_sym = {.name = mird_name(cx, "shape.image", number), .size = (uint32_t)image.len, .align = 8,
                                 .bytes = image};
   const uint32_t image_at = mird_add_sym(cx, &image_sym);
   const uint32_t hooks_at = hook_symbol(cx, build, number);
+  const uint32_t defaults_at = defaults_symbol(cx, build, number);
   MirDataSym table = {.name = mird_name(cx, "shape", number), .size = (uint32_t)sizeof(MsShapeTable), .align = 8,
-                      .relocs = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirReloc, 2)};
+                      .relocs = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirReloc, 3)};
   table.relocs[table.nrelocs++] = (MirReloc){(uint32_t)offsetof(MsShapeTable, image), {.kind = MREF_DATA, .index = image_at}};
   if (hooks_at != MIR_NONE) {
     table.relocs[table.nrelocs++] = (MirReloc){(uint32_t)offsetof(MsShapeTable, hooks), {.kind = MREF_DATA, .index = hooks_at}};
+  }
+  if (defaults_at != MIR_NONE) {
+    table.relocs[table.nrelocs++] =
+        (MirReloc){(uint32_t)offsetof(MsShapeTable, defaults), {.kind = MREF_DATA, .index = defaults_at}};
   }
   return mird_add_sym(cx, &table);
 }

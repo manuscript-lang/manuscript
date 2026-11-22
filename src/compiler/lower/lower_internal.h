@@ -65,6 +65,18 @@ typedef struct LowerLambda {
 
 MS_LIST_DEFINE(LowerLambdaList, lower_lambda_list, LowerLambda)
 
+/* A record field's default value, built by a function lowered after the one that needs the type. */
+typedef struct LowerDefault {
+  const MsExpr *expr;
+  uint32_t module;
+  uint32_t func; /* the reserved MIR function `fn(out, record) Void` */
+  MirTy ty;      /* the field's type */
+  LowerSubst subst;
+  bool lowered;
+} LowerDefault;
+
+MS_LIST_DEFINE(LowerDefaultList, lower_default_list, LowerDefault)
+
 typedef struct Lower {
   MsCheckProgram *program;
   MirModule *module;
@@ -73,6 +85,7 @@ typedef struct Lower {
   MsNames instance_keys;       /* instance key text -> dense id, the index into `instances` */
   LowerInstanceList instances;
   LowerLambdaList lambdas;
+  LowerDefaultList defaults;
   MsNames vtable_keys;         /* receiver and interface type text -> dense id, the index into `vtables` */
   MirIdList vtables;           /* the MIR vtable of each key */
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
@@ -81,6 +94,11 @@ typedef struct Lower {
 #define lower_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), ms_strbuild_append_byte((cx)->error, '\n'), false)
 
 /* ---- instances and the driver (lower_func.c) ---- */
+
+/* The function that builds a record field's default `expr` (written in `module`) in place; its body is lowered
+ * later (lower_default.c). */
+uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, const LowerSubst *subst);
+bool lower_default_bodies(Lower *cx, bool *progressed);
 
 /* The driver steps (lower_func.c): set up, lower every function reached so far (and their lambdas), tear down. */
 void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error);

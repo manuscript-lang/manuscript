@@ -327,6 +327,33 @@ static MsTy expected_param(Body *body, const Target *target, MsTy param, const M
   return known == 0 ? param : ms_ty_subst(&body->program->types, param, vars, args, known);
 }
 
+static bool is_own_variable(const Target *target, MsTy ty) {
+  for (size_t at = 0; at < target->vars.len; at++) {
+    if (target->vars.ptr[at] == ty) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* The variables the expected result of the call fixes, for an argument that has no better source: `T?` expected
+ * as `Int?` says an open `T?` argument is an `Int?`. An argument still binds the variable first. */
+static void result_hint(Body *body, const Target *target, MsTy expected, MsTy *hint) {
+  const MsTyTable *types = &body->program->types;
+  const size_t count = target->vars.len;
+  const MsTy result = target->sig == MS_TY_NONE ? MS_TY_NONE : ms_ty_result(types, target->sig);
+  if (expected == MS_TY_NONE || ms_ty_is_invalid(types, expected) || count == 0 || count > 16 || result == MS_TY_NONE ||
+      !ms_ty_has_variable(types, result) || ms_ty_has_variable(types, expected)) {
+    return;
+  }
+  MsTy trial[16] = {0};
+  if (ms_check_unify(types, result, expected, target->vars.ptr, count, trial)) {
+    for (size_t index = 0; index < count; index++) {
+      hint[index] = trial[index];
+    }
+  }
+}
+
 /* Whether `ty` mentions one of the callee's own variables (an inference slot not yet bound). */
 static bool mentions_vars(const MsTyTable *types, MsTy ty, const MsTyList *vars) {
   if (!ms_ty_has_variable(types, ty)) {
@@ -372,7 +399,7 @@ static MsTy with_context_modes(Body *body, MsTy param, MsTy arg) {
 
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
-                      MsTy *bound) {
+                      MsTy *bound, const MsTy *hint) {
   const MsTyTable *types = &body->program->types;
   for (size_t index = 0; index < matched->count; index++) {
     if (matched->slot[index] < 0) {
@@ -387,8 +414,16 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       ms_strbuild_append_text(&context, "' of ");
       ms_strbuild_append(&context, target->name);
     }
-    const MsTy wanted = expected_param(body, target, param, bound);
-    const bool open = mentions_vars(types, wanted, &target->vars);
+    MsTy wanted = expected_param(body, target, param, bound);
+    bool open = mentions_vars(types, wanted, &target->vars);
+    if (open && !is_own_variable(target, wanted)) {
+      MsTy known[16] = {0};
+      for (size_t at = 0; at < target->vars.len && at < 16; at++) {
+        known[at] = bound[at] != MS_TY_NONE ? bound[at] : hint[at];
+      }
+      wanted = expected_param(body, target, param, known);
+      open = mentions_vars(types, wanted, &target->vars);
+    }
     /* A collection literal is inferred from its entries, then unified with the open parameter type. */
     const bool literal = arg->value->kind == MS_E_LIST || arg->value->kind == MS_E_MAP;
     bool bare = false; /* the parameter is one of the callee's own variables: it says nothing the argument can use */
@@ -558,7 +593,9 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
       matched.slot[index] = -1;
     }
     match_args(body, &target, expr, &matched);
-    type_args(body, &target, expr, &matched, arg_tys, bound);
+    MsTy hint[16] = {0};
+    result_hint(body, &target, expected, hint);
+    type_args(body, &target, expr, &matched, arg_tys, bound, hint);
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
   } else {
