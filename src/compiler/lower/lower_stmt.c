@@ -165,6 +165,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
              mir_needs_drop(fn->cx->module, ty)) {
     fn->local_owns[local] = 2; /* a view of another owner's value: moving it out copies it */
   }
+  if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
+    /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it
+     * as a block parameter, which would hide the owner from a later move. */
+    fn->vars[local] = mir_b_declare_single(&fn->b, ty, MM_BORROW) + 1;
+  }
   mir_b_def_var(&fn->b, fn_local(fn, local, ty), value);
   return !fn->failed;
 }

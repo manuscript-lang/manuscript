@@ -17,10 +17,29 @@ static bool is_sized_float(const Body *body, MsTy ty) {
   return ms_builtin_is_float(builtin) && builtin != MS_BUILTIN_Float;
 }
 
-static bool is_numeric(const Body *body, MsTy ty) {
-  const MsBuiltin builtin = ms_ty_builtin(&body->program->types, ty);
+static bool is_numeric_builtin(MsBuiltin builtin) {
   return ms_builtin_is_int(builtin) || ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_BigInt ||
          builtin == MS_BUILTIN_Decimal;
+}
+
+/* A number type, or a type variable bounded by a set whose every member is one. */
+static bool is_numeric(const Body *body, MsTy ty) {
+  MsTyTable *types = &body->program->types;
+  if (ms_ty_kind(types, ty) == MS_TY_VARIABLE) {
+    const MsTyVariable *record = ms_ty_variable(types, ty);
+    for (size_t index = 0; record != NULL && index < record->bounds.len; index++) {
+      const MsTy bound = record->bounds.ptr[index];
+      bool all = ms_ty_is(types, bound, MS_BUILTIN_TypeSet) && ms_ty_arg_count(types, bound) != 0;
+      for (size_t at = 0; all && at < ms_ty_arg_count(types, bound); at++) {
+        all = is_numeric_builtin(ms_ty_builtin(types, ms_ty_args(types, bound)[at]));
+      }
+      if (all) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return is_numeric_builtin(ms_ty_builtin(types, ty));
 }
 
 static bool is_invalid(const Body *body, MsTy ty) {

@@ -1,5 +1,6 @@
 /* Owns test_records.h. */
 #include "driver/test_records.h"
+#include "driver/fault_record.h"
 
 #include "base/message.h"
 #include "driver/invocation_rules.h"
@@ -18,6 +19,7 @@ void test_records_init(TestRecords *records, MsArena *arena, size_t total, size_
   records->faulted = MS_ARENA_NEW_ARRAY(arena, bool, files + 1);
   records->fault_message = MS_ARENA_NEW_ARRAY(arena, MsSpan, files + 1);
   records->fault_output = MS_ARENA_NEW_ARRAY(arena, MsSpan, files + 1);
+  records->fault_object = MS_ARENA_NEW_ARRAY(arena, MsSpan, files + 1);
 }
 
 static bool starts(MsSpan line, const char *keyword, MsSpan *rest) {
@@ -54,7 +56,12 @@ static void read_output(TestRecords *r, MsSpan header, MsSpan body) {
     if (file < r->files) {
       r->fault_output[file] = printed;
     }
-  } else if (key.len > 0 && key.ptr[0] != 'r') {
+  } else if (key.len > 0 && key.ptr[0] == 'r') {
+    const size_t file = number(ms_span_of(key.ptr + 1, key.len - 1));
+    if (file < r->files) {
+      r->fault_object[file] = fault_record_json(r->arena, body);
+    }
+  } else if (key.len > 0) {
     const size_t index = number(key);
     if (index < r->total) {
       r->pending_output[index] = printed;

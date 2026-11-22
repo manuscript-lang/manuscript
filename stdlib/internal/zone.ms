@@ -280,7 +280,7 @@ fn parse_rule(text: Bytes) Footer:
 	)
 
 // A zone with no transition table.
-fn plain_zone(kind: Int, name: String, fixed: Int) Zone:
+fn plain_zone(kind: Int, move name: String, fixed: Int) Zone:
 	empty := no_rule()
 	return Zone(
 		kind: kind,

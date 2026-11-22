@@ -5,6 +5,7 @@
  * `closure.new`, and queues the body; the body is lowered after the maker (lower_lambda_bodies), with each capture
  * read once from the environment at its start. A lambda that changes a captured variable, or holds a lambda,
  * is not lowered yet. */
+#include "base/message.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/syntax/walk.h"
@@ -412,6 +413,10 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   }
   const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
   fn->cx->module->funcs.ptr[func].scoped = borrows;
+  /* A fault trace calls a lambda `<enclosing function>.closure`. */
+  const MsName enclosing = fn->b.func.display != MS_NAME_EMPTY ? fn->b.func.display : fn->b.func.name;
+  fn->cx->module->funcs.ptr[func].display = mir_name(
+      fn->cx->module, ms_message_format(&fn->cx->module->arena, "%S.closure", ms_names_span(&fn->cx->module->names, enclosing), (MsSpan){0}));
   LowerSubst subst = fn->subst;
   MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, subst.count * 2 + 1);
   for (size_t index = 0; index < subst.count; index++) {
@@ -586,6 +591,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.display = reserved.display;
   mir_func_release(slot);
   *slot = built;
   cx->lambdas.ptr[index].lowered = true;

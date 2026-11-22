@@ -13,7 +13,8 @@ typedef struct TestRecords {
   size_t *running_file;                  /* by test */
   MsSpan *pending_output;                /* by test: output recorded before its result */
   bool *faulted;                         /* by file */
-  MsSpan *fault_message, *fault_output;  /* by file */
+  MsSpan *fault_message, *fault_output; /* by file */
+  MsSpan *fault_object;                  /* by file: the fault record as a `fault` object, or empty */
   TestEntryList results;
   size_t consumed;                       /* bytes of the file already parsed */
 } TestRecords;

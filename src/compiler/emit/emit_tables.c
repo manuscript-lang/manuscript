@@ -13,7 +13,8 @@ void emit_table_info(MsArena *arena, const MirModule *module, EmitTableInfo *out
   uint32_t base = 0;
   for (uint32_t index = 0; index < count; index++) {
     const MirFunc *func = &module->funcs.ptr[index];
-    out->display[index] = ms_arena_copy(arena, ms_names_span(&module->names, func->name));
+    const MsName shown = func->display != MS_NAME_EMPTY ? func->display : func->name;
+    out->display[index] = ms_arena_copy(arena, ms_names_span(&module->names, shown));
     for (uint32_t scope = 0; scope < func->scopes.len; scope++) {
       MirScope entry = func->scopes.ptr[scope];
       /* A parent is a scope number of the function; 0 is the function itself. */
@@ -21,6 +22,6 @@ void emit_table_info(MsArena *arena, const MirModule *module, EmitTableInfo *out
       out->scopes[base + scope] = entry;
     }
     base += (uint32_t)func->scopes.len;
-    out->scopes[inlined + index] = (MirScope){.name = func->name, .file = func->loc.file, .parent = 0, .call_line = 0};
+    out->scopes[inlined + index] = (MirScope){.name = shown, .file = func->loc.file, .parent = 0, .call_line = 0};
   }
 }

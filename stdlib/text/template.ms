@@ -851,7 +851,7 @@ fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	var value = first.get_or(JsonValue.Null)
 
 	for k in 2..parts.length():
-		next := member(value, parts[k])
+		next := member(value, parts[k]).clone()
 		if next.is_none(): return none
 
 		value = next.get_or(JsonValue.Null)

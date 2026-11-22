@@ -279,11 +279,11 @@ when absent. A field with no matching value, or of the wrong type, fails the run
 handler returns the exit status.
 */
 export fn command[T: Data](
-	name: String,
-	run: fn(T) Int!,
-	about: String = "",
-	flags: List[Flag] = [],
-	args: List[Arg] = []
+	move name: String,
+	move run: fn(T) Int!,
+	move about: String = "",
+	move flags: List[Flag] = [],
+	move args: List[Arg] = []
 ) Command:
 	return Command(
 		name: name,
