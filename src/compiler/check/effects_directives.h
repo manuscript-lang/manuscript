@@ -1,8 +1,7 @@
 /* compiler/check/effects_directives.h: effect directives in comments.
  *
  * `// ms: effect NAME` declares an effect a function performs; `// ms: allow_effect PATTERN` permits effects
- * a function (or, in a file's header comment, every function of the file) may reach. `// ms: words NUMBER TEXT`
- * in a file header words a runtime status for the externs that file declares. A pattern is `*`, a
+ * a function (or, in a file's header comment, every function of the file) may reach. A pattern is `*`, a
  * prefix `a.b.*`, a last segment `*.write`, or an exact name.
  *
  * Ownership: directive texts are views into the source they were read from; the lists are owned by the
@@ -15,7 +14,6 @@
 typedef struct MsDirectives {
   MsSpanList declared; /* `effect NAME` lines */
   MsSpanList allow;    /* `allow_effect PATTERN` lines */
-  MsSpanList words;    /* `words NUMBER TEXT` lines: how this file words a runtime status */
   bool has_allow;      /* at least one allow line: an absent scope is distinct from an empty one */
 } MsDirectives;
 

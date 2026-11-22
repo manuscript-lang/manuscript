@@ -38,9 +38,8 @@ export type Error:
 // The runtime reports a failed native as a status number; lowering builds the `Error`
 // from these rows (`// ms: status <number> <kind> <words>`, built by
 // crates/ms-lower/build.rs). The message is `<domain>: <words>`, and `-` words mean the
-// native's own text is the whole message. A module that words a status differently
-// declares `// ms: words <number> <words>` at the top of its file, covering the externs
-// that file declares.
+// native's own text is the whole message. An `extern fn` that words a status differently
+// carries `@words=<number> "<words>"` on the line above its declaration.
 // ms: status 1 EINVAL invalid input
 // ms: status 2 ERANGE value out of range
 // ms: status 3 EOVERFLOW limit exceeded
@@ -101,8 +100,7 @@ fn status_words(status: Int) String:
 
 // The `Error` of a failed runtime native: `status` is the native's status number, `domain` names what it works
 // on, and `said` is the text the native explained itself in, or empty. `overrides` holds the
-// `// ms: words NUMBER TEXT` lines of the file that declares the native, one per line, and takes the place of
-// the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
+// `@words` line of the native's declaration (`NUMBER TEXT`), which takes the place of the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
 fn msstd_status_error(status: UInt8, domain: String, said: String, overrides: String) Error:
 	number := status.to_int()
 	kind := status_kind(number)
