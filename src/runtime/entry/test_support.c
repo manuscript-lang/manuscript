@@ -8,7 +8,9 @@
 #include <uv.h>
 
 #include "abi/fault.h"
+#include "base/alloc.h"
 #include "base/desc.h"
+#include "runtime/core/fault_kept.h"
 #include "runtime/core/record.h"
 #include "base/ostext.h"
 #include "runtime/core/task.h"
@@ -55,8 +57,8 @@ static bool write_whole(uv_file file, MsSpan data) {
   return written >= 0 && (size_t)written == data.len;
 }
 
-/* One byte to the descriptor MS_TEST_WAKE names (a handle on Windows), so the supervisor knows a record arrived.
- * Nothing without the variable. */
+/* One byte to the descriptor MS_TEST_WAKE names (a handle on Windows), so the supervisor knows a record
+ * arrived. Nothing without the variable. */
 static void ring_bell(void) {
   static _Atomic int64_t bell = -2; /* -2: not read yet, -1: none */
   int64_t descriptor = atomic_load_explicit(&bell, memory_order_relaxed);
@@ -78,8 +80,8 @@ static void ring_bell(void) {
 void msrt_test_record(const MsString *path, const MsString *text) {
   MsOsText name = ms_os_text_new(ms_string_span(path));
   uv_fs_t request;
-  const uv_file file =
-      uv_fs_open(NULL, &request, name.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_APPEND, RECORD_MODE, NULL);
+  const uv_file file = uv_fs_open(NULL, &request, name.ptr, UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_APPEND,
+                                  RECORD_MODE, NULL);
   uv_fs_req_cleanup(&request);
   ms_os_text_free(&name);
   if (file < 0) {
@@ -95,8 +97,8 @@ void msrt_test_record(const MsString *path, const MsString *text) {
 
 void msrt_test_failure(const MsString *message, const MsMap *details) {
   const MsString key = ms_string_from_span(ms_span_of_text("site"));
-  const MsString *const site = (const MsString *)(const void *)ms_map_get(details, &ms_desc_string, &ms_desc_string,
-                                                                           (const uint8_t *)&key);
+  const MsString *const site = (const MsString *)(const void *)ms_map_get(
+      details, &ms_desc_string, &ms_desc_string, (const uint8_t *)&key);
   const MsSpan reason = ms_string_span(message);
   const MsSpan where = site != NULL ? ms_string_span(site) : ms_span_of(NULL, 0);
   ms_stdout_flush();
@@ -109,4 +111,12 @@ void msrt_test_failure(const MsString *message, const MsMap *details) {
   ms_fault_record_write(MS_FAULT_KIND_TEST_FAILURE, reason, site != NULL, where);
   MsString owned = key;
   ms_string_release(&owned);
+}
+
+void msrt_test_capture_fault(int64_t id, MsString *out) {
+  uint8_t *bytes = NULL;
+  size_t length = 0;
+  ms_test_take_fault((uint64_t)id, &bytes, &length);
+  *out = length == 0 ? ms_string_empty() : ms_string_from_span(ms_span_of(bytes, length));
+  ms_free(bytes);
 }
