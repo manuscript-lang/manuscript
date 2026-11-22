@@ -8,7 +8,20 @@
 # Sets MS_GLIBC_FLOOR_FLAGS (a list) and appends it to CMAKE_C_FLAGS. Off with -DMS_GLIBC_FLOOR=OFF.
 option(MS_GLIBC_FLOOR "Compile Linux code against glibc 2.28 headers" ON)
 set(MS_GLIBC_FLOOR_FLAGS "")
-if(NOT (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND MS_GLIBC_FLOOR))
+# MS_LIBC=musl is the inner build of the `--static` runtime (MsRuntimePackage.cmake): musl headers instead.
+set(MS_LIBC "glibc" CACHE STRING "The C library the Linux code is built for: glibc or musl")
+set(MS_BUILD_MUSL ON CACHE BOOL "Also build the musl runtime that `--static` links (Linux)")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  return()
+endif()
+include(MsMusl)
+if(MS_LIBC STREQUAL "musl")
+  set(MS_GLIBC_FLOOR_FLAGS ${MS_MUSL_FLOOR_FLAGS})
+  string(REPLACE ";" " " ms_flags_text "${MS_GLIBC_FLOOR_FLAGS}")
+  string(APPEND CMAKE_C_FLAGS " ${ms_flags_text}")
+  return()
+endif()
+if(NOT MS_GLIBC_FLOOR)
   return()
 endif()
 
