@@ -234,7 +234,7 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
   if (inner == MIR_NONE) {
     return false;
   }
-  *out = fn_emit(fn, MOP_Clone, &inner, 1, (MirImm){0}, mir_b_ty(&fn->b, inner));
+  *out = fn_implicit_clone(fn, inner, true);
   disown(fn, *out);
   return true;
 }

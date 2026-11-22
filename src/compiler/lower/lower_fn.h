@@ -111,6 +111,9 @@ void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 
 /* Emits an instruction; when its result is an owned value the innermost scope owns it. */
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
+/* A copy the source did not ask for (`.clone()` is the only explicit one): a borrowed value an owner takes. Every such
+ * copy goes through here so the rule against hidden copies has one place to be enforced; `own` makes the scope own it. */
+MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own);
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
 
