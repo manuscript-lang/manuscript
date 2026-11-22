@@ -93,8 +93,10 @@ static MirValue caller_position(LowerFn *fn) {
 static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
   const MsFacts *saved_facts = fn->facts;
   const uint32_t saved_file = fn->file;
+  const uint32_t saved_module = fn->module_index;
   fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
   fn->file = lower_file(fn->cx, arg->node.module);
+  fn->module_index = arg->node.module;
   const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
                                     ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
                                     : NULL;
@@ -105,6 +107,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
     fn->facts = saved_facts;
     fn->file = saved_file;
+    fn->module_index = saved_module;
     return caller_position(fn);
   }
   const MirTy saved_hint = fn->hint;
@@ -113,6 +116,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
+  fn->module_index = saved_module;
   return value;
 }
 
@@ -339,15 +343,8 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
   return mir_needs_drop(fn->cx->module, ret) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, ret) : args[0];
 }
 
-/* A call of an interface operation: dispatched through the receiver's vtable. */
-static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
-  if (data->kind != MK_IFACE) {
-    return call_bound_operation(fn, expr, call, args, ret);
-  }
-  /* The operation is named by the member written; the checker's index does not say which one it is. */
-  const MsExpr *callee = expr->u.call.callee;
-  uint32_t index = call->callee.index;
+/* The operation is named by the member written; the checker's index does not say which one it is. */
+uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index) {
   if (callee->kind == MS_E_MEMBER) {
     const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);
@@ -359,6 +356,16 @@ static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *ca
       }
     }
   }
+  return index;
+}
+
+/* A call of an interface operation: dispatched through the receiver's vtable. */
+static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (data->kind != MK_IFACE) {
+    return call_bound_operation(fn, expr, call, args, ret);
+  }
+  const uint32_t index = fn_operation_index(fn, expr->u.call.callee, call->callee.index);
   const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = index};
   return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
 }

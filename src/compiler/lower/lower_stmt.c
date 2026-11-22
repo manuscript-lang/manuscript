@@ -90,8 +90,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
   const bool fresh = fn_fresh_owner(fn, value);
-  if ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
-      (!mir_needs_drop(fn->cx->module, ty) || fresh)) {
+  const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
+                      fn->closing != NULL;
+  if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+                 (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
@@ -113,6 +115,9 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   if (ref == NULL) {
     return false;
   }
+  if (fn_closing_at(fn, ref, place->u.sym) != UINT32_MAX) {
+    return false; /* it lives in a slot: `closing_local` has it */
+  }
   if (ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     *out = fn->vars[ref->local] - 1;
     return true;
@@ -123,7 +128,7 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   if (fn->lambda != NULL) { /* a captured parameter is a variable of the closure body */
     for (uint32_t at = 0; at < fn->lambda->ncaptures; at++) {
       const LowerCapture *capture = &fn->lambda->captures[at];
-      if (capture->kind == MS_REF_PARAM && capture->index == ref->local && capture->name == place->u.sym) {
+      if (capture->kind == MS_REF_PARAM && capture->index == ref->local && capture->name == place->u.sym && !capture->shared) {
         *out = fn->cap_vars[at];
         return true;
       }
@@ -158,12 +163,12 @@ static bool closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot
 /* The slot of the `var` resource local a name place assigns in, or false. */
 static bool closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirTy *ty) {
   const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
-  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->closing == NULL ||
-      !fn->closing_var[ref->local]) {
+  const uint32_t at = fn_closing_at(fn, ref, place->u.sym);
+  if (at == UINT32_MAX) {
     return false;
   }
-  *slot = fn->closing[ref->local];
-  *ty = fn->closing_types[ref->local];
+  *slot = fn->closing[at];
+  *ty = fn->closing_types[at];
   return true;
 }
 
@@ -316,9 +321,10 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
   MirVar var = 0;
   bool resource = false;
-  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->closing != NULL && fn->closing_var[ref->local]) {
+  const MsName assigned = stmt->u.assign.target != NULL && stmt->u.assign.target->kind == MS_E_NAME ? stmt->u.assign.target->u.sym : stmt->u.assign.name;
+  if (fn_closing_at(fn, ref, assigned) != UINT32_MAX) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
-    return value != MIR_NONE && fn_closing_assign(fn, ref, value, &resource);
+    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, value, &resource);
   }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     var = fn->vars[ref->local] - 1;

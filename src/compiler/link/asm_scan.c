@@ -172,6 +172,14 @@ static bool indented(AsmScan *scan, MsSpan line) {
 
 static void scan_line(AsmScan *scan, MsSpan line) {
   bool drop = false;
+  /* A COFF function that needs no unwind info has no `.seh_endproc`: the `.Lfunc_end` label closes it. */
+  if (scan->format == ASM_COFF && scan->current != UINT32_MAX && starts(line, ".Lfunc_end") &&
+      line.ptr[line.len - 1] == ':') {
+    ms_strbuild_append(&scan->out, line);
+    ms_strbuild_append_byte(&scan->out, '\n');
+    end_function(scan);
+    return;
+  }
   if (line.len > 0 && line.ptr[0] == '\t') {
     drop = indented(scan, line);
   } else if (line.len > 0 && line.ptr[0] != '.' && line.ptr[0] != '#' && line.ptr[0] != ' ') {
@@ -198,7 +206,9 @@ bool asm_scan(AsmScan *scan, MsSpan text, MsStrBuild *why) {
     while (end < text.len && text.ptr[end] != '\n') {
       end++;
     }
-    scan_line(scan, ms_span_of(text.ptr + start, end - start));
+    /* A Windows toolchain writes CRLF: the directives and labels are matched without the carriage return. */
+    const size_t length = end > start && text.ptr[end - 1] == '\r' ? end - start - 1 : end - start;
+    scan_line(scan, ms_span_of(text.ptr + start, length));
     start = end + 1;
   }
   for (uint32_t index = 0; index < scan->order.len; index++) {

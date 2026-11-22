@@ -38,8 +38,14 @@ typedef struct Body {
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
+  MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
   MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
+
+/* ---- test_fixture.c ---- */
+
+/* Checks the module's `make_fixture`, and sets `body->fixture_ty`. */
+void ms_check_test_fixture(Body *body);
 
 /* ---- bodies.c ---- */
 

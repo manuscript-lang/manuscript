@@ -5,7 +5,7 @@
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_analysis.h"
 
-uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, const LowerSubst *subst) {
+uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, MirTy record, const LowerSubst *subst) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, 3);
   params[0] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
   params[1] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
@@ -27,7 +27,7 @@ uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, Mir
     copy.vars = vars;
     copy.args = vars + copy.count;
   }
-  lower_default_list_push(&cx->defaults, (LowerDefault){expr, module, id, ty, copy, false});
+  lower_default_list_push(&cx->defaults, (LowerDefault){expr, module, id, ty, record, copy, false});
   return id;
 }
 
@@ -40,12 +40,14 @@ static bool lower_default(Lower *cx, uint32_t index) {
                 .file = lower_file(cx, item.module),
                 .subst = item.subst,
                 .ret = MIR_VOID,
-                .hint = item.ty};
+                .hint = item.ty,
+                .default_record_ty = item.record};
   mir_b_init(&fn.b, cx->module, reserved.name, reserved.params, reserved.nparams, MIR_VOID);
   fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
   (void)fn_scope_begin(&fn);
   MirValue params[2];
   mir_b_params(&fn.b, params, 2);
+  fn.default_base = params[1];
   fn.nvars = 16;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
   mir_b_set_loc(&fn.b, fn_loc(&fn, item.expr->pos));

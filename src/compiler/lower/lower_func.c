@@ -218,6 +218,16 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
   mir_b_params(&fn->b, values, count);
   fn->param_vars = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirVar, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
+    if ((params[index].flags & MS_PARAM_VAR) != 0 && index < 32 && (fn->shared_params >> index & 1u) != 0 &&
+        index < LOWER_MAX_CLOSING_PARAMS) {
+      /* A lambda changes it: the value stays in the caller's slot, which the closure borrows. */
+      const MirTy ty = fn_type(fn, params[index].ty);
+      fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);
+      fn->closing[fn->nvars + index] = values[index];
+      fn->closing_var[fn->nvars + index] = true;
+      fn->closing_types[fn->nvars + index] = ty;
+      continue;
+    }
     if ((params[index].flags & MS_PARAM_VAR) != 0 && fn->nvar_params < LOWER_MAX_VAR_PARAMS) {
       const MirTy ty = fn_type(fn, params[index].ty);
       const bool owns = mir_needs_drop(fn->cx->module, ty);
@@ -295,15 +305,8 @@ static bool lower_body(Lower *cx, uint32_t index) {
   (void)fn_scope_begin(&fn);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  const size_t closing_count = (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1;
-  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, closing_count);
-  fn.closing_var = MS_ARENA_NEW_ARRAY(&cx->module->arena, bool, closing_count);
-  fn.closing_types = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, closing_count);
-  for (size_t at = 0; at < closing_count; at++) {
-    fn.closing[at] = MIR_NONE;
-    fn.closing_var[at] = false;
-    fn.closing_types[at] = MIR_VOID;
-  }
+  fn_init_closing(&fn);
+  fn_find_shared(&fn, target->func->body);
   bind_params(&fn, target);
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
