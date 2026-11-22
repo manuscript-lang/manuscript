@@ -69,6 +69,8 @@ typedef struct MsCheckDiag {
   MsPos pos;
   MsCheckPhase phase;
   MsString message; /* owned */
+  bool has_end;     /* the diagnostic spans [pos, end) */
+  MsPos end;
   bool has_fix;     /* an edit that repairs the diagnostic: replace [fix_pos, fix_end) with `fix_text` */
   MsPos fix_pos, fix_end;
   MsString fix_text; /* owned; empty without a fix */
@@ -101,12 +103,18 @@ uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModul
 void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsCheckPhase phase,
                      MsString message);
 
+/* Gives the last diagnostic the end of its range. */
+void ms_check_attach_end(MsCheckProgram *program, MsPos end);
+
 /* Attaches a repairing edit to the last diagnostic: replace [pos, end) with `replacement` (taken). */
 void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement);
 
 /* Declares a module's own types, functions, constants and aliases in its scope (a duplicate name is a
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
+
+/* The name a declaration binds in its module scope; false for an impl or a test. */
+bool ms_check_declared_name(const MsDecl *decl, MsName *name);
 
 /* The type parameters a declaration writes (none for a constant, an impl or a test). */
 MsTypeParams ms_check_decl_type_params(const MsDecl *decl);
@@ -124,6 +132,12 @@ void ms_check_signatures(MsCheckProgram *program, uint32_t module);
 
 /* Loads every bundled standard module the program's modules import, transitively, as further modules. */
 void ms_check_load_std(MsCheckProgram *program);
+
+/* Whether `path` names a bundled module (`@std/<name>`); *name is what follows the prefix. */
+bool ms_check_std_path(MsSpan path, MsSpan *name);
+
+/* Explains the imports of `module` that name nothing usable, and the redundant prelude imports. */
+void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
 void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);

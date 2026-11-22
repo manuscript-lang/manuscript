@@ -44,6 +44,12 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
                           (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message});
 }
 
+void ms_check_attach_end(MsCheckProgram *program, MsPos end) {
+  MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
+  last->has_end = true;
+  last->end = end;
+}
+
 void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement) {
   MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
   last->has_fix = true;
@@ -73,7 +79,7 @@ MsTypeParams ms_check_decl_type_params(const MsDecl *decl) {
 }
 
 /* The name a declaration introduces, or false for impl and test declarations. */
-static bool declared_name(const MsDecl *decl, MsName *name) {
+bool ms_check_declared_name(const MsDecl *decl, MsName *name) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
     *name = decl->u.fn.name;
@@ -177,7 +183,7 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     MsName name = MS_NAME_EMPTY;
-    if (!declared_name(decl, &name)) {
+    if (!ms_check_declared_name(decl, &name)) {
       continue;
     }
     if (ms_scope_has(&program->modules.ptr[module].scope, name)) {

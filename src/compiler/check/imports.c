@@ -7,7 +7,7 @@
 #include "compiler/check/program.h"
 #include "compiler/syntax/parse.h"
 
-static bool std_path(MsSpan path, MsSpan *name) {
+bool ms_check_std_path(MsSpan path, MsSpan *name) {
   return ms_span_starts_with(path, ms_span_of_text("@std/")) && ms_span_slice(path, 5, path.len, name);
 }
 
@@ -30,7 +30,7 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
   }
   MsSpan name = {0};
   MsStdSource source = {0};
-  if (!std_path(path, &name) || !ms_std_source_find(name, &source)) {
+  if (!ms_check_std_path(path, &name) || !ms_std_source_find(name, &source)) {
     return false;
   }
   MsModule *tree = MS_ARENA_NEW(&program->arena, MsModule);
@@ -55,7 +55,7 @@ void ms_check_load_std(MsCheckProgram *program) {
     for (uint32_t index = 0; index < tree->nimports; index++) {
       MsSpan name = {0};
       uint32_t loaded = 0;
-      if (std_path(tree->imports[index].path, &name)) {
+      if (ms_check_std_path(tree->imports[index].path, &name)) {
         (void)load_std_module(program, tree->imports[index].path, &loaded);
       }
     }
@@ -67,7 +67,7 @@ static bool import_target(MsCheckProgram *program, uint32_t module, uint32_t ind
   const MsModuleInfo *info = &program->modules.ptr[module];
   const MsSpan path = info->tree->imports[index].path;
   MsSpan name = {0};
-  if (std_path(path, &name)) {
+  if (ms_check_std_path(path, &name)) {
     return load_std_module(program, path, target);
   }
   if (info->targets == NULL || info->targets[index] < 0) {
