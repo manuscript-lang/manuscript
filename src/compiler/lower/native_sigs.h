@@ -5,6 +5,7 @@
 #ifndef MS_COMPILER_LOWER_NATIVE_SIGS_H
 #define MS_COMPILER_LOWER_NATIVE_SIGS_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #include "base/safe.h"
@@ -22,16 +23,19 @@ enum {
   NS_VAL_DESC,  /* of the first map's value */
   NS_ADDR_IN,   /* the address of one value, read */
   NS_ADDR_MUT,  /* the address of one value, written */
-  NS_OUT_SCALAR /* the address of a scalar result */
+  NS_OUT_SCALAR, /* the address of a scalar result */
+  NS_ERR_SLOT   /* the address of the string a failing native explains itself in */
 };
 
-enum { NS_MAX_PARAMS = 12 };
+enum { NS_MAX_PARAMS = 24 };
 
 typedef struct MsNativeSig {
   const char *name;
   uint8_t count;
   uint8_t kinds[NS_MAX_PARAMS];
   const char *method; /* `Type.operation` when the runtime name differs from `msrt_<type>_<operation>`, else NULL */
+  const char *domain; /* what a failure names (`filesystem`), or NULL */
+  bool status;        /* returns a u8 */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];

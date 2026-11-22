@@ -356,3 +356,123 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
   }
   return true;
 }
+
+/* ---- externs that return `T!` ---- */
+
+/* The stdlib function that builds the `Error` of a failed status, or MIR_NONE when core is not loaded. */
+static uint32_t status_error_function(LowerFn *fn) {
+  Lower *cx = fn->cx;
+  const MsSymbolList *symbols = &cx->program->symbols;
+  for (MsSymbolId id = 1; id < symbols->len; id++) {
+    const MsSymbol *symbol = &symbols->ptr[id];
+    if (symbol->kind == MS_SYMBOL_FN && symbol->native == MS_NATIVE_SOURCE &&
+        ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "msstd_status_error")) {
+      const LowerTarget target = lower_symbol_target(cx, id);
+      return lower_instance(cx, &target, NULL, 0, &fn->subst);
+    }
+  }
+  return MIR_NONE;
+}
+
+static MirValue stack_slot(LowerFn *fn, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  return mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+}
+
+static MirValue string_literal(LowerFn *fn, const char *text) {
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(text))};
+  return mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
+/* The Result alternative of `ret` and its ok payload type, or false when `ret` is not a Result. */
+static bool result_alt(const LowerFn *fn, MirTy ret, uint32_t *alt, MirTy *payload) {
+  const MirModule *module = fn->cx->module;
+  const MirTyData *data = mir_ty_data(module, ret);
+  if (data->kind != MK_ALT || module->alts.ptr[data->id].std != MSTD_RESULT) {
+    return false;
+  }
+  const MirCaseDef *ok = &module->alts.ptr[data->id].cases[0];
+  *alt = data->id;
+  *payload = ok->nfields > 0 ? ok->fields[0].ty : MIR_VOID;
+  return true;
+}
+
+static MirValue build_result(LowerFn *fn, uint32_t alt, uint32_t which, MirValue payload, MirTy ret) {
+  const MirImm imm = {.tag = MI_CASE, .a = alt, .b = which};
+  return mir_b_emit(&fn->b, MOP_AltNew, &payload, 1, imm, ret);
+}
+
+bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out) {
+  uint32_t alt = 0;
+  MirTy payload_ty = MIR_VOID;
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL || !sig->status || !result_alt(fn, ret, &alt, &payload_ty) || nargs + 2 > NS_MAX_PARAMS) {
+    return false;
+  }
+  const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
+  const uint32_t extras = sig->count > nargs ? sig->count - nargs : 0;
+  const bool has_out = extras == (has_err ? 2u : 1u) && payload_ty != MIR_VOID;
+  if (sig->count < nargs || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
+    return false;
+  }
+  const uint32_t error_function = status_error_function(fn);
+  if (error_function == MIR_NONE) {
+    return false;
+  }
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  for (; count < nargs; count++) {
+    wanted[count] = args[count];
+  }
+  MirValue out_slot = MIR_NONE;
+  MirValue err_slot = MIR_NONE;
+  if (has_out) {
+    out_slot = stack_slot(fn, payload_ty);
+    wanted[count++] = out_slot;
+  }
+  if (has_err) {
+    err_slot = stack_slot(fn, MIR_STR);
+    const MirValue empty = string_literal(fn, "");
+    const MirValue store[2] = {err_slot, empty};
+    (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+    wanted[count++] = err_slot;
+  }
+  const uint32_t external = runtime_extern(fn, name, wanted, count, MIR_UINT8);
+  const MirValue status = mir_b_call_rt(&fn->b, external, wanted, count);
+  const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_UINT8);
+  const MirValue failed = mir_b_icmp(&fn->b, MCC_NE, status, zero);
+  const MirBlock ok_block = mir_b_new_block(&fn->b);
+  const MirBlock fail_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  mir_b_br_if(&fn->b, failed, fail_block, NULL, 0, ok_block, NULL, 0);
+  mir_b_seal_block(&fn->b, ok_block);
+  mir_b_seal_block(&fn->b, fail_block);
+  mir_b_switch_to(&fn->b, ok_block);
+  MirValue value = mir_b_unit(&fn->b);
+  if (has_out) {
+    const MirImm of_type = {.tag = MI_TY, .a = payload_ty};
+    value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload_ty) ? MOP_Take : MOP_Load, &out_slot, 1, of_type,
+                       payload_ty);
+  }
+  const MirValue success = build_result(fn, alt, 0, value, ret);
+  mir_b_br(&fn->b, join, &success, 1);
+  mir_b_switch_to(&fn->b, fail_block);
+  MirValue said = string_literal(fn, "");
+  if (has_err) {
+    const MirImm of_type = {.tag = MI_TY, .a = MIR_STR};
+    said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
+  }
+  const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
+  const MirValue error_args[3] = {status, string_literal(fn, domain_text), said};
+  const MirValue error = mir_b_call(&fn->b, error_function, error_args, 3);
+  const MirValue failure = build_result(fn, alt, 1, error, ret);
+  mir_b_br(&fn->b, join, &failure, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), result);
+  }
+  *out = result;
+  return true;
+}
