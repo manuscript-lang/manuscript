@@ -10,6 +10,7 @@ typedef struct Walk {
 
 static void walk_stmts(Walk *pass, MsStmts body);
 static void walk_expr(Walk *pass, const MsExpr *expr);
+static bool unknown_callee(const Walk *pass, const MsExpr *callee);
 
 static void set_kind(Walk *pass, MsBindingKind kind) {
   pass->scope.ptr[pass->scope.len - 1].kind = kind;
@@ -80,6 +81,9 @@ static void walk_lambda(Walk *pass, const MsExpr *expr) {
 
 /* A match on a name whose type is wrong has arms that cannot be understood, so they are left alone. */
 static bool scrutinee_invalid(const Walk *pass, const MsExpr *scrutinee) {
+  if (scrutinee->kind == MS_E_CALL) {
+    return unknown_callee(pass, scrutinee->u.call.callee); /* a call of an unknown name has no type to match */
+  }
   if (scrutinee->kind != MS_E_NAME) {
     return false;
   }
@@ -169,8 +173,10 @@ static void walk_expr(Walk *pass, const MsExpr *expr) {
     const bool outer = pass->site.in_constant_call;
     pass->site.in_constant_call = pass->site.in_constant;
     walk_expr(pass, expr->u.call.callee);
-    for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
-      walk_expr(pass, expr->u.call.args.ptr[index].value);
+    if (!unknown_callee(pass, expr->u.call.callee)) {
+      for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
+        walk_expr(pass, expr->u.call.args.ptr[index].value);
+      }
     }
     pass->site.in_constant_call = outer;
     return;
@@ -179,6 +185,20 @@ static void walk_expr(Walk *pass, const MsExpr *expr) {
     walk_match(pass, expr);
     return;
   }
+}
+
+/* Whether `callee` is a name already reported unknown, or a call of one: the arguments are then not checked. */
+static bool unknown_callee(const Walk *pass, const MsExpr *callee) {
+  if (pass->visitor->unknown == NULL) {
+    return false;
+  }
+  while (callee->kind == MS_E_CALL) {
+    callee = callee->u.call.callee;
+  }
+  if (callee->kind != MS_E_NAME) {
+    return false;
+  }
+  return pass->visitor->unknown(pass->visitor->context, callee);
 }
 
 static void walk_scoped(Walk *pass, MsStmts body) {

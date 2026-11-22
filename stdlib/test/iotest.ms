@@ -16,7 +16,7 @@ type OneByte:
 	input: ReadStream[Bytes]
 	held: Bytes?
 
-fn var OneByte.next() Bytes?!:
+fn var OneByte.next() move Bytes?!:
 	var data = "".to_bytes()
 
 	if held := self.held:
@@ -47,7 +47,7 @@ type FailAfter:
 	remaining: Int
 	cause: Error
 
-fn var FailAfter.next() Bytes?!:
+fn var FailAfter.next() move Bytes?!:
 	if self.remaining <= 0: return error(self.cause.clone())
 
 	chunk := self.input.next()?

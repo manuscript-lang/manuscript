@@ -89,7 +89,7 @@ fn var HttpHeaders.remove(name: String) Void:
 	msstd_http_headers_remove(self, name)
 
 // Copies every name and value into independent headers.
-fn HttpHeaders.clone() HttpHeaders:
+fn HttpHeaders.clone() move HttpHeaders:
 	return msstd_http_headers_clone(self)
 
 // Creates empty mutable headers. No header values are joined or comma-combined.
@@ -540,7 +540,7 @@ fn move StreamingResponse.close() Void!:
 type ResponseSource:
 	raw: RawResponse
 
-fn var ResponseSource.next() Bytes?!:
+fn var ResponseSource.next() move Bytes?!:
 	return msstd_http_body_read(self.raw.native, none)
 
 fn move ResponseSource.close() Void!:

@@ -409,12 +409,12 @@ export fn join_errors(errors: List[Error]) Error?:
 	return Error(text, none, {"count": errors.length().to_string()})
 
 // An Optional copies its payload; `none` stays `none`.
-fn Optional[T: Clonable].clone() T?:
+fn Optional[T: Clonable].clone() move T?:
 	match self:
 		value: return value.clone()
 		none: return none
 
-fn Error.clone() Error:
+fn Error.clone() move Error:
 	return Error(self.message.clone(), self.kind.clone(), self.details.clone())
 
 // A String is its own text.

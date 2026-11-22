@@ -6,6 +6,7 @@
 typedef struct Names {
   MsCheckProgram *program;
   uint32_t module;
+  const MsExpr *unknown; /* the last name read that was reported unknown */
 } Names;
 
 static const char *const ALWAYS_KNOWN[] = {"..", "_", "self",     "fixture",  "print",     "__LINE__", "__FILE__", "Equal",
@@ -58,7 +59,20 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
       ms_check_is_case_name(pass->program, name)) {
     return;
   }
+  /* A compound assignment's target is read again in its desugared value; the name is reported once. */
+  for (size_t index = 0; index < pass->program->diagnostics.len; index++) {
+    const MsCheckDiag *diag = &pass->program->diagnostics.ptr[index];
+    if (diag->module == pass->module && diag->pos.offset == expr->pos.offset && diag->phase == MS_CHECK_RESOLUTION) {
+      ((Names *)context)->unknown = expr;
+      return;
+    }
+  }
   ms_unknown_name_report(pass->program, pass->module, expr->pos, name, scope, site);
+  ((Names *)context)->unknown = expr;
+}
+
+static bool was_reported(void *context, const MsExpr *expr) {
+  return ((const Names *)context)->unknown == expr;
 }
 
 /* A parameter whose written type already failed to resolve: a diagnostic sits at the type. */
@@ -79,6 +93,6 @@ static bool has_broken_type(void *context, const MsParam *param) {
 
 void ms_check_names(MsCheckProgram *program, uint32_t module) {
   Names pass = {.program = program, .module = module};
-  const MsScopeVisitor visitor = {.context = &pass, .name = read_name, .invalid_param = has_broken_type};
+  const MsScopeVisitor visitor = {.context = &pass, .name = read_name, .invalid_param = has_broken_type, .unknown = was_reported};
   ms_scope_walk_module(program->modules.ptr[module].tree, &visitor, program->names);
 }

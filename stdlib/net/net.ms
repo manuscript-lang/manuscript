@@ -89,7 +89,7 @@ type ConnectionSource:
 	native: NativeConnection
 
 // Waits for the next chunk; none at the end of the stream.
-fn var ConnectionSource.next() Bytes?!:
+fn var ConnectionSource.next() move Bytes?!:
 	return msstd_net_connection_read(self.native, none, none)
 
 // Closes the socket when the output end is already closed.
@@ -219,7 +219,7 @@ type DatagramSource:
 
 // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind
 // `EOVERFLOW` and is discarded.
-fn var DatagramSource.next() Datagram?!:
+fn var DatagramSource.next() move Datagram?!:
 	return ok(msstd_net_datagram_receive(self.native, none, none)?)
 
 fn move DatagramSource.close() Void!:
