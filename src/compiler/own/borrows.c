@@ -64,6 +64,7 @@ typedef struct Borrows {
   UseList uses;
   RangeList ranges;
   KeepList keeps;
+  uint32_t depth; /* nesting of callee bodies being read */
   uint32_t high; /* the furthest end offset seen by the current measuring walk */
 } Borrows;
 
@@ -195,10 +196,57 @@ static uint32_t declared_variables(const MsFunc *func, bool method, MsName *out)
   return len;
 }
 
+typedef struct Returns {
+  const MsExpr *values[16];
+  uint32_t len;
+} Returns;
+
+static void collect_return(void *ctx, const MsStmt *stmt) {
+  Returns *returns = ctx;
+  if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && returns->len < MS_COUNT_OF(returns->values)) {
+    returns->values[returns->len++] = stmt->u.expr;
+  }
+}
+
+/* The name a source place is rooted at. */
+static MsName root_name(const MsExpr *place) {
+  while (place->kind == MS_E_MEMBER) {
+    place = place->u.member.left;
+  }
+  return place->kind == MS_E_NAME ? place->u.sym : MS_NAME_EMPTY;
+}
+
+/* Whether a function without type variables returns something computed from its parameter number `position`:
+ * the walk of its own returned values, read in the module that declares it. */
+static bool returns_part_of(Borrows *pass, const MsCall *fact, const MsFunc *func, uint32_t position) {
+  if (pass->depth >= 4) {
+    return false;
+  }
+  const bool method = fact->callee.kind == MS_REF_METHOD;
+  const MsName wanted = method && position == 0 ? ms_names_intern(pass->program->names, ms_span_of_text("self"))
+                                                 : position - (method ? 1u : 0u) < func->params.len
+                                                       ? func->params.ptr[position - (method ? 1u : 0u)]->name
+                                                       : MS_NAME_EMPTY;
+  Returns returns = {.len = 0};
+  const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return};
+  ms_walk_block(&visitor, func->body);
+  MsFacts *saved = pass->facts;
+  pass->facts = &pass->program->modules.ptr[fact->callee.decl.module].facts;
+  pass->depth++;
+  bool lends = false;
+  for (uint32_t index = 0; !lends && index < returns.len; index++) {
+    Source source = {0};
+    lends = origin_of_arg(pass, returns.values[index], &source) && root_name(source.place) == wanted;
+  }
+  pass->depth--;
+  pass->facts = saved;
+  return lends;
+}
+
 /* Whether the callee's declared result can hold what its argument number `position` carries: a declaration
  * with a body lends only through a type variable its parameter and its result both mention; one the runtime provides
  * lends from any argument. */
-static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t position) {
+static bool lends_from(Borrows *pass, const MsCall *fact, uint32_t position, const MsExpr *arg, const MsExpr *call) {
   const MsRef *callee = &fact->callee;
   const MsFunc *func = find_func(pass->program, callee);
   if ((callee->kind != MS_REF_METHOD && callee->kind != MS_REF_FUNCTION) || func == NULL) {
@@ -210,6 +258,11 @@ static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t positio
   type_names(func->result, result, &result_len, NAME_CAP);
   MsName variables[NAME_CAP];
   const uint32_t variable_len = declared_variables(func, callee->kind == MS_REF_METHOD, variables);
+  (void)arg;
+  (void)call;
+  if (variable_len == 0) {
+    return returns_part_of(pass, fact, func, position);
+  }
   const uint32_t mine_len = parameter_names(func, callee->kind == MS_REF_METHOD, position, mine);
   for (uint32_t at = 0; at < mine_len; at++) {
     for (uint32_t index = 0; index < result_len; index++) {
@@ -250,9 +303,9 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
     return false;
   }
-  bool found = receiver && lends_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
+  bool found = receiver && lends_from(pass, fact, 0, callee->u.member.left, call) && origin_of_arg(pass, callee->u.member.left, out);
   for (uint32_t index = 0; !found && index < call->u.call.args.len; index++) {
-    found = lends_from(pass, fact, index + (receiver ? 1u : 0u)) &&
+    found = lends_from(pass, fact, index + (receiver ? 1u : 0u), call->u.call.args.ptr[index].value, call) &&
             origin_of_arg(pass, call->u.call.args.ptr[index].value, out);
   }
   if (found && out->call == NULL) {

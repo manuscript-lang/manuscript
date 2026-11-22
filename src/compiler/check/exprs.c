@@ -185,7 +185,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsName name = expr->u.sym;
   const MsLocal *local = body_find_local(body, name);
   if (local != NULL) {
-    body_set_ref(body, expr->id, (MsRef){.kind = local->kind, .local = local->id});
+    body_set_ref(body, expr->id, body_local_ref(body, local));
     return local->ty;
   }
   const MsSymbol *symbol = body_find_symbol(body, name);
@@ -458,10 +458,10 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     if (ty == MS_TY_NONE && param->ty == NULL) {
       report_uninferred_callback(body, param);
     }
-    MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable);
+    MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id);
     local->id = index;
     body_set_type(body, param->id, ty);
-    body_set_ref(body, param->id, (MsRef){.kind = MS_REF_PARAM, .local = index});
+    body_set_ref(body, param->id, body_local_ref(body, local));
     ms_ty_param_list_push(&params, (MsTyParam){.name = param->name, .ty = ty,
                                                .flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) |
                                                                   (param->moving ? MS_PARAM_MOVE : 0) |

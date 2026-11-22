@@ -156,7 +156,7 @@ MsNode ms_live_next_use(const MsLiveSet *set, uint64_t key, MsLivePath path) {
       continue;
     }
     const bool store = entry->path.len > 0 && entry->path.names[entry->path.len - 1] == MS_LIVE_STORE;
-    if (path.len > 0 && store) {
+    if (store) { /* a store to a field after the read does not read the value */
       continue;
     }
     if (entry->node < best) {
