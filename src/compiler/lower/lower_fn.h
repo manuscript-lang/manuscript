@@ -187,8 +187,8 @@ MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args,
 MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty);
 MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 /* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
-MirValue fn_unary(LowerFn *fn, const MsExpr *expr);
-MirValue fn_try(LowerFn *fn, const MsExpr *expr);
+MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want);
+MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
@@ -219,7 +219,8 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 /* `if x := value:` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
-bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value);
+bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
+bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 
