@@ -17,10 +17,66 @@ static void disown(LowerFn *fn, MirValue value) {
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
 }
 
+/* Binds the names of `pattern` to the parts of `value`: a record pattern reads fields, a list pattern reads
+ * elements. The parts are borrowed from `value`, which the binding's source keeps alive. */
+static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value) {
+  const MirModule *module = fn->cx->module;
+  if (pattern->kind == MS_P_NAME) {
+    const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
+    if (ref == NULL || ref->kind != MS_REF_LOCAL) {
+      return fn_fail(fn, "a bound name has no local");
+    }
+    mir_b_def_var(&fn->b, fn_local(fn, ref->local, mir_b_ty(&fn->b, value)), value);
+    return !fn->failed;
+  }
+  const MirTyData *data = mir_ty_data(module, mir_b_ty(&fn->b, value));
+  if (pattern->kind == MS_P_LIST) {
+    if (data->kind != MK_LIST) {
+      return fn_fail(fn, "a list pattern binds a list");
+    }
+    for (uint32_t at = 0; at < pattern->u.list.len; at++) {
+      const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
+      const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
+      if (!bind_parts(fn, pattern->u.list.ptr[at], element)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (data->kind != MK_TYPE) {
+    return fn_fail(fn, "a field pattern binds a record");
+  }
+  const MirTypeDef *def = &module->type_defs.ptr[data->id];
+  for (uint32_t at = 0; at < pattern->u.fields.len; at++) {
+    const MsPatternField *field = &pattern->u.fields.ptr[at];
+    const MsSpan wanted = ms_names_span(fn->cx->program->names, field->name);
+    uint32_t found = def->nfields;
+    for (uint32_t index = 0; index < def->nfields; index++) {
+      const MsSpan have = ms_names_span(&module->names, def->fields[index].name);
+      if (ms_span_equal(have, wanted)) {
+        found = index;
+      }
+    }
+    if (found == def->nfields) {
+      return fn_fail(fn, "a pattern names a field the record does not have");
+    }
+    const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = found};
+    const MirValue part = mir_b_emit(&fn->b, MOP_TypeGet, &value, 1, imm, def->fields[found].ty);
+    if (!bind_parts(fn, field->pattern, part)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
-    return fn_fail(fn, "only a name can be bound for now");
+    if (stmt->u.bind.is_mutable) {
+      return fn_fail(fn, "a `var` destructuring is not lowered yet");
+    }
+    const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
+    return source != MIR_NONE && bind_parts(fn, pattern, source);
   }
   /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
@@ -32,9 +88,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
-  if (!borrow && !stmt->u.bind.is_mutable && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+  if (!borrow && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
       (!mir_needs_drop(fn->cx->module, ty) || fn_fresh_owner(fn, value))) {
-    return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value);
+    return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
@@ -62,6 +118,10 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   if (ref->kind != MS_REF_PARAM) {
     return false;
   }
+  if (var_owns(fn, fn->param_vars[ref->local])) {
+    *out = fn->param_vars[ref->local]; /* a `move` parameter the body assigns into */
+    return true;
+  }
   for (uint32_t at = 0; at < fn->nvar_params; at++) {
     if (fn->var_params[at].var == fn->param_vars[ref->local]) {
       *out = fn->var_params[at].var;
@@ -69,6 +129,19 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
     }
   }
   return false;
+}
+
+/* A resource parameter lives in a slot its scope owns, and its variable is a view of that slot: the slot and
+ * variable of the parameter `place` names, or false. */
+static bool closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirVar *var) {
+  const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_PARAM || fn->closing == NULL ||
+      fn->nvars + ref->local >= fn->nvars + LOWER_MAX_CLOSING_PARAMS || fn->closing[fn->nvars + ref->local] == MIR_NONE) {
+    return false;
+  }
+  *slot = fn->closing[fn->nvars + ref->local];
+  *var = fn->param_vars[ref->local];
+  return true;
 }
 
 /* Whether `place` is a `var` local, a `var` parameter or a member path rooted in one: the places `fn_put_place` stores into. */
@@ -85,8 +158,14 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     *out = mir_b_use_var(&fn->b, var);
     return true;
   }
+  MirValue slot;
+  if (closing_param(fn, base, &slot, &var)) {
+    const MirTy ty = mir_b_ty(&fn->b, mir_b_use_var(&fn->b, var));
+    *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+    return true;
+  }
   if (base->kind != MS_E_MEMBER && base->kind != MS_E_INDEX) {
-    return fn_fail(fn, "assignment into this place is not lowered yet");
+    return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
   }
   const MirValue inner = fn_expr(fn, base, LW_BORROW);
   if (inner == MIR_NONE) {
@@ -131,6 +210,14 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   if (place->kind == MS_E_MEMBER) {
     return set_member(fn, place, value);
   }
+  MirValue slot;
+  if (closing_param(fn, place, &slot, &var)) {
+    const MirTy ty = mir_b_ty(&fn->b, value);
+    const MirValue stored[2] = {slot, value};
+    (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+    mir_b_def_var(&fn->b, var, mir_b_emit(&fn->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty));
+    return !fn->failed;
+  }
   if (!owned_local(fn, place, &var)) {
     return fn_fail(fn, "an assignment does not name an owning local");
   }
@@ -152,6 +239,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   /* A name target records its local on the statement, a member target on its expression. */
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
   MirVar var = 0;
+  bool resource = false;
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->closing != NULL && fn->closing_var[ref->local]) {
+    const MirValue value = take_value(fn, stmt->u.assign.value);
+    return value != MIR_NONE && fn_closing_assign(fn, ref, value, &resource);
+  }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     var = fn->vars[ref->local] - 1;
   } else if (ref != NULL && ref->kind == MS_REF_PARAM) {

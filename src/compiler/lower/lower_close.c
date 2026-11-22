@@ -231,7 +231,7 @@ bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, Mir
   return !fn->failed;
 }
 
-bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value) {
+bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
   if (!prepare(fn, checked, ty, &silent)) {
@@ -241,9 +241,51 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value) 
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
   const MirValue slot = own_slot(fn, ty, value, silent);
-  const MirValue view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
-  mir_b_def_var(&fn->b, fn_local(fn, local, ty), view);
   fn->closing[local] = slot;
+  fn->closing_var[local] = is_var;
+  fn->closing_types[local] = ty;
+  if (!is_var) {
+    const MirValue view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
+    mir_b_def_var(&fn->b, fn_local(fn, local, ty), view);
+  }
+  return !fn->failed;
+}
+
+/* The slot of the `var` resource a local reference names, or MIR_NONE. */
+static MirValue var_slot_of(const LowerFn *fn, const MsRef *ref) {
+  if (fn->closing == NULL || ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars ||
+      !fn->closing_var[ref->local]) {
+    return MIR_NONE;
+  }
+  return fn->closing[ref->local];
+}
+
+bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view) {
+  const MirValue slot = var_slot_of(fn, ref);
+  if (slot == MIR_NONE) {
+    return false;
+  }
+  const MirTy ty = fn->closing_types[ref->local];
+  *view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
+  return true;
+}
+
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done) {
+  const MirValue slot = var_slot_of(fn, ref);
+  *done = slot != MIR_NONE;
+  if (slot == MIR_NONE) {
+    return true;
+  }
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const bool owns = mir_needs_drop(fn->cx->module, ty);
+  if (owns) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  }
+  /* The slot closes what it holds, and holds the new value from here. */
+  const MirImm refill = {.tag = MI_INT, .i = 2};
+  (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+  const MirValue stored[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
   return !fn->failed;
 }
 

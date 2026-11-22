@@ -41,6 +41,8 @@ typedef struct LowerFn {
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
+  bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
+  MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
   MirTy ret;
@@ -94,7 +96,11 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
  * that no use closes by hand, changes in place or splits. */
 bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
-bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value);
+bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
+/* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
+bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view);
+/* `name = value` where `name` is a `var` resource: the value it holds is closed, then `value` takes its place. */
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);

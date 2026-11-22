@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
 uint32_t lower_file(Lower *cx, uint32_t module) {
@@ -179,6 +180,36 @@ uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, 
 
 /* ---- bodies ---- */
 
+/* Whether the body assigns into the parameter `index` (`param.field = value`): such a parameter is an owned
+ * variable, like a `var` local, so the assignment can replace what it holds. */
+typedef struct ParamWrites {
+  const MsFacts *facts;
+  uint32_t index;
+  bool found;
+} ParamWrites;
+
+static void note_param_write(void *ctx, const MsStmt *stmt) {
+  ParamWrites *writes = ctx;
+  if (stmt->kind != MS_S_ASSIGN || !stmt->u.assign.member_target) {
+    return;
+  }
+  const MsExpr *root = stmt->u.assign.target;
+  while (root != NULL && root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  const MsRef *ref = root != NULL && root->kind == MS_E_NAME ? ms_facts_ref(writes->facts, root->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
+    writes->found = true;
+  }
+}
+
+static bool assigns_into_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
+  ParamWrites writes = {fn->facts, index, false};
+  const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write};
+  ms_walk_block(&visitor, target->func->body);
+  return writes.found;
+}
+
 /* Declares the parameters as variables and gives the function scope the owned ones. */
 static void bind_params(LowerFn *fn, const LowerTarget *target) {
   MsTyParam params[LOWER_MAX_PARAMS];
@@ -215,7 +246,11 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));
     mir_b_def_var(&fn->b, fn->param_vars[index], values[index]);
     if ((params[index].flags & MS_PARAM_MOVE) != 0 && mir_needs_drop(fn->cx->module, ty)) {
-      fn_own(fn, fn_scope(fn), values[index]);
+      if (assigns_into_param(fn, target, index)) {
+        (void)fn_scope_own_var(fn, fn->param_vars[index]); /* the variable owns what it holds */
+      } else {
+        fn_own(fn, fn_scope(fn), values[index]);
+      }
     }
   }
 }
@@ -256,9 +291,14 @@ static bool lower_body(Lower *cx, uint32_t index) {
   (void)fn_scope_begin(&fn);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1);
-  for (uint32_t at = 0; at < fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1; at++) {
+  const size_t closing_count = (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1;
+  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, closing_count);
+  fn.closing_var = MS_ARENA_NEW_ARRAY(&cx->module->arena, bool, closing_count);
+  fn.closing_types = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, closing_count);
+  for (size_t at = 0; at < closing_count; at++) {
     fn.closing[at] = MIR_NONE;
+    fn.closing_var[at] = false;
+    fn.closing_types[at] = MIR_VOID;
   }
   bind_params(&fn, target);
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;

@@ -611,22 +611,43 @@ fn Map[T, U].is_empty() Bool: ...
 
 // Returns a new map with the same keys, each paired with `transform(key, value)`, in
 // insertion order. Keys are copied into the new map.
-fn Map[T, U].map[W](transform: fn(T, U) W) Map[T, W]: ...
+fn Map[T: Clonable, U].map[W](transform: fn(T, U) W) Map[T, W]:
+	var out = Map[T, W]()
+	for key in self.keys():
+		out.add(key.clone(), transform(key, self.get(key).get()))
+	return out
 
 // Combines the entries in insertion order with `step`, starting with `initial`.
-fn Map[T, U].fold[A](initial: A, step: fn(A, T, U) A) A: ...
+fn Map[T, U].fold[A](initial: A, step: fn(A, T, U) A) A:
+	var acc = initial
+	for key in self.keys():
+		acc = step(acc, key, self.get(key).get())
+	return acc
 
 // Combines the entries in reverse insertion order with `step`, starting with
 // `initial`.
-fn Map[T, U].fold_right[A](initial: A, step: fn(A, T, U) A) A: ...
+fn Map[T, U].fold_right[A](initial: A, step: fn(A, T, U) A) A:
+	var acc = initial
+	keys := self.keys()
+	var i = keys.length() - 1
+	while i >= 0:
+		acc = step(acc, keys[i], self.get(keys[i]).get())
+		i -= 1
+	return acc
 
 // Reports whether any entry satisfies `predicate`, stopping at the first match. An
 // empty map returns false.
-fn Map[T, U].any(predicate: fn(T, U) Bool) Bool: ...
+fn Map[T, U].any(predicate: fn(T, U) Bool) Bool:
+	for key in self.keys():
+		if predicate(key, self.get(key).get()): return true
+	return false
 
 // Reports whether every entry satisfies `predicate`, stopping at the first entry
 // that does not. An empty map returns true.
-fn Map[T, U].all(predicate: fn(T, U) Bool) Bool: ...
+fn Map[T, U].all(predicate: fn(T, U) Bool) Bool:
+	for key in self.keys():
+		if not predicate(key, self.get(key).get()): return false
+	return true
 
 // Inserts `value` only when the key is absent. The argument is evaluated even when
 // the key already exists.
@@ -666,17 +687,31 @@ fn var Map[T, U].add(move key: T, move value: U) Void: ...
 fn var Map[T, U].remove(move key: T) Void: ...
 
 // Returns a deep copy with independent map and nested value storage.
-fn Map[T: Hashable, U: Clonable].clone() Map[T, U]: ...
+fn Map[T: Hashable & Clonable, U: Clonable].clone() Map[T, U]:
+	var out = Map[T, U]()
+	for key in self.keys():
+		out.add(key.clone(), self.get(key).get())
+	return out
 
 // Returns a new map of copies of the entries for which `predicate` is true, in
 // insertion order. The callback borrows the receiver, so changing the map during
 // the traversal is rejected.
-fn Map[T: Hashable, U: Clonable].filter(predicate: fn(T, U) Bool) Map[T, U]: ...
+fn Map[T: Hashable & Clonable, U: Clonable].filter(predicate: fn(T, U) Bool) Map[T, U]:
+	var out = Map[T, U]()
+	for key in self.keys():
+		value := self.get(key).get()
+		if predicate(key, value): out.add(key.clone(), value)
+	return out
 
 // Returns a new map with each key replaced by `transform(key, value)`, in insertion
 // order, and the values copied. When two entries produce equal keys, the result keeps
 // the first position and the last value.
-fn Map[T: Hashable, U: Clonable].map_keys[W: Hashable](transform: fn(T, U) W) Map[W, U]: ...
+fn Map[T: Hashable & Clonable, U: Clonable].map_keys[W: Hashable](transform: fn(T, U) W) Map[W, U]:
+	var out = Map[W, U]()
+	for key in self.keys():
+		value := self.get(key).get()
+		out.add(transform(key, value), value)
+	return out
 
 // Returns the stored value, or `fallback` when the key is absent. The fallback is
 // always evaluated, and the map is not changed.
@@ -684,18 +719,33 @@ fn Map[T: Hashable, U: Clonable].get_or(key: T, fallback: U) U: ...
 
 // Returns the first entry for which `predicate` is true as a new `MapEntry` holding
 // copies of the key and value, or `none`.
-fn Map[T: Hashable, U: Clonable].find(predicate: fn(T, U) Bool) MapEntry[T, U]?: ...
+fn Map[T: Hashable & Clonable, U: Clonable].find(predicate: fn(T, U) Bool) MapEntry[T, U]?:
+	for key in self.keys():
+		value := self.get(key).get()
+		if predicate(key, value): return MapEntry(key: key.clone(), value: value)
+	return none
 
 // Searches from the end and returns the last entry for which `predicate` is true as
 // a new `MapEntry` holding copies of the key and value, or `none`.
-fn Map[T: Hashable, U: Clonable].find_last(predicate: fn(T, U) Bool) MapEntry[T, U]?: ...
+fn Map[T: Hashable & Clonable, U: Clonable].find_last(predicate: fn(T, U) Bool) MapEntry[T, U]?:
+	keys := self.keys()
+	var i = keys.length() - 1
+	while i >= 0:
+		value := self.get(keys[i]).get()
+		if predicate(keys[i], value): return MapEntry(key: keys[i].clone(), value: value)
+		i -= 1
+	return none
 
 // Returns a new list of the values in insertion order.
 fn Map[T: Hashable, U: Clonable].values() List[U]: ...
 
 // Returns a new list of `MapEntry` records in insertion order. Each record holds the
 // key and value without copying them.
-fn Map[T: Hashable, U: Clonable].entries() List[MapEntry[T, U]]: ...
+fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
+	var out = List[MapEntry[T, U]]()
+	for key in self.keys():
+		out.append(MapEntry(key: key.clone(), value: self.get(key).get()))
+	return out
 
 // Copies every entry of `other` into this map in place. Existing keys keep their
 // position and key but take the value from `other`; new keys append in `other`
@@ -709,7 +759,10 @@ fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move key: T,
 	move initial: U,
 	change: fn(U) U
-) Void: ...
+) Void:
+	var base = initial
+	if self.contains(key): base = self.get(key).get()
+	self.add(key, change(base))
 
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.
@@ -718,12 +771,9 @@ Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
 */
 fn var Map[T: Hashable & Clonable, U].retain(keep: fn(T, U) Bool) Void:
 	var doomed = List[T]()
-	self.for_each(
-		fn key,
-		value:
-			if not keep(key, value):
-				doomed.append(key.clone())
-	)
+	for key in self.keys():
+		if not keep(key, self.get(key).get()):
+			doomed.append(key.clone())
 	for key in doomed:
 		self.remove(key)
 
@@ -739,7 +789,11 @@ export type MapEntry[T: Hashable, U]:
 export extern type Set[T: Hashable]
 
 // Returns a deep copy with independent storage, in the same insertion order.
-fn Set[T].clone() Set[T]: ...
+fn Set[T: Hashable & Clonable].clone() Set[T]:
+	var out = Set[T]()
+	for value in self.values():
+		out.add(value.clone())
+	return out
 
 // Reports whether this set has no elements.
 fn Set[T].is_empty() Bool: ...
@@ -747,33 +801,67 @@ fn Set[T].is_empty() Bool: ...
 // Returns a new set of copies of the elements for which `predicate` is true, in
 // insertion order. The callback borrows the receiver, so changing the set during the
 // traversal is rejected.
-fn Set[T].filter(predicate: fn(T) Bool) Set[T]: ...
+fn Set[T: Hashable & Clonable].filter(predicate: fn(T) Bool) Set[T]:
+	var out = Set[T]()
+	for value in self.values():
+		if predicate(value): out.add(value.clone())
+	return out
 
 // Returns a new set of `transform(element)` for each element; when results are
 // equal, the first is kept.
-fn Set[T].map[U: Hashable](transform: fn(T) U) Set[U]: ...
+fn Set[T].map[U: Hashable](transform: fn(T) U) Set[U]:
+	var out = Set[U]()
+	for value in self.values():
+		out.add(transform(value))
+	return out
 
 // Combines the elements in insertion order with `step`, starting with `initial`.
-fn Set[T].fold[A](initial: A, step: fn(A, T) A) A: ...
+fn Set[T].fold[A](initial: A, step: fn(A, T) A) A:
+	var acc = initial
+	for value in self.values():
+		acc = step(acc, value)
+	return acc
 
 // Combines the elements in reverse insertion order with `step`, starting with
 // `initial`.
-fn Set[T].fold_right[A](initial: A, step: fn(A, T) A) A: ...
+fn Set[T].fold_right[A](initial: A, step: fn(A, T) A) A:
+	var acc = initial
+	values := self.values()
+	var i = values.length() - 1
+	while i >= 0:
+		acc = step(acc, values[i])
+		i -= 1
+	return acc
 
 // Returns the first element for which `predicate` is true, or `none`.
-fn Set[T].find(predicate: fn(T) Bool) T?: ...
+fn Set[T: Hashable & Clonable].find(predicate: fn(T) Bool) T?:
+	for value in self.values():
+		if predicate(value): return value.clone()
+	return none
 
 // Searches from the end and returns the last element for which `predicate` is true,
 // or `none`.
-fn Set[T].find_last(predicate: fn(T) Bool) T?: ...
+fn Set[T: Hashable & Clonable].find_last(predicate: fn(T) Bool) T?:
+	values := self.values()
+	var i = values.length() - 1
+	while i >= 0:
+		if predicate(values[i]): return values[i].clone()
+		i -= 1
+	return none
 
 // Reports whether any element satisfies `predicate`, stopping at the first match. An
 // empty set returns false.
-fn Set[T].any(predicate: fn(T) Bool) Bool: ...
+fn Set[T].any(predicate: fn(T) Bool) Bool:
+	for value in self.values():
+		if predicate(value): return true
+	return false
 
 // Reports whether every element satisfies `predicate`, stopping at the first one
 // that does not. An empty set returns true.
-fn Set[T].all(predicate: fn(T) Bool) Bool: ...
+fn Set[T].all(predicate: fn(T) Bool) Bool:
+	for value in self.values():
+		if not predicate(value): return false
+	return true
 
 // Returns a new set with this set's values followed by the values only in `other`,
 // in insertion order.
@@ -807,7 +895,9 @@ fn var Set[T].clear() Void: ...
 fn Set[T].values() List[T]: ...
 
 // Calls `operation(value)` for each value in insertion order.
-fn Set[T].for_each(operation: fn(T) Void) Void: ...
+fn Set[T].for_each(operation: fn(T) Void) Void:
+	for value in self.values():
+		operation(value)
 
 // Reports whether an equal value is present, using the element's `Hashable`
 // implementation.

@@ -133,12 +133,65 @@ static void flag(Closers *pass, const MsRef *ref, uint8_t flags) {
   }
 }
 
+/* A member assigned in a closed `var`, and a `var` argument or receiver, change the binding in place. */
+static void flag_root(Closers *pass, const MsExpr *place, uint8_t flags) {
+  const MsExpr *root = place;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (root->kind == MS_E_NAME) {
+    flag(pass, ms_facts_ref(pass->facts, root->id), flags);
+  }
+}
+
+static void visit_call_changes(Closers *pass, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  if (fact == NULL) {
+    return;
+  }
+  for (uint32_t index = 0; index < fact->arg_count; index++) {
+    const MsCallArg *arg = &fact->args[index];
+    const MsExpr *written = NULL;
+    if (arg->source != MS_ARG_WRITTEN) {
+      continue;
+    }
+    for (uint32_t at = 0; at < call->u.call.args.len; at++) {
+      if (call->u.call.args.ptr[at].value->id == arg->node.node) {
+        written = call->u.call.args.ptr[at].value;
+      }
+    }
+    if (written == NULL && call->u.call.callee->kind == MS_E_MEMBER && call->u.call.callee->u.member.left->id == arg->node.node) {
+      written = call->u.call.callee->u.member.left;
+    }
+    const MsMethodEntry *entry = NULL;
+    for (size_t at = 0; fact->callee.kind == MS_REF_METHOD && index == 0 && at < pass->program->methods.len; at++) {
+      const MsMethodEntry *candidate = &pass->program->methods.ptr[at];
+      if (candidate->module == fact->callee.decl.module && candidate->source->id == fact->callee.decl.node) {
+        entry = candidate;
+      }
+    }
+    if (written != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (entry != NULL && entry->source->mutating))) {
+      flag_root(pass, written, MS_CLOSER_PARTIAL);
+    }
+  }
+}
+
+static void visit_stmt_changes(void *ctx, const MsStmt *stmt) {
+  Closers *pass = ctx;
+  if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.member_target && stmt->u.assign.target != NULL) {
+    flag_root(pass, stmt->u.assign.target, MS_CLOSER_PARTIAL);
+  }
+}
+
 /* The uses of a closed binding that decide how its scope may close it. */
 static void visit_expr(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
   if (expr->kind == MS_E_LAMBDA) {
     pass->lambdas++;
     return;
+  }
+  if (expr->kind == MS_E_CALL) {
+    visit_call_changes(pass, expr);
   }
   if (expr->kind == MS_E_CALL && expr->u.call.args.len == 0 && expr->u.call.callee->kind == MS_E_MEMBER &&
       expr->u.call.callee->u.member.name == pass->close && expr->u.call.callee->u.member.left->kind == MS_E_NAME) {
@@ -178,7 +231,7 @@ static void callable(Closers *pass, const MsMethod *method, MsParams params, MsS
   add_params(pass, params);
   const MsVisitor binds = {.ctx = pass, .stmt = visit_stmt};
   ms_walk_callable(&binds, params, body);
-  const MsVisitor uses = {.ctx = pass, .expr = visit_expr, .leave_expr = leave_expr};
+  const MsVisitor uses = {.ctx = pass, .stmt = visit_stmt_changes, .expr = visit_expr, .leave_expr = leave_expr};
   ms_walk_callable(&uses, params, body);
 }
 

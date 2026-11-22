@@ -86,9 +86,34 @@ MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty) {
 }
 
 /* The value of the parameter or local `ref` names; `expr` is the name (a callee's ref is on its call). */
+/* A module constant: its initializer lowered where it is read, under the facts and file of the module that declares
+ * it. The value is read-only, so each read is the same value. */
+static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
+  const MsSymbolId id = fn_symbol_at(fn->cx, ref->decl);
+  const MsDecl *decl = id == 0 ? NULL : fn->cx->program->symbols.ptr[id].decl;
+  if (decl == NULL || decl->kind != MS_D_CONST || decl->u.konst.value == NULL) {
+    (void)fn_fail(fn, "a constant has no initializer to read");
+    return MIR_NONE;
+  }
+  const MsFacts *facts = fn->facts;
+  const uint32_t module_index = fn->module_index;
+  const uint32_t file = fn->file;
+  fn->facts = &fn->cx->program->modules.ptr[ref->decl.module].facts;
+  fn->module_index = ref->decl.module;
+  fn->file = lower_file(fn->cx, ref->decl.module);
+  const MirValue value = fn_expr(fn, decl->u.konst.value, LW_BORROW);
+  fn->facts = facts;
+  fn->module_index = module_index;
+  fn->file = file;
+  return value;
+}
+
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   MirValue captured = MIR_NONE;
   if (fn_lambda_name(fn, expr, ref, &captured)) {
+    return captured;
+  }
+  if (fn_closing_read(fn, ref, &captured)) {
     return captured;
   }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
@@ -99,6 +124,9 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   }
   if (ref != NULL && ref->kind == MS_REF_FUNCTION) {
     return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  }
+  if (ref != NULL && ref->kind == MS_REF_CONSTANT) {
+    return lower_constant(fn, ref);
   }
   const MsTy checked = ms_facts_type(fn->facts, expr->id);
   if (checked == MS_TY_NONE && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_OPT &&
