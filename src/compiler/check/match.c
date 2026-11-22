@@ -33,7 +33,9 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
   uint32_t index = 0;
   const MsTyCase *kase = arm_case(body, arm->path, scrutinee, &index);
   if (kase != NULL) {
-    body_set_ref(body, arm->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = scrutinee});
+    /* The bindings are declared next, so their locals run from `next_local` in order. */
+    body_set_ref(body, arm->id,
+                 (MsRef){.kind = MS_REF_CASE, .index = index, .local = body->next_local, .owner = scrutinee});
   }
   for (uint32_t at = 0; at < arm->bindings.len; at++) {
     const MsTy ty = kase != NULL ? payload(body, scrutinee, kase, at) : MS_TY_NONE;

@@ -2,6 +2,8 @@
  * storing the verified package in the cache. */
 #include "driver/package_fetch.h"
 
+#include "driver/package_cache.h"
+
 #include "base/dir.h"
 #include "base/file.h"
 #include "base/message.h"
@@ -91,12 +93,14 @@ static bool store(MsArena *arena, MsSpan cache, MsSpan hash, MsSpan index, MsSpa
     return false;
   }
   if (ms_path_kind(destination) != MS_PATH_MISSING) {
+    ms_cache_unprotect(destination);
     ms_path_remove_tree(destination);
   }
   if (!ms_file_rename(temporary, destination) && !cached_intact(arena, cache, hash)) {
     *error = ms_message_format(arena, "store %S: cannot move the package into the cache", destination);
     return false;
   }
+  ms_cache_protect(destination);
   return true;
 }
 
