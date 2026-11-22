@@ -122,6 +122,9 @@ uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name);
 uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation);
 uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface);
 
+/* A closure of type `fn_ty` without captures whose body calls the MIR function `callee` (MIR_NONE on failure). */
+uint32_t lower_forwarding_closure(Lower *cx, MirTy fn_ty, uint32_t callee);
+
 /* The MIR file id of checker module `module`. */
 uint32_t lower_file(Lower *cx, uint32_t module);
 

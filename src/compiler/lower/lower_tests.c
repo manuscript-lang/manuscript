@@ -1,7 +1,8 @@
 /* compiler/lower/lower_tests.c: the test entry (ms_lower_tests). Instead of `main` the program starts at a function
  * that hands `run_test_files` (stdlib/internal/test_runner.ms) one runner closure per test file. A runner takes the
  * selected test indices and the results path, and calls `run_plain_file` with the file's tests as closures that
- * return `Void!`, and their global indices. A file with a fixture is not lowered yet. */
+ * return `Void!`, and their global indices. A file with a `make_fixture` factory calls `run_fixture_file` instead: its
+ * tests take the fixture as a `var` parameter, and the fixture type's hook methods become closures. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_analysis.h"
@@ -69,13 +70,24 @@ static bool end_fn(LowerFn *fn, uint32_t slot, bool ok) {
 }
 
 /* The closure of one `test` block: its body, returning `ok` at the end. */
-static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *decl) {
+static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *decl, MirTy test_fn, MsTy fixture) {
   Lower *cx = run->cx;
-  const uint32_t slot = lower_closure_func(cx, run->test_fn, NULL, 0);
+  const uint32_t slot = lower_closure_func(cx, test_fn, NULL, 0);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   LowerFn fn = begin_fn(cx, module_index, &reserved);
-  MirValue env;
-  mir_b_params(&fn.b, &env, 1);
+  MirValue values[2];
+  mir_b_params(&fn.b, values, fixture == MS_TY_NONE ? 1 : 2);
+  fn.param_vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, 2);
+  if (fixture != MS_TY_NONE) {
+    /* The fixture is the test's `var` parameter: copied in here, put back at every exit. */
+    const MirTy held_ty = fn_type(&fn, fixture);
+    const bool owns = mir_needs_drop(cx->module, held_ty);
+    const MirImm of_type = {.tag = MI_TY, .a = held_ty};
+    const MirValue held = mir_b_emit(&fn.b, owns ? MOP_Take : MOP_Load, &values[1], 1, of_type, held_ty);
+    fn.param_vars[0] = mir_b_declare_var(&fn.b, held_ty, owns ? MM_MOVE : MM_BORROW);
+    mir_b_def_var(&fn.b, fn.param_vars[0], held);
+    fn.var_params[fn.nvar_params++] = (LowerVarParam){fn.param_vars[0], values[1], held_ty};
+  }
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[decl->id] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
   const bool ok = fn_stmts(&fn, decl->u.test.body);
@@ -130,28 +142,123 @@ static uint32_t lower_runner(TestRun *run, uint32_t module_index, uint32_t file,
   return end_fn(&fn, slot, true) ? slot : MIR_NONE;
 }
 
+/* The module's `make_fixture` factory, or 0 when the file has no fixture. */
+static MsSymbolId fixture_factory(const MsCheckProgram *program, uint32_t module_index) {
+  MsName name = MS_NAME_EMPTY;
+  if (!ms_names_find(program->names, ms_span_of_text("make_fixture"), &name)) {
+    return 0;
+  }
+  const MsSymbolId *found = ms_scope_get(&program->modules.ptr[module_index].scope, name);
+  const bool usable = found != NULL && program->symbols.ptr[*found].kind == MS_SYMBOL_FN &&
+                      program->symbols.ptr[*found].ty != MS_TY_NONE;
+  return usable ? *found : 0;
+}
+
+/* A hook closure that does nothing and succeeds: the file's fixture type has no such method. */
+static uint32_t noop_hook(TestRun *run, uint32_t module_index, MirTy hook_ty) {
+  Lower *cx = run->cx;
+  const uint32_t slot = lower_closure_func(cx, hook_ty, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = begin_fn(cx, module_index, &reserved);
+  MirValue values[2];
+  mir_b_params(&fn.b, values, 2);
+  const MirValue done = fn_result_wrap(&fn, MIR_NONE);
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, done);
+  return end_fn(&fn, slot, true) ? slot : MIR_NONE;
+}
+
+/* The runner closure of a file with a fixture: `run_fixture_file[F](file, make, hooks..., tests, indices, ...)`. The
+ * hooks are the fixture type's methods of those names, and succeed trivially when it has none. */
+static uint32_t lower_fixture_runner(TestRun *run, uint32_t module_index, uint32_t file, MsSymbolId factory,
+                                     const MsDecl **decls, uint32_t count, uint32_t first_index) {
+  static const char *const HOOKS[4] = {"before_all", "before_each", "after_each", "after_all"};
+  Lower *cx = run->cx;
+  const MsTy fixture = ms_ty_result(&cx->program->types, cx->program->symbols.ptr[factory].ty);
+  const LowerTarget target = lower_symbol_target(cx, runner_symbol(cx->program, "run_fixture_file"));
+  const uint32_t fixture_run = lower_instance(cx, &target, &fixture, 1, NULL);
+  if (fixture_run == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirParam *run_params = cx->module->funcs.ptr[fixture_run].params;
+  const MirTy test_fn = mir_ty_data(cx->module, run_params[6].ty)->elem;
+  uint32_t *tests = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, (size_t)count + 1);
+  for (uint32_t index = 0; index < count; index++) {
+    tests[index] = lower_test(run, module_index, decls[index], test_fn, fixture);
+    if (tests[index] == MIR_NONE) {
+      return MIR_NONE;
+    }
+  }
+  uint32_t hooks[4];
+  for (uint32_t index = 0; index < 4; index++) {
+    const uint32_t method = lower_named_method(cx, fixture, HOOKS[index]);
+    hooks[index] = method == MIR_NONE ? noop_hook(run, module_index, run_params[2 + index].ty)
+                                      : lower_forwarding_closure(cx, run_params[2 + index].ty, method);
+    if (hooks[index] == MIR_NONE) {
+      return MIR_NONE;
+    }
+  }
+  const LowerTarget maker = lower_symbol_target(cx, factory);
+  const uint32_t make_func = lower_instance(cx, &maker, NULL, 0, NULL);
+  const uint32_t make = make_func == MIR_NONE ? MIR_NONE : lower_forwarding_closure(cx, run_params[1].ty, make_func);
+  if (make == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const uint32_t slot = lower_closure_func(cx, run->runner_fn, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = begin_fn(cx, module_index, &reserved);
+  MirValue params[3];
+  mir_b_params(&fn.b, params, 3);
+  MirValue *closures = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)count + 1);
+  MirValue *indices = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)count + 1);
+  for (uint32_t index = 0; index < count; index++) {
+    closures[index] = closure_value(&fn, tests[index], test_fn);
+    indices[index] = mir_b_iconst(&fn.b, (int64_t)first_index + index);
+  }
+  MirValue args[10] = {mir_b_iconst(&fn.b, file), closure_value(&fn, make, run_params[1].ty)};
+  for (uint32_t index = 0; index < 4; index++) {
+    args[2 + index] = closure_value(&fn, hooks[index], run_params[2 + index].ty);
+  }
+  args[6] = list_of(&fn, closures, count, run_params[6].ty);
+  args[7] = list_of(&fn, indices, count, run_params[7].ty);
+  args[8] = params[1];
+  args[9] = params[2];
+  const MirValue result = mir_b_call(&fn.b, fixture_run, args, 10);
+  fn_own_result(&fn, result);
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, MIR_NONE);
+  return end_fn(&fn, slot, true) ? slot : MIR_NONE;
+}
+
 /* Lowers the tests of one module as a runner, when it has any. */
 static bool lower_file_tests(TestRun *run, uint32_t module_index, uint32_t *runners, uint32_t *nrunners) {
   const MsModule *tree = run->cx->program->modules.ptr[module_index].tree;
-  uint32_t *tests = MS_ARENA_NEW_ARRAY(&run->cx->module->arena, uint32_t, (size_t)tree->ndecls + 1);
+  const MsDecl **decls = MS_ARENA_NEW_ARRAY(&run->cx->module->arena, const MsDecl *, (size_t)tree->ndecls + 1);
   uint32_t count = 0;
-  const uint32_t first = run->next_index;
   for (uint32_t index = 0; index < tree->ndecls; index++) {
-    const MsDecl *decl = tree->decls[index];
-    if (decl->kind != MS_D_TEST || decl->u.test.bench) {
-      continue;
+    if (tree->decls[index]->kind == MS_D_TEST && !tree->decls[index]->u.test.bench) {
+      decls[count++] = tree->decls[index];
     }
-    tests[count] = lower_test(run, module_index, decl);
-    if (tests[count] == MIR_NONE) {
-      return false;
-    }
-    count++;
-    run->next_index++;
   }
   if (count == 0) {
     return true;
   }
-  const uint32_t runner = lower_runner(run, module_index, *nrunners, tests, count, first);
+  const uint32_t first = run->next_index;
+  run->next_index += count;
+  const MsSymbolId factory = fixture_factory(run->cx->program, module_index);
+  uint32_t runner = MIR_NONE;
+  if (factory != 0) {
+    runner = lower_fixture_runner(run, module_index, *nrunners, factory, decls, count, first);
+  } else {
+    uint32_t *tests = MS_ARENA_NEW_ARRAY(&run->cx->module->arena, uint32_t, (size_t)count + 1);
+    for (uint32_t index = 0; index < count; index++) {
+      tests[index] = lower_test(run, module_index, decls[index], run->test_fn, MS_TY_NONE);
+      if (tests[index] == MIR_NONE) {
+        return false;
+      }
+    }
+    runner = lower_runner(run, module_index, *nrunners, tests, count, first);
+  }
   runners[(*nrunners)++] = runner;
   return runner != MIR_NONE;
 }
