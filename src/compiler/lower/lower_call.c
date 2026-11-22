@@ -729,7 +729,9 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   uint32_t ntype_args = call->type_arg_count;
   if (target.variables != NULL) {
     /* A method's variables are the receiver form's and its own: bind them against the instantiated signature. */
-    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, call->callee_ty, target.variables,
+    /* The call's type is written in the caller's variables; the receiver below is already in its instance's types. */
+    const MsTy callee_ty = ms_ty_subst(&fn->cx->program->types, call->callee_ty, fn->subst.vars, fn->subst.args, fn->subst.count);
+    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, callee_ty, target.variables,
                                                   target.nvariables, bound)) {
       (void)fn_fail(fn, "a method's type arguments could not be found from its call");
       return MIR_NONE;

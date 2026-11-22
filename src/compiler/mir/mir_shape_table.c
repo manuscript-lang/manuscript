@@ -113,6 +113,7 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   MirLayouts *layouts = build->layouts;
   const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
   shape->kind = MS_SHAPE_RECORD;
+  shape->flags |= (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   uint32_t *kinds = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
@@ -162,6 +163,7 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   const bool boxed = mir_boxed_block_size(layouts, ty, &block_size);
   const uint32_t *offsets = alt_offsets(build, ty, boxed);
   shape->kind = MS_SHAPE_ALTERNATIVE;
+  shape->flags |= (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   if (mir_json_tree_shape(build->module, ty)) {
     shape->flags |= MS_SHAPE_JSON_TREE;
   }
@@ -311,11 +313,28 @@ static MsSpan image_bytes(ShapeBuild *build, uint32_t root) {
   return ms_span_of(bytes, size);
 }
 
-/* The hook array: one entry per shape, whose first word is the descriptor of a collection shape. */
+/* The functions a type's shape table calls for its own text and JSON form (1 + the function, 0 for none). */
+static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text, uint32_t *json) {
+  const MirTyData *data = mir_ty_data(build->module, build->types.ptr[index]);
+  *text = 0;
+  *json = 0;
+  if (data->kind == MK_TYPE) {
+    *text = build->module->type_defs.ptr[data->id].text_fn1;
+    *json = build->module->type_defs.ptr[data->id].json_fn1;
+  } else if (data->kind == MK_ALT) {
+    *text = build->module->alts.ptr[data->id].text_fn1;
+    *json = build->module->alts.ptr[data->id].json_fn1;
+  }
+}
+
+/* The hook array: one entry per shape; the first word of a collection shape's is its descriptor, and a type with its
+ * own text or JSON form names those functions. */
 static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
   uint32_t wanted = 0;
   for (size_t index = 0; index < build->shapes.len; index++) {
-    wanted += is_collection_shape(&build->shapes.ptr[index]) ? 1 : 0;
+    uint32_t text, json;
+    hook_functions(build, index, &text, &json);
+    wanted += (is_collection_shape(&build->shapes.ptr[index]) ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0);
   }
   if (wanted == 0) {
     return MIR_NONE;
@@ -324,8 +343,16 @@ static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
   MirDataSym sym = {.name = mird_name(cx, "shape.hooks", number), .size = (uint32_t)build->shapes.len * entry, .align = 8,
                     .relocs = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirReloc, wanted)};
   for (size_t index = 0; index < build->shapes.len; index++) {
+    uint32_t text, json;
+    hook_functions(build, index, &text, &json);
     if (is_collection_shape(&build->shapes.ptr[index])) {
       sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)index * entry, mird_descriptor(cx, build->types.ptr[index])};
+    }
+    if (text != 0) {
+      sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)(index * entry + offsetof(MsShapeHook, to_text)), {.kind = MREF_FUNC, .index = text - 1}};
+    }
+    if (json != 0) {
+      sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)(index * entry + offsetof(MsShapeHook, json_encode)), {.kind = MREF_FUNC, .index = json - 1}};
     }
   }
   return mird_add_sym(cx, &sym);
