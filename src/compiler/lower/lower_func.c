@@ -163,6 +163,14 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
+  /* A function that takes a closure and keeps it (a promise's entry) holds what a closure into its maker's frame
+   * borrows until the result is dropped. */
+  const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
+  const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
+  for (uint32_t index = 0; index < count && taken != 0; index++) {
+    func.keeps_scoped |= index >= offset && index - offset < 32 && (taken >> (index - offset) & 1u) != 0 &&
+                         mir_ty_data(cx->module, mir_params[index].ty)->kind == MK_FN;
+  }
   return mir_add_func(cx->module, &func);
 }
 
@@ -334,6 +342,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   }
   MirFunc *slot = &cx->module->funcs.ptr[instance.func];
   built.linkage = slot->linkage;
+  built.keeps_scoped = slot->keeps_scoped;
   mir_func_release(slot);
   *slot = built;
   cx->instances.ptr[index].lowered = true;

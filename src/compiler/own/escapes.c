@@ -360,6 +360,9 @@ static void settle(Escapes *pass, uint32_t module, Pass *scan) {
         kept_map_put(&pass->held, key, true);
         pass->changed = true;
       }
+      if (state->held[param->id] && index < 32 && facts->taken != NULL && callable->id < facts->node_count) {
+        facts->taken[callable->id] |= 1u << index; /* a closure the body keeps owns the parameter: the caller hands it over */
+      }
     }
   }
 }
