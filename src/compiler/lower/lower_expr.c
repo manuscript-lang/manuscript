@@ -745,7 +745,20 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
   const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
                               fn->b.func.params[param_at].mode != MM_MOVE;
-  if (!borrowed_param && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  /* A field of a `var` binding stays in the record the binding puts back whole, so reading it as a move would free it
+   * twice; it is copied. */
+  MirVar root_var;
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  const MsRef *root_ref = root->kind == MS_E_NAME ? ms_facts_ref(fn->facts, root->id) : NULL;
+  const bool moved_param = root_ref != NULL && root_ref->kind == MS_REF_PARAM &&
+                           root_ref->local + (fn->lambda != NULL ? 1u : 0u) < fn->b.func.nparams &&
+                           fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
+  const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
+                             fn_owned_local(fn, root, &root_var);
+  if (!borrowed_param && !in_var_record && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }
