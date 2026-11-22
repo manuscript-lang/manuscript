@@ -213,6 +213,8 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (found.len != 0) {
     ty = found.ptr[0].ty;
     body_set_ref(body, expr->id, body_method_ref(&found.ptr[0], receiver));
+  } else {
+    body_report_unknown_member(body, expr, receiver);
   }
   ms_method_match_list_free(&found);
   return ty;

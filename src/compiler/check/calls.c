@@ -167,6 +167,9 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
     }
   }
   ms_method_match_list_free(&found);
+  if (!ok) {
+    body_report_unknown_member(body, callee, receiver);
+  }
   body_set_ref(body, callee->id, target->ref);
   return ok;
 }
