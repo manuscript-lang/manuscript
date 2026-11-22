@@ -560,8 +560,14 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
     return embedded;
   }
   MirValue checked = MIR_NONE;
-  if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
-                     fn->cx->program->symbols.ptr[id].module, args, call->arg_count, ret, &checked)) {
+  fn->native_arg_moves = 0; /* the operands the declaration takes (`move handler: fn`) */
+  for (uint32_t index = 0; index < call->arg_count && index < 32; index++) {
+    fn->native_arg_moves |= (call->args[index].flags & MS_PARAM_MOVE) != 0 ? 1u << index : 0;
+  }
+  const bool status = fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
+                                     fn->cx->program->symbols.ptr[id].module, args, call->arg_count, ret, &checked);
+  fn->native_arg_moves = 0;
+  if (status) {
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
