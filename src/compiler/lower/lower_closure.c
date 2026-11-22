@@ -328,7 +328,7 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
   if (capture->kind == MS_REF_LOCAL) {
     /* A binding the maker's scope owns; a loop element or pattern binding is a view, a `var` re-owns. */
-    return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] != 0 &&
+    return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] == 1 &&
            (fn->closing == NULL || !fn->closing_var[capture->index]);
   }
   return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&

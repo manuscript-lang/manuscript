@@ -161,6 +161,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   if (fn->local_owns != NULL && local < fn->nvars && (!borrow || fresh) && !stmt->u.bind.is_mutable &&
       mir_needs_drop(fn->cx->module, ty)) {
     fn->local_owns[local] = 1; /* a value the scope owns: an escaping closure may take it */
+  } else if (fn->local_owns != NULL && local < fn->nvars && borrow && !fresh && !stmt->u.bind.is_mutable &&
+             mir_needs_drop(fn->cx->module, ty)) {
+    fn->local_owns[local] = 2; /* a view of another owner's value: moving it out copies it */
   }
   mir_b_def_var(&fn->b, fn_local(fn, local, ty), value);
   return !fn->failed;
