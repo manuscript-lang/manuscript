@@ -8,6 +8,7 @@
 #include "compiler/check/call_internal.h"
 #include "compiler/check/instantiate.h"
 #include "compiler/check/methods.h"
+#include "compiler/syntax/parse.h"
 
 
 
@@ -147,10 +148,20 @@ static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchL
   return &found->ptr[0];
 }
 
+/* The method a member name calls: `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`. */
+static MsName called_name(Body *body, const MsExpr *callee, MsTy receiver) {
+  const MsSpan text = ms_names_span(body->program->names, callee->u.member.name);
+  if (!ms_span_is_text(text, MS_INDEX_SET)) {
+    return callee->u.member.name;
+  }
+  const bool map = ms_ty_is(&body->program->types, receiver, MS_BUILTIN_Map);
+  return ms_names_intern(body->program->names, ms_span_of_text(map ? "add" : "set"));
+}
+
 /* A method of the receiver's type or an operation of its interface. */
 static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Target *target) {
   MsMethodMatchList found = {0};
-  ms_check_find_method(body->program, receiver, callee->u.member.name, &found);
+  ms_check_find_method(body->program, receiver, called_name(body, callee, receiver), &found);
   bool ok = found.len != 0;
   if (ok) {
     const MsMethodMatch *match = pick_overload(body, &found, target->nargs);
