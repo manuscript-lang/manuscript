@@ -7,10 +7,12 @@
 #include "driver/checked_input.h"
 #include "compiler/syntax/diag_json.h"
 #include "driver/invocation.h"
+#include "driver/review_command.h"
+#include "tooling/html.h"
 #include "tooling/inspect.h"
 #include "tooling/views.h"
 
-enum { STATUS_FAILED = 1, EXIT_USAGE = 2, EXIT_NOT_IMPLEMENTED = 70 };
+enum { STATUS_FAILED = 1, EXIT_USAGE = 2 };
 
 static int write_output(MsSpan output, MsSpan text) {
   if (output.len == 0) {
@@ -60,13 +62,36 @@ static void render_view(MsArena *arena, const MsFactModel *model, const MsInvoca
   }
 }
 
+/* The whole program as one page; with `--diff`, the entities and findings the diff changed. */
+static int html_command(MsArena *arena, MsCheckedInput *checked, const MsInvocation *invocation, const MsFactModel *model) {
+  MsFindings findings = {0};
+  bool has_changes = false;
+  MsCheckedInput base = {0};
+  if (invocation->diff.len > 0) {
+    MsDiffInput input = {0};
+    MsFactModel base_facts = {0};
+    const int status = ms_review_diff_inputs(arena, checked, invocation, &input, &base_facts, &base);
+    if (status != 0) {
+      ms_checked_input_free(&base);
+      return status;
+    }
+    findings = ms_compare_facts(arena, &base_facts, model, &input);
+    has_changes = true;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_html_page(arena, model, has_changes ? &findings : NULL, &text);
+  const int status = write_output(invocation->output, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  ms_checked_input_free(&base);
+  return status;
+}
+
 static int view_command(MsArena *arena, MsCheckedInput *checked, const MsInvocation *invocation) {
   const MsSpan view = invocation->view.len == 0 ? ms_span_of_text("calls") : invocation->view;
-  if (ms_span_is_text(invocation->format, "html")) {
-    (void)fprintf(stderr, "ms diagram: --format html is not implemented in this build\n");
-    return EXIT_NOT_IMPLEMENTED;
-  }
   const MsFactModel model = ms_facts_collect(arena, &checked->program);
+  if (ms_span_is_text(invocation->format, "html")) {
+    return html_command(arena, checked, invocation, &model);
+  }
   MsViewNode *tree = NULL;
   MsSpan error = {0};
   if (!ms_build_view(arena, &model, view, invocation->entity, (int64_t)invocation->depth, &tree, &error)) {
