@@ -32,6 +32,14 @@ static void append_name(const Changes *pass, MsStrBuild *text, MsName name) {
   ms_strbuild_append(text, ms_names_span(pass->program->names, name));
 }
 
+/* A parameter gains the keyword in front of it: `var ` inserted where it is written. */
+static bool parameter_fix(MsPos decl, MsVarFix *fix) {
+  fix->pos = decl;
+  fix->end = decl;
+  fix->replacement = ms_string_from_span(ms_span_of_text("var "));
+  return true;
+}
+
 /* Reports `place` changed through a binding that does not allow it; the first line of the oracle's wording. */
 static void report(Changes *pass, const MsExpr *place, const MsBinding *binding) {
   const size_t length = place->end.offset > place->pos.offset ? place->end.offset - place->pos.offset : 0;
@@ -57,7 +65,7 @@ static void report(Changes *pass, const MsExpr *place, const MsBinding *binding)
     ms_strbuild_append_text(&text, "` to change it");
   }
   MsVarFix fix = {0};
-  const bool has_fix = ms_var_fix(pass->source, binding->decl, &fix);
+  const bool has_fix = parameter ? parameter_fix(binding->decl, &fix) : ms_var_fix(pass->source, binding->decl, &fix);
   ms_check_report(pass->program, pass->module, place->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   if (has_fix) {
     ms_check_attach_fix(pass->program, fix.pos, fix.end, fix.replacement);

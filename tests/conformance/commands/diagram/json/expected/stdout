@@ -95,7 +95,7 @@
           {
             "label": "@std/core.ms::print",
             "kind": "external",
-            "reference": "@std/core.ms+source#fn#print",
+            "reference": "@std/core.ms#fn#print",
             "file": "",
             "line": 0,
             "omitted": 0,

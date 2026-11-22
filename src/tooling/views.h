@@ -19,6 +19,10 @@ bool ms_build_view(MsArena *arena, const MsFactModel *model, MsSpan view, MsSpan
 /* The tree as an outline with fixed connectors, as a flowchart, and as the `--json` tree object. */
 void ms_view_ascii(const MsViewNode *root, MsStrBuild *out);
 void ms_view_mermaid(const MsViewNode *root, MsStrBuild *out);
+/* The words a slot is passed as (`var`, `copy`, `move`, `borrow`) and a result is owned as. */
+const char *ms_passing_mode(const MsSlot *s);
+const char *ms_result_label(uint8_t ownership);
+
 void ms_view_json(const MsViewNode *node, size_t depth, MsStrBuild *out);
 
 /* The view's own rendering, when it has one: false for a view the generic tree renders. */

@@ -112,7 +112,8 @@ bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsT
   for (size_t position = 0; position < seen.len; position++) {
     const MsSymbol *symbol = &seen.ptr[position];
     uint32_t found_at = 0;
-    if (symbol->ty == MS_TY_NONE || ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE ||
+    if (symbol->kind == MS_SYMBOL_ALIAS || symbol->ty == MS_TY_NONE ||
+        ms_ty_kind(&program->types, symbol->ty) != MS_TY_ALTERNATIVE ||
         body_case_of(body, symbol->ty, name, &found_at) == NULL) {
       continue;
     }

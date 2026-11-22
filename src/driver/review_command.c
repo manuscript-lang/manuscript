@@ -166,7 +166,7 @@ static bool review_input(MsArena *arena, const MsDiffFiles *files, MsSpan root, 
 }
 
 /* Reads the diff and rebuilds the base program from it. Returns 0, or the status of a problem already reported. */
-static int diff_inputs(MsArena *arena, const MsCheckedInput *head, const MsInvocation *invocation, MsDiffInput *input,
+int ms_review_diff_inputs(MsArena *arena, const MsCheckedInput *head, const MsInvocation *invocation, MsDiffInput *input,
                        MsFactModel *base_facts, MsCheckedInput *base) {
   MsSpan text = {0};
   if (ms_span_equal(invocation->diff, ms_span_of_text("-"))) {
@@ -224,7 +224,7 @@ static int review(MsArena *arena, MsCheckedInput *checked, const MsInvocation *i
   MsDiffInput input = {0};
   MsFactModel base_facts = {0};
   MsCheckedInput base = {0};
-  status = diff_inputs(arena, checked, invocation, &input, &base_facts, &base);
+  status = ms_review_diff_inputs(arena, checked, invocation, &input, &base_facts, &base);
   if (status == 0 && invocation->explain.len > 0) {
     const MsFindings findings = ms_compare_facts(arena, &base_facts, &head, &input);
     MsSpan error = {0};
