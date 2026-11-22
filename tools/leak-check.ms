@@ -136,7 +136,10 @@ fn main() Int:
 
 	var tasks = List[Promise[List[String]]]()
 	for worker in 0..jobs:
-		tasks.append(promise(fn: ok(sweep(ms.clone(), root.clone(), chunks[worker]))))
+		ms_copy := ms.clone()
+		root_copy := root.clone()
+		chunk := chunks[worker].clone()
+		tasks.append(promise(fn: ok(sweep(ms_copy, root_copy, chunk))))
 
 	var swept = 0
 	var leaks = 0

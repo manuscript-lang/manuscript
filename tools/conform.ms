@@ -43,6 +43,7 @@ fn main() Int:
 		.get()
 		.decode_utf8()
 		.get_or("")
+		.clone()
 	)
 	host_list := f"tests/conformance/expect-fail.{host()}.txt"
 	if access(host_list, 0).is_ok():
@@ -83,7 +84,7 @@ fn main() Int:
 		"--ms",
 		ms.clone(),
 		"--phase",
-		phases,
+		phases.clone(),
 		"--exclude-tag",
 		"aliasing",
 		"--expect-fail",
