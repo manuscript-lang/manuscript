@@ -249,8 +249,8 @@ static MsU128 rounded_magnitude(MsU128 magnitude, bool negative, int64_t drop, M
     return away ? 1 : 0;
   }
   const MsU128 unit = ms_dec_power_of_ten((unsigned)drop);
-  const MsU128 remainder = magnitude % unit;
-  MsU128 quotient = magnitude / unit;
+  const MsU128 remainder = ms_u128_mod(magnitude, unit);
+  MsU128 quotient = ms_u128_div(magnitude, unit);
   if (remainder != 0) {
     const MsU128 complement = unit - remainder;
     const int comparison_with_half = (remainder > complement) - (remainder < complement);

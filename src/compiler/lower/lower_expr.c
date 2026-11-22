@@ -1,4 +1,5 @@
 /* compiler/lower/lower_expr.c: expressions: literals, names, arithmetic and comparison. */
+#include "base/float_parse.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -19,13 +20,33 @@ static bool number_value(MsSpan text, int64_t *out) {
   return true;
 }
 
-static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
-  int64_t value = 0;
-  if (!number_value(ms_names_span(fn->cx->program->names, expr->u.sym), &value)) {
-    (void)fn_fail(fn, "a number literal is not a whole number that fits Int");
+static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
+  double value = 0;
+  if (ms_parse_float(text, &value) != MS_PARSE_FLOAT_OK) {
+    (void)fn_fail(fn, "a number literal is not a Float that fits");
     return MIR_NONE;
   }
-  return mir_b_iconst(&fn->b, value);
+  MirImm imm = {.tag = MI_FLOAT};
+  __builtin_memcpy(&imm.i, &value, sizeof value);
+  return fn_emit(fn, MOP_FConst, NULL, 0, imm, ty);
+}
+
+static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
+  const MsSpan text = ms_names_span(fn->cx->program->names, expr->u.sym);
+  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+    return lower_float(fn, text, ty);
+  }
+  int64_t value = 0;
+  if (!number_value(text, &value)) {
+    (void)fn_fail(fn, "a number literal is not a whole number that fits its type");
+    return MIR_NONE;
+  }
+  if (ty == MIR_INT) {
+    return mir_b_iconst(&fn->b, value);
+  }
+  const MirImm imm = {.tag = MI_INT, .i = value};
+  return fn_emit(fn, MOP_IConst, NULL, 0, imm, ty);
 }
 
 static MirValue lower_text(LowerFn *fn, const MsExpr *expr) {
@@ -63,7 +84,23 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (ref != NULL && ref->kind == MS_REF_FUNCTION) {
     return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   }
-  (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function");
+  const MsTy checked = ms_facts_type(fn->facts, expr->id);
+  if (checked == MS_TY_NONE || (ref != NULL && ref->kind != MS_REF_NONE && ref->kind != MS_REF_CASE)) {
+    (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d, type %s)", expr->pos.line,
+                  expr->pos.column, ref != NULL ? (int)ref->kind : -1, checked == MS_TY_NONE ? "unrecorded" : "recorded");
+    return MIR_NONE;
+  }
+  const MirTy ty = fn_type(fn, checked);
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind == MK_OPT && (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none` */
+  }
+  if (data->kind == MK_ALT && ref != NULL && ref->kind == MS_REF_CASE) {
+    const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = ref->index};
+    return fn_emit(fn, MOP_AltNew, NULL, 0, imm, ty); /* a case with no fields */
+  }
+  (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d)", expr->pos.line, expr->pos.column,
+                ref != NULL ? (int)ref->kind : -1);
   return MIR_NONE;
 }
 
@@ -114,6 +151,28 @@ static bool binary_ops(MsBinaryOp op, BinaryOps *out) {
   }
 }
 
+/* A Float operation. A Float32 is held in a double register, so its result is rounded back to single. */
+static MirValue float_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, MirValue right, MirTy ty) {
+  const MirValue operands[2] = {left, right};
+  if (ops->compare) {
+    const MirImm cc = {.tag = MI_CC, .a = (uint32_t)ops->cc};
+    return fn_emit(fn, MOP_FCmp, operands, 2, cc, MIR_BOOL);
+  }
+  MirOp op = MOP_FAdd;
+  if (ops->op == MOP_ISubChk) {
+    op = MOP_FSub;
+  } else if (ops->op == MOP_IMulChk) {
+    op = MOP_FMul;
+  } else if (ops->op == MOP_SDivChk) {
+    op = MOP_FDiv;
+  } else if (ops->op != MOP_IAddChk) {
+    (void)fn_fail(fn, "this operator is not defined on Float");
+    return MIR_NONE;
+  }
+  const MirValue result = fn_emit(fn, op, operands, 2, (MirImm){0}, ty);
+  return ty == MIR_FLOAT32 ? fn_emit(fn, MOP_F32Round, &result, 1, (MirImm){0}, ty) : result;
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   BinaryOps ops;
   if (!binary_ops((MsBinaryOp)expr->op, &ops)) {
@@ -128,6 +187,10 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     const MirValue operands[2] = {left, right};
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), operands, 2, MIR_STR);
+  }
+  const MirTy operand = mir_b_ty(&fn->b, left);
+  if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
+    return float_binary(fn, &ops, left, right, operand);
   }
   return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
 }
