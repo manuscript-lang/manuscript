@@ -7,19 +7,22 @@ else()
   set(MS_THIRD_PARTY_SYSTEM SYSTEM)
 endif()
 
-add_library(mimalloc STATIC mimalloc/src/static.c)
-target_include_directories(mimalloc SYSTEM PUBLIC mimalloc/include)
-target_include_directories(mimalloc PRIVATE mimalloc/src)
-target_compile_definitions(mimalloc PRIVATE MI_STATIC_LIB)
+# mimalloc builds with its own CMakeLists.txt and documented options: the static library only, no malloc override
+# (the runtime binds it through ms_alloc_install), no tests. Windows links the UCRT, which its mingw detection only
+# learns from MSYSTEM=UCRT64; without MI_MINGW_UCRT64 it attaches twice and prints a stray newline (#6208).
+set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
+set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
 if(WIN32)
-  # Windows links the UCRT. Without this mimalloc 3.6.1 attaches twice on mingw (the TLS callback and the
-  # constructor), and the second attach writes a stray newline to stderr (#6208). Remove it when mimalloc no
-  # longer initializes twice on mingw without the macro.
-  target_compile_definitions(mimalloc PRIVATE MI_MINGW_UCRT64)
+  set(MI_EXTRA_CPPDEFS "MI_MINGW_UCRT64" CACHE STRING "" FORCE)
 endif()
-target_link_libraries(mimalloc PUBLIC Threads::Threads)
+add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
+# The project builds with CMAKE_C_EXTENSIONS OFF; mimalloc needs GNU extensions (syscall, madvise).
+set_target_properties(mimalloc-static PROPERTIES C_EXTENSIONS ON)
+add_library(mimalloc ALIAS mimalloc-static)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_link_libraries(mimalloc PUBLIC rt)
+  target_link_libraries(mimalloc-static PUBLIC rt)
 endif()
 
 add_library(llhttp STATIC llhttp/src/api.c llhttp/src/http.c llhttp/src/llhttp.c)

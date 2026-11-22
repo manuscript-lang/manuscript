@@ -4,7 +4,7 @@ Vendored C libraries, pinned in `c-libs.lock` (version, tarball URL and checksum
 
 | Library | Version | Use |
 | --- | --- | --- |
-| mimalloc | 3.6.1 | Runtime allocator, bound through `ms_alloc_install` in `runtime/core/alloc.c`. CMake target `mimalloc`. |
+| mimalloc | 3.6.1 | Runtime allocator, bound through `ms_alloc_install` in `runtime/core/alloc.c`. Built with its own CMakeLists.txt (`add_subdirectory`, static, no override); CMake target `mimalloc` (alias of `mimalloc-static`). |
 | llhttp | 9.4.3 | HTTP parser for the net layer. CMake target `llhttp`. |
 | PCRE2 | 10.49 | Regex engine for the std regex and unicode natives: 8-bit, Unicode properties, no JIT. CMake target `pcre2`; the generic headers are copied at configure time. |
 | zlib | 1.4 | Compression for the std and net layers. CMake target `zlib` (`cmake/zlib.cmake`). |
