@@ -20,6 +20,8 @@ typedef struct MsWsTransport {
   void (*close)(void *context);
   bool (*is_closed)(void *context);
   void (*release)(void *context); /* when the session ends */
+  /* Optional (NULL: none): ends the writing half, so a peer still sending is not reset. */
+  void (*shutdown_write)(void *context);
 } MsWsTransport;
 
 typedef struct MsWsConfig {

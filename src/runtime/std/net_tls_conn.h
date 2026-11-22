@@ -6,6 +6,7 @@
 #include "base/bytes.h"
 #include "base/list.h"
 #include "runtime/std/net_core.h"
+#include "runtime/std/net_tls.h"
 
 /* TlsOptions flattened: the PEM texts are empty for none; `alpn` is a list of strings, most preferred first. */
 typedef struct MsTlsOptions {
@@ -26,6 +27,10 @@ typedef struct MsTlsInfo {
   MsList peer_certificates;
   uint8_t verified;
 } MsTlsInfo;
+
+/* The context a TlsOptions describes (certificate, key, roots for client verification or the client's trust,
+ * ALPN); NULL for options that cannot be used. */
+MsNetTlsCtx *ms_net_tls_ctx_from_options(bool server, const MsTlsOptions *options);
 
 /* Runs the server handshake of a TLS listener's context on an accepted connection; closes it on failure. */
 uint8_t ms_net_tls_serve(MsNetCore *core, int64_t timeout_ns, MsString *err);
