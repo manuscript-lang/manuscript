@@ -6,6 +6,7 @@
  * expression, pattern and parameter node; the reference of each name, binding and loop variable; the number of
  * locals of each function. */
 #include "compiler/check/body.h"
+#include "compiler/syntax/walk.h"
 #include "compiler/check/methods.h"
 
 void body_set_type(Body *body, MsNode node, MsTy ty) {
@@ -55,6 +56,18 @@ const MsLocal *body_find_local(const Body *body, MsName name) {
 
 /* The type a loop variable takes from the iterated type: a list's element, a set's member, or what the
  * iterator's `next` yields. */
+/* Whether a diagnostic of this module already sits inside `value`. */
+static bool rejected_value(const Body *body, const MsExpr *value) {
+  const uint32_t start = ms_expr_start(value).offset;
+  for (size_t index = 0; index < body->program->diagnostics.len; index++) {
+    const MsCheckDiag *diag = &body->program->diagnostics.ptr[index];
+    if (diag->module == body->module && diag->pos.offset >= start && diag->pos.offset < value->end.offset) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static MsTy element_type(Body *body, MsTy iterable) {
   const MsTyTable *types = &body->program->types;
   if ((ms_ty_is(types, iterable, MS_BUILTIN_List) || ms_ty_is(types, iterable, MS_BUILTIN_Set)) &&
@@ -379,11 +392,12 @@ static void declaration(Body *body, const MsDecl *decl) {
     break;
   }
   case MS_D_CONST: {
-    body->quiet = true;
-    body->resolver.report = false; /* a constant's annotation is reported with the constant's own diagnostics */
+    /* The constants pass reported an initializer it rejects; the oracle then leaves the annotation alone. */
+    body->resolver.report = body->resolver.report && !rejected_value(body, decl->u.konst.value);
     const MsTy declared = decl->u.konst.ty != NULL ? resolver_type(&body->resolver, decl->u.konst.ty) : MS_TY_NONE;
-    (void)body_expr(body, decl->u.konst.value, declared);
     body->resolver.report = body->module < body->program->user_modules;
+    body->quiet = true; /* the initializer is reported by the constants pass */
+    (void)body_expr(body, decl->u.konst.value, declared);
     body->quiet = false;
     break;
   }
