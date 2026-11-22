@@ -35,7 +35,7 @@ enum Slot:
 	Full(inner: Latch)
 	Empty
 
-fn explicit_then_scope(log: String) Int!:
+fn explicit_then_scope(move log: String) Int!:
 	var one = latch(log, 1)
 	one.close()?
 	return ok(1)

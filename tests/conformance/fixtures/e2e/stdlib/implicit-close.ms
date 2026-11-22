@@ -21,7 +21,7 @@ fn falls_off_the_end(move dir: String) Int:
 	r := Resource(dir, 1)
 	return r.id
 
-fn returns_early(dir: String, early: Bool) Int:
+fn returns_early(move dir: String, early: Bool) Int:
 	r := Resource(dir, 2)
 	if early: return 1
 

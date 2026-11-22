@@ -62,7 +62,7 @@ test "a resource receiver is selected before its replacement argument":
 	expect_equal(events, [1, 2])?
 	expect_equal(logged(log), "1,9,")?
 
-fn clear_map(log: String, var calls: Int) Void:
+fn clear_map(move log: String, var calls: Int) Void:
 	var maps = [{"a": Door(1, log.clone())}, {"a": Door(2, log)}]
 	maps[next(calls)].clear()
 

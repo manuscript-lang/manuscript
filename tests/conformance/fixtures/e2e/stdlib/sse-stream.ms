@@ -43,7 +43,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
 	return all
 
 // Reads every event, or the first error.
-fn decode(parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
+fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
 	var events = sse_events(chunks(parts), limits)
 	var out = List[SseEvent]()
 

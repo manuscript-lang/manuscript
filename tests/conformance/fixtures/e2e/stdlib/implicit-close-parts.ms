@@ -42,7 +42,7 @@ type Wrapper:
 fn move Wrapper.close() Void!:
 	void append_file(self.log, "wrapper,").wait()
 
-fn holds_fields(log: String) Int:
+fn holds_fields(move log: String) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))
 	return p.first.id
 
