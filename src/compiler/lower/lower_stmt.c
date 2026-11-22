@@ -19,7 +19,7 @@ static void disown(LowerFn *fn, MirValue value) {
 
 /* Binds the names of `pattern` to the parts of `value`: a record pattern reads fields, a list pattern reads
  * elements. The parts are borrowed from `value`, which the binding's source keeps alive. */
-static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned) {
+static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned, const MirVar *owner) {
   const MirModule *module = fn->cx->module;
   if (pattern->kind == MS_P_NAME) {
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
@@ -37,7 +37,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
       const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
-      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false)) {
+      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false, NULL)) {
         return false;
       }
     }
@@ -67,12 +67,15 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
     if (takes) { /* a fresh record hands its part to the name; what the pattern leaves out is released with it */
       part = fn_emit(fn, MOP_MoveOut, &part, 1, (MirImm){0}, def->fields[found].ty);
       taken |= found < 32 ? UINT32_C(1) << found : 0;
+      if (owner != NULL) { /* a `var` record keeps what is left and releases it where its scope ends */
+        fn_scope_var_moved(fn, *owner, found);
+      }
     }
-    if (!bind_parts(fn, field->pattern, part, false)) {
+    if (!bind_parts(fn, field->pattern, part, false, NULL)) {
       return false;
     }
   }
-  if (taken != 0) {
+  if (taken != 0 && owner == NULL) {
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, (MirImm){.tag = MI_TYPEMASK, .a = data->id, .b = taken}, MIR_NONE);
   }
   return true;
@@ -85,7 +88,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
       return fn_fail(fn, "a `var` destructuring is not lowered yet");
     }
     const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
-    return source != MIR_NONE && bind_parts(fn, pattern, source, fn_fresh_owner(fn, source));
+    MirVar owner = 0;
+    const bool from_var = source != MIR_NONE && fn_owned_local(fn, stmt->u.bind.value, &owner);
+    return source != MIR_NONE &&
+           bind_parts(fn, pattern, source, from_var || fn_fresh_owner(fn, source), from_var ? &owner : NULL);
   }
   /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;

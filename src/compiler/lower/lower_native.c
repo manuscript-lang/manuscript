@@ -692,6 +692,8 @@ bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, ui
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
+  /* A trailing result parameter the plain call would leave out. */
+  described = described || (sig->count == nargs + 1 && is_result_kind(sig->kinds[sig->count - 1]) && ret != MIR_VOID);
   if (!described || !signature_arguments(fn, sig, args, nargs, ret, wanted, &count)) {
     return false;
   }
