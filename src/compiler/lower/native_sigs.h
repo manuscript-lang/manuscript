@@ -1,0 +1,42 @@
+/* compiler/lower/native_sigs.h: the C parameters of the runtime's `msrt_` natives, generated from the `ms-sig:`
+ * comments of src/runtime (cmake/EmbedNativeSigs.cmake). A bodiless standard operation is called with the values
+ * the source gives it; the signature says where the runtime also wants the element, key or value descriptors of
+ * the collection and which trailing parameter is the result. */
+#ifndef MS_COMPILER_LOWER_NATIVE_SIGS_H
+#define MS_COMPILER_LOWER_NATIVE_SIGS_H
+
+#include <stdint.h>
+
+#include "base/safe.h"
+
+enum {
+  NS_VALUE,     /* a scalar passed by value */
+  NS_VEC_IN,    /* a list or bytes, read */
+  NS_VEC_MUT,   /* a list or bytes, written (the receiver, or the result) */
+  NS_STR_IN,
+  NS_STR_MUT,
+  NS_MAP_IN,    /* a map or set, read */
+  NS_MAP_MUT,
+  NS_ELEM_DESC, /* the descriptor of the first list's or set's element */
+  NS_KEY_DESC,  /* of the first map's key (or set's element) */
+  NS_VAL_DESC,  /* of the first map's value */
+  NS_ADDR_IN,   /* the address of one value, read */
+  NS_ADDR_MUT,  /* the address of one value, written */
+  NS_OUT_SCALAR /* the address of a scalar result */
+};
+
+enum { NS_MAX_PARAMS = 12 };
+
+typedef struct MsNativeSig {
+  const char *name;
+  uint8_t count;
+  uint8_t kinds[NS_MAX_PARAMS];
+} MsNativeSig;
+
+extern const MsNativeSig ms_native_sigs[];
+extern const unsigned ms_native_sig_count;
+
+/* The signature of the native called `name`, or NULL. */
+const MsNativeSig *ms_native_sig_find(MsSpan name);
+
+#endif
