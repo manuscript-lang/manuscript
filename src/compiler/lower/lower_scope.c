@@ -142,7 +142,7 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
 }
 
 /* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error. */
-static const bool implicit_clone_is_error = false;
+static const bool implicit_clone_is_error = true;
 
 MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   if (value == MIR_NONE) {
@@ -171,6 +171,19 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value) {
     if (inst->res == value) {
       MirMode mode = MM_BORROW;
       return mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) && mode == MM_MOVE;
+    }
+  }
+  /* Made in a block above this one (a `move` parameter, an owner declared before an `if`): the scope that owns it
+   * registered it there, and a disown in a sibling block is not on this path. */
+  for (uint32_t block = 0; block < fn->b.func.blocks.len; block++) {
+    if (block == fn->b.cur) {
+      continue;
+    }
+    const MirInstList *list = &fn->b.func.blocks.ptr[block].insts;
+    for (size_t at = 0; at < list->len; at++) {
+      if (list->ptr[at].op == MOP_ScopeOwn && list->ptr[at].nargs == 1 && list->ptr[at].args[0] == value) {
+        return true;
+      }
     }
   }
   return false;

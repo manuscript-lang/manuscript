@@ -194,6 +194,8 @@ static void scan_var_args(void *ctx, const MsExpr *expr) {
       MsExpr *left = NULL, *at = NULL;
       if (root != NULL && root->kind == MS_E_MEMBER) {
         root = root->u.member.left;
+      } else if (root != NULL && root->kind == MS_E_UNARY && root->op == MS_U_TRY) {
+        root = root->u.bin.left; /* `c?.bump()` changes the optional `c` holds */
       } else if (root != NULL && ms_expr_index(root, &left, &at)) {
         root = left;
       } else {

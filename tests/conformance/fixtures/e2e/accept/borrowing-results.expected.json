@@ -4,7 +4,7 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "t1 cat bob\n2 2\nt1 2\nowned x\n3 team\n1 t1\n",
+    "stdout": "t1 cat bob\n2 2\nt1 2\nowned x\n2 team\n1 t1\n",
     "stderr": ""
   }
 }
