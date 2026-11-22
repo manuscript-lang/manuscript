@@ -72,6 +72,7 @@ typedef struct MsCheckDiag {
   MsString message; /* owned */
   bool has_end;     /* the diagnostic spans [pos, end) */
   MsPos end;
+  bool ends_decl;   /* found once the declaration's body was walked: listed after the rest of its declaration */
   bool has_fix;     /* an edit that repairs the diagnostic: replace [fix_pos, fix_end) with `fix_text` */
   MsPos fix_pos, fix_end;
   MsString fix_text; /* owned; empty without a fix */

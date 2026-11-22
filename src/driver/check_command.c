@@ -327,8 +327,6 @@ static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fi
   }
   if (selection.collection) {
     collect_findings(&analysis->findings);
-  } else if (analysis->findings.len > 1) {
-    ms_sort((uint8_t *)analysis->findings.ptr, analysis->findings.len, sizeof(Finding), finding_compare, NULL);
   }
   check_selection_free(&selection);
 }

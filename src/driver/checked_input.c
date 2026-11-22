@@ -143,7 +143,6 @@ int ms_checked_input_report(const MsCheckedInput *checked) {
   for (size_t i = 0; i < checked->findings.len; i++) {
     finding_list_push(&sorted, checked->findings.ptr[i]);
   }
-  ms_sort((uint8_t *)sorted.ptr, sorted.len, sizeof(Finding), finding_compare, NULL);
   MsStrBuild err = ms_strbuild_new();
   finding_terminal_text(&err, checked->graph.source_root, &sorted, false);
   const MsSpan text = ms_strbuild_span(&err);

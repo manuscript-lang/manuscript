@@ -62,7 +62,9 @@ static Flow match_flow(const Ctx *ctx, const MsExpr *match) {
 static Reach call_reach(const Ctx *ctx, const MsExpr *call) {
   const MsTy ty = ms_facts_type(ctx->facts, call->id);
   if (ty == MS_TY_NONE) {
-    return REACH_MAYBE;
+    /* A callee that resolved to nothing is an unknown name: the call returns as far as the checker can tell. */
+    const MsRef *callee = ms_facts_ref(ctx->facts, call->u.call.callee->id);
+    return callee == NULL || callee->kind == MS_REF_NONE ? REACH_YES : REACH_MAYBE;
   }
   return ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never) ? REACH_NO : REACH_YES;
 }
@@ -129,6 +131,7 @@ static void report(MsCheckProgram *program, uint32_t module, const MsDecl *decl,
   ms_strbuild_append(&text, ms_strbuild_span(type));
   ms_strbuild_append_text(&text, ">' (or make the last branch return)");
   ms_check_report(program, module, decl->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  program->diagnostics.ptr[program->diagnostics.len - 1].ends_decl = true;
 }
 
 static void check_function(MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
@@ -147,11 +150,8 @@ static void check_function(MsCheckProgram *program, uint32_t module, const MsDec
   ms_strbuild_free(&type);
 }
 
-void ms_check_fallthrough(MsCheckProgram *program, uint32_t module) {
-  const MsModule *tree = program->modules.ptr[module].tree;
-  for (uint32_t index = 0; index < tree->ndecls; index++) {
-    if (tree->decls[index]->kind == MS_D_FN) {
-      check_function(program, module, tree->decls[index]);
-    }
+void ms_check_fallthrough(MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
+  if (module < program->user_modules && decl->kind == MS_D_FN) {
+    check_function(program, module, decl);
   }
 }
