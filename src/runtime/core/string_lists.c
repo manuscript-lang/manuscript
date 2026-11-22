@@ -24,13 +24,21 @@ void msrt_string_chars(const MsString *s, MsList *out) {
   const MsSpan text = msrt_text(s);
   MsStringList list = {0};
   ms_string_list_reserve(&list, ms_utf8_count(text.ptr, text.len));
+  MsString *items = list.ptr; /* the room is reserved, so each scalar is stored without a capacity check */
+  size_t count = 0;
   for (size_t at = 0; at < text.len;) {
+    const uint8_t byte = text.ptr[at];
+    if (byte < 0x80) { /* an ASCII scalar is an inline one-byte string */
+      items[count++] = (MsString){.low_bits = byte, .tagged = (UINT64_C(1) << MS_STRING_TAG_SHIFT) | (UINT64_C(1) << MS_STRING_INLINE_SHIFT)};
+      at++;
+      continue;
+    }
     const MsRune rune = ms_utf8_decode(text.ptr + at, text.len - at);
     const bool stray = rune.rune == MS_RUNE_ERROR && rune.width == 1;
-    ms_string_list_push(&list, msrt_string_make(stray ? ms_span_of(replacement, sizeof replacement)
-                                                      : ms_span_of(text.ptr + at, rune.width)));
+    items[count++] = msrt_string_make(stray ? ms_span_of(replacement, sizeof replacement) : ms_span_of(text.ptr + at, rune.width));
     at += rune.width;
   }
+  list.len = count;
   out_list(list, out);
 }
 
