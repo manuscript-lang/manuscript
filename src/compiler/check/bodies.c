@@ -296,7 +296,47 @@ static const MsMethodEntry *find_entry(const MsCheckProgram *program, const MsMe
   return NULL;
 }
 
-static void method_decl(Body *body, const MsMethod *method) {
+/* The receivers of every entry a method declares: one per member of a type set, else one. */
+static size_t entry_receivers(const MsCheckProgram *program, const MsMethod *method, MsTyList *out) {
+  for (size_t index = 0; index < program->methods.len; index++) {
+    if (program->methods.ptr[index].source == method) {
+      ms_ty_list_push(out, program->methods.ptr[index].receiver);
+    }
+  }
+  return out->len;
+}
+
+/* The receiver a type-set method body is checked against: `Self`, a variable bounded by the set and by every
+ * interface all its members implement, so the facts name `Self` and lowering binds it to each member. */
+static MsTy set_receiver(Body *body, const MsMethod *method, const MsTyList *members, const MsDecl *block) {
+  MsCheckProgram *program = body->program;
+  MsStrBuild id = ms_strbuild_new();
+  ms_strbuild_printf(&id, "Self#%u", (unsigned)method->id);
+  const MsName name = ms_names_intern(program->names, ms_span_of_text("Self"));
+  const MsTy self = ms_ty_variable_new(&program->types, name, ms_names_intern(program->names, ms_strbuild_span(&id)));
+  ms_strbuild_free(&id);
+  MsTyVariable *own = ms_ty_variable(&program->types, self);
+  const MsTy set = block != NULL && block->kind == MS_D_IMPL ? resolver_type(&body->resolver, block->u.impl.receiver) : MS_TY_NONE;
+  if (own != NULL && set != MS_TY_NONE && ms_ty_is(&program->types, set, MS_BUILTIN_TypeSet)) {
+    ms_ty_list_push(&own->bounds, set);
+  }
+  static const char *const contracts[] = {"Comparable", "Equal", "Hashable", "Clonable", "Data"};
+  MsTyVariable *record = ms_ty_variable(&program->types, self);
+  for (size_t index = 0; record != NULL && index < sizeof contracts / sizeof contracts[0]; index++) {
+    const MsSymbolId symbol =
+        resolver_prelude_symbol(program, ms_names_intern(program->names, ms_span_of_text(contracts[index])));
+    bool all = symbol != 0 && program->symbols.ptr[symbol].ty != MS_TY_NONE;
+    for (size_t at = 0; all && at < members->len; at++) {
+      all = ms_check_implements(program, members->ptr[at], program->symbols.ptr[symbol].ty);
+    }
+    if (all) {
+      ms_ty_list_push(&record->bounds, program->symbols.ptr[symbol].ty);
+    }
+  }
+  return self;
+}
+
+static void method_decl(Body *body, const MsMethod *method, const MsDecl *block) {
   const MsMethodEntry *entry = find_entry(body->program, method);
   if (entry == NULL) {
     return;
@@ -306,12 +346,21 @@ static void method_decl(Body *body, const MsMethod *method) {
     ms_name_list_push(&body->resolver.names, ms_ty_row(&body->program->types, entry->variables.ptr[index])->name);
     ms_ty_list_push(&body->resolver.types, entry->variables.ptr[index]);
   }
-  body->resolver.self = entry->receiver;
-  body->self_ty = entry->receiver;
-  body->result = ms_ty_result(&body->program->types, entry->ty);
+  MsTyList members = {0};
+  MsTy receiver = entry->receiver;
+  MsTy signature = entry->ty;
+  if (entry_receivers(body->program, method, &members) > 1) {
+    receiver = set_receiver(body, method, &members, block);
+    body->resolver.self = receiver;
+    signature = resolver_function(&body->resolver, method->func.params, method->func.result);
+  }
+  ms_ty_list_free(&members);
+  body->resolver.self = receiver;
+  body->self_ty = receiver;
+  body->result = ms_ty_result(&body->program->types, signature);
   const MsName self = ms_names_intern(body->program->names, ms_span_of_text("self"));
-  (void)body_declare(body, self, entry->receiver, MS_REF_PARAM, method->mutating, method->id, method->pos);
-  declare_params(body, method->func.params, entry->ty, 1);
+  (void)body_declare(body, self, receiver, MS_REF_PARAM, method->mutating, method->id, method->pos);
+  declare_params(body, method->func.params, signature, 1);
   callable(body, method->id, method->func.params, method->func.body);
   body->resolver.self = MS_TY_NONE;
   body->self_ty = MS_TY_NONE;
@@ -371,7 +420,7 @@ static void declaration(Body *body, const MsDecl *decl) {
   case MS_D_IMPL:
     for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
       body->next_local = 0;
-      method_decl(body, decl->u.impl.methods.ptr[index]);
+      method_decl(body, decl->u.impl.methods.ptr[index], decl);
     }
     break;
   case MS_D_TEST: {
