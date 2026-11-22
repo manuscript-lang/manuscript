@@ -70,6 +70,32 @@ DECLARE_RANGE(uint64, int)
 DECLARE_RANGE(uint64, uint8)
 DECLARE_RANGE(uint64, uint32)
 
+/* The natives the macros above declare, as the signature table reads them. */
+/* ms-sig: msrt_int16_to_int8(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int32_to_int8(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int32_to_int16(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_uint16_to_uint8(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_uint32_to_int32(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_int8(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_int16(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_int32(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_uint8(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_uint16(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_uint32(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int_to_uint64(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_uint64_to_int(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_uint64_to_uint8(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_uint64_to_uint32(v: i64, out: *mut i64) -> u8 @leaf */
+/* ms-sig: msrt_int8_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_int16_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_int32_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_int64_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_uint8_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_uint16_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_uint32_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_uint64_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+/* ms-sig: msrt_float32_truncate_to_int(v: f64, out: *mut i64) -> u8 @leaf */
+
 uint8_t msrt_float32_is_nan(double v);
 uint8_t msrt_float32_is_finite(double v);
 int64_t msrt_float32_compare(double a, double b);
