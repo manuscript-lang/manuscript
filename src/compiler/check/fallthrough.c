@@ -97,7 +97,8 @@ static Flow while_flow(const Ctx *ctx, const MsStmt *stmt) {
   const Flow body = block_flow(ctx, &stmt->u.loop.body);
   const MsExpr *cond = stmt->u.loop.cond;
   const bool forever = cond->kind == MS_E_BOOL && cond->u.flag;
-  return (Flow){.reach = !forever || body.breaks ? REACH_YES : REACH_NO};
+  /* A `break` in the condition (an arm of a match) belongs to the enclosing loop, not to this one. */
+  return (Flow){.reach = !forever || body.breaks ? REACH_YES : REACH_NO, .breaks = expression_flow(ctx, cond).breaks};
 }
 
 static Flow statement_flow(const Ctx *ctx, const MsStmt *stmt) {
@@ -123,19 +124,18 @@ static Flow statement_flow(const Ctx *ctx, const MsStmt *stmt) {
   return (Flow){.reach = REACH_YES};
 }
 
-static void report(MsCheckProgram *program, uint32_t module, const MsDecl *decl, MsStrBuild *type) {
+static void report(MsCheckProgram *program, uint32_t module, MsPos pos, MsStrBuild *type) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "reachable fallthrough in function returning ");
   ms_strbuild_append(&text, ms_strbuild_span(type));
   ms_strbuild_append_text(&text, "; end every path with 'return <");
   ms_strbuild_append(&text, ms_strbuild_span(type));
   ms_strbuild_append_text(&text, ">' (or make the last branch return)");
-  ms_check_report(program, module, decl->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  ms_check_report(program, module, pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   program->diagnostics.ptr[program->diagnostics.len - 1].ends_decl = true;
 }
 
-static void check_function(MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
-  const MsFunc *func = &decl->u.fn;
+static void check_function(MsCheckProgram *program, uint32_t module, const MsFunc *func, MsPos pos) {
   if (func->external || func->result == NULL || ms_fall_is_unit(program, func->result)) {
     return;
   }
@@ -145,13 +145,21 @@ static void check_function(MsCheckProgram *program, uint32_t module, const MsDec
   }
   MsStrBuild type = ms_strbuild_new();
   if (ms_fall_type_text(program, module, func, func->result, &type)) {
-    report(program, module, decl, &type);
+    report(program, module, pos, &type);
   }
   ms_strbuild_free(&type);
 }
 
 void ms_check_fallthrough(MsCheckProgram *program, uint32_t module, const MsDecl *decl) {
-  if (module < program->user_modules && decl->kind == MS_D_FN) {
-    check_function(program, module, decl);
+  if (module >= program->user_modules) {
+    return;
+  }
+  if (decl->kind == MS_D_FN) {
+    check_function(program, module, &decl->u.fn, decl->pos);
+  }
+  const bool methods = decl->kind == MS_D_IMPL;
+  for (uint32_t index = 0; methods && index < decl->u.impl.methods.len; index++) {
+    const MsMethod *method = decl->u.impl.methods.ptr[index];
+    check_function(program, module, &method->func, method->pos);
   }
 }
