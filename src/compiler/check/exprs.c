@@ -157,8 +157,9 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   }
   const MsSymbol *symbol = body_find_symbol(body, name);
   if (symbol != NULL) {
-    body_set_ref(body, expr->id, body_symbol_ref(body, symbol));
-    return symbol->ty;
+    const MsRef ref = body_symbol_ref(body, symbol);
+    body_set_ref(body, expr->id, ref);
+    return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : symbol->ty;
   }
   const MsSpan text = ms_names_span(body->program->names, name);
   if (ms_span_is_text(text, "__LINE__")) {
@@ -369,6 +370,8 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
                ? ms_ty_result(types, expected)
                : result;
   const MsTy saved_result = body->result;
+  const MsTy saved_hint = body->hint;
+  body->hint = result == MS_TY_NONE && shaped ? ms_ty_result(types, expected) : MS_TY_NONE;
   const MsTy saved_returned = body->returned;
   const bool saved_saw = body->saw_return;
   body->result = result;
@@ -379,6 +382,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   result = result == MS_TY_NONE ? body->returned : result;
   body->saw_return = saved_saw;
   body->result = saved_result;
+  body->hint = saved_hint;
   body->returned = saved_returned;
   body_scope_reset(body, mark);
   const MsName fn = intern(body, "fn");
