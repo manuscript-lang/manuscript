@@ -110,17 +110,6 @@ static void append_available(MsStrBuild *out, const MsSpanList *names, MsSpan na
   ms_span_list_free(&same);
 }
 
-/* The operations every value of a type with the property has natively. */
-static bool is_native_name(MsSpan name) {
-  static const char *const NATIVE[] = {"hash", "equals", "compare", "to_string", "clone", "close", "to_json"};
-  for (size_t index = 0; index < MS_COUNT_OF(NATIVE); index++) {
-    if (ms_span_is_text(name, NATIVE[index])) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver) {
   const MsTyTable *types = &body->program->types;
   if (body->module >= body->program->user_modules || body->quiet || holds_invalid(types, receiver, 6) ||
@@ -131,7 +120,7 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   const MsTyVariable *variable =
       ms_ty_kind(types, receiver) == MS_TY_VARIABLE ? ms_ty_variable(&body->program->types, receiver) : NULL;
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
-      is_native_name(name)) {
+      ms_check_standard_operation(body->program, member->u.member.name)) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
