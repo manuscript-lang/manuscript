@@ -156,6 +156,15 @@ static void environment_free(Environment *environment, size_t envc) {
 
 static void fail_with(int code, MsStrBuild *error) { ms_strbuild_append_text(error, uv_strerror(code)); }
 
+/* `what path: reason`, so a missing tool or file names itself. */
+static void fail_at(const char *what, MsSpan path, int code, MsStrBuild *error) {
+  ms_strbuild_append_text(error, what);
+  ms_strbuild_append_byte(error, ' ');
+  ms_strbuild_append(error, path);
+  ms_strbuild_append_text(error, ": ");
+  fail_with(code, error);
+}
+
 /* Starts the program with the log as its output and waits for it; false with `error` set when it cannot run. */
 static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exit_status, MsStrBuild *error) {
   uv_loop_t loop;
@@ -190,7 +199,7 @@ static bool spawn_and_wait(const MsProcessSpec *spec, const int fds[2], int *exi
                                         .stdio = stdio};
   code = uv_spawn(&loop, &process, &options);
   if (code < 0) {
-    fail_with(code, error);
+    fail_at("start", ms_span_of_text(options.file), code, error);
   } else {
     if (spec->supervise != NULL && uv_timer_init(&loop, &done.timer) == 0) {
       done.supervised = true;
@@ -228,7 +237,7 @@ bool ms_process_run(const MsProcessSpec *spec, int *exit_status, MsStrBuild *err
     fds[0] = open_log(spec->log_path);
     fds[1] = spec->inherit_error ? -1 : (spec->error_path.len > 0 && fds[0] >= 0 ? open_log(spec->error_path) : fds[0]);
     if (fds[0] < 0 || (fds[1] < 0 && !spec->inherit_error)) {
-      fail_with(fds[0] < 0 ? fds[0] : fds[1], error);
+      fail_at("open", fds[0] < 0 ? spec->log_path : spec->error_path, fds[0] < 0 ? fds[0] : fds[1], error);
       if (fds[0] >= 0) {
         close_log(fds[0]);
       }
