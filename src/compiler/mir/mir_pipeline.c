@@ -1,5 +1,6 @@
 /* compiler/mir/mir_pipeline.c: see mir_pipeline.h. */
 #include "compiler/mir/mir_pipeline.h"
+#include "compiler/mir/mir_desc_glue.h"
 
 #include "compiler/mir/mir_cancel_edges.h"
 #include "compiler/mir/mir_count_ops.h"
@@ -51,6 +52,7 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
     return false;
   }
   /* Drop and clone functions are made here; the emitter prints only primitives. */
+  mir_desc_glue(module); /* its functions only call the runtime, so glue and lowering need nothing more */
   mir_glue_run_and_expand(module, glue);
   return true;
 }

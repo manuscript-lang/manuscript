@@ -1,4 +1,5 @@
 /* Structural equality of two values, walked through their shape table. See shape_equal.h. */
+#include "base/hash.h"
 #include "base/map.h"
 #include "runtime/std/shape_equal.h"
 
@@ -138,4 +139,104 @@ static bool equal_at(const MsShapeTable *table, uint32_t shape_index, const uint
 
 uint8_t msstd_value_equals(const MsShapeTable *table, const void *a, const void *b) {
   return equal_at(table, table->image->root, a, b, 0) ? 1 : 0;
+}
+
+/* ---- hashing: equal values hash alike, so the walk mirrors equal_at ---- */
+
+static uint64_t hash_at(const MsShapeTable *table, uint32_t shape_index, const uint8_t *value, int depth);
+
+static uint64_t hash_scalar(const MsShape *shape, const uint8_t *value) {
+  if (shape->kind == MS_SHAPE_FLOAT) {
+    const double number = shape->size == 4 ? (double)*AT(float, value) : *AT(double, value);
+    uint64_t bits = 0;
+    const double canonical = number == 0 ? 0.0 : number; /* 0.0 == -0.0 */
+    __builtin_memcpy(&bits, &canonical, sizeof bits);
+    return ms_hash_int(bits);
+  }
+  return ms_hash_span(ms_span_of(value, shape->size));
+}
+
+static uint64_t hash_fields(const MsShapeTable *table, uint32_t first, uint32_t count, const uint8_t *value, uint64_t hash,
+                            int depth) {
+  for (uint32_t at = 0; at < count; at++) {
+    const MsShapeMember *field = ms_shape_member(table, first + at);
+    hash = ms_hash_combine(hash, hash_at(table, field->shape, value + field->offset, depth + 1));
+  }
+  return hash;
+}
+
+static uint64_t hash_maps(const MsShapeTable *table, const MsShape *shape, const uint8_t *value, int depth) {
+  const bool is_map = shape->kind == MS_SHAPE_MAP;
+  const MsMap *map = AT(MsMap, value);
+  const MsShape *key = ms_shape_at(table, shape->elem);
+  const MsShape *item = is_map ? ms_shape_at(table, shape->value) : NULL;
+  const MsMapLayout layout = ms_map_layout_of(key->size, key->align, is_map ? item->size : 0, is_map ? item->align : 1);
+  uint64_t sum = 0; /* a sum, because entries compare in any order */
+  for (size_t at = 0; at < map->used; at++) {
+    const uint8_t *entry = map->slots + at * layout.stride;
+    if ((*AT(uint64_t, entry) & MS_MAP_LIVE) == 0) {
+      continue;
+    }
+    uint64_t one = hash_at(table, shape->elem, entry + layout.key_offset, depth + 1);
+    if (is_map) {
+      one = ms_hash_combine(one, hash_at(table, shape->value, entry + layout.value_offset, depth + 1));
+    }
+    sum += one;
+  }
+  return ms_hash_combine(ms_hash_int(map->len), sum);
+}
+
+static uint64_t hash_at(const MsShapeTable *table, uint32_t shape_index, const uint8_t *value, int depth) {
+  const MsShape *shape = ms_shape_at(table, shape_index);
+  if (depth > 256) {
+    return 0;
+  }
+  switch (shape->kind) {
+  case MS_SHAPE_VOID:
+    return 0;
+  case MS_SHAPE_BOOL:
+  case MS_SHAPE_INT:
+  case MS_SHAPE_UINT:
+  case MS_SHAPE_FLOAT:
+    return hash_scalar(shape, value);
+  case MS_SHAPE_STRING:
+    return ms_string_hash(AT(MsString, value));
+  default:
+    break;
+  }
+  const uint8_t *resolved = ms_shape_resolve(shape, value);
+  switch (shape->kind) {
+  case MS_SHAPE_BYTES: {
+    const MsList *bytes = AT(MsList, resolved);
+    return ms_hash_span(ms_span_of(bytes->ptr, bytes->len));
+  }
+  case MS_SHAPE_LIST: {
+    const MsList *list = AT(MsList, resolved);
+    const MsShape *element = ms_shape_at(table, shape->elem);
+    uint64_t hash = ms_hash_int(list->len);
+    for (size_t at = 0; at < list->len; at++) {
+      hash = ms_hash_combine(hash, hash_at(table, shape->elem, (const uint8_t *)list->ptr + at * element->size, depth + 1));
+    }
+    return hash;
+  }
+  case MS_SHAPE_MAP:
+  case MS_SHAPE_SET:
+    return hash_maps(table, shape, resolved, depth);
+  case MS_SHAPE_OPTIONAL: {
+    const uint8_t *some = ms_shape_some(shape, resolved);
+    return some == NULL ? 0 : ms_hash_combine(1, hash_at(table, shape->elem, some, depth + 1));
+  }
+  case MS_SHAPE_RECORD:
+    return hash_fields(table, shape->first, shape->count, resolved, 0, depth);
+  case MS_SHAPE_ALTERNATIVE: {
+    const MsShapeMember *active = ms_shape_active_case(table, shape, resolved);
+    return hash_fields(table, active->first, active->count, resolved, ms_hash_int((uint64_t)(active - ms_shape_member(table, 0))), depth);
+  }
+  default: /* a handle or a function: compared by identity */
+    return ms_hash_int((uint64_t)(uintptr_t)resolved);
+  }
+}
+
+int64_t msstd_value_hash(const MsShapeTable *table, const void *value) {
+  return (int64_t)hash_at(table, table->image->root, value, 0);
 }
