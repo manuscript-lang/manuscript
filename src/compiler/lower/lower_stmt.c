@@ -122,8 +122,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
     if (call_reads_temporary(stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
-      /* A temporary resource closes where its statement ends, so a part kept past it is a copy. */
-      value = fn_implicit_clone(fn, value, true);
+      /* A temporary resource closes where its statement ends: a part kept past it is taken out of the temporary. */
+      const MirValue owned = fn_take_from_temporary(fn, stmt->u.bind.value, value);
+      value = owned != MIR_NONE ? owned : fn_implicit_clone(fn, value, true);
     } else {
       borrow = true;
     }
@@ -293,39 +294,92 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
 /* A field of an owning local or parameter, taken without a copy for a native that changes it in place: `record` is the
  * record, taken out of its variable, and `field` the field's value, which shares its storage with the record until
  * `fn_put_field` stores the changed one. False when `place` is not such a field. */
-bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field) {
-  const MsRef *ref = place->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, place->id) : NULL;
-  if (ref == NULL || ref->kind != MS_REF_FIELD) {
-    return false;
+enum { FIELD_PATH_MAX = 6 };
+
+/* The record fields from the owning root to `place`, outermost first (`holder.reader.names` is `reader`, `names`),
+ * and the root's place. False when `place` is not a field path rooted in an owning local or parameter. */
+static bool field_path(LowerFn *fn, const MsExpr *place, const MsExpr **fields, uint32_t *count, const MsExpr **root) {
+  const MsExpr *chain[FIELD_PATH_MAX];
+  uint32_t length = 0;
+  const MsExpr *at = place;
+  for (;;) {
+    const MsRef *ref = at->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, at->id) : NULL;
+    if (ref == NULL || ref->kind != MS_REF_FIELD || length == FIELD_PATH_MAX) {
+      return false;
+    }
+    chain[length++] = at;
+    const MsExpr *base = at->u.member.left;
+    MirVar var;
+    MirValue slot;
+    MirTy slot_ty;
+    if (fn_owned_local(fn, base, &var) || closing_local(fn, base, &slot, &slot_ty) || closing_param(fn, base, &slot, &var)) {
+      *root = base;
+      break;
+    }
+    at = base;
   }
-  const MsExpr *base = place->u.member.left;
-  MirVar var;
-  MirValue slot;
-  MirTy slot_ty;
-  if (!fn_owned_local(fn, base, &var) && !closing_local(fn, base, &slot, &slot_ty) && !closing_param(fn, base, &slot, &var)) {
-    return false;
+  for (uint32_t index = 0; index < length; index++) {
+    fields[index] = chain[length - 1 - index];
   }
-  if (!fn_take_place(fn, base, record)) {
-    return false;
-  }
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, *record));
-  if (data->kind != MK_TYPE) {
-    return false;
-  }
-  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
-  *field = mir_b_emit(&fn->b, MOP_TypeGet, record, 1, imm, fn_type(fn, ms_facts_type(fn->facts, place->id)));
+  *count = length;
   return true;
 }
 
-/* Stores `field`, the changed value of the field `fn_take_field` took, back: the old one shares its storage, so it is
- * not dropped. */
+/* The value of each field of the path, read from the root record `record`; values[0] is `record` itself. */
+static bool read_path(LowerFn *fn, const MsExpr **fields, uint32_t count, MirValue record, MirValue *values) {
+  values[0] = record;
+  for (uint32_t index = 0; index < count; index++) {
+    const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, values[index]));
+    if (data->kind != MK_TYPE) {
+      return false;
+    }
+    const MsRef *ref = ms_facts_ref(fn->facts, fields[index]->id);
+    const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+    values[index + 1] = mir_b_emit(&fn->b, MOP_TypeGet, &values[index], 1, imm, fn_type(fn, ms_facts_type(fn->facts, fields[index]->id)));
+  }
+  return true;
+}
+
+/* A field of an owning local or parameter, or a field path below it, taken without a copy for a native that changes
+ * it in place: `record` is the root record, taken out of its variable, and `field` the field's value, which shares its
+ * storage with the record until `fn_put_field` stores the changed one. False when `place` is not such a field. */
+bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field) {
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root = NULL;
+  uint32_t count = 0;
+  if (!field_path(fn, place, fields, &count, &root)) {
+    return false;
+  }
+  if (!fn_take_place(fn, root, record)) {
+    return false;
+  }
+  MirValue values[FIELD_PATH_MAX + 1];
+  if (!read_path(fn, fields, count, *record, values)) {
+    return false;
+  }
+  *field = values[count];
+  return true;
+}
+
+/* Stores `field`, the changed value of the field `fn_take_field` took, back: the old ones share its storage, so they
+ * are not dropped. */
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {
-  const MsRef *ref = ms_facts_ref(fn->facts, place->id);
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, record));
-  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
-  const MirValue operands[2] = {record, field};
-  const MirValue updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, record));
-  return fn_put_place(fn, place->u.member.left, updated);
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root = NULL;
+  uint32_t count = 0;
+  MirValue values[FIELD_PATH_MAX + 1];
+  if (!field_path(fn, place, fields, &count, &root) || !read_path(fn, fields, count, record, values)) {
+    return fn_fail(fn, "a changed field is not a field path");
+  }
+  MirValue updated = field;
+  for (uint32_t index = count; index-- > 0;) {
+    const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, values[index]));
+    const MsRef *ref = ms_facts_ref(fn->facts, fields[index]->id);
+    const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+    const MirValue operands[2] = {values[index], updated};
+    updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, values[index]));
+  }
+  return fn_put_place(fn, root, updated);
 }
 
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
@@ -538,7 +592,8 @@ static void enter(LowerFn *fn, MirBlock block) {
 
 static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   const bool probes = stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_PROBE;
-  const bool owns = !probes && stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
+  bool owns = !probes && stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
+  const bool from_call = stmt->u.branch.cond->kind == MS_E_CALL;
   MirValue entry = MIR_NONE;
   MirTy entry_ty = MIR_VOID;
   MirValue cond = MIR_NONE;
@@ -547,7 +602,13 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
       return false;
     }
   } else {
-    MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns ? LW_MOVE : LW_BORROW);
+    MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns && !from_call ? LW_MOVE : LW_BORROW);
+    if (owns && from_call && tested != MIR_NONE && fn_is_borrowed_view(fn, tested)) {
+      /* A call that answers a part of something else is a view, unless it answers a temporary the binding can take. */
+      const MirValue taken = fn_take_from_temporary(fn, stmt->u.branch.cond, tested);
+      owns = taken != MIR_NONE;
+      tested = owns ? taken : tested;
+    }
     if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
       fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */
     }

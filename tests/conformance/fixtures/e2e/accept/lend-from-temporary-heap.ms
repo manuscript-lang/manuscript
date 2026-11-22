@@ -16,7 +16,7 @@ fn deep(t: Team) String:
     return first_tag(t.members[0])
 
 fn make_team(tag: String) Team:
-    return Team(members: [Person(name: "ann", tags: [tag])])
+    return Team(members: [Person(name: "ann", tags: [tag.clone()])])
 
 // The lent tag is longer than an inline string, so it lives on the heap with its record: the
 // caller owns a copy, and the temporary record's release must not free what `fresh` reads.
