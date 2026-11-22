@@ -102,6 +102,9 @@ static void walk_match(Walk *pass, const MsExpr *expr) {
 }
 
 static void walk_expr(Walk *pass, const MsExpr *expr) {
+  if (pass->visitor->expr != NULL) {
+    pass->visitor->expr(pass->visitor->context, expr, &pass->scope, &pass->site);
+  }
   switch ((MsExprKind)expr->kind) {
   case MS_E_NUMBER:
   case MS_E_BOOL:
@@ -249,6 +252,7 @@ static void walk_methods(Walk *pass, MsMethod *const *methods, uint32_t count) {
 }
 
 static void walk_decl(Walk *pass, const MsDecl *decl) {
+  pass->site.decl = decl;
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
     walk_callable(pass, &decl->u.fn, NULL);

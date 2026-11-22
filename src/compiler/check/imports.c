@@ -39,6 +39,7 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
     return false;
   }
   *out = ms_check_add_module(program, file, tree);
+  program->modules.ptr[*out].source = source.text;
   return true;
 }
 
