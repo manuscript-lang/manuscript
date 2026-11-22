@@ -34,13 +34,16 @@ typedef struct Body {
   uint32_t next_local;
   MsTy result;  /* the enclosing function's result type; MS_TY_NONE inside no function */
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
+  MsSpan source;  /* the module's text, for repairing edits; empty for a bundled module */
+  bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
+  bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
 
 /* ---- bodies.c ---- */
 
 /* Types every function, method, test and constant of `module`; fills its facts. */
-void ms_check_bodies(MsCheckProgram *program, uint32_t module);
+void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 void body_block(Body *body, MsStmts stmts); /* a nested scope */
 size_t body_scope_mark(const Body *body);
@@ -75,6 +78,14 @@ bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_
 MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol);
 /* A prelude type (`List`, `Map`, `Optional`, ...) applied to `count` arguments. */
 MsTy body_std_type(Body *body, const char *name, const MsTy *args, size_t count);
+
+/* ---- mismatch.c ---- */
+
+/* Types `expr` against `expected` and reports "expected X, found Y (in <context>)" when it does not fit; an
+ * empty `context` names none. Returns the expression's own type. */
+MsTy body_expect(Body *body, const MsExpr *expr, MsTy expected, MsSpan context);
+/* The check alone, for an expression typed by the caller. */
+void body_check_assignable(Body *body, const MsExpr *expr, MsTy actual, MsTy expected, MsSpan context);
 
 /* ---- match.c ---- */
 

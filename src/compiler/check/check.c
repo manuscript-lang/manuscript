@@ -46,7 +46,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_returns(program, index);
   }
   for (uint32_t index = 0; index < program->modules.len; index++) {
-    ms_check_bodies(program, index);
+    ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
   }
   for (uint32_t index = 0; index < program->user_modules; index++) {
     ms_check_fallthrough(program, index);

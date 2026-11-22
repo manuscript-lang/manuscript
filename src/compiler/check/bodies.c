@@ -96,7 +96,14 @@ static void bind_pattern(Body *body, const MsPattern *pattern, MsTy ty, bool is_
 
 static void stmt_bind(Body *body, const MsStmt *stmt) {
   const MsTy declared = stmt->u.bind.ty != NULL ? resolver_type(&body->resolver, stmt->u.bind.ty) : MS_TY_NONE;
-  const MsTy value = body_expr(body, stmt->u.bind.value, declared);
+  MsStrBuild context = ms_strbuild_new();
+  if (stmt->u.bind.pattern->kind == MS_P_NAME) {
+    ms_strbuild_append_text(&context, "the initializer of '");
+    ms_strbuild_append(&context, ms_names_span(body->program->names, stmt->u.bind.pattern->u.name));
+    ms_strbuild_append_text(&context, "'");
+  }
+  const MsTy value = body_expect(body, stmt->u.bind.value, declared, ms_strbuild_span(&context));
+  ms_strbuild_free(&context);
   bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : value, stmt->u.bind.is_mutable);
 }
 
@@ -112,7 +119,7 @@ static void stmt_assign(Body *body, const MsStmt *stmt) {
     }
   }
   body_set_type(body, stmt->id, target);
-  (void)body_expr(body, stmt->u.assign.value, target);
+  (void)body_expect(body, stmt->u.assign.value, target, (MsSpan){0});
 }
 
 /* The payload an `if x := expr:` binding takes from the tested value. */
@@ -123,7 +130,9 @@ static MsTy payload_type(const Body *body, MsTy tested) {
 }
 
 static void stmt_if(Body *body, const MsStmt *stmt) {
-  const MsTy cond = body_expr(body, stmt->u.branch.cond, MS_TY_NONE);
+  const MsTy cond = stmt->u.branch.binding != NULL
+                        ? body_expr(body, stmt->u.branch.cond, MS_TY_NONE)
+                        : body_expect(body, stmt->u.branch.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("an if condition"));
   const size_t mark = body_scope_mark(body);
   if (stmt->u.branch.binding != NULL) {
     bind_pattern(body, stmt->u.branch.binding, payload_type(body, cond), stmt->u.branch.is_mutable);
@@ -157,7 +166,8 @@ static void statement(Body *body, const MsStmt *stmt) {
     break;
   case MS_S_RETURN:
     if (stmt->u.expr != NULL) {
-      const MsTy returned = body_expr(body, stmt->u.expr, body->result);
+      body->saw_return = true;
+      const MsTy returned = body_expect(body, stmt->u.expr, body->result, ms_span_of_text("the return value"));
       body->returned = body->returned == MS_TY_NONE ? returned : body->returned;
     }
     break;
@@ -165,7 +175,7 @@ static void statement(Body *body, const MsStmt *stmt) {
     stmt_if(body, stmt);
     break;
   case MS_S_WHILE:
-    (void)body_expr(body, stmt->u.loop.cond, MS_TY_NONE);
+    (void)body_expect(body, stmt->u.loop.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("a while condition"));
     body_block(body, stmt->u.loop.body);
     break;
   case MS_S_FOR:
@@ -286,10 +296,12 @@ static void declaration(Body *body, const MsDecl *decl) {
     body->facts->local_counts[decl->id] = body->next_local;
     break;
   case MS_D_CONST: {
+    body->quiet = true;
     body->resolver.report = false; /* a constant's annotation is reported with the constant's own diagnostics */
     const MsTy declared = decl->u.konst.ty != NULL ? resolver_type(&body->resolver, decl->u.konst.ty) : MS_TY_NONE;
     (void)body_expr(body, decl->u.konst.value, declared);
     body->resolver.report = body->module < body->program->user_modules;
+    body->quiet = false;
     break;
   }
   case MS_D_TYPE:
@@ -300,10 +312,10 @@ static void declaration(Body *body, const MsDecl *decl) {
   }
 }
 
-void ms_check_bodies(MsCheckProgram *program, uint32_t module) {
+void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {
   MsModuleInfo *info = &program->modules.ptr[module];
   ms_facts_init(&info->facts, &program->arena, module, info->tree->node_count);
-  Body body = {.program = program, .module = module, .facts = &info->facts};
+  Body body = {.program = program, .module = module, .facts = &info->facts, .source = source};
   resolver_init(&body.resolver, program, module);
   for (uint32_t index = 0; index < info->tree->ndecls; index++) {
     declaration(&body, info->tree->decls[index]);
