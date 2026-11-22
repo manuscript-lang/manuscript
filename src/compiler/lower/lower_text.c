@@ -73,6 +73,18 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
   return joined;
 }
 
+/* Any other value is written by the runtime's walker over the value's shape table: the value goes into a stack
+ * slot (a borrow, so nothing is dropped) and the walker reads it through the table. */
+static MirValue value_text(LowerFn *fn, MirValue value, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue store[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+  const MirValue table = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
+  const MirValue args[2] = {table, slot};
+  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msstd_value_text")), args, 2, MIR_STR);
+}
+
 static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   if (part->expr == NULL) {
     const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, part->lit)};
@@ -84,11 +96,13 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
     return false;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
-  if (ty != MIR_INT && ty != MIR_STR) {
-    return fn_fail(fn, "interpolating this type is not lowered yet");
+  if (ty == MIR_INT || ty == MIR_STR) {
+    *out = (TextPiece){value, ty == MIR_INT};
+    return true;
   }
-  *out = (TextPiece){value, ty == MIR_INT};
-  return true;
+  const MirValue text = value_text(fn, value, ty);
+  *out = (TextPiece){text, false};
+  return text != MIR_NONE;
 }
 
 MirValue fn_text(LowerFn *fn, const MsExpr *expr) {
