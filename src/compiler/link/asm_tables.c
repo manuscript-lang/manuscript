@@ -107,12 +107,50 @@ static void write_blob(const AsmScan *scan, const MirTables *tables, const Slots
   }
 }
 
+/* LLVM inlines function bodies into one another, and the assembly names only the body a place belongs to. A run
+ * of ranges of another function's body (scope numbers from `first_body` up) is such an inlined body: it gets a
+ * scope of its own, called from the place of the range before it, so a trace shows the caller too. The new scopes
+ * follow `info->scopes`. */
+static void attribute_inlined_bodies(MsArena *arena, AsmScan *scan, const EmitTableInfo *info, EmitTableInfo *out) {
+  const uint32_t first_body = info->nscopes - (uint32_t)scan->module->funcs.len + 1;
+  MirScope *scopes = MS_ARENA_NEW_ARRAY(arena, MirScope, (size_t)info->nscopes + scan->ranges.len + 1);
+  for (uint32_t index = 0; index < info->nscopes; index++) {
+    scopes[index] = info->scopes[index];
+  }
+  uint32_t total = info->nscopes;
+  for (size_t at = 0; at < scan->order.len; at++) {
+    const AsmFunc *found = &scan->funcs[scan->order.ptr[at]];
+    uint32_t previous_scope = 0;
+    uint32_t previous_line = 0;
+    uint32_t previous_original = 0;
+    for (uint32_t index = found->first; index < found->first + found->count; index++) {
+      MirCodeRange *range = &scan->ranges.ptr[index];
+      const uint32_t original = range->scope;
+      if (original >= first_body && original <= info->nscopes) {
+        if (original != previous_original) {
+          MirScope entry = info->scopes[original - 1];
+          entry.parent = previous_scope;
+          entry.call_line = previous_line;
+          scopes[total++] = entry;
+        }
+        range->scope = total;
+      }
+      previous_original = original;
+      previous_scope = range->scope;
+      previous_line = range->line;
+    }
+  }
+  *out = (EmitTableInfo){.display = info->display, .scopes = scopes, .nscopes = total};
+}
+
 bool link_asm_tables(MsArena *arena, const MirModule *module, const EmitTableInfo *info, MsSpan assembly,
                      MsStrBuild *out, MsStrBuild *why) {
   AsmScan scan;
   asm_scan_init(&scan, arena, asm_host_format(), module, info);
   bool ok = asm_scan(&scan, assembly, why);
+  EmitTableInfo grown = *info;
   if (ok) {
+    attribute_inlined_bodies(arena, &scan, info, &grown);
     uint32_t count = (uint32_t)scan.order.len;
     MirFuncTable *funcs = MS_ARENA_NEW_ARRAY(arena, MirFuncTable, count);
     for (uint32_t index = 0; index < count; index++) {
@@ -125,7 +163,7 @@ bool link_asm_tables(MsArena *arena, const MirModule *module, const EmitTableInf
                                     .nranges = found->count};
     }
     MirTables tables;
-    mir_fault_tables(arena, module, funcs, count, info->scopes, info->nscopes, &tables);
+    mir_fault_tables(arena, module, funcs, count, grown.scopes, grown.nscopes, &tables);
     Slots slots = make_slots(arena, &tables);
     ms_strbuild_append(out, ms_strbuild_span(&scan.out));
     write_section(&scan, out);
