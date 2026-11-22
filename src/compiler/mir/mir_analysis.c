@@ -99,7 +99,10 @@ static void indirect_modes(const MirModule *module, const MirFunc *func, const M
 void mir_arg_modes(const MirModule *module, const MirFunc *func, const MirInst *inst, MirMode *out) {
   const uint32_t count = inst->nargs;
   switch ((MirOp)inst->op) {
-  case MOP_TypeNew: case MOP_AltNew: case MOP_ListLit: case MOP_ClosureNew: case MOP_TypeSet:
+  case MOP_ClosureNew: /* a closure into its maker's frame only reads the captures where they live */
+    fill_modes(out, count, inst->imm.tag == MI_FUNC && module->funcs.ptr[inst->imm.a].scoped ? MM_BORROW : MM_MOVE);
+    return;
+  case MOP_TypeNew: case MOP_AltNew: case MOP_ListLit: case MOP_TypeSet:
   case MOP_TypeFill: case MOP_ListPush: case MOP_ListDropLast: case MOP_ListSet: case MOP_ListSetNn:
   case MOP_ListSetU: case MOP_ListFill: case MOP_ListFillU: case MOP_ListPushU:
     fill_modes(out, count, MM_MOVE);

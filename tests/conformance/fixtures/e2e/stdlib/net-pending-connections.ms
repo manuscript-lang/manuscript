@@ -53,7 +53,8 @@ test "pending connections are served by promises spread over the threads":
 	serving := promise(fn: serve_spread(listener, 16))
 	var asking: List[Promise[String]] = []
 	for i in 0..16:
-		asking.append(promise(fn: ask(address, f"hello {i}")))
+		target := address.clone()
+		asking.append(promise(fn: ask(target, f"hello {i}")))
 
 	replies := wait_all(asking)?
 	for i in 0..16:

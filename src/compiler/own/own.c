@@ -4,6 +4,7 @@
 #include "compiler/own/borrows.h"
 #include "compiler/own/changes.h"
 #include "compiler/own/closers.h"
+#include "compiler/own/escapes.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/taken.h"
 #include "compiler/own/unused.h"
@@ -15,6 +16,7 @@ void ms_own_check(MsCheckProgram *program) {
   for (int round = 0; round < 4 && ms_own_taken(program); round++) { /* a taken parameter moves the caller's argument */
     ms_own_uses(program);
   }
+  ms_own_escapes(program);
   ms_own_closers(program);
   ms_own_unused(program);
   ms_own_changes(program);
