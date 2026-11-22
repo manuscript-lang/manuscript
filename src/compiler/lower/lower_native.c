@@ -71,7 +71,7 @@ static bool spilled_by_address(LowerFn *fn, MirValue value) {
 }
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
-static MirValue move_out_of_scope(LowerFn *fn, MirValue value) {
+MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   MirMode mode = MM_BORROW;
   const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
@@ -145,7 +145,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       }
       MirValue operand = args[next];
       if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
-        operand = move_out_of_scope(fn, operand);
+        operand = fn_move_out_of_scope(fn, operand);
       }
       out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand) : operand;
       next++;
@@ -281,8 +281,12 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
 }
 
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
-  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (fn->hint != MIR_VOID && (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2)) {
+    ty = fn->hint; /* the checker left the literal's type open: the parameter it fills gives it */
+    data = mir_ty_data(fn->cx->module, ty);
+  }
   if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
     (void)fn_fail(fn, "a map literal is not typed as a map");
     return MIR_NONE;
