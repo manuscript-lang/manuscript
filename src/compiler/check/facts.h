@@ -118,7 +118,8 @@ typedef enum MsCloserFlags {
   MS_CLOSER_CONSUMES = 2,   /* `move fn close`: the close takes the value, nothing is left to drop */
   MS_CLOSER_WRITES_BACK = 4, /* `var fn close`: the receiver lives in memory and the close changes it */
   MS_CLOSER_EXPLICIT = 8,   /* the body also calls `.close()` on the binding by hand */
-  MS_CLOSER_MOVED = 16      /* a use moves the binding (or a closure captures it): the scope end may not hold it */
+  MS_CLOSER_MOVED = 16,     /* a use moves the whole binding out of its scope */
+  MS_CLOSER_PARTIAL = 32    /* a field moves out alone, or a closure captures the binding */
 } MsCloserFlags;
 
 /* How a local binding of a Closeable type is closed where its scope ends. `node` is the binding site (the
