@@ -289,6 +289,17 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
   }
+  /* An argument checked while the callee's variables were open meets its final parameter type only now. */
+  for (size_t index = 0; index < matched->count; index++) {
+    if (matched->slot[index] < 0 || arg_tys[index] == MS_TY_NONE) {
+      continue;
+    }
+    const MsTy param = ms_ty_params(types, target->sig)[index].ty;
+    if (mentions_vars(types, param, &target->vars)) {
+      body_convert(body, call->u.call.args.ptr[matched->slot[index]].value, arg_tys[index],
+                   expected_param(body, target, param, bound));
+    }
+  }
 }
 
 /* One MsCallArg per parameter (the receiver first): written, defaulted or omitted. */
@@ -381,6 +392,9 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1), .count = count};
     MsTy *arg_tys = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, count + 1);
     MsTy *bound = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, target.vars.len + 1);
+    for (size_t index = 0; index < target.vars.len; index++) {
+      bound[index] = index < target.explicit_args.len ? target.explicit_args.ptr[index] : MS_TY_NONE;
+    }
     for (size_t index = 0; index < count; index++) {
       matched.slot[index] = -1;
     }

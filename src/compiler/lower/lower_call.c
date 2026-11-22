@@ -72,7 +72,9 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     } else if (arg->source == MS_ARG_DEFAULT) {
       out[index] = default_arg(fn, call, arg);
     } else {
-      return fn_fail(fn, "an omitted argument is not lowered yet");
+      const MsTy param = ms_ty_params(&fn->cx->program->types, call->callee_ty)[index].ty;
+      const MirTy ty = fn_type(fn, param);
+      out[index] = ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
     }
     if (out[index] == MIR_NONE) {
       return fn_fail(fn, "an argument has no value");
@@ -128,8 +130,21 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
     return false;
   }
   *out = (LowerTarget){entry->module, entry->source->id, &entry->source->func, entry->source->func.name, entry->ty,
-                       {NULL, 0}, entry->variables.ptr, (uint32_t)entry->variables.len};
+                       {NULL, 0}, entry->variables.ptr, (uint32_t)entry->variables.len, MS_TY_NONE, 0, false};
+  out->receiver = entry->receiver;
+  out->receiver_flags = (uint8_t)((entry->source->mutating ? MS_PARAM_VAR : 0) | (entry->source->consuming ? MS_PARAM_MOVE : 0));
   return true;
+}
+
+/* A call of an interface operation: dispatched through the receiver's vtable. */
+static MirValue call_operation(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (data->kind != MK_IFACE) {
+    (void)fn_fail(fn, "an interface operation needs an interface receiver");
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = call->callee.index};
+  return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
 }
 
 /* `Case(payload...)`: an alternative's case built from its payload. */
@@ -191,6 +206,9 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   if (call->callee.kind == MS_REF_TYPE) {
     return construct(fn, call, args, ret);
+  }
+  if (call->callee.kind == MS_REF_OPERATION) {
+    return call_operation(fn, call, args, ret);
   }
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);
