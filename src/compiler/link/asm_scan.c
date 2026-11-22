@@ -170,18 +170,24 @@ static bool indented(AsmScan *scan, MsSpan line) {
   return false;
 }
 
-/* The COFF lines llc writes about `@feat.00` (its `.def` block, `.globl` and `.set`, the last at column 0 or after a
- * tab): the object step's own llc writes them again, and a second definition is an error. */
-static bool is_feat_line(MsSpan line) {
+/* Any COFF line llc writes about `@feat.00`: its `.def` block, `.globl`, and the `.set` or `=` that defines it, bare
+ * or quoted, at column 0 or after a tab. The object step's own llc writes them again, and a second definition is
+ * an error. A `.def` also starts a block of lines that is dropped up to its `.endef`. */
+static bool is_feat_line(MsSpan line, bool *opens_block) {
   MsSpan text = line.len > 0 && line.ptr[0] == '\t' ? ms_span_of(line.ptr + 1, line.len - 1) : line;
   size_t at = 0;
-  return (is_directive(text, ".set") || is_directive(text, ".globl")) &&
-         ms_span_find(text, ms_span_of_text("@feat.00"), &at);
+  if (!ms_span_find(text, ms_span_of_text("@feat.00"), &at)) {
+    return false;
+  }
+  *opens_block = is_directive(text, ".def");
+  return true;
 }
 
 static void scan_line(AsmScan *scan, MsSpan line) {
   bool drop = false;
-  if (scan->format == ASM_COFF && is_feat_line(line)) {
+  bool opens_block = false;
+  if (scan->format == ASM_COFF && is_feat_line(line, &opens_block)) {
+    scan->skipping = opens_block;
     return;
   }
   /* A COFF function that needs no unwind info has no `.seh_endproc`: the `.Lfunc_end` label closes it. */
