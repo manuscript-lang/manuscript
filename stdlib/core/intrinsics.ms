@@ -14,11 +14,16 @@ interface ValueOperations:
 interface CloneOperations[T]:
 	fn clone() T
 
+// The integer types that share the operations of `IntegerOperations` and `SignedIntegerOperations`; the checker adds
+// an interface's operations to each type its type parameter's bound lists.
+type IntegerTypes = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | UInt64
+type SignedIntegerTypes = Int | Int8 | Int16 | Int32
+
 /*
 Operations shared by every integer type (`Int` and the sized signed and unsigned integers); `T` is the receiver type.
 Each integer type's own `<Type>Operations` interface adds only its conversions to other integer types.
 */
-interface IntegerOperations[T]:
+interface IntegerOperations[T: IntegerTypes]:
 	// Formats the integer in a radix from 2 through 36 using lowercase digits and a
 	// leading `-` for negatives, or none when the radix is outside 2 through 36.
 	fn to_string_radix(radix: Int) String?
@@ -39,7 +44,7 @@ interface IntegerOperations[T]:
 	fn to_float32() Float32
 
 // Operations shared by the signed integer types (`Int`, `Int8`, `Int16`, `Int32`).
-interface SignedIntegerOperations[T]:
+interface SignedIntegerOperations[T: SignedIntegerTypes]:
 	// Returns the absolute value; the most negative value has none and faults like any
 	// overflow.
 	fn abs() T
