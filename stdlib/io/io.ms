@@ -73,7 +73,7 @@ export type ReadStream[T]:
 // its error. With `timeout`, a read that waits that long in total (a stalled socket)
 // fails with `ETIMEDOUT`. The source may be left mid-item, so close the stream
 // afterwards.
-fn var ReadStream[T].next(timeout: Duration? = none) T?!:
+fn var ReadStream[T].next(timeout: Duration? = none) move T?!:
 	if self.closed: return ok(none)
 	if bound := timeout: return read_bounded(self.source, bound)
 
@@ -114,7 +114,7 @@ fn read_bounded[T](var source: Source[T], bound: Duration) T?!:
 type EndedSource[T]:
 	done: Bool = true
 
-fn var EndedSource[T].next() T?!:
+fn var EndedSource[T].next() move T?!:
 	return ok(none)
 
 fn move EndedSource[T].close() Void!:
@@ -175,7 +175,7 @@ export type DescriptorSource:
 // Waits for the next chunk of the descriptor. Returns `none` at its end and `EIO`
 // when the descriptor failed. A wait that ends early, such as at the `timeout` of
 // `ReadStream.next`, returns `ETIMEDOUT`.
-fn var DescriptorSource.next() Bytes?!:
+fn var DescriptorSource.next() move Bytes?!:
 	p := msrt_streams_read(self.id)
 	code := msrt_promise_wait(p, -1)
 
@@ -362,7 +362,7 @@ fn pipe_next[T](id: Int) T?!:
 type PipeSource[T]:
 	id: Int
 
-fn var PipeSource[T].next() T?!:
+fn var PipeSource[T].next() move T?!:
 	return pipe_next[T](self.id)
 
 fn move PipeSource[T].close() Void!:
@@ -462,7 +462,7 @@ type Through[A, B]:
 	out: List[B]
 	finished: Bool
 
-fn var Through[A, B].next() B?!:
+fn var Through[A, B].next() move B?!:
 	while true:
 		if item := self.out.pop(): return ok(item)
 		if self.finished: return ok(none)

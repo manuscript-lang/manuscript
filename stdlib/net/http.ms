@@ -540,7 +540,7 @@ fn move StreamingResponse.close() Void!:
 type ResponseSource:
 	raw: RawResponse
 
-fn var ResponseSource.next() Bytes?!:
+fn var ResponseSource.next() move Bytes?!:
 	return msstd_http_body_read(self.raw.native, none)
 
 fn move ResponseSource.close() Void!:

@@ -155,7 +155,7 @@ type ScalarSource:
 	at: Int
 
 // The next scalar as a one-scalar String, or none at the end.
-fn var ScalarSource.next() String?!:
+fn var ScalarSource.next() move String?!:
 	if self.at >= self.bytes.length(): return ok(none)
 
 	stop := self.at + scalar_width(self.bytes.get(self.at).to_int())

@@ -481,7 +481,7 @@ type TerminalEvents:
 	queue: List[TerminalEvent]
 	size: TerminalSize?
 
-fn var TerminalEvents.next() TerminalEvent?!:
+fn var TerminalEvents.next() move TerminalEvent?!:
 	while true:
 		if not self.queue.is_empty():
 			event := self.queue[0].clone()
