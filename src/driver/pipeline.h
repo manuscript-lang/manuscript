@@ -27,4 +27,12 @@ typedef struct MsLinkRequest {
  * `files` directory next to `ms-c` and its runtime archives are used (cmake/MsRuntimePackage.cmake). */
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error);
 
+/* The name of the executable `run` and `test` build inside their temporary folder: Windows will not start a program
+ * whose name lacks `.exe`. */
+#ifdef _WIN32
+#define MS_TEMP_PROGRAM "%S/program.exe"
+#else
+#define MS_TEMP_PROGRAM "%S/program"
+#endif
+
 #endif
