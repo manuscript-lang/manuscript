@@ -267,7 +267,7 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
   MirVar var;
   MirValue slot;
   MirTy slot_ty;
-  if (!owned_local(fn, base, &var) && !closing_local(fn, base, &slot, &slot_ty) && !closing_param(fn, base, &slot, &var)) {
+  if (!fn_owned_local(fn, base, &var) && !closing_local(fn, base, &slot, &slot_ty) && !closing_param(fn, base, &slot, &var)) {
     return false;
   }
   if (!fn_take_place(fn, base, record)) {
