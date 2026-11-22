@@ -8,3 +8,7 @@ set(MS_MINGW_DIR "" CACHE PATH "llvm-mingw root for Windows links (default: targ
 include(MsRuntimePackage)
 ms_add_musl_runtime()
 ms_package_runtime(ms-c ms_runtime)
+
+# Build and run a one-line program: packaging, pipeline and linker together on this platform.
+add_test(NAME smoke_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_CURRENT_BINARY_DIR}/smoke
+  -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
