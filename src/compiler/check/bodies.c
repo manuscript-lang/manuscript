@@ -119,6 +119,9 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   }
   const MsTy value = body_expect(body, stmt->u.bind.value, declared, ms_strbuild_span(&context));
   ms_strbuild_free(&context);
+  if (stmt->u.bind.ty == NULL && body_is_none_type(body, value)) {
+    body_report_uninferred_none(body, stmt->u.bind.value->pos); /* a binding with no type has no target for none */
+  }
   const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);
   bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable);
 }
