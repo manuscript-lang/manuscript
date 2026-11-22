@@ -3,6 +3,7 @@
  * an integer, which the join writes in decimal. At most six pieces go in one call; a longer text joins the
  * first group, then that result and the next pieces. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
 enum { TEXT_MAX_JOIN = 6 };
@@ -20,7 +21,15 @@ static MirValue call_join(LowerFn *fn, const char *prefix, uint32_t count, const
   } else {
     ms_strbuild_printf(&name, "%s%u", prefix, count);
   }
-  const uint32_t ext = mir_extern_get(fn->cx->module, ms_strbuild_span(&name), params, nparams, MIR_STR, true, role);
+  /* One extern per signature: the same join takes an Int or a String in each position. */
+  MirParam *mir_params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nparams + 1);
+  for (uint32_t index = 0; index < nparams; index++) {
+    mir_params[index] = (MirParam){params[index], (uint8_t)MM_BORROW};
+  }
+  const MirExtern def = {.name = mir_name(fn->cx->module, ms_strbuild_span(&name)), .params = mir_params,
+                         .nparams = nparams, .ret = MIR_STR, .leaf = true, .role = (uint8_t)role,
+                         .fresh = true};
+  const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
   ms_strbuild_free(&name);
   const MirValue result = mir_b_call_rt(&fn->b, ext, args, nparams);
   fn_own_result(fn, result);
