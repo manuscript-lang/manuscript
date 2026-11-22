@@ -150,6 +150,14 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   return owned_local(fn, place, &var) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
+bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
+  MirVar var;
+  if (place->kind == MS_E_MEMBER) {
+    return fn_place_owns(fn, place->u.member.left);
+  }
+  return owned_local(fn, place, &var) && var_owns(fn, var);
+}
+
 /* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
  * back by `fn_put_place`), a member or element path's value is copied. */
 bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
