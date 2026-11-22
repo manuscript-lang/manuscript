@@ -198,6 +198,17 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
       continue;
     }
     const MirTy ty = mir_b_ty(&fn->b, values[index]);
+    const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
+    const MsParam *declared = (params[index].flags & MS_PARAM_MOVE) != 0 && index >= offset && index - offset < target->func->params.len
+                                  ? target->func->params.ptr[index - offset]
+                                  : NULL;
+    const MsCloser *closer = declared == NULL ? NULL : ms_facts_closer(fn->facts, declared->id);
+    if (closer != NULL && fn->closing != NULL && fn_closer_lowerable(closer)) {
+      /* A resource parameter is the body's to close: it lives in a slot its scope owns. */
+      fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);
+      (void)fn_own_param(fn, index, ms_facts_type(fn->facts, declared->id), values[index], fn->param_vars[index]);
+      continue;
+    }
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));
     mir_b_def_var(&fn->b, fn->param_vars[index], values[index]);
     if ((params[index].flags & MS_PARAM_MOVE) != 0 && mir_needs_drop(fn->cx->module, ty)) {
@@ -240,9 +251,13 @@ static bool lower_body(Lower *cx, uint32_t index) {
   mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
   fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
   (void)fn_scope_begin(&fn);
-  bind_params(&fn, target);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1);
+  for (uint32_t at = 0; at < fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1; at++) {
+    fn.closing[at] = MIR_NONE;
+  }
+  bind_params(&fn, target);
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;

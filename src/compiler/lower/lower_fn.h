@@ -29,7 +29,7 @@ typedef struct LowerVarParam {
   MirTy ty;
 } LowerVarParam;
 
-enum { LOWER_MAX_VAR_PARAMS = 8 };
+enum { LOWER_MAX_VAR_PARAMS = 8, LOWER_MAX_CLOSING_PARAMS = 32 };
 
 typedef struct LowerFn {
   Lower *cx;
@@ -40,6 +40,7 @@ typedef struct LowerFn {
   uint32_t file; /* the MIR file id of the module */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
+  MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
   MirTy ret;
@@ -94,6 +95,11 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
 bool fn_closer_lowerable(const MsCloser *closer);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value);
+/* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
+ * slot its scope closes; `var` is the variable the body reads it through. */
+bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
+/* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
+bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);
 
 /* ---- places (lower_stmt.c) ---- */
 

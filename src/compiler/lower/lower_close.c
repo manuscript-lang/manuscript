@@ -174,33 +174,78 @@ static bool ensure_exits(LowerFn *fn, MirTy outcome_ty) {
 
 bool fn_closer_lowerable(const MsCloser *closer) {
   return (closer->flags & MS_CLOSER_CONSUMES) != 0 &&
-         (closer->flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_EXPLICIT | MS_CLOSER_MOVED)) == 0;
+         (closer->flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_EXPLICIT | MS_CLOSER_PARTIAL)) == 0;
 }
 
-bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value) {
-  Lower *cx = fn->cx;
-  const MirTy ty = mir_b_ty(&fn->b, value);
-  const bool owns = mir_needs_drop(cx->module, ty);
-  const uint32_t method = lower_named_method(cx, ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count), "close");
-  uint32_t silent = MIR_NONE;
-  if (method == MIR_NONE || !close_thunks(cx, method, ty, &silent)) {
-    return fn_fail(fn, "the close of a resource binding could not be lowered");
-  }
-  const MirAltDef *def = NULL;
-  if (result_def(cx->module, cx->module->funcs.ptr[method].ret, &def) &&
-      !ensure_exits(fn, cx->module->funcs.ptr[method].ret)) {
-    return false;
-  }
+/* Puts `value` in a fresh slot owned by the innermost scope and returns the slot; `owns` says it needs a drop. */
+static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent) {
   const MirImm none = {0};
-  if (owns) {
-    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, none, MIR_NONE);
-  }
+  const bool owns = mir_needs_drop(fn->cx->module, ty);
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
   const MirValue stored[2] = {slot, value};
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, none, MIR_NONE);
   const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = silent + 2};
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+  return slot;
+}
+
+/* The silent close thunk for the type `checked` (in the function's terms), with its exits made. */
+static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
+  Lower *cx = fn->cx;
+  const uint32_t method = lower_named_method(cx, ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count), "close");
+  if (method == MIR_NONE || !close_thunks(cx, method, ty, silent)) {
+    return fn_fail(fn, "the close of a resource binding could not be lowered");
+  }
+  const MirAltDef *def = NULL;
+  if (result_def(cx->module, cx->module->funcs.ptr[method].ret, &def) && !ensure_exits(fn, cx->module->funcs.ptr[method].ret)) {
+    return false;
+  }
+  return true;
+}
+
+bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var) {
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  uint32_t silent = MIR_NONE;
+  if (!prepare(fn, checked, ty, &silent)) {
+    return false;
+  }
+  const MirValue slot = own_slot(fn, ty, value, silent);
+  const MirValue view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
+  mir_b_def_var(&fn->b, var, view);
+  fn->closing[fn->nvars + index] = slot;
+  return !fn->failed;
+}
+
+bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value) {
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  uint32_t silent = MIR_NONE;
+  if (!prepare(fn, checked, ty, &silent)) {
+    return false;
+  }
+  if (mir_needs_drop(fn->cx->module, ty)) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue slot = own_slot(fn, ty, value, silent);
   const MirValue view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
   mir_b_def_var(&fn->b, fn_local(fn, local, ty), view);
+  fn->closing[local] = slot;
   return !fn->failed;
+}
+
+bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken) {
+  const MsRef *ref = ms_facts_ref(fn->facts, name->id);
+  if (fn->closing == NULL || ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM) ||
+      ms_facts_use(fn->facts, name->id) != MS_USE_MOVE) {
+    return false;
+  }
+  const uint32_t at = ref->kind == MS_REF_LOCAL ? ref->local : fn->nvars + ref->local;
+  if (at >= fn->nvars + LOWER_MAX_CLOSING_PARAMS || fn->closing[at] == MIR_NONE) {
+    return false;
+  }
+  /* The slot gives its value up: its scope no longer closes it, the consumer owns what is taken. */
+  const MirValue slot = fn->closing[at];
+  const MirTy ty = mir_b_ty(&fn->b, view);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
+  *taken = fn_emit(fn, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &slot, 1, imm_ty(ty), ty);
+  return true;
 }
