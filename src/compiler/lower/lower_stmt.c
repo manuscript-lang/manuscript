@@ -377,6 +377,12 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
 /* Stores `field`, the changed value of the field `fn_take_field` took, back: the old ones share its storage, so they
  * are not dropped. */
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {
+  return fn_put_field_chain(fn, place, record, field, NULL);
+}
+
+/* The same, and `*updated_record` is the root record with the field changed: a later field of the same root is put
+ * into that, not into the record the first one replaced. */
+bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record) {
   const MsExpr *fields[FIELD_PATH_MAX];
   const MsExpr *root = NULL;
   uint32_t count = 0;
@@ -392,7 +398,37 @@ bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue fi
     const MirValue operands[2] = {values[index], updated};
     updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, values[index]));
   }
+  if (updated_record != NULL) {
+    *updated_record = updated;
+  }
   return fn_put_place(fn, root, updated);
+}
+
+/* The field `place` of the root record `record`, which an earlier field of the same root already took out of its variable. */
+bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field) {
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root = NULL;
+  uint32_t count = 0;
+  MirValue values[FIELD_PATH_MAX + 1];
+  if (!field_path(fn, place, fields, &count, &root) || !read_path(fn, fields, count, record, values)) {
+    return false;
+  }
+  *field = values[count];
+  return true;
+}
+
+/* Whether the field paths `a` and `b` start at the same variable. */
+bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b) {
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root_a = NULL;
+  const MsExpr *root_b = NULL;
+  uint32_t count = 0;
+  if (!field_path(fn, a, fields, &count, &root_a) || !field_path(fn, b, fields, &count, &root_b)) {
+    return false;
+  }
+  const MsRef *ref_a = ms_facts_ref(fn->facts, root_a->id);
+  const MsRef *ref_b = ms_facts_ref(fn->facts, root_b->id);
+  return ref_a != NULL && ref_b != NULL && ref_a->kind == ref_b->kind && ref_a->local == ref_b->local;
 }
 
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
