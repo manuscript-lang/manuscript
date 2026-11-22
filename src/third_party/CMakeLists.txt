@@ -18,6 +18,8 @@ if(WIN32)
   set(MI_EXTRA_CPPDEFS "MI_MINGW_UCRT64" CACHE STRING "" FORCE)
 endif()
 add_subdirectory(mimalloc EXCLUDE_FROM_ALL)
+# The project builds with CMAKE_C_EXTENSIONS OFF; mimalloc needs GNU extensions (syscall, madvise).
+set_target_properties(mimalloc-static PROPERTIES C_EXTENSIONS ON)
 add_library(mimalloc ALIAS mimalloc-static)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(mimalloc-static PUBLIC rt)
