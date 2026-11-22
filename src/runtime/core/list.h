@@ -54,7 +54,7 @@ void msrt_list_append(MsList *v, const MsTypeDesc *d, const uint8_t *e);
 const uint8_t *msrt_list_at(const MsList *v, const MsTypeDesc *d, int64_t index,
                             const uint8_t *default_value);
 /* ms-sig: msrt_list_get(v: *const VecVal, d: ElemDesc, index: i64, default: *const u8, out: *mut u8)
- * @domain=collection @leaf */
+ * @domain=collection @leaf @inline=list_get */
 void msrt_list_get(const MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *default_value,
                    uint8_t *out);
 /* ms-sig: msrt_list_index_of(v: *const VecVal, d: ElemDesc, probe: *const u8, out: *mut i64) -> u8

@@ -32,6 +32,7 @@ typedef struct MsNativeSig {
   uint8_t count;
   uint8_t kinds[NS_MAX_PARAMS];
   const char *method; /* `Type.operation` when the runtime name differs from `msrt_<type>_<operation>`, else NULL */
+  const char *inline_op; /* `@inline=` the operation lowering writes out as MIR instead of calling the native, else NULL */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];
