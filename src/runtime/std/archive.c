@@ -355,16 +355,15 @@ static uint8_t unpack_zip(MsSpan data, Collector *c) {
   return status;
 }
 
-uint8_t msstd_archive_unpack(const MsBytes *data, const MsString *format, uint8_t has_limits,
+uint8_t msstd_archive_unpack(const MsBytes *data, const MsString *format,
                              uint8_t has_entries, int64_t max_entries, uint8_t has_entry_bytes,
                              int64_t max_entry_bytes, uint8_t has_total, int64_t max_total_bytes,
                              MsBytes *out) {
   *out = (MsBytes){0};
   Collector c = {0};
-  const bool limited = has_limits != 0;
-  if (!budget(limited && has_entries != 0, max_entries, &c.count) ||
-      !budget(limited && has_entry_bytes != 0, max_entry_bytes, &c.entry_max) ||
-      !budget(limited && has_total != 0, max_total_bytes, &c.total)) {
+  if (!budget(has_entries != 0, max_entries, &c.count) ||
+      !budget(has_entry_bytes != 0, max_entry_bytes, &c.entry_max) ||
+      !budget(has_total != 0, max_total_bytes, &c.total)) {
     return MS_STATUS_INVALID_INPUT;
   }
   const MsSpan kind = ms_string_span(format);

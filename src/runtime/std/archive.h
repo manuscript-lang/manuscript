@@ -16,15 +16,15 @@ typedef struct MsArchiveEntry {
   uint8_t directory;
 } MsArchiveEntry;
 
-/* ms-sig: msstd_archive_pack(entries: *const VecVal, format: *const StrVal, has_max: u8, max: i64, out: *mut
+/* ms-sig: msstd_archive_pack(entries: *const VecVal, format: *const StrVal, has_max: HasRaw, max: i64, out: *mut
  * VecVal)
  * -> u8 @domain=archive */
 uint8_t msstd_archive_pack(const MsBytes *entries, const MsString *format, uint8_t has_max, int64_t max,
                            MsBytes *out);
-/* ms-sig: msstd_archive_unpack(data: *const VecVal, format: *const StrVal, has_limits: u8, has_entries: u8,
- * max_entries: i64, has_entry_bytes: u8, max_entry_bytes: i64, has_total: u8, max_total_bytes: i64, out: *mut
+/* ms-sig: msstd_archive_unpack(data: *const VecVal, format: *const StrVal, has_entries: HasRaw,
+ * max_entries: i64, has_entry_bytes: HasRaw, max_entry_bytes: i64, has_total: HasRaw, max_total_bytes: i64, out: *mut
  * VecVal) -> u8 @domain=archive */
-uint8_t msstd_archive_unpack(const MsBytes *data, const MsString *format, uint8_t has_limits,
+uint8_t msstd_archive_unpack(const MsBytes *data, const MsString *format,
                              uint8_t has_entries, int64_t max_entries, uint8_t has_entry_bytes,
                              int64_t max_entry_bytes, uint8_t has_total, int64_t max_total_bytes,
                              MsBytes *out);
