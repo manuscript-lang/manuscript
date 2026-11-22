@@ -65,29 +65,48 @@ static bool relative_target(MsArena *arena, MsSpan importer, MsSpan path, MsSpan
   return true;
 }
 
+/* The declared alias names (aliases and dependencies), each once, in byte order. */
+static size_t declared_names(MsArena *arena, const MsManifest *manifest, MsSpan **names) {
+  const size_t total = manifest == NULL ? 0 : manifest->aliases.len + manifest->deps.len;
+  MsSpan *all = MS_ARENA_NEW_ARRAY(arena, MsSpan, total + 1);
+  size_t count = 0;
+  for (size_t i = 0; i < total; i++) {
+    const MsSpan name = i < manifest->aliases.len ? manifest->aliases.ptr[i].name
+                                                  : manifest->deps.ptr[i - manifest->aliases.len].name;
+    bool known = false;
+    for (size_t j = 0; j < count; j++) {
+      known = known || ms_span_equal(all[j], name);
+    }
+    if (!known) {
+      all[count++] = name;
+    }
+  }
+  for (size_t i = 1; i < count; i++) {
+    for (size_t j = i; j > 0 && span_less(all[j], all[j - 1]); j--) {
+      const MsSpan swap = all[j];
+      all[j] = all[j - 1];
+      all[j - 1] = swap;
+    }
+  }
+  *names = all;
+  return count;
+}
+
 static bool unknown_alias(MsArena *arena, const MsManifest *manifest, MsSpan alias, MsProjectError *error) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "unknown import alias ");
   ms_strbuild_append(&text, alias);
-  if (manifest == NULL || manifest->aliases.len == 0) {
+  MsSpan *names = NULL;
+  const size_t count = declared_names(arena, manifest, &names);
+  if (count == 0) {
     ms_strbuild_append_text(&text, "; this project declares none, so add one under [aliases] in ms.toml, e.g. "
                                    "@lib = \"src/lib\" (use @std/... for the standard library)");
     return message(arena, error, &text);
   }
   ms_strbuild_append_text(&text, "; declared aliases: ");
-  MsSpan done = {0};
-  for (size_t round = 0; round < manifest->aliases.len; round++) {
-    MsSpan next = {0};
-    for (size_t i = 0; i < manifest->aliases.len; i++) {
-      const MsSpan name = manifest->aliases.ptr[i].name;
-      const bool after = done.ptr == NULL || span_less(done, name);
-      if (after && (next.ptr == NULL || span_less(name, next))) {
-        next = name;
-      }
-    }
-    ms_strbuild_append_text(&text, round == 0 ? "" : ", ");
-    ms_strbuild_append(&text, next);
-    done = next;
+  for (size_t i = 0; i < count; i++) {
+    ms_strbuild_append_text(&text, i == 0 ? "" : ", ");
+    ms_strbuild_append(&text, names[i]);
   }
   return message(arena, error, &text);
 }
@@ -151,7 +170,8 @@ static bool alias_import(MsArena *arena, const MsManifest *manifest, MsSpan path
     ms_strbuild_append_text(&text, "\" alone");
     return message(arena, error, &text);
   }
-  if (manifest == NULL || !ms_manifest_find(&manifest->aliases, alias, &base)) {
+  if (manifest == NULL ||
+      !(ms_manifest_find(&manifest->aliases, alias, &base) || ms_manifest_find(&manifest->deps, alias, &base))) {
     return unknown_alias(arena, manifest, alias, error);
   }
   return alias_target(arena, alias, base, remainder, target, error);
@@ -321,10 +341,22 @@ MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan im
   return ms_project_text(arena, &text);
 }
 
+/* The directory an import may not leave: the package holding `target` for an `@` import, otherwise the importer's own
+ * project or package. */
+static MsSpan confinement_root(const MsManifest *manifest, MsSpan root, MsSpan importer, MsSpan path, MsSpan target) {
+  const MsPackage *own = ms_manifest_package_of(manifest, importer);
+  const MsSpan own_root = own == NULL ? root : own->root;
+  if (!ms_span_starts_with(path, ms_span_of_text("@"))) {
+    return own_root;
+  }
+  const MsPackage *holder = ms_manifest_package_of(manifest, target);
+  return holder == NULL ? own_root : holder->root;
+}
+
 bool ms_project_resolve_in(MsArena *arena, const MsManifest *manifest, MsSpan root, const MsOverlay *overlay,
                            MsSpan importer, MsSpan path, MsSpan *canonical, MsProjectError *error) {
   MsSpan target = {0};
-  if (!ms_project_import_target(arena, manifest, importer, path, &target, error)) {
+  if (!ms_project_import_target(arena, ms_manifest_scope(manifest, importer), importer, path, &target, error)) {
     return false;
   }
   MsSpan name = {0};
@@ -333,7 +365,8 @@ bool ms_project_resolve_in(MsArena *arena, const MsManifest *manifest, MsSpan ro
     *canonical = target; /* generated on load: no file exists to canonicalise */
     return true;
   }
-  return ms_project_source_path(arena, root, target, overlay, canonical, error);
+  return ms_project_source_path(arena, confinement_root(manifest, root, importer, path, target), target, overlay,
+                                canonical, error);
 }
 
 bool ms_project_resolve_import(MsArena *arena, MsSpan root, const MsOverlay *overlay, MsSpan importer,

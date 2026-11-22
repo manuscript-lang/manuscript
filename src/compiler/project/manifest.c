@@ -455,10 +455,31 @@ bool ms_manifest_read(MsArena *arena, MsSpan filename, MsManifest *out, MsProjec
 }
 
 void ms_manifest_free(MsManifest *manifest) {
+  for (size_t i = 0; i < manifest->npackages; i++) {
+    ms_manifest_free(manifest->packages[i].manifest);
+  }
+  manifest_name_list_free(&manifest->deps);
   manifest_name_list_free(&manifest->aliases);
   manifest_name_list_free(&manifest->embeds);
   dependency_list_free(&manifest->dependencies);
   manifest_name_list_free(&manifest->path_dependencies);
   allowed_effects_list_free(&manifest->allowed_effects);
   manifest_span_list_free(&manifest->members);
+}
+
+const MsPackage *ms_manifest_package_of(const MsManifest *manifest, MsSpan path) {
+  const MsPackage *best = NULL;
+  for (size_t i = 0; manifest != NULL && i < manifest->npackages; i++) {
+    const MsSpan root = manifest->packages[i].root;
+    const bool inside = ms_span_starts_with(path, root) && (path.len == root.len || path.ptr[root.len] == '/');
+    if (inside && (best == NULL || root.len > best->root.len)) {
+      best = &manifest->packages[i];
+    }
+  }
+  return best;
+}
+
+const MsManifest *ms_manifest_scope(const MsManifest *manifest, MsSpan importer) {
+  const MsPackage *package = ms_manifest_package_of(manifest, importer);
+  return package == NULL ? manifest : package->manifest;
 }
