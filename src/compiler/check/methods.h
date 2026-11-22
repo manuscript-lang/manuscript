@@ -46,6 +46,7 @@ void ms_methods_free(MsMethodList *methods);
 /* Appends the methods named `name` that apply to `receiver` to `out`: its own methods whose receiver form
  * matches, the operation of an interface-typed receiver, and the operations of a type variable's bounds. */
 void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
+MS_NODISCARD bool ms_check_bounds_satisfied(MsCheckProgram *program, const MsTy *variables, size_t count, const MsTy *bound);
 
 /* Appends the operations `receiver` has without declaring them (native.c). */
 void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
