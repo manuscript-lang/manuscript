@@ -6,7 +6,7 @@ import (
 	msstd_regex_compile,
 	msstd_regex_find_all_spans,
 	msstd_regex_find_span,
-	msstd_regex_named_captures
+	msstd_regex_named_capture_pairs
 ) from "@std/internal/string.ms"
 
 // A compiled regular expression that can be reused across input strings.
@@ -39,7 +39,15 @@ fn Regex.capture_all(text: String, max_matches: Int?) List[List[String]]!:
 // Returns the first match's named groups that participated; empty map when nothing
 // matches.
 fn Regex.capture_named(text: String) Map[String, String]:
-	return msstd_regex_named_captures(self, text)
+	pairs := msstd_regex_named_capture_pairs(self, text)
+	var named = Map[String, String]()
+	var at = 0
+
+	while at + 1 < pairs.length():
+		named.add(pairs[at], pairs[at + 1])
+		at += 2
+
+	return named
 
 // Returns the UTF-8 byte range of the first match, or none when nothing matches.
 fn Regex.find_span(text: String) RegexSpan?:

@@ -1,4 +1,4 @@
-add_library(ms_check STATIC import_errors.c import_fix.c suggest.c scope_walk.c names.c names_hint.c names_habit.c std_exports.c mutate.c mutate_fix.c fallthrough.c fallthrough_type.c constants.c symbol_text.c effects_directives.c effects_paths.c effects_reach.c builtins.c check.c declare.c imports.c resolve.c signatures.c methods.c implements.c properties.c bounds.c instantiate.c typevars.c types.c type_ops.c)
+add_library(ms_check STATIC import_errors.c import_fix.c suggest.c scope_walk.c names.c names_hint.c names_habit.c std_exports.c mutate.c mutate_fix.c fallthrough.c returns.c fallthrough_type.c constants.c symbol_text.c effects_directives.c effects_paths.c effects_reach.c builtins.c check.c declare.c imports.c resolve.c signatures.c methods.c implements.c properties.c bounds.c instantiate.c typevars.c types.c type_ops.c)
 ms_target_defaults(ms_check)
 target_link_libraries(ms_check PUBLIC ms_base ms_syntax ms_project)
 # Body checking (the Checker owner's files).

@@ -10,4 +10,7 @@
 
 void ms_check_names(MsCheckProgram *program, uint32_t module);
 
+/* Whether any enum of any loaded module has a case called `name`. */
+bool ms_check_is_case_name(const MsCheckProgram *program, MsName name);
+
 #endif
