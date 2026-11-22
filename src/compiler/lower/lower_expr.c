@@ -626,6 +626,9 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && ref->local < fn->b.func.nparams &&
                               fn->b.func.params[ref->local].mode != MM_MOVE;
   if (!borrowed_param && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+    if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
+      fn->moved_names[fn->nmoved_names++] = value;
+    }
     return value;
   }
   return fn_implicit_clone(fn, value, true);

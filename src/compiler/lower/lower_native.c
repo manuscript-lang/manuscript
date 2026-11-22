@@ -278,6 +278,23 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
 }
 
 /* The runtime function `name` taking the types of `args` and returning `ret`. */
+/* The role of a runtime string function the optimiser answers inline for the common case (`opt_strfast`). */
+static MirRole string_role(MsSpan name) {
+  static const struct {
+    const char *name;
+    MirRole role;
+  } table[] = {{"msrt_string_eq", MR_STRING_EQ},
+               {"msrt_string_compare", MR_STRING_COMPARE},
+               {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
+               {"msrt_string_ends_with", MR_STRING_ENDS_WITH}};
+  for (size_t at = 0; at < sizeof table / sizeof table[0]; at++) {
+    if (ms_span_is_text(name, table[at].name)) {
+      return table[at].role;
+    }
+  }
+  return MR_NONE;
+}
+
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
@@ -286,7 +303,8 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   }
   fn->native_moves = 0;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
-                         .fresh = mir_needs_drop(fn->cx->module, ret)};
+                         .fresh = mir_needs_drop(fn->cx->module, ret),
+                         .role = (uint8_t)string_role(ms_names_span(&fn->cx->module->names, name))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
