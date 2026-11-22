@@ -111,11 +111,30 @@ typedef enum MsUse {
   MS_USE_CLONE   /* `.clone()`: a new owner; the binding stays live */
 } MsUse;
 
+/* ---- 7. closers ---- */
+
+typedef enum MsCloserFlags {
+  MS_CLOSER_FALLIBLE = 1,   /* the close returns a Result: its error is the exit's outcome (first error wins) */
+  MS_CLOSER_CONSUMES = 2,   /* `move fn close`: the close takes the value, nothing is left to drop */
+  MS_CLOSER_WRITES_BACK = 4, /* `var fn close`: the receiver lives in memory and the close changes it */
+  MS_CLOSER_EXPLICIT = 8    /* the body also calls `.close()` on the binding by hand */
+} MsCloserFlags;
+
+/* How a local binding of a Closeable type is closed where its scope ends. `node` is the binding site (the
+ * pattern node a MS_REF_LOCAL reference names as its `decl`), `method` the declaration of its `close` method,
+ * as a METHOD callee names it. */
+typedef struct MsCloser {
+  MsNode node;
+  MsNodeRef method;
+  uint8_t flags; /* MsCloserFlags */
+} MsCloser;
+
 MS_LIST_DEFINE(MsRefList, ms_ref_list, MsRef)
 MS_LIST_DEFINE(MsCallList, ms_call_list, MsCall)
 MS_LIST_DEFINE(MsConversionList, ms_conversion_list, MsConversion)
 MS_LIST_DEFINE(MsConstantList, ms_constant_list, MsConstant)
 MS_LIST_DEFINE(MsUseList, ms_use_list, uint8_t)
+MS_LIST_DEFINE(MsCloserList, ms_closer_list, MsCloser)
 
 /* The facts of one module. The node columns have `node_count` entries. */
 typedef struct MsFacts {
@@ -127,6 +146,7 @@ typedef struct MsFacts {
   MsCallList calls;             /* 3. sorted by node */
   MsConversionList conversions; /* 4. sorted by node */
   MsConstantList constants;     /* 5. sorted by node */
+  MsCloserList closers;         /* 7. sorted by node; filled by the ownership pass (own/closers.c) */
   uint32_t *local_counts; /* locals per function, indexed by the function declaration node id */
 } MsFacts;
 
@@ -147,5 +167,7 @@ static inline MsUse ms_facts_use(const MsFacts *facts, MsNode node) {
 const MsCall *ms_facts_call(const MsFacts *facts, MsNode node);
 const MsConversion *ms_facts_conversion(const MsFacts *facts, MsNode node);
 const MsConstant *ms_facts_constant(const MsFacts *facts, MsNode node);
+/* The closer of the binding site `node`, or NULL when its type is not closed at scope end. */
+const MsCloser *ms_facts_closer(const MsFacts *facts, MsNode node);
 
 #endif
