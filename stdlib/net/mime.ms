@@ -327,7 +327,7 @@ fn make_part(section: Bytes) Part!:
 	headers := parse_headers(header_text.get_or(""))?
 	var part = Part(
 		headers: headers,
-		data: inner.slice(data_start, inner.length()).get_or("".to_bytes()),
+		data: inner.slice(data_start, inner.length()).get_or("".to_bytes()).clone(),
 	)
 
 	if disposition := part.headers.get("Content-Disposition"):
@@ -442,7 +442,7 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 					// A caller may read again after a failed step; preserve its
 					// held bytes.
 					self.pending.append_bytes(section.view(0, self.pending_size))
-					return error(part.err())
+					return error(part.err().clone())
 
 				self.pending_size = 0
 				out.append(part.get())

@@ -329,7 +329,7 @@ fn run_case[T](gen: Gen[T], property: fn(T) Void!, s: Source) Outcome:
 	replayed := Source(source.choices.take(source.pos), 0, 0, false, false)
 	{value: again} := gen.make(replayed)
 	outcome := property(again)
-	return Outcome(source, outcome.err())
+	return Outcome(source, outcome.err().clone())
 
 property_failed := "property returned an error"
 

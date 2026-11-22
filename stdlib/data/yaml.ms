@@ -1724,7 +1724,7 @@ fn block_string(
 
 		if spaces == 0 and document_marker(line): break
 
-		parts.append(line.slice(content_indent, line.length()))
+		parts.append(line.slice(content_indent, line.length()).clone())
 		context.index += 1
 
 	var builder = StringBuilder()
