@@ -89,6 +89,12 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
     if (ref != NULL && ref->kind == MS_REF_LOCAL) {
       add_view(pass, ref->local, stmt->u.branch.cond);
     }
+  } else if (stmt->kind == MS_S_FOR && (stmt->u.each.iter->kind == MS_E_NAME || stmt->u.each.iter->kind == MS_E_MEMBER)) {
+    /* The loop variable of a walk over a place views one element of it. */
+    const MsRef *ref = ms_facts_ref(pass->facts, stmt->id);
+    if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      add_view(pass, ref->local, stmt->u.each.iter);
+    }
   } else if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
              (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
     const MsRef *ref = ms_facts_ref(pass->facts, stmt->u.bind.pattern->id);
