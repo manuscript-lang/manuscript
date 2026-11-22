@@ -414,6 +414,7 @@ static MsTypeRef *copy_type(Parser *p, const MsTypeRef *t) {
       c->params.ptr[i] = m;
     }
     c->result = copy_type(p, t->result);
+    c->result_moves = t->result_moves;
   }
   return c;
 }
