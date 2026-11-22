@@ -15,6 +15,7 @@
 #include "compiler/project/project.h"
 #include "compiler/syntax/diag.h"
 #include "compiler/syntax/diag_json.h"
+#include "driver/check_fix.h"
 #include "driver/check_inputs.h"
 #include "driver/display.h"
 #include "driver/snippet.h"
@@ -24,7 +25,7 @@ enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 MS_LIST_DEFINE(TargetList, target_list, MsSpan)
 
 typedef struct CheckOptions {
-  bool json, with_text, each;
+  bool json, with_text, each, fix;
   TargetList targets;
 } CheckOptions;
 
@@ -41,6 +42,7 @@ MS_LIST_DEFINE(FindingList, finding_list, Finding)
 typedef struct Analysis {
   FindingList findings;
   MsStrBuild summaries;
+  CheckFixList fixes;
   MsSpan root;       /* a lone file: the directory its diagnostics are relative to */
   bool no_inputs;
 } Analysis;
@@ -67,8 +69,9 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       options->with_text = true;
     } else if (is_option(argument, "--each")) {
       options->each = true;
-    } else if (is_option(argument, "--fix") || is_option(argument, "--watch") ||
-               is_option(argument, "--deny-warnings")) {
+    } else if (is_option(argument, "--fix")) {
+      options->fix = true;
+    } else if (is_option(argument, "--watch") || is_option(argument, "--deny-warnings")) {
       return refuse("ms check: this option is not implemented yet", STATUS_NOT_IMPLEMENTED);
     } else if (argument[0] == '-') {
       (void)fprintf(stderr, "unknown option %s for ms check; run 'ms help check' for its options\n", argument);
@@ -85,7 +88,7 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
   if (options->with_text && !options->json) {
     return refuse("ms check: --with-text requires --json", STATUS_USAGE);
   }
-  if (options->each && !(options->json && options->with_text)) {
+  if (options->each && (!(options->json && options->with_text) || options->fix)) {
     return refuse("--each requires check --json --with-text without --watch or --fix; use ms check a.ms b.ms "
                   "--json --with-text --each",
                   STATUS_USAGE);
@@ -220,8 +223,41 @@ static MsSpan shown(MsArena *arena, const CheckSelection *selection, MsSpan root
   return ms_display_of(arena, file);
 }
 
+static bool failed_import(MsSpan message) {
+  return ms_span_starts_with(message, ms_span_of_text("module does not export")) ||
+         ms_span_starts_with(message, ms_span_of_text("unknown standard module"));
+}
+
+/* The fixable diagnostics of one input with the path of the file each edits. A failed import leaves its names
+ * unbound, so every other diagnostic in that file may only follow from it; only the import's own fix is trusted. */
+static void collect_fixes(MsArena *arena, MsSpan root, const FindingList *found, CheckFixList *fixes) {
+  for (size_t i = 0; i < found->len; i++) {
+    const Finding *finding = &found->ptr[i];
+    if (!finding->diag.has_fix || ms_span_starts_with(finding->file, ms_span_of_text("@std/"))) {
+      continue;
+    }
+    bool broken = false;
+    for (size_t j = 0; j < found->len; j++) {
+      broken = broken || (ms_span_equal(found->ptr[j].file, finding->file) && failed_import(found->ptr[j].diag.message));
+    }
+    if (broken && !failed_import(finding->diag.message)) {
+      continue;
+    }
+    MsStrBuild path = ms_strbuild_new();
+    if (root.len == 0 || ms_path_is_absolute(finding->file)) {
+      ms_strbuild_append(&path, finding->file);
+    } else {
+      ms_path_append_joined(&path, root, finding->file);
+    }
+    check_fix_list_push(fixes, (CheckFix){.path = ms_message_from_builder(arena, &path),
+                                          .start = finding->diag.fix_pos.offset, .end = finding->diag.fix_end.offset,
+                                          .replacement = ms_arena_copy(arena, finding->diag.replacement)});
+    ms_strbuild_free(&path);
+  }
+}
+
 /* Checks one input and adds what it found to `analysis`. */
-static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input,
+static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input, bool fix,
                         Analysis *analysis) {
   MsNames names;
   ms_names_init(&names);
@@ -238,6 +274,9 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
   }
   if (!selection->collection) {
     analysis->root = ms_arena_copy(arena, graph.source_root);
+  }
+  if (fix) {
+    collect_fixes(arena, graph.source_root, &found, &analysis->fixes);
   }
   for (size_t i = 0; i < found.len; i++) {
     finding_list_push(&analysis->findings,
@@ -295,7 +334,7 @@ static void collect_findings(FindingList *findings) {
   findings->len = kept_count;
 }
 
-static void analyze(MsArena *arena, const MsSpan *targets, size_t count, Analysis *analysis) {
+static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fix, Analysis *analysis) {
   CheckSelection selection;
   check_select_inputs(arena, targets, count, &selection);
   for (size_t i = 0; i < selection.problems.len; i++) {
@@ -306,7 +345,7 @@ static void analyze(MsArena *arena, const MsSpan *targets, size_t count, Analysi
   }
   analysis->no_inputs = selection.inputs.len == 0 && selection.problems.len == 0;
   for (size_t i = 0; i < selection.inputs.len; i++) {
-    check_input(arena, &selection, &selection.inputs.ptr[i], analysis);
+    check_input(arena, &selection, &selection.inputs.ptr[i], fix, analysis);
   }
   if (selection.collection) {
     collect_findings(&analysis->findings);
@@ -337,6 +376,7 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
 
 static void free_analysis(Analysis *analysis) {
   finding_list_free(&analysis->findings);
+  check_fix_list_free(&analysis->fixes);
   ms_strbuild_free(&analysis->summaries);
 }
 
@@ -350,7 +390,7 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
     MsStrBuild out = ms_strbuild_new();
     MsStrBuild err = ms_strbuild_new();
     MsStrBuild document = ms_strbuild_new();
-    analyze(arena, &options->targets.ptr[i], 1, &analysis);
+    analyze(arena, &options->targets.ptr[i], 1, false, &analysis);
     const int status = render(&analysis, options, &options->targets.ptr[i], 1, &out, &err, &document);
     ms_strbuild_append_text(&result, i == 0 ? "\n    {\n      \"target\": " : ",\n    {\n      \"target\": ");
     ms_json_string(&result, options->targets.ptr[i]);
@@ -374,6 +414,48 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
   return 0;
 }
 
+/* One run of the command: with --fix, rounds of fixing until no fix applies. */
+static int check_targets(MsArena *arena, const CheckOptions *options) {
+  CheckFixRun run = {0};
+  Analysis analysis = {.summaries = ms_strbuild_new()};
+  const size_t passes = 64;
+  for (size_t pass = 0; pass < passes; pass++) {
+    free_analysis(&analysis);
+    analysis = (Analysis){.summaries = ms_strbuild_new()};
+    const bool fixing = options->fix && pass + 1 < passes;
+    analyze(arena, options->targets.ptr, options->targets.len, fixing, &analysis);
+    if (!fixing || check_apply_fixes(arena, &run, &analysis.fixes) == 0) {
+      break;
+    }
+  }
+  for (size_t i = 0; i < run.problems.len; i++) {
+    finding_list_push(&analysis.findings,
+                      (Finding){.file = ms_display_of(arena, run.problems.ptr[i].path), .phase = "resolution",
+                                .diag = {.pos = {.offset = 0, .line = 1, .column = 1},
+                                         .message = run.problems.ptr[i].message}});
+  }
+  MsStrBuild out = ms_strbuild_new();
+  MsStrBuild err = ms_strbuild_new();
+  MsStrBuild document = ms_strbuild_new();
+  const int result = render(&analysis, options, options->targets.ptr, options->targets.len, &out, &err, &document);
+  if (options->json) {
+    print_span(stdout, ms_strbuild_span(&document));
+  } else {
+    print_span(stdout, ms_strbuild_span(&out));
+    print_span(stderr, ms_strbuild_span(&err));
+  }
+  if (run.fixes > 0) {
+    (void)fprintf(stderr, "ms: applied %zu %s in %zu %s\n", run.fixes, run.fixes == 1 ? "fix" : "fixes",
+                  run.edited_count, run.edited_count == 1 ? "file" : "files");
+  }
+  ms_strbuild_free(&document);
+  ms_strbuild_free(&err);
+  ms_strbuild_free(&out);
+  free_analysis(&analysis);
+  check_fix_run_free(&run);
+  return result;
+}
+
 int ms_check_command(int argc, char **argv) {
   CheckOptions options = {0};
   const int status = parse_arguments(argc, argv, &options);
@@ -386,22 +468,7 @@ int ms_check_command(int argc, char **argv) {
   if (options.each) {
     result = check_each(&arena, &options);
   } else {
-    Analysis analysis = {.summaries = ms_strbuild_new()};
-    analyze(&arena, options.targets.ptr, options.targets.len, &analysis);
-    MsStrBuild out = ms_strbuild_new();
-    MsStrBuild err = ms_strbuild_new();
-    MsStrBuild document = ms_strbuild_new();
-    result = render(&analysis, &options, options.targets.ptr, options.targets.len, &out, &err, &document);
-    if (options.json) {
-      print_span(stdout, ms_strbuild_span(&document));
-    } else {
-      print_span(stdout, ms_strbuild_span(&out));
-      print_span(stderr, ms_strbuild_span(&err));
-    }
-    ms_strbuild_free(&document);
-    ms_strbuild_free(&err);
-    ms_strbuild_free(&out);
-    free_analysis(&analysis);
+    result = check_targets(&arena, &options);
   }
   target_list_free(&options.targets);
   ms_arena_free(&arena);
