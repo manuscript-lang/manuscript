@@ -26,6 +26,7 @@ void ms_check_program_free(MsCheckProgram *program) {
   ms_symbol_list_free(&program->symbols);
   ms_ty_list_free(&program->symbol_vars);
   ms_check_diag_list_free(&program->diagnostics);
+  ms_methods_free(&program->methods);
   ms_defs_free(&program->defs);
   ms_tys_free(&program->types);
   ms_arena_free(&program->arena);
