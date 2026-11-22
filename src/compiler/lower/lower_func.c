@@ -325,7 +325,7 @@ bool lower_pending(Lower *cx) {
         }
       }
     }
-    if (!lower_lambda_bodies(cx, &progressed)) {
+    if (!lower_lambda_bodies(cx, &progressed) || !lower_default_bodies(cx, &progressed)) {
       return false;
     }
   }
@@ -349,6 +349,7 @@ void lower_release(Lower *cx) {
   mir_idlist_free(&cx->vtables);
   lower_instance_list_free(&cx->instances);
   lower_lambda_list_free(&cx->lambdas);
+  lower_default_list_free(&cx->defaults);
   mir_idlist_free(&cx->files);
 }
 

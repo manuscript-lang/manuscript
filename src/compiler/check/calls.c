@@ -190,6 +190,20 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
 
 static bool member_target(Body *body, const MsExpr *callee, Target *target) {
   const MsExpr *left = callee->u.member.left;
+  /* `Type[Args].Case(...)`: the arguments are the type's explicit type arguments. */
+  if (left->kind == MS_E_APPLY && left->u.apply.left->kind == MS_E_NAME && left->u.apply.types.len != 0 &&
+      body_find_local(body, left->u.apply.left->u.sym) == NULL) {
+    const MsSymbol *symbol = body_find_symbol(body, left->u.apply.left->u.sym);
+    if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
+      for (uint32_t index = 0; index < left->u.apply.types.len; index++) {
+        ms_ty_list_push(&target->explicit_args, resolver_type(&body->resolver, left->u.apply.types.ptr[index]));
+      }
+      body_set_ref(body, left->u.apply.left->id, body_symbol_ref(body, symbol));
+      body_set_ref(body, left->id, body_symbol_ref(body, symbol));
+      body_set_type(body, left->id, symbol->ty);
+      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+    }
+  }
   if (left->kind == MS_E_NAME && body_find_local(body, left->u.sym) == NULL) {
     const MsSymbol *symbol = body_find_symbol(body, left->u.sym);
     if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
