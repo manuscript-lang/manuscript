@@ -21,6 +21,7 @@ typedef struct MsLocal {
   MsRefKind kind; /* MS_REF_LOCAL or MS_REF_PARAM */
   uint32_t id;    /* the dense local id, or the parameter's index */
   bool is_var;
+  MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;
 
 MS_LIST_DEFINE(MsLocalList, ms_local_list, MsLocal)
@@ -56,7 +57,10 @@ void body_block(Body *body, MsStmts stmts); /* a nested scope */
 size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
 /* Declares a local or parameter in the current scope. */
-MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var);
+MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site);
+
+/* The reference a use of `local` records. */
+MsRef body_local_ref(const Body *body, const MsLocal *local);
 const MsLocal *body_find_local(const Body *body, MsName name);
 
 /* ---- facts recording ---- */

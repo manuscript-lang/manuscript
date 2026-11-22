@@ -33,7 +33,7 @@ test "wrapped parts are references into their arguments":
 	var visits: List[Int] = []
 	r := make(1)
 	o: String? := r.name
-	k: Row!Bad := ok(r)
+	k: Row!Bad := ok(r.clone())
 	first_tag(r).get() | expect_equal("tag-1-with-a-heap-allocated-text")?
 	named(r).get() | expect_equal("row-1-with-a-heap-allocated-name")?
 	o.get() | expect_equal(r.name)?
