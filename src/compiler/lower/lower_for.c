@@ -125,11 +125,19 @@ static MirValue collection_items(LowerFn *fn, const MsExpr *iter, MirValue value
     return MIR_NONE;
   }
   const uint32_t method = lower_named_method(fn->cx, type, map ? "entries" : "values");
-  if (method == MIR_NONE) {
+  if (method != MIR_NONE) {
+    const MirValue items = mir_b_call(&fn->b, method, &value, 1);
+    fn_own_result(fn, items);
+    return items;
+  }
+  /* a bodiless `values` is the runtime's own */
+  const MirTyData *set = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value));
+  MirValue items = MIR_NONE;
+  const MirTy list_ty = set->nargs == 1 ? mir_ty_list(fn->cx->module, set->args[0]) : MIR_NONE;
+  const MsSpan operation = ms_span_of_text("values");
+  if (list_ty == MIR_NONE || !fn_native_on(fn, iter, type, operation, 1, &value, list_ty, &items)) {
     return MIR_NONE;
   }
-  const MirValue items = mir_b_call(&fn->b, method, &value, 1);
-  fn_own_result(fn, items);
   return items;
 }
 
