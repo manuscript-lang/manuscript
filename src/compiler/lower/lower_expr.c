@@ -298,7 +298,6 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
 }
 
 static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   switch ((MsExprKind)expr->kind) {
     case MS_E_NUMBER: return lower_number(fn, expr);
     case MS_E_BOOL: return mir_b_bconst(&fn->b, expr->u.flag);
