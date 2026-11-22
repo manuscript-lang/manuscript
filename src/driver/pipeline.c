@@ -57,10 +57,11 @@ static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *
   return count;
 }
 
-static bool make_object(const MsLinkRequest *request, MsSpan ir, MsSpan directory, MsSpan opt, MsSpan llc,
-                        MsSpan object, MsSpan *error) {
+static bool make_object(const MsLinkRequest *request, const BackendProgram *program, MsSpan ir, MsSpan directory,
+                        MsSpan opt, MsSpan llc, MsSpan object, MsSpan *error) {
   const bool speed = request->build_type != MS_BUILD_DEBUG;
-  const ObjectOptions options = {.opt = opt, .llc = llc, .directory = directory, .speed = speed, .vectorize = speed};
+  const ObjectOptions options = {.opt = opt, .llc = llc, .directory = directory, .speed = speed, .vectorize = speed,
+                                 .module = &program->module, .tables = &program->tables};
   MsStrBuild why = ms_strbuild_new();
   const bool ok = link_make_object(&options, ir, object, &why);
   if (!ok) {
@@ -75,7 +76,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild why = ms_strbuild_new();
   const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false,
                                   .tests = request->tests};
-  bool ok = ms_backend_ir(request->program, request->entry, &backend, &ir, &why) ||
+  BackendProgram program;
+  bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
   MsString opt_storage, llc_storage, lld_storage, files_storage, runtime_storage;
   MsString scratch = ms_string_empty();
@@ -92,7 +94,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild object = ms_strbuild_new();
   if (ok) {
     ms_path_append_joined(&object, ms_string_span(&scratch), ms_span_of_text("program.o"));
-    ok = make_object(request, ms_strbuild_span(&ir), ms_string_span(&scratch), opt, llc, ms_strbuild_span(&object),
+    ok = make_object(request, &program, ms_strbuild_span(&ir), ms_string_span(&scratch), opt, llc, ms_strbuild_span(&object),
                      error);
   }
   if (ok) {
@@ -114,6 +116,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   ms_string_release(&lld_storage);
   ms_string_release(&llc_storage);
   ms_string_release(&opt_storage);
+  ms_backend_program_free(&program);
   ms_strbuild_free(&why);
   ms_strbuild_free(&ir);
   return ok;

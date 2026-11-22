@@ -233,6 +233,13 @@ uint8_t msrt_map_get_sw8(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc 
   return msrt_map_get(m, kd, vd, key, out);
 }
 
+/* The stored value, or a copy of `fallback`; both are copied into `out`. */
+void msrt_map_get_or(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+                     const uint8_t *fallback, uint8_t *out) {
+  const uint8_t *value = msrt_map_get_ptr(m, kd, vd, key);
+  ms_slot_copy(vd, value != NULL ? value : fallback, out);
+}
+
 /* ---- keys() and values() ---- */
 
 /* How a key or a value of an entry becomes an element of the list a `keys` or `values` call returns. */

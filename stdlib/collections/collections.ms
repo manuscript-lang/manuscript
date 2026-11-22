@@ -262,7 +262,15 @@ fn List[T: Clonable].windows(size: Int) List[List[T]]: ...
 
 // Calls `predicate` once per element in order and splits the elements into those
 // that matched and the rest, each in the original order.
-fn List[T: Clonable].partition(predicate: fn(T) Bool) Partition[T]: ...
+fn List[T: Clonable].partition(predicate: fn(T) Bool) Partition[T]:
+	var matching = List[T]()
+	var rest = List[T]()
+	for item in self:
+		if predicate(item):
+			matching.append(item.clone())
+		else:
+			rest.append(item.clone())
+	return Partition[T](matching, rest)
 
 // Returns an independent reversed copy, including nested values.
 fn List[T: Clonable].reversed() List[T]:
@@ -289,11 +297,19 @@ fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]:
 
 // Returns a copy of the first element for which `predicate` is true, or `none`.
 // Later elements are not tested after a match.
-fn List[T: Clonable].find(predicate: fn(T) Bool) T?: ...
+fn List[T: Clonable].find(predicate: fn(T) Bool) T?:
+	for item in self:
+		if predicate(item): return item.clone()
+	return none
 
 // Searches from the end and returns a copy of the last element for which `predicate`
 // is true, or `none`.
-fn List[T: Clonable].find_last(predicate: fn(T) Bool) T?: ...
+fn List[T: Clonable].find_last(predicate: fn(T) Bool) T?:
+	var i = self.length() - 1
+	while i >= 0:
+		if predicate(self[i]): return self[i].clone()
+		i -= 1
+	return none
 
 // Sets the elements in [start, end) to copies of `value` in place. Bounds must
 // satisfy 0 <= start <= end <= length(); a negative or larger bound faults instead
@@ -308,7 +324,11 @@ fn var List[T: Clonable].copy_within(target: Int, start: Int, end: Int) Void: ..
 
 // Returns a new list of `ListEntry` records pairing each zero-based index with its
 // element, in order.
-fn List[T: Clonable].entries() List[ListEntry[T]]: ...
+fn List[T: Clonable].entries() List[ListEntry[T]]:
+	var out = List[ListEntry[T]]()
+	for i in 0..self.length():
+		out.append(ListEntry[T](i, self[i].clone()))
+	return out
 
 // Returns a new list holding this list's elements followed by `other`; neither
 // operand is changed.
@@ -316,7 +336,12 @@ fn List[T: Clonable].concat(other: List[T]) List[T]: ...
 
 // Pairs elements by position into fresh `Pair` records, stopping at the shorter
 // list; both lists are unchanged.
-fn List[T: Clonable].zip[U: Clonable](other: List[U]) List[Pair[T, U]]: ...
+fn List[T: Clonable].zip[U: Clonable](other: List[U]) List[Pair[T, U]]:
+	var out = List[Pair[T, U]]()
+	size := if self.length() < other.length(): self.length() else: other.length()
+	for i in 0..size:
+		out.append(Pair[T, U](self[i].clone(), other[i].clone()))
+	return out
 
 // Calls `key` once per element in order and returns a map from each distinct key to
 // the elements that produced it. Keys appear in first-seen order, and each group

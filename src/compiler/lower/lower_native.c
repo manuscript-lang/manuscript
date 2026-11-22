@@ -97,7 +97,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
         return false;
       }
     } else if (next < nargs) {
-      out[used++] = kind == NS_ADDR_IN ? spill_scalar(fn, args[next]) : args[next];
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
       next++;
     } else {
       return false;

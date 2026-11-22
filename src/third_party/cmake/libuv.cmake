@@ -4,13 +4,13 @@ add_library(uv STATIC
   ${UV_SRC}/fs-poll.c ${UV_SRC}/idna.c ${UV_SRC}/inet.c ${UV_SRC}/random.c ${UV_SRC}/strscpy.c
   ${UV_SRC}/strtok.c ${UV_SRC}/thread-common.c ${UV_SRC}/threadpool.c ${UV_SRC}/timer.c
   ${UV_SRC}/uv-common.c ${UV_SRC}/uv-data-getter-setters.c ${UV_SRC}/version.c)
-target_include_directories(uv SYSTEM PUBLIC libuv/include PRIVATE libuv/src)
-target_compile_definitions(uv PUBLIC USING_UV_SHARED=0)
+target_include_directories(uv ${MS_THIRD_PARTY_SYSTEM} PUBLIC libuv/include)
+target_include_directories(uv PRIVATE libuv/src)
 if(WIN32)
   file(GLOB UV_WIN_SOURCES CONFIGURE_DEPENDS ${UV_SRC}/win/*.c)
   target_sources(uv PRIVATE ${UV_WIN_SOURCES})
   target_compile_definitions(uv PRIVATE WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0602 _CRT_DECLARE_NONSTDC_NAMES=0)
-  target_link_libraries(uv PUBLIC ws2_32 advapi32 iphlpapi userenv shell32 ole32 dbghelp user32 psapi)
+  target_link_libraries(uv PUBLIC ws2_32 advapi32 iphlpapi userenv shell32 ole32 dbghelp user32 psapi synchronization)
 else()
   target_sources(uv PRIVATE
     ${UV_SRC}/unix/async.c ${UV_SRC}/unix/core.c ${UV_SRC}/unix/dl.c ${UV_SRC}/unix/fs.c
