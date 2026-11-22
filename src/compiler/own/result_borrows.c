@@ -183,6 +183,12 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
   if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) {
     return classify(pass, expr->u.bin.left);
   }
+  MsExpr *container = NULL;
+  MsExpr *position = NULL;
+  if (ms_expr_index(expr, &container, &position) &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, container->id), MS_BUILTIN_List)) {
+    return classify(pass, container); /* an element of a list is a part of it */
+  }
   return expr->kind == MS_E_CALL ? classify_call(pass, expr) : OWNED;
 }
 

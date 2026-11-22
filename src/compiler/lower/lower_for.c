@@ -85,12 +85,12 @@ static bool cursor_for(LowerFn *fn, MirTy list_ty, uint32_t *type, uint32_t *clo
     const uint32_t found = mir_type_by_name(cx->module, name);
     if (found == MIR_NONE) {
       *type = add_cursor_type(cx, name, list_ty);
-      *close = add_cursor_close(cx, numbered(cx, "close", n), *type, list_ty);
+      *close = add_cursor_close(cx, numbered(cx, "cursor.close", n), *type, list_ty);
       return *close != MIR_NONE || fn_fail(fn, "the loop cursor close function was not built");
     }
     if (cx->module->type_defs.ptr[found].fields[0].ty == list_ty) {
       *type = found;
-      *close = mir_func_by_name(cx->module, numbered(cx, "close", n));
+      *close = mir_func_by_name(cx->module, numbered(cx, "cursor.close", n));
       return *close != MIR_NONE;
     }
   }
@@ -200,7 +200,9 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
     return fn_fail(fn, "`for` iterates a list or a range for now");
   }
   const MirTy elem = mir_ty_data(module, list_ty)->elem;
-  const bool fresh = fn_fresh_owner(fn, list);
+  /* A name or field reads a value its binding owns, though the instruction that made it may still be in reach. */
+  const bool place = iter->kind == MS_E_NAME || iter->kind == MS_E_MEMBER;
+  const bool fresh = !place && fn_fresh_owner(fn, list);
   *src = (ForSource){.elem = elem, .list_ty = list_ty, .list = list};
   if ((moved || fresh) && mir_needs_drop(module, elem)) {
     if (fresh) {

@@ -305,6 +305,10 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);
+/* The payload of the Optional or Result `value`, taken out of it: `value` is released but for the payload. */
+MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty);
+/* The value a call's new owner takes from a dying temporary the call answers (`id(make())`, `make().get()`), or MIR_NONE. */
+MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);

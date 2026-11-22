@@ -5,10 +5,16 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef _WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 #include "base/cstr.h"
 #include "driver/bench_command.h"
 #include "driver/build_command.h"
 #include "driver/check_command.h"
+#include "driver/diagram_command.h"
 #include "driver/emit_command.h"
 #include "driver/explain_command.h"
 #include "driver/fmt_command.h"
@@ -17,6 +23,7 @@
 #include "driver/package_commands.h"
 #include "driver/phases.h"
 #include "driver/profile_command.h"
+#include "driver/review_command.h"
 #include "driver/run_command.h"
 #include "driver/test_command.h"
 #include "driver/verify_command.h"
@@ -39,6 +46,12 @@ static bool is_command(const char *word) {
 }
 
 int main(int argc, char **argv) {
+#ifdef _WIN32
+  /* Recorded output is byte exact: no LF to CRLF translation on the standard streams. */
+  (void)_setmode(_fileno(stdin), _O_BINARY);
+  (void)_setmode(_fileno(stdout), _O_BINARY);
+  (void)_setmode(_fileno(stderr), _O_BINARY);
+#endif
   if (argc < 2 || ms_cstr_equal(argv[1], "--help") || ms_cstr_equal(argv[1], "-h")) {
     ms_help_print_top();
     return 0;
@@ -62,9 +75,12 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "bench")) return ms_bench_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "profile")) return ms_profile_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "review")) return ms_review_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "diagram")) return ms_diagram_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "lint")) return ms_lint_command(argc - 2, argv + 2);
+  ms_verify_set_program(argv[0]);
   if (ms_cstr_equal(argv[1], "verify")) return ms_verify_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "init")) return ms_init_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "install")) return ms_install_command(argc - 2, argv + 2);

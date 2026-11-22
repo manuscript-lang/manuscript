@@ -20,6 +20,8 @@ typedef struct MsInvocation {
   int64_t top;         /* `ms profile --top`; 0 for the default */
   bool json, watch, static_libc;
   bool allocs;         /* `ms profile --allocs` */
+  MsSpan explain, effect; /* `ms review --explain`, `--effect` */
+  bool all;            /* `ms review --all` */
 } MsInvocation;
 
 /* Reads `argv` (the arguments after the command name) for `command`: a command that takes a source input. Returns 0, or the exit

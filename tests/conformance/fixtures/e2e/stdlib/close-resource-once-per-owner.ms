@@ -22,7 +22,7 @@ fn doors() Map[String, Door]:
     return m
 
 fn open(n: String) Door!Error:
-    return ok(Door(n))
+    return ok(Door(n.clone()))
 
 fn collect() List[Door]!Error:
     var found = List[Door]()

@@ -179,7 +179,7 @@ MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirImm ok_imm = {.tag = MI_ALTFIELD, .a = alt, .b = OK_CASE, .c = 0};
   /* A payload of a Result nothing else owns moves out of it, so that its new owner closes it. */
   const bool takes = fresh && mir_needs_drop(fn->cx->module, ok->fields[0].ty);
-  return mir_b_emit(&fn->b, takes ? MOP_AltTake : MOP_AltGet, &value, 1, ok_imm, ok->fields[0].ty);
+  return fn_emit(fn, takes ? MOP_AltTake : MOP_AltGet, &value, 1, ok_imm, ok->fields[0].ty);
 }
 
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want) {

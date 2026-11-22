@@ -173,8 +173,16 @@ static int path_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_
 /* `--format`, `--view`, `--entity`, `--diff`, `--depth` and `--top`: the options of `diagram` and `profile`. */
 static int tool_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_text) {
   MsSpan value = {0};
+  const bool review = ms_span_is_text(p->command, "review");
+  if (ms_span_is_text(flag, "--all")) {
+    p->out->all = true;
+    return 0;
+  }
   if (ms_span_is_text(flag, "--format")) {
     if (!required_value(p, inline_value, inline_text, &value)) {
+      if (review) {
+        return usage(p, "%S requires a value; run 'ms help review' for examples", flag, (MsSpan){0});
+      }
       return usage(p, "--format requires a name, e.g. --format mermaid", (MsSpan){0}, (MsSpan){0});
     }
     p->out->format = value;
@@ -182,9 +190,13 @@ static int tool_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_
   }
   if (!required_value(p, inline_value, inline_text, &value)) {
     return usage(p, "%S requires a value; run 'ms help %S' for examples", flag,
-                 ms_span_of_text(ms_span_is_text(flag, "--top") ? "profile" : "diagram"));
+                 ms_span_of_text(ms_span_is_text(flag, "--top") ? "profile" : review ? "review" : "diagram"));
   }
-  if (ms_span_is_text(flag, "--view")) {
+  if (ms_span_is_text(flag, "--explain")) {
+    p->out->explain = value;
+  } else if (ms_span_is_text(flag, "--effect")) {
+    p->out->effect = value;
+  } else if (ms_span_is_text(flag, "--view")) {
     p->out->view = value;
   } else if (ms_span_is_text(flag, "--entity")) {
     p->out->entity = value;
@@ -201,7 +213,8 @@ static int tool_option(Parser *p, MsSpan flag, bool inline_value, MsSpan inline_
 }
 
 static bool is_tool_option(MsSpan flag) {
-  static const char *const NAMES[] = {"--format", "--view", "--entity", "--diff", "--depth", "--top"};
+  static const char *const NAMES[] = {"--format", "--view", "--entity", "--diff", "--depth", "--top",
+                                         "--explain", "--effect", "--all"};
   for (size_t i = 0; i < sizeof NAMES / sizeof NAMES[0]; i++) {
     if (ms_span_is_text(flag, NAMES[i])) {
       return true;
