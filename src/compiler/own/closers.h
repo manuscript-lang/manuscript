@@ -11,4 +11,8 @@
 /* Fills the `closers` table of each user module whose facts the checker produced. */
 void ms_own_closers(MsCheckProgram *program);
 
+/* The closer of a value of the concrete type `ty` (its method and the flags the method declares), or false when
+ * a value of `ty` is not closed at scope end. Lowering asks it for each instance of a generic binding. */
+bool ms_own_closer_of(MsCheckProgram *program, MsTy ty, MsCloser *out);
+
 #endif

@@ -228,6 +228,29 @@ static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
   return result;
 }
 
+/* A UInt64 operation: the checked forms fault when the result leaves the range, and ordering is unsigned. */
+static MirValue unsigned_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, MirValue right) {
+  const MirValue operands[2] = {left, right};
+  if (ops->compare) {
+    const MirImm cc = {.tag = MI_CC, .a = (uint32_t)ops->cc};
+    return fn_emit(fn, MOP_UICmp, operands, 2, cc, MIR_BOOL);
+  }
+  MirOp op = MOP_UAddChk;
+  if (ops->op == MOP_ISubChk) {
+    op = MOP_USubChk;
+  } else if (ops->op == MOP_IMulChk) {
+    op = MOP_UMulChk;
+  } else if (ops->op == MOP_SDivChk) {
+    op = MOP_UDivChk;
+  } else if (ops->op == MOP_SRemChk) {
+    op = MOP_URemChk;
+  } else if (ops->op != MOP_IAddChk) {
+    (void)fn_fail(fn, "this operator is not lowered for UInt64 yet");
+    return MIR_NONE;
+  }
+  return fn_emit(fn, op, operands, 2, (MirImm){0}, MIR_UINT64);
+}
+
 /* `left == right`, `left < right` and the rest on two Strings: the runtime compares their bytes. */
 static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue right) {
   const MirValue operands[2] = {left, right};
@@ -267,6 +290,9 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   const MirTy operand = mir_b_ty(&fn->b, left);
   if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
     return float_binary(fn, &ops, left, right, operand);
+  }
+  if (operand == MIR_UINT64) {
+    return unsigned_binary(fn, &ops, left, right);
   }
   return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
 }

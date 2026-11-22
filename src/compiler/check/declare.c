@@ -162,9 +162,27 @@ static MsBuiltin builtin_of(const MsCheckProgram *program, const MsSymbol *symbo
   return by_id;
 }
 
+/* The runtime representation an extern type declares with `@repr=`; an unknown name is reported. */
+static MsRepr declared_repr(MsCheckProgram *program, const MsSymbol *symbol) {
+  const MsDecl *decl = symbol->decl;
+  if (decl->kind != MS_D_TYPE || decl->u.type.repr.len == 0) {
+    return MS_REPR_DEFAULT;
+  }
+  if (ms_span_is_text(decl->u.type.repr, "bytes_buffer")) {
+    return MS_REPR_BYTES_BUFFER;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "unknown representation ");
+  ms_strbuild_append(&text, decl->u.type.repr);
+  ms_strbuild_append_text(&text, "; the only one is bytes_buffer");
+  ms_check_report(program, symbol->module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  return MS_REPR_DEFAULT;
+}
+
 /* The nominal type of a type-like declaration: its definition is empty until the signature passes. */
 static void declare_nominal(MsCheckProgram *program, MsSymbol *symbol, MsTyKind kind) {
   symbol->def = ms_defs_add(&program->defs, kind, (uint32_t)program->symbols.len);
+  ms_defs_get(&program->defs, symbol->def)->repr = declared_repr(program, symbol);
   const MsTyDesc desc = {.name = symbol->name, .id = symbol->id, .kind = kind,
                          .builtin = builtin_of(program, symbol), .def = symbol->def};
   symbol->ty = ms_ty_intern(&program->types, &desc);

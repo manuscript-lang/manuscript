@@ -4,13 +4,15 @@
 #include "base/sort.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/properties.h"
-#include "compiler/own/bind.h"
 #include "compiler/syntax/walk.h"
 
 typedef struct Closers {
   MsCheckProgram *program;
   MsFacts *facts;
+  uint32_t module;
   MsName close;
+  size_t first;        /* the first closer of the callable being walked */
+  uint32_t lambdas;    /* lambdas open around the node being visited */
 } Closers;
 
 /* The `close()` method `ty` implements, or NULL. */
@@ -36,44 +38,75 @@ static uint8_t flags_of(const Closers *pass, const MsMethodEntry *entry) {
                    (entry->source->mutating ? MS_CLOSER_WRITES_BACK : 0));
 }
 
-/* Records the closer of the binding site `node` when its type is closed at scope end. */
-static void add_closer(Closers *pass, MsNode node) {
-  const MsTy ty = ms_facts_type(pass->facts, node);
-  if (ty == MS_TY_NONE || !ms_check_closeable(pass->program, ty)) {
-    return;
+bool ms_own_closer_of(MsCheckProgram *program, MsTy ty, MsCloser *out) {
+  Closers pass = {.program = program, .close = ms_names_intern(program->names, ms_span_of_text("close"))};
+  if (ty == MS_TY_NONE || !ms_check_closeable(program, ty)) {
+    return false;
   }
-  const MsMethodEntry *entry = close_method(pass, ty);
+  const MsMethodEntry *entry = close_method(&pass, ty);
   if (entry == NULL) {
-    return;
+    return false;
   }
-  ms_closer_list_push(&pass->facts->closers,
-                      (MsCloser){.node = node, .method = {entry->module, entry->source->id}, .flags = flags_of(pass, entry)});
+  *out = (MsCloser){.method = {entry->module, entry->source->id}, .flags = flags_of(&pass, entry)};
+  return true;
+}
+
+/* Records the closer of the binding site `node`, a binding `ref_kind`/`local` of type `ty`, when `ty` is closed
+ * at scope end. A type variable may be closed in some instances, so it is recorded to be decided there. */
+static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t local, MsTy ty) {
+  MsCloser closer = {.node = node, .ref_kind = ref_kind, .local = local};
+  if (ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_VARIABLE) {
+    closer.flags = MS_CLOSER_GENERIC;
+  } else if (!ms_own_closer_of(pass->program, ty, &closer)) {
+    return;
+  } else {
+    closer.node = node;
+    closer.ref_kind = ref_kind;
+    closer.local = local;
+  }
+  ms_closer_list_push(&pass->facts->closers, closer);
 }
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
-  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME) {
-    add_closer(pass, stmt->u.bind.pattern->id);
+  if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
+    return;
+  }
+  const MsNode node = stmt->u.bind.pattern->id;
+  const MsRef *ref = ms_facts_ref(pass->facts, node);
+  if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+    add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));
   }
 }
 
-/* A `move` parameter of a function or method is owned by its body. */
+/* A `move` parameter is owned by its body. */
 static void add_params(Closers *pass, MsParams params) {
   for (uint32_t index = 0; index < params.len; index++) {
-    if (params.ptr[index]->moving) {
-      add_closer(pass, params.ptr[index]->id);
+    const MsNode node = params.ptr[index]->id;
+    const MsRef *ref = ms_facts_ref(pass->facts, node);
+    if (params.ptr[index]->moving && ref != NULL && ref->kind == MS_REF_PARAM) {
+      add_closer(pass, node, MS_REF_PARAM, ref->local, ms_facts_type(pass->facts, node));
     }
   }
 }
 
-static void add_decl_params(Closers *pass, const MsDecl *decl) {
-  if (decl->kind == MS_D_FN) {
-    add_params(pass, decl->u.fn.params);
-  } else if (decl->kind == MS_D_IMPL) {
-    for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
-      add_params(pass, decl->u.impl.methods.ptr[index]->func.params);
+static const MsMethodEntry *entry_of(const Closers *pass, const MsMethod *method) {
+  for (size_t index = 0; index < pass->program->methods.len; index++) {
+    const MsMethodEntry *entry = &pass->program->methods.ptr[index];
+    if (entry->module == pass->module && entry->source == method) {
+      return entry;
     }
   }
+  return NULL;
+}
+
+/* The receiver of a method that consumes it is owned by the body, except in `close` itself. */
+static void add_receiver(Closers *pass, const MsMethod *method) {
+  const MsMethodEntry *entry = entry_of(pass, method);
+  if (!method->consuming || entry == NULL || method->func.name == pass->close) {
+    return;
+  }
+  add_closer(pass, method->id, MS_REF_PARAM, 0, entry->receiver);
 }
 
 static int64_t compare(uint8_t *env, const uint8_t *a, const uint8_t *b) {
@@ -83,73 +116,88 @@ static int64_t compare(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   return left < right ? -1 : left > right;
 }
 
-static MsCloser *find(Closers *pass, MsNode node) {
-  for (size_t index = 0; index < pass->facts->closers.len; index++) {
-    if (pass->facts->closers.ptr[index].node == node) {
-      return &pass->facts->closers.ptr[index];
+static MsCloser *find(Closers *pass, MsRefKind ref_kind, uint32_t local) {
+  for (size_t index = pass->first; index < pass->facts->closers.len; index++) {
+    MsCloser *closer = &pass->facts->closers.ptr[index];
+    if (closer->ref_kind == ref_kind && closer->local == local) {
+      return closer;
     }
   }
   return NULL;
 }
 
-static void flag(Closers *pass, MsNode binding, uint8_t flags) {
-  MsCloser *closer = find(pass, binding);
+static void flag(Closers *pass, const MsRef *ref, uint8_t flags) {
+  MsCloser *closer = ref == NULL ? NULL : find(pass, ref->kind, ref->local);
   if (closer != NULL) {
     closer->flags = (uint8_t)(closer->flags | flags);
   }
 }
 
-/* A use that moves the binding or one of its fields, or a closure that captures it. */
-static void note_use(Closers *pass, const MsExpr *expr) {
-  uint32_t binding = 0;
+/* The uses of a closed binding that decide how its scope may close it. */
+static void visit_expr(void *ctx, const MsExpr *expr) {
+  Closers *pass = ctx;
   if (expr->kind == MS_E_LAMBDA) {
-    MsBindingList captures = ms_bind_captures(pass->facts, expr);
-    for (size_t index = 0; index < captures.len; index++) {
-      flag(pass, captures.ptr[index], MS_CLOSER_PARTIAL);
-    }
-    ms_binding_list_free(&captures);
+    pass->lambdas++;
     return;
+  }
+  if (expr->kind == MS_E_CALL && expr->u.call.args.len == 0 && expr->u.call.callee->kind == MS_E_MEMBER &&
+      expr->u.call.callee->u.member.name == pass->close && expr->u.call.callee->u.member.left->kind == MS_E_NAME) {
+    flag(pass, ms_facts_ref(pass->facts, expr->u.call.callee->u.member.left->id), MS_CLOSER_EXPLICIT);
   }
   const MsExpr *root = expr;
   while (root->kind == MS_E_MEMBER) {
     root = root->u.member.left;
   }
-  if ((expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER) && ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE &&
-      root->kind == MS_E_NAME && ms_bind_of(pass->facts, root->id, &binding)) {
-    flag(pass, binding, expr->kind == MS_E_NAME ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
+  if (expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) {
+    return;
+  }
+  const MsRef *ref = root->kind == MS_E_NAME ? ms_facts_ref(pass->facts, root->id) : NULL;
+  if (ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
+    return;
+  }
+  if (pass->lambdas != 0) {
+    flag(pass, ref, MS_CLOSER_PARTIAL);
+  } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
+    flag(pass, ref, expr->kind == MS_E_NAME ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
   }
 }
 
-/* `x.close()` by hand on a closed binding, and the uses that move one. */
-static void visit_expr(void *ctx, const MsExpr *expr) {
+static void leave_expr(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
-  note_use(pass, expr);
-  if (expr->kind != MS_E_CALL || expr->u.call.args.len != 0 || expr->u.call.callee->kind != MS_E_MEMBER ||
-      expr->u.call.callee->u.member.name != pass->close) {
-    return;
+  if (expr->kind == MS_E_LAMBDA) {
+    pass->lambdas--;
   }
-  const MsExpr *receiver = expr->u.call.callee->u.member.left;
-  uint32_t binding = 0;
-  if (receiver->kind != MS_E_NAME || !ms_bind_of(pass->facts, receiver->id, &binding)) {
-    return;
+}
+
+static void callable(Closers *pass, const MsMethod *method, MsParams params, MsStmts body) {
+  pass->first = pass->facts->closers.len;
+  pass->lambdas = 0;
+  if (method != NULL) {
+    add_receiver(pass, method);
   }
-  flag(pass, binding, MS_CLOSER_EXPLICIT);
+  add_params(pass, params);
+  const MsVisitor binds = {.ctx = pass, .stmt = visit_stmt};
+  ms_walk_callable(&binds, params, body);
+  const MsVisitor uses = {.ctx = pass, .expr = visit_expr, .leave_expr = leave_expr};
+  ms_walk_callable(&uses, params, body);
 }
 
 void ms_own_closers(MsCheckProgram *program) {
   Closers pass = {.program = program, .close = ms_names_intern(program->names, ms_span_of_text("close"))};
   for (uint32_t module = 0; module < program->user_modules; module++) {
     pass.facts = &program->modules.ptr[module].facts;
+    pass.module = module;
     const MsModule *tree = program->modules.ptr[module].tree;
-    const MsVisitor binds = {.ctx = &pass, .stmt = visit_stmt};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
-      add_decl_params(&pass, tree->decls[index]);
-      ms_walk_decl(&binds, tree->decls[index]);
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN) {
+        callable(&pass, NULL, decl->u.fn.params, decl->u.fn.body);
+      }
+      for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
+        const MsMethod *method = decl->u.impl.methods.ptr[at];
+        callable(&pass, method, method->func.params, method->func.body);
+      }
     }
     ms_sort((uint8_t *)(void *)pass.facts->closers.ptr, pass.facts->closers.len, sizeof(MsCloser), compare, NULL);
-    const MsVisitor hand = {.ctx = &pass, .expr = visit_expr};
-    for (uint32_t index = 0; index < tree->ndecls; index++) {
-      ms_walk_decl(&hand, tree->decls[index]);
-    }
   }
 }

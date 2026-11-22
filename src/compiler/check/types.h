@@ -232,8 +232,14 @@ typedef struct MsOperation {
 MS_LIST_DEFINE(MsOperationList, ms_operation_list, MsOperation)
 
 /* A nominal type definition, owned by the type's symbol. */
+typedef enum MsRepr {
+  MS_REPR_DEFAULT = 0,
+  MS_REPR_BYTES_BUFFER /* a Bytes buffer to the runtime (`@repr=bytes_buffer`) */
+} MsRepr;
+
 typedef struct MsDef {
   MsTyKind kind; /* type, alternative, contract or native */
+  MsRepr repr;   /* the declared runtime representation of a native type */
   uint32_t symbol;
   MsTyList variables;       /* owned: declared type variables */
   MsTyParamList fields;     /* owned */

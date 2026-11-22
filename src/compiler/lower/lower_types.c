@@ -1,7 +1,6 @@
 /* compiler/lower/lower_types.c: checked types to MIR types. A type with variables is first rewritten by the
  * substitution of the instance being lowered, so MIR never sees a variable. */
 #include "compiler/lower/lower_internal.h"
-#include "compiler/lower/native_sigs.h"
 
 static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
   if (subst == NULL || subst->count == 0 || !ms_ty_has_variable(&cx->program->types, ty)) {
@@ -138,14 +137,9 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   return result;
 }
 
-/* An extern type whose runtime operations take a `VecVal` (the builders) is a Bytes buffer. */
-static bool is_builder(const Lower *cx, MsTy ty) {
-  return ms_native_sig_is_vec_type(ms_names_span(cx->program->names, ms_ty_row(&cx->program->types, ty)->name));
-}
-
 static MirTy lower_native(Lower *cx, MsTy ty) {
   const MsTyTable *table = &cx->program->types;
-  if (is_builder(cx, ty)) {
+  if (ms_defs_get(&cx->program->defs, ms_ty_row(table, ty)->def)->repr == MS_REPR_BYTES_BUFFER) {
     return MIR_BYTES;
   }
   const size_t count = ms_ty_arg_count(table, ty);
