@@ -254,8 +254,21 @@ static void sf_affix(MirBuilder *b, uint32_t slow_ext, bool end, bool equal) {
   const MirBlock wide = mir_b_new_block(b), mid = mir_b_new_block(b), tiny = mir_b_new_block(b);
   const MirBlock no = mir_b_new_block(b), check = mir_b_new_block(b);
   const MirBlock four_check = mir_b_new_block(b), four = mir_b_new_block(b);
-  const SfBytes t = sf_bytes_of(b, sf_slot_of(b, text));
-  const SfBytes p = sf_bytes_of(b, sf_slot_of(b, part));
+  const MirValue text_slot = sf_slot_of(b, text), part_slot = sf_slot_of(b, part);
+  if (equal) { /* two inline strings are equal exactly when their words are: the bytes past the length are zero */
+    const MirBlock both = mir_b_new_block(b), other = mir_b_new_block(b);
+    const MirValue tw1 = ob_load(b, text_slot, SF_WORD, MIR_INT), pw1 = ob_load(b, part_slot, SF_WORD, MIR_INT);
+    const MirValue text_inline = sf_const_cmp(b, MCC_EQ, ob_int(b, MOP_Ushr, tw1, SF_TAG_SHIFT), 1);
+    const MirValue part_inline = sf_const_cmp(b, MCC_EQ, ob_int(b, MOP_Ushr, pw1, SF_TAG_SHIFT), 1);
+    ob_br_if(b, mir_b_select(b, text_inline, part_inline, mir_b_bconst(b, false)), both, other);
+    mir_b_switch_to(b, both);
+    const MirValue tw0 = ob_load(b, text_slot, 0, MIR_INT), pw0 = ob_load(b, part_slot, 0, MIR_INT);
+    const MirValue same_low = mir_b_icmp(b, MCC_EQ, tw0, pw0);
+    mir_b_ret(b, mir_b_select(b, same_low, mir_b_icmp(b, MCC_EQ, tw1, pw1), mir_b_bconst(b, false)));
+    mir_b_switch_to(b, other);
+  }
+  const SfBytes t = sf_bytes_of(b, text_slot);
+  const SfBytes p = sf_bytes_of(b, part_slot);
   ob_br_if(b, mir_b_icmp(b, equal ? MCC_NE : MCC_GT, p.len, t.len), no, check);
   mir_b_switch_to(b, check);
   ob_br_if(b, sf_const_cmp(b, MCC_GT, p.len, 16), slow, fits);

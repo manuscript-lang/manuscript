@@ -433,10 +433,8 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue valu
   return !fn->failed;
 }
 
-bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken) {
-  const MsRef *ref = ms_facts_ref(fn->facts, name->id);
-  if (fn->closing == NULL || ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM) ||
-      ms_facts_use(fn->facts, name->id) != MS_USE_MOVE) {
+bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken) {
+  if (fn->closing == NULL || ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
     return false;
   }
   const uint32_t at = ref->kind == MS_REF_LOCAL ? ref->local : fn->nvars + ref->local;
@@ -449,4 +447,9 @@ bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *t
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
   *taken = fn_emit(fn, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &slot, 1, imm_ty(ty), ty);
   return true;
+}
+
+bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken) {
+  const MsRef *ref = ms_facts_ref(fn->facts, name->id);
+  return ref != NULL && ms_facts_use(fn->facts, name->id) == MS_USE_MOVE && fn_closing_take(fn, ref, view, taken);
 }

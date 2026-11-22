@@ -58,8 +58,34 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
   return value;
 }
 
+/* Whether `ty` is known and a match cannot take it: not an alternative, an interface value, Int, String or Bool. */
+static bool unmatchable(const Body *body, MsTy ty) {
+  const MsTyTable *types = &body->program->types;
+  const MsTyKind kind = (MsTyKind)ms_ty_kind(types, ty);
+  if (ty == MS_TY_NONE || ms_ty_has_variable(types, ty) || ms_ty_is(types, ty, MS_BUILTIN_Never)) {
+    return false;
+  }
+  if (kind == MS_TY_ALTERNATIVE || kind == MS_TY_CONTRACT || kind == MS_TY_INVALID || kind == MS_TY_INFERRED) {
+    return false;
+  }
+  return !ms_ty_is(types, ty, MS_BUILTIN_Int) && !ms_ty_is(types, ty, MS_BUILTIN_String) &&
+         !ms_ty_is(types, ty, MS_BUILTIN_Bool);
+}
+
+static void check_scrutinee(Body *body, const MsExpr *expr, MsTy ty) {
+  if (body->quiet || body->module >= body->program->user_modules || !unmatchable(body, ty)) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "match requires an alternative, contract view, Int, String or Bool, found ");
+  ms_ty_show(&text, body->program->names, &body->program->types, ty);
+  ms_strbuild_append_text(&text, "; match on a type with cases, or use if/else");
+  ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy scrutinee = body_expr(body, expr->u.match.scrutinee, MS_TY_NONE);
+  check_scrutinee(body, expr, scrutinee);
   /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
   MsTy result = expected != MS_TY_NONE && body_has_foreign_variable(body, expected) ? MS_TY_NONE : expected;
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
