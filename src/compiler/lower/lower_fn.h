@@ -101,6 +101,8 @@ void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
+/* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
+bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
 bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */

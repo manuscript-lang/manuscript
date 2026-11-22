@@ -104,6 +104,10 @@ bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue
     }
     if (kind == NS_SHAPE) {
       shape_at = count++;
+    } else if (kind == NS_ELEM_DESC || kind == NS_KEY_DESC || kind == NS_VAL_DESC) {
+      if (!fn_descriptor_argument(fn, kind, args, nargs, &wanted[count++])) {
+        return false;
+      }
     } else if (kind == NS_HAS_RAW && source < nargs) {
       const MirValue operand = args[source++];
       const MirTyData *record = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, operand));
