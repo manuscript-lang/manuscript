@@ -163,11 +163,19 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
   const MirTyData *data = mir_ty_data(fn->cx->module, ret);
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
-  if (!(scalar || optional) || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
+  const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
+  const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
+  if (!(scalar || optional) || (last != NS_ADDR_MUT && !text)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
-  return fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  if (text) { /* the runtime writes the String over an empty one */
+    const MirImm empty = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(""))};
+    const MirValue stored[2] = {slot, mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, empty, MIR_STR)};
+    (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  }
+  return slot;
 }
 
 
