@@ -182,19 +182,33 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
 /* `Type.Case` or `Type.member` where the left side names a type; false when it does not. */
 static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
   const MsExpr *left = expr->u.member.left;
-  if (left->kind != MS_E_NAME || body_find_local(body, left->u.sym) != NULL) {
+  /* `Type[Args].Case`: the type applied to its arguments. */
+  const bool applied = left->kind == MS_E_APPLY && left->u.apply.left->kind == MS_E_NAME &&
+                       left->u.apply.types.len != 0;
+  const MsExpr *named = applied ? left->u.apply.left : left;
+  if (named->kind != MS_E_NAME || body_find_local(body, named->u.sym) != NULL) {
     return false;
   }
-  const MsSymbol *symbol = body_find_symbol(body, left->u.sym);
+  const MsSymbol *symbol = body_find_symbol(body, named->u.sym);
   if (symbol == NULL || symbol->kind != MS_SYMBOL_TYPE) {
     return false;
   }
+  MsTy owner = symbol->ty;
+  if (applied) {
+    MsTyList args = {0};
+    for (uint32_t index = 0; index < left->u.apply.types.len; index++) {
+      ms_ty_list_push(&args, resolver_type(&body->resolver, left->u.apply.types.ptr[index]));
+    }
+    owner = resolver_apply(body->program, symbol->ty, args.ptr, args.len);
+    ms_ty_list_free(&args);
+    body_set_ref(body, named->id, body_symbol_ref(body, symbol));
+  }
   body_set_ref(body, left->id, body_symbol_ref(body, symbol));
-  body_set_type(body, left->id, symbol->ty);
+  body_set_type(body, left->id, owner);
   uint32_t index = 0;
-  if (body_case_of(body, symbol->ty, expr->u.member.name, &index) != NULL) {
-    body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = symbol->ty});
-    *ty = symbol->ty;
+  if (body_case_of(body, owner, expr->u.member.name, &index) != NULL) {
+    body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
+    *ty = owner;
   } else {
     *ty = MS_TY_NONE;
   }
