@@ -148,6 +148,27 @@ MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol) {
   return (MsRef){.kind = kind, .decl = {symbol->module, symbol->decl != NULL ? symbol->decl->id : 0}};
 }
 
+/* A generic function named as a value takes the type arguments its expected function type fixes; without one it keeps
+ * its generic type. */
+static MsTy generic_as_value(Body *body, const MsSymbol *symbol, MsTy expected) {
+  MsTyTable *types = &body->program->types;
+  if (symbol->kind != MS_SYMBOL_FN || symbol->var_count == 0 || symbol->var_count > 16 || expected == MS_TY_NONE ||
+      ms_ty_row(types, expected)->id != ms_ty_row(types, symbol->ty)->id) {
+    return symbol->ty;
+  }
+  const MsTy *vars = body->program->symbol_vars.ptr + symbol->var_at;
+  MsTy bound[16] = {0};
+  if (!ms_check_unify(types, symbol->ty, expected, vars, symbol->var_count, bound)) {
+    return symbol->ty;
+  }
+  for (uint32_t index = 0; index < symbol->var_count; index++) {
+    if (bound[index] == MS_TY_NONE) {
+      return symbol->ty;
+    }
+  }
+  return ms_ty_subst(types, symbol->ty, vars, bound, symbol->var_count);
+}
+
 static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsName name = expr->u.sym;
   const MsLocal *local = body_find_local(body, name);
@@ -159,7 +180,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
-    return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : symbol->ty;
+    return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : generic_as_value(body, symbol, expected);
   }
   const MsSpan text = ms_names_span(body->program->names, name);
   if (ms_span_is_text(text, "__LINE__")) {
@@ -280,9 +301,35 @@ static MsTy map_expr(Body *body, const MsExpr *expr, MsTy expected) {
   return args[0] == MS_TY_NONE || args[1] == MS_TY_NONE ? expected : body_std_type(body, "Map", args, 2);
 }
 
+/* `generic_function[Args]` named as a value: the function at those type arguments. */
+static bool explicit_function_value(Body *body, const MsExpr *expr, MsTy *ty) {
+  if (expr->kind != MS_E_APPLY || expr->u.apply.types.len == 0 || expr->u.apply.left->kind != MS_E_NAME ||
+      body_find_local(body, expr->u.apply.left->u.sym) != NULL) {
+    return false;
+  }
+  const MsSymbol *symbol = body_find_symbol(body, expr->u.apply.left->u.sym);
+  if (symbol == NULL || symbol->kind != MS_SYMBOL_FN || symbol->var_count != expr->u.apply.types.len || symbol->ty == MS_TY_NONE) {
+    return false;
+  }
+  MsTyList args = {0};
+  for (uint32_t index = 0; index < expr->u.apply.types.len; index++) {
+    ms_ty_list_push(&args, resolver_type(&body->resolver, expr->u.apply.types.ptr[index]));
+  }
+  const MsRef ref = body_symbol_ref(body, symbol);
+  body_set_ref(body, expr->u.apply.left->id, ref);
+  body_set_ref(body, expr->id, ref);
+  *ty = ms_ty_subst(&body->program->types, symbol->ty, body->program->symbol_vars.ptr + symbol->var_at, args.ptr, args.len);
+  ms_ty_list_free(&args);
+  return true;
+}
+
 static MsTy index_expr(Body *body, const MsExpr *expr) {
   MsExpr *left = NULL;
   MsExpr *index = NULL;
+  MsTy function = MS_TY_NONE;
+  if (explicit_function_value(body, expr, &function)) {
+    return function;
+  }
   if (!ms_expr_index(expr, &left, &index)) {
     return MS_TY_NONE;
   }
