@@ -1,5 +1,5 @@
-/* compiler/own/lends.c: see lends.h. */
-#include "compiler/own/lends.h"
+/* compiler/own/result_borrows.c: see borrows.h. */
+#include "compiler/own/result_borrows.h"
 
 #include "compiler/check/properties.h"
 #include "compiler/own/class.h"
@@ -23,11 +23,11 @@ static void collect_return(void *ctx, const MsStmt *stmt) {
   returns->values[returns->len++] = stmt->u.expr;
 }
 
-/* What a returned expression carries: the positions it lends, or that it is something the callable owns. */
-typedef struct Lend {
+/* What a returned expression carries: the positions it borrows, or that it is something the callable owns. */
+typedef struct Reach {
   uint32_t mask;
   bool owned;
-} Lend;
+} Reach;
 
 /* A local that views another expression: an arm or `if` binding of a scrutinee, or `x := place`. */
 typedef struct View {
@@ -48,8 +48,8 @@ typedef struct Pass {
   MsName self_name;
 } Pass;
 
-static Lend join(Lend left, Lend right) {
-  return (Lend){.mask = left.mask | right.mask, .owned = left.owned || right.owned};
+static Reach join(Reach left, Reach right) {
+  return (Reach){.mask = left.mask | right.mask, .owned = left.owned || right.owned};
 }
 
 static bool owns_memory(const Pass *pass, const MsExpr *expr) {
@@ -57,10 +57,10 @@ static bool owns_memory(const Pass *pass, const MsExpr *expr) {
   return ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
 }
 
-static const Lend NEUTRAL = {0, false};
-static const Lend OWNED = {0, true};
+static const Reach NEUTRAL = {0, false};
+static const Reach OWNED = {0, true};
 
-static Lend classify(Pass *pass, const MsExpr *expr);
+static Reach classify(Pass *pass, const MsExpr *expr);
 
 /* The position of a name that is the receiver or a parameter, or -1. */
 static int position_of(const Pass *pass, const MsExpr *name) {
@@ -108,7 +108,7 @@ static void view_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
-static Lend classify_place(Pass *pass, const MsExpr *expr) {
+static Reach classify_place(Pass *pass, const MsExpr *expr) {
   const MsExpr *root = expr;
   while (root->kind == MS_E_MEMBER) {
     root = root->u.member.left;
@@ -124,18 +124,18 @@ static Lend classify_place(Pass *pass, const MsExpr *expr) {
     for (uint32_t index = 0; index < pass->view_count; index++) {
       if (pass->views[index].local == ref->local && pass->depth < 8) {
         pass->depth++;
-        const Lend lend = classify(pass, pass->views[index].source);
+        const Reach borrow = classify(pass, pass->views[index].source);
         pass->depth--;
-        return lend;
+        return borrow;
       }
     }
     return OWNED;
   }
   const int position = position_of(pass, root);
-  return position < 0 ? OWNED : (Lend){.mask = UINT32_C(1) << position, .owned = false};
+  return position < 0 ? OWNED : (Reach){.mask = UINT32_C(1) << position, .owned = false};
 }
 
-static Lend classify_call(Pass *pass, const MsExpr *call) {
+static Reach classify_call(Pass *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
   if (fact == NULL) {
     return OWNED;
@@ -157,23 +157,23 @@ static Lend classify_call(Pass *pass, const MsExpr *call) {
   }
   const MsExpr *callee = call->u.call.callee;
   const bool receiver = callee->kind == MS_E_MEMBER && kind != MS_REF_FUNCTION && kind != MS_REF_CASE;
-  Lend out = NEUTRAL;
+  Reach out = NEUTRAL;
   uint32_t position = 0;
   if (receiver) {
-    if (kind == MS_REF_CASE || ms_own_call_lends(pass->program, fact, 0)) {
+    if (kind == MS_REF_CASE || ms_own_call_borrows(pass->program, fact, 0)) {
       out = join(out, classify(pass, callee->u.member.left));
     }
     position = 1;
   }
   for (uint32_t index = 0; index < call->u.call.args.len; index++, position++) {
-    if (kind == MS_REF_CASE || ms_own_call_lends(pass->program, fact, position)) {
+    if (kind == MS_REF_CASE || ms_own_call_borrows(pass->program, fact, position)) {
       out = join(out, classify(pass, call->u.call.args.ptr[index].value));
     }
   }
   return out;
 }
 
-static Lend classify(Pass *pass, const MsExpr *expr) {
+static Reach classify(Pass *pass, const MsExpr *expr) {
   if (!owns_memory(pass, expr)) {
     return NEUTRAL;
   }
@@ -196,17 +196,17 @@ static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
   if (returns.overflow || returns.len == 0) {
     return 0;
   }
-  Lend all = NEUTRAL;
+  Reach all = NEUTRAL;
   for (uint32_t index = 0; index < returns.len; index++) {
     all = join(all, classify(pass, returns.values[index]));
   }
-  return all.mask | (all.owned || all.mask == 0 ? 0 : MS_LENDS_PURE);
+  return all.mask | (all.owned || all.mask == 0 ? 0 : MS_RESULT_BORROWED);
 }
 
 static bool store(MsFacts *facts, MsNode node, uint32_t mask) {
-  const bool changed = node < facts->node_count && facts->lends[node] != mask;
+  const bool changed = node < facts->node_count && facts->result_borrows[node] != mask;
   if (node < facts->node_count) {
-    facts->lends[node] = mask;
+    facts->result_borrows[node] = mask;
   }
   return changed;
 }
@@ -218,7 +218,7 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
     const MsModule *tree = program->modules.ptr[module].tree;
     Pass pass = {.program = program, .classes = classes, .facts = facts, .self_module = module,
                  .self_name = ms_names_intern(program->names, ms_span_of_text("self"))};
-    for (uint32_t index = 0; facts->lends != NULL && index < tree->ndecls; index++) {
+    for (uint32_t index = 0; facts->result_borrows != NULL && index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
         pass.method = false;
@@ -236,21 +236,21 @@ static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
   return changed;
 }
 
-void ms_own_lends(MsCheckProgram *program) {
+void ms_own_result_borrows(MsCheckProgram *program) {
   MsClassifier classes = ms_class_new(program);
   for (int round = 0; round < 8 && round_of(program, &classes); round++) {
   }
 }
 
-uint32_t ms_own_lends_mask(const MsCheckProgram *program, uint32_t module, MsNode node) {
+uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t module, MsNode node) {
   if (module >= program->modules.len) {
     return 0;
   }
   const MsFacts *facts = &program->modules.ptr[module].facts;
-  return facts->lends != NULL && node < facts->node_count ? facts->lends[node] : 0;
+  return facts->result_borrows != NULL && node < facts->node_count ? facts->result_borrows[node] : 0;
 }
 
-bool ms_own_call_lends(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
+bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
   const MsRefKind kind = call->callee.kind;
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
     return kind == MS_REF_NATIVE || kind == MS_REF_OPERATION || kind == MS_REF_CASE;
@@ -259,11 +259,11 @@ bool ms_own_call_lends(const MsCheckProgram *program, const MsCall *call, uint32
   if (func == NULL || func->bodiless || func->external) {
     return true; /* the runtime provides it, and its result may be any part of its arguments */
   }
-  return position < 31 && (ms_own_lends_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
+  return position < 31 && (ms_own_result_borrow_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
 }
 
-bool ms_own_lends_pure(const MsCheckProgram *program, uint32_t module, MsNode node) {
-  return (ms_own_lends_mask(program, module, node) & MS_LENDS_PURE) != 0;
+bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, MsNode node) {
+  return (ms_own_result_borrow_mask(program, module, node) & MS_RESULT_BORROWED) != 0;
 }
 
 const MsFunc *ms_own_find_func(const MsCheckProgram *program, const MsRef *ref) {

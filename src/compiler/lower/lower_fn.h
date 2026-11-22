@@ -155,7 +155,7 @@ uint32_t lower_close_iface(Lower *cx, MsTy ty);
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
 /* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
- * when it is a lent temporary. */
+ * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 /* The base of the field read `member`, closed with its statement when it is a temporary. */

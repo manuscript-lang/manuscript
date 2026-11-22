@@ -1,5 +1,5 @@
 /* compiler/own/borrows.c: a source changed while a binding borrowing it is still used (see borrows.h). */
-#include "compiler/own/lends.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/own/borrows.h"
 
 #include "compiler/check/methods.h"
@@ -115,10 +115,10 @@ static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
   return arg->kind == MS_E_CALL && origin_of_call(pass, arg, out);
 }
 
-/* Whether the callee's result lends from its argument number `position`: the callable's own `lends` fact (own/lends.c);
- * one the runtime provides lends from any argument. */
-static bool lends_from(Borrows *pass, const MsCall *fact, uint32_t position) {
-  return ms_own_call_lends(pass->program, fact, position);
+/* Whether the callee's result borrows from its argument number `position`: the callable's own `borrows` fact (own/result_borrows.c);
+ * one the runtime provides borrows from any argument. */
+static bool borrows_from(Borrows *pass, const MsCall *fact, uint32_t position) {
+  return ms_own_call_borrows(pass->program, fact, position);
 }
 
 /* Whether `call` takes the payload out of an optional or result held in a place: its result is the receiver's
@@ -150,9 +150,9 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
     return false;
   }
-  bool found = receiver && lends_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
+  bool found = receiver && borrows_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
   for (uint32_t index = 0; !found && index < call->u.call.args.len; index++) {
-    found = lends_from(pass, fact, index + (receiver ? 1u : 0u)) &&
+    found = borrows_from(pass, fact, index + (receiver ? 1u : 0u)) &&
             origin_of_arg(pass, call->u.call.args.ptr[index].value, out);
   }
   if (found && out->call == NULL) {

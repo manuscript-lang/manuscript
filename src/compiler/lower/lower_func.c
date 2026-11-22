@@ -2,7 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/own/lends.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
@@ -168,7 +168,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
 /* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a parameter, and each
  * return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
 static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
-  if (target->entry || !ms_own_lends_pure(cx->program, target->module, target->node) ||
+  if (target->entry || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;
   }
