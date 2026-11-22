@@ -44,14 +44,14 @@ test "bound ok_or leaves caller causes independent of its result":
 	absent: Int? := none
 	convert := absent.ok_or[Error]
 	var cause = Error("missing value at " + heap_text(3), kind: "ENOENT")
-	result := convert(cause)
+	result := convert(cause.clone())
 	cause = Error("missing value at " + heap_text(4), kind: "ENOENT")
 	expect_equal(result.err().message, "missing value at " + heap_text(3))?
 	expect_equal(cause.message, "missing value at " + heap_text(4))?
 
 	present: Int? := 0
 	keep := present.ok_or[Error]
-	expect_equal(keep(cause).get(), 0)?
+	expect_equal(keep(cause.clone()).get(), 0)?
 	expect_equal(cause.message, "missing value at " + heap_text(4))?
 
 test "bound native get owns selected heap-backed fallback results":

@@ -248,7 +248,7 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used.
-fn Optional[T].ok_or[E](cause: E) move T!E:
+fn Optional[T].ok_or[E](move cause: E) move T!E:
 	if self.is_none(): return error(cause)
 	return ok(self.get())
 
@@ -305,9 +305,10 @@ fn Result[T, E].err() E:
 
 // Returns the successful payload; for an error, calls `create` once with that error
 // and returns its value.
-fn Result[T, E].get_or_else(create: fn(E) T) T:
-	if self.is_error(): return create(self.err())
-	return self.get()
+fn move Result[T, E].get_or_else(create: fn(E) T) T:
+	match self:
+		ok(value): return value
+		error(cause): return create(cause)
 
 // Returns this result when it is successful; for an error, calls `create` once with
 // that error and returns the Result it produces.
