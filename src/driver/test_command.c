@@ -323,7 +323,9 @@ static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan 
   if (!ms_dir_current(&current)) {
     return directory;
   }
-  const MsSpan absolute = ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
+  const bool here = directory.len == 1 && directory.ptr[0] == '.';
+  const MsSpan absolute = here ? ms_arena_copy(arena, ms_string_span(&current))
+                               : ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
   ms_string_release(&current);
   return absolute;
 }
