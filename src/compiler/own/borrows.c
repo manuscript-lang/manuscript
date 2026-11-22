@@ -620,8 +620,34 @@ static void judge(Borrows *pass) {
   keep_list_clear(&pass->keeps);
 }
 
+/* Whether any bundled standard declaration says `move` before its result. Without one, no result is known to
+ * hand over memory and every call result would read as a borrow, so the pass has nothing to go on. */
+static bool standard_declares_move(const MsCheckProgram *program) {
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *entry = &program->methods.ptr[index];
+    if (entry->module >= program->user_modules && entry->source->func.result_moves) {
+      return true;
+    }
+  }
+  for (size_t module = program->user_modules; module < program->modules.len; module++) {
+    const MsModule *tree = program->modules.ptr[module].tree;
+    for (uint32_t index = 0; index < tree->ndecls; index++) {
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN && decl->u.fn.result_moves) {
+        return true;
+      }
+      for (uint32_t at = 0; decl->kind == MS_D_INTERFACE && at < decl->u.iface.methods.len; at++) {
+        if (decl->u.iface.methods.ptr[at]->func.result_moves) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void ms_own_borrows(MsCheckProgram *program) {
-  if (program->diagnostics.len != 0) {
+  if (program->diagnostics.len != 0 || !standard_declares_move(program)) {
     return;
   }
   MsClassifier classes = ms_class_new(program);
