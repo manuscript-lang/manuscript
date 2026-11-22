@@ -11,8 +11,12 @@ typedef struct Walk {
 static void walk_stmts(Walk *pass, MsStmts body);
 static void walk_expr(Walk *pass, const MsExpr *expr);
 
-static void declare(Walk *pass, MsName name, MsPos decl, bool mutable_) {
-  ms_binding_list_push(&pass->scope, (MsBinding){.name = name, .decl = decl, .mutable_ = mutable_});
+static void declare(Walk *pass, MsName name, MsPos decl, bool mutable_, MsBindingOrigin origin) {
+  const MsBinding binding = {.name = name, .decl = decl, .mutable_ = mutable_, .origin = origin};
+  ms_binding_list_push(&pass->scope, binding);
+  if (pass->visitor->declared != NULL) {
+    pass->visitor->declared(pass->visitor->context, &binding);
+  }
 }
 
 const MsBinding *ms_scope_lookup(const MsBindingList *scope, MsName name) {
@@ -24,19 +28,19 @@ const MsBinding *ms_scope_lookup(const MsBindingList *scope, MsName name) {
   return NULL;
 }
 
-static void declare_pattern(Walk *pass, const MsPattern *pattern, bool mutable_) {
+static void declare_pattern(Walk *pass, const MsPattern *pattern, bool mutable_, MsBindingOrigin origin) {
   switch ((MsPatternKind)pattern->kind) {
   case MS_P_NAME:
-    declare(pass, pattern->u.name, pattern->pos, mutable_);
+    declare(pass, pattern->u.name, pattern->pos, mutable_, origin);
     return;
   case MS_P_LIST:
     for (uint32_t index = 0; index < pattern->u.list.len; index++) {
-      declare_pattern(pass, pattern->u.list.ptr[index], mutable_);
+      declare_pattern(pass, pattern->u.list.ptr[index], mutable_, origin);
     }
     return;
   case MS_P_TYPE:
     for (uint32_t index = 0; index < pattern->u.fields.len; index++) {
-      declare_pattern(pass, pattern->u.fields.ptr[index].pattern, mutable_);
+      declare_pattern(pass, pattern->u.fields.ptr[index].pattern, mutable_, origin);
     }
     return;
   }
@@ -49,7 +53,7 @@ static void declare_params(Walk *pass, MsParams params) {
     if (param->def != NULL) {
       walk_expr(pass, param->def);
     }
-    declare(pass, param->name, param->pos, param->is_mutable);
+    declare(pass, param->name, param->pos, param->is_mutable, MS_BIND_OTHER);
     if (pass->visitor->invalid_param != NULL && pass->visitor->invalid_param(pass->visitor->context, param)) {
       pass->scope.ptr[pass->scope.len - 1].invalid = true;
     }
@@ -87,7 +91,7 @@ static void walk_match(Walk *pass, const MsExpr *expr) {
     const MsArm *arm = expr->u.match.arms.ptr[index];
     const size_t mark = pass->scope.len;
     for (uint32_t at = 0; at < arm->bindings.len; at++) {
-      declare(pass, arm->bindings.ptr[at].name, arm->bindings.ptr[at].pos, false);
+      declare(pass, arm->bindings.ptr[at].name, arm->bindings.ptr[at].pos, false, MS_BIND_PAYLOAD);
     }
     walk_stmts(pass, arm->body);
     if (arm->value != NULL) {
@@ -167,7 +171,7 @@ static void walk_branch(Walk *pass, const MsStmt *stmt) {
   walk_expr(pass, stmt->u.branch.cond);
   const size_t mark = pass->scope.len;
   if (stmt->u.branch.binding != NULL) {
-    declare_pattern(pass, stmt->u.branch.binding, stmt->u.branch.is_mutable);
+    declare_pattern(pass, stmt->u.branch.binding, stmt->u.branch.is_mutable, MS_BIND_NARROWED);
   }
   walk_scoped(pass, stmt->u.branch.body);
   ms_binding_list_truncate(&pass->scope, mark);
@@ -178,7 +182,7 @@ static void walk_stmt(Walk *pass, const MsStmt *stmt) {
   switch ((MsStmtKind)stmt->kind) {
   case MS_S_BIND:
     walk_expr(pass, stmt->u.bind.value);
-    declare_pattern(pass, stmt->u.bind.pattern, stmt->u.bind.is_mutable);
+    declare_pattern(pass, stmt->u.bind.pattern, stmt->u.bind.is_mutable, MS_BIND_LOCAL);
     return;
   case MS_S_ASSIGN:
     if (stmt->u.assign.member_target) {
@@ -211,7 +215,7 @@ static void walk_stmt(Walk *pass, const MsStmt *stmt) {
   case MS_S_FOR: {
     walk_expr(pass, stmt->u.each.iter);
     const size_t mark = pass->scope.len;
-    declare(pass, stmt->u.each.name, stmt->pos, false);
+    declare(pass, stmt->u.each.name, stmt->pos, false, MS_BIND_OTHER);
     walk_scoped(pass, stmt->u.each.body);
     ms_binding_list_truncate(&pass->scope, mark);
     return;
@@ -228,7 +232,7 @@ static void walk_stmts(Walk *pass, MsStmts body) {
 static void walk_callable(Walk *pass, const MsFunc *func, const MsMethod *method) {
   const size_t mark = pass->scope.len;
   if (method != NULL) {
-    declare(pass, pass->self, method->pos, method->mutating);
+    declare(pass, pass->self, method->pos, method->mutating, MS_BIND_OTHER);
   }
   declare_params(pass, func->params);
   walk_stmts(pass, func->body);

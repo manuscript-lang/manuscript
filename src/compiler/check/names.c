@@ -23,7 +23,7 @@ static bool always_known(MsSpan text) {
 }
 
 /* Whether any enum of any loaded module has a case called `name` (a case is written without its type). */
-static bool is_case_name(const MsCheckProgram *program, MsName name) {
+bool ms_check_is_case_name(const MsCheckProgram *program, MsName name) {
   for (size_t module = 0; module < program->modules.len; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
     for (uint32_t index = 0; index < tree->ndecls; index++) {
@@ -54,7 +54,7 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
   const MsName name = expr->u.sym;
   const MsSpan text = ms_names_span(pass->program->names, name);
   if (ms_scope_lookup(scope, name) != NULL || is_declared(pass, name) || always_known(text) || ms_builtin_primitive(text) != MS_BUILTIN_NONE ||
-      is_case_name(pass->program, name)) {
+      ms_check_is_case_name(pass->program, name)) {
     return;
   }
   ms_unknown_name_report(pass->program, pass->module, expr->pos, name, scope, site);
