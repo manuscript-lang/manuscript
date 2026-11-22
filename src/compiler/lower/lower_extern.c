@@ -200,7 +200,7 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   }
   if (shape_at != NS_MAX_PARAMS) {
     const MirImm of_type = {.tag = MI_TY, .a = shape_ty};
-    wanted[shape_at] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
+    wanted[shape_at] = fn_shape(fn, of_type.a);
   }
   MirValue out_slot = MIR_NONE;
   MirValue err_slot = MIR_NONE;
@@ -292,7 +292,7 @@ bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   const MirImm shape_type = {.tag = MI_TY, .a = shape_ty};
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
-  wanted[count++] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, shape_type, MIR_PTR);
+  wanted[count++] = fn_shape(fn, shape_type.a);
   for (uint32_t source = 0; source < nargs; source++) {
     const MirTy ty = mir_b_ty(&fn->b, args[source]);
     if (count < sig->count && sig->kinds[count] == NS_ADDR_IN) {
@@ -380,7 +380,7 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   }
   if (shape_at != NS_MAX_PARAMS) {
     const MirImm of_type = {.tag = MI_TY, .a = value_ty};
-    wanted[shape_at] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
+    wanted[shape_at] = fn_shape(fn, of_type.a);
   }
   if (!takes_out) {
     *out = fn_runtime_call(fn, name, wanted, used, ret);

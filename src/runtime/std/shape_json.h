@@ -9,6 +9,8 @@
 
 #include "abi/shape.h"
 
+/* ms-sig: msstd_json_w_value(handle w: *mut ObjCell<Writer>, shape: *const ShapeTable, value: *const u8) -> u8 @leaf */
+uint8_t msstd_json_w_value(void *writer, const MsShapeTable *table, const void *slot);
 /* ms-sig: msstd_json_stringify(shape: *const ShapeTable, value: *const u8, has_max_bytes: HasRaw, max_bytes:
  * i64, has_indent: HasRaw, indent: i64, strict: u8, out: *mut StrVal) -> u8 @domain=JSON @leaf */
 uint8_t msstd_json_stringify(const MsShapeTable *table, const void *value, uint8_t has_max_bytes,

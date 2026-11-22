@@ -212,3 +212,62 @@ bool fn_list_group_by(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *ou
   *out = fn_emit(fn, MOP_Take, &map_slot, 1, map_imm, ret);
   return true;
 }
+
+/* `map_from_entries(entries)`: an empty map, then the key and value of each entry (copies; the list keeps its own) added
+ * in order, so a later entry for a key replaces the value of an earlier one. */
+bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out) {
+  MirModule *module = fn->cx->module;
+  const MirTyData *list = mir_ty_data(module, mir_b_ty(&fn->b, args[0]));
+  const MirTyData *map = mir_ty_data(module, ret);
+  const MirTyData *entry_data = list->kind == MK_LIST ? mir_ty_data(module, list->elem) : NULL;
+  if (entry_data == NULL || entry_data->kind != MK_TYPE || map->kind != MK_OBJ || map->nargs < 2) {
+    return false;
+  }
+  const MirTy entry_ty = list->elem;
+  const MirTy key_ty = map->args[0];
+  const MirTy value_ty = map->args[1];
+  const MirImm map_imm = {.tag = MI_TY, .a = ret};
+  const MirImm key_imm = {.tag = MI_TY, .a = key_ty};
+  const MirImm value_imm = {.tag = MI_TY, .a = value_ty};
+  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ret);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
+  const MirValue map_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, map_imm, MIR_PTR);
+  const MirValue created[2] = {map_slot, empty};
+  (void)mir_b_emit(&fn->b, MOP_Put, created, 2, (MirImm){0}, MIR_NONE);
+  const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_imm, MIR_PTR);
+  const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_imm, MIR_PTR);
+  const MirBlock head = mir_b_new_block(&fn->b);
+  const MirBlock body = mir_b_new_block(&fn->b);
+  const MirBlock exit = mir_b_new_block(&fn->b);
+  const MirValue index = mir_b_add_block_param(&fn->b, head, MIR_INT, MM_BORROW);
+  const MirValue zero = mir_b_iconst(&fn->b, 0);
+  mir_b_br(&fn->b, head, &zero, 1);
+  mir_b_switch_to(&fn->b, head);
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
+  mir_b_br_if(&fn->b, mir_b_icmp(&fn->b, MCC_LT, index, length), body, NULL, 0, exit, NULL, 0);
+  mir_b_seal_block(&fn->b, body);
+  mir_b_seal_block(&fn->b, exit);
+  mir_b_switch_to(&fn->b, body);
+  const MirValue at[2] = {args[0], index};
+  const MirValue entry = mir_b_emit(&fn->b, MOP_ListGet, at, 2, (MirImm){0}, entry_ty);
+  const MirImm key_field = {.tag = MI_FIELD, .a = entry_data->id, .b = 0};
+  const MirImm value_field = {.tag = MI_FIELD, .a = entry_data->id, .b = 1};
+  MirValue key = mir_b_emit(&fn->b, MOP_TypeGet, &entry, 1, key_field, key_ty);
+  MirValue value = mir_b_emit(&fn->b, MOP_TypeGet, &entry, 1, value_field, value_ty);
+  key = mir_needs_drop(module, key_ty) ? mir_b_emit(&fn->b, MOP_Clone, &key, 1, (MirImm){0}, key_ty) : key;
+  value = mir_needs_drop(module, value_ty) ? mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, value_ty) : value;
+  const MirValue key_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, key_imm, MIR_PTR);
+  const MirValue value_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, value_imm, MIR_PTR);
+  const MirValue key_put[2] = {key_slot, key};
+  const MirValue value_put[2] = {value_slot, value};
+  (void)mir_b_emit(&fn->b, mir_needs_drop(module, key_ty) ? MOP_Put : MOP_Store, key_put, 2, (MirImm){0}, MIR_NONE);
+  (void)mir_b_emit(&fn->b, mir_needs_drop(module, value_ty) ? MOP_Put : MOP_Store, value_put, 2, (MirImm){0}, MIR_NONE);
+  const MirValue add_args[5] = {map_slot, key_desc, value_desc, key_slot, value_slot};
+  (void)fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_add")), add_args, 5, MIR_VOID);
+  const MirValue stepped = mir_b_binop(&fn->b, MOP_IAdd, index, mir_b_iconst(&fn->b, 1));
+  mir_b_br(&fn->b, head, &stepped, 1);
+  mir_b_seal_block(&fn->b, head);
+  mir_b_switch_to(&fn->b, exit);
+  *out = fn_emit(fn, MOP_Take, &map_slot, 1, map_imm, ret);
+  return true;
+}

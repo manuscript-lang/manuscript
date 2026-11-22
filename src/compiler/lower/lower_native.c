@@ -753,6 +753,12 @@ MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, 
   const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  MirValue expanded;
+  /* The runtime cannot read a record of the program's own type, so building a map from entries is expanded here. */
+  if (sig == NULL && call->arg_count == 1 && ms_span_is_text(ms_names_span(fn->cx->program->names, symbol->name), "map_from_entries") &&
+      fn_map_from_entries(fn, args, ret, &expanded)) {
+    return expanded;
+  }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
