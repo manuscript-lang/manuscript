@@ -42,6 +42,17 @@ void msrt_string_chars(const MsString *s, MsList *out) {
   out_list(list, out);
 }
 
+void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out) {
+  const MsSpan text = msrt_text(s);
+  const uint8_t byte = text.ptr[at];
+  if (byte < 0x80) {
+    *out = (MsString){.low_bits = byte, .tagged = (UINT64_C(1) << MS_STRING_TAG_SHIFT) | (UINT64_C(1) << MS_STRING_INLINE_SHIFT)};
+    return;
+  }
+  const MsRune rune = ms_utf8_decode(text.ptr + at, text.len - (size_t)at);
+  *out = ms_string_from_span(ms_span_of(text.ptr + at, rune.width));
+}
+
 /* `String.lines`: the text between line feeds; a carriage return before one is dropped, and a final line
  * without a line feed counts only when it is not empty. */
 void msrt_string_lines(const MsString *s, MsList *out) {

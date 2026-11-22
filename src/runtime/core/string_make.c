@@ -107,16 +107,19 @@ MsString msrt_string_join(const MsSpan *parts, size_t count) {
   for (size_t index = 0; index < count; index++) {
     total = msrt_string_total(total, parts[index].len);
   }
-  uint8_t small[MS_STRING_INLINE_MAX + 1];
   MsString result = ms_string_empty();
-  uint8_t *cursor = total <= MS_STRING_INLINE_MAX ? small : msrt_string_block(total, &result);
+  const bool small = total <= MS_STRING_INLINE_MAX; /* an inline string is filled in place: its bytes past the length stay zero */
+  uint8_t *cursor = small ? result.inline_bytes : msrt_string_block(total, &result);
   for (size_t index = 0; index < count; index++) {
     if (parts[index].len != 0) {
       __builtin_memcpy(cursor, parts[index].ptr, parts[index].len);
     }
     cursor += parts[index].len;
   }
-  return total <= MS_STRING_INLINE_MAX ? msrt_string_make(ms_span_of(small, total)) : result;
+  if (small) {
+    result.tagged |= (uint64_t)total << MS_STRING_INLINE_SHIFT; /* the tag bits are set; bytes 8 to 14 hold text */
+  }
+  return result;
 }
 
 /* The same over strings. */
