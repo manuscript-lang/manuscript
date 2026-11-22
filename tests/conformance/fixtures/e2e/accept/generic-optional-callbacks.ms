@@ -169,7 +169,7 @@ test "bound generic native defaults preserve concrete and Optional payload types
 
 test "bound Error defaults distinguish omission from explicit none":
 	missing: Int? := none
-	direct := missing.ok_or()
+	direct := missing.ok_or(Error("missing"))
 	expect_true(direct.err().message.contains("generic-optional-callbacks.ms:"))?
 
 	convert := missing.ok_or[Error]

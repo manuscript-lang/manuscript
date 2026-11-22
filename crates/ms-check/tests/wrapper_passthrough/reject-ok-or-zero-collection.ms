@@ -7,4 +7,4 @@ fn move Marker.close() Void!: ok()
 
 fn bad() Void:
     values := [Marker(1)]
-    kept := values.first().ok_or()
+    kept := values.first().ok_or(Error("missing"))
