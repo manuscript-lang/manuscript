@@ -32,6 +32,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_methods(program, index);
   }
   for (uint32_t index = 0; index < program->user_modules; index++) {
+    ms_check_report_imports(program, index, graph->modules[index].source);
     ms_check_type_variables(program, index);
     ms_check_signatures(program, index);
     ms_check_methods(program, index);
