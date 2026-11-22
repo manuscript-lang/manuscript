@@ -27,7 +27,8 @@ enum {
   NS_ERR_SLOT,  /* the address of the string a failing native explains itself in */
   NS_SHAPE,     /* the shape table of the value the call reads or builds (`*const ShapeTable`), not a source operand */
   NS_HAS_RAW,   /* an `Int?` operand passed as two parameters: the presence flag (this one) and the payload */
-  NS_VALUE_DESC /* the descriptor of the one value the call moves in or takes out (`ValueDesc`) */
+  NS_VALUE_DESC, /* the descriptor of the one value the call moves in or takes out (`ValueDesc`) */
+  NS_TREE_CTOR  /* the address of the constructor thunk of the `JsonValue` the call builds (`TreeCtor`) */
 };
 
 enum { NS_MAX_PARAMS = 24 };

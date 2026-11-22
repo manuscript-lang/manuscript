@@ -122,7 +122,7 @@ static MirTy lower_alt(Lower *cx, MsTy ty) {
   alt->cases = cases;
   alt->ncases = (uint32_t)def->cases.len;
   const MsBuiltin builtin = ms_ty_builtin(&cx->program->types, ty);
-  alt->std = builtin == MS_BUILTIN_Result ? MSTD_RESULT : MSTD_NONE;
+  alt->std = builtin == MS_BUILTIN_Result ? MSTD_RESULT : builtin == MS_BUILTIN_JsonValue ? MSTD_JSON_VALUE : MSTD_NONE;
   return result;
 }
 

@@ -299,7 +299,7 @@ typedef struct MirTypeDef {
 
 MS_LIST_DEFINE(MirTypeDefList, mir_type_def_list, MirTypeDef)
 
-typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL } MirStd;
+typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL, MSTD_JSON_VALUE } MirStd;
 
 typedef struct MirCaseDef {
   MsName name;

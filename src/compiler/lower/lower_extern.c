@@ -2,6 +2,7 @@
  * operands: a status and an out slot (`T!`), the shape table of the value it reads, or the descriptor and address
  * of a generic value. The extern's `ms-sig` header says which. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_json_tree.h"
 #include "compiler/lower/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -77,6 +78,19 @@ bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue
   if (sig == NULL || !sig->status || !result_alt(fn, ret, &alt, &payload_ty) || nargs + 2 > NS_MAX_PARAMS) {
     return false;
   }
+  uint32_t tree_ctor = MIR_NONE;
+  if (ms_span_is_text(ms_names_span(&fn->cx->module->names, name), "msstd_json_decode") &&
+      mir_json_tree_shape(fn->cx->module, payload_ty)) {
+    /* The untyped tree is built by the runtime through a constructor of this layout, not read through its
+     * shape; the call's last operand, `ignore_unknown_fields`, has no meaning there. */
+    tree_ctor = mir_json_tree_ctor(fn->cx->module, payload_ty);
+    name = mir_name(fn->cx->module, ms_span_of_text("msstd_json_parse_tree"));
+    sig = ms_native_sig_find(ms_span_of_text("msstd_json_parse_tree"));
+    if (tree_ctor == MIR_NONE || sig == NULL || nargs == 0) {
+      return false;
+    }
+    nargs--;
+  }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
   const bool has_out = payload_ty != MIR_VOID;
   const uint32_t tail = (has_err ? 1u : 0u) + (has_out ? 1u : 0u);
@@ -150,6 +164,10 @@ bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue
       if (!fn_descriptor_argument(fn, kind, args, nargs, &wanted[count++])) {
         return false;
       }
+    } else if (kind == NS_VALUE_DESC && tree_ctor != MIR_NONE) {
+      wanted[count++] = fn_emit(fn, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = payload_ty}, MIR_PTR);
+    } else if (kind == NS_TREE_CTOR && tree_ctor != MIR_NONE) {
+      wanted[count++] = fn_emit(fn, MOP_FuncAddr, NULL, 0, (MirImm){.tag = MI_FUNC, .a = tree_ctor}, MIR_PTR);
     } else if (kind == NS_VALUE_DESC) {
       return false;
     } else if (source < nargs) {

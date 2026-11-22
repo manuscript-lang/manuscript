@@ -18,6 +18,7 @@ static const char *std_name(uint8_t std) {
   case MSTD_RESULT: return "result";
   case MSTD_COMPARABLE: return "comparable";
   case MSTD_EQUAL: return "equal";
+  case MSTD_JSON_VALUE: return "json_value";
   default: return NULL;
   }
 }
