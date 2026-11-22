@@ -90,7 +90,12 @@ static void bind_pattern(Body *body, const MsPattern *pattern, MsTy ty, bool is_
   }
   for (uint32_t index = 0; index < pattern->u.fields.len; index++) {
     const MsPatternField *field = &pattern->u.fields.ptr[index];
-    bind_pattern(body, field->pattern, MS_TY_NONE, is_var);
+    MsTy field_ty = MS_TY_NONE;
+    uint32_t at = 0;
+    if (ty != MS_TY_NONE) {
+      (void)body_field(body, ty, field->name, &field_ty, &at);
+    }
+    bind_pattern(body, field->pattern, field_ty, is_var);
   }
 }
 
