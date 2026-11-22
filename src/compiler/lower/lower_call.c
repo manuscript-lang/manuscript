@@ -219,12 +219,36 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   return true;
 }
 
-/* A call of an interface operation: dispatched through the receiver's vtable. */
-static MirValue call_operation(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
-  if (data->kind != MK_IFACE) {
+/* A call of an interface operation on a value of a bound variable (`item.clone()` with `T: Clonable`): the
+ * instance knows the concrete receiver type, so the call is the method that type implements, or the structural
+ * copy when it has none. */
+static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MsExpr *callee = expr->u.call.callee;
+  if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
     (void)fn_fail(fn, "an interface operation needs an interface receiver");
     return MIR_NONE;
+  }
+  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                    fn->subst.vars, fn->subst.args, fn->subst.count);
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name);
+  if (method != MIR_NONE) {
+    const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
+    fn_own_result(fn, result);
+    return result;
+  }
+  const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
+  if (!ms_span_is_text(operation, "clone") || call->arg_count != 1) {
+    (void)fn_fail(fn, "the operation `%.*s` on a bound value is not lowered yet", (int)operation.len, (const char *)operation.ptr);
+    return MIR_NONE;
+  }
+  return mir_needs_drop(fn->cx->module, ret) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, ret) : args[0];
+}
+
+/* A call of an interface operation: dispatched through the receiver's vtable. */
+static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (data->kind != MK_IFACE) {
+    return call_bound_operation(fn, expr, call, args, ret);
   }
   const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = call->callee.index};
   return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
@@ -313,7 +337,7 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     return construct(fn, call, args, ret);
   }
   if (call->callee.kind == MS_REF_OPERATION) {
-    return call_operation(fn, call, args, ret);
+    return call_operation(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);
