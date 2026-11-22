@@ -402,6 +402,39 @@ export fn join_errors(errors: List[Error]) Error?:
 
 	return Error(text, none, {"count": errors.length().to_string()})
 
+// An Optional copies its payload; `none` stays `none`.
+fn Optional[T: Clonable].clone() T?:
+	match self:
+		value: return value.clone()
+		none: return none
+
+fn Error.clone() Error:
+	return Error(self.message.clone(), self.kind.clone(), self.details.clone())
+
+// A String is its own text.
+fn String.to_string() String:
+	return self.clone()
+
+// Pads on the left (`pad_start`) or the right (`pad_end`) until the scalar length reaches `target_length`,
+// repeating `padding` and cutting its last copy.
+fn String.pad_start(target_length: Int, padding: String) String:
+	return padding_for(self, target_length, padding) + self
+
+fn String.pad_end(target_length: Int, padding: String) String:
+	return self + padding_for(self, target_length, padding)
+
+fn padding_for(text: String, target_length: Int, padding: String) String:
+	missing := target_length - text.scalar_length()
+	if missing <= 0 or padding.is_empty(): return ""
+	var filler = ""
+	var count = 0
+	while count < missing:
+		for scalar in padding.chars():
+			if count >= missing: break
+			filler += scalar
+			count += 1
+	return filler
+
 // Plain numbers and flags copy by value: their `clone` is the value itself.
 fn Int.clone() Int:
 	return self

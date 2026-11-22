@@ -115,7 +115,9 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       at++; /* the payload parameter is the second half of the pair */
     } else if (next < nargs) {
       /* The runtime takes an owned operand it is given by address (`msrt_map_add`'s key and value). */
-      if (kind == NS_ADDR_MUT && at > 0 && used < 32 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
+      const bool declared = next > 0 && next < 32 && (fn->native_arg_moves >> next & 1u) != 0;
+      if ((declared || (kind == NS_ADDR_MUT && at > 0)) && used < 32 &&
+          mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
         fn->native_moves |= 1u << used;
       }
       out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
@@ -438,7 +440,12 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
                                     : runtime_name(fn, owner, operation);
   const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   if (sig == NULL) {
-    return false;
+    /* An operation every value has (`to_string`) is done by the walker over its shape. */
+    if (argc == 0 || mir_is_scalar(fn->cx->module, mir_b_ty(&fn->b, args[0]))) {
+      return false; /* a scalar has its own forms of these */
+    }
+    *out = fn_value_operation(fn, operation, args, argc, ret);
+    return *out != MIR_NONE;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = list_get(fn, args[0], args[1], ret);
@@ -501,7 +508,13 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     owner = receiver;
   }
   MirValue result;
-  if (fn_native_on(fn, callee->u.member.left, owner, operation, call->arg_count, args, ret, &result)) {
+  fn->native_arg_moves = 0; /* the operands the declaration takes (`move value: T`) */
+  for (uint32_t index = 1; index < call->arg_count && index < 32; index++) {
+    fn->native_arg_moves |= (call->args[index].flags & MS_PARAM_MOVE) != 0 ? 1u << index : 0;
+  }
+  const bool done = fn_native_on(fn, callee->u.member.left, owner, operation, call->arg_count, args, ret, &result);
+  fn->native_arg_moves = 0;
+  if (done) {
     return result;
   }
   const bool universal = via_bound || (ms_native_sig_find(ms_names_span(&fn->cx->module->names, runtime_name(fn, owner, operation))) == NULL &&

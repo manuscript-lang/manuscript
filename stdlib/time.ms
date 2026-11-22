@@ -706,3 +706,14 @@ export fn ticker(period: Duration) ReadStream[Instant]:
 
 	due := monotonic().shift(period.clone())
 	return ReadStream[Instant](TickSource(period: period, due: due))
+
+// `n.milliseconds()`, `n.seconds()` and `n.minutes()` are the constructors above on the
+// receiver.
+fn Int.milliseconds() Duration:
+	return milliseconds(self)
+
+fn Int.seconds() Duration:
+	return seconds(self)
+
+fn Int.minutes() Duration:
+	return minutes(self)

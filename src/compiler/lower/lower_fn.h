@@ -48,6 +48,7 @@ typedef struct LowerFn {
   const MsFunc *func;
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
+  MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
@@ -69,6 +70,7 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
   bool temps; /* a statement scope is open for the temporaries its calls lend */
   uint32_t nloops;
