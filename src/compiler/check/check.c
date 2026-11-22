@@ -1,7 +1,8 @@
 /* compiler/check/check.c: the checker's entry point; runs the passes over a module graph in order. */
+#include "compiler/check/fallthrough.h"
+#include "compiler/check/order.h"
 #include "compiler/check/body.h"
 #include "compiler/check/constants.h"
-#include "compiler/check/fallthrough.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/mutate.h"
 #include "compiler/check/names.h"
@@ -51,6 +52,10 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   }
   ms_check_finite_functions(program);
   for (uint32_t index = 0; index < program->user_modules; index++) {
-    ms_check_fallthrough(program, index);
+    const MsModule *tree = program->modules.ptr[index].tree;
+    for (uint32_t at = 0; at < tree->ndecls; at++) {
+      ms_check_fallthrough(program, index, tree->decls[at]);
+    }
   }
+  ms_check_order_diagnostics(program);
 }
