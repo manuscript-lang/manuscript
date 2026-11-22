@@ -42,6 +42,9 @@ static void push_inputs(LinkJob *job) {
     link_job_push(job, request->inputs[index]);
   }
   link_job_push_in(job, job->options->files, "libunwind.a");
+#if defined(__aarch64__)
+  link_job_push_in(job, job->options->files, "libgcc.a");
+#endif
   if (job->options->musl) {
     link_job_push_in(job, job->options->files, "libc.a");
   }
