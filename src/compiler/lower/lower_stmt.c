@@ -187,6 +187,11 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   if (place == NULL) {
     return false;
   }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (ms_expr_index(place, &container, &key)) { /* an element of a changeable place changes with it */
+    return fn_place_changeable(fn, container);
+  }
   return owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
