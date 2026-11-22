@@ -114,7 +114,13 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
+  /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
+   * would let the default's `var _resource` stand for a caller local with the same number. */
+  const LowerFnLocals saved_locals = fn_locals_save(fn);
+  const uint32_t counted = fn->facts->local_counts != NULL ? fn->facts->local_counts[call->callee.decl.node] : 0;
+  fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  fn_locals_restore(fn, &saved_locals);
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
