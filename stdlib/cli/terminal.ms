@@ -282,7 +282,7 @@ fn csi_at(buf: List[String], at: Int) Parsed:
 		if j - start >= 128 and is_param: return parsed(3, j - at)
 
 		if c >= 64 and c <= 126:
-			params := concat_all(buf.slice(start, j).get_or(List[String]()))
+			params := concat_all(buf.slice(start, j).clone().get_or(List[String]()))
 			if c == 126 and params == "200": return parsed(4, j + 1 - at)
 			if event := csi_key(params, c): return decoded(event, j + 1 - at)
 
