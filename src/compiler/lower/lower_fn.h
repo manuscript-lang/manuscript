@@ -67,6 +67,8 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
+/* `match` over an alternative (lower_match.c). */
+MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 
 /* The value of a variable, and a new one for local `local` of the function. */
 MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty);
