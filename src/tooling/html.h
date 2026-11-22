@@ -4,10 +4,11 @@
 #define MS_TOOLING_HTML_H
 
 #include "tooling/facts.h"
+#include "tooling/occurrence.h"
 #include "tooling/review.h"
 
 /* Appends the page. `changes` are a diff's findings (NULL for none): the page marks those entities and lists what
- * changed. Identifier type hints are not collected yet, so the page shows none. */
-void ms_html_page(MsArena *arena, const MsFactModel *model, const MsFindings *changes, MsStrBuild *out);
+ * changed; `hints` give each identifier its checked type. */
+void ms_html_page(MsArena *arena, const MsFactModel *model, const MsFindings *changes, const MsTypeHints *hints, MsStrBuild *out);
 
 #endif

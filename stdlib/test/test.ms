@@ -169,5 +169,5 @@ export fn fail(message: String, site: String = caller_site()) Void!:
 
 // Skips the current test. It returns an error of kind `ESKIP` with `reason`, which
 // `skip(reason)?` passes up; the test is reported as skipped, not failed.
-export fn skip(reason: String) Void!:
+export fn skip(move reason: String) Void!:
 	return error(Error(reason, kind: "ESKIP"))

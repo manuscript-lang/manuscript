@@ -12,4 +12,8 @@ MsSpan ms_leading_comment(MsArena *arena, MsSpan source, size_t offset);
 /* The names on `// ms: effect NAME` lines in the comment block directly above the declaration at `offset`. */
 void ms_declared_effects(MsArena *arena, MsSpan source, size_t offset, MsSpans *out);
 
+/* The documentation of the declaration that starts at `offset` (on `line`, 1-based): the comment block directly above its line
+ * at any indentation, else its trailing comment; trimmed. */
+MsSpan ms_declaration_comment(MsArena *arena, MsSpan source, size_t offset, uint32_t line);
+
 #endif

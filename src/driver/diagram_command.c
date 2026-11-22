@@ -79,7 +79,9 @@ static int html_command(MsArena *arena, MsCheckedInput *checked, const MsInvocat
     has_changes = true;
   }
   MsStrBuild text = ms_strbuild_new();
-  ms_html_page(arena, model, has_changes ? &findings : NULL, &text);
+  const MsOccurrences index = ms_occurrence_index(arena, &checked->program);
+  const MsTypeHints hints = ms_occurrence_type_hints(arena, &checked->program, &index);
+  ms_html_page(arena, model, has_changes ? &findings : NULL, &hints, &text);
   const int status = write_output(invocation->output, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   ms_checked_input_free(&base);
