@@ -58,6 +58,7 @@ typedef struct MsModuleInfo {
   MsScope imports;    /* owned: imported name -> symbol id (0 when the import did not resolve) */
   const int32_t *targets; /* borrowed from the graph: module index of each local import; NULL for std */
   MsFacts facts;
+  MsSpan source; /* the text the tree was parsed from; borrowed */
 } MsModuleInfo;
 
 MS_LIST_DEFINE(MsModuleList, ms_module_list, MsModuleInfo)

@@ -12,6 +12,7 @@
 #include "driver/init_command.h"
 #include "driver/package_commands.h"
 #include "driver/phases.h"
+#include "driver/verify_command.h"
 
 enum { EXIT_NOT_IMPLEMENTED = 70, EXIT_USAGE = 64 };
 
@@ -38,6 +39,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "verify")) return ms_verify_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "init")) return ms_init_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "install")) return ms_install_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "add")) return ms_add_command(argc - 2, argv + 2);
