@@ -3,18 +3,33 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-/* The value of a number spelling: decimal digits with `_` separators. */
-static bool number_value(MsSpan text, int64_t *out) {
-  int64_t value = 0;
-  for (size_t index = 0; index < text.len; index++) {
-    const uint8_t byte = (uint8_t)text.ptr[index];
+/* The value of a number spelling: decimal, `0x`, `0b` or `0o` digits with `_` separators, up to 64 bits (a
+ * literal above Int's range is the bit pattern of its two's complement, so `-9223372036854775808` negates it). */
+bool fn_number_bits(MsSpan text, uint64_t *out) {
+  uint64_t radix = 10;
+  size_t at = 0;
+  if (text.len > 2 && text.ptr[0] == '0' && (text.ptr[1] == 'x' || text.ptr[1] == 'b' || text.ptr[1] == 'o')) {
+    radix = text.ptr[1] == 'x' ? 16 : (text.ptr[1] == 'b' ? 2 : 8);
+    at = 2;
+  }
+  uint64_t value = 0;
+  for (; at < text.len; at++) {
+    const uint8_t byte = (uint8_t)text.ptr[at];
     if (byte == '_') {
       continue;
     }
-    if (byte < '0' || byte > '9' || value > (INT64_MAX - (int64_t)(byte - '0')) / 10) {
+    uint64_t digit = radix;
+    if (byte >= '0' && byte <= '9') {
+      digit = (uint64_t)(byte - '0');
+    } else if (byte >= 'a' && byte <= 'f') {
+      digit = (uint64_t)(byte - 'a') + 10;
+    } else if (byte >= 'A' && byte <= 'F') {
+      digit = (uint64_t)(byte - 'A') + 10;
+    }
+    if (digit >= radix || value > (UINT64_MAX - digit) / radix) {
       return false;
     }
-    value = value * 10 + (int64_t)(byte - '0');
+    value = value * radix + digit;
   }
   *out = value;
   return true;
@@ -37,11 +52,12 @@ static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
   if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
     return lower_float(fn, text, ty);
   }
-  int64_t value = 0;
-  if (!number_value(text, &value)) {
-    (void)fn_fail(fn, "a number literal is not a whole number that fits its type");
+  uint64_t bits = 0;
+  if (!fn_number_bits(text, &bits)) {
+    (void)fn_fail(fn, "a number literal is not a whole number that fits 64 bits");
     return MIR_NONE;
   }
+  const int64_t value = (int64_t)bits;
   if (ty == MIR_INT) {
     return mir_b_iconst(&fn->b, value);
   }
