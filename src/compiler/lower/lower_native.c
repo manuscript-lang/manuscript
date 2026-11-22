@@ -350,28 +350,46 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
 
-/* The runtime function of a BigInt operator, and whether its result is a comparison against zero. */
+/* The operation word of a binary operator on a value object: its runtime function is `msstd_<type>_<word>`, the
+ * receiver type's lowercase name as for every standard operation. A comparison reads the result of `compare`
+ * against zero; `==` and `!=` use `equal`. */
 typedef struct ObjectOp {
-  const char *name;
+  const char *word;
   MirCc cc;
   bool compare;
 } ObjectOp;
 
 static bool object_op(MsBinaryOp op, ObjectOp *out) {
   switch (op) {
-    case MS_B_ADD: *out = (ObjectOp){"msstd_bigint_add", MCC_EQ, false}; return true;
-    case MS_B_SUB: *out = (ObjectOp){"msstd_bigint_subtract", MCC_EQ, false}; return true;
-    case MS_B_MUL: *out = (ObjectOp){"msstd_bigint_multiply", MCC_EQ, false}; return true;
-    case MS_B_DIV: *out = (ObjectOp){"msstd_bigint_quotient", MCC_EQ, false}; return true;
-    case MS_B_REM: *out = (ObjectOp){"msstd_bigint_modulo", MCC_EQ, false}; return true;
-    case MS_B_EQ: *out = (ObjectOp){"msstd_bigint_equal", MCC_EQ, false}; return true;
-    case MS_B_NE: *out = (ObjectOp){"msstd_bigint_equal", MCC_NE, false}; return true;
-    case MS_B_LT: *out = (ObjectOp){"msstd_bigint_compare", MCC_LT, true}; return true;
-    case MS_B_GT: *out = (ObjectOp){"msstd_bigint_compare", MCC_GT, true}; return true;
-    case MS_B_LE: *out = (ObjectOp){"msstd_bigint_compare", MCC_LE, true}; return true;
-    case MS_B_GE: *out = (ObjectOp){"msstd_bigint_compare", MCC_GE, true}; return true;
+    case MS_B_ADD: *out = (ObjectOp){"add", MCC_EQ, false}; return true;
+    case MS_B_SUB: *out = (ObjectOp){"subtract", MCC_EQ, false}; return true;
+    case MS_B_MUL: *out = (ObjectOp){"multiply", MCC_EQ, false}; return true;
+    case MS_B_DIV: *out = (ObjectOp){"quotient", MCC_EQ, false}; return true;
+    case MS_B_REM: *out = (ObjectOp){"modulo", MCC_EQ, false}; return true;
+    case MS_B_EQ: *out = (ObjectOp){"equal", MCC_EQ, false}; return true;
+    case MS_B_NE: *out = (ObjectOp){"equal", MCC_NE, false}; return true;
+    case MS_B_LT: *out = (ObjectOp){"compare", MCC_LT, true}; return true;
+    case MS_B_GT: *out = (ObjectOp){"compare", MCC_GT, true}; return true;
+    case MS_B_LE: *out = (ObjectOp){"compare", MCC_LE, true}; return true;
+    case MS_B_GE: *out = (ObjectOp){"compare", MCC_GE, true}; return true;
     default: return false;
   }
+}
+
+/* `msstd_<type>_<word>` for the value object `type`. */
+static MsName object_function(LowerFn *fn, const MirTyData *type, const char *word) {
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "msstd_");
+  const MsSpan type_name = ms_names_span(&fn->cx->module->names, type->name);
+  for (size_t at = 0; at < type_name.len; at++) {
+    const uint8_t byte = type_name.ptr[at];
+    ms_strbuild_append_byte(&text, byte >= 'A' && byte <= 'Z' ? (uint8_t)(byte - 'A' + 'a') : byte);
+  }
+  ms_strbuild_append_byte(&text, '_');
+  ms_strbuild_append_text(&text, word);
+  const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  return name;
 }
 
 bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out) {
@@ -380,10 +398,14 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
   if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_VALUE || !object_op(op, &info)) {
     return false;
   }
+  const MsName name = object_function(fn, data, info.word);
+  if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, name)) == NULL) {
+    return false;
+  }
   const MirValue operands[2] = {left, right};
-  const MirTy ret = info.compare ? MIR_INT : (op == MS_B_EQ || op == MS_B_NE ? MIR_BOOL : mir_b_ty(&fn->b, left));
-  const MirValue result =
-      fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(info.name)), operands, 2, ret);
+  const bool equality = op == MS_B_EQ || op == MS_B_NE;
+  const MirTy ret = info.compare ? MIR_INT : (equality ? MIR_BOOL : mir_b_ty(&fn->b, left));
+  const MirValue result = fn_runtime_call(fn, name, operands, 2, ret);
   if (result == MIR_NONE) {
     *out = MIR_NONE;
   } else if (info.compare) {
