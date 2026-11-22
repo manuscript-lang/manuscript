@@ -284,8 +284,7 @@ static bool type_set_admits(MsTyTable *types, MsTy ty, MsTy set) {
 static bool builtin_comparable(const MsTyTable *types, MsTy ty) {
   const MsBuiltin builtin = ms_ty_builtin(types, ty);
   return ms_builtin_is_int(builtin) || ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_String ||
-         builtin == MS_BUILTIN_Decimal || builtin == MS_BUILTIN_BigInt || builtin == MS_BUILTIN_Duration ||
-         builtin == MS_BUILTIN_Instant || builtin == MS_BUILTIN_Timestamp;
+         builtin == MS_BUILTIN_Decimal || builtin == MS_BUILTIN_BigInt || builtin == MS_BUILTIN_Timestamp;
 }
 
 bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract) {
