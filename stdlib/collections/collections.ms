@@ -219,7 +219,10 @@ fn List[T: Clonable].windows(size: Int) List[List[T]]: ...
 fn List[T: Clonable].partition(predicate: fn(T) Bool) Partition[T]: ...
 
 // Returns an independent reversed copy, including nested values.
-fn List[T: Clonable].reversed() List[T]: ...
+fn List[T: Clonable].reversed() List[T]:
+	var out = self.clone()
+	out.reverse()
+	return out
 
 /*
 Returns a new list ordered by `compare`; the receiver is unchanged. The sort is stable: equal elements keep their order.
