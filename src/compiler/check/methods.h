@@ -77,6 +77,7 @@ const MsOperation *ms_check_find_operation(const MsCheckProgram *program, MsTy c
 
 /* The operation's signature as called on a value of type `implementor`: `Self` is the implementor and the
  * interface's type arguments are bound. */
+const MsMethod *ms_check_operation_declaration(const MsCheckProgram *program, MsTy contract, const MsOperation *operation);
 MsTy ms_check_operation_type(MsCheckProgram *program, MsTy contract, const MsOperation *operation, MsTy implementor);
 
 /* `ty` with each occurrence of `from` replaced by `to` (`Self` read as the implementing type). */
