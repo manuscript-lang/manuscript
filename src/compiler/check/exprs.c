@@ -506,14 +506,27 @@ static void report_uninferred_callback(Body *body, const MsParam *param) {
  * written result, the expected one, or the first returned value's type. */
 static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTyTable *types = &body->program->types;
-  const bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
+  bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
+  bool miscounted = false;
+  if (shaped && ms_ty_param_count(types, expected) != expr->u.lambda.params.len) {
+    if (body->module < body->program->user_modules && !body->quiet) {
+      const size_t want = ms_ty_param_count(types, expected);
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_printf(&text, "callback parameter count does not match its context; the context expects %zu parameter%s, "
+                                "found %zu, so write exactly the parameters its context declares",
+                         want, want == 1 ? "" : "s", (size_t)expr->u.lambda.params.len);
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    shaped = false; /* the count error explains why nothing can be inferred */
+    miscounted = true;
+  }
   MsTyParamList params = {0};
   const size_t mark = body_scope_mark(body);
   for (uint32_t index = 0; index < expr->u.lambda.params.len; index++) {
     const MsParam *param = expr->u.lambda.params.ptr[index];
     MsTy ty = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
     ty = ty == MS_TY_NONE && shaped && index < ms_ty_param_count(types, expected) ? ms_ty_params(types, expected)[index].ty : ty;
-    if (ty == MS_TY_NONE && param->ty == NULL) {
+    if (ty == MS_TY_NONE && param->ty == NULL && !miscounted) {
       report_uninferred_callback(body, param);
     }
     MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);

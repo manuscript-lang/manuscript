@@ -38,7 +38,7 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
 		for _flip in 0..1 + rng.next(4):
 			values[rng.next(n)] = rng.next(256).to_uint8().get_or(0)
 	else if kind == 1:
-		return data.slice(0, rng.next(n)).get_or(Bytes([]))
+		return data.slice(0, rng.next(n)).clone().get_or(Bytes([]))
 	else if kind == 2:
 		at := rng.next(n)
 		extremes := [0, 255, 127, 128, 1]
@@ -88,7 +88,7 @@ fn fix_png_crcs(data: Bytes) Bytes:
 		length := be32_at(values, at)
 		if length > values.length() - at - 12: break
 
-		crc := crc32(data.slice(at + 4, at + 8 + length).get_or(Bytes([]))).to_int()
+		crc := crc32(data.slice(at + 4, at + 8 + length).clone().get_or(Bytes([]))).to_int()
 		post := at + 8 + length
 		values[post] = (crc / 16777216 % 256).to_uint8().get_or(0)
 		values[post + 1] = (crc / 65536 % 256).to_uint8().get_or(0)

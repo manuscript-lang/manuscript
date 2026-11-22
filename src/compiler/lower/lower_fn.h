@@ -55,7 +55,7 @@ typedef struct LowerFn {
   MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
-  uint8_t *local_owns; /* by checker local id: bound to a value this function's scope owns (NULL: none known) */
+  uint8_t *local_owns; /* by checker local id: 1 bound to a value this function's scope owns, 2 a view of what another owner holds (NULL: none known) */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
   MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
@@ -286,6 +286,8 @@ MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 MirValue fn_string_concat(LowerFn *fn, MirValue left, MirValue right);
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want);
+/* Returns the error of the failed Result `value` from the function, as `?` does. */
+bool fn_return_error(LowerFn *fn, MirValue value);
 /* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */
 bool fn_end_is_reachable(LowerFn *fn);
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);

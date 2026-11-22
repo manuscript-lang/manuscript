@@ -354,7 +354,7 @@ static void il_fill_block(MirModule *m, MirFunc *f, const IlMap *map, const MirB
  * already carries (its own inlined callees) nest beneath it. Returns the new scope's index. */
 static uint32_t il_add_scopes(MirFunc *f, const MirFunc *callee, const MirInst *call) {
   const uint32_t base = (uint32_t)f->scopes.len;
-  mir_scope_list_push(&f->scopes, ((MirScope){callee->name, callee->loc.file, call->loc.scope, call->loc.line}));
+  mir_scope_list_push(&f->scopes, ((MirScope){callee->display != MS_NAME_EMPTY ? callee->display : callee->name, callee->loc.file, call->loc.scope, call->loc.line}));
   for (uint32_t k = 0; k < callee->scopes.len; k++) {
     MirScope s = callee->scopes.ptr[k];
     s.parent += base + 1;

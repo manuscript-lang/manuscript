@@ -200,28 +200,6 @@ static void collect_fixes(MsArena *arena, MsSpan root, const FindingList *found,
   }
 }
 
-/* The files a rerun depends on: the input, its manifest, every local module and the directory of each, where a new
- * file would appear. */
-static void add_watched(MsArena *arena, MsSpan input, const MsGraph *graph, MsSpanList *watched) {
-  ms_span_list_push(watched, input);
-  if (graph->project_root.len != 0) {
-    MsStrBuild manifest = ms_strbuild_new();
-    ms_path_append_joined(&manifest, graph->project_root, ms_span_of_text("ms.toml"));
-    ms_span_list_push(watched, ms_message_from_builder(arena, &manifest));
-    ms_strbuild_free(&manifest);
-  }
-  if (graph->source_root.len != 0) {
-    ms_span_list_push(watched, graph->source_root);
-  }
-  for (size_t i = 0; i < graph->count; i++) {
-    const MsGraphModule *module = &graph->modules[i];
-    if (!ms_span_starts_with(module->name, ms_span_of_text("@"))) {
-      ms_span_list_push(watched, module->path);
-      ms_span_list_push(watched, ms_path_parent(module->path));
-    }
-  }
-}
-
 /* Checks one input and adds what it found to `analysis`. */
 static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input, bool fix,
                         bool watching, bool lint_findings, Analysis *analysis) {
@@ -248,7 +226,7 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
     analysis->root = ms_arena_copy(arena, graph.source_root);
   }
   if (watching) {
-    add_watched(arena, input->path, &graph, &analysis->watched);
+    watch_add_inputs(arena, input->path, &graph, &analysis->watched);
   }
   if (fix) {
     collect_fixes(arena, graph.source_root, &found, &analysis->fixes);

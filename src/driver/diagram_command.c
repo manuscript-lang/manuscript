@@ -44,6 +44,8 @@ static int call_graph(MsArena *arena, const MsCheckedInput *checked, const MsInv
 /* The text of a view: the `--json` document, Mermaid, or the view's own or the generic outline. */
 static void render_view(MsArena *arena, const MsFactModel *model, const MsInvocation *invocation, MsSpan view,
                         const MsViewNode *tree, MsStrBuild *text) {
+  /* A diff marks the generic tree, so it keeps the generic rendering. */
+  const bool generic = invocation->diff.len > 0;
   const int64_t depth = (int64_t)invocation->depth;
   if (invocation->json) {
     ms_strbuild_append_text(text, "{\n  \"format\": 1,\n  \"view\": ");
@@ -54,10 +56,10 @@ static void render_view(MsArena *arena, const MsFactModel *model, const MsInvoca
     ms_view_json(tree, 1, text);
     ms_strbuild_append_text(text, "\n}\n\n"); /* the Rust CLI adds a newline to a line that already has one */
   } else if (ms_span_is_text(invocation->format, "mermaid")) {
-    if (!ms_view_mermaid_custom(arena, model, view, invocation->entity, depth, text)) {
+    if (generic || !ms_view_mermaid_custom(arena, model, view, invocation->entity, depth, text)) {
       ms_view_mermaid(tree, text);
     }
-  } else if (!ms_view_ascii_custom(arena, model, view, invocation->entity, depth, text)) {
+  } else if (generic || !ms_view_ascii_custom(arena, model, view, invocation->entity, depth, text)) {
     ms_view_ascii(tree, text);
   }
 }
@@ -100,10 +102,23 @@ static int view_command(MsArena *arena, MsCheckedInput *checked, const MsInvocat
     (void)fprintf(stderr, "ms diagram: %.*s\n", (int)error.len, (const char *)error.ptr);
     return EXIT_USAGE;
   }
+  MsCheckedInput base = {0};
+  if (invocation->diff.len > 0) {
+    MsDiffInput input = {0};
+    MsFactModel base_facts = {0};
+    const int status = ms_review_diff_inputs(arena, checked, invocation, &input, &base_facts, &base);
+    if (status != 0) {
+      ms_checked_input_free(&base);
+      return status;
+    }
+    const MsFindings findings = ms_compare_facts(arena, &base_facts, &model, &input);
+    ms_view_mark_changes(arena, tree, &findings, &input.touched);
+  }
   MsStrBuild text = ms_strbuild_new();
   render_view(arena, &model, invocation, view, tree, &text);
   const int status = write_output(invocation->output, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
+  ms_checked_input_free(&base);
   return status;
 }
 

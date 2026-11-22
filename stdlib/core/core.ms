@@ -216,9 +216,10 @@ fn Optional[T].get() T:
 
 // Returns the payload, or `default` when this is `none`. The default is always
 // evaluated; use `get_or_else` when it costs work.
-fn Optional[T].get_or(default: T?) T:
-	if self.is_some(): return self.get()
-	return default.get()
+fn move Optional[T].get_or(move default: T?) T:
+	match self:
+		value: return value
+		none: return default.get()
 
 // Transforms a present payload with `transform`; `none` stays `none`.
 fn move Optional[T].map[U](transform: fn(move T) U) U?:
@@ -292,9 +293,10 @@ fn Result[T, E].get() T:
 
 // Returns the successful payload, or `default` when this is an error. The default is
 // always evaluated; use `get_or_else` when it costs work.
-fn Result[T, E].get_or(default: T?) T:
-	if self.is_ok(): return self.get()
-	return default.get()
+fn move Result[T, E].get_or(move default: T?) T:
+	match self:
+		ok(value): return value
+		error(_): return default.get()
 
 // Returns the error payload; check `is_error()` first, because a successful result
 // raises a fault.

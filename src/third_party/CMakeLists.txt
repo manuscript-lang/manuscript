@@ -56,7 +56,13 @@ add_subdirectory(zlib EXCLUDE_FROM_ALL)
 # Its headers are system headers for the runtime, as before: the project warning set stops at them.
 set_target_properties(zlibstatic PROPERTIES SYSTEM ON)
 add_library(zlib ALIAS zlibstatic)
-include(cmake/libuv.cmake)
+# libuv builds with its own CMakeLists.txt: the static library only, no tests, no clang-tidy.
+set(LIBUV_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(ENABLE_CLANG_TIDY OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+add_subdirectory(libuv EXCLUDE_FROM_ALL)
+set_target_properties(uv_a PROPERTIES SYSTEM ON)
+add_library(uv ALIAS uv_a)
 # nghttp2: its own CMakeLists, library only (no apps, examples, docs or tests), static.
 set(ENABLE_LIB_ONLY ON CACHE BOOL "" FORCE)
 set(ENABLE_DOC OFF CACHE BOOL "" FORCE)
