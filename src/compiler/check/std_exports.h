@@ -7,7 +7,7 @@
 
 #include "compiler/check/program.h"
 
-/* The first module, as `@std/<file>`, that exports `name`; appended to `out`. False when none does. */
-bool ms_std_exporter(MsCheckProgram *program, MsSpan name, MsStrBuild *out);
+/* The first module, as `@std/<file>`, that exports `name` (a type, when `types_only`); appended to `out`. False when none does. */
+bool ms_std_exporter(MsCheckProgram *program, MsSpan name, bool types_only, MsStrBuild *out);
 
 #endif

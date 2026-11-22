@@ -14,8 +14,13 @@ static bool is_fresh_owner(const LowerFn *fn, MirValue value) {
 }
 
 MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
-  const MirTy list_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  MirTy list_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirTyData *data = mir_ty_data(fn->cx->module, list_ty);
+  if (data->kind != MK_LIST && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_LIST) {
+    /* The checker left the literal's type open (`get_or([])`): the parameter it fills gives it. */
+    list_ty = fn->hint;
+    data = mir_ty_data(fn->cx->module, list_ty);
+  }
   if (data->kind != MK_LIST) {
     (void)fn_fail(fn, "a list literal is not typed as a list");
     return MIR_NONE;

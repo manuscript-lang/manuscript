@@ -71,7 +71,7 @@ static bool spilled_by_address(LowerFn *fn, MirValue value) {
 }
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
-static MirValue move_out_of_scope(LowerFn *fn, MirValue value) {
+MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   MirMode mode = MM_BORROW;
   const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
@@ -145,7 +145,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       }
       MirValue operand = args[next];
       if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
-        operand = move_out_of_scope(fn, operand);
+        operand = fn_move_out_of_scope(fn, operand);
       }
       out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand) : operand;
       next++;
@@ -163,11 +163,19 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
   const MirTyData *data = mir_ty_data(fn->cx->module, ret);
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
-  if (!(scalar || optional) || sig->count == 0 || sig->kinds[sig->count - 1] != NS_ADDR_MUT) {
+  const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
+  const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
+  if (!(scalar || optional) || (last != NS_ADDR_MUT && !text)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
-  return fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  if (text) { /* the runtime writes the String over an empty one */
+    const MirImm empty = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(""))};
+    const MirValue stored[2] = {slot, mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, empty, MIR_STR)};
+    (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  }
+  return slot;
 }
 
 
@@ -273,8 +281,12 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
 }
 
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
-  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (fn->hint != MIR_VOID && (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2)) {
+    ty = fn->hint; /* the checker left the literal's type open: the parameter it fills gives it */
+    data = mir_ty_data(fn->cx->module, ty);
+  }
   if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
     (void)fn_fail(fn, "a map literal is not typed as a map");
     return MIR_NONE;
@@ -527,6 +539,10 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = list_get(fn, args[0], args[1], ret);
     return true;
+  }
+  if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
+      fn_status_call(fn, name, args, argc, ret, out)) {
+    return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;

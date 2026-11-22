@@ -46,26 +46,35 @@ static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
   return fn_emit(fn, MOP_FConst, NULL, 0, imm, ty);
 }
 
-/* A `Decimal` literal (`19.99d`): the runtime parses its text, which the checker has already shown valid. */
+/* A `d` literal: the runtime parses its text (without the suffix) into a slot of the Decimal, which is then read. */
 static MirValue lower_decimal(LowerFn *fn, MsSpan text, MirTy ty) {
-  const MsSpan digits = ms_span_of(text.ptr, text.len - 1); /* without the `d` */
-  const MirImm literal = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, digits)};
-  const MirValue string = fn_emit(fn, MOP_StrLit, NULL, 0, literal, MIR_STR);
+  MsStrBuild digits = ms_strbuild_new();
+  for (size_t at = 0; at < text.len; at++) {
+    const uint8_t byte = text.ptr[at];
+    if (byte != '_' && !(at + 1 == text.len && (byte == 'd' || byte == 'D'))) {
+      ms_strbuild_append_byte(&digits, byte);
+    }
+  }
+  const MirImm literal_imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_strbuild_span(&digits))};
+  ms_strbuild_free(&digits);
+  const MirValue literal = fn_emit(fn, MOP_StrLit, NULL, 0, literal_imm, MIR_STR);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
-  const MirValue args[2] = {string, slot};
-  const MirValue name = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msstd_decimal_parse")), args, 2, MIR_UINT8);
-  if (name == MIR_NONE) {
-    return MIR_NONE;
-  }
-  return mir_b_emit(&fn->b, MOP_Load, &slot, 1, of_type, ty);
+  MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, 2);
+  params[0] = (MirParam){MIR_STR, (uint8_t)MM_BORROW};
+  params[1] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
+  const MirExtern def = {.name = mir_name(fn->cx->module, ms_span_of_text("msstd_decimal_parse")),
+                         .params = params, .nparams = 2, .ret = MIR_UINT8};
+  const MirValue args[2] = {literal, slot};
+  (void)mir_b_call_rt(&fn->b, mir_extern_intern(fn->cx->module, &def), args, 2);
+  return fn_emit(fn, MOP_Load, &slot, 1, of_type, ty);
 }
 
 static MirValue lower_number(LowerFn *fn, const MsExpr *expr) {
   const MsSpan text = ms_names_span(fn->cx->program->names, expr->u.sym);
-  const MsTy checked = ms_facts_type(fn->facts, expr->id);
-  const MirTy ty = fn_type(fn, checked);
-  if (ms_ty_builtin(&fn->cx->program->types, checked) == MS_BUILTIN_Decimal && text.len > 1) {
+  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  if (text.len > 0 && (text.ptr[text.len - 1] == 'd' || text.ptr[text.len - 1] == 'D') &&
+      !mir_is_scalar(fn->cx->module, ty)) {
     return lower_decimal(fn, text, ty);
   }
   if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {

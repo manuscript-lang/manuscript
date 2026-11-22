@@ -226,7 +226,26 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
       const LowerWant want = fn_arg_moves(fn, expr, call, index, written) ? LW_MOVE : LW_BORROW;
+      /* A literal the checker left open takes its type from the parameter. */
+      const MirTy saved_hint = fn->hint;
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = call->callee_ty != MS_TY_NONE && ms_ty_kind(types, call->callee_ty) == MS_TY_FUNCTION
+                                  ? ms_ty_param_count(types, call->callee_ty)
+                                  : 0;
+      if (written != NULL && (written->kind == MS_E_LIST || written->kind == MS_E_MAP) && index + declared >= call->arg_count &&
+          index + declared - call->arg_count < declared) {
+        fn->hint = fn_type(fn, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty);
+      }
+      const MirTy wanted = fn->hint;
+      if (wanted != saved_hint && mir_ty_data(fn->cx->module, wanted)->kind == MK_OPT) {
+        fn->hint = mir_ty_data(fn->cx->module, wanted)->elem; /* a literal for an optional parameter is its payload */
+      }
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
+      fn->hint = saved_hint;
+      if (wanted != saved_hint && out[index] != MIR_NONE && mir_ty_data(fn->cx->module, wanted)->kind == MK_OPT &&
+          mir_b_ty(&fn->b, out[index]) == mir_ty_data(fn->cx->module, wanted)->elem) {
+        out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, wanted);
+      }
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }

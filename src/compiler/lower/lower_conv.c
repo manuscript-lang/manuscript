@@ -159,6 +159,9 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     const MirImm none = {0};
     return fn_emit(fn, MOP_OptSome, &value, 1, none, fn_type(fn, conversion->to));
   }
+  if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
+    return fn_adapt_function(fn, value, fn_type(fn, conversion->to));
+  }
   (void)fn_fail(fn, "this conversion (kind %d) is not lowered yet", (int)conversion->kind);
   return MIR_NONE;
 }
