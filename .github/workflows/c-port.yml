@@ -38,11 +38,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - if: runner.os == 'macOS'
-        run: brew install ninja ccache
+        run: brew install ninja ccache llvm lld
       - if: runner.os == 'Windows'
         run: choco install ninja ccache llvm --no-progress -y
       - if: runner.os == 'Linux'
-        run: sudo apt-get install -y ninja-build ccache
+        run: sudo apt-get install -y ninja-build ccache llvm lld
       - uses: actions/cache@v6
         with:
           path: ${{ runner.os == 'Windows' && '~/AppData/Local/ccache' || runner.os == 'macOS' && '~/Library/Caches/ccache' || '~/.cache/ccache' }}
@@ -55,6 +55,7 @@ jobs:
       # Build and run a program on every platform: a one-line program whose exit status is the check.
       - run: |
           printf 'fn main() Int:\n    return 7\n' > smoke.ms
+          if [ "$RUNNER_OS" = macOS ]; then export PATH="$(brew --prefix llvm)/bin:$(brew --prefix lld)/bin:$PATH"; fi
           status=0
           .artifacts/build/debug/src/driver/ms-c run smoke.ms || status=$?
           test "$status" -eq 7
