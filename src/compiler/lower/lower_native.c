@@ -541,7 +541,7 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
-      fn_status_call(fn, name, args, argc, ret, out)) {
+      fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
   }
   MirValue wanted[NS_MAX_PARAMS];
