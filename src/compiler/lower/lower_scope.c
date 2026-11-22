@@ -149,7 +149,8 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
     return MIR_NONE;
   }
   if (implicit_clone_is_error) {
-    (void)fn_fail(fn, "a value is copied where the source does not say `.clone()`; move it or borrow it");
+    (void)fn_fail(fn, "a value is copied where the source does not say `.clone()`; move it or borrow it (at %u:%u)",
+                  fn->b.loc.line, fn->b.loc.col);
     return MIR_NONE;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
