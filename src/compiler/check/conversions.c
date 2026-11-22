@@ -39,8 +39,8 @@ static bool reads_where_var_expected(const MsTyTable *types, MsTy actual, MsTy e
   const uint8_t modes = MS_PARAM_VAR | MS_PARAM_MOVE;
   bool differs = false;
   for (size_t index = 0; index < ms_ty_param_count(types, actual); index++) {
-    const bool lends = (a[index].flags & modes) == (e[index].flags & modes) || (a[index].flags & modes) == 0;
-    if (a[index].ty != e[index].ty || !lends) {
+    const bool borrows = (a[index].flags & modes) == (e[index].flags & modes) || (a[index].flags & modes) == 0;
+    if (a[index].ty != e[index].ty || !borrows) {
       return false;
     }
     differs = differs || (a[index].flags & modes) != (e[index].flags & modes);

@@ -299,7 +299,7 @@ typedef struct MirTypeDef {
 
 MS_LIST_DEFINE(MirTypeDefList, mir_type_def_list, MirTypeDef)
 
-typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL } MirStd;
+typedef enum MirStd { MSTD_NONE, MSTD_RESULT, MSTD_COMPARABLE, MSTD_EQUAL, MSTD_JSON_VALUE } MirStd;
 
 typedef struct MirCaseDef {
   MsName name;
@@ -322,6 +322,7 @@ typedef struct MirMethodSig {
   MirTy *params; /* in the module arena */
   uint32_t nparams;
   uint64_t owned;
+  bool consumes; /* a `move fn` operation: it takes the interface value itself */
   MirTy ret;
 } MirMethodSig;
 

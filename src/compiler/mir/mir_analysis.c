@@ -39,6 +39,14 @@ bool mir_result_mode(const MirModule *module, const MirFunc *func, const MirInst
   return true;
 }
 
+static bool mir_method_consumes(const MirModule *module, const MirInst *inst) {
+  if (inst->op != MOP_CallMethod || inst->imm.tag != MI_METHOD || inst->imm.a >= module->ifaces.len) {
+    return false;
+  }
+  const MirIfaceDef *iface = &module->ifaces.ptr[inst->imm.a];
+  return inst->imm.b < iface->nmethods && iface->methods[inst->imm.b].consumes;
+}
+
 uint64_t mir_indirect_owned(const MirModule *module, const MirFunc *func, const MirInst *inst) {
   if (inst->op == MOP_CallMethod && inst->imm.tag == MI_METHOD) {
     if (inst->imm.a >= module->ifaces.len) {
@@ -76,9 +84,13 @@ static void param_modes(const MirParam *params, uint32_t nparams, MirMode *out, 
 }
 
 static void indirect_modes(const MirModule *module, const MirFunc *func, const MirInst *inst, MirMode *out) {
-  /* Operand 0 (the closure or interface value) is borrowed; argument `i` is operand `i + 1`. */
+  /* Operand 0 (the closure or interface value) is borrowed unless the operation consumes it; argument `i` is
+   * operand `i + 1`. */
   const uint64_t owned = mir_indirect_owned(module, func, inst);
   fill_modes(out, inst->nargs, MM_BORROW);
+  if (inst->nargs > 0 && mir_method_consumes(module, inst)) {
+    out[0] = MM_MOVE;
+  }
   for (uint32_t index = 1; index < inst->nargs; index++) {
     out[index] = mir_owns(owned, index - 1) ? MM_MOVE : MM_BORROW;
   }
@@ -87,7 +99,10 @@ static void indirect_modes(const MirModule *module, const MirFunc *func, const M
 void mir_arg_modes(const MirModule *module, const MirFunc *func, const MirInst *inst, MirMode *out) {
   const uint32_t count = inst->nargs;
   switch ((MirOp)inst->op) {
-  case MOP_TypeNew: case MOP_AltNew: case MOP_ListLit: case MOP_ClosureNew: case MOP_TypeSet:
+  case MOP_ClosureNew: /* a closure into its maker's frame only reads the captures where they live */
+    fill_modes(out, count, inst->imm.tag == MI_FUNC && module->funcs.ptr[inst->imm.a].scoped ? MM_BORROW : MM_MOVE);
+    return;
+  case MOP_TypeNew: case MOP_AltNew: case MOP_ListLit: case MOP_TypeSet:
   case MOP_TypeFill: case MOP_ListPush: case MOP_ListDropLast: case MOP_ListSet: case MOP_ListSetNn:
   case MOP_ListSetU: case MOP_ListFill: case MOP_ListFillU: case MOP_ListPushU:
     fill_modes(out, count, MM_MOVE);

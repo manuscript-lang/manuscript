@@ -2,6 +2,8 @@
  * operands: a status and an out slot (`T!`), the shape table of the value it reads, or the descriptor and address
  * of a generic value. The extern's `ms-sig` header says which. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/check/effects_directives.h"
+#include "compiler/mir/mir_json_tree.h"
 #include "compiler/lower/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -54,28 +56,45 @@ static MirValue build_result(LowerFn *fn, uint32_t alt, uint32_t which, MirValue
   return mir_b_emit(&fn->b, MOP_AltNew, &payload, 1, imm, ret);
 }
 
-/* How the native's declaration words a status: its `@words=<status> "<text>"` annotation as one `<status> <text>`
- * line ("" when it has none, or the native is the runtime's own). */
-static MirValue status_words_text(LowerFn *fn, const MsDecl *decl) {
-  if (decl == NULL || decl->kind != MS_D_FN || decl->u.fn.words_status == 0) {
+/* How the file that declares the native words a status: its `// ms: words NUMBER TEXT` header lines, one per line
+ * of the string ("" when it has none or the native is the runtime's own). */
+static MirValue status_words_text(LowerFn *fn, uint32_t module) {
+  if (module >= fn->cx->program->modules.len) {
     return string_literal(fn, "");
   }
+  MsDirectives header = ms_directives_header(fn->cx->program->modules.ptr[module].source);
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_printf(&text, "%u ", decl->u.fn.words_status);
-  ms_strbuild_append(&text, decl->u.fn.words_text);
+  for (size_t at = 0; at < header.words.len; at++) {
+    ms_strbuild_append(&text, header.words.ptr[at]);
+    ms_strbuild_append_text(&text, "\n");
+  }
+  ms_directives_free(&header);
   MsString owned = ms_strbuild_finish(&text);
   const MirValue literal = string_span_literal(fn, ms_string_span(&owned));
   ms_string_release(&owned);
   return literal;
 }
 
-bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
+bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out) {
   uint32_t alt = 0;
   MirTy payload_ty = MIR_VOID;
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   if (sig == NULL || !sig->status || !result_alt(fn, ret, &alt, &payload_ty) || nargs + 2 > NS_MAX_PARAMS) {
     return false;
+  }
+  uint32_t tree_ctor = MIR_NONE;
+  if (ms_span_is_text(ms_names_span(&fn->cx->module->names, name), "msstd_json_decode") &&
+      mir_json_tree_shape(fn->cx->module, payload_ty)) {
+    /* The untyped tree is built by the runtime through a constructor of this layout, not read through its
+     * shape; the call's last operand, `ignore_unknown_fields`, has no meaning there. */
+    tree_ctor = mir_json_tree_ctor(fn->cx->module, payload_ty);
+    name = mir_name(fn->cx->module, ms_span_of_text("msstd_json_parse_tree"));
+    sig = ms_native_sig_find(ms_span_of_text("msstd_json_parse_tree"));
+    if (tree_ctor == MIR_NONE || sig == NULL || nargs == 0) {
+      return false;
+    }
+    nargs--;
   }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
   const bool has_out = payload_ty != MIR_VOID;
@@ -150,6 +169,10 @@ bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue
       if (!fn_descriptor_argument(fn, kind, args, nargs, &wanted[count++])) {
         return false;
       }
+    } else if (kind == NS_VALUE_DESC && tree_ctor != MIR_NONE) {
+      wanted[count++] = fn_emit(fn, MOP_TypeDesc, NULL, 0, (MirImm){.tag = MI_TY, .a = payload_ty}, MIR_PTR);
+    } else if (kind == NS_TREE_CTOR && tree_ctor != MIR_NONE) {
+      wanted[count++] = fn_emit(fn, MOP_FuncAddr, NULL, 0, (MirImm){.tag = MI_FUNC, .a = tree_ctor}, MIR_PTR);
     } else if (kind == NS_VALUE_DESC) {
       return false;
     } else if (source < nargs) {
@@ -206,11 +229,8 @@ bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue
     said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
   }
   const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
-  const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, decl)};
-  const MirValue error = mir_b_call(&fn->b, error_function, error_args, 4);
-  if (has_err) { /* the callee only borrows the text it was said, so the caller closes it */
-    (void)mir_b_emit(&fn->b, MOP_Drop, &said, 1, (MirImm){0}, MIR_NONE);
-  }
+  const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, module)};
+  const MirValue error = mir_b_call(&fn->b, error_function, error_args, 4); /* `said` is a `move` parameter: the callee owns it */
   const MirValue failure = build_result(fn, alt, 1, error, ret);
   mir_b_br(&fn->b, join, &failure, 1);
   mir_b_seal_block(&fn->b, join);

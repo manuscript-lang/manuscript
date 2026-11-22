@@ -110,6 +110,9 @@ uint8_t msrt_string_index_of(const MsString *a, const MsString *v, int64_t *out)
 /* ms-sig: msrt_string_last_index_of(a: *const StrVal, v: *const StrVal, out: *mut i64) -> u8 @domain=string
  * @leaf */
 uint8_t msrt_string_last_index_of(const MsString *a, const MsString *v, int64_t *out);
+/* The scalar at byte offset `at` of `s` as an inline string; `for c in s.chars()` reads each scalar this way and
+ * advances by its length. `at` is the start of a scalar of the valid text. */
+void msrt_string_scalar_text(const MsString *s, int64_t at, MsString *out);
 /* ms-sig: msrt_string_chars(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_chars(const MsString *s, MsList *out);
 /* ms-sig: msrt_string_lines(s: *const StrVal, out: *mut VecVal) @domain=string @leaf */

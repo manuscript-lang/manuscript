@@ -92,6 +92,7 @@ function(ms_package_runtime executable runtime)
       "-DARCH=${CMAKE_SYSTEM_PROCESSOR}"
       "-DMUSL_SYSROOT=${MS_MUSL_SYSROOT}"
       "-DMINGW_DIR=${mingw_dir}"
+      "-DCOMPILER=${CMAKE_C_COMPILER}"
       -P "${CMAKE_SOURCE_DIR}/cmake/MsFiles.cmake"
     COMMENT "Filling the startup-files directory")
 endfunction()

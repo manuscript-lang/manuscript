@@ -1,4 +1,5 @@
 /* compiler/own/borrows.c: a source changed while a binding borrowing it is still used (see borrows.h). */
+#include "compiler/own/result_borrows.h"
 #include "compiler/own/borrows.h"
 
 #include "compiler/check/methods.h"
@@ -14,6 +15,7 @@ typedef struct Borrow {
   uint32_t after; /* the offset its initializer ends at */
   bool mutable_;
   uint32_t root; /* the binding it borrows from */
+  const MsExpr *place; /* the part of it that is borrowed */
 } Borrow;
 
 typedef struct Change {
@@ -21,6 +23,7 @@ typedef struct Change {
   MsPos pos;     /* where the changed place starts */
   uint32_t end;  /* the offset it ends at */
   bool assign;
+  const MsExpr *place; /* the changed place; NULL when it is the whole binding */
 } Change;
 
 typedef struct Use {
@@ -78,35 +81,9 @@ static bool local_of(const MsFacts *facts, MsNode node, uint32_t *id) {
   return true;
 }
 
-/* The function a callee ref names, or NULL when no declaration is found. */
-static const MsFunc *find_func(const MsCheckProgram *program, const MsRef *ref) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->module == ref->decl.module && entry->source->id == ref->decl.node) {
-      return &entry->source->func;
-    }
-  }
-  const MsModule *tree = program->modules.ptr[ref->decl.module].tree;
-  for (uint32_t index = 0; index < tree->ndecls; index++) {
-    const MsDecl *decl = tree->decls[index];
-    if (decl->kind == MS_D_FN && decl->id == ref->decl.node) {
-      return &decl->u.fn;
-    }
-    if (decl->kind != MS_D_INTERFACE) {
-      continue;
-    }
-    for (uint32_t at = 0; at < decl->u.iface.methods.len; at++) {
-      if (decl->u.iface.methods.ptr[at]->id == ref->decl.node) {
-        return &decl->u.iface.methods.ptr[at]->func;
-      }
-    }
-  }
-  return NULL;
-}
-
 /* Whether the declaration `ref` names declares its result `move`. */
 static bool declares_move(const MsCheckProgram *program, const MsRef *ref) {
-  const MsFunc *func = find_func(program, ref);
+  const MsFunc *func = ms_own_find_func(program, ref);
   return func != NULL && func->result_moves;
 }
 
@@ -138,87 +115,10 @@ static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
   return arg->kind == MS_E_CALL && origin_of_call(pass, arg, out);
 }
 
-/* The names a written type mentions, appended to `out` (at most `cap`). */
-static void type_names(const MsTypeRef *ty, MsName *out, uint32_t *len, uint32_t cap) {
-  if (ty == NULL) {
-    return;
-  }
-  if (ty->kind == MS_TYPE_NAMED && *len < cap) {
-    out[(*len)++] = ty->name;
-  }
-  for (uint32_t index = 0; index < ty->args.len; index++) {
-    type_names(ty->args.ptr[index], out, len, cap);
-  }
-  for (uint32_t index = 0; index < ty->params.len; index++) {
-    type_names(ty->params.ptr[index]->ty, out, len, cap);
-  }
-  type_names(ty->result, out, len, cap);
-}
-
-enum { NAME_CAP = 24 };
-
-/* The names the declared parameter `position` of `func` mentions; the receiver is position 0 of a method. */
-static uint32_t parameter_names(const MsFunc *func, bool method, uint32_t position, MsName *out) {
-  uint32_t len = 0;
-  if (method && position == 0) {
-    const MsMethod *owner = ms_method_of_func(func);
-    for (uint32_t index = 0; index < owner->receiver_args.len; index++) {
-      type_names(owner->receiver_args.ptr[index], out, &len, NAME_CAP);
-    }
-  } else if (position - (method ? 1u : 0u) < func->params.len) {
-    type_names(func->params.ptr[position - (method ? 1u : 0u)]->ty, out, &len, NAME_CAP);
-  }
-  return len;
-}
-
-static bool name_in(const MsName *names, uint32_t len, MsName name) {
-  for (uint32_t index = 0; index < len; index++) {
-    if (names[index] == name) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/* The type variables `func` declares: its own and, for a method, its receiver's. */
-static uint32_t declared_variables(const MsFunc *func, bool method, MsName *out) {
-  uint32_t len = 0;
-  for (uint32_t index = 0; index < func->type_params.len && len < NAME_CAP; index++) {
-    out[len++] = func->type_params.ptr[index]->name;
-  }
-  if (method) {
-    const MsMethod *owner = ms_method_of_func(func);
-    for (uint32_t index = 0; index < owner->receiver_args.len; index++) {
-      type_names(owner->receiver_args.ptr[index], out, &len, NAME_CAP);
-    }
-  }
-  return len;
-}
-
-/* Whether the callee's declared result can hold what its argument number `position` carries: a declaration
- * with a body lends only through a type variable its parameter and its result both mention; one the runtime provides
- * lends from any argument. */
-static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t position) {
-  const MsRef *callee = &fact->callee;
-  const MsFunc *func = find_func(pass->program, callee);
-  if ((callee->kind != MS_REF_METHOD && callee->kind != MS_REF_FUNCTION) || func == NULL) {
-    return true;
-  }
-  MsName result[NAME_CAP];
-  MsName mine[NAME_CAP];
-  uint32_t result_len = 0;
-  type_names(func->result, result, &result_len, NAME_CAP);
-  MsName variables[NAME_CAP];
-  const uint32_t variable_len = declared_variables(func, callee->kind == MS_REF_METHOD, variables);
-  const uint32_t mine_len = parameter_names(func, callee->kind == MS_REF_METHOD, position, mine);
-  for (uint32_t at = 0; at < mine_len; at++) {
-    for (uint32_t index = 0; index < result_len; index++) {
-      if (mine[at] == result[index] && name_in(variables, variable_len, mine[at])) {
-        return true;
-      }
-    }
-  }
-  return false;
+/* Whether the callee's result borrows from its argument number `position`: the callable's own `borrows` fact (own/result_borrows.c);
+ * one the runtime provides borrows from any argument. */
+static bool borrows_from(Borrows *pass, const MsCall *fact, uint32_t position) {
+  return ms_own_call_borrows(pass->program, fact, position);
 }
 
 /* Whether `call` takes the payload out of an optional or result held in a place: its result is the receiver's
@@ -250,9 +150,9 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   if (receiver && takes_payload(pass, call) && callee->u.member.left->kind != MS_E_CALL) {
     return false;
   }
-  bool found = receiver && lends_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
+  bool found = receiver && borrows_from(pass, fact, 0) && origin_of_arg(pass, callee->u.member.left, out);
   for (uint32_t index = 0; !found && index < call->u.call.args.len; index++) {
-    found = lends_from(pass, fact, index + (receiver ? 1u : 0u)) &&
+    found = borrows_from(pass, fact, index + (receiver ? 1u : 0u)) &&
             origin_of_arg(pass, call->u.call.args.ptr[index].value, out);
   }
   if (found && out->call == NULL) {
@@ -271,7 +171,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
-                                            .mutable_ = stmt->u.bind.is_mutable, .root = source.root});
+                                            .mutable_ = stmt->u.bind.is_mutable, .root = source.root, .place = source.place});
 }
 
 /* Records the place a store or `var` argument changes. */
@@ -293,7 +193,7 @@ static void note_change(Borrows *pass, const MsExpr *place, bool assign) {
   }
   uint32_t root = 0;
   if (at->kind == MS_E_NAME && local_of(pass->facts, at->id, &root)) {
-    change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset, .assign = assign});
+    change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset, .assign = assign, .place = place});
   }
 }
 
@@ -334,6 +234,9 @@ static const MsExpr *kept_call(const MsExpr *expr) {
 }
 
 static void note_keep(Borrows *pass, const MsExpr *kept) {
+  if (!owns_memory(pass, kept)) {
+    return; /* a scalar is copied out of the result, so nothing is kept */
+  }
   const MsExpr *call = kept_call(kept);
   Keep keep = {.kept = call};
   if (call != NULL && origin_of_arg(pass, call, &keep.source)) {
@@ -342,7 +245,11 @@ static void note_keep(Borrows *pass, const MsExpr *kept) {
 }
 
 static bool is_constructor(const Borrows *pass, const MsExpr *call) {
-  const MsRef *ref = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
+    callee = callee->u.apply.left;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, callee->id);
   return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
 }
 
@@ -509,6 +416,33 @@ static void report(Borrows *pass, const Borrow *borrow, const Change *change) {
   ms_check_report(pass->program, pass->module, start, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* Whether two places of one binding can share storage: unless both are plain field chains, and neither is a prefix of
+ * the other (`self.data` and `self.at` are separate fields). */
+static bool places_overlap(const MsExpr *a, const MsExpr *b) {
+  const MsExpr *chain[2][16];
+  size_t length[2] = {0, 0};
+  const MsExpr *both[2] = {a, b};
+  for (int side = 0; side < 2; side++) {
+    const MsExpr *at = both[side];
+    for (; at != NULL && at->kind == MS_E_MEMBER; at = at->u.member.left) {
+      if (length[side] == 16) {
+        return true;
+      }
+      chain[side][length[side]++] = at;
+    }
+    if (at == NULL || at->kind != MS_E_NAME) {
+      return true;
+    }
+  }
+  const size_t shared = length[0] < length[1] ? length[0] : length[1];
+  for (size_t at = 0; at < shared; at++) { /* chains run from the leaf to the root, so compare from the root */
+    if (chain[0][length[0] - 1 - at]->u.member.name != chain[1][length[1] - 1 - at]->u.member.name) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* Each borrow reports its first later change of the source when the borrower is still used after it. */
 static void judge(Borrows *pass) {
   for (size_t at = 0; at < pass->keeps.len; at++) {
@@ -519,7 +453,8 @@ static void judge(Borrows *pass) {
     for (size_t index = 0; index < pass->changes.len; index++) {
       const Change *change = &pass->changes.ptr[index];
       const uint32_t offset = change->pos.offset;
-      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset)) {
+      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset) &&
+          (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {
         report(pass, borrow, change);
         break;
       }
@@ -532,12 +467,38 @@ static void judge(Borrows *pass) {
   keep_list_clear(&pass->keeps);
 }
 
+/* Whether any bundled standard declaration says `move` before its result. Without one, no result is known to
+ * hand over memory and every call result would read as a borrow, so the pass has nothing to go on. */
+static bool standard_declares_move(const MsCheckProgram *program) {
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *entry = &program->methods.ptr[index];
+    if (entry->module >= program->user_modules && entry->source->func.result_moves) {
+      return true;
+    }
+  }
+  for (size_t module = program->user_modules; module < program->modules.len; module++) {
+    const MsModule *tree = program->modules.ptr[module].tree;
+    for (uint32_t index = 0; index < tree->ndecls; index++) {
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN && decl->u.fn.result_moves) {
+        return true;
+      }
+      for (uint32_t at = 0; decl->kind == MS_D_INTERFACE && at < decl->u.iface.methods.len; at++) {
+        if (decl->u.iface.methods.ptr[at]->func.result_moves) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void ms_own_borrows(MsCheckProgram *program) {
-  if (program->diagnostics.len != 0) {
+  if (program->diagnostics.len != 0 || !standard_declares_move(program)) {
     return;
   }
   MsClassifier classes = ms_class_new(program);
-  for (uint32_t module = 0; module < program->user_modules; module++) {
+  for (uint32_t module = 0; module < (uint32_t)program->modules.len; module++) {
     Borrows pass = {.program = program, .classes = &classes, .module = module,
                     .facts = &program->modules.ptr[module].facts, .source = program->modules.ptr[module].source};
     const MsModule *tree = program->modules.ptr[module].tree;

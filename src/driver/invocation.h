@@ -15,10 +15,16 @@ typedef struct MsInvocation {
   MsSpanList link;     /* --link: extra objects and static libraries */
   MsSpanList arguments; /* for the program (run), or the test executable's selection options and `--` arguments */
   MsBuildType build_type;
+  MsSpan format, view, entity, diff; /* `ms diagram`; empty when absent */
+  int64_t depth;       /* `ms diagram --depth`; 0 when absent */
+  int64_t top;         /* `ms profile --top`; 0 for the default */
   bool json, watch, static_libc;
+  bool allocs;         /* `ms profile --allocs` */
+  MsSpan explain, effect; /* `ms review --explain`, `--effect` */
+  bool all;            /* `ms review --all` */
 } MsInvocation;
 
-/* Reads `argv` (the arguments after the command name) for `command`: "build", "run" or "test". Returns 0, or the exit
+/* Reads `argv` (the arguments after the command name) for `command`: a command that takes a source input. Returns 0, or the exit
  * status after printing the problem. The lists are freed with `ms_invocation_free`. */
 int ms_invocation_parse(MsArena *arena, const char *command, int argc, char **argv, MsInvocation *out);
 

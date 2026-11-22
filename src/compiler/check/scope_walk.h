@@ -24,6 +24,7 @@ typedef struct MsBinding {
   bool invalid; /* its type is known to be wrong */
   MsBindingOrigin origin;
   MsBindingKind kind;
+  uint32_t depth; /* how many blocks, loops, arms and lambdas enclose it inside its function: 0 for parameters */
 } MsBinding;
 
 MS_LIST_DEFINE(MsBindingList, ms_binding_list, MsBinding)
@@ -42,8 +43,8 @@ typedef struct MsScopeVisitor {
   /* Whether a parameter's written type is known to be wrong, so a match on it has no meaningful arms; may be
    * NULL. */
   bool (*invalid_param)(void *context, const MsParam *param);
-  /* A binding has just come into scope; may be NULL. */
-  void (*declared)(void *context, const MsBinding *binding);
+  /* A binding has just come into scope, as the last of `scope`; may be NULL. */
+  void (*declared)(void *context, const MsBinding *binding, const MsBindingList *scope);
   /* Every expression, before its parts; may be NULL. */
   void (*expr)(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site);
   /* A name read: `expr` is a MS_E_NAME. `scope` lists the enclosing bindings, innermost last. */

@@ -1,0 +1,76 @@
+name: C port commands
+
+# Replays the command fixtures (tests/conformance/commands) against ms-c on every platform, with the frozen oracle
+# binaries a `C port oracle` run kept as artifacts (run 44945230921 built all six). Run it by hand; it prints
+# each failing fixture and `commands: passed/total`, and does not fail on fixtures that differ.
+on:
+  workflow_dispatch:
+    inputs:
+      oracle_run:
+        description: Run id of the C port oracle run that holds the oracle artifacts
+        default: '44945230921'
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  commands:
+    name: commands-${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: linux, arch: amd64, runner: ubuntu-24.04}
+          - {os: linux, arch: arm64, runner: ubuntu-24.04-arm}
+          - {os: darwin, arch: amd64, runner: macos-15-intel}
+          - {os: darwin, arch: arm64, runner: macos-15}
+          - {os: windows, arch: amd64, runner: windows-2025}
+          - {os: windows, arch: arm64, runner: windows-11-arm}
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.artifacts/ccache
+      MS_ORACLE_DIR: ${{ github.workspace }}/.artifacts/oracle
+    steps:
+      - uses: actions/checkout@v7
+      - if: runner.os == 'macOS'
+        run: brew install ninja ccache llvm lld
+      - if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.arch == 'arm64' && 'CLANGARM64' || 'CLANG64' }}
+          update: false
+          install: >-
+            ${{ matrix.arch == 'arm64' && 'mingw-w64-clang-aarch64-toolchain mingw-w64-clang-aarch64-cmake mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-ccache perl make' || 'mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-ccache perl make' }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y ninja-build ccache llvm lld
+      - uses: actions/cache@v6
+        with:
+          path: ${{ github.workspace }}/.artifacts/ccache
+          key: ccache-${{ matrix.os }}-${{ matrix.arch }}-${{ github.sha }}
+          restore-keys: ccache-${{ matrix.os }}-${{ matrix.arch }}-
+      - uses: actions/download-artifact@v8
+        with:
+          name: oracle-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ github.workspace }}/.artifacts/oracle
+          run-id: ${{ inputs.oracle_run }}
+          github-token: ${{ github.token }}
+      - if: runner.os != 'Windows'
+        run: chmod +x .artifacts/oracle/ms .artifacts/oracle/ms-conform
+      - if: runner.os == 'macOS'
+        run: echo "TMPDIR=$(cd "$RUNNER_TEMP" && pwd -P)" >> "$GITHUB_ENV"
+      - if: runner.os != 'Windows'
+        run: cmake --preset debug
+      - if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: cmake --preset debug
+      - if: runner.os != 'Windows'
+        run: cmake --build --preset debug --target conform-commands
+      - if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: cmake --build --preset debug --target conform-commands

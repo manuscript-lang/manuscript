@@ -1,6 +1,8 @@
 /* compiler/lower/lower_call.c: calls to module functions (with their type arguments and default arguments)
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/lower/native_sigs.h"
+#include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -131,12 +133,19 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
     return fn_try_var_slot(fn, place, out);
   }
+  MirValue element;
+  if (fn_list_element_addr(fn, place, &element)) {
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    return element;
+  }
   MsExpr *indexed = NULL;
   MsExpr *index_key = NULL;
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
+  MirValue record = MIR_NONE;
   if (is_place) {
-    if (!fn_take_place(fn, place, &owned)) {
+    /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
+    if (!fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
       return MIR_NONE;
     }
   } else {
@@ -154,18 +163,26 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty, MIR_NONE, MIR_NONE};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, false, MIR_NONE, MIR_NONE};
   return slot;
 }
 
 /* After the call: each slot's value goes back into the place it came from. */
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
+    if (slots[at].in_place) {
+      continue;
+    }
     const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
     const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
                                         &slots[at].slot, 1, of_type, slots[at].ty);
     if (slots[at].optional != MIR_NONE) {
       const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
+      if (slots[at].home != MIR_NONE) {
+        const MirValue stored[2] = {slots[at].home, wrapped};
+        (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+        continue;
+      }
       if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, wrapped)
                                          : fn_put_place(fn, slots[at].place, wrapped))) {
         return false;
@@ -174,7 +191,8 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }
-    } else if (!fn_put_place(fn, slots[at].place, updated)) {
+    } else if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, updated)
+                                              : fn_put_place(fn, slots[at].place, updated))) {
       return false;
     }
   }
@@ -187,12 +205,13 @@ static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
   return entry != NULL && entry->source->consuming;
 }
 
-/* Whether the call hands argument `index` (written as `written`) to its callee, rather than lending it. */
+/* Whether the call hands argument `index` (written as `written`) to its callee, rather than borrowing it. */
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
   const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
   const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
                               written == expr->u.call.callee->u.member.left && consuming_receiver(fn, call);
-  return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0;
+  return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0 ||
+         ms_own_call_takes(fn->cx->program, call, index);
 }
 
 /* Whether argument `a` is written before argument `b`: arguments are evaluated as written, which named
@@ -415,7 +434,7 @@ static MirValue construct_case(LowerFn *fn, const MsCall *call, const MirValue *
 }
 
 /* `Type(fields...)`: the record built from its arguments in field order. */
-static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
+static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_LIST) {
     /* `List[T](reserve: n)`: the optional reserve is the starting capacity, none reserves nothing. */
@@ -429,6 +448,22 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
                               mir_b_iconst(&fn->b, 0), capacity);
     }
     return mir_b_list_new(&fn->b, data->elem, capacity);
+  }
+  const MsExpr *written = expr->u.call.args.len == 1 ? expr->u.call.args.ptr[0].value : NULL;
+  const bool empty_list = written != NULL && written->kind == MS_E_LIST && written->u.list.len == 0;
+  if (data->kind == MK_BYTES && written != NULL && !empty_list) {
+    /* `Bytes(values)`: the runtime narrows each element of the list to a byte, into a slot it writes. */
+    const MirImm of_type = {.tag = MI_TY, .a = ty};
+    const MirValue values = fn_expr(fn, written, LW_BORROW);
+    if (values == MIR_NONE) {
+      return MIR_NONE;
+    }
+    const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    MirValue wanted[2] = {values, slot};
+    const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, values));
+    const char *native = list->kind == MK_LIST && list->elem == MIR_UINT8 ? "msrt_bytes_from_values" : "msrt_bytes_from_ints";
+    (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(native)), wanted, 2, MIR_VOID);
+    return fn_emit(fn, MOP_Take, &slot, 1, of_type, ty);
   }
   if (data->kind == MK_BYTES) {
     /* A builder starts as an empty buffer of its own. */
@@ -470,15 +505,63 @@ static bool is_bodiless_function(LowerFn *fn, const MsCall *call) {
   return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless;
 }
 
-static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+static int base64_digit(uint8_t c) {
+  if (c >= 'A' && c <= 'Z') return c - 'A';
+  if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+  if (c >= '0' && c <= '9') return c - '0' + 52;
+  return c == '+' ? 62 : c == '/' ? 63 : -1;
+}
+
+/* `msstd_embed_bytes("<base64>")`: the file's bytes held in the program's read-only data, decoded here once, so a
+ * read decodes nothing. MIR_NONE when the call is another one. */
+static MirValue embedded_bytes(LowerFn *fn, const MsExpr *expr, MsSpan name) {
+  if (!ms_span_is_text(name, "msstd_embed_bytes") || expr->u.call.args.len != 1 ||
+      expr->u.call.args.ptr[0].value->kind != MS_E_TEXT || expr->u.call.args.ptr[0].value->u.text.len > 1) {
+    return MIR_NONE;
+  }
+  const MsExpr *text = expr->u.call.args.ptr[0].value;
+  const MsSpan encoded = text->u.text.len == 0 ? ms_span_of_text("") : text->u.text.ptr[0].lit;
+  MsStrBuild decoded = ms_strbuild_new();
+  uint32_t bits = 0;
+  int held = 0;
+  for (size_t at = 0; at < encoded.len && encoded.ptr[at] != '='; at++) {
+    const int digit = base64_digit(encoded.ptr[at]);
+    if (digit < 0) {
+      ms_strbuild_free(&decoded);
+      (void)fn_fail(fn, "an embedded file is not base64 text");
+      return MIR_NONE;
+    }
+    bits = bits << 6 | (uint32_t)digit;
+    held += 6;
+    if (held >= 8) {
+      held -= 8;
+      ms_strbuild_append_byte(&decoded, (uint8_t)(bits >> held & 0xffu));
+    }
+  }
+  const MsSpan bytes = ms_strbuild_span(&decoded);
+  uint8_t *stored = ms_arena_alloc_array(&fn->cx->module->arena, 1, 1, bytes.len + 1);
+  __builtin_memcpy(stored, bytes.ptr, bytes.len);
+  ms_span_list_push(&fn->cx->module->blobs, ms_span_of(stored, bytes.len));
+  ms_strbuild_free(&decoded);
+  const MirImm blob = {.tag = MI_INT, .i = (int64_t)fn->cx->module->blobs.len - 1};
+  const MirValue data = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
+  return fn_emit(fn, MOP_Clone, &data, 1, (MirImm){0}, MIR_BYTES);
+}
+
+static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
     (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;
   }
+  const MsName extern_name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
+  const MirValue embedded = embedded_bytes(fn, expr, ms_names_span(&fn->cx->module->names, extern_name));
+  if (embedded != MIR_NONE) {
+    return embedded;
+  }
   MirValue checked = MIR_NONE;
   if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
-                     fn->cx->program->symbols.ptr[id].decl, args, call->arg_count, ret, &checked)) {
+                     fn->cx->program->symbols.ptr[id].module, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
@@ -488,6 +571,10 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
     return checked;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig != NULL && sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, call->arg_count, &checked)) {
+    return checked;
+  }
   const MirValue result = mir_b_call_rt(&fn->b, external, args, call->arg_count);
   fn_own_result(fn, result);
   return result;
@@ -519,7 +606,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   if (call->callee.kind == MS_REF_TYPE) {
-    return construct(fn, call, args, ret);
+    return construct(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_OPERATION) {
     return call_operation(fn, expr, call, args, ret);
@@ -534,7 +621,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     return fn_builtin_call(fn, call, args, ret);
   }
   if (!source) {
-    return call_runtime(fn, call, args, ret);
+    return call_runtime(fn, expr, call, args, ret);
   }
   MsTy bound[16] = {0};
   const MsTy *type_args = call->type_args;

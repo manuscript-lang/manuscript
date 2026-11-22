@@ -13,11 +13,11 @@ fn move Door.close() Void!:
 type Wrap[T]:
     value: T
 
-fn keep[T](v: T) Int:
+fn keep[T](move v: T) Int:
     _w := Wrap(v)
     return 0
 
-fn keep_optional[T](v: T) Int:
+fn keep_optional[T](move v: T) Int:
     _o: T? := v
     return 1
 

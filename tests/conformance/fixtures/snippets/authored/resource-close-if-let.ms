@@ -14,10 +14,10 @@ fn move Res.close() Void!:
     say(f"close {self.name}")
 
 fn maybe(name: String, present: Bool) Res?:
-    return if present: Res(name) else: none
+    return if present: Res(name.clone()) else: none
 
 fn make(name: String) Res!Error:
-    return ok(Res(name))
+    return ok(Res(name.clone()))
 
 fn keep(r: Res) Res:
     return r

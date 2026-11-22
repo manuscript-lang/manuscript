@@ -12,10 +12,10 @@ type Holder:
     reader: Reader
 
 fn put(var reader: Reader, id: Int, key: String, value: Int) Void:
-    reader.entries[id].add(key, value)
+    reader.entries[id].add(key.clone(), value)
 
 fn grow(var holder: Holder, name: String) Void:
-    holder.reader.names.append(name)
+    holder.reader.names.append(name.clone())
     holder.reader.entries.append(Map[String, Int]())
 
 fn put_list(var maps: List[Map[String, Int]], id: Int) Void:

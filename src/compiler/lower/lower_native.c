@@ -72,11 +72,7 @@ static bool spilled_by_address(LowerFn *fn, MirValue value) {
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  MirMode mode = MM_BORROW;
-  const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
-                     mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
-                     mode == MM_MOVE;
+  const bool fresh = fn_fresh_owner(fn, value);
   if (!fresh) {
     value = fn_implicit_clone(fn, value, false);
   }
@@ -278,6 +274,23 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
 }
 
 /* The runtime function `name` taking the types of `args` and returning `ret`. */
+/* The role of a runtime string function the optimiser answers inline for the common case (`opt_strfast`). */
+static MirRole string_role(MsSpan name) {
+  static const struct {
+    const char *name;
+    MirRole role;
+  } table[] = {{"msrt_string_eq", MR_STRING_EQ},
+               {"msrt_string_compare", MR_STRING_COMPARE},
+               {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
+               {"msrt_string_ends_with", MR_STRING_ENDS_WITH}};
+  for (size_t at = 0; at < sizeof table / sizeof table[0]; at++) {
+    if (ms_span_is_text(name, table[at].name)) {
+      return table[at].role;
+    }
+  }
+  return MR_NONE;
+}
+
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
@@ -286,7 +299,8 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   }
   fn->native_moves = 0;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
-                         .fresh = mir_needs_drop(fn->cx->module, ret)};
+                         .fresh = mir_needs_drop(fn->cx->module, ret),
+                         .role = (uint8_t)string_role(ms_names_span(&fn->cx->module->names, name))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -307,20 +321,17 @@ static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
 
 /* The local a call's receiver names, or NULL when the receiver is not a plain local. */
 
-/* An owned operand in a new slot of its own: the runtime function takes the value from the slot's address. */
-static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
-  MirValue value = fn_expr(fn, expr, LW_MOVE);
+/* An operand in a new slot of its own: the runtime function takes the value from the slot's address. A `lookup`
+ * only reads the value (a map key it searches for), so the slot borrows it and nothing is copied. */
+static MirValue operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
+  MirValue value = fn_expr(fn, expr, lookup ? LW_BORROW : LW_MOVE);
   if (value == MIR_NONE) {
     return MIR_NONE;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
-  const bool owns = mir_needs_drop(fn->cx->module, ty);
+  const bool owns = !lookup && mir_needs_drop(fn->cx->module, ty);
   if (owns) {
-    const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-    MirMode mode = MM_BORROW;
-    const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
-                       mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
-                       mode == MM_MOVE;
+    const bool fresh = fn_fresh_owner(fn, value);
     value = fresh ? value : fn_implicit_clone(fn, value, false);
     if (fresh) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
@@ -354,8 +365,8 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
   const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
   const MsName add = mir_name(fn->cx->module, ms_span_of_text("msrt_map_add"));
   for (uint32_t at = 0; at < expr->u.map.len; at++) {
-    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key);
-    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value);
+    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key, false);
+    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value, false);
     if (value == MIR_NONE) {
       return MIR_NONE;
     }
@@ -370,7 +381,7 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  const MirValue key = operand_slot(fn, key_expr);
+  const MirValue key = operand_slot(fn, key_expr, true);
   if (key == MIR_NONE) {
     return MIR_NONE;
   }
@@ -381,7 +392,6 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   const MirValue out = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, value_ty, MIR_PTR);
   const MirValue operands[5] = {map, key_desc, value_desc, key, out};
   const MirValue found = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get")), operands, 5, MIR_BOOL);
-  const bool owns_key = mir_needs_drop(fn->cx->module, data->args[0]);
   const bool owns_value = mir_needs_drop(fn->cx->module, data->args[1]);
   const MirBlock hit = mir_b_new_block(&fn->b);
   const MirBlock miss = mir_b_new_block(&fn->b);
@@ -389,7 +399,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_seal_block(&fn->b, hit);
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
-  const MirValue missing = mir_b_emit(&fn->b, owns_key ? MOP_Take : MOP_Load, &key, 1, key_ty, data->args[0]);
+  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, key_ty, data->args[0]);
   const MirValue text = fn_value_repr(fn, missing, data->args[0]);
   const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
                                          (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
@@ -399,10 +409,6 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
   mir_b_unreachable(&fn->b);
   mir_b_switch_to(&fn->b, hit);
-  if (owns_key) {
-    const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
-    (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
-  }
   return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
 
@@ -412,7 +418,7 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
   const MirTy ty = mir_b_ty(&fn->b, container);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
-    const MirValue key = operand_slot(fn, key_expr);
+    const MirValue key = operand_slot(fn, key_expr, true);
     if (key == MIR_NONE) {
       return MIR_NONE;
     }
@@ -422,10 +428,6 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
     const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
     const MirValue operands[4] = {container, key_desc, value_desc, key};
     const MirValue address = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get_ptr")), operands, 4, MIR_PTR);
-    if (mir_needs_drop(fn->cx->module, data->args[0])) {
-      const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
-      (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
-    }
     *entry_ty = data->args[1];
     return address;
   }
@@ -481,24 +483,54 @@ static bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
   return ms_ty_is(types, owner, MS_BUILTIN_List) && lists_in_place(fn, container);
 }
 
+/* `place?` where `place` can be changed: the method changes the optional's payload in place. */
+static bool is_try_place(LowerFn *fn, const MsExpr *place) {
+  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left);
+}
+
+/* `xs[i]` of a list held in place: whether `place` is one, and then `*addr` is the element's address (MIR_NONE
+ * when the list or the index has no value). A method that changes the element does so where it lies. */
+bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  *addr = MIR_NONE;
+  if (!ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
+    return false;
+  }
+  const MirValue list = fn_expr(fn, container, LW_BORROW);
+  if (list == MIR_NONE) {
+    return false;
+  }
+  const MirValue at = fn_expr(fn, key, LW_BORROW);
+  if (at != MIR_NONE) {
+    const MirValue operands[2] = {list, at};
+    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+  }
+  return true;
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
                               MirTy ret, MirValue result_slot) {
   /* An element of a list: the native changes it where it lies, through the element's address. */
-  MsExpr *container = NULL;
-  MsExpr *key = NULL;
-  if (ms_expr_index(place, &container, &key) && fn_is_list(fn, container) && lists_in_place(fn, container)) {
-    const MirValue list = fn_expr(fn, container, LW_BORROW);
-    if (list != MIR_NONE) {
-      const MirValue at = fn_expr(fn, key, LW_BORROW);
-      if (at == MIR_NONE) {
-        return MIR_NONE;
-      }
-      const MirValue operands[2] = {list, at};
-      wanted[0] = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
-      return call_native(fn, name, wanted, count, ret, result_slot);
+  MirValue element = MIR_NONE;
+  if (fn_list_element_addr(fn, place, &element)) {
+    if (element == MIR_NONE) {
+      return MIR_NONE;
     }
+    wanted[0] = element;
+    return call_native(fn, name, wanted, count, ret, result_slot);
+  }
+  if (is_try_place(fn, place)) {
+    VarSlot var;
+    const MirValue slot = fn_try_var_slot(fn, place, &var);
+    if (slot == MIR_NONE) {
+      return MIR_NONE;
+    }
+    wanted[0] = slot;
+    const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
+    return fn_var_slots_back(fn, &var, 1) ? result : MIR_NONE;
   }
   MirValue owned;
   MirValue record = MIR_NONE;
@@ -521,6 +553,30 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
 }
 
 /* `list.get(index)`: the element, a negative index counting from the end; an index out of range faults. */
+/* A native declared `@op=<name>` is one MIR instruction on Int operands: the standard wrapper has already checked a
+ * shift count, and a rotation takes its count modulo 64. */
+bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, uint32_t argc, MirValue *out) {
+  static const struct {
+    const char *name;
+    MirOp op;
+    uint32_t operands;
+  } ops[] = {{"and", MOP_And, 2},       {"or", MOP_Or, 2},     {"xor", MOP_Xor, 2},       {"shl", MOP_Shl, 2},
+             {"sshr", MOP_Sshr, 2},     {"ushr", MOP_Ushr, 2}, {"rotl", MOP_Rotl, 2},     {"rotr", MOP_Rotr, 2},
+             {"popcnt", MOP_Popcnt, 1}, {"clz", MOP_Clz, 1}};
+  for (size_t at = 0; at < MS_COUNT_OF(ops); at++) {
+    if (!ms_span_is_text(ms_span_of_text(name), ops[at].name) || argc != ops[at].operands) {
+      continue;
+    }
+    if (mir_b_ty(&fn->b, args[0]) != MIR_INT) {
+      return false;
+    }
+    *out = argc == 2 ? mir_b_binop(&fn->b, ops[at].op, args[0], args[1])
+                     : mir_b_emit(&fn->b, ops[at].op, args, 1, (MirImm){0}, MIR_INT);
+    return true;
+  }
+  return false;
+}
+
 static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
   const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
   const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
@@ -625,12 +681,15 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
   }
+  if (sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, argc, out)) {
+    return true;
+  }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = list_get(fn, args[0], args[1], ret);
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
-      fn_status_call(fn, name, NULL, args, argc, ret, out)) {
+      fn_status_call(fn, name, UINT32_MAX, args, argc, ret, out)) {
     return true; /* a `T!` operation: the runtime answers a status, the error is built from it */
   }
   MirValue wanted[NS_MAX_PARAMS];
@@ -639,7 +698,7 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     if (slot != MIR_NONE && mutates_receiver(sig, ret)) {
       wanted[0] = slot;
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
-    } else if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+    } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
@@ -674,6 +733,8 @@ bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, ui
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
+  /* A trailing result parameter the plain call would leave out. */
+  described = described || (sig->count == nargs + 1 && is_result_kind(sig->kinds[sig->count - 1]) && ret != MIR_VOID);
   if (!described || !signature_arguments(fn, sig, args, nargs, ret, wanted, &count)) {
     return false;
   }

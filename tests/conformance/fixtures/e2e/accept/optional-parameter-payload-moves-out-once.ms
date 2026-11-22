@@ -12,7 +12,7 @@ fn move Handle.close() Void!:
 fn take(move o: Handle?) Handle:
 	return o.get()
 
-fn first[T](value: T?) T:
+fn first[T](move value: T?) T:
 	return value.get()
 
 fn main() Void:

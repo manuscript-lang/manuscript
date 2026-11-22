@@ -137,14 +137,23 @@ uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy if
   return vtable;
 }
 
-static MirValue view_as_interface(LowerFn *fn, const MsConversion *conversion, MirValue value) {
+static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConversion *conversion, MirValue value) {
   const uint32_t vtable = lower_vtable(fn->cx, &fn->subst, conversion->from, conversion->to);
   if (vtable == MIR_NONE) {
     (void)fn_fail(fn, "a value cannot be viewed as this interface: a method of the interface has no body for its type");
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_VTABLE, .a = vtable};
-  return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, fn_type(fn, conversion->to));
+  const MirTy to = fn_type(fn, conversion->to);
+  /* A view of a binding that keeps its value does not own it; a fresh value or a moved one is the interface's. */
+  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  const bool views = place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
+  if (!views) {
+    return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
+  }
+  const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, (MirImm){0}, MIR_NONE);
+  return view;
 }
 
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
@@ -153,15 +162,21 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     return value;
   }
   if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
-    return view_as_interface(fn, conversion, value);
+    return view_as_interface(fn, expr, conversion, value);
   }
   if (conversion->kind == MS_CONV_OPTIONAL_WRAP) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
-    return fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))
-               ? fn_emit(fn, MOP_OptSome, &value, 1, none, to)
-               : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);
+    /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
+    if (fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+      return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
+    }
+    /* The elaborator owns every moved-in result; this view must not drop what the binding still owns, and
+     * an exit that closes the binding must not drop it a second time. */
+    const MirValue view = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, none, MIR_NONE);
+    return view;
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to));

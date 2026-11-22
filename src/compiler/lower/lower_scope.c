@@ -25,9 +25,18 @@ uint32_t fn_scope_begin(LowerFn *fn) {
 /* The scope owns what its `var` locals hold now, which only the end of the scope can know. */
 static void own_vars(LowerFn *fn, uint32_t scope) {
   for (uint32_t at = fn->nowned_vars; at > 0; at--) {
-    if (fn->owned_vars[at - 1].scope == scope) {
-      fn_own(fn, scope, mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var));
+    if (fn->owned_vars[at - 1].scope != scope) {
+      continue;
     }
+    const MirValue value = mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var);
+    const uint32_t moved = fn->owned_vars[at - 1].moved;
+    if (moved == 0) {
+      fn_own(fn, scope, value);
+      continue;
+    }
+    /* A record that handed a field on releases the fields it still holds. */
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->id, .b = moved};
+    (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, mask, MIR_NONE);
   }
 }
 
@@ -47,8 +56,17 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var) {
       return fn_fail(fn, "too many mutable variables are open at once");
     }
   }
-  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var};
+  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0};
   return true;
+}
+
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field) {
+  for (uint32_t at = fn->nowned_vars; at > 0 && field < 32; at--) {
+    if (fn->owned_vars[at - 1].var == var) {
+      fn->owned_vars[at - 1].moved |= UINT32_C(1) << field;
+      return;
+    }
+  }
 }
 
 static void emit_end(LowerFn *fn, uint32_t scope) {
@@ -99,6 +117,9 @@ void fn_own_result(LowerFn *fn, MirValue result) {
   }
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   MirMode mode = MM_BORROW;
+  if (insts->len == 0 || insts->ptr[insts->len - 1].res != result) {
+    return; /* not a result of the last instruction: a parameter or an earlier value already has its owner */
+  }
   if (mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) && mode == MM_MOVE) {
     fn_own(fn, fn_scope(fn), result);
   }
@@ -121,7 +142,7 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
 }
 
 /* The one switch of the rule against hidden copies: when true, a copy no `.clone()` asked for is a compile error. */
-static const bool implicit_clone_is_error = false;
+static const bool implicit_clone_is_error = true;
 
 MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   if (value == MIR_NONE) {
@@ -137,14 +158,33 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
 
 bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  if (insts->len == 0) {
-    return false;
+  /* Walk back to the instruction that made `value`: a call that wrote its `var` receiver back, or took other
+   * values out of their slots, leaves instructions after the result (and its scope.own). */
+  for (size_t at = insts->len; at-- > 0;) {
+    const MirInst *inst = &insts->ptr[at];
+    if (inst->op == MOP_ScopeDisown && inst->nargs == 1 && inst->args[0] == value) {
+      return false;
+    }
+    if (inst->op == MOP_ScopeOwn && inst->nargs == 1 && inst->args[0] == value) {
+      return true;
+    }
+    if (inst->res == value) {
+      MirMode mode = MM_BORROW;
+      return mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) && mode == MM_MOVE;
+    }
   }
-  const MirInst *last = &insts->ptr[insts->len - 1];
-  if (last->op == MOP_ScopeOwn) {
-    /* The scope took the result of the instruction before it. */
-    return last->nargs == 1 && last->args[0] == value;
+  /* Made in a block above this one (a `move` parameter, an owner declared before an `if`): the scope that owns it
+   * registered it there, and a disown in a sibling block is not on this path. */
+  for (uint32_t block = 0; block < fn->b.func.blocks.len; block++) {
+    if (block == fn->b.cur) {
+      continue;
+    }
+    const MirInstList *list = &fn->b.func.blocks.ptr[block].insts;
+    for (size_t at = 0; at < list->len; at++) {
+      if (list->ptr[at].op == MOP_ScopeOwn && list->ptr[at].nargs == 1 && list->ptr[at].args[0] == value) {
+        return true;
+      }
+    }
   }
-  MirMode mode = MM_BORROW;
-  return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_MOVE;
+  return false;
 }

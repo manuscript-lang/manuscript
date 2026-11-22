@@ -74,7 +74,8 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
       }
     }
     const MsRef *target = ms_facts_ref(scan->fn->facts, root != NULL && root->kind == MS_E_NAME ? root->id : stmt->id);
-    mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : 0);
+    /* A target that is a bare name is kept in the statement's `name`, not as an expression. */
+    mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : (stmt->u.assign.member_target ? 0 : stmt->u.assign.name));
   }
 }
 
@@ -193,6 +194,8 @@ static void scan_var_args(void *ctx, const MsExpr *expr) {
       MsExpr *left = NULL, *at = NULL;
       if (root != NULL && root->kind == MS_E_MEMBER) {
         root = root->u.member.left;
+      } else if (root != NULL && root->kind == MS_E_UNARY && root->op == MS_U_TRY) {
+        root = root->u.bin.left; /* `c?.bump()` changes the optional `c` holds */
       } else if (root != NULL && ms_expr_index(root, &left, &at)) {
         root = left;
       } else {
@@ -320,8 +323,34 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
   return mir_add_func(cx->module, &func);
 }
 
+/* Whether an escaping closure takes the capture itself: a local the maker owns, or a parameter it was given.
+ * A `var` lives in a slot the maker keeps, and a borrowed parameter is not the maker's to give away. */
+static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
+  if (capture->kind == MS_REF_LOCAL) {
+    /* A binding the maker's scope owns; a loop element or pattern binding is a view, a `var` re-owns. */
+    return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] != 0 &&
+           (fn->closing == NULL || !fn->closing_var[capture->index]);
+  }
+  return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&
+         (fn->closing == NULL || capture->index >= LOWER_MAX_CLOSING_PARAMS ||
+          !fn->closing_var[fn->nvars + capture->index]);
+}
+
+/* Whether the captured local or parameter lives in a slot the maker's scope owns, so an escaping closure takes it out. */
+static bool fn_capture_slot_owned(const LowerFn *fn, const LowerCapture *capture) {
+  if (fn->closing == NULL) {
+    return false;
+  }
+  if (capture->kind == MS_REF_LOCAL) {
+    return capture->index < fn->nvars && fn->closing_var[capture->index];
+  }
+  return capture->index < fn->b.func.nparams && capture->index < LOWER_MAX_CLOSING_PARAMS &&
+         fn->b.func.params[capture->index].mode == MM_MOVE && fn->closing_var[fn->nvars + capture->index];
+}
+
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
-static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed) {
+static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed,
+                           bool escapes, bool *borrows) {
   for (uint32_t index = 0; index < count; index++) {
     if (changed[index]) {
       /* A variable the lambda changes stays in the maker's slot, which the closure borrows. */
@@ -345,7 +374,16 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
     }
     captures[index].ty = mir_b_ty(&fn->b, value);
     if (mir_needs_drop(fn->cx->module, captures[index].ty)) {
-      value = fn_implicit_clone(fn, value, false);
+      if (!escapes) {
+        *borrows = true; /* a closure that stays in its maker reads the value where it lives */
+      } else if (!fn_capture_moves(fn, &captures[index])) {
+        MirValue taken = MIR_NONE;
+        if (fn_capture_slot_owned(fn, &captures[index]) && fn_closing_take(fn, &ref, value, &taken)) {
+          value = taken; /* a resource or var in a slot gives its value to the closure */
+        } else {
+          value = fn_implicit_clone(fn, value, false);
+        }
+      }
     }
     out[index] = value;
   }
@@ -366,10 +404,14 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   bool *changed = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)count + 1);
   (void)capture_changes(fn, expr, captures, count, changed);
   MirValue *values = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, (size_t)count + 1);
-  if (!capture_values(fn, captures, count, values, changed)) {
+  const bool escapes = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE;
+
+  bool borrows = false;
+  if (!capture_values(fn, captures, count, values, changed, escapes, &borrows)) {
     return MIR_NONE;
   }
   const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
+  fn->cx->module->funcs.ptr[func].scoped = borrows;
   LowerSubst subst = fn->subst;
   MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, subst.count * 2 + 1);
   for (size_t index = 0; index < subst.count; index++) {
@@ -492,6 +534,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   }
   fn.nvars = lambda.nvars;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, lambda.expr->u.lambda.body);
   bool ok = bind_captures(&fn, &lambda, values[0]);
@@ -519,6 +562,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(slot);
   *slot = built;
   cx->lambdas.ptr[index].lowered = true;

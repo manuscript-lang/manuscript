@@ -58,7 +58,7 @@ test "infer success and error types from Result arguments":
 
 test "nested success preserves its domain and inferred errors remain exact":
     inner: Int!Failure := error(Failure(41))
-    outer: Result[Int!Failure, Failure] := ok(inner)
+    outer: Result[Int!Failure, Failure] := ok(inner.clone())
     value := erase(outer).get()
     expect_false(not value.is_error())?
     expect_equal(value.err().code, 41)?

@@ -127,7 +127,7 @@ static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsCheck
     return report_error(&context, "execution", ms_span_of_text("cannot create a temporary directory"));
   }
   const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
-  const MsSpan executable = ms_message_format(arena, "%S/program", folder, (MsSpan){0});
+  const MsSpan executable = ms_message_format(arena, MS_TEMP_PROGRAM, folder, (MsSpan){0});
   MsSpan error = {0};
   const MsLinkRequest request = {.program = &checked->program, .entry = checked->entry,
                                  .build_type = invocation->build_type, .output = executable,

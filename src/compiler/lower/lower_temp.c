@@ -1,4 +1,4 @@
-/* compiler/lower/lower_temp.c: temporaries that are resources. A call result lent to another call (`open().read()`,
+/* compiler/lower/lower_temp.c: temporaries that are resources. A call result passed borrowed to another call (`open().read()`,
  * `look(Door("x"))`) has no name, so nothing closes it at a scope end; it closes where its statement ends. A
  * statement with such a temporary gets a scope of its own, and the temporary lives in a slot that scope owns. */
 #include "compiler/check/properties.h"
@@ -32,7 +32,7 @@ static void note_handed_on(void *ctx, const MsStmt *stmt) {
 }
 
 /* Whether the callee's body moves parameter `index` somewhere (into a field, a collection, its result): the
- * callee then owns what it was lent, and the caller must not close it too. */
+ * callee then owns what it was passed, and the caller must not close it too. */
 static bool callee_consumes(LowerFn *fn, const MsCall *call, uint32_t index) {
   LowerTarget target;
   if (!fn_callee_target(fn, call, &target)) {
@@ -44,8 +44,8 @@ static bool callee_consumes(LowerFn *fn, const MsCall *call, uint32_t index) {
   return state.found;
 }
 
-/* The type the lent argument `index` (written as `written`) has once the callee gets it: the Optional it is
- * converted to, else its own. False when the argument is not a lent call result, or the call may hand a part of it
+/* The type the borrowed argument `index` (written as `written`) has once the callee gets it: the Optional it is
+ * converted to, else its own. False when the argument is not a borrowed call result, or the call may hand a part of it
  * on in its result (it then owns what it took). */
 static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MsTy *checked) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);

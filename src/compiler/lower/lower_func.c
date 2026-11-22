@@ -2,6 +2,8 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/result_borrows.h"
+#include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -133,10 +135,93 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
     out[count++] = (MsTyParam){0, target->receiver, target->receiver_flags};
   }
   const uint32_t declared = (uint32_t)ms_ty_param_count(types, target->ty);
+  const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
   for (uint32_t index = 0; index < declared && count < LOWER_MAX_PARAMS; index++) {
-    out[count++] = ms_ty_params(types, target->ty)[index];
+    out[count] = ms_ty_params(types, target->ty)[index];
+    out[count++].flags |= index < 32 && (taken >> index & 1u) != 0 ? MS_PARAM_MOVE : 0; /* the body owns it */
   }
   return count;
+}
+
+/* A result that is a place of a parameter, or a call whose own result is such a place: the callee can hand back
+ * the reference itself. */
+typedef struct PlaceReturns {
+  const Lower *cx;
+  const MsFacts *facts;
+  const MsFunc *func; /* the function whose returns are counted */
+  MsTy result; /* the declared result type, or MS_TY_NONE when unknown */
+  uint32_t depth;
+  uint32_t returns;
+  uint32_t places;
+} PlaceReturns;
+
+static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
+
+/* A call to a function whose result borrows, whose parameters it does not take, and whose own returns are places. */
+static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
+  const MsCall *call = ms_facts_call(counts->facts, value->id);
+  if (call == NULL || counts->depth >= 4 || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
+    return false;
+  }
+  const MsFunc *callee = ms_own_find_func(counts->cx->program, &call->callee);
+  if (callee == counts->func) {
+    return true; /* a recursive call answers what the function's other returns answer */
+  }
+  if (callee == NULL || !ms_own_result_is_borrowed(counts->cx->program, call->callee.decl.module, call->callee.decl.node) ||
+      (call->callee.kind == MS_REF_METHOD && ms_method_of_func(callee)->consuming)) {
+    return false;
+  }
+  for (uint32_t index = 0; index < callee->params.len; index++) {
+    if (callee->params.ptr[index]->moving) {
+      return false;
+    }
+  }
+  const MsTyTable *types = &counts->cx->program->types;
+  const MsTy signature = ms_facts_type(&counts->cx->program->modules.ptr[call->callee.decl.module].facts, call->callee.decl.node);
+  const MsTy result = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION ? ms_ty_result(types, signature) : MS_TY_NONE;
+  return returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
+}
+
+static void count_place_returns(void *ctx, const MsStmt *stmt) {
+  PlaceReturns *counts = ctx;
+  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
+    return;
+  }
+  const MsExpr *value = stmt->u.expr;
+  counts->returns++;
+  if (counts->result != MS_TY_NONE && ms_facts_type(counts->facts, value->id) != counts->result) {
+    return; /* a conversion (`T` returned as `T?`) builds a new owner */
+  }
+  if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
+    const MsRef *ref = ms_facts_ref(counts->facts, value->id);
+    counts->places += ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL) ? 1u : 0u;
+  } else if (value->kind == MS_E_CALL) {
+    counts->places += call_borrows(counts, value) ? 1u : 0u;
+  } else {
+    counts->places += value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY ? 1u : 0u;
+  }
+}
+
+static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
+  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, func, result, depth, 0, 0};
+  const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
+  ms_walk_block(&visitor, func->body);
+  return counts.returns != 0 && counts.returns == counts.places;
+}
+
+/* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a
+ * parameter, and each return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
+static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+  if (target->entry || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
+      !mir_needs_drop(cx->module, ret)) {
+    return false;
+  }
+  for (uint32_t index = 0; index < count; index++) {
+    if (params[index].mode == MM_MOVE) {
+      return false; /* the body owns (and releases) a moved parameter: its part cannot outlive the call */
+    }
+  }
+  return returns_places(cx, target->module, target->func, ms_ty_result(&cx->program->types, target->ty), 0);
 }
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
@@ -160,6 +245,15 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
+  func.ret_borrowed = borrows_result(cx, target, ret, mir_params, count);
+  /* A function that takes a closure and keeps it (a promise's entry) holds what a closure into its maker's frame
+   * borrows until the result is dropped. */
+  const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
+  const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
+  for (uint32_t index = 0; index < count && taken != 0; index++) {
+    func.keeps_scoped |= index >= offset && index - offset < 32 && (taken >> (index - offset) & 1u) != 0 &&
+                         mir_ty_data(cx->module, mir_params[index].ty)->kind == MK_FN;
+  }
   return mir_add_func(cx->module, &func);
 }
 
@@ -203,9 +297,23 @@ static void note_param_write(void *ctx, const MsStmt *stmt) {
   }
 }
 
+/* A field handed on (`param.field` where the body moves it) leaves the parameter partly moved, which only an owned
+ * variable tracks. */
+static void note_param_move(void *ctx, const MsExpr *expr) {
+  ParamWrites *writes = ctx;
+  if (expr->kind != MS_E_MEMBER || expr->u.member.left->kind != MS_E_NAME ||
+      ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(writes->facts, expr->u.member.left->id);
+  if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
+    writes->found = true;
+  }
+}
+
 static bool assigns_into_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
   ParamWrites writes = {fn->facts, index, false};
-  const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write};
+  const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write, .expr = note_param_move};
   ms_walk_block(&visitor, target->func->body);
   return writes.found;
 }
@@ -305,9 +413,11 @@ static bool lower_body(Lower *cx, uint32_t index) {
   (void)fn_scope_begin(&fn);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, target->func->body);
   bind_params(&fn, target);
+  fn.returns_borrow = cx->module->funcs.ptr[instance.func].ret_borrowed;
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;
@@ -316,6 +426,8 @@ static bool lower_body(Lower *cx, uint32_t index) {
   }
   MirFunc *slot = &cx->module->funcs.ptr[instance.func];
   built.linkage = slot->linkage;
+  built.keeps_scoped = slot->keeps_scoped;
+  built.ret_borrowed = slot->ret_borrowed;
   mir_func_release(slot);
   *slot = built;
   cx->instances.ptr[index].lowered = true;

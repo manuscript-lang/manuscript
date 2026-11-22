@@ -24,3 +24,15 @@ add_custom_target(conform-c
   DEPENDS ms-c
   USES_TERMINAL
   COMMENT "Running the conformance corpus against ms-c")
+
+# The command fixtures alone (tests/conformance/commands), for the platforms where the whole corpus is too slow.
+add_custom_target(conform-commands
+  COMMAND ${CMAKE_COMMAND}
+    "-DMS_CONFORM=${MS_ORACLE_DIR}/ms-conform${CMAKE_EXECUTABLE_SUFFIX}"
+    "-DMS_C=$<TARGET_FILE:ms-c>"
+    "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+    -DONLY=commands
+    -P "${CMAKE_SOURCE_DIR}/cmake/ConformC.cmake"
+  DEPENDS ms-c
+  USES_TERMINAL
+  COMMENT "Replaying the command fixtures against ms-c")

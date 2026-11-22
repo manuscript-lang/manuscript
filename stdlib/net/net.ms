@@ -149,7 +149,7 @@ fn move Connection.close() Void!:
 	return self.output.close()
 
 // Wraps a native socket into a `Connection`.
-fn connection(native: NativeConnection) Connection:
+fn connection(move native: NativeConnection) Connection:
 	local := msstd_net_connection_local_address(native)
 	peer := msstd_net_connection_peer_address(native)
 	var tls: TlsInfo? = none
@@ -255,7 +255,7 @@ fn move DatagramSocket.close() Void!:
 	self.input.close()?
 	return self.output.close()
 
-fn datagram_socket(native: NativeDatagramSocket) DatagramSocket:
+fn datagram_socket(move native: NativeDatagramSocket) DatagramSocket:
 	address := msstd_net_datagram_address(native)
 	other := msstd_net_datagram_share(native)
 	return DatagramSocket(
@@ -685,7 +685,7 @@ export fn restrict(
 // ms: effect std.net.listen
 export fn serve(
 	address: String,
-	handler: fn(var HttpExchange) Void!,
+	move handler: fn(var HttpExchange) Void!,
 	options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
 	if cores := options.cores:
@@ -782,7 +782,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 // Starts one worker on the least loaded thread. A returned promise owns what it
 // captures, so the share of the serving and the pipe belong to the worker for as long
 // as it runs.
-fn start_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Promise[Void]:
+fn start_worker(move spec: NativeWorkerSpec, move input: Pipe[Int]) Promise[Void]:
 	return promise(
 		fn: serve_worker(spec, input),
 		options: PromiseOptions(placement: Placement.Spread)

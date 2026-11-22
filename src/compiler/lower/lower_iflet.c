@@ -31,16 +31,14 @@ MirValue fn_iflet_test(LowerFn *fn, MirValue value) {
 }
 
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt) {
-  const MsPattern *pattern = stmt->u.branch.binding;
   const MsExpr *cond = stmt->u.branch.cond;
-  const MsCloser *closer = pattern->kind == MS_P_NAME ? ms_facts_closer(fn->facts, pattern->id) : NULL;
+  /* A call's result, or a name the statement moves, is the binding's to own: the payload leaves the temporary. */
   const bool fresh = cond->kind == MS_E_CALL || (cond->kind == MS_E_NAME && ms_facts_use(fn->facts, cond->id) == MS_USE_MOVE);
-  return closer != NULL && fresh && !stmt->u.branch.is_mutable &&
-         fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id));
+  return fresh && !stmt->u.branch.is_mutable && stmt->u.branch.binding->kind == MS_P_NAME;
 }
 
 /* The payload of the Optional or Result `value`, taken out of it: `value` is released but for the payload. */
-static MirValue take_payload(LowerFn *fn, MirValue value, MirTy *ty) {
+MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value));
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   if (data->kind == MK_OPT) {
@@ -65,8 +63,19 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   MirValue payload = MIR_NONE;
   MirTy ty = MIR_VOID;
   if (owns) {
-    payload = take_payload(fn, value, &ty);
-    return fn_bind_closing(fn, ref->local, ms_facts_type(fn->facts, pattern->id), payload, false);
+    payload = fn_take_payload(fn, value, &ty);
+    const MsTy checked = ms_facts_type(fn->facts, pattern->id);
+    if (fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), checked)) {
+      return fn_bind_closing(fn, ref->local, checked, payload, false);
+    }
+    if (mir_needs_drop(module, ty)) {
+      fn_own(fn, fn_scope(fn), payload);
+      if (fn->local_owns != NULL && ref->local < fn->nvars) {
+        fn->local_owns[ref->local] = 1; /* a value the scope owns: an escaping closure may take it */
+      }
+    }
+    mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), payload);
+    return !fn->failed;
   }
   if (data->kind == MK_OPT) {
     ty = data->elem;

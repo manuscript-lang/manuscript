@@ -56,8 +56,8 @@ fn main() Void:
     also := deep(make_team())
     print(f"{fresh} {also}")
 
-    // `var` of a lent part changes the origin.
-    var ms = members(team)
+    // `var` of a borrowed part is an explicit copy; the origin does not change.
+    var ms = members(team).clone()
     ms.append(Person(name: "dan", tags: []))
     (
         stdout().write(

@@ -342,7 +342,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
   MsTestOptions options;
   ms_test_options_parse(&invocation->arguments, &options);
   MsSpanList names = {0};
-  ms_checked_input_test_names(arena, &checked, &names);
+  ms_checked_input_test_names(arena, &checked, false, &names);
   Plan plan = {0};
   if (!select_tests(arena, &names, &options, &plan)) {
     status = STATUS_FAILED;
@@ -358,7 +358,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
       return STATUS_FAILED;
     }
     const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
-    const MsSpan executable = ms_message_format(arena, "%S/program", folder, (MsSpan){0});
+    const MsSpan executable = ms_message_format(arena, MS_TEMP_PROGRAM, folder, (MsSpan){0});
     if (!build_tests(&checked, invocation, executable, &error)) {
       print_text(stderr, ms_message_format(arena, "%S\n", error, (MsSpan){0}));
       status = STATUS_FAILED;

@@ -129,7 +129,7 @@ export type WriteStream[T]:
 
 // Sends `value` to the sink, which may wait; returns sink errors, including `EBADF`
 // for a closed pipe reader.
-fn var WriteStream[T].write(value: T) Void!:
+fn var WriteStream[T].write(move value: T) Void!:
 	return self.sink.write(value)
 
 // Returns once the sink has drained what was written; a pipe may still hold up to
@@ -410,7 +410,7 @@ export opaque type Pipe[T]:
 // Returns a new writing end, like `dup` on a descriptor. Close it when done: the
 // reader ends when every writer has closed. It is safe to call from a promise that
 // owns the pipe, since each call makes a writer of its own.
-fn Pipe[T].writer() WriteStream[T]:
+fn Pipe[T].writer() move WriteStream[T]:
 	msrt_pipe_add_writer(self.id)
 	return WriteStream[T](PipeSink[T](self.id, self.capacity))
 
@@ -480,7 +480,7 @@ fn var Through[A, B].next() move B?!:
 		// item.
 		if wrote.is_error():
 			self.out = []
-			return error(wrote.err())
+			return error(wrote.err().clone())
 
 		if self.out.length() > 1: self.out.reverse()
 

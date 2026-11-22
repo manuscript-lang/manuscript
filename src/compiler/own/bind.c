@@ -36,17 +36,12 @@ bool ms_bind_field_chain(const MsFacts *facts, MsArena *arena, const MsExpr *exp
 /* The node ids a lambda's own syntax spans, and the bindings it names, collected in one walk. */
 typedef struct CaptureScan {
   const MsFacts *facts;
-  MsNode low, high;
+  MsBindingList seen; /* the nodes of the lambda: a binding site among them is bound inside it */
   MsBindingList used;
 } CaptureScan;
 
 static void note_node(CaptureScan *scan, MsNode node) {
-  if (node < scan->low) {
-    scan->low = node;
-  }
-  if (node > scan->high) {
-    scan->high = node;
-  }
+  ms_binding_list_push(&scan->seen, node);
 }
 
 static void note_pattern(CaptureScan *scan, const MsPattern *pattern) {
@@ -101,17 +96,18 @@ static bool listed(const MsBindingList *list, uint32_t binding) {
 }
 
 MsBindingList ms_bind_captures(const MsFacts *facts, const MsExpr *lambda) {
-  CaptureScan scan = {.facts = facts, .low = UINT32_MAX, .high = 0};
+  CaptureScan scan = {.facts = facts};
   const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
   ms_walk_expr(&visitor, lambda);
   MsBindingList captures = {0};
   for (size_t index = 0; index < scan.used.len; index++) {
     const uint32_t binding = scan.used.ptr[index];
-    const bool inside = binding >= scan.low && binding <= scan.high;
+    const bool inside = listed(&scan.seen, binding);
     if (!inside && !listed(&captures, binding)) {
       ms_binding_list_push(&captures, binding);
     }
   }
   ms_binding_list_free(&scan.used);
+  ms_binding_list_free(&scan.seen);
   return captures;
 }

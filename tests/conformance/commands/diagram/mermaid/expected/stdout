@@ -7,8 +7,8 @@ flowchart TD
     n29b856358a2f01c2["src/shapes.ms::read_number"]
     n6211cf00e06427ef["src/shapes.ms::Shape"]
     n69b2fb32b1511bc1 -->|function| nada8d7451ea61441
-    n47b5d13e8cc08788["@std/core.ms::print"]
-    n69b2fb32b1511bc1 -->|function| n47b5d13e8cc08788
+    n80724f59eef9a762["@std/core.ms::print"]
+    n69b2fb32b1511bc1 -->|function| n80724f59eef9a762
     nd773f7cc3ca7239d["@std/test/test.ms::expect_equal"]
     n9d1978dfd06c86f2 -->|function| nd773f7cc3ca7239d
     n9d1978dfd06c86f2 -->|function| nada8d7451ea61441

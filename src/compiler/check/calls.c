@@ -34,6 +34,7 @@ static void copy_vars(Target *target, const MsTy *vars, size_t count) {
 
 /* A constructor: the fields (or payload slots) of `owner` are the parameters, the result is `owner`. */
 static void constructor_target(Body *body, Target *target, MsTy owner, const MsTyParamList *fields) {
+  target->constructor = true;
   target->sig = function_type(body, fields, owner);
   const MsDef *def = body_def(body, owner);
   if (def != NULL) {
@@ -61,6 +62,10 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
     return false;
   }
   target->sig = symbol->ty;
+  const MsSpan written = ms_names_span(body->program->names, symbol->name);
+  target->constructor = symbol->module >= body->program->user_modules &&
+                        (ms_span_is_text(written, "ok") || ms_span_is_text(written, "error") ||
+                         ms_span_is_text(written, "some"));
   copy_vars(target, body->program->symbol_vars.ptr + symbol->var_at, symbol->var_count);
   if (symbol->decl != NULL && symbol->decl->kind == MS_D_FN) {
     target->ast = &symbol->decl->u.fn.params;
@@ -114,7 +119,8 @@ MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
 static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target *target) {
   const MsLocal *local = body_find_local(body, callee->u.sym);
   if (local != NULL) {
-    target->ref = (MsRef){.kind = local->kind, .local = local->id};
+    target->ref = body_local_ref(body, local);
+    body_set_ref(body, callee->id, target->ref); /* a call of a function value reads the local */
     target->sig = local->ty;
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }
@@ -177,6 +183,9 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
       copy_vars(target, match->entry->variables.ptr + match->entry->shared,
                 match->entry->variables.len - match->entry->shared);
     } else if (match->operation != NULL) {
+      const MsMethod *declared = ms_check_operation_declaration(body->program, match->contract, match->operation);
+      target->receiver_flags = declared == NULL ? 0 : (uint8_t)((declared->mutating ? MS_PARAM_VAR : 0) |
+                                                                (declared->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->operation->variables.ptr, match->operation->variables.len);
     }
   }
@@ -378,7 +387,7 @@ static bool mentions_vars(const MsTyTable *types, MsTy ty, const MsTyList *vars)
 }
 
 /* A function-typed argument with the parameter modes (`move`, `var`) its context declares: a function value
- * passes where the callee's parameter type differs from its own only in how the arguments are lent. */
+ * passes where the callee's parameter type differs from its own only in how the arguments are borrowed. */
 static MsTy with_context_modes(Body *body, MsTy param, MsTy arg) {
   const MsTyTable *types = &body->program->types;
   if (arg == MS_TY_NONE || param == MS_TY_NONE || ms_ty_kind(types, arg) != MS_TY_FUNCTION ||
@@ -395,6 +404,51 @@ static MsTy with_context_modes(Body *body, MsTy param, MsTy arg) {
   const MsTy adapted = function_type(body, &params, ms_ty_result(types, arg));
   ms_ty_param_list_free(&params);
   return adapted;
+}
+
+static bool is_function(const MsTyTable *types, MsTy ty) {
+  return ms_ty_kind(types, ty) == MS_TY_FUNCTION;
+}
+
+/* `argument 'name' of callee`, the context of a mismatch in one argument; empty when the callee has no name. */
+static void argument_context(Body *body, const Target *target, size_t index, MsStrBuild *context) {
+  if (target->name.len == 0) {
+    return;
+  }
+  ms_strbuild_append_text(context, "argument '");
+  ms_strbuild_append(context, ms_names_span(body->program->names, target_param_name(body, target, index)));
+  ms_strbuild_append_text(context, "' of ");
+  ms_strbuild_append(context, target->name);
+}
+
+static void append_count(MsStrBuild *text, size_t count) {
+  ms_strbuild_printf(text, "%zu parameter%s", count, count == 1 ? "" : "s");
+}
+
+/* A function argument for a callback parameter that mentions the callee's variables, with another parameter count:
+ * reported at the argument, and the result type still binds what it can. */
+static bool report_callback_arity(Body *body, const Target *target, const MsExpr *value, MsTy param, MsTy actual,
+                                  MsTy *bound) {
+  const MsTyTable *types = &body->program->types;
+  if (!is_function(types, param) || !is_function(types, actual) || !mentions_vars(types, param, &target->vars) ||
+      ms_ty_param_count(types, param) == ms_ty_param_count(types, actual)) {
+    return false;
+  }
+  if (body->module < body->program->user_modules && !body->quiet) {
+    const size_t have = ms_ty_param_count(types, actual);
+    const size_t want = ms_ty_param_count(types, param);
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "callback mismatch: the function takes ");
+    append_count(&text, have);
+    ms_strbuild_append_text(&text, " but this position expects ");
+    ms_strbuild_printf(&text, "%zu; pass a function with ", want);
+    append_count(&text, want);
+    ms_strbuild_append_text(&text, ", or wrap it in a closure that supplies the rest");
+    ms_check_report(body->program, body->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  (void)ms_check_unify(types, ms_ty_result(types, param), ms_ty_result(types, actual), target->vars.ptr,
+                       target->vars.len, bound);
+  return true;
 }
 
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
@@ -416,6 +470,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     }
     MsTy wanted = expected_param(body, target, param, bound);
     bool open = mentions_vars(types, wanted, &target->vars);
+    bool by_hint = false; /* only the call's expected result closes the parameter: a function argument is judged later */
     if (open && !is_own_variable(target, wanted)) {
       MsTy known[16] = {0};
       for (size_t at = 0; at < target->vars.len && at < 16; at++) {
@@ -423,6 +478,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       }
       wanted = expected_param(body, target, param, known);
       open = mentions_vars(types, wanted, &target->vars);
+      by_hint = !open && is_function(types, wanted) && arg->value->kind == MS_E_NAME;
     }
     /* A collection literal is inferred from its entries, then unified with the open parameter type. */
     const bool literal = arg->value->kind == MS_E_LIST || arg->value->kind == MS_E_MAP;
@@ -430,11 +486,16 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     for (size_t at = 0; at < target->vars.len; at++) {
       bare = bare || target->vars.ptr[at] == wanted;
     }
-    arg_tys[index] = open ? body_expr(body, arg->value, literal || bare ? MS_TY_NONE : wanted)
+    arg_tys[index] = open || by_hint ? body_expr(body, arg->value, literal || bare ? MS_TY_NONE : wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
+    if (by_hint && arg_tys[index] != MS_TY_NONE && is_function(types, arg_tys[index]) &&
+        ms_ty_param_count(types, arg_tys[index]) == ms_ty_param_count(types, wanted)) {
+      body_check_assignable(body, arg->value, arg_tys[index], wanted, ms_strbuild_span(&context));
+    }
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
-    if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE) {
+    if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
+        !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
   }
@@ -455,7 +516,14 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
         body->quiet = quiet;
         arg_tys[index] = again != MS_TY_NONE ? again : arg_tys[index];
       }
-      if (arg_tys[index] != MS_TY_NONE) {
+      if (arg_tys[index] != MS_TY_NONE && is_function(types, final) && is_function(types, arg_tys[index]) &&
+          ms_ty_param_count(types, final) != ms_ty_param_count(types, arg_tys[index]) &&
+          !mentions_vars(types, final, &target->vars)) {
+        MsStrBuild context = ms_strbuild_new();
+        argument_context(body, target, index, &context);
+        body_check_assignable(body, value, arg_tys[index], final, ms_strbuild_span(&context));
+        ms_strbuild_free(&context);
+      } else if (arg_tys[index] != MS_TY_NONE) {
         body_convert(body, value, arg_tys[index], final);
       }
     }
@@ -542,6 +610,22 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
   return true;
 }
 
+/* A constructor names each variable it could not infer; any other callee gets the one message. */
+static void report_uninferred(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance) {
+  if (!target->constructor) {
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
+                    ms_string_from_span(ms_string_span(&instance->message)));
+    return;
+  }
+  for (size_t index = 0; index < instance->unbound.len; index++) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "cannot infer constructor type argument ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, ms_ty_row(&body->program->types, instance->unbound.ptr[index])->name));
+    ms_strbuild_append_text(&text, "; write the type arguments, e.g. Box[Int](...), or annotate the binding");
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+}
+
 static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const MsTy *arg_tys, const Matched *matched,
                         MsTy expected, size_t diagnostics_before) {
   MsInstance instance = {0};
@@ -557,8 +641,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
     } else {
       instantiated = false;
       if (uninferable(body, &instance, arg_tys, matched->count, diagnostics_before, target->sig)) {
-        ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
-                        ms_string_from_span(ms_string_span(&instance.message)));
+        report_uninferred(body, call, target, &instance);
       }
     }
   }

@@ -101,6 +101,15 @@ static void resolve_symbol(Resolver *resolver, MsSymbol *symbol) {
 static void resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   MsCheckProgram *program = resolver->program;
   const MsDecl *decl = symbol->decl;
+  if (decl->u.alias.targets.len == 1) {
+    /* A single target is another name for that type, over the alias's own variables. */
+    const size_t mark = resolver->names.len;
+    resolver_enter_symbol(resolver, symbol);
+    symbol->ty = resolver_type(resolver, decl->u.alias.targets.ptr[0]);
+    ms_name_list_truncate(&resolver->names, mark);
+    ms_ty_list_truncate(&resolver->types, mark);
+    return;
+  }
   MsTyList members = {0};
   for (uint32_t index = 0; index < decl->u.alias.targets.len; index++) {
     ms_ty_list_push(&members, resolver_type(resolver, decl->u.alias.targets.ptr[index]));

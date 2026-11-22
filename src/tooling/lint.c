@@ -15,6 +15,18 @@ MsLintFinding *ms_lint_add(MsLintFindingList *findings, const char *code, MsSpan
   return &findings->ptr[findings->len - 1];
 }
 
+MsPos ms_lint_pos_at(MsSpan source, size_t offset) {
+  uint32_t line = 1;
+  size_t line_start = 0;
+  for (size_t i = 0; i < offset && i < source.len; i++) {
+    if (source.ptr[i] == '\n') {
+      line++;
+      line_start = i + 1;
+    }
+  }
+  return (MsPos){(uint32_t)offset, line, (uint32_t)(offset - line_start + 1)};
+}
+
 static int compare_spans(MsSpan a, MsSpan b) {
   const size_t common = a.len < b.len ? a.len : b.len;
   const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
@@ -75,6 +87,7 @@ void ms_lint_modules(MsArena *arena, const MsCheckProgram *program, MsLintFindin
         ms_lint_calls(arena, program, i, findings);
         ms_lint_promises(arena, program, i, findings);
         ms_lint_recursion(arena, program, i, findings);
+        ms_lint_terse(arena, program, i, findings);
       }
     }
     ms_lint_effects(arena, program, findings);

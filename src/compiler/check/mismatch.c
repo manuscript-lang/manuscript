@@ -213,7 +213,8 @@ static void append_hints(Body *body, MsStrBuild *out, MsTy actual, MsTy expected
 
 /* ---- fixes ---- */
 
-static bool atomic_expr(const MsExpr *expr) {
+/* A written expression a `.method()` suffix or a `()` call binds to as a whole. */
+bool body_expr_is_atomic(const MsExpr *expr) {
   return expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER || expr->kind == MS_E_CALL ||
          expr->kind == MS_E_INDEX || expr->kind == MS_E_APPLY || expr->kind == MS_E_LIST || expr->kind == MS_E_MAP;
 }
@@ -235,7 +236,7 @@ static bool rewrite(Body *body, const MsExpr *expr, const char *prefix, const ch
     return false;
   }
   MsStrBuild out = ms_strbuild_new();
-  const bool parens = method && !atomic_expr(expr);
+  const bool parens = method && !body_expr_is_atomic(expr);
   ms_strbuild_append_text(&out, prefix);
   ms_strbuild_append_text(&out, parens ? "(" : "");
   ms_strbuild_append(&out, text);
@@ -267,7 +268,7 @@ static void attach_fix(Body *body, const MsExpr *expr, MsTy actual, MsTy expecte
   if (promise_wait_fits(body, actual, expected)) {
     (void)rewrite(body, expr, "", ".wait()", true);
   } else if (uncalled_function(body, actual, expected)) {
-    if (atomic_expr(expr)) {
+    if (body_expr_is_atomic(expr)) {
       (void)rewrite(body, expr, "", "()", false);
     }
   } else if (is_builtin(body, actual, MS_BUILTIN_Int) && is_builtin(body, expected, MS_BUILTIN_Float)) {
@@ -295,7 +296,24 @@ static bool is_none(const Body *body, MsTy actual) {
          ms_ty_row(types, actual)->open;
 }
 
+bool body_is_none_type(const Body *body, MsTy ty) {
+  return is_none(body, ty);
+}
+
+void body_report_uninferred_none(Body *body, MsPos pos) {
+  if (body->quiet || body->module >= body->program->user_modules) {
+    return;
+  }
+  ms_check_report(body->program, body->module, pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("cannot infer the type of none; give it a target, e.g. `x: Int? := "
+                                                      "none`, or pass a value")));
+}
+
 static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy expected, MsSpan context) {
+  if (is_none(body, actual) && ms_ty_kind(&body->program->types, expected) == MS_TY_CONTRACT) {
+    body_report_uninferred_none(body, expr->pos); /* an interface is no target for none */
+    return;
+  }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "expected ");
   show(body, &text, expected);

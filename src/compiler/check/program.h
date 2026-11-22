@@ -65,6 +65,11 @@ MS_LIST_DEFINE(MsModuleList, ms_module_list, MsModuleInfo)
 
 typedef enum MsCheckPhase { MS_CHECK_RESOLUTION, MS_CHECK_TYPE } MsCheckPhase;
 
+/* Where in the oracle's order a diagnostic is found: imports, then the declaration passes, then each body. The
+ * whole-module passes that look into bodies (names, mutation, returns) are SIDE; the body walk is WALK, whose
+ * order is the oracle's. */
+typedef enum MsCheckStage { MS_STAGE_DECLARATIONS, MS_STAGE_IMPORTS, MS_STAGE_SIDE, MS_STAGE_WALK } MsCheckStage;
+
 typedef struct MsCheckDiag {
   uint32_t module;
   MsPos pos;
@@ -72,6 +77,8 @@ typedef struct MsCheckDiag {
   MsString message; /* owned */
   bool has_end;     /* the diagnostic spans [pos, end) */
   MsPos end;
+  uint8_t stage;    /* an MsCheckStage: imports, then declarations (each in the order found), then bodies */
+  bool ends_decl;   /* found once the declaration's body was walked: listed after the rest of its declaration */
   bool has_fix;     /* an edit that repairs the diagnostic: replace [fix_pos, fix_end) with `fix_text` */
   MsPos fix_pos, fix_end;
   MsString fix_text; /* owned; empty without a fix */
@@ -90,6 +97,7 @@ typedef struct MsCheckProgram {
   MsTyList symbol_vars; /* the type variables of every symbol, by range */
   MsModuleList modules;
   MsCheckDiagList diagnostics;
+  uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
 } MsCheckProgram;

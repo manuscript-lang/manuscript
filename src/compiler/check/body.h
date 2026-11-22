@@ -21,6 +21,7 @@ typedef struct MsLocal {
   MsRefKind kind; /* MS_REF_LOCAL or MS_REF_PARAM */
   uint32_t id;    /* the dense local id, or the parameter's index */
   bool is_var;
+  MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;
 
 MS_LIST_DEFINE(MsLocalList, ms_local_list, MsLocal)
@@ -56,7 +57,10 @@ void body_block(Body *body, MsStmts stmts); /* a nested scope */
 size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
 /* Declares a local or parameter in the current scope. */
-MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var);
+MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site);
+
+/* The reference a use of `local` records. */
+MsRef body_local_ref(const Body *body, const MsLocal *local);
 const MsLocal *body_find_local(const Body *body, MsName name);
 
 /* ---- facts recording ---- */
@@ -94,6 +98,10 @@ MsTy body_std_type(Body *body, const char *name, const MsTy *args, size_t count)
 
 /* Types `expr` against `expected` and reports "expected X, found Y (in <context>)" when it does not fit; an
  * empty `context` names none. Returns the expression's own type. */
+bool body_expr_is_atomic(const MsExpr *expr);
+/* Whether `ty` is the type of a bare `none` with no target, and the report that it cannot be inferred. */
+bool body_is_none_type(const Body *body, MsTy ty);
+void body_report_uninferred_none(Body *body, MsPos pos);
 MsTy body_expect(Body *body, const MsExpr *expr, MsTy expected, MsSpan context);
 /* The check alone, for an expression typed by the caller. */
 void body_check_assignable(Body *body, const MsExpr *expr, MsTy actual, MsTy expected, MsSpan context);

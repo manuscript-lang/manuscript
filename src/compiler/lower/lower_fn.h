@@ -14,6 +14,7 @@ enum { LOWER_MAX_SCOPES = 64, LOWER_MAX_LOOPS = 32, LOWER_MAX_OWNED_VARS = 256 }
 typedef struct LowerOwnedVar {
   uint32_t scope;
   MirVar var;
+  uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
 } LowerOwnedVar;
 
 /* Where `break` and `continue` go, and how many scopes were open outside the loop. */
@@ -51,6 +52,7 @@ typedef struct LowerFn {
   MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
+  uint8_t *local_owns; /* by checker local id: bound to a value this function's scope owns (NULL: none known) */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
   MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
@@ -68,11 +70,14 @@ typedef struct LowerFn {
   uint32_t nopen;
   LowerOwnedVar owned_vars[LOWER_MAX_OWNED_VARS];
   uint32_t nowned_vars;
+  MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
+  uint32_t nmoved_names;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
   uint32_t nwritebacks;
   bool failed;
+  bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
   uint32_t comparing[8]; /* the alternatives whose equality is being written out, innermost last */
   uint32_t ncomparing;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
@@ -80,7 +85,7 @@ typedef struct LowerFn {
   bool terminated;
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
-  bool temps; /* a statement scope is open for the temporaries its calls lend */
+  bool temps; /* a statement scope is open for the temporaries its calls borrow */
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
   const LowerLambda *lambda; /* the lambda whose body this is, or NULL */
@@ -103,6 +108,10 @@ void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
+/* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
+bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
+/* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
 bool fn_is_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
@@ -146,7 +155,7 @@ uint32_t lower_close_iface(Lower *cx, MsTy ty);
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
 /* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
- * when it is a lent temporary. */
+ * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 /* The base of the field read `member`, closed with its statement when it is a temporary. */
@@ -174,6 +183,7 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue valu
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
 /* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
+bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken);
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);
 
 /* ---- places (lower_stmt.c) ---- */
@@ -230,7 +240,9 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
  * signature, and nothing was emitted. */
 /* The runtime's descriptor operand of kind `kind` (NS_ELEM_DESC...) for the collection among `args`. */
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
-bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
+/* A native declared `@op=<name>` (a bit operation on Ints) as its one MIR instruction. */
+bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, uint32_t argc, MirValue *out);
+bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
@@ -271,8 +283,11 @@ typedef struct VarSlot {
   MirValue slot;
   MirTy ty;
   MirValue record; /* the record `place` is a field of, taken out of its variable by `fn_take_field`, else MIR_NONE */
+  bool in_place; /* `slot` is the address of a list element: nothing goes back */
+  MirValue home; /* the address of the list element a `place?` receiver lies in, else MIR_NONE */
   MirTy optional; /* the optional `place` holds when `ty` is the payload a `place?` receiver changed, else MIR_NONE */
 } VarSlot;
+bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
@@ -293,6 +308,10 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);
+/* The payload of the Optional or Result `value`, taken out of it: `value` is released but for the payload. */
+MirValue fn_take_payload(LowerFn *fn, MirValue value, MirTy *ty);
+/* The value a call's new owner takes from a dying temporary the call answers (`id(make())`, `make().get()`), or MIR_NONE. */
+MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);

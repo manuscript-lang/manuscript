@@ -80,7 +80,9 @@ static void uw_cells_captured(UwCells *c) {
     if (inst2->op == MOP_Put && inst2->nargs > 1 && !uh_has(&fresh, inst2->args[1])) {
       (void)uh_put(c->a, &stale, inst2->args[0], 0);
     }
-    for (uint32_t k = 0; k < inst2->nargs && inst2->op == MOP_ClosureNew; k++) {
+    uint32_t scoped = 0;
+    const bool owns = !(uw_is_func(inst2, MOP_ClosureNew, &scoped) && c->cx->m->funcs.ptr[scoped].scoped);
+    for (uint32_t k = 0; k < inst2->nargs && inst2->op == MOP_ClosureNew && owns; k++) { /* a scoped closure only reads */
       (void)uh_put(c->a, &c->captured, inst2->args[k], 0);
     }
   }

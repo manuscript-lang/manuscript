@@ -10,6 +10,7 @@ typedef struct BackendOptions {
   bool optimize; /* the full optimiser pipeline instead of the small one */
   bool verify;   /* verify the module after every pass */
   bool tests;    /* start at the test entry (ms_lower_tests) instead of `main` */
+  bool bench;    /* with `tests`: the program's `bench` blocks run as the tests (ms_lower_benches) */
 } BackendOptions;
 
 /* A compiled program kept for the fault tables: the renamed module and what the tables need to know of it. */

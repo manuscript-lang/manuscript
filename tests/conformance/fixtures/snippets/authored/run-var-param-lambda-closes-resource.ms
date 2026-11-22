@@ -6,7 +6,7 @@ import pipe, Pipe, ReadStream from "@std/io/io.ms"
 type Handlers:
     items: List[fn(var Int, Int) Void!]
 
-fn var Handlers.add(f: fn(var Int, Int) Void!) Void:
+fn var Handlers.add(move f: fn(var Int, Int) Void!) Void:
     self.items.append(f)
 
 fn make(p: Pipe[Int]) Handlers:

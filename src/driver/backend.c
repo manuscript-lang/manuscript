@@ -42,7 +42,12 @@ static bool compile(MsCheckProgram *program, uint32_t entry_module, const Backen
                     BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
   MirGlue glue = {0};
   MirData data = {0};
-  bool ok = options->tests ? ms_lower_tests(program, module, why) : ms_lower_program(program, entry_module, module, why);
+  bool ok = false;
+  if (options->tests) {
+    ok = options->bench ? ms_lower_benches(program, module, why) : ms_lower_tests(program, module, why);
+  } else {
+    ok = ms_lower_program(program, entry_module, module, why);
+  }
   ok = ok && run_passes(module, options, &glue, &data, why);
   ok = ok && emit_program(module, &data, &glue, kept, ir, why);
   mir_data_free(&data);

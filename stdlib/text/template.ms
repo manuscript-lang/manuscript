@@ -451,7 +451,7 @@ fn var ExprParser.not_expr() TemplateExpr!Error:
 
 fn var ExprParser.compare() TemplateExpr!Error:
 	left := self.filtered()?
-	t := self.peek()
+	t := self.peek().clone()
 	is_cmp := (t.kind == "sym" and ["==", "!=", "<", "<=", ">", ">="].contains(t.text))
 	if not is_cmp: return ok(left)
 
@@ -466,7 +466,7 @@ fn var ExprParser.filtered() TemplateExpr!Error:
 	while self.is_sym("|"):
 		self.at += 1
 
-		name := self.peek()
+		name := self.peek().clone()
 		if name.kind != "word" or not FILTERS.contains(name.text): return error(
 			self.fail("unknown filter")
 		)
@@ -491,7 +491,7 @@ fn var ExprParser.filtered() TemplateExpr!Error:
 	return ok(value)
 
 fn var ExprParser.primary() TemplateExpr!Error:
-	t := self.peek()
+	t := self.peek().clone()
 	self.at += 1
 	if t.kind == "str": return ok(Literal(JsonValue.StringValue(t.text.clone())))
 	if t.kind == "num": return ok(Literal(JsonValue.NumberValue(t.text.clone())))
@@ -1248,7 +1248,7 @@ fn length_of(value: JsonValue) Int:
 	return to_text(value).length()
 
 fn reverse_value(value: JsonValue) JsonValue!Error:
-	if list := value.as_list(): return ok(JsonValue.ArrayValue(list.reversed()))
+	if list := value.as_list(): return ok(JsonValue.ArrayValue(list.reversed().clone()))
 	return ok(text_value(to_text(value).reverse()))
 
 fn end_of(value: JsonValue, first: Bool) JsonValue:

@@ -4,7 +4,7 @@
 import stdout from "@std/io/io.ms"
 
 fn say(text: String) Void:
-    _ignored := stdout().write(text)
+    _ignored := stdout().write(text.clone())
 
 fn keep(text: String) List[String]:
     var out: List[String] = []
@@ -80,7 +80,11 @@ fn nested(text: String) Int:
     return total
 
 fn closure_keeps(text: String) Int:
-    var fs = text.split(",").map(fn p: fn() Int: return p.length())
+    var fs = text.split(",").map(
+        fn p:
+            kept := p.clone()
+            return fn() Int: return kept.length()
+    )
     var t = 0
     for f in fs:
         t += f()

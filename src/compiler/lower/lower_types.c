@@ -1,6 +1,8 @@
 /* compiler/lower/lower_types.c: checked types to MIR types. A type with variables is first rewritten by the
  * substitution of the instance being lowered, so MIR never sees a variable. */
 #include "compiler/lower/lower_internal.h"
+#include "compiler/check/methods.h"
+#include "compiler/lower/native_sigs.h"
 
 static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
   if (subst == NULL || subst->count == 0 || !ms_ty_has_variable(&cx->program->types, ty)) {
@@ -122,7 +124,7 @@ static MirTy lower_alt(Lower *cx, MsTy ty) {
   alt->cases = cases;
   alt->ncases = (uint32_t)def->cases.len;
   const MsBuiltin builtin = ms_ty_builtin(&cx->program->types, ty);
-  alt->std = builtin == MS_BUILTIN_Result ? MSTD_RESULT : MSTD_NONE;
+  alt->std = builtin == MS_BUILTIN_Result ? MSTD_RESULT : builtin == MS_BUILTIN_JsonValue ? MSTD_JSON_VALUE : MSTD_NONE;
   return result;
 }
 
@@ -147,6 +149,8 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
       methods[index].params[p] = lower_type(cx, &subst, params[p].ty);
       methods[index].owned |= (params[p].flags & MS_PARAM_MOVE) != 0 && p < 64 ? UINT64_C(1) << p : 0;
     }
+    const MsMethod *declared = ms_check_operation_declaration(cx->program, ty, operation);
+    methods[index].consumes = declared != NULL && declared->consuming;
     methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
   }
   cx->module->ifaces.ptr[id].methods = methods;
@@ -154,7 +158,23 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   return result;
 }
 
-/* A native type declared `@repr=inline<N>`: a plain record of N/8 words, which the runtime reads and writes by the
+/* The size in bytes of `inline<N>`, a multiple of 8 up to 64; 0 for any other representation. */
+static uint32_t inline_repr_size(MsSpan repr) {
+  const MsSpan prefix = ms_span_of_text("inline");
+  if (!ms_span_starts_with(repr, prefix) || repr.len == prefix.len) {
+    return 0;
+  }
+  uint32_t size = 0;
+  for (size_t at = prefix.len; at < repr.len; at++) {
+    if (repr.ptr[at] < '0' || repr.ptr[at] > '9' || size > 99) {
+      return 0;
+    }
+    size = size * 10 + (uint32_t)(repr.ptr[at] - '0');
+  }
+  return size != 0 && size % 8 == 0 && size <= 64 ? size : 0;
+}
+
+/* A native type the runtime represents as `inline<N>`: a plain record of N/8 words, which it reads and writes by the
  * address of a copy. */
 static MirTy lower_inline(Lower *cx, MsTy ty, uint32_t size) {
   const MsTyTable *table = &cx->program->types;
@@ -172,12 +192,14 @@ static MirTy lower_inline(Lower *cx, MsTy ty, uint32_t size) {
 
 static MirTy lower_native(Lower *cx, MsTy ty) {
   const MsTyTable *table = &cx->program->types;
-  const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(table, ty)->def);
-  if (def->repr == MS_REPR_BYTES_BUFFER) {
+  const char *declared = ms_native_repr_find(ms_names_span(cx->program->names, ms_ty_row(table, ty)->name));
+  const MsSpan repr = declared != NULL ? ms_span_of_text(declared) : (MsSpan){0};
+  if (ms_span_is_text(repr, "bytes_buffer")) {
     return MIR_BYTES;
   }
-  if (def->repr == MS_REPR_INLINE) {
-    return lower_inline(cx, ty, def->repr_size);
+  const uint32_t size = inline_repr_size(repr);
+  if (size != 0) {
+    return lower_inline(cx, ty, size);
   }
   const size_t count = ms_ty_arg_count(table, ty);
   MirTy *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);

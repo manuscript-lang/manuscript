@@ -27,7 +27,8 @@ enum {
   NS_ERR_SLOT,  /* the address of the string a failing native explains itself in */
   NS_SHAPE,     /* the shape table of the value the call reads or builds (`*const ShapeTable`), not a source operand */
   NS_HAS_RAW,   /* an `Int?` operand passed as two parameters: the presence flag (this one) and the payload */
-  NS_VALUE_DESC /* the descriptor of the one value the call moves in or takes out (`ValueDesc`) */
+  NS_VALUE_DESC, /* the descriptor of the one value the call moves in or takes out (`ValueDesc`) */
+  NS_TREE_CTOR  /* the address of the constructor thunk of the `JsonValue` the call builds (`TreeCtor`) */
 };
 
 enum { NS_MAX_PARAMS = 24 };
@@ -47,6 +48,17 @@ extern const unsigned ms_native_sig_count;
 
 /* The signature of the native called `name`, or NULL. */
 const MsNativeSig *ms_native_sig_find(MsSpan name);
+
+/* How the runtime represents an extern type, from its `ms-repr: <Type> <repr>` comment: `bytes_buffer` (a Bytes buffer)
+ * or `inline<N>` (a plain value of N bytes it reads and writes by address). NULL for a type with no comment. */
+typedef struct MsNativeRepr {
+  const char *type;
+  const char *repr;
+} MsNativeRepr;
+
+extern const MsNativeRepr ms_native_reprs[];
+
+const char *ms_native_repr_find(MsSpan type);
 
 /* The native an operation of a type is declared `@method=` for (`List`, `drop`), or NULL. */
 const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation);

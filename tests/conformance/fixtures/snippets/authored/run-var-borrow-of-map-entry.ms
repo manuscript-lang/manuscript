@@ -7,7 +7,7 @@ type Cell:
 
 fn bump(var c: Cell, who: String) Void:
     c.hits += 1
-    c.names.append(who)
+    c.names.append(who.clone())
 
 export fn main() Int:
     var by = Map[String, Cell]()

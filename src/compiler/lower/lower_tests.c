@@ -14,23 +14,29 @@ typedef struct TestRun {
   MirTy test_fn;      /* fn() Void! */
   MirTy runner_fn;    /* fn(List[Int], String) Void */
   uint32_t next_index;
+  bool bench;         /* lower the `bench` blocks instead of the `test` blocks */
+  uint32_t driver;    /* the MIR function of run_bench_block, when lowering benches */
 } TestRun;
 
 /* The symbol `name` of the bundled test runner module, or 0. */
-static MsSymbolId runner_symbol(const MsCheckProgram *program, const char *name) {
+static MsSymbolId module_symbol(const MsCheckProgram *program, const char *module, const char *name) {
   MsName id = MS_NAME_EMPTY;
   if (!ms_names_find(program->names, ms_span_of_text(name), &id)) {
     return 0;
   }
   for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
     const MsModuleInfo *info = &program->modules.ptr[index];
-    if (!ms_span_ends_with(ms_names_span(program->names, info->file), ms_span_of_text("internal/test_runner.ms"))) {
+    if (!ms_span_ends_with(ms_names_span(program->names, info->file), ms_span_of_text(module))) {
       continue;
     }
     const MsSymbolId *found = ms_scope_get(&info->scope, id);
     return found != NULL ? *found : 0;
   }
   return 0;
+}
+
+static MsSymbolId runner_symbol(const MsCheckProgram *program, const char *name) {
+  return module_symbol(program, "internal/test_runner.ms", name);
 }
 
 static uint32_t runner_function(Lower *cx, const char *name) {
@@ -90,6 +96,7 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
   }
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[decl->id] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, decl->u.test.body);
   const bool ok = fn_stmts(&fn, decl->u.test.body);
@@ -117,6 +124,28 @@ static MirValue list_of(LowerFn *fn, MirValue *items, uint32_t count, MirTy list
     }
   }
   return fn_emit(fn, MOP_ListLit, items, count, (MirImm){0}, list_ty);
+}
+
+/* The closure of one `bench` block: `run_bench_block(body, operations)`, the standard driver that repeats and times
+ * the body, which it takes as a `fn() Void!` and whose `Void!` the closure returns, as a test's does. */
+static uint32_t bench_closure(TestRun *run, uint32_t module_index, uint32_t body, int64_t per) {
+  Lower *cx = run->cx;
+  const uint32_t slot = lower_closure_func(cx, run->test_fn, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = begin_fn(cx, module_index, &reserved);
+  MirValue env;
+  mir_b_params(&fn.b, &env, 1);
+  const MirValue closure = closure_value(&fn, body, run->test_fn);
+  if (cx->module->funcs.ptr[run->driver].params[0].mode == MM_MOVE) {
+    (void)mir_b_emit(&fn.b, MOP_ScopeDisown, &closure, 1, (MirImm){0}, MIR_NONE); /* the driver owns it */
+  }
+  const MirValue args[2] = {closure, mir_b_iconst(&fn.b, per)};
+  const MirValue result = mir_b_call(&fn.b, run->driver, args, 2);
+  fn_own_result(&fn, result);
+  (void)mir_b_emit(&fn.b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, result);
+  return end_fn(&fn, slot, true) ? slot : MIR_NONE;
 }
 
 /* The runner closure of one file: `run_plain_file(file, tests, indices, selected, results)`. */
@@ -238,7 +267,7 @@ static bool lower_file_tests(TestRun *run, uint32_t module_index, uint32_t *runn
   const MsDecl **decls = MS_ARENA_NEW_ARRAY(&run->cx->module->arena, const MsDecl *, (size_t)tree->ndecls + 1);
   uint32_t count = 0;
   for (uint32_t index = 0; index < tree->ndecls; index++) {
-    if (tree->decls[index]->kind == MS_D_TEST && !tree->decls[index]->u.test.bench) {
+    if (tree->decls[index]->kind == MS_D_TEST && tree->decls[index]->u.test.bench == run->bench) {
       decls[count++] = tree->decls[index];
     }
   }
@@ -249,12 +278,15 @@ static bool lower_file_tests(TestRun *run, uint32_t module_index, uint32_t *runn
   run->next_index += count;
   const MsSymbolId factory = fixture_factory(run->cx->program, module_index);
   uint32_t runner = MIR_NONE;
-  if (factory != 0) {
+  if (factory != 0 && !run->bench) {
     runner = lower_fixture_runner(run, module_index, *nrunners, factory, decls, count, first);
   } else {
     uint32_t *tests = MS_ARENA_NEW_ARRAY(&run->cx->module->arena, uint32_t, (size_t)count + 1);
     for (uint32_t index = 0; index < count; index++) {
       tests[index] = lower_test(run, module_index, decls[index], run->test_fn, MS_TY_NONE);
+      if (tests[index] != MIR_NONE && run->bench) {
+        tests[index] = bench_closure(run, module_index, tests[index], decls[index]->u.test.per);
+      }
       if (tests[index] == MIR_NONE) {
         return false;
       }
@@ -296,14 +328,24 @@ static uint32_t lower_entry(TestRun *run, const uint32_t *runners, uint32_t coun
   return slot;
 }
 
-bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
+static bool lower_blocks(MsCheckProgram *program, MirModule *module, MsStrBuild *error, bool bench) {
   Lower cx;
   lower_init(&cx, program, module, error);
-  TestRun run = {.cx = &cx};
+  TestRun run = {.cx = &cx, .bench = bench};
   bool ok = true;
   run.plain = runner_function(&cx, "run_plain_file");
   run.run_files = run.plain == MIR_NONE ? MIR_NONE : runner_function(&cx, "run_test_files");
   ok = run.run_files != MIR_NONE;
+  if (ok && bench) {
+    const MsSymbolId driver = module_symbol(program, "test/bench.ms", "run_bench_block");
+    if (driver == 0) {
+      ok = lower_fail(&cx, "the bench driver @std/test/bench.ms is not loaded");
+    } else {
+      const LowerTarget target = lower_symbol_target(&cx, driver);
+      run.driver = lower_instance(&cx, &target, NULL, 0, NULL);
+      ok = run.driver != MIR_NONE;
+    }
+  }
   if (ok) {
     const MirTyData *list = mir_ty_data(module, module->funcs.ptr[run.run_files].params[0].ty);
     run.runner_fn = list->elem;
@@ -319,4 +361,12 @@ bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *erro
   }
   lower_release(&cx);
   return ok;
+}
+
+bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
+  return lower_blocks(program, module, error, false);
+}
+
+bool ms_lower_benches(MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
+  return lower_blocks(program, module, error, true);
 }

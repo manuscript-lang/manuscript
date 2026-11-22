@@ -41,7 +41,8 @@ uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModul
 void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsCheckPhase phase,
                      MsString message) {
   ms_check_diag_list_push(&program->diagnostics,
-                          (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message});
+                          (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message,
+                                        .stage = program->stage});
 }
 
 void ms_check_attach_end(MsCheckProgram *program, MsPos end) {
@@ -162,48 +163,9 @@ static MsBuiltin builtin_of(const MsCheckProgram *program, const MsSymbol *symbo
   return by_id;
 }
 
-/* The size in bytes of `inline<N>`, a plain value of N bytes (N a multiple of 8, at most 64); 0 for any other word. */
-static uint32_t inline_repr_size(MsSpan repr) {
-  const MsSpan prefix = ms_span_of_text("inline");
-  if (!ms_span_starts_with(repr, prefix) || repr.len == prefix.len || repr.len > prefix.len + 2) {
-    return 0;
-  }
-  uint32_t size = 0;
-  for (size_t at = prefix.len; at < repr.len; at++) {
-    if (repr.ptr[at] < '0' || repr.ptr[at] > '9') {
-      return 0;
-    }
-    size = size * 10 + (uint32_t)(repr.ptr[at] - '0');
-  }
-  return size != 0 && size % 8 == 0 && size <= 64 ? size : 0;
-}
-
-/* The runtime representation an extern type declares with `@repr=`; an unknown name is reported. */
-static MsRepr declared_repr(MsCheckProgram *program, const MsSymbol *symbol) {
-  const MsDecl *decl = symbol->decl;
-  if (decl->kind != MS_D_TYPE || decl->u.type.repr.len == 0) {
-    return MS_REPR_DEFAULT;
-  }
-  if (ms_span_is_text(decl->u.type.repr, "bytes_buffer")) {
-    return MS_REPR_BYTES_BUFFER;
-  }
-  if (inline_repr_size(decl->u.type.repr) != 0) {
-    return MS_REPR_INLINE;
-  }
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_text(&text, "unknown representation ");
-  ms_strbuild_append(&text, decl->u.type.repr);
-  ms_strbuild_append_text(&text, "; the ones are bytes_buffer and inline<N> (N bytes, a multiple of 8 up to 64)");
-  ms_check_report(program, symbol->module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
-  return MS_REPR_DEFAULT;
-}
-
 /* The nominal type of a type-like declaration: its definition is empty until the signature passes. */
 static void declare_nominal(MsCheckProgram *program, MsSymbol *symbol, MsTyKind kind) {
   symbol->def = ms_defs_add(&program->defs, kind, (uint32_t)program->symbols.len);
-  MsDef *declared = ms_defs_get(&program->defs, symbol->def);
-  declared->repr = declared_repr(program, symbol);
-  declared->repr_size = declared->repr == MS_REPR_INLINE ? inline_repr_size(symbol->decl->u.type.repr) : 0;
   const MsTyDesc desc = {.name = symbol->name, .id = symbol->id, .kind = kind,
                          .builtin = builtin_of(program, symbol), .def = symbol->def};
   symbol->ty = ms_ty_intern(&program->types, &desc);

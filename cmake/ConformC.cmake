@@ -11,7 +11,9 @@ if(NOT EXISTS "${MS_CONFORM}")
   message(FATAL_ERROR "conform-c: oracle runner not found: ${MS_CONFORM}")
 endif()
 
+# -DONLY=commands skips the corpus phases and replays the command fixtures alone, printing each failure.
 set(totals "")
+if(NOT ONLY STREQUAL "commands")
 # run, check and test skip programs tagged `aliasing`; parse replays every fixture (same split as the Rust gate).
 foreach(pass IN ITEMS "run,check,test;--exclude-tag;aliasing" "parse")
   list(GET pass 0 phases)
@@ -36,6 +38,7 @@ message("conform-c results")
 foreach(counted IN LISTS totals)
   message("${counted}")
 endforeach()
+endif()
 
 # Command fixtures (tests/conformance/commands): replayed by the Manuscript runner on the oracle ms,
 # with the ms under test named by MS.
@@ -49,5 +52,8 @@ execute_process(
 string(REGEX MATCH "commands: [0-9]+/[0-9]+" command_total "${command_output}")
 if(NOT command_total)
   message(FATAL_ERROR "conform-c: no command counts\n${command_errors}\n${command_output}")
+endif()
+if(ONLY STREQUAL "commands")
+  message("${command_output}")
 endif()
 message("${command_total}")
