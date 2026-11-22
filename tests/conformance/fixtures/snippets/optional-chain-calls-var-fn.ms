@@ -11,7 +11,7 @@ fn var C.bump() Int:
     self.n += 1
     return self.n
 
-fn var C.note(s: String) Void:
+fn var C.note(move s: String) Void:
     self.log.append(s)
 
 fn C.get() Int: self.n

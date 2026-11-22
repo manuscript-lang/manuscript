@@ -258,7 +258,7 @@ fn convert_fences(source: String) String:
 		originals.append(line.clone())
 
 		if line.starts_with(prefix): block.append(
-			line.slice(prefix.length(), line.length())
+			line.slice(prefix.length(), line.length()).clone()
 		)
 		else: block.append("")
 

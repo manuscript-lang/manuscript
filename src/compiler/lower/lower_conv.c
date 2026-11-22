@@ -149,6 +149,9 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   const bool views = place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
   if (!views) {
+    if (fn_fresh_owner(fn, value)) { /* the interface takes over what the scope owned */
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+    }
     return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
   }
   const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to);

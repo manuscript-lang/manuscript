@@ -109,6 +109,7 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   uint32_t source = 0;
+  fn->native_moves = 0;
   uint32_t shape_at = NS_MAX_PARAMS;
   MirTy shape_ty = payload_ty;
   bool shape_from_operand = false;
@@ -176,6 +177,11 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     } else if (kind == NS_VALUE_DESC) {
       return false;
     } else if (source < nargs) {
+      /* An operand the declaration takes (`move handler: fn`) belongs to the runtime once the call is made. */
+      if (source < 32 && (fn->native_arg_moves >> source & 1u) != 0 && count < 32 &&
+          mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[source]))) {
+        fn->native_moves |= 1u << count;
+      }
       wanted[count++] = kind == NS_VALUE ? fn_native_scalar(fn, args[source]) : args[source];
       source++;
     } else {

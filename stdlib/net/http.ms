@@ -372,7 +372,7 @@ fn var ServerExchange.write_bytes(move data: Bytes) Void!:
 
 // The `HttpMethod` a request line names; a token that is not one of the nine standard
 // methods is `Custom`.
-fn method_of(text: String) HttpMethod:
+fn method_of(move text: String) HttpMethod:
 	if text == "GET": return HttpMethod.Get
 	if text == "HEAD": return HttpMethod.Head
 	if text == "POST": return HttpMethod.Post
@@ -389,8 +389,8 @@ fn method_of(text: String) HttpMethod:
 // an `HttpExchange` to the program's handler.
 export fn native_handler(
 	handler: fn(var HttpExchange) Void!
-) fn(var NativeExchange) Void!:
-	return fn(var native: NativeExchange): handler(ServerExchange(native: native))
+) fn(move NativeExchange) Void!:
+	return fn(move native: NativeExchange): handler(ServerExchange(native: native))
 
 // Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:
@@ -563,7 +563,7 @@ export fn read_body(var exchange: HttpExchange, limit: Int? = none) Bytes!:
 
 // Joins `head` with the chunks after it. A body that fits one chunk is returned without
 // copying.
-fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
+fn read_rest(var exchange: HttpExchange, move head: Bytes, limit: Int?) Bytes!:
 	var total = head.length()
 	if over_limit(total, limit): return error(
 		Error("HTTP: limit exceeded", kind: "EOVERFLOW")
@@ -583,7 +583,7 @@ fn read_rest(var exchange: HttpExchange, head: Bytes, limit: Int?) Bytes!:
 
 fn read_more(
 	var exchange: HttpExchange,
-	chunks: List[Bytes],
+	move chunks: List[Bytes],
 	total: Int,
 	limit: Int?,
 ) Bytes!:

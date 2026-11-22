@@ -87,10 +87,10 @@ fn shapes() List[Shape]:
 		Shape("nested", "List[Marker?]", "mk_nested(@ID@)"),
 	]
 
-fn c(name: String, defs: String, body: String) Construct:
+fn c(move name: String, move defs: String, move body: String) Construct:
 	return Construct(name, defs, body, "")
 
-fn only(name: String, shape: String, defs: String, body: String) Construct:
+fn only(move name: String, move shape: String, move defs: String, move body: String) Construct:
 	return Construct(name, defs, body, shape)
 
 fn constructs() List[Construct]:

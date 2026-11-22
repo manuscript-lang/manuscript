@@ -10,7 +10,7 @@ fn area(shape: Shape) Int:
 
 fn read_number(text: String) Int!Failure:
 	if value := text.parse_int(): return ok(value)
-	return error(Failure.Bad(text))
+	return error(Failure.Bad(text.clone()))
 
 export fn parse_total(items: List[String]) Int:
 	var total = 0

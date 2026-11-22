@@ -23,4 +23,12 @@ void *msrt_realloc(void *block, size_t size);
 /* ms-sig: msrt_free(p: *mut u8) */
 void msrt_free(void *block);
 
+/* Operations executed, as the counting calls of an `ms bench --ops` build add them (a block's instruction count). */
+
+/* ms-sig: msrt_ops_add(n: i64) @leaf */
+void msrt_ops_add(int64_t count);
+
+/* The operations counted so far. */
+int64_t ms_core_operations(void);
+
 #endif

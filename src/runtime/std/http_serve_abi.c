@@ -21,9 +21,9 @@ static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
 
 /* ---- the program's handler ---- */
 
-/* A compiled closure: the header, then the code. The code of `fn(var NativeExchange) Void!` takes the address
+/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Void!` takes the address
  * of its result first (a result of more than one leaf goes through memory), then the closure, then the
- * handle. The result's first word is the tag: 0 for ok. */
+ * handle, which the handler now owns and drops. The result's first word is the tag: 0 for ok. */
 typedef struct HandlerClosure {
   MsObj header;
   void (*code)(uint64_t *result, void *closure, int64_t exchange);
@@ -37,7 +37,6 @@ static MsHandlerEnd call_handler(void *context, MsExchange *exchange) {
   uint64_t result[RESULT_WORDS] = {0};
   MsObj *handle = ms_exchange_handle(exchange);
   closure->code(result, closure, (int64_t)(intptr_t)handle);
-  handle->drop(handle);
   return result[0] == 0 ? MS_HANDLER_OK : MS_HANDLER_ERROR;
 }
 

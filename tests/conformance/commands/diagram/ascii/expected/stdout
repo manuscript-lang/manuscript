@@ -15,5 +15,6 @@ src/shapes.ms::parse_total [fn]
 src/shapes.ms::read_number [fn]
   -> Failure (construct)
   -> Result[Int, Failure] (construct) x2
+  -> String.clone (operation)
   -> String.parse_int (operation)
 src/shapes.ms::Shape [type]

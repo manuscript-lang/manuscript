@@ -197,6 +197,31 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   return applied;
 }
 
+/* A written use of an alias: its target with the written arguments in place of the alias's variables. */
+static MsTy alias_use(Resolver *resolver, const MsSymbol *alias, const MsTypeRef *type) {
+  MsCheckProgram *program = resolver->program;
+  if (alias->ty == MS_TY_NONE || ms_ty_builtin(&program->types, alias->ty) == MS_BUILTIN_TypeSet) {
+    return alias->ty;
+  }
+  MsTyList args = {0};
+  for (uint32_t index = 0; index < type->args.len; index++) {
+    ms_ty_list_push(&args, resolver_type(resolver, type->args.ptr[index]));
+  }
+  const MsTy *vars = program->symbol_vars.ptr + alias->var_at;
+  MsTy result = MS_TY_NONE;
+  if (args.len == alias->var_count) {
+    result = ms_ty_subst(&program->types, alias->ty, vars, args.ptr, args.len);
+  } else if (resolver->report) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_printf(&text, "alias %.*s takes %u type arguments, found %zu",
+                       (int)ms_names_span(program->names, type->name).len,
+                       (const char *)ms_names_span(program->names, type->name).ptr, alias->var_count, args.len);
+    ms_check_report(program, resolver->module, type->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  ms_ty_list_free(&args);
+  return result;
+}
+
 static MsTy named_type(Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
   const MsSpan text = ms_names_span(program->names, type->name);
@@ -217,6 +242,9 @@ static MsTy named_type(Resolver *resolver, const MsTypeRef *type) {
   }
   bool known = false;
   const MsSymbolId symbol = find_symbol(resolver, type->name, &known);
+  if (symbol != 0 && program->symbols.ptr[symbol].kind == MS_SYMBOL_ALIAS) {
+    return alias_use(resolver, &program->symbols.ptr[symbol], type);
+  }
   if (symbol != 0) {
     return apply(resolver, program->symbols.ptr[symbol].ty, type);
   }
@@ -269,8 +297,11 @@ MsTy resolver_function(Resolver *resolver, MsParams params, const MsTypeRef *res
 }
 
 MsTy resolver_type(Resolver *resolver, const MsTypeRef *type) {
-  if (type->kind == MS_TYPE_FN) {
-    return resolver_function(resolver, type->params, type->result);
+  MsCheckProgram *program = resolver->program;
+  const MsTy resolved = type->kind == MS_TYPE_FN ? resolver_function(resolver, type->params, type->result)
+                                                  : named_type(resolver, type);
+  if (resolver->module < program->user_modules) {
+    ms_type_ref_record_list_push(&program->type_refs, (MsTypeRefRecord){.module = resolver->module, .node = type->id, .ty = resolved});
   }
-  return named_type(resolver, type);
+  return resolved;
 }

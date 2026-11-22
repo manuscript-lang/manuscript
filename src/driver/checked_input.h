@@ -40,6 +40,9 @@ void ms_checked_input_test_names(MsArena *arena, const MsCheckedInput *checked, 
 int ms_checked_input_report(const MsCheckedInput *checked);
 
 /* The same failure as the versioned `{format, diagnostics}` document on stdout, for `--json`. Returns the status 1. */
+/* The diagnostics as the entries of a `diagnostics` array, joined by `,\n` (empty for none). */
+MsSpan ms_checked_input_diagnostics_json(MsArena *arena, const MsCheckedInput *checked);
+
 int ms_checked_input_report_json(const MsCheckedInput *checked);
 
 void ms_checked_input_free(MsCheckedInput *checked);

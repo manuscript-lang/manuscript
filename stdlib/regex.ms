@@ -44,7 +44,7 @@ fn Regex.capture_named(text: String) Map[String, String]:
 	var at = 0
 
 	while at + 1 < pairs.length():
-		named.add(pairs[at], pairs[at + 1])
+		named.add(pairs[at].clone(), pairs[at + 1].clone())
 		at += 2
 
 	return named

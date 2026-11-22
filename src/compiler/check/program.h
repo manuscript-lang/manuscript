@@ -63,6 +63,25 @@ typedef struct MsModuleInfo {
 
 MS_LIST_DEFINE(MsModuleList, ms_module_list, MsModuleInfo)
 
+/* A local the checker declared, in declaration order: what `ms inspect` lists. */
+typedef struct MsLocalRecord {
+  uint32_t module;
+  MsName name;
+  MsTy ty;
+  MsPos pos;
+} MsLocalRecord;
+
+MS_LIST_DEFINE(MsLocalRecordList, ms_local_record_list, MsLocalRecord)
+
+/* A written type of a user module, as the resolver read it: the node id of the reference and its checked type. */
+typedef struct MsTypeRefRecord {
+  uint32_t module;
+  MsNode node;
+  MsTy ty;
+} MsTypeRefRecord;
+
+MS_LIST_DEFINE(MsTypeRefRecordList, ms_type_ref_record_list, MsTypeRefRecord)
+
 typedef enum MsCheckPhase { MS_CHECK_RESOLUTION, MS_CHECK_TYPE } MsCheckPhase;
 
 /* Where in the oracle's order a diagnostic is found: imports, then the declaration passes, then each body. The
@@ -97,6 +116,8 @@ typedef struct MsCheckProgram {
   MsTyList symbol_vars; /* the type variables of every symbol, by range */
   MsModuleList modules;
   MsCheckDiagList diagnostics;
+  MsLocalRecordList bindings; /* every local, parameter and loop or match variable the bodies declared */
+  MsTypeRefRecordList type_refs; /* every written type of the user's modules, as resolved */
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */

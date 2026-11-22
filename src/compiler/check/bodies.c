@@ -36,7 +36,8 @@ MsRef body_local_ref(const Body *body, const MsLocal *local) {
   return (MsRef){.kind = local->kind, .local = local->id, .decl = {body->module, local->site}};
 }
 
-MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site) {
+MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site, MsPos pos) {
+  ms_local_record_list_push(&body->program->bindings, (MsLocalRecord){.module = body->module, .name = name, .ty = ty, .pos = pos});
   MsLocal local = {.name = name, .ty = ty, .kind = kind, .is_var = is_var, .site = site};
   local.id = kind == MS_REF_LOCAL ? body->next_local++ : 0;
   ms_local_list_push(&body->locals, local);
@@ -84,7 +85,7 @@ static MsTy element_type(Body *body, MsTy iterable) {
 static void bind_pattern(Body *body, const MsPattern *pattern, MsTy ty, bool is_var) {
   body_set_type(body, pattern->id, ty);
   if (pattern->kind == MS_P_NAME) {
-    const MsLocal *local = body_declare(body, pattern->u.name, ty, MS_REF_LOCAL, is_var, pattern->id);
+    const MsLocal *local = body_declare(body, pattern->u.name, ty, MS_REF_LOCAL, is_var, pattern->id, pattern->pos);
     body_set_ref(body, pattern->id, body_local_ref(body, local));
     return;
   }
@@ -119,6 +120,9 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   }
   const MsTy value = body_expect(body, stmt->u.bind.value, declared, ms_strbuild_span(&context));
   ms_strbuild_free(&context);
+  if (stmt->u.bind.ty == NULL && body_is_none_type(body, value)) {
+    body_report_uninferred_none(body, stmt->u.bind.value->pos); /* a binding with no type has no target for none */
+  }
   const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);
   bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable);
 }
@@ -175,7 +179,7 @@ static void stmt_for(Body *body, const MsStmt *stmt) {
   const MsTy iterable = body_expr(body, stmt->u.each.iter, MS_TY_NONE);
   const MsTy element = element_type(body, iterable);
   const size_t mark = body_scope_mark(body);
-  const MsLocal *local = body_declare(body, stmt->u.each.name, element, MS_REF_LOCAL, false, stmt->id);
+  const MsLocal *local = body_declare(body, stmt->u.each.name, element, MS_REF_LOCAL, false, stmt->id, stmt->pos);
   body_set_ref(body, stmt->id, body_local_ref(body, local));
   body_set_type(body, stmt->id, element);
   body_block(body, stmt->u.each.body);
@@ -235,7 +239,7 @@ static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t fir
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
     const MsTy ty = index < count ? ms_ty_params(types, fn_ty)[index].ty : MS_TY_NONE;
-    MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id);
+    MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);
     local->id = first + index;
     body_set_type(body, param->id, ty);
     body_set_ref(body, param->id, body_local_ref(body, local));
@@ -293,7 +297,7 @@ static void method_decl(Body *body, const MsMethod *method) {
   body->self_ty = entry->receiver;
   body->result = ms_ty_result(&body->program->types, entry->ty);
   const MsName self = ms_names_intern(body->program->names, ms_span_of_text("self"));
-  (void)body_declare(body, self, entry->receiver, MS_REF_PARAM, method->mutating, method->id);
+  (void)body_declare(body, self, entry->receiver, MS_REF_PARAM, method->mutating, method->id, method->pos);
   declare_params(body, method->func.params, entry->ty, 1);
   callable(body, method->id, method->func.params, method->func.body);
   body->resolver.self = MS_TY_NONE;
@@ -332,7 +336,7 @@ static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
       (void)body_default(body, field->def, ty);
     }
     /* A default may use the fields before it, which it reads as the constructor's arguments. */
-    MsLocal *local = body_declare(body, field->name, ty, MS_REF_PARAM, false, field->id);
+    MsLocal *local = body_declare(body, field->name, ty, MS_REF_PARAM, false, field->id, field->pos);
     local->id = index;
   }
   body_scope_reset(body, scope);
@@ -366,7 +370,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     const size_t mark = body_scope_mark(body);
     if (body->fixture_ty != MS_TY_NONE && !decl->u.test.bench) {
       const MsName fixture = ms_names_intern(body->program->names, ms_span_of_text("fixture"));
-      (void)body_declare(body, fixture, body->fixture_ty, MS_REF_PARAM, true, decl->id);
+      (void)body_declare(body, fixture, body->fixture_ty, MS_REF_PARAM, true, decl->id, decl->pos);
     }
     body_block(body, decl->u.test.body);
     body_scope_reset(body, mark);

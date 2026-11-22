@@ -94,7 +94,7 @@ type Gen:
 	serial: Int
 
 // Adds one statement.
-fn var Gen.emit(line: String) Void:
+fn var Gen.emit(move line: String) Void:
 	self.lines.append(line)
 
 fn var Gen.fresh(prefix: String) String:

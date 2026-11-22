@@ -1,5 +1,6 @@
 /* compiler/own/closers.c: fills the `closers` fact table (see closers.h). */
 #include "compiler/own/closers.h"
+#include "compiler/own/bind.h"
 #include "compiler/own/taken.h"
 
 #include "base/sort.h"
@@ -15,6 +16,7 @@ typedef struct Closers {
   size_t first;        /* the first closer of the callable being walked */
   uint32_t lambdas;    /* lambdas open around the node being visited */
   MsNode receiver;     /* the receiver name of the call being visited */
+  MsBindingList own;   /* parameters of the lambdas visited: used in their body they are not captures */
 } Closers;
 
 /* The `close()` method `ty` implements, or NULL. */
@@ -235,6 +237,21 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
   if (expr->kind == MS_E_LAMBDA) {
     pass->lambdas++;
+    for (size_t index = 0; index < expr->u.lambda.params.len; index++) {
+      ms_binding_list_push(&pass->own, expr->u.lambda.params.ptr[index]->id);
+    }
+    /* A parameter the lambda's function type takes by `move` is owned by its body, as a function's is. */
+    const MsTy fn_ty = ms_facts_type(pass->facts, expr->id);
+    const MsTyTable *types = &pass->program->types;
+    for (uint32_t index = 0; fn_ty != MS_TY_NONE && ms_ty_kind(types, fn_ty) == MS_TY_FUNCTION &&
+                             index < expr->u.lambda.params.len && index < ms_ty_param_count(types, fn_ty);
+         index++) {
+      const MsNode node = expr->u.lambda.params.ptr[index]->id;
+      const MsRef *ref = ms_facts_ref(pass->facts, node);
+      if ((ms_ty_params(types, fn_ty)[index].flags & MS_PARAM_MOVE) != 0 && ref != NULL && ref->kind == MS_REF_PARAM) {
+        add_closer(pass, node, MS_REF_PARAM, ref->local, ms_facts_type(pass->facts, node));
+      }
+    }
     return;
   }
   if (expr->kind == MS_E_CALL) {
@@ -261,6 +278,13 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
     return;
   }
+  bool own_param = false;
+  for (size_t index = 0; index < pass->own.len; index++) {
+    own_param = own_param || pass->own.ptr[index] == ref->decl.node;
+  }
+  if (pass->lambdas != 0 && own_param) {
+    return; /* a lambda's own parameter, not a capture: judged by its own closer */
+  }
   if (pass->lambdas != 0) {
     flag(pass, ref, MS_CLOSER_PARTIAL);
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
@@ -278,6 +302,7 @@ static void leave_expr(void *ctx, const MsExpr *expr) {
 static void callable(Closers *pass, MsNode node, const MsMethod *method, MsParams params, MsStmts body) {
   pass->first = pass->facts->closers.len;
   pass->lambdas = 0;
+  pass->own.len = 0;
   if (method != NULL) {
     add_receiver(pass, method);
   }
@@ -298,6 +323,9 @@ void ms_own_closers(MsCheckProgram *program) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
         callable(&pass, decl->id, NULL, decl->u.fn.params, decl->u.fn.body);
+      }
+      if (decl->kind == MS_D_TEST) {
+        callable(&pass, decl->id, NULL, (MsParams){0}, decl->u.test.body);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];

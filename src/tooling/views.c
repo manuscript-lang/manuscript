@@ -498,7 +498,7 @@ static bool flow_view(MsArena *arena, const MsFactModel *model, MsSpan view, MsS
 
 /* ---- ownership ---- */
 
-static const char *passing_mode(const MsSlot *s) {
+const char *ms_passing_mode(const MsSlot *s) {
   if (s->var) {
     return "var";
   }
@@ -511,7 +511,7 @@ static const char *passing_mode(const MsSlot *s) {
   return "";
 }
 
-static const char *result_label(uint8_t ownership) {
+const char *ms_result_label(uint8_t ownership) {
   switch ((MsResultOwnership)ownership) {
   case MS_RESULT_OWNED: return "owned";
   case MS_RESULT_BORROW: return "borrow";
@@ -549,12 +549,12 @@ static MsViewNode *ownership_node(MsArena *arena, const MsFactModel *model, cons
   }
   for (size_t i = 0; i < f->slots.len; i++) {
     const MsSlot *s = &f->slots.ptr[i];
-    const char *mode = s->var ? "var (exclusive borrow)" : passing_mode(s);
+    const char *mode = s->var ? "var (exclusive borrow)" : ms_passing_mode(s);
     kid(arena, node, leaf(arena, mode[0] == '\0' ? ms_message_format(arena, "%S: %S", s->name, s->ty)
                                                     : ms_message_format(arena, "%S: %S  %s", s->name, s->ty, mode)));
   }
   if (f->has_result) {
-    kid(arena, node, leaf(arena, ms_message_format(arena, "returns %S  %s", f->result.ty, result_label(f->result_ownership))));
+    kid(arena, node, leaf(arena, ms_message_format(arena, "returns %S  %s", f->result.ty, ms_result_label(f->result_ownership))));
   }
   if (f->receiver.len > 0) {
     kid(arena, node, leaf(arena, is(f->receiver, "var") ? text("self  var (exclusive borrow)")
@@ -1375,7 +1375,7 @@ static void ownership_flow(MsArena *arena, const MsFactModel *model, MsSpan enti
       }
       for (size_t s = 0; s < f->slots.len; s++) {
         const MsSlot *slot = &f->slots.ptr[s];
-        const char *mode = passing_mode(slot);
+        const char *mode = ms_passing_mode(slot);
         const MsSpan tid = flow_type_node(arena, out, &declared, slot->ty);
         MsSpan label = mode[0] == '\0' ? slot->name : ms_message_format(arena, "%S %s", slot->name, mode);
         ms_strbuild_append(out, ms_message_format(arena, "    %S -->|\"%S\"| %S\n", tid, label, fid));
@@ -1383,7 +1383,7 @@ static void ownership_flow(MsArena *arena, const MsFactModel *model, MsSpan enti
       }
       if (f->has_result) {
         const MsSpan tid = flow_type_node(arena, out, &declared, f->result.ty);
-        ms_strbuild_append(out, ms_message_format(arena, "    %S -->|\"%s\"| %S\n", fid, result_label(f->result_ownership), tid));
+        ms_strbuild_append(out, ms_message_format(arena, "    %S -->|\"%s\"| %S\n", fid, ms_result_label(f->result_ownership), tid));
         ms_spans_push(arena, &styles, f->result_ownership == MS_RESULT_BORROW ? text("stroke:#37b") : text("stroke:#2a2,stroke-width:3px"));
       }
       if (level < depth) {

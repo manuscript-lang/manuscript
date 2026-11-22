@@ -244,7 +244,8 @@ export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U
 	stripes := limit.min(items.length())
 	var running: List[Promise[List[U]]] = []
 	for stripe in 0..stripes:
-		running.append(promise(fn: stripe_results(items, stripe, stripes, work)))
+		mine := items.clone()
+		running.append(promise(fn: stripe_results(mine, stripe, stripes, work)))
 
 	var parts = wait_all(running)?
 	var results: List[U] = []

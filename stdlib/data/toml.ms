@@ -104,12 +104,12 @@ fn contains_key(reader: Reader, id: Int, key: String) Bool:
 	return reader.entries[id].contains(key)
 
 // Adds an entry to the table's map in place.
-fn put(var reader: Reader, id: Int, key: String, node: Node) Void:
+fn put(var reader: Reader, id: Int, move key: String, move node: Node) Void:
 	reader.entries[id].add(key, node)
 
 fn put_array(var reader: Reader, id: Int, key: String, first: Int) Void:
 	reader.arrays.append([first])
-	put(reader, id, key, Node.TableArray(reader.arrays.length() - 1))
+	put(reader, id, key.clone(), Node.TableArray(reader.arrays.length() - 1))
 
 // Byte values the parser tests.
 TAB := 9
@@ -182,7 +182,7 @@ fn invalid(reader: Reader, reason: String) Error:
 
 // The text between two byte offsets of the document.
 fn slice_text(reader: Reader, start: Int, end: Int) String:
-	return reader.data.slice(start, end).get().decode_utf8().get_or("")
+	return reader.data.slice(start, end).get().decode_utf8().get_or("").clone()
 
 fn space(var reader: Reader, multiline: Bool) Void:
 	var pos = cursor(reader)
@@ -424,7 +424,7 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 	allocate(reader)?
 
 	created := new_table(reader, explicit: false, dotted)
-	put(reader, parent, key, Node.TableNode(created))
+	put(reader, parent, key.clone(), Node.TableNode(created))
 	return ok(created)
 
 fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
@@ -444,7 +444,7 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	put_array(reader, parent, key, next)
 	return ok()
 
-fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Result[
+fn assign(var reader: Reader, parent: Int, keys: List[String], move value: Node) Result[
 	Void,
 	Error,
 ]:
@@ -463,12 +463,12 @@ fn assign(var reader: Reader, parent: Int, keys: List[String], value: Node) Resu
 	return assign_one(
 		reader: reader,
 		parent: current,
-		key: keys.last().get_or(""),
+		key: keys.last().clone().get_or(""),
 		value: value,
 	)
 
 // Adds a key that must not exist yet to an open table.
-fn assign_one(var reader: Reader, parent: Int, key: String, value: Node) Result[
+fn assign_one(var reader: Reader, parent: Int, key: String, move value: Node) Result[
 	Void,
 	Error,
 ]:
@@ -639,7 +639,7 @@ fn datetime_valid(text: String) Bool:
 fn scalar(reader: Reader, text: String, at: Int) Node!:
 	if text == "true": return ok(Node.Leaf(TomlValue.BoolValue(true)))
 	if text == "false": return ok(Node.Leaf(TomlValue.BoolValue(false)))
-	if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text)))
+	if datetime_valid(text): return ok(Node.Leaf(TomlValue.DateTimeValue(text.clone())))
 
 	var clean = text.clone()
 	var signed = false
@@ -699,8 +699,8 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 					invalid_at(reader, at, "invalid exponent")
 				)
 
-			fraction := parts.first().get_or("").split(".")
-			if fraction.length() > 2 or not decimal_part(fraction.first().get_or("")): return error(
+			fraction := parts.first().clone().get_or("").split(".")
+			if fraction.length() > 2 or not decimal_part(fraction.first().clone().get_or("")): return error(
 				invalid_at(reader, at, "invalid float")
 			)
 			if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
@@ -981,7 +981,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 				)?
 				index += 1
 
-			key := keys.last().get_or("")
+			key := keys.last().clone().get_or("")
 			if flags(reader, parent).sealed: return error(
 				invalid(reader, "inline table is closed")
 			)
@@ -1197,8 +1197,7 @@ export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
 	var writer = Writer(StringBuilder(), started: false)
 	emit_table(writer, [], root)
 
-	{out} := writer
-	text := out.build()
+	text := writer.out.build()
 	if not within(text.length(), max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
