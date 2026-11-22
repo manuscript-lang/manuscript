@@ -321,6 +321,16 @@ MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound) {
 void resolver_params(Resolver *resolver, MsParams params, MsTyParamList *out) {
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
+    for (uint32_t before = 0; resolver->report && before < index; before++) {
+      if (params.ptr[before]->name == param->name) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "duplicate parameter or field ");
+        ms_strbuild_append(&text, ms_names_span(resolver->program->names, param->name));
+        ms_strbuild_append_text(&text, "; each name may appear once, so rename one");
+        ms_check_report(resolver->program, resolver->module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+        break;
+      }
+    }
     const uint8_t flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) | (param->moving ? MS_PARAM_MOVE : 0));
     const MsTy ty = param->ty != NULL ? resolver_type(resolver, param->ty) : MS_TY_NONE;
     ms_ty_param_list_push(out, (MsTyParam){.name = param->name, .ty = ty, .flags = flags});

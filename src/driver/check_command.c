@@ -18,6 +18,7 @@
 #include "compiler/syntax/diag_json.h"
 #include "driver/check_fix.h"
 #include "driver/check_selection.h"
+#include "driver/checked_input.h"
 #include "driver/display.h"
 #include "driver/findings.h"
 #include "driver/snippet.h"
@@ -215,6 +216,9 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
     ms_check_graph(&program, &names, &graph);
     ms_own_check(&program);
     finding_add_check(&program, &names, &found);
+    if (found.len == 0 && !graph.library && graph.project_root.len == 0) {
+      ms_require_main(arena, &program, ms_entry_module(&program, &graph), true, &found);
+    }
   }
   const bool checked = found.len == 0;
   MsLintFindingList lint = {0};

@@ -401,6 +401,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     body->quiet = true; /* the initializer is reported by the constants pass */
     (void)body_expr(body, decl->u.konst.value, declared);
     body->quiet = false;
+    body_report_decimal_literals(body, decl->u.konst.value);
     break;
   }
   case MS_D_TYPE:

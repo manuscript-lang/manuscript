@@ -240,7 +240,7 @@ fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
 
 // Generates lists of `min_length` through `max_length` elements, shrinking toward fewer
 // and simpler elements.
-export fn lists[T](gen: Gen[T], min_length: Int = 0, max_length: Int = 20) Gen[List[T]]:
+export fn lists[T](move gen: Gen[T], min_length: Int = 0, max_length: Int = 20) Gen[List[T]]:
 	return Gen[List[T]](fn s: list_draw(gen, min_length, max_length, s.clone()))
 
 fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[List[T]]:

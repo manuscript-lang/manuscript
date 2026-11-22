@@ -524,6 +524,16 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const size_t mark = body_scope_mark(body);
   for (uint32_t index = 0; index < expr->u.lambda.params.len; index++) {
     const MsParam *param = expr->u.lambda.params.ptr[index];
+    for (uint32_t before = 0; !body->quiet && body->module < body->program->user_modules && before < index; before++) {
+      if (expr->u.lambda.params.ptr[before]->name == param->name) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "duplicate parameter or field ");
+        ms_strbuild_append(&text, ms_names_span(body->program->names, param->name));
+        ms_strbuild_append_text(&text, "; each name may appear once, so rename one");
+        ms_check_report(body->program, body->module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+        break;
+      }
+    }
     MsTy ty = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
     ty = ty == MS_TY_NONE && shaped && index < ms_ty_param_count(types, expected) ? ms_ty_params(types, expected)[index].ty : ty;
     if (ty == MS_TY_NONE && param->ty == NULL && !miscounted) {

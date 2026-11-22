@@ -593,7 +593,16 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
 /* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
  * the updated list back. False when the receiver is neither (nothing is emitted then). */
 static bool list_changeable(LowerFn *fn, const MsExpr *place, MirValue slot) {
-  return slot != MIR_NONE || (place != NULL && fn_place_changeable(fn, place));
+  if (slot != MIR_NONE) {
+    return true;
+  }
+  /* An element of a list held in place changes where it lies (`call_changing`), not through a copy put back. */
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (place != NULL && ms_expr_index(place, &container, &key) && fn_is_list(fn, container) && lists_in_place(fn, container)) {
+    return false;
+  }
+  return place != NULL && fn_place_changeable(fn, place);
 }
 
 static bool list_take(LowerFn *fn, const MsExpr *place, MirValue slot, MirTy list_ty, MirValue *owned, MirValue *record) {
@@ -745,7 +754,10 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
 }
 
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
+  return fn_builtin_named(fn, fn_symbol_at(fn->cx, call->callee.decl), call->arg_count, args, ret);
+}
+
+MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const MirValue *args, MirTy ret) {
   const MsSymbol *symbol = &fn->cx->program->symbols.ptr[id];
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "msrt_");
@@ -755,17 +767,17 @@ MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, 
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   MirValue expanded;
   /* The runtime cannot read a record of the program's own type, so building a map from entries is expanded here. */
-  if (sig == NULL && call->arg_count == 1 && ms_span_is_text(ms_names_span(fn->cx->program->names, symbol->name), "map_from_entries") &&
+  if (sig == NULL && arg_count == 1 && ms_span_is_text(ms_names_span(fn->cx->program->names, symbol->name), "map_from_entries") &&
       fn_map_from_entries(fn, args, ret, &expanded)) {
     return expanded;
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
-  if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
-      signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
+  if (sig != NULL && arg_count <= NS_MAX_PARAMS &&
+      signature_arguments(fn, sig, args, arg_count, ret, wanted, &count)) {
     return call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
   }
-  return fn_runtime_call(fn, name, args, call->arg_count, ret);
+  return fn_runtime_call(fn, name, args, arg_count, ret);
 }
 
 /* The runtime signature of `operation` on `owner`, and the runtime function's name. */

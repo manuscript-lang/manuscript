@@ -276,6 +276,8 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
 MirValue fn_shape(LowerFn *fn, MirTy ty);
 bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out);
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
+/* The runtime function a bodiless standard-library function `id` is, called with `arg_count` arguments. */
+MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const MirValue *args, MirTy ret);
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
