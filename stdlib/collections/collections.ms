@@ -169,7 +169,11 @@ fn List[T].all(predicate: fn(T) Bool) Bool:
 // writes can affect later calls. A callback that takes its parameter as `var` changes
 // the element in place, and the receiver must then be `var`; a reading callback works
 // on any list.
-fn List[T].for_each(operation: fn(var T) Void) Void: ...
+fn List[T].for_each(operation: fn(var T) Void) Void:
+	for index in 0..self.length():
+		var item = self[index]
+		operation(item)
+		self[index] = item
 
 // Returns a new list holding `transform` applied to each element in order; the
 // receiver is unchanged.
