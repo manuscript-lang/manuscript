@@ -5,7 +5,6 @@
 void ms_directives_free(MsDirectives *directives) {
   ms_span_list_free(&directives->declared);
   ms_span_list_free(&directives->allow);
-  ms_span_list_free(&directives->words);
 }
 
 static MsSpan trim(MsSpan text) {
@@ -34,8 +33,6 @@ static void read_line(MsDirectives *directives, MsSpan line) {
   if (ms_span_starts_with(rest, ms_span_of_text("allow_effect "))) {
     ms_span_list_push(&directives->allow, trim(after(rest, "allow_effect ")));
     directives->has_allow = true;
-  } else if (ms_span_starts_with(rest, ms_span_of_text("words "))) {
-    ms_span_list_push(&directives->words, trim(after(rest, "words ")));
   } else if (ms_span_starts_with(rest, ms_span_of_text("effect "))) {
     ms_span_list_push(&directives->declared, trim(after(rest, "effect ")));
   }
