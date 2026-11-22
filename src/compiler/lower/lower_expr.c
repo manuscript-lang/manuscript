@@ -228,6 +228,17 @@ static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
   return result;
 }
 
+/* `left == right`, `left < right` and the rest on two Strings: the runtime compares their bytes. */
+static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue right) {
+  const MirValue operands[2] = {left, right};
+  if (cc == MCC_EQ || cc == MCC_NE) {
+    const MirValue same = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_eq")), operands, 2, MIR_BOOL);
+    return cc == MCC_EQ || same == MIR_NONE ? same : mir_b_icmp(&fn->b, MCC_EQ, same, mir_b_bconst(&fn->b, false));
+  }
+  const MirValue order = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_compare")), operands, 2, MIR_INT);
+  return order == MIR_NONE ? order : mir_b_icmp(&fn->b, cc, order, mir_b_iconst(&fn->b, 0));
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
     return lower_logical(fn, expr);
@@ -245,6 +256,9 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     const MirValue operands[2] = {left, right};
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), operands, 2, MIR_STR);
+  }
+  if (ops.compare && mir_b_ty(&fn->b, left) == MIR_STR) {
+    return string_compare(fn, ops.cc, left, right);
   }
   MirValue object;
   if (fn_object_binary(fn, (MsBinaryOp)expr->op, left, right, &object)) {
