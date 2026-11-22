@@ -297,8 +297,11 @@ MsTy resolver_function(Resolver *resolver, MsParams params, const MsTypeRef *res
 }
 
 MsTy resolver_type(Resolver *resolver, const MsTypeRef *type) {
-  if (type->kind == MS_TYPE_FN) {
-    return resolver_function(resolver, type->params, type->result);
+  MsCheckProgram *program = resolver->program;
+  const MsTy resolved = type->kind == MS_TYPE_FN ? resolver_function(resolver, type->params, type->result)
+                                                  : named_type(resolver, type);
+  if (resolver->module < program->user_modules) {
+    ms_type_ref_record_list_push(&program->type_refs, (MsTypeRefRecord){.module = resolver->module, .node = type->id, .ty = resolved});
   }
-  return named_type(resolver, type);
+  return resolved;
 }

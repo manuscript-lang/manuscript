@@ -27,6 +27,7 @@ void ms_check_program_free(MsCheckProgram *program) {
   ms_ty_list_free(&program->symbol_vars);
   ms_check_diag_list_free(&program->diagnostics);
   ms_local_record_list_free(&program->bindings);
+  ms_type_ref_record_list_free(&program->type_refs);
   ms_methods_free(&program->methods);
   ms_property_memo_free(&program->properties);
   ms_defs_free(&program->defs);
