@@ -377,12 +377,10 @@ bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsT
     bound[index] = actual;
     return true;
   }
-  if (pattern == actual) {
-    return true;
-  }
   if (!ms_ty_has_variable(types, pattern)) {
-    return false;
+    return pattern == actual;
   }
+  /* A pattern that is its own actual (a recursive call) still binds its variables, each to itself. */
   const MsTyRow *want = ms_ty_row(types, pattern);
   const MsTyRow *have = ms_ty_row(types, actual);
   if (want->id != have->id || want->kind != have->kind || want->arg_count != have->arg_count ||
