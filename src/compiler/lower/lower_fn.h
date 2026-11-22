@@ -137,6 +137,9 @@ MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
 bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
+bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record);
+bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field);
+bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value
@@ -315,8 +318,8 @@ typedef struct VarSlot {
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
-MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
-bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier);
+bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref);

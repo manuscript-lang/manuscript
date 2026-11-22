@@ -132,7 +132,8 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     }
     const MsExpr *written = expr->u.call.args.ptr[index].value;
     if (mir_param_is_var(data->owned, index)) {
-      args[index + 1] = fn_var_slot(fn, written, &slots[nslots++]);
+      args[index + 1] = fn_var_slot(fn, written, &slots[nslots], slots, nslots);
+      nslots++;
     } else {
       args[index + 1] = fn_expr(fn, written, mir_owns(data->owned, index) ? LW_MOVE : LW_BORROW);
       const MirTyData *param = mir_ty_data(fn->cx->module, param_ty);

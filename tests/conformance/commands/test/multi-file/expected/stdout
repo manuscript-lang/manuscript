@@ -1,0 +1,6 @@
+RUN a_test.ms::alpha
+PASS a_test.ms::alpha
+RUN sub/b_test.ms::beta
+FAIL sub/b_test.ms::beta: expected 3, got 2
+  at sub/b_test.ms:4:5
+2 tests, 1 failed
