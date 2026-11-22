@@ -612,8 +612,9 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
 }
 
 /* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
-static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, size_t count,
+static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, const Matched *matched,
                         size_t before, MsTy callee) {
+  const size_t count = matched->count;
   const MsSpan message = ms_string_span(&instance->message);
   const MsTyTable *types = &body->program->types;
   size_t found = 0;
@@ -625,7 +626,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
     return false;
   }
   for (size_t index = 0; index < count; index++) {
-    if (holds_invalid(types, arg_tys[index], 6)) {
+    if (matched->slot[index] >= 0 && holds_invalid(types, arg_tys[index], 6)) { /* an omitted argument has no type */
       return false;
     }
   }
@@ -662,7 +663,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
-      if (uninferable(body, &instance, arg_tys, matched->count, diagnostics_before, target->sig)) {
+      if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
       }
     }
