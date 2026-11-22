@@ -47,6 +47,11 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
   return lower_instance(cx, &with_receiver, bound, (uint32_t)count, NULL);
 }
 
+uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name) {
+  const MsMethodEntry *entry = resolve_operation(cx, receiver, name);
+  return entry != NULL && !entry->source->func.external ? method_function(cx, entry, receiver) : MIR_NONE;
+}
+
 static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsStrBuild *out) {
   ms_strbuild_append_text(out, "vtable ");
   lower_type_text(cx, subst, receiver, out);

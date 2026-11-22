@@ -97,6 +97,9 @@ uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, 
 
 /* The vtable that shows `receiver` as the interface `iface`, made on first use with every operation's method
  * instantiated; MIR_NONE after reporting when a method is missing. */
+/* The MIR function of the method with a body that operation `name` resolves to on the concrete `receiver`, or
+ * MIR_NONE when the receiver type has none (a builtin or derived operation). */
+uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name);
 uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface);
 
 /* The MIR file id of checker module `module`. */
