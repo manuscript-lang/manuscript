@@ -5,7 +5,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_builder.h"
 
-enum { ERROR_CASE = 1, MESSAGE_FIELD = 0 };
+enum { OK_CASE = 0, ERROR_CASE = 1, MESSAGE_FIELD = 0 };
 
 static MirValue text_value(Lower *cx, MirBuilder *b, const char *text) {
   const MirImm imm = {.tag = MI_STR, .a = mir_add_string(cx->module, ms_span_of_text(text))};
@@ -37,6 +37,24 @@ static void report(Lower *cx, MirBuilder *b, const MirAltDef *def, uint32_t alt,
   mir_b_ret(b, mir_b_iconst(b, 1));
 }
 
+/* The exit status a successful Result carries: its Int payload, or its optional Int's value (0 for none), else 0. */
+static MirValue success_status(Lower *cx, MirBuilder *b, const MirAltDef *def, uint32_t alt, MirValue result) {
+  const MirTy payload = def->cases[OK_CASE].nfields == 0 ? MIR_VOID : def->cases[OK_CASE].fields[0].ty;
+  const MirTyData *data = mir_ty_data(cx->module, payload);
+  const bool is_int = payload == MIR_INT;
+  if (!is_int && !(data->kind == MK_OPT && data->elem == MIR_INT)) {
+    return mir_b_iconst(b, 0);
+  }
+  const MirImm field = {.tag = MI_ALTFIELD, .a = alt, .b = OK_CASE, .c = 0};
+  const MirValue value = mir_b_emit(b, MOP_AltGet, &result, 1, field, payload);
+  if (is_int) {
+    return value;
+  }
+  const MirValue some = mir_b_emit(b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
+  const MirValue inner = mir_b_emit(b, MOP_OptGet, &value, 1, (MirImm){0}, MIR_INT);
+  return mir_b_select(b, some, inner, mir_b_iconst(b, 0));
+}
+
 uint32_t lower_entry_status(Lower *cx, uint32_t main_func) {
   const MirFunc *main = &cx->module->funcs.ptr[main_func];
   const MirTyData *ret = mir_ty_data(cx->module, main->ret);
@@ -58,9 +76,12 @@ uint32_t lower_entry_status(Lower *cx, uint32_t main_func) {
     mir_b_seal_block(&b, done);
     report(cx, &b, def, ret->id, result, fail);
     mir_b_switch_to(&b, done);
+    const MirValue status = success_status(cx, &b, def, ret->id, result);
     (void)mir_b_emit(&b, MOP_Drop, &result, 1, (MirImm){0}, MIR_NONE);
+    mir_b_ret(&b, status);
+  } else {
+    mir_b_ret(&b, mir_b_iconst(&b, 0));
   }
-  mir_b_ret(&b, mir_b_iconst(&b, 0));
   MirFunc built;
   if (!mir_b_into_func(&b, &built)) {
     (void)lower_fail(cx, "the entry function could not be built");
