@@ -74,7 +74,8 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
       }
     }
     const MsRef *target = ms_facts_ref(scan->fn->facts, root != NULL && root->kind == MS_E_NAME ? root->id : stmt->id);
-    mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : 0);
+    /* A target that is a bare name is kept in the statement's `name`, not as an expression. */
+    mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : (stmt->u.assign.member_target ? 0 : stmt->u.assign.name));
   }
 }
 

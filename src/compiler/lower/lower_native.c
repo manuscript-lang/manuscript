@@ -483,6 +483,11 @@ static bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
   return ms_ty_is(types, owner, MS_BUILTIN_List) && lists_in_place(fn, container);
 }
 
+/* `place?` where `place` can be changed: the method changes the optional's payload in place. */
+static bool is_try_place(LowerFn *fn, const MsExpr *place) {
+  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left);
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
@@ -501,6 +506,16 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
       wanted[0] = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
       return call_native(fn, name, wanted, count, ret, result_slot);
     }
+  }
+  if (is_try_place(fn, place)) {
+    VarSlot var;
+    const MirValue slot = fn_try_var_slot(fn, place, &var);
+    if (slot == MIR_NONE) {
+      return MIR_NONE;
+    }
+    wanted[0] = slot;
+    const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
+    return fn_var_slots_back(fn, &var, 1) ? result : MIR_NONE;
   }
   MirValue owned;
   MirValue record = MIR_NONE;
@@ -684,7 +699,7 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     if (slot != MIR_NONE && mutates_receiver(sig, ret)) {
       wanted[0] = slot;
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
-    } else if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+    } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));

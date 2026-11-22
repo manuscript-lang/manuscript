@@ -40,7 +40,15 @@ bool fn_number_bits(MsSpan text, uint64_t *out) {
 
 static MirValue lower_float(LowerFn *fn, MsSpan text, MirTy ty) {
   double value = 0;
-  if (ms_parse_float(text, &value) != MS_PARSE_FLOAT_OK) {
+  MsStrBuild digits = ms_strbuild_new(); /* `_` separators are not part of the number */
+  for (size_t at = 0; at < text.len; at++) {
+    if (text.ptr[at] != '_') {
+      ms_strbuild_append_byte(&digits, text.ptr[at]);
+    }
+  }
+  const bool fits = ms_parse_float(ms_strbuild_span(&digits), &value) == MS_PARSE_FLOAT_OK;
+  ms_strbuild_free(&digits);
+  if (!fits) {
     (void)fn_fail(fn, "a number literal is not a Float that fits");
     return MIR_NONE;
   }

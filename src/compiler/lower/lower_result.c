@@ -63,10 +63,6 @@ static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
   if (ret->kind != MK_OPT && fn->ret != MIR_VOID && !fn->decl_void) {
     return fn_fail(fn, "`?` on an Optional needs a function that returns an Optional or nothing") ? MIR_NONE : MIR_NONE;
   }
-  if (fn_place_owns(fn, expr->u.bin.left)) {
-    (void)fn_fail(fn, "`?` on a `var` optional (changing its payload in place) is not lowered yet");
-    return MIR_NONE;
-  }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
   const MirBlock some_block = mir_b_new_block(&fn->b);
