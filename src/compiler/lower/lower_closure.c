@@ -161,7 +161,7 @@ static uint32_t reserve_closure(LowerFn *fn, const MsExpr *expr, MirTy fn_ty, co
     params[index + 1] = (MirParam){data->args[index], (uint8_t)(mir_owns(data->owned, index) ? MM_MOVE : MM_BORROW)};
   }
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_printf(&text, "closure.%zu", cx->lambdas.len);
+  ms_strbuild_printf(&text, "closure.%zu", (size_t)cx->module->funcs.len);
   const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   MirFunc func;
@@ -326,6 +326,47 @@ bool lower_lambda_bodies(Lower *cx, bool *progressed) {
     }
   }
   return true;
+}
+
+/* ---- a named function as a value ---- */
+
+/* A module function used as a value: a closure with no captures whose body calls it. */
+MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty) {
+  Lower *cx = fn->cx;
+  const MirTyData *data = mir_ty_data(cx->module, fn_ty);
+  const MsSymbolId id = fn_symbol_at(cx, ref->decl);
+  if (data->kind != MK_FN || id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
+    (void)fn_fail(fn, "this function cannot be used as a value yet");
+    return MIR_NONE;
+  }
+  const LowerTarget target = lower_symbol_target(cx, id);
+  if (target.nvariables != 0) {
+    (void)fn_fail(fn, "a generic function as a value is not lowered yet");
+    return MIR_NONE;
+  }
+  const uint32_t callee = lower_instance(cx, &target, NULL, 0, &fn->subst);
+  if (callee == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const uint32_t slot = reserve_closure(fn, NULL, fn_ty, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  MirBuilder b;
+  mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  mir_b_params(&b, values, reserved.nparams);
+  const MirValue result = mir_b_call(&b, callee, values + 1, reserved.nparams - 1);
+  mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  MirFunc built;
+  if (!mir_b_into_func(&b, &built)) {
+    (void)fn_fail(fn, "a function value could not be built");
+    return MIR_NONE;
+  }
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+  const MirImm imm = {.tag = MI_FUNC, .a = slot};
+  return fn_emit(fn, MOP_ClosureNew, NULL, 0, imm, fn_ty);
 }
 
 /* ---- calling a function value ---- */
