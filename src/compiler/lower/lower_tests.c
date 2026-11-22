@@ -6,8 +6,6 @@
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_analysis.h"
 
-#include <string.h>
-
 typedef struct TestRun {
   Lower *cx;
   uint32_t plain;     /* the MIR function of run_plain_file */
@@ -17,10 +15,6 @@ typedef struct TestRun {
   uint32_t next_index;
 } TestRun;
 
-static bool has_suffix(MsSpan text, const char *suffix) {
-  return ms_span_ends_with(text, ms_span_of_text(suffix));
-}
-
 /* The symbol `name` of the bundled test runner module, or 0. */
 static MsSymbolId runner_symbol(const MsCheckProgram *program, const char *name) {
   MsName id = MS_NAME_EMPTY;
@@ -29,7 +23,7 @@ static MsSymbolId runner_symbol(const MsCheckProgram *program, const char *name)
   }
   for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
     const MsModuleInfo *info = &program->modules.ptr[index];
-    if (!has_suffix(ms_names_span(program->names, info->file), "internal/test_runner.ms")) {
+    if (!ms_span_ends_with(ms_names_span(program->names, info->file), ms_span_of_text("internal/test_runner.ms"))) {
       continue;
     }
     const MsSymbolId *found = ms_scope_get(&info->scope, id);

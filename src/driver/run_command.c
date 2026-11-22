@@ -11,7 +11,7 @@
 #include "base/path.h"
 #include "base/process.h"
 #include "compiler/syntax/diag_json.h"
-#include "driver/compile_front.h"
+#include "driver/checked_input.h"
 #include "driver/invocation.h"
 #include "driver/pipeline.h"
 
@@ -37,18 +37,18 @@ static void begin_document(MsStrBuild *out, const RunContext *context, int statu
   ms_json_string(out, stderr_text);
 }
 
-static int print_compile_failure(const RunContext *context, const MsFront *front) {
+static int print_compile_failure(const RunContext *context, const MsCheckedInput *checked) {
   if (!context->invocation->json) {
-    return ms_front_report(front);
+    return ms_checked_input_report(checked);
   }
   MsStrBuild out = ms_strbuild_new();
   begin_document(&out, context, STATUS_FAILED, (MsSpan){0}, (MsSpan){0});
   ms_strbuild_append_text(&out, ",\n  \"reason\": \"compile_error\",\n  \"diagnostics\": [");
-  for (size_t i = 0; i < front->findings.len; i++) {
+  for (size_t i = 0; i < checked->findings.len; i++) {
     ms_strbuild_append_text(&out, i == 0 ? "\n" : ",\n");
-    ms_json_diag(&out, front->findings.ptr[i].file, front->findings.ptr[i].phase, &front->findings.ptr[i].diag);
+    ms_json_diag(&out, checked->findings.ptr[i].file, checked->findings.ptr[i].phase, &checked->findings.ptr[i].diag);
   }
-  ms_strbuild_append_text(&out, front->findings.len == 0 ? "]\n}\n" : "\n  ]\n}\n");
+  ms_strbuild_append_text(&out, checked->findings.len == 0 ? "]\n}\n" : "\n  ]\n}\n");
   print_span(stdout, ms_strbuild_span(&out));
   ms_strbuild_free(&out);
   return STATUS_FAILED;
@@ -114,12 +114,12 @@ static int execute(const RunContext *context, MsSpan executable, MsSpan director
   return status;
 }
 
-static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsFront *front) {
+static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsCheckedInput *checked) {
   RunContext context = {.arena = arena, .invocation = invocation};
-  const bool compiled = ms_front_compile(arena, front, invocation->filename, MS_FRONT_PROGRAM);
-  context.source_root = front->graph.source_root;
+  const bool compiled = ms_checked_input_load(arena, checked, invocation->filename, MS_INPUT_PROGRAM);
+  context.source_root = checked->graph.source_root;
   if (!compiled) {
-    return print_compile_failure(&context, front);
+    return print_compile_failure(&context, checked);
   }
   const MsString temp = ms_temp_dir();
   MsString directory = ms_string_empty();
@@ -129,7 +129,7 @@ static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsFront
   const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
   const MsSpan executable = ms_message_format(arena, "%S/program", folder, (MsSpan){0});
   MsSpan error = {0};
-  const MsLinkRequest request = {.program = &front->program, .entry = front->entry,
+  const MsLinkRequest request = {.program = &checked->program, .entry = checked->entry,
                                  .build_type = invocation->build_type, .output = executable,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
                                  .static_libc = invocation->static_libc};
@@ -148,9 +148,9 @@ int ms_run_command(int argc, char **argv) {
     print_span(stderr, ms_span_of_text("ms run: --watch is not implemented yet\n"));
     status = STATUS_NOT_IMPLEMENTED;
   } else if (status == 0) {
-    MsFront front = {0};
-    status = build_and_run(&arena, &invocation, &front);
-    ms_front_free(&front);
+    MsCheckedInput checked = {0};
+    status = build_and_run(&arena, &invocation, &checked);
+    ms_checked_input_free(&checked);
   }
   ms_invocation_free(&invocation);
   ms_arena_free(&arena);

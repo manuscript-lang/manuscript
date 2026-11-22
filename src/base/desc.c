@@ -17,6 +17,16 @@ const MsTypeDesc ms_desc_bool = BUILTIN_DESC(1, 1, MS_KIND_BOOL);
 const MsTypeDesc ms_desc_string = BUILTIN_DESC(sizeof(MsString), 8, MS_KIND_STRING);
 const MsTypeDesc ms_desc_bytes = BUILTIN_DESC(sizeof(MsBytes), 8, MS_KIND_BYTES);
 
+/* Generated code names the builtin descriptors msrt_desc_*; they are these same objects (one address each, so
+ * descriptors compare by pointer). */
+#define RUNTIME_ALIAS(name) extern const MsTypeDesc msrt_desc_##name __attribute__((alias("ms_desc_" #name)))
+RUNTIME_ALIAS(int);
+RUNTIME_ALIAS(float);
+RUNTIME_ALIAS(float32);
+RUNTIME_ALIAS(bool);
+RUNTIME_ALIAS(string);
+RUNTIME_ALIAS(bytes);
+
 static void (*installed_drop)(MsObj *) = NULL; /* set once at start-up, before threads */
 
 void ms_obj_install_drop(void (*drop)(MsObj *)) {
