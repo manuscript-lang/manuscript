@@ -206,7 +206,9 @@ bool asm_scan(AsmScan *scan, MsSpan text, MsStrBuild *why) {
     while (end < text.len && text.ptr[end] != '\n') {
       end++;
     }
-    scan_line(scan, ms_span_of(text.ptr + start, end - start));
+    /* A Windows toolchain writes CRLF: the directives and labels are matched without the carriage return. */
+    const size_t length = end > start && text.ptr[end - 1] == '\r' ? end - start - 1 : end - start;
+    scan_line(scan, ms_span_of(text.ptr + start, length));
     start = end + 1;
   }
   for (uint32_t index = 0; index < scan->order.len; index++) {

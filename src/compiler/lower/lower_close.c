@@ -366,27 +366,44 @@ MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
   return mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
 }
 
-/* The slot of the `var` resource a local reference names, or MIR_NONE. */
-static MirValue var_slot_of(const LowerFn *fn, const MsRef *ref) {
-  if (fn->closing == NULL || ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars ||
-      !fn->closing_var[ref->local]) {
-    return MIR_NONE;
+uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name) {
+  if (fn->closing == NULL || ref == NULL) {
+    return UINT32_MAX;
   }
-  return fn->closing[ref->local];
+  if (ref->kind == MS_REF_PARAM && fn->lambda != NULL) {
+    /* A lambda's own parameters share indices with the captured ones: only a captured name is one of these. */
+    const MsParams *own = (const MsParams *)&fn->lambda->expr->u.lambda.params;
+    if (ref->local < own->len && own->ptr[ref->local]->name == name) {
+      return UINT32_MAX;
+    }
+  }
+  uint32_t at = UINT32_MAX;
+  if (ref->kind == MS_REF_LOCAL && ref->local < fn->nvars) {
+    at = ref->local;
+  } else if (ref->kind == MS_REF_PARAM && ref->local < LOWER_MAX_CLOSING_PARAMS) {
+    at = fn->nvars + ref->local; /* a `var` parameter a lambda changes stays in the caller's slot */
+  }
+  return at != UINT32_MAX && fn->closing_var[at] ? at : UINT32_MAX;
 }
 
-bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view) {
-  const MirValue slot = var_slot_of(fn, ref);
+/* The slot of the `var` resource a local reference names, or MIR_NONE. */
+static MirValue var_slot_of(const LowerFn *fn, const MsRef *ref, MsName name) {
+  const uint32_t at = fn_closing_at(fn, ref, name);
+  return at == UINT32_MAX ? MIR_NONE : fn->closing[at];
+}
+
+bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view) {
+  const MirValue slot = var_slot_of(fn, ref, name);
   if (slot == MIR_NONE) {
     return false;
   }
-  const MirTy ty = fn->closing_types[ref->local];
+  const MirTy ty = fn->closing_types[fn_closing_at(fn, ref, name)];
   *view = mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
   return true;
 }
 
-bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done) {
-  const MirValue slot = var_slot_of(fn, ref);
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done) {
+  const MirValue slot = var_slot_of(fn, ref, name);
   *done = slot != MIR_NONE;
   if (slot == MIR_NONE) {
     return true;
@@ -396,7 +413,7 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done
   if (owns) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
-  const uint8_t kind = fn->shared != NULL ? fn->shared[ref->local] : 0;
+  const uint8_t kind = fn->shared != NULL && ref->kind == MS_REF_LOCAL ? fn->shared[ref->local] : (ref->kind == MS_REF_PARAM ? LOWER_SHARED_BORROWED : 0);
   if (kind == LOWER_SHARED_BORROWED && owns) {
     /* The slot belongs to the function that made the closure: what it holds is dropped here. */
     const MirValue old = mir_b_emit(&fn->b, MOP_Take, &slot, 1, imm_ty(ty), ty);

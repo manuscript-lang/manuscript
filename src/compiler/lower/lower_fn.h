@@ -53,6 +53,9 @@ typedef struct LowerFn {
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
+  MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
+  MirTy default_record_ty;
+  uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
@@ -142,11 +145,13 @@ void lower_close_check(MirBuilder *b, MirValue result);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 /* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
 void fn_init_closing(LowerFn *fn);
+/* The index in the closing tables of the `var` variable (local or parameter) `ref` names that lives in a slot, or UINT32_MAX. */
+uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
-bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view);
+bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view);
 /* `name = value` where `name` is a `var` resource: the value it holds is closed, then `value` takes its place. */
-bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done);
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
@@ -229,6 +234,8 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 void fn_find_shared(LowerFn *fn, MsStmts body);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
+/* The position of the interface operation the member `callee` names (`index` when it is not a member). */
+uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
