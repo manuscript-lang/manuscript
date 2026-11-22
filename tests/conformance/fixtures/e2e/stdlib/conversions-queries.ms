@@ -520,12 +520,12 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	)?
 
 fn find_port(port: Int?) Int!:
-	value := port.ok_or()?
+	value := port.ok_or(Error("missing"))?
 	return ok(value)
 
 test "ok_or without a cause records the calling file and line":
 	absent: Int? := none
-	direct: Int! := absent.ok_or()
+	direct: Int! := absent.ok_or(Error("missing"))
 	(direct.err().message.contains("conversions-queries.ms:")) | expect_true?
 
 	message := find_port(none).err().message

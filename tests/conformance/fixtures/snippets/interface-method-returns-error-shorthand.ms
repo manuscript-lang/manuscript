@@ -10,7 +10,7 @@ type IntP:
     base: Int = 10
 
 fn IntP.parse(s: String) Int!:
-    return s.parse_int().ok_or()
+    return s.parse_int().ok_or(Error("missing"))
 
 fn run[T](p: Parser[T], s: String) T!:
     return p.parse(s)

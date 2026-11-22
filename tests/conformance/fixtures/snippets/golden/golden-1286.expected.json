@@ -38,7 +38,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1286.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import MissingValue from \"@std/errors.ms\" // keep\n   |        ^^^^^^^^^^^^\n<DIR>/golden-1286.ms:4:41: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 4 | fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or()\n   |                                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1286.ms:3:8: resolution: unknown standard module @std/errors.ms\n   |\n 3 | import MissingValue from \"@std/errors.ms\" // keep\n   |        ^^^^^^^^^^^^\n<DIR>/golden-1286.ms:4:41: resolution: unknown type MissingValue; declare it with 'type MissingValue:' / 'enum MissingValue:' / 'interface MissingValue:', declare it as a type parameter, or import it\n   |\n 4 | fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or(Error(\"missing\"))\n   |                                         ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
