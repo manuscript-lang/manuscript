@@ -19,8 +19,16 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bind_imports(program, index);
   }
+  /* The standard modules may import each other, so each pass runs over all of them before the next. */
+  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
+    ms_check_type_variables(program, index);
+  }
+  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
+    ms_check_signatures(program, index);
+  }
   for (uint32_t index = 0; index < program->user_modules; index++) {
-    ms_check_resolve_types(program, index);
+    ms_check_type_variables(program, index);
+    ms_check_signatures(program, index);
     ms_check_constants(program, index);
     ms_check_mutation(program, index, graph->modules[index].source);
   }

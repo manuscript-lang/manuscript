@@ -42,7 +42,14 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
   return true;
 }
 
+/* The modules whose types every module sees without an import. */
+static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms"};
+
 void ms_check_load_std(MsCheckProgram *program) {
+  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_MODULES); index++) {
+    uint32_t loaded = 0;
+    (void)load_std_module(program, ms_span_of_text(PRELUDE_MODULES[index]), &loaded);
+  }
   for (uint32_t module = 0; module < program->modules.len; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
     for (uint32_t index = 0; index < tree->nimports; index++) {
