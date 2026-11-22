@@ -139,7 +139,7 @@ export fn expect_none[T](actual: T?, site: String = caller_site()) Void!:
 	if value := actual: return error(failure(f"expected none, got {repr(value)}", site))
 
 // Fails on an error, showing it; otherwise returns the `ok` payload.
-export fn expect_ok[T, E](actual: T!E, site: String = caller_site()) T!:
+export fn expect_ok[T, E](move actual: T!E, site: String = caller_site()) T!:
 	if actual.is_error(): return error(
 		failure(f"expected ok, got {repr(actual)}", site)
 	)
