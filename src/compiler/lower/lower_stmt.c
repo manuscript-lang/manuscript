@@ -399,6 +399,7 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   } else {
     return fn_fail(fn, "an assignment does not name a local");
   }
+  fn->nmoved_names = 0;
   const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;
@@ -406,7 +407,13 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (var_owns(fn, var)) {
     const MirValue old = mir_b_use_var(&fn->b, var);
     disown(fn, value);
-    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    bool handed_on = false; /* `x = f(x)` moved the old value into the new one */
+    for (uint32_t at = 0; at < fn->nmoved_names; at++) {
+      handed_on |= fn->moved_names[at] == old;
+    }
+    if (!handed_on) {
+      (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    }
   }
   /* A compound assignment's value already reads the target (`a += b` is `a = a + b`). */
   mir_b_def_var(&fn->b, var, value);

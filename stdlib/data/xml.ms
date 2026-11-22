@@ -268,7 +268,7 @@ fn var Reader.declaration_attribute() XmlAttribute!:
 	self.expect("=")?
 	self.skip_space()
 
-	quote := self.peek()
+	quote := self.peek().clone()
 	if quote != "\"" and quote != "'": return error(
 		self.invalid("expected a quoted value")
 	)
@@ -343,7 +343,7 @@ fn var Reader.declaration() Void!:
 
 // Skips a quoted literal; its contents never delimit markup.
 fn var Reader.quoted(public_id: Bool = false) Void!:
-	quote := self.peek()
+	quote := self.peek().clone()
 	if quote != "\"" and quote != "'": return error(
 		self.invalid("expected a quoted literal")
 	)
@@ -514,7 +514,7 @@ fn var Reader.element(depth: Int) XmlNode!:
 		self.expect("=")?
 		self.skip_space()
 
-		quote := self.peek()
+		quote := self.peek().clone()
 		if quote != "\"" and quote != "'": return error(
 			self.invalid("expected a quoted attribute value")
 		)

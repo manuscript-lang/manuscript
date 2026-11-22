@@ -174,7 +174,7 @@ fn var SortedMap[K, V].clear() Void:
 	self.size = 0
 
 // Returns the entry with the smallest key, or `none` when empty.
-fn SortedMap[K, V].first() SortedEntry[K, V]?:
+fn SortedMap[K, V].first() move SortedEntry[K, V]?:
 	if self.size == 0: return none
 	return SortedEntry(
 		self.key_chunks[0].get(0).clone(),
@@ -182,7 +182,7 @@ fn SortedMap[K, V].first() SortedEntry[K, V]?:
 	)
 
 // Returns the entry with the largest key, or `none` when empty.
-fn SortedMap[K, V].last() SortedEntry[K, V]?:
+fn SortedMap[K, V].last() move SortedEntry[K, V]?:
 	if self.size == 0: return none
 
 	c := self.key_chunks.length() - 1

@@ -50,7 +50,7 @@ fn var Lines.take(stop: Int, terminated: Bool) String!:
 	cr := if stop > self.start: self.data.get_or(stop - 1, 0) == 13 else: self.pending_cr
 	trimmed := if terminated and cr: size - 1 else: size
 	self.check(trimmed)?
-	self.pending.append(self.data.slice(self.start, stop)?)
+	self.pending.append(self.data.slice(self.start, stop)?.clone())
 
 	all := join(self.pending)
 	self.pending = []
@@ -90,7 +90,7 @@ fn var Lines.next() move String?!:
 
 		if more := chunk:
 			if rest > 0:
-				self.pending.append(self.data.slice(self.start, self.data.length())?)
+				self.pending.append(self.data.slice(self.start, self.data.length())?.clone())
 				self.pending_size += rest
 				self.pending_cr = cr
 

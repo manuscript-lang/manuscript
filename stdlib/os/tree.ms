@@ -118,7 +118,7 @@ fn HostTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 	self.confine(full)?
 
 	entries := list(full, max_entries)?
-	return ok(entries.sorted(by_name))
+	return ok(entries.sorted(by_name).clone())
 
 // Returns a tree over the directory `root` of the host filesystem.
 export fn host_tree(root: String) HostTree:
@@ -217,8 +217,8 @@ fn var MemoryTree.remove(path: String, recursive: Bool = false) Void!:
 	)
 
 	prefix := f"{inside}/"
-	below_files := self.files.keys().filter(fn k: k.starts_with(prefix))
-	below_dirs := self.directories.values().filter(fn k: k.starts_with(prefix))
+	below_files := self.files.keys().filter(fn k: k.starts_with(prefix)).clone()
+	below_dirs := self.directories.values().filter(fn k: k.starts_with(prefix)).clone()
 	if not recursive and (below_files.length() + below_dirs.length()) > 0: return error(
 		Error("filesystem: directory not empty", kind: "ENOTEMPTY")
 	)

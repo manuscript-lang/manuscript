@@ -126,9 +126,9 @@ fn var Decoder.hold(segment: Bytes) Void!:
 
 fn var Decoder.apply(line: String) Void:
 	if line.starts_with("data:"):
-		self.data.append(value_after(line, 5, line.starts_with("data: ")))
+		self.data.append(value_after(line, 5, line.starts_with("data: ")).clone())
 	else if line.starts_with("event:"):
-		self.event_type = value_after(line, 6, line.starts_with("event: "))
+		self.event_type = value_after(line, 6, line.starts_with("event: ")).clone()
 	else if line.starts_with("id:"):
 		self.identify(value_after(line, 3, line.starts_with("id: ")))
 	else if line.starts_with("retry:"):

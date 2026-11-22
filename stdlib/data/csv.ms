@@ -45,7 +45,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 // A reader over `text`, or the error of invalid options.
 fn open_reader(text: String, options: CsvOptions) Reader!:
 	valid := check_options(options)
-	if valid.is_error(): return error(valid.err())
+	if valid.is_error(): return error(valid.err().clone())
 
 	bytes := text.to_bytes()
 	total := bytes.length()
@@ -92,7 +92,7 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 			c,
 			cell: row.append(cell.clone())
 		)
-		if record.is_error(): return error(record.err())
+		if record.is_error(): return error(record.err().clone())
 
 		found := record.get()
 		if found.is_none(): break
@@ -127,7 +127,7 @@ export fn each_cell(
 
 	while true:
 		record := reader.read_record(rows, f)
-		if record.is_error(): return error(record.err())
+		if record.is_error(): return error(record.err().clone())
 
 		found := record.get()
 		if found.is_none(): break
@@ -412,7 +412,7 @@ fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 
 	self.pending = []
 	self.pending_size = rest
-	if rest > 0: self.pending.append(data.slice(end, data.length())?)
+	if rest > 0: self.pending.append(data.slice(end, data.length())?.clone())
 	self.check_size(self.longest)?
 	self.check_size(size)?
 
@@ -484,7 +484,7 @@ export fn stringify(
 	if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))
 
 	valid := check_options(options)
-	if valid.is_error(): return error(valid.err())
+	if valid.is_error(): return error(valid.err().clone())
 
 	var out = StringBuilder()
 	var used = 0

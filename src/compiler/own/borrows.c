@@ -14,6 +14,7 @@ typedef struct Borrow {
   uint32_t after; /* the offset its initializer ends at */
   bool mutable_;
   uint32_t root; /* the binding it borrows from */
+  const MsExpr *place; /* the part of it that is borrowed */
 } Borrow;
 
 typedef struct Change {
@@ -21,6 +22,7 @@ typedef struct Change {
   MsPos pos;     /* where the changed place starts */
   uint32_t end;  /* the offset it ends at */
   bool assign;
+  const MsExpr *place; /* the changed place; NULL when it is the whole binding */
 } Change;
 
 typedef struct Use {
@@ -247,6 +249,9 @@ static bool returns_part_of(Borrows *pass, const MsCall *fact, const MsFunc *fun
  * with a body lends only through a type variable its parameter and its result both mention; one the runtime provides
  * lends from any argument. */
 static bool lends_from(Borrows *pass, const MsCall *fact, uint32_t position, const MsExpr *arg, const MsExpr *call) {
+  if (!owns_memory(pass, arg)) {
+    return false; /* a scalar argument is copied; nothing of it can be lent */
+  }
   const MsRef *callee = &fact->callee;
   const MsFunc *func = find_func(pass->program, callee);
   if ((callee->kind != MS_REF_METHOD && callee->kind != MS_REF_FUNCTION) || func == NULL) {
@@ -258,7 +263,6 @@ static bool lends_from(Borrows *pass, const MsCall *fact, uint32_t position, con
   type_names(func->result, result, &result_len, NAME_CAP);
   MsName variables[NAME_CAP];
   const uint32_t variable_len = declared_variables(func, callee->kind == MS_REF_METHOD, variables);
-  (void)arg;
   (void)call;
   if (variable_len == 0) {
     return returns_part_of(pass, fact, func, position);
@@ -324,7 +328,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
-                                            .mutable_ = stmt->u.bind.is_mutable, .root = source.root});
+                                            .mutable_ = stmt->u.bind.is_mutable, .root = source.root, .place = source.place});
 }
 
 /* Records the place a store or `var` argument changes. */
@@ -346,7 +350,7 @@ static void note_change(Borrows *pass, const MsExpr *place, bool assign) {
   }
   uint32_t root = 0;
   if (at->kind == MS_E_NAME && local_of(pass->facts, at->id, &root)) {
-    change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset, .assign = assign});
+    change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset, .assign = assign, .place = place});
   }
 }
 
@@ -387,6 +391,9 @@ static const MsExpr *kept_call(const MsExpr *expr) {
 }
 
 static void note_keep(Borrows *pass, const MsExpr *kept) {
+  if (!owns_memory(pass, kept)) {
+    return; /* a scalar is copied out of the result, so nothing is kept */
+  }
   const MsExpr *call = kept_call(kept);
   Keep keep = {.kept = call};
   if (call != NULL && origin_of_arg(pass, call, &keep.source)) {
@@ -562,6 +569,33 @@ static void report(Borrows *pass, const Borrow *borrow, const Change *change) {
   ms_check_report(pass->program, pass->module, start, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* Whether two places of one binding can share storage: unless both are plain field chains, and neither is a prefix of
+ * the other (`self.data` and `self.at` are separate fields). */
+static bool places_overlap(const MsExpr *a, const MsExpr *b) {
+  const MsExpr *chain[2][16];
+  size_t length[2] = {0, 0};
+  const MsExpr *both[2] = {a, b};
+  for (int side = 0; side < 2; side++) {
+    const MsExpr *at = both[side];
+    for (; at != NULL && at->kind == MS_E_MEMBER; at = at->u.member.left) {
+      if (length[side] == 16) {
+        return true;
+      }
+      chain[side][length[side]++] = at;
+    }
+    if (at == NULL || at->kind != MS_E_NAME) {
+      return true;
+    }
+  }
+  const size_t shared = length[0] < length[1] ? length[0] : length[1];
+  for (size_t at = 0; at < shared; at++) { /* chains run from the leaf to the root, so compare from the root */
+    if (chain[0][length[0] - 1 - at]->u.member.name != chain[1][length[1] - 1 - at]->u.member.name) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* Each borrow reports its first later change of the source when the borrower is still used after it. */
 static void judge(Borrows *pass) {
   for (size_t at = 0; at < pass->keeps.len; at++) {
@@ -572,7 +606,8 @@ static void judge(Borrows *pass) {
     for (size_t index = 0; index < pass->changes.len; index++) {
       const Change *change = &pass->changes.ptr[index];
       const uint32_t offset = change->pos.offset;
-      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset)) {
+      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset) &&
+          (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {
         report(pass, borrow, change);
         break;
       }
@@ -590,7 +625,7 @@ void ms_own_borrows(MsCheckProgram *program) {
     return;
   }
   MsClassifier classes = ms_class_new(program);
-  for (uint32_t module = 0; module < program->user_modules; module++) {
+  for (uint32_t module = 0; module < (uint32_t)program->modules.len; module++) {
     Borrows pass = {.program = program, .classes = &classes, .module = module,
                     .facts = &program->modules.ptr[module].facts, .source = program->modules.ptr[module].source};
     const MsModule *tree = program->modules.ptr[module].tree;
