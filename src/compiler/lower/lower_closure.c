@@ -320,8 +320,24 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
   return mir_add_func(cx->module, &func);
 }
 
+/* Whether an escaping closure takes the capture itself: a local the maker owns, or a parameter it was given.
+ * A `var` lives in a slot the maker keeps, and a borrowed parameter is not the maker's to give away. */
+static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
+  if (capture->kind == MS_REF_LOCAL) {
+    if (capture->index >= fn->nvars || fn->vars[capture->index] == 0 || (fn->closing != NULL && fn->closing_var[capture->index])) {
+      return false;
+    }
+    const MirVarInfo *info = &fn->b.vars.ptr[fn->vars[capture->index] - 1];
+    return info->mode == MM_MOVE && info->single; /* a loop element or pattern binding is a view; a reassigned `var` re-owns */
+  }
+  return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&
+         (fn->closing == NULL || capture->index >= LOWER_MAX_CLOSING_PARAMS ||
+          !fn->closing_var[fn->nvars + capture->index]);
+}
+
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
-static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed) {
+static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed,
+                           bool escapes, bool *borrows) {
   for (uint32_t index = 0; index < count; index++) {
     if (changed[index]) {
       /* A variable the lambda changes stays in the maker's slot, which the closure borrows. */
@@ -345,7 +361,11 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
     }
     captures[index].ty = mir_b_ty(&fn->b, value);
     if (mir_needs_drop(fn->cx->module, captures[index].ty)) {
-      value = fn_implicit_clone(fn, value, false);
+      if (!escapes) {
+        *borrows = true; /* a closure that stays in its maker reads the value where it lives */
+      } else if (!fn_capture_moves(fn, &captures[index])) {
+        value = fn_implicit_clone(fn, value, false);
+      }
     }
     out[index] = value;
   }
@@ -366,10 +386,14 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   bool *changed = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)count + 1);
   (void)capture_changes(fn, expr, captures, count, changed);
   MirValue *values = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, (size_t)count + 1);
-  if (!capture_values(fn, captures, count, values, changed)) {
+  const bool escapes = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE;
+
+  bool borrows = false;
+  if (!capture_values(fn, captures, count, values, changed, escapes, &borrows)) {
     return MIR_NONE;
   }
   const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
+  fn->cx->module->funcs.ptr[func].scoped = borrows;
   LowerSubst subst = fn->subst;
   MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, subst.count * 2 + 1);
   for (size_t index = 0; index < subst.count; index++) {
@@ -519,6 +543,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(slot);
   *slot = built;
   cx->lambdas.ptr[index].lowered = true;

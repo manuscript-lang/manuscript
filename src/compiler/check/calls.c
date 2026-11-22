@@ -115,6 +115,7 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
   const MsLocal *local = body_find_local(body, callee->u.sym);
   if (local != NULL) {
     target->ref = body_local_ref(body, local);
+    body_set_ref(body, callee->id, target->ref); /* a call of a function value reads the local */
     target->sig = local->ty;
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }
