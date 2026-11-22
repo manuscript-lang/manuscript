@@ -57,6 +57,8 @@ void msrt_bytes_values(const MsList *b, MsList *out);
 void msrt_bytes_join(const MsList *parts, MsList *out);
 /* ms-sig: msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
 void msrt_bytes_from_values(const MsList *values, MsList *out);
+/* ms-sig: msrt_bytes_from_ints(values: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
+void msrt_bytes_from_ints(const MsList *values, MsList *out);
 /* ms-sig: msrt_bytes_append(b: *mut VecVal, value: i64) @domain=binary @leaf @method=BytesBuilder.append */
 void msrt_bytes_append(MsList *b, int64_t value);
 /* ms-sig: msrt_bytes_extend(b: *mut VecVal, values: *const VecVal) @domain=binary @leaf
