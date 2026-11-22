@@ -31,6 +31,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
+  const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
+  if (closer != NULL && fn->closing != NULL && !borrow && !stmt->u.bind.is_mutable && fn_closer_lowerable(closer) &&
+      (!mir_needs_drop(fn->cx->module, ty) || fn_fresh_owner(fn, value))) {
+    return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value);
+  }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
       return fn_fail(fn, "a local binding is outside the function's locals");

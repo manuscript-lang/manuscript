@@ -16,7 +16,14 @@ fn List[T].get(index: Int) T: ...
 
 // Returns an element, or `default` when the index is out of range; negative indexes are
 // relative to the end.
-fn List[T].get_or(index: Int, default: T?) T: ...
+fn List[T].get_or(index: Int, default: T?) T:
+	count := self.length()
+	position := index
+	if index < 0: position = count + index
+	if position >= 0 and position < count: return self.get(position)
+	match default:
+		value: return value
+		none: return self.get(index)
 
 // Returns the first element, or `none` when the list is empty.
 fn List[T].first() T?:

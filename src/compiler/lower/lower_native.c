@@ -7,10 +7,6 @@
 #include "compiler/lower/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
-static bool name_is(MsSpan name, const char *text) {
-  return ms_span_is_text(name, text);
-}
-
 /* `msrt_<receiver>_<operation>`: the receiver's type name lowercased. */
 static MsName runtime_name(LowerFn *fn, MsTy receiver, MsSpan operation) {
   const MsTyTable *types = &fn->cx->program->types;
@@ -269,6 +265,24 @@ static bool generic_receiver(const LowerFn *fn, const MsCall *call) {
   return ms_ty_kind(types, call->callee.owner) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(types, call->callee.owner))[0] == 0;
 }
 
+/* The standard form of a bodiless operation every value has (intrinsics.ms), read from its signature: an operation
+ * that returns the receiver's own type is the structural copy, one that returns String is the text of the value. */
+static bool standard_form(LowerFn *fn, const MirValue *args, uint32_t count, MirTy ret, MirValue *out) {
+  if (count != 1) {
+    return false;
+  }
+  const MirTy type = mir_b_ty(&fn->b, args[0]);
+  if (ret == type) {
+    *out = mir_needs_drop(fn->cx->module, type) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, type) : args[0];
+    return true;
+  }
+  if (ret == MIR_STR) {
+    *out = type == MIR_STR ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, MIR_STR) : fn_value_text(fn, args[0], type);
+    return true;
+  }
+  return false;
+}
+
 /* `to_string` and `clone` on a value whose type the instance knows: the type's own method when it has one,
  * else the standard form (text through the shape, a structural copy). */
 static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *call, const MirValue *args, MirTy ret) {
@@ -281,14 +295,10 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
     fn_own_result(fn, result);
     return result;
   }
-  const MirTy type = mir_b_ty(&fn->b, args[0]);
-  if (name_is(operation, "clone") && call->arg_count == 1) {
-    return mir_needs_drop(fn->cx->module, type) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, type) : args[0];
+  MirValue standard;
+  if (standard_form(fn, args, call->arg_count, ret, &standard)) {
+    return standard;
   }
-  if (name_is(operation, "to_string") && call->arg_count == 1) {
-    return type == MIR_STR ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, MIR_STR) : fn_value_text(fn, args[0], type);
-  }
-  (void)ret;
   (void)fn_fail(fn, "the operation `%.*s` on a value of a bound type is not lowered yet", (int)operation.len, (const char *)operation.ptr);
   return MIR_NONE;
 }
@@ -317,11 +327,10 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     (void)fn_fail(fn, "a standard operation is called through a receiver");
     return MIR_NONE;
   }
-  const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
-  if (name_is(operation, "to_string") && mir_b_ty(&fn->b, args[0]) == MIR_STR) {
-    const MirImm none = {0};
-    return fn_emit(fn, MOP_Clone, args, 1, none, MIR_STR);
-  }
+  /* The declaration names the operation: a written `xs[i] = v` is a call of `set`, not of a member `[]=`. */
+  const MsMethodEntry *declared = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  const MsSpan operation = declared != NULL ? ms_names_span(fn->cx->program->names, declared->source->func.name)
+                                            : ms_names_span(fn->cx->program->names, callee->u.member.name);
   if (generic_receiver(fn, call)) {
     return bound_native(fn, callee, call, args, ret);
   }

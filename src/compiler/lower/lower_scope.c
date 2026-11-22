@@ -108,3 +108,17 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
   fn_own_result(fn, result);
   return result;
 }
+
+bool fn_fresh_owner(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  if (insts->len == 0) {
+    return false;
+  }
+  const MirInst *last = &insts->ptr[insts->len - 1];
+  if (last->op == MOP_ScopeOwn) {
+    /* The scope took the result of the instruction before it. */
+    return last->nargs == 1 && last->args[0] == value;
+  }
+  MirMode mode = MM_BORROW;
+  return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_MOVE;
+}

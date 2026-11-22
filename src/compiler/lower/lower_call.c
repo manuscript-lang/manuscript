@@ -183,7 +183,7 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
 }
 
 /* The method-table entry of the method declared by `node` in `module`. */
-static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode node) {
+const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node) {
   for (size_t index = 0; index < cx->program->methods.len; index++) {
     const MsMethodEntry *entry = &cx->program->methods.ptr[index];
     if (entry->module == module && entry->source->id == node) {
@@ -208,7 +208,7 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   if (call->callee.kind != MS_REF_METHOD) {
     return false;
   }
-  const MsMethodEntry *entry = find_entry(cx, call->callee.decl.module, call->callee.decl.node);
+  const MsMethodEntry *entry = fn_method_entry(cx, call->callee.decl.module, call->callee.decl.node);
   if (entry == NULL || entry->source->func.external) {
     return false;
   }
@@ -237,7 +237,7 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
     return result;
   }
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
-  if (!ms_span_is_text(operation, "clone") || call->arg_count != 1) {
+  if (call->arg_count != 1 || ret != mir_b_ty(&fn->b, args[0])) {
     (void)fn_fail(fn, "the operation `%.*s` on a bound value is not lowered yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;
   }

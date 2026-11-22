@@ -132,6 +132,9 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
 /* `value.field`: a field of a record, read from the value in place. */
 static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+  if (ref != NULL && ref->kind == MS_REF_CASE) {
+    return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
+  }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
                   expr->pos.line, expr->pos.column);
@@ -281,6 +284,10 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
+  MirValue taken = MIR_NONE;
+  if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && fn_closing_move(fn, expr, value, &taken)) {
+    return taken;
+  }
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     return value;
