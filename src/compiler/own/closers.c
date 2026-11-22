@@ -299,6 +299,9 @@ void ms_own_closers(MsCheckProgram *program) {
       if (decl->kind == MS_D_FN) {
         callable(&pass, decl->id, NULL, decl->u.fn.params, decl->u.fn.body);
       }
+      if (decl->kind == MS_D_TEST) {
+        callable(&pass, decl->id, NULL, (MsParams){0}, decl->u.test.body);
+      }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         callable(&pass, method->id, method, method->func.params, method->func.body);
