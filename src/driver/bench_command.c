@@ -20,7 +20,7 @@
 #include "driver/test_options.h"
 #include "driver/watch.h"
 
-enum { STATUS_FAILED = 1, STATUS_NOT_IMPLEMENTED = 70, DEFAULT_BENCH_TIMEOUT_MS = 600000, NANOS_PER_MS = 1000000 };
+enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70, DEFAULT_BENCH_TIMEOUT_MS = 600000, NANOS_PER_MS = 1000000 };
 
 /* The counters a baseline compares: work done, not time, so a loaded machine does not flake. */
 static const char *const WORK_COUNTERS[] = {"mir_ops",   "allocations",  "allocated_bytes",   "list_copies",
@@ -507,7 +507,7 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
     for (size_t p = 0; p < document.count; p++) {
       document.cases[p] = (DocumentCase){.name = names.ptr[plan.selected[p % plan.count]], .status = "not_run"};
     }
-    const bool filtered = options.filter.len > 0 || options.names.len > 0;
+    const bool filtered = options.filter.len > 0 || options.names.len > 0 || options.matching.len > 0 || options.exclude.len > 0;
     if (plan.count == 0 && filtered) {
       test_print(stdout, ms_message_format(arena, "no benches match selection (%z benches available); use --list to find "
                                                   "full module::name identities\n", names.len));
@@ -552,6 +552,18 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   return status;
 }
 
+/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
+static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
+  TestFilters filters = {0};
+  MsSpan error = {0};
+  const bool valid = test_filters_compile(arena, options, &filters, &error);
+  test_filters_free(&filters);
+  if (!valid) {
+    test_print(stderr, ms_message_format(arena, "%S\n", error));
+  }
+  return valid;
+}
+
 int ms_bench_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -559,10 +571,8 @@ int ms_bench_command(int argc, char **argv) {
   MsTestOptions options;
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
-  if (status == 0 && (options.matching.len > 0 || options.exclude.len > 0)) {
-    test_print(stderr, ms_span_of_text("ms bench: --match and --exclude need a regular-expression engine, which the "
-                                       "driver does not have yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
+  if (status == 0 && !selection_valid(&arena, &options)) {
+    status = STATUS_USAGE;
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
     status = bench_input(&arena, &invocation);
