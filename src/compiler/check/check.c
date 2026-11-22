@@ -45,6 +45,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_names(program, index);
     ms_check_returns(program, index);
   }
+  ms_check_finite_types(program);
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
   }
