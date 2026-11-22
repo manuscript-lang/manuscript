@@ -165,7 +165,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   }
 }
 
-/* Whether the callee borrows its result: the checker's fact says every path returns a part of a parameter, and each
+/* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a parameter, and each
  * return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
 static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
   if (target->entry || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
@@ -376,7 +376,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   fn_init_closing(&fn);
   fn_find_shared(&fn, target->func->body);
   bind_params(&fn, target);
-  fn.result_borrowed = cx->module->funcs.ptr[instance.func].ret_borrowed;
+  fn.returns_borrow = cx->module->funcs.ptr[instance.func].ret_borrowed;
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;
