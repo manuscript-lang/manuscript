@@ -11,6 +11,7 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "driver/checked_input.h"
+#include "compiler/syntax/diag_json.h"
 #include "driver/invocation.h"
 #include "driver/pipeline.h"
 #include "driver/test_options.h"
@@ -23,7 +24,14 @@ typedef struct Plan {
   size_t count;
 } Plan;
 
+/* With `--json` the command's standard output is the document's `stdout` member, not the terminal. */
+static MsStrBuild *capture;
+
 static void print_text(FILE *stream, MsSpan text) {
+  if (stream == stdout && capture != NULL) {
+    ms_strbuild_append(capture, text);
+    return;
+  }
   (void)fwrite(text.ptr, 1, text.len, stream);
 }
 
@@ -97,9 +105,29 @@ static void print_outcome(MsArena *arena, MsSpan name, const TestOutcome *outcom
   }
 }
 
+/* One planned test as the `--json` document lists it. */
+typedef struct CaseRow {
+  MsSpan name, message;
+  const char *status;
+  int64_t nanos;
+} CaseRow;
+
 typedef struct Totals {
-  size_t failed, skipped, not_run, planned;
+  size_t failed, skipped, not_run, planned, passed;
+  CaseRow *rows; /* the first run of each selected test, in plan order */
+  size_t available;
+  int64_t nanos;
 } Totals;
+
+static const char *status_name(TestKind kind) {
+  switch (kind) {
+  case TEST_PASSED: return "passed";
+  case TEST_SKIPPED: return "skipped";
+  case TEST_NOT_RUN: return "not_run";
+  case TEST_FAILED: return "failed";
+  }
+  return "failed";
+}
 
 static void print_summary(MsArena *arena, const Totals *t, bool filtered) {
   if (t->planned == 0 && !filtered) {
@@ -123,7 +151,11 @@ static void print_summary(MsArena *arena, const Totals *t, bool filtered) {
 /* Prints each planned test in order with its outcome; `--fail-fast` stops at the first failure. */
 static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, size_t repeat, bool fail_fast,
                      TestEntryList *results) {
-  Totals totals = {.planned = plan->count * repeat};
+  Totals totals = {.planned = plan->count * repeat, .available = names->len};
+  totals.rows = MS_ARENA_NEW_ARRAY(arena, CaseRow, plan->count + 1);
+  for (size_t p = 0; p < plan->count; p++) {
+    totals.rows[p] = (CaseRow){.name = names->ptr[plan->selected[p]], .status = "not_run"};
+  }
   for (size_t round = 0; round < repeat; round++) {
     for (size_t p = 0; p < plan->count; p++) {
       const size_t index = plan->selected[p];
@@ -132,6 +164,12 @@ static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, 
       const TestOutcome missing = {.kind = TEST_FAILED, .message = ms_span_of_text("the test reported no result")};
       const TestOutcome *outcome = entry != NULL ? &entry->outcome : &missing;
       print_outcome(arena, names->ptr[index], outcome);
+      totals.passed += outcome->kind == TEST_PASSED;
+      totals.nanos += outcome->nanos;
+      if (round == 0) {
+        totals.rows[p] = (CaseRow){.name = names->ptr[index], .message = outcome->message,
+                                   .status = status_name(outcome->kind), .nanos = outcome->nanos};
+      }
       totals.failed += outcome->kind == TEST_FAILED;
       totals.skipped += outcome->kind == TEST_SKIPPED;
       totals.not_run += outcome->kind == TEST_NOT_RUN;
@@ -142,6 +180,84 @@ static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, 
     }
   }
   return totals;
+}
+
+/* The position `file:line:column` that ends a failure's text (`\n  at f.ms:30:5`), or false. */
+static bool failure_position(MsSpan message, MsSpan *file, int64_t *line, int64_t *column) {
+  size_t at = message.len;
+  int64_t numbers[2] = {0, 0};
+  for (int part = 1; part >= 0; part--) {
+    size_t end = at;
+    while (at > 0 && message.ptr[at - 1] >= '0' && message.ptr[at - 1] <= '9') {
+      at--;
+    }
+    if (at == end || at == 0 || message.ptr[at - 1] != ':') {
+      return false;
+    }
+    for (size_t i = at; i < end; i++) {
+      numbers[part] = numbers[part] * 10 + (message.ptr[i] - '0');
+    }
+    at--;
+  }
+  const size_t file_end = at;
+  size_t start = file_end;
+  while (start > 0 && message.ptr[start - 1] != ' ') {
+    start--;
+  }
+  if (start < 4 || start == file_end || !ms_span_starts_with(ms_span_of(message.ptr + start - 5, 5), ms_span_of_text("\n  at"))) {
+    return false;
+  }
+  *file = ms_span_of(message.ptr + start, file_end - start);
+  *line = numbers[0];
+  *column = numbers[1];
+  return true;
+}
+
+static void write_json_case(MsStrBuild *out, size_t index, const CaseRow *row) {
+  ms_strbuild_printf(out, "%s    {\n      \"index\": %zu,\n      \"duration_ns\": %lld,\n      \"name\": ", index == 0 ? "" : ",\n",
+                     index, (long long)row->nanos);
+  ms_json_string(out, row->name);
+  ms_strbuild_printf(out, ",\n      \"status\": \"%s\"", row->status);
+  if (row->message.len > 0) {
+    ms_strbuild_append_text(out, ",\n      \"failure\": ");
+    ms_json_string(out, row->message);
+    MsSpan file;
+    int64_t line, column;
+    if (failure_position(row->message, &file, &line, &column)) {
+      ms_strbuild_append_text(out, ",\n      \"position\": {\n        \"file\": ");
+      ms_json_string(out, file);
+      ms_strbuild_printf(out, ",\n        \"line\": %lld,\n        \"column\": %lld,\n        \"offset\": 0\n      }",
+                         (long long)line, (long long)column);
+    }
+  }
+  ms_strbuild_append_text(out, "\n    }");
+}
+
+/* The `--json` document of Rust's `Document::to_json`, for a run that finished. */
+static void write_json_report(const TestJob *job, const Plan *plan, const Totals *totals, size_t repeat, int status,
+                              MsStrBuild *std_out) {
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_printf(&out, "{\n  \"repeat\": %zu,\n  \"format\": 1,\n  \"source_root\": ", repeat);
+  ms_json_string(&out, job->source_root);
+  ms_strbuild_append_text(&out, ",\n  \"tests\": [");
+  if (plan->count > 0) {
+    ms_strbuild_append_byte(&out, '\n');
+  }
+  for (size_t p = 0; p < plan->count; p++) {
+    write_json_case(&out, p, &totals->rows[p]);
+  }
+  ms_strbuild_append_text(&out, plan->count > 0 ? "\n  ]" : "]");
+  const size_t not_run = totals->not_run > plan->count ? plan->count : totals->not_run;
+  ms_strbuild_printf(&out,
+                     ",\n  \"summary\": {\n    \"available\": %zu,\n    \"selected\": %zu,\n    \"passed\": %zu,\n    "
+                     "\"failed\": %zu,\n    \"skipped\": %zu,\n    \"not_run\": %zu,\n    \"duration_ns\": %lld\n  },\n  "
+                     "\"completed\": true,\n  \"exit_code\": %d,\n  \"stdout\": ",
+                     totals->available, plan->count, totals->passed, totals->failed, totals->skipped, not_run,
+                     (long long)totals->nanos, status);
+  ms_json_string(&out, ms_strbuild_span(std_out));
+  ms_strbuild_append_text(&out, ",\n  \"diagnostics\": []\n}\n");
+  print_text(stdout, ms_strbuild_span(&out));
+  ms_strbuild_free(&out);
 }
 
 static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
@@ -170,7 +286,14 @@ static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
   const Totals totals = report(arena, job->names, plan, options->repeat, options->fail_fast, &results);
   print_summary(arena, &totals, filtered);
   test_entry_list_free(&results);
-  return totals.failed > 0 ? STATUS_FAILED : 0;
+  const int status = totals.failed > 0 ? STATUS_FAILED : 0;
+  if (capture != NULL) {
+    MsStrBuild *std_out = capture;
+    capture = NULL;
+    write_json_report(job, plan, &totals, options->repeat, status, std_out);
+    capture = std_out;
+  }
+  return status;
 }
 
 /* Builds the test executable into `path`. */
@@ -190,6 +313,21 @@ static MsSpan working_directory(MsArena *arena, const MsCheckedInput *checked, M
   return ms_arena_copy(arena, directory);
 }
 
+/* The absolute directory of the project, or of the file for a lone file. */
+static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan input) {
+  const MsSpan directory = working_directory(arena, checked, input);
+  if (ms_path_is_absolute(directory)) {
+    return directory;
+  }
+  MsString current = ms_string_empty();
+  if (!ms_dir_current(&current)) {
+    return directory;
+  }
+  const MsSpan absolute = ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
+  ms_string_release(&current);
+  return absolute;
+}
+
 /* Checks `input`, builds its tests and runs the plan. */
 static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input) {
   MsCheckedInput checked = {0};
@@ -207,7 +345,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
   if (!select_tests(arena, &names, &options, &plan)) {
     status = STATUS_FAILED;
   } else if (options.list || plan.count == 0) {
-    TestJob job = {.arena = arena, .names = &names, .options = &options};
+    TestJob job = {.arena = arena, .names = &names, .options = &options, .source_root = source_root(arena, &checked, input)};
     status = run_plan(arena, &job, &plan);
   } else {
     const MsString temp = ms_temp_dir();
@@ -224,7 +362,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
       status = STATUS_FAILED;
     } else {
       TestJob job = {.arena = arena, .executable = executable, .working = working_directory(arena, &checked, input),
-                     .names = &names, .options = &options};
+                     .names = &names, .options = &options, .source_root = source_root(arena, &checked, input)};
       status = run_plan(arena, &job, &plan);
     }
     ms_path_remove_tree(folder);
@@ -267,17 +405,20 @@ int ms_test_command(int argc, char **argv) {
   int status = ms_invocation_parse(&arena, "test", argc, argv, &invocation);
   MsTestOptions options;
   ms_test_options_parse(&invocation.arguments, &options);
-  if (status == 0 && (invocation.watch || invocation.json)) {
-    print_text(stderr, ms_message_format(&arena, "ms test: %s is not implemented yet\n",
-                                         invocation.watch ? "--watch" : "--json"));
+  MsStrBuild captured = ms_strbuild_new();
+  if (status == 0 && invocation.watch) {
+    print_text(stderr, ms_span_of_text("ms test: --watch is not implemented yet\n"));
     status = STATUS_NOT_IMPLEMENTED;
   } else if (status == 0 && (options.matching.len > 0 || options.exclude.len > 0)) {
     print_text(stderr, ms_span_of_text("ms test: --match and --exclude need a regular-expression engine, which the "
                                        "driver does not have yet\n"));
     status = STATUS_NOT_IMPLEMENTED;
   } else if (status == 0) {
+    capture = invocation.json ? &captured : NULL;
     status = test_targets(&arena, &invocation);
+    capture = NULL;
   }
+  ms_strbuild_free(&captured);
   ms_test_options_free(&options);
   ms_invocation_free(&invocation);
   ms_arena_free(&arena);
