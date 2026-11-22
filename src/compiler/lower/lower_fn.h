@@ -71,6 +71,9 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
 /* A list literal (lower_list.c). */
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
+/* `if x := value:` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
+MirValue fn_iflet_test(LowerFn *fn, MirValue value);
+bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 
