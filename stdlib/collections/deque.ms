@@ -50,14 +50,14 @@ fn Deque[T].slot_of(offset: Int) Int:
 	return at
 
 // Adds a value after the last one.
-fn var Deque[T].push_back(value: T) Void:
+fn var Deque[T].push_back(move value: T) Void:
 	if self.size == self.slots.length():
 		self.grow()
 	self.slots.set(self.slot_of(self.size), value)
 	self.size += 1
 
 // Adds a value before the first one.
-fn var Deque[T].push_front(value: T) Void:
+fn var Deque[T].push_front(move value: T) Void:
 	if self.size == self.slots.length():
 		self.grow()
 	if self.start == 0:

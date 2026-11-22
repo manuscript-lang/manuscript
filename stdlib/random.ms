@@ -245,7 +245,7 @@ fn var SeededRandom.float() Float:
 	return bits.to_float() / 9007199254740992.0
 
 // Shuffles `values` with an unbiased Fisher-Yates shuffle and returns it.
-fn var SeededRandom.shuffle[T](values: List[T]) List[T]:
+fn var SeededRandom.shuffle[T](move values: List[T]) List[T]:
 	var out = values
 	var index = out.length() - 1
 
