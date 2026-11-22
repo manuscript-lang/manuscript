@@ -102,6 +102,8 @@ uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
+bool fn_is_list(LowerFn *fn, const MsExpr *expr);
+MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
 bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
@@ -263,7 +265,10 @@ typedef struct VarSlot {
   const MsExpr *place;
   MirValue slot;
   MirTy ty;
+  MirValue record; /* the record `place` is a field of, taken out of its variable by `fn_take_field`, else MIR_NONE */
+  MirTy optional; /* the optional `place` holds when `ty` is the payload a `place?` receiver changed, else MIR_NONE */
 } VarSlot;
+MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);

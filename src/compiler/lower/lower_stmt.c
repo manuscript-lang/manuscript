@@ -179,6 +179,13 @@ static bool closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot
   return true;
 }
 
+/* Whether `expr` is a List (an index into one is an element place; a Map's entry is read out as a copy). */
+bool fn_is_list(LowerFn *fn, const MsExpr *expr) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return ms_ty_is(types, owner, MS_BUILTIN_List);
+}
+
 /* Whether `place` is a `var` local, a `var` parameter or a member path rooted in one: the places `fn_put_place` stores into. */
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;

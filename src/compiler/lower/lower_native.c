@@ -129,12 +129,22 @@ bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
     out[1] = slot;
     return true;
   }
-  if (data->kind != MK_OPT || (data->elem != MIR_INT && !is_plain_enum(fn->cx->module, data->elem))) {
+  if (data->kind != MK_OPT) {
+    return false;
+  }
+  /* An optional record of one Int (`Duration?`) passes that Int. */
+  const MirTyData *elem = mir_ty_data(fn->cx->module, data->elem);
+  const MirTypeDef *def = elem->kind == MK_TYPE ? &fn->cx->module->type_defs.ptr[elem->id] : NULL;
+  const bool wrapped = def != NULL && def->nfields == 1 && def->fields[0].ty == MIR_INT;
+  if (data->elem != MIR_INT && !wrapped && !is_plain_enum(fn->cx->module, data->elem)) {
     return false;
   }
   const MirValue present = fn_emit(fn, MOP_OptIsSome, &optional, 1, (MirImm){0}, MIR_BOOL);
   MirValue payload = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, data->elem);
-  if (data->elem != MIR_INT) {
+  if (wrapped) {
+    const MirImm field = {.tag = MI_FIELD, .a = elem->id, .b = 0};
+    payload = mir_b_emit(&fn->b, MOP_TypeGet, &payload, 1, field, MIR_INT);
+  } else if (data->elem != MIR_INT) {
     payload = fn_emit(fn, MOP_AltTag, &payload, 1, (MirImm){0}, MIR_INT);
   }
   out[0] = present;
@@ -177,7 +187,9 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
         operand = fn_move_out_of_scope(fn, operand);
       }
-      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand) : operand;
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand)
+                    : kind == NS_VALUE                         ? fn_native_scalar(fn, operand)
+                                                               : operand;
       next++;
     } else {
       return false;
@@ -442,10 +454,44 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
   return address;
 }
 
+/* Whether `expr` names a list through variables, fields and list elements only: borrowing it gives the list
+ * where it lies, not a copy (a map element is read out as a copy). */
+static bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (expr->kind == MS_E_NAME) {
+    return true;
+  }
+  if (expr->kind == MS_E_MEMBER) {
+    return lists_in_place(fn, expr->u.member.left);
+  }
+  if (!ms_expr_index(expr, &container, &key)) {
+    return false;
+  }
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, container->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return ms_ty_is(types, owner, MS_BUILTIN_List) && lists_in_place(fn, container);
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
                               MirTy ret, MirValue result_slot) {
+  /* An element of a list: the native changes it where it lies, through the element's address. */
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (ms_expr_index(place, &container, &key) && fn_is_list(fn, container) && lists_in_place(fn, container)) {
+    const MirValue list = fn_expr(fn, container, LW_BORROW);
+    if (list != MIR_NONE) {
+      const MirValue at = fn_expr(fn, key, LW_BORROW);
+      if (at == MIR_NONE) {
+        return MIR_NONE;
+      }
+      const MirValue operands[2] = {list, at};
+      wanted[0] = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+      return call_native(fn, name, wanted, count, ret, result_slot);
+    }
+  }
   MirValue owned;
   MirValue record = MIR_NONE;
   const bool in_place = fn_take_field(fn, place, &record, &owned);
@@ -684,7 +730,15 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   if (universal && standard_form(fn, args, call->arg_count, ret, &result)) {
     return result; /* the operation every value has, with no runtime function of its own */
   }
-  return fn_runtime_call(fn, runtime_name(fn, owner, operation), args, call->arg_count, ret);
+  const MsName runtime = runtime_name(fn, owner, operation);
+  /* A conversion to the receiver's own scalar type (`Int.to_int()`) has no runtime function: it is the value. */
+  const MsSpan conversion = ms_span_of_text("to_");
+  if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, runtime)) == NULL && call->arg_count == 1 &&
+      operation.len > conversion.len && __builtin_memcmp(operation.ptr, conversion.ptr, conversion.len) == 0 &&
+      mir_b_ty(&fn->b, args[0]) == ret && mir_is_scalar(fn->cx->module, ret)) {
+    return args[0];
+  }
+  return fn_runtime_call(fn, runtime, args, call->arg_count, ret);
 }
 
 /* The operation word of a binary operator on a value object: its runtime function is `msstd_<type>_<word>`, the

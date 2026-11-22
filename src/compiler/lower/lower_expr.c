@@ -374,8 +374,13 @@ static MirValue structural_equality(LowerFn *fn, bool negate, MirValue left, Mir
   const MirValue right_stored[2] = {right_slot, right};
   (void)mir_b_emit(&fn->b, MOP_Store, left_stored, 2, (MirImm){0}, MIR_NONE);
   (void)mir_b_emit(&fn->b, MOP_Store, right_stored, 2, (MirImm){0}, MIR_NONE);
-  const MirValue operands[3] = {desc, left_slot, right_slot};
-  const MirValue same = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_slot_eq")), operands, 3, MIR_BOOL);
+  /* A value that owns heap data (a record holding a String) compares field by field by its shape: the
+   * descriptor of such a type has no equality of its own, and the bytes of two equal Strings differ. */
+  const bool by_shape = mir_needs_drop(fn->cx->module, ty) && mir_ty_data(fn->cx->module, ty)->kind != MK_BYTES;
+  const MirValue shape = by_shape ? mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR) : desc;
+  const MirValue operands[3] = {shape, left_slot, right_slot};
+  const char *native = by_shape ? "msstd_value_equals" : "msrt_slot_eq";
+  const MirValue same = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(native)), operands, 3, MIR_BOOL);
   return negate ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
 }
 

@@ -147,7 +147,8 @@ bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue
       (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
       wanted[count++] = slot;
     } else if (source < nargs) {
-      wanted[count++] = args[source++];
+      wanted[count++] = kind == NS_VALUE ? fn_native_scalar(fn, args[source]) : args[source];
+      source++;
     } else {
       return false;
     }
