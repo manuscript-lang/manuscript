@@ -12,7 +12,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   if (pattern->kind != MS_P_NAME) {
     return fn_fail(fn, "only a name can be bound for now");
   }
-  const MirValue value = take_value(fn, stmt->u.bind.value);
+  /* A name bound to another name borrows it; anything else is a new owner. */
+  const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
+  const MirValue value = kind == MS_E_NAME || kind == MS_E_MEMBER ? fn_expr(fn, stmt->u.bind.value, LW_BORROW)
+                                                                   : take_value(fn, stmt->u.bind.value);
   if (value == MIR_NONE) {
     return false;
   }
