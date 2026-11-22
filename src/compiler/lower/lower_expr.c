@@ -47,8 +47,12 @@ MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty) {
   return fn->vars[local] - 1;
 }
 
-static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
-  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+/* The value of the parameter or local `ref` names; `expr` is the name (a callee's ref is on its call). */
+MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
+  MirValue captured = MIR_NONE;
+  if (fn_lambda_name(fn, expr, ref, &captured)) {
+    return captured;
+  }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
     return mir_b_use_var(&fn->b, fn->param_vars[ref->local]);
   }
@@ -57,6 +61,10 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
   }
   (void)fn_fail(fn, "a name does not refer to a parameter or a local");
   return MIR_NONE;
+}
+
+static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
+  return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
 typedef struct BinaryOps {
@@ -108,6 +116,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_CALL: return fn_call(fn, expr, want);
     case MS_E_MATCH: return fn_match(fn, expr);
     case MS_E_LIST: return fn_list(fn, expr);
+    case MS_E_LAMBDA: return fn_lambda(fn, expr);
     default:
       (void)fn_fail(fn, "this expression is not lowered yet");
       return MIR_NONE;

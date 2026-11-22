@@ -3,7 +3,7 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-static const MsCall *find_call(const MsFacts *facts, MsNode node) {
+const MsCall *fn_find_call(const MsFacts *facts, MsNode node) {
   size_t lo = 0;
   size_t hi = facts->calls.len;
   while (lo < hi) {
@@ -154,7 +154,11 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
 
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
-  const MsCall *call = find_call(fn->facts, expr->id);
+  const MsCall *call = fn_find_call(fn->facts, expr->id);
+  const bool value_callee = call != NULL && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL);
+  if ((call == NULL || value_callee) && expr->u.call.callee->kind == MS_E_NAME) {
+    return fn_call_value(fn, expr, call != NULL ? &call->callee : NULL);
+  }
   if (call == NULL || call->arg_count > 16) {
     (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);
     return MIR_NONE;
