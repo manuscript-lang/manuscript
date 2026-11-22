@@ -33,7 +33,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Types stay next to their methods](types-stay-next-to-their-impls.md): a type's receiver methods directly follow its declaration.
 - [Module-level constants are use-site evaluations, not stored values](module-level-constants-are-use-site-evaluations-not-stored-v.md): Chinmay approved top-level `let NAME[: T] = <constant expression>` in the #332 thread after the ban was found to have no recorded rationale;…
 - [Mutable data uses explicit copying](mutable-data-uses-explicit-copying.md): ordinary record fields and collections are mutable.
-- [Ownership vocabulary is own, borrow, move, clone, capture](ownership-vocabulary-is-own-borrow-move-clone-capture.md): five words for code, diagnostics and docs; no lend, consume or clone.
+- [Ownership vocabulary is own, borrow, move, clone, capture](ownership-vocabulary-is-own-borrow-move-clone-capture.md): five words for code, diagnostics and docs; no borrow, consume or clone.
 - [No special `get` accessor declarations](no-special-get-accessor-declarations.md): the user rejected the `get name -> Type` accessor syntax merged in #516 (2026-10-16) and asked for ordinary members: observational reads suc…
 - [Optional values need presence and extraction methods](optional-values-need-presence-and-extraction-methods.md): the user explicitly rejected relying on `match` for routine Optional handling.
 - [Optional and Result `get()` borrow alike; both print as source cases](optional-and-result-get-borrow-and-print-as-source-cases.md): `var x = r.get()` rejected for both; text shows `some(v)`/`none`/`ok(v)`/`error(e)`.
@@ -43,7 +43,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Read the current decision before restoring an older design](read-the-current-decision-before-restoring-an-older-design.md): the language rebuild was directed to use the new design on `main`.
 - [Errors are plain values with a fixed shape](errors-are-plain-values-with-a-fixed-shape.md): one prelude `Error` record with `message`, `kind` and `details`; no domain types, narrowing or interface.
 - [Recursive data; generic applications still stay finite](recursive-data-generic-applications-still-stay-finite.md): direct and mutually recursive tree types, resolving [issue #97](https://github.com/manuscript-lang/manuscript/issues/97) and superseding the…
-- [Results borrow parts of their arguments without a marker](results-borrow-parts-of-their-arguments-without-a-marker.md): one owner, no reference counting; primitives copy, everything else borrows, moves or `.clone()`s, and a function returning a part of an argument lends it.
+- [Results borrow parts of their arguments without a marker](results-borrow-parts-of-their-arguments-without-a-marker.md): one owner, no reference counting; primitives copy, everything else borrows, moves or `.clone()`s, and a function returning a part of an argument borrows it.
 - [Removing a construct includes its surrounding APIs](removing-a-construct-includes-its-surrounding-apis.md): the request to remove `assert` required follow-up corrections to remove assertion helpers, bindings, docs, and even residual tests.
 - [Result error values do not require Error](result-error-values-do-not-require-error.md): `E` may be any value; `?` needs the identical error type.
 - [Result types use `->` (Python-aligned surface)](result-types-use-python-aligned-surface.md): Superseded (2026-10-28): the surface is deliberately distinct from Python again, see [Surface syntax is its own, not Python's](#surface-synt…
@@ -58,7 +58,7 @@ Note on memory model: on 2026-10-19 the owner adopted value semantics for the Ru
 - [Comments are `//` and `/* */`, and blocks are whole-line](comments-are-slash-slash-and-block-comments-are-whole-line.md): `#` is rejected; `//` for lines, non-nesting whole-line `/* */` blocks, one shared doc extractor, and the fixture-header and offset migration traps.
 - [Source-location constants](source-location-constants.md): `__LINE__` (Int) and `__FILE__` (String) are checker-known names resolved at the use site; unbound-name "contextual" inference must exclude them.
 - [String.view is an explicit borrow; slice stays a copy](string-view-is-an-explicit-borrow-slice-stays-a-copy.md): O(1) substrings are checked borrows like `Bytes.view`, not lowering elision; storing a view needs `.clone()`.
-- [`String.split`, `lines` and `chars` lend their receiver](split-lines-and-chars-lend-their-receiver.md): results borrow under the `view` rules; keeping one needs `.clone()`.
+- [`String.split`, `lines` and `chars` borrow their receiver](split-lines-and-chars-borrow-their-receiver.md): results borrow under the `view` rules; keeping one needs `.clone()`.
 - [Write terse Manuscript](terse-manuscript-idioms.md): shortest existing form (`print`, `repeated`, `map`/`filter`, `if` expressions, `is_empty`, multi-line strings); conformance fixtures stay frozen.
 - [Optional arguments come last](optional-arguments-come-last.md): a required parameter or field may not follow one with a default or of type `T?`; the checker rejects it.
 - [`?` unwraps Results and Optionals; there is no `?.`](question-mark-unwraps-results-and-optionals.md): value or leave the function; `a?.b` is `(a?).b`; access comes from the operand.
