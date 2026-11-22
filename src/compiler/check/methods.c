@@ -6,6 +6,8 @@
  * type is reported and not registered; the standard modules may extend built-in scalars and native types. */
 #include "compiler/check/methods.h"
 
+#include <string.h>
+
 #include "base/alloc.h"
 #include "compiler/check/resolve_internal.h"
 
@@ -99,8 +101,12 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
     const MsName id = ms_check_unique_id(program, "var");
     const MsTy variable = ms_ty_variable_new(&program->types, params.ptr[index]->name, id);
     ms_ty_list_push(&context->fresh, variable);
-    ms_name_list_push(&context->resolver.names, params.ptr[index]->name);
-    ms_ty_list_push(&context->resolver.types, variable);
+    /* The name is in scope only where the receiver writes it as a bare argument: `fn Box[Int].get() T` does not. */
+    const MsTypeRef *written = index < decl->u.impl.receiver->args.len ? decl->u.impl.receiver->args.ptr[index] : NULL;
+    if (written != NULL && written->name == params.ptr[index]->name && written->args.len == 0) {
+      ms_name_list_push(&context->resolver.names, params.ptr[index]->name);
+      ms_ty_list_push(&context->resolver.types, variable);
+    }
   }
   for (uint32_t index = 0; index < params.len; index++) {
     MsTyVariable *record = ms_ty_variable(&program->types, context->fresh.ptr[index]);
@@ -317,6 +323,8 @@ static void add_block(Context *context, const MsDecl *decl) {
   ms_ty_list_truncate(&context->fresh, 0);
   ms_ty_list_truncate(&context->open, 0);
   MsTy receiver = MS_TY_NONE;
+  size_t receiver_start = 0;
+  size_t receiver_end = 0;
   if (primitive) {
     receiver = resolver_type(resolver, decl->u.impl.receiver);
   } else {
@@ -339,7 +347,9 @@ static void add_block(Context *context, const MsDecl *decl) {
     }
     ms_strbuild_free(&text);
     enter_form_variables(context, symbol, decl);
+    receiver_start = program->diagnostics.len;
     receiver = resolver_type(resolver, decl->u.impl.receiver);
+    receiver_end = program->diagnostics.len;
     for (size_t at = 0; at < context->fresh.len; at++) {
       if (mentions(&program->types, receiver, context->fresh.ptr[at])) {
         ms_ty_list_push(&context->open, context->fresh.ptr[at]);
@@ -350,6 +360,16 @@ static void add_block(Context *context, const MsDecl *decl) {
     return;
   }
   add_methods(context, decl, receiver);
+  /* The oracle reports the receiver's own diagnostics after those of the signatures. */
+  const size_t end = program->diagnostics.len;
+  if (receiver_end > receiver_start && end > receiver_end) {
+    MsCheckDiagList *list = &program->diagnostics;
+    const size_t count = receiver_end - receiver_start;
+    MsCheckDiag *held = MS_ARENA_NEW_ARRAY(&program->arena, MsCheckDiag, count);
+    memcpy(held, list->ptr + receiver_start, count * sizeof *held);
+    memmove(list->ptr + receiver_start, list->ptr + receiver_end, (end - receiver_end) * sizeof *held);
+    memcpy(list->ptr + (end - count), held, count * sizeof *held);
+  }
 }
 
 void ms_check_methods(MsCheckProgram *program, uint32_t module) {

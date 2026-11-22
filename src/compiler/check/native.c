@@ -9,6 +9,7 @@
 
 #include "compiler/check/methods.h"
 #include "compiler/check/program.h"
+#include "compiler/check/properties.h"
 #include "compiler/check/resolve_internal.h"
 
 /* Generic interfaces of intrinsics.ms that a family of primitives shares; `T` is the receiver. */
@@ -131,6 +132,12 @@ void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, M
     }
   } else if (kind == MS_TY_PRIMITIVE && out->len == 0) {
     add_primitive(program, receiver, name, out);
+  }
+  /* A value with the structural property has the operation that names it, without an implementation. */
+  const bool hash = is_name(program, name, "hash");
+  if (out->len == 0 && kind != MS_TY_CONTRACT && kind != MS_TY_VARIABLE && (hash || is_name(program, name, "equals")) &&
+      ms_check_property(program, receiver, hash ? MS_PROPERTY_HASHABLE : MS_PROPERTY_EQUAL)) {
+    (void)add_operation(program, hash ? "Hashable" : "Equal", receiver, name, out);
   }
 }
 
