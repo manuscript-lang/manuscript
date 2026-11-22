@@ -59,6 +59,14 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
       ms_check_is_case_name(pass->program, name)) {
     return;
   }
+  /* A compound assignment's target is read again in its desugared value; the name is reported once. */
+  for (size_t index = 0; index < pass->program->diagnostics.len; index++) {
+    const MsCheckDiag *diag = &pass->program->diagnostics.ptr[index];
+    if (diag->module == pass->module && diag->pos.offset == expr->pos.offset && diag->phase == MS_CHECK_RESOLUTION) {
+      ((Names *)context)->unknown = expr;
+      return;
+    }
+  }
   ms_unknown_name_report(pass->program, pass->module, expr->pos, name, scope, site);
   ((Names *)context)->unknown = expr;
 }
