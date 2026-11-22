@@ -334,11 +334,7 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   const bool owns = mir_needs_drop(fn->cx->module, ty);
   if (owns) {
-    const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-    MirMode mode = MM_BORROW;
-    const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
-                       mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
-                       mode == MM_MOVE;
+    const bool fresh = fn_fresh_owner(fn, value);
     value = fresh ? value : fn_implicit_clone(fn, value, false);
     if (fresh) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
