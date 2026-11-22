@@ -1,3 +1,3 @@
-add_executable(ms-c main.c phases.c check_command.c fmt_command.c fmt_targets.c snippet.c)
+add_executable(ms-c backend.c main.c phases.c check_command.c fmt_command.c fmt_targets.c snippet.c)
 ms_target_defaults(ms-c)
-target_link_libraries(ms-c PRIVATE ms_base ms_syntax ms_project ms_check ms_own)
+target_link_libraries(ms-c PRIVATE ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit)
