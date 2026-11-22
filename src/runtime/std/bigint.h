@@ -17,7 +17,7 @@ MsBigCell *msstd_bigint_from_u64(int64_t value);
 /* ms-sig: msstd_bigint_from_seconds_nanos(seconds: i64, nanoseconds: i64) -> *mut ObjCell<Big> @handle
  * @domain=big integer @leaf */
 MsBigCell *msstd_bigint_from_seconds_nanos(int64_t seconds, int64_t nanoseconds);
-/* ms-sig: msstd_bigint_parse(text: *const StrVal, radix: i64, has_max: uint8_t, max: i64, out: *mut *mut
+/* ms-sig: msstd_bigint_parse(text: *const StrVal, radix: i64, has_max: HasRaw, max: i64, out: *mut *mut
  * ObjCell<Big>) -> u8 @domain=big integer @leaf */
 uint8_t msstd_bigint_parse(const MsString *text, int64_t radix, uint8_t has_max, int64_t max,
                            MsBigCell **out);

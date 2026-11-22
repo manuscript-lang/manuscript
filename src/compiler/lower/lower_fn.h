@@ -233,6 +233,8 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
 /* A call of the runtime function `name` that returns a Result from a status: the native returns a u8 status and
  * writes the ok payload (and the failure's text) through trailing addresses. False when `name` has no such
  * signature, and nothing was emitted. */
+/* The runtime's descriptor operand of kind `kind` (NS_ELEM_DESC...) for the collection among `args`. */
+bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
 bool fn_status_call(LowerFn *fn, MsName name, const MsDecl *decl, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
@@ -250,6 +252,7 @@ MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args,
 MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty);
 MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 /* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
+MirValue fn_string_concat(LowerFn *fn, MirValue left, MirValue right);
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */

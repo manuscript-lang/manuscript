@@ -75,7 +75,7 @@ export opaque type Promise[T]:
 // - `EBADF`, when an earlier wait already took the result;
 // - `ETIMEDOUT`, once the promise's `timeout` option has passed, which also cancelled
 //   the work.
-fn Promise[T].wait() T!:
+fn Promise[T].wait() move T!:
 	code := msrt_promise_wait(self.id, -1)
 	if code == 0: return taken_result[T](self.id)
 
@@ -311,7 +311,7 @@ fn joined_partly(result: Int) Bool: result == 2
 // Waits for every promise and returns the results in order. The first promise to fail,
 // in time rather than list order, ends the wait: the promises still running are
 // cancelled and waited for before `wait_all` returns that error.
-export fn wait_all[T](promises: List[Promise[T]]) List[T]!:
+export fn wait_all[T](promises: List[Promise[T]]) move List[T]!:
 	var pending = promises
 	count := pending.length()
 	var slots: List[T!] = []

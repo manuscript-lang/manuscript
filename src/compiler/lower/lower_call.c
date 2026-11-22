@@ -273,8 +273,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       fn->default_call = NULL;
       fn->default_args = NULL;
     } else {
-      const MsTy param = ms_ty_params(&fn->cx->program->types, call->callee_ty)[index].ty;
-      const MirTy ty = fn_type(fn, param);
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = ms_ty_param_count(types, call->callee_ty);
+      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty);
       out[index] = ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
     }
     if (out[index] == MIR_NONE) {

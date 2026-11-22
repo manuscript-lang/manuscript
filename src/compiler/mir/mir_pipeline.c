@@ -27,6 +27,7 @@ static bool verified(const MirModule *module, const char *pass, MsStrBuild *erro
 }
 
 bool mir_pipeline_prepare(MirModule *module, const MirPipelineOptions *options, MsStrBuild *error) {
+  (void)mir_depth_mark(module);
   return mir_elaborate(module, error) && (!options->verify || verified(module, "elaborate", error));
 }
 

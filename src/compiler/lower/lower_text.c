@@ -41,6 +41,13 @@ static MirValue call_join(LowerFn *fn, const char *prefix, uint32_t count, const
   return result;
 }
 
+/* `left + right` on two Strings: the concat the string-growing pass recognises by its role. */
+MirValue fn_string_concat(LowerFn *fn, MirValue left, MirValue right) {
+  const MirTy params[2] = {MIR_STR, MIR_STR};
+  const MirValue args[2] = {left, right};
+  return call_join(fn, "msrt_string_concat", 0, params, 2, args, MR_STRING_CONCAT);
+}
+
 /* Joins up to six pieces. */
 static MirValue join_group(LowerFn *fn, const TextPiece *group, uint32_t count) {
   MirTy params[TEXT_MAX_JOIN + 1];
