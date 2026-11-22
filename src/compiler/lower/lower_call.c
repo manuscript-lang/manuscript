@@ -131,7 +131,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
     return fn_try_var_slot(fn, place, out);
   }
-  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || place->kind == MS_E_INDEX;
+  MsExpr *indexed = NULL;
+  MsExpr *index_key = NULL;
+  /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
+  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
   if (is_place) {
     if (!fn_take_place(fn, place, &owned)) {
       return MIR_NONE;

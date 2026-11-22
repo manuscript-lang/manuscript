@@ -436,7 +436,8 @@ static MirValue record_equality(LowerFn *fn, bool negate, MirValue left, MirValu
 
 /* `a == b` on two alternatives: the same case, then every field of it equal, so unused payload bytes never take
  * part (a runtime that compared the bytes would compare string pointers). */
-static MirValue alt_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+
+static MirValue alt_equality_cases(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
   const uint32_t id = mir_ty_data(fn->cx->module, ty)->id;
   const MirAltDef *alt = &fn->cx->module->alts.ptr[id];
   const MirValue left_tag = mir_b_emit(&fn->b, MOP_AltTag, &left, 1, (MirImm){0}, MIR_INT);
@@ -483,6 +484,24 @@ static MirValue alt_equality(LowerFn *fn, bool negate, MirValue left, MirValue r
   mir_b_seal_block(&fn->b, join);
   mir_b_switch_to(&fn->b, join);
   return negate ? mir_b_emit(&fn->b, MOP_Not, &result, 1, (MirImm){0}, MIR_BOOL) : result;
+}
+
+/* The equality of two alternatives, case by case. An alternative that holds itself (a tree) is written out once:
+ * where its own equality is already being written, the comparison goes through the runtime's structural one. */
+static MirValue alt_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+  const uint32_t id = mir_ty_data(fn->cx->module, ty)->id;
+  for (uint32_t at = 0; at < fn->ncomparing; at++) {
+    if (fn->comparing[at] == id) {
+      return structural_equality(fn, negate, left, right, ty);
+    }
+  }
+  if (fn->ncomparing == sizeof fn->comparing / sizeof fn->comparing[0]) {
+    return structural_equality(fn, negate, left, right, ty);
+  }
+  fn->comparing[fn->ncomparing++] = id;
+  const MirValue result = alt_equality_cases(fn, negate, left, right, ty);
+  fn->ncomparing--;
+  return result;
 }
 
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right) {
