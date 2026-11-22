@@ -1,5 +1,6 @@
 /* compiler/lower/lower_expr.c: expressions: literals, names, arithmetic and comparison. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_analysis.h"
 
 /* The value of a number spelling: decimal digits with `_` separators. */
 static bool number_value(MsSpan text, int64_t *out) {
@@ -67,6 +68,26 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
   return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
+/* `value.field`: a field of a record, read from the value in place. */
+static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
+  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+  if (ref == NULL || ref->kind != MS_REF_FIELD) {
+    (void)fn_fail(fn, "this member is not a record field");
+    return MIR_NONE;
+  }
+  const MirValue base = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  if (base == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, base));
+  if (data->kind != MK_TYPE) {
+    (void)fn_fail(fn, "a field is read from a record");
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+  return fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+}
+
 typedef struct BinaryOps {
   MirOp op;
   MirCc cc;
@@ -101,6 +122,10 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (left == MIR_NONE || right == MIR_NONE) {
     return MIR_NONE;
   }
+  if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
+    const MirValue operands[2] = {left, right};
+    return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), operands, 2, MIR_STR);
+  }
   return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
 }
 
@@ -112,6 +137,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_VOID: return mir_b_unit(&fn->b);
     case MS_E_TEXT: return lower_text(fn, expr);
     case MS_E_NAME: return lower_name(fn, expr);
+    case MS_E_MEMBER: return lower_member(fn, expr);
     case MS_E_BINARY: return lower_binary(fn, expr);
     case MS_E_CALL: return fn_call(fn, expr, want);
     case MS_E_MATCH: return fn_match(fn, expr);
@@ -123,6 +149,25 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   }
 }
 
+/* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
+ * it, so the consumer gets a copy. */
+static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
+  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    return value;
+  }
+  /* A parameter taken by borrow is never the callee's to give away. */
+  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+  const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && ref->local < fn->b.func.nparams &&
+                              fn->b.func.params[ref->local].mode != MM_MOVE;
+  if (!borrowed_param && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+    return value;
+  }
+  const MirImm none = {0};
+  return fn_emit(fn, MOP_Clone, &value, 1, none, mir_b_ty(&fn->b, value));
+}
+
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  return fn_convert(fn, expr, expr_value(fn, expr, want));
+  const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
+  return fn_convert(fn, expr, value);
 }

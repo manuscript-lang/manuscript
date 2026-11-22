@@ -58,6 +58,10 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
       return false;
     }
     constructor_target(body, target, symbol->ty, &def->fields);
+    if (symbol->decl != NULL && symbol->decl->kind == MS_D_TYPE) {
+      target->ast = &symbol->decl->u.type.fields;
+      target->ast_module = symbol->module;
+    }
     return true;
   }
   if (symbol->ty == MS_TY_NONE || ms_ty_kind(&body->program->types, symbol->ty) != MS_TY_FUNCTION) {
@@ -80,6 +84,11 @@ static bool case_target(Body *body, const MsExpr *callee, MsName name, MsTy owne
   }
   target->ref = (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner};
   constructor_target(body, target, owner, &kase->fields);
+  const MsSymbol *home = &body->program->symbols.ptr[body_def(body, owner)->symbol];
+  if (home->decl != NULL && home->decl->kind == MS_D_ENUM && index < home->decl->u.enumeration.cases.len) {
+    target->ast = &home->decl->u.enumeration.cases.ptr[index]->fields;
+    target->ast_module = home->module;
+  }
   body_set_ref(body, callee->id, target->ref);
   return true;
 }
@@ -148,8 +157,20 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
   return method_target(body, callee, receiver, target);
 }
 
+/* `f[T]` or `Type[T]` with explicit type arguments: the bracket reads as types, or as a value that names a
+ * declared function or type rather than a local. */
+static bool is_type_apply(Body *body, const MsExpr *callee) {
+  if (callee->kind != MS_E_APPLY) {
+    return false;
+  }
+  const MsExpr *left = callee->u.apply.left;
+  return callee->u.apply.value == NULL ||
+         (left->kind == MS_E_NAME && body_find_local(body, left->u.sym) == NULL &&
+          body_find_symbol(body, left->u.sym) != NULL);
+}
+
 static bool resolve_target(Body *body, const MsExpr *callee, MsTy expected, Target *target) {
-  if (callee->kind == MS_E_APPLY && callee->u.apply.value == NULL) {
+  if (is_type_apply(body, callee)) {
     for (uint32_t index = 0; index < callee->u.apply.types.len; index++) {
       ms_ty_list_push(&target->explicit_args, resolver_type(&body->resolver, callee->u.apply.types.ptr[index]));
     }

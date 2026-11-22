@@ -113,12 +113,26 @@ MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t
   return ms_ty_intern(&program->types, &desc);
 }
 
+/* Appends the defaults of the type parameters `args` leaves out: `Pair[Int]` of `Pair[A, B = A]` is `Pair[Int, Int]`. */
+static void fill_defaults(MsCheckProgram *program, MsTy base, MsTyList *args) {
+  const uint32_t at = ms_ty_row(&program->types, base)->def;
+  const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
+  for (size_t index = args->len; def != NULL && args->len != 0 && index < def->variables.len; index++) {
+    const MsTyVariable *record = ms_ty_variable(&program->types, def->variables.ptr[index]);
+    if (record == NULL || record->default_ty == MS_TY_NONE) {
+      return;
+    }
+    ms_ty_list_push(args, ms_ty_subst(&program->types, record->default_ty, def->variables.ptr, args->ptr, args->len));
+  }
+}
+
 /* The nominal type `base` applied to the arguments written after its name. */
 static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   MsTyList args = {0};
   for (uint32_t index = 0; index < type->args.len; index++) {
     ms_ty_list_push(&args, resolver_type(resolver, type->args.ptr[index]));
   }
+  fill_defaults(resolver->program, base, &args);
   const MsTy applied = resolver_apply(resolver->program, base, args.ptr, args.len);
   ms_ty_list_free(&args);
   return applied;
