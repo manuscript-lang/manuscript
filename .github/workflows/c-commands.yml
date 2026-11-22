@@ -74,3 +74,9 @@ jobs:
       - if: runner.os == 'Windows'
         shell: msys2 {0}
         run: cmake --build --preset debug --target conform-commands
+      - if: always() && runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          ms=.artifacts/build/debug/src/driver/ms-c.exe
+          pacman -S --noconfirm mingw-w64-clang-x86_64-gdb >/dev/null 2>&1 || true
+          gdb -batch -ex "set breakpoint pending on" -ex "break WriteFile" -ex "break _write" -ex "break fputc" -ex "break putc" -ex run -ex bt -ex continue -ex bt --args "$ms" version 2>&1 | grep -v "^\[" | tail -40 || true
