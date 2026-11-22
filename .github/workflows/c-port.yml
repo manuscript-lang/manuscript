@@ -52,3 +52,9 @@ jobs:
       - run: cmake --build --preset debug
       - run: ctest --preset debug
       - run: cmake --build --preset debug --target lint
+      # Build and run a program on every platform: a one-line program whose exit status is the check.
+      - run: |
+          printf 'fn main() Int:\n    return 7\n' > smoke.ms
+          status=0
+          .artifacts/build/debug/src/driver/ms-c run smoke.ms || status=$?
+          test "$status" -eq 7
