@@ -224,6 +224,13 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
   return body_primitive(body, MS_BUILTIN_Bool);
 }
 
+/* An operand is a Duration or an Instant: the time rows of the operator table decide, not the mismatch report. */
+static bool time_operands(const Body *body, MsTy left, MsTy right) {
+  const MsTyTable *types = &body->program->types;
+  return ms_ty_is(types, left, MS_BUILTIN_Duration) || ms_ty_is(types, left, MS_BUILTIN_Instant) ||
+         ms_ty_is(types, right, MS_BUILTIN_Duration) || ms_ty_is(types, right, MS_BUILTIN_Instant);
+}
+
 static MsTy arithmetic_type(Body *body, MsBinaryOp op, MsTy left, MsTy right) {
   const bool time = ms_ty_is(&body->program->types, left, MS_BUILTIN_Duration) ||
                     ms_ty_is(&body->program->types, left, MS_BUILTIN_Instant) ||
@@ -247,6 +254,8 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   if (is_logical(op)) {
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else if (is_invalid(body, left) || is_invalid(body, right)) {
+    ty = is_comparison(op) ? body_primitive(body, MS_BUILTIN_Bool) : MS_TY_NONE;
+  } else if (!time_operands(body, left, right) && body_report_operand_mismatch(body, expr, left, right)) {
     ty = is_comparison(op) ? body_primitive(body, MS_BUILTIN_Bool) : MS_TY_NONE;
   } else if (op == MS_B_EQ || op == MS_B_NE) {
     ty = equality_type(body, expr, left, right);
