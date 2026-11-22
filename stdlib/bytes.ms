@@ -17,6 +17,7 @@ import (
 // read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from
 // zero.
 // ms: data
+@repr=bytes_buffer
 export extern type Bytes
 
 // The bytes themselves, copied.
@@ -24,7 +25,8 @@ fn Bytes.as_bytes() Bytes:
 	return self.clone()
 
 // Copies byte storage without changing the receiver.
-fn Bytes.clone() Bytes: ...
+fn Bytes.clone() Bytes:
+	return self.concat(self.view(0, 0))
 
 // Tests whether `value` occurs as a byte subsequence.
 fn Bytes.contains(value: Bytes) Bool: ...
@@ -56,7 +58,14 @@ fn Bytes.get(index: Int) UInt8: ...
 
 // Returns an unsigned byte, or `default` when the index is out of range; negative
 // indexes are relative to the end.
-fn Bytes.get_or(index: Int, default: UInt8?) UInt8: ...
+fn Bytes.get_or(index: Int, default: UInt8?) UInt8:
+	count := self.length()
+	position := index
+	if index < 0: position = count + index
+	if position >= 0 and position < count: return self.get(position)
+	match default:
+		value: return value
+		none: return self.get(index)
 
 // Returns the first matching byte offset or `none`; empty `value` matches at zero.
 fn Bytes.index_of(value: Bytes) Int?: ...

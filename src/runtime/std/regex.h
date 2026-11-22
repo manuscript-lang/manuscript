@@ -12,10 +12,10 @@
 
 /* On success *out is a new handle object the caller owns; on failure *err, when not null, is an owned
  * message. */
-/* ms-sig: msstd_regex_compile(pattern: *const StrVal, out: *mut *mut ObjCell<Regex>, err: ErrSlot) -> u8 */
+/* ms-sig: msstd_regex_compile(pattern: *const StrVal, out: *mut *mut ObjCell<Regex>, err: ErrSlot) -> u8 @domain=regex */
 uint8_t msstd_regex_compile(const MsString *pattern, void **out, MsString *err);
 /* A match that reaches an engine limit reads as no match: the result is a plain Bool. */
-/* ms-sig: msstd_regex_matches(handle re: *const ObjCell<Regex>, text: *const StrVal) -> u8 @leaf */
+/* ms-sig: msstd_regex_matches(handle re: *const ObjCell<Regex>, text: *const StrVal) -> u8 @leaf @method=Regex.matches */
 uint8_t msstd_regex_matches(const void *re, const MsString *text);
 
 /* Offsets: [start, end] of the first match (0 when there is none), then every match as flat pairs, then the
@@ -41,7 +41,7 @@ uint8_t msstd_regex_capture_all_spans(const void *re, const MsString *text, uint
 /* Texts: the matched texts, a group's texts ("" for a group that did not take part), and the pieces between
  * matches. The budget of `find_all`, `captures_all` and `split` is the match or piece count. */
 /* ms-sig: msstd_regex_find_all(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max:
- * i64, out: *mut VecVal) -> u8 @leaf */
+ * i64, out: *mut VecVal) -> u8 @leaf @method=Regex.find_all */
 uint8_t msstd_regex_find_all(const void *re, const MsString *text, uint8_t has_max, int64_t max, MsList *out);
 /* ms-sig: msstd_regex_captures(handle re: *const ObjCell<Regex>, text: *const StrVal, out: *mut VecVal) @leaf
  */
@@ -55,16 +55,16 @@ uint8_t msstd_regex_captures_all(const void *re, const MsString *text, uint8_t h
  * VecVal) @leaf */
 void msstd_regex_named_capture_pairs(const void *re, const MsString *text, MsList *out);
 /* ms-sig: msstd_regex_split(handle re: *const ObjCell<Regex>, text: *const StrVal, has_max: HasRaw, max: i64,
- * out: *mut VecVal) -> u8 @leaf */
+ * out: *mut VecVal) -> u8 @leaf @method=Regex.split */
 uint8_t msstd_regex_split(const void *re, const MsString *text, uint8_t has_max, int64_t max, MsList *out);
 
 /* Replacements; `max` bounds the UTF-8 bytes of the result. The template expands `$1`, `${name}` and `$$`. */
 /* ms-sig: msstd_regex_replace_all(handle re: *const ObjCell<Regex>, text: *const StrVal, replacement: *const
- * StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf */
+ * StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf @method=Regex.replace_all */
 uint8_t msstd_regex_replace_all(const void *re, const MsString *text, const MsString *replacement,
                                 uint8_t has_max, int64_t max, MsString *out);
 /* ms-sig: msstd_regex_replace_template(handle re: *const ObjCell<Regex>, text: *const StrVal, template:
- * *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf */
+ * *const StrVal, has_max: HasRaw, max: i64, out: *mut StrVal) -> u8 @leaf @method=Regex.replace_template */
 uint8_t msstd_regex_replace_template(const void *re, const MsString *text, const MsString *template_text,
                                      uint8_t has_max, int64_t max, MsString *out);
 

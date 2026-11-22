@@ -20,4 +20,8 @@ void msstd_test_repr(const MsShapeTable *table, const void *value, MsString *out
  */
 void msstd_value_text(const MsShapeTable *table, const void *value, MsString *out);
 
+/* ms-sig: msstd_value_to_string(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=string @leaf
+ */
+void msstd_value_to_string(const MsShapeTable *table, const void *value, MsString *out);
+
 #endif

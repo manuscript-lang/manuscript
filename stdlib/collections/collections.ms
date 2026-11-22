@@ -613,7 +613,8 @@ fn var List[T: Clonable].extend(other: List[T]) Void: ...
 export extern type Map[T: Hashable, U]
 
 // Reports whether this map has no entries.
-fn Map[T, U].is_empty() Bool: ...
+fn Map[T, U].is_empty() Bool:
+	return self.length() == 0
 
 // Returns a new map with the same keys, each paired with `transform(key, value)`, in
 // insertion order. Keys are copied into the new map.

@@ -313,3 +313,8 @@ void msstd_test_repr(const MsShapeTable *table, const void *value, MsString *out
 void msstd_value_text(const MsShapeTable *table, const void *value, MsString *out) {
   ms_shape_text_of(table, value, false, out);
 }
+
+/* `value.to_string()` on a type with no `to_string` of its own is its printed form. */
+void msstd_value_to_string(const MsShapeTable *table, const void *value, MsString *out) {
+  ms_shape_text_of(table, value, false, out);
+}

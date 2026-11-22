@@ -38,6 +38,7 @@ typedef struct LowerFn {
   const MsFunc *func;
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
+  MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */

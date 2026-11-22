@@ -423,7 +423,8 @@ static bool lower_jump(LowerFn *fn, bool is_break) {
 }
 
 static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
-  mir_b_set_loc(&fn->b, fn_loc(fn, stmt->pos));
+  fn->stmt_loc = fn_loc(fn, stmt->pos);
+  mir_b_set_loc(&fn->b, fn->stmt_loc);
   switch ((MsStmtKind)stmt->kind) {
     case MS_S_BIND: return lower_bind(fn, stmt);
     case MS_S_ASSIGN: return lower_assign(fn, stmt);

@@ -79,8 +79,9 @@ static bool is_caller_site(const LowerFn *fn, uint32_t module, const MsExpr *exp
 /* `caller_site()` as a default: the position (`file:line:col`) of the call that omitted the argument. */
 static MirValue caller_position(LowerFn *fn) {
   const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
+  const MirLoc here = fn->stmt_loc.line != 0 ? fn->stmt_loc : fn->b.loc;
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
+  ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, here.line, here.col);
   const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_strbuild_span(&text))};
   ms_strbuild_free(&text);
   return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
@@ -370,7 +371,15 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
 }
 
 /* Whether a native callee is an operation of a receiver (not an `extern fn`, which call_runtime handles). */
-static bool callee_is_operation(LowerFn *fn, const MsCall *call) {
+static bool callee_is_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call) {
+  /* `value.to_string()` names an operation of its receiver, whatever declaration its recorded place matches. */
+  const MsExpr *callee = expr->u.call.callee;
+  if (callee->kind == MS_E_MEMBER) {
+    const MsRef *left = ms_facts_ref(fn->facts, callee->u.member.left->id);
+    if (left == NULL || left->kind != MS_REF_MODULE) {
+      return true;
+    }
+  }
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   return id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN;
 }
@@ -438,7 +447,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);
   }
-  if (call->callee.kind == MS_REF_NATIVE && callee_is_operation(fn, call)) {
+  if (call->callee.kind == MS_REF_NATIVE && callee_is_operation(fn, expr, call)) {
     return fn_native_call(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_FUNCTION && is_bodiless_function(fn, call)) {

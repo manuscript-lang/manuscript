@@ -382,7 +382,12 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
                                     : runtime_name(fn, owner, operation);
   const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   if (sig == NULL) {
-    return false;
+    /* An operation every value has (`to_string`) is done by the walker over its shape. */
+    if (argc == 0 || mir_is_scalar(fn->cx->module, mir_b_ty(&fn->b, args[0]))) {
+      return false; /* a scalar has its own forms of these */
+    }
+    *out = fn_value_operation(fn, operation, args, argc, ret);
+    return *out != MIR_NONE;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = list_get(fn, args[0], args[1], ret);
