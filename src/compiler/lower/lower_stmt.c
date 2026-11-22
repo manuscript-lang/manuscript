@@ -163,7 +163,7 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
     case MS_S_CONTINUE: return lower_jump(fn, false);
     case MS_S_IF: return lower_if(fn, stmt);
     case MS_S_WHILE: return lower_while(fn, stmt);
-    case MS_S_FOR: return fn_fail(fn, "`for` is not lowered yet");
+    case MS_S_FOR: return fn_for(fn, stmt);
   }
   return fn_fail(fn, "unknown statement");
 }
