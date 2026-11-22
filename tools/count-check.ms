@@ -27,7 +27,7 @@ fn after(text: String, prefix: String) List[String]:
 	var found = List[String]()
 	for line in text.split("\n"):
 		if line.starts_with(prefix): found.append(
-			line.slice(prefix.length(), line.length())
+			line.slice(prefix.length(), line.length()).clone()
 		)
 	return found
 

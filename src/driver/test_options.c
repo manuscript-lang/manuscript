@@ -1,6 +1,8 @@
 /* Owns test_options.h. */
 #include "driver/test_options.h"
 
+#include "base/float_parse.h"
+
 #include "base/duration.h"
 #include "driver/invocation_rules.h"
 
@@ -60,6 +62,13 @@ static bool apply(MsTestOptions *options, MsSpan name, MsSpan value) {
     options->baseline = value;
   } else if (ms_span_is_text(name, "--fail-over")) {
     options->has_fail_over = true;
+    MsSpan number = value;
+    if (number.len > 0 && number.ptr[number.len - 1] == '%') {
+      number.len--;
+    }
+    if (ms_parse_float(number, &options->fail_over) != MS_PARSE_FLOAT_OK) {
+      options->fail_over = 0;
+    }
   } else if (ms_span_is_text(name, "--timeout")) {
     options->timeout_set = true;
     options->timeout_ms = milliseconds(value);
@@ -70,7 +79,7 @@ static bool apply(MsTestOptions *options, MsSpan name, MsSpan value) {
 }
 
 void ms_test_options_parse(const MsSpanList *arguments, MsTestOptions *out) {
-  *out = (MsTestOptions){.repeat = 1, .timeout_ms = MS_TEST_DEFAULT_TIMEOUT_MS};
+  *out = (MsTestOptions){.repeat = 1, .timeout_ms = MS_TEST_DEFAULT_TIMEOUT_MS, .fail_over = 3.0};
   size_t at = 0;
   for (; at < arguments->len; at++) {
     const MsSpan arg = arguments->ptr[at];

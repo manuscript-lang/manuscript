@@ -4,6 +4,7 @@
 #include "base/message.h"
 #include "base/sort.h"
 #include "base/strbuild.h"
+#include "compiler/check/program.h"
 #include "compiler/project/project.h"
 #include "compiler/syntax/ast.h"
 #include "compiler/syntax/lex.h"
@@ -571,7 +572,23 @@ static bool symbol_opaque(const Symbol *s) {
   return (s->decl->kind == MS_D_TYPE && s->decl->u.type.opaque) || (s->decl->kind == MS_D_ENUM && s->decl->u.enumeration.opaque);
 }
 
-static MsSpan receiver_context(Guide *g, const MethodRef *m) {
+/* Whether the receiver is the declaration's own type: its arguments are the declared type variables, in order. A
+ * primitive has none. */
+static bool receiver_is_declaration(const Symbol *symbol, const MsTypeRef *receiver) {
+  const MsTypeParams params = symbol->decl == NULL ? (MsTypeParams){0} : ms_check_decl_type_params(symbol->decl);
+  if (receiver->args.len != params.len) {
+    return false;
+  }
+  for (uint32_t i = 0; i < params.len; i++) {
+    const MsTypeRef *arg = receiver->args.ptr[i];
+    if (arg->kind != MS_TYPE_NAMED || arg->args.len != 0 || arg->name != params.ptr[i]->name) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static MsSpan receiver_context(Guide *g, const Symbol *symbol, const MethodRef *m) {
   const MsDecl *impl = m->impl;
   MsStrBuild bounds = ms_strbuild_new();
   size_t count = 0;
@@ -587,7 +604,7 @@ static MsSpan receiver_context(Guide *g, const MethodRef *m) {
       type_text(g, &bounds, p->bounds.ptr[b]);
     }
   }
-  if (count == 0 && impl->u.impl.receiver->args.len == 0) {
+  if (count == 0 && receiver_is_declaration(symbol, impl->u.impl.receiver)) {
     ms_strbuild_free(&bounds);
     return ms_span_of_text("");
   }
@@ -614,7 +631,7 @@ static void implementation_members(Guide *g, Symbol *symbol, MsApiMembers *membe
       type_text(g, &text, impl->u.impl.contract);
       contract = keep(g, &text);
     }
-    const MsSpan context = receiver_context(g, m);
+    const MsSpan context = receiver_context(g, symbol, m);
     MsStrBuild sig = ms_strbuild_new();
     ms_strbuild_append(&sig, context);
     fn_declaration(g, file, &sig, name_text(g, m->method->func.name), &m->method->func, m->method->mutating,

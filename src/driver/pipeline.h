@@ -18,6 +18,7 @@ typedef struct MsLinkRequest {
   bool static_libc;        /* static musl instead of the glibc 2.28 stand-ins */
   bool tests;              /* the entry is the test runner over the program's `test` blocks, not `main` */
   bool bench;              /* with `tests`: the runner over the `bench` blocks instead */
+  bool count_ops;          /* count executed MIR operations (`MS_COUNT_OPS=1` asks for it too) */
 } MsLinkRequest;
 
 /* Builds the executable. On failure returns false and `error` (valid until the next call) says what failed.

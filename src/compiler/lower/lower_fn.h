@@ -283,8 +283,11 @@ typedef struct VarSlot {
   MirValue slot;
   MirTy ty;
   MirValue record; /* the record `place` is a field of, taken out of its variable by `fn_take_field`, else MIR_NONE */
+  bool in_place; /* `slot` is the address of a list element: nothing goes back */
+  MirValue home; /* the address of the list element a `place?` receiver lies in, else MIR_NONE */
   MirTy optional; /* the optional `place` holds when `ty` is the payload a `place?` receiver changed, else MIR_NONE */
 } VarSlot;
+bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);

@@ -24,5 +24,5 @@ export fn mutate(var rng: Rng, source: String) String:
 	at := next(rng, chars.length() + 1)
 	kind := next(rng, 3)
 	if kind != 1 and at < chars.length(): chars.remove(at)
-	if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())])
+	if kind != 0: chars.insert(at, pieces[next(rng, pieces.length())].clone())
 	return chars.join("")

@@ -183,7 +183,7 @@ static bool has_body(const MsMethodEntry *entry) {
 
 static void add_site(Collect *c, MsSpan id, MsSpan target, const char *kind, bool spawn, MsPos pos) {
   const MsCallSite site = {.id = id, .owner = c->owner, .target = target, .kind = ms_span_of_text(kind), .spawn = spawn,
-                           .pos = pos};
+                           .file = c->file, .pos = pos};
   ms_call_site_list_push(&c->out->calls, site);
 }
 
@@ -257,6 +257,7 @@ static void visit_expr(void *context, const MsExpr *e) {
 /* A binding closed where its scope ends. */
 static void visit_stmt(void *context, const MsStmt *s) {
   Collect *c = context;
+  ms_statement_site_list_push(&c->out->statements, (MsStatementSite){.module = c->module, .pos = s->pos});
   if (s->kind != MS_S_BIND || s->u.bind.pattern->kind != MS_P_NAME) {
     return;
   }
@@ -288,18 +289,22 @@ static void walk_declaration(Collect *c, const MsDecl *decl) {
   } else if (decl->kind == MS_D_TEST) {
     walk_body(c, (MsParams){0}, decl->u.test.body);
   } else if (decl->kind == MS_D_CONST) {
+    ms_statement_site_list_push(&c->out->statements, (MsStatementSite){.module = c->module, .pos = decl->u.konst.init_pos});
     ms_walk_expr(&visitor, decl->u.konst.value);
   }
 }
 
 /* ---- entities ---- */
 
-static void add_entity(Collect *c, MsSpan id, const char *kind, MsSpan name, MsSpan ty, MsPos pos, bool exported,
-                       const MsEffectNames *effects) {
-  MsEntity entity = {.id = id, .kind = ms_span_of_text(kind), .name = name, .ty = ty, .file = c->file, .pos = pos,
+static void add_entity(Collect *c, MsSpan id, MsSpan checker_id, const char *kind, MsSpan name, MsSpan ty, MsPos pos,
+                       bool exported, const MsEffectNames *effects, const MsEffectNames *permits) {
+  MsEntity entity = {.id = id, .checker_id = checker_id, .kind = ms_span_of_text(kind), .name = name, .ty = ty, .file = c->file, .pos = pos,
                      .exported = exported};
   for (uint32_t i = 0; effects != NULL && i < effects->count; i++) {
     ms_span_list_push(&entity.effects, effects->names[i]);
+  }
+  for (uint32_t i = 0; permits != NULL && i < permits->count; i++) {
+    ms_span_list_push(&entity.permits, permits->names[i]);
   }
   ms_entity_list_push(&c->out->entities, entity);
 }
@@ -341,16 +346,19 @@ static void collect_decl(Collect *c, const MsDecl *decl) {
   const MsSymbol *symbol = symbol_of(c, decl);
   MsSpan ty = {0};
   const MsEffectNames *effects = NULL;
+  const MsEffectNames *permits = NULL;
   bool found = false;
   const uint32_t index = decl->kind == MS_D_FN ? callable_index(c, decl, &found) : 0;
   if (decl->kind == MS_D_FN && found) {
     effects = &c->reach->declared[index];
+    permits = &c->reach->permits[index];
   }
   if (symbol != NULL && decl->kind == MS_D_FN && symbol->ty != MS_TY_NONE) {
     ty = show_type(c, symbol->ty);
   }
   const MsSpan id = decl_id(c, c->file, decl);
-  add_entity(c, id, entity_kind(decl), decl_name(c, decl), ty, decl->pos, decl->is_exported, effects);
+  const MsSpan checker_id = symbol != NULL ? name_text(c, symbol->id) : (MsSpan){0};
+  add_entity(c, id, checker_id, entity_kind(decl), decl_name(c, decl), ty, decl->pos, decl->is_exported, effects, permits);
   c->owner = id;
   walk_declaration(c, decl);
 }
@@ -366,7 +374,8 @@ static void collect_methods(Collect *c) {
     const MsSpan id = method_id(c, entry);
     const MsSpan name = ms_message_format(c->arena, "%S.%S", ms_strbuild_span(&receiver), name_text(c, entry->source->func.name));
     ms_strbuild_free(&receiver);
-    add_entity(c, id, "method", name, show_type(c, entry->ty), entry->source->pos, false, NULL);
+    add_entity(c, id, ms_message_format(c->arena, "method%z", i), "method", name, show_type(c, entry->ty), entry->source->pos, false,
+               NULL, NULL);
     c->owner = id;
     walk_body(c, entry->source->func.params, entry->source->func.body);
   }
@@ -410,9 +419,11 @@ void ms_inspect_collect(MsArena *arena, const MsCheckProgram *program, bool std,
 void ms_inspection_free(MsInspection *inspection) {
   for (size_t i = 0; i < inspection->entities.len; i++) {
     ms_span_list_free(&inspection->entities.ptr[i].effects);
+    ms_span_list_free(&inspection->entities.ptr[i].permits);
   }
   ms_entity_list_free(&inspection->entities);
   ms_call_site_list_free(&inspection->calls);
+  ms_statement_site_list_free(&inspection->statements);
 }
 
 MsSpan ms_readable_id(MsArena *arena, MsSpan id) {
