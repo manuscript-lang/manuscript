@@ -3,7 +3,7 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-static const MsCall *find_call(const MsFacts *facts, MsNode node) {
+const MsCall *fn_find_call(const MsFacts *facts, MsNode node) {
   size_t lo = 0;
   size_t hi = facts->calls.len;
   while (lo < hi) {
@@ -65,7 +65,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     const MsCallArg *arg = &call->args[index];
     if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = written_arg(expr, arg->node.node);
-      out[index] = written != NULL ? fn_expr(fn, written, LW_MOVE) : MIR_NONE;
+      /* A constructor's fields own what they are given. */
+      const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+      const LowerWant want = owning || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
+      out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
     } else if (arg->source == MS_ARG_DEFAULT) {
       out[index] = default_arg(fn, call, arg);
     } else {
@@ -129,6 +132,17 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   return true;
 }
 
+/* `Case(payload...)`: an alternative's case built from its payload. */
+static MirValue construct_case(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind != MK_ALT) {
+    (void)fn_fail(fn, "a case is built into an alternative");
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = call->callee.index};
+  return fn_emit(fn, MOP_AltNew, args, call->arg_count, imm, ty);
+}
+
 /* `Type(fields...)`: the record built from its arguments in field order. */
 static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
@@ -140,10 +154,16 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
   return fn_emit(fn, MOP_TypeNew, args, call->arg_count, imm, ty);
 }
 
+/* Whether a native callee is an operation of a receiver (not an `extern fn`, which call_runtime handles). */
+static bool callee_is_operation(LowerFn *fn, const MsCall *call) {
+  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
+  return id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN;
+}
+
 static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
-    (void)fn_fail(fn, "this callee is not lowered yet");
+    (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
@@ -154,7 +174,11 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
 
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
-  const MsCall *call = find_call(fn->facts, expr->id);
+  const MsCall *call = fn_find_call(fn->facts, expr->id);
+  const bool value_callee = call != NULL && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL);
+  if ((call == NULL || value_callee) && expr->u.call.callee->kind == MS_E_NAME) {
+    return fn_call_value(fn, expr, call != NULL ? &call->callee : NULL);
+  }
   if (call == NULL || call->arg_count > 16) {
     (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);
     return MIR_NONE;
@@ -167,6 +191,12 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   if (call->callee.kind == MS_REF_TYPE) {
     return construct(fn, call, args, ret);
+  }
+  if (call->callee.kind == MS_REF_CASE) {
+    return construct_case(fn, call, args, ret);
+  }
+  if (call->callee.kind == MS_REF_NATIVE && callee_is_operation(fn, call)) {
+    return fn_native_call(fn, expr, call, args, ret);
   }
   LowerTarget target;
   if (!callee_target(fn, call, &target)) {

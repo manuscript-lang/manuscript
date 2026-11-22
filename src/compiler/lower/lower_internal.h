@@ -31,6 +31,37 @@ typedef struct LowerInstance {
 
 MS_LIST_DEFINE(LowerInstanceList, lower_instance_list, LowerInstance)
 
+/* The type variables being replaced while one instance is lowered, and what replaces them. */
+typedef struct LowerSubst {
+  const MsTy *vars;
+  const MsTy *args;
+  size_t count;
+} LowerSubst;
+
+/* A value a closure takes from the function that makes it: a parameter or a local, by its index there and the
+ * name written at its first use (parameters of nested functions share indices). */
+typedef struct LowerCapture {
+  uint8_t kind; /* MS_REF_PARAM or MS_REF_LOCAL */
+  uint32_t index;
+  MsName name;
+  const MsExpr *use; /* the first use, which the maker lowers to read the value */
+  MirTy ty;
+} LowerCapture;
+
+/* A lambda whose body is lowered after the function that makes it. */
+typedef struct LowerLambda {
+  const MsExpr *expr;
+  uint32_t module;
+  uint32_t func; /* the reserved MIR closure function */
+  uint32_t nvars; /* the locals of the function that holds the lambda; its body shares their numbering */
+  LowerSubst subst;
+  LowerCapture *captures;
+  uint32_t ncaptures;
+  bool lowered;
+} LowerLambda;
+
+MS_LIST_DEFINE(LowerLambdaList, lower_lambda_list, LowerLambda)
+
 typedef struct Lower {
   MsCheckProgram *program;
   MirModule *module;
@@ -38,17 +69,11 @@ typedef struct Lower {
   LowerTyMap types;            /* type (after substitution) -> MIR type */
   MsNames instance_keys;       /* instance key text -> dense id, the index into `instances` */
   LowerInstanceList instances;
+  LowerLambdaList lambdas;
   MsNames vtable_keys;         /* receiver and interface type text -> dense id, the index into `vtables` */
   MirIdList vtables;           /* the MIR vtable of each key */
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
 } Lower;
-
-/* The type variables being replaced while one instance is lowered, and what replaces them. */
-typedef struct LowerSubst {
-  const MsTy *vars;
-  const MsTy *args;
-  size_t count;
-} LowerSubst;
 
 #define lower_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), ms_strbuild_append_byte((cx)->error, '\n'), false)
 

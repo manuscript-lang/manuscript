@@ -114,10 +114,21 @@ bool body_find_case(Body *body, MsName name, MsTy expected, MsTy *owner, uint32_
     *owner = symbol->ty;
   }
   ms_symbol_list_free(&seen);
-  if (found && expected != MS_TY_NONE && ms_ty_row(&program->types, expected)->id == ms_ty_row(&program->types, *owner)->id) {
-    *owner = expected;
-  }
+  (void)expected;
   return found;
+}
+
+MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver) {
+  const MsMethodEntry *entry = match->entry;
+  MsRef ref = {.kind = MS_REF_METHOD, .owner = receiver};
+  if (entry != NULL) {
+    ref.decl = (MsNodeRef){entry->module, entry->source->id};
+    ref.kind = entry->source->func.body.len == 0 ? MS_REF_NATIVE : MS_REF_METHOD;
+  } else if (match->operation != NULL) {
+    ref.kind = match->native ? MS_REF_NATIVE : MS_REF_OPERATION;
+    ref.decl = (MsNodeRef){match->operation->decl.file, match->operation->decl.node};
+  }
+  return ref;
 }
 
 MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol) {
@@ -155,6 +166,8 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy owner = MS_TY_NONE;
   uint32_t index = 0;
   if (body_find_case(body, name, expected, &owner, &index)) {
+    const bool fits = expected != MS_TY_NONE && ms_ty_row(&body->program->types, expected)->id == ms_ty_row(&body->program->types, owner)->id;
+    owner = fits ? expected : owner;
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
     return owner;
   }
@@ -199,9 +212,7 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   ms_check_find_method(body->program, receiver, expr->u.member.name, &found);
   if (found.len != 0) {
     ty = found.ptr[0].ty;
-    const MsMethodEntry *entry = found.ptr[0].entry;
-    body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_METHOD, .owner = receiver,
-                                          .decl = {entry != NULL ? entry->module : 0, entry != NULL ? entry->source->id : 0}});
+    body_set_ref(body, expr->id, body_method_ref(&found.ptr[0], receiver));
   }
   ms_method_match_list_free(&found);
   return ty;
@@ -223,7 +234,10 @@ static MsTy expected_arg(const Body *body, MsTy expected, MsBuiltin builtin, siz
 static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy element = expected_arg(body, expected, MS_BUILTIN_List, 0);
   for (uint32_t index = 0; index < expr->u.list.len; index++) {
-    const MsTy item = body_expr(body, expr->u.list.ptr[index], element);
+    MsStrBuild context = ms_strbuild_new();
+    ms_strbuild_printf(&context, "entry %zu of the literal, whose entries share one type", (size_t)index + 1);
+    const MsTy item = body_expect(body, expr->u.list.ptr[index], element, ms_strbuild_span(&context));
+    ms_strbuild_free(&context);
     element = element == MS_TY_NONE ? item : element;
   }
   return element == MS_TY_NONE ? expected : body_std_type(body, "List", &element, 1);
@@ -265,6 +279,33 @@ static MsTy probe_expr(Body *body, const MsExpr *expr) {
   return entry == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Optional", &entry, 1);
 }
 
+/* Whether `ty` mentions a type variable that is not declared by the enclosing function: an inference slot. */
+static bool has_foreign_variable(const Body *body, MsTy ty) {
+  const MsTyTable *types = &body->program->types;
+  if (!ms_ty_has_variable(types, ty)) {
+    return false;
+  }
+  if (ms_ty_kind(types, ty) == MS_TY_VARIABLE) {
+    for (size_t index = 0; index < body->resolver.types.len; index++) {
+      if (body->resolver.types.ptr[index] == ty) {
+        return false;
+      }
+    }
+    return true;
+  }
+  for (size_t index = 0; index < ms_ty_arg_count(types, ty); index++) {
+    if (has_foreign_variable(body, ms_ty_args(types, ty)[index])) {
+      return true;
+    }
+  }
+  for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
+    if (has_foreign_variable(body, ms_ty_params(types, ty)[index].ty)) {
+      return true;
+    }
+  }
+  return ms_ty_kind(types, ty) == MS_TY_FUNCTION && has_foreign_variable(body, ms_ty_result(types, ty));
+}
+
 /* A lambda: parameters typed from the written annotation or the expected function type; the result is the
  * written result, the expected one, or the first returned value's type. */
 static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
@@ -284,20 +325,26 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
                                                .flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) | (param->moving ? MS_PARAM_MOVE : 0))});
   }
   MsTy result = expr->u.lambda.result != NULL ? resolver_type(&body->resolver, expr->u.lambda.result) : MS_TY_NONE;
-  result = result == MS_TY_NONE && shaped ? ms_ty_result(types, expected) : result;
+  result = result == MS_TY_NONE && shaped && !has_foreign_variable(body, ms_ty_result(types, expected))
+               ? ms_ty_result(types, expected)
+               : result;
   const MsTy saved_result = body->result;
   const MsTy saved_returned = body->returned;
+  const bool saved_saw = body->saw_return;
   body->result = result;
   body->returned = MS_TY_NONE;
+  body->saw_return = false;
   body_block(body, expr->u.lambda.body);
+  const bool unknown_return = result == MS_TY_NONE && body->saw_return && body->returned == MS_TY_NONE;
   result = result == MS_TY_NONE ? body->returned : result;
+  body->saw_return = saved_saw;
   body->result = saved_result;
   body->returned = saved_returned;
   body_scope_reset(body, mark);
   const MsName fn = intern(body, "fn");
   const MsTyDesc desc = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .params = params.ptr,
                          .param_count = (uint32_t)params.len,
-                         .result = result != MS_TY_NONE ? result : body_primitive(body, MS_BUILTIN_Void)};
+                         .result = result != MS_TY_NONE || unknown_return ? result : body_primitive(body, MS_BUILTIN_Void)};
   const MsTy ty = ms_ty_intern(&body->program->types, &desc);
   ms_ty_param_list_free(&params);
   return ty;

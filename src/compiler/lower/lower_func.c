@@ -15,9 +15,44 @@ uint32_t lower_file(Lower *cx, uint32_t module) {
   return cx->files.ptr[module];
 }
 
+/* Appends the type variables `ty` mentions, each once, in order of appearance. */
+static void collect_variables(const MsTyTable *types, MsTy ty, MsTy *out, uint32_t *count, uint32_t capacity) {
+  if (ty == MS_TY_NONE || !ms_ty_has_variable(types, ty)) {
+    return;
+  }
+  if (ms_ty_kind(types, ty) == MS_TY_VARIABLE) {
+    for (uint32_t index = 0; index < *count; index++) {
+      if (out[index] == ty) {
+        return;
+      }
+    }
+    if (*count < capacity) {
+      out[(*count)++] = ty;
+    }
+    return;
+  }
+  for (size_t index = 0; index < ms_ty_arg_count(types, ty); index++) {
+    collect_variables(types, ms_ty_args(types, ty)[index], out, count, capacity);
+  }
+  for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
+    collect_variables(types, ms_ty_params(types, ty)[index].ty, out, count, capacity);
+  }
+  collect_variables(types, ms_ty_result(types, ty), out, count, capacity);
+}
+
 LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol) {
   const MsSymbol *entry = &cx->program->symbols.ptr[symbol];
-  return (LowerTarget){entry->module, entry->decl->id, &entry->decl->u.fn, entry->name, entry->ty, {NULL, 0}, NULL, 0};
+  LowerTarget target = {entry->module, entry->decl->id, &entry->decl->u.fn, entry->name, entry->ty, {NULL, 0}, NULL, 0};
+  MsTy found[16];
+  uint32_t count = 0;
+  collect_variables(&cx->program->types, entry->ty, found, &count, 16);
+  if (count > 0) {
+    MsTy *variables = MS_ARENA_NEW_ARRAY(&cx->program->arena, MsTy, count);
+    __builtin_memcpy(variables, found, count * sizeof(MsTy));
+    target.variables = variables;
+    target.nvariables = count;
+  }
+  return target;
 }
 
 /* The type variables of a target, in declaration order (the impl's, then the function's own), as the checker
@@ -153,22 +188,24 @@ static void finish_body(LowerFn *fn) {
 }
 
 static bool lower_body(Lower *cx, uint32_t index) {
-  LowerInstance *instance = &cx->instances.ptr[index];
-  const LowerTarget *target = &instance->target;
+  /* Lowering a body adds instances and functions, which moves both lists: keep copies, not pointers. */
+  const LowerInstance instance = cx->instances.ptr[index];
+  const LowerTarget *target = &instance.target;
   if (target->func == NULL) {
     return lower_fail(cx, "a call reached a declaration with no body");
   }
   MsTy vars[16];
-  if (instance->nargs > 0 && !decl_variables(cx, target, vars, instance->nargs)) {
+  if (instance.nargs > 0 && !decl_variables(cx, target, vars, instance.nargs)) {
     return false;
   }
-  MirFunc *reserved = &cx->module->funcs.ptr[instance->func];
+  const MirFunc stub = cx->module->funcs.ptr[instance.func];
+  const MirFunc *reserved = &stub;
   LowerFn fn = {.cx = cx,
                 .facts = &cx->program->modules.ptr[target->module].facts,
                 .func = target->func,
                 .module_index = target->module,
                 .file = lower_file(cx, target->module),
-                .subst = {vars, instance->args, instance->nargs},
+                .subst = {vars, instance.args, instance.nargs},
                 .ret = reserved->ret};
   mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
   fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
@@ -182,18 +219,29 @@ static bool lower_body(Lower *cx, uint32_t index) {
   if (!mir_b_into_func(&fn.b, &built) || !ok) {
     return !fn.failed ? lower_fail(cx, "a function could not be built") : false;
   }
-  built.linkage = reserved->linkage;
-  mir_func_release(reserved);
-  *reserved = built;
-  instance->lowered = true;
+  MirFunc *slot = &cx->module->funcs.ptr[instance.func];
+  built.linkage = slot->linkage;
+  mir_func_release(slot);
+  *slot = built;
+  cx->instances.ptr[index].lowered = true;
   return true;
 }
 
 static bool lower_pending(Lower *cx) {
-  for (size_t index = 0; index < cx->instances.len; index++) {
-    if (!cx->instances.ptr[index].lowered && !lower_body(cx, (uint32_t)index)) {
-      const MsSpan name = ms_names_span(cx->program->names, cx->instances.ptr[index].target.name);
-      return lower_fail(cx, "  while lowering `%.*s`", (int)name.len, (const char *)name.ptr);
+  bool progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (size_t index = 0; index < cx->instances.len; index++) {
+      if (!cx->instances.ptr[index].lowered) {
+        progressed = true;
+        if (!lower_body(cx, (uint32_t)index)) {
+          const MsSpan name = ms_names_span(cx->program->names, cx->instances.ptr[index].target.name);
+          return lower_fail(cx, "  while lowering `%.*s`", (int)name.len, (const char *)name.ptr);
+        }
+      }
+    }
+    if (!lower_lambda_bodies(cx, &progressed)) {
+      return false;
     }
   }
   return true;
@@ -209,12 +257,31 @@ static void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, Ms
   lower_instance_list_push(&cx->instances, (LowerInstance){{0}, NULL, 0, MIR_NONE, true});
 }
 
+/* The process entry returns the exit status: a `main` that returns nothing is wrapped to return 0. */
+static uint32_t entry_status(Lower *cx, uint32_t main_func) {
+  const MirFunc *main = &cx->module->funcs.ptr[main_func];
+  if (main->ret != MIR_VOID || main->nparams != 0) {
+    return main_func;
+  }
+  MirBuilder b;
+  mir_b_init(&b, cx->module, mir_name(cx->module, ms_span_of_text("main.entry")), NULL, 0, MIR_INT);
+  (void)mir_b_call(&b, main_func, NULL, 0);
+  mir_b_ret(&b, mir_b_iconst(&b, 0));
+  MirFunc built;
+  if (!mir_b_into_func(&b, &built)) {
+    (void)lower_fail(cx, "the entry function could not be built");
+    return MIR_NONE;
+  }
+  return mir_add_func(cx->module, &built);
+}
+
 static void lower_release(Lower *cx) {
   lower_ty_map_free(&cx->types);
   ms_names_free(&cx->instance_keys);
   ms_names_free(&cx->vtable_keys);
   mir_idlist_free(&cx->vtables);
   lower_instance_list_free(&cx->instances);
+  lower_lambda_list_free(&cx->lambdas);
   mir_idlist_free(&cx->files);
 }
 
@@ -231,8 +298,12 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
     const LowerTarget target = lower_symbol_target(&cx, *found);
     const uint32_t entry = lower_instance(&cx, &target, NULL, 0, NULL);
     ok = entry != MIR_NONE && lower_pending(&cx);
-    module->entry = entry;
-    module->funcs.ptr[entry].linkage = ML_EXPORT;
+    const uint32_t start = ok ? entry_status(&cx, entry) : entry;
+    ok = ok && start != MIR_NONE;
+    module->entry = start;
+    if (start != MIR_NONE) {
+      module->funcs.ptr[start].linkage = ML_EXPORT;
+    }
   }
   lower_release(&cx);
   return ok;

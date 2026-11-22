@@ -1,5 +1,4 @@
 // ms: words 5 file or directory not found
-// ms: native msstd_fs_copy msstd_fs_glob_entries
 import (
 	Bytes from "@std/bytes.ms",
 	Directory,
@@ -7,18 +6,43 @@ import (
 	FileEvent,
 	FileHandle,
 	FileInfo,
-	FileSystem,
 	FileSystemInfo,
 	NativeDirectory,
 	NativeFile,
 	NativeTemporary,
 	NativeWatcher,
+	PathEntry,
 	RawWatcher,
 	TemporaryDirectory from "@std/os/fs.ms",
 	Duration, Timestamp from "@std/time.ms",
 )
 
-export extern fn msstd_fs_filesystem() FileSystem
+// Copies a file or tree. `flags` has recursive 1, replace 2, error on an existing
+// destination 4, dereference 8, preserve timestamps 16 and verbatim symlinks 32;
+// `clone` is "none", "try" or "force"; `filter` is called with the source and
+// destination of each entry and skips it when it returns False.
+export extern fn msstd_fs_copy(
+	source: String,
+	destination: String,
+	flags: Int,
+	clone: String,
+	max_entries: Int?,
+	max_bytes: Int?,
+	filter: (fn(String, String) Bool)?,
+) Void!
+
+// The sorted matches of `patterns` under `path` that `exclude` and the filter do not
+// leave out; the filter is called with an entry's path, name, directory flag and
+// symlink flag and skips the entry when it returns True.
+export extern fn msstd_fs_glob_entries(
+	path: String,
+	patterns: List[String],
+	exclude: List[String],
+	follow_links: Bool,
+	max_entries: Int?,
+	max_results: Int?,
+	filter: (fn(String, String, Bool, Bool) Bool)?,
+) List[PathEntry]!
 
 export extern fn msstd_io_close(file: NativeFile) Void!
 

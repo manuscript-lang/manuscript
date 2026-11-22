@@ -10,6 +10,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(MsWarnings)
+include(MsGlibcFloor)
+set(MS_MUSL_BUILD_DIR "${CMAKE_BINARY_DIR}/musl")
 
 # Compiler cache when installed (plan section 5).
 find_program(MS_CCACHE ccache)

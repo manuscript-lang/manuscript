@@ -35,6 +35,8 @@ typedef struct LowerFn {
   bool terminated;
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
+  const LowerLambda *lambda; /* the lambda whose body this is, or NULL */
+  MirVar *cap_vars;           /* a lambda body: the variable holding each capture */
   uint32_t local_count; /* the current block ended in a return: the statements after it are unreachable */
 } LowerFn;
 
@@ -64,11 +66,30 @@ void fn_own_result(LowerFn *fn, MirValue result);
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
+/* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
+MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+/* A call recorded with a bodiless standard operation as its callee. */
+MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
+
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
+/* Lambdas and calls of function values (lower_closure.c). */
+MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
+MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
+const MsCall *fn_find_call(const MsFacts *facts, MsNode node);
+/* A parameter name inside a lambda body that is one of its captures: its value in `out`. */
+bool fn_lambda_name(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirValue *out);
+/* Lowers the bodies of the lambdas made so far; `*progressed` is set when it lowered any. */
+bool lower_lambda_bodies(Lower *cx, bool *progressed);
+/* A list literal (lower_list.c). */
+MirValue fn_list(LowerFn *fn, const MsExpr *expr);
+/* `if x := value:` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
+MirValue fn_iflet_test(LowerFn *fn, MirValue value);
+bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 

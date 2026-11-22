@@ -166,7 +166,7 @@ static MirTy lower_by_kind(Lower *cx, MsTy ty) {
   case MS_TY_PRIMITIVE:
     return primitive(builtin);
   case MS_TY_TYPE:
-    return lower_record(cx, ty);
+    return builtin == MS_BUILTIN_List ? lower_standard(cx, ty, builtin) : lower_record(cx, ty);
   case MS_TY_ALTERNATIVE:
     return builtin == MS_BUILTIN_Optional ? lower_standard(cx, ty, builtin) : lower_alt(cx, ty);
   case MS_TY_CONTRACT:

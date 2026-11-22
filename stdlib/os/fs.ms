@@ -35,6 +35,7 @@ import (
 	msstd_fs_canonicalize,
 	msstd_fs_chmod,
 	msstd_fs_chown,
+	msstd_fs_copy,
 	msstd_fs_create_directory,
 	msstd_fs_create_link,
 	msstd_fs_directory_close,
@@ -59,7 +60,7 @@ import (
 	msstd_fs_file_unlock,
 	msstd_fs_file_write_at,
 	msstd_fs_file_write_vectors,
-	msstd_fs_filesystem,
+	msstd_fs_glob_entries,
 	msstd_fs_hard_link,
 	msstd_fs_list,
 	msstd_fs_open,
@@ -208,24 +209,6 @@ fn FileInfo.is_directory() Bool:
 // True for a symbolic link itself, which only happens when links were not followed.
 fn FileInfo.is_symlink() Bool:
 	return self.kind == FileKind.Symlink
-
-// The directory walks that run natively, so the runtime can call the caller's predicate
-// closures.
-interface FileSystem:
-	// Returns entries matching the supplied include and exclude patterns.
-	fn glob(
-		path: String,
-		options: GlobOptions,
-		exclude: (fn(PathEntry) Bool)?,
-	) List[PathEntry]!
-	// Copies a file or tree according to the flattened replacement and size policies of
-	// `copy`.
-	fn copy(
-		source: String,
-		destination: String,
-		options: NativeCopyOptions,
-		filter: (fn(String, String) Bool)?,
-	) Void!
 
 // The runtime handle behind a `FileHandle`.
 export extern type NativeFile
@@ -561,18 +544,6 @@ export type CopyOptions:
 	// returns False. none copies everything.
 	filter: (fn(String, String) Bool)? = none
 
-// `CopyOptions` as the native walk reads it: `clone` as text and the replacement policy as two flags.
-type NativeCopyOptions:
-	recursive: Bool
-	replace: Bool
-	error_on_exists: Bool
-	dereference: Bool
-	preserve_timestamps: Bool
-	verbatim_symlinks: Bool
-	clone: String
-	max_entries: Int?
-	max_bytes: Int?
-
 /*
 How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
 Every field has a default, so `WatchOptions()` watches natively with no limits and `WatchOptions(interval: seconds(1))` polls.
@@ -614,10 +585,6 @@ export type GlobOptions:
 	// limit.
 	max_results: Int? = none
 
-// The filesystem of the current host.
-fn host() FileSystem:
-	return msstd_fs_filesystem()
-
 /*
 Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
 `path` is relative to it and always `/`-separated. `exclude` skips an entry (and does not enter a skipped directory) when it
@@ -637,7 +604,43 @@ export fn glob(
 	options: GlobOptions,
 	exclude: (fn(PathEntry) Bool)? = none,
 ) List[PathEntry]!:
-	return host().glob(path, options, exclude)
+	return msstd_fs_glob_entries(
+		path,
+		options.patterns,
+		options.exclude,
+		options.follow_links,
+		options.max_entries,
+		options.max_results,
+		excluding(exclude),
+	)
+
+// The native walk calls its filter with the fields of a `PathEntry`; this adapts the
+// caller's predicate.
+fn excluding(exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool) Bool)?:
+	if keep := exclude:
+		return fn(path: String, name: String, directory: Bool, symlink: Bool) Bool:
+			return keep(
+				PathEntry(
+					path: path,
+					entry: DirectoryEntry(
+						name: name,
+						directory: directory,
+						symlink: symlink,
+					),
+				)
+			)
+	return none
+
+// The bits of the native copy's flags: recursive 1, replace 2, error on an existing
+// destination 4, dereference 8, preserve timestamps 16, verbatim symlinks 32.
+fn copy_flags(options: CopyOptions) Int:
+	var flags = 4
+	if options.recursive: flags += 1
+	if options.replace: flags += 2
+	if options.dereference: flags += 8
+	if options.preserve_timestamps: flags += 16
+	if options.verbatim_symlinks: flags += 32
+	return flags
 
 fn clone_text(mode: CloneMode) String:
 	match mode:
@@ -665,18 +668,15 @@ export fn copy(
 	destination: String,
 	options: CopyOptions = CopyOptions(),
 ) Void!:
-	native := NativeCopyOptions(
-		recursive: options.recursive,
-		replace: options.replace,
-		error_on_exists: true,
-		dereference: options.dereference,
-		preserve_timestamps: options.preserve_timestamps,
-		verbatim_symlinks: options.verbatim_symlinks,
-		clone: clone_text(options.clone),
-		max_entries: options.max_entries,
-		max_bytes: options.max_bytes,
+	return msstd_fs_copy(
+		source,
+		destination,
+		copy_flags(options),
+		clone_text(options.clone),
+		options.max_entries,
+		options.max_bytes,
+		options.filter,
 	)
-	return host().copy(source, destination, native, options.filter)
 
 // Resolves symlinks and returns the canonical absolute path.
 // ms: effect std.fs.read
@@ -793,7 +793,7 @@ export fn write_file(path: String, data: Writable, replace: Bool = false) Promis
 // write ends, not when the promise is dropped: `permit` is a local that closes at the
 // end of the call.
 fn write_held(path: String, data: Bytes, replace: Bool, held: Bool) Void!:
-	permit := WritePermit(held: held)
+	_permit := WritePermit(held: held)
 	return msstd_fs_write_file(path, data, replace)
 
 // Checks that the process may access `path` in `mode`, from 0 through 7: 0 checks
@@ -818,7 +818,7 @@ export fn append_file(path: String, data: Writable) Promise[Void]:
 	)
 
 fn append_held(path: String, data: Bytes, held: Bool) Void!:
-	permit := WritePermit(held: held)
+	_permit := WritePermit(held: held)
 	return msstd_fs_append_file(path, data)
 
 // Sets the permission bits of `path` to `mode`, from 0 through 4095. `follow_links`

@@ -1,0 +1,155 @@
+/* compiler/own/uses.c: fills the `uses` fact column (see uses.h). */
+#include "compiler/own/uses.h"
+
+#include "compiler/own/bind.h"
+#include "compiler/own/class.h"
+#include "compiler/syntax/walk.h"
+
+typedef struct Uses {
+  MsCheckProgram *program;
+  MsClassifier *classes;
+  MsFacts *facts;
+  const MsNames *names;
+} Uses;
+
+/* Whether `expr` is a local name or a field read of one. */
+static bool place_root(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *at = expr;
+  while (at->kind == MS_E_MEMBER) {
+    at = at->u.member.left;
+  }
+  uint32_t binding = 0;
+  return at->kind == MS_E_NAME && ms_bind_of(pass->facts, at->id, &binding);
+}
+
+/* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
+static void mark_move(Uses *pass, const MsExpr *expr) {
+  if (expr == NULL || (expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr)) {
+    return;
+  }
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  if (ty == MS_TY_NONE || ms_class_of(pass->classes, ty) == MS_CLASS_COPY) {
+    return;
+  }
+  pass->facts->uses[expr->id] = MS_USE_MOVE;
+}
+
+static bool is_clone(const Uses *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  return call->u.call.args.len == 0 && callee->kind == MS_E_MEMBER &&
+         ms_span_is_text(ms_names_span(pass->names, callee->u.member.name), "clone");
+}
+
+static const MsCallArg *arg_for(const MsCall *call, const MsExpr *value) {
+  for (uint32_t index = 0; index < call->arg_count; index++) {
+    if (call->args[index].source == MS_ARG_WRITTEN && call->args[index].node.node == value->id) {
+      return &call->args[index];
+    }
+  }
+  return NULL;
+}
+
+static bool is_constructor(const Uses *pass, const MsExpr *call) {
+  const MsRef *ref = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
+}
+
+static void visit_call(Uses *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (is_clone(pass, call)) {
+    const MsExpr *receiver = callee->u.member.left;
+    if ((receiver->kind == MS_E_NAME || receiver->kind == MS_E_MEMBER) && place_root(pass, receiver)) {
+      pass->facts->uses[receiver->id] = MS_USE_CLONE;
+    }
+    return;
+  }
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  const bool constructor = is_constructor(pass, call);
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    const MsExpr *value = call->u.call.args.ptr[index].value;
+    const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value);
+    if (constructor || (arg != NULL && (arg->flags & MS_PARAM_MOVE) != 0)) {
+      mark_move(pass, value);
+    }
+  }
+  if (fact != NULL && fact->arg_count != 0 && callee->kind == MS_E_MEMBER && fact->args[0].source == MS_ARG_WRITTEN &&
+      fact->args[0].node.node == callee->u.member.left->id && (fact->args[0].flags & MS_PARAM_MOVE) != 0) {
+    mark_move(pass, callee->u.member.left);
+  }
+}
+
+static void visit_expr(void *ctx, const MsExpr *expr) {
+  Uses *pass = ctx;
+  switch ((MsExprKind)expr->kind) {
+  case MS_E_LIST:
+    for (uint32_t index = 0; index < expr->u.list.len; index++) {
+      mark_move(pass, expr->u.list.ptr[index]);
+    }
+    return;
+  case MS_E_MAP:
+    for (uint32_t index = 0; index < expr->u.map.len; index++) {
+      mark_move(pass, expr->u.map.ptr[index].key);
+      mark_move(pass, expr->u.map.ptr[index].value);
+    }
+    return;
+  case MS_E_CALL:
+    visit_call(pass, expr);
+    return;
+  case MS_E_NAME:
+  case MS_E_NUMBER:
+  case MS_E_BOOL:
+  case MS_E_VOID:
+  case MS_E_TEXT:
+  case MS_E_MEMBER:
+  case MS_E_APPLY:
+  case MS_E_INDEX:
+  case MS_E_PROBE:
+  case MS_E_UNARY:
+  case MS_E_BINARY:
+  case MS_E_LAMBDA:
+  case MS_E_MATCH:
+    return;
+  }
+}
+
+static void visit_stmt(void *ctx, const MsStmt *stmt) {
+  Uses *pass = ctx;
+  if (stmt->kind == MS_S_RETURN) {
+    mark_move(pass, stmt->u.expr);
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable) {
+    mark_move(pass, stmt->u.bind.value);
+  } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
+    mark_move(pass, stmt->u.assign.value);
+  }
+}
+
+/* The first pass marks every local name BORROW; the second upgrades moving operands (a parent is visited before
+ * its children, so one pass would let the child's mark overwrite the move). */
+static void borrow_expr(void *ctx, const MsExpr *expr) {
+  Uses *pass = ctx;
+  uint32_t binding = 0;
+  if (expr->kind == MS_E_NAME && ms_bind_of(pass->facts, expr->id, &binding)) {
+    pass->facts->uses[expr->id] = MS_USE_BORROW;
+  }
+}
+
+static void walk_module(const MsModule *tree, MsVisitor visitor) {
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    ms_walk_decl(&visitor, tree->decls[index]);
+  }
+}
+
+void ms_own_uses(MsCheckProgram *program) {
+  MsClassifier classes = ms_class_new(program);
+  for (uint32_t module = 0; module < program->user_modules; module++) {
+    Uses pass = {.program = program, .classes = &classes, .facts = &program->modules.ptr[module].facts,
+                 .names = program->names};
+    if (pass.facts->uses == NULL) {
+      continue;
+    }
+    walk_module(program->modules.ptr[module].tree, (MsVisitor){.ctx = &pass, .expr = borrow_expr});
+    walk_module(program->modules.ptr[module].tree,
+                (MsVisitor){.ctx = &pass, .stmt = visit_stmt, .expr = visit_expr});
+  }
+  ms_class_free(&classes);
+}

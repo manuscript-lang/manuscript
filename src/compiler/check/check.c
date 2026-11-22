@@ -15,6 +15,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     const MsName file = ms_names_intern(names, module->name);
     const uint32_t added = ms_check_add_module(program, file, &module->syntax);
     program->modules.ptr[added].targets = module->targets;
+    program->modules.ptr[added].source = module->source;
   }
   program->user_modules = (uint32_t)program->modules.len;
   ms_check_load_std(program);
@@ -45,7 +46,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_returns(program, index);
   }
   for (uint32_t index = 0; index < program->modules.len; index++) {
-    ms_check_bodies(program, index);
+    ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
   }
   for (uint32_t index = 0; index < program->user_modules; index++) {
     ms_check_fallthrough(program, index);

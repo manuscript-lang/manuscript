@@ -16,13 +16,15 @@ typedef struct MsLinkRequest {
   const MsSpan *link;      /* extra files to link after the runtime */
   size_t link_count;
   bool static_libc;        /* static musl instead of the glibc 2.28 stand-ins */
+  bool tests;              /* the entry is the test runner over the program's `test` blocks, not `main` */
 } MsLinkRequest;
 
 /* Builds the executable. On failure returns false and `error` (valid until the next call) says what failed.
  *
  * The tools come from the environment: `MS_OPT`, `MS_LLC` and `MS_LLD` name the executables (default `opt`, `llc`,
  * `lld`, found on PATH); `MS_FILES` is the directory of startup files and the glibc export table; `MS_RUNTIME` lists
- * the runtime archives, separated by `:` (`;` on Windows). */
+ * the runtime archives, separated by `:` (`;` on Windows). Without `MS_FILES` and `MS_RUNTIME` the build's own
+ * `files` directory next to `ms-c` and its runtime archives are used (cmake/MsRuntimePackage.cmake). */
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error);
 
 #endif
