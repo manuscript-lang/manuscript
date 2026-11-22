@@ -100,14 +100,20 @@ fn status_words(status: Int) String:
 	return "authentication failed"
 
 // The `Error` of a failed runtime native: `status` is the native's status number, `domain` names what it works
-// on, and `said` is the text the native explained itself in, or empty. Lowering calls this for every `extern fn`
-// that returns `T!`. The filesystem words a missing path differently.
-fn msstd_status_error(status: UInt8, domain: String, said: String) Error:
+// on, and `said` is the text the native explained itself in, or empty. `overrides` holds the
+// `// ms: words NUMBER TEXT` lines of the file that declares the native, one per line, and takes the place of
+// the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
+fn msstd_status_error(status: UInt8, domain: String, said: String, overrides: String) Error:
 	number := status.to_int()
 	kind := status_kind(number)
-	words := status_words(number)
-	if domain == "filesystem" and number == 5: return status_error_text("file or directory not found", kind, domain, said)
+	words := override_words(overrides, number).get_or(status_words(number))
 	return status_error_text(words, kind, domain, said)
+
+// The words `overrides` gives `number`, if any.
+fn override_words(overrides: String, number: Int) String?:
+	for line in overrides.split("\n"):
+		if words := line.cut_prefix(f"{number} "): return words
+	return none
 
 fn status_error_text(words: String, kind: String, domain: String, said: String) Error:
 	if words == "-":
