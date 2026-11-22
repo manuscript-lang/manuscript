@@ -135,6 +135,62 @@ static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
 
 /* The local a call's receiver names, or NULL when the receiver is not a plain local. */
 
+/* An owned operand in a new slot of its own: the runtime function takes the value from the slot's address. */
+static MirValue operand_slot(LowerFn *fn, const MsExpr *expr) {
+  MirValue value = fn_expr(fn, expr, LW_MOVE);
+  if (value == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const bool owns = mir_needs_drop(fn->cx->module, ty);
+  if (owns) {
+    const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+    MirMode mode = MM_BORROW;
+    const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
+                       mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
+                       mode == MM_MOVE;
+    value = fresh ? value : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
+    if (fresh) {
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+    }
+  }
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue stored[2] = {slot, value};
+  (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  return slot;
+}
+
+MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
+  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
+    (void)fn_fail(fn, "a map literal is not typed as a map");
+    return MIR_NONE;
+  }
+  const MirValue empty = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
+  const MirImm of_map = {.tag = MI_TY, .a = ty};
+  const MirValue map = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_map, MIR_PTR);
+  const MirValue created[2] = {map, empty};
+  (void)mir_b_emit(&fn->b, MOP_Put, created, 2, (MirImm){0}, MIR_NONE);
+  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
+  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
+  const MsName add = mir_name(fn->cx->module, ms_span_of_text("msrt_map_add"));
+  for (uint32_t at = 0; at < expr->u.map.len; at++) {
+    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key);
+    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value);
+    if (value == MIR_NONE) {
+      return MIR_NONE;
+    }
+    const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
+    const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
+    const MirValue operands[5] = {map, key_desc, value_desc, key, value};
+    (void)fn_runtime_call(fn, add, operands, 5, MIR_VOID);
+  }
+  return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
@@ -167,6 +223,36 @@ static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem)
   return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
+/* Whether the operation is declared on a type variable (`v.to_string()` with a bound): the native has no name of
+ * its own, the concrete receiver of the instance decides. */
+static bool generic_receiver(const LowerFn *fn, const MsCall *call) {
+  return ms_builtin_name(ms_ty_builtin(&fn->cx->program->types, call->callee.owner))[0] == '\0';
+}
+
+/* `to_string` and `clone` on a value whose type the instance knows: the type's own method when it has one,
+ * else the standard form (text through the shape, a structural copy). */
+static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
+  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                    fn->subst.vars, fn->subst.args, fn->subst.count);
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name);
+  if (method != MIR_NONE) {
+    const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
+    fn_own_result(fn, result);
+    return result;
+  }
+  const MirTy type = mir_b_ty(&fn->b, args[0]);
+  if (name_is(operation, "clone") && call->arg_count == 1) {
+    return mir_needs_drop(fn->cx->module, type) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, type) : args[0];
+  }
+  if (name_is(operation, "to_string") && call->arg_count == 1) {
+    return type == MIR_STR ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, MIR_STR) : fn_value_text(fn, args[0], type);
+  }
+  (void)ret;
+  (void)fn_fail(fn, "the operation `%.*s` on a value of a bound type is not lowered yet", (int)operation.len, (const char *)operation.ptr);
+  return MIR_NONE;
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -180,6 +266,9 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   }
   if (name_is(operation, "get") && call->arg_count == 2 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_LIST) {
     return list_get(fn, args[0], args[1], ret);
+  }
+  if (generic_receiver(fn, call)) {
+    return bound_native(fn, callee, call, args, ret);
   }
   const MsTyTable *types = &fn->cx->program->types;
   const MsSpan type_name = ms_span_of_text(ms_builtin_name(ms_ty_builtin(types, call->callee.owner)));
