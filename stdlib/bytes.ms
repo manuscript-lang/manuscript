@@ -17,7 +17,6 @@ import (
 // read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from
 // zero.
 // ms: data
-@repr=bytes_buffer
 export extern type Bytes
 
 // The bytes themselves, copied.
@@ -267,7 +266,6 @@ export fn values(data: Bytes) List[UInt8]:
 	return msrt_bytes_values(data)
 
 // Builds a byte sequence efficiently before freezing it into an immutable value.
-@repr=bytes_buffer
 export extern type BytesBuilder
 
 // Appends one byte to the end of the builder.

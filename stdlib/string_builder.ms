@@ -1,5 +1,4 @@
 // Mutable builder for constructing a string without repeated intermediate copies.
-@repr=bytes_buffer
 export extern type StringBuilder
 
 // Appends the supplied text in order.

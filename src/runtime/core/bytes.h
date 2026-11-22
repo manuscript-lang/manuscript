@@ -53,6 +53,9 @@ void msrt_bytes_concat(const MsList *a, const MsList *b, MsList *out);
 void msrt_bytes_split(const MsList *b, const MsList *sep, MsList *out);
 /* ms-sig: msrt_bytes_values(b: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
 void msrt_bytes_values(const MsList *b, MsList *out);
+/* ms-repr: Bytes bytes_buffer */
+/* ms-repr: BytesBuilder bytes_buffer */
+/* ms-repr: StringBuilder bytes_buffer */
 /* ms-sig: msrt_bytes_join(parts: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
 void msrt_bytes_join(const MsList *parts, MsList *out);
 /* ms-sig: msrt_bytes_from_values(values: *const VecVal, out: *mut VecVal) @domain=binary @leaf */
