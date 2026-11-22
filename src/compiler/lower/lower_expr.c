@@ -163,6 +163,9 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   if (ref != NULL && ref->kind == MS_REF_CASE) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
   }
+  if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE)) {
+    return fn_bound_method(fn, expr, ref); /* `value.method`, a method used as a value */
+  }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
                   expr->pos.line, expr->pos.column);
