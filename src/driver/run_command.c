@@ -14,6 +14,7 @@
 #include "driver/checked_input.h"
 #include "driver/invocation.h"
 #include "driver/pipeline.h"
+#include "driver/watch.h"
 
 enum { STATUS_FAILED = 1, STATUS_NOT_IMPLEMENTED = 70 };
 
@@ -140,13 +141,113 @@ static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsCheck
   return status;
 }
 
+/* What `--watch` polls while the program runs: a change to a watched file stops it so the next build can replace it. */
+typedef struct WatchedRun {
+  const MsSpanList *watched;
+  MsStrBuild *signature;
+  bool changed;
+} WatchedRun;
+
+static bool stop_on_change(void *context) {
+  WatchedRun *run = context;
+  run->changed = run->changed || watch_changed(run->watched, run->signature);
+  return run->changed;
+}
+
+/* Builds and starts the program once; `*changed` says the run ended because a watched file changed. False when the
+ * build failed. */
+static bool watch_once(const MsInvocation *invocation, MsSpanList *watched, const char *reason, bool *changed) {
+  MsArena arena = ms_arena_new();
+  MsCheckedInput checked = {0};
+  RunContext context = {.arena = &arena, .invocation = invocation};
+  const uint64_t started = watch_now_ms();
+  const bool compiled = ms_checked_input_load(&arena, &checked, invocation->filename, MS_INPUT_PROGRAM);
+  context.source_root = checked.graph.source_root;
+  watch_add_inputs(&arena, invocation->filename, &checked.graph, watched);
+  bool built = false;
+  *changed = false;
+  if (!compiled) {
+    (void)print_compile_failure(&context, &checked);
+  } else {
+    const MsString temp = ms_temp_dir();
+    MsString directory = ms_string_empty();
+    if (!ms_dir_make_temp(ms_string_span(&temp), ms_span_of_text("manuscript-watch-"), &directory)) {
+      (void)report_error(&context, "execution", ms_span_of_text("cannot create a temporary directory"));
+    } else {
+      const MsSpan folder = ms_arena_copy(&arena, ms_string_span(&directory));
+      const MsSpan executable = ms_message_format(&arena, MS_TEMP_PROGRAM, folder, (MsSpan){0});
+      MsSpan error = {0};
+      const MsLinkRequest request = {.program = &checked.program, .entry = checked.entry,
+                                     .build_type = invocation->build_type, .output = executable,
+                                     .link = invocation->link.ptr, .link_count = invocation->link.len,
+                                     .static_libc = invocation->static_libc};
+      if (!ms_pipeline_link(&request, &error)) {
+        (void)report_error(&context, "build", error);
+      } else {
+        built = true;
+        print_span(stderr, ms_message_format(&arena, "ms: %s run in %z ms\n", reason, (size_t)(watch_now_ms() - started)));
+      }
+      if (built) {
+        MsSpanList argv = {0};
+        ms_span_list_push(&argv, executable);
+        for (size_t i = 0; i < invocation->arguments.len; i++) {
+          ms_span_list_push(&argv, invocation->arguments.ptr[i]);
+        }
+        MsStrBuild signature = ms_strbuild_new();
+        watch_snapshot(watched, &signature);
+        WatchedRun run = {.watched = watched, .signature = &signature};
+        const MsProcessSpec spec = {.argv = argv.ptr, .argc = argv.len, .inherit = true,
+                                    .supervise = stop_on_change, .supervise_context = &run};
+        MsStrBuild why = ms_strbuild_new();
+        int status = 0;
+        (void)fflush(stdout);
+        if (!ms_process_run(&spec, &status, &why)) {
+          print_span(stderr, ms_message_format(&arena, "%S\n", ms_strbuild_span(&why)));
+        } else if (run.changed) {
+          watch_settle(watched, &signature);
+          *changed = true;
+        } else {
+          print_span(stderr, ms_message_format(&arena, "ms: exited with status %z; waiting for changes\n", (size_t)status));
+        }
+        ms_strbuild_free(&why);
+        ms_strbuild_free(&signature);
+        ms_span_list_free(&argv);
+      }
+      ms_path_remove_tree(folder);
+      ms_string_release(&directory);
+    }
+  }
+  ms_checked_input_free(&checked);
+  ms_arena_free(&arena);
+  return built;
+}
+
+/* `--watch`: runs the program, and after each saved change stops it and runs the new build. A build that fails only
+ * reports its diagnostics; the loop ends with the process (Ctrl-C). */
+static int watch_run(const MsInvocation *invocation) {
+  const char *reason = "started";
+  for (;;) {
+    MsSpanList watched = {0};
+    const uint64_t started = watch_now_ms();
+    bool changed = false;
+    const bool built = watch_once(invocation, &watched, reason, &changed);
+    if (!built) {
+      print_span(stderr, ms_span_of_text("ms: waiting for changes\n"));
+    }
+    if (!changed) {
+      watch_wait(&watched, started);
+    }
+    ms_span_list_free(&watched);
+    reason = "restarted";
+  }
+}
+
 int ms_run_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
   int status = ms_invocation_parse(&arena, "run", argc, argv, &invocation);
   if (status == 0 && invocation.watch) {
-    print_span(stderr, ms_span_of_text("ms run: --watch is not implemented yet\n"));
-    status = STATUS_NOT_IMPLEMENTED;
+    status = watch_run(&invocation);
   } else if (status == 0) {
     MsCheckedInput checked = {0};
     status = build_and_run(&arena, &invocation, &checked);

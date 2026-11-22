@@ -52,7 +52,7 @@ fn unit() Void!:
     return ok()
 
 fn slices(xs: List[Int]) List[Int]:
-    return xs.slice(1, 3).get_or([]).clone()
+    return xs.clone().slice(1, 3).get_or([])
 
 fn run() Void!:
     r := parse("1")

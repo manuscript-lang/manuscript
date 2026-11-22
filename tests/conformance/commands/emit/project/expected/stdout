@@ -5,7 +5,6 @@ file 2 "src/shapes.ms"
 type Shape { width: int, height: int }
 alt Result[Int, Failure] { ok(value: int), error(cause: Failure) } result
 alt Failure { Bad(text: str) }
-alt Result[Int, ] { ok(value: int), error(cause: void) } result
 extern @msrt_string_fmt2(int, str, int) -> str fresh leaf string_join
 extern @msstd_value_to_string(ptr, ptr) -> str fresh
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
@@ -55,7 +54,6 @@ b2():
   %11: opt<int> = opt.some %10 !2:18:18
   %12: int = call @get_or[Int,Failure] (%9, %11) !2:18:36
   %13: int = iadd.chk %6, %12 !2:18:36
-  drop %9
   br b3() !2:18:36
 b3():
   %14: int = iadd %5, %4 !2:17:5
@@ -114,18 +112,25 @@ b6():
   ret %14 !2:13:12
 }
 
-fn @get_or[Int,Failure](%0: Result[Int, Failure], %1: opt<int>) -> int !1:0:0 {
+fn @get_or[Int,Failure](%0: move Result[Int, Failure], %1: move opt<int>) -> int !1:0:0 {
 b0:
-  %2: bool = call @is_ok[Int,Failure] (%0) !1:296:13
-  br_if %2, b1(), b2() !1:296:13
+  %2: int = alt.tag %0 !1:297:5
+  switch %2 [0: b2(), 1: b3()] default b4() !1:297:5
 b1():
-  %3: int = call @get[Int,] (%0) !1:296:34
-  ret %3 !1:296:34
+  %3: void = void !1:299:34
+  unreachable !1:299:34
 b2():
-  br b3() !1:296:34
+  %4: int = alt.take Result[Int, Failure].ok.value %0 !1:297:5
+  alt.release Result[Int, Failure].ok.value %0 !1:297:5
+  ret %4 !1:298:20
 b3():
-  %4: int = call @get[Int] (%1) !1:297:20
-  ret %4 !1:297:20
+  %5: Failure = alt.take Result[Int, Failure].error.cause %0 !1:298:20
+  alt.release Result[Int, Failure].error.cause %0 !1:298:20
+  %6: int = call @get[Int] (%1) !1:299:34
+  drop %5
+  ret %6 !1:299:34
+b4():
+  unreachable !1:297:5
 }
 
 fn @area(%0: Shape) -> int !2:0:0 {
@@ -134,44 +139,6 @@ b0:
   %2: int = type.get Shape.height %0 !2:9:5
   %3: int = imul.chk %1, %2 !2:9:5
   ret %3 !2:9:5
-}
-
-fn @is_ok[Int,Failure](%0: Result[Int, Failure]) -> bool !1:0:0 {
-b0:
-  %1: int = alt.tag %0 !1:276:5
-  switch %1 [0: b2(), 1: b3()] default b4() !1:276:5
-b1():
-  %2: void = void !1:278:19
-  unreachable !1:278:19
-b2():
-  %3: int = alt.get Result[Int, Failure].ok.value %0 !1:276:5
-  %4: bool = bconst true !1:277:16
-  ret %4 !1:277:16
-b3():
-  %5: Failure = alt.get Result[Int, Failure].error.cause %0 !1:277:16
-  %6: bool = bconst false !1:278:19
-  ret %6 !1:278:19
-b4():
-  unreachable !1:276:5
-}
-
-fn @get[Int,](%0: Result[Int, ]) -> int !1:0:0 {
-b0:
-  %1: int = alt.tag %0 !1:289:5
-  switch %1 [0: b2(), 1: b3()] default b4() !1:289:5
-b1():
-  %2: void = void !1:291:19
-  unreachable !1:291:19
-b2():
-  %3: int = alt.get Result[Int, ].ok.value %0 !1:289:5
-  ret %3 !1:290:20
-b3():
-  %4: void = alt.get Result[Int, ].error.cause %0 !1:290:20
-  %5: str = str "called Result.get() on error; check is_ok first, or pass a default: get(default: ...)" !1:290:20
-  %6: void = call.rt @msrt_panic (%5) !1:291:19
-  unreachable !1:291:19
-b4():
-  unreachable !1:289:5
 }
 
 fn @get[Int](%0: opt<int>) -> int !1:0:0 {

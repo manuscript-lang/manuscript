@@ -6,8 +6,11 @@
 
 #include <uv.h>
 
+#include "base/message.h"
 #include "base/ostext.h"
+#include "base/path.h"
 #include "base/strbuild.h"
+
 
 enum { POLL_MS = 10, MS_PER_SECOND = 1000, NS_PER_MS = 1000000 };
 
@@ -56,6 +59,16 @@ static bool unchanged(const MsSpanList *paths, MsStrBuild *signature) {
   return same;
 }
 
+void watch_snapshot(const MsSpanList *paths, MsStrBuild *signature) { (void)snapshot(paths, UINT64_MAX, signature); }
+
+bool watch_changed(const MsSpanList *paths, MsStrBuild *signature) { return !unchanged(paths, signature); }
+
+void watch_settle(const MsSpanList *paths, MsStrBuild *signature) {
+  do {
+    uv_sleep(POLL_MS);
+  } while (watch_changed(paths, signature));
+}
+
 void watch_wait(const MsSpanList *paths, uint64_t started_ms) {
   MsStrBuild signature = ms_strbuild_new();
   if (!snapshot(paths, started_ms, &signature)) {
@@ -67,4 +80,26 @@ void watch_wait(const MsSpanList *paths, uint64_t started_ms) {
     } while (!unchanged(paths, &signature));
   }
   ms_strbuild_free(&signature);
+}
+
+/* The files a rerun depends on: the input, its manifest, every local module and the directory of each, where a new
+ * file would appear. */
+void watch_add_inputs(MsArena *arena, MsSpan input, const MsGraph *graph, MsSpanList *watched) {
+  ms_span_list_push(watched, input);
+  if (graph->project_root.len != 0) {
+    MsStrBuild manifest = ms_strbuild_new();
+    ms_path_append_joined(&manifest, graph->project_root, ms_span_of_text("ms.toml"));
+    ms_span_list_push(watched, ms_message_from_builder(arena, &manifest));
+    ms_strbuild_free(&manifest);
+  }
+  if (graph->source_root.len != 0) {
+    ms_span_list_push(watched, graph->source_root);
+  }
+  for (size_t i = 0; i < graph->count; i++) {
+    const MsGraphModule *module = &graph->modules[i];
+    if (!ms_span_starts_with(module->name, ms_span_of_text("@"))) {
+      ms_span_list_push(watched, module->path);
+      ms_span_list_push(watched, ms_path_parent(module->path));
+    }
+  }
 }
