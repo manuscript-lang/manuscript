@@ -15,19 +15,23 @@ uint32_t lower_file(Lower *cx, uint32_t module) {
   return cx->files.ptr[module];
 }
 
-static const MsSymbol *symbol_of(const Lower *cx, MsSymbolId symbol) {
-  return &cx->program->symbols.ptr[symbol];
+LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol) {
+  const MsSymbol *entry = &cx->program->symbols.ptr[symbol];
+  return (LowerTarget){entry->module, entry->decl->id, &entry->decl->u.fn, entry->name, entry->ty, {NULL, 0}};
 }
 
-/* The type variables of the function a symbol declares, in declaration order, as the checker typed them. */
-static bool decl_variables(Lower *cx, const MsSymbol *symbol, MsTy *out, uint32_t count) {
-  const MsDecl *decl = symbol->decl;
-  const MsFacts *facts = &cx->program->modules.ptr[symbol->module].facts;
-  if (decl == NULL || decl->kind != MS_D_FN || decl->u.fn.type_params.len != count) {
+/* The type variables of a target, in declaration order (the impl's, then the function's own), as the checker
+ * typed them. */
+static bool decl_variables(Lower *cx, const LowerTarget *target, MsTy *out, uint32_t count) {
+  const MsFacts *facts = &cx->program->modules.ptr[target->module].facts;
+  const uint32_t outer = target->outer.len;
+  if (target->func == NULL || outer + target->func->type_params.len != count) {
     return lower_fail(cx, "a generic function was used with the wrong number of type arguments");
   }
   for (uint32_t index = 0; index < count; index++) {
-    out[index] = ms_facts_type(facts, decl->u.fn.type_params.ptr[index]->id);
+    const MsTypeParam *param =
+        index < outer ? target->outer.ptr[index] : target->func->type_params.ptr[index - outer];
+    out[index] = ms_facts_type(facts, param->id);
     if (out[index] == MS_TY_NONE) {
       return lower_fail(cx, "the checker left a type parameter untyped");
     }
@@ -48,8 +52,10 @@ static MsTy *concrete_args(Lower *cx, const MsTy *args, uint32_t nargs, const Lo
 }
 
 /* The instance key: the symbol and the type of each argument, as text. */
-static void instance_key(Lower *cx, MsSymbolId symbol, const MsTy *args, uint32_t nargs, MsStrBuild *out) {
-  ms_strbuild_append_u64(out, symbol);
+static void instance_key(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs, MsStrBuild *out) {
+  ms_strbuild_append_u64(out, target->module);
+  ms_strbuild_append_byte(out, '.');
+  ms_strbuild_append_u64(out, target->node);
   for (uint32_t index = 0; index < nargs; index++) {
     ms_strbuild_append_byte(out, index == 0 ? ':' : ',');
     ms_strbuild_append_u64(out, args[index]);
@@ -58,9 +64,9 @@ static void instance_key(Lower *cx, MsSymbolId symbol, const MsTy *args, uint32_
 }
 
 /* The name of an instance: the function's name, then its type arguments (`print[String]`). */
-static MsName instance_name(Lower *cx, const MsSymbol *symbol, const MsTy *args, uint32_t nargs) {
+static MsName instance_name(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append(&text, ms_names_span(cx->program->names, symbol->name));
+  ms_strbuild_append(&text, ms_names_span(cx->program->names, target->name));
   for (uint32_t index = 0; index < nargs; index++) {
     ms_strbuild_append_byte(&text, index == 0 ? '[' : ',');
     lower_type_text(cx, NULL, args[index], &text);
@@ -76,48 +82,48 @@ static MirMode param_mode(uint8_t flags) {
 }
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
-static uint32_t reserve(Lower *cx, const MsSymbol *symbol, const MsTy *args, uint32_t nargs) {
+static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
   MsTy vars[16];
-  if (nargs > 16 || (nargs > 0 && !decl_variables(cx, symbol, vars, nargs))) {
+  if (nargs > 16 || (nargs > 0 && !decl_variables(cx, target, vars, nargs))) {
     (void)lower_fail(cx, "a function has too many type parameters");
     return MIR_NONE;
   }
   const LowerSubst subst = {vars, args, nargs};
   const MsTyTable *types = &cx->program->types;
-  const uint32_t count = (uint32_t)ms_ty_param_count(types, symbol->ty);
-  const MsTyParam *params = ms_ty_params(types, symbol->ty);
+  const uint32_t count = (uint32_t)ms_ty_param_count(types, target->ty);
+  const MsTyParam *params = ms_ty_params(types, target->ty);
   MirParam *mir_params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
     mir_params[index] = (MirParam){lower_type(cx, &subst, params[index].ty), (uint8_t)param_mode(params[index].flags)};
   }
-  const MirTy ret = lower_type(cx, &subst, ms_ty_result(types, symbol->ty));
+  const MirTy ret = lower_type(cx, &subst, ms_ty_result(types, target->ty));
   MirFunc func;
-  mir_func_init(cx->module, &func, instance_name(cx, symbol, args, nargs), mir_params, count, ret);
+  mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
   return mir_add_func(cx->module, &func);
 }
 
-uint32_t lower_instance(Lower *cx, MsSymbolId symbol, const MsTy *args, uint32_t nargs, const LowerSubst *caller) {
+uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs, const LowerSubst *caller) {
   MsTy *concrete = concrete_args(cx, args, nargs, caller);
   MsStrBuild key = ms_strbuild_new();
-  instance_key(cx, symbol, concrete, nargs, &key);
+  instance_key(cx, target, concrete, nargs, &key);
   const MsName id = ms_names_intern(&cx->instance_keys, ms_strbuild_span(&key));
   ms_strbuild_free(&key);
   if (id < cx->instances.len) {
     return cx->instances.ptr[id].func;
   }
-  const uint32_t func = reserve(cx, symbol_of(cx, symbol), concrete, nargs);
+  const uint32_t func = reserve(cx, target, concrete, nargs);
   /* Names are dense, so a new key's id is the next index. */
-  lower_instance_list_push(&cx->instances, (LowerInstance){symbol, concrete, nargs, func, false});
+  lower_instance_list_push(&cx->instances, (LowerInstance){*target, concrete, nargs, func, false});
   return func;
 }
 
 /* ---- bodies ---- */
 
 /* Declares the parameters as variables and gives the function scope the owned ones. */
-static void bind_params(LowerFn *fn, const MsSymbol *symbol) {
+static void bind_params(LowerFn *fn, const LowerTarget *target) {
   const MsTyTable *types = &fn->cx->program->types;
-  const uint32_t count = (uint32_t)ms_ty_param_count(types, symbol->ty);
-  const MsTyParam *params = ms_ty_params(types, symbol->ty);
+  const uint32_t count = (uint32_t)ms_ty_param_count(types, target->ty);
+  const MsTyParam *params = ms_ty_params(types, target->ty);
   MirValue *values = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, (size_t)count + 1);
   mir_b_params(&fn->b, values, count);
   fn->param_vars = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirVar, (size_t)count + 1);
@@ -142,30 +148,29 @@ static void finish_body(LowerFn *fn) {
 
 static bool lower_body(Lower *cx, uint32_t index) {
   LowerInstance *instance = &cx->instances.ptr[index];
-  const MsSymbol *symbol = symbol_of(cx, instance->symbol);
-  const MsDecl *decl = symbol->decl;
-  if (decl == NULL || decl->kind != MS_D_FN) {
+  const LowerTarget *target = &instance->target;
+  if (target->func == NULL) {
     return lower_fail(cx, "a call reached a declaration with no body");
   }
   MsTy vars[16];
-  if (instance->nargs > 0 && !decl_variables(cx, symbol, vars, instance->nargs)) {
+  if (instance->nargs > 0 && !decl_variables(cx, target, vars, instance->nargs)) {
     return false;
   }
   MirFunc *reserved = &cx->module->funcs.ptr[instance->func];
   LowerFn fn = {.cx = cx,
-                .facts = &cx->program->modules.ptr[symbol->module].facts,
-                .decl = decl,
-                .module_index = symbol->module,
-                .file = lower_file(cx, symbol->module),
+                .facts = &cx->program->modules.ptr[target->module].facts,
+                .func = target->func,
+                .module_index = target->module,
+                .file = lower_file(cx, target->module),
                 .subst = {vars, instance->args, instance->nargs},
                 .ret = reserved->ret};
   mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
   fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
   (void)fn_scope_begin(&fn);
-  bind_params(&fn, symbol);
-  fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[decl->id] : 0;
+  bind_params(&fn, target);
+  fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  const bool ok = fn_stmts(&fn, decl->u.fn.body) && !fn.failed;
+  const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;
   if (!mir_b_into_func(&fn.b, &built) || !ok) {
@@ -191,7 +196,7 @@ static void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, Ms
   *cx = (Lower){.program = program, .module = module, .error = error};
   ms_names_init(&cx->instance_keys);
   (void)ms_names_intern(&cx->instance_keys, ms_span_of_text("")); /* id 0 is the empty text; no key is empty */
-  lower_instance_list_push(&cx->instances, (LowerInstance){0, NULL, 0, MIR_NONE, true});
+  lower_instance_list_push(&cx->instances, (LowerInstance){{0}, NULL, 0, MIR_NONE, true});
 }
 
 static void lower_release(Lower *cx) {
@@ -211,7 +216,8 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
   }
   bool ok = found != NULL || lower_fail(&cx, "the program has no `main` function");
   if (ok) {
-    const uint32_t entry = lower_instance(&cx, *found, NULL, 0, NULL);
+    const LowerTarget target = lower_symbol_target(&cx, *found);
+    const uint32_t entry = lower_instance(&cx, &target, NULL, 0, NULL);
     ok = entry != MIR_NONE && lower_pending(&cx);
     module->entry = entry;
     module->funcs.ptr[entry].linkage = ML_EXPORT;

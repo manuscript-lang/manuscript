@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "base/alloc.h"
+#include "runtime/std/http_client_abi.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
 #include "runtime/std/net_dns.h"
@@ -18,6 +19,7 @@
 typedef struct Member {
   MsObj *object;
   bool network; /* a network derived from this one, not a socket */
+  bool client;  /* an HTTP client handle, not a socket */
 } Member;
 
 typedef struct Network {
@@ -86,7 +88,9 @@ static void sweep(Network *network) {
   size_t kept = 0;
   for (size_t i = 0; i < network->count; i++) {
     const Member member = network->members[i];
-    if (!member.network && atomic_load(&ms_net_handle_core(member.object)->closed)) {
+    const bool gone = member.client ? ms_http_client_handle_closed(member.object)
+                                    : !member.network && atomic_load(&ms_net_handle_core(member.object)->closed);
+    if (gone) {
       drop_object(member.object);
     } else {
       network->members[kept++] = member;
@@ -96,7 +100,7 @@ static void sweep(Network *network) {
 }
 
 /* Records `object`, a handle the network now owns; false (the caller closes it) when the network is closed. */
-static bool track(Network *network, MsObj *object, bool is_network) {
+static bool track(Network *network, MsObj *object, bool is_network, bool is_client) {
   uv_mutex_lock(&network->lock);
   const bool open = !network->closed;
   if (open) {
@@ -107,7 +111,7 @@ static bool track(Network *network, MsObj *object, bool is_network) {
       network->capacity = network->capacity == 0 ? 8 : network->capacity * 2;
       network->members = ms_realloc(network->members, network->capacity * sizeof *network->members);
     }
-    network->members[network->count++] = (Member){.object = object, .network = is_network};
+    network->members[network->count++] = (Member){.object = object, .network = is_network, .client = is_client};
   }
   uv_mutex_unlock(&network->lock);
   return open;
@@ -116,7 +120,9 @@ static bool track(Network *network, MsObj *object, bool is_network) {
 static void close_network(Network *network);
 
 static void close_member(Member member) {
-  if (member.network) {
+  if (member.client) {
+    msstd_http_client_close(member.object);
+  } else if (member.network) {
     close_network(network_of(member.object));
   } else {
     ms_net_handle_close(member.object);
@@ -154,7 +160,7 @@ static bool is_open(Network *network) {
 
 /* Hands `socket` to the caller and keeps the network's own handle on it; a closed network closes it instead. */
 static uint8_t adopt(Network *network, MsObj *socket, MsObj **out) {
-  if (!track(network, ms_net_handle_alias(socket), false)) {
+  if (!track(network, ms_net_handle_alias(socket), false, false)) {
     ms_net_handle_close(socket);
     drop_object(socket);
     return MS_STATUS_CLOSED;
@@ -439,7 +445,7 @@ uint8_t msstd_net_network_restrict(const MsObj *net, const MsList *hosts, const 
     return MS_STATUS_INVALID_INPUT;
   }
   MsObj *child = handle_new(network_new(filter, network->allow_listen && allow_listen != 0, ms_string_clone(&network->resolver)));
-  if (!track(network, handle_new(network_of(child)), true)) {
+  if (!track(network, handle_new(network_of(child)), true, false)) {
     close_network(network_of(child));
   }
   *out = child;
@@ -466,9 +472,20 @@ uint8_t msstd_net_network_with_resolver(const MsObj *net, const MsString *addres
     return MS_STATUS_PERMISSION_DENIED;
   }
   MsObj *child = handle_new(network_new(ms_net_filter_retain(network->filter), network->allow_listen, ms_string_clone(address)));
-  if (!track(network, handle_new(network_of(child)), true)) {
+  if (!track(network, handle_new(network_of(child)), true, false)) {
     close_network(network_of(child));
   }
   *out = child;
   return MS_STATUS_OK;
+}
+
+/* ---- what the HTTP clients of this network may reach ---- */
+
+MsNetFilter *ms_net_network_filter(const MsObj *net) {
+  Network *network = network_of(net);
+  return network->filter != NULL ? ms_net_filter_retain(network->filter) : NULL;
+}
+
+bool ms_net_network_adopt_client(const MsObj *net, MsObj *client) {
+  return track(network_of(net), client, false, true);
 }
