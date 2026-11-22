@@ -33,6 +33,7 @@ typedef struct MsScopeSite {
   const MsDecl *impl;
   const MsDecl *decl; /* the declaration being walked */
   bool in_constant;  /* inside the value of a module constant */
+  bool in_constant_call; /* ... and inside a call or lambda there, which the constant rules reject as a whole */
   bool type_reading; /* the name is the value reading of a bracket entry that may be a type */
 } MsScopeSite;
 
@@ -47,6 +48,9 @@ typedef struct MsScopeVisitor {
   void (*expr)(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site);
   /* A name read: `expr` is a MS_E_NAME. `scope` lists the enclosing bindings, innermost last. */
   void (*name)(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site);
+  /* Whether the name read `expr` was reported unknown; may be NULL. A call whose callee is such a name gives its
+   * arguments no context, so the walk skips them. */
+  bool (*unknown)(void *context, const MsExpr *expr);
   /* An assignment whose target is a plain name (`stmt->u.assign.name`). */
   void (*assign)(void *context, const MsStmt *stmt, const MsBindingList *scope, const MsScopeSite *site);
 } MsScopeVisitor;
