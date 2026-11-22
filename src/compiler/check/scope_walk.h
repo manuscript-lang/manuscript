@@ -26,6 +26,7 @@ MS_LIST_DEFINE(MsBindingList, ms_binding_list, MsBinding)
 /* Where a visited node sits: the `impl` declaration whose method holds it, or NULL. */
 typedef struct MsScopeSite {
   const MsDecl *impl;
+  const MsDecl *decl; /* the declaration being walked */
   bool in_constant;  /* inside the value of a module constant */
   bool type_reading; /* the name is the value reading of a bracket entry that may be a type */
 } MsScopeSite;
@@ -37,6 +38,8 @@ typedef struct MsScopeVisitor {
   bool (*invalid_param)(void *context, const MsParam *param);
   /* A binding has just come into scope; may be NULL. */
   void (*declared)(void *context, const MsBinding *binding);
+  /* Every expression, before its parts; may be NULL. */
+  void (*expr)(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site);
   /* A name read: `expr` is a MS_E_NAME. `scope` lists the enclosing bindings, innermost last. */
   void (*name)(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site);
   /* An assignment whose target is a plain name (`stmt->u.assign.name`). */

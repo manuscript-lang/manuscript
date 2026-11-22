@@ -16,6 +16,7 @@ typedef struct Target {
   const MsParams *ast;    /* the declared parameters (for defaults), or NULL */
   uint32_t ast_module;
   const MsExpr *receiver; /* the written receiver of a method call */
+  MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
   MsSpan name;
   MsTyList explicit_args; /* owned: written type arguments */
 } Target;
@@ -23,6 +24,7 @@ typedef struct Target {
 static void target_free(Target *target) {
   ms_ty_list_free(&target->vars);
   ms_ty_list_free(&target->explicit_args);
+  ms_strbuild_free(&target->name_text);
 }
 
 /* A function type with these parameters returning `result`. */
@@ -126,17 +128,14 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
   return ok;
 }
 
-static bool member_target(Body *body, const MsExpr *callee, MsTy expected, Target *target) {
+static bool member_target(Body *body, const MsExpr *callee, Target *target) {
   const MsExpr *left = callee->u.member.left;
   if (left->kind == MS_E_NAME && body_find_local(body, left->u.sym) == NULL) {
     const MsSymbol *symbol = body_find_symbol(body, left->u.sym);
     if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      MsTy owner = symbol->ty;
-      const MsTyRow *row = ms_ty_row(&body->program->types, expected);
-      owner = expected != MS_TY_NONE && row->id == ms_ty_row(&body->program->types, owner)->id ? expected : owner;
-      return case_target(body, callee, callee->u.member.name, owner, target);
+      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   const MsTy receiver = body_expr(body, left, MS_TY_NONE);
@@ -164,7 +163,7 @@ static bool resolve_target(Body *body, const MsExpr *callee, MsTy expected, Targ
     return name_target(body, callee, expected, target);
   }
   if (callee->kind == MS_E_MEMBER) {
-    return member_target(body, callee, expected, target);
+    return member_target(body, callee, target);
   }
   target->sig = body_expr(body, callee, MS_TY_NONE);
   target->ref = (MsRef){0};
@@ -222,6 +221,29 @@ static MsTy expected_param(Body *body, const Target *target, MsTy param, const M
   return known == 0 ? param : ms_ty_subst(&body->program->types, param, vars, args, known);
 }
 
+/* Whether `ty` mentions one of the callee's own variables (an inference slot not yet bound). */
+static bool mentions_vars(const MsTyTable *types, MsTy ty, const MsTyList *vars) {
+  if (!ms_ty_has_variable(types, ty)) {
+    return false;
+  }
+  for (size_t index = 0; index < vars->len; index++) {
+    if (vars->ptr[index] == ty) {
+      return true;
+    }
+  }
+  for (size_t index = 0; index < ms_ty_arg_count(types, ty); index++) {
+    if (mentions_vars(types, ms_ty_args(types, ty)[index], vars)) {
+      return true;
+    }
+  }
+  for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
+    if (mentions_vars(types, ms_ty_params(types, ty)[index].ty, vars)) {
+      return true;
+    }
+  }
+  return ms_ty_kind(types, ty) == MS_TY_FUNCTION && mentions_vars(types, ms_ty_result(types, ty), vars);
+}
+
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound) {
@@ -232,7 +254,18 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     const MsArg *arg = &call->u.call.args.ptr[matched->slot[index]];
-    arg_tys[index] = body_expr(body, arg->value, expected_param(body, target, param, bound));
+    MsStrBuild context = ms_strbuild_new();
+    if (target->name.len != 0) {
+      ms_strbuild_append_text(&context, "argument '");
+      ms_strbuild_append(&context, ms_names_span(body->program->names, ms_ty_params(types, target->sig)[index].name));
+      ms_strbuild_append_text(&context, "' of ");
+      ms_strbuild_append(&context, target->name);
+    }
+    const MsTy wanted = expected_param(body, target, param, bound);
+    arg_tys[index] = mentions_vars(types, wanted, &target->vars)
+                         ? body_expr(body, arg->value, wanted)
+                         : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
+    ms_strbuild_free(&context);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
@@ -287,25 +320,43 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
                         MsTy expected) {
   MsInstance instance = {0};
   MsTy sig = target->sig;
+  bool instantiated = true;
   if (target->vars.len != 0) {
     const MsSpan name = target->name;
     if (ms_check_instantiate(body->program, target->sig, target->vars.ptr, target->vars.len, name,
                              target->explicit_args.ptr, target->explicit_args.len, arg_tys, matched->count, expected,
                              &instance)) {
       sig = instance.ty;
+    } else {
+      instantiated = false;
     }
   }
-  const MsTy result = record_call(body, call, target, sig, &instance.args, matched);
+  MsTy result = record_call(body, call, target, sig, &instance.args, matched);
   body_set_type(body, call->u.call.callee->id, sig);
   ms_instance_free(&instance);
-  return result;
+  return instantiated ? result : MS_TY_NONE;
+}
+
+/* The callee as written: `f`, `values.map`; empty for any other expression. */
+static void append_callee_name(const Body *body, MsStrBuild *out, const MsExpr *callee) {
+  if (callee->kind == MS_E_NAME) {
+    ms_strbuild_append(out, ms_names_span(body->program->names, callee->u.sym));
+  } else if (callee->kind == MS_E_MEMBER) {
+    append_callee_name(body, out, callee->u.member.left);
+    ms_strbuild_append_text(out, ms_strbuild_length(out) != 0 ? "." : "");
+    ms_strbuild_append(out, ms_names_span(body->program->names, callee->u.member.name));
+  } else if (callee->kind == MS_E_APPLY) {
+    append_callee_name(body, out, callee->u.apply.left);
+  }
 }
 
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
   const MsExpr *callee = expr->u.call.callee;
-  target.name = callee->kind == MS_E_NAME ? ms_names_span(body->program->names, callee->u.sym) : (MsSpan){0};
+  target.name_text = ms_strbuild_new();
+  append_callee_name(body, &target.name_text, callee);
+  target.name = ms_strbuild_span(&target.name_text);
   if (resolve_target(body, callee, expected, &target)) {
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1), .count = count};

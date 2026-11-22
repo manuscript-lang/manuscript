@@ -7,6 +7,7 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [Timed waits are a deadline with a meaning or an event, never a poll](timed-waits-are-deadlines-with-a-meaning-or-an-event.md): a repo-check guard counts sleeps and timed waits per file; done and still-polling lists with the event to use.
 - [The stealing watcher looks on a clock, by decision](the-stealing-watcher-looks-on-a-clock-by-decision.md): why kernel timers lost (numbers), what the watcher costs idle and busy, what would reopen it.
 - [The terminal keeps Rust to raw mode, text reads and writes; decoding lives in Manuscript](the-terminal-is-one-rust-core-with-per-os-backends-and-manuscript-escape-sequences.md): decoder, resize, escape sequences in `cli/terminal.ms`; the module sits in an import cycle, so no string or collections imports.
+- [Time zones come from one bundled database that `zone.ms` reads](time-zones-come-from-one-bundled-database-read-in-manuscript.md): one `tzdata.bin` on every platform, fat TZif v2 blocks, Windows keys mapped to IANA names; rebuild with `tools/tzdata/pack.c`.
 - [Image codecs are pure Manuscript and allocate only after validating the header](image-codecs-are-pure-manuscript-and-allocate-after-validating.md): `@std/image` PNG/JPEG/BMP/PPM with fuzzing; limits optional, sizes checked before allocation; pitfalls found.
 - [BigInt power estimates do not prove a result fits](bigint-power-estimates-do-not-prove-a-result-fits.md): a lower bit-length bound rejects some oversized powers, but the computed result still needs its exact size checked.
 

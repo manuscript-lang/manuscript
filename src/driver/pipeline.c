@@ -8,6 +8,7 @@
 #include "compiler/link/link.h"
 #include "compiler/link/object.h"
 #include "driver/backend.h"
+#include "ms_runtime_paths.h"
 
 #if defined(_WIN32)
 enum { LIST_SEPARATOR = ';' };
@@ -80,8 +81,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   const MsSpan opt = setting("MS_OPT", "opt", &opt_storage);
   const MsSpan llc = setting("MS_LLC", "llc", &llc_storage);
   const MsSpan lld = setting("MS_LLD", "lld", &lld_storage);
-  const MsSpan files = setting("MS_FILES", ".", &files_storage);
-  const MsSpan runtime = setting("MS_RUNTIME", "", &runtime_storage);
+  const MsSpan files = setting("MS_FILES", MS_BUILD_FILES, &files_storage);
+  const MsSpan runtime = setting("MS_RUNTIME", MS_BUILD_RUNTIME, &runtime_storage);
   MsSpan inputs[MAX_INPUTS];
   const size_t count = ok ? collect_inputs(request, runtime, inputs) : 0;
   if (ok && !ms_dir_make_temp(ms_span_of_text("."), ms_span_of_text(".ms-build-"), &scratch)) {

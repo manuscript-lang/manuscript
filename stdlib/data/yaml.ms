@@ -1072,7 +1072,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 
 				key_start := flow.pos
 				parsed_key := flow_value(flow, level, key: true)?
-				key_end := flow.pos
+				_key_end := flow.pos
 				flow_key := key_text(parsed_key)
 				if flow_key.is_none(): return error(
 					yaml_unsupported(

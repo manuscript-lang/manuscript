@@ -104,7 +104,7 @@ fn Promise[T].done() Bool:
 // result nobody took is dropped, which closes what it holds.
 fn move Promise[T].close() Void!:
 	if msrt_promise_end(self.id):
-		leftover := msrt_promise_take[T](self.id)
+		_leftover := msrt_promise_take[T](self.id)
 	msrt_promise_drop(self.id)
 
 // Which thread runs a promise's work.
