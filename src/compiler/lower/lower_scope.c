@@ -158,14 +158,20 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
 
 bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  if (insts->len == 0) {
-    return false;
+  /* Walk back to the instruction that made `value`: a call that wrote its `var` receiver back, or took other
+   * values out of their slots, leaves instructions after the result (and its scope.own). */
+  for (size_t at = insts->len; at-- > 0;) {
+    const MirInst *inst = &insts->ptr[at];
+    if (inst->op == MOP_ScopeDisown && inst->nargs == 1 && inst->args[0] == value) {
+      return false;
+    }
+    if (inst->op == MOP_ScopeOwn && inst->nargs == 1 && inst->args[0] == value) {
+      return true;
+    }
+    if (inst->res == value) {
+      MirMode mode = MM_BORROW;
+      return mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) && mode == MM_MOVE;
+    }
   }
-  const MirInst *last = &insts->ptr[insts->len - 1];
-  if (last->op == MOP_ScopeOwn) {
-    /* The scope took the result of the instruction before it. */
-    return last->nargs == 1 && last->args[0] == value;
-  }
-  MirMode mode = MM_BORROW;
-  return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_MOVE;
+  return false;
 }

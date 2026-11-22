@@ -472,11 +472,59 @@ static bool is_bodiless_function(LowerFn *fn, const MsCall *call) {
   return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless;
 }
 
-static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+static int base64_digit(uint8_t c) {
+  if (c >= 'A' && c <= 'Z') return c - 'A';
+  if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+  if (c >= '0' && c <= '9') return c - '0' + 52;
+  return c == '+' ? 62 : c == '/' ? 63 : -1;
+}
+
+/* `msstd_embed_bytes("<base64>")`: the file's bytes held in the program's read-only data, decoded here once, so a
+ * read decodes nothing. MIR_NONE when the call is another one. */
+static MirValue embedded_bytes(LowerFn *fn, const MsExpr *expr, MsSpan name) {
+  if (!ms_span_is_text(name, "msstd_embed_bytes") || expr->u.call.args.len != 1 ||
+      expr->u.call.args.ptr[0].value->kind != MS_E_TEXT || expr->u.call.args.ptr[0].value->u.text.len > 1) {
+    return MIR_NONE;
+  }
+  const MsExpr *text = expr->u.call.args.ptr[0].value;
+  const MsSpan encoded = text->u.text.len == 0 ? ms_span_of_text("") : text->u.text.ptr[0].lit;
+  MsStrBuild decoded = ms_strbuild_new();
+  uint32_t bits = 0;
+  int held = 0;
+  for (size_t at = 0; at < encoded.len && encoded.ptr[at] != '='; at++) {
+    const int digit = base64_digit(encoded.ptr[at]);
+    if (digit < 0) {
+      ms_strbuild_free(&decoded);
+      (void)fn_fail(fn, "an embedded file is not base64 text");
+      return MIR_NONE;
+    }
+    bits = bits << 6 | (uint32_t)digit;
+    held += 6;
+    if (held >= 8) {
+      held -= 8;
+      ms_strbuild_append_byte(&decoded, (uint8_t)(bits >> held & 0xffu));
+    }
+  }
+  const MsSpan bytes = ms_strbuild_span(&decoded);
+  uint8_t *stored = ms_arena_alloc_array(&fn->cx->module->arena, 1, 1, bytes.len + 1);
+  __builtin_memcpy(stored, bytes.ptr, bytes.len);
+  ms_span_list_push(&fn->cx->module->blobs, ms_span_of(stored, bytes.len));
+  ms_strbuild_free(&decoded);
+  const MirImm blob = {.tag = MI_INT, .i = (int64_t)fn->cx->module->blobs.len - 1};
+  const MirValue data = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
+  return fn_emit(fn, MOP_Clone, &data, 1, (MirImm){0}, MIR_BYTES);
+}
+
+static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
     (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;
+  }
+  const MsName extern_name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
+  const MirValue embedded = embedded_bytes(fn, expr, ms_names_span(&fn->cx->module->names, extern_name));
+  if (embedded != MIR_NONE) {
+    return embedded;
   }
   MirValue checked = MIR_NONE;
   if (fn_status_call(fn, mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name)),
@@ -536,7 +584,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     return fn_builtin_call(fn, call, args, ret);
   }
   if (!source) {
-    return call_runtime(fn, call, args, ret);
+    return call_runtime(fn, expr, call, args, ret);
   }
   MsTy bound[16] = {0};
   const MsTy *type_args = call->type_args;
