@@ -116,6 +116,8 @@ MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
 bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record constructor takes one per field */
+
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);
 /* After the close of a part returned `result`: faults when it is an error, else drops it. */
 void lower_close_check(MirBuilder *b, MirValue result);

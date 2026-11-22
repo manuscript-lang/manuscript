@@ -154,7 +154,7 @@ static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, u
 
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
-  uint32_t order[16];
+  uint32_t order[LOWER_MAX_ARGS];
   for (uint32_t at = 0; at < call->arg_count; at++) {
     uint32_t place = at;
     while (place > 0 && written_before(expr, call, at, order[place - 1])) {
@@ -167,7 +167,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     const uint32_t index = order[step];
     const MsCallArg *arg = &call->args[index];
     if (arg->source == MS_ARG_WRITTEN && slots != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) &&
-        *nslots < 16) {
+        *nslots < LOWER_MAX_ARGS) {
       const MsExpr *place = fn_written_arg(expr, arg->node.node);
       out[index] = place != NULL ? fn_var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
     } else if (arg->source == MS_ARG_WRITTEN) {
@@ -382,12 +382,12 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   if (value_callee && (named || call != NULL)) {
     return fn_call_value(fn, expr, call != NULL && named && call->callee.kind != MS_REF_NONE ? &call->callee : NULL);
   }
-  if (call == NULL || call->arg_count > 16) {
+  if (call == NULL || call->arg_count > LOWER_MAX_ARGS) {
     (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);
     return MIR_NONE;
   }
-  MirValue args[16];
-  VarSlot slots[16];
+  MirValue args[LOWER_MAX_ARGS];
+  VarSlot slots[LOWER_MAX_ARGS];
   uint32_t nslots = 0;
   LowerTarget target;
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
