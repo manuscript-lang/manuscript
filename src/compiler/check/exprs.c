@@ -381,6 +381,9 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   }
   const MsTyTable *types = &body->program->types;
   const MsTy receiver = body_expr(body, left, MS_TY_NONE);
+  if ((receiver == MS_TY_NONE || ms_ty_is_invalid(types, receiver)) && index->kind == MS_E_NAME) {
+    return MS_TY_NONE; /* an unresolved receiver was reported; its bracket argument is probably a type argument */
+  }
   const bool map = ms_ty_is(types, receiver, MS_BUILTIN_Map) && ms_ty_arg_count(types, receiver) == 2;
   const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List) && ms_ty_arg_count(types, receiver) == 1;
   (void)body_expr(body, index, map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int));
@@ -390,7 +393,20 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   if (map) {
     return ms_ty_args(types, receiver)[1];
   }
-  return ms_ty_is(types, receiver, MS_BUILTIN_Bytes) ? body_primitive(body, MS_BUILTIN_UInt8) : MS_TY_NONE;
+  if (ms_ty_is(types, receiver, MS_BUILTIN_Bytes)) {
+    return body_primitive(body, MS_BUILTIN_UInt8);
+  }
+  if (receiver != MS_TY_NONE && !ms_ty_is_invalid(types, receiver) && body->module < body->program->user_modules &&
+      !body->quiet) {
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
+                    ms_string_from_span(ms_span_of_text(
+                        ms_ty_is(types, receiver, MS_BUILTIN_String)
+                            ? "indexing a String by integer is not supported; use for c in s.chars(), s.scalar_at(offset, "
+                              "default) at a byte offset, or s.slice(start, end)"
+                            : "indexing requires List[T], Map[K, V] or Bytes; use the receiver's lookup method for other "
+                              "types")));
+  }
+  return MS_TY_NONE;
 }
 
 static MsTy probe_expr(Body *body, const MsExpr *expr) {
