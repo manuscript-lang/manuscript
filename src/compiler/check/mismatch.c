@@ -9,7 +9,7 @@
 #include "compiler/syntax/walk.h"
 
 /* Whether `ty` is, or holds, an invalid type. */
-static bool holds_invalid(const MsTyTable *types, MsTy ty, int depth) {
+bool holds_invalid(const MsTyTable *types, MsTy ty, int depth) {
   if (ty == MS_TY_NONE || ms_ty_is_invalid(types, ty)) {
     return true;
   }

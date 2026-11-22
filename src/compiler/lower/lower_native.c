@@ -134,13 +134,37 @@ static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
 }
 
 /* The local a call's receiver names, or NULL when the receiver is not a plain local. */
-static const MsRef *receiver_local(LowerFn *fn, const MsExpr *callee) {
-  const MsExpr *left = callee->u.member.left;
-  if (left == NULL || left->kind != MS_E_NAME) {
-    return NULL;
+
+/* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
+ * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
+static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
+                              MirTy ret) {
+  MirValue owned;
+  if (!fn_take_place(fn, place, &owned)) {
+    return MIR_NONE;
   }
-  const MsRef *ref = ms_facts_ref(fn->facts, left->id);
-  return ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0 ? ref : NULL;
+  const MirTy ty = mir_b_ty(&fn->b, owned);
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue stored[2] = {slot, owned};
+  (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  wanted[0] = slot;
+  const MirValue result = fn_runtime_call(fn, name, wanted, count, ret);
+  const MirValue updated = mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
+  if (!fn_put_place(fn, place, updated)) {
+    return MIR_NONE;
+  }
+  return result;
+}
+
+/* `list.get(index)`: the element, a negative index counting from the end; an index out of range faults. */
+static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
+  const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
+  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, mir_b_iconst(&fn->b, 0));
+  const MirValue at = mir_b_select(&fn->b, negative, from_end, index);
+  const MirValue args[2] = {list, at};
+  return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
@@ -154,27 +178,20 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     const MirImm none = {0};
     return fn_emit(fn, MOP_Clone, args, 1, none, MIR_STR);
   }
+  if (name_is(operation, "get") && call->arg_count == 2 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_LIST) {
+    return list_get(fn, args[0], args[1], ret);
+  }
   const MsName name = runtime_name(fn, call->callee.owner, operation);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
       signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
-    const MsRef *local = mutates_receiver(sig, ret) ? receiver_local(fn, callee) : NULL;
-    if (local == NULL) {
-      return fn_runtime_call(fn, name, wanted, count, ret);
+    const MsExpr *place = callee->u.member.left;
+    if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+      return call_changing(fn, place, name, wanted, count, ret);
     }
-    /* The native writes the receiver in place: it runs on a stack copy that becomes the local's new value. */
-    const MirTy type = mir_b_ty(&fn->b, args[0]);
-    const MirImm of_type = {.tag = MI_TY, .a = type};
-    const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
-    const MirValue store[2] = {slot, args[0]};
-    (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
-    wanted[0] = slot;
-    const MirValue result = fn_runtime_call(fn, name, wanted, count, ret);
-    const MirValue updated = mir_b_emit(&fn->b, MOP_Load, &slot, 1, of_type, type);
-    mir_b_def_var(&fn->b, fn->vars[local->local] - 1, updated);
-    return result;
+    return fn_runtime_call(fn, name, wanted, count, ret);
   }
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }

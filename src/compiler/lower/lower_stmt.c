@@ -7,26 +7,132 @@ static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
   return value;
 }
 
+/* A `var` local of a type that needs a drop owns its current value: assignment moves the new value in and drops
+ * the old one, and the scope that declared it owns what it holds where the scope ends. */
+static bool var_owns(const LowerFn *fn, MirVar var) {
+  return fn->b.vars.ptr[var].mode == MM_MOVE;
+}
+
+static void disown(LowerFn *fn, MirValue value) {
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
     return fn_fail(fn, "only a name can be bound for now");
   }
-  /* A name bound to another name borrows it; anything else is a new owner. */
+  /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
-  const MirValue value = kind == MS_E_NAME || kind == MS_E_MEMBER ? fn_expr(fn, stmt->u.bind.value, LW_BORROW)
-                                                                   : take_value(fn, stmt->u.bind.value);
+  const bool borrow = !stmt->u.bind.is_mutable && (kind == MS_E_NAME || kind == MS_E_MEMBER);
+  const MirValue value = borrow ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   if (value == MIR_NONE) {
     return false;
   }
-  const MirVar var = fn_local(fn, ms_facts_ref(fn->facts, pattern->id)->local, mir_b_ty(&fn->b, value));
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
+  if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
+    if (local >= fn->nvars) {
+      return fn_fail(fn, "a local binding is outside the function's locals");
+    }
+    fn->vars[local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
+    disown(fn, value);
+    mir_b_def_var(&fn->b, fn->vars[local] - 1, value);
+    return fn_scope_own_var(fn, fn->vars[local] - 1) && !fn->failed;
+  }
+  mir_b_def_var(&fn->b, fn_local(fn, local, ty), value);
+  return !fn->failed;
+}
+
+/* The local that owns the value a name place holds, or false when `place` is not an owning `var` local. */
+static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
+  const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars || fn->vars[ref->local] == 0 ||
+      !var_owns(fn, fn->vars[ref->local] - 1)) {
+    return false;
+  }
+  *out = fn->vars[ref->local] - 1;
+  return true;
+}
+
+
+/* Whether `place` is an owning `var` local or a member path rooted in one: the places `fn_put_place` stores into. */
+bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
+  MirVar var;
+  return owned_local(fn, place, &var) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+}
+
+/* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
+ * back by `fn_put_place`), a member or element path's value is copied. */
+bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
+  MirVar var;
+  if (owned_local(fn, base, &var)) {
+    *out = mir_b_use_var(&fn->b, var);
+    return true;
+  }
+  if (base->kind != MS_E_MEMBER && base->kind != MS_E_INDEX) {
+    return fn_fail(fn, "assignment into this place is not lowered yet");
+  }
+  const MirValue inner = fn_expr(fn, base, LW_BORROW);
+  if (inner == MIR_NONE) {
+    return false;
+  }
+  *out = fn_emit(fn, MOP_Clone, &inner, 1, (MirImm){0}, mir_b_ty(&fn->b, inner));
+  disown(fn, *out);
+  return true;
+}
+
+/* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
+ * (a path's inner record is copied), the old field is dropped, `type.set` makes the updated record and that is
+ * stored back into the place of `base`. `value` is owned and held by no scope. */
+static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
+  const MsRef *ref = ms_facts_ref(fn->facts, place->id);
+  const MsExpr *base = place->u.member.left;
+  if (ref == NULL || ref->kind != MS_REF_FIELD) {
+    return fn_fail(fn, "this member is not a record field");
+  }
+  MirValue record = MIR_NONE;
+  if (!fn_take_place(fn, base, &record)) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, record));
+  if (data->kind != MK_TYPE) {
+    return fn_fail(fn, "a field is assigned in a record (found MIR kind %d)", (int)data->kind);
+  }
+  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+  const MirTy field_ty = fn_type(fn, ms_facts_type(fn->facts, place->id));
+  if (mir_needs_drop(fn->cx->module, field_ty)) {
+    const MirValue old = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue operands[2] = {record, value};
+  const MirValue updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, record));
+  return fn_put_place(fn, base, updated);
+}
+
+/* Stores the owned `value` (held by no scope) into `place`, the place of an earlier `fn_take_place`. */
+bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
+  MirVar var;
+  if (place->kind == MS_E_MEMBER) {
+    return set_member(fn, place, value);
+  }
+  if (!owned_local(fn, place, &var)) {
+    return fn_fail(fn, "an assignment does not name an owning local");
+  }
   mir_b_def_var(&fn->b, var, value);
   return !fn->failed;
 }
 
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
-    return fn_fail(fn, "assignment to a member is not lowered yet");
+    const MirValue value = take_value(fn, stmt->u.assign.value);
+    if (value == MIR_NONE) {
+      return false;
+    }
+    if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+      disown(fn, value);
+    }
+    return fn_put_place(fn, stmt->u.assign.target, value);
   }
   /* A name target records its local on the statement, a member target on its expression. */
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
@@ -37,6 +143,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;
+  }
+  if (var_owns(fn, var)) {
+    const MirValue old = mir_b_use_var(&fn->b, var);
+    disown(fn, value);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
   }
   /* A compound assignment's value already reads the target (`a += b` is `a = a + b`). */
   mir_b_def_var(&fn->b, var, value);

@@ -8,7 +8,13 @@
 /* How the consumer takes an expression's value: it reads it in place, or it takes ownership. */
 typedef enum LowerWant { LW_BORROW, LW_MOVE } LowerWant;
 
-enum { LOWER_MAX_SCOPES = 64, LOWER_MAX_LOOPS = 32 };
+enum { LOWER_MAX_SCOPES = 64, LOWER_MAX_LOOPS = 32, LOWER_MAX_OWNED_VARS = 256 };
+
+/* A `var` local that owns its current value: the scope that declared it owns that value where the scope ends. */
+typedef struct LowerOwnedVar {
+  uint32_t scope;
+  MirVar var;
+} LowerOwnedVar;
 
 /* Where `break` and `continue` go, and how many scopes were open outside the loop. */
 typedef struct LowerLoop {
@@ -31,6 +37,8 @@ typedef struct LowerFn {
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   uint32_t nopen;
+  LowerOwnedVar owned_vars[LOWER_MAX_OWNED_VARS];
+  uint32_t nowned_vars;
   bool failed;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
@@ -55,6 +63,8 @@ void fn_scope_end(LowerFn *fn);
 void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 /* The innermost open scope. */
 uint32_t fn_scope(const LowerFn *fn);
+/* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
+bool fn_scope_own_var(LowerFn *fn, MirVar var);
 /* Makes the scope `scope` own `value` (kind 0 drops it). */
 void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 
@@ -62,6 +72,15 @@ void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, MirImm imm, MirTy ty);
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
+
+/* ---- places (lower_stmt.c) ---- */
+
+/* Whether `place` is an owning `var` local or a member path rooted in one. */
+bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
+/* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
+bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+/* Stores the owned `value` (held by no scope) into `place`. */
+bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
 
 /* ---- statements, expressions and calls ---- */
 
