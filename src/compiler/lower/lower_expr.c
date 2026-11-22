@@ -293,8 +293,13 @@ static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue ri
 
 /* The operator `op` over two values of one standard type: strings by the runtime, value objects by their operation
  * word, Floats and UInt64 by their own instructions, everything else as integers. */
-/* `a == b` on lists: the runtime compares the two element by element by the list's type descriptor. */
-static MirValue list_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+static bool is_structural(const LowerFn *fn, MirTy ty) {
+  const MirTyKind kind = mir_ty_data(fn->cx->module, ty)->kind;
+  return kind == MK_LIST || kind == MK_OPT || kind == MK_TYPE || kind == MK_ALT;
+}
+
+/* `a == b` on a list, an optional, a record or an alternative: the runtime compares the two by the type's descriptor. */
+static MirValue structural_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, of_type, MIR_PTR);
   const MirValue left_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
@@ -322,8 +327,8 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
     return object;
   }
   const MirTy operand = mir_b_ty(&fn->b, left);
-  if (ops.compare && (op == MS_B_EQ || op == MS_B_NE) && mir_ty_data(fn->cx->module, operand)->kind == MK_LIST) {
-    return list_equality(fn, op == MS_B_NE, left, right, operand);
+  if (ops.compare && (op == MS_B_EQ || op == MS_B_NE) && is_structural(fn, operand)) {
+    return structural_equality(fn, op == MS_B_NE, left, right, operand);
   }
   if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
     return float_binary(fn, &ops, left, right, operand);

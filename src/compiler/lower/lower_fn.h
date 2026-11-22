@@ -207,6 +207,7 @@ MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */
+bool fn_end_is_reachable(LowerFn *fn);
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);

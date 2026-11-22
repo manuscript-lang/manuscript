@@ -260,6 +260,10 @@ static void finish_body(LowerFn *fn) {
   if (fn->terminated) {
     return;
   }
+  if (!fn_end_is_reachable(fn)) {
+    mir_b_unreachable(&fn->b);
+    return;
+  }
   const MirValue done = fn_result_wrap(fn, MIR_NONE);
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, done);

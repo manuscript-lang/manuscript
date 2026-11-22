@@ -34,6 +34,21 @@ static bool unify_argument(const MsTyTable *types, MsTy pattern, MsTy actual, co
   if (unify_commit(types, pattern, actual, vars, count, bound)) {
     return true;
   }
+  /* A variable another argument bound to `U?` takes a `U` (it converts), and one bound to `U` widens to `U?`. */
+  for (size_t index = 0; index < count; index++) {
+    if (vars[index] != pattern || bound[index] == MS_TY_NONE) {
+      continue;
+    }
+    if (ms_ty_is(types, bound[index], MS_BUILTIN_Optional) && ms_ty_arg_count(types, bound[index]) == 1 &&
+        ms_ty_args(types, bound[index])[0] == actual) {
+      return true;
+    }
+    if (ms_ty_is(types, actual, MS_BUILTIN_Optional) && ms_ty_arg_count(types, actual) == 1 &&
+        ms_ty_args(types, actual)[0] == bound[index]) {
+      bound[index] = actual;
+      return true;
+    }
+  }
   return ms_ty_is(types, pattern, MS_BUILTIN_Optional) && ms_ty_arg_count(types, pattern) == 1 &&
          unify_commit(types, ms_ty_args(types, pattern)[0], actual, vars, count, bound);
 }
