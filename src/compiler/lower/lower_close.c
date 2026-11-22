@@ -205,7 +205,7 @@ static bool lowerable(uint16_t flags) {
   }
   const bool taken = (flags & MS_CLOSER_PARTS) != 0 && (flags & MS_CLOSER_TAKEN) != 0;
   /* A `var` slot changes in place through its slot; any other closer must not be changed. */
-  const bool changed = (flags & MS_CLOSER_MUTATED) != 0 && (flags & MS_CLOSER_DROP) == 0;
+  const bool changed = (flags & MS_CLOSER_MUTATED) != 0 && (flags & (MS_CLOSER_DROP | MS_CLOSER_VAR)) == 0;
   return (flags & MS_CLOSER_CONSUMES) != 0 && !taken && !changed &&
          (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_PARTIAL)) == 0;
 }
