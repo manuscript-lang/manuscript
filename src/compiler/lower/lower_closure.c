@@ -283,7 +283,21 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
   mir_b_params(&fn.b, values, reserved.nparams);
   fn.param_vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)reserved.nparams + 1);
+  const MirTy lambda_ty = fn_type(&fn, ms_facts_type(fn.facts, lambda.expr->id));
+  const MirTyData *lambda_data = mir_ty_data(cx->module, lambda_ty);
+  const MsTy source_ty = ms_ty_subst(&cx->program->types, ms_facts_type(fn.facts, lambda.expr->id), lambda.subst.vars,
+                                     lambda.subst.args, lambda.subst.count);
   for (uint32_t at = 1; at < reserved.nparams; at++) {
+    if (mir_param_is_var(lambda_data->owned, at - 1) && fn.nvar_params < LOWER_MAX_VAR_PARAMS) {
+      const MirTy held_ty = fn_type(&fn, ms_ty_params(&cx->program->types, source_ty)[at - 1].ty);
+      const bool owns = mir_needs_drop(cx->module, held_ty);
+      const MirImm of_type = {.tag = MI_TY, .a = held_ty};
+      const MirValue held = mir_b_emit(&fn.b, owns ? MOP_Take : MOP_Load, &values[at], 1, of_type, held_ty);
+      fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, held_ty, owns ? MM_MOVE : MM_BORROW);
+      mir_b_def_var(&fn.b, fn.param_vars[at - 1], held);
+      fn.var_params[fn.nvar_params++] = (LowerVarParam){fn.param_vars[at - 1], values[at], held_ty};
+      continue;
+    }
     const MirTy ty = mir_b_ty(&fn.b, values[at]);
     fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, ty, (MirMode)reserved.params[at].mode);
     mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
@@ -379,13 +393,21 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     return MIR_NONE;
   }
   MirValue args[16];
+  VarSlot slots[16];
+  uint32_t nslots = 0;
   args[0] = callee;
   for (uint32_t index = 0; index < data->nargs; index++) {
-    args[index + 1] = fn_expr(fn, expr->u.call.args.ptr[index].value, mir_owns(data->owned, index) ? LW_MOVE : LW_BORROW);
+    const MsExpr *written = expr->u.call.args.ptr[index].value;
+    if (mir_param_is_var(data->owned, index)) {
+      args[index + 1] = fn_var_slot(fn, written, &slots[nslots++]);
+    } else {
+      args[index + 1] = fn_expr(fn, written, mir_owns(data->owned, index) ? LW_MOVE : LW_BORROW);
+    }
     if (args[index + 1] == MIR_NONE) {
       return MIR_NONE;
     }
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
-  return fn_emit(fn, MOP_CallInd, args, data->nargs + 1, (MirImm){0}, data->elem);
+  const MirValue result = fn_emit(fn, MOP_CallInd, args, data->nargs + 1, (MirImm){0}, data->elem);
+  return fn_var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
 }

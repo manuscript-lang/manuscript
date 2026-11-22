@@ -666,7 +666,11 @@ fn Map[T, U].keys() List[T]: ...
 // Calls `operation(key, value)` for each entry in insertion order.
 // A callback that takes `value` as `var` changes it in place, and the receiver must
 // then be `var`.
-fn Map[T, U].for_each(operation: fn(T, var U) Void) Void: ...
+fn Map[T: Hashable & Clonable, U: Clonable].for_each(operation: fn(T, var U) Void) Void:
+	for key in self.keys():
+		var value = self.get(key).get()
+		operation(key, value)
+		self.add(key.clone(), value)
 
 // Reports whether an equal key is present, using the key type's `Hashable`
 // implementation.

@@ -163,6 +163,15 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+
+/* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
+typedef struct VarSlot {
+  const MsExpr *place;
+  MirValue slot;
+  MirTy ty;
+} VarSlot;
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
+bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
 MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
