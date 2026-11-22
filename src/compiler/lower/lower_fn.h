@@ -69,6 +69,8 @@ typedef struct LowerFn {
   uint32_t nopen;
   LowerOwnedVar owned_vars[LOWER_MAX_OWNED_VARS];
   uint32_t nowned_vars;
+  MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
+  uint32_t nmoved_names;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];

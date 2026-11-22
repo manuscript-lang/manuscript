@@ -358,7 +358,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
       return STATUS_FAILED;
     }
     const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
-    const MsSpan executable = ms_message_format(arena, "%S/program", folder, (MsSpan){0});
+    const MsSpan executable = ms_message_format(arena, MS_TEMP_PROGRAM, folder, (MsSpan){0});
     if (!build_tests(&checked, invocation, executable, &error)) {
       print_text(stderr, ms_message_format(arena, "%S\n", error, (MsSpan){0}));
       status = STATUS_FAILED;
