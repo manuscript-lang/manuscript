@@ -16,6 +16,7 @@
 #include "base/string.h"
 #include "compiler/check/facts.h"
 #include "compiler/check/methods.h"
+#include "compiler/check/properties.h"
 #include "compiler/check/types.h"
 #include "compiler/project/project.h"
 #include "compiler/syntax/ast.h"
@@ -80,6 +81,7 @@ typedef struct MsCheckProgram {
   MsNames *names; /* borrowed */
   MsTyTable types;
   MsDefs defs;
+  MsPropertyMemo properties; /* property queries in flight and answered */
   MsMethodList methods; /* every module's methods, in declaration order */
   MsSymbolList symbols; /* index 0 is unused */
   MsTyList symbol_vars; /* the type variables of every symbol, by range */

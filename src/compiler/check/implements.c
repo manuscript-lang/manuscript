@@ -3,11 +3,11 @@
  * No declaration names the relationship: a type satisfies an interface when its own methods supply every
  * operation with the interface's exact signature, parameter names and `var`/`move` receiver mode. A type
  * variable satisfies the interfaces it is bounded by, a type set admits its members, and the built-in
- * scalars satisfy Comparable. Equal, Hashable, Clonable and Data are structural properties of the type's
- * shape and are decided by the property pass, not here: they hold until it lands. */
+ * scalars satisfy Comparable. Equal, Hashable, Clonable and Data are structural properties (properties.c). */
 #include "compiler/check/methods.h"
 
 #include "compiler/check/program.h"
+#include "compiler/check/properties.h"
 
 /* ---- types ---- */
 
@@ -309,9 +309,9 @@ bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract) 
     return receiver == contract;
   }
   const MsBuiltin builtin = ms_ty_builtin(types, contract);
-  if (builtin == MS_BUILTIN_Equal || builtin == MS_BUILTIN_Hashable || builtin == MS_BUILTIN_Clonable ||
-      builtin == MS_BUILTIN_Data) {
-    return true;
+  MsProperty property = MS_PROPERTY_EQUAL;
+  if (ms_property_of_builtin(builtin, &property)) {
+    return ms_check_property(program, receiver, property);
   }
   if (builtin == MS_BUILTIN_TypeSet) {
     return type_set_admits(&program->types, receiver, contract);
