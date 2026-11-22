@@ -325,6 +325,10 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
   MirValue taken = MIR_NONE;
+  if (want == LW_MOVE && value != MIR_NONE && fn_is_text_literal(expr)) {
+    /* A literal is static, so what owns it holds a copy. */
+    return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+  }
   if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && fn_closing_move(fn, expr, value, &taken)) {
     return taken;
   }

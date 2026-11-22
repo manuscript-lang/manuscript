@@ -28,7 +28,7 @@ static bool twin_position(const MirModule *m, const MirFunc *f, const MirInst *i
   const uint8_t role = m->externs.ptr[inst->imm.a].role;
   if (role == MR_STRING_CONCAT) {
     *at = 0;
-    *join = false;
+    *join = inst->nargs > 2; /* a concat of three or more strings joins like a format: its twin takes a mask */
     return true;
   }
   if (role == MR_STRING_JOIN) {
