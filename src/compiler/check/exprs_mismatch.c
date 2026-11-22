@@ -155,13 +155,6 @@ static MsSpan expr_text(const Body *body, const MsExpr *expr) {
   return ms_span_of(source.ptr + start.offset, expr->end.offset - start.offset);
 }
 
-/* A written expression a `.method()` suffix or a `()` call binds to as a whole. */
-static bool is_atomic(const MsExpr *expr) {
-  return expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER || expr->kind == MS_E_CALL ||
-         expr->kind == MS_E_INDEX || expr->kind == MS_E_APPLY || expr->kind == MS_E_LIST ||
-         expr->kind == MS_E_MAP;
-}
-
 static bool all_digits(MsSpan text) {
   for (size_t at = 0; at < text.len; at++) {
     if (text.ptr[at] < '0' || text.ptr[at] > '9') {
@@ -186,7 +179,7 @@ static void attach_rewrite(Body *body, const MsExpr *expr, MsSpan text, const ch
 /* `value()` for a method written without its call. */
 static void attach_parens(Body *body, const MsExpr *expr) {
   const MsSpan text = expr_text(body, expr);
-  if (text.len > 0 && is_atomic(expr)) {
+  if (text.len > 0 && body_expr_is_atomic(expr)) {
     attach_rewrite(body, expr, text, "()", false);
   }
 }
@@ -203,7 +196,7 @@ static void attach_to_float(Body *body, const MsExpr *expr) {
     }
     return;
   }
-  attach_rewrite(body, expr, text, ".to_float()", !is_atomic(expr));
+  attach_rewrite(body, expr, text, ".to_float()", !body_expr_is_atomic(expr));
 }
 
 /* A compound assignment (`x += y`) desugars to `x = x + y`: the left operand is its target. */

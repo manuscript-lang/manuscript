@@ -148,6 +148,7 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
 typedef struct PlaceReturns {
   const Lower *cx;
   const MsFacts *facts;
+  const MsFunc *func; /* the function whose returns are counted */
   MsTy result; /* the declared result type, or MS_TY_NONE when unknown */
   uint32_t depth;
   uint32_t returns;
@@ -163,6 +164,9 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
     return false;
   }
   const MsFunc *callee = ms_own_find_func(counts->cx->program, &call->callee);
+  if (callee == counts->func) {
+    return true; /* a recursive call answers what the function's other returns answer */
+  }
   if (callee == NULL || !ms_own_result_is_borrowed(counts->cx->program, call->callee.decl.module, call->callee.decl.node) ||
       (call->callee.kind == MS_REF_METHOD && ms_method_of_func(callee)->consuming)) {
     return false;
@@ -199,7 +203,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
 }
 
 static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
-  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, result, depth, 0, 0};
+  PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, func, result, depth, 0, 0};
   const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
   ms_walk_block(&visitor, func->body);
   return counts.returns != 0 && counts.returns == counts.places;

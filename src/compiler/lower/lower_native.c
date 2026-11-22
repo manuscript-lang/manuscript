@@ -488,24 +488,39 @@ static bool is_try_place(LowerFn *fn, const MsExpr *place) {
   return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left);
 }
 
+/* `xs[i]` of a list held in place: whether `place` is one, and then `*addr` is the element's address (MIR_NONE
+ * when the list or the index has no value). A method that changes the element does so where it lies. */
+bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  *addr = MIR_NONE;
+  if (!ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
+    return false;
+  }
+  const MirValue list = fn_expr(fn, container, LW_BORROW);
+  if (list == MIR_NONE) {
+    return false;
+  }
+  const MirValue at = fn_expr(fn, key, LW_BORROW);
+  if (at != MIR_NONE) {
+    const MirValue operands[2] = {list, at};
+    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+  }
+  return true;
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
                               MirTy ret, MirValue result_slot) {
   /* An element of a list: the native changes it where it lies, through the element's address. */
-  MsExpr *container = NULL;
-  MsExpr *key = NULL;
-  if (ms_expr_index(place, &container, &key) && fn_is_list(fn, container) && lists_in_place(fn, container)) {
-    const MirValue list = fn_expr(fn, container, LW_BORROW);
-    if (list != MIR_NONE) {
-      const MirValue at = fn_expr(fn, key, LW_BORROW);
-      if (at == MIR_NONE) {
-        return MIR_NONE;
-      }
-      const MirValue operands[2] = {list, at};
-      wanted[0] = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
-      return call_native(fn, name, wanted, count, ret, result_slot);
+  MirValue element = MIR_NONE;
+  if (fn_list_element_addr(fn, place, &element)) {
+    if (element == MIR_NONE) {
+      return MIR_NONE;
     }
+    wanted[0] = element;
+    return call_native(fn, name, wanted, count, ret, result_slot);
   }
   if (is_try_place(fn, place)) {
     VarSlot var;

@@ -739,8 +739,9 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   }
   /* A parameter taken by borrow is never the callee's to give away. */
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
-  const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && ref->local < fn->b.func.nparams &&
-                              fn->b.func.params[ref->local].mode != MM_MOVE;
+  const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
+  const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
+                              fn->b.func.params[param_at].mode != MM_MOVE;
   if (!borrowed_param && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
