@@ -1,6 +1,6 @@
 # Fills the startup-files directory (MS_FILES) next to ms-c; run after each build by MsRuntimePackage.cmake.
 #   -DFILES=<dir> -DSOURCE_DIR=<repo> -DOS=<Linux|Darwin|Windows> -DARCH=<processor>
-#   -DMUSL_SYSROOT=<the musl sysroot of cmake/MsMusl.cmake> -DMINGW_DIR=<llvm-mingw root>
+#   -DMUSL_SYSROOT=<the musl sysroot of cmake/MsMusl.cmake> -DMINGW_DIR=<llvm-mingw root> -DCOMPILER=<the C compiler>
 # Linux gets the glibc export table (and the musl and unwinder files for `--static` and the unwinder input);
 # Windows gets the mingw-w64 startup object and libraries; macOS needs only the directory (the SDK stubs are
 # made there on demand). A file that cannot be found is reported once and skipped.
@@ -26,6 +26,11 @@ if(OS STREQUAL "Linux")
   foreach(name crt1.o crti.o crtn.o libc.a libunwind.a)
     ms_copy_file("${MUSL_SYSROOT}/usr/lib/${name}" ${name})
   endforeach()
+  # aarch64 long double is 128-bit: converting it needs the soft-float builtins (`__trunctfdf2`), which lld links from here.
+  if(arch STREQUAL "aarch64" AND COMPILER)
+    execute_process(COMMAND "${COMPILER}" --print-libgcc-file-name OUTPUT_VARIABLE libgcc OUTPUT_STRIP_TRAILING_WHITESPACE)
+    ms_copy_file("${libgcc}" libgcc.a)
+  endif()
 elseif(OS STREQUAL "Windows")
   # MINGW_DIR is an MSYS2 toolchain prefix (`<msys64>/clang64`: lib/ holds crt2.o and the libraries) or an llvm-mingw
   # release (`<dir>/<arch>-w64-mingw32/lib`).
