@@ -116,7 +116,7 @@ static int execute(const RunContext *context, MsSpan executable, MsSpan director
 
 static int build_and_run(MsArena *arena, const MsInvocation *invocation, MsFront *front) {
   RunContext context = {.arena = arena, .invocation = invocation};
-  const bool compiled = ms_front_compile(arena, front, invocation->filename);
+  const bool compiled = ms_front_compile(arena, front, invocation->filename, MS_FRONT_PROGRAM);
   context.source_root = front->graph.source_root;
   if (!compiled) {
     return print_compile_failure(&context, front);

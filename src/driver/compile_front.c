@@ -99,12 +99,13 @@ static uint32_t entry_module(const MsCheckProgram *program, const MsGraph *graph
   return program->user_modules > 0 ? program->user_modules - 1 : 0;
 }
 
-bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename) {
+bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename, MsFrontTarget target) {
   ms_names_init(&front->names);
-  const MsLoadOptions load = {0};
+  const bool tests = target == MS_FRONT_TESTS;
+  const MsLoadOptions load = {.tests = tests};
   ms_project_load(arena, &front->names, filename, &load, &front->graph);
   const MsGraph *graph = &front->graph;
-  if (graph->project_root.len > 0 && graph->library && graph->diagnostic_count == 0) {
+  if (!tests && graph->project_root.len > 0 && graph->library && graph->diagnostic_count == 0) {
     library_failure(arena, graph, &front->findings);
     return false;
   }
@@ -117,7 +118,7 @@ bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename) {
   front->checked = true;
   finding_add_check(&front->program, &front->names, &front->findings);
   front->entry = entry_module(&front->program, graph);
-  if (front->findings.len == 0) {
+  if (front->findings.len == 0 && !tests) {
     require_main(arena, front);
   }
   return front->findings.len == 0;
