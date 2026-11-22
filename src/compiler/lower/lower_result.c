@@ -110,8 +110,8 @@ MirValue fn_unary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_U_NOT) {
     return mir_b_emit(&fn->b, MOP_Xor, (MirValue[]){operand, mir_b_bconst(&fn->b, true)}, 2, (MirImm){0}, MIR_BOOL);
   }
-  if (ty == MIR_FLOAT) {
-    return mir_b_emit(&fn->b, MOP_FNeg, &operand, 1, (MirImm){0}, MIR_FLOAT);
+  if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+    return mir_b_emit(&fn->b, MOP_FNeg, &operand, 1, (MirImm){0}, ty);
   }
   return fn_emit(fn, MOP_INegChk, &operand, 1, (MirImm){0}, ty);
 }

@@ -14,7 +14,8 @@ void msrt_map_new(MsMap *out);
 void msrt_map_stamp(MsMap *m, const MsTypeDesc *kd);
 /* ms-sig: msrt_map_drop(m: *mut MapVal, kd: KeyDesc, vd: ValDesc) @domain=map @leaf */
 void msrt_map_drop(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd);
-/* ms-sig: msrt_map_copy(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut MapVal) @domain=map @leaf */
+/* ms-sig: msrt_map_copy(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut MapVal) @domain=map @leaf
+ * @method=Map.clone */
 void msrt_map_copy(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsMap *out);
 /* ms-sig: msrt_map_reserve(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, n: i64) @domain=map @leaf */
 void msrt_map_reserve(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, int64_t n);
