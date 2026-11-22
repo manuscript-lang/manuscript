@@ -379,6 +379,12 @@ static void set_tls(const MsHttpClient *client, CURL *easy) {
     const struct curl_blob roots = {(void *)(uintptr_t)o->roots_pem.ptr, o->roots_pem.len, CURL_BLOB_COPY};
     curl_easy_setopt(easy, CURLOPT_CAINFO_BLOB, &roots);
   }
+#ifdef _WIN32
+  else {
+    /* No bundled roots on Windows: trust the system store, as OpenSSL elsewhere trusts its default path. */
+    curl_easy_setopt(easy, CURLOPT_SSL_OPTIONS, (long)CURLSSLOPT_NATIVE_CA);
+  }
+#endif
   if (o->certificate_pem.len > 0) {
     const struct curl_blob cert = {(void *)(uintptr_t)o->certificate_pem.ptr, o->certificate_pem.len,
                                    CURL_BLOB_COPY};

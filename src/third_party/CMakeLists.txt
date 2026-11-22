@@ -8,7 +8,7 @@ else()
 endif()
 
 add_library(mimalloc STATIC mimalloc/src/static.c)
-target_include_directories(mimalloc ${MS_THIRD_PARTY_SYSTEM} PUBLIC mimalloc/include)
+target_include_directories(mimalloc SYSTEM PUBLIC mimalloc/include)
 target_include_directories(mimalloc PRIVATE mimalloc/src)
 target_compile_definitions(mimalloc PRIVATE MI_STATIC_LIB)
 target_link_libraries(mimalloc PUBLIC Threads::Threads)
@@ -17,7 +17,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(llhttp STATIC llhttp/src/api.c llhttp/src/http.c llhttp/src/llhttp.c)
-target_include_directories(llhttp ${MS_THIRD_PARTY_SYSTEM} PUBLIC llhttp/include)
+target_include_directories(llhttp SYSTEM PUBLIC llhttp/include)
 
 # PCRE2, 8-bit with Unicode properties and no JIT. The generic headers and tables are copied at configure
 # time, so nothing in the vendored tree is edited.

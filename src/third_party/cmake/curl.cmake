@@ -1,6 +1,7 @@
 # curl 8.23.0 (libcurl only), static. HTTP and HTTP/2 (nghttp2) with zlib and a threaded resolver; TLS through
-# OpenSSL on Unix (Windows has no TLS backend yet). The configuration header comes from curl's own template,
-# filled in with the results of the checks below. Windows uses curl's config-win32.h and needs no generated header.
+# the vendored OpenSSL on every platform (Windows trusts its system certificate store). The configuration header
+# comes from curl's own template, filled in with the results of the checks below. Windows uses curl's
+# config-win32.h and needs no generated header.
 set(CURL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/curl)
 set(CURL_GEN ${CMAKE_CURRENT_BINARY_DIR}/curl_gen)
 
@@ -13,7 +14,7 @@ foreach(line IN LISTS CURL_INC_LINES)
 endforeach()
 
 add_library(curl STATIC ${CURL_SOURCES})
-target_include_directories(curl ${MS_THIRD_PARTY_SYSTEM} PUBLIC ${CURL_DIR}/include PRIVATE ${CURL_DIR}/lib ${CURL_GEN})
+target_include_directories(curl SYSTEM PUBLIC ${CURL_DIR}/include PRIVATE ${CURL_DIR}/lib ${CURL_GEN})
 target_compile_definitions(curl PUBLIC CURL_STATICLIB PRIVATE BUILDING_LIBCURL USE_NGHTTP2 HAVE_LIBZ)
 target_link_libraries(curl PUBLIC zlib nghttp2)
 
@@ -63,12 +64,27 @@ if(WIN32)
 #define HAVE_STRUCT_TIMEVAL 1
 #define HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID 1
 #define USE_RESOLV_THREADED 1
-#define USE_WIN32_CRYPTO 1
+
 #define USE_UNIX_SOCKETS 1
+#define CURL_DISABLE_DICT 1
+#define CURL_DISABLE_FILE 1
+#define CURL_DISABLE_FTP 1
+#define CURL_DISABLE_GOPHER 1
+#define CURL_DISABLE_IMAP 1
+#define CURL_DISABLE_LDAP 1
+#define CURL_DISABLE_LDAPS 1
+#define CURL_DISABLE_MQTT 1
+#define CURL_DISABLE_POP3 1
+#define CURL_DISABLE_RTSP 1
+#define CURL_DISABLE_SMTP 1
+#define CURL_DISABLE_TELNET 1
+#define CURL_DISABLE_TFTP 1
+#define CURL_DISABLE_SMB 1
 #define CURL_OS "mingw-w64"
 ]=])
-  target_compile_definitions(curl PRIVATE HAVE_CONFIG_H WIN32_LEAN_AND_MEAN USE_THREADS_WIN32)
-  target_link_libraries(curl PUBLIC ws2_32 advapi32 crypt32 bcrypt iphlpapi)
+  target_compile_definitions(curl PRIVATE HAVE_CONFIG_H WIN32_LEAN_AND_MEAN USE_THREADS_WIN32 USE_OPENSSL HAVE_SSL_SET0_WBIO)
+  target_link_libraries(curl PUBLIC ws2_32 advapi32 crypt32 bcrypt iphlpapi openssl_ssl)
+  add_dependencies(curl openssl_build)
 else()
   include(CheckIncludeFile)
   include(CheckSymbolExists)
