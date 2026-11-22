@@ -26,6 +26,10 @@ typedef struct MsFront {
  * `findings`. Texts live in `arena`; `ms_front_free` releases the rest. */
 MS_NODISCARD bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename, MsFrontTarget target);
 
+/* The names of the tests of the checked program, `file::name`, in the order `lower_tests` numbers them: user modules in
+ * program order, then declaration order; bench blocks are left out. */
+void ms_front_test_names(MsArena *arena, const MsFront *front, MsSpanList *names);
+
 /* The terminal report of the failure, with the count line, on stderr. Returns the status 1. */
 int ms_front_report(const MsFront *front);
 

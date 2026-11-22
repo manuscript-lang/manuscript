@@ -124,6 +124,20 @@ bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename, MsFrontTa
   return front->findings.len == 0;
 }
 
+void ms_front_test_names(MsArena *arena, const MsFront *front, MsSpanList *names) {
+  const MsCheckProgram *program = &front->program;
+  for (uint32_t m = 0; m < program->user_modules; m++) {
+    const MsModuleInfo *module = &program->modules.ptr[m];
+    const MsSpan file = ms_names_span(program->names, module->file);
+    for (uint32_t d = 0; d < module->tree->ndecls; d++) {
+      const MsDecl *decl = module->tree->decls[d];
+      if (decl->kind == MS_D_TEST && !decl->u.test.bench) {
+        ms_span_list_push(names, ms_message_format(arena, "%S::%S", file, decl->u.test.name));
+      }
+    }
+  }
+}
+
 int ms_front_report(const MsFront *front) {
   FindingList sorted = {0};
   for (size_t i = 0; i < front->findings.len; i++) {
