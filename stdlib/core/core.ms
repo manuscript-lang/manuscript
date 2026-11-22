@@ -189,25 +189,42 @@ export enum Optional[T]:
 	none
 
 // Reports whether a value is present.
-fn Optional[T].is_some() Bool: ...
+fn Optional[T].is_some() Bool:
+	match self:
+		none: return false
+		value: return true
 
 // Reports whether this value is absent.
-fn Optional[T].is_none() Bool: ...
+fn Optional[T].is_none() Bool:
+	match self:
+		none: return true
+		value: return false
 
 // Returns the payload; `none` raises a fault, so use it only when absence is a bug.
 // Prefer `if value := optional:` or `get_or(default)`.
-fn Optional[T].get() T: ...
+fn Optional[T].get() T:
+	match self:
+		value: return value
+		none: panic("called Optional.get() on none; check is_some first, or pass a default: get(default: ...)")
 
 // Returns the payload, or `default` when this is `none`. The default is always
 // evaluated; use `get_or_else` when it costs work.
-fn Optional[T].get_or(default: T?) T: ...
+fn Optional[T].get_or(default: T?) T:
+	if self.is_some(): return self.get()
+	return default.get()
 
 // Transforms a present payload with `transform`; `none` stays `none`.
-fn move Optional[T].map[U](transform: fn(move T) U) U?: ...
+fn move Optional[T].map[U](transform: fn(move T) U) U?:
+	match self:
+		value: return transform(value)
+		none: return none
 
 // Calls `transform` only when a value is present and returns the Optional it
 // produces; `none` stays `none`.
-fn move Optional[T].and_then[U](transform: fn(move T) U?) U?: ...
+fn move Optional[T].and_then[U](transform: fn(move T) U?) U?:
+	match self:
+		value: return transform(value)
+		none: return none
 
 // Returns the payload; only when this is `none`, calls `create` once and returns its
 // value.
@@ -217,7 +234,10 @@ fn Optional[T].get_or_else(create: fn() T) T:
 
 // Returns this value when present; otherwise calls `create` once and returns the
 // Optional it produces.
-fn move Optional[T].or_else(create: fn() T?) T?: ...
+fn move Optional[T].or_else(create: fn() T?) T?:
+	match self:
+		value: return value
+		none: return create()
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used. Without a cause, `E` is `Error` with kind `ENOENT`
@@ -257,15 +277,23 @@ fn Result[T, E].is_error() Bool:
 
 // Returns the successful payload; an error raises a fault, so use it only when
 // failure is a bug. Prefer `?`, `if value := result:` or `get_or(default)`.
-fn Result[T, E].get() T: ...
+fn Result[T, E].get() T:
+	match self:
+		ok(value): return value
+		error(_): panic("called Result.get() on error; check is_ok first, or pass a default: get(default: ...)")
 
 // Returns the successful payload, or `default` when this is an error. The default is
 // always evaluated; use `get_or_else` when it costs work.
-fn Result[T, E].get_or(default: T?) T: ...
+fn Result[T, E].get_or(default: T?) T:
+	if self.is_ok(): return self.get()
+	return default.get()
 
 // Returns the error payload; check `is_error()` first, because a successful result
 // raises a fault.
-fn Result[T, E].err() E: ...
+fn Result[T, E].err() E:
+	match self:
+		ok(_): panic("called Result.err() on ok; check is_error first")
+		error(cause): return cause
 
 // Returns the successful payload; for an error, calls `create` once with that error
 // and returns its value.
@@ -275,17 +303,29 @@ fn Result[T, E].get_or_else(create: fn(E) T) T:
 
 // Returns this result when it is successful; for an error, calls `create` once with
 // that error and returns the Result it produces.
-fn move Result[T, E].or_else(create: fn(move E) T!E) T!E: ...
+fn move Result[T, E].or_else(create: fn(move E) T!E) T!E:
+	match self:
+		ok(value): return ok(value)
+		error(cause): return create(cause)
 
 // Transforms only an error, preserving a successful payload unchanged.
-fn move Result[T, E].map_error[F](transform: fn(move E) F) T!F: ...
+fn move Result[T, E].map_error[F](transform: fn(move E) F) T!F:
+	match self:
+		ok(value): return ok(value)
+		error(cause): return error(transform(cause))
 
 // Transforms only a successful payload, preserving an error unchanged.
-fn move Result[T, E].map[U](transform: fn(move T) U) U!E: ...
+fn move Result[T, E].map[U](transform: fn(move T) U) U!E:
+	match self:
+		ok(value): return ok(transform(value))
+		error(cause): return error(cause)
 
 // Calls `transform` only on success and returns the Result it produces; an error
 // passes through. The error type stays the same.
-fn move Result[T, E].and_then[U](transform: fn(move T) U!E) U!E: ...
+fn move Result[T, E].and_then[U](transform: fn(move T) U!E) U!E:
+	match self:
+		ok(value): return transform(value)
+		error(cause): return error(cause)
 
 // Returns some with the original success payload, or none for an error.
 fn Result[T, E].to_optional() T?:
