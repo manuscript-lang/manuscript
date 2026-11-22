@@ -139,10 +139,30 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   return result;
 }
 
+/* A native type declared `@repr=inline<N>`: a plain record of N/8 words, which the runtime reads and writes by the
+ * address of a copy. */
+static MirTy lower_inline(Lower *cx, MsTy ty, uint32_t size) {
+  const MsTyTable *table = &cx->program->types;
+  const uint32_t id = mir_add_type(cx->module, mir_name(cx->module, ms_names_span(cx->program->names, ms_ty_row(table, ty)->name)));
+  const uint32_t words = size / 8;
+  MirField *fields = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirField, (size_t)words + 1);
+  for (uint32_t at = 0; at < words; at++) {
+    fields[at] = (MirField){mir_name(cx->module, ms_span_of_text("word")), MIR_INT};
+  }
+  cx->module->type_defs.ptr[id].fields = fields;
+  cx->module->type_defs.ptr[id].nfields = words;
+  cx->module->type_defs.ptr[id].native = true;
+  return mir_ty_type(cx->module, id);
+}
+
 static MirTy lower_native(Lower *cx, MsTy ty) {
   const MsTyTable *table = &cx->program->types;
-  if (ms_defs_get(&cx->program->defs, ms_ty_row(table, ty)->def)->repr == MS_REPR_BYTES_BUFFER) {
+  const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(table, ty)->def);
+  if (def->repr == MS_REPR_BYTES_BUFFER) {
     return MIR_BYTES;
+  }
+  if (def->repr == MS_REPR_INLINE) {
+    return lower_inline(cx, ty, def->repr_size);
   }
   const size_t count = ms_ty_arg_count(table, ty);
   MirTy *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);
