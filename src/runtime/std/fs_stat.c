@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include "base/alloc.h"
+#include "runtime/core/map.h"
+#include "runtime/std/bigint.h"
 #include "runtime/std/fs_job.h"
 
 /* ---- libuv calls, run to their end ---- */
@@ -24,32 +26,21 @@ bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b) { return a->st_dev 
 
 /* ---- FileInfo ---- */
 
-enum {
-  KIND_DIRECTORY = 1,
-  KIND_SYMLINK = 2,
-  KIND_REGULAR = 4,
-  KIND_FIFO = 8,
-  KIND_SOCKET = 16,
-  KIND_BLOCK_DEVICE = 32,
-  KIND_CHAR_DEVICE = 64
-};
-
-static int64_t kinds_of(uint64_t mode) {
+/* The FileKind case index of a mode: File, Directory, Symlink, Fifo, Socket, BlockDevice, CharDevice. */
+static int64_t kind_of(uint64_t mode) {
   switch (mode & 0170000u) {
     case 0040000u:
-      return KIND_DIRECTORY;
+      return 1;
     case 0120000u:
-      return KIND_SYMLINK;
-    case 0100000u:
-      return KIND_REGULAR;
+      return 2;
     case 0010000u:
-      return KIND_FIFO;
+      return 3;
     case 0140000u:
-      return KIND_SOCKET;
+      return 4;
     case 0060000u:
-      return KIND_BLOCK_DEVICE;
+      return 5;
     case 0020000u:
-      return KIND_CHAR_DEVICE;
+      return 6;
     default:
       return 0;
   }
@@ -67,21 +58,34 @@ static void split_time(const uv_timespec_t *time, int64_t *seconds, int64_t *nan
   *nanos = rest;
 }
 
+static void split_into(const uv_timespec_t *time, MsFsTimestamp *out) { split_time(time, &out->seconds, &out->nanos); }
+
+static const MsTypeDesc big_desc = {.size = sizeof(void *), .align = _Alignof(void *), .kind = MS_KIND_SHARED};
+
+/* Adds `name` to the map of exact numbers. */
+static void exact_add(MsMap *map, const char *name, MsBigCell *value) {
+  MsString key = ms_string_from_span(ms_span_of_text(name));
+  msrt_map_add(map, &ms_desc_string, &big_desc, (uint8_t *)&key, (uint8_t *)&value);
+}
+
+static void exact_add_time(MsMap *map, const char *name, const MsFsTimestamp *time) {
+  exact_add(map, name, msstd_bigint_from_seconds_nanos(time->seconds, time->nanos));
+}
+
 /* Fills `out` (the name is written separately) from a stat; unsigned host counters carry their bits. */
 void ms_fs_info_fill(MsFsInfo *out, const uv_stat_t *stat) {
   out->size = (int64_t)stat->st_size;
   out->mode = (int64_t)(stat->st_mode & 0177777u);
   out->permissions = (int64_t)(stat->st_mode & 07777u);
-  split_time(&stat->st_mtim, &out->modified_seconds, &out->modified_nanos);
-  split_time(&stat->st_atim, &out->accessed_seconds, &out->accessed_nanos);
-  split_time(&stat->st_ctim, &out->changed_seconds, &out->changed_nanos);
-  out->created_seconds = 0;
-  out->created_nanos = 0;
+  split_into(&stat->st_mtim, &out->modified);
+  split_into(&stat->st_atim, &out->accessed);
+  split_into(&stat->st_ctim, &out->changed);
+  out->created = (MsFsTimestamp){0, 0};
   out->created_present = stat->st_birthtim.tv_sec != 0 || stat->st_birthtim.tv_nsec != 0 ? 1 : 0;
   if (out->created_present != 0) {
-    split_time(&stat->st_birthtim, &out->created_seconds, &out->created_nanos);
+    split_into(&stat->st_birthtim, &out->created);
   }
-  out->kinds = kinds_of(stat->st_mode);
+  out->kind = kind_of(stat->st_mode);
   out->block_size = (int64_t)stat->st_blksize;
   out->blocks = (int64_t)stat->st_blocks;
   out->rdev = (int64_t)stat->st_rdev;
@@ -90,6 +94,21 @@ void ms_fs_info_fill(MsFsInfo *out, const uv_stat_t *stat) {
   out->links = (int64_t)stat->st_nlink;
   out->uid = (int64_t)stat->st_uid;
   out->gid = (int64_t)stat->st_gid;
+  msrt_map_new(&out->exact);
+  exact_add(&out->exact, "size", msstd_bigint_from_int(out->size));
+  exact_add(&out->exact, "mode", msstd_bigint_from_int(out->mode));
+  exact_add(&out->exact, "device", msstd_bigint_from_u64((int64_t)stat->st_dev));
+  exact_add(&out->exact, "inode", msstd_bigint_from_u64((int64_t)stat->st_ino));
+  exact_add(&out->exact, "links", msstd_bigint_from_u64((int64_t)stat->st_nlink));
+  exact_add(&out->exact, "uid", msstd_bigint_from_u64((int64_t)stat->st_uid));
+  exact_add(&out->exact, "gid", msstd_bigint_from_u64((int64_t)stat->st_gid));
+  exact_add(&out->exact, "block_size", msstd_bigint_from_int(out->block_size));
+  exact_add(&out->exact, "blocks", msstd_bigint_from_int(out->blocks));
+  exact_add(&out->exact, "rdev", msstd_bigint_from_u64((int64_t)stat->st_rdev));
+  exact_add_time(&out->exact, "accessed_ns", &out->accessed);
+  exact_add_time(&out->exact, "modified_ns", &out->modified);
+  exact_add_time(&out->exact, "changed_ns", &out->changed);
+  exact_add_time(&out->exact, "created_ns", &out->created);
 }
 
 static const char *stat_operation(bool follow) { return follow ? "stat" : "lstat"; }

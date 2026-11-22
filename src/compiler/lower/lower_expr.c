@@ -546,6 +546,9 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
   }
   const MirTy operand = mir_b_ty(&fn->b, left);
   const bool equality = ops.compare && (op == MS_B_EQ || op == MS_B_NE);
+  if (equality && operand == MIR_VOID) { /* the unit has one value: any two are equal */
+    return mir_b_bconst(&fn->b, op == MS_B_EQ);
+  }
   if (equality && mir_ty_data(fn->cx->module, operand)->kind == MK_OPT) {
     return optional_equality(fn, op == MS_B_NE, left, right);
   }

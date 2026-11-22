@@ -71,6 +71,7 @@ typedef struct MsCall {
   uint32_t type_arg_count;
   const MsCallArg *args;  /* one per callee parameter, receiver first for a method */
   uint32_t arg_count;
+  bool constructor; /* a type's or case's constructor, or the prelude's ok, error or some */
 } MsCall;
 
 /* ---- 4. conversions ---- */

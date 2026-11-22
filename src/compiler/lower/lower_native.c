@@ -213,7 +213,8 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
   /* An optional that is the whole value (`replace` on a list of optionals): the native writes all of it. */
   const bool whole = data->kind == MK_OPT && !sig->status && sig->count > 0 && last == NS_ADDR_MUT;
-  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text)) {
+  const bool listed = optional && last == NS_VEC_MUT && data->elem != MIR_STR; /* `find_span`: a flag and a list */
+  if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text && !listed)) {
     return MIR_NONE;
   }
   const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
@@ -298,9 +299,12 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
                                (uint8_t)(index < 32 && (fn->native_moves >> index & 1u) != 0 ? MM_MOVE : MM_BORROW)};
   }
   fn->native_moves = 0;
+  const MsSpan text = ms_names_span(&fn->cx->module->names, name);
+  const MsNativeSig *sig = ms_native_sig_find(text);
+  const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
-                         .fresh = mir_needs_drop(fn->cx->module, ret),
-                         .role = (uint8_t)string_role(ms_names_span(&fn->cx->module->names, name))};
+                         .fresh = !views && mir_needs_drop(fn->cx->module, ret),
+                         .role = (uint8_t)(views ? MR_VIEW_RESULT : string_role(text))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -592,15 +596,19 @@ static bool list_changeable(LowerFn *fn, const MsExpr *place, MirValue slot) {
   return slot != MIR_NONE || (place != NULL && fn_place_changeable(fn, place));
 }
 
-static bool list_take(LowerFn *fn, const MsExpr *place, MirValue slot, MirTy list_ty, MirValue *owned) {
+static bool list_take(LowerFn *fn, const MsExpr *place, MirValue slot, MirTy list_ty, MirValue *owned, MirValue *record) {
+  *record = MIR_NONE;
   if (slot != MIR_NONE) {
     *owned = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = list_ty}, list_ty);
     return true;
   }
-  return fn_take_place(fn, place, owned);
+  return fn_take_field(fn, place, record, owned) || fn_take_place(fn, place, owned);
 }
 
-static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue updated) {
+static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue record, MirValue updated) {
+  if (record != MIR_NONE) {
+    return fn_put_field(fn, place, record, updated);
+  }
   if (slot == MIR_NONE) {
     return fn_put_place(fn, place, updated);
   }
@@ -614,15 +622,16 @@ static bool list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const M
   const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
   const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
   MirValue owned;
+  MirValue record;
   if (list->kind != MK_LIST || mir_b_ty(&fn->b, args[1]) != list->elem || !list_changeable(fn, place, slot) ||
       (slot == MIR_NONE && place->kind != MS_E_NAME) ||
-      !list_take(fn, place, slot, list_ty, &owned)) {
+      !list_take(fn, place, slot, list_ty, &owned, &record)) {
     return false;
   }
   const MirValue operands[2] = {owned, args[1]};
   const MirValue updated = mir_b_emit(&fn->b, MOP_ListPush, operands, 2, (MirImm){0}, list_ty);
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
-  return list_put(fn, place, slot, updated);
+  return list_put(fn, place, slot, record, updated);
 }
 
 /* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the
@@ -654,13 +663,14 @@ static bool list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirV
   mir_b_unreachable(&fn->b);
   mir_b_switch_to(&fn->b, hit);
   MirValue owned;
-  if (!list_take(fn, place, slot, list_ty, &owned)) {
+  MirValue record;
+  if (!list_take(fn, place, slot, list_ty, &owned, &record)) {
     return false;
   }
   const MirValue operands[3] = {owned, at, args[2]};
   const MirValue updated = mir_b_emit(&fn->b, MOP_ListSetU, operands, 3, (MirImm){0}, list_ty);
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
-  return list_put(fn, place, slot, updated);
+  return list_put(fn, place, slot, record, updated);
 }
 
 /* `String.scalar_at(offset)`: the scalar at a byte offset is the byte itself when it is ASCII, so that case is read

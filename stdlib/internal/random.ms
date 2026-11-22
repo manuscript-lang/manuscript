@@ -85,7 +85,7 @@ export fn draw_float() Float!:
 	return ok(bits.to_float() / 9007199254740992.0)
 
 // `values` shuffled in place by a Fisher-Yates pass.
-export fn draw_shuffle[T](values: List[T]) List[T]!:
+export fn draw_shuffle[T](move values: List[T]) List[T]!:
 	var out = values
 	var index = out.length() - 1
 

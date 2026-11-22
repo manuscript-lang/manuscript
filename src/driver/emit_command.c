@@ -11,17 +11,19 @@
 #include "compiler/mir/mir_print.h"
 #include "driver/backend.h"
 #include "driver/checked_input.h"
+#include "compiler/opt/opt.h"
 #include "driver/invocation.h"
 
 enum { STATUS_FAILED = 1 };
 
 /* Lowers and prints MIR after elaboration, so what is shown is what the later passes read. */
-static bool print_mir(MsCheckProgram *program, uint32_t entry, MsStrBuild *out, MsStrBuild *why) {
+static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, MsStrBuild *out, MsStrBuild *why) {
   MirModule module;
   mir_module_init(&module);
   bool ok = ms_lower_program(program, entry, &module, why);
   const MirPipelineOptions pipeline = {.verify = false, .checks = true};
   ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
+  ok = ok && (!optimize || mir_optimize(&module, MIR_OPT_SPEED, false, why));
   if (ok) {
     mir_print_module(&module, out);
   }
@@ -42,12 +44,12 @@ static int write_output(MsSpan output, MsSpan text) {
   return 0;
 }
 
-static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation, bool ir) {
+static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation, bool ir, bool optimize) {
   MsStrBuild out = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
-  const BackendOptions options = {.optimize = false, .verify = true};
+  const BackendOptions options = {.optimize = optimize, .verify = true};
   const bool ok = ir ? ms_backend_ir(&checked->program, checked->entry, &options, &out, &why)
-                     : print_mir(&checked->program, checked->entry, &out, &why);
+                     : print_mir(&checked->program, checked->entry, optimize, &out, &why);
   int status = STATUS_FAILED;
   if (ok) {
     status = write_output(invocation->output, ms_strbuild_span(&out));
@@ -62,10 +64,13 @@ static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation,
 
 int ms_emit_command(int argc, char **argv) {
   bool ir = false;
+  bool optimize = false;
   int kept = 0;
   for (int index = 0; index < argc; index++) {
     if (ms_cstr_equal(argv[index], "--ir")) {
       ir = true;
+    } else if (ms_cstr_equal(argv[index], "--opt")) {
+      optimize = true;
     } else {
       argv[kept++] = argv[index];
     }
@@ -76,7 +81,7 @@ int ms_emit_command(int argc, char **argv) {
   if (status == 0) {
     MsCheckedInput checked = {0};
     if (ms_checked_input_load(&arena, &checked, invocation.filename, MS_INPUT_PROGRAM)) {
-      status = emit_program(&checked, &invocation, ir);
+      status = emit_program(&checked, &invocation, ir, optimize);
     } else {
       status = invocation.json ? ms_checked_input_report_json(&checked) : ms_checked_input_report(&checked);
     }

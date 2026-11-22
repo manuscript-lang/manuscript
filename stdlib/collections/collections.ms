@@ -190,7 +190,7 @@ fn List[T].flat_map[U](transform: fn(T) List[U]) List[U]:
 	return out
 
 // Combines the values from left to right with `step`, starting with `initial`.
-fn List[T].fold[A](initial: A, step: fn(A, T) A) A:
+fn List[T].fold[A](move initial: A, step: fn(A, T) A) A:
 	var acc = initial
 	for item in self:
 		acc = step(acc, item)

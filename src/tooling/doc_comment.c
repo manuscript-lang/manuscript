@@ -119,6 +119,8 @@ static MsSpan block_text(MsArena *arena, const MsSpan *lines, size_t count) {
   return text;
 }
 
+#define ANY_INDENT SIZE_MAX
+
 static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, size_t indent) {
   MsSpan before = ms_span_of(source.ptr, line_start < source.len ? line_start : source.len);
   if (before.len > 0 && before.ptr[before.len - 1] == '\n') {
@@ -133,7 +135,7 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
       break;
     }
     const MsSpan line = strip_cr(lines.nearest.ptr[used]);
-    if (indent_columns(line) != indent) {
+    if (indent != ANY_INDENT && indent_columns(line) != indent) {
       break;
     }
     const MsSpan text = trim(line);
@@ -159,7 +161,7 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
           break;
         }
       }
-      if (!found || indent_columns(lines.nearest.ptr[open]) != indent) {
+      if (!found || (indent != ANY_INDENT && indent_columns(lines.nearest.ptr[open]) != indent)) {
         break;
       }
       const size_t count = open - used + 1;
@@ -328,4 +330,17 @@ void ms_declared_effects(MsArena *arena, MsSpan source, size_t offset, MsSpans *
   for (size_t i = found.len; i > 0; i--) {
     ms_spans_push(arena, out, found.ptr[i - 1]);
   }
+}
+
+MsSpan ms_declaration_comment(MsArena *arena, MsSpan source, size_t offset, uint32_t line) {
+  if (line <= 1 || offset > source.len) {
+    return ms_span_of_text("");
+  }
+  size_t line_start = offset;
+  while (line_start > 0 && source.ptr[line_start - 1] != '\n') {
+    line_start--;
+  }
+  const MsSpan above = comments_above(arena, source, line_start, ANY_INDENT);
+  const MsSpan docs = above.len > 0 ? above : trailing_comment(arena, source, offset);
+  return trim(docs);
 }
