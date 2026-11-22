@@ -475,6 +475,10 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
     const MirValue empty = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
     return fn_emit(fn, MOP_Clone, &empty, 1, (MirImm){0}, MIR_BYTES);
   }
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs == 1 && written != NULL && !empty_list) {
+    const MirValue values = fn_expr(fn, written, LW_BORROW);
+    return values == MIR_NONE ? MIR_NONE : fn_set_from_list(fn, values, ty);
+  }
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
   }
