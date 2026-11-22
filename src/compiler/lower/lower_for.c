@@ -96,16 +96,6 @@ static bool cursor_for(LowerFn *fn, MirTy list_ty, uint32_t *type, uint32_t *clo
 
 /* ---- the iterated value ---- */
 
-/* The result `value` was just made owned by the innermost scope. */
-static bool is_fresh_owner(LowerFn *fn, MirValue value) {
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  MirMode mode = MM_BORROW;
-  if (insts->len == 0 || insts->ptr[insts->len - 1].res != value) {
-    return false;
-  }
-  return mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) && mode == MM_MOVE;
-}
-
 /* `from..to` (the call `..`) written as the iterable. */
 static bool is_range(const LowerFn *fn, const MsExpr *iter) {
   if (iter->kind != MS_E_CALL || iter->u.call.args.len != 2 || iter->u.call.callee->kind != MS_E_NAME) {
@@ -137,7 +127,7 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
     return fn_fail(fn, "`for` iterates a list or a range for now");
   }
   const MirTy elem = mir_ty_data(module, list_ty)->elem;
-  const bool fresh = is_fresh_owner(fn, list);
+  const bool fresh = fn_fresh_owner(fn, list);
   *src = (ForSource){.elem = elem, .list_ty = list_ty, .list = list};
   if ((moved || fresh) && mir_needs_drop(module, elem)) {
     if (fresh) {

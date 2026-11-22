@@ -173,7 +173,9 @@ bool el_emit_block(ElEm *em, uint32_t block, const ElState *entry, const ElFpara
   em->pending = returned;
   ElState state = *entry;
   uint32_t cur = block;
-  bool ok = emit_insts(em, block, &old, &state, returned, &cur);
+  /* A value the block defines becomes pending once its instruction is emitted. */
+  const MirValue defined = old.term.kind == MT_RET ? old.term.value : MIR_NONE;
+  bool ok = emit_insts(em, block, &old, &state, defined, &cur);
   if (ok && returned != MIR_NONE) {
     ok = !mh_has(&em->flagged, returned) || el_fail(em->cx, "a drop-flagged owner is returned directly");
     em_discard(em, cur, returned);

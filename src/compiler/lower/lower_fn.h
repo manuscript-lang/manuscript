@@ -84,6 +84,17 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
 /* Makes the innermost scope own `result`, the result of the instruction just emitted, when it is owned. */
 void fn_own_result(LowerFn *fn, MirValue result);
 
+/* Whether `value` is the owned result of the instruction just emitted, held by the innermost scope. */
+bool fn_fresh_owner(LowerFn *fn, MirValue value);
+
+/* ---- resources closed at scope end (lower_close.c) ---- */
+
+/* Whether lowering closes a binding with this closer: a `move fn close` that nothing moves, closes by hand or
+ * changes in place. */
+bool fn_closer_lowerable(const MsCloser *closer);
+/* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
+bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value);
+
 /* ---- places (lower_stmt.c) ---- */
 
 /* Whether `place` is an owning `var` local or a member path rooted in one. */
