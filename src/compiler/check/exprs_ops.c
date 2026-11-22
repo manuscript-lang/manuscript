@@ -52,6 +52,10 @@ static MsSpan number_text(const Body *body, const MsExpr *expr) {
 
 /* The type of a number literal: a sized type from `expected` when the literal kind matches it. */
 static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
+  const MsTyTable *types = &body->program->types;
+  if (expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1) {
+    expected = ms_ty_args(types, expected)[0]; /* a literal takes the sized type an optional wraps */
+  }
   const NumberKind kind = number_kind(number_text(body, expr));
   if (kind == NUMBER_DECIMAL) {
     const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));

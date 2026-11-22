@@ -12,7 +12,7 @@
 
 static const char *const PRELUDE_NAMES[] = {"Equal",  "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result",   "Error",      "List",     "Map",
-                                            "Set",    "ListEntry",  "MapEntry",   "print"};
+                                            "Set",    "ListEntry",  "MapEntry"};
 
 static bool is_prelude_name(MsSpan name) {
   for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_NAMES); index++) {
