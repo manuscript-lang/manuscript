@@ -217,10 +217,45 @@ static bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCaptur
 
 typedef struct SharedScan {
   LowerFn *fn;
+  const MsExpr *callee; /* the callee of the call visited last: a method named there is called, not a value */
 } SharedScan;
 
+/* `local.method` used as a value where the method changes its receiver: the closure shares the local's slot. */
+static void find_shared_method(SharedScan *scan, const MsExpr *expr) {
+  LowerFn *fn = scan->fn;
+  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+  const MsExpr *left = expr->u.member.left;
+  const MsRef *place = left->kind == MS_E_NAME ? ms_facts_ref(fn->facts, left->id) : NULL;
+  if (ref == NULL || (ref->kind != MS_REF_METHOD && ref->kind != MS_REF_NATIVE) || place == NULL ||
+      place->kind != MS_REF_LOCAL || place->local >= fn->nvars) {
+    return;
+  }
+  const MsCall call = {.callee = *ref};
+  LowerTarget target;
+  bool changes = false;
+  if (ref->kind == MS_REF_METHOD && fn_callee_target(fn, &call, &target)) {
+    changes = (target.receiver_flags & MS_PARAM_VAR) != 0;
+  } else {
+    const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+    const MirTyData *data = mir_ty_data(fn->cx->module, fn_ty);
+    const MsTy owner = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, left->id), fn->subst.vars, fn->subst.args,
+                                   fn->subst.count);
+    changes = data->kind == MK_FN &&
+              fn_native_changes_receiver(fn, owner, ms_names_span(fn->cx->program->names, expr->u.member.name), data->elem);
+  }
+  if (changes) {
+    fn->shared[place->local] = LOWER_SHARED;
+  }
+}
+
 static void find_shared_expr(void *ctx, const MsExpr *expr) {
-  LowerFn *fn = ((SharedScan *)ctx)->fn;
+  SharedScan *scan = ctx;
+  LowerFn *fn = scan->fn;
+  if (expr->kind == MS_E_CALL) {
+    scan->callee = expr->u.call.callee;
+  } else if (expr->kind == MS_E_MEMBER && expr != scan->callee) {
+    find_shared_method(scan, expr);
+  }
   LowerCapture *captures = NULL;
   uint32_t count = 0;
   if (expr->kind != MS_E_LAMBDA || fn->failed || !find_captures(fn, expr, &captures, &count) || count == 0) {
@@ -239,7 +274,7 @@ static void find_shared_expr(void *ctx, const MsExpr *expr) {
 
 void fn_find_shared(LowerFn *fn, MsStmts body) {
   fn->shared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
-  SharedScan scan = {fn};
+  SharedScan scan = {fn, NULL};
   const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr};
   ms_walk_block(&visitor, body);
 }
@@ -518,15 +553,32 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   const MirTyData *data = mir_ty_data(cx->module, fn_ty);
   const MsTy owner = ms_ty_subst(&cx->program->types, ms_facts_type(fn->facts, expr->u.member.left->id), fn->subst.vars,
                                  fn->subst.args, fn->subst.count);
-  MirValue receiver = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  const MsSpan operation = ms_names_span(cx->program->names, expr->u.member.name);
+  const bool changes = fn_native_changes_receiver(fn, owner, operation, data->elem);
+  MirValue receiver = MIR_NONE;
+  MirTy slot_ty = MIR_VOID;
+  if (changes) {
+    /* The closure shares the receiver's slot, which find_shared gave the local variable. */
+    const MsExpr *left = expr->u.member.left;
+    const MsRef *place = left->kind == MS_E_NAME ? ms_facts_ref(fn->facts, left->id) : NULL;
+    if (place == NULL || place->kind != MS_REF_LOCAL || fn->closing == NULL || place->local >= fn->nvars ||
+        !fn->closing_var[place->local]) {
+      (void)fn_fail(fn, "an operation that changes its receiver as a value needs a local `var` receiver");
+      return MIR_NONE;
+    }
+    receiver = fn->closing[place->local];
+    slot_ty = fn->closing_types[place->local];
+  } else {
+    receiver = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  }
   if (receiver == MIR_NONE) {
     return MIR_NONE;
   }
-  const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
-  if (mir_needs_drop(cx->module, receiver_ty)) {
+  const MirTy receiver_ty = changes ? slot_ty : mir_b_ty(&fn->b, receiver);
+  if (!changes && mir_needs_drop(cx->module, receiver_ty)) {
     receiver = fn_emit(fn, MOP_Clone, &receiver, 1, (MirImm){0}, receiver_ty);
   }
-  const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
+  const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = changes ? MIR_PTR : receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   LowerFn body = {.cx = cx, .facts = fn->facts, .module_index = fn->module_index, .file = fn->file, .subst = fn->subst,
@@ -541,13 +593,17 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   mir_b_params(&body.b, values, reserved.nparams);
   MirValue *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
   const MirImm cap_imm = {.tag = MI_IDX, .a = 0};
-  args[0] = mir_b_emit(&body.b, MOP_ClosureCap, &values[0], 1, cap_imm, receiver_ty);
+  args[0] = mir_b_emit(&body.b, MOP_ClosureCap, &values[0], 1, cap_imm, changes ? MIR_PTR : receiver_ty);
+  const MirValue address = args[0];
+  if (changes) {
+    args[0] = mir_b_emit(&body.b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = receiver_ty}, receiver_ty);
+  }
   for (uint32_t at = 1; at < reserved.nparams; at++) {
     args[at] = values[at];
   }
-  const MsSpan operation = ms_names_span(cx->program->names, expr->u.member.name);
   MirValue result = MIR_NONE;
-  const bool done = fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  const bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
+                            : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
   if (!done || body.failed) {
     (void)fn_fail(fn, "the operation `%.*s` cannot be used as a value yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;
@@ -589,9 +645,18 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
                   expr->pos.column);
     return MIR_NONE;
   }
-  if ((target.receiver_flags & MS_PARAM_VAR) != 0) {
-    (void)fn_fail(fn, "a method that changes its receiver as a value is not lowered yet");
-    return MIR_NONE;
+  const bool changes = (target.receiver_flags & MS_PARAM_VAR) != 0;
+  MirValue shared = MIR_NONE;
+  if (changes) {
+    /* The closure shares the receiver's slot, which find_shared gave the local variable. */
+    const MsExpr *left = expr->u.member.left;
+    const MsRef *place = left->kind == MS_E_NAME ? ms_facts_ref(fn->facts, left->id) : NULL;
+    if (place == NULL || place->kind != MS_REF_LOCAL || fn->closing == NULL || place->local >= fn->nvars ||
+        !fn->closing_var[place->local]) {
+      (void)fn_fail(fn, "a method that changes its receiver as a value needs a local `var` receiver");
+      return MIR_NONE;
+    }
+    shared = fn->closing[place->local];
   }
   MsTy bound[16] = {0};
   const MsTy *type_args = NULL;
@@ -612,12 +677,12 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (callee == MIR_NONE) {
     return MIR_NONE;
   }
-  MirValue receiver = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  MirValue receiver = changes ? shared : fn_expr(fn, expr->u.member.left, LW_BORROW);
   if (receiver == MIR_NONE) {
     return MIR_NONE;
   }
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
-  const bool owns = mir_needs_drop(cx->module, receiver_ty);
+  const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
   if (owns) {
     receiver = fn_emit(fn, MOP_Clone, &receiver, 1, (MirImm){0}, receiver_ty);
   }

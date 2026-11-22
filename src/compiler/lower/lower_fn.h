@@ -182,6 +182,12 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
 bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
                   MirTy ret, MirValue *out);
+/* The same for a receiver that lives at the address `slot` (args[0] is a view of it): a native that changes its receiver
+ * writes through the slot. */
+bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
+                       MirTy ret, MirValue *out);
+/* Whether the native `operation` of `owner` writes its receiver in place. */
+bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret);
 /* `left op right` over two values of one standard type (lower_expr.c). */
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
