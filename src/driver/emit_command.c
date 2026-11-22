@@ -20,6 +20,8 @@ static bool print_mir(MsCheckProgram *program, uint32_t entry, MsStrBuild *out, 
   MirModule module;
   mir_module_init(&module);
   bool ok = ms_lower_program(program, entry, &module, why);
+  const MirPipelineOptions pipeline = {.verify = false, .checks = true};
+  ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
   if (ok) {
     mir_print_module(&module, out);
   }
