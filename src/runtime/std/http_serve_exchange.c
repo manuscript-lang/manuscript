@@ -48,14 +48,24 @@ MsObj *ms_exchange_handle(MsExchange *exchange) {
   return &exchange->header;
 }
 
-MsExchange *ms_exchange_new(MsServeConn *conn, MsH1Request *head, MsHttpTarget *target, MsH1Framing framing,
-                            bool keep_alive, bool expect_continue, int64_t deadline) {
+MsExchange *ms_exchange_alloc(MsServeConn *conn, int64_t deadline) {
   MsExchange *exchange = ms_alloc_zeroed(sizeof *exchange);
   const MsServeLimits *limits = &conn->worker->shared->limits;
   exchange->header.drop = exchange_drop;
   exchange->refs = 1;
   exchange->conn = conn;
   exchange->limits = limits;
+  exchange->remaining_read = limits->body;
+  exchange->remaining_write = limits->response;
+  exchange->staged = ms_headers_new();
+  exchange->tls = conn->worker->shared->secure != NULL;
+  exchange->deadline = deadline;
+  return exchange;
+}
+
+MsExchange *ms_exchange_new(MsServeConn *conn, MsH1Request *head, MsHttpTarget *target, MsH1Framing framing,
+                            bool keep_alive, bool expect_continue, int64_t deadline) {
+  MsExchange *exchange = ms_exchange_alloc(conn, deadline);
   exchange->method = head->method;
   exchange->path = target->path;
   exchange->query = target->query;
@@ -68,15 +78,10 @@ MsExchange *ms_exchange_new(MsServeConn *conn, MsH1Request *head, MsHttpTarget *
   ms_string_release(&target->host);
   ms_string_release(&head->target);
   exchange->body = ms_h1_body_new(framing);
-  exchange->remaining_read = limits->body;
-  exchange->remaining_write = limits->response;
-  exchange->staged = ms_headers_new();
   exchange->minor = head->minor;
   exchange->expect_continue = expect_continue;
   exchange->is_head = ms_span_is_text(ms_string_span(&exchange->method), "HEAD");
   exchange->close_conn = !keep_alive || head->minor == 0;
-  exchange->deadline = deadline;
-  exchange->tls = conn->worker->shared->secure != NULL;
   return exchange;
 }
 
@@ -157,6 +162,9 @@ uint8_t ms_exchange_read(MsExchange *exchange, bool has_max, int64_t max, MsByte
     return MS_STATUS_CLOSED;
   }
   const size_t want = !has_max || max > CHUNK ? CHUNK : (size_t)max;
+  if (exchange->h2 != NULL) {
+    return ms_h2x_read(exchange, want, out, err);
+  }
   if (exchange->expect_continue) {
     exchange->expect_continue = false;
     if (!ms_h1_body_is_done(&exchange->body)) {
@@ -335,7 +343,9 @@ uint8_t ms_exchange_write(MsExchange *exchange, MsSpan data, MsString *err) {
     return MS_STATUS_OK; /* a HEAD answer has no body: the bytes are dropped */
   }
   uint8_t status = MS_STATUS_OK;
-  if (!exchange->head_written) {
+  if (exchange->h2 != NULL) {
+    status = ms_h2x_write(exchange, data, -1, err);
+  } else if (!exchange->head_written) {
     status = write_head(exchange, data, -1, err);
   } else if (exchange->chunked) {
     MsStrBuild out = ms_strbuild_new();
@@ -359,15 +369,7 @@ static void stage_head_only(MsExchange *exchange, MsSpan body) {
     return;
   }
   MsStrBuild length = ms_strbuild_new();
-  ms_strbuild_append_text(&length, "");
-  char digits[24];
-  size_t n = 0;
-  for (size_t v = body.len; v > 0; v /= 10) {
-    digits[n++] = (char)('0' + v % 10);
-  }
-  while (n > 0) {
-    ms_strbuild_append_byte(&length, (uint8_t)digits[--n]);
-  }
+  ms_strbuild_append_u64(&length, body.len);
   ms_headers_set(exchange->staged, ms_span_of_text("Content-Length"), ms_strbuild_span(&length));
   ms_strbuild_free(&length);
   MsSpan type;
@@ -390,7 +392,8 @@ uint8_t ms_exchange_send(MsExchange *exchange, int64_t status, const MsHeaders *
     stage_head_only(exchange, body);
     return MS_STATUS_OK;
   }
-  const uint8_t sent = write_head(exchange, body, (int64_t)body.len, err);
+  const uint8_t sent = exchange->h2 != NULL ? ms_h2x_write(exchange, body, (int64_t)body.len, err)
+                                            : write_head(exchange, body, (int64_t)body.len, err);
   if (sent != MS_STATUS_OK) {
     return sent;
   }
@@ -516,6 +519,11 @@ bool ms_exchange_finish(MsExchange *exchange, int failure) {
   MsServeConn *conn = exchange->conn;
   const bool late = exchange->deadline != MS_NO_DEADLINE && ms_sched_now() > exchange->deadline;
   const bool failed = failure != 0 || late;
+  if (exchange->h2 != NULL) {
+    exchange->closed = true;
+    ms_h2x_finish(exchange, failure, late);
+    return true;
+  }
   exchange->closed = true;
   if (exchange->upgraded) {
     ms_ws_session_close(exchange->websocket); /* the WebSocket lives as long as the handler */
@@ -553,4 +561,80 @@ bool ms_exchange_finish(MsExchange *exchange, int failure) {
   ms_strbuild_free(&out);
   exchange->conn = NULL;
   return written && !close;
+}
+
+/* ---- HTTP/2 response heads ---- */
+
+static void add_field(MsList *list, MsSpan name, MsSpan value) {
+  const MsH2Field field = {.name = ms_bytes_from_span(name), .value = ms_bytes_from_span(value)};
+  ms_list_push(list, sizeof field, &field);
+}
+
+static void add_lowered(MsList *list, MsSpan name, MsSpan value) {
+  MsStrBuild lower = ms_strbuild_new();
+  for (size_t i = 0; i < name.len; i++) {
+    ms_strbuild_append_byte(&lower, ms_ascii_to_lower(name.ptr[i]));
+  }
+  add_field(list, ms_strbuild_span(&lower), value);
+  ms_strbuild_free(&lower);
+}
+
+/* Appends the handler's fields, names lower-cased and sorted; reports whether a type and a date came. */
+static void staged_fields(MsList *list, const MsHeaders *headers, bool *has_type, bool *has_date) {
+  const size_t count = ms_headers_group_count(headers);
+  Named *names = ms_alloc_zeroed((count + 1) * sizeof *names);
+  for (size_t g = 0; g < count; g++) {
+    MsStrBuild canonical = ms_strbuild_new();
+    ms_header_canonical(ms_headers_group_name(headers, g), &canonical);
+    names[g].name = ms_strbuild_finish(&canonical);
+    names[g].group = g;
+  }
+  qsort(names, count, sizeof *names, by_name);
+  for (size_t k = 0; k < count; k++) {
+    const MsSpan name = ms_string_span(&names[k].name);
+    *has_type = *has_type || ms_span_is_text(name, "Content-Type");
+    *has_date = *has_date || ms_span_is_text(name, "Date");
+    for (size_t i = 0; i < ms_headers_group_size(headers, names[k].group); i++) {
+      add_lowered(list, name, ms_headers_group_value(headers, names[k].group, i));
+    }
+    ms_string_release(&names[k].name);
+  }
+  ms_free(names);
+}
+
+size_t ms_exchange_h2_fields(MsExchange *exchange, MsSpan first, int64_t length, MsH2Field **out) {
+  MsList list = {0};
+  MsStrBuild code = ms_strbuild_new();
+  ms_strbuild_append_u64(&code, exchange->status);
+  add_field(&list, ms_span_of_text(":status"), ms_strbuild_span(&code));
+  ms_strbuild_free(&code);
+  bool has_type = false;
+  bool has_date = false;
+  staged_fields(&list, exchange->staged, &has_type, &has_date);
+  if (!has_date) {
+    MsStrBuild date = ms_strbuild_new();
+    ms_h1_http_date(&date, ms_clock_realtime().seconds);
+    add_field(&list, ms_span_of_text("date"), ms_strbuild_span(&date));
+    ms_strbuild_free(&date);
+  }
+  const bool allowed = ms_serve_body_allowed(exchange->status);
+  if (length >= 0 && allowed && !exchange->is_head) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_u64(&text, (uint64_t)length);
+    add_field(&list, ms_span_of_text("content-length"), ms_strbuild_span(&text));
+    ms_strbuild_free(&text);
+  }
+  if (allowed && !has_type && first.len > 0) {
+    add_field(&list, ms_span_of_text("content-type"), ms_span_of_text(ms_http_detect_content_type(first)));
+  }
+  *out = (MsH2Field *)(void *)list.ptr;
+  return list.len;
+}
+
+void ms_h2_fields_release(MsH2Field *fields, size_t count) {
+  for (size_t i = 0; i < count; i++) {
+    ms_bytes_free(&fields[i].name);
+    ms_bytes_free(&fields[i].value);
+  }
+  ms_free(fields);
 }
