@@ -5,7 +5,7 @@ import (
 	ReadStream, Sink, Transform, WriteStream, through from "@std/io/io.ms",
 	parse_float from "@std/math/math.ms",
 
-	JsonLimits, msstd_json_parse, msstd_json_stringify from "@std/internal/json.ms",
+	JsonLimits, msstd_json_decode, msstd_json_stringify from "@std/internal/json.ms",
 )
 
 // Settings for `parse` and `json_reader`: optional bounds on input bytes, nesting depth
@@ -201,7 +201,7 @@ export fn parse[T: Data = JsonValue](
 		max_depth: options.max_depth,
 		max_values: options.max_values,
 	)
-	return msstd_json_parse[T](text, limits, options.ignore_unknown_fields)
+	return msstd_json_decode[T](text, limits, options.ignore_unknown_fields)
 
 /*
 Customizes how `stringify` encodes a type. It takes precedence over the structural
