@@ -216,6 +216,9 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
         break;
       }
     }
+    if (context->module < program->user_modules && ms_check_intrinsic_type_param(program, param->name)) {
+      ms_check_report_type_param(program, context->module, param);
+    }
     const MsTy variable = ms_ty_variable_new(&program->types, param->name, ms_check_unique_id(program, "var"));
     ms_ty_list_push(own, variable);
     ms_name_list_push(&context->resolver.names, param->name);
