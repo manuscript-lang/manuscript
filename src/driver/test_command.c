@@ -100,7 +100,7 @@ static Totals report(MsArena *arena, const MsSpanList *names, const Plan *plan, 
       print_outcome(arena, names->ptr[index], outcome);
       totals.passed += outcome->kind == TEST_PASSED;
       totals.nanos += outcome->nanos;
-      totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message,
+      totals.rows[round * plan->count + p] = (DocumentCase){.name = names->ptr[index], .failure = outcome->message, .fault = outcome->fault,
                                                             .status = status_name(outcome->kind), .nanos = outcome->nanos};
       totals.failed += outcome->kind == TEST_FAILED;
       totals.skipped += outcome->kind == TEST_SKIPPED;

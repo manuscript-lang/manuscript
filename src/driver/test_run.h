@@ -16,6 +16,7 @@ typedef struct TestOutcome {
   TestKind kind;
   MsSpan message; /* the failure (with its site), the skip reason, or why it did not run */
   MsSpan output;
+  MsSpan fault; /* the `fault` object of a faulted test, or empty */
   int64_t nanos;
 } TestOutcome;
 

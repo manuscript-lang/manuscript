@@ -158,6 +158,10 @@ static void write_case(MsStrBuild *out, size_t index, const DocumentCase *row) {
                          (long long)line, (long long)column);
     }
   }
+  if (row->fault.len > 0) {
+    ms_strbuild_append_text(out, ",\n      \"fault\": ");
+    ms_strbuild_append(out, row->fault);
+  }
   if (row->stats != NULL) {
     ms_strbuild_append_text(out, ",\n      \"stats\": ");
     ms_json_write(out, row->stats, 3);
