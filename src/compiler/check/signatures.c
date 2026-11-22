@@ -36,17 +36,30 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
   for (uint32_t index = 0; index < decl->u.iface.methods.len; index++) {
     const MsMethod *method = decl->u.iface.methods.ptr[index];
     const size_t mark = resolver->names.len;
+    MsTyList own = {0};
     for (uint32_t at = 0; at < method->func.type_params.len; at++) {
       const MsTypeParam *param = method->func.type_params.ptr[at];
       const MsName id = ms_check_unique_id(resolver->program, "var");
+      const MsTy variable = ms_ty_variable_new(&resolver->program->types, param->name, id);
+      ms_ty_list_push(&own, variable);
       ms_name_list_push(&resolver->names, param->name);
-      ms_ty_list_push(&resolver->types, ms_ty_variable_new(&resolver->program->types, param->name, id));
+      ms_ty_list_push(&resolver->types, variable);
+    }
+    for (uint32_t at = 0; at < method->func.type_params.len; at++) {
+      const MsTypeParam *param = method->func.type_params.ptr[at];
+      MsTyVariable *record = ms_ty_variable(&resolver->program->types, own.ptr[at]);
+      for (uint32_t bound = 0; bound < param->bounds.len; bound++) {
+        ms_ty_list_push(&record->bounds, resolver_type(resolver, param->bounds.ptr[bound]));
+      }
+      if (param->def != NULL) {
+        record->default_ty = resolver_type(resolver, param->def);
+      }
     }
     const MsTy ty = resolver_function(resolver, method->func.params, method->func.result);
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
-    ms_operation_list_push(&def->operations,
-                           (MsOperation){.name = method->func.name, .ty = ty, .decl = {0, method->id}});
+    ms_operation_list_push(&def->operations, (MsOperation){.name = method->func.name, .ty = ty,
+                                                           .decl = {0, method->id}, .variables = own});
   }
   resolver->self = MS_TY_NONE;
 }

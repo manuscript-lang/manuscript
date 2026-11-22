@@ -175,6 +175,9 @@ void ms_defs_free(MsDefs *defs) {
       ms_ty_param_list_free(&def->cases.ptr[at].fields);
     }
     ms_ty_case_list_free(&def->cases);
+    for (size_t at = 0; at < def->operations.len; at++) {
+      ms_ty_list_free(&def->operations.ptr[at].variables);
+    }
     ms_operation_list_free(&def->operations);
   }
   ms_free(defs->by_index);

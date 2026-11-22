@@ -139,6 +139,8 @@ static void add_check_findings(const MsCheckProgram *program, const MsNames *nam
     const MsSpan file = ms_names_span(names, program->modules.ptr[issue->module].file);
     const char *phase = issue->phase == MS_CHECK_RESOLUTION ? "resolution" : "type";
     MsDiag diag = {.pos = issue->pos, .message = ms_string_span(&issue->message)};
+    diag.has_end = issue->has_end;
+    diag.end = issue->end;
     if (issue->has_fix) {
       diag.has_fix = true;
       diag.fix_pos = issue->fix_pos;
