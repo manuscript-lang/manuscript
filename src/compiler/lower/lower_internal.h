@@ -19,6 +19,9 @@ typedef struct LowerTarget {
   MsTypeParams outer;            /* the type parameters of the enclosing `impl`, before the function's own */
   const MsTy *variables;         /* when not NULL: the type variables, in order, as the method table holds them */
   uint32_t nvariables;
+  MsTy receiver;                 /* a method's receiver type (the first parameter), else MS_TY_NONE */
+  uint8_t receiver_flags;        /* MS_PARAM_VAR for a mutating method, MS_PARAM_MOVE for a consuming one */
+  bool entry;                    /* the program's `main`: it returns an Int status even when declared Void */
 } LowerTarget;
 
 typedef struct LowerInstance {

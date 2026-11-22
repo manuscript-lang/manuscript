@@ -39,8 +39,12 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
     return MIR_NONE;
   }
   const LowerTarget target = {entry->module, entry->source->id, &entry->source->func, entry->name, entry->ty,
-                              {NULL, 0}, entry->variables.ptr, (uint32_t)count};
-  return lower_instance(cx, &target, bound, (uint32_t)count, NULL);
+                              {NULL, 0}, entry->variables.ptr, (uint32_t)count, MS_TY_NONE, 0, false};
+  LowerTarget with_receiver = target;
+  with_receiver.receiver = entry->receiver;
+  with_receiver.receiver_flags =
+      (uint8_t)((entry->source->mutating ? MS_PARAM_VAR : 0) | (entry->source->consuming ? MS_PARAM_MOVE : 0));
+  return lower_instance(cx, &with_receiver, bound, (uint32_t)count, NULL);
 }
 
 static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsStrBuild *out) {
@@ -50,12 +54,45 @@ static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy 
   lower_type_text(cx, subst, iface, out);
 }
 
+enum { LOWER_THUNK_PARAMS = 33 };
+
+/* The interface-callable form of a method: it takes the address of the stored data first, reads the receiver
+ * from it, and calls `method` with it. */
+static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName name) {
+  const MirFunc target = cx->module->funcs.ptr[method];
+  MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)target.nparams + 1);
+  for (uint32_t index = 0; index < target.nparams; index++) {
+    params[index] = target.params[index];
+  }
+  params[0] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
+  MirBuilder b;
+  mir_b_init(&b, cx->module, name, params, target.nparams, target.ret);
+  b.func.kind = MFK_METHOD;
+  b.func.linkage = ML_INTERNAL;
+  MirValue args[LOWER_THUNK_PARAMS] = {MIR_NONE};
+  mir_b_params(&b, args, target.nparams);
+  const MirImm ty = {.tag = MI_TY, .a = data_ty};
+  const MirOp read = target.params[0].mode == MM_MOVE ? MOP_Take : MOP_Load;
+  args[0] = mir_b_emit(&b, read, args, 1, ty, data_ty);
+  mir_b_ret(&b, mir_b_call(&b, method, args, target.nparams));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
 static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsName name) {
   const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(&cx->program->types, iface)->def);
   uint32_t *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, def->operations.len + 1);
   for (size_t index = 0; index < def->operations.len; index++) {
     const MsMethodEntry *entry = resolve_operation(cx, receiver, def->operations.ptr[index].name);
     methods[index] = entry != NULL ? method_function(cx, entry, receiver) : MIR_NONE;
+    if (methods[index] != MIR_NONE) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append(&text, ms_names_span(&cx->module->names, cx->module->funcs.ptr[methods[index]].name));
+      ms_strbuild_append_text(&text, ".vt");
+      const MsName thunk = mir_name(cx->module, ms_strbuild_span(&text));
+      ms_strbuild_free(&text);
+      methods[index] = method_thunk(cx, methods[index], lower_type(cx, subst, receiver), thunk);
+    }
     if (methods[index] == MIR_NONE) {
       return MIR_NONE;
     }
