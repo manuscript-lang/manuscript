@@ -245,6 +245,7 @@ MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args,
 MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty);
 MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 /* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
+MirValue fn_string_concat(LowerFn *fn, MirValue left, MirValue right);
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */

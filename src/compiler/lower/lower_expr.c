@@ -555,8 +555,7 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
-    const MirValue operands[2] = {left, right};
-    return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), operands, 2, MIR_STR);
+    return fn_string_concat(fn, left, right);
   }
   return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
