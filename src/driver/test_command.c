@@ -10,7 +10,7 @@
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
-#include "driver/compile_front.h"
+#include "driver/checked_input.h"
 #include "driver/invocation.h"
 #include "driver/pipeline.h"
 #include "driver/test_options.h"
@@ -174,16 +174,16 @@ static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
 }
 
 /* Builds the test executable into `path`. */
-static bool build_tests(MsFront *front, const MsInvocation *invocation, MsSpan path, MsSpan *error) {
-  const MsLinkRequest request = {.program = &front->program, .entry = front->entry,
+static bool build_tests(MsCheckedInput *checked, const MsInvocation *invocation, MsSpan path, MsSpan *error) {
+  const MsLinkRequest request = {.program = &checked->program, .entry = checked->entry,
                                  .build_type = invocation->build_type, .output = path,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
                                  .static_libc = invocation->static_libc, .tests = true};
   return ms_pipeline_link(&request, error);
 }
 
-static MsSpan working_directory(MsArena *arena, const MsFront *front, MsSpan filename) {
-  MsSpan directory = front->graph.project_root.len > 0 ? front->graph.project_root : ms_path_parent(filename);
+static MsSpan working_directory(MsArena *arena, const MsCheckedInput *checked, MsSpan filename) {
+  MsSpan directory = checked->graph.project_root.len > 0 ? checked->graph.project_root : ms_path_parent(filename);
   if (directory.len == 0) {
     directory = ms_span_of_text(".");
   }
@@ -192,17 +192,17 @@ static MsSpan working_directory(MsArena *arena, const MsFront *front, MsSpan fil
 
 /* Checks `input`, builds its tests and runs the plan. */
 static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input) {
-  MsFront front = {0};
+  MsCheckedInput checked = {0};
   int status = 0;
-  if (!ms_front_compile(arena, &front, input, MS_FRONT_TESTS)) {
-    status = ms_front_report(&front);
-    ms_front_free(&front);
+  if (!ms_checked_input_load(arena, &checked, input, MS_INPUT_TESTS)) {
+    status = ms_checked_input_report(&checked);
+    ms_checked_input_free(&checked);
     return status;
   }
   MsTestOptions options;
   ms_test_options_parse(&invocation->arguments, &options);
   MsSpanList names = {0};
-  ms_front_test_names(arena, &front, &names);
+  ms_checked_input_test_names(arena, &checked, &names);
   Plan plan = {0};
   if (!select_tests(arena, &names, &options, &plan)) {
     status = STATUS_FAILED;
@@ -219,11 +219,11 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
     }
     const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
     const MsSpan executable = ms_message_format(arena, "%S/program", folder, (MsSpan){0});
-    if (!build_tests(&front, invocation, executable, &error)) {
+    if (!build_tests(&checked, invocation, executable, &error)) {
       print_text(stderr, ms_message_format(arena, "%S\n", error, (MsSpan){0}));
       status = STATUS_FAILED;
     } else {
-      TestJob job = {.arena = arena, .executable = executable, .working = working_directory(arena, &front, input),
+      TestJob job = {.arena = arena, .executable = executable, .working = working_directory(arena, &checked, input),
                      .names = &names, .options = &options};
       status = run_plan(arena, &job, &plan);
     }
@@ -232,7 +232,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
   }
   ms_span_list_free(&names);
   ms_test_options_free(&options);
-  ms_front_free(&front);
+  ms_checked_input_free(&checked);
   return status;
 }
 

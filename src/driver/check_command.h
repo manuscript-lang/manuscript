@@ -6,4 +6,7 @@
  * process status. */
 int ms_check_command(int argc, char **argv);
 
+/* Runs `ms lint <targets> [--json] [--fix] [--deny-warnings]`: check, then the lint rules. */
+int ms_lint_command(int argc, char **argv);
+
 #endif

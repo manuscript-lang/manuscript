@@ -1,5 +1,5 @@
-/* Owns the selection of check inputs (check_inputs.h). */
-#include "driver/check_inputs.h"
+/* Owns the selection of check inputs (check_selection.h). */
+#include "driver/check_selection.h"
 
 #include "base/dir.h"
 #include "base/file.h"
