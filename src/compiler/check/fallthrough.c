@@ -4,13 +4,19 @@
 /* Whether control can reach the end of a statement: yes, no, or maybe (a call that may never return). */
 typedef enum Reach { REACH_NO, REACH_MAYBE, REACH_YES } Reach;
 
+typedef struct Ctx {
+  const MsCheckProgram *program;
+  const MsFacts *facts; /* the types of the module's expressions */
+} Ctx;
+
 typedef struct Flow {
   Reach reach;
   bool breaks; /* a `break` of the enclosing loop is reachable inside */
 } Flow;
 
-static Flow block_flow(const MsStmts *body);
-static Flow statement_flow(const MsStmt *stmt);
+static Flow block_flow(const Ctx *ctx, const MsStmts *body);
+static Flow statement_flow(const Ctx *ctx, const MsStmt *stmt);
+static Flow expression_flow(const Ctx *ctx, const MsExpr *expr);
 
 static Reach join(Reach a, Reach b) {
   return a > b ? a : b;
@@ -25,57 +31,74 @@ static Flow sequence(Flow before, Flow next) {
   return (Flow){.reach = reach, .breaks = before.breaks || next.breaks};
 }
 
-static Flow block_flow(const MsStmts *body) {
+static Flow block_flow(const Ctx *ctx, const MsStmts *body) {
   Flow flow = {.reach = REACH_YES};
   for (uint32_t index = 0; index < body->len; index++) {
-    flow = sequence(flow, statement_flow(body->ptr[index]));
+    flow = sequence(flow, statement_flow(ctx, body->ptr[index]));
   }
   return flow;
 }
 
-static Flow arm_flow(const MsArm *arm) {
-  Flow flow = block_flow(&arm->body);
-  if (arm->value != NULL && arm->value->kind == MS_E_CALL) {
-    flow = sequence(flow, (Flow){.reach = REACH_MAYBE});
+static Flow arm_flow(const Ctx *ctx, const MsArm *arm) {
+  Flow flow = block_flow(ctx, &arm->body);
+  if (arm->value != NULL) {
+    flow = sequence(flow, expression_flow(ctx, arm->value));
   }
   return flow;
 }
 
 /* A match falls through when an arm does; one without arms never does. */
-static Flow match_flow(const MsExpr *match) {
+static Flow match_flow(const Ctx *ctx, const MsExpr *match) {
   Flow flow = {.reach = REACH_NO};
   for (uint32_t index = 0; index < match->u.match.arms.len; index++) {
-    const Flow arm = arm_flow(match->u.match.arms.ptr[index]);
+    const Flow arm = arm_flow(ctx, match->u.match.arms.ptr[index]);
     flow = (Flow){.reach = join(flow.reach, arm.reach), .breaks = flow.breaks || arm.breaks};
   }
   return flow;
 }
 
-static Flow expression_flow(const MsExpr *expr) {
-  if (expr->kind == MS_E_MATCH) {
-    return match_flow(expr);
+/* A call falls through unless its type is Never; a call the checker could not type may be one that never
+ * returns. */
+static Reach call_reach(const Ctx *ctx, const MsExpr *call) {
+  const MsTy ty = ms_facts_type(ctx->facts, call->id);
+  if (ty == MS_TY_NONE) {
+    return REACH_MAYBE;
   }
-  return (Flow){.reach = expr->kind == MS_E_CALL ? REACH_MAYBE : REACH_YES};
+  return ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never) ? REACH_NO : REACH_YES;
 }
 
-static Flow branch_flow(const MsStmt *stmt) {
-  const Flow then = block_flow(&stmt->u.branch.body);
+static Flow expression_flow(const Ctx *ctx, const MsExpr *expr) {
+  if (expr->kind == MS_E_MATCH) {
+    return match_flow(ctx, expr);
+  }
+  return (Flow){.reach = expr->kind == MS_E_CALL ? call_reach(ctx, expr) : REACH_YES};
+}
+
+/* A value that is bound or assigned stops the path only when it is known to have type Never. */
+static Flow value_flow(const Ctx *ctx, const MsExpr *value) {
+  const MsTy ty = ms_facts_type(ctx->facts, value->id);
+  const bool never = ty != MS_TY_NONE && ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never);
+  return (Flow){.reach = never ? REACH_NO : REACH_YES};
+}
+
+static Flow branch_flow(const Ctx *ctx, const MsStmt *stmt) {
+  const Flow then = block_flow(ctx, &stmt->u.branch.body);
   Flow other = {.reach = REACH_YES};
   if (stmt->u.branch.else_body.len != 0) {
-    other = block_flow(&stmt->u.branch.else_body);
+    other = block_flow(ctx, &stmt->u.branch.else_body);
   }
   return (Flow){.reach = join(then.reach, other.reach), .breaks = then.breaks || other.breaks};
 }
 
 /* `while true` leaves only through a break; any other loop may run zero times. */
-static Flow while_flow(const MsStmt *stmt) {
-  const Flow body = block_flow(&stmt->u.loop.body);
+static Flow while_flow(const Ctx *ctx, const MsStmt *stmt) {
+  const Flow body = block_flow(ctx, &stmt->u.loop.body);
   const MsExpr *cond = stmt->u.loop.cond;
   const bool forever = cond->kind == MS_E_BOOL && cond->u.flag;
   return (Flow){.reach = !forever || body.breaks ? REACH_YES : REACH_NO};
 }
 
-static Flow statement_flow(const MsStmt *stmt) {
+static Flow statement_flow(const Ctx *ctx, const MsStmt *stmt) {
   switch ((MsStmtKind)stmt->kind) {
   case MS_S_RETURN:
   case MS_S_CONTINUE:
@@ -83,13 +106,15 @@ static Flow statement_flow(const MsStmt *stmt) {
   case MS_S_BREAK:
     return (Flow){.reach = REACH_NO, .breaks = true};
   case MS_S_CALL:
-    return expression_flow(stmt->u.expr);
+    return expression_flow(ctx, stmt->u.expr);
   case MS_S_IF:
-    return branch_flow(stmt);
+    return branch_flow(ctx, stmt);
   case MS_S_WHILE:
-    return while_flow(stmt);
+    return while_flow(ctx, stmt);
   case MS_S_BIND:
+    return value_flow(ctx, stmt->u.bind.value);
   case MS_S_ASSIGN:
+    return value_flow(ctx, stmt->u.assign.value);
   case MS_S_FOR:
     return (Flow){.reach = REACH_YES};
   }
@@ -111,7 +136,8 @@ static void check_function(MsCheckProgram *program, uint32_t module, const MsDec
   if (func->external || func->result == NULL || ms_fall_is_unit(program, func->result)) {
     return;
   }
-  if (block_flow(&func->body).reach != REACH_YES) {
+  const Ctx ctx = {.program = program, .facts = &program->modules.ptr[module].facts};
+  if (block_flow(&ctx, &func->body).reach != REACH_YES) {
     return;
   }
   MsStrBuild type = ms_strbuild_new();

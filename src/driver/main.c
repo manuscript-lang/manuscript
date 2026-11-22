@@ -7,6 +7,7 @@
 
 #include "base/cstr.h"
 #include "driver/check_command.h"
+#include "driver/emit_command.h"
 #include "driver/fmt_command.h"
 #include "driver/init_command.h"
 #include "driver/package_commands.h"
@@ -35,6 +36,7 @@ int main(int argc, char **argv) {
     return EXIT_USAGE;
   }
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "init")) return ms_init_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "install")) return ms_install_command(argc - 2, argv + 2);
