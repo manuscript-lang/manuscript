@@ -101,6 +101,11 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   }
   const MsTy checked = ms_facts_type(fn->facts, expr->id);
+  if (checked == MS_TY_NONE && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_OPT &&
+      (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
+    /* A default value the checker did not type: `none` for an optional parameter or field. */
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, fn->hint);
+  }
   if (checked == MS_TY_NONE || (ref != NULL && ref->kind != MS_REF_NONE && ref->kind != MS_REF_CASE)) {
     (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d, type %s)", expr->pos.line,
                   expr->pos.column, ref != NULL ? (int)ref->kind : -1, checked == MS_TY_NONE ? "unrecorded" : "recorded");
@@ -189,7 +194,40 @@ static MirValue float_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, M
   return ty == MIR_FLOAT32 ? fn_emit(fn, MOP_F32Round, &result, 1, (MirImm){0}, ty) : result;
 }
 
+/* `left && right` and `left || right`: the right operand runs only when the left does not decide the result. */
+static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
+  const bool is_and = expr->op == MS_B_AND;
+  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  if (left == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirBlock rhs = mir_b_new_block(&fn->b);
+  const MirBlock decided = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, MIR_BOOL, MM_BORROW);
+  mir_b_br_if(&fn->b, left, is_and ? rhs : decided, NULL, 0, is_and ? decided : rhs, NULL, 0);
+  mir_b_seal_block(&fn->b, rhs);
+  mir_b_seal_block(&fn->b, decided);
+  mir_b_switch_to(&fn->b, decided);
+  const MirValue known = mir_b_bconst(&fn->b, !is_and);
+  mir_b_br(&fn->b, join, &known, 1);
+  mir_b_switch_to(&fn->b, rhs);
+  (void)fn_scope_begin(fn);
+  const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  fn_scope_end(fn);
+  if (right == MIR_NONE) {
+    return MIR_NONE;
+  }
+  mir_b_br(&fn->b, join, &right, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return result;
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
+  if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
+    return lower_logical(fn, expr);
+  }
   BinaryOps ops;
   if (!binary_ops((MsBinaryOp)expr->op, &ops)) {
     (void)fn_fail(fn, "this binary operator is not lowered yet");
