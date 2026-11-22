@@ -37,6 +37,7 @@ void ms_lint_unreachable(MsArena *arena, const MsCheckProgram *program, uint32_t
 void ms_lint_matches(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_calls(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_promises(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
+void ms_lint_recursion(MsArena *arena, const MsCheckProgram *program, uint32_t module, MsLintFindingList *findings);
 void ms_lint_effects(MsArena *arena, const MsCheckProgram *program, MsLintFindingList *findings);
 
 #endif
