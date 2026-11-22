@@ -829,6 +829,18 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    } else if (mutates_receiver(sig, ret) && argc > 0 && wanted[0] == args[0] && fn_fresh_owner(fn, args[0])) {
+      /* A temporary receiver (`[0].append(9)`): the native may regrow it through its slot, so the temporary's owner
+       * becomes the value the slot holds afterwards. */
+      const MirTy ty = mir_b_ty(&fn->b, args[0]);
+      const MirImm of_type = {.tag = MI_TY, .a = ty};
+      const MirValue held = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+      const MirValue stored[2] = {held, args[0]};
+      (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);
+      wanted[0] = held;
+      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+      fn_own(fn, fn_scope(fn), mir_b_emit(&fn->b, MOP_Take, &held, 1, of_type, ty));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     }
