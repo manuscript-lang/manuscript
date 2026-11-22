@@ -205,6 +205,13 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
                     (subject->kind == MS_E_CALL && fn_fresh_owner(fn, match.scrutinee))) &&
                    (match.kind == MK_ALT || match.kind == MK_OPT) &&
                    !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id));
+  MirValue taken = MIR_NONE;
+  if (subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
+      fn_closing_move(fn, subject, match.scrutinee, &taken)) {
+    /* A resource in a slot that the match moves: the slot gives it up, and the arms own what they bind. */
+    match.scrutinee = taken;
+    match.consumed = true;
+  }
   const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL;
   if (match.kind != MK_ALT && match.kind != MK_OPT && !literal) {
     (void)fn_fail(fn, "`match` over this type is not lowered yet");
