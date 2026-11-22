@@ -348,7 +348,11 @@ static void enter(LowerFn *fn, MirBlock block) {
 }
 
 static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
-  const MirValue tested = fn_expr(fn, stmt->u.branch.cond, LW_BORROW);
+  const bool owns = stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
+  MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns ? LW_MOVE : LW_BORROW);
+  if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
+    fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */
+  }
   const MirValue cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
   if (cond == MIR_NONE) {
     return false;
@@ -360,10 +364,16 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   mir_b_seal_block(&fn->b, then);
   mir_b_seal_block(&fn->b, otherwise);
   enter(fn, then);
-  if (stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, tested)) {
+  (void)fn_scope_begin(fn);
+  if (stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, tested, owns)) {
     return false;
   }
-  bool ok = lower_block(fn, stmt->u.branch.body);
+  bool ok = fn_stmts(fn, stmt->u.branch.body);
+  if (!fn->terminated) {
+    fn_scope_end(fn);
+  } else {
+    fn->nopen--;
+  }
   const bool then_ended = fn->terminated;
   if (!then_ended) {
     mir_b_br(&fn->b, join, NULL, 0);

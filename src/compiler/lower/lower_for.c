@@ -278,32 +278,41 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   if (next == MIR_NONE) {
     return fn_fail(fn, "`for` needs a list, a range, or a value whose `next` has a body");
   }
-  if (fn_place_changeable(fn, iter)) {
-    return fn_fail(fn, "`for` over an iterator variable is not lowered yet");
-  }
-  MirValue value = fn_expr(fn, iter, LW_MOVE);
-  if (value == MIR_NONE) {
-    return false;
-  }
-  const MirTy iter_ty = mir_b_ty(&fn->b, value);
-  const bool owns = mir_needs_drop(fn->cx->module, iter_ty);
-  if (owns) {
-    if (fn_fresh_owner(fn, value)) {
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
-    } else {
-      value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, iter_ty);
+  /* An iterator held in a variable is advanced in place: its value sits in a slot for the loop, and goes back
+   * to the variable when the loop ends. */
+  const bool on_variable = fn_place_changeable(fn, iter);
+  VarSlot held = {0};
+  MirValue slot = MIR_NONE;
+  if (on_variable) {
+    slot = fn_var_slot(fn, iter, &held);
+    if (slot == MIR_NONE) {
+      return false;
     }
-  }
-  const MirValue slot = emit(fn, MOP_Slot, NULL, 0, imm_ty(iter_ty), MIR_PTR);
-  const MirValue stored[2] = {slot, value};
-  (void)emit(fn, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  if (owns) {
-    const uint32_t close = drop_close_for(fn->cx, iter_ty);
-    if (close == MIR_NONE) {
-      return fn_fail(fn, "the iterator close function was not built");
+  } else {
+    MirValue value = fn_expr(fn, iter, LW_MOVE);
+    if (value == MIR_NONE) {
+      return false;
     }
-    const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = close + 2};
-    (void)emit(fn, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+    const MirTy iter_ty = mir_b_ty(&fn->b, value);
+    const bool owns = mir_needs_drop(fn->cx->module, iter_ty);
+    if (owns) {
+      if (fn_fresh_owner(fn, value)) {
+        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+      } else {
+        value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, iter_ty);
+      }
+    }
+    slot = emit(fn, MOP_Slot, NULL, 0, imm_ty(iter_ty), MIR_PTR);
+    const MirValue stored[2] = {slot, value};
+    (void)emit(fn, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    if (owns) {
+      const uint32_t close = drop_close_for(fn->cx, iter_ty);
+      if (close == MIR_NONE) {
+        return fn_fail(fn, "the iterator close function was not built");
+      }
+      const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = close + 2};
+      (void)emit(fn, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+    }
   }
   const MirBlock head = mir_b_new_block(&fn->b);
   const MirBlock body = mir_b_new_block(&fn->b);
@@ -351,6 +360,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   mir_b_seal_block(&fn->b, head);
   mir_b_seal_block(&fn->b, exit);
   enter(fn, exit);
+  if (on_variable && !fn_var_slots_back(fn, &held, 1)) {
+    return false;
+  }
   fn_scope_end(fn);
   return ok && !fn->failed;
 }

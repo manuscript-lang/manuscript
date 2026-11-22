@@ -83,7 +83,7 @@ static bool snapshot_visit(MsSpan path, size_t depth, bool recursive, int64_t ma
   MsSpan name;
   while (ok && ms_fs_names_next(ms_strbuild_span(&names), &cursor, &name)) {
     MsStrBuild child = ms_strbuild_new();
-    ms_fs_path_join(path, name, &child);
+    ms_path_join(path, name, &child);
     ok = snapshot_visit(ms_strbuild_span(&child), depth + 1, recursive, max, snapshot, fail);
     ms_strbuild_free(&child);
   }
@@ -280,7 +280,7 @@ static bool row_path_is(const WatchRow *row, MsSpan path) { return ms_span_equal
 /* Whether `row` is `path` or lies below it. */
 static bool row_within(const WatchRow *row, MsSpan path) {
   const MsSpan own = ms_string_span(&row->path);
-  return row_path_is(row, path) || (own.len > path.len && ms_span_starts_with(own, path) && ms_fs_is_separator(own.ptr[path.len]));
+  return row_path_is(row, path) || (own.len > path.len && ms_span_starts_with(own, path) && ms_path_is_separator(own.ptr[path.len]));
 }
 
 static void watch_event(uv_fs_event_t *handle, const char *filename, int events, int status);
@@ -374,7 +374,7 @@ static void tree_add(MsFsWatcher *watcher, MsSpan path, size_t depth, MsFail *fa
   MsSpan name;
   while (ok && ms_fs_names_next(ms_strbuild_span(&names), &cursor, &name)) {
     MsStrBuild child = ms_strbuild_new();
-    ms_fs_path_join(path, name, &child);
+    ms_path_join(path, name, &child);
     tree_add(watcher, ms_strbuild_span(&child), depth + 1, fail);
     ok = !ms_fail_failed(fail);
     ms_strbuild_free(&child);
@@ -391,7 +391,7 @@ static void report_existing(MsFsWatcher *watcher, MsSpan directory, size_t depth
     MsSpan name;
     while (ms_fs_names_next(ms_strbuild_span(&names), &cursor, &name)) {
       MsStrBuild child = ms_strbuild_new();
-      ms_fs_path_join(directory, name, &child);
+      ms_path_join(directory, name, &child);
       const MsSpan full = ms_strbuild_span(&child);
       if (ms_fs_text_ok(full)) {
         queue_event(watcher, full, true);
@@ -414,10 +414,10 @@ static void event_path(const WatchRow *row, const char *filename, bool *self, Ms
   const MsSpan own = ms_string_span(&row->path);
   *self = !row->is_directory || filename == NULL || filename[0] == '\0';
   if (!*self && ms_sys_fs_watch_names_self()) {
-    const MsSpan base = ms_fs_path_base(own);
+    const MsSpan base = ms_path_base(own);
     if (ms_span_equal(ms_span_of_text(filename), base)) {
       MsStrBuild child = ms_strbuild_new();
-      ms_fs_path_join(own, base, &child);
+      ms_path_join(own, base, &child);
       uv_stat_t stat;
       *self = lstat_bytes(ms_strbuild_span(&child), &stat) != 0;
       ms_strbuild_free(&child);
@@ -426,7 +426,7 @@ static void event_path(const WatchRow *row, const char *filename, bool *self, Ms
   if (*self) {
     ms_strbuild_append(out, own);
   } else {
-    ms_fs_path_join(own, ms_span_of_text(filename), out);
+    ms_path_join(own, ms_span_of_text(filename), out);
   }
 }
 
@@ -606,7 +606,7 @@ static void native_wait_ready(MsFsWatcher *watcher, MsSpan root) {
   ms_strbuild_append_text(&name, ms_sys_fs_watch_ready_prefix());
   ms_strbuild_append_u64(&name, (uint64_t)uv_os_getpid());
   MsStrBuild path = ms_strbuild_new();
-  ms_fs_path_join(root, ms_strbuild_span(&name), &path);
+  ms_path_join(root, ms_strbuild_span(&name), &path);
   MsOsText text = ms_os_text_new(ms_strbuild_span(&path));
   for (int attempt = 0; attempt < READY_TRIES; attempt++) {
     uv_fs_t request;

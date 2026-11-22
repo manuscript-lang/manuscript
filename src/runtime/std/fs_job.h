@@ -7,6 +7,7 @@
 
 #include <uv.h>
 
+#include "base/path.h"
 #include "base/ostext.h"
 #include "base/strbuild.h"
 #include "runtime/std/fail.h"
@@ -49,30 +50,6 @@ void ms_fs_append_lossy(MsStrBuild *out, MsSpan bytes);
 
 /* A String made of `text`, or the failure of a name that is not UTF-8. */
 MS_NODISCARD bool ms_fs_text_ok(MsSpan bytes);
-
-/* Path names follow the host's rules (the separator, volumes and absolute paths of std::path). */
-typedef enum MsFsRules { MS_FS_RULES_UNIX, MS_FS_RULES_WINDOWS } MsFsRules;
-
-bool ms_fs_is_separator_with(MsFsRules rules, uint8_t byte);
-bool ms_fs_is_absolute_with(MsFsRules rules, MsSpan path);
-/* The shortest equivalent path by lexical processing ("." for an empty result): repeated separators and "." go, ".."
- * undoes the element before it and vanishes above a root. Appended to `out`. */
-void ms_fs_path_clean_with(MsFsRules rules, MsSpan path, MsStrBuild *out);
-/* Two elements joined and cleaned; an absolute second element replaces the first. */
-void ms_fs_path_join_with(MsFsRules rules, MsSpan first, MsSpan second, MsStrBuild *out);
-/* The last element: "." for an empty path, the root or volume for a bare one. A view into `path`, or a constant. */
-MsSpan ms_fs_path_base_with(MsFsRules rules, MsSpan path);
-/* Everything but the last element, cleaned; a path without one (a root, a volume, empty) is cleaned itself. */
-void ms_fs_path_dir_with(MsFsRules rules, MsSpan path, MsStrBuild *out);
-
-/* The same by the host's rules. */
-uint8_t ms_fs_separator(void);
-bool ms_fs_is_separator(uint8_t byte);
-bool ms_fs_is_absolute(MsSpan path);
-void ms_fs_path_clean(MsSpan path, MsStrBuild *out);
-void ms_fs_path_join(MsSpan first, MsSpan second, MsStrBuild *out);
-MsSpan ms_fs_path_base(MsSpan path);
-void ms_fs_path_dir(MsSpan path, MsStrBuild *out);
 
 /* ---- operations the fs files share ---- */
 

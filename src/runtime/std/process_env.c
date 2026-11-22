@@ -7,6 +7,7 @@
 #include "base/alloc.h"
 #include "base/list.h"
 #include "base/ostext.h"
+#include "base/path.h"
 #include "base/strbuild.h"
 #include "base/utf8.h"
 #include "runtime/std/process_env.h"
@@ -70,6 +71,7 @@ uint8_t msstd_process_working_directory(MsString *out, MsString *err) {
   } else if (!ms_utf8_is_valid((const uint8_t *)buffer, size)) {
     status = finish(MS_STATUS_UNSUPPORTED, err);
   } else {
+    ms_path_from_os(buffer, size);
     *out = ms_string_from_span(ms_span_of((const uint8_t *)buffer, size));
     *err = ms_string_empty();
   }
