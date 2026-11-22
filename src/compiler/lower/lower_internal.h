@@ -9,8 +9,18 @@ MS_MAP_DEFINE(LowerTyMap, lower_ty_map, uint32_t, uint32_t, ms_hash_u32_key, ms_
 
 /* One function to lower: a declaration with the type arguments of one use, and the MIR function reserved
  * for it so calls can name it before its body exists. */
+/* A function that can be lowered: a module-level function or a method, in the module that declares it. */
+typedef struct LowerTarget {
+  uint32_t module;
+  uint32_t node;                 /* the declaration or method node id: the key, and the index of its locals */
+  const MsFunc *func;
+  MsName name;
+  MsTy ty;                       /* the signature, receiver first for a method */
+  MsTypeParams outer;            /* the type parameters of the enclosing `impl`, before the function's own */
+} LowerTarget;
+
 typedef struct LowerInstance {
-  MsSymbolId symbol;
+  LowerTarget target;
   const MsTy *args; /* in the program arena */
   uint32_t nargs;
   uint32_t func;    /* the reserved MIR function */
@@ -40,9 +50,12 @@ typedef struct LowerSubst {
 
 /* ---- instances and the driver (lower_func.c) ---- */
 
-/* The MIR function for symbol `symbol` instantiated with `args` (type arguments of the use, in the caller's
+/* The target of a module-level function symbol. */
+LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol);
+
+/* The MIR function for `target` instantiated with `args` (type arguments of the use, in the caller's
  * terms; `caller` replaces the caller's variables in them). It is reserved at once and its body lowered later. */
-uint32_t lower_instance(Lower *cx, MsSymbolId symbol, const MsTy *args, uint32_t nargs, const LowerSubst *caller);
+uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs, const LowerSubst *caller);
 
 /* The MIR file id of checker module `module`. */
 uint32_t lower_file(Lower *cx, uint32_t module);
