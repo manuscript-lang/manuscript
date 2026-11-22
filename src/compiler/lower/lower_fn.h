@@ -324,6 +324,7 @@ typedef struct VarSlot {
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier);
+bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot); /* a default argument passes the callee's own `var` parameter on */
 bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);

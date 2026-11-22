@@ -246,11 +246,22 @@ void body_block(Body *body, MsStmts stmts) {
 /* ---- declarations ---- */
 
 /* Declares a function's parameters; `first` is the index of the first written parameter (1 after a receiver). */
+/* A default value must fit the type of the parameter or field it is for. */
+static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
+  return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
+}
+
+/* Declares the parameters in order and checks each default before its own parameter is in scope, so a default sees
+ * the parameters before it and a function of the same name as its own parameter (`headers: H = headers()`). */
 static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t first) {
   const MsTyTable *types = &body->program->types;
   const size_t count = ms_ty_param_count(types, fn_ty);
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
+    if (param->def != NULL) {
+      const MsTy declared = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
+      (void)body_default(body, param->def, declared);
+    }
     const MsTy ty = index < count ? ms_ty_params(types, fn_ty)[index].ty : MS_TY_NONE;
     MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);
     local->id = first + index;
@@ -259,19 +270,9 @@ static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t fir
   }
 }
 
-/* A default value must fit the type of the parameter or field it is for. */
-static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
-  return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
-}
-
-/* Checks parameter defaults, then the body, of one callable; records its local count under `node`. */
+/* Checks the body of one callable; records its local count under `node`. */
 static void callable(Body *body, MsNode node, MsParams params, MsStmts stmts) {
-  for (uint32_t index = 0; index < params.len; index++) {
-    if (params.ptr[index]->def != NULL) {
-      const MsTy declared = params.ptr[index]->ty != NULL ? resolver_type(&body->resolver, params.ptr[index]->ty) : MS_TY_NONE;
-      (void)body_default(body, params.ptr[index]->def, declared);
-    }
-  }
+  (void)params;
   body_block(body, stmts);
   body->facts->local_counts[node] = body->next_local;
 }
