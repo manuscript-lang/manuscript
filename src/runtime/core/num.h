@@ -61,10 +61,10 @@ uint8_t msrt_string_parse_float(const MsString *s, double *out);
 void msrt_int_to_string(int64_t v, MsString *out);
 /* ms-sig: msrt_uint_to_string(v: i64, out: *mut StrVal) */
 void msrt_uint_to_string(int64_t v, MsString *out);
-/* ms-sig: msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) @leaf */
-void msrt_int_to_string_radix(int64_t v, int64_t radix, MsString *out);
-/* ms-sig: msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) */
-void msrt_uint_to_string_radix(int64_t v, int64_t radix, MsString *out);
+/* ms-sig: msrt_int_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @leaf */
+uint8_t msrt_int_to_string_radix(int64_t v, int64_t radix, MsString *out);
+/* ms-sig: msrt_uint_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 */
+uint8_t msrt_uint_to_string_radix(int64_t v, int64_t radix, MsString *out);
 /* ms-sig: msrt_float_to_string(v: f64, out: *mut StrVal) @leaf */
 void msrt_float_to_string(double v, MsString *out);
 /* ms-sig: msrt_float32_to_string(v: f64, out: *mut StrVal) @leaf */
