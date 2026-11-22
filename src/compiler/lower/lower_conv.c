@@ -157,7 +157,10 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
   }
   if (conversion->kind == MS_CONV_OPTIONAL_WRAP) {
     const MirImm none = {0};
-    return fn_emit(fn, MOP_OptSome, &value, 1, none, fn_type(fn, conversion->to));
+    const MirTy to = fn_type(fn, conversion->to);
+    /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
+    return fn_fresh_owner(fn, value) ? fn_emit(fn, MOP_OptSome, &value, 1, none, to)
+                                     : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to));
