@@ -168,10 +168,11 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                   expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
-  const MirValue base = fn_expr(fn, expr->u.member.left, LW_BORROW);
-  if (base == MIR_NONE) {
+  const MirValue read = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  if (read == MIR_NONE) {
     return MIR_NONE;
   }
+  const MirValue base = fn_closing_base(fn, expr, read);
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, base));
   if (data->kind != MK_TYPE) {
     (void)fn_fail(fn, "a field is read from a record (found MIR kind %d)", (int)data->kind);

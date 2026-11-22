@@ -227,3 +227,44 @@ static uint32_t helper_for(Lower *cx, MsTy ty) {
 uint32_t lower_close_parts(Lower *cx, MsTy ty) {
   return lower_parts_supported(cx, ty) ? helper_for(cx, ty) : MIR_NONE;
 }
+
+/* ---- interface values ---- */
+
+/* The index of the `close` operation of the interface `def`, or the operation count when it has none. */
+static uint32_t close_operation(const Lower *cx, const MsDef *def) {
+  const MsName close = ms_names_intern(cx->program->names, ms_span_of_text("close"));
+  uint32_t index = 0;
+  while (index < def->operations.len && def->operations.ptr[index].name != close) {
+    index++;
+  }
+  return index;
+}
+
+uint32_t lower_close_iface(Lower *cx, MsTy ty) {
+  const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(&cx->program->types, ty)->def);
+  const LowerSubst none = {0};
+  const MirTy mt = lower_type(cx, &none, ty);
+  if (def == NULL || mir_ty_data(cx->module, mt)->kind != MK_IFACE || close_operation(cx, def) == def->operations.len) {
+    return MIR_NONE;
+  }
+  const uint32_t op = close_operation(cx, def);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "close.iface.%u", (unsigned)mt);
+  const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const uint32_t found = mir_func_by_name(cx->module, name);
+  if (found != MIR_NONE) {
+    return found;
+  }
+  const MirTy ret = lower_type(cx, &none, ms_ty_result(&cx->program->types, def->operations.ptr[op].ty));
+  const MirParam param = {mt, (uint8_t)MM_MOVE};
+  MirBuilder b;
+  mir_b_init(&b, cx->module, name, &param, 1, ret);
+  b.func.linkage = ML_INTERNAL;
+  MirValue value = MIR_NONE;
+  mir_b_params(&b, &value, 1);
+  const MirImm method = {.tag = MI_METHOD, .a = mir_ty_data(cx->module, mt)->id, .b = op};
+  mir_b_ret(&b, mir_b_emit(&b, MOP_CallMethod, &value, 1, method, ret));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
