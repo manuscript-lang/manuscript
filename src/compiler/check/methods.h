@@ -50,6 +50,9 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
 /* Appends the operations `receiver` has without declaring them (native.c). */
 void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
 
+/* Appends the names of a primitive's built-in operations (native.c). */
+void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *out);
+
 /* Matches `pattern` against `actual`, binding each of the `count` variables `vars[i]` to `bound[i]` (a slot
  * that holds MS_TY_NONE is free). A function type's parameter modes must agree. */
 MS_NODISCARD bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsTy *vars, size_t count,

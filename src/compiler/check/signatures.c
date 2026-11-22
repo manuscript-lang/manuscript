@@ -83,10 +83,6 @@ static void resolve_symbol(Resolver *resolver, MsSymbol *symbol) {
     resolve_interface(resolver, def, decl, symbol->ty);
     break;
   case MS_D_ALIAS:
-    for (uint32_t index = 0; index < decl->u.alias.targets.len; index++) {
-      (void)resolver_type(resolver, decl->u.alias.targets.ptr[index]);
-    }
-    break;
   case MS_D_CONST:
   case MS_D_IMPL:
   case MS_D_TEST:
@@ -96,9 +92,28 @@ static void resolve_symbol(Resolver *resolver, MsSymbol *symbol) {
   ms_ty_list_truncate(&resolver->types, mark);
 }
 
+/* An alias of a union is a type set: its members are the resolved targets. */
+static void resolve_alias(Resolver *resolver, MsSymbol *symbol) {
+  MsCheckProgram *program = resolver->program;
+  const MsDecl *decl = symbol->decl;
+  MsTyList members = {0};
+  for (uint32_t index = 0; index < decl->u.alias.targets.len; index++) {
+    ms_ty_list_push(&members, resolver_type(resolver, decl->u.alias.targets.ptr[index]));
+  }
+  const MsTyDesc desc = {.name = decl->u.alias.name, .id = decl->u.alias.name, .kind = MS_TY_CONTRACT,
+                         .builtin = MS_BUILTIN_TypeSet, .args = members.ptr, .arg_count = (uint32_t)members.len};
+  symbol->ty = ms_ty_intern(&program->types, &desc);
+  ms_ty_list_free(&members);
+}
+
 void ms_check_signatures(MsCheckProgram *program, uint32_t module) {
   Resolver resolver;
   resolver_init(&resolver, program, module);
+  for (MsSymbolId id = 1; id < program->symbols.len; id++) {
+    if (program->symbols.ptr[id].module == module && program->symbols.ptr[id].decl->kind == MS_D_ALIAS) {
+      resolve_alias(&resolver, &program->symbols.ptr[id]);
+    }
+  }
   for (MsSymbolId id = 1; id < program->symbols.len; id++) {
     if (program->symbols.ptr[id].module != module) {
       continue;
