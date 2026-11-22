@@ -12,6 +12,10 @@ MsSpan ms_path_file_name(MsSpan path);
 MsSpan ms_path_parent(MsSpan path);
 
 
+/* Rewrites a path the host returned (`uv_cwd`, `uv_fs_realpath`, `uv_os_tmpdir`) in place to this module's `/`-separated
+ * form. The only place the host's separator is known. */
+void ms_path_from_os(char *text, size_t size);
+
 /* Lexical path operations as Go's path/filepath does them, with `/` the only separator. */
 
 /* Appends `path` cleaned: no `.` or empty elements, `..` folded where it can be, "." for an empty result. */
