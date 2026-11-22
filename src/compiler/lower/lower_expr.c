@@ -240,6 +240,10 @@ static MirValue unsigned_binary(LowerFn *fn, const BinaryOps *ops, MirValue left
     op = MOP_USubChk;
   } else if (ops->op == MOP_IMulChk) {
     op = MOP_UMulChk;
+  } else if (ops->op == MOP_SDivChk) {
+    op = MOP_UDivChk;
+  } else if (ops->op == MOP_SRemChk) {
+    op = MOP_URemChk;
   } else if (ops->op != MOP_IAddChk) {
     (void)fn_fail(fn, "this operator is not lowered for UInt64 yet");
     return MIR_NONE;

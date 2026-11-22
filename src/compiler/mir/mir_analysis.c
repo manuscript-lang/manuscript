@@ -441,7 +441,7 @@ void mir_narrow_range(const MirModule *module, MirTy from, MirTy to, int64_t *lo
 static bool is_checked_integer_op(MirOp op) {
   switch (op) {
   case MOP_IAddChk: case MOP_ISubChk: case MOP_IMulChk: case MOP_INegChk: case MOP_UAddChk:
-  case MOP_USubChk: case MOP_UMulChk: case MOP_SDivChk: case MOP_SRemChk:
+  case MOP_USubChk: case MOP_UMulChk: case MOP_SDivChk: case MOP_SRemChk: case MOP_UDivChk: case MOP_URemChk:
     return true;
   default:
     return false;
