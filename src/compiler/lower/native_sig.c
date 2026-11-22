@@ -9,3 +9,19 @@ const MsNativeSig *ms_native_sig_find(MsSpan name) {
   }
   return NULL;
 }
+
+const MsNativeSig *ms_native_sig_find_method(MsSpan type, MsSpan operation) {
+  for (unsigned at = 0; at < ms_native_sig_count; at++) {
+    const char *method = ms_native_sigs[at].method;
+    if (method == NULL) {
+      continue;
+    }
+    const MsSpan full = ms_span_of_text(method);
+    MsSpan rest;
+    if (ms_span_starts_with(full, type) && full.len > type.len && full.ptr[type.len] == '.' &&
+        ms_span_slice(full, type.len + 1, full.len, &rest) && ms_span_equal(rest, operation)) {
+      return &ms_native_sigs[at];
+    }
+  }
+  return NULL;
+}
