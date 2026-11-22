@@ -101,6 +101,11 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   }
   const MsTy checked = ms_facts_type(fn->facts, expr->id);
+  if (checked == MS_TY_NONE && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_OPT &&
+      (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
+    /* A default value the checker did not type: `none` for an optional parameter or field. */
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, fn->hint);
+  }
   if (checked == MS_TY_NONE || (ref != NULL && ref->kind != MS_REF_NONE && ref->kind != MS_REF_CASE)) {
     (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d, type %s)", expr->pos.line,
                   expr->pos.column, ref != NULL ? (int)ref->kind : -1, checked == MS_TY_NONE ? "unrecorded" : "recorded");
