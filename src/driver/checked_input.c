@@ -101,9 +101,15 @@ static uint32_t entry_module(const MsCheckProgram *program, const MsGraph *graph
 }
 
 bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target) {
+  const MsLoadOptions none = {0};
+  return ms_checked_input_load_with(arena, checked, filename, target, &none);
+}
+
+bool ms_checked_input_load_with(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target,
+                                const MsLoadOptions *extra) {
   ms_names_init(&checked->names);
-  const bool tests = target == MS_INPUT_TESTS;
-  const MsLoadOptions load = {.tests = tests};
+  MsLoadOptions load = *extra;
+  load.tests = target == MS_INPUT_TESTS;
   ms_project_load(arena, &checked->names, filename, &load, &checked->graph);
   const MsGraph *graph = &checked->graph;
   if (target == MS_INPUT_PROGRAM && graph->project_root.len > 0 && graph->library && graph->diagnostic_count == 0) {
