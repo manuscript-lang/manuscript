@@ -287,6 +287,11 @@ bool fmt_token_space(const MsToken *tokens, size_t at) {
   if (current == MS_T_DotDot || previous == MS_T_DotDot) {
     return false;
   }
+  // `@repr=name` is written tight.
+  if (previous == MS_T_At || (current == MS_T_Assign && at >= 2 && tokens[at - 2].kind == MS_T_At) ||
+      (previous == MS_T_Assign && at >= 3 && tokens[at - 3].kind == MS_T_At)) {
+    return false;
+  }
   switch (current) {
   case MS_T_RParen:
   case MS_T_RBracket:

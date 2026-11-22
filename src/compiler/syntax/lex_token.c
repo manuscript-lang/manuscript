@@ -132,6 +132,8 @@ static MsTok single_char_kind(uint8_t b) {
     return MS_T_Amp;
   case '|':
     return MS_T_Pipe;
+  case '@':
+    return MS_T_At;
   default:
     return MS_T_Eof;
   }

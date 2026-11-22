@@ -139,7 +139,7 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
 
 static MirTy lower_native(Lower *cx, MsTy ty) {
   const MsTyTable *table = &cx->program->types;
-  if (ms_builtin_is_byte_buffer(ms_ty_builtin(table, ty))) {
+  if (ms_defs_get(&cx->program->defs, ms_ty_row(table, ty)->def)->repr == MS_REPR_BYTES_BUFFER) {
     return MIR_BYTES;
   }
   const size_t count = ms_ty_arg_count(table, ty);
