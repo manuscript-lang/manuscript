@@ -115,6 +115,8 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
 void fn_own_result(LowerFn *fn, MirValue result);
 
 /* Whether `value` is the owned result of the instruction just emitted, held by the innermost scope. */
+/* Whether `value` is the result of the instruction just emitted and a borrowed view of something that owns it. */
+bool fn_is_borrowed_view(LowerFn *fn, MirValue value);
 bool fn_fresh_owner(LowerFn *fn, MirValue value);
 
 /* ---- resources closed at scope end (lower_close.c) ---- */

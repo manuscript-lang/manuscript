@@ -525,6 +525,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && fn_closing_move(fn, expr, value, &taken)) {
     return taken;
   }
+  if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_borrowed_view(fn, value) &&
+      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    /* A call that answers a view of something else (`list.get(i)`) gives its new owner a copy. */
+    return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+  }
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     return value;
