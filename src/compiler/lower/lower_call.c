@@ -60,6 +60,10 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   return value;
 }
 
+static bool is_literal(const MsExpr *expr) {
+  return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out) {
   for (uint32_t index = 0; index < call->arg_count; index++) {
     const MsCallArg *arg = &call->args[index];
@@ -69,6 +73,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
       const LowerWant want = owning || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
+      if (want == LW_MOVE && out[index] != MIR_NONE && is_literal(written)) {
+        /* A literal is static, so what owns it holds a copy. */
+        out[index] = fn_emit(fn, MOP_Clone, &out[index], 1, (MirImm){0}, mir_b_ty(&fn->b, out[index]));
+      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       out[index] = default_arg(fn, call, arg);
     } else {
