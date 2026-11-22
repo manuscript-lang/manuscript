@@ -400,7 +400,7 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
-                              MirTy ret) {
+                              MirTy ret, MirValue result_slot) {
   MirValue owned;
   if (!fn_take_place(fn, place, &owned)) {
     return MIR_NONE;
@@ -411,7 +411,7 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
   wanted[0] = slot;
-  const MirValue result = fn_runtime_call(fn, name, wanted, count, ret);
+  const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
   const MirValue updated = mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
   if (!fn_put_place(fn, place, updated)) {
     return MIR_NONE;
@@ -533,9 +533,9 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
   if (argc <= NS_MAX_PARAMS && signature_arguments(fn, sig, args, argc, ret, wanted, &count)) {
     if (slot != MIR_NONE && mutates_receiver(sig, ret)) {
       wanted[0] = slot;
-      *out = fn_runtime_call(fn, name, wanted, count, ret);
+      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
-      *out = call_changing(fn, place, name, wanted, count, ret);
+      *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     }
