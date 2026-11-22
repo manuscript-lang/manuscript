@@ -983,7 +983,13 @@ MAX_LIST_ITEMS := 268435456
 // `end <= start`. A loop such as `for index in 0..count:` runs as a counter without
 // allocating the list. Storing a list of more than about 268 million items is a
 // fault; use `range_by` to bound the size with an error value instead.
-fn range(start: Int, end: Int) List[Int]: ...
+fn range(start: Int, end: Int) List[Int]:
+	var out = List[Int](reserve: if end > start: end - start else: 0)
+	var next = start
+	while next < end:
+		out.append(next)
+		next += 1
+	return out
 
 // Settings for `range_by`: an optional cap on the number of items.
 export type RangeOptions:
