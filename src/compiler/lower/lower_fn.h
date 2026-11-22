@@ -52,6 +52,7 @@ typedef struct LowerFn {
   MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
+  uint8_t *local_owns; /* by checker local id: bound to a value this function's scope owns (NULL: none known) */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
   MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
@@ -181,6 +182,7 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue valu
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
 /* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
+bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken);
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);
 
 /* ---- places (lower_stmt.c) ---- */

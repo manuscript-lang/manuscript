@@ -90,6 +90,7 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
   }
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[decl->id] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, decl->u.test.body);
   const bool ok = fn_stmts(&fn, decl->u.test.body);
