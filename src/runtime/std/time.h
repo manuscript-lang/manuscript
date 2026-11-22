@@ -2,8 +2,8 @@
  * passed by value. A Timestamp (seconds since the Unix epoch and a nanosecond part) and an Instant (a clock
  * domain and a tick) are passed by pointer, and a result record is written through the trailing `out`. A
  * function that can fail returns an MsStatus and writes *out only on success; arithmetic that overflows
- * faults with a message. Zones are resolved in Manuscript (src/stdlib/internal/zone.ms): the natives here
- * take the offset east of UTC and the zone's name. */
+ * faults with a message. Zones are resolved in Manuscript (stdlib/internal/zone.ms), which reads the bundled
+ * database through msstd_time_zone_data: the natives here take the offset east of UTC and the zone's name. */
 #ifndef MS_RUNTIME_STD_TIME_H
 #define MS_RUNTIME_STD_TIME_H
 
@@ -110,6 +110,8 @@ uint8_t msstd_time_from_local(int64_t local, int64_t nanosecond, int64_t offset,
 void msstd_time_system_zone(MsString *out);
 /* ms-sig: msstd_time_system_zone_file(out: *mut VecVal) -> u8 @domain=time */
 uint8_t msstd_time_system_zone_file(MsList *out);
+/* ms-sig: msstd_time_zone_data(name: *const StrVal, out: *mut VecVal) @domain=time */
+void msstd_time_zone_data(const MsString *name, MsList *out);
 /* ms-sig: msstd_time_error_message(status: u8, out: *mut StrVal) @domain=time */
 void msstd_time_error_message(uint8_t status, MsString *out);
 
