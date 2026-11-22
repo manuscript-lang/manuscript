@@ -194,9 +194,36 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
   }
 }
 
+/* `fn Ordered.min(...)` over a type set `type Ordered = Int | Float`: the method exists on every member. */
+static bool add_set_block(Context *context, const MsDecl *decl) {
+  MsCheckProgram *program = context->program;
+  const MsSymbolId *own = ms_scope_get(&program->modules.ptr[context->module].scope, decl->u.impl.receiver->name);
+  if (own == NULL || program->symbols.ptr[*own].kind != MS_SYMBOL_ALIAS || decl->u.impl.receiver->args.len != 0) {
+    return false;
+  }
+  const MsDecl *alias = program->symbols.ptr[*own].decl;
+  if (alias->u.alias.type_params.len != 0 || alias->u.alias.targets.len < 2) {
+    return false;
+  }
+  for (uint32_t index = 0; index < alias->u.alias.targets.len; index++) {
+    ms_name_list_truncate(&context->resolver.names, 0);
+    ms_ty_list_truncate(&context->resolver.types, 0);
+    ms_ty_list_truncate(&context->fresh, 0);
+    ms_ty_list_truncate(&context->open, 0);
+    const MsTy member = resolver_type(&context->resolver, alias->u.alias.targets.ptr[index]);
+    if (member != MS_TY_NONE) {
+      add_methods(context, decl, member);
+    }
+  }
+  return true;
+}
+
 static void add_block(Context *context, const MsDecl *decl) {
   MsCheckProgram *program = context->program;
   Resolver *resolver = &context->resolver;
+  if (add_set_block(context, decl)) {
+    return;
+  }
   bool primitive = false;
   const MsSymbolId id = receiver_symbol(context, decl, &primitive);
   if (id == 0) {
