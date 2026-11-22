@@ -716,6 +716,16 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   return fn_emit(fn, MOP_ClosureNew, NULL, 0, imm, fn_ty);
 }
 
+/* The receiver a bound-method closure keeps: a dying temporary moves into the closure; a value some binding still owns
+ * is a hidden copy. */
+static MirValue fn_closure_owns(LowerFn *fn, MirValue receiver) {
+  if (!fn_fresh_owner(fn, receiver)) {
+    return fn_implicit_clone(fn, receiver, true);
+  }
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &receiver, 1, (MirImm){0}, MIR_NONE);
+  return receiver;
+}
+
 /* `receiver.operation` where the standard library declares the operation without a body: a closure holding a copy of
  * the receiver whose body is the runtime call, made as a call of the operation is. */
 static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty) {
@@ -746,7 +756,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   }
   const MirTy receiver_ty = changes ? slot_ty : mir_b_ty(&fn->b, receiver);
   if (!changes && mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_implicit_clone(fn, receiver, true);
+    receiver = fn_closure_owns(fn, receiver);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = changes ? MIR_PTR : receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
@@ -814,7 +824,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
     return MIR_NONE;
   }
   if (mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_implicit_clone(fn, receiver, true);
+    receiver = fn_closure_owns(fn, receiver);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
@@ -906,7 +916,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
   const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
   if (owns) {
-    receiver = fn_implicit_clone(fn, receiver, true);
+    receiver = fn_closure_owns(fn, receiver);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
