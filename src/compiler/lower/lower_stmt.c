@@ -601,7 +601,9 @@ static void enter(LowerFn *fn, MirBlock block) {
 }
 
 static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
-  const bool probes = stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_PROBE;
+  MsExpr *probe_left = NULL;
+  MsExpr *probe_key = NULL;
+  const bool probes = fn_probe_parts(fn, stmt, &probe_left, &probe_key);
   bool owns = !probes && stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
   const bool from_call = stmt->u.branch.cond->kind == MS_E_CALL;
   MirValue entry = MIR_NONE;
