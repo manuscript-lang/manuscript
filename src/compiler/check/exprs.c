@@ -459,7 +459,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     if (ty == MS_TY_NONE && param->ty == NULL) {
       report_uninferred_callback(body, param);
     }
-    MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id);
+    MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);
     local->id = index;
     body_set_type(body, param->id, ty);
     body_set_ref(body, param->id, body_local_ref(body, local));

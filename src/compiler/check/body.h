@@ -57,7 +57,8 @@ void body_block(Body *body, MsStmts stmts); /* a nested scope */
 size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
 /* Declares a local or parameter in the current scope. */
-MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site);
+/* Declares a local; `pos` is where it is written, kept in the program's binding table for `ms inspect`. */
+MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site, MsPos pos);
 
 /* The reference a use of `local` records. */
 MsRef body_local_ref(const Body *body, const MsLocal *local);

@@ -3,10 +3,22 @@
 
 #include <stdio.h>
 
+#include "base/file.h"
 #include "driver/checked_input.h"
+#include "tooling/inspect.h"
 #include "driver/invocation.h"
 
-enum { EXIT_NOT_IMPLEMENTED = 70 };
+static int write_output(MsSpan output, MsSpan text) {
+  if (output.len == 0) {
+    (void)fwrite(text.ptr, 1, text.len, stdout);
+    return 0;
+  }
+  if (!ms_file_write(output, text)) {
+    (void)fprintf(stderr, "cannot write %.*s\n", (int)output.len, (const char *)output.ptr);
+    return 1;
+  }
+  return 0;
+}
 
 int ms_inspect_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
@@ -15,8 +27,10 @@ int ms_inspect_command(int argc, char **argv) {
   if (status == 0) {
     MsCheckedInput checked = {0};
     if (ms_checked_input_load(&arena, &checked, invocation.filename, MS_INPUT_ANALYSIS)) {
-      (void)fprintf(stderr, "ms inspect: the inspection document is not implemented in this build\n");
-      status = EXIT_NOT_IMPLEMENTED;
+      MsStrBuild text = ms_strbuild_new();
+      ms_inspect_document(&arena, &checked.program, &text);
+      status = write_output(invocation.output, ms_strbuild_span(&text));
+      ms_strbuild_free(&text);
     } else {
       status = invocation.json ? ms_checked_input_report_json(&checked) : ms_checked_input_report(&checked);
     }

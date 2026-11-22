@@ -255,6 +255,15 @@ static MsReachGraph build_graph(const MsReachNode *nodes, uint32_t count, MsAren
 
 MsReach ms_effects_resolve(const MsReachNode *nodes, uint32_t count, MsArena *arena) {
   MsReach reach = {0};
+  reach.declared = MS_ARENA_NEW_ARRAY(arena, MsEffectNames, (size_t)count + 1);
+  reach.permits = MS_ARENA_NEW_ARRAY(arena, MsEffectNames, (size_t)count + 1);
+  for (uint32_t node = 0; node < count; node++) {
+    const MsEffectScope *scope = nodes[node].allow_fn.present ? &nodes[node].allow_fn
+                                 : nodes[node].allow_file.present ? &nodes[node].allow_file : NULL;
+    if (nodes[node].project && scope != NULL) {
+      reach.permits[node] = (MsEffectNames){.names = scope->patterns, .count = scope->count};
+    }
+  }
   MsReachGraph graph = build_graph(nodes, count, arena);
   if (graph.name_count == 0) {
     ms_reach_index_free(&graph.index);
@@ -262,7 +271,6 @@ MsReach ms_effects_resolve(const MsReachNode *nodes, uint32_t count, MsArena *ar
   }
   const Callers callers = build_callers(&graph, arena);
   propagate(&graph, &callers, arena);
-  reach.declared = MS_ARENA_NEW_ARRAY(arena, MsEffectNames, (size_t)count + 1);
   for (uint32_t node = 0; node < count; node++) {
     reach.declared[node] = names_of_row(&graph, node, arena);
   }
