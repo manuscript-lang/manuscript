@@ -62,8 +62,11 @@ jobs:
           github-token: ${{ github.token }}
       - if: runner.os != 'Windows'
         run: chmod +x .artifacts/oracle/ms .artifacts/oracle/ms-conform
+      # Homebrew's llvm is keg-only: release builds run its opt and llc from PATH.
       - if: runner.os == 'macOS'
-        run: echo "TMPDIR=$(cd "$RUNNER_TEMP" && pwd -P)" >> "$GITHUB_ENV"
+        run: |
+          echo "TMPDIR=$(cd "$RUNNER_TEMP" && pwd -P)" >> "$GITHUB_ENV"
+          echo "$(brew --prefix llvm)/bin" >> "$GITHUB_PATH"
       - if: runner.os != 'Windows'
         run: cmake --preset debug
       - if: runner.os == 'Windows'
