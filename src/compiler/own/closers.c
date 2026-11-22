@@ -30,18 +30,28 @@ static const MsMethodEntry *close_method(Closers *pass, MsTy ty) {
   return entry;
 }
 
-static uint8_t flags_of(const Closers *pass, const MsMethodEntry *entry) {
+static uint16_t flags_of(const Closers *pass, const MsMethodEntry *entry) {
   const MsTyTable *types = &pass->program->types;
   const MsTy result = ms_ty_result(types, entry->ty);
-  return (uint8_t)((ms_ty_is(types, result, MS_BUILTIN_Result) ? MS_CLOSER_FALLIBLE : 0) |
+  return (uint16_t)((ms_ty_is(types, result, MS_BUILTIN_Result) ? MS_CLOSER_FALLIBLE : 0) |
                    (entry->source->consuming ? MS_CLOSER_CONSUMES : 0) |
                    (entry->source->mutating ? MS_CLOSER_WRITES_BACK : 0));
 }
 
 bool ms_own_closer_of(MsCheckProgram *program, MsTy ty, MsCloser *out) {
   Closers pass = {.program = program, .close = ms_names_intern(program->names, ms_span_of_text("close"))};
-  if (ty == MS_TY_NONE || !ms_check_closeable(program, ty)) {
+  if (ty == MS_TY_NONE) {
     return false;
+  }
+  if (ms_ty_kind(&program->types, ty) == MS_TY_CONTRACT) {
+    /* An interface value closes through its own `close` operation, which takes it. */
+    *out = (MsCloser){.flags = MS_CLOSER_IFACE | MS_CLOSER_CONSUMES | MS_CLOSER_FALLIBLE};
+    return ms_check_closeable(program, ty);
+  }
+  if (!ms_check_closeable(program, ty)) {
+    /* A holder without a close of its own closes the resources it holds. */
+    *out = (MsCloser){.flags = MS_CLOSER_PARTS | MS_CLOSER_CONSUMES};
+    return ms_check_holds_resource(program, ty);
   }
   const MsMethodEntry *entry = close_method(&pass, ty);
   if (entry == NULL) {
@@ -55,7 +65,7 @@ bool ms_own_closer_of(MsCheckProgram *program, MsTy ty, MsCloser *out) {
  * at scope end. A type variable may be closed in some instances, so it is recorded to be decided there. */
 static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t local, MsTy ty) {
   MsCloser closer = {.node = node, .ref_kind = ref_kind, .local = local};
-  if (ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_VARIABLE) {
+  if (ty != MS_TY_NONE && ms_ty_has_variable(&pass->program->types, ty)) {
     closer.flags = MS_CLOSER_GENERIC;
   } else if (!ms_own_closer_of(pass->program, ty, &closer)) {
     return;
@@ -126,21 +136,37 @@ static MsCloser *find(Closers *pass, MsRefKind ref_kind, uint32_t local) {
   return NULL;
 }
 
-static void flag(Closers *pass, const MsRef *ref, uint8_t flags) {
+static void flag(Closers *pass, const MsRef *ref, uint16_t flags) {
   MsCloser *closer = ref == NULL ? NULL : find(pass, ref->kind, ref->local);
   if (closer != NULL) {
-    closer->flags = (uint8_t)(closer->flags | flags);
+    closer->flags = (uint16_t)(closer->flags | flags);
   }
 }
 
 /* A member assigned in a closed `var`, and a `var` argument or receiver, change the binding in place. */
-static void flag_root(Closers *pass, const MsExpr *place, uint8_t flags) {
+static void flag_root(Closers *pass, const MsExpr *place, uint16_t flags) {
   const MsExpr *root = place;
   while (root->kind == MS_E_MEMBER) {
     root = root->u.member.left;
   }
   if (root->kind == MS_E_NAME) {
     flag(pass, ms_facts_ref(pass->facts, root->id), flags);
+  }
+}
+
+/* A call that returns a value which may hold a resource (or whose type is not known yet) may take a part out of
+ * a holder it is given, or called on: a holder closes whole only when no call does. */
+static void flag_taken_by(Closers *pass, const MsExpr *call) {
+  const MsTy result = ms_facts_type(pass->facts, call->id);
+  if (result == MS_TY_NONE ||
+      !(ms_ty_has_variable(&pass->program->types, result) || ms_check_holds_resource(pass->program, result))) {
+    return;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    flag_root(pass, call->u.call.args.ptr[index].value, MS_CLOSER_TAKEN);
+  }
+  if (call->u.call.callee->kind == MS_E_MEMBER) {
+    flag_root(pass, call->u.call.callee->u.member.left, MS_CLOSER_TAKEN);
   }
 }
 
@@ -192,6 +218,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
   if (expr->kind == MS_E_CALL) {
     visit_call_changes(pass, expr);
+    flag_taken_by(pass, expr);
   }
   if (expr->kind == MS_E_CALL && expr->u.call.args.len == 0 && expr->u.call.callee->kind == MS_E_MEMBER &&
       expr->u.call.callee->u.member.name == pass->close && expr->u.call.callee->u.member.left->kind == MS_E_NAME) {

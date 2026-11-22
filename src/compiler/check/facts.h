@@ -120,7 +120,10 @@ typedef enum MsCloserFlags {
   MS_CLOSER_EXPLICIT = 8,   /* the body also calls `.close()` on the binding by hand */
   MS_CLOSER_MOVED = 16,     /* a use moves the whole binding out of its scope */
   MS_CLOSER_PARTIAL = 32,   /* a field moves out alone, or a closure captures the binding */
-  MS_CLOSER_GENERIC = 64    /* its type is a type variable: whether it closes is decided per instance */
+  MS_CLOSER_GENERIC = 64,   /* its type mentions a type variable: whether it closes is decided per instance */
+  MS_CLOSER_PARTS = 128,    /* no close of its own: the resources it holds close, last field first */
+  MS_CLOSER_TAKEN = 256,    /* a call that returns a resource may take a part of it out (only a parts closer cares) */
+  MS_CLOSER_IFACE = 512     /* an interface value: its `close` operation, called through the vtable */
 } MsCloserFlags;
 
 /* How a local binding or `move` parameter of a Closeable type is closed where its scope ends. `node` is its
@@ -131,7 +134,7 @@ typedef struct MsCloser {
   MsRefKind ref_kind; /* MS_REF_LOCAL, or MS_REF_PARAM for a parameter or the receiver */
   uint32_t local;     /* its id within the enclosing function, as a reference to it says */
   MsNodeRef method;
-  uint8_t flags; /* MsCloserFlags */
+  uint16_t flags; /* MsCloserFlags */
 } MsCloser;
 
 MS_LIST_DEFINE(MsRefList, ms_ref_list, MsRef)

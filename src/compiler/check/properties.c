@@ -195,6 +195,18 @@ static bool holds_resource_anywhere(MsCheckProgram *program, MsTy ty) {
   return found;
 }
 
+bool ms_check_holds_resource(MsCheckProgram *program, MsTy ty) {
+  return holds_resource_anywhere(program, ty);
+}
+
+const MsDef *ms_check_def_of(const MsCheckProgram *program, MsTy ty) {
+  return def_of(program, ty);
+}
+
+MsTy ms_check_part_type(MsCheckProgram *program, MsTy ty, const MsDef *def, MsTy field) {
+  return part_type(program, ty, def, field);
+}
+
 /* ---- Data ---- */
 
 static bool blocked(MsDataReason why, MsTy ty, MsDataReason *reason, MsTy *part) {

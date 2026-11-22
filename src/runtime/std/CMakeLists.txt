@@ -6,6 +6,7 @@ add_library(ms_std_text STATIC
   regex_scan.c
   regex_screen.c
   regex_text.c
+  shape_equal.c
   shape_text.c
   unicode.c
   unicode_width.c)
