@@ -42,11 +42,45 @@ MirValue fn_result_wrap(LowerFn *fn, MirValue value) {
   return wrapped;
 }
 
+/* `value?` on an Optional: the payload when present; when absent the function returns `none` (or, in a function
+ * that returns nothing, just returns). */
+static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
+  const MirTy opt_ty = mir_b_ty(&fn->b, value);
+  const MirTyData *ret = mir_ty_data(fn->cx->module, fn->ret);
+  if (ret->kind != MK_OPT && fn->ret != MIR_VOID && !fn->decl_void) {
+    return fn_fail(fn, "`?` on an Optional needs a function that returns an Optional or nothing") ? MIR_NONE : MIR_NONE;
+  }
+  if (fn_place_owns(fn, expr->u.bin.left)) {
+    (void)fn_fail(fn, "`?` on a `var` optional (changing its payload in place) is not lowered yet");
+    return MIR_NONE;
+  }
+  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+  const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock none_block = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, none_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, none_block);
+  mir_b_switch_to(&fn->b, none_block);
+  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
+  if (absent != MIR_NONE) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &absent, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(fn, 0);
+  mir_b_ret(&fn->b, absent);
+  mir_b_switch_to(&fn->b, some_block);
+  const MirTy payload = mir_ty_data(fn->cx->module, opt_ty)->elem;
+  return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
+}
+
 MirValue fn_try(LowerFn *fn, const MsExpr *expr) {
   const MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
   uint32_t alt = 0;
   if (value == MIR_NONE) {
     return MIR_NONE;
+  }
+  if (mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind == MK_OPT) {
+    return try_optional(fn, expr, value);
   }
   const MirAltDef *def = result_def(fn, mir_b_ty(&fn->b, value), &alt);
   uint32_t ret_alt = 0;
@@ -110,8 +144,8 @@ MirValue fn_unary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_U_NOT) {
     return mir_b_emit(&fn->b, MOP_Xor, (MirValue[]){operand, mir_b_bconst(&fn->b, true)}, 2, (MirImm){0}, MIR_BOOL);
   }
-  if (ty == MIR_FLOAT) {
-    return mir_b_emit(&fn->b, MOP_FNeg, &operand, 1, (MirImm){0}, MIR_FLOAT);
+  if (ty == MIR_FLOAT || ty == MIR_FLOAT32) {
+    return mir_b_emit(&fn->b, MOP_FNeg, &operand, 1, (MirImm){0}, ty);
   }
   return fn_emit(fn, MOP_INegChk, &operand, 1, (MirImm){0}, ty);
 }

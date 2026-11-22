@@ -90,7 +90,12 @@ static void bind_pattern(Body *body, const MsPattern *pattern, MsTy ty, bool is_
   }
   for (uint32_t index = 0; index < pattern->u.fields.len; index++) {
     const MsPatternField *field = &pattern->u.fields.ptr[index];
-    bind_pattern(body, field->pattern, MS_TY_NONE, is_var);
+    MsTy field_ty = MS_TY_NONE;
+    uint32_t at = 0;
+    if (ty != MS_TY_NONE) {
+      (void)body_field(body, ty, field->name, &field_ty, &at);
+    }
+    bind_pattern(body, field->pattern, field_ty, is_var);
   }
 }
 
@@ -181,7 +186,9 @@ static void statement(Body *body, const MsStmt *stmt) {
   case MS_S_RETURN:
     if (stmt->u.expr != NULL) {
       body->saw_return = true;
-      const MsTy returned = body_expect(body, stmt->u.expr, body->result, ms_span_of_text("the return value"));
+      const MsTy returned = body->result == MS_TY_NONE && body->hint != MS_TY_NONE
+                                ? body_expr(body, stmt->u.expr, body->hint)
+                                : body_expect(body, stmt->u.expr, body->result, ms_span_of_text("the return value"));
       body->returned = body->returned == MS_TY_NONE ? returned : body->returned;
     }
     break;
@@ -351,6 +358,32 @@ static void declaration(Body *body, const MsDecl *decl) {
   case MS_D_INTERFACE:
     break;
   }
+}
+
+/* The type of a module constant: its annotation, else the type of its initializer, found once in the declaring
+ * module's own context and kept on the symbol. */
+MsTy body_constant_type(const Body *body, const MsSymbol *symbol) {
+  static int depth = 0;
+  MsCheckProgram *program = body->program;
+  MsSymbol *own = &program->symbols.ptr[symbol - program->symbols.ptr];
+  if (own->ty != MS_TY_NONE || depth >= 8 || symbol->decl == NULL || symbol->decl->kind != MS_D_CONST) {
+    return own->ty;
+  }
+  const MsModuleInfo *info = &program->modules.ptr[symbol->module];
+  MsFacts scratch = {0};
+  ms_facts_init(&scratch, &program->arena, symbol->module, info->tree->node_count);
+  Body inner = {.program = program, .module = symbol->module, .facts = &scratch, .quiet = true};
+  resolver_init(&inner.resolver, program, symbol->module);
+  inner.resolver.report = false;
+  depth++;
+  const MsDecl *decl = symbol->decl;
+  MsTy ty = decl->u.konst.ty != NULL ? resolver_type(&inner.resolver, decl->u.konst.ty) : MS_TY_NONE;
+  ty = ty != MS_TY_NONE ? ty : body_expr(&inner, decl->u.konst.value, MS_TY_NONE);
+  depth--;
+  resolver_free(&inner.resolver);
+  ms_local_list_free(&inner.locals);
+  own->ty = ty;
+  return ty;
 }
 
 void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {

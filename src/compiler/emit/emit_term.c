@@ -94,7 +94,7 @@ static bool emit_fault_term(EmitCx *cx, const MirTerm *term) {
     for (uint32_t word = 0; word < fault_calls[index].words; word++) {
       ms_strbuild_printf(out, "%si64 0", word == 0 ? "" : ", ");
     }
-    ms_strbuild_append_text(out, ")\n  unreachable\n");
+    ms_strbuild_append_text(out, ") nomerge\n  unreachable\n");
     return true;
   }
   cx->why = "fault with a message";

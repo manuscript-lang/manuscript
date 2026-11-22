@@ -57,6 +57,7 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  bool temps; /* a statement scope is open for the temporaries its calls lend */
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
   const LowerLambda *lambda; /* the lambda whose body this is, or NULL */
@@ -95,6 +96,23 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
 /* Whether lowering closes a binding with this closer (NULL for none), of checker type `checked`: a `move fn close`
  * that no use closes by hand, changes in place or splits. */
 bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
+/* The helper `fn(move holder)` that closes the resources a holder without a close of its own holds, or MIR_NONE
+ * when some part cannot be closed this way; and whether it exists. */
+uint32_t lower_close_parts(Lower *cx, MsTy ty);
+bool lower_parts_supported(Lower *cx, MsTy ty);
+/* Whether a temporary of the type `checked` closes where its statement ends, and its owner: the value goes into a
+ * slot of the innermost scope, and the result is the view the callee reads. */
+bool fn_temp_closes(LowerFn *fn, MsTy checked);
+MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
+/* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
+ * when it is a lent temporary. */
+MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
+bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
+bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
+const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);
+/* After the close of a part returned `result`: faults when it is an error, else drops it. */
+void lower_close_check(MirBuilder *b, MirValue result);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
@@ -110,6 +128,8 @@ bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *t
 /* ---- places (lower_stmt.c) ---- */
 
 /* Whether `place` is an owning `var` local or a member path rooted in one. */
+/* Whether `place` is an owning variable (or a path in one): a value a `var` call can change in place. */
+bool fn_place_owns(LowerFn *fn, const MsExpr *place);
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
@@ -149,6 +169,9 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
+/* An operation done by the runtime's walker over a type's shape, or MIR_NONE when it has none. */
+MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args, uint32_t nargs, MirTy ret);
+
 /* The text of `value` of MIR type `ty` through the type's shape (`msstd_value_text`). */
 MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty);
 /* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
@@ -161,6 +184,15 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+
+/* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
+typedef struct VarSlot {
+  const MsExpr *place;
+  MirValue slot;
+  MirTy ty;
+} VarSlot;
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
+bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
 MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);

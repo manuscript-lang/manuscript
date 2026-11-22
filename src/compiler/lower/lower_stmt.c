@@ -88,8 +88,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
-  if (!borrow && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
-      (!mir_needs_drop(fn->cx->module, ty) || fn_fresh_owner(fn, value))) {
+  /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
+  const bool fresh = fn_fresh_owner(fn, value);
+  if ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+      (!mir_needs_drop(fn->cx->module, ty) || fresh)) {
     return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
@@ -148,6 +150,14 @@ static bool closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
   return owned_local(fn, place, &var) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+}
+
+bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
+  MirVar var;
+  if (place->kind == MS_E_MEMBER) {
+    return fn_place_owns(fn, place->u.member.left);
+  }
+  return owned_local(fn, place, &var) && var_owns(fn, var);
 }
 
 /* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
@@ -397,9 +407,26 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   return fn_fail(fn, "unknown statement");
 }
 
+/* A statement whose calls lend temporary resources lowers in a scope of its own: they close where it ends. */
+static bool lower_scoped(LowerFn *fn, const MsStmt *stmt) {
+  if (fn->temps || !fn_stmt_has_temporary(fn, stmt)) {
+    return lower_stmt(fn, stmt);
+  }
+  (void)fn_scope_begin(fn);
+  fn->temps = true;
+  const bool ok = lower_stmt(fn, stmt);
+  fn->temps = false;
+  if (!fn->terminated) {
+    fn_scope_end(fn);
+  } else {
+    fn->nopen--;
+  }
+  return ok;
+}
+
 bool fn_stmts(LowerFn *fn, MsStmts stmts) {
   for (uint32_t index = 0; index < stmts.len && !fn->terminated; index++) {
-    if (!lower_stmt(fn, stmts.ptr[index])) {
+    if (!lower_scoped(fn, stmts.ptr[index])) {
       return false;
     }
   }

@@ -40,6 +40,13 @@ MS_NODISCARD bool ms_check_property(MsCheckProgram *program, MsTy ty, MsProperty
 /* Whether `ty` is, or holds, a value that must be closed once. */
 MS_NODISCARD bool ms_check_closeable(MsCheckProgram *program, MsTy ty);
 
+/* Whether `ty` is, or holds anywhere in its arguments, fields or cases, a closeable value. */
+MS_NODISCARD bool ms_check_holds_resource(MsCheckProgram *program, MsTy ty);
+
+/* The definition of a nominal type, or NULL, and one of its field types as `ty` has it. */
+const MsDef *ms_check_def_of(const MsCheckProgram *program, MsTy ty);
+MsTy ms_check_part_type(MsCheckProgram *program, MsTy ty, const MsDef *def, MsTy field);
+
 typedef enum MsDataReason {
   MS_DATA_RESOURCE,
   MS_DATA_FUNCTION,

@@ -37,6 +37,7 @@ typedef struct Body {
   MsSpan source;  /* the module's text, for repairing edits; empty for a bundled module */
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
   bool saw_return; /* a return statement appeared in the current lambda body */
+  MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
 
@@ -111,6 +112,9 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected);
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
+
+/* bodies.c: the type of a module constant, computed once. */
+MsTy body_constant_type(const Body *body, const MsSymbol *symbol);
 
 /* ---- exprs_mismatch.c ---- */
 
