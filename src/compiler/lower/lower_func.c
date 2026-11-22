@@ -256,9 +256,14 @@ static bool lower_body(Lower *cx, uint32_t index) {
   (void)fn_scope_begin(&fn);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1);
-  for (uint32_t at = 0; at < fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1; at++) {
+  const size_t closing_count = (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1;
+  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, closing_count);
+  fn.closing_var = MS_ARENA_NEW_ARRAY(&cx->module->arena, bool, closing_count);
+  fn.closing_types = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, closing_count);
+  for (size_t at = 0; at < closing_count; at++) {
     fn.closing[at] = MIR_NONE;
+    fn.closing_var[at] = false;
+    fn.closing_types[at] = MIR_VOID;
   }
   bind_params(&fn, target);
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;

@@ -91,6 +91,9 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (fn_lambda_name(fn, expr, ref, &captured)) {
     return captured;
   }
+  if (fn_closing_read(fn, ref, &captured)) {
+    return captured;
+  }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
     return mir_b_use_var(&fn->b, fn->param_vars[ref->local]);
   }
