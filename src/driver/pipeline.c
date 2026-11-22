@@ -73,11 +73,8 @@ static bool make_object(const MsLinkRequest *request, MsSpan ir, MsSpan director
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
-  if (request->tests) {
-    (void)fail(error, "building the test runner is not lowered yet", ms_span_of(NULL, 0));
-    return false;
-  }
-  const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false};
+  const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false,
+                                  .tests = request->tests};
   bool ok = ms_backend_ir(request->program, request->entry, &backend, &ir, &why) ||
             fail(error, "", ms_strbuild_span(&why));
   MsString opt_storage, llc_storage, lld_storage, files_storage, runtime_storage;
@@ -86,7 +83,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   const MsSpan llc = setting("MS_LLC", "llc", &llc_storage);
   const MsSpan lld = setting("MS_LLD", "lld", &lld_storage);
   const MsSpan files = setting("MS_FILES", MS_BUILD_FILES, &files_storage);
-  const MsSpan runtime = setting("MS_RUNTIME", MS_BUILD_RUNTIME, &runtime_storage);
+  const MsSpan runtime = setting("MS_RUNTIME", request->static_libc ? MS_BUILD_RUNTIME_STATIC : MS_BUILD_RUNTIME, &runtime_storage);
   MsSpan inputs[MAX_INPUTS];
   const size_t count = ok ? collect_inputs(request, runtime, inputs) : 0;
   if (ok && !ms_dir_make_temp(ms_span_of_text("."), ms_span_of_text(".ms-build-"), &scratch)) {

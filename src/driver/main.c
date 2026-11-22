@@ -9,7 +9,9 @@
 #include "driver/build_command.h"
 #include "driver/check_command.h"
 #include "driver/emit_command.h"
+#include "driver/explain_command.h"
 #include "driver/fmt_command.h"
+#include "driver/help_command.h"
 #include "driver/init_command.h"
 #include "driver/package_commands.h"
 #include "driver/phases.h"
@@ -17,9 +19,9 @@
 #include "driver/test_command.h"
 #include "driver/verify_command.h"
 
-enum { EXIT_NOT_IMPLEMENTED = 70, EXIT_USAGE = 64 };
+enum { EXIT_NOT_IMPLEMENTED = 70, EXIT_USAGE = 2 };
 
-/* Commands the `ms` front accepts (plan section 4, L5). Borrowed static strings. */
+/* Commands the `ms` command line accepts (plan section 4, L5). Borrowed static strings. */
 static const char *const COMMANDS[] = {
     "build",   "run",     "test",    "bench",   "emit",    "check",
     "lint",    "fmt",     "inspect", "diagram", "review",  "profile",
@@ -35,16 +37,30 @@ static bool is_command(const char *word) {
 }
 
 int main(int argc, char **argv) {
-  if (argc < 2 || !is_command(argv[1])) {
-    (void)fprintf(stderr, "usage: ms-c <command> [args]\n");
+  if (argc < 2 || ms_cstr_equal(argv[1], "--help") || ms_cstr_equal(argv[1], "-h")) {
+    ms_help_print_top();
+    return 0;
+  }
+  if (ms_cstr_equal(argv[1], "--version") || ms_cstr_equal(argv[1], "version")) {
+    return ms_version_command(argv[1], argc - 2, argv + 2);
+  }
+  if (!is_command(argv[1])) {
+    ms_help_unknown_command(ms_span_of_text(argv[1]));
     return EXIT_USAGE;
   }
+  if (ms_help_requested(argc - 2, argv + 2)) {
+    (void)fputs(ms_help_page(ms_span_of_text(argv[1])), stdout);
+    return 0;
+  }
+  if (ms_cstr_equal(argv[1], "help")) return ms_help_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "explain")) return ms_explain_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "build")) return ms_build_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "run")) return ms_run_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "test")) return ms_test_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "lint")) return ms_lint_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "verify")) return ms_verify_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "init")) return ms_init_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "install")) return ms_install_command(argc - 2, argv + 2);

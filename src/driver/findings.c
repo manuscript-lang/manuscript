@@ -70,18 +70,64 @@ static void finding_excerpt(MsStrBuild *out, MsSpan root, const Finding *finding
   ms_strbuild_free(&path);
 }
 
-void finding_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *findings) {
+void finding_add_lint(const MsLintFindingList *lint, FindingList *findings) {
+  for (size_t i = 0; i < lint->len; i++) {
+    const MsLintFinding *item = &lint->ptr[i];
+    MsDiag diag = {.pos = item->pos, .message = item->message};
+    if (item->has_fix) {
+      diag.has_fix = true;
+      diag.fix_pos = item->fix_pos;
+      diag.fix_end = item->fix_end;
+      diag.replacement = item->replacement;
+    }
+    finding_list_push(findings, (Finding){.file = item->file, .phase = "", .diag = diag, .lint_code = item->code,
+                                          .warning = item->severity == MS_LINT_WARNING});
+  }
+}
+
+const char *finding_code(const Finding *finding) {
+  return finding->lint_code != NULL ? finding->lint_code : ms_code_for(finding->phase, finding->diag.message);
+}
+
+bool finding_fails(const FindingList *findings, bool deny_warnings) {
+  for (size_t i = 0; i < findings->len; i++) {
+    if (!findings->ptr[i].warning || deny_warnings) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void finding_terminal_text(MsStrBuild *err, MsSpan root, const FindingList *findings, bool deny_warnings) {
+  size_t errors = 0;
+  size_t warnings = 0;
   for (size_t i = 0; i < findings->len; i++) {
     const Finding *finding = &findings->ptr[i];
     ms_path_append_joined(err, finding_is_package_file(finding->file) ? (MsSpan){0} : root, finding->file);
-    ms_strbuild_printf(err, ":%u:%u: %s: ", finding->diag.pos.line, finding->diag.pos.column, finding->phase);
+    ms_strbuild_printf(err, ":%u:%u: ", finding->diag.pos.line, finding->diag.pos.column);
+    if (finding->phase[0] != '\0') {
+      ms_strbuild_append_text(err, finding->phase);
+    } else {
+      if (finding->warning) {
+        ms_strbuild_append_text(err, "warning ");
+      }
+      ms_strbuild_append_text(err, finding->lint_code);
+    }
+    ms_strbuild_append_text(err, ": ");
     ms_strbuild_append(err, finding->diag.message);
     finding_excerpt(err, root, finding);
     ms_strbuild_append_byte(err, '\n');
+    errors += finding->phase[0] != '\0';
+    warnings += finding->warning;
   }
-  if (findings->len != 0) {
+  if (errors != 0) {
     ms_strbuild_printf(err, "%zu %s; fix them and re-run (ms check <file> --json gives the same diagnostics as "
                             "structured data)\n",
-                       findings->len, findings->len == 1 ? "error" : "errors");
+                       errors, errors == 1 ? "error" : "errors");
+  }
+  if (warnings != 0) {
+    ms_strbuild_printf(err, "%zu %s; %s\n", warnings, warnings == 1 ? "warning" : "warnings",
+                       deny_warnings ? "failing because of --deny-warnings"
+                                     : "warnings do not fail ms lint; pass --deny-warnings to fail on them");
   }
 }

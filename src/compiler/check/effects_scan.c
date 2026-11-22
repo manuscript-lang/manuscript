@@ -150,10 +150,12 @@ void ms_effect_message(MsStrBuild *out, MsSpan label, const MsReachViolation *vi
   ms_strbuild_append(out, label);
   ms_strbuild_append_text(out, "` reaches ");
   ms_strbuild_append(out, violation->effect);
-  ms_strbuild_append_text(out, ": ");
-  for (uint32_t index = 0; index < violation->path_count; index++) {
-    ms_strbuild_append_text(out, index == 0 ? "" : " -> ");
-    ms_strbuild_append(out, violation->path[index]);
+  if (violation->path_count > 1) {
+    ms_strbuild_append_text(out, ": ");
+    for (uint32_t index = 0; index < violation->path_count; index++) {
+      ms_strbuild_append_text(out, index == 0 ? "" : " -> ");
+      ms_strbuild_append(out, violation->path[index]);
+    }
   }
   ms_strbuild_append_text(out, "; permit it with `// ms: allow_effect ");
   ms_strbuild_append(out, violation->effect);

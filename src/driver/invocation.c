@@ -7,7 +7,7 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "compiler/project/project.h"
-#include "driver/duration.h"
+#include "base/duration.h"
 #include "driver/invocation_rules.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2 };
@@ -35,7 +35,7 @@ static const char *const VALUE_OPTIONS[] = {
     "--samples", "--iterations", "--baseline", "--fail-over", "--format",  "--view",   "--entity", "--depth",
     "--diff",  "--top",        "--link"};
 
-static bool takes_value(MsSpan flag) {
+bool ms_invocation_takes_value(MsSpan flag) {
   for (size_t i = 0; i < sizeof VALUE_OPTIONS / sizeof VALUE_OPTIONS[0]; i++) {
     if (ms_span_is_text(flag, VALUE_OPTIONS[i])) {
       return true;
@@ -54,7 +54,7 @@ static bool split_inline(MsSpan arg, MsSpan *flag, MsSpan *value) {
   for (size_t i = 0; i < arg.len; i++) {
     if (arg.ptr[i] == '=') {
       const MsSpan name = ms_span_of(arg.ptr, i);
-      if (!takes_value(name)) {
+      if (!ms_invocation_takes_value(name)) {
         return false;
       }
       *flag = name;
