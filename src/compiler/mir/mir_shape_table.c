@@ -38,6 +38,18 @@ static uint32_t add_mir_name(ShapeBuild *build, MsName name) {
   return add_name(build, ms_names_span(&build->module->names, name));
 }
 
+/* A type's name without its type arguments: `Pair[Int, Int]` is shown as `Pair`. */
+static uint32_t add_type_name(ShapeBuild *build, MsName name) {
+  MsSpan text = ms_names_span(&build->module->names, name);
+  for (size_t at = 0; at < text.len; at++) {
+    if (text.ptr[at] == '[') {
+      text.len = at;
+      break;
+    }
+  }
+  return add_name(build, text);
+}
+
 static MsShape scalar(MsShapeKind kind, uint32_t size) {
   return (MsShape){.kind = (uint8_t)kind, .align = (uint16_t)(size == 0 ? 1 : (size > 8 ? 8 : size)), .size = size,
                    .name = MS_SHAPE_NONE, .first = MS_SHAPE_NONE, .elem = MS_SHAPE_NONE,
@@ -101,7 +113,7 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   MirLayouts *layouts = build->layouts;
   const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
   shape->kind = MS_SHAPE_RECORD;
-  shape->name = add_mir_name(build, def->name);
+  shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   uint32_t *kinds = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   if (def->indirect) {
@@ -153,7 +165,7 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   if (mir_json_tree_shape(build->module, ty)) {
     shape->flags |= MS_SHAPE_JSON_TREE;
   }
-  shape->name = add_mir_name(build, def->name);
+  shape->name = add_type_name(build, def->name);
   shape->extra = 0; /* the tag is the first leaf */
   if (boxed) {
     shape->flags |= MS_SHAPE_BOXED;
