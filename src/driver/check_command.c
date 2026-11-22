@@ -1,7 +1,7 @@
 /* Driver: `ms check <targets> [--json [--with-text [--each]]]`. Loads the module graph of each input, checks it
  * and reports the diagnostics as terminal text or as the JSON document of crates/ms-cli. Several targets, a
- * directory without ms.toml and --each check each input on its own. The --fix, --watch and --deny-warnings options
- * are not implemented. Status 0 is accepted, 1 a diagnostic, 2 a usage error, 70 not implemented. */
+ * directory without ms.toml and --each check each input on its own; --fix applies fixes and --watch reruns after each
+ * saved change. Status 0 is accepted, 1 a diagnostic, 2 a usage error. */
 #include "driver/check_command.h"
 
 #include <stdio.h>
@@ -19,13 +19,14 @@
 #include "driver/check_inputs.h"
 #include "driver/display.h"
 #include "driver/snippet.h"
+#include "driver/watch.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
 MS_LIST_DEFINE(TargetList, target_list, MsSpan)
 
 typedef struct CheckOptions {
-  bool json, with_text, each, fix;
+  bool json, with_text, each, fix, watch;
   TargetList targets;
 } CheckOptions;
 
@@ -45,6 +46,7 @@ typedef struct Analysis {
   CheckFixList fixes;
   MsSpan root;       /* a lone file: the directory its diagnostics are relative to */
   bool no_inputs;
+  MsSpanList watched; /* the files and directories a rerun depends on */
 } Analysis;
 
 static void print_span(FILE *stream, MsSpan text) {
@@ -71,8 +73,10 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       options->each = true;
     } else if (is_option(argument, "--fix")) {
       options->fix = true;
-    } else if (is_option(argument, "--watch") || is_option(argument, "--deny-warnings")) {
-      return refuse("ms check: this option is not implemented yet", STATUS_NOT_IMPLEMENTED);
+    } else if (is_option(argument, "--watch")) {
+      options->watch = true;
+    } else if (is_option(argument, "--deny-warnings")) {
+      continue; /* check reports no warnings, so there is nothing to deny */
     } else if (argument[0] == '-') {
       (void)fprintf(stderr, "unknown option %s for ms check; run 'ms help check' for its options\n", argument);
       return STATUS_USAGE;
@@ -88,7 +92,7 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
   if (options->with_text && !options->json) {
     return refuse("ms check: --with-text requires --json", STATUS_USAGE);
   }
-  if (options->each && (!(options->json && options->with_text) || options->fix)) {
+  if (options->each && (!(options->json && options->with_text) || options->fix || options->watch)) {
     return refuse("--each requires check --json --with-text without --watch or --fix; use ms check a.ms b.ms "
                   "--json --with-text --each",
                   STATUS_USAGE);
@@ -263,9 +267,31 @@ static void collect_fixes(MsArena *arena, MsSpan root, const FindingList *found,
   }
 }
 
+/* The files a rerun depends on: the input, its manifest, every local module and the directory of each, where a new
+ * file would appear. */
+static void add_watched(MsArena *arena, MsSpan input, const MsGraph *graph, MsSpanList *watched) {
+  ms_span_list_push(watched, input);
+  if (graph->project_root.len != 0) {
+    MsStrBuild manifest = ms_strbuild_new();
+    ms_path_append_joined(&manifest, graph->project_root, ms_span_of_text("ms.toml"));
+    ms_span_list_push(watched, ms_message_from_builder(arena, &manifest));
+    ms_strbuild_free(&manifest);
+  }
+  if (graph->source_root.len != 0) {
+    ms_span_list_push(watched, graph->source_root);
+  }
+  for (size_t i = 0; i < graph->count; i++) {
+    const MsGraphModule *module = &graph->modules[i];
+    if (!ms_span_starts_with(module->name, ms_span_of_text("@"))) {
+      ms_span_list_push(watched, module->path);
+      ms_span_list_push(watched, ms_path_parent(module->path));
+    }
+  }
+}
+
 /* Checks one input and adds what it found to `analysis`. */
 static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input, bool fix,
-                        Analysis *analysis) {
+                        bool watching, Analysis *analysis) {
   MsNames names;
   ms_names_init(&names);
   MsGraph graph = {0};
@@ -281,6 +307,9 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
   }
   if (!selection->collection) {
     analysis->root = ms_arena_copy(arena, graph.source_root);
+  }
+  if (watching) {
+    add_watched(arena, input->path, &graph, &analysis->watched);
   }
   if (fix) {
     collect_fixes(arena, graph.source_root, &found, &analysis->fixes);
@@ -341,7 +370,8 @@ static void collect_findings(FindingList *findings) {
   findings->len = kept_count;
 }
 
-static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fix, Analysis *analysis) {
+static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fix, bool watching,
+                    Analysis *analysis) {
   CheckSelection selection;
   check_select_inputs(arena, targets, count, &selection);
   for (size_t i = 0; i < selection.problems.len; i++) {
@@ -352,7 +382,7 @@ static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fi
   }
   analysis->no_inputs = selection.inputs.len == 0 && selection.problems.len == 0;
   for (size_t i = 0; i < selection.inputs.len; i++) {
-    check_input(arena, &selection, &selection.inputs.ptr[i], fix, analysis);
+    check_input(arena, &selection, &selection.inputs.ptr[i], fix, watching, analysis);
   }
   if (selection.collection) {
     collect_findings(&analysis->findings);
@@ -384,6 +414,7 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
 static void free_analysis(Analysis *analysis) {
   finding_list_free(&analysis->findings);
   check_fix_list_free(&analysis->fixes);
+  ms_span_list_free(&analysis->watched);
   ms_strbuild_free(&analysis->summaries);
 }
 
@@ -397,7 +428,7 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
     MsStrBuild out = ms_strbuild_new();
     MsStrBuild err = ms_strbuild_new();
     MsStrBuild document = ms_strbuild_new();
-    analyze(arena, &options->targets.ptr[i], 1, false, &analysis);
+    analyze(arena, &options->targets.ptr[i], 1, false, false, &analysis);
     const int status = render(&analysis, options, &options->targets.ptr[i], 1, &out, &err, &document);
     ms_strbuild_append_text(&result, i == 0 ? "\n    {\n      \"target\": " : ",\n    {\n      \"target\": ");
     ms_json_string(&result, options->targets.ptr[i]);
@@ -422,7 +453,7 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
 }
 
 /* One run of the command: with --fix, rounds of fixing until no fix applies. */
-static int check_targets(MsArena *arena, const CheckOptions *options) {
+static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList *watched) {
   CheckFixRun run = {0};
   Analysis analysis = {.summaries = ms_strbuild_new()};
   const size_t passes = 64;
@@ -430,7 +461,7 @@ static int check_targets(MsArena *arena, const CheckOptions *options) {
     free_analysis(&analysis);
     analysis = (Analysis){.summaries = ms_strbuild_new()};
     const bool fixing = options->fix && pass + 1 < passes;
-    analyze(arena, options->targets.ptr, options->targets.len, fixing, &analysis);
+    analyze(arena, options->targets.ptr, options->targets.len, fixing, options->watch, &analysis);
     if (!fixing || check_apply_fixes(arena, &run, &analysis.fixes) == 0) {
       break;
     }
@@ -458,6 +489,8 @@ static int check_targets(MsArena *arena, const CheckOptions *options) {
   ms_strbuild_free(&document);
   ms_strbuild_free(&err);
   ms_strbuild_free(&out);
+  *watched = analysis.watched;
+  analysis.watched = (MsSpanList){0};
   free_analysis(&analysis);
   check_fix_run_free(&run);
   return result;
@@ -472,11 +505,24 @@ int ms_check_command(int argc, char **argv) {
   }
   MsArena arena = ms_arena_new();
   int result = 0;
+  MsSpanList watched = {0};
   if (options.each) {
     result = check_each(&arena, &options);
-  } else {
-    result = check_targets(&arena, &options);
   }
+  while (!options.each) {
+    const uint64_t started = watch_now_ms();
+    result = check_targets(&arena, &options, &watched);
+    if (!options.watch) {
+      break;
+    }
+    (void)fprintf(stderr, "ms: waiting for changes\n");
+    (void)fflush(stdout);
+    watch_wait(&watched, started);
+    ms_span_list_free(&watched);
+    ms_arena_free(&arena);
+    arena = ms_arena_new();
+  }
+  ms_span_list_free(&watched);
   target_list_free(&options.targets);
   ms_arena_free(&arena);
   return result;
