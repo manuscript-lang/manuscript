@@ -11,6 +11,8 @@ typedef struct MsProcessSpec {
   const MsSpan *argv; /* borrowed: the program (a path, or a name looked up on PATH) then its arguments */
   size_t argc;
   MsSpan directory;   /* the working directory; empty for the current one */
+  const MsSpan *env;  /* NAME=VALUE texts that are set (or replace a variable) in the child's environment */
+  size_t envc;
   MsSpan log_path;    /* the file that receives the output */
 } MsProcessSpec;
 
