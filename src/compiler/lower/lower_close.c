@@ -283,6 +283,27 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
   return !fn->failed;
 }
 
+bool fn_temp_closes(LowerFn *fn, MsTy checked) {
+  MsCloser closer;
+  if (fn->closing == NULL || !ms_own_closer_of(fn->cx->program, checked, &closer)) {
+    return false;
+  }
+  return lowerable(closer.flags) && ((closer.flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, checked));
+}
+
+MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  uint32_t silent = MIR_NONE;
+  if (!prepare(fn, checked, ty, &silent)) {
+    return value;
+  }
+  if (mir_needs_drop(fn->cx->module, ty)) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  }
+  const MirValue slot = own_slot(fn, ty, value, silent);
+  return mir_b_emit(&fn->b, MOP_Load, &slot, 1, imm_ty(ty), ty);
+}
+
 /* The slot of the `var` resource a local reference names, or MIR_NONE. */
 static MirValue var_slot_of(const LowerFn *fn, const MsRef *ref) {
   if (fn->closing == NULL || ref == NULL || ref->kind != MS_REF_LOCAL || ref->local >= fn->nvars ||
