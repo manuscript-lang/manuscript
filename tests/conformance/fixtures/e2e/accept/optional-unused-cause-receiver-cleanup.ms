@@ -40,7 +40,7 @@ test "successful cause cleanup transfers the protected receiver exactly once":
 	normal_transfer(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "2,1,")?
 
-fn failing_callback(log: String) fn() Marker:
+fn failing_callback(move log: String) fn() Marker:
 	captured := Marker(2, log, true)
 	return fn: Marker(3, captured.log.clone(), false)
 

@@ -82,7 +82,7 @@ fn cancel_a_discard(dir: String, id: Int) Void:
 	stop.cancel()
 	void work.wait()
 
-fn faulting_holder(dir: String, id: Int) Void!:
+fn faulting_holder(move dir: String, id: Int) Void!:
 	hold_and_fault(dir, id)
 
 test "cancellation closes the binding":

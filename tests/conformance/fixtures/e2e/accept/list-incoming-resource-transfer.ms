@@ -31,7 +31,7 @@ fn named(move log: String, op: Int, index: Int, fail: Bool = false) Void:
 	else if op == 3: items.append(Door(2, log))
 	else: items.prepend(Door(2, log))
 
-fn computed(log: String, op: Int, index: Int, fail: Bool = false) Void:
+fn computed(move log: String, op: Int, index: Int, fail: Bool = false) Void:
 	if op == 0: [Door(1, log.clone(), fail: fail)].set(index, Door(2, log))
 	else if op == 1: [Door(1, log.clone(), fail: fail)].insert(index, Door(2, log))
 	else if op == 2:

@@ -30,7 +30,7 @@ fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 // Reads every value as text, or the first error.
-fn decode(input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[String]!:
+fn decode(move input: Bytes, size: Int, limits: JsonOptions = JsonOptions()) List[String]!:
 	var values = json_reader[JsonValue](chunked(input, size), limits)
 	var out: List[String] = []
 

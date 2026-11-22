@@ -21,7 +21,7 @@ fn list_under_fault(move label: String) Void:
 	panic("body fault")
 	void markers.length()
 
-fn list_at_scope_end(label: String) Void:
+fn list_at_scope_end(move label: String) Void:
 	markers := [Marker(label.clone()), Marker(label)]
 	void markers.length()
 
