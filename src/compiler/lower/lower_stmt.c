@@ -32,9 +32,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
-  if (!borrow && !stmt->u.bind.is_mutable && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+  if (!borrow && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
       (!mir_needs_drop(fn->cx->module, ty) || fn_fresh_owner(fn, value))) {
-    return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value);
+    return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
@@ -152,6 +152,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   /* A name target records its local on the statement, a member target on its expression. */
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
   MirVar var = 0;
+  bool resource = false;
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->closing != NULL && fn->closing_var[ref->local]) {
+    const MirValue value = take_value(fn, stmt->u.assign.value);
+    return value != MIR_NONE && fn_closing_assign(fn, ref, value, &resource);
+  }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     var = fn->vars[ref->local] - 1;
   } else if (ref != NULL && ref->kind == MS_REF_PARAM) {
