@@ -44,10 +44,12 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
   target->ref = body_symbol_ref(body, symbol);
   if (symbol->kind == MS_SYMBOL_TYPE) {
     const MsDef *def = body_def(body, symbol->ty);
-    if (def == NULL || ms_ty_kind(&body->program->types, symbol->ty) != MS_TY_TYPE) {
+    const MsTyKind kind = ms_ty_kind(&body->program->types, symbol->ty);
+    if (def == NULL || (kind != MS_TY_TYPE && kind != MS_TY_NATIVE)) {
       return false;
     }
     constructor_target(body, target, symbol->ty, &def->fields);
+    target->builtin = kind == MS_TY_NATIVE;
     if (symbol->decl != NULL && symbol->decl->kind == MS_D_TYPE) {
       target->ast = &symbol->decl->u.type.fields;
       target->ast_module = symbol->module;
