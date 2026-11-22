@@ -62,10 +62,12 @@ static bool is_result_kind(uint8_t kind) {
          kind == NS_OUT_SCALAR;
 }
 
-/* Whether `value` is a closure or interface, which passes by value yet is given to a native by address. */
+/* Whether `value` is a closure, an interface or an optional of plain data, which a native is given by address
+ * though its leaves would pass by value. */
 static bool spilled_by_address(LowerFn *fn, MirValue value) {
-  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind;
-  return kind == MK_FN || kind == MK_IFACE;
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, ty)->kind;
+  return kind == MK_FN || kind == MK_IFACE || (kind == MK_OPT && !mir_needs_drop(fn->cx->module, ty));
 }
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
