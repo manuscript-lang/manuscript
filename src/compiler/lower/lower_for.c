@@ -335,8 +335,18 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   const MsExpr *iter = stmt->u.each.iter;
   const MsTy type = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, iter->id), fn->subst.vars,
                                 fn->subst.args, fn->subst.count);
-  const uint32_t next = lower_named_method(fn->cx, type, "next");
-  if (next == MIR_NONE) {
+  const MirTyData *iterator_data = mir_ty_data(fn->cx->module, fn_type(fn, type));
+  /* An iterator behind an interface is advanced through its vtable: `next` is found in the interface by name. */
+  const bool dispatched = iterator_data->kind == MK_IFACE;
+  uint32_t next_index = UINT32_MAX;
+  const MirIfaceDef *iface = dispatched ? &fn->cx->module->ifaces.ptr[iterator_data->id] : NULL;
+  for (uint32_t at = 0; iface != NULL && at < iface->nmethods; at++) {
+    if (ms_span_is_text(ms_names_span(&fn->cx->module->names, iface->methods[at].name), "next")) {
+      next_index = at;
+    }
+  }
+  const uint32_t next = dispatched ? MIR_NONE : lower_named_method(fn->cx, type, "next");
+  if (next == MIR_NONE && next_index == UINT32_MAX) {
     return fn_fail(fn, "`for` needs a list, a range, or a value whose `next` has a body");
   }
   /* An iterator held in a variable is advanced in place: its value sits in a slot for the loop, and goes back
@@ -383,19 +393,26 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   enter(fn, head);
   mir_b_set_loc(&fn->b, fn_loc(fn, stmt->pos));
   /* The iterator is the receiver; each other parameter of `next` is an optional the loop leaves out. */
-  const MirFunc *next_fn = &fn->cx->module->funcs.ptr[next];
+  const MirMethodSig *next_sig = dispatched ? &iface->methods[next_index] : NULL;
+  const uint32_t next_nparams = dispatched ? next_sig->nparams + 1 : fn->cx->module->funcs.ptr[next].nparams;
+  const MirParam *next_params = dispatched ? NULL : fn->cx->module->funcs.ptr[next].params;
   MirValue next_args[LOWER_MAX_ARGS] = {slot};
-  if (next_fn->nparams > LOWER_MAX_ARGS) {
+  if (next_nparams > LOWER_MAX_ARGS) {
     return fn_fail(fn, "`next` takes too many parameters");
   }
-  for (uint32_t at = 1; at < next_fn->nparams; at++) {
-    const MirTy param_ty = next_fn->params[at].ty;
+  for (uint32_t at = 1; at < next_nparams; at++) {
+    const MirTy param_ty = dispatched ? next_sig->params[at - 1] : next_params[at].ty;
     if (param_ty != MIR_VOID && mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT) {
       return fn_fail(fn, "`next` of a `for` source takes only optional parameters");
     }
     next_args[at] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
   }
-  const MirValue result = mir_b_call(&fn->b, next, next_args, next_fn->nparams);
+  const MirImm method = {.tag = MI_METHOD, .a = iterator_data->id, .b = next_index};
+  if (dispatched) { /* the vtable call takes the interface value; its payload changes in place */
+    next_args[0] = fn_emit(fn, MOP_Load, &slot, 1, imm_ty(fn_type(fn, type)), fn_type(fn, type));
+  }
+  const MirValue result = dispatched ? fn_emit(fn, MOP_CallMethod, next_args, next_nparams, method, next_sig->ret)
+                                     : mir_b_call(&fn->b, next, next_args, next_nparams);
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   MirMode mode = MM_BORROW;
   const bool result_owned = result != MIR_NONE && mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
