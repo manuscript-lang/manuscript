@@ -75,7 +75,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
   const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false,
-                                  .tests = request->tests};
+                                  .tests = request->tests, .bench = request->bench};
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
