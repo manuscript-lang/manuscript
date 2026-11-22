@@ -60,6 +60,22 @@ uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
   return lower_operation_method(cx, receiver, name);
 }
 
+uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property) {
+  const bool equal = property == MS_PROPERTY_EQUAL;
+  if (!ms_check_decided_by_method(cx->program, receiver, property)) {
+    return MIR_NONE;
+  }
+  const uint32_t method = lower_named_method(cx, receiver, equal ? "equals" : "hash");
+  if (method == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirFunc *func = &cx->module->funcs.ptr[method];
+  const bool fits = equal ? func->nparams == 2 && func->ret == MIR_BOOL && func->params[0].mode != MM_MOVE &&
+                                func->params[1].mode != MM_MOVE
+                          : func->nparams == 1 && func->ret == MIR_INT && func->params[0].mode != MM_MOVE;
+  return fits ? method : MIR_NONE;
+}
+
 static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsStrBuild *out) {
   ms_strbuild_append_text(out, "vtable ");
   lower_type_text(cx, subst, receiver, out);
