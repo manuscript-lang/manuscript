@@ -75,10 +75,8 @@ static void enter(LowerFn *fn, MirBlock block) {
 }
 
 static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
-  if (stmt->u.branch.binding != NULL) {
-    return fn_fail(fn, "`if` with a binding is not lowered yet");
-  }
-  const MirValue cond = fn_expr(fn, stmt->u.branch.cond, LW_BORROW);
+  const MirValue tested = fn_expr(fn, stmt->u.branch.cond, LW_BORROW);
+  const MirValue cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
   if (cond == MIR_NONE) {
     return false;
   }
@@ -89,6 +87,9 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   mir_b_seal_block(&fn->b, then);
   mir_b_seal_block(&fn->b, otherwise);
   enter(fn, then);
+  if (stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, tested)) {
+    return false;
+  }
   bool ok = lower_block(fn, stmt->u.branch.body);
   const bool then_ended = fn->terminated;
   if (!then_ended) {
