@@ -36,6 +36,7 @@ typedef struct MsNativeSig {
   const char *method; /* `Type.operation` when the runtime name differs from `msrt_<type>_<operation>`, else NULL */
   const char *domain; /* what a failure names (`filesystem`), or NULL */
   bool status;        /* returns a u8 */
+  const char *inline_op; /* `@inline=` the operation lowering writes out as MIR instead of calling the native, else NULL */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];

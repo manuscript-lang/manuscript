@@ -322,9 +322,6 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     const MirImm none = {0};
     return fn_emit(fn, MOP_Clone, args, 1, none, MIR_STR);
   }
-  if (name_is(operation, "get") && call->arg_count == 2 && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->kind == MK_LIST) {
-    return list_get(fn, args[0], args[1], ret);
-  }
   if (generic_receiver(fn, call)) {
     return bound_native(fn, callee, call, args, ret);
   }
@@ -337,6 +334,10 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
                                     : runtime_name(fn, call->callee.owner, operation);
   const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig != NULL && sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") &&
+      call->arg_count == 2) {
+    return list_get(fn, args[0], args[1], ret);
+  }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
