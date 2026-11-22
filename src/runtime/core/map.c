@@ -194,8 +194,8 @@ uint8_t msrt_map_contains_sw8(const MsMap *m, const MsTypeDesc *kd, const MsType
   return msrt_map_contains(m, kd, vd, key);
 }
 
-uint8_t msrt_set_contains_w(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key) {
-  return msrt_map_contains(m, kd, vd, key);
+uint8_t msrt_set_contains_w(const MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
+  return msrt_map_contains(m, kd, NULL, key);
 }
 
 const uint8_t *msrt_map_get_ptr(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd,
@@ -306,6 +306,6 @@ void msrt_map_values_view(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc
   collect(m, kd, vd, false, view_maker(vd != NULL ? vd : kd), out);
 }
 
-void msrt_set_values(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out) {
-  msrt_map_keys(m, kd, vd, out);
+void msrt_set_values(const MsMap *m, const MsTypeDesc *kd, MsList *out) {
+  msrt_map_keys(m, kd, NULL, out);
 }
