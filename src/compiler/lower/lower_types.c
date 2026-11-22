@@ -137,8 +137,17 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   return result;
 }
 
+/* The builders are a Bytes buffer to the runtime (`msrt_strbuilder_*` take a `VecVal`). */
+static bool is_builder(const Lower *cx, MsTy ty) {
+  const MsSpan name = ms_names_span(cx->program->names, ms_ty_row(&cx->program->types, ty)->name);
+  return ms_span_is_text(name, "StringBuilder") || ms_span_is_text(name, "BytesBuilder");
+}
+
 static MirTy lower_native(Lower *cx, MsTy ty) {
   const MsTyTable *table = &cx->program->types;
+  if (is_builder(cx, ty)) {
+    return MIR_BYTES;
+  }
   const size_t count = ms_ty_arg_count(table, ty);
   MirTy *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);
   for (size_t index = 0; index < count; index++) {
