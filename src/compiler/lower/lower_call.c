@@ -76,7 +76,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   return value;
 }
 
-static bool is_literal(const MsExpr *expr) {
+bool fn_is_text_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
 }
 
@@ -153,10 +153,6 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                                   consuming_receiver(fn, call);
       const LowerWant want = owning || takes_receiver || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
-      if (want == LW_MOVE && out[index] != MIR_NONE && is_literal(written)) {
-        /* A literal is static, so what owns it holds a copy. */
-        out[index] = fn_emit(fn, MOP_Clone, &out[index], 1, (MirImm){0}, mir_b_ty(&fn->b, out[index]));
-      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);

@@ -122,6 +122,8 @@ bool fn_stmts(LowerFn *fn, MsStmts stmts);
 MirValue fn_default_result(LowerFn *fn);
 /* The 64 bits of a number literal's spelling (decimal, 0x, 0b, 0o; `_` ignored); false when it has more. */
 bool fn_number_bits(MsSpan text, uint64_t *out);
+/* Whether `expr` is a text with no interpolation, a static string. */
+bool fn_is_text_literal(const MsExpr *expr);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
