@@ -128,7 +128,10 @@ bool fn_is_text_literal(const MsExpr *expr) {
 /* Moves the value of `place` into a new slot and returns the slot's address. */
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MirValue owned;
-  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || place->kind == MS_E_INDEX;
+  MsExpr *indexed = NULL;
+  MsExpr *index_key = NULL;
+  /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
+  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
   if (is_place) {
     if (!fn_take_place(fn, place, &owned)) {
       return MIR_NONE;

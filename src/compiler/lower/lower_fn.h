@@ -73,6 +73,8 @@ typedef struct LowerFn {
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
   uint32_t nwritebacks;
   bool failed;
+  uint32_t comparing[8]; /* the alternatives whose equality is being written out, innermost last */
+  uint32_t ncomparing;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
