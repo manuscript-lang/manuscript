@@ -30,7 +30,7 @@ fn BigRat.denominator() BigInt:
 	return self.den
 
 // Returns an independent copy.
-fn BigRat.clone() BigRat:
+fn BigRat.clone() move BigRat:
 	return BigRat(num: self.num.clone(), den: self.den.clone())
 
 // Returns the exact sum.
@@ -271,7 +271,7 @@ fn BigFloat.precision() Int:
 	return self.prec
 
 // Returns an independent copy.
-fn BigFloat.clone() BigFloat:
+fn BigFloat.clone() move BigFloat:
 	return BigFloat(mant: self.mant.clone(), exp: self.exp, prec: self.prec)
 
 // Returns this value rounded to `precision` bits; a precision outside 1 through

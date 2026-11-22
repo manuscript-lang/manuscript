@@ -171,8 +171,32 @@ static uint32_t parameter_names(const MsFunc *func, bool method, uint32_t positi
   return len;
 }
 
+static bool name_in(const MsName *names, uint32_t len, MsName name) {
+  for (uint32_t index = 0; index < len; index++) {
+    if (names[index] == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* The type variables `func` declares: its own and, for a method, its receiver's. */
+static uint32_t declared_variables(const MsFunc *func, bool method, MsName *out) {
+  uint32_t len = 0;
+  for (uint32_t index = 0; index < func->type_params.len && len < NAME_CAP; index++) {
+    out[len++] = func->type_params.ptr[index]->name;
+  }
+  if (method) {
+    const MsMethod *owner = ms_method_of_func(func);
+    for (uint32_t index = 0; index < owner->receiver_args.len; index++) {
+      type_names(owner->receiver_args.ptr[index], out, &len, NAME_CAP);
+    }
+  }
+  return len;
+}
+
 /* Whether the callee's declared result can hold what its argument number `position` carries: a declaration
- * with a body lends only through a type its parameter and its result both mention; one the runtime provides
+ * with a body lends only through a type variable its parameter and its result both mention; one the runtime provides
  * lends from any argument. */
 static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t position) {
   const MsRef *callee = &fact->callee;
@@ -184,10 +208,12 @@ static bool lends_from(const Borrows *pass, const MsCall *fact, uint32_t positio
   MsName mine[NAME_CAP];
   uint32_t result_len = 0;
   type_names(func->result, result, &result_len, NAME_CAP);
+  MsName variables[NAME_CAP];
+  const uint32_t variable_len = declared_variables(func, callee->kind == MS_REF_METHOD, variables);
   const uint32_t mine_len = parameter_names(func, callee->kind == MS_REF_METHOD, position, mine);
   for (uint32_t at = 0; at < mine_len; at++) {
     for (uint32_t index = 0; index < result_len; index++) {
-      if (mine[at] == result[index]) {
+      if (mine[at] == result[index] && name_in(variables, variable_len, mine[at])) {
         return true;
       }
     }
