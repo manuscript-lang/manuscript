@@ -27,6 +27,13 @@ typedef struct Use {
   uint32_t offset;
 } Use;
 
+/* A source range: a branch's two arms exclude each other; a loop body runs again after its end. */
+typedef struct Range {
+  uint32_t lo, split, hi; /* an if: [lo, split) is the then arm and [split, hi] the else arm; a loop: [lo, hi] */
+  bool loop;
+} Range;
+
+MS_LIST_DEFINE(RangeList, range_list, Range)
 MS_LIST_DEFINE(BorrowList, borrow_list, Borrow)
 MS_LIST_DEFINE(ChangeList, change_list, Change)
 MS_LIST_DEFINE(UseList, use_list, Use)
@@ -40,6 +47,8 @@ typedef struct Borrows {
   BorrowList borrows;
   ChangeList changes;
   UseList uses;
+  RangeList ranges;
+  uint32_t high; /* the furthest end offset seen by the current measuring walk */
 } Borrows;
 
 /* The function-wide id of the local or parameter `node` names: the checker numbers locals densely and gives
@@ -160,8 +169,37 @@ static void note_change(Borrows *pass, const MsExpr *place, bool assign) {
   }
 }
 
+static void measure_expr(void *ctx, const MsExpr *expr) {
+  Borrows *pass = ctx;
+  if (expr->end.offset > pass->high) {
+    pass->high = expr->end.offset;
+  }
+}
+
+/* The furthest offset any expression of `body` ends at. */
+static uint32_t body_end(Borrows *pass, MsStmts body) {
+  pass->high = 0;
+  const MsVisitor measure = {.ctx = pass, .expr = measure_expr};
+  ms_walk_block(&measure, body);
+  return pass->high;
+}
+
+static void note_ranges(Borrows *pass, const MsStmt *stmt) {
+  if (stmt->kind == MS_S_IF && stmt->u.branch.else_body.len != 0 && stmt->u.branch.body.len != 0) {
+    const uint32_t split = stmt->u.branch.else_body.ptr[0]->pos.offset;
+    range_list_push(&pass->ranges, (Range){.lo = stmt->pos.offset, .split = split,
+                                           .hi = body_end(pass, stmt->u.branch.else_body)});
+  } else if (stmt->kind == MS_S_WHILE || stmt->kind == MS_S_FOR) {
+    const MsStmts body = stmt->kind == MS_S_WHILE ? stmt->u.loop.body : stmt->u.each.body;
+    if (body.len != 0) {
+      range_list_push(&pass->ranges, (Range){.lo = stmt->pos.offset, .hi = body_end(pass, body), .loop = true});
+    }
+  }
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Borrows *pass = ctx;
+  note_ranges(pass, stmt);
   if (stmt->kind == MS_S_BIND) {
     note_bind(pass, stmt);
   } else if (stmt->kind == MS_S_ASSIGN) {
@@ -201,9 +239,32 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
-static bool used_after(const Borrows *pass, uint32_t binding, uint32_t offset) {
+/* Whether a use at `use` can run after a change at `change`: later in the source, unless the two sit in
+ * different arms of one branch; or anywhere in a loop that holds the change and not the borrow's binding. */
+static bool runs_after(const Borrows *pass, const Borrow *borrow, uint32_t change, uint32_t use) {
+  for (size_t index = 0; index < pass->ranges.len; index++) {
+    const Range *range = &pass->ranges.ptr[index];
+    if (range->loop) {
+      if (change >= range->lo && change <= range->hi && use >= range->lo && use <= range->hi &&
+          borrow->after < range->lo) {
+        return true;
+      }
+      continue;
+    }
+    const bool change_then = change >= range->lo && change < range->split;
+    const bool change_else = change >= range->split && change <= range->hi;
+    const bool use_then = use >= range->lo && use < range->split;
+    const bool use_else = use >= range->split && use <= range->hi;
+    if ((change_then && use_else) || (change_else && use_then)) {
+      return false;
+    }
+  }
+  return use > change;
+}
+
+static bool used_after(const Borrows *pass, const Borrow *borrow, uint32_t offset) {
   for (size_t index = 0; index < pass->uses.len; index++) {
-    if (pass->uses.ptr[index].binding == binding && pass->uses.ptr[index].offset > offset) {
+    if (pass->uses.ptr[index].binding == borrow->binding && runs_after(pass, borrow, offset, pass->uses.ptr[index].offset)) {
       return true;
     }
   }
@@ -243,7 +304,7 @@ static void judge(Borrows *pass) {
     for (size_t index = 0; index < pass->changes.len; index++) {
       const Change *change = &pass->changes.ptr[index];
       const uint32_t offset = change->pos.offset;
-      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow->binding, offset)) {
+      if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset)) {
         report(pass, borrow, change);
         break;
       }
@@ -252,6 +313,7 @@ static void judge(Borrows *pass) {
   borrow_list_clear(&pass->borrows);
   change_list_clear(&pass->changes);
   use_list_clear(&pass->uses);
+  range_list_clear(&pass->ranges);
 }
 
 void ms_own_borrows(MsCheckProgram *program) {
@@ -271,6 +333,7 @@ void ms_own_borrows(MsCheckProgram *program) {
     borrow_list_free(&pass.borrows);
     change_list_free(&pass.changes);
     use_list_free(&pass.uses);
+    range_list_free(&pass.ranges);
   }
   ms_class_free(&classes);
 }
