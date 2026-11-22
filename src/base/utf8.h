@@ -40,6 +40,14 @@ size_t ms_utf8_count(const uint8_t *s, size_t n);
 /* Whether the n bytes at s are well-formed UTF-8: no overlong forms, surrogates or scalars above U+10FFFF. */
 static inline bool ms_utf8_is_valid(const uint8_t *s, size_t n) {
   for (size_t at = 0; at < n;) {
+    if (n - at >= 8) { /* eight ASCII bytes at once */
+      uint64_t word;
+      __builtin_memcpy(&word, s + at, sizeof word);
+      if ((word & UINT64_C(0x8080808080808080)) == 0) {
+        at += 8;
+        continue;
+      }
+    }
     const MsRune scalar = ms_utf8_decode(s + at, n - at);
     if (scalar.rune == MS_RUNE_ERROR && scalar.width == 1) {
       return false;
