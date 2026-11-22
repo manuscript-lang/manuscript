@@ -95,6 +95,12 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
 /* Whether lowering closes a binding with this closer (NULL for none), of checker type `checked`: a `move fn close`
  * that no use closes by hand, changes in place or splits. */
 bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
+/* The helper `fn(move holder)` that closes the resources a holder without a close of its own holds, or MIR_NONE
+ * when some part cannot be closed this way; and whether it exists. */
+uint32_t lower_close_parts(Lower *cx, MsTy ty);
+bool lower_parts_supported(Lower *cx, MsTy ty);
+/* After the close of a part returned `result`: faults when it is an error, else drops it. */
+void lower_close_check(MirBuilder *b, MirValue result);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
