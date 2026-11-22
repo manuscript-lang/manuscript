@@ -302,8 +302,31 @@ bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, Mir
   return !fn->failed;
 }
 
+void fn_init_closing(LowerFn *fn) {
+  const size_t count = (size_t)fn->nvars + LOWER_MAX_CLOSING_PARAMS + 1;
+  fn->closing = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, count);
+  fn->closing_var = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, count);
+  fn->closing_types = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirTy, count);
+  for (size_t at = 0; at < count; at++) {
+    fn->closing[at] = MIR_NONE;
+    fn->closing_var[at] = false;
+    fn->closing_types[at] = MIR_VOID;
+  }
+}
+
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
+  if (fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !mir_needs_drop(fn->cx->module, ty)) {
+    /* A variable of plain data that a lambda changes: a slot nothing closes. */
+    fn->shared[local] = LOWER_SHARED_PLAIN;
+    const MirValue plain = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
+    const MirValue stored[2] = {plain, value};
+    (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    fn->closing[local] = plain;
+    fn->closing_var[local] = true;
+    fn->closing_types[local] = ty;
+    return !fn->failed;
+  }
   uint32_t silent = MIR_NONE;
   if (!prepare(fn, checked, ty, &silent)) {
     return false;
@@ -373,9 +396,16 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MirValue value, bool *done
   if (owns) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
-  /* The slot closes what it holds, and holds the new value from here. */
-  const MirImm refill = {.tag = MI_INT, .i = 2};
-  (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+  const uint8_t kind = fn->shared != NULL ? fn->shared[ref->local] : 0;
+  if (kind == LOWER_SHARED_BORROWED && owns) {
+    /* The slot belongs to the function that made the closure: what it holds is dropped here. */
+    const MirValue old = mir_b_emit(&fn->b, MOP_Take, &slot, 1, imm_ty(ty), ty);
+    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+  } else if (kind != LOWER_SHARED_PLAIN && kind != LOWER_SHARED_BORROWED) {
+    /* The slot closes what it holds, and holds the new value from here. */
+    const MirImm refill = {.tag = MI_INT, .i = 2};
+    (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+  }
   const MirValue stored[2] = {slot, value};
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
   return !fn->failed;
