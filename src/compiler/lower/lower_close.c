@@ -175,7 +175,7 @@ static bool ensure_exits(LowerFn *fn, MirTy outcome_ty) {
 
 static bool lowerable(uint8_t flags) {
   return (flags & MS_CLOSER_CONSUMES) != 0 &&
-         (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_EXPLICIT | MS_CLOSER_PARTIAL)) == 0;
+         (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_PARTIAL)) == 0;
 }
 
 bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
