@@ -5,6 +5,7 @@
 #include "base/alloc.h"
 #include "base/list.h"
 #include "base/map.h"
+#include "runtime/std/shape_json.h"
 #include "runtime/std/shape_text.h"
 
 enum { MAX_SHAPES = 16, MAX_MEMBERS = 16, MAX_STRINGS = 512 };
@@ -69,6 +70,22 @@ static MsShapeTable finish(Builder *b, uint32_t root) {
 
 static int failures;
 
+static void json(const char *what, const MsShapeTable *table, const void *value, const char *wanted) {
+  MsString out = ms_string_empty();
+  const uint8_t status = msstd_json_stringify(table, value, 0, 0, 0, 0, 0, &out);
+  if (status != 0) {
+    printf("FAIL %s: status %u\n", what, (unsigned)status);
+    failures++;
+    return;
+  }
+  const MsSpan got = ms_string_span(&out);
+  if (!ms_span_is_text(got, wanted)) {
+    printf("FAIL %s: got '%.*s', wanted '%s'\n", what, (int)got.len, (const char *)got.ptr, wanted);
+    failures++;
+  }
+  ms_string_release(&out);
+}
+
 static void expect(const char *what, MsString *actual, const char *wanted) {
   const MsSpan got = ms_string_span(actual);
   if (!ms_span_is_text(got, wanted)) {
@@ -104,6 +121,7 @@ static void test_record(void) {
   expect("record repr", &out, "Person(name: \"Al\", age: 3)");
   ms_shape_text_of(&table, &person, false, &out);
   expect("record plain", &out, "Person(age: 3, name: Al)");
+  json("record json", &table, &person, "{\"name\":\"Al\",\"age\":3}");
   ms_string_release(&person.name);
   free(b.image);
 }
@@ -132,6 +150,7 @@ static void test_list_and_optional(void) {
   expect("list plain", &out, "[some(a), none]");
   ms_shape_text_of(&table, &list, true, &out);
   expect("list repr", &out, "[some(\"a\"), none]");
+  json("list json", &table, &list, "[\"a\",null]");
   free(b.image);
 }
 
@@ -161,6 +180,7 @@ static void test_alternative(void) {
   const MsShapeTable table = finish(&b, root);
   Figure value = {.tag = 0, .radius = 2};
   MsString out;
+  json("case json", &table, &value, "{\"Circle\":{\"radius\":2}}");
   ms_shape_text_of(&table, &value, true, &out);
   expect("alternative repr", &out, "Circle(radius: 2)");
   ms_shape_text_of(&table, &value, false, &out);
@@ -168,6 +188,7 @@ static void test_alternative(void) {
   value.tag = 1;
   ms_shape_text_of(&table, &value, false, &out);
   expect("bare case", &out, "Figure.Dot");
+  json("bare case json", &table, &value, "\"Dot\"");
   free(b.image);
 }
 
