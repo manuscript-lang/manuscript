@@ -30,6 +30,9 @@ static bool place_root(const Uses *pass, const MsExpr *expr) {
 
 /* Whether `scrutinee` names a local or a parameter the callable owns: the arms of a match over it take its payload. */
 static bool owned_name(const Uses *pass, const MsExpr *scrutinee) {
+  if (scrutinee->kind == MS_E_CALL) { /* a call's result is a new owner: its arms own what they bind */
+    return true;
+  }
   const MsRef *ref = scrutinee->kind == MS_E_NAME ? ms_facts_ref(pass->facts, scrutinee->id) : NULL;
   return ref != NULL && (ref->kind == MS_REF_LOCAL || (ref->kind == MS_REF_PARAM && ref->local < 32 &&
                                                        (pass->moving >> ref->local & 1u) != 0));
@@ -87,7 +90,11 @@ static const MsCallArg *arg_for(const MsCall *call, const MsExpr *value) {
 }
 
 static bool is_constructor(const Uses *pass, const MsExpr *call) {
-  const MsRef *ref = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
+    callee = callee->u.apply.left;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, callee->id);
   return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
 }
 
@@ -252,7 +259,7 @@ static void note_moved_names(void *ctx, const MsExpr *expr) {
 
 static void consume_scrutinees(void *ctx, const MsExpr *expr) {
   Uses *pass = ctx;
-  if (expr->kind != MS_E_MATCH || !owned_name(pass, expr->u.match.scrutinee)) {
+  if (expr->kind != MS_E_MATCH || expr->u.match.scrutinee->kind != MS_E_NAME || !owned_name(pass, expr->u.match.scrutinee)) {
     return;
   }
   for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {

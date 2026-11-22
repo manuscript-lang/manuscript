@@ -130,7 +130,7 @@ export fn expect_contains(
 	return error(failure(f"expected {repr(actual)} to contain {repr(expected)}", site))
 
 // Fails on `none`; otherwise returns the payload.
-export fn expect_some[T](actual: T?, site: String = caller_site()) T!:
+export fn expect_some[T](move actual: T?, site: String = caller_site()) T!:
 	if value := actual: return ok(value)
 	return error(failure("expected some, got none", site))
 

@@ -201,7 +201,8 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   match.ty = mir_b_ty(&fn->b, match.scrutinee);
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
   const MsExpr *subject = expr->u.match.scrutinee;
-  match.consumed = subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE &&
+  match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||
+                    (subject->kind == MS_E_CALL && fn_fresh_owner(fn, match.scrutinee))) &&
                    (match.kind == MK_ALT || match.kind == MK_OPT) &&
                    !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id));
   const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL;
