@@ -144,8 +144,8 @@ static bool is_directive(MsSpan line, const char *name) {
 /* One indented line: a directive or an instruction. True when the line is dropped. */
 static bool indented(AsmScan *scan, MsSpan line) {
   MsSpan text = ms_span_of(line.ptr + 1, line.len - 1);
-  if (scan->format == ASM_COFF && (starts(text, ".def\t@feat.00") || is_directive(text, ".set\t@feat.00,"))) {
-    scan->skipping = starts(text, ".def");
+  if (scan->format == ASM_COFF && starts(text, ".def\t@feat.00")) {
+    scan->skipping = true;
     return true;
   }
   if (scan->skipping) {
@@ -170,8 +170,20 @@ static bool indented(AsmScan *scan, MsSpan line) {
   return false;
 }
 
+/* The COFF lines llc writes about `@feat.00` (its `.def` block, `.globl` and `.set`, the last at column 0 or after a
+ * tab): the object step's own llc writes them again, and a second definition is an error. */
+static bool is_feat_line(MsSpan line) {
+  MsSpan text = line.len > 0 && line.ptr[0] == '\t' ? ms_span_of(line.ptr + 1, line.len - 1) : line;
+  size_t at = 0;
+  return (is_directive(text, ".set") || is_directive(text, ".globl")) &&
+         ms_span_find(text, ms_span_of_text("@feat.00"), &at);
+}
+
 static void scan_line(AsmScan *scan, MsSpan line) {
   bool drop = false;
+  if (scan->format == ASM_COFF && is_feat_line(line)) {
+    return;
+  }
   /* A COFF function that needs no unwind info has no `.seh_endproc`: the `.Lfunc_end` label closes it. */
   if (scan->format == ASM_COFF && scan->current != UINT32_MAX && starts(line, ".Lfunc_end") &&
       line.ptr[line.len - 1] == ':') {
