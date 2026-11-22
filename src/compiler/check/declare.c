@@ -255,7 +255,8 @@ void ms_check_declare(MsCheckProgram *program, uint32_t module) {
       report_prelude_reuse(program, module, decl, name);
       continue;
     }
-    if (ms_scope_has(&program->modules.ptr[module].scope, name)) {
+    if (ms_builtin_primitive(ms_names_span(program->names, name)) != MS_BUILTIN_NONE ||
+        ms_scope_has(&program->modules.ptr[module].scope, name)) {
       report_duplicate(program, module, decl, name);
       continue;
     }
