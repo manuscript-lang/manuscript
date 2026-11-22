@@ -159,6 +159,7 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
+    /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
     return fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))
                ? fn_emit(fn, MOP_OptSome, &value, 1, none, to)
                : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);

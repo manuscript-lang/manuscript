@@ -1,5 +1,6 @@
 /* compiler/own/closers.c: fills the `closers` fact table (see closers.h). */
 #include "compiler/own/closers.h"
+#include "compiler/own/taken.h"
 
 #include "base/sort.h"
 #include "compiler/check/methods.h"
@@ -110,11 +111,11 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
 }
 
 /* A `move` parameter is owned by its body. */
-static void add_params(Closers *pass, MsParams params) {
+static void add_params(Closers *pass, MsParams params, uint32_t taken) {
   for (uint32_t index = 0; index < params.len; index++) {
     const MsNode node = params.ptr[index]->id;
     const MsRef *ref = ms_facts_ref(pass->facts, node);
-    if (params.ptr[index]->moving && ref != NULL && ref->kind == MS_REF_PARAM) {
+    if ((params.ptr[index]->moving || (index < 32 && (taken >> index & 1u) != 0)) && ref != NULL && ref->kind == MS_REF_PARAM) {
       add_closer(pass, node, MS_REF_PARAM, ref->local, ms_facts_type(pass->facts, node));
     }
   }
@@ -274,13 +275,13 @@ static void leave_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
-static void callable(Closers *pass, const MsMethod *method, MsParams params, MsStmts body) {
+static void callable(Closers *pass, MsNode node, const MsMethod *method, MsParams params, MsStmts body) {
   pass->first = pass->facts->closers.len;
   pass->lambdas = 0;
   if (method != NULL) {
     add_receiver(pass, method);
   }
-  add_params(pass, params);
+  add_params(pass, params, ms_own_taken_mask(pass->program, pass->module, node));
   const MsVisitor binds = {.ctx = pass, .stmt = visit_stmt};
   ms_walk_callable(&binds, params, body);
   const MsVisitor uses = {.ctx = pass, .stmt = visit_stmt_changes, .expr = visit_expr, .leave_expr = leave_expr};
@@ -296,11 +297,11 @@ void ms_own_closers(MsCheckProgram *program) {
     for (uint32_t index = 0; index < tree->ndecls; index++) {
       const MsDecl *decl = tree->decls[index];
       if (decl->kind == MS_D_FN) {
-        callable(&pass, NULL, decl->u.fn.params, decl->u.fn.body);
+        callable(&pass, decl->id, NULL, decl->u.fn.params, decl->u.fn.body);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
-        callable(&pass, method, method->func.params, method->func.body);
+        callable(&pass, method->id, method, method->func.params, method->func.body);
       }
     }
     ms_sort((uint8_t *)(void *)pass.facts->closers.ptr, pass.facts->closers.len, sizeof(MsCloser), compare, NULL);

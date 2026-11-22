@@ -95,6 +95,11 @@ static const MsMethod *operation_method(const MsCheckProgram *program, const MsD
   return NULL;
 }
 
+const MsMethod *ms_check_operation_declaration(const MsCheckProgram *program, MsTy contract, const MsOperation *operation) {
+  const MsDef *def = contract_def(program, contract);
+  return def == NULL ? NULL : operation_method(program, def, operation);
+}
+
 /* `(name: Type, ...) Result`, with `T!` for a Result over Error. */
 static void append_signature(const MsCheckProgram *program, MsTy ty, MsStrBuild *out) {
   const MsTyTable *types = &program->types;

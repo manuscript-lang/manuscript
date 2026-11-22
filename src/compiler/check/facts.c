@@ -12,6 +12,7 @@ void ms_facts_init(MsFacts *facts, MsArena *arena, uint32_t module, uint32_t nod
   facts->refs = MS_ARENA_NEW_ARRAY(arena, MsRef, node_count);
   facts->uses = MS_ARENA_NEW_ARRAY(arena, uint8_t, node_count);
   facts->local_counts = MS_ARENA_NEW_ARRAY(arena, uint32_t, node_count);
+  facts->taken = MS_ARENA_NEW_ARRAY(arena, uint32_t, node_count);
 }
 
 void ms_facts_add_call(MsFacts *facts, const MsCall *call) {

@@ -322,6 +322,7 @@ typedef struct MirMethodSig {
   MirTy *params; /* in the module arena */
   uint32_t nparams;
   uint64_t owned;
+  bool consumes; /* a `move fn` operation: it takes the interface value itself */
   MirTy ret;
 } MirMethodSig;
 

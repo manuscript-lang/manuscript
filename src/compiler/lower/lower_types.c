@@ -1,6 +1,7 @@
 /* compiler/lower/lower_types.c: checked types to MIR types. A type with variables is first rewritten by the
  * substitution of the instance being lowered, so MIR never sees a variable. */
 #include "compiler/lower/lower_internal.h"
+#include "compiler/check/methods.h"
 
 static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
   if (subst == NULL || subst->count == 0 || !ms_ty_has_variable(&cx->program->types, ty)) {
@@ -147,6 +148,8 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
       methods[index].params[p] = lower_type(cx, &subst, params[p].ty);
       methods[index].owned |= (params[p].flags & MS_PARAM_MOVE) != 0 && p < 64 ? UINT64_C(1) << p : 0;
     }
+    const MsMethod *declared = ms_check_operation_declaration(cx->program, ty, operation);
+    methods[index].consumes = declared != NULL && declared->consuming;
     methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
   }
   cx->module->ifaces.ptr[id].methods = methods;

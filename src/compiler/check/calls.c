@@ -177,6 +177,9 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
       copy_vars(target, match->entry->variables.ptr + match->entry->shared,
                 match->entry->variables.len - match->entry->shared);
     } else if (match->operation != NULL) {
+      const MsMethod *declared = ms_check_operation_declaration(body->program, match->contract, match->operation);
+      target->receiver_flags = declared == NULL ? 0 : (uint8_t)((declared->mutating ? MS_PARAM_VAR : 0) |
+                                                                (declared->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->operation->variables.ptr, match->operation->variables.len);
     }
   }
