@@ -205,7 +205,7 @@ static uint8_t upgrade(MsNetCore *core, MsNetTlsCtx *ctx, MsSpan host, int64_t t
 /* ---- options ---- */
 
 /* The context the options describe, or NULL for options that cannot be used. */
-static MsNetTlsCtx *context_of(bool server, const MsTlsOptions *options) {
+MsNetTlsCtx *ms_net_tls_ctx_from_options(bool server, const MsTlsOptions *options) {
   const MsSpan roots = ms_string_span(&options->roots_pem);
   if (!server && options->require_client_certificate != 0) {
     return NULL;
@@ -239,7 +239,7 @@ uint8_t msstd_net_connection_start_tls(const MsObj *handle, const MsTlsOptions *
   if (!usable_name(&options->server_name)) {
     return MS_STATUS_INVALID_INPUT;
   }
-  MsNetTlsCtx *ctx = context_of(false, options);
+  MsNetTlsCtx *ctx = ms_net_tls_ctx_from_options(false, options);
   if (ctx == NULL) {
     return MS_STATUS_INVALID_INPUT;
   }
@@ -255,7 +255,7 @@ uint8_t msstd_net_connection_start_tls(const MsObj *handle, const MsTlsOptions *
 uint8_t msstd_net_connection_accept_tls(const MsObj *handle, const MsTlsOptions *options, uint8_t has_timeout,
                                         int64_t timeout, MsObj **out, MsString *err) {
   *err = ms_string_empty();
-  MsNetTlsCtx *ctx = context_of(true, options);
+  MsNetTlsCtx *ctx = ms_net_tls_ctx_from_options(true, options);
   if (ctx == NULL) {
     return MS_STATUS_INVALID_INPUT;
   }
@@ -296,7 +296,7 @@ uint8_t msstd_net_network_connect_tls_config(const MsObj *net, const MsString *a
   if (!usable_name(&options->server_name)) {
     return MS_STATUS_INVALID_INPUT;
   }
-  MsNetTlsCtx *ctx = context_of(false, options);
+  MsNetTlsCtx *ctx = ms_net_tls_ctx_from_options(false, options);
   if (ctx == NULL) {
     return MS_STATUS_INVALID_INPUT;
   }
@@ -322,7 +322,7 @@ uint8_t msstd_net_network_listen_tls(const MsObj *net, const MsString *address, 
   (void)has_timeout;
   (void)timeout;
   *err = ms_string_empty();
-  MsNetTlsCtx *ctx = context_of(true, options);
+  MsNetTlsCtx *ctx = ms_net_tls_ctx_from_options(true, options);
   if (ctx == NULL) {
     return MS_STATUS_INVALID_INPUT;
   }

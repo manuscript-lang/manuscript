@@ -12,6 +12,7 @@
 typedef struct ClientCell {
   MsObj header;
   MsHttpClient *client;
+  MsHttpPolicy policy; /* all NULL: unrestricted */
 } ClientCell;
 
 typedef struct BodyCell {
@@ -25,6 +26,9 @@ typedef struct BodyCell {
 static void client_drop(MsObj *object) {
   ClientCell *cell = (ClientCell *)(void *)object;
   ms_http_client_release(cell->client);
+  if (cell->policy.release != NULL) {
+    cell->policy.release(cell->policy.context);
+  }
   ms_free(cell);
 }
 
@@ -46,11 +50,25 @@ static BodyCell *body_of(const MsObj *object) {
   return (BodyCell *)(void *)(uintptr_t)object;
 }
 
-MsObj *ms_http_client_handle(MsHttpClient *client) {
+MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolicy *policy) {
   ClientCell *cell = ms_alloc_zeroed(sizeof *cell);
   cell->header.drop = client_drop;
   cell->client = ms_http_client_retain(client);
+  if (policy != NULL) {
+    cell->policy = *policy;
+    if (policy->retain != NULL) {
+      cell->policy.context = policy->retain(policy->context);
+    }
+  }
   return &cell->header;
+}
+
+MsObj *ms_http_client_handle(MsHttpClient *client) {
+  return ms_http_client_handle_with_policy(client, NULL);
+}
+
+bool ms_http_client_handle_closed(const MsObj *handle) {
+  return ms_http_client_closed(client_of(handle)->client);
 }
 
 /* ---- waiting through scheduler tokens ---- */
@@ -90,7 +108,7 @@ void msstd_http_client_close(const MsObj *c) {
 }
 
 MsObj *msstd_http_client_share(const MsObj *c) {
-  return ms_http_client_handle(client_of(c)->client);
+  return ms_http_client_handle_with_policy(client_of(c)->client, &client_of(c)->policy);
 }
 
 /* Ends a native with the status of a call and the text it left. */
@@ -112,6 +130,16 @@ static MsObj *body_new(MsHttpResponse *response) {
   return &cell->header;
 }
 
+uint8_t ms_http_handle_send(const MsObj *handle, const MsHttpRequest *request, MsHttpResponse **out,
+                            MsString *err) {
+  const ClientCell *cell = client_of(handle);
+  MsHttpRequest bound = *request;
+  bound.host_allowed = cell->policy.host_allowed;
+  bound.address_allowed = cell->policy.address_allowed;
+  bound.context = cell->policy.context;
+  return ms_http_client_send(cell->client, &bound, out, err);
+}
+
 uint8_t msstd_http_client_request_bytes(const MsObj *c, const MsString *method, const MsString *address,
                                         const MsObj *headers, const MsBytes *body, uint8_t has_max,
                                         int64_t max, uint8_t has_timeout, int64_t timeout, MsObj **out,
@@ -126,7 +154,7 @@ uint8_t msstd_http_client_request_bytes(const MsObj *c, const MsString *method, 
                                  .timeout_ns = timeout};
   MsHttpResponse *response = NULL;
   MsString text = ms_string_empty();
-  const uint8_t status = ms_http_client_send(client_of(c)->client, &request, &response, &text);
+  const uint8_t status = ms_http_handle_send(c, &request, &response, &text);
   if (status == MS_STATUS_OK) {
     *out = body_new(response);
   }

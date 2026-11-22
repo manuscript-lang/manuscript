@@ -15,6 +15,8 @@
 #include "base/map.h"
 #include "base/string.h"
 #include "compiler/check/facts.h"
+#include "compiler/check/methods.h"
+#include "compiler/check/properties.h"
 #include "compiler/check/types.h"
 #include "compiler/project/project.h"
 #include "compiler/syntax/ast.h"
@@ -40,6 +42,8 @@ typedef struct MsSymbol {
   bool exported;
   MsTy ty;       /* MS_TY_NONE until its signature resolves */
   uint32_t def;  /* MsDefs index of a nominal type, else 0 */
+  uint32_t var_at;    /* the declared type variables: a range of the program's symbol_vars */
+  uint32_t var_count;
   const MsDecl *decl;
 } MsSymbol;
 
@@ -65,6 +69,8 @@ typedef struct MsCheckDiag {
   MsPos pos;
   MsCheckPhase phase;
   MsString message; /* owned */
+  bool has_end;     /* the diagnostic spans [pos, end) */
+  MsPos end;
   bool has_fix;     /* an edit that repairs the diagnostic: replace [fix_pos, fix_end) with `fix_text` */
   MsPos fix_pos, fix_end;
   MsString fix_text; /* owned; empty without a fix */
@@ -77,7 +83,10 @@ typedef struct MsCheckProgram {
   MsNames *names; /* borrowed */
   MsTyTable types;
   MsDefs defs;
+  MsPropertyMemo properties; /* property queries in flight and answered */
+  MsMethodList methods; /* every module's methods, in declaration order */
   MsSymbolList symbols; /* index 0 is unused */
+  MsTyList symbol_vars; /* the type variables of every symbol, by range */
   MsModuleList modules;
   MsCheckDiagList diagnostics;
   uint32_t serial; /* counter behind unique symbol ids */
@@ -94,6 +103,9 @@ uint32_t ms_check_add_module(MsCheckProgram *program, MsName file, const MsModul
 void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsCheckPhase phase,
                      MsString message);
 
+/* Gives the last diagnostic the end of its range. */
+void ms_check_attach_end(MsCheckProgram *program, MsPos end);
+
 /* Attaches a repairing edit to the last diagnostic: replace [pos, end) with `replacement` (taken). */
 void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement);
 
@@ -101,14 +113,35 @@ void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString
  * resolution diagnostic). Impl and test declarations declare nothing. */
 void ms_check_declare(MsCheckProgram *program, uint32_t module);
 
+/* The name a declaration binds in its module scope; false for an impl or a test. */
+bool ms_check_declared_name(const MsDecl *decl, MsName *name);
+
+/* The type parameters a declaration writes (none for a constant, an impl or a test). */
+MsTypeParams ms_check_decl_type_params(const MsDecl *decl);
+
+/* A fresh name for a symbol or variable, unique across the program (`<prefix><serial>`). */
+MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix);
+
+/* Gives each type-like and generic declaration of `module` its type variables, and a nominal type that
+ * carries them as arguments. */
+void ms_check_type_variables(MsCheckProgram *program, uint32_t module);
+
+/* Resolves the bounds and defaults of the module's type variables, then the signatures of its types and
+ * functions into checked types. Unknown type names are reported for the program's own modules. */
+void ms_check_signatures(MsCheckProgram *program, uint32_t module);
+
 /* Loads every bundled standard module the program's modules import, transitively, as further modules. */
 void ms_check_load_std(MsCheckProgram *program);
+
+/* Whether `path` names a bundled module (`@std/<name>`); *name is what follows the prefix. */
+bool ms_check_std_path(MsSpan path, MsSpan *name);
+
+/* Explains the imports of `module` that name nothing usable, and the redundant prelude imports. */
+void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
 void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
 
-/* Reports each written type name in a module's declaration signatures that no scope gives a meaning. */
-void ms_check_resolve_types(MsCheckProgram *program, uint32_t module);
 
 
 /* The entry point of the checker: checks every module of `graph` in order and leaves the diagnostics in

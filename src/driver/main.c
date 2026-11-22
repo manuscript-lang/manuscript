@@ -8,6 +8,8 @@
 #include "base/cstr.h"
 #include "driver/check_command.h"
 #include "driver/fmt_command.h"
+#include "driver/init_command.h"
+#include "driver/package_commands.h"
 #include "driver/phases.h"
 
 enum { EXIT_NOT_IMPLEMENTED = 70, EXIT_USAGE = 64 };
@@ -34,6 +36,10 @@ int main(int argc, char **argv) {
   }
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "init")) return ms_init_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "install")) return ms_install_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "add")) return ms_add_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "remove")) return ms_remove_command(argc - 2, argv + 2);
   size_t count = 0;
   const MsPhase *phases = ms_phases(&count);
   size_t missing = 0;

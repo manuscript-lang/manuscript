@@ -20,7 +20,7 @@ typedef struct LowerFn {
   Lower *cx;
   MirBuilder b;
   const MsFacts *facts;
-  const MsDecl *decl;
+  const MsFunc *func;
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
   LowerSubst subst;

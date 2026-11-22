@@ -24,7 +24,10 @@ void ms_check_program_free(MsCheckProgram *program) {
   }
   ms_module_list_free(&program->modules);
   ms_symbol_list_free(&program->symbols);
+  ms_ty_list_free(&program->symbol_vars);
   ms_check_diag_list_free(&program->diagnostics);
+  ms_methods_free(&program->methods);
+  ms_property_memo_free(&program->properties);
   ms_defs_free(&program->defs);
   ms_tys_free(&program->types);
   ms_arena_free(&program->arena);
@@ -41,6 +44,12 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
                           (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message});
 }
 
+void ms_check_attach_end(MsCheckProgram *program, MsPos end) {
+  MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
+  last->has_end = true;
+  last->end = end;
+}
+
 void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString replacement) {
   MsCheckDiag *last = ms_check_diag_list_last(&program->diagnostics);
   last->has_fix = true;
@@ -49,8 +58,28 @@ void ms_check_attach_fix(MsCheckProgram *program, MsPos pos, MsPos end, MsString
   last->fix_text = replacement;
 }
 
+MsTypeParams ms_check_decl_type_params(const MsDecl *decl) {
+  switch ((MsDeclKind)decl->kind) {
+  case MS_D_FN:
+    return decl->u.fn.type_params;
+  case MS_D_TYPE:
+    return decl->u.type.type_params;
+  case MS_D_ENUM:
+    return decl->u.enumeration.type_params;
+  case MS_D_ALIAS:
+    return decl->u.alias.type_params;
+  case MS_D_INTERFACE:
+    return decl->u.iface.type_params;
+  case MS_D_CONST:
+  case MS_D_IMPL:
+  case MS_D_TEST:
+    break;
+  }
+  return (MsTypeParams){0};
+}
+
 /* The name a declaration introduces, or false for impl and test declarations. */
-static bool declared_name(const MsDecl *decl, MsName *name) {
+bool ms_check_declared_name(const MsDecl *decl, MsName *name) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
     *name = decl->u.fn.name;
@@ -106,7 +135,7 @@ static MsSymbolKind symbol_kind(const MsDecl *decl) {
   return decl->kind == MS_D_ALIAS ? MS_SYMBOL_ALIAS : MS_SYMBOL_FN;
 }
 
-static MsName unique_id(MsCheckProgram *program, const char *prefix) {
+MsName ms_check_unique_id(MsCheckProgram *program, const char *prefix) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, prefix);
   ms_strbuild_append_u64(&text, ++program->serial);
@@ -115,11 +144,29 @@ static MsName unique_id(MsCheckProgram *program, const char *prefix) {
   return id;
 }
 
+/* The built-in a standard module's type is: a prelude type by name, or a native-layout source type. */
+static MsBuiltin builtin_of(const MsCheckProgram *program, const MsSymbol *symbol) {
+  const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].file);
+  if (!ms_span_starts_with(file, ms_span_of_text("@std/"))) {
+    return MS_BUILTIN_NONE;
+  }
+  const MsBuiltin source = ms_builtin_source(file, ms_names_span(program->names, symbol->name));
+  if (source != MS_BUILTIN_NONE) {
+    return source;
+  }
+  MsStrBuild id = ms_strbuild_new();
+  ms_strbuild_append_text(&id, "@std/");
+  ms_strbuild_append(&id, ms_names_span(program->names, symbol->name));
+  const MsBuiltin by_id = ms_builtin_from_id(ms_strbuild_span(&id));
+  ms_strbuild_free(&id);
+  return by_id;
+}
+
 /* The nominal type of a type-like declaration: its definition is empty until the signature passes. */
 static void declare_nominal(MsCheckProgram *program, MsSymbol *symbol, MsTyKind kind) {
   symbol->def = ms_defs_add(&program->defs, kind, (uint32_t)program->symbols.len);
   const MsTyDesc desc = {.name = symbol->name, .id = symbol->id, .kind = kind,
-                         .def = symbol->def};
+                         .builtin = builtin_of(program, symbol), .def = symbol->def};
   symbol->ty = ms_ty_intern(&program->types, &desc);
 }
 
@@ -131,19 +178,49 @@ static void report_duplicate(MsCheckProgram *program, uint32_t module, const MsD
   ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
 }
 
+static const char *const PRELUDE_NAMES[] = {"Equal",    "Stringable", "Comparable", "Hashable", "Clonable",
+                                            "Optional", "Result",     "Error",      "List",     "Map",
+                                            "Set",      "ListEntry",  "MapEntry",   "print"};
+
+/* Whether `name` is declared by the prelude, which every module sees under that name. */
+static bool is_prelude_name(const MsCheckProgram *program, MsName name) {
+  const MsSpan text = ms_names_span(program->names, name);
+  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_NAMES); index++) {
+    if (ms_span_is_text(text, PRELUDE_NAMES[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const MsDecl *decl, MsName name) {
+  MsStrBuild text = ms_strbuild_new();
+  const MsSpan span = ms_names_span(program->names, name);
+  ms_strbuild_append_text(&text, "declaration ");
+  ms_strbuild_append(&text, span);
+  ms_strbuild_append_text(&text, " reuses a prelude name; rename it, because ");
+  ms_strbuild_append(&text, span);
+  ms_strbuild_append_text(&text, " always refers to the standard declaration");
+  ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+}
+
 void ms_check_declare(MsCheckProgram *program, uint32_t module) {
   const MsModule *tree = program->modules.ptr[module].tree;
   for (uint32_t index = 0; index < tree->ndecls; index++) {
     const MsDecl *decl = tree->decls[index];
     MsName name = MS_NAME_EMPTY;
-    if (!declared_name(decl, &name)) {
+    if (!ms_check_declared_name(decl, &name)) {
+      continue;
+    }
+    if (module < program->user_modules && is_prelude_name(program, name)) {
+      report_prelude_reuse(program, module, decl, name);
       continue;
     }
     if (ms_scope_has(&program->modules.ptr[module].scope, name)) {
       report_duplicate(program, module, decl, name);
       continue;
     }
-    MsSymbol symbol = {.name = name, .id = unique_id(program, "symbol"), .kind = symbol_kind(decl),
+    MsSymbol symbol = {.name = name, .id = ms_check_unique_id(program, "symbol"), .kind = symbol_kind(decl),
                        .native = decl->kind == MS_D_FN && decl->u.fn.external ? MS_NATIVE_EXTERN
                                                                                 : MS_NATIVE_SOURCE,
                        .module = module, .exported = decl->is_exported, .decl = decl};

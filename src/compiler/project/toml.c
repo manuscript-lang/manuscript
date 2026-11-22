@@ -10,6 +10,7 @@ typedef struct Scanner {
   size_t at;     /* offset of the line being read */
   size_t resume; /* where the next line starts; a value that spans lines moves it */
   TomlDocument *document;
+  int64_t open; /* the entry a `[dependencies.name]` header started, or -1 */
   MsPos error_at;
   MsSpan error_text;
 } Scanner;
@@ -143,6 +144,37 @@ static bool only_comment(const Scanner *s, size_t at, size_t end) {
   return at == end || s->text.ptr[at] == '#';
 }
 
+
+static int64_t table_entry(Scanner *s, int32_t table, MsSpan key, MsPos key_at);
+
+/* `[dependencies.name]`: the fields below it belong to the dependency `name` of the [dependencies] table. */
+static bool read_dependency_header(Scanner *s, size_t at, size_t close) {
+  size_t i = at + 1 + sizeof "dependencies." - 1;
+  MsSpan key = {0};
+  if (!read_key(s, &i, close, &key)) {
+    return false;
+  }
+  if (i != close) {
+    return fail(s, at, "unsupported table header");
+  }
+  int32_t table = -1;
+  for (size_t t = 0; t < s->document->tables.len; t++) {
+    table = ms_span_is_text(s->document->tables.ptr[t].name, "dependencies") ? (int32_t)t : table;
+  }
+  if (table < 0) {
+    toml_table_list_push(&s->document->tables,
+                         (TomlTable){.name = ms_span_of_text("dependencies"), .at = position_at(s, at)});
+    table = (int32_t)s->document->tables.len - 1;
+  }
+  for (size_t e = 0; e < s->document->entries.len; e++) {
+    if (s->document->entries.ptr[e].table == table && ms_span_equal(s->document->entries.ptr[e].key, key)) {
+      return fail(s, at, "duplicate key");
+    }
+  }
+  s->open = table_entry(s, table, key, position_at(s, at));
+  return true;
+}
+
 static bool read_header(Scanner *s, size_t at, size_t end) {
   size_t close = at + 1;
   while (close < end && s->text.ptr[close] != ']') {
@@ -155,6 +187,10 @@ static bool read_header(Scanner *s, size_t at, size_t end) {
     return fail(s, close + 1, "unexpected content after a table header");
   }
   const MsSpan name = ms_span_of(s->text.ptr + at + 1, close - at - 1);
+  s->open = -1;
+  if (ms_span_starts_with(name, ms_span_of_text("dependencies."))) {
+    return read_dependency_header(s, at, close);
+  }
   for (size_t i = 0; i < s->document->tables.len; i++) {
     if (ms_span_equal(s->document->tables.ptr[i].name, name)) {
       return fail(s, at, "duplicate key");
@@ -324,11 +360,80 @@ static bool read_value(Scanner *s, size_t at, size_t end, TomlEntry *entry) {
   return true;
 }
 
+
+
+/* The index of the entry `key` in `table` that holds a table's fields, made when missing; -1 when `key` is taken by
+ * another kind of value. */
+static int64_t table_entry(Scanner *s, int32_t table, MsSpan key, MsPos key_at) {
+  TomlEntryList *entries = &s->document->entries;
+  for (size_t i = 0; i < entries->len; i++) {
+    if (entries->ptr[i].table == table && ms_span_equal(entries->ptr[i].key, key)) {
+      return entries->ptr[i].kind == TOML_TABLE ? (int64_t)i : -1;
+    }
+  }
+  toml_entry_list_push(entries, (TomlEntry){.table = table, .key = key, .kind = TOML_TABLE, .key_at = key_at,
+                                            .value_at = key_at, .first = s->document->values.len});
+  return (int64_t)entries->len - 1;
+}
+
+/* Adds `field` to the table entry `index`; its fields stay one run in `values`, so a run that another table's
+ * fields followed moves to the end first. */
+static bool add_field(Scanner *s, int64_t index, TomlValue field) {
+  TomlEntryList *entries = &s->document->entries;
+  TomlValueList *values = &s->document->values;
+  const size_t first = entries->ptr[index].first;
+  const size_t count = entries->ptr[index].count;
+  for (size_t i = 0; i < count; i++) {
+    if (ms_span_equal(values->ptr[first + i].key, field.key)) {
+      return fail(s, field.at.offset - s->bom, "duplicate key");
+    }
+  }
+  if (count > 0 && first + count != values->len) {
+    const size_t moved = values->len;
+    for (size_t i = 0; i < count; i++) {
+      toml_value_list_push(values, values->ptr[first + i]);
+    }
+    entries->ptr[index].first = moved;
+  }
+  toml_value_list_push(values, field);
+  entries->ptr[index].count++;
+  return true;
+}
+
+/* `key = value` of a dotted key or a `[dependencies.name]` table, added to the table entry `index`. */
+static bool read_field(Scanner *s, int64_t index, size_t at, size_t end) {
+  TomlValue field = {.at = position_at(s, at)};
+  if (!read_key(s, &at, end, &field.key)) {
+    return false;
+  }
+  at = skip_blank(s, at, end);
+  if (at >= end || s->text.ptr[at] != '=') {
+    return fail(s, at, "expected `=` after a key");
+  }
+  at = skip_blank(s, at + 1, end);
+  const MsPos key_at = field.at;
+  if (at >= end || !read_element(s, &at, 0, &field)) {
+    return at >= end ? fail(s, at, "expected a value") : false;
+  }
+  field.at = key_at;
+  if (!only_comment(s, at, end)) {
+    return fail(s, at, "unexpected content after a value");
+  }
+  return add_field(s, index, field);
+}
+
 static bool read_assignment(Scanner *s, size_t at, size_t end) {
   TomlEntry entry = {.table = (int32_t)s->document->tables.len - 1};
   entry.key_at = position_at(s, at);
+  if (s->open >= 0) {
+    return read_field(s, s->open, at, end);
+  }
   if (!read_key(s, &at, end, &entry.key)) {
     return false;
+  }
+  if (at < end && s->text.ptr[at] == '.') {
+    const int64_t index = table_entry(s, entry.table, entry.key, entry.key_at);
+    return index < 0 ? fail(s, at, "duplicate key") : read_field(s, index, at + 1, end);
   }
   at = skip_blank(s, at, end);
   if (at >= end || s->text.ptr[at] != '=') {
@@ -362,7 +467,7 @@ static bool read_line(Scanner *s, size_t end) {
 
 bool toml_parse(MsArena *arena, MsSpan text, size_t bom, TomlDocument *out, MsPos *error_at,
                 MsSpan *error_text) {
-  Scanner s = {.arena = arena, .text = text, .bom = bom, .document = out};
+  Scanner s = {.arena = arena, .text = text, .bom = bom, .document = out, .open = -1};
   while (s.at <= text.len) {
     const size_t end = line_end_of(&s, s.at);
     s.resume = end + 1;

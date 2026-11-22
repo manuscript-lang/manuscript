@@ -137,3 +137,46 @@ bool ms_http_url_same_origin(const MsHttpUrl *a, const MsHttpUrl *b) {
   }
   return same;
 }
+
+MsString ms_http_url_dial_address(const MsHttpUrl *url) {
+  MsString host = part(url, CURLUPART_HOST, 0);
+  MsString port = part(url, CURLUPART_PORT, CURLU_DEFAULT_PORT);
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_string(&out, &host);
+  ms_strbuild_append_byte(&out, ':');
+  ms_strbuild_append_string(&out, &port);
+  ms_string_release(&host);
+  ms_string_release(&port);
+  return ms_strbuild_finish(&out);
+}
+
+MsString ms_http_url_authority(const MsHttpUrl *url) {
+  MsString host = part(url, CURLUPART_HOST, 0);
+  MsString port = part(url, CURLUPART_PORT, 0);
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_string(&out, &host);
+  if (ms_string_length(&port) > 0) {
+    ms_strbuild_append_byte(&out, ':');
+    ms_strbuild_append_string(&out, &port);
+  }
+  ms_string_release(&host);
+  ms_string_release(&port);
+  return ms_strbuild_finish(&out);
+}
+
+MsString ms_http_url_target(const MsHttpUrl *url) {
+  MsString path = part(url, CURLUPART_PATH, 0);
+  MsString query = part(url, CURLUPART_QUERY, 0);
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_string(&out, &path);
+  if (ms_string_length(&path) == 0) {
+    ms_strbuild_append_byte(&out, '/');
+  }
+  if (ms_string_length(&query) > 0) {
+    ms_strbuild_append_byte(&out, '?');
+    ms_strbuild_append_string(&out, &query);
+  }
+  ms_string_release(&path);
+  ms_string_release(&query);
+  return ms_strbuild_finish(&out);
+}

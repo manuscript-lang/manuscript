@@ -1,6 +1,10 @@
 /* compiler/check/check.c: the checker's entry point; runs the passes over a module graph in order. */
+#include "compiler/check/body.h"
 #include "compiler/check/constants.h"
+#include "compiler/check/fallthrough.h"
+#include "compiler/check/methods.h"
 #include "compiler/check/mutate.h"
+#include "compiler/check/names.h"
 #include "compiler/check/program.h"
 
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
@@ -19,9 +23,27 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bind_imports(program, index);
   }
+  /* The standard modules may import each other, so each pass runs over all of them before the next. */
+  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
+    ms_check_type_variables(program, index);
+  }
+  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
+    ms_check_signatures(program, index);
+  }
+  for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
+    ms_check_methods(program, index);
+  }
   for (uint32_t index = 0; index < program->user_modules; index++) {
-    ms_check_resolve_types(program, index);
+    ms_check_report_imports(program, index, graph->modules[index].source);
+    ms_check_type_variables(program, index);
+    ms_check_signatures(program, index);
+    ms_check_methods(program, index);
     ms_check_constants(program, index);
     ms_check_mutation(program, index, graph->modules[index].source);
+    ms_check_names(program, index);
+    ms_check_fallthrough(program, index);
+  }
+  for (uint32_t index = 0; index < program->modules.len; index++) {
+    ms_check_bodies(program, index);
   }
 }
