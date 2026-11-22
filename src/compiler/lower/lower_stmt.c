@@ -120,8 +120,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   }
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
-    if (call_reads_temporary(stmt->u.bind.value)) {
-      value = fn_implicit_clone(fn, value, true); /* the temporary dies here: its part cannot be borrowed */
+    if (call_reads_temporary(stmt->u.bind.value) &&
+        fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
+      /* A temporary resource closes where its statement ends, so a part kept past it is a copy. */
+      value = fn_implicit_clone(fn, value, true);
     } else {
       borrow = true;
     }
