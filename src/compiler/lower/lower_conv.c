@@ -49,7 +49,15 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
 
 uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name) {
   const MsMethodEntry *entry = resolve_operation(cx, receiver, name);
-  return entry != NULL && !entry->source->func.external ? method_function(cx, entry, receiver) : MIR_NONE;
+  return entry != NULL && !entry->source->func.external && entry->source->func.body.len > 0 ? method_function(cx, entry, receiver) : MIR_NONE;
+}
+
+uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
+  MsName name = MS_NAME_EMPTY;
+  if (!ms_names_find(cx->program->names, ms_span_of_text(operation), &name)) {
+    return MIR_NONE;
+  }
+  return lower_operation_method(cx, receiver, name);
 }
 
 static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsStrBuild *out) {

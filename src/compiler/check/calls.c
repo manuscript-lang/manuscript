@@ -8,6 +8,7 @@
 #include "compiler/check/call_internal.h"
 #include "compiler/check/instantiate.h"
 #include "compiler/check/methods.h"
+#include "compiler/syntax/parse.h"
 
 
 
@@ -99,7 +100,7 @@ MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
   bool lifted = false;
   for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
     MsTyParam param = ms_ty_params(types, ty)[index];
-    if (index < ast->len && ast->ptr[index]->def != NULL) {
+    if (index < ast->len && body_param_omittable(body, ast->ptr[index])) {
       param.flags |= MS_PARAM_LIFTED;
       lifted = true;
     }
@@ -137,7 +138,8 @@ static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchL
     for (size_t at = 0; at < total; at++) {
       const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
       const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
-      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL && at < ast->len && ast->ptr[at]->def != NULL);
+      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
+                                                                         : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
       required += defaulted ? 0 : 1;
     }
     if (nargs >= required && nargs <= total) {
@@ -147,10 +149,20 @@ static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchL
   return &found->ptr[0];
 }
 
+/* The method a member name calls: `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`. */
+static MsName called_name(Body *body, const MsExpr *callee, MsTy receiver) {
+  const MsSpan text = ms_names_span(body->program->names, callee->u.member.name);
+  if (!ms_span_is_text(text, MS_INDEX_SET)) {
+    return callee->u.member.name;
+  }
+  const bool map = ms_ty_is(&body->program->types, receiver, MS_BUILTIN_Map);
+  return ms_names_intern(body->program->names, ms_span_of_text(map ? "add" : "set"));
+}
+
 /* A method of the receiver's type or an operation of its interface. */
 static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Target *target) {
   MsMethodMatchList found = {0};
-  ms_check_find_method(body->program, receiver, callee->u.member.name, &found);
+  ms_check_find_method(body->program, receiver, called_name(body, callee, receiver), &found);
   bool ok = found.len != 0;
   if (ok) {
     const MsMethodMatch *match = pick_overload(body, &found, target->nargs);
@@ -167,6 +179,9 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
     }
   }
   ms_method_match_list_free(&found);
+  if (!ok) {
+    body_report_unknown_member(body, callee, receiver);
+  }
   body_set_ref(body, callee->id, target->ref);
   return ok;
 }
@@ -338,8 +353,10 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       ms_strbuild_append(&context, target->name);
     }
     const MsTy wanted = expected_param(body, target, param, bound);
-    arg_tys[index] = mentions_vars(types, wanted, &target->vars)
-                         ? body_expr(body, arg->value, wanted)
+    const bool open = mentions_vars(types, wanted, &target->vars);
+    /* A collection literal is inferred from its entries, then unified with the open parameter type. */
+    const bool literal = arg->value->kind == MS_E_LIST || arg->value->kind == MS_E_MAP;
+    arg_tys[index] = open ? body_expr(body, arg->value, literal ? MS_TY_NONE : wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, arg_tys[index]);

@@ -2,10 +2,10 @@
  * are SIGINT (2); closing the console, logoff and shutdown are SIGTERM (15). One handler (installed with the first
  * observer, removed with the last) counts each event for every observer of that signal, then returns FALSE so the
  * handler installed before (the runtime's cancellation) still runs. */
+#include <uv.h>
 #include <windows.h>
 
 #include <stdatomic.h>
-#include <uv.h>
 
 #include "base/alloc.h"
 #include "runtime/sys/process.h"

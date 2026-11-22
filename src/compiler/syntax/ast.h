@@ -300,6 +300,7 @@ typedef struct MsFunc {
   MsTypeRef *result;
   MsStmts body;
   bool external;
+  bool bodiless; /* declared with the body `...`: the runtime provides it */
 } MsFunc;
 
 typedef struct MsMethod {

@@ -99,3 +99,30 @@ void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, M
     add_primitive(program, receiver, name, out);
   }
 }
+
+/* Appends the names of the operations a primitive has without declaring them. */
+void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *out) {
+  if (ms_ty_kind(&program->types, receiver) != MS_TY_PRIMITIVE) {
+    return;
+  }
+  const char *text = ms_builtin_name((MsBuiltin)program->types.rows.ptr[receiver].builtin);
+  char own[48];
+  snprintf(own, sizeof own, "%sOperations", text);
+  const char *interfaces[4] = {own, NULL, NULL, NULL};
+  size_t count = 1;
+  for (size_t index = 0; index < sizeof SHARED / sizeof SHARED[0]; index++) {
+    for (size_t at = 0; SHARED[index].members[at] != NULL; at++) {
+      if (ms_cstr_equal(SHARED[index].members[at], text)) {
+        interfaces[count++] = SHARED[index].interface;
+      }
+    }
+  }
+  for (size_t index = 0; index < count; index++) {
+    MsTy contract = standard_interface(program, interfaces[index]);
+    const uint32_t at = contract == MS_TY_NONE ? 0 : program->types.rows.ptr[contract].def;
+    const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
+    for (size_t op = 0; def != NULL && op < def->operations.len; op++) {
+      ms_span_list_push(out, ms_names_span(program->names, def->operations.ptr[op].name));
+    }
+  }
+}

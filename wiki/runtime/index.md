@@ -72,3 +72,4 @@ Cancellation, cleanup, resources, networking, promises, test helpers.
 - [ChaCha and BLAKE2 stay in Manuscript](chacha-and-blake2-stay-in-manuscript.md): no Rust natives or SIMD for these ciphers and hashes for now.
 - [A computing handler holds its thread, so other threads take its waiting connections](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md): move idle HTTP/1 connections, not tasks; judge "held up" only from a thread awake a whole tick.
 - [The lock-free pipe lane is unused and enabling it gains nothing](the-lock-free-pipe-lane-is-unused-and-enabling-it-gains-nothing.md): `pipe()` always takes the locked lane; the lane has a claim race; cross-thread cost is cache lines, not locks.
+- [An extern declared `T!` is a native with a u8 status and trailing out slots](an-extern-that-returns-a-result-is-a-u8-status-plus-out-slots.md): lowering builds the Result and the `Error` from the status; the table lives in core.ms.

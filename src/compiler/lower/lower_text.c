@@ -88,7 +88,7 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
 
 /* Any other value is written by the runtime's walker over the value's shape table: the value goes into a stack
  * slot (a borrow, so nothing is dropped) and the walker reads it through the table. */
-static MirValue value_text(LowerFn *fn, MirValue value, MirTy ty) {
+MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
@@ -109,11 +109,20 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
     return false;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
+  const MsTy source = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, part->expr->id), fn->subst.vars,
+                                  fn->subst.args, fn->subst.count);
+  const uint32_t own = lower_named_method(fn->cx, source, "to_string");
+  if (own != MIR_NONE) { /* a type with its own `to_string` is written by it */
+    const MirValue text = mir_b_call(&fn->b, own, &value, 1);
+    fn_own_result(fn, text);
+    *out = (TextPiece){text, false};
+    return text != MIR_NONE;
+  }
   if (ty == MIR_INT || ty == MIR_STR) {
     *out = (TextPiece){value, ty == MIR_INT};
     return true;
   }
-  const MirValue text = value_text(fn, value, ty);
+  const MirValue text = fn_value_text(fn, value, ty);
   *out = (TextPiece){text, false};
   return text != MIR_NONE;
 }

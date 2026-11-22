@@ -118,6 +118,9 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
 /* Whether `ty` is unknown or holds an invalid type, to depth `depth` (mismatch.c). */
 bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
 
+/* members.c: a member the receiver does not have. */
+void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver);
+
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);

@@ -38,7 +38,7 @@ static uint32_t add_mir_name(ShapeBuild *build, MsName name) {
 }
 
 static MsShape scalar(MsShapeKind kind, uint32_t size) {
-  return (MsShape){.kind = (uint8_t)kind, .align = (uint16_t)(size == 0 ? 1 : size), .size = size,
+  return (MsShape){.kind = (uint8_t)kind, .align = (uint16_t)(size == 0 ? 1 : (size > 8 ? 8 : size)), .size = size,
                    .name = MS_SHAPE_NONE, .first = MS_SHAPE_NONE, .elem = MS_SHAPE_NONE,
                    .value = MS_SHAPE_NONE, .extra = MS_SHAPE_NONE};
 }
