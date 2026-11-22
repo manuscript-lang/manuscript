@@ -26,7 +26,8 @@ MS_LIST_DEFINE(MsBindingList, ms_binding_list, MsBinding)
 /* Where a visited node sits: the `impl` declaration whose method holds it, or NULL. */
 typedef struct MsScopeSite {
   const MsDecl *impl;
-  bool in_constant; /* inside the value of a module constant */
+  bool in_constant;  /* inside the value of a module constant */
+  bool type_reading; /* the name is the value reading of a bracket entry that may be a type */
 } MsScopeSite;
 
 typedef struct MsScopeVisitor {

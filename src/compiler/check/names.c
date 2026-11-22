@@ -48,7 +48,7 @@ static bool is_declared(const Names *pass, MsName name) {
 
 static void read_name(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site) {
   const Names *pass = context;
-  if (site->in_constant) {
+  if (site->in_constant || site->type_reading) {
     return;
   }
   const MsName name = expr->u.sym;
