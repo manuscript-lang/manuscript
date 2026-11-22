@@ -62,6 +62,32 @@ static const MsParam *declared_default(const MsDecl *decl, const MsParams *metho
   return NULL;
 }
 
+/* Whether the default `expr`, written in module `module`, is the call `caller_site()` of `@std/test/test.ms`. */
+static bool is_caller_site(const LowerFn *fn, uint32_t module, const MsExpr *expr) {
+  const Lower *cx = fn->cx;
+  if (expr->kind != MS_E_CALL) {
+    return false;
+  }
+  const MsCall *call = fn_find_call(&cx->program->modules.ptr[module].facts, expr->id);
+  if (call == NULL || call->arg_count != 0) {
+    return false;
+  }
+  const MsSymbol *symbol = &cx->program->symbols.ptr[fn_symbol_at(cx, call->callee.decl)];
+  const MsSpan file = ms_names_span(cx->program->names, cx->program->modules.ptr[symbol->module].file);
+  return ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "caller_site") &&
+         ms_span_ends_with(file, ms_span_of_text("test/test.ms"));
+}
+
+/* `caller_site()` as a default: the position (`file:line:col`) of the call that omitted the argument. */
+static MirValue caller_position(LowerFn *fn) {
+  const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_strbuild_span(&text))};
+  ms_strbuild_free(&text);
+  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
 /* A default argument is written in the callee's module: its names and types come from that module's facts. */
 static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
   const MsFacts *saved_facts = fn->facts;
@@ -75,6 +101,11 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   const MsDecl *callee_decl = callee_id != 0 ? fn->cx->program->symbols.ptr[callee_id].decl : NULL;
   const MsParam *param = declared_default(callee_decl, method != NULL ? &method->source->func.params : NULL,
                                           call->callee.index, arg->node.node);
+  if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
+    fn->facts = saved_facts;
+    fn->file = saved_file;
+    return caller_position(fn);
+  }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
