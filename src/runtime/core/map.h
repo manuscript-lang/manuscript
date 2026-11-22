@@ -120,15 +120,15 @@ void msrt_set_clear(MsMap *m, const MsTypeDesc *kd);
  * *mut u8) @domain=map @leaf */
 void msrt_map_get_or(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                      const uint8_t *fallback, uint8_t *out);
-/* ms-sig: msrt_set_values(m: *const MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=set @leaf */
-void msrt_set_values(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *out);
+/* ms-sig: msrt_set_values(m: *const MapVal, kd: KeyDesc, out: *mut VecVal) @domain=set @leaf */
+void msrt_set_values(const MsMap *m, const MsTypeDesc *kd, MsList *out);
 /* ms-sig: msrt_set_add_copy(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf */
 void msrt_set_add_copy(MsMap *m, const MsTypeDesc *kd, const uint8_t *key);
 /* ms-sig: msrt_set_add_copy_w(m: *mut MapVal, kd: KeyDesc, key: *const u8) @domain=set @leaf */
 void msrt_set_add_copy_w(MsMap *m, const MsTypeDesc *kd, const uint8_t *key);
-/* ms-sig: msrt_set_contains_w(m: *const MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) -> u8 @domain=set
+/* ms-sig: msrt_set_contains_w(m: *const MapVal, kd: KeyDesc, key: *const u8) -> u8 @domain=set
  * @leaf @pure */
-uint8_t msrt_set_contains_w(const MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
+uint8_t msrt_set_contains_w(const MsMap *m, const MsTypeDesc *kd, const uint8_t *key);
 /* ms-sig: msrt_set_union(a: *const MapVal, b: *const MapVal, kd: KeyDesc, out: *mut MapVal) @domain=set @leaf
  */
 void msrt_set_union(const MsMap *a, const MsMap *b, const MsTypeDesc *kd, MsMap *out);
