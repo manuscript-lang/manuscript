@@ -10,13 +10,13 @@ typedef struct MsSplitIter MsSplitIter;
 
 /* ms-sig: msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf */
 void msrt_string_split(const MsString *s, const MsString *sep, MsList *out);
-/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @leaf
+/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @borrows @domain=string @leaf
  */
 void msrt_string_split_view(const MsString *s, const MsString *sep, MsList *out);
 /* ms-sig: msrt_string_split_view_into(s: *const StrVal, sep: *const StrVal, buf: *mut FrameBuf<StrVal, 8>,
- * out: *mut VecVal) @domain=string @leaf @view_of=msrt_string_split */
+ * out: *mut VecVal) @borrows @domain=string @leaf @view_of=msrt_string_split */
 void msrt_string_split_view_into(const MsString *s, const MsString *sep, MsString *buffer, MsList *out);
-/* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, out: *mut StrVal) @domain=string
+/* ms-sig: msrt_string_split_first(s: *const StrVal, sep: *const StrVal, out: *mut StrVal) @borrows @domain=string
  * @first_of=msrt_string_split @leaf */
 void msrt_string_split_first(const MsString *s, const MsString *sep, MsString *out);
 /* ms-sig: msrt_string_split_iter(s: *const StrVal, sep: *const StrVal) -> *mut SplitIter @domain=string

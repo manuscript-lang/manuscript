@@ -102,7 +102,7 @@ void msrt_list_copy_within(MsList *v, const MsTypeDesc *d, int64_t target, int64
 uint8_t msrt_list_slice(const MsList *v, const MsTypeDesc *d, int64_t start, int64_t end, MsList *out,
                         MsString *err);
 /* ms-sig: msrt_list_slice_view(v: *const VecVal, d: ElemDesc, start: i64, end: i64, out: *mut VecVal, err:
- * ErrSlot) -> u8 @domain=collection @leaf @shared_view_of=msrt_list_slice */
+ * ErrSlot) -> u8 @borrows @domain=collection @leaf @shared_view_of=msrt_list_slice */
 uint8_t msrt_list_slice_view(const MsList *v, const MsTypeDesc *d, int64_t start, int64_t end, MsList *out,
                              MsString *err);
 /* ms-sig: msrt_list_take(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection
