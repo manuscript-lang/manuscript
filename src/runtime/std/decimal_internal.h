@@ -4,11 +4,9 @@
 
 #include <stdbool.h>
 
+#include "base/wide.h"
 #include "runtime/std/bignum.h"
 #include "runtime/std/decimal.h"
-
-typedef unsigned __int128 MsU128;
-typedef __int128 MsI128;
 
 enum {
   MS_DECIMAL_DIGITS = 34,
