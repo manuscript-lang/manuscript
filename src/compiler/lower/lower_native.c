@@ -75,6 +75,20 @@ static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   return slot;
 }
 
+/* An `Int?` operand as the two parameters of a `HasRaw` pair: whether it holds a value, and the value (0 when
+ * none). False when the operand is not an optional Int. */
+static bool has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, optional));
+  if (data->kind != MK_OPT || data->elem != MIR_INT) {
+    return false;
+  }
+  const MirValue present = fn_emit(fn, MOP_OptIsSome, &optional, 1, (MirImm){0}, MIR_BOOL);
+  const MirValue payload = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, MIR_INT);
+  out[0] = present;
+  out[1] = mir_b_select(&fn->b, present, payload, mir_b_iconst(&fn->b, 0));
+  return true;
+}
+
 /* The operands the runtime function `sig` wants for a call with the source operands `args`: the descriptors
  * its signature names are added after the collection they describe, and the trailing result parameter is the
  * call's result. False when the source operands do not fit the signature. */
@@ -93,6 +107,12 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       if (!descriptor_argument(fn, kind, args, nargs, &out[used++])) {
         return false;
       }
+    } else if (kind == NS_HAS_RAW && next < nargs) {
+      if (!has_raw_pair(fn, args[next++], &out[used])) {
+        return false;
+      }
+      used += 2;
+      at++; /* the payload parameter is the second half of the pair */
     } else if (next < nargs) {
       /* The runtime takes an owned operand it is given by address (`msrt_map_add`'s key and value). */
       if (kind == NS_ADDR_MUT && at > 0 && used < 32 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
@@ -540,9 +560,14 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
     return false;
   }
   const bool has_err = sig->count > 0 && sig->kinds[sig->count - 1] == NS_ERR_SLOT;
-  const uint32_t extras = sig->count > nargs ? sig->count - nargs : 0;
+  uint32_t pairs = 0; /* each `HasRaw` pair takes two parameters for one source operand */
+  for (uint32_t at = 0; at < sig->count; at++) {
+    pairs += sig->kinds[at] == NS_HAS_RAW ? 1 : 0;
+  }
+  const uint32_t expanded = nargs + pairs;
+  const uint32_t extras = sig->count > expanded ? sig->count - expanded : 0;
   const bool has_out = extras == (has_err ? 2u : 1u) && payload_ty != MIR_VOID;
-  if (sig->count < nargs || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
+  if (sig->count < expanded || extras != (has_err ? 1u : 0u) + (has_out ? 1u : 0u)) {
     return false;
   }
   const uint32_t error_function = status_error_function(fn);
@@ -551,8 +576,15 @@ bool fn_status_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nar
   }
   MirValue wanted[NS_MAX_PARAMS];
   uint32_t count = 0;
-  for (; count < nargs; count++) {
-    wanted[count] = args[count];
+  for (uint32_t source = 0; source < nargs; source++) {
+    if (count < sig->count && sig->kinds[count] == NS_HAS_RAW) {
+      if (count + 2 > NS_MAX_PARAMS - 2 || !has_raw_pair(fn, args[source], &wanted[count])) {
+        return false;
+      }
+      count += 2;
+    } else {
+      wanted[count++] = args[source];
+    }
   }
   MirValue out_slot = MIR_NONE;
   MirValue err_slot = MIR_NONE;

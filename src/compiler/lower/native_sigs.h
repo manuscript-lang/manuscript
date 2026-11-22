@@ -25,6 +25,7 @@ enum {
   NS_ADDR_MUT,  /* the address of one value, written */
   NS_OUT_SCALAR, /* the address of a scalar result */
   NS_ERR_SLOT,  /* the address of the string a failing native explains itself in */
+  NS_HAS_RAW,   /* an `Int?` operand passed as two parameters: the presence flag (this one) and the payload */
   NS_VALUE_DESC /* the descriptor of the one value the call moves in or takes out (`ValueDesc`) */
 };
 
