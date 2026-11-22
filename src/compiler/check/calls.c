@@ -341,8 +341,10 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
       ms_strbuild_append(&context, target->name);
     }
     const MsTy wanted = expected_param(body, target, param, bound);
-    arg_tys[index] = mentions_vars(types, wanted, &target->vars)
-                         ? body_expr(body, arg->value, wanted)
+    const bool open = mentions_vars(types, wanted, &target->vars);
+    /* A collection literal is inferred from its entries, then unified with the open parameter type. */
+    const bool literal = arg->value->kind == MS_E_LIST || arg->value->kind == MS_E_MAP;
+    arg_tys[index] = open ? body_expr(body, arg->value, literal ? MS_TY_NONE : wanted)
                          : body_expect(body, arg->value, wanted, ms_strbuild_span(&context));
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, arg_tys[index]);
