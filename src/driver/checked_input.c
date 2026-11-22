@@ -70,15 +70,19 @@ static MsSpan main_problem(MsArena *arena, const MsCheckProgram *program, const 
   return text;
 }
 
-/* The entry module must declare a usable `main`. */
-static void require_main(MsArena *arena, MsCheckedInput *checked) {
-  const MsCheckProgram *program = &checked->program;
-  const MsModuleInfo *module = &program->modules.ptr[checked->entry];
+/* The entry module must declare a usable `main`; with `declared_only`, a module that declares none is left alone
+ * (`ms check` of a library). */
+void ms_require_main(MsArena *arena, const MsCheckProgram *program, uint32_t entry, bool declared_only,
+                     FindingList *findings) {
+  const MsModuleInfo *module = &program->modules.ptr[entry];
   const MsSpan file = ms_names_span(program->names, module->file);
   MsName name = 0;
   const MsSymbolId *found = ms_names_find(program->names, ms_span_of_text("main"), &name)
                                 ? ms_scope_get(&module->scope, name)
                                 : NULL;
+  if (found == NULL && declared_only) {
+    return;
+  }
   MsPos pos = {.line = 1, .column = 1};
   MsSpan problem = ms_span_of_text("no main function is declared, so add 'fn main() Void:' with an indented body");
   if (found != NULL) {
@@ -87,11 +91,11 @@ static void require_main(MsArena *arena, MsCheckedInput *checked) {
       return;
     }
   }
-  add_finding(arena, &checked->findings, file, "type", pos,
+  add_finding(arena, findings, file, "type", pos,
               ms_message_format(arena, "entry must declare fn main; %S", problem, (MsSpan){0}));
 }
 
-static uint32_t entry_module(const MsCheckProgram *program, const MsGraph *graph) {
+uint32_t ms_entry_module(const MsCheckProgram *program, const MsGraph *graph) {
   for (uint32_t i = 0; i < program->user_modules; i++) {
     if (ms_span_equal(ms_names_span(program->names, program->modules.ptr[i].file), graph->entry)) {
       return i;
@@ -124,9 +128,9 @@ bool ms_checked_input_load_with(MsArena *arena, MsCheckedInput *checked, MsSpan 
   ms_own_check(&checked->program);
   checked->checked = true;
   finding_add_check(&checked->program, &checked->names, &checked->findings);
-  checked->entry = entry_module(&checked->program, graph);
+  checked->entry = ms_entry_module(&checked->program, graph);
   if (checked->findings.len == 0 && target == MS_INPUT_PROGRAM) {
-    require_main(arena, checked);
+    ms_require_main(arena, &checked->program, checked->entry, false, &checked->findings);
   }
   return checked->findings.len == 0;
 }
