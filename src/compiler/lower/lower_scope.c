@@ -117,6 +117,9 @@ void fn_own_result(LowerFn *fn, MirValue result) {
   }
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   MirMode mode = MM_BORROW;
+  if (insts->len == 0 || insts->ptr[insts->len - 1].res != result) {
+    return; /* not a result of the last instruction: a parameter or an earlier value already has its owner */
+  }
   if (mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) && mode == MM_MOVE) {
     fn_own(fn, fn_scope(fn), result);
   }

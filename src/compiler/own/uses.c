@@ -13,6 +13,7 @@ typedef struct Uses {
   MsClassifier *classes;
   MsFacts *facts;
   const MsNames *names;
+  uint32_t moving; /* the parameters of the callable being marked that it owns, by index */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
 } Uses;
 
@@ -156,6 +157,16 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* Whether the scrutinee is a resource or a place the callable owns: a local, or a parameter it takes by `move`. */
+static bool owns_place(const Uses *pass, const MsExpr *cond) {
+  if (ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, cond->id))) {
+    return true;
+  }
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
+  return ref != NULL && (ref->kind == MS_REF_LOCAL || (ref->kind == MS_REF_PARAM && ref->local < 32 &&
+                                                       (pass->moving >> ref->local & 1u) != 0));
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_RETURN) {
@@ -166,7 +177,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
-             ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, stmt->u.branch.cond->id))) {
+             owns_place(pass, stmt->u.branch.cond)) {
     mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
   }
 }
@@ -216,6 +227,13 @@ static void borrow_expr(void *ctx, const MsExpr *expr) {
 /* Marks one function or method: the arms' locals are numbered per callable, so each is walked on its own. */
 static void mark_callable(Uses *pass, MsParams params, MsStmts body) {
   pass->arms.len = 0;
+  pass->moving = 0;
+  for (uint32_t at = 0; at < params.len; at++) {
+    const MsRef *ref = ms_facts_ref(pass->facts, params.ptr[at]->id);
+    if (params.ptr[at]->moving && ref != NULL && ref->kind == MS_REF_PARAM && ref->local < 32) {
+      pass->moving |= UINT32_C(1) << ref->local;
+    }
+  }
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = collect_views, .expr = borrow_expr}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, params, body);
 }
