@@ -113,6 +113,14 @@ static bool is_plain_enum(const MirModule *module, MirTy ty) {
   return alt->ncases > 0;
 }
 
+/* A plain enum handed to a native that takes a number: its case index. */
+MirValue fn_native_scalar(LowerFn *fn, MirValue operand) {
+  if (!is_plain_enum(fn->cx->module, mir_b_ty(&fn->b, operand))) {
+    return operand;
+  }
+  return mir_b_emit(&fn->b, MOP_AltTag, &operand, 1, (MirImm){0}, MIR_INT);
+}
+
 /* An `Int?` or optional plain enum operand as the two parameters of a `HasRaw` pair: whether it holds a value,
  * and the value (the case index for an enum; 0 when none). False when the operand is neither. */
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
