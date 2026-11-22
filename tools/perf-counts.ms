@@ -42,7 +42,7 @@ TIGHT := ["guard-http-request", "guard-http-request-small"]
 COUNTS := "bench/perf/counts.txt"
 
 fn say(text: String) Void:
-	stdout().write(text).get()
+	stdout().write(text.clone()).get()
 
 // Instructions `program` executed under callgrind, or -1 when it did not run.
 fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:

@@ -57,13 +57,13 @@ type Operation:
 	uses: String
 
 fn op(
-	name: String,
-	setup: String,
-	receiver: String,
-	method: String,
-	arguments: String,
-	binds: String,
-	uses: String,
+	move name: String,
+	move setup: String,
+	move receiver: String,
+	move method: String,
+	move arguments: String,
+	move binds: String,
+	move uses: String,
 ) Operation:
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
 
@@ -297,7 +297,7 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
 	return false
 
 fn field(entry: JsonValue, key: String) String:
-	if value := entry.get(key): return value.as_string().get_or("")
+	if value := entry.get(key): return value.as_string().get_or("").clone()
 	return ""
 
 // Every `Type.operation` of the standard type whose declaration mentions a type
@@ -490,10 +490,10 @@ fn main() Int:
 
 					for line in lines:
 						if line.starts_with("made-"): made.append(
-							line.slice(5, line.length())
+							line.slice(5, line.length()).clone()
 						)
 						if line.starts_with("closed-"):
-							closed.append(line.slice(7, line.length()))
+							closed.append(line.slice(7, line.length()).clone())
 
 					made_counts := count(lines, "made-")
 					var wrong = made.length() != closed.length()

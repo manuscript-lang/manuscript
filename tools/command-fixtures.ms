@@ -33,7 +33,7 @@ import (
 )
 
 fn text_of(data: Bytes) String:
-	return data.decode_utf8().get_or("")
+	return data.decode_utf8().get_or("").clone()
 
 // Replaces the working directory with <DIR> and the digits after `"duration_ns": ` with
 // 0, the only value that varies between runs.
