@@ -43,3 +43,30 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   return fn_emit(fn, MOP_ListLit, items, count, (MirImm){0}, list_ty);
 }
+
+/* `list[index]`: the element, borrowed from the list; a droppable element wanted as an owner is cloned. */
+MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  MsExpr *left = NULL;
+  MsExpr *index = NULL;
+  if (!ms_expr_index(expr, &left, &index)) {
+    (void)fn_fail(fn, "this bracket is not an index");
+    return MIR_NONE;
+  }
+  const MirValue list = fn_expr(fn, left, LW_BORROW);
+  const MirValue at = list == MIR_NONE ? MIR_NONE : fn_expr(fn, index, LW_BORROW);
+  if (at == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, list));
+  if (data->kind != MK_LIST) {
+    (void)fn_fail(fn, "only a list can be indexed for now");
+    return MIR_NONE;
+  }
+  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+  const MirValue args[2] = {list, at};
+  const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
+  if (want == LW_MOVE && mir_needs_drop(fn->cx->module, data->elem)) {
+    return fn_emit(fn, MOP_Clone, &element, 1, (MirImm){0}, data->elem);
+  }
+  return element;
+}

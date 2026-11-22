@@ -38,6 +38,11 @@ bool emit_rt_direct(EmitCx *cx, MirTy type) {
   return mir_rt_direct(cx->module, cx->layouts, type);
 }
 
+/* An `opt<scalar>` the runtime returns as a C `u8` flag with the payload through a trailing output pointer. */
+bool emit_rt_scalar_option(EmitCx *cx, MirTy type) {
+  return mir_ty_data(cx->module, type)->kind == MK_OPT && emit_rt_direct(cx, type) && emit_leaves(cx, type).len == 2;
+}
+
 /* The frame slots one runtime call needs: a copy of each argument that does not pass directly, and the result
  * area when the result does not. */
 static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
@@ -51,6 +56,8 @@ static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
   if (!emit_rt_direct(cx, def->ret)) {
     ms_strbuild_printf(cx->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", block, index,
                        emit_slot_bytes(cx, def->ret));
+  } else if (emit_rt_scalar_option(cx, def->ret)) {
+    ms_strbuild_printf(cx->out, "  %%r%u_%u = alloca [8 x i8], align 8\n", block, index);
   }
 }
 
@@ -248,6 +255,25 @@ static void widen_rt_result(EmitCx *cx, MirValue res, const EmitLeafKind *kind) 
                      kind->reg);
 }
 
+/* A runtime function returning `opt<scalar>`: the C function returns the flag as a `u8` and stores the payload
+ * through the trailing pointer `area`, which is then loaded as the payload leaf. */
+static bool call_runtime_option(EmitCx *cx, const MirInst *inst, const MirExtern *def, MsStrBuild *args,
+                                const char *area) {
+  const uint32_t flag = cx->next++;
+  ms_strbuild_printf(cx->out, "  %%l%u = call i8 ", flag);
+  emit_symbol(cx->out, ms_names_span(&cx->module->names, def->name));
+  ms_strbuild_printf(cx->out, "(%.*s)\n", (int)ms_strbuild_length(args), (const char *)ms_strbuild_span(args).ptr);
+  if (inst->res != MIR_NONE) {
+    ms_strbuild_append_text(cx->out, "  ");
+    emit_name(cx->out, inst->res, 0);
+    ms_strbuild_printf(cx->out, " = trunc i8 %%l%u to i1\n", flag);
+    const MsSpan leaves = emit_value_leaves(cx, inst->res);
+    emit_load_leaf(cx, leaves.ptr[1], inst->res, 1, emit_address(cx, area, 0));
+  }
+  ms_strbuild_free(args);
+  return true;
+}
+
 /* A call of a runtime function, which follows the C ABI of the runtime: scalars by value, everything else by
  * the address of a copy, and a result that is not a scalar through a trailing output pointer. */
 static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
@@ -261,14 +287,18 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
   }
   MsSpan result = emit_leaves(cx, def->ret);
   bool direct = emit_rt_direct(cx, def->ret);
-  if (direct && result.len > 1) {
+  const bool option = direct && emit_rt_scalar_option(cx, def->ret);
+  if (direct && result.len > 1 && !option) {
     cx->why = "runtime result of several scalars";
     ms_strbuild_free(&args);
     return false;
   }
   slot_name(area, 'r', block, index, MIR_NONE);
-  if (!direct) {
+  if (!direct || option) {
     ms_strbuild_printf(&args, "%sptr %s", ms_strbuild_length(&args) > 0 ? ", " : "", area);
+  }
+  if (option) {
+    return call_runtime_option(cx, inst, def, &args, area);
   }
   const EmitLeafKind *kind = direct && result.len == 1 ? emit_leaf_kind(result.ptr[0]) : NULL;
   bool runtime_float = kind != NULL && kind->widen == EMIT_FPEXT && !is_c; /* a double */

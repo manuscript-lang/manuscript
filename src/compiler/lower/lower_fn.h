@@ -32,9 +32,12 @@ typedef struct LowerFn {
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   uint32_t nopen;
   bool failed;
+  bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
+  const LowerLambda *lambda; /* the lambda whose body this is, or NULL */
+  MirVar *cap_vars;           /* a lambda body: the variable holding each capture */
   uint32_t local_count; /* the current block ended in a return: the statements after it are unreachable */
 } LowerFn;
 
@@ -62,6 +65,7 @@ void fn_own_result(LowerFn *fn, MirValue result);
 /* ---- statements, expressions and calls ---- */
 
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
+MirValue fn_default_result(LowerFn *fn);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
@@ -74,7 +78,26 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
+/* Unary operators, `try`, and the Result of a failable function (lower_result.c). */
+MirValue fn_unary(LowerFn *fn, const MsExpr *expr);
+MirValue fn_try(LowerFn *fn, const MsExpr *expr);
+/* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */
+MirValue fn_result_wrap(LowerFn *fn, MirValue value);
+/* Lambdas and calls of function values (lower_closure.c). */
+MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
+/* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
+uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
+MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
+MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
+MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
+MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
+const MsCall *fn_find_call(const MsFacts *facts, MsNode node);
+/* A parameter name inside a lambda body that is one of its captures: its value in `out`. */
+bool fn_lambda_name(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirValue *out);
+/* Lowers the bodies of the lambdas made so far; `*progressed` is set when it lowered any. */
+bool lower_lambda_bodies(Lower *cx, bool *progressed);
 /* A list literal (lower_list.c). */
+MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 /* `if x := value:` (lower_iflet.c): whether the value holds a payload, and binding the payload. */
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);

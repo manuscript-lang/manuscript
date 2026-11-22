@@ -63,7 +63,7 @@ static Prime prime_new(uint32_t modulus) {
   }
   p.negative_inverse = 0u - inverse;
   p.one = (uint32_t)((1ull << LIMB_BITS) % modulus);
-  p.square = (uint32_t)((U128)p.one * p.one % modulus);
+  p.square = (uint32_t)((uint64_t)p.one * p.one % modulus);
   return p;
 }
 

@@ -1,5 +1,5 @@
-/* Owns compile_front.h. */
-#include "driver/compile_front.h"
+/* Owns checked_input.h. */
+#include "driver/checked_input.h"
 
 #include <stdio.h>
 
@@ -70,9 +70,9 @@ static MsSpan main_problem(MsArena *arena, const MsCheckProgram *program, const 
 }
 
 /* The entry module must declare a usable `main`. */
-static void require_main(MsArena *arena, MsFront *front) {
-  const MsCheckProgram *program = &front->program;
-  const MsModuleInfo *module = &program->modules.ptr[front->entry];
+static void require_main(MsArena *arena, MsCheckedInput *checked) {
+  const MsCheckProgram *program = &checked->program;
+  const MsModuleInfo *module = &program->modules.ptr[checked->entry];
   const MsSpan file = ms_names_span(program->names, module->file);
   MsName name = 0;
   const MsSymbolId *found = ms_names_find(program->names, ms_span_of_text("main"), &name)
@@ -86,7 +86,7 @@ static void require_main(MsArena *arena, MsFront *front) {
       return;
     }
   }
-  add_finding(arena, &front->findings, file, "type", pos,
+  add_finding(arena, &checked->findings, file, "type", pos,
               ms_message_format(arena, "entry must declare fn main; %S", problem, (MsSpan){0}));
 }
 
@@ -99,33 +99,33 @@ static uint32_t entry_module(const MsCheckProgram *program, const MsGraph *graph
   return program->user_modules > 0 ? program->user_modules - 1 : 0;
 }
 
-bool ms_front_compile(MsArena *arena, MsFront *front, MsSpan filename, MsFrontTarget target) {
-  ms_names_init(&front->names);
-  const bool tests = target == MS_FRONT_TESTS;
+bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target) {
+  ms_names_init(&checked->names);
+  const bool tests = target == MS_INPUT_TESTS;
   const MsLoadOptions load = {.tests = tests};
-  ms_project_load(arena, &front->names, filename, &load, &front->graph);
-  const MsGraph *graph = &front->graph;
+  ms_project_load(arena, &checked->names, filename, &load, &checked->graph);
+  const MsGraph *graph = &checked->graph;
   if (!tests && graph->project_root.len > 0 && graph->library && graph->diagnostic_count == 0) {
-    library_failure(arena, graph, &front->findings);
+    library_failure(arena, graph, &checked->findings);
     return false;
   }
-  finding_add_graph(graph, &front->findings);
-  if (front->findings.len > 0) {
+  finding_add_graph(graph, &checked->findings);
+  if (checked->findings.len > 0) {
     return false;
   }
-  ms_check_graph(&front->program, &front->names, graph);
-  ms_own_check(&front->program);
-  front->checked = true;
-  finding_add_check(&front->program, &front->names, &front->findings);
-  front->entry = entry_module(&front->program, graph);
-  if (front->findings.len == 0 && !tests) {
-    require_main(arena, front);
+  ms_check_graph(&checked->program, &checked->names, graph);
+  ms_own_check(&checked->program);
+  checked->checked = true;
+  finding_add_check(&checked->program, &checked->names, &checked->findings);
+  checked->entry = entry_module(&checked->program, graph);
+  if (checked->findings.len == 0 && !tests) {
+    require_main(arena, checked);
   }
-  return front->findings.len == 0;
+  return checked->findings.len == 0;
 }
 
-void ms_front_test_names(MsArena *arena, const MsFront *front, MsSpanList *names) {
-  const MsCheckProgram *program = &front->program;
+void ms_checked_input_test_names(MsArena *arena, const MsCheckedInput *checked, MsSpanList *names) {
+  const MsCheckProgram *program = &checked->program;
   for (uint32_t m = 0; m < program->user_modules; m++) {
     const MsModuleInfo *module = &program->modules.ptr[m];
     const MsSpan file = ms_names_span(program->names, module->file);
@@ -138,14 +138,14 @@ void ms_front_test_names(MsArena *arena, const MsFront *front, MsSpanList *names
   }
 }
 
-int ms_front_report(const MsFront *front) {
+int ms_checked_input_report(const MsCheckedInput *checked) {
   FindingList sorted = {0};
-  for (size_t i = 0; i < front->findings.len; i++) {
-    finding_list_push(&sorted, front->findings.ptr[i]);
+  for (size_t i = 0; i < checked->findings.len; i++) {
+    finding_list_push(&sorted, checked->findings.ptr[i]);
   }
   ms_sort((uint8_t *)sorted.ptr, sorted.len, sizeof(Finding), finding_compare, NULL);
   MsStrBuild err = ms_strbuild_new();
-  finding_terminal_text(&err, front->graph.source_root, &sorted);
+  finding_terminal_text(&err, checked->graph.source_root, &sorted, false);
   const MsSpan text = ms_strbuild_span(&err);
   (void)fwrite(text.ptr, 1, text.len, stderr);
   ms_strbuild_free(&err);
@@ -153,10 +153,10 @@ int ms_front_report(const MsFront *front) {
   return 1;
 }
 
-void ms_front_free(MsFront *front) {
-  finding_list_free(&front->findings);
-  if (front->checked) {
-    ms_check_program_free(&front->program);
+void ms_checked_input_free(MsCheckedInput *checked) {
+  finding_list_free(&checked->findings);
+  if (checked->checked) {
+    ms_check_program_free(&checked->program);
   }
-  ms_names_free(&front->names);
+  ms_names_free(&checked->names);
 }

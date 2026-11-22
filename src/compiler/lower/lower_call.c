@@ -3,7 +3,7 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
-static const MsCall *find_call(const MsFacts *facts, MsNode node) {
+const MsCall *fn_find_call(const MsFacts *facts, MsNode node) {
   size_t lo = 0;
   size_t hi = facts->calls.len;
   while (lo < hi) {
@@ -18,7 +18,7 @@ static const MsCall *find_call(const MsFacts *facts, MsNode node) {
 }
 
 /* The symbol a function reference names: the symbol declared by that node of that module. */
-static MsSymbolId symbol_at(const Lower *cx, MsNodeRef decl) {
+MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl) {
   const MsSymbolList *symbols = &cx->program->symbols;
   for (MsSymbolId id = 1; id < symbols->len; id++) {
     const MsSymbol *symbol = &symbols->ptr[id];
@@ -48,7 +48,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
   fn->file = lower_file(fn->cx, arg->node.module);
   const MsParam *param = NULL;
-  const MsSymbol *callee = &fn->cx->program->symbols.ptr[symbol_at(fn->cx, call->callee.decl)];
+  const MsSymbol *callee = &fn->cx->program->symbols.ptr[fn_symbol_at(fn->cx, call->callee.decl)];
   for (uint32_t index = 0; callee->decl != NULL && index < callee->decl->u.fn.params.len; index++) {
     if (callee->decl->u.fn.params.ptr[index]->def != NULL && callee->decl->u.fn.params.ptr[index]->def->id == arg->node.node) {
       param = callee->decl->u.fn.params.ptr[index];
@@ -60,6 +60,10 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   return value;
 }
 
+static bool is_literal(const MsExpr *expr) {
+  return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out) {
   for (uint32_t index = 0; index < call->arg_count; index++) {
     const MsCallArg *arg = &call->args[index];
@@ -69,10 +73,16 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
       const LowerWant want = owning || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
+      if (want == LW_MOVE && out[index] != MIR_NONE && is_literal(written)) {
+        /* A literal is static, so what owns it holds a copy. */
+        out[index] = fn_emit(fn, MOP_Clone, &out[index], 1, (MirImm){0}, mir_b_ty(&fn->b, out[index]));
+      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       out[index] = default_arg(fn, call, arg);
     } else {
-      return fn_fail(fn, "an omitted argument is not lowered yet");
+      const MsTy param = ms_ty_params(&fn->cx->program->types, call->callee_ty)[index].ty;
+      const MirTy ty = fn_type(fn, param);
+      out[index] = ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
     }
     if (out[index] == MIR_NONE) {
       return fn_fail(fn, "an argument has no value");
@@ -113,7 +123,7 @@ static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode 
 static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   Lower *cx = fn->cx;
   if (call->callee.kind == MS_REF_FUNCTION) {
-    const MsSymbolId id = symbol_at(cx, call->callee.decl);
+    const MsSymbolId id = fn_symbol_at(cx, call->callee.decl);
     if (id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
       return false;
     }
@@ -128,8 +138,21 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
     return false;
   }
   *out = (LowerTarget){entry->module, entry->source->id, &entry->source->func, entry->source->func.name, entry->ty,
-                       {NULL, 0}, entry->variables.ptr, (uint32_t)entry->variables.len};
+                       {NULL, 0}, entry->variables.ptr, (uint32_t)entry->variables.len, MS_TY_NONE, 0, false};
+  out->receiver = entry->receiver;
+  out->receiver_flags = (uint8_t)((entry->source->mutating ? MS_PARAM_VAR : 0) | (entry->source->consuming ? MS_PARAM_MOVE : 0));
   return true;
+}
+
+/* A call of an interface operation: dispatched through the receiver's vtable. */
+static MirValue call_operation(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+  if (data->kind != MK_IFACE) {
+    (void)fn_fail(fn, "an interface operation needs an interface receiver");
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = call->callee.index};
+  return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
 }
 
 /* `Case(payload...)`: an alternative's case built from its payload. */
@@ -156,12 +179,12 @@ static MirValue construct(LowerFn *fn, const MsCall *call, const MirValue *args,
 
 /* Whether a native callee is an operation of a receiver (not an `extern fn`, which call_runtime handles). */
 static bool callee_is_operation(LowerFn *fn, const MsCall *call) {
-  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   return id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN;
 }
 
 static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsSymbolId id = symbol_at(fn->cx, call->callee.decl);
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
     (void)fn_fail(fn, "this callee is not lowered yet (reference kind %d)", (int)call->callee.kind);
     return MIR_NONE;
@@ -174,7 +197,14 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
 
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   (void)want;
-  const MsCall *call = find_call(fn->facts, expr->id);
+  const MsCall *call = fn_find_call(fn->facts, expr->id);
+  /* A callee that is a parameter or local, or any expression with no declaration behind it (`fs[i]()`), is a value. */
+  const bool named = expr->u.call.callee->kind == MS_E_NAME;
+  const bool value_callee = call == NULL || call->callee.kind == MS_REF_NONE ||
+                            (named && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL));
+  if (value_callee && (named || call != NULL)) {
+    return fn_call_value(fn, expr, call != NULL && named && call->callee.kind != MS_REF_NONE ? &call->callee : NULL);
+  }
   if (call == NULL || call->arg_count > 16) {
     (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);
     return MIR_NONE;
@@ -187,6 +217,9 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   if (call->callee.kind == MS_REF_TYPE) {
     return construct(fn, call, args, ret);
+  }
+  if (call->callee.kind == MS_REF_OPERATION) {
+    return call_operation(fn, call, args, ret);
   }
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);

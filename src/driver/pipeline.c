@@ -73,11 +73,8 @@ static bool make_object(const MsLinkRequest *request, MsSpan ir, MsSpan director
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
-  if (request->tests) {
-    (void)fail(error, "building the test runner is not lowered yet", ms_span_of(NULL, 0));
-    return false;
-  }
-  const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false};
+  const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false,
+                                  .tests = request->tests};
   bool ok = ms_backend_ir(request->program, request->entry, &backend, &ir, &why) ||
             fail(error, "", ms_strbuild_span(&why));
   MsString opt_storage, llc_storage, lld_storage, files_storage, runtime_storage;

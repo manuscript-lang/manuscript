@@ -16,4 +16,8 @@ void ms_json_position(MsStrBuild *out, MsSpan file, MsPos pos, size_t depth);
  * top-level `diagnostics` array). `code` is the family code; the sub-code is derived from the message. */
 void ms_json_diag(MsStrBuild *out, MsSpan file, const char *phase, const MsDiag *diag);
 
+/* A lint finding of rule `code` with `severity` ("warning" or "error"), laid out as ms_json_diag lays out a
+ * diagnostic: no phase, the severity after the code. */
+void ms_json_lint(MsStrBuild *out, MsSpan file, const char *code, const char *severity, const MsDiag *diag);
+
 #endif

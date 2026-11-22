@@ -10,7 +10,7 @@
 #include "base/path.h"
 #include "base/strbuild.h"
 #include "compiler/syntax/diag_json.h"
-#include "driver/compile_front.h"
+#include "driver/checked_input.h"
 #include "driver/invocation.h"
 #include "driver/pipeline.h"
 
@@ -157,10 +157,10 @@ static bool write_metadata(const BuildReport *report) {
   return ms_file_write(path, text);
 }
 
-static int link_program(const BuildReport *report, MsFront *front) {
+static int link_program(const BuildReport *report, MsCheckedInput *checked) {
   const MsInvocation *invocation = report->invocation;
   MsSpan error = {0};
-  const MsLinkRequest request = {.program = &front->program, .entry = front->entry,
+  const MsLinkRequest request = {.program = &checked->program, .entry = checked->entry,
                                  .build_type = invocation->build_type, .output = report->output,
                                  .link = invocation->link.ptr, .link_count = invocation->link.len,
                                  .static_libc = invocation->static_libc};
@@ -185,30 +185,30 @@ static int build(MsArena *arena, const MsInvocation *invocation) {
   BuildReport report = {.arena = arena, .invocation = invocation,
                         .display = invocation->output.len > 0 ? invocation->output : ms_span_of_text("program")};
   report.output = absolute(arena, report.display);
-  MsFront front = {0};
+  MsCheckedInput checked = {0};
   int status = 0;
-  if (!ms_front_compile(arena, &front, invocation->filename, MS_FRONT_PROGRAM)) {
-    report.source_root = front.graph.source_root;
+  if (!ms_checked_input_load(arena, &checked, invocation->filename, MS_INPUT_PROGRAM)) {
+    report.source_root = checked.graph.source_root;
     if (invocation->json) {
-      print_document(&report, &(BuildOutcome){.findings = &front.findings});
+      print_document(&report, &(BuildOutcome){.findings = &checked.findings});
     } else {
-      (void)ms_front_report(&front);
+      (void)ms_checked_input_report(&checked);
     }
     status = STATUS_FAILED;
   } else if (ms_path_kind(report.output) == MS_PATH_DIRECTORY) {
-    report.source_root = front.graph.source_root;
+    report.source_root = checked.graph.source_root;
     print_span(stderr, ms_message_format(arena, "-o %S is a directory; pass a file path (e.g. -o %S/program)\n",
                                          report.display, report.display));
     status = STATUS_USAGE;
   } else {
-    report.source_root = front.graph.source_root;
-    const MsSpan protect = protected_output(&report, front.graph.project_root);
+    report.source_root = checked.graph.source_root;
+    const MsSpan protect = protected_output(&report, checked.graph.project_root);
     if (protect.len > 0) {
       print_span(stderr, ms_message_format(arena, "-o %S would overwrite %S; choose a different executable path\n",
                                            report.display, protect));
       status = STATUS_USAGE;
     } else {
-      status = link_program(&report, &front);
+      status = link_program(&report, &checked);
     }
   }
   if (status == 0 && invocation->json) {
@@ -216,7 +216,7 @@ static int build(MsArena *arena, const MsInvocation *invocation) {
   } else if (status == 0) {
     print_span(stdout, ms_message_format(arena, "Built %S\n", report.display));
   }
-  ms_front_free(&front);
+  ms_checked_input_free(&checked);
   return status;
 }
 

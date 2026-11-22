@@ -42,7 +42,8 @@ static void declare_extern(EmitCx *cx, const MirExtern *def) {
   MsStrBuild *out = cx->out;
   MsSpan result = emit_leaves(cx, def->ret);
   bool direct = emit_rt_direct(cx, def->ret);
-  const char *type = direct && result.len == 1 ? leaf_register_type(cx, def, result.ptr[0]) : "void";
+  const bool option = emit_rt_scalar_option(cx, def->ret);
+  const char *type = option ? "i8" : (direct && result.len == 1 ? leaf_register_type(cx, def, result.ptr[0]) : "void");
   ms_strbuild_printf(out, "declare %s ", type);
   emit_symbol(out, ms_names_span(&cx->module->names, def->name));
   ms_strbuild_append_byte(out, '(');
@@ -60,7 +61,7 @@ static void declare_extern(EmitCx *cx, const MirExtern *def) {
       first = false;
     }
   }
-  if (!direct) {
+  if (!direct || option) {
     ms_strbuild_printf(out, "%sptr", first ? "" : ", ");
   }
   ms_strbuild_printf(out, ")%s\n", def->noreturn ? " noreturn" : "");

@@ -4,9 +4,9 @@ export type JsonLimits:
 	max_depth: Int?
 	max_values: Int?
 
-// The compiler lowers these two calls from the type argument; see `json_parse` and
-// `json_stringify` in ms-lower.
-export extern fn msstd_json_parse[T](
+// The compiler passes each call the shape table of `T` (src/abi/shape.h) as a hidden first argument; the
+// natives are `msstd_json_decode` and `msstd_json_stringify` in src/runtime/std/shape_json_*.c.
+export extern fn msstd_json_decode[T](
 	text: String,
 	limits: JsonLimits,
 	ignore_unknown_fields: Bool,

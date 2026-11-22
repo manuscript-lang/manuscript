@@ -23,7 +23,7 @@ Build output goes to `.artifacts/build/<preset>`. Generated files never go into 
 | `runtime/` | L1 | `sys`, `core`, `io`, `net`, `std`. |
 | `compiler/` | L2 to L4 | `syntax project check own lower mir opt emit link`. Depends on `base` and `abi` only. |
 | `driver/` | L5 | The thin `ms` entry point. |
-| `ms/` | L5 | The Manuscript front: `*.ms` files. |
+| `ms/` | L5 | Commands written in Manuscript: `*.ms` files. |
 | `lint/` | L0 | `ms_lint`. |
 | `third_party/` | L1 | Vendored libraries and `c-libs.lock`. |
 

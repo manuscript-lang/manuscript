@@ -39,7 +39,7 @@ bool ms_backend_ir(MsCheckProgram *program, uint32_t entry_module, const Backend
   mir_module_init(&module);
   MirGlue glue = {0};
   MirData data = {0};
-  bool ok = ms_lower_program(program, entry_module, &module, why);
+  bool ok = options->tests ? ms_lower_tests(program, &module, why) : ms_lower_program(program, entry_module, &module, why);
   ok = ok && run_passes(&module, options, &glue, &data, why);
   ok = ok && emit_program(&module, &data, &glue, ir, why);
   mir_data_free(&data);

@@ -48,16 +48,27 @@ MirVar fn_local(LowerFn *fn, uint32_t local, MirTy ty) {
   return fn->vars[local] - 1;
 }
 
-static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
-  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
+/* The value of the parameter or local `ref` names; `expr` is the name (a callee's ref is on its call). */
+MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
+  MirValue captured = MIR_NONE;
+  if (fn_lambda_name(fn, expr, ref, &captured)) {
+    return captured;
+  }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
     return mir_b_use_var(&fn->b, fn->param_vars[ref->local]);
   }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     return mir_b_use_var(&fn->b, fn->vars[ref->local] - 1);
   }
-  (void)fn_fail(fn, "a name does not refer to a parameter or a local");
+  if (ref != NULL && ref->kind == MS_REF_FUNCTION) {
+    return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  }
+  (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function");
   return MIR_NONE;
+}
+
+static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
+  return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
 /* `value.field`: a field of a record, read from the value in place. */
@@ -73,7 +84,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   }
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, base));
   if (data->kind != MK_TYPE) {
-    (void)fn_fail(fn, "a field is read from a record");
+    (void)fn_fail(fn, "a field is read from a record (found MIR kind %d)", (int)data->kind);
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
@@ -134,8 +145,12 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_CALL: return fn_call(fn, expr, want);
     case MS_E_MATCH: return fn_match(fn, expr);
     case MS_E_LIST: return fn_list(fn, expr);
+    case MS_E_INDEX:
+    case MS_E_APPLY: return fn_index(fn, expr, want);
+    case MS_E_LAMBDA: return fn_lambda(fn, expr);
+    case MS_E_UNARY: return fn_unary(fn, expr);
     default:
-      (void)fn_fail(fn, "this expression is not lowered yet");
+      (void)fn_fail(fn, "this expression (kind %d) is not lowered yet at %u:%u", (int)expr->kind, expr->pos.line, expr->pos.column);
       return MIR_NONE;
   }
 }

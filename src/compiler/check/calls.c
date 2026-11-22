@@ -5,21 +5,11 @@
  * position), typed against the parameter types as far as inference has bound them, and the call's type
  * arguments come from ms_check_instantiate. The MsCall fact lists one argument per parameter, the receiver
  * first for a method: written, defaulted, or omitted. */
-#include "compiler/check/body.h"
+#include "compiler/check/call_internal.h"
 #include "compiler/check/instantiate.h"
 #include "compiler/check/methods.h"
 
-typedef struct Target {
-  MsRef ref;
-  MsTy sig;               /* the function type called, receiver already bound */
-  MsTyList vars;          /* owned: the type variables to infer, in declaration order */
-  const MsParams *ast;    /* the declared parameters (for defaults), or NULL */
-  uint32_t ast_module;
-  const MsExpr *receiver; /* the written receiver of a method call */
-  MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
-  MsSpan name;
-  MsTyList explicit_args; /* owned: written type arguments */
-} Target;
+
 
 static void target_free(Target *target) {
   ms_ty_list_free(&target->vars);
@@ -91,6 +81,31 @@ static bool case_target(Body *body, const MsExpr *callee, MsName name, MsTy owne
   }
   body_set_ref(body, callee->id, target->ref);
   return true;
+}
+
+MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
+  const MsSymbol *symbol = value->kind == MS_E_NAME && body_find_local(body, value->u.sym) == NULL
+                               ? body_find_symbol(body, value->u.sym)
+                               : NULL;
+  const MsTyTable *types = &body->program->types;
+  if (symbol == NULL || symbol->decl == NULL || symbol->decl->kind != MS_D_FN || ty != symbol->ty ||
+      ms_ty_kind(types, ty) != MS_TY_FUNCTION) {
+    return ty;
+  }
+  const MsParams *ast = &symbol->decl->u.fn.params;
+  MsTyParamList params = {0};
+  bool lifted = false;
+  for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
+    MsTyParam param = ms_ty_params(types, ty)[index];
+    if (index < ast->len && ast->ptr[index]->def != NULL) {
+      param.flags |= MS_PARAM_LIFTED;
+      lifted = true;
+    }
+    ms_ty_param_list_push(&params, param);
+  }
+  const MsTy result = lifted ? function_type(body, &params, ms_ty_result(types, ty)) : ty;
+  ms_ty_param_list_free(&params);
+  return result;
 }
 
 static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target *target) {
@@ -191,14 +206,11 @@ static bool resolve_target(Body *body, const MsExpr *callee, MsTy expected, Targ
 
 /* ---- arguments ---- */
 
-typedef struct Matched {
-  int32_t *slot; /* the argument written for each parameter, or -1 */
-  size_t count;
-} Matched;
 
-static bool param_index(const MsTyTable *types, MsTy sig, MsName name, size_t *index) {
-  for (size_t at = 0; at < ms_ty_param_count(types, sig); at++) {
-    if (ms_ty_params(types, sig)[at].name == name) {
+
+static bool param_index(const Body *body, const Target *target, MsName name, size_t *index) {
+  for (size_t at = 0; at < ms_ty_param_count(&body->program->types, target->sig); at++) {
+    if (target_param_name(body, target, at) == name) {
       *index = at;
       return true;
     }
@@ -207,19 +219,23 @@ static bool param_index(const MsTyTable *types, MsTy sig, MsName name, size_t *i
 }
 
 /* Assigns each written argument a parameter: by label, else the next free one in order. */
-static void match_args(const MsTyTable *types, MsTy sig, const MsExpr *call, Matched *matched) {
-  const size_t nparams = ms_ty_param_count(types, sig);
+static void match_args(const Body *body, const Target *target, const MsExpr *call, Matched *matched) {
+  const MsTyTable *types = &body->program->types;
+  const size_t nparams = ms_ty_param_count(types, target->sig);
   size_t cursor = 0;
   for (uint32_t at = 0; at < call->u.call.args.len; at++) {
     const MsArg *arg = &call->u.call.args.ptr[at];
     size_t index = 0;
-    if (arg->has_name && param_index(types, sig, arg->name, &index)) {
-      matched->slot[index] = (int32_t)at;
+    if (arg->has_name) {
+      const bool found = param_index(body, target, arg->name, &index) && !target_positional(target, index, types);
+      matched->state[at] = !found ? ARG_UNKNOWN : matched->slot[index] >= 0 ? ARG_DUPLICATE : ARG_MATCHED;
+      matched->slot[index] = matched->state[at] == ARG_MATCHED ? (int32_t)at : matched->slot[index];
       continue;
     }
     while (cursor < nparams && matched->slot[cursor] >= 0) {
       cursor++;
     }
+    matched->state[at] = cursor < nparams ? ARG_MATCHED : ARG_EXTRA;
     if (cursor < nparams) {
       matched->slot[cursor] = (int32_t)at;
     }
@@ -276,7 +292,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     MsStrBuild context = ms_strbuild_new();
     if (target->name.len != 0) {
       ms_strbuild_append_text(&context, "argument '");
-      ms_strbuild_append(&context, ms_names_span(body->program->names, ms_ty_params(types, target->sig)[index].name));
+      ms_strbuild_append(&context, ms_names_span(body->program->names, target_param_name(body, target, index)));
       ms_strbuild_append_text(&context, "' of ");
       ms_strbuild_append(&context, target->name);
     }
@@ -287,6 +303,17 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     ms_strbuild_free(&context);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
+    }
+  }
+  /* An argument checked while the callee's variables were open meets its final parameter type only now. */
+  for (size_t index = 0; index < matched->count; index++) {
+    if (matched->slot[index] < 0 || arg_tys[index] == MS_TY_NONE) {
+      continue;
+    }
+    const MsTy param = ms_ty_params(types, target->sig)[index].ty;
+    if (mentions_vars(types, param, &target->vars)) {
+      body_convert(body, call->u.call.args.ptr[matched->slot[index]].value, arg_tys[index],
+                   expected_param(body, target, param, bound));
     }
   }
 }
@@ -378,14 +405,20 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   target.name = ms_strbuild_span(&target.name_text);
   if (resolve_target(body, callee, expected, &target)) {
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
-    Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1), .count = count};
+    Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1),
+                       .state = MS_ARENA_NEW_ARRAY(&body->program->arena, uint8_t, expr->u.call.args.len + 1),
+                       .count = count};
     MsTy *arg_tys = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, count + 1);
     MsTy *bound = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, target.vars.len + 1);
+    for (size_t index = 0; index < target.vars.len; index++) {
+      bound[index] = index < target.explicit_args.len ? target.explicit_args.ptr[index] : MS_TY_NONE;
+    }
     for (size_t index = 0; index < count; index++) {
       matched.slot[index] = -1;
     }
-    match_args(&body->program->types, target.sig, expr, &matched);
+    match_args(body, &target, expr, &matched);
     type_args(body, &target, expr, &matched, arg_tys, bound);
+    body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected);
   } else {
     for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
