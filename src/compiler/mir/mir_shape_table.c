@@ -155,6 +155,21 @@ static const uint32_t *alt_offsets(ShapeBuild *build, MirTy ty, bool boxed) {
   return offsets;
 }
 
+/* The shape of an optional field whose leaves lie in an alternative's flattened image: the payload sits `rel` bytes from
+ * the presence byte there, which can differ from the optional's own layout, so such a field gets a shape of its own. */
+static uint32_t optional_field_shape(ShapeBuild *build, uint32_t shape_index, int32_t rel) {
+  const MsShape found = build->shapes.ptr[shape_index];
+  if (found.kind != MS_SHAPE_OPTIONAL || (found.flags & MS_SHAPE_NULLABLE) != 0 || (int32_t)found.extra == rel) {
+    return shape_index;
+  }
+  MsShape variant = found;
+  variant.extra = (uint32_t)rel;
+  const uint32_t index = (uint32_t)build->shapes.len;
+  shape_list_push(&build->shapes, variant);
+  mir_tylist_push(&build->types, build->types.ptr[shape_index]); /* the original, found first, stays the one a type maps to */
+  return index;
+}
+
 static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsShape *shape) {
   MirLayouts *layouts = build->layouts;
   const MirAltDef *def = &build->module->alts.ptr[data->id];
@@ -183,6 +198,11 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   for (uint32_t index = 0; index < total; index++) {
     tys[index] = fields->fields[index].ty;
     shapes[index] = shape_of(build, tys[index]);
+    const MirAltField *field = &fields->fields[index];
+    if (field->nleaves > 1) {
+      shapes[index] = optional_field_shape(build, shapes[index],
+                                           (int32_t)offsets[field->leaves[1]] - (int32_t)offsets[field->leaves[0]]);
+    }
   }
   const uint32_t cases_at = (uint32_t)build->members.len;
   shape->first = cases_at;
