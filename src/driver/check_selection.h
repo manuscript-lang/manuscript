@@ -1,7 +1,7 @@
-/* driver/check_inputs.h: the inputs of `ms check` from its targets. A collection is a set of independent compiler
+/* driver/check_selection.h: the inputs of `ms check` from its targets. A collection is a set of independent compiler
  * requests, never one combined program. Port of crates/ms-cli/src/analysis.rs. */
-#ifndef MS_DRIVER_CHECK_INPUTS_H
-#define MS_DRIVER_CHECK_INPUTS_H
+#ifndef MS_DRIVER_CHECK_SELECTION_H
+#define MS_DRIVER_CHECK_SELECTION_H
 
 #include "base/arena.h"
 #include "base/list.h"

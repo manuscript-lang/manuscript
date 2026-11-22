@@ -23,10 +23,6 @@ static void append_owned(Text *text, MsString *piece) {
   ms_string_release(piece);
 }
 
-static const uint8_t *resolve(const MsShape *shape, const uint8_t *slot) {
-  return (shape->flags & MS_SHAPE_BOXED) != 0 ? *(const uint8_t *const *)(const void *)slot : slot;
-}
-
 static int64_t read_signed(const MsShape *shape, const uint8_t *slot) {
   switch (shape->size) {
   case 1:
@@ -167,14 +163,13 @@ static void emit_map(Text *text, const MsShape *shape, const uint8_t *slot, int 
 }
 
 static void emit_optional(Text *text, const MsShape *shape, const uint8_t *slot, int depth) {
-  const bool nullable = (shape->flags & MS_SHAPE_NULLABLE) != 0;
-  const bool present = nullable ? *AT(uint64_t, slot) != 0 : *slot != 0;
-  if (!present) {
+  const uint8_t *payload = ms_shape_some(shape, slot);
+  if (payload == NULL) {
     ms_strbuild_append_text(&text->out, "none");
     return;
   }
   ms_strbuild_append_text(&text->out, "some(");
-  emit_element(text, shape->elem, nullable ? slot : slot + shape->extra, depth);
+  emit_element(text, shape->elem, payload, depth);
   ms_strbuild_append_byte(&text->out, ')');
 }
 
@@ -246,21 +241,9 @@ static void emit_record(Text *text, const MsShape *shape, const uint8_t *base, i
   emit_fields(text, shape->first, shape->count, base, true, depth);
 }
 
-static const MsShapeMember *active_case(const MsShapeTable *table, const MsShape *shape,
-                                        const uint8_t *base) {
-  const int64_t tag = *AT(int64_t, base + shape->extra);
-  for (uint32_t at = 0; at < shape->count; at++) {
-    const MsShapeMember *candidate = ms_shape_member(table, shape->first + at);
-    if ((int64_t)candidate->tag == tag) {
-      return candidate;
-    }
-  }
-  return ms_shape_member(table, shape->first);
-}
-
 /* `Case` and its payload; the plain form spells `Type.Case`, except for Result. */
 static void emit_alternative(Text *text, const MsShape *shape, const uint8_t *base, int depth) {
-  const MsShapeMember *which = active_case(text->table, shape, base);
+  const MsShapeMember *which = ms_shape_active_case(text->table, shape, base);
   const char *type_name = ms_shape_text(text->table, shape->name);
   if (!text->repr && !ms_span_is_text(ms_span_of_text(type_name), "Result")) {
     ms_strbuild_append_text(&text->out, type_name);
@@ -278,7 +261,7 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
   if (emit_scalar(text, shape, slot, nested)) {
     return;
   }
-  const uint8_t *value = resolve(shape, slot);
+  const uint8_t *value = ms_shape_resolve(shape, slot);
   if ((shape->flags & MS_SHAPE_TEXT_FORM) != 0 && hook != NULL && hook->to_text != NULL) {
     MsString piece = ms_string_empty();
     hook->to_text(value, &piece);
@@ -311,11 +294,16 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
   }
 }
 
-void ms_shape_text_of(const MsShapeTable *table, const void *value, bool repr, MsString *out) {
+void ms_shape_text_at(const MsShapeTable *table, uint32_t shape, const void *value, bool repr,
+                      MsString *out) {
   Text text = {.table = table, .out = ms_strbuild_new(), .repr = repr};
-  emit(&text, table->image->root, value, 0, false);
+  emit(&text, shape, value, 0, false);
   *out = ms_strbuild_finish(&text.out);
   ms_strbuild_free(&text.out);
+}
+
+void ms_shape_text_of(const MsShapeTable *table, const void *value, bool repr, MsString *out) {
+  ms_shape_text_at(table, table->image->root, value, repr, out);
 }
 
 void msstd_test_repr(const MsShapeTable *table, const void *value, MsString *out) {

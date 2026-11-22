@@ -56,9 +56,11 @@ typedef enum MsShapeKind {
 } MsShapeKind;
 
 enum {
-  MS_SHAPE_BOXED = 1u << 0,    /* the slot holds a pointer to a block with this shape's layout */
-  MS_SHAPE_NULLABLE = 1u << 1, /* OPTIONAL: none is eight zero bytes and the payload is the slot itself */
-  MS_SHAPE_TEXT_FORM = 1u << 2 /* the shape's hooks supply the text form (its own `to_string`) */
+  MS_SHAPE_BOXED = 1u << 0,     /* the slot holds a pointer to a block with this shape's layout */
+  MS_SHAPE_NULLABLE = 1u << 1,  /* OPTIONAL: none is eight zero bytes and the payload is the slot itself */
+  MS_SHAPE_TEXT_FORM = 1u << 2, /* the shape's hooks supply the text form (its own `to_string`) */
+  MS_SHAPE_JSON_FORM =
+      1u << 3 /* the shape's hooks supply its JSON form (a JsonEncode, Url, Timestamp, ...) */
 };
 
 typedef struct MsShapeImage {
@@ -113,10 +115,13 @@ typedef struct MsShapeHook {
   const MsTypeDesc *desc;
   /* The shape's own text (`fn T.to_string() String`), used when MS_SHAPE_TEXT_FORM is set. */
   void (*to_text)(const void *value, MsString *out);
-  /* A shape with a text form in JSON (Timestamp, Url, ...): the string it writes, and the value it reads from
-   * a string, which returns 0 on success and writes `out` as a slot. */
-  void (*to_json_text)(const void *value, MsString *out);
-  uint8_t (*from_json_text)(const MsString *text, void *out);
+  /* A shape with its own JSON form, when MS_SHAPE_JSON_FORM is set: writes the value to the JSON writer (the
+   * msstd_json_w_* natives) and returns 0, or nonzero when the value has no JSON form and nothing was
+   * written. */
+  uint8_t (*json_encode)(const void *value, void *writer);
+  /* The reverse for a parse: reads the node `id` of the document and writes the slot `out`; returns 0, or the
+   * status of the failure. */
+  uint8_t (*json_decode)(const void *doc, uint32_t id, void *out);
 } MsShapeHook;
 
 /* What a generic native receives: the image, and the hook arrays when the type needs any. */
@@ -131,7 +136,8 @@ static inline const MsShape *ms_shape_at(const MsShapeTable *table, uint32_t ind
 }
 
 static inline const MsShapeMember *ms_shape_member(const MsShapeTable *table, uint32_t index) {
-  return (const MsShapeMember *)(const void *)((const uint8_t *)table->image + table->image->members_at) + index;
+  return (const MsShapeMember *)(const void *)((const uint8_t *)table->image + table->image->members_at) +
+         index;
 }
 
 /* The NUL-terminated name at string offset `offset`; "" for MS_SHAPE_NONE. */
@@ -141,6 +147,32 @@ static inline const char *ms_shape_text(const MsShapeTable *table, uint32_t offs
 
 static inline const MsShapeHook *ms_shape_hook(const MsShapeTable *table, uint32_t index) {
   return table->hooks == NULL ? NULL : &table->hooks[index];
+}
+
+/* The block a BOXED shape's slot points to, or the slot itself. */
+static inline const uint8_t *ms_shape_resolve(const MsShape *shape, const uint8_t *slot) {
+  return (shape->flags & MS_SHAPE_BOXED) != 0 ? *(const uint8_t *const *)(const void *)slot : slot;
+}
+
+/* The payload of an OPTIONAL slot, or NULL when it is none. */
+static inline const uint8_t *ms_shape_some(const MsShape *shape, const uint8_t *slot) {
+  if ((shape->flags & MS_SHAPE_NULLABLE) != 0) {
+    return *(const uint64_t *)(const void *)slot != 0 ? slot : NULL;
+  }
+  return *slot != 0 ? slot + shape->extra : NULL;
+}
+
+/* The case of an ALTERNATIVE value at `base` that its tag selects. */
+static inline const MsShapeMember *ms_shape_active_case(const MsShapeTable *table, const MsShape *shape,
+                                                        const uint8_t *base) {
+  const int64_t tag = *(const int64_t *)(const void *)(base + shape->extra);
+  for (uint32_t at = 0; at < shape->count; at++) {
+    const MsShapeMember *candidate = ms_shape_member(table, shape->first + at);
+    if ((int64_t)candidate->tag == tag) {
+      return candidate;
+    }
+  }
+  return ms_shape_member(table, shape->first);
 }
 
 #endif

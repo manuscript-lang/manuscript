@@ -1,4 +1,5 @@
-/* Driver: `ms check <targets> [--json [--with-text [--each]]]`. Loads the module graph of each input, checks it
+/* Driver: `ms check <targets> [--json [--with-text [--each]]]` and `ms lint <targets> [--json] [--fix]
+ * [--deny-warnings]`; lint is check followed by the lint rules over each input that checks. Loads the module graph of each input, checks it
  * and reports the diagnostics as terminal text or as the JSON document of crates/ms-cli. Several targets, a
  * directory without ms.toml and --each check each input on its own; --fix applies fixes and --watch reruns after each
  * saved change. Status 0 is accepted, 1 a diagnostic, 2 a usage error. */
@@ -16,11 +17,12 @@
 #include "compiler/syntax/diag.h"
 #include "compiler/syntax/diag_json.h"
 #include "driver/check_fix.h"
-#include "driver/check_inputs.h"
+#include "driver/check_selection.h"
 #include "driver/display.h"
 #include "driver/findings.h"
 #include "driver/snippet.h"
 #include "driver/watch.h"
+#include "tooling/lint.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
@@ -28,6 +30,8 @@ MS_LIST_DEFINE(TargetList, target_list, MsSpan)
 
 typedef struct CheckOptions {
   bool json, with_text, each, fix, watch;
+  bool lint, deny_warnings; /* `ms lint` */
+  const char *name;         /* "check" or "lint" */
   TargetList targets;
 } CheckOptions;
 
@@ -69,23 +73,32 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
     } else if (is_option(argument, "--watch")) {
       options->watch = true;
     } else if (is_option(argument, "--deny-warnings")) {
-      return refuse("--deny-warnings requires lint, not check; use ms lint <file> --deny-warnings", STATUS_USAGE);
+      if (!options->lint) {
+        return refuse("--deny-warnings requires lint, not check; use ms lint <file> --deny-warnings", STATUS_USAGE);
+      }
+      options->deny_warnings = true;
     } else if (argument[0] == '-') {
-      (void)fprintf(stderr, "unknown option %s for ms check; run 'ms help check' for its options\n", argument);
+      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help %s' for its options\n", argument, options->name,
+                    options->name);
       return STATUS_USAGE;
     } else if (argument[0] == '\0') {
-      return refuse("ms check: an input argument is empty; pass a .ms file, directory, or ms.toml", STATUS_USAGE);
+      (void)fprintf(stderr, "ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml\n", options->name);
+      return STATUS_USAGE;
     } else {
       target_list_push(&options->targets, ms_span_of_text(argument));
     }
   }
   if (options->targets.len == 0) {
-    return refuse("ms check: missing a target; pass .ms files, directories, or ms.toml", STATUS_USAGE);
+    (void)fprintf(stderr, "ms %s: missing a target; pass .ms files, directories, or ms.toml\n", options->name);
+    return STATUS_USAGE;
+  }
+  if (options->with_text && options->lint) {
+    return refuse("--with-text requires check --json, not lint; use ms check <file> --json --with-text", STATUS_USAGE);
   }
   if (options->with_text && !options->json) {
     return refuse("ms check: --with-text requires --json", STATUS_USAGE);
   }
-  if (options->each && (!(options->json && options->with_text) || options->fix || options->watch)) {
+  if (options->each && (options->lint || !(options->json && options->with_text) || options->fix || options->watch)) {
     return refuse("--each requires check --json --with-text without --watch or --fix; use ms check a.ms b.ms "
                   "--json --with-text --each",
                   STATUS_USAGE);
@@ -116,7 +129,12 @@ static void write_document(MsStrBuild *out, const FindingList *findings, const C
   ms_strbuild_append_text(out, "{\n  \"format\": 1,\n  \"diagnostics\": [");
   for (size_t i = 0; i < findings->len; i++) {
     ms_strbuild_append_text(out, i == 0 ? "\n" : ",\n");
-    ms_json_diag(out, findings->ptr[i].file, findings->ptr[i].phase, &findings->ptr[i].diag);
+    const Finding *finding = &findings->ptr[i];
+    if (finding->lint_code != NULL) {
+      ms_json_lint(out, finding->file, finding->lint_code, finding->warning ? "warning" : "error", &finding->diag);
+    } else {
+      ms_json_diag(out, finding->file, finding->phase, &finding->diag);
+    }
   }
   ms_strbuild_append_text(out, findings->len == 0 ? "]" : "\n  ]");
   if (options->with_text) {
@@ -206,7 +224,7 @@ static void add_watched(MsArena *arena, MsSpan input, const MsGraph *graph, MsSp
 
 /* Checks one input and adds what it found to `analysis`. */
 static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input, bool fix,
-                        bool watching, Analysis *analysis) {
+                        bool watching, bool lint_findings, Analysis *analysis) {
   MsNames names;
   ms_names_init(&names);
   MsGraph graph = {0};
@@ -219,6 +237,12 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
     ms_check_graph(&program, &names, &graph);
     ms_own_check(&program);
     finding_add_check(&program, &names, &found);
+  }
+  const bool checked = found.len == 0;
+  MsLintFindingList lint = {0};
+  if (lint_findings && checked) {
+    ms_lint_modules(arena, &program, &lint);
+    finding_add_lint(&lint, &found);
   }
   if (!selection->collection) {
     analysis->root = ms_arena_copy(arena, graph.source_root);
@@ -233,7 +257,7 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
     finding_list_push(&analysis->findings,
                       kept(arena, found.ptr[i], shown(arena, selection, graph.source_root, found.ptr[i].file)));
   }
-  if (found.len == 0) {
+  if (checked && !lint_findings) {
     const size_t modules = program.names == NULL ? 0 : project_modules(&program, &names);
     ms_strbuild_printf(&analysis->summaries, "Checked %.*s", (int)input->display.len, (const char *)input->display.ptr);
     if (graph.project_root.len != 0) {
@@ -242,6 +266,7 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
     ms_strbuild_append_byte(&analysis->summaries, '\n');
   }
   finding_list_free(&found);
+  ms_lint_finding_list_free(&lint);
   if (program.names != NULL) {
     ms_check_program_free(&program);
   }
@@ -256,7 +281,7 @@ static int64_t compare_collected(uint8_t *env, const uint8_t *left, const uint8_
   }
   const Finding *a = (const void *)left;
   const Finding *b = (const void *)right;
-  const int code = __builtin_strcmp(ms_code_for(a->phase, a->diag.message), ms_code_for(b->phase, b->diag.message));
+  const int code = __builtin_strcmp(finding_code(a), finding_code(b));
   if (code != 0) {
     return code < 0 ? -1 : 1;
   }
@@ -270,7 +295,8 @@ static int64_t compare_collected(uint8_t *env, const uint8_t *left, const uint8_
 
 static bool same_finding(const Finding *a, const Finding *b) {
   return ms_span_equal(a->file, b->file) && a->diag.pos.line == b->diag.pos.line &&
-         a->diag.pos.column == b->diag.pos.column && __builtin_strcmp(a->phase, b->phase) == 0 &&
+         a->diag.pos.column == b->diag.pos.column && __builtin_strcmp(finding_code(a), finding_code(b)) == 0 &&
+         __builtin_strcmp(a->phase, b->phase) == 0 &&
          ms_span_equal(a->diag.message, b->diag.message);
 }
 
@@ -285,7 +311,7 @@ static void collect_findings(FindingList *findings) {
   findings->len = kept_count;
 }
 
-static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fix, bool watching,
+static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fix, bool watching, bool lint,
                     Analysis *analysis) {
   CheckSelection selection;
   check_select_inputs(arena, targets, count, &selection);
@@ -297,7 +323,7 @@ static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fi
   }
   analysis->no_inputs = selection.inputs.len == 0 && selection.problems.len == 0;
   for (size_t i = 0; i < selection.inputs.len; i++) {
-    check_input(arena, &selection, &selection.inputs.ptr[i], fix, watching, analysis);
+    check_input(arena, &selection, &selection.inputs.ptr[i], fix, watching, lint, analysis);
   }
   if (selection.collection) {
     collect_findings(&analysis->findings);
@@ -312,18 +338,18 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
                   MsStrBuild *out, MsStrBuild *err, MsStrBuild *document) {
   ms_strbuild_append(out, ms_strbuild_span(&analysis->summaries));
   if (analysis->no_inputs) {
-    ms_strbuild_append_text(err, "ms check: no .ms files found in ");
+    ms_strbuild_printf(err, "ms %s: no .ms files found in ", options->name);
     for (size_t i = 0; i < count; i++) {
       ms_strbuild_append_text(err, i == 0 ? "" : ", ");
       ms_strbuild_append(err, targets[i]);
     }
     ms_strbuild_append_byte(err, '\n');
   }
-  finding_terminal_text(err, analysis->root, &analysis->findings);
+  finding_terminal_text(err, analysis->root, &analysis->findings, options->deny_warnings);
   if (options->json) {
     write_document(document, &analysis->findings, options, out, err);
   }
-  return analysis->findings.len == 0 ? 0 : STATUS_FAILED;
+  return finding_fails(&analysis->findings, options->deny_warnings) ? STATUS_FAILED : 0;
 }
 
 static void free_analysis(Analysis *analysis) {
@@ -343,7 +369,7 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
     MsStrBuild out = ms_strbuild_new();
     MsStrBuild err = ms_strbuild_new();
     MsStrBuild document = ms_strbuild_new();
-    analyze(arena, &options->targets.ptr[i], 1, false, false, &analysis);
+    analyze(arena, &options->targets.ptr[i], 1, false, false, options->lint, &analysis);
     const int status = render(&analysis, options, &options->targets.ptr[i], 1, &out, &err, &document);
     ms_strbuild_append_text(&result, i == 0 ? "\n    {\n      \"target\": " : ",\n    {\n      \"target\": ");
     ms_json_string(&result, options->targets.ptr[i]);
@@ -376,7 +402,7 @@ static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList
     free_analysis(&analysis);
     analysis = (Analysis){.summaries = ms_strbuild_new()};
     const bool fixing = options->fix && pass + 1 < passes;
-    analyze(arena, options->targets.ptr, options->targets.len, fixing, options->watch, &analysis);
+    analyze(arena, options->targets.ptr, options->targets.len, fixing, options->watch, options->lint, &analysis);
     if (!fixing || check_apply_fixes(arena, &run, &analysis.fixes) == 0) {
       break;
     }
@@ -411,8 +437,8 @@ static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList
   return result;
 }
 
-int ms_check_command(int argc, char **argv) {
-  CheckOptions options = {0};
+static int run_command(const char *name, bool lint, int argc, char **argv) {
+  CheckOptions options = {.name = name, .lint = lint};
   const int status = parse_arguments(argc, argv, &options);
   if (status != 0) {
     target_list_free(&options.targets);
@@ -441,4 +467,12 @@ int ms_check_command(int argc, char **argv) {
   target_list_free(&options.targets);
   ms_arena_free(&arena);
   return result;
+}
+
+int ms_check_command(int argc, char **argv) {
+  return run_command("check", false, argc, argv);
+}
+
+int ms_lint_command(int argc, char **argv) {
+  return run_command("lint", true, argc, argv);
 }
