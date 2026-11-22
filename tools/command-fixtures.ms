@@ -67,6 +67,10 @@ fn tree_of(root: String, dir: String, ignored: List[String]) Map[String, String]
 		if found.entry.directory: continue
 		if ignored.contains(found.path): continue
 
+		// A macOS build writes the debug companion `<output>.dSYM/` beside an executable
+		// with debug info; the recorded Linux runs have none.
+		if found.path.contains(".dSYM/"): continue
+
 		files.add(
 			found.path.clone(),
 			normalize(text_of(read_file(path).wait().get()), dir),
