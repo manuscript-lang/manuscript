@@ -39,7 +39,7 @@ static bool is_collection(const LowerFn *fn, MirTy type) {
 }
 
 /* The descriptor argument `kind` asks for, from the first collection among `args`; false when there is none. */
-static bool descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out) {
+bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out) {
   for (uint32_t at = 0; at < nargs; at++) {
     const MirTy type = mir_b_ty(&fn->b, args[at]);
     if (!is_collection(fn, type)) {
@@ -157,7 +157,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
   for (uint32_t at = 0; at < params; at++) {
     const uint8_t kind = sig->kinds[at];
     if (kind == NS_ELEM_DESC || kind == NS_KEY_DESC || kind == NS_VAL_DESC) {
-      if (!descriptor_argument(fn, kind, args, nargs, &out[used++])) {
+      if (!fn_descriptor_argument(fn, kind, args, nargs, &out[used++])) {
         return false;
       }
     } else if (kind == NS_HAS_RAW && next < nargs) {
