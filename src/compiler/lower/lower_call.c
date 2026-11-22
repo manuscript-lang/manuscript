@@ -131,6 +131,14 @@ static bool var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
   return true;
 }
 
+static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode node);
+
+/* Whether the method called is declared `move fn`: it takes its receiver. */
+static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
+  const MsMethodEntry *entry = find_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
+  return entry != NULL && entry->source->consuming;
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
   for (uint32_t index = 0; index < call->arg_count; index++) {
@@ -143,7 +151,9 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsExpr *written = written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
       const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
-      const LowerWant want = owning || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
+      const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD && written == expr->u.call.callee->u.member.left &&
+                                  consuming_receiver(fn, call);
+      const LowerWant want = owning || takes_receiver || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
       if (want == LW_MOVE && out[index] != MIR_NONE && is_literal(written)) {
         /* A literal is static, so what owns it holds a copy. */

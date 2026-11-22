@@ -5,6 +5,7 @@
  * exit, which returns the error, or faults when the function has no error to return. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/own/closers.h"
 
 enum { OK_CASE = 0, ERR_CASE = 1 };
 static const char *const NO_ERROR_MESSAGE = "a resource could not be closed: its close returned an error";
@@ -172,9 +173,23 @@ static bool ensure_exits(LowerFn *fn, MirTy outcome_ty) {
 
 /* ---- the binding ---- */
 
-bool fn_closer_lowerable(const MsCloser *closer) {
-  return (closer->flags & MS_CLOSER_CONSUMES) != 0 &&
-         (closer->flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_EXPLICIT | MS_CLOSER_PARTIAL)) == 0;
+static bool lowerable(uint8_t flags) {
+  return (flags & MS_CLOSER_CONSUMES) != 0 &&
+         (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_EXPLICIT | MS_CLOSER_PARTIAL)) == 0;
+}
+
+bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+  if (closer == NULL || fn->closing == NULL) {
+    return false;
+  }
+  if ((closer->flags & MS_CLOSER_GENERIC) == 0) {
+    return lowerable(closer->flags);
+  }
+  /* A type variable closes only in the instances whose type does. */
+  MsCloser instance;
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
+  return ms_own_closer_of(fn->cx->program, ty, &instance) &&
+         lowerable((uint8_t)((closer->flags & ~MS_CLOSER_GENERIC) | instance.flags));
 }
 
 /* Puts `value` in a fresh slot owned by the innermost scope and returns the slot; `owns` says it needs a drop. */
