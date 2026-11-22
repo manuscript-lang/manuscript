@@ -1,6 +1,6 @@
 /* runtime/core/list.h: the list natives. Every function takes the address of the list value and the
  * descriptor of its element type (base/desc.h). A function that stores an element takes ownership of the slot
- * it is given; a name ending in `_copy` or a lent argument leaves the caller's value alone. */
+ * it is given; a name ending in `_copy` or a borrowed argument leaves the caller's value alone. */
 #ifndef MS_RUNTIME_CORE_LIST_H
 #define MS_RUNTIME_CORE_LIST_H
 

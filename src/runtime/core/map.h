@@ -2,7 +2,7 @@
  * descriptor of its key type and (for a map) of its value type; a set passes NULL for the value type. A map
  * keeps the key descriptor of the module that created it (`MsMap.desc`), so `kd` only serves a map that was
  * made without one. A function that stores a key or value takes ownership of the slot it is given; a name
- * ending in `_lent` borrows the key. The table itself is base/map.h. */
+ * ending in `_borrowed` borrows the key. The table itself is base/map.h. */
 #ifndef MS_RUNTIME_CORE_MAP_H
 #define MS_RUNTIME_CORE_MAP_H
 
@@ -39,20 +39,20 @@ void msrt_map_add_w8(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8
 /* ms-sig: msrt_map_add_sw8(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, val: *mut u8) @domain=map
  * @leaf */
 void msrt_map_add_sw8(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *val);
-/* ms-sig: msrt_map_add_lent(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, val: *mut u8)
+/* ms-sig: msrt_map_add_borrowed(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, val: *mut u8)
  * @domain=map @leaf */
-void msrt_map_add_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+void msrt_map_add_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                        uint8_t *val);
 /* ms-sig: msrt_map_add_default(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, val: *mut u8)
  * @domain=map @leaf */
 void msrt_map_add_default(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *val);
-/* ms-sig: msrt_map_add_default_lent(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, val: *mut u8)
+/* ms-sig: msrt_map_add_default_borrowed(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, val: *mut u8)
  * @domain=map @leaf */
-void msrt_map_add_default_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+void msrt_map_add_default_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                                uint8_t *val);
-/* ms-sig: msrt_map_slot_lent(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, default: *mut u8) ->
+/* ms-sig: msrt_map_slot_borrowed(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, default: *mut u8) ->
  * *mut u8 @domain=map @leaf */
-uint8_t *msrt_map_slot_lent(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
+uint8_t *msrt_map_slot_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                             uint8_t *default_value);
 /* ms-sig: msrt_map_remove(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) @domain=map @leaf */
 void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);

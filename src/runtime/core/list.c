@@ -1,5 +1,5 @@
 /* runtime/core/list.c: list natives for construction, reads and single-element changes. A mutator changes
- * the list in place; the slot of a stored element is consumed (ownership moves into the list); lent
+ * the list in place; the slot of a stored element is consumed (ownership moves into the list); borrowed
  * arguments are copied. A view (`cap == 0` with a buffer) borrows its elements: nothing frees, drops or grows
  * it in place. */
 #include "runtime/core/list.h"
@@ -221,7 +221,7 @@ void msrt_list_prepend(MsList *v, const MsTypeDesc *d, const uint8_t *e) {
   msrt_list_insert(v, d, 0, e);
 }
 
-/* `insert` of a lent element: the list stores its own copy, and the caller keeps `e`. */
+/* `insert` of a borrowed element: the list stores its own copy, and the caller keeps `e`. */
 void msrt_list_insert_copy(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
   _Alignas(16) uint8_t scratch[INLINE_COPY_BYTES];
   const bool on_stack = d->size <= sizeof scratch;
