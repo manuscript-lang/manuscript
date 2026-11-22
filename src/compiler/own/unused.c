@@ -43,7 +43,8 @@ static bool is_exempt(const Unused *pass, const MsBinding *binding) {
           ms_check_is_case_name(pass->program, binding->name));
 }
 
-static void declared(void *context, const MsBinding *binding) {
+static void declared(void *context, const MsBinding *binding, const MsBindingList *scope) {
+  (void)scope;
   Unused *pass = context;
   if (binding->origin == MS_BIND_OTHER || is_exempt(pass, binding)) {
     return;

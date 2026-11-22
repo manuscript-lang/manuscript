@@ -1,5 +1,6 @@
 /* compiler/check/check.c: the checker's entry point; runs the passes over a module graph in order. */
 #include "compiler/check/fallthrough.h"
+#include "compiler/check/message_fixes.h"
 #include "compiler/check/order.h"
 #include "compiler/check/body.h"
 #include "compiler/check/constants.h"
@@ -7,6 +8,7 @@
 #include "compiler/check/mutate.h"
 #include "compiler/check/names.h"
 #include "compiler/check/returns.h"
+#include "compiler/check/shadow.h"
 #include "compiler/check/program.h"
 
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
@@ -46,6 +48,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_constants(program, index);
     program->stage = MS_STAGE_SIDE;
     ms_check_mutation(program, index, graph->modules[index].source);
+    ms_check_shadowing(program, index);
     ms_check_names(program, index);
     ms_check_returns(program, index);
     program->stage = MS_STAGE_DECLARATIONS;
@@ -63,4 +66,5 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     }
   }
   ms_check_order_diagnostics(program);
+  ms_check_attach_message_fixes(program);
 }
