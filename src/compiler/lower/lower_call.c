@@ -140,6 +140,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     return fn_try_var_slot(fn, place, out);
   }
   MirValue element;
+  if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
+    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    return element;
+  }
   if (fn_list_element_addr(fn, place, &element)) {
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE};
     return element;
@@ -290,12 +294,14 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
   }
   /* A `var` argument is the variable itself, taken into its slot once every other argument has run: a call
    * among them that changes the variable is seen by the callee. */
-  for (uint32_t step = 0; step < 2 * call->arg_count; step++) {
+  for (uint32_t step = 0; step < 3 * call->arg_count; step++) {
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
                          (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
-    if (by_slot != (step >= call->arg_count)) {
+    /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
+    const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
+    if (phase != step / call->arg_count) {
       continue;
     }
     if (by_slot) {
