@@ -318,7 +318,7 @@ bool lower_lambda_bodies(Lower *cx, bool *progressed) {
     if (!cx->lambdas.ptr[index].lowered) {
       *progressed = true;
       if (!lower_lambda_body(cx, (uint32_t)index)) {
-        return lower_fail(cx, "  while lowering a lambda");
+        return lower_fail(cx, "  while lowering a lambda at %u:%u", cx->lambdas.ptr[index].expr->pos.line, cx->lambdas.ptr[index].expr->pos.column);
       }
     }
   }

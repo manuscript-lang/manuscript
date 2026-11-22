@@ -241,8 +241,17 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
     return result;
   }
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
+  const MsTyTable *table = &fn->cx->program->types;
+  MirValue native;
+  if ((ms_ty_kind(table, receiver) == MS_TY_NATIVE || ms_builtin_name(ms_ty_builtin(table, receiver))[0] != 0) &&
+      fn_native_on(fn, callee->u.member.left, receiver, operation, call->arg_count, args, ret, &native)) {
+    return native; /* the instance's receiver is a standard type: its own native */
+  }
+  if (call->arg_count == 2 && ret == MIR_BOOL && ms_span_is_text(operation, "equals")) {
+    return fn_compare_values(fn, MS_B_EQ, args[0], args[1]); /* `Equal.equals` of built-in data is `==` */
+  }
   if (call->arg_count != 1 || ret != mir_b_ty(&fn->b, args[0])) {
-    (void)fn_fail(fn, "the operation `%.*s` on a bound value is not lowered yet", (int)operation.len, (const char *)operation.ptr);
+    (void)fn_fail(fn, "the operation `%.*s` on a bound value is not lowered yet (receiver kind %d, builtin %d)", (int)operation.len, (const char *)operation.ptr, (int)ms_ty_kind(table, receiver), (int)ms_ty_builtin(table, receiver));
     return MIR_NONE;
   }
   return mir_needs_drop(fn->cx->module, ret) ? fn_emit(fn, MOP_Clone, args, 1, (MirImm){0}, ret) : args[0];
@@ -266,17 +275,7 @@ static MirValue construct_case(LowerFn *fn, const MsCall *call, const MirValue *
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = call->callee.index};
-  const MirCaseDef *def = &fn->cx->module->alts.ptr[data->id].cases[call->callee.index];
-  MirValue payload[32];
-  for (uint32_t at = 0; at < call->arg_count && at < 32; at++) {
-    payload[at] = args[at];
-    /* A payload typed `T?` takes a plain `T` as a present value. */
-    const MirTyData *field = at < def->nfields ? mir_ty_data(fn->cx->module, def->fields[at].ty) : NULL;
-    if (field != NULL && field->kind == MK_OPT && mir_b_ty(&fn->b, args[at]) == field->elem) {
-      payload[at] = fn_emit(fn, MOP_OptSome, &args[at], 1, (MirImm){0}, def->fields[at].ty);
-    }
-  }
-  return fn_emit(fn, MOP_AltNew, payload, call->arg_count, imm, ty);
+  return fn_emit(fn, MOP_AltNew, args, call->arg_count, imm, ty);
 }
 
 /* `Type(fields...)`: the record built from its arguments in field order. */

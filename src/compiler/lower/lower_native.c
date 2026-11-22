@@ -343,6 +343,38 @@ MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, 
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
 
+bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
+                  MirTy ret, MirValue *out) {
+  const MsTyTable *types = &fn->cx->program->types;
+  /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
+  const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, owner));
+  const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
+                                                   : ms_names_span(fn->cx->program->names, ms_ty_row(types, owner)->name);
+  const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
+  const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
+                                    : runtime_name(fn, owner, operation);
+  const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  if (sig == NULL) {
+    return false;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
+    *out = list_get(fn, args[0], args[1], ret);
+    return true;
+  }
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  if (argc <= NS_MAX_PARAMS && signature_arguments(fn, sig, args, argc, ret, wanted, &count)) {
+    if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
+      *out = call_changing(fn, place, name, wanted, count, ret);
+    } else {
+      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    }
+    return true;
+  }
+  *out = fn_runtime_call(fn, name, args, argc, ret);
+  return true;
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -353,33 +385,26 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   const MsMethodEntry *declared = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
   const MsSpan operation = declared != NULL ? ms_names_span(fn->cx->program->names, declared->source->func.name)
                                             : ms_names_span(fn->cx->program->names, callee->u.member.name);
-  if (generic_receiver(fn, call)) {
-    return bound_native(fn, callee, call, args, ret);
-  }
-  const MsTyTable *types = &fn->cx->program->types;
-  /* A standard type with no builtin id (an extern type such as StringBuilder) is named by its declaration. */
-  const char *builtin_name = ms_builtin_name(ms_ty_builtin(types, call->callee.owner));
-  const MsSpan type_name = builtin_name[0] != '\0' ? ms_span_of_text(builtin_name)
-                                                   : ms_names_span(fn->cx->program->names, ms_ty_row(types, call->callee.owner)->name);
-  const MsNativeSig *named = ms_native_sig_find_method(type_name, operation);
-  const MsName name = named != NULL ? mir_name(fn->cx->module, ms_span_of_text(named->name))
-                                    : runtime_name(fn, call->callee.owner, operation);
-  const MsNativeSig *sig = named != NULL ? named : ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
-  if (sig != NULL && sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") &&
-      call->arg_count == 2) {
-    return list_get(fn, args[0], args[1], ret);
-  }
-  MirValue wanted[NS_MAX_PARAMS];
-  uint32_t count = 0;
-  if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
-      signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
-    const MsExpr *place = callee->u.member.left;
-    if (mutates_receiver(sig, ret) && fn_place_changeable(fn, place)) {
-      return call_changing(fn, place, name, wanted, count, ret);
+  MsTy owner = call->callee.owner;
+  const bool via_bound = generic_receiver(fn, call);
+  if (via_bound) {
+    /* The instance knows the receiver: a standard type's operation is that type's own native. */
+    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+    const MsTyTable *table = &fn->cx->program->types;
+    if (ms_ty_kind(table, receiver) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(table, receiver))[0] == 0) {
+      return bound_native(fn, callee, call, args, ret);
     }
-    return call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+    owner = receiver;
   }
-  return fn_runtime_call(fn, name, args, call->arg_count, ret);
+  MirValue result;
+  if (fn_native_on(fn, callee->u.member.left, owner, operation, call->arg_count, args, ret, &result)) {
+    return result;
+  }
+  if (standard_form(fn, args, call->arg_count, ret, &result) && via_bound) {
+    return result; /* the operation every value has, with no runtime function of its own */
+  }
+  return fn_runtime_call(fn, runtime_name(fn, owner, operation), args, call->arg_count, ret);
 }
 
 /* The operation word of a binary operator on a value object: its runtime function is `msstd_<type>_<word>`, the
