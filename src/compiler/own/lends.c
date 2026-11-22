@@ -1,0 +1,292 @@
+/* compiler/own/lends.c: see lends.h. */
+#include "compiler/own/lends.h"
+
+#include "compiler/check/properties.h"
+#include "compiler/own/class.h"
+#include "compiler/syntax/walk.h"
+
+typedef struct Returns {
+  const MsExpr *values[16];
+  uint32_t len;
+  bool overflow;
+} Returns;
+
+static void collect_return(void *ctx, const MsStmt *stmt) {
+  Returns *returns = ctx;
+  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
+    return;
+  }
+  if (returns->len == MS_COUNT_OF(returns->values)) {
+    returns->overflow = true;
+    return;
+  }
+  returns->values[returns->len++] = stmt->u.expr;
+}
+
+/* What a returned expression carries: the positions it lends, or that it is something the callable owns. */
+typedef struct Lend {
+  uint32_t mask;
+  bool owned;
+} Lend;
+
+/* A local that views another expression: an arm or `if` binding of a scrutinee, or `x := place`. */
+typedef struct View {
+  uint32_t local;
+  const MsExpr *source;
+} View;
+
+typedef struct Pass {
+  View views[48];
+  uint32_t view_count;
+  uint32_t depth;
+  MsCheckProgram *program;
+  MsClassifier *classes;
+  const MsFacts *facts;
+  MsNode self_node;
+  uint32_t self_module;
+  bool method;
+  MsName self_name;
+} Pass;
+
+static Lend join(Lend left, Lend right) {
+  return (Lend){.mask = left.mask | right.mask, .owned = left.owned || right.owned};
+}
+
+static bool owns_memory(const Pass *pass, const MsExpr *expr) {
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  return ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
+}
+
+static const Lend NEUTRAL = {0, false};
+static const Lend OWNED = {0, true};
+
+static Lend classify(Pass *pass, const MsExpr *expr);
+
+/* The position of a name that is the receiver or a parameter, or -1. */
+static int position_of(const Pass *pass, const MsExpr *name) {
+  const MsRef *ref = ms_facts_ref(pass->facts, name->id);
+  if (ref == NULL || ref->kind != MS_REF_PARAM) {
+    return -1;
+  }
+  if (pass->method && name->u.sym == pass->self_name) {
+    return 0;
+  }
+  const uint32_t position = ref->local + (pass->method ? 1u : 0u);
+  return position < 31 ? (int)position : -1;
+}
+
+static void add_view(Pass *pass, uint32_t local, const MsExpr *source) {
+  if (pass->view_count < MS_COUNT_OF(pass->views)) {
+    pass->views[pass->view_count++] = (View){local, source};
+  }
+}
+
+static void view_stmt(void *ctx, const MsStmt *stmt) {
+  Pass *pass = ctx;
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME) {
+    const MsRef *ref = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
+    if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      add_view(pass, ref->local, stmt->u.branch.cond);
+    }
+  } else if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
+             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
+    const MsRef *ref = ms_facts_ref(pass->facts, stmt->u.bind.pattern->id);
+    if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      add_view(pass, ref->local, stmt->u.bind.value);
+    }
+  }
+}
+
+static void view_expr(void *ctx, const MsExpr *expr) {
+  Pass *pass = ctx;
+  for (uint32_t arm = 0; expr->kind == MS_E_MATCH && arm < expr->u.match.arms.len; arm++) {
+    const MsArm *one = expr->u.match.arms.ptr[arm];
+    const MsRef *bound = ms_facts_ref(pass->facts, one->id);
+    for (uint32_t at = 0; bound != NULL && bound->kind == MS_REF_CASE && at < one->bindings.len; at++) {
+      add_view(pass, bound->local + at, expr->u.match.scrutinee);
+    }
+  }
+}
+
+static Lend classify_place(Pass *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (root->kind != MS_E_NAME) {
+    return OWNED;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, root->id);
+  if (ref != NULL && ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL) {
+    return NEUTRAL; /* a constant or a case such as `none` owns nothing */
+  }
+  if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+    for (uint32_t index = 0; index < pass->view_count; index++) {
+      if (pass->views[index].local == ref->local && pass->depth < 8) {
+        pass->depth++;
+        const Lend lend = classify(pass, pass->views[index].source);
+        pass->depth--;
+        return lend;
+      }
+    }
+    return OWNED;
+  }
+  const int position = position_of(pass, root);
+  return position < 0 ? OWNED : (Lend){.mask = UINT32_C(1) << position, .owned = false};
+}
+
+static Lend classify_call(Pass *pass, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  if (fact == NULL) {
+    return OWNED;
+  }
+  const MsRefKind kind = fact->callee.kind;
+  if (kind == MS_REF_CASE) {
+    const MsTyTable *types = &pass->program->types;
+    const MsTy made = ms_facts_type(pass->facts, call->id);
+    if (made == MS_TY_NONE || (!ms_ty_is(types, made, MS_BUILTIN_Optional) && !ms_ty_is(types, made, MS_BUILTIN_Result))) {
+      return OWNED; /* a case of a user enum stores its payload: new storage */
+    }
+  }
+  const MsFunc *func = kind == MS_REF_CASE ? NULL : ms_own_find_func(pass->program, &fact->callee);
+  if (kind != MS_REF_CASE && kind != MS_REF_FUNCTION && kind != MS_REF_METHOD && kind != MS_REF_NATIVE) {
+    return OWNED;
+  }
+  if (func != NULL && func->result_moves) {
+    return OWNED;
+  }
+  const MsExpr *callee = call->u.call.callee;
+  const bool receiver = callee->kind == MS_E_MEMBER && kind != MS_REF_FUNCTION && kind != MS_REF_CASE;
+  Lend out = NEUTRAL;
+  uint32_t position = 0;
+  if (receiver) {
+    if (kind == MS_REF_CASE || ms_own_call_lends(pass->program, fact, 0)) {
+      out = join(out, classify(pass, callee->u.member.left));
+    }
+    position = 1;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++, position++) {
+    if (kind == MS_REF_CASE || ms_own_call_lends(pass->program, fact, position)) {
+      out = join(out, classify(pass, call->u.call.args.ptr[index].value));
+    }
+  }
+  return out;
+}
+
+static Lend classify(Pass *pass, const MsExpr *expr) {
+  if (!owns_memory(pass, expr)) {
+    return NEUTRAL;
+  }
+  if (expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER) {
+    return classify_place(pass, expr);
+  }
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) {
+    return classify(pass, expr->u.bin.left);
+  }
+  return expr->kind == MS_E_CALL ? classify_call(pass, expr) : OWNED;
+}
+
+static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
+  pass->view_count = 0;
+  pass->depth = 0;
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = view_stmt, .expr = view_expr}, params, body);
+  Returns returns = {.len = 0};
+  const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return};
+  ms_walk_block(&visitor, body);
+  if (returns.overflow || returns.len == 0) {
+    return 0;
+  }
+  Lend all = NEUTRAL;
+  for (uint32_t index = 0; index < returns.len; index++) {
+    all = join(all, classify(pass, returns.values[index]));
+  }
+  return all.mask | (all.owned || all.mask == 0 ? 0 : MS_LENDS_PURE);
+}
+
+static bool store(MsFacts *facts, MsNode node, uint32_t mask) {
+  const bool changed = node < facts->node_count && facts->lends[node] != mask;
+  if (node < facts->node_count) {
+    facts->lends[node] = mask;
+  }
+  return changed;
+}
+
+static bool round_of(MsCheckProgram *program, MsClassifier *classes) {
+  bool changed = false;
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    MsFacts *facts = &program->modules.ptr[module].facts;
+    const MsModule *tree = program->modules.ptr[module].tree;
+    Pass pass = {.program = program, .classes = classes, .facts = facts, .self_module = module,
+                 .self_name = ms_names_intern(program->names, ms_span_of_text("self"))};
+    for (uint32_t index = 0; facts->lends != NULL && index < tree->ndecls; index++) {
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN) {
+        pass.method = false;
+        pass.self_node = decl->id;
+        changed |= store(facts, decl->id, mask_of(&pass, decl->u.fn.params, decl->u.fn.body));
+      }
+      for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
+        const MsMethod *method = decl->u.impl.methods.ptr[at];
+        pass.method = true;
+        pass.self_node = method->id;
+        changed |= store(facts, method->id, mask_of(&pass, method->func.params, method->func.body));
+      }
+    }
+  }
+  return changed;
+}
+
+void ms_own_lends(MsCheckProgram *program) {
+  MsClassifier classes = ms_class_new(program);
+  for (int round = 0; round < 8 && round_of(program, &classes); round++) {
+  }
+}
+
+uint32_t ms_own_lends_mask(const MsCheckProgram *program, uint32_t module, MsNode node) {
+  if (module >= program->modules.len) {
+    return 0;
+  }
+  const MsFacts *facts = &program->modules.ptr[module].facts;
+  return facts->lends != NULL && node < facts->node_count ? facts->lends[node] : 0;
+}
+
+bool ms_own_call_lends(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
+  const MsRefKind kind = call->callee.kind;
+  if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
+    return kind == MS_REF_NATIVE || kind == MS_REF_OPERATION || kind == MS_REF_CASE;
+  }
+  const MsFunc *func = ms_own_find_func(program, &call->callee);
+  if (func == NULL || func->bodiless || func->external) {
+    return true; /* the runtime provides it, and its result may be any part of its arguments */
+  }
+  return position < 31 && (ms_own_lends_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
+}
+
+bool ms_own_lends_pure(const MsCheckProgram *program, uint32_t module, MsNode node) {
+  return (ms_own_lends_mask(program, module, node) & MS_LENDS_PURE) != 0;
+}
+
+const MsFunc *ms_own_find_func(const MsCheckProgram *program, const MsRef *ref) {
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *entry = &program->methods.ptr[index];
+    if (entry->module == ref->decl.module && entry->source->id == ref->decl.node) {
+      return &entry->source->func;
+    }
+  }
+  const MsModule *tree = program->modules.ptr[ref->decl.module].tree;
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    const MsDecl *decl = tree->decls[index];
+    if (decl->kind == MS_D_FN && decl->id == ref->decl.node) {
+      return &decl->u.fn;
+    }
+    if (decl->kind != MS_D_INTERFACE) {
+      continue;
+    }
+    for (uint32_t at = 0; at < decl->u.iface.methods.len; at++) {
+      if (decl->u.iface.methods.ptr[at]->id == ref->decl.node) {
+        return &decl->u.iface.methods.ptr[at]->func;
+      }
+    }
+  }
+  return NULL;
+}
