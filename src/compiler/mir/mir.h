@@ -239,6 +239,7 @@ MS_LIST_DEFINE(MirNamedValueList, mir_named_value_list, MirNamedValue)
 
 typedef struct MirFunc {
   MsName name;
+  MsName display; /* what a fault trace calls the function, when that is not `name`: MS_NAME_EMPTY otherwise */
   MirParam *params; /* in the module arena */
   uint32_t nparams;
   MirTy ret;

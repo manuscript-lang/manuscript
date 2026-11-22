@@ -2,6 +2,7 @@
 #include "tooling/views.h"
 #include "tooling/views_private.h"
 
+#include "base/message.h"
 #include "compiler/syntax/diag_json.h"
 
 /* ---- small helpers ---- */

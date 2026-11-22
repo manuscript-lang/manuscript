@@ -20,6 +20,13 @@ enum { MAX_INPUTS = 256 };
 
 static MsString error_text = {.low_bits = 0, .tagged = UINT64_C(1) << MS_STRING_TAG_SHIFT}; /* what `ms_pipeline_link` last reported */
 
+/* The build's scratch files go beside the output, never in the working directory: a `--watch` run watches the directory
+ * of its input, and files appearing there would rerun it forever. */
+static MsSpan scratch_parent(MsSpan output) {
+  const MsSpan parent = ms_path_parent(output);
+  return parent.len == 0 ? ms_span_of_text(".") : parent;
+}
+
 static bool fail(MsSpan *error, const char *message, MsSpan detail) {
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, message);
@@ -97,8 +104,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   const MsSpan runtime = setting("MS_RUNTIME", request->static_libc ? MS_BUILD_RUNTIME_STATIC : MS_BUILD_RUNTIME, &runtime_storage);
   MsSpan inputs[MAX_INPUTS];
   const size_t count = ok ? collect_inputs(request, runtime, inputs) : 0;
-  if (ok && !ms_dir_make_temp(ms_span_of_text("."), ms_span_of_text(".ms-build-"), &scratch)) {
-    ok = fail(error, "cannot make a scratch directory in the working directory", ms_span_of(NULL, 0));
+  if (ok && !ms_dir_make_temp(scratch_parent(request->output), ms_span_of_text(".ms-build-"), &scratch)) {
+    ok = fail(error, "cannot make a scratch directory beside the output", ms_span_of(NULL, 0));
   }
   MsStrBuild object = ms_strbuild_new();
   if (ok) {

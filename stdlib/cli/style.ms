@@ -217,7 +217,7 @@ export fn visible_width(text: String) Int!:
 	return strip_ansi(text).display_width()
 
 fn char_width(c: String) Int:
-	return c.display_width().get_or(1)
+	return c.display_width().clone().get_or(1)
 
 // The index just past the escape sequence that starts at `at` in `cs`, or `at` when
 // what follows the escape character is not a complete sequence. The grammar is the one
@@ -282,7 +282,7 @@ export fn wrap_text(text: String, width: Int) List[String]:
 				end := escape_end(cs, at)
 
 				if end > at:
-					sequence := cs.slice(at, end).get_or([]).join("")
+					sequence := cs.slice(at, end).clone().get_or([]).join("")
 					row = f"{row}{sequence}"
 
 					if sequence == f"{esc}[0m" or sequence == f"{esc}[m":
