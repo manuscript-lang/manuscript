@@ -125,6 +125,24 @@ MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_
   return result;
 }
 
+/* Whether the first parameter of `sig` is the receiver the native writes in place (a `var` list, string or
+ * map), rather than the result slot. */
+static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
+  const uint8_t kind = sig->count > 0 ? sig->kinds[0] : NS_VALUE;
+  const bool mutable_kind = kind == NS_VEC_MUT || kind == NS_STR_MUT || kind == NS_MAP_MUT;
+  return mutable_kind && !(ret != MIR_VOID && sig->count == 1);
+}
+
+/* The local a call's receiver names, or NULL when the receiver is not a plain local. */
+static const MsRef *receiver_local(LowerFn *fn, const MsExpr *callee) {
+  const MsExpr *left = callee->u.member.left;
+  if (left == NULL || left->kind != MS_E_NAME) {
+    return NULL;
+  }
+  const MsRef *ref = ms_facts_ref(fn->facts, left->id);
+  return ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0 ? ref : NULL;
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
@@ -142,7 +160,21 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   uint32_t count = 0;
   if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
       signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
-    return fn_runtime_call(fn, name, wanted, count, ret);
+    const MsRef *local = mutates_receiver(sig, ret) ? receiver_local(fn, callee) : NULL;
+    if (local == NULL) {
+      return fn_runtime_call(fn, name, wanted, count, ret);
+    }
+    /* The native writes the receiver in place: it runs on a stack copy that becomes the local's new value. */
+    const MirTy type = mir_b_ty(&fn->b, args[0]);
+    const MirImm of_type = {.tag = MI_TY, .a = type};
+    const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    const MirValue store[2] = {slot, args[0]};
+    (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+    wanted[0] = slot;
+    const MirValue result = fn_runtime_call(fn, name, wanted, count, ret);
+    const MirValue updated = mir_b_emit(&fn->b, MOP_Load, &slot, 1, of_type, type);
+    mir_b_def_var(&fn->b, fn->vars[local->local] - 1, updated);
+    return result;
   }
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
 }
