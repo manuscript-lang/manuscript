@@ -258,9 +258,18 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   MirVar owner = 0;
-  if (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field)) &&
-      fn_owned_local(fn, expr->u.member.left, &owner)) {
+  const bool moves = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
+  if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
+  }
+  if (moves && expr->u.member.left->kind == MS_E_CALL && fn_fresh_owner(fn, base)) {
+    /* The field leaves a temporary that dies with the statement: the rest of the record is released with it. */
+    const MirTy field_ty = mir_b_ty(&fn->b, field);
+    const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &base, 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(&fn->b, MOP_TypeRelease, &base, 1, mask, MIR_NONE);
+    return taken;
   }
   return field;
 }
