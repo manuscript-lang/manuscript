@@ -15,6 +15,7 @@ endif()
 set(totals "")
 if(NOT ONLY STREQUAL "commands")
 # run, check and test skip programs tagged `aliasing`; parse replays every fixture (same split as the Rust gate).
+if(NOT RUNNER STREQUAL "ms")
 foreach(pass IN ITEMS "run,check,test;--exclude-tag;aliasing" "parse")
   list(GET pass 0 phases)
   list(REMOVE_AT pass 0)
@@ -33,6 +34,27 @@ foreach(pass IN ITEMS "run,check,test;--exclude-tag;aliasing" "parse")
     list(APPEND totals "${counted}")
   endforeach()
 endforeach()
+
+endif()
+# -DRUNNER=ms replays the corpus with tools/conform-run.ms (on the oracle ms) instead of the frozen
+# Rust runner; both must give the same counts before the Rust runner is dropped.
+if(RUNNER STREQUAL "ms" AND NOT ONLY STREQUAL "commands")
+  set(totals "")
+  get_filename_component(runner_dir "${MS_CONFORM}" DIRECTORY)
+  foreach(phase IN ITEMS parse check run test)
+    execute_process(
+      COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS_C}" "${runner_dir}/ms${CMAKE_EXECUTABLE_SUFFIX}"
+        run tools/conform-run.ms -- --phase ${phase} ${EXTRA}
+      WORKING_DIRECTORY "${SOURCE_DIR}"
+      OUTPUT_VARIABLE runner_output
+      ERROR_VARIABLE runner_errors)
+    string(REGEX MATCH "${phase}: [0-9]+/[0-9]+" counted "${runner_output}")
+    if(NOT counted)
+      message(FATAL_ERROR "conform-c: no ${phase} counts from conform-run.ms\n${runner_errors}\n${runner_output}")
+    endif()
+    list(APPEND totals "${counted}")
+  endforeach()
+endif()
 
 message("conform-c results")
 foreach(counted IN LISTS totals)

@@ -166,6 +166,16 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   } else {
     /* A temporary: the callee changes it and what is left is dropped after the call. */
     owned = fn_expr(fn, place, LW_MOVE);
+    /* A resource: it waits in a closing slot the callee changes in place, and the slot closes what is left. */
+    const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, place->id), fn->subst.vars,
+                                     fn->subst.args, fn->subst.count);
+    if (owned != MIR_NONE && fn->temps && checked != MS_TY_NONE) {
+      const MirValue kept = fn_pending_own(fn, checked, owned);
+      if (kept != MIR_NONE) {
+        *out = (VarSlot){NULL, kept, mir_b_ty(&fn->b, owned), MIR_NONE, true, MIR_NONE, MIR_NONE};
+        return kept;
+      }
+    }
     if (owned != MIR_NONE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &owned, 1, (MirImm){0}, MIR_NONE);
     }

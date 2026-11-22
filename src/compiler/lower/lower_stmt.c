@@ -19,12 +19,28 @@ static void disown(LowerFn *fn, MirValue value) {
 
 /* Binds the names of `pattern` to the parts of `value`: a record pattern reads fields, a list pattern reads
  * elements. The parts are borrowed from `value`, which the binding's source keeps alive. */
-static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned, const MirVar *owner) {
+static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned, const MirVar *owner,
+                       bool reassignable) {
   const MirModule *module = fn->cx->module;
   if (pattern->kind == MS_P_NAME) {
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
     if (ref == NULL || ref->kind != MS_REF_LOCAL) {
       return fn_fail(fn, "a bound name has no local");
+    }
+    if (reassignable) { /* `var` takes its own copy of the part, which the name then owns and may reassign */
+      const MirTy ty = mir_b_ty(&fn->b, value);
+      if (!mir_needs_drop(module, ty)) {
+        mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), value);
+        return !fn->failed;
+      }
+      if (ref->local >= fn->nvars) {
+        return fn_fail(fn, "a local binding is outside the function's locals");
+      }
+      const MirValue copy = fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty);
+      fn->vars[ref->local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
+      disown(fn, copy);
+      mir_b_def_var(&fn->b, fn->vars[ref->local] - 1, copy);
+      return fn_scope_own_var(fn, fn->vars[ref->local] - 1) && !fn->failed;
     }
     mir_b_def_var(&fn->b, fn_local(fn, ref->local, mir_b_ty(&fn->b, value)), value);
     return !fn->failed;
@@ -37,7 +53,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
       const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
-      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false, NULL)) {
+      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false, NULL, reassignable)) {
         return false;
       }
     }
@@ -71,7 +87,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
         fn_scope_var_moved(fn, *owner, found);
       }
     }
-    if (!bind_parts(fn, field->pattern, part, false, NULL)) {
+    if (!bind_parts(fn, field->pattern, part, false, NULL, reassignable)) {
       return false;
     }
   }
@@ -99,14 +115,12 @@ static bool call_reads_temporary(const MsExpr *call) {
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
-    if (stmt->u.bind.is_mutable) {
-      return fn_fail(fn, "a `var` destructuring is not lowered yet");
-    }
     const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
     MirVar owner = 0;
-    const bool from_var = source != MIR_NONE && fn_owned_local(fn, stmt->u.bind.value, &owner);
+    const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
     return source != MIR_NONE &&
-           bind_parts(fn, pattern, source, from_var || fn_fresh_owner(fn, source), from_var ? &owner : NULL);
+           bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
+                      from_var ? &owner : NULL, stmt->u.bind.is_mutable);
   }
   /* A name bound to another name borrows it unless the checker marked the read a move (the source is assigned while
    * the binding lives); anything else, and every `var`, is a new owner. */
@@ -164,6 +178,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   } else if (fn->local_owns != NULL && local < fn->nvars && borrow && !fresh && !stmt->u.bind.is_mutable &&
              mir_needs_drop(fn->cx->module, ty)) {
     fn->local_owns[local] = 2; /* a view of another owner's value: moving it out copies it */
+  }
+  if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
+    /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it
+     * as a block parameter, which would hide the owner from a later move. */
+    fn->vars[local] = mir_b_declare_single(&fn->b, ty, MM_BORROW) + 1;
   }
   if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
     /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it

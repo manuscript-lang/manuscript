@@ -137,14 +137,17 @@ static void scan_leave(void *ctx, const MsExpr *expr) {
 }
 
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
-  const MsExpr *value = stmt->kind == MS_S_CALL ? stmt->u.expr : stmt->kind == MS_S_BIND ? stmt->u.bind.value : NULL;
+  const MsExpr *value = stmt->kind == MS_S_CALL || stmt->kind == MS_S_RETURN ? stmt->u.expr
+                        : stmt->kind == MS_S_BIND                                ? stmt->u.bind.value
+                                                                                 : NULL;
   if (value == NULL || fn->closing == NULL) {
     return false;
   }
-  if (stmt->kind == MS_S_BIND) {
-    /* What the statement binds outlives it, so only a value with nothing to own can leave. */
-    const MsTy bound = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, stmt->u.bind.pattern->id),
-                                   fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (stmt->kind == MS_S_BIND || stmt->kind == MS_S_RETURN) {
+    /* What the statement binds or returns outlives it, so only a value with nothing to own can leave. */
+    const MsNode node = stmt->kind == MS_S_BIND ? stmt->u.bind.pattern->id : value->id;
+    const MsTy bound = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, node), fn->subst.vars,
+                                   fn->subst.args, fn->subst.count);
     if (bound == MS_TY_NONE || mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound)) {
       return false;
     }
