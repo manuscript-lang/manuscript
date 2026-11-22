@@ -58,8 +58,10 @@ static MirTy lower_function(Lower *cx, MsTy ty) {
   MirTy *tys = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);
   uint64_t owned = 0;
   for (size_t index = 0; index < count; index++) {
-    tys[index] = lower_type(cx, NULL, params[index].ty);
-    owned |= (params[index].flags & MS_PARAM_MOVE) != 0 && index < 64 ? UINT64_C(1) << index : 0;
+    const bool by_address = (params[index].flags & MS_PARAM_VAR) != 0 && index < 32;
+    tys[index] = by_address ? MIR_PTR : lower_type(cx, NULL, params[index].ty);
+    owned |= (params[index].flags & MS_PARAM_MOVE) != 0 && index < 32 ? UINT64_C(1) << index : 0;
+    owned |= by_address ? UINT64_C(1) << (MIR_FN_VAR_SHIFT + index) : 0;
   }
   return mir_ty_fn(cx->module, tys, (uint32_t)count, lower_type(cx, NULL, ms_ty_result(table, ty)), owned);
 }

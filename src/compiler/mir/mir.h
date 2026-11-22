@@ -437,7 +437,14 @@ static inline const MirTyData *mir_ty_data(const MirModule *module, MirTy type) 
 bool mir_needs_drop(const MirModule *module, MirTy type);
 
 static inline bool mir_owns(uint64_t owned, uint32_t index) {
-  return index < 64 && ((owned >> index) & 1) != 0;
+  return index < 32 && ((owned >> index) & 1) != 0;
+}
+
+/* A function type's `var` parameters are the bits above its owned ones: such an argument is passed as the address
+ * of a slot. */
+enum { MIR_FN_VAR_SHIFT = 32 };
+static inline bool mir_param_is_var(uint64_t owned, uint32_t index) {
+  return index < 32 && ((owned >> (MIR_FN_VAR_SHIFT + index)) & 1) != 0;
 }
 
 /* ---- declarations; each add returns the new id and indexes the name ---- */

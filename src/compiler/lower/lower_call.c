@@ -81,14 +81,8 @@ bool fn_is_text_literal(const MsExpr *expr) {
 }
 
 /* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
-typedef struct VarSlot {
-  const MsExpr *place;
-  MirValue slot;
-  MirTy ty;
-} VarSlot;
-
 /* Moves the value of `place` into a new slot and returns the slot's address. */
-static MirValue var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MirValue owned;
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || place->kind == MS_E_INDEX;
   if (is_place) {
@@ -115,7 +109,7 @@ static MirValue var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
 }
 
 /* After the call: each slot's value goes back into the place it came from. */
-static bool var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
+bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
     const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
     const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
@@ -144,7 +138,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     if (arg->source == MS_ARG_WRITTEN && slots != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) &&
         *nslots < 16) {
       const MsExpr *place = written_arg(expr, arg->node.node);
-      out[index] = place != NULL ? var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
+      out[index] = place != NULL ? fn_var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
     } else if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
@@ -410,7 +404,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   }
   const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
-  return var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
+  return fn_var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
 }
 
 /* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */
