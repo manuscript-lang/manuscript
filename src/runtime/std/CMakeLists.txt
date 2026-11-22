@@ -14,7 +14,7 @@ target_link_libraries(ms_std_text PUBLIC ms_base ms_values pcre2)
 
 add_executable(shape_unit shape_unit.c)
 ms_target_defaults(shape_unit)
-target_link_libraries(shape_unit PRIVATE "$<LINK_GROUP:RESCAN,ms_std_text,ms_values,ms_core,ms_sys>")
+target_link_libraries(shape_unit PRIVATE "$<LINK_GROUP:RESCAN,ms_std_text,ms_std_data,ms_std_compress,zlib,ms_values,ms_core,ms_sys>" m)
 add_test(NAME std_shape COMMAND shape_unit)
 
 # @std/data: json (scanner, document handle, tree builder, writer), checksum (zlib), encoding, html, url and archive.
@@ -24,6 +24,7 @@ add_library(ms_std_data STATIC
   json_scan.c
   json_tree.c
   json_write.c
+  shape_json_write.c
   checksum.c
   encoding.c
   html.c
@@ -36,7 +37,7 @@ add_library(ms_std_data STATIC
   archive_tar.c
   archive_zip.c)
 ms_target_defaults(ms_std_data)
-target_link_libraries(ms_std_data PUBLIC ms_base ms_values ms_std_compress zlib)
+target_link_libraries(ms_std_data PUBLIC ms_base ms_values ms_std_text ms_std_compress zlib)
 
 # @std/time: durations, instants, clocks, RFC 3339 text, calendar fields, the host zone setting and the zone database
 # (tzdata.bin, built by tools/tzdata/pack.py).
