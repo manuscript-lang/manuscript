@@ -25,8 +25,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(mimalloc-static PUBLIC rt)
 endif()
 
-add_library(llhttp STATIC llhttp/src/api.c llhttp/src/http.c llhttp/src/llhttp.c)
-target_include_directories(llhttp SYSTEM PUBLIC llhttp/include)
+# llhttp builds with its own CMakeLists.txt: the static library only. Its configure step writes libllhttp.pc into
+# the source tree; that file is ignored by git.
+set(LLHTTP_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(LLHTTP_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+add_subdirectory(llhttp EXCLUDE_FROM_ALL)
+set_target_properties(llhttp_static PROPERTIES SYSTEM ON)
+add_library(llhttp ALIAS llhttp_static)
 
 # PCRE2 builds with its own CMakeLists.txt: the 8-bit static library with Unicode properties and no JIT, no
 # pcre2grep or tests. Consumers define the code unit width themselves, which the target also exports.

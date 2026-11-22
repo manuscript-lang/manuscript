@@ -4,6 +4,7 @@
  * natives (the text form of a value, `repr`, JSON) walk the value through that table. */
 #include "abi/shape.h"
 #include "compiler/mir/mir_data_internal.h"
+#include "compiler/mir/mir_json_tree.h"
 
 MS_LIST_DEFINE(ShapeList, shape_list, MsShape)
 MS_LIST_DEFINE(MemberList, member_list, MsShapeMember)
@@ -149,6 +150,9 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   const bool boxed = mir_boxed_block_size(layouts, ty, &block_size);
   const uint32_t *offsets = alt_offsets(build, ty, boxed);
   shape->kind = MS_SHAPE_ALTERNATIVE;
+  if (mir_json_tree_shape(build->module, ty)) {
+    shape->flags |= MS_SHAPE_JSON_TREE;
+  }
   shape->name = add_mir_name(build, def->name);
   shape->extra = 0; /* the tag is the first leaf */
   if (boxed) {
