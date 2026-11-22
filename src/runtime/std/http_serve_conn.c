@@ -114,7 +114,7 @@ void ms_serve_error_bytes(MsStrBuild *out, uint16_t status, const char *message,
 
 /* ---- answering and closing ---- */
 
-static void conn_close(MsServeConn *conn) {
+void ms_serve_conn_close(MsServeConn *conn) {
   if (conn->io.close != NULL) {
     conn->io.close(conn->io.context);
   }
@@ -237,7 +237,7 @@ static const char *check_head(const MsH1Request *head, const MsServeLimits *limi
   return NULL;
 }
 
-static bool admit(MsServeShared *shared) {
+bool ms_serve_admit(MsServeShared *shared) {
   const size_t before = atomic_fetch_add(&shared->admitted, 1);
   if (before < shared->limits.admission) {
     return true;
@@ -260,22 +260,27 @@ static void request_body(void *arg) {
   request->end = request->shared->handler(request->shared->handler_context, request->exchange);
 }
 
-static void request_task(void *arg) {
-  Request *request = arg;
+int ms_serve_call_handler(MsServeShared *shared, MsExchange *exchange) {
+  Request request = {.shared = shared, .exchange = exchange, .end = MS_HANDLER_OK};
   MsFaultText message = {0};
-  const MsGuardStatus guard = ms_guard_call(request_body, request, &message);
-  MsExchange *exchange = request->exchange;
+  const MsGuardStatus guard = ms_guard_call(request_body, &request, &message);
+  int failure = 3;
   if (guard == MS_GUARD_OK) {
-    exchange->failure = request->end == MS_HANDLER_OK ? 0 : 1;
+    failure = request.end == MS_HANDLER_OK ? 0 : 1;
   } else if (guard == MS_GUARD_FAULT) {
-    exchange->failure = 2;
+    failure = 2;
     (void)fwrite("HTTP stream handler fault: ", 1, 27, stderr);
     (void)fwrite(message.bytes, 1, message.length, stderr);
     (void)fputc('\n', stderr);
-  } else {
-    exchange->failure = 3;
   }
   ms_fault_text_free(&message);
+  return failure;
+}
+
+static void request_task(void *arg) {
+  Request *request = arg;
+  MsExchange *exchange = request->exchange;
+  exchange->failure = ms_serve_call_handler(request->shared, exchange);
   ms_exchange_release(exchange);
   ms_free(request);
 }
@@ -316,7 +321,7 @@ static Next serve_request(MsServeConn *conn, MsServeShared *shared, MsH1Request 
     return NEXT_CLOSE;
   }
   const bool keep_alive = ms_h1_scan_keep_alive(&scan, head->minor);
-  if (conn->worker->closing || !admit(shared)) {
+  if (conn->worker->closing || !ms_serve_admit(shared)) {
     ms_h1_request_release(head);
     ms_http_target_release(&target);
     refuse(conn, 503, conn->worker->closing ? "server closed" : "server busy", true);
@@ -353,14 +358,17 @@ static Next handshake(MsServeConn *conn, const MsServeShared *shared) {
   MsString err = ms_string_empty();
   const uint8_t status = shared->secure(shared->secure_context, &conn->io, limit, &conn->h2, &err);
   ms_string_release(&err);
-  return status == MS_STATUS_OK && !conn->h2 ? NEXT_AGAIN
-                                             : NEXT_CLOSE; /* HTTP/2 is served by http_serve_h2.c */
+  return status == MS_STATUS_OK ? NEXT_AGAIN : NEXT_CLOSE;
 }
 
 static void connection_loop(void *arg) {
   MsServeConn *conn = arg;
   MsServeShared *shared = conn->worker->shared;
   Next next = handshake(conn, shared);
+  if (next == NEXT_AGAIN && conn->h2) {
+    ms_serve_h2(conn);
+    return;
+  }
   while (next == NEXT_AGAIN && !conn->worker->closing) {
     MsH1Request head = {0};
     int64_t started = MS_NO_DEADLINE;
@@ -376,7 +384,7 @@ static void connection_task(void *arg) {
   MsFaultText message = {0};
   (void)ms_guard_call(connection_loop, conn, &message);
   ms_fault_text_free(&message);
-  conn_close(conn);
+  ms_serve_conn_close(conn);
   unlink_conn(conn);
   if (conn->io.release != NULL) {
     conn->io.release(conn->io.context);
@@ -407,7 +415,7 @@ void ms_serve_worker_adopt(MsServeWorker *worker, const MsWsTransport *stream, b
   MsTaskStatus status = MS_TASK_OK;
   conn->task = ms_task_spawn(connection_task, conn, MS_SPAWN_DETACHED, 0, &status);
   if (conn->task == 0) {
-    conn_close(conn);
+    ms_serve_conn_close(conn);
     unlink_conn(conn);
     if (conn->io.release != NULL) {
       conn->io.release(conn->io.context);
@@ -419,7 +427,7 @@ void ms_serve_worker_adopt(MsServeWorker *worker, const MsWsTransport *stream, b
 static void close_idle(MsServeWorker *worker) {
   for (MsServeConn *conn = worker->conns; conn != NULL; conn = conn->next) {
     if (conn->idle) {
-      conn_close(conn);
+      ms_serve_conn_close(conn);
     }
   }
 }
@@ -435,7 +443,7 @@ void ms_serve_worker_close(MsServeWorker *worker) {
   }
   for (MsServeConn *conn = worker->conns; conn != NULL; conn = conn->next) {
     ms_task_cancel(conn->task);
-    conn_close(conn);
+    ms_serve_conn_close(conn);
   }
   while (worker->count > 0) {
     ms_task_sleep(GRACE_POLL_NS);

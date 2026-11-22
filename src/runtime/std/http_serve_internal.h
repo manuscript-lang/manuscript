@@ -3,9 +3,12 @@
 #ifndef MS_RUNTIME_STD_HTTP_SERVE_INTERNAL_H
 #define MS_RUNTIME_STD_HTTP_SERVE_INTERNAL_H
 
+#include "runtime/std/h2.h"
 #include "runtime/std/http_serve.h"
 
 typedef struct MsServeConn MsServeConn;
+typedef struct MsH2Conn MsH2Conn;
+typedef struct MsH2Stream MsH2Stream;
 
 struct MsServeConn {
   MsServeWorker *worker;
@@ -58,6 +61,7 @@ struct MsExchange {
   bool closed;
   bool upgraded;
   bool rejected;
+  MsH2Stream *h2;         /* the HTTP/2 stream this exchange answers; NULL on HTTP/1 */
   MsWsSession *websocket; /* after an upgrade; closed when the handler returns */
   int failure;            /* how the handler ended: 0 ok, 1 error, 2 fault, 3 out of time or stopped */
   int64_t deadline;       /* on ms_sched_now's clock; MS_NO_DEADLINE: none */
@@ -84,9 +88,59 @@ void ms_serve_error_bytes(MsStrBuild *out, uint16_t status, const char *message,
 bool ms_serve_body_allowed(int64_t status);
 void ms_serve_date_line(MsStrBuild *out);
 
+/* Runs the handler in a guard on the running task: 0 it returned, 1 it returned an error, 2 it faulted, 3 it
+ * ran out of time or was stopped. */
+int ms_serve_call_handler(MsServeShared *shared, MsExchange *exchange);
+void ms_serve_conn_close(MsServeConn *conn);
+/* Takes one request slot of the serving's admission limit; false when none is free. Return it by decrementing
+ * `admitted`. */
+bool ms_serve_admit(MsServeShared *shared);
+
+/* ---- HTTP/2 (http_serve_h2.c, http_serve_h2_exchange.c) ---- */
+
+struct MsH2Stream {
+  uint32_t id;
+  MsH2Conn *owner;
+  MsExchange *exchange;
+  uint64_t token; /* the handler parks here for body bytes, window and resets */
+  MsBytes inbox;  /* request body bytes from `pos` */
+  size_t pos;
+  bool end_in; /* the peer's side ended */
+  bool reset;  /* the peer reset the stream, or the connection ended */
+  MsTaskHandle task;
+};
+
+struct MsH2Conn {
+  MsServeConn *conn;
+  MsH2 *h2;
+  int refs; /* the pump, the writer and each stream */
+  bool dead;
+  bool writer_done;
+  uint64_t out_token; /* the writer parks here until output is queued */
+  MsH2Stream **streams;
+  size_t count;
+  size_t capacity;
+};
+
+/* Serves an HTTP/2 connection until it ends (the connection task's body). */
+void ms_serve_h2(MsServeConn *conn);
+void ms_h2_wake(uint64_t token);
+/* Queues output for the writer. */
+void ms_h2_flush(MsH2Conn *owner);
+
+uint8_t ms_h2x_read(MsExchange *exchange, size_t want, MsBytes *out, MsString *err);
+uint8_t ms_h2x_write(MsExchange *exchange, MsSpan data, int64_t content_length, MsString *err);
+/* Completes the response of a stream after its handler: whatever the response still lacks. */
+void ms_h2x_finish(MsExchange *exchange, int failure, bool late);
+
 /* ---- exchange (http_serve_exchange.c) ---- */
 
 /* What a parsed request becomes; takes the head's strings and fields. */
+/* An exchange for an HTTP/2 stream from its request head (names lower-case, pseudo-fields first); NULL with
+ * *status and *reason set when the head is refused. */
+MsExchange *ms_exchange_new_h2(MsServeConn *conn, MsH2Stream *stream, const MsList *fields, bool end_stream,
+                               int64_t deadline, uint16_t *status, const char **reason);
+MsExchange *ms_exchange_alloc(MsServeConn *conn, int64_t deadline);
 MsExchange *ms_exchange_new(MsServeConn *conn, MsH1Request *head, MsHttpTarget *target, MsH1Framing framing,
                             bool keep_alive, bool expect_continue, int64_t deadline);
 void ms_exchange_retain(MsExchange *exchange);
@@ -101,6 +155,11 @@ void ms_exchange_close(MsExchange *exchange);
 uint8_t ms_exchange_upgrade(MsExchange *exchange, const MsSpan *origins, size_t origin_count,
                             const MsSpan *subprotocols, size_t subprotocol_count, bool has_max, int64_t max,
                             MsWsSession **out, MsString *err);
+
+/* The HTTP/2 head fields of the response (:status first, handler fields sorted, date, type sniffed from
+ * `first`, length when >= 0). */
+size_t ms_exchange_h2_fields(MsExchange *exchange, MsSpan first, int64_t length, MsH2Field **out);
+void ms_h2_fields_release(MsH2Field *fields, size_t count);
 
 /* Completes the request after its handler ended (`failure`: 0 ok, 1 error, 2 fault, 3 timed out or stopped);
  * writes what the response still lacks and reports whether the connection stays open. */

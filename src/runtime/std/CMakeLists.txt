@@ -100,7 +100,7 @@ if(WIN32)
 endif()
 
 # The WebSocket natives, over the connections of ms_std_sockets.
-add_library(ms_std_ws STATIC ws_abi.c ws_dial.c http_network.c http_serve_conn.c http_serve_exchange.c http_serve_abi.c)
+add_library(ms_std_ws STATIC ws_abi.c ws_dial.c http_network.c http_serve_conn.c http_serve_exchange.c http_serve_h2.c http_serve_h2_exchange.c http_serve_abi.c)
 ms_target_defaults(ms_std_ws)
 target_link_libraries(ms_std_ws PUBLIC ms_base ms_values ms_core ms_std_net ms_std_sockets)
 
