@@ -95,4 +95,10 @@ uint8_t msstd_http_exchange_write(const MsObj *exchange, const MsString *data, M
  * -> u8 @domain=HTTP */
 uint8_t msstd_http_exchange_write_bytes(const MsObj *exchange, const MsBytes *data, MsString *err);
 
+/* ms-sig: msstd_http_exchange_upgrade(handle x: *const ObjCell<ExchH>, origins: *const VecVal, subprotocols:
+ * *const VecVal, has_max: HasRaw, max: i64, out: *mut *mut ObjCell<SocketH>, err: ErrSlot) -> u8 @domain=HTTP
+ */
+uint8_t msstd_http_exchange_upgrade(const MsObj *exchange, const MsList *origins, const MsList *subprotocols,
+                                    uint8_t has_max, int64_t max, MsObj **out, MsString *err);
+
 #endif
