@@ -96,6 +96,22 @@ typedef struct LowerFn {
   uint32_t local_count; /* the current block ended in a return: the statements after it are unreachable */
 } LowerFn;
 
+/* The per-local tables of a function, set aside while the default argument of a callee (whose locals are numbered in
+ * that callee) is lowered with tables of its own. */
+typedef struct LowerFnLocals {
+  MirVar *vars;
+  uint8_t *local_owns;
+  MirValue *closing;
+  bool *closing_var;
+  uint8_t *shared;
+  MirTy *closing_types;
+  uint32_t nvars;
+} LowerFnLocals;
+LowerFnLocals fn_locals_save(const LowerFn *fn);
+/* Replaces the tables with empty ones for `nvars` locals (closing slots included). */
+void fn_locals_fresh(LowerFn *fn, uint32_t nvars);
+void fn_locals_restore(LowerFn *fn, const LowerFnLocals *saved);
+
 #define fn_fail(fn, ...) ((fn)->failed = true, lower_fail((fn)->cx, __VA_ARGS__))
 
 /* ---- scopes (lower_scope.c) ---- */
