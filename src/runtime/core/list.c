@@ -34,6 +34,44 @@ void msrt_list_copy(const MsList *v, const MsTypeDesc *d, MsList *out) {
   ms_list_clone_desc(v, d, out);
 }
 
+void msrt_list_clone(const MsList *v, const MsTypeDesc *d, MsList *out) {
+  ms_list_clone_desc(v, d, out);
+}
+
+/* One copy of the `count` elements of `v` from `start`, pushed onto the list of lists `out`. */
+static void push_run(const MsList *v, const MsTypeDesc *d, size_t start, size_t count, MsList *out) {
+  MsList run = {0};
+  ms_list_reserve(&run, d->size, count);
+  for (size_t at = 0; at < count; at++) {
+    ms_slot_copy(d, ms_list_slot(v, d, start + at), ms_list_slot(&run, d, at));
+    run.len = at + 1;
+  }
+  ms_list_push(out, sizeof run, &run);
+}
+
+void msrt_list_chunks(const MsList *v, const MsTypeDesc *d, int64_t size, MsList *out) {
+  *out = empty_list;
+  if (size <= 0) {
+    return;
+  }
+  const size_t width = (uint64_t)size > v->len ? v->len : (size_t)size;
+  for (size_t start = 0; start < v->len; start += width) {
+    const size_t left = v->len - start;
+    push_run(v, d, start, left < width ? left : width, out);
+  }
+}
+
+void msrt_list_windows(const MsList *v, const MsTypeDesc *d, int64_t size, MsList *out) {
+  *out = empty_list;
+  if (size <= 0 || (uint64_t)size > v->len) {
+    return;
+  }
+  const size_t width = (size_t)size;
+  for (size_t start = 0; start + width <= v->len; start++) {
+    push_run(v, d, start, width, out);
+  }
+}
+
 /* A bitwise copy of `v` in a fresh buffer that owns nothing: the generated sort permutes its slots (moves
  * only), so a comparator that exits early leaves the original list intact. Pair it with
  * msrt_list_free_raw; never drop it as a list. */
