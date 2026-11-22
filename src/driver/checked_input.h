@@ -24,6 +24,13 @@ typedef struct MsCheckedInput {
   bool checked;         /* `program` is initialised */
 } MsCheckedInput;
 
+/* Reports an entry `main` the language cannot run; with `declared_only`, only when the entry declares one. */
+void ms_require_main(MsArena *arena, const MsCheckProgram *program, uint32_t entry, bool declared_only,
+                     FindingList *findings);
+
+/* The module of `graph` that is the entry. */
+uint32_t ms_entry_module(const MsCheckProgram *program, const MsGraph *graph);
+
 /* Loads and checks `filename` for an executable. True when it can be lowered; false leaves the diagnostics in
  * `findings`. Texts live in `arena`; `ms_checked_input_free` releases the rest. */
 MS_NODISCARD bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target);

@@ -98,6 +98,30 @@ static bool numeric_variable(Body *body, MsTy ty, bool integer) {
   return false;
 }
 
+/* A decimal literal needs the canonical `Decimal` import; once one diagnostic names `Decimal`, later literals stay
+ * quiet. */
+static void report_missing_decimal(Body *body, const MsExpr *expr) {
+  MsCheckProgram *program = body->program;
+  if (body->quiet || body->module >= program->user_modules) {
+    return;
+  }
+  for (size_t index = 0; index < program->diagnostics.len; index++) {
+    const MsCheckDiag *diag = &program->diagnostics.ptr[index];
+    const MsSpan message = ms_string_span(&diag->message);
+    if (diag->module == body->module && (ms_span_starts_with(message, ms_span_of_text("Decimal literal requires")) ||
+                                         ms_span_starts_with(message, ms_span_of_text("unknown type Decimal")) ||
+                                         ms_span_starts_with(message, ms_span_of_text("unknown binding Decimal")))) {
+      return;
+    }
+  }
+  ms_check_report(program, body->module, expr->pos, MS_CHECK_RESOLUTION,
+                  ms_string_from_span(ms_span_of_text("Decimal literal requires the canonical Decimal import; add: "
+                                                      "import Decimal from \"@std/math/decimal.ms\"")));
+  const MsPos start = {.offset = 0, .line = 1, .column = 1};
+  ms_check_attach_fix(program, start, start,
+                      ms_string_from_span(ms_span_of_text("import Decimal from \"@std/math/decimal.ms\"\n")));
+}
+
 /* The type of a number literal: a sized type from `expected` when the literal kind matches it. */
 static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool negated) {
   const MsTyTable *types = &body->program->types;
@@ -107,7 +131,11 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
   const NumberKind kind = number_kind(number_text(body, expr));
   if (kind == NUMBER_DECIMAL) {
     const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
-    return decimal != NULL ? decimal->ty : MS_TY_NONE;
+    if (decimal != NULL && decimal->module >= body->program->user_modules) {
+      return decimal->ty;
+    }
+    report_missing_decimal(body, expr);
+    return body_std_type(body, "Decimal", NULL, 0);
   }
   if (kind == NUMBER_FLOAT) {
     return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
@@ -118,6 +146,43 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
     return expected;
   }
   return numeric_variable(body, expected, true) ? expected : body_primitive(body, MS_BUILTIN_Int);
+}
+
+/* The decimal literals inside a constant's initializer, which the constants pass leaves unreported. */
+void body_report_decimal_literals(Body *body, const MsExpr *expr) {
+  if (expr == NULL) {
+    return;
+  }
+  switch ((MsExprKind)expr->kind) {
+  case MS_E_NUMBER:
+    if (number_kind(number_text(body, expr)) == NUMBER_DECIMAL) {
+      const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
+      if (decimal == NULL || decimal->module < body->program->user_modules) {
+        report_missing_decimal(body, expr);
+      }
+    }
+    return;
+  case MS_E_LIST:
+    for (uint32_t index = 0; index < expr->u.list.len; index++) {
+      body_report_decimal_literals(body, expr->u.list.ptr[index]);
+    }
+    return;
+  case MS_E_MAP:
+    for (uint32_t index = 0; index < expr->u.map.len; index++) {
+      body_report_decimal_literals(body, expr->u.map.ptr[index].key);
+      body_report_decimal_literals(body, expr->u.map.ptr[index].value);
+    }
+    return;
+  case MS_E_UNARY:
+    body_report_decimal_literals(body, expr->u.bin.left);
+    return;
+  case MS_E_BINARY:
+    body_report_decimal_literals(body, expr->u.bin.left);
+    body_report_decimal_literals(body, expr->u.bin.right);
+    return;
+  default:
+    return;
+  }
 }
 
 /* ---- text ---- */
