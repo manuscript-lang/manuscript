@@ -1,0 +1,28 @@
+/* driver/pipeline.h: a checked program to an executable: LLVM IR from the back end, an object from `opt` and `llc`,
+ * then the linker. The commands that build, run and test call this after they have checked the program. */
+#ifndef MS_DRIVER_PIPELINE_H
+#define MS_DRIVER_PIPELINE_H
+
+#include "base/strbuild.h"
+#include "compiler/check/program.h"
+
+typedef enum MsBuildType { MS_BUILD_DEBUG, MS_BUILD_RELEASE, MS_BUILD_MINSIZEREL } MsBuildType;
+
+typedef struct MsLinkRequest {
+  MsCheckProgram *program; /* checked, without diagnostics */
+  uint32_t entry;          /* the module declaring `main` */
+  MsBuildType build_type;
+  MsSpan output;           /* the executable to write */
+  const MsSpan *link;      /* extra files to link after the runtime */
+  size_t link_count;
+  bool static_libc;        /* static musl instead of the glibc 2.28 stand-ins */
+} MsLinkRequest;
+
+/* Builds the executable. On failure returns false and `error` (valid until the next call) says what failed.
+ *
+ * The tools come from the environment: `MS_OPT`, `MS_LLC` and `MS_LLD` name the executables (default `opt`, `llc`,
+ * `lld`, found on PATH); `MS_FILES` is the directory of startup files and the glibc export table; `MS_RUNTIME` lists
+ * the runtime archives, separated by `:` (`;` on Windows). */
+bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error);
+
+#endif
