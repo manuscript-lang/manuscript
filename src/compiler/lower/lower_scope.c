@@ -110,6 +110,16 @@ MirValue fn_emit(LowerFn *fn, MirOp op, const MirValue *args, uint32_t nargs, Mi
   return result;
 }
 
+bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  if (insts->len == 0) {
+    return false;
+  }
+  const MirInst *last = &insts->ptr[insts->len - 1];
+  MirMode mode = MM_MOVE;
+  return last->res == value && mir_result_mode(fn->cx->module, &fn->b.func, last, &mode) && mode == MM_BORROW;
+}
+
 bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   if (insts->len == 0) {
