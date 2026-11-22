@@ -295,6 +295,14 @@ static bool callee_is_operation(LowerFn *fn, const MsCall *call) {
   return id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN;
 }
 
+/* Whether the callee is a function of the standard library declared without a body (`fn panic(message) Never: ...`):
+ * the runtime provides it, as `msrt_<name>`. */
+static bool is_bodiless_function(LowerFn *fn, const MsCall *call) {
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
+  const MsSymbol *symbol = id == 0 ? NULL : &fn->cx->program->symbols.ptr[id];
+  return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless;
+}
+
 static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   if (id == 0 || fn->cx->program->symbols.ptr[id].native != MS_NATIVE_EXTERN) {
@@ -344,6 +352,9 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   }
   if (call->callee.kind == MS_REF_NATIVE && callee_is_operation(fn, call)) {
     return fn_native_call(fn, expr, call, args, ret);
+  }
+  if (call->callee.kind == MS_REF_FUNCTION && is_bodiless_function(fn, call)) {
+    return fn_builtin_call(fn, call, args, ret);
   }
   if (!source) {
     return call_runtime(fn, call, args, ret);

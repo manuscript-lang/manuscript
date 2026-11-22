@@ -253,6 +253,24 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
   return MIR_NONE;
 }
 
+MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret) {
+  const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
+  const MsSymbol *symbol = &fn->cx->program->symbols.ptr[id];
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "msrt_");
+  ms_strbuild_append(&text, ms_names_span(fn->cx->program->names, symbol->name));
+  const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  MirValue wanted[NS_MAX_PARAMS];
+  uint32_t count = 0;
+  if (sig != NULL && call->arg_count <= NS_MAX_PARAMS &&
+      signature_arguments(fn, sig, args, call->arg_count, ret, wanted, &count)) {
+    return fn_runtime_call(fn, name, wanted, count, ret);
+  }
+  return fn_runtime_call(fn, name, args, call->arg_count, ret);
+}
+
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsExpr *callee = expr->u.call.callee;
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
