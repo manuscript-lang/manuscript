@@ -27,6 +27,8 @@ void resolver_free(Resolver *resolver);
 void resolver_enter_symbol(Resolver *resolver, const MsSymbol *symbol);
 
 MsTy resolver_type(Resolver *resolver, const MsTypeRef *type);
+/* A written bound: an interface or a type set, else reported and MS_TY_NONE. */
+MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound);
 
 /* One parameter list as checked parameters (a lambda parameter without a type is invalid). */
 void resolver_params(Resolver *resolver, MsParams params, MsTyParamList *out);

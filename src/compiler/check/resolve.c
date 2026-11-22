@@ -226,6 +226,25 @@ static MsTy named_type(Resolver *resolver, const MsTypeRef *type) {
   return MS_TY_NONE;
 }
 
+MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound) {
+  MsCheckProgram *program = resolver->program;
+  const MsTy resolved = resolver_type(resolver, bound);
+  const MsTyKind kind = resolved == MS_TY_NONE ? MS_TY_INVALID : ms_ty_kind(&program->types, resolved);
+  if (kind == MS_TY_CONTRACT || resolved == MS_TY_NONE || !resolver->report) {
+    return resolved;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  if (kind == MS_TY_VARIABLE) {
+    ms_strbuild_append_text(&text, "a bound must be an interface, but ");
+    ms_strbuild_append(&text, ms_names_span(program->names, bound->name));
+    ms_strbuild_append_text(&text, " resolves to a type parameter; rename the type parameter or name an interface");
+  } else {
+    ms_strbuild_append_text(&text, "a bound must be an interface; write T: SomeInterface where SomeInterface is declared with 'interface'");
+  }
+  ms_check_report(program, resolver->module, bound->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  return MS_TY_NONE;
+}
+
 void resolver_params(Resolver *resolver, MsParams params, MsTyParamList *out) {
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
