@@ -140,10 +140,10 @@ static bool canonical_of(Copier *copier, MsSpan path, MsStrBuild *out) {
 static bool canonical_by_parent(Copier *copier, MsSpan path, MsStrBuild *out) {
   MsStrBuild parent = ms_strbuild_new();
   MsStrBuild real_parent = ms_strbuild_new();
-  ms_fs_path_dir(path, &parent);
+  ms_path_dir(path, &parent);
   bool ok = canonical_of(copier, ms_strbuild_span(&parent), &real_parent);
   if (ok) {
-    ms_fs_path_join(ms_strbuild_span(&real_parent), ms_fs_path_base(path), out);
+    ms_path_join(ms_strbuild_span(&real_parent), ms_path_base(path), out);
   }
   ms_strbuild_free(&parent);
   ms_strbuild_free(&real_parent);
@@ -172,7 +172,7 @@ static Climb climb_once(Copier *copier, MsStrBuild *ancestor, MsStrBuild *suffix
     return CLIMB_FAILED;
   }
   MsStrBuild parent = ms_strbuild_new();
-  ms_fs_path_dir(current, &parent);
+  ms_path_dir(current, &parent);
   if (ms_span_equal(ms_strbuild_span(&parent), current)) {
     ms_strbuild_free(&parent);
     fail_status(copier, MS_STATUS_INVALID_INPUT);
@@ -180,9 +180,9 @@ static Climb climb_once(Copier *copier, MsStrBuild *ancestor, MsStrBuild *suffix
   }
   MsStrBuild joined = ms_strbuild_new();
   if (ms_strbuild_length(suffix) == 0) {
-    ms_strbuild_append(&joined, ms_fs_path_base(current));
+    ms_strbuild_append(&joined, ms_path_base(current));
   } else {
-    ms_fs_path_join(ms_fs_path_base(current), ms_strbuild_span(suffix), &joined);
+    ms_path_join(ms_path_base(current), ms_strbuild_span(suffix), &joined);
   }
   ms_strbuild_free(suffix);
   ms_strbuild_free(ancestor);
@@ -200,7 +200,7 @@ static bool resolve_ancestor(Copier *copier, MsSpan ancestor, MsStrBuild *real) 
     return true;
   }
   MsStrBuild parent = ms_strbuild_new();
-  ms_fs_path_dir(ancestor, &parent);
+  ms_path_dir(ancestor, &parent);
   const bool has_parent = code == UV_ENOENT && ms_strbuild_length(&parent) != ancestor.len;
   const bool ok = has_parent ? canonical_by_parent(copier, ancestor, real) : fail_at(copier, code, "lstat", ancestor);
   ms_strbuild_free(&parent);
@@ -220,7 +220,7 @@ static bool resolve_destination(Copier *copier, MsSpan destination, MsStrBuild *
   bool ok = climb == CLIMB_FOUND && resolve_ancestor(copier, ms_strbuild_span(&ancestor), &real);
   if (ok && ms_strbuild_length(&suffix) > 0) {
     MsStrBuild whole = ms_strbuild_new();
-    ms_fs_path_join(ms_strbuild_span(&real), ms_strbuild_span(&suffix), &whole);
+    ms_path_join(ms_strbuild_span(&real), ms_strbuild_span(&suffix), &whole);
     ms_strbuild_free(&real);
     real = whole;
   }
@@ -480,12 +480,12 @@ static bool copy_link(Copier *copier, MsSpan source, MsSpan destination, bool ex
   uv_fs_req_cleanup(&request);
   MsStrBuild resolved = ms_strbuild_new();
   MsSpan link = ms_strbuild_span(&target);
-  if (!has_flag(copier, FLAG_VERBATIM) && !ms_fs_is_absolute(link)) {
+  if (!has_flag(copier, FLAG_VERBATIM) && !ms_path_is_absolute(link)) {
     MsStrBuild parent = ms_strbuild_new();
     MsStrBuild absolute_parent = ms_strbuild_new();
-    ms_fs_path_dir(source, &parent);
+    ms_path_dir(source, &parent);
     ms_fs_absolute(ms_strbuild_span(&parent), &absolute_parent);
-    ms_fs_path_join(ms_strbuild_span(&absolute_parent), link, &resolved);
+    ms_path_join(ms_strbuild_span(&absolute_parent), link, &resolved);
     link = ms_strbuild_span(&resolved);
     ms_strbuild_free(&parent);
     ms_strbuild_free(&absolute_parent);
@@ -509,8 +509,8 @@ static bool copy_children(Copier *copier, MsSpan source, MsSpan destination, siz
   while (ok && ms_fs_names_next(ms_strbuild_span(&names), &cursor, &name)) {
     MsStrBuild from = ms_strbuild_new();
     MsStrBuild to = ms_strbuild_new();
-    ms_fs_path_join(source, name, &from);
-    ms_fs_path_join(destination, name, &to);
+    ms_path_join(source, name, &from);
+    ms_path_join(destination, name, &to);
     ok = copy_entry(copier, ms_strbuild_span(&from), ms_strbuild_span(&to), depth + 1);
     ms_strbuild_free(&from);
     ms_strbuild_free(&to);

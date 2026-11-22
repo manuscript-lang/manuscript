@@ -1,21 +1,21 @@
-#define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
-
-/* Lexical path names for @std/fs: clean, join, base, dir and absolute (fs_job.h), by the host's rules. */
+/* Lexical path rules, the one implementation for the toolchain and @std/fs (path.h): clean, join, base, dir and
+ * absolute, by the host's rules. A Windows host parses volumes, UNC and drive roots and separates with `/`, except in
+ * a verbatim `\\?\` path, where only the backslash separates. */
 #include <string.h>
 
-#include "runtime/std/fs_job.h"
+#include "base/path.h"
 
 #ifdef _WIN32
-#define HOST_RULES MS_FS_RULES_WINDOWS
+#define HOST_RULES MS_PATH_RULES_WINDOWS
 #else
-#define HOST_RULES MS_FS_RULES_UNIX
+#define HOST_RULES MS_PATH_RULES_UNIX
 #endif
 
 typedef enum PrefixKind { PREFIX_NONE, PREFIX_DISK, PREFIX_OTHER } PrefixKind;
 
 /* A path split into volume prefix, root and the elements after them. */
 typedef struct Parsed {
-  MsFsRules rules;
+  MsPathRules rules;
   PrefixKind prefix_kind;
   size_t prefix_length;
   bool verbatim; /* \\?\ : only the backslash separates */
@@ -24,15 +24,15 @@ typedef struct Parsed {
   size_t body;        /* where the elements start */
 } Parsed;
 
-bool ms_fs_is_separator_with(MsFsRules rules, uint8_t byte) {
-  return byte == '/' || (rules == MS_FS_RULES_WINDOWS && byte == '\\');
+bool ms_path_is_separator_with(MsPathRules rules, uint8_t byte) {
+  return byte == '/' || (rules == MS_PATH_RULES_WINDOWS && byte == '\\');
 }
 
 static bool is_sep(const Parsed *parsed, uint8_t byte) {
   if (parsed->verbatim) {
     return byte == '\\';
   }
-  return ms_fs_is_separator_with(parsed->rules, byte);
+  return ms_path_is_separator_with(parsed->rules, byte);
 }
 
 static bool is_ascii_letter(uint8_t byte) {
@@ -98,9 +98,9 @@ static void parse_windows_prefix(MsSpan path, Parsed *parsed) {
   }
 }
 
-static Parsed parse(MsFsRules rules, MsSpan path) {
+static Parsed parse(MsPathRules rules, MsSpan path) {
   Parsed parsed = {.rules = rules, .prefix_kind = PREFIX_NONE};
-  if (rules == MS_FS_RULES_WINDOWS) {
+  if (rules == MS_PATH_RULES_WINDOWS) {
     parse_windows_prefix(path, &parsed);
   }
   size_t at = parsed.prefix_length;
@@ -114,9 +114,9 @@ static Parsed parse(MsFsRules rules, MsSpan path) {
 
 static bool has_root(const Parsed *parsed) { return parsed->physical_root || parsed->implicit_root; }
 
-bool ms_fs_is_absolute_with(MsFsRules rules, MsSpan path) {
+bool ms_path_is_absolute_with(MsPathRules rules, MsSpan path) {
   const Parsed parsed = parse(rules, path);
-  if (rules == MS_FS_RULES_UNIX) {
+  if (rules == MS_PATH_RULES_UNIX) {
     return parsed.physical_root;
   }
   return parsed.prefix_kind != PREFIX_NONE && has_root(&parsed);
@@ -166,18 +166,21 @@ static size_t last_element(const Parsed *parsed, MsSpan path, Element *last) {
   return count;
 }
 
-static uint8_t separator_of(MsFsRules rules) { return rules == MS_FS_RULES_WINDOWS ? '\\' : '/'; }
+static uint8_t separator_of(const Parsed *parsed) { return parsed->verbatim ? '\\' : '/'; }
 
 /* Appends the path without its last `drop` elements, lexically cleaned. */
-static void clean_elements(MsFsRules rules, MsSpan path, size_t drop, MsStrBuild *out) {
+static void clean_elements(MsPathRules rules, MsSpan path, size_t drop, MsStrBuild *out) {
   const Parsed parsed = parse(rules, path);
-  const uint8_t sep = separator_of(rules);
+  const uint8_t sep = separator_of(&parsed);
   Element last = {0};
   const size_t total = last_element(&parsed, path, &last);
   const size_t keep = total > drop ? total - drop : 0;
 
   const size_t base = ms_strbuild_length(out);
-  ms_strbuild_append(out, ms_span_of(path.ptr, parsed.prefix_length));
+  for (size_t at = 0; at < parsed.prefix_length; at++) {
+    const uint8_t byte = path.ptr[at];
+    ms_strbuild_append_byte(out, byte == '\\' && !parsed.verbatim ? '/' : byte);
+  }
   if (parsed.physical_root) {
     ms_strbuild_append_byte(out, sep);
   }
@@ -214,16 +217,16 @@ static void clean_elements(MsFsRules rules, MsSpan path, size_t drop, MsStrBuild
   }
 }
 
-void ms_fs_path_clean_with(MsFsRules rules, MsSpan path, MsStrBuild *out) { clean_elements(rules, path, 0, out); }
+void ms_path_clean_with(MsPathRules rules, MsSpan path, MsStrBuild *out) { clean_elements(rules, path, 0, out); }
 
-void ms_fs_path_dir_with(MsFsRules rules, MsSpan path, MsStrBuild *out) {
+void ms_path_dir_with(MsPathRules rules, MsSpan path, MsStrBuild *out) {
   const Parsed parsed = parse(rules, path);
   Element last = {0};
   const size_t total = last_element(&parsed, path, &last);
   clean_elements(rules, path, total > 0 ? 1 : 0, out);
 }
 
-MsSpan ms_fs_path_base_with(MsFsRules rules, MsSpan path) {
+MsSpan ms_path_base_with(MsPathRules rules, MsSpan path) {
   static const uint8_t separators[] = {'/', '\\'};
   static const uint8_t dot_text[] = {'.'};
   const Parsed parsed = parse(rules, path);
@@ -232,10 +235,10 @@ MsSpan ms_fs_path_base_with(MsFsRules rules, MsSpan path) {
     return ms_span_of(path.ptr + last.start, last.length);
   }
   if (parsed.physical_root && parsed.prefix_length == 0) {
-    return ms_span_of(&separators[rules == MS_FS_RULES_WINDOWS ? 1 : 0], 1);
+    return ms_span_of(&separators[parsed.verbatim ? 1 : 0], 1);
   }
   if (parsed.physical_root) {
-    return ms_span_of(&separators[1], 1);
+    return ms_span_of(&separators[parsed.verbatim ? 1 : 0], 1);
   }
   if (parsed.prefix_length > 0) {
     return ms_span_of(path.ptr, parsed.prefix_length);
@@ -243,24 +246,24 @@ MsSpan ms_fs_path_base_with(MsFsRules rules, MsSpan path) {
   return ms_span_of(dot_text, 1);
 }
 
-void ms_fs_path_join_with(MsFsRules rules, MsSpan first, MsSpan second, MsStrBuild *out) {
+void ms_path_join_with(MsPathRules rules, MsSpan first, MsSpan second, MsStrBuild *out) {
   if (first.len == 0) {
     if (second.len != 0) {
-      ms_fs_path_clean_with(rules, second, out);
+      ms_path_clean_with(rules, second, out);
     }
     return;
   }
   if (second.len == 0) {
-    ms_fs_path_clean_with(rules, first, out);
+    ms_path_clean_with(rules, first, out);
     return;
   }
   const Parsed tail = parse(rules, second);
   const Parsed head = parse(rules, first);
   const bool same_disk = head.prefix_kind == PREFIX_DISK && tail.prefix_kind == PREFIX_DISK &&
                          head.prefix_length == 2 && (first.ptr[0] | 0x20) == (second.ptr[0] | 0x20);
-  if (ms_fs_is_absolute_with(rules, second) ||
+  if (ms_path_is_absolute_with(rules, second) ||
       (tail.prefix_kind != PREFIX_NONE && !tail.physical_root && !same_disk)) {
-    ms_fs_path_clean_with(rules, second, out);
+    ms_path_clean_with(rules, second, out);
     return;
   }
   MsStrBuild joined = ms_strbuild_new();
@@ -273,22 +276,21 @@ void ms_fs_path_join_with(MsFsRules rules, MsSpan first, MsSpan second, MsStrBui
     const bool bare_disk = head.prefix_kind == PREFIX_DISK && first.len == head.prefix_length;
     ms_strbuild_append(&joined, first);
     if (!bare_disk && !is_sep(&head, last)) {
-      ms_strbuild_append_byte(&joined, separator_of(rules));
+      ms_strbuild_append_byte(&joined, separator_of(&head));
     }
     ms_strbuild_append(&joined, ms_span_of(second.ptr + tail.prefix_length, second.len - tail.prefix_length));
   }
-  ms_fs_path_clean_with(rules, ms_strbuild_span(&joined), out);
+  ms_path_clean_with(rules, ms_strbuild_span(&joined), out);
   ms_strbuild_free(&joined);
 }
 
 /* ---- the host's rules ---- */
 
-uint8_t ms_fs_separator(void) { return separator_of(HOST_RULES); }
-bool ms_fs_is_separator(uint8_t byte) { return ms_fs_is_separator_with(HOST_RULES, byte); }
-bool ms_fs_is_absolute(MsSpan path) { return ms_fs_is_absolute_with(HOST_RULES, path); }
-void ms_fs_path_clean(MsSpan path, MsStrBuild *out) { ms_fs_path_clean_with(HOST_RULES, path, out); }
-void ms_fs_path_join(MsSpan first, MsSpan second, MsStrBuild *out) {
-  ms_fs_path_join_with(HOST_RULES, first, second, out);
+bool ms_path_is_separator(uint8_t byte) { return ms_path_is_separator_with(HOST_RULES, byte); }
+bool ms_path_is_absolute(MsSpan path) { return ms_path_is_absolute_with(HOST_RULES, path); }
+void ms_path_clean(MsStrBuild *out, MsSpan path) { ms_path_clean_with(HOST_RULES, path, out); }
+void ms_path_join(MsSpan first, MsSpan second, MsStrBuild *out) {
+  ms_path_join_with(HOST_RULES, first, second, out);
 }
-MsSpan ms_fs_path_base(MsSpan path) { return ms_fs_path_base_with(HOST_RULES, path); }
-void ms_fs_path_dir(MsSpan path, MsStrBuild *out) { ms_fs_path_dir_with(HOST_RULES, path, out); }
+MsSpan ms_path_base(MsSpan path) { return ms_path_base_with(HOST_RULES, path); }
+void ms_path_dir(MsSpan path, MsStrBuild *out) { ms_path_dir_with(HOST_RULES, path, out); }

@@ -29,6 +29,16 @@ typedef struct LowerVarParam {
   MirTy ty;
 } LowerVarParam;
 
+/* An `if var name = place[key]?` binding: the variable is a copy of the entry's bits, stored back to `address` wherever
+ * the body is left. `depth` is the number of scopes open inside the body. */
+typedef struct LowerWriteback {
+  MirVar var;
+  MirValue address;
+  MirTy ty;
+  uint32_t depth;
+} LowerWriteback;
+
+enum { LOWER_MAX_WRITEBACKS = 8 };
 enum { LOWER_MAX_VAR_PARAMS = 8, LOWER_MAX_CLOSING_PARAMS = 32 };
 
 typedef struct LowerFn {
@@ -38,13 +48,19 @@ typedef struct LowerFn {
   const MsFunc *func;
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
+  MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */
   LowerSubst subst;
   MirVar *vars;       /* by checker local id */
   MirValue *closing;  /* the slot a closed resource lives in, else MIR_NONE: by local id, then by parameter index */
   bool *closing_var;  /* the same index: the binding is `var`, so every read loads the slot */
+  MirValue default_base; /* a field default: the address of the record being built, whose earlier fields it reads */
+  MirTy default_record_ty;
+  uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
+  const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
+  const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
   MirTy ret;
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
@@ -53,10 +69,13 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
+  LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
+  uint32_t nwritebacks;
   bool failed;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
   bool temps; /* a statement scope is open for the temporaries its calls lend */
   uint32_t nloops;
@@ -115,6 +134,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record constructor takes one per field */
 
@@ -122,6 +142,8 @@ bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t 
 /* After the close of a part returned `result`: faults when it is an error, else drops it. */
 void lower_close_check(MirBuilder *b, MirValue result);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
+/* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
+void fn_init_closing(LowerFn *fn);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
 bool fn_closing_read(LowerFn *fn, const MsRef *ref, MirValue *view);
@@ -156,6 +178,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
+uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
 bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args,
@@ -164,6 +188,7 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
+MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
@@ -192,11 +217,16 @@ MirValue fn_value_repr(LowerFn *fn, MirValue value, MirTy ty);
 MirValue fn_unary(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* `value` (MIR_NONE for a Void ok) as the function's Result; other functions' values pass through. */
+bool fn_end_is_reachable(LowerFn *fn);
 MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 /* Lambdas and calls of function values (lower_closure.c). */
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
+/* Marks the locals of `body` that a lambda written in it changes: they live in slots the lambda borrows. */
+void fn_find_shared(LowerFn *fn, MsStmts body);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
+/* The position of the interface operation the member `callee` names (`index` when it is not a member). */
+uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
@@ -209,7 +239,8 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
 bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
-MirValue fn_function_value(LowerFn *fn, const MsRef *ref, MirTy fn_ty);
+MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
+MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref);
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node);
 /* A parameter name inside a lambda body that is one of its captures: its value in `out`. */
@@ -223,6 +254,10 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);
+bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
+bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
+void fn_probe_end(LowerFn *fn, bool falls_out);
+void fn_writebacks_put(LowerFn *fn, uint32_t keep);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 

@@ -90,8 +90,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
   const bool fresh = fn_fresh_owner(fn, value);
-  if ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
-      (!mir_needs_drop(fn->cx->module, ty) || fresh)) {
+  const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
+                      fn->closing != NULL;
+  if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+                 (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
@@ -117,8 +119,17 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
     *out = fn->vars[ref->local] - 1;
     return true;
   }
-  if (ref->kind != MS_REF_PARAM) {
+  if (ref->kind != MS_REF_PARAM || fn->default_call != NULL) { /* a default's parameters are the callee's, not this function's */
     return false;
+  }
+  if (fn->lambda != NULL) { /* a captured parameter is a variable of the closure body */
+    for (uint32_t at = 0; at < fn->lambda->ncaptures; at++) {
+      const LowerCapture *capture = &fn->lambda->captures[at];
+      if (capture->kind == MS_REF_PARAM && capture->index == ref->local && capture->name == place->u.sym) {
+        *out = fn->cap_vars[at];
+        return true;
+      }
+    }
   }
   if (var_owns(fn, fn->param_vars[ref->local])) {
     *out = fn->param_vars[ref->local]; /* a `move` parameter the body assigns into */
@@ -163,6 +174,9 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
   MirValue slot;
   MirTy ty;
+  if (place == NULL) {
+    return false;
+  }
   return owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
@@ -196,7 +210,9 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
     return true;
   }
-  if (base->kind != MS_E_MEMBER && base->kind != MS_E_INDEX) {
+  MsExpr *index_left = NULL;
+  MsExpr *index_key = NULL;
+  if (base->kind != MS_E_MEMBER && !ms_expr_index(base, &index_left, &index_key)) {
     return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
   }
   const MirValue inner = fn_expr(fn, base, LW_BORROW);
@@ -236,11 +252,35 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
   return fn_put_place(fn, base, updated);
 }
 
+/* `container[key] = value` for an element of a list or map the enclosing assignment took a copy of: the container's
+ * own `set` (a list) or `add` (a map) stores it. */
+static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key, MirValue value) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, container->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const MirValue receiver = fn_expr(fn, container, LW_BORROW);
+  const MirValue at = receiver == MIR_NONE ? MIR_NONE : fn_expr(fn, key, LW_BORROW);
+  if (at == MIR_NONE) {
+    return false;
+  }
+  const MirValue args[3] = {receiver, at, value};
+  MirValue out = MIR_NONE;
+  const MsSpan operation = ms_span_of_text(ms_ty_is(types, owner, MS_BUILTIN_Map) ? "add" : "set");
+  if (!fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out)) {
+    return fn_fail(fn, "an element of this container cannot be assigned yet");
+  }
+  return !fn->failed;
+}
+
 /* Stores the owned `value` (held by no scope) into `place`, the place of an earlier `fn_take_place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   MirVar var;
   if (place->kind == MS_E_MEMBER) {
     return set_member(fn, place, value);
+  }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (ms_expr_index(place, &container, &key)) {
+    return set_element(fn, container, key, value);
   }
   MirValue slot;
   MirTy slot_ty;
@@ -348,12 +388,23 @@ static void enter(LowerFn *fn, MirBlock block) {
 }
 
 static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
-  const bool owns = stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
-  MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns ? LW_MOVE : LW_BORROW);
-  if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
-    fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */
+  const bool probes = stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_PROBE;
+  const bool owns = !probes && stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
+  MirValue entry = MIR_NONE;
+  MirTy entry_ty = MIR_VOID;
+  MirValue cond = MIR_NONE;
+  if (probes) {
+    if (!fn_probe_begin(fn, stmt, &cond, &entry, &entry_ty)) {
+      return false;
+    }
+  } else {
+    MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns ? LW_MOVE : LW_BORROW);
+    if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
+      fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */
+    }
+    cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
+    entry = tested;
   }
-  const MirValue cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
   if (cond == MIR_NONE) {
     return false;
   }
@@ -365,10 +416,16 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   mir_b_seal_block(&fn->b, otherwise);
   enter(fn, then);
   (void)fn_scope_begin(fn);
-  if (stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, tested, owns)) {
+  if (probes && !fn_probe_bind(fn, stmt, entry, entry_ty)) {
+    return false;
+  }
+  if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
     return false;
   }
   bool ok = fn_stmts(fn, stmt->u.branch.body);
+  if (probes) {
+    fn_probe_end(fn, !fn->terminated);
+  }
   if (!fn->terminated) {
     fn_scope_end(fn);
   } else {
@@ -433,7 +490,8 @@ static bool lower_jump(LowerFn *fn, bool is_break) {
 }
 
 static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
-  mir_b_set_loc(&fn->b, fn_loc(fn, stmt->pos));
+  fn->stmt_loc = fn_loc(fn, stmt->pos);
+  mir_b_set_loc(&fn->b, fn->stmt_loc);
   switch ((MsStmtKind)stmt->kind) {
     case MS_S_BIND: return lower_bind(fn, stmt);
     case MS_S_ASSIGN: return lower_assign(fn, stmt);

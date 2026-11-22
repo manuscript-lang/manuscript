@@ -47,18 +47,6 @@ void ms_path_from_os(char *text, size_t size) {
 #endif
 }
 
-/* Rooted at `/`, or on Windows at a drive such as `D:/`. */
-bool ms_path_is_absolute(MsSpan path) {
-  if (path.len > 0 && path.ptr[0] == '/') {
-    return true;
-  }
-#ifdef _WIN32
-  return path.len >= 3 && ((path.ptr[0] | 0x20) >= 'a' && (path.ptr[0] | 0x20) <= 'z') && path.ptr[1] == ':' && path.ptr[2] == '/';
-#else
-  return false;
-#endif
-}
-
 MsSpan ms_path_ext(MsSpan path) {
   for (size_t at = path.len; at > 0 && path.ptr[at - 1] != '/'; at--) {
     if (path.ptr[at - 1] == '.') {
@@ -67,8 +55,6 @@ MsSpan ms_path_ext(MsSpan path) {
   }
   return ms_span_of(path.ptr + path.len, 0);
 }
-
-MS_LIST_DEFINE(PathParts, path_parts, MsSpan)
 
 /* The next element of `path` from `*at`, skipping separators; false at the end. */
 static bool next_element(MsSpan path, size_t *at, MsSpan *element) {
@@ -84,42 +70,6 @@ static bool next_element(MsSpan path, size_t *at, MsSpan *element) {
   }
   *element = ms_span_of(path.ptr + start, *at - start);
   return true;
-}
-
-void ms_path_clean(MsStrBuild *out, MsSpan path) {
-  const bool rooted = ms_path_is_absolute(path);
-  PathParts parts = {0};
-  const bool drive = rooted && path.ptr[0] != '/';
-  size_t at = drive ? 2 : 0;
-  MsSpan element = {0};
-  while (next_element(path, &at, &element)) {
-    if (ms_span_is_text(element, ".")) {
-      continue;
-    }
-    const bool up = ms_span_is_text(element, "..");
-    const bool can_drop = parts.len > 0 && !ms_span_is_text(parts.ptr[parts.len - 1], "..");
-    if (up && can_drop) {
-      parts.len--;
-    } else if (!up || !rooted) {
-      path_parts_push(&parts, element);
-    }
-  }
-  if (drive) {
-    ms_strbuild_append(out, ms_span_of(path.ptr, 2));
-  }
-  if (rooted) {
-    ms_strbuild_append_byte(out, '/');
-  }
-  if (parts.len == 0 && !rooted) {
-    ms_strbuild_append_byte(out, '.');
-  }
-  for (size_t index = 0; index < parts.len; index++) {
-    if (index > 0) {
-      ms_strbuild_append_byte(out, '/');
-    }
-    ms_strbuild_append(out, parts.ptr[index]);
-  }
-  path_parts_free(&parts);
 }
 
 bool ms_path_escapes(MsSpan relative) {

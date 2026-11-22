@@ -66,8 +66,13 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   if (at == MIR_NONE) {
     return MIR_NONE;
   }
+  if (data->kind == MK_BYTES) { /* a byte of a Bytes value */
+    mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+    const MirValue pair[2] = {list, at};
+    return mir_b_emit(&fn->b, MOP_ListGet, pair, 2, (MirImm){0}, MIR_UINT8);
+  }
   if (data->kind != MK_LIST) {
-    (void)fn_fail(fn, "only a list can be indexed for now");
+    (void)fn_fail(fn, "only a list or bytes can be indexed for now");
     return MIR_NONE;
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));

@@ -44,7 +44,7 @@ typedef struct Body {
 
 /* ---- test_fixture.c ---- */
 
-/* Checks the module's `make_fixture`, and records it in the facts and `body->fixture_ty`. */
+/* Checks the module's `make_fixture`, and sets `body->fixture_ty`. */
 void ms_check_test_fixture(Body *body);
 
 /* ---- bodies.c ---- */

@@ -10,6 +10,7 @@ typedef struct Match {
   MirVar result;
   bool has_result;
   MirBlock join;
+  bool joined; /* an arm falls through to the join */
 } Match;
 
 static bool is_literal(const MsExpr *path) {
@@ -65,7 +66,7 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   }
 }
 
-static bool lower_arm(LowerFn *fn, const Match *match, const MsArm *arm) {
+static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   uint32_t kase = 0;
   const bool named = arm_case(fn, match, arm, &kase);
   (void)fn_scope_begin(fn);
@@ -89,6 +90,7 @@ static bool lower_arm(LowerFn *fn, const Match *match, const MsArm *arm) {
   }
   fn_scope_end(fn);
   mir_b_br(&fn->b, match->join, NULL, 0);
+  match->joined = true;
   return ok;
 }
 
@@ -168,7 +170,9 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   }
   const uint32_t narms = expr->u.match.arms.len;
   MirBlock *blocks = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirBlock, narms + 1);
-  const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  /* A `match` used as a statement has no type, and so no result. */
+  const MsTy result = ms_facts_type(fn->facts, expr->id);
+  const MirTy result_ty = result == MS_TY_NONE ? MIR_VOID : fn_type(fn, result);
   match.has_result = result_ty != MIR_VOID;
   match.result = match.has_result ? mir_b_declare_var(&fn->b, result_ty, MM_MOVE) : 0;
   match.join = mir_b_new_block(&fn->b);
@@ -188,6 +192,13 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   enter(fn, match.join);
   if (!ok) {
     return MIR_NONE;
+  }
+  if (!match.joined) {
+    /* Every arm leaves: nothing reaches what follows. */
+    const MirValue none = mir_b_unit(&fn->b);
+    mir_b_unreachable(&fn->b);
+    fn->terminated = true;
+    return none;
   }
   return match.has_result ? mir_b_use_var(&fn->b, match.result) : mir_b_unit(&fn->b);
 }

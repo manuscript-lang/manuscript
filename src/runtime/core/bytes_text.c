@@ -112,3 +112,11 @@ void msrt_strbuilder_drain(MsBytes *b, MsString *out) {
   msrt_strbuilder_freeze(b, out);
   *b = (MsBytes){0};
 }
+
+/* `BytesBuilder.build()` and `drain()`: the buffer moves into the result, leaving the builder empty. */
+void msrt_bytesbuilder_build(MsBytes *b, MsBytes *out) {
+  *out = *b;
+  *b = (MsBytes){0};
+}
+
+void msrt_bytesbuilder_drain(MsBytes *b, MsBytes *out) { msrt_bytesbuilder_build(b, out); }

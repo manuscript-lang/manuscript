@@ -302,19 +302,23 @@ static const MsSymbol *symbol_of(const MsCheckProgram *program, uint32_t module,
 static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
   const MsDef *def = owner != NULL && owner->ty != MS_TY_NONE ? body_def(body, owner->ty) : NULL;
   const size_t mark = body->resolver.names.len;
+  const size_t scope = body_scope_mark(body);
   if (owner != NULL) {
     resolver_enter_symbol(&body->resolver, owner);
   }
   for (uint32_t index = 0; index < fields.len; index++) {
     const MsParam *field = fields.ptr[index];
-    if (field->def == NULL) {
-      continue;
-    }
     const MsTy ty = def != NULL && index < def->fields.len
                         ? def->fields.ptr[index].ty
                         : (field->ty != NULL ? resolver_type(&body->resolver, field->ty) : MS_TY_NONE);
-    (void)body_expr(body, field->def, ty);
+    if (field->def != NULL) {
+      (void)body_expr(body, field->def, ty);
+    }
+    /* A default may use the fields before it, which it reads as the constructor's arguments. */
+    MsLocal *local = body_declare(body, field->name, ty, MS_REF_PARAM, false);
+    local->id = index;
   }
+  body_scope_reset(body, scope);
   ms_name_list_truncate(&body->resolver.names, mark);
   ms_ty_list_truncate(&body->resolver.types, mark);
 }
@@ -341,10 +345,14 @@ static void declaration(Body *body, const MsDecl *decl) {
     const MsTy error = body_std_type(body, "Error", NULL, 0);
     const MsTy args[2] = {body_primitive(body, MS_BUILTIN_Void), error};
     body->result = error == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Result", args, 2);
+    /* With a valid `make_fixture` factory in the module, `fixture` names its value: a `var` parameter of the test. */
+    const size_t mark = body_scope_mark(body);
     if (body->fixture_ty != MS_TY_NONE && !decl->u.test.bench) {
-      (void)body_declare(body, ms_names_intern(body->program->names, ms_span_of_text("fixture")), body->fixture_ty, MS_REF_LOCAL, false);
+      const MsName fixture = ms_names_intern(body->program->names, ms_span_of_text("fixture"));
+      (void)body_declare(body, fixture, body->fixture_ty, MS_REF_PARAM, true);
     }
     body_block(body, decl->u.test.body);
+    body_scope_reset(body, mark);
     body->result = MS_TY_NONE;
     body->facts->local_counts[decl->id] = body->next_local;
     break;

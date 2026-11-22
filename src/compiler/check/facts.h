@@ -160,7 +160,6 @@ typedef struct MsFacts {
   MsConstantList constants;     /* 5. sorted by node */
   MsCloserList closers;         /* 7. sorted by node; filled by the ownership pass (own/closers.c) */
   uint32_t *local_counts; /* locals per function, indexed by the function declaration node id */
-  MsRef fixture;          /* the file's `make_fixture` function (MS_REF_FUNCTION), or MS_REF_NONE; each test's `fixture` is its local 0 */
 } MsFacts;
 
 /* The type of `node`; MS_TY_NONE for a node that has none. */

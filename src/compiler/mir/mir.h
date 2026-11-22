@@ -68,7 +68,7 @@ typedef struct MirTyData {
   uint64_t owned;
 } MirTyData;
 
-MS_LIST_DEFINE(MirTyDataList, mir_tydata_list, MirTyData)
+MS_LIST_DEFINE(MirTyDataList, mir_tydata_list, MirTyData *)
 MS_LIST_DEFINE(MirTyList, mir_tylist, MirTy)
 MS_LIST_DEFINE(MirIdList, mir_idlist, uint32_t)
 MS_LIST_DEFINE(MirInt64List, mir_int64list, int64_t)
@@ -77,7 +77,8 @@ MS_LIST_DEFINE(MirInt64List, mir_int64list, int64_t)
  * bytes. Id 0 is the empty key, which is the void type. */
 typedef struct MirTyTable {
   MsNames keys;        /* owned: packed MirTyData, id order */
-  MirTyDataList kinds; /* owned: by id */
+  MirTyDataList kinds; /* owned: by id; each entry lives in the module arena, so a pointer from mir_ty_data stays
+                          valid while later types are interned */
 } MirTyTable;
 
 /* ---- operations ---- */
@@ -285,6 +286,7 @@ MS_LIST_DEFINE(MirFuncList, mir_func_list, MirFunc)
 typedef struct MirField {
   MsName name;
   MirTy ty;
+  uint32_t default_fn1; /* 1 + the function that builds the field's default in place, `fn(out, record)`; 0 for none */
 } MirField;
 
 typedef struct MirTypeDef {
@@ -292,6 +294,7 @@ typedef struct MirTypeDef {
   MirField *fields; /* in the module arena */
   uint32_t nfields;
   bool indirect; /* one pointer to a heap block */
+  bool native;   /* an extern type the runtime reads and writes by address (`@repr=inline<N>`): words, no fields to name */
 } MirTypeDef;
 
 MS_LIST_DEFINE(MirTypeDefList, mir_type_def_list, MirTypeDef)
@@ -430,7 +433,7 @@ MirTy mir_ty_obj(MirModule *module, MsName name, const MirTy *args, uint32_t nar
 MirTy mir_ty_fn(MirModule *module, const MirTy *params, uint32_t count, MirTy ret, uint64_t owned);
 
 static inline const MirTyData *mir_ty_data(const MirModule *module, MirTy type) {
-  return &module->types.kinds.ptr[type];
+  return module->types.kinds.ptr[type];
 }
 
 /* Whether dropping a value of `type` does anything. */

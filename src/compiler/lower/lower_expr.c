@@ -108,6 +108,22 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   return value;
 }
 
+/* A parameter named by a default argument: the value the call passes for it, which must already be known. */
+static MirValue default_param(LowerFn *fn, const MsRef *ref) {
+  const MsCall *call = fn->default_call;
+  const size_t declared = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
+  const uint32_t at = ref->local + (uint32_t)(call->arg_count - declared);
+  if (at >= call->arg_count || (call->args[at].flags & MS_PARAM_VAR) != 0) {
+    (void)fn_fail(fn, "a default argument that reads a `var` parameter is not lowered yet");
+    return MIR_NONE;
+  }
+  const MirValue value = fn->default_args[at];
+  if (value == MIR_NONE) {
+    (void)fn_fail(fn, "a default argument reads a parameter that has no value yet");
+  }
+  return value;
+}
+
 MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   MirValue captured = MIR_NONE;
   if (fn_lambda_name(fn, expr, ref, &captured)) {
@@ -116,6 +132,25 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (fn_closing_read(fn, ref, &captured)) {
     return captured;
   }
+  if (ref != NULL && ref->kind == MS_REF_PARAM && fn->default_call != NULL) {
+    return default_param(fn, ref);
+  }
+  if (ref != NULL && ref->kind == MS_REF_PARAM && fn->param_vars == NULL) {
+    /* A field default reads an earlier field of the record under construction, in place. */
+    if (fn->default_base == MIR_NONE) {
+      (void)fn_fail(fn, "a name read outside a function has no value");
+      return MIR_NONE;
+    }
+    const MirImm of_record = {.tag = MI_TY, .a = fn->default_record_ty};
+    const MirValue record = fn_emit(fn, MOP_Load, &fn->default_base, 1, of_record, fn->default_record_ty);
+    const MirTyData *data = mir_ty_data(fn->cx->module, fn->default_record_ty);
+    if (data->kind != MK_TYPE || ref->local >= fn->cx->module->type_defs.ptr[data->id].nfields) {
+      (void)fn_fail(fn, "a field default reads a field its record does not have");
+      return MIR_NONE;
+    }
+    const MirImm field = {.tag = MI_FIELD, .a = data->id, .b = ref->local};
+    return fn_emit(fn, MOP_TypeGet, &record, 1, field, fn->cx->module->type_defs.ptr[data->id].fields[ref->local].ty);
+  }
   if (ref != NULL && ref->kind == MS_REF_PARAM) {
     return mir_b_use_var(&fn->b, fn->param_vars[ref->local]);
   }
@@ -123,7 +158,7 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     return mir_b_use_var(&fn->b, fn->vars[ref->local] - 1);
   }
   if (ref != NULL && ref->kind == MS_REF_FUNCTION) {
-    return fn_function_value(fn, ref, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+    return fn_function_value(fn, expr, ref);
   }
   if (ref != NULL && ref->kind == MS_REF_CONSTANT) {
     return lower_constant(fn, ref);
@@ -162,6 +197,9 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   if (ref != NULL && ref->kind == MS_REF_CASE) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
+  }
+  if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_OPERATION)) {
+    return fn_bound_method(fn, expr, ref); /* `value.method`, a method used as a value */
   }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
@@ -293,6 +331,81 @@ static MirValue string_compare(LowerFn *fn, MirCc cc, MirValue left, MirValue ri
 
 /* The operator `op` over two values of one standard type: strings by the runtime, value objects by their operation
  * word, Floats and UInt64 by their own instructions, everything else as integers. */
+static bool is_structural(const LowerFn *fn, MirTy ty) {
+  const MirTyKind kind = mir_ty_data(fn->cx->module, ty)->kind;
+  return kind == MK_LIST || kind == MK_BYTES || kind == MK_OPT || kind == MK_TYPE || kind == MK_ALT;
+}
+
+/* `a == b` on a list, bytes, an optional, a record or an alternative: the runtime compares the two by the type's descriptor. */
+static MirValue structural_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, of_type, MIR_PTR);
+  const MirValue left_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue right_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue left_stored[2] = {left_slot, left};
+  const MirValue right_stored[2] = {right_slot, right};
+  (void)mir_b_emit(&fn->b, MOP_Store, left_stored, 2, (MirImm){0}, MIR_NONE);
+  (void)mir_b_emit(&fn->b, MOP_Store, right_stored, 2, (MirImm){0}, MIR_NONE);
+  const MirValue operands[3] = {desc, left_slot, right_slot};
+  const MirValue same = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_slot_eq")), operands, 3, MIR_BOOL);
+  return negate ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
+}
+
+/* `a == b` on two optionals: both absent, or both present with equal payloads. The payloads compare by the
+ * same rules as any two values, and padding bytes never take part. */
+static MirValue optional_equality(LowerFn *fn, bool negate, MirValue left, MirValue right) {
+  const MirValue left_some = mir_b_emit(&fn->b, MOP_OptIsSome, &left, 1, (MirImm){0}, MIR_BOOL);
+  const MirValue right_some = mir_b_emit(&fn->b, MOP_OptIsSome, &right, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock both = mir_b_new_block(&fn->b);
+  const MirBlock differ = mir_b_new_block(&fn->b);
+  const MirBlock present = mir_b_new_block(&fn->b);
+  const MirBlock absent = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, MIR_BOOL, MM_BORROW);
+  const MirValue agree = mir_b_icmp(&fn->b, MCC_EQ, left_some, right_some);
+  mir_b_br_if(&fn->b, agree, both, NULL, 0, differ, NULL, 0);
+  mir_b_seal_block(&fn->b, both);
+  mir_b_seal_block(&fn->b, differ);
+  mir_b_switch_to(&fn->b, both);
+  mir_b_br_if(&fn->b, left_some, present, NULL, 0, absent, NULL, 0);
+  mir_b_seal_block(&fn->b, present);
+  mir_b_seal_block(&fn->b, absent);
+  mir_b_switch_to(&fn->b, present);
+  const MirTy payload = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, left))->elem;
+  const MirValue left_value = mir_b_emit(&fn->b, MOP_OptGet, &left, 1, (MirImm){0}, payload);
+  const MirValue right_value = mir_b_emit(&fn->b, MOP_OptGet, &right, 1, (MirImm){0}, payload);
+  const MirValue same = fn_compare_values(fn, MS_B_EQ, left_value, right_value);
+  mir_b_br(&fn->b, join, &same, 1);
+  mir_b_switch_to(&fn->b, absent);
+  const MirValue yes = mir_b_bconst(&fn->b, true);
+  mir_b_br(&fn->b, join, &yes, 1);
+  mir_b_switch_to(&fn->b, differ);
+  const MirValue no = mir_b_bconst(&fn->b, false);
+  mir_b_br(&fn->b, join, &no, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return negate ? mir_b_emit(&fn->b, MOP_Not, &result, 1, (MirImm){0}, MIR_BOOL) : result;
+}
+
+/* `a == b` on two records: every field equal, field by field, so padding bytes never take part. */
+static MirValue record_equality(LowerFn *fn, bool negate, MirValue left, MirValue right, MirTy ty) {
+  const MirTypeDef *def = &fn->cx->module->type_defs.ptr[mir_ty_data(fn->cx->module, ty)->id];
+  MirValue all = mir_b_bconst(&fn->b, true);
+  for (uint32_t field = 0; field < def->nfields; field++) {
+    const MirImm imm = {.tag = MI_FIELD, .a = mir_ty_data(fn->cx->module, ty)->id, .b = field};
+    const MirTy field_ty = def->fields[field].ty;
+    const MirValue l = mir_b_emit(&fn->b, MOP_TypeGet, &left, 1, imm, field_ty);
+    const MirValue r = mir_b_emit(&fn->b, MOP_TypeGet, &right, 1, imm, field_ty);
+    const MirValue same = fn_compare_values(fn, MS_B_EQ, l, r);
+    if (same == MIR_NONE) {
+      return MIR_NONE;
+    }
+    const MirValue pair[2] = {all, same};
+    all = mir_b_emit(&fn->b, MOP_And, pair, 2, (MirImm){0}, MIR_BOOL);
+  }
+  return negate ? mir_b_emit(&fn->b, MOP_Not, &all, 1, (MirImm){0}, MIR_BOOL) : all;
+}
+
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right) {
   BinaryOps ops;
   if (!binary_ops(op, &ops)) {
@@ -307,6 +420,16 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
     return object;
   }
   const MirTy operand = mir_b_ty(&fn->b, left);
+  const bool equality = ops.compare && (op == MS_B_EQ || op == MS_B_NE);
+  if (equality && mir_ty_data(fn->cx->module, operand)->kind == MK_OPT) {
+    return optional_equality(fn, op == MS_B_NE, left, right);
+  }
+  if (equality && mir_ty_data(fn->cx->module, operand)->kind == MK_TYPE) {
+    return record_equality(fn, op == MS_B_NE, left, right, operand);
+  }
+  if (equality && is_structural(fn, operand)) {
+    return structural_equality(fn, op == MS_B_NE, left, right, operand);
+  }
   if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
     return float_binary(fn, &ops, left, right, operand);
   }
@@ -351,7 +474,10 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_MATCH: return fn_match(fn, expr);
     case MS_E_LIST: return fn_list(fn, expr);
     case MS_E_INDEX:
-    case MS_E_APPLY: return fn_index(fn, expr, want);
+    case MS_E_APPLY: {
+      const MsRef *named = expr->kind == MS_E_APPLY && expr->u.apply.types.len != 0 ? ms_facts_ref(fn->facts, expr->id) : NULL;
+      return named != NULL && named->kind == MS_REF_FUNCTION ? fn_function_value(fn, expr, named) : fn_index(fn, expr, want);
+    }
     case MS_E_LAMBDA: return fn_lambda(fn, expr);
     case MS_E_UNARY: return fn_unary(fn, expr, want);
     default:

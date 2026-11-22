@@ -48,6 +48,5 @@ void ms_check_test_fixture(Body *body) {
            "make_fixture must return a concrete type implementing @std/test/test.ms TestHooks; return your fixture type and declare any of fn var Fixture.before_all(), before_each(), after_each() and after_all() with no arguments returning Void!");
     return;
   }
-  body->facts->fixture = body_symbol_ref(body, factory);
   body->fixture_ty = result;
 }

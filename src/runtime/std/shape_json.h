@@ -10,7 +10,7 @@
 #include "abi/shape.h"
 
 /* ms-sig: msstd_json_stringify(shape: *const ShapeTable, value: *const u8, has_max_bytes: HasRaw, max_bytes:
- * i64, has_indent: HasRaw, indent: i64, strict: u8, out: *mut StrVal) -> u8 @domain=json @leaf */
+ * i64, has_indent: HasRaw, indent: i64, strict: u8, out: *mut StrVal) -> u8 @domain=JSON @leaf */
 uint8_t msstd_json_stringify(const MsShapeTable *table, const void *value, uint8_t has_max_bytes,
                              int64_t max_bytes, uint8_t has_indent, int64_t indent, uint8_t strict,
                              MsString *out);
@@ -22,7 +22,7 @@ uint8_t msstd_json_stringify(const MsShapeTable *table, const void *value, uint8
  * does not fit the type; on failure nothing is left owned in `out`. */
 /* ms-sig: msstd_json_decode(shape: *const ShapeTable, text: *const StrVal, has_max_bytes: HasRaw, max_bytes:
  * i64, has_max_depth: HasRaw, max_depth: i64, has_max_values: HasRaw, max_values: i64, ignore_unknown_fields:
- * u8, out: *mut u8, err: ErrSlot) -> u8 @domain=json @leaf */
+ * u8, out: *mut u8, err: ErrSlot) -> u8 @domain=JSON @leaf */
 uint8_t msstd_json_decode(const MsShapeTable *table, const MsString *text, uint8_t has_max_bytes,
                           int64_t max_bytes, uint8_t has_max_depth, int64_t max_depth, uint8_t has_max_values,
                           int64_t max_values, uint8_t ignore_unknown_fields, void *out, MsString *err);

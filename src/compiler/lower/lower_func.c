@@ -260,6 +260,10 @@ static void finish_body(LowerFn *fn) {
   if (fn->terminated) {
     return;
   }
+  if (!fn_end_is_reachable(fn)) {
+    mir_b_unreachable(&fn->b);
+    return;
+  }
   const MirValue done = fn_result_wrap(fn, MIR_NONE);
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, done);
@@ -291,16 +295,9 @@ static bool lower_body(Lower *cx, uint32_t index) {
   (void)fn_scope_begin(&fn);
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[target->node] : 0;
   fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  const size_t closing_count = (size_t)fn.nvars + LOWER_MAX_CLOSING_PARAMS + 1;
-  fn.closing = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, closing_count);
-  fn.closing_var = MS_ARENA_NEW_ARRAY(&cx->module->arena, bool, closing_count);
-  fn.closing_types = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, closing_count);
-  for (size_t at = 0; at < closing_count; at++) {
-    fn.closing[at] = MIR_NONE;
-    fn.closing_var[at] = false;
-    fn.closing_types[at] = MIR_VOID;
-  }
+  fn_init_closing(&fn);
   bind_params(&fn, target);
+  fn_find_shared(&fn, target->func->body);
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;
@@ -328,7 +325,7 @@ bool lower_pending(Lower *cx) {
         }
       }
     }
-    if (!lower_lambda_bodies(cx, &progressed)) {
+    if (!lower_lambda_bodies(cx, &progressed) || !lower_default_bodies(cx, &progressed)) {
       return false;
     }
   }
@@ -352,6 +349,7 @@ void lower_release(Lower *cx) {
   mir_idlist_free(&cx->vtables);
   lower_instance_list_free(&cx->instances);
   lower_lambda_list_free(&cx->lambdas);
+  lower_default_list_free(&cx->defaults);
   mir_idlist_free(&cx->files);
 }
 
