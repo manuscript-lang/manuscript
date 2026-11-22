@@ -2,6 +2,7 @@
 #include "compiler/own/uses.h"
 
 #include "compiler/check/methods.h"
+#include "compiler/check/properties.h"
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
 #include "compiler/syntax/walk.h"
@@ -145,6 +146,10 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.bind.value);
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
+  } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+             !stmt->u.branch.is_mutable &&
+             ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, stmt->u.branch.cond->id))) {
+    mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
   }
 }
 

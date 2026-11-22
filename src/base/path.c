@@ -36,6 +36,17 @@ MsSpan ms_path_parent(MsSpan path) {
   return end == path.len ? ms_span_of(path.ptr, 0) : ms_span_of(path.ptr, end);
 }
 
+void ms_path_from_os(char *text, size_t size) {
+#ifdef _WIN32
+  for (size_t at = 0; at < size; at++) {
+    text[at] = text[at] == '\\' ? '/' : text[at];
+  }
+#else
+  (void)text;
+  (void)size;
+#endif
+}
+
 /* Rooted at `/`, or on Windows at a drive such as `D:/`. */
 bool ms_path_is_absolute(MsSpan path) {
   if (path.len > 0 && path.ptr[0] == '/') {

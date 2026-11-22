@@ -70,12 +70,20 @@ struct MsObj {
 void ms_obj_install_drop(void (*drop)(MsObj *));
 
 /* The builtin descriptors (generated code references them by name through the runtime's symbols). */
-extern const MsTypeDesc ms_desc_int;
-extern const MsTypeDesc ms_desc_float;
-extern const MsTypeDesc ms_desc_float32;
-extern const MsTypeDesc ms_desc_bool;
-extern const MsTypeDesc ms_desc_string;
-extern const MsTypeDesc ms_desc_bytes;
+/* Generated code names the builtin descriptors msrt_desc_*; the runtime spells them ms_desc_*, the same objects
+ * (one address each, so descriptors compare by pointer). */
+extern const MsTypeDesc msrt_desc_int;
+#define ms_desc_int msrt_desc_int
+extern const MsTypeDesc msrt_desc_float;
+#define ms_desc_float msrt_desc_float
+extern const MsTypeDesc msrt_desc_float32;
+#define ms_desc_float32 msrt_desc_float32
+extern const MsTypeDesc msrt_desc_bool;
+#define ms_desc_bool msrt_desc_bool
+extern const MsTypeDesc msrt_desc_string;
+#define ms_desc_string msrt_desc_string
+extern const MsTypeDesc msrt_desc_bytes;
+#define ms_desc_bytes msrt_desc_bytes
 
 /* True when a value of this type owns nothing and copies bitwise. */
 bool ms_desc_is_plain(const MsTypeDesc *desc);
