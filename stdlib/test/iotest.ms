@@ -31,8 +31,8 @@ fn var OneByte.next() move Bytes?!:
 		self.held = none
 		return ok(data)
 
-	self.held = data.slice(1, data.length())?
-	return ok(data.slice(0, 1)?)
+	self.held = data.slice(1, data.length())?.clone()
+	return ok(data.slice(0, 1)?.clone())
 
 fn move OneByte.close() Void!:
 	return self.input.close()

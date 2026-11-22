@@ -231,7 +231,7 @@ fn failure(id: Int, code: Int) Error:
 // Stores how the work ended (its result or error) in the promise `id`.
 export fn complete[U](id: Int, move result: U!) Void:
 	if result.is_error():
-		msrt_promise_put(id, result.err(), 1)
+		msrt_promise_put(id, result.err().clone(), 1)
 	else:
 		msrt_promise_put(id, result.get(), 0)
 

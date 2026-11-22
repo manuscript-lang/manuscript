@@ -338,7 +338,7 @@ fn var JsonReading[T].fail(cause: Error) Void!:
 	return error(cause)
 
 // Parses the buffered value and clears the scanner for the next one.
-fn var JsonReading[T].complete() T!:
+fn var JsonReading[T].complete() move T!:
 	bytes := self.pending.drain()
 	self.reset()
 	if text := bytes.decode_utf8(): return parse[T](text, self.options)
@@ -400,7 +400,7 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 	return ok(false)
 
 // Consumes one byte and returns the value it completes, if any.
-fn var JsonReading[T].advance(byte: UInt8) T?!:
+fn var JsonReading[T].advance(byte: UInt8) move T?!:
 	done := self.scan(byte)?
 	if not done: return ok(none)
 

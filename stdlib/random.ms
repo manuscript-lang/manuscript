@@ -91,7 +91,7 @@ export fn shuffle[T](move values: List[T]) List[T]!:
 
 // Returns a uniformly chosen item, or none for an empty list.
 // ms: effect std.random.read
-export fn choice[T](values: List[T]) T?!:
+export fn choice[T: Clonable](values: List[T]) T?!:
 	return draw_choice(values)
 
 // Returns `count` items chosen uniformly without replacement, in random order, as

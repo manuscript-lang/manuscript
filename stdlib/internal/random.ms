@@ -96,8 +96,8 @@ export fn draw_shuffle[T](values: List[T]) List[T]!:
 	return ok(out)
 
 // A uniformly chosen item, or none for an empty list.
-export fn draw_choice[T](values: List[T]) T?!:
+export fn draw_choice[T: Clonable](values: List[T]) T?!:
 	if values.is_empty(): return ok(none)
 
 	at := draw_below(0, values.length())?
-	return ok(values.get(at))
+	return ok(values.get(at).clone())

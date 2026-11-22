@@ -385,7 +385,7 @@ fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Void!:
 		length := self.member_length(ended)?
 		if length == 0: break
 
-		var member = self.buffer.slice(0, length)?
+		var member = self.buffer.slice(0, length)?.clone()
 		self.buffer = self.buffer.slice(length, self.buffer.length())?
 
 		// Padding the archive ended inside is restored so the end blocks stay

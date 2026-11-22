@@ -704,7 +704,7 @@ fn var Map[T, U].remove(move key: T) Void: ...
 fn Map[T: Hashable & Clonable, U: Clonable].clone() move Map[T, U]:
 	var out = Map[T, U]()
 	for key in self.keys():
-		out.add(key.clone(), self.get(key).get())
+		out.add(key.clone(), self.get(key).get().clone())
 	return out
 
 // Returns a new map of copies of the entries for which `predicate` is true, in
@@ -758,7 +758,7 @@ fn Map[T: Hashable, U: Clonable].values() List[U]: ...
 fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 	var out = List[MapEntry[T, U]]()
 	for key in self.keys():
-		out.append(MapEntry(key: key.clone(), value: self.get(key).get()))
+		out.append(MapEntry(key: key.clone(), value: self.get(key).get().clone()))
 	return out
 
 // Copies every entry of `other` into this map in place. Existing keys keep their
