@@ -69,12 +69,58 @@ fn var List[T].reverse() Void: ...
 // Comparable elements also have `sort()` without a comparator. Example:
 // `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
 fn var List[T].sort(compare: fn(T, T) Int) Void:
-	// A stable insertion sort on `swap`: elements move only past strictly greater ones.
-	for i in 1..self.length():
-		var j = i
-		while j > 0 and compare(self[j - 1], self[j]) > 0:
-			self.swap(j - 1, j)
-			j -= 1
+	// A stable bottom-up merge sort of an index order (so no element is copied), then the order is applied in place
+	// by swapping along its cycles.
+	size := self.length()
+	if size < 2: return
+
+	var order = List[Int](reserve: size)
+	var merged = List[Int](reserve: size)
+	for i in 0..size:
+		order.append(i)
+		merged.append(0)
+
+	var width = 1
+	while width < size:
+		var low = 0
+		while low < size:
+			middle := if low + width < size: low + width else: size
+			high := if low + 2 * width < size: low + 2 * width else: size
+			var left = low
+			var right = middle
+			var out = low
+			while left < middle and right < high:
+				if compare(self[order[right]], self[order[left]]) < 0:
+					merged.set(out, order[right])
+					right += 1
+				else:
+					merged.set(out, order[left])
+					left += 1
+				out += 1
+			while left < middle:
+				merged.set(out, order[left])
+				left += 1
+				out += 1
+			while right < high:
+				merged.set(out, order[right])
+				right += 1
+				out += 1
+			low += 2 * width
+		for i in 0..size:
+			order.set(i, merged[i])
+		width *= 2
+
+	var placed = List[Bool](reserve: size)
+	for i in 0..size:
+		placed.append(false)
+	for start in 0..size:
+		if placed[start]: continue
+		var at = start
+		while order[at] != start:
+			self.swap(at, order[at])
+			placed.set(at, true)
+			at = order[at]
+		placed.set(at, true)
 
 // Returns the zero-based index of the first element for which `predicate` is true,
 // or `none`.
