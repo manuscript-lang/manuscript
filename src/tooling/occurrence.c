@@ -7,6 +7,7 @@
 #include "base/message.h"
 #include "base/sort.h"
 #include "compiler/check/methods.h"
+#include "compiler/check/resolve_internal.h"
 #include "compiler/syntax/walk.h"
 #include "tooling/facts.h"
 
@@ -105,6 +106,16 @@ static void fold_receivers(Builder *b, uint32_t module) {
     }
     MsStrBuild text = ms_strbuild_new();
     type_form(b, &text, tree->decls[at]->u.impl.receiver);
+    const MsTypeParams bounds = tree->decls[at]->u.impl.bounds;
+    for (uint32_t index = 0; index < bounds.len; index++) {
+      /* `Box[T: Equal]` and `Box[T]` are two forms. */
+      ms_strbuild_append_text(&text, " ");
+      ms_strbuild_append(&text, ms_names_span(b->program->names, bounds.ptr[index]->name));
+      for (uint32_t bound = 0; bound < bounds.ptr[index]->bounds.len; bound++) {
+        ms_strbuild_append_text(&text, ":");
+        type_form(b, &text, bounds.ptr[index]->bounds.ptr[bound]);
+      }
+    }
     forms[at] = ms_arena_copy(b->arena, ms_strbuild_span(&text));
     ms_strbuild_free(&text);
     for (uint32_t earlier = 0; earlier < at; earlier++) {
@@ -230,7 +241,7 @@ static MsSpan method_key(Builder *b, const MsMethodEntry *entry) {
           }
           const MsTy shown = ms_check_operation_type(program, symbol->ty, operation, entry->receiver);
           const size_t count = ms_ty_param_count(&program->types, entry->ty);
-          if (shown != entry->ty || ms_ty_param_count(&program->types, operation->ty) != count) {
+          if (shown != entry->ty || shown != operation->ty || ms_ty_param_count(&program->types, operation->ty) != count) {
             continue;
           }
           bool same = true;
@@ -305,7 +316,10 @@ static void declare_symbols(Builder *b, uint32_t module) {
           }
           const MsSpan method_name = ms_occ_name_text(b, method->func.name);
           ms_occ_add(b, operation_key(b, id, method->func.name), method_name, module, header(source, method->pos.offset, method_name),
-              true, false, def->operations.ptr[op].ty, 0, true);
+              true, false,
+              ms_check_replace_type(&b->program->types, def->operations.ptr[op].ty, symbol->ty,
+                                    resolver_primitive(b->program, MS_BUILTIN_SelfType)),
+              0, true);
         }
       }
     }
@@ -586,9 +600,11 @@ static void use_call(Builder *b, const MsExpr *expr, MsTy ty) {
       ms_occ_add(b, ms_message_format(b->arena, "case:%S:%S", ms_occ_symbol_key(b, parent), ms_occ_name_text(b, case_name)), ms_occ_name_text(b, case_name),
           b->module, written->pos.offset, false, false, ty, 0, false);
       if (!member) {
-        /* A constructor named bare (`ok`, `Node`) is also a symbol of its own in the oracle's index. */
-        ms_occ_add(b, ms_message_format(b->arena, "native:%S", ms_occ_name_text(b, case_name)), ms_occ_name_text(b, case_name), b->module,
-            written->pos.offset, false, false, ty, 0, false);
+        /* A constructor named bare (`ok`, `Node`) is also a symbol of its own in the oracle's index: the standard
+         * one's native, a project one's enum. */
+        const bool user = b->program->symbols.ptr[parent].module < b->program->user_modules;
+        ms_occ_add(b, user ? ms_occ_symbol_key(b, parent) : ms_message_format(b->arena, "native:%S", ms_occ_name_text(b, case_name)),
+                   ms_occ_name_text(b, case_name), b->module, written->pos.offset, false, false, ty, user ? parent : 0, false);
       }
       const MsExpr *root = member ? peel_apply(written->u.member.left) : NULL;
       if (root != NULL && root->kind == MS_E_NAME) {
@@ -646,11 +662,24 @@ static void match_case(Builder *b, const MsExpr *scrutinee, const MsExpr *path) 
     name = path->u.sym;
   } else if (path->kind == MS_E_MEMBER) {
     const MsExpr *qualifier = peel_apply(path->u.member.left);
-    const MsRef *ref = qualifier->kind == MS_E_NAME ? ms_facts_ref(facts, qualifier->id) : NULL;
-    if (ref == NULL || symbol_of_ref(b, ref) != parent) {
+    if (qualifier->kind != MS_E_NAME) {
+      return;
+    }
+    /* A match path bypasses inference, so its qualifier has no ref: read it from the module's scope. */
+    const MsRef *ref = ms_facts_ref(facts, qualifier->id);
+    const bool resolved = ref != NULL && ref->kind != MS_REF_NONE;
+    MsSymbolId named = resolved ? symbol_of_ref(b, ref) : 0;
+    if (!resolved) {
+      const MsModuleInfo *info = &b->program->modules.ptr[b->module];
+      const MsSymbolId *found = ms_scope_get(&info->scope, qualifier->u.sym);
+      found = found != NULL ? found : ms_scope_get(&info->imports, qualifier->u.sym);
+      named = found != NULL ? *found : 0;
+    }
+    if (named != parent) {
       return;
     }
     name = path->u.member.name;
+    ms_occ_add(b, ms_occ_symbol_key(b, parent), ms_occ_name_text(b, qualifier->u.sym), b->module, qualifier->pos.offset, false, false, ty, parent, false);
   } else {
     return;
   }
@@ -662,6 +691,23 @@ static void match_case(Builder *b, const MsExpr *scrutinee, const MsExpr *path) 
       return;
     }
   }
+}
+
+/* A match path over an interface value names the type it tests for. */
+static void match_type(Builder *b, MsTy scrutinee, const MsExpr *path) {
+  if (path->kind != MS_E_NAME || scrutinee == MS_TY_NONE || ms_ty_kind(&b->program->types, scrutinee) != MS_TY_CONTRACT) {
+    return;
+  }
+  const MsModuleInfo *info = &b->program->modules.ptr[b->module];
+  const MsSymbolId *found = ms_scope_get(&info->scope, path->u.sym);
+  if (found == NULL) {
+    found = ms_scope_get(&info->imports, path->u.sym);
+  }
+  if (found == NULL || *found == 0 || b->program->symbols.ptr[*found].kind != MS_SYMBOL_TYPE) {
+    return;
+  }
+  ms_occ_add(b, ms_occ_symbol_key(b, *found), ms_occ_name_text(b, path->u.sym), b->module, path->pos.offset, false, false, b->program->symbols.ptr[*found].ty, *found,
+      false);
 }
 
 /* Argument labels resolve to the parameters of a callee with a body, whichever module declares it. */
@@ -704,8 +750,13 @@ static void uses_expr(void *context, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(facts, expr->id);
   const MsTy ty = ms_facts_type(facts, expr->id);
   const bool write = b->assigned[b->module][expr->id];
+  if (expr->kind == MS_E_APPLY && expr->u.apply.left->kind == MS_E_NAME) {
+    b->instantiated[b->module][expr->u.apply.left->id] = true;
+  }
   if (expr->kind == MS_E_NAME && ref != NULL) {
-    use_name(b, expr, ref, ty, write);
+    if (!(ref->kind == MS_REF_FUNCTION && b->instantiated[b->module][expr->id])) {
+      use_name(b, expr, ref, ty, write);
+    }
   } else if (expr->kind == MS_E_MEMBER && ref != NULL) {
     use_member(b, expr, ref, ty, write);
   } else if (expr->kind == MS_E_CALL) {
@@ -718,6 +769,7 @@ static void uses_expr(void *context, const MsExpr *expr) {
       const bool optional = arm->bare && ms_ty_is(&b->program->types, scrutinee, MS_BUILTIN_Optional);
       if (!optional && !arm->from_if) {
         match_case(b, expr->u.match.scrutinee, arm->path);
+        match_type(b, scrutinee, arm->path);
       }
     }
   }
@@ -773,6 +825,7 @@ static void index_tables(Builder *b) {
   b->param_key = MS_ARENA_NEW_ARRAY(b->arena, MsSpan *, modules);
   b->written = MS_ARENA_NEW_ARRAY(b->arena, MsTy *, modules);
   b->assigned = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
+  b->instantiated = MS_ARENA_NEW_ARRAY(b->arena, bool *, modules);
   b->folded_into = MS_ARENA_NEW_ARRAY(b->arena, uint32_t *, modules);
   for (size_t module = 0; module < modules; module++) {
     const uint32_t nodes = program->modules.ptr[module].tree->node_count + 1;
@@ -781,6 +834,7 @@ static void index_tables(Builder *b) {
     b->param_key[module] = MS_ARENA_NEW_ARRAY(b->arena, MsSpan, nodes);
     b->written[module] = MS_ARENA_NEW_ARRAY(b->arena, MsTy, nodes);
     b->assigned[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
+    b->instantiated[module] = MS_ARENA_NEW_ARRAY(b->arena, bool, nodes);
   }
   for (size_t module = 0; module < modules; module++) {
     fold_receivers(b, (uint32_t)module);
@@ -891,4 +945,16 @@ MsTypeHints ms_occurrence_type_hints(MsArena *arena, const MsCheckProgram *progr
                                     .len = utf16_length(source.ptr + entry->offset, entry->end - entry->offset)});
   }
   return hints;
+}
+
+void ms_source_position(MsSpan source, size_t offset, size_t *line, size_t *column) {
+  size_t start = 0;
+  *line = 0;
+  for (size_t at = 0; at < offset && at < source.len; at++) {
+    if (source.ptr[at] == '\n') {
+      (*line)++;
+      start = at + 1;
+    }
+  }
+  *column = utf16_length(source.ptr + start, (offset < source.len ? offset : source.len) - start);
 }

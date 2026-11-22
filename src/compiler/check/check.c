@@ -4,6 +4,7 @@
 #include "compiler/check/order.h"
 #include "compiler/check/body.h"
 #include "compiler/check/constants.h"
+#include "compiler/check/exports.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/mutate.h"
 #include "compiler/check/names.h"
@@ -46,6 +47,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_signatures(program, index);
     ms_check_methods(program, index);
     ms_check_constants(program, index);
+    ms_check_exports(program, index);
     program->stage = MS_STAGE_SIDE;
     ms_check_mutation(program, index, graph->modules[index].source);
     ms_check_shadowing(program, index);

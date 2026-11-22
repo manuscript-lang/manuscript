@@ -268,7 +268,16 @@ static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
   body_set_ref(body, left->id, body_symbol_ref(body, symbol));
   body_set_type(body, left->id, owner);
   uint32_t index = 0;
-  if (body_case_of(body, owner, expr->u.member.name, &index) != NULL) {
+  const MsTyCase *kase = body_case_of(body, owner, expr->u.member.name, &index);
+  if (kase != NULL) {
+    if (kase->fields.len == 0) {
+      MsStrBuild what = ms_strbuild_new();
+      ms_strbuild_append_text(&what, "case ");
+      ms_strbuild_append(&what, ms_names_span(body->program->names, expr->u.member.name));
+      ms_strbuild_append_text(&what, " cannot be built here");
+      (void)body_opaque_denied(body, expr->pos, owner, ms_strbuild_span(&what));
+      ms_strbuild_free(&what);
+    }
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
     *ty = owner;
   } else {
@@ -287,6 +296,14 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy receiver = body_expr(body, expr->u.member.left, MS_TY_NONE);
   uint32_t index = 0;
   if (body_field(body, receiver, expr->u.member.name, &ty, &index)) {
+    if (ms_ty_kind(&body->program->types, receiver) == MS_TY_TYPE) {
+      MsStrBuild what = ms_strbuild_new();
+      ms_strbuild_append_text(&what, "field ");
+      ms_strbuild_append(&what, ms_names_span(body->program->names, expr->u.member.name));
+      ms_strbuild_append_text(&what, " is hidden");
+      (void)body_opaque_denied(body, expr->pos, receiver, ms_strbuild_span(&what));
+      ms_strbuild_free(&what);
+    }
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_FIELD, .index = index, .owner = receiver});
     return ty;
   }

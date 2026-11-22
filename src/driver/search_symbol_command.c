@@ -1,5 +1,5 @@
-/* driver/search_symbol_command.c: `ms search_symbol`. Port of crates/ms-cli/src/engine/search.rs for the standard
- * library; project symbols are not searched yet. */
+/* driver/search_symbol_command.c: `ms search_symbol`. Port of crates/ms-cli/src/engine/search.rs: the
+ * project's declarations (search_project.c) then the standard library's. */
 #include "driver/search_symbol_command.h"
 
 #include <stdio.h>
@@ -9,16 +9,15 @@
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "driver/invocation_rules.h"
+#include "driver/search_project.h"
 #include "tooling/guide.h"
 #include "compiler/syntax/diag_json.h"
 
-enum { DEFAULT_LIMIT = 5, MAX_LIMIT = 10, OUTPUT_BUDGET = 3500 };
+enum { DEFAULT_LIMIT = 5, MAX_LIMIT = 10, OUTPUT_BUDGET = 3500, USES_SHOWN = 5 };
 
-typedef struct Described {
-  MsSpan name, kind, definition, type, doc, effects;
-  size_t rank;
-} Described;
-MS_AVEC(DescribedList, described_list, Described)
+typedef MsSymbolMatch Described;
+typedef MsSymbolMatches DescribedList;
+#define described_list_push ms_symbol_matches_push
 
 static bool is_blank(uint8_t c) {
   return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -157,7 +156,7 @@ static int loose_rank(MsArena *arena, MsSpan name, MsSpan query) {
 }
 
 /* 0 exact, 1 prefix, 2 substring, 3 ordered subsequence, 4 near miss; -1 means no match. */
-static int name_rank(MsArena *arena, MsSpan name, MsSpan query) {
+int ms_symbol_name_rank(MsArena *arena, MsSpan name, MsSpan query) {
   const MsSpan folded = fold(arena, query);
   MsSpan own = name;
   for (size_t i = name.len; i > 0; i--) {
@@ -181,13 +180,13 @@ static int64_t compare_rank(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   return (int64_t)((const Described *)(const void *)a)->rank - (int64_t)((const Described *)(const void *)b)->rank;
 }
 
-static DescribedList library_matches(MsArena *arena, const MsGuide *guide, MsSpan query, size_t words, size_t limit) {
+static DescribedList library_matches(MsArena *arena, const MsGuide *guide, MsSpan query, size_t words, size_t limit, size_t project) {
   const MsGuideMatches concept = ms_guide_search(arena, guide, query, 50);
   DescribedList library = {0};
   for (size_t i = 0; i < concept.len; i++) {
     const MsGuideMatch *m = &concept.ptr[i];
-    const int path = name_rank(arena, m->path, query);
-    const int own = name_rank(arena, m->name, query);
+    const int path = ms_symbol_name_rank(arena, m->path, query);
+    const int own = ms_symbol_name_rank(arena, m->name, query);
     const int rank = own >= 0 && (path < 0 || own < path) ? own : path;
     if (rank < 0) {
       continue;
@@ -206,7 +205,7 @@ static DescribedList library_matches(MsArena *arena, const MsGuide *guide, MsSpa
                                     .effects = ms_arena_copy(arena, ms_strbuild_span(&effects)), .rank = (size_t)rank});
     ms_strbuild_free(&effects);
   }
-  if (words > 1 || library.len == 0) {
+  if (words > 1 || (library.len == 0 && project == 0)) {
     /* Words rather than a name: top up with the meaning-based ranking. */
     const size_t named = library.len;
     for (size_t i = 0; i < concept.len; i++) {
@@ -242,7 +241,16 @@ static DescribedList library_matches(MsArena *arena, const MsGuide *guide, MsSpa
   return library;
 }
 
-static void print_text(MsArena *arena, const DescribedList *described) {
+static void print_uses(MsArena *arena, MsStrBuild *out, const MsSpans *uses) {
+  ms_strbuild_append(out, ms_message_format(arena, "  used (%z)", uses->len));
+  for (size_t i = 0; i < uses->len && i < USES_SHOWN; i++) {
+    ms_strbuild_append_text(out, i == 0 ? ": " : ", ");
+    ms_strbuild_append(out, uses->ptr[i]);
+  }
+  ms_strbuild_append_text(out, uses->len > USES_SHOWN ? ", ...\n" : "\n");
+}
+
+static void print_text(MsArena *arena, const DescribedList *described, size_t project_total) {
   MsStrBuild out = ms_strbuild_new();
   for (size_t i = 0; i < described->len; i++) {
     const Described *m = &described->ptr[i];
@@ -252,12 +260,23 @@ static void print_text(MsArena *arena, const DescribedList *described) {
       ms_strbuild_append(&out, ms_message_format(arena, "  %S\n", clip(arena, m->type, 200), (MsSpan){0}));
     }
     if (m->doc.len > 0) {
-      ms_strbuild_append(&out, ms_message_format(arena, "  // %S\n", clip(arena, m->doc, 160), (MsSpan){0}));
+      ms_strbuild_append(&out, ms_message_format(arena, "  // %S\n", clip(arena, one_spaced(arena, m->doc), 160), (MsSpan){0}));
     }
     if (m->effects.len > 0) {
       ms_strbuild_append(&out, ms_message_format(arena, "  %S\n", m->effects, (MsSpan){0}));
     }
-    ms_strbuild_append(&out, ms_message_format(arena, "  details: ms search_symbol %S\n", m->name, (MsSpan){0}));
+    if (m->project) {
+      print_uses(arena, &out, &m->uses);
+    } else {
+      ms_strbuild_append(&out, ms_message_format(arena, "  details: ms search_symbol %S\n", m->name, (MsSpan){0}));
+    }
+  }
+  size_t shown = 0;
+  for (size_t i = 0; i < described->len; i++) {
+    shown += described->ptr[i].project ? 1 : 0;
+  }
+  if (project_total > shown) {
+    ms_strbuild_append(&out, ms_message_format(arena, "+%z more project matches; use a longer name or --limit\n", (project_total - shown)));
   }
   MsSpan text = ms_strbuild_span(&out);
   if (text.len > OUTPUT_BUDGET) {
@@ -273,11 +292,11 @@ static void print_text(MsArena *arena, const DescribedList *described) {
   ms_strbuild_free(&out);
 }
 
-static void print_json(MsSpan query, const DescribedList *described) {
+static void print_json(MsArena *scratch, MsSpan query, const DescribedList *described, size_t project_total) {
   MsStrBuild out = ms_strbuild_new();
   ms_strbuild_append_text(&out, "{\n  \"format\": 1,\n  \"query\": ");
   ms_json_string(&out, query);
-  ms_strbuild_append_text(&out, ",\n  \"project_total\": 0,\n  \"matches\": ");
+  ms_strbuild_append(&out, ms_message_format(scratch, ",\n  \"project_total\": %z,\n  \"matches\": ", project_total));
   if (described->len == 0) {
     ms_strbuild_append_text(&out, "[]");
   } else {
@@ -302,7 +321,21 @@ static void print_json(MsSpan query, const DescribedList *described) {
         ms_strbuild_append_text(&out, ",\n      \"effects\": ");
         ms_json_string(&out, m->effects);
       }
-      ms_strbuild_append_text(&out, ",\n      \"origin\": \"std\"\n    }");
+      if (m->project) {
+        ms_strbuild_append_text(&out, ",\n      \"uses\": ");
+        if (m->uses.len == 0) {
+          ms_strbuild_append_text(&out, "[]");
+        } else {
+          ms_strbuild_append_text(&out, "[\n");
+          for (size_t u = 0; u < m->uses.len; u++) {
+            ms_strbuild_append_text(&out, "        ");
+            ms_json_string(&out, m->uses.ptr[u]);
+            ms_strbuild_append_text(&out, u + 1 < m->uses.len ? ",\n" : "\n");
+          }
+          ms_strbuild_append_text(&out, "      ]");
+        }
+      }
+      ms_strbuild_append_text(&out, m->project ? ",\n      \"origin\": \"project\"\n    }" : ",\n      \"origin\": \"std\"\n    }");
       ms_strbuild_append_text(&out, i + 1 < described->len ? ",\n" : "\n");
     }
     ms_strbuild_append_text(&out, "  ]");
@@ -358,6 +391,7 @@ int ms_search_symbol_command(int argc, char **argv) {
   ms_guide_build(&arena, &interned, &guide);
   bool blank = true;
   MsStrBuild joined = ms_strbuild_new();
+  MsStrBuild concatenated = ms_strbuild_new();
   size_t words = names.len;
   for (size_t i = 0; i < names.len; i++) {
     MsSpan t = names.ptr[i];
@@ -366,7 +400,10 @@ int ms_search_symbol_command(int argc, char **argv) {
     }
     ms_strbuild_append_text(&joined, i > 0 ? " " : "");
     ms_strbuild_append(&joined, t);
+    ms_strbuild_append(&concatenated, t);
   }
+  const MsSpan project_query = ms_arena_copy(&arena, ms_strbuild_span(&concatenated));
+  ms_strbuild_free(&concatenated);
   const MsSpan query = ms_arena_copy(&arena, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
   if (blank) {
@@ -375,17 +412,26 @@ int ms_search_symbol_command(int argc, char **argv) {
   } else {
     MsSpan page = {0};
     MsSpan error = {0};
-    if (words == 1 && !json && ms_guide_page(&arena, &guide, query, &page, &error)) {
+    size_t project_total = 0;
+    DescribedList described = ms_search_project(&arena, project_query, limit, &project_total);
+    bool exact = false;
+    for (size_t i = 0; i < described.len; i++) {
+      exact = exact || described.ptr[i].rank == 0;
+    }
+    if (words == 1 && !json && !exact && ms_guide_page(&arena, &guide, query, &page, &error)) {
       (void)fwrite(page.ptr, 1, page.len, stdout);
     } else {
-      const DescribedList described = library_matches(&arena, &guide, query, words, limit);
+      const DescribedList library = library_matches(&arena, &guide, query, words, limit - described.len, described.len);
+      for (size_t i = 0; i < library.len; i++) {
+        described_list_push(&arena, &described, library.ptr[i]);
+      }
       if (json) {
-        print_json(query, &described);
+        print_json(&arena, query, &described, project_total);
       } else if (described.len == 0) {
         (void)printf("No project or standard-library symbol like \"%.*s\". Try a shorter name.\n", (int)query.len,
                      (const char *)query.ptr);
       } else {
-        print_text(&arena, &described);
+        print_text(&arena, &described, project_total);
       }
     }
   }

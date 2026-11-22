@@ -49,7 +49,14 @@ target_compile_definitions(pcre2 PUBLIC PCRE2_CODE_UNIT_WIDTH=8 PCRE2_STATIC
   PRIVATE HAVE_CONFIG_H SUPPORT_PCRE2_8 SUPPORT_UNICODE)
 
 
-include(cmake/zlib.cmake)
+# zlib builds with its own CMakeLists.txt: the static library only, no examples, no install.
+set(ZLIB_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(ZLIB_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(ZLIB_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(zlib EXCLUDE_FROM_ALL)
+# Its headers are system headers for the runtime, as before: the project warning set stops at them.
+set_target_properties(zlibstatic PROPERTIES SYSTEM ON)
+add_library(zlib ALIAS zlibstatic)
 include(cmake/libuv.cmake)
 include(cmake/nghttp2.cmake)
 include(cmake/openssl.cmake)
