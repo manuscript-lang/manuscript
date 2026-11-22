@@ -242,11 +242,17 @@ static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t fir
   }
 }
 
+/* A default value must fit the type of the parameter or field it is for. */
+static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
+  return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
+}
+
 /* Checks parameter defaults, then the body, of one callable; records its local count under `node`. */
 static void callable(Body *body, MsNode node, MsParams params, MsStmts stmts) {
   for (uint32_t index = 0; index < params.len; index++) {
     if (params.ptr[index]->def != NULL) {
-      (void)body_expr(body, params.ptr[index]->def, params.ptr[index]->ty != NULL ? resolver_type(&body->resolver, params.ptr[index]->ty) : MS_TY_NONE);
+      const MsTy declared = params.ptr[index]->ty != NULL ? resolver_type(&body->resolver, params.ptr[index]->ty) : MS_TY_NONE;
+      (void)body_default(body, params.ptr[index]->def, declared);
     }
   }
   body_block(body, stmts);
@@ -323,7 +329,7 @@ static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
                         : (field->ty != NULL ? resolver_type(&body->resolver, field->ty) : MS_TY_NONE);
     body->resolver.report = report;
     if (field->def != NULL) {
-      (void)body_expr(body, field->def, ty);
+      (void)body_default(body, field->def, ty);
     }
     /* A default may use the fields before it, which it reads as the constructor's arguments. */
     MsLocal *local = body_declare(body, field->name, ty, MS_REF_PARAM, false, field->id);

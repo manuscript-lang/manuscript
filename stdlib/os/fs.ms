@@ -602,7 +602,7 @@ print(sources.length())
 export fn glob(
 	path: String,
 	options: GlobOptions,
-	exclude: (fn(PathEntry) Bool)? = none,
+	move exclude: (fn(PathEntry) Bool)? = none,
 ) List[PathEntry]!:
 	return msstd_fs_glob_entries(
 		path,
@@ -621,9 +621,9 @@ fn excluding(move exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool
 		return fn(path: String, name: String, directory: Bool, symlink: Bool) Bool:
 			return keep(
 				PathEntry(
-					path: path,
+					path: path.clone(),
 					entry: DirectoryEntry(
-						name: name,
+						name: name.clone(),
 						directory: directory,
 						symlink: symlink,
 					),

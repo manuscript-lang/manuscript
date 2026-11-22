@@ -13,6 +13,7 @@ typedef struct MsInstance {
   MsTy ty;         /* the callee's function type with the arguments substituted */
   MsTyList args;   /* owned: one type per variable, in declaration order */
   MsString message; /* owned: the diagnostic when instantiation failed, else empty */
+  MsTyList unbound; /* owned: the variables no argument or expected type determined, when that is why it failed */
 } MsInstance;
 
 void ms_instance_free(MsInstance *instance);

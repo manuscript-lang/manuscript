@@ -72,11 +72,7 @@ static bool spilled_by_address(LowerFn *fn, MirValue value) {
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  MirMode mode = MM_BORROW;
-  const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
-                     mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
-                     mode == MM_MOVE;
+  const bool fresh = fn_fresh_owner(fn, value);
   if (!fresh) {
     value = fn_implicit_clone(fn, value, false);
   }
