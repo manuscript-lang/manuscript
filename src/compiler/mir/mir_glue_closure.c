@@ -35,7 +35,7 @@ static Capture *captures_of(MirModule *module, uint32_t closure, uint32_t *count
     capture->ty = layout.captures[index].ty;
     capture->offset = layout.captures[index].offset;
     capture->has_closer = closer_of(func, index, &capture->closer);
-    capture->dropped = mir_needs_drop(module, capture->ty) &&
+    capture->dropped = !func->scoped && mir_needs_drop(module, capture->ty) &&
                        (!capture->has_closer || module->funcs.ptr[capture->closer].has_slot_close);
     capture->tail = MIR_NONE;
   }
