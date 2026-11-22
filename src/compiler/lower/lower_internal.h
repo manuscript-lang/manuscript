@@ -17,6 +17,8 @@ typedef struct LowerTarget {
   MsName name;
   MsTy ty;                       /* the signature, receiver first for a method */
   MsTypeParams outer;            /* the type parameters of the enclosing `impl`, before the function's own */
+  const MsTy *variables;         /* when not NULL: the type variables, in order, as the method table holds them */
+  uint32_t nvariables;
 } LowerTarget;
 
 typedef struct LowerInstance {
@@ -36,6 +38,8 @@ typedef struct Lower {
   LowerTyMap types;            /* type (after substitution) -> MIR type */
   MsNames instance_keys;       /* instance key text -> dense id, the index into `instances` */
   LowerInstanceList instances;
+  MsNames vtable_keys;         /* receiver and interface type text -> dense id, the index into `vtables` */
+  MirIdList vtables;           /* the MIR vtable of each key */
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
 } Lower;
 
@@ -46,7 +50,7 @@ typedef struct LowerSubst {
   size_t count;
 } LowerSubst;
 
-#define lower_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), false)
+#define lower_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), ms_strbuild_append_byte((cx)->error, '\n'), false)
 
 /* ---- instances and the driver (lower_func.c) ---- */
 
@@ -56,6 +60,10 @@ LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol);
 /* The MIR function for `target` instantiated with `args` (type arguments of the use, in the caller's
  * terms; `caller` replaces the caller's variables in them). It is reserved at once and its body lowered later. */
 uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs, const LowerSubst *caller);
+
+/* The vtable that shows `receiver` as the interface `iface`, made on first use with every operation's method
+ * instantiated; MIR_NONE after reporting when a method is missing. */
+uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface);
 
 /* The MIR file id of checker module `module`. */
 uint32_t lower_file(Lower *cx, uint32_t module);

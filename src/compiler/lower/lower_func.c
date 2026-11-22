@@ -17,13 +17,19 @@ uint32_t lower_file(Lower *cx, uint32_t module) {
 
 LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol) {
   const MsSymbol *entry = &cx->program->symbols.ptr[symbol];
-  return (LowerTarget){entry->module, entry->decl->id, &entry->decl->u.fn, entry->name, entry->ty, {NULL, 0}};
+  return (LowerTarget){entry->module, entry->decl->id, &entry->decl->u.fn, entry->name, entry->ty, {NULL, 0}, NULL, 0};
 }
 
 /* The type variables of a target, in declaration order (the impl's, then the function's own), as the checker
  * typed them. */
 static bool decl_variables(Lower *cx, const LowerTarget *target, MsTy *out, uint32_t count) {
   const MsFacts *facts = &cx->program->modules.ptr[target->module].facts;
+  if (target->variables != NULL && target->nvariables == count) {
+    for (uint32_t index = 0; index < count; index++) {
+      out[index] = target->variables[index];
+    }
+    return true;
+  }
   const uint32_t outer = target->outer.len;
   if (target->func == NULL || outer + target->func->type_params.len != count) {
     return lower_fail(cx, "a generic function was used with the wrong number of type arguments");
@@ -186,7 +192,8 @@ static bool lower_body(Lower *cx, uint32_t index) {
 static bool lower_pending(Lower *cx) {
   for (size_t index = 0; index < cx->instances.len; index++) {
     if (!cx->instances.ptr[index].lowered && !lower_body(cx, (uint32_t)index)) {
-      return false;
+      const MsSpan name = ms_names_span(cx->program->names, cx->instances.ptr[index].target.name);
+      return lower_fail(cx, "  while lowering `%.*s`", (int)name.len, (const char *)name.ptr);
     }
   }
   return true;
@@ -195,6 +202,9 @@ static bool lower_pending(Lower *cx) {
 static void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
   *cx = (Lower){.program = program, .module = module, .error = error};
   ms_names_init(&cx->instance_keys);
+  ms_names_init(&cx->vtable_keys);
+  (void)ms_names_intern(&cx->vtable_keys, ms_span_of_text(""));
+  mir_idlist_push(&cx->vtables, MIR_NONE);
   (void)ms_names_intern(&cx->instance_keys, ms_span_of_text("")); /* id 0 is the empty text; no key is empty */
   lower_instance_list_push(&cx->instances, (LowerInstance){{0}, NULL, 0, MIR_NONE, true});
 }
@@ -202,6 +212,8 @@ static void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, Ms
 static void lower_release(Lower *cx) {
   lower_ty_map_free(&cx->types);
   ms_names_free(&cx->instance_keys);
+  ms_names_free(&cx->vtable_keys);
+  mir_idlist_free(&cx->vtables);
   lower_instance_list_free(&cx->instances);
   mir_idlist_free(&cx->files);
 }
