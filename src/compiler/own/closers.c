@@ -36,12 +36,9 @@ static uint8_t flags_of(const Closers *pass, const MsMethodEntry *entry) {
                    (entry->source->mutating ? MS_CLOSER_WRITES_BACK : 0));
 }
 
-static void visit_stmt(void *ctx, const MsStmt *stmt) {
-  Closers *pass = ctx;
-  if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
-    return;
-  }
-  const MsTy ty = ms_facts_type(pass->facts, stmt->u.bind.pattern->id);
+/* Records the closer of the binding site `node` when its type is closed at scope end. */
+static void add_closer(Closers *pass, MsNode node) {
+  const MsTy ty = ms_facts_type(pass->facts, node);
   if (ty == MS_TY_NONE || !ms_check_closeable(pass->program, ty)) {
     return;
   }
@@ -50,8 +47,33 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     return;
   }
   ms_closer_list_push(&pass->facts->closers,
-                      (MsCloser){.node = stmt->u.bind.pattern->id, .method = {entry->module, entry->source->id},
-                                 .flags = flags_of(pass, entry)});
+                      (MsCloser){.node = node, .method = {entry->module, entry->source->id}, .flags = flags_of(pass, entry)});
+}
+
+static void visit_stmt(void *ctx, const MsStmt *stmt) {
+  Closers *pass = ctx;
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    add_closer(pass, stmt->u.bind.pattern->id);
+  }
+}
+
+/* A `move` parameter of a function or method is owned by its body. */
+static void add_params(Closers *pass, MsParams params) {
+  for (uint32_t index = 0; index < params.len; index++) {
+    if (params.ptr[index]->moving) {
+      add_closer(pass, params.ptr[index]->id);
+    }
+  }
+}
+
+static void add_decl_params(Closers *pass, const MsDecl *decl) {
+  if (decl->kind == MS_D_FN) {
+    add_params(pass, decl->u.fn.params);
+  } else if (decl->kind == MS_D_IMPL) {
+    for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
+      add_params(pass, decl->u.impl.methods.ptr[index]->func.params);
+    }
+  }
 }
 
 static int64_t compare(uint8_t *env, const uint8_t *a, const uint8_t *b) {
@@ -77,13 +99,13 @@ static void flag(Closers *pass, MsNode binding, uint8_t flags) {
   }
 }
 
-/* A use that moves the binding, or a closure that captures it. */
+/* A use that moves the binding or one of its fields, or a closure that captures it. */
 static void note_use(Closers *pass, const MsExpr *expr) {
   uint32_t binding = 0;
   if (expr->kind == MS_E_LAMBDA) {
     MsBindingList captures = ms_bind_captures(pass->facts, expr);
     for (size_t index = 0; index < captures.len; index++) {
-      flag(pass, captures.ptr[index], MS_CLOSER_MOVED);
+      flag(pass, captures.ptr[index], MS_CLOSER_PARTIAL);
     }
     ms_binding_list_free(&captures);
     return;
@@ -94,7 +116,7 @@ static void note_use(Closers *pass, const MsExpr *expr) {
   }
   if ((expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER) && ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE &&
       root->kind == MS_E_NAME && ms_bind_of(pass->facts, root->id, &binding)) {
-    flag(pass, binding, MS_CLOSER_MOVED);
+    flag(pass, binding, expr->kind == MS_E_NAME ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
   }
 }
 
@@ -121,6 +143,7 @@ void ms_own_closers(MsCheckProgram *program) {
     const MsModule *tree = program->modules.ptr[module].tree;
     const MsVisitor binds = {.ctx = &pass, .stmt = visit_stmt};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
+      add_decl_params(&pass, tree->decls[index]);
       ms_walk_decl(&binds, tree->decls[index]);
     }
     ms_sort((uint8_t *)(void *)pass.facts->closers.ptr, pass.facts->closers.len, sizeof(MsCloser), compare, NULL);

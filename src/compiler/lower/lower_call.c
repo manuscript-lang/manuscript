@@ -183,7 +183,7 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
 }
 
 /* The method-table entry of the method declared by `node` in `module`. */
-static const MsMethodEntry *find_entry(const Lower *cx, uint32_t module, MsNode node) {
+const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node) {
   for (size_t index = 0; index < cx->program->methods.len; index++) {
     const MsMethodEntry *entry = &cx->program->methods.ptr[index];
     if (entry->module == module && entry->source->id == node) {
@@ -208,7 +208,7 @@ static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   if (call->callee.kind != MS_REF_METHOD) {
     return false;
   }
-  const MsMethodEntry *entry = find_entry(cx, call->callee.decl.module, call->callee.decl.node);
+  const MsMethodEntry *entry = fn_method_entry(cx, call->callee.decl.module, call->callee.decl.node);
   if (entry == NULL || entry->source->func.external) {
     return false;
   }
@@ -327,8 +327,7 @@ static MirValue call_runtime(LowerFn *fn, const MsCall *call, const MirValue *ar
   return result;
 }
 
-MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  (void)want;
+static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   /* A callee that is a parameter or local, or any expression with no declaration behind it (`fs[i]()`), is a value. */
   const bool named = expr->u.call.callee->kind == MS_E_NAME;
@@ -398,4 +397,16 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
   const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
   return var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
+}
+
+/* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */
+MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  (void)want;
+  const MirValue result = call_expr(fn, expr);
+  const MsTy ty = ms_facts_type(fn->facts, expr->id);
+  if (!fn->failed && !fn->terminated && ty != MS_TY_NONE && ms_ty_is(&fn->cx->program->types, ty, MS_BUILTIN_Never)) {
+    mir_b_unreachable(&fn->b);
+    fn->terminated = true;
+  }
+  return result;
 }

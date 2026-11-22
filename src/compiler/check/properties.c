@@ -474,8 +474,7 @@ static bool compute(MsCheckProgram *program, MsTy ty, MsProperty property) {
     break;
   }
   const MsBuiltin builtin = ms_ty_builtin(types, ty);
-  if (builtin == MS_BUILTIN_Decimal || builtin == MS_BUILTIN_Bytes || builtin == MS_BUILTIN_Duration ||
-      builtin == MS_BUILTIN_Instant) {
+  if (builtin == MS_BUILTIN_Decimal || builtin == MS_BUILTIN_Bytes) {
     return true;
   }
   if (builtin == MS_BUILTIN_List || builtin == MS_BUILTIN_Map || builtin == MS_BUILTIN_Set) {
