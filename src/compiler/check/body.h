@@ -145,6 +145,7 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
 
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty);
 bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);

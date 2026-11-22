@@ -182,6 +182,7 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
       body_check_not(body, expr, value);
       ty = body_primitive(body, MS_BUILTIN_Bool);
     } else if (op == MS_U_TRY) {
+      body_check_try(body, expr, value);
       ty = try_type(body, value);
     } else if (is_numeric(body, value)) {
       ty = value;
