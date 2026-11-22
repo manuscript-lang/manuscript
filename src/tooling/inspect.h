@@ -44,6 +44,10 @@ void ms_inspection_free(MsInspection *inspection);
 MsSpan ms_readable_id(MsArena *arena, MsSpan id);
 
 
+/* The entity kind and name of a declaration (`fn`, `Shape`; an impl reads `Contract for Receiver`). */
+const char *ms_decl_entity_kind(const MsDecl *decl);
+MsSpan ms_decl_entity_name(MsArena *arena, const MsCheckProgram *program, const MsDecl *decl);
+
 /* The plain-text call graph and the Mermaid flowchart of an inspection. */
 void ms_diagram_ascii(const MsInspection *inspection, MsArena *arena, MsStrBuild *out);
 void ms_diagram_mermaid(const MsInspection *inspection, MsArena *arena, MsStrBuild *out);

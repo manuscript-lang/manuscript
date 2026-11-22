@@ -38,6 +38,18 @@ static MsSpan join_id(Collect *c, MsSpan file, const char *kind, MsSpan name) {
 
 /* ---- declarations ---- */
 
+static MsSpan decl_name(Collect *c, const MsDecl *decl);
+static const char *entity_kind(const MsDecl *decl);
+
+const char *ms_decl_entity_kind(const MsDecl *decl) {
+  return entity_kind(decl);
+}
+
+MsSpan ms_decl_entity_name(MsArena *arena, const MsCheckProgram *program, const MsDecl *decl) {
+  Collect c = {.arena = arena, .program = program};
+  return decl_name(&c, decl);
+}
+
 static const char *entity_kind(const MsDecl *decl) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN: return "fn";
