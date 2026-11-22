@@ -1,6 +1,7 @@
 /* base/process.h: running a child program and waiting for it, the only place the compiler starts one.
  *
- * The child's standard output and error go to a log file; its standard input is empty. Arguments are
+ * The child's standard output and error go to a log file (or the child shares the standard streams); its standard
+ * input is empty unless it shares them. Arguments are
  * passed as given (no shell). */
 #ifndef MS_BASE_PROCESS_H
 #define MS_BASE_PROCESS_H
@@ -14,6 +15,9 @@ typedef struct MsProcessSpec {
   const MsSpan *env;  /* NAME=VALUE texts that are set (or replace a variable) in the child's environment */
   size_t envc;
   MsSpan log_path;    /* the file that receives the output */
+  MsSpan error_path;  /* when set, the file that receives the error output instead of `log_path` */
+  bool inherit;       /* the child shares this process's standard streams; `log_path` is unused, and a signal ends it
+                         with the shell's status 128 + signal */
 } MsProcessSpec;
 
 /* Starts the program and waits. Returns false, with the reason in `error`, when it cannot be started;

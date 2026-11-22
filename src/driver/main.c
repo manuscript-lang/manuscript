@@ -13,6 +13,7 @@
 #include "driver/init_command.h"
 #include "driver/package_commands.h"
 #include "driver/phases.h"
+#include "driver/run_command.h"
 
 enum { EXIT_NOT_IMPLEMENTED = 70, EXIT_USAGE = 64 };
 
@@ -37,6 +38,7 @@ int main(int argc, char **argv) {
     return EXIT_USAGE;
   }
   if (ms_cstr_equal(argv[1], "build")) return ms_build_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "run")) return ms_run_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);

@@ -69,7 +69,7 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
     } else if (is_option(argument, "--watch")) {
       options->watch = true;
     } else if (is_option(argument, "--deny-warnings")) {
-      continue; /* check reports no warnings, so there is nothing to deny */
+      return refuse("--deny-warnings requires lint, not check; use ms lint <file> --deny-warnings", STATUS_USAGE);
     } else if (argument[0] == '-') {
       (void)fprintf(stderr, "unknown option %s for ms check; run 'ms help check' for its options\n", argument);
       return STATUS_USAGE;
