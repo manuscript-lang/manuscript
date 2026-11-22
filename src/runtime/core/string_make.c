@@ -61,7 +61,12 @@ MsString msrt_string_from_block(uint8_t *block, size_t length) {
 }
 
 /* A string that is a copy of `string`: the same two words when they own nothing. */
+/* An optional string's `none` is a static string with a null pointer, which no real string is (a literal points at
+ * its bytes), so the copy of `none` stays `none` rather than becoming an empty string. */
 static MsString cloned(const MsString *string) {
+  if (string->tagged == (UINT64_C(2) << MS_STRING_TAG_SHIFT) && string->low_bits == 0) {
+    return *string;
+  }
   return ms_string_clone(string);
 }
 
