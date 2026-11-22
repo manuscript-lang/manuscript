@@ -62,10 +62,31 @@ static bool is_result_kind(uint8_t kind) {
          kind == NS_OUT_SCALAR;
 }
 
+/* Whether `value` is a closure or interface, which passes by value yet is given to a native by address. */
+static bool spilled_by_address(LowerFn *fn, MirValue value) {
+  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind;
+  return kind == MK_FN || kind == MK_IFACE;
+}
+
+/* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
+static MirValue move_out_of_scope(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  MirMode mode = MM_BORROW;
+  const bool fresh = insts->len > 0 && insts->ptr[insts->len - 1].res == value &&
+                     mir_result_mode(fn->cx->module, &fn->b.func, &insts->ptr[insts->len - 1], &mode) &&
+                     mode == MM_MOVE;
+  if (!fresh) {
+    value = mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+  }
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+  return value;
+}
+
 /* A scalar operand a native reads through an address (`e: *const u8`): it goes into a stack slot. */
 static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
-  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32) {
+  /* A closure or interface value is a pointer the runtime copies by address, as it does a scalar. */
+  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32 && !spilled_by_address(fn, value)) {
     return value;
   }
   const MirImm of_type = {.tag = MI_TY, .a = ty};
@@ -120,7 +141,11 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
           mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[next]))) {
         fn->native_moves |= 1u << used;
       }
-      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, args[next]) : args[next];
+      MirValue operand = args[next];
+      if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
+        operand = move_out_of_scope(fn, operand);
+      }
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand) : operand;
       next++;
     } else {
       return false;

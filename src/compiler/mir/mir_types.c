@@ -76,11 +76,12 @@ static bool intern_visit(void *state, MsSpan key) {
   MirTyTable *table = &intern->module->types;
   const MsName id = ms_names_intern(&table->keys, key);
   if (id == table->kinds.len) {
-    MirTyData copy = *intern->data;
-    if (copy.nargs != 0) {
-      MirTy *args = MS_ARENA_NEW_ARRAY(&intern->module->arena, MirTy, copy.nargs);
-      __builtin_memcpy(args, copy.args, sizeof(MirTy) * copy.nargs);
-      copy.args = args;
+    MirTyData *copy = MS_ARENA_NEW(&intern->module->arena, MirTyData);
+    *copy = *intern->data;
+    if (copy->nargs != 0) {
+      MirTy *args = MS_ARENA_NEW_ARRAY(&intern->module->arena, MirTy, copy->nargs);
+      __builtin_memcpy(args, copy->args, sizeof(MirTy) * copy->nargs);
+      copy->args = args;
     }
     mir_tydata_list_push(&table->kinds, copy);
   }

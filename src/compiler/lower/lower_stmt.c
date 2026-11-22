@@ -117,7 +117,7 @@ static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
     *out = fn->vars[ref->local] - 1;
     return true;
   }
-  if (ref->kind != MS_REF_PARAM) {
+  if (ref->kind != MS_REF_PARAM || fn->default_call != NULL) { /* a default's parameters are the callee's, not this function's */
     return false;
   }
   if (fn->lambda != NULL) { /* a captured parameter is a variable of the closure body */
@@ -172,6 +172,9 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
   MirValue slot;
   MirTy ty;
+  if (place == NULL) {
+    return false;
+  }
   return owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
@@ -205,7 +208,9 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
     return true;
   }
-  if (base->kind != MS_E_MEMBER && base->kind != MS_E_INDEX) {
+  MsExpr *index_left = NULL;
+  MsExpr *index_key = NULL;
+  if (base->kind != MS_E_MEMBER && !ms_expr_index(base, &index_left, &index_key)) {
     return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
   }
   const MirValue inner = fn_expr(fn, base, LW_BORROW);
@@ -245,11 +250,35 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
   return fn_put_place(fn, base, updated);
 }
 
+/* `container[key] = value` for an element of a list or map the enclosing assignment took a copy of: the container's
+ * own `set` (a list) or `add` (a map) stores it. */
+static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key, MirValue value) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, container->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const MirValue receiver = fn_expr(fn, container, LW_BORROW);
+  const MirValue at = receiver == MIR_NONE ? MIR_NONE : fn_expr(fn, key, LW_BORROW);
+  if (at == MIR_NONE) {
+    return false;
+  }
+  const MirValue args[3] = {receiver, at, value};
+  MirValue out = MIR_NONE;
+  const MsSpan operation = ms_span_of_text(ms_ty_is(types, owner, MS_BUILTIN_Map) ? "add" : "set");
+  if (!fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out)) {
+    return fn_fail(fn, "an element of this container cannot be assigned yet");
+  }
+  return !fn->failed;
+}
+
 /* Stores the owned `value` (held by no scope) into `place`, the place of an earlier `fn_take_place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   MirVar var;
   if (place->kind == MS_E_MEMBER) {
     return set_member(fn, place, value);
+  }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (ms_expr_index(place, &container, &key)) {
+    return set_element(fn, container, key, value);
   }
   MirValue slot;
   MirTy slot_ty;
