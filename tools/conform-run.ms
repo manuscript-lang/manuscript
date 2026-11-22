@@ -1,23 +1,30 @@
 // The conformance corpus replayed against an ms binary, in Manuscript. This is the runner
 // that replaces the Rust `ms-conform run`: it reads each fixture's recorded expectation
-// (tests/conformance/fixtures/**/<name>.expected.json), observes the ms under test the way
-// crates/ms-conform/src/observe.rs does, and counts the fixtures whose observation equals
-// the recorded one. The frozen Rust runner stays as the cross-check until both give the
-// same five counts (parse, check, run, test, commands).
+// (<name>.expected.json beside a .ms file, or expected.json in a project directory with a
+// conform.meta), observes the ms under test the way crates/ms-conform/src/observe.rs does,
+// and counts the fixtures whose observation equals the recorded one. The frozen Rust runner
+// stays as the cross-check until both give the same counts.
 //
-// Phases implemented so far: parse. Recording, fuzz and harvest are not ported (#6224,
-// #6225, #6226). MS names the ms under test (default target/release/ms).
-// Usage: ms run tools/conform-run.ms -- [--phase parse] [fixture id substring ...]
-// Prints `parse: passed/total` and one `FAIL <id>` line per difference.
+// Recording, fuzz and harvest are not ported (#6224, #6225, #6226). MS names the ms under
+// test (default target/release/ms). CONFORM_BUILD_TYPE picks the build type of run and
+// test (default Release). Fixtures tagged `aliasing` are left out of check, run and test
+// as the gate does (`--exclude-tag aliasing`).
+// Usage: ms run tools/conform-run.ms -- [--phase parse|check|run|test] [--jobs N]
+// [fixture id substring ...]
+// Prints `<phase>: passed/total` and one `FAIL <id>` line per difference.
 import (
 	Bytes from "@std/bytes.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
-	arguments, working_directory from "@std/os/env.ms",
+	Promise, promise from "@std/concurrency/promise.ms",
+	arguments, environment, working_directory from "@std/os/env.ms",
+	CopyOptions,
 	GlobOptions,
+	access,
 	copy,
 	create_directory,
 	glob,
 	read_file,
+	remove,
 	temporary from "@std/os/fs.ms",
 	CommandOutput, RunOptions, run from "@std/os/process.ms",
 	seconds from "@std/time.ms",
@@ -25,69 +32,43 @@ import (
 	tool_ms from "./lib.ms",
 )
 
-// One recorded fixture: its id (the path under the fixtures root without `.ms`), the source
-// file and the recorded observation.
+// A recorded fixture: a single .ms file (with an optional support/ directory beside it) or
+// a project directory.
 type Fixture:
 	id: String
-	source: String
 	phase: String
+	path: String
+	is_dir: Bool
+	entry: String
+	args: List[String]
+	stdin: Bytes
+	timeout: Int
+	tags: List[String]
 	expected: JsonValue
+
+// The `// conform:` header of a fixture.
+type Meta:
+	tags: List[String]
+	phase: String
+	args: List[String]
+	timeout: Int
+	entry: String
+
+// What one run of ms left: its exit status and streams, as text.
+type Process:
+	code: Int
+	stdout: String
+	stderr: String
+	timed_out: Bool
+	spawn_error: String
 
 fn text_of(data: Bytes) String:
 	return data.decode_utf8().get_or("").clone()
-
-fn member(value: JsonValue, key: String) JsonValue?:
-	return value.get(key)
 
 fn string_member(value: JsonValue, key: String) String:
 	if found := value.get(key):
 		return found.as_string().get_or("")
 	return ""
-
-// The fixtures of `phase` under `root`, in path order. A directory named `support` holds
-// shared files, not fixtures.
-fn fixtures(root: String, phase: String, filters: List[String]) List[Fixture]:
-	var found = List[Fixture]()
-	paths := glob(root, GlobOptions(patterns: ["**/*.expected.json"])).get_or([])
-	for entry in paths:
-		if entry.path.contains("/support/"): continue
-
-		id := entry.path.slice(0, entry.path.length() - ".expected.json".length())
-		if not selected(id, filters): continue
-
-		text := text_of(read_file(f"{root}/{entry.path}").wait().get())
-		document := parse(text).get()
-		if string_member(document, "phase") != phase: continue
-
-		expected := document.get("expected")
-		if expected.is_none(): continue
-
-		found.append(
-			Fixture(
-				id: id.clone(),
-				source: f"{root}/{id}.ms",
-				phase: phase.clone(),
-				expected: expected.get().clone(),
-			),
-		)
-	return found
-
-fn selected(id: String, filters: List[String]) Bool:
-	if filters.is_empty(): return true
-
-	for filter in filters:
-		if id.contains(filter): return true
-	return false
-
-// `text` with the work directory (as given and with forward slashes) as <DIR> and its
-// parent as <SCRATCH>.
-fn normalize_text(text: String, work: String) String:
-	var out = text.replace(work, "<DIR>").replace(work.replace("\\", "/"), "<DIR>")
-	parent_end := parent_length(work)
-	if parent_end > 0:
-		parent := work.slice(0, parent_end)
-		out = out.replace(parent, "<SCRATCH>").replace(parent.replace("\\", "/"), "<SCRATCH>")
-	return out
 
 fn parent_length(path: String) Int:
 	var at = path.length()
@@ -96,6 +77,213 @@ fn parent_length(path: String) Int:
 		last := path.slice(at, at + 1)
 		if last == "/" or last == "\\": return at
 	return 0
+
+// The header lines of `text`: `// conform: key=value`, up to the first line that is not a
+// comment or blank.
+fn parse_meta(text: String) Meta:
+	var meta = Meta(tags: [], phase: "", args: [], timeout: 0, entry: "")
+	for line in text.split("\n"):
+		trimmed := line.trim()
+		if trimmed == "" or trimmed.starts_with("#"): continue
+
+		if not trimmed.starts_with("// conform:"):
+			if trimmed.starts_with("//"): continue
+
+			break
+
+		rest := trimmed.slice("// conform:".length(), trimmed.length()).trim()
+		at := rest.index_of("=").get_or(-1)
+		if at < 0: continue
+
+		key := rest.slice(0, at).trim()
+		value := rest.slice(at + 1, rest.length()).trim()
+		if key == "tags":
+			for tag in value.split(","):
+				if tag.trim() != "": meta.tags.append(tag.trim().clone())
+		else if key == "phase": meta.phase = value.clone()
+		else if key == "timeout": meta.timeout = value.parse_int().get_or(0)
+		else if key == "entry": meta.entry = value.clone()
+		else if key == "args":
+			if document := parse(value).get_or(JsonValue.Null).as_list():
+				for item in document: meta.args.append(item.as_string().get_or("").clone())
+	return meta
+
+fn selected(id: String, filters: List[String]) Bool:
+	if filters.is_empty(): return true
+
+	for filter in filters:
+		if id.contains(filter): return true
+	return false
+
+fn read_text(path: String) String:
+	return text_of(read_file(path).wait().get_or("".to_bytes()))
+
+// The recorded fixtures of `phase` under `root`, in id order. A directory named `support`
+// holds shared files, not fixtures, and nothing below a project directory is a fixture.
+fn fixtures(root: String, phase: String, filters: List[String]) List[Fixture]:
+	var found = List[Fixture]()
+	var projects = List[String]()
+	for entry in glob(root, GlobOptions(patterns: ["**/conform.meta"])).get_or([]):
+		projects.append(entry.path.slice(0, entry.path.length() - "conform.meta".length()).clone())
+
+	var candidates = List[String]()
+	for entry in glob(root, GlobOptions(patterns: ["**/*.ms", "**/conform.meta"])).get_or([]):
+		if entry.path.contains("/support/") or entry.path.starts_with("support/"): continue
+
+		candidates.append(entry.path.clone())
+	candidates.sort()
+
+	for candidate in candidates:
+		var id = ""
+		var is_dir = false
+		if candidate.ends_with("conform.meta"):
+			id = candidate.slice(0, candidate.length() - "/conform.meta".length()).clone()
+			is_dir = true
+		else:
+			id = candidate.slice(0, candidate.length() - ".ms".length()).clone()
+			if under_project(id, projects): continue
+
+		if not selected(id, filters): continue
+
+		path := if is_dir: f"{root}/{id}" else: f"{root}/{id}.ms"
+		var meta = parse_meta(read_text(if is_dir: f"{path}/conform.meta" else: path.clone()))
+		if meta.phase != phase: continue
+
+		sidecar := if is_dir: f"{path}/expected.json" else: f"{root}/{id}.expected.json"
+		var expected = JsonValue.Null
+		if recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected"):
+			expected = recorded.clone()
+
+		if meta.entry == "":
+			if is_dir:
+				if access(f"{path}/ms.toml", 0).is_ok(): meta.entry = "ms.toml"
+			else: meta.entry = id.slice(parent_length(id) + 1, id.length()) + ".ms"
+
+		var stdin = "".to_bytes()
+		stdin_path := if is_dir: f"{path}/conform.stdin" else: f"{root}/{id}.stdin"
+		if access(stdin_path, 0).is_ok(): stdin = read_file(stdin_path).wait().get()
+
+		found.append(
+			Fixture(
+				id: id.clone(),
+				phase: phase.clone(),
+				path: path.clone(),
+				is_dir: is_dir,
+				entry: meta.entry.clone(),
+				args: meta.args.clone(),
+				stdin: stdin,
+				timeout: meta.timeout,
+				tags: meta.tags.clone(),
+				expected: expected.clone(),
+			),
+		)
+	return found
+
+// True when `id` names something below a project directory (ids and `projects` entries
+// are `/`-separated, each project ending in `/`).
+fn under_project(id: String, projects: List[String]) Bool:
+	for project in projects:
+		if project != "" and id.starts_with(project): return true
+	return false
+
+// Copies the fixture's inputs into `work`: a project directory without its harness files, or
+// a single file with the support/ directory beside it.
+fn materialize(fx: Fixture, work: String) Void:
+	if fx.is_dir:
+		copy(fx.path.clone(), work.clone(), CopyOptions(recursive: true, replace: true)).get()
+		for name in ["conform.meta", "expected.json", "conform.stdin"]:
+			void remove(f"{work}/{name}")
+		return
+
+	copy(fx.path.clone(), f"{work}/{fx.entry}").get()
+	support := f"{fx.path.slice(0, parent_length(fx.path))}/support"
+	if access(support, 0).is_ok():
+		copy(support, f"{work}/support", CopyOptions(recursive: true, replace: true)).get()
+
+fn default_timeout(phase: String) Int:
+	if phase == "parse": return 30
+	if phase == "check": return 60
+	if phase == "run": return 120
+	return 180
+
+fn invoke(ms: String, fx: Fixture, args: List[String], work: String, input: Bytes) Process:
+	limit := if fx.timeout > 0: fx.timeout else: default_timeout(fx.phase)
+	result := run(
+		ms.clone(),
+		args,
+		RunOptions(cwd: work.clone(), timeout: seconds(limit), input: input),
+	).wait()
+	match result:
+		ok(out):
+			return Process(
+				code: out.exit_code,
+				stdout: text_of(out.stdout),
+				stderr: text_of(out.stderr),
+				timed_out: false,
+				spawn_error: "",
+			)
+		error(cause):
+			timed := cause.kind.get_or("") == "ETIMEDOUT"
+			return Process(
+				code: if timed: 137 else: 127,
+				stdout: "",
+				stderr: "",
+				timed_out: timed,
+				spawn_error: if timed: "" else: cause.message.clone(),
+			)
+
+// `text` with the work directory (as given and with forward slashes) as <DIR> and its
+// parent as <SCRATCH>, and the line number of a standard-library frame as <LINE>.
+fn normalize_text(text: String, work: String) String:
+	var out = text.replace(work, "<DIR>").replace(work.replace("\\", "/"), "<DIR>")
+	parent_end := parent_length(work)
+	if parent_end > 0:
+		parent := work.slice(0, parent_end)
+		out = out.replace(parent, "<SCRATCH>").replace(parent.replace("\\", "/"), "<SCRATCH>")
+	return mask_stdlib_lines(out)
+
+// A standard-library frame (`@std/concurrency/promise.ms:312`) names its line as <LINE>, so
+// editing a standard-library file does not change the expectation of every fixture that
+// faults through it.
+fn mask_stdlib_lines(text: String) String:
+	if not text.contains("@std/"): return text.clone()
+
+	var out = ""
+	var rest = text.clone()
+	while true:
+		at := rest.index_of("@std/").get_or(-1)
+		if at < 0: break
+
+		out += rest.slice(0, at)
+		tail := rest.slice(at, rest.length())
+		dot := tail.index_of(".ms:").get_or(-1)
+		if dot < 0:
+			out += tail
+			return out
+
+		name := tail.slice(0, dot)
+		after := tail.slice(dot + 4, tail.length())
+		digits := leading_digits(after)
+		if digits > 0 and path_name(name):
+			out += tail.slice(0, dot + 4) + "<LINE>"
+			rest = after.slice(digits, after.length()).clone()
+		else:
+			out += "@std/"
+			rest = tail.slice(5, tail.length()).clone()
+	return out + rest
+
+fn leading_digits(text: String) Int:
+	var count = 0
+	while count < text.length() and "0123456789".contains(text.slice(count, count + 1)): count += 1
+	return count
+
+fn path_name(name: String) Bool:
+	for index in 0..name.length():
+		letter := name.slice(index, index + 1)
+		if not (
+			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@/_-".contains(letter)
+		): return false
+	return true
 
 // Every string of `value` normalized, and the `subcode` members the frozen corpus never
 // recorded dropped.
@@ -110,16 +298,33 @@ fn normalized(value: JsonValue, work: String) JsonValue:
 			var out = Map[String, JsonValue]()
 			for field in fields.entries():
 				if field.key == "subcode": continue
+
 				out.add(field.key.clone(), normalized(field.value, work))
 			return JsonValue.ObjectValue(out)
 		_: return value.clone()
 
-fn invoke(ms: String, args: List[String], work: String, limit: Int) CommandOutput:
-	return run(
-		ms.clone(),
-		args,
-		RunOptions(cwd: work.clone(), timeout: seconds(limit)),
-	).wait().get()
+// A JSON report read from standard output and normalized, or a record of why it could not
+// be read.
+fn read_report(out: Process, work: String) JsonValue:
+	match parse(out.stdout):
+		ok(document): return normalized(document, work)
+		error(cause):
+			var broken = Map[String, JsonValue]()
+			broken.add("unparsable_json", JsonValue.StringValue(f"{cause.message}"))
+			broken.add("stdout", JsonValue.StringValue(normalize_text(out.stdout, work)))
+			return JsonValue.ObjectValue(broken)
+
+fn number(value: Int) JsonValue:
+	return JsonValue.NumberValue(f"{value}")
+
+fn text_value(value: String) JsonValue:
+	return JsonValue.StringValue(value.clone())
+
+// `exit_code`, `timed_out` and `spawn_error` of a run.
+fn process_fields(var fields: Map[String, JsonValue], out: Process) Void:
+	fields.add("exit_code", number(out.code))
+	if out.timed_out: fields.add("timed_out", JsonValue.BoolValue(true))
+	if out.spawn_error != "": fields.add("spawn_error", text_value(out.spawn_error))
 
 // The text of `source` below its `// conform:` header lines.
 fn without_header(source: String) String:
@@ -132,49 +337,150 @@ fn without_header(source: String) String:
 
 	return source.slice(skip, source.length())
 
-// What the parse phase observes of one fixture: the parse diagnostics of `fmt --check
-// --json` (`fmt` parses without loading the standard library) and the formatted source.
-fn observe_parse(ms: String, fx: Fixture) JsonValue:
-	scratch := temporary("ms-conform-").get()
-	work := f"{scratch.path()}/w"
-	create_directory(work.clone()).get()
-	name := fx.id.slice(parent_length(fx.id) + 1, fx.id.length()) + ".ms"
-	copy(fx.source.clone(), f"{work}/{name}").get()
-
-	checked := invoke(ms, ["fmt", name.clone(), "--check", "--json"], work, 30)
+fn parse_phase(ms: String, fx: Fixture, work: String) JsonValue:
+	// `fmt --check` parses without loading the standard library, which `check` does for
+	// every file that parses; the parse diagnostics are the same.
+	checked := invoke(ms, fx, ["fmt", fx.entry.clone(), "--check", "--json"], work, "".to_bytes())
+	report := read_report(checked, work)
 	var diagnostics = List[JsonValue]()
-	var raw = JsonValue.Null
-	match parse(text_of(checked.stdout)):
-		ok(document):
-			report := normalized(document, work)
-			if listed := report.get("diagnostics"):
-				for item in listed.as_list().get_or([]):
-					if string_member(item, "phase") == "parse": diagnostics.append(item.clone())
-		error(cause):
-			var broken = Map[String, JsonValue]()
-			broken.add("unparsable_json", JsonValue.StringValue(f"{cause}"))
-			broken.add("stdout", JsonValue.StringValue(normalize_text(text_of(checked.stdout), work)))
-			raw = JsonValue.ObjectValue(broken)
+	if listed := report.get("diagnostics"):
+		for item in listed.as_list().get_or([]):
+			if string_member(item, "phase") == "parse": diagnostics.append(item.clone())
 
 	var fields = Map[String, JsonValue]()
 	fields.add("diagnostics", JsonValue.ArrayValue(diagnostics))
-	if not raw.is_null(): fields.add("raw", raw)
+	if report.get("unparsable_json").is_some(): fields.add("raw", report)
 
-	formatted := invoke(ms, ["fmt", name.clone()], work, 30)
-	if formatted.exit_code == 0:
-		after := text_of(read_file(f"{work}/{name}").wait().get())
-		fields.add("fmt", JsonValue.StringValue(without_header(after)))
+	formatted := invoke(ms, fx, ["fmt", fx.entry.clone()], work, "".to_bytes())
+	if formatted.code == 0:
+		after := read_text(f"{work}/{fx.entry}")
+		fields.add("fmt", text_value(without_header(after)))
 	else:
 		fields.add("fmt", JsonValue.Null)
-		fields.add("fmt_exit_code", JsonValue.NumberValue(f"{formatted.exit_code}"))
+		fields.add("fmt_exit_code", number(formatted.code))
 	return JsonValue.ObjectValue(fields)
+
+fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
+	// `--with-text` carries the terminal output in the same document. A run that wrote no
+	// document, such as a usage error, is repeated without `--json` for its terminal output.
+	json_run := invoke(ms, fx, ["check", fx.entry.clone(), "--json", "--with-text"], work, "".to_bytes())
+	report := read_report(json_run, work)
+	var text_code = json_run.code
+	var stdout = ""
+	var stderr = ""
+	if text := report.get("text"):
+		stdout = string_member(text, "stdout")
+		stderr = string_member(text, "stderr")
+	else:
+		plain := invoke(ms, fx, ["check", fx.entry.clone()], work, "".to_bytes())
+		text_code = plain.code
+		stdout = normalize_text(plain.stdout, work)
+		stderr = normalize_text(plain.stderr, work)
+
+	var fields = Map[String, JsonValue]()
+	process_fields(fields, json_run)
+	if format := report.get("format"): fields.add("format", format.clone())
+	if listed := report.get("diagnostics"): fields.add("diagnostics", listed.clone())
+	else: fields.add("diagnostics", JsonValue.ArrayValue([]))
+	if report.get("unparsable_json").is_some(): fields.add("raw", report)
+
+	var text = Map[String, JsonValue]()
+	text.add("exit_code", number(text_code))
+	text.add("stdout", text_value(stdout))
+	text.add("stderr", text_value(stderr))
+	fields.add("text", JsonValue.ObjectValue(text))
+	return JsonValue.ObjectValue(fields)
+
+fn run_phase(ms: String, fx: Fixture, work: String, build_type: String) JsonValue:
+	var args = ["run", fx.entry.clone(), "--build-type", build_type.clone()]
+	if not fx.args.is_empty():
+		args.append("--")
+		for word in fx.args: args.append(word.clone())
+
+	out := invoke(ms, fx, args, work, fx.stdin.clone())
+	var fields = Map[String, JsonValue]()
+	process_fields(fields, out)
+	fields.add("stdout", text_value(normalize_text(out.stdout, work)))
+	fields.add("stderr", text_value(normalize_text(out.stderr, work)))
+	return JsonValue.ObjectValue(fields)
+
+// `value` without the members called `name`, at every depth.
+fn without_member(value: JsonValue, name: String) JsonValue:
+	match value:
+		ArrayValue(items):
+			var out = List[JsonValue]()
+			for item in items: out.append(without_member(item, name))
+			return JsonValue.ArrayValue(out)
+		ObjectValue(fields):
+			var out = Map[String, JsonValue]()
+			for field in fields.entries():
+				if field.key == name: continue
+
+				out.add(field.key.clone(), without_member(field.value, name))
+			return JsonValue.ObjectValue(out)
+		_: return value.clone()
+
+// The key paths of a report, so a missing or extra field is a protocol break.
+fn shape(value: JsonValue, path: String, var out: List[String]) Void:
+	match value:
+		ObjectValue(fields):
+			for field in fields.entries():
+				next := if path == "": field.key.clone() else: f"{path}.{field.key}"
+				if not out.contains(next): out.append(next.clone())
+
+				shape(field.value, next, out)
+		ArrayValue(items):
+			for item in items: shape(item, f"{path}[]", out)
+		_: return
+
+fn test_phase(ms: String, fx: Fixture, work: String, build_type: String) JsonValue:
+	var args = ["test", fx.entry.clone(), "--json", "--build-type", build_type.clone()]
+	if not fx.args.is_empty():
+		args.append("--")
+		for word in fx.args: args.append(word.clone())
+
+	out := invoke(ms, fx, args, work, fx.stdin.clone())
+	// The structured `fault` beside a failure text, and the durations, are not recorded.
+	faultless := without_member(read_report(out, work), "fault")
+	var keys = List[String]()
+	shape(faultless, "", keys)
+	keys.sort()
+	var listed = List[JsonValue]()
+	for key in keys: listed.append(text_value(key))
+
+	var fields = Map[String, JsonValue]()
+	process_fields(fields, out)
+	fields.add("report", without_member(faultless, "duration_ns"))
+	fields.add("shape", JsonValue.ArrayValue(listed))
+	fields.add("stderr", text_value(normalize_text(out.stderr, work)))
+	return JsonValue.ObjectValue(fields)
+
+// What `ms` observes of `fx`, in a fresh working directory.
+fn observe(ms: String, fx: Fixture, build_type: String) JsonValue:
+	scratch := temporary("ms-conform-").get()
+	work := f"{scratch.path()}/w"
+	create_directory(work.clone()).get()
+	materialize(fx, work.clone())
+	if fx.phase == "parse": return parse_phase(ms, fx, work.clone())
+	if fx.phase == "check": return check_phase(ms, fx, work.clone())
+	if fx.phase == "run": return run_phase(ms, fx, work.clone(), build_type)
+	return test_phase(ms, fx, work.clone(), build_type)
 
 fn same(left: JsonValue, right: JsonValue) Bool:
 	return stringify(left).get() == stringify(right).get()
 
+// Observes each fixture of `chunk`: one `ok` or `FAIL <id>` line apiece.
+fn sweep(ms: String, build_type: String, chunk: List[Fixture]) List[String]:
+	var lines = List[String]()
+	for fx in chunk:
+		if same(fx.expected, observe(ms, fx, build_type)): lines.append("ok")
+		else: lines.append(f"FAIL {fx.id}")
+	return lines
+
 fn main() Int:
 	root := working_directory().get()
 	var phase = "parse"
+	var jobs = 8
 	var filters = List[String]()
 	var words = List[String]()
 	for word in arguments(): words.append(word.clone())
@@ -184,23 +490,48 @@ fn main() Int:
 		if words[at] == "--phase":
 			at += 1
 			phase = words[at].clone()
+		else if words[at] == "--jobs":
+			at += 1
+			jobs = words[at].parse_int().get_or(8)
 		else: filters.append(words[at].clone())
 		at += 1
 
-	if phase != "parse":
-		print(f"conform-run: phase {phase} is not ported yet")
+	if phase != "parse" and phase != "check" and phase != "run" and phase != "test":
+		print(f"conform-run: unknown phase {phase}")
 		return 64
 
 	ms := tool_ms(root.clone())
-	var total = 0
-	var passed = 0
+	var build_type = "Release"
+	if configured := environment().get_or(Map[String, String]()).get("CONFORM_BUILD_TYPE"): build_type = configured.clone()
+	var chosen = List[Fixture]()
 	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters):
-		total += 1
-		observed := observe_parse(ms, fx)
-		if same(fx.expected, observed): passed += 1
-		else: print(f"FAIL {fx.id}")
+		if phase != "parse" and fx.tags.contains("aliasing"): continue
 
-	print(f"{phase}: {passed}/{total}")
-	if passed != total: return 1
+		chosen.append(fx.clone())
+
+	var jobs_count = jobs
+	if jobs_count < 1: jobs_count = 1
+
+	// A promise reads its captures until it is dropped, so the chunks outlive the loop
+	// that starts them.
+	var chunks = List[List[Fixture]]()
+	for worker in 0..jobs_count:
+		var mine = List[Fixture]()
+		for index in 0..chosen.length():
+			if index % jobs_count == worker: mine.append(chosen[index].clone())
+		chunks.append(mine)
+
+	var tasks = List[Promise[List[String]]]()
+	for worker in 0..jobs_count:
+		tasks.append(promise(fn: ok(sweep(ms, build_type, chunks[worker]))))
+
+	var passed = 0
+	for task in tasks:
+		for line in task.wait().get_or(List[String]()):
+			if line == "ok": passed += 1
+			else: print(line)
+
+	print(f"{phase}: {passed}/{chosen.length()}")
+	if passed != chosen.length(): return 1
 
 	return 0
