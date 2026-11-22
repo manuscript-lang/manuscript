@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/lends.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
@@ -142,6 +143,46 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
   return count;
 }
 
+/* A result that is a place of a parameter: the callee can hand back the reference itself. */
+typedef struct PlaceReturns {
+  const MsFacts *facts;
+  uint32_t returns;
+  uint32_t places;
+} PlaceReturns;
+
+static void count_place_returns(void *ctx, const MsStmt *stmt) {
+  PlaceReturns *counts = ctx;
+  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
+    return;
+  }
+  const MsExpr *value = stmt->u.expr;
+  counts->returns++;
+  if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
+    const MsRef *ref = ms_facts_ref(counts->facts, value->id);
+    counts->places += ref != NULL && (ref->kind == MS_REF_PARAM || ref->kind == MS_REF_LOCAL) ? 1u : 0u;
+  } else {
+    counts->places += value->kind == MS_E_MEMBER || value->kind == MS_E_INDEX || value->kind == MS_E_APPLY ? 1u : 0u;
+  }
+}
+
+/* Whether the callee lends its result: the checker's fact says every path returns a part of a parameter, and each
+ * return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
+static bool lends_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+  if (target->entry || !ms_own_lends_pure(cx->program, target->module, target->node) ||
+      !mir_needs_drop(cx->module, ret)) {
+    return false;
+  }
+  for (uint32_t index = 0; index < count; index++) {
+    if (params[index].mode == MM_MOVE) {
+      return false; /* the body owns (and releases) a moved parameter: its part cannot outlive the call */
+    }
+  }
+  PlaceReturns counts = {&cx->program->modules.ptr[target->module].facts, 0, 0};
+  const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
+  ms_walk_block(&visitor, target->func->body);
+  return counts.returns != 0 && counts.returns == counts.places;
+}
+
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
 static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
   MsTy vars[16];
@@ -163,6 +204,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
+  func.ret_borrowed = lends_result(cx, target, ret, mir_params, count);
   /* A function that takes a closure and keeps it (a promise's entry) holds what a closure into its maker's frame
    * borrows until the result is dropped. */
   const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
@@ -334,6 +376,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   fn_init_closing(&fn);
   fn_find_shared(&fn, target->func->body);
   bind_params(&fn, target);
+  fn.lends = cx->module->funcs.ptr[instance.func].ret_borrowed;
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;
@@ -343,6 +386,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   MirFunc *slot = &cx->module->funcs.ptr[instance.func];
   built.linkage = slot->linkage;
   built.keeps_scoped = slot->keeps_scoped;
+  built.ret_borrowed = slot->ret_borrowed;
   mir_func_release(slot);
   *slot = built;
   cx->instances.ptr[index].lowered = true;
