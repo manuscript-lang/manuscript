@@ -197,7 +197,9 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
     /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
-    if (fn_fresh_owner(fn, value) || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+    const bool kept = place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE; /* a read of a binding is not a fresh value */
+    if (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) || (!kept && fn_fresh_owner(fn, value))) {
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
     /* The elaborator owns every moved-in result; this view must not drop what the binding still owns, and
