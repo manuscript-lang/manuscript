@@ -20,7 +20,7 @@ void mir_module_init(MirModule *module) {
   ms_names_init(&module->types.keys);
   module->entry = MIR_NONE;
   module->close = MIR_NONE;
-  module->name = mir_name(module, ms_span_of_text("module"));
+  module->name = mir_name(module, ms_span_of_text("main"));
   for (size_t index = 0; index < MIR_BUILTIN_TYPES; index++) {
     const MirTyData data = {.kind = (uint8_t)builtin_kinds[index]};
     (void)mir_ty_intern(module, &data);
