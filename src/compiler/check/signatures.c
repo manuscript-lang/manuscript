@@ -64,7 +64,7 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     ms_operation_list_push(&def->operations, (MsOperation){.name = method->func.name, .ty = ty,
-                                                           .decl = {0, method->id}, .variables = own});
+                                                           .decl = {resolver->module, method->id}, .variables = own});
   }
   resolver->self = MS_TY_NONE;
 }

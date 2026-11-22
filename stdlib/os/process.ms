@@ -102,7 +102,7 @@ export interface Commands:
 		program: String,
 		arguments: List[String],
 		options: RunOptions = RunOptions(),
-	) CommandOutput!
+	) move CommandOutput!
 	// Starts `program` directly, without a shell, searching the PATH, and returns a
 	// live Subprocess that its scope closes. `arguments` follow the program name;
 	// `options.stdin`, `options.stdout`, and `options.stderr` each choose a pipe (the
@@ -115,7 +115,7 @@ export interface Commands:
 		program: String,
 		arguments: List[String],
 		options: SpawnOptions = SpawnOptions(),
-	) Subprocess!
+	) move Subprocess!
 
 // The runtime handle behind a `Subprocess`.
 export extern type NativeSubprocess

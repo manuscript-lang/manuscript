@@ -242,7 +242,7 @@ fn tagged(kind: String, id: Int) JsonValue:
 */
 export interface JsonEncode:
 	// Returns the JSON form of this value.
-	fn to_json() JsonValue
+	fn to_json() move JsonValue
 
 /*
 Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at compile time.

@@ -179,6 +179,13 @@ static bool closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot
   return true;
 }
 
+/* Whether `expr` is a List (an index into one is an element place; a Map's entry is read out as a copy). */
+bool fn_is_list(LowerFn *fn, const MsExpr *expr) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return ms_ty_is(types, owner, MS_BUILTIN_List);
+}
+
 /* Whether `place` is a `var` local, a `var` parameter or a member path rooted in one: the places `fn_put_place` stores into. */
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
@@ -234,9 +241,47 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
   if (inner == MIR_NONE) {
     return false;
   }
-  *out = fn_emit(fn, MOP_Clone, &inner, 1, (MirImm){0}, mir_b_ty(&fn->b, inner));
+  *out = fn_implicit_clone(fn, inner, true);
   disown(fn, *out);
   return true;
+}
+
+/* A field of an owning local or parameter, taken without a copy for a native that changes it in place: `record` is the
+ * record, taken out of its variable, and `field` the field's value, which shares its storage with the record until
+ * `fn_put_field` stores the changed one. False when `place` is not such a field. */
+bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field) {
+  const MsRef *ref = place->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_FIELD) {
+    return false;
+  }
+  const MsExpr *base = place->u.member.left;
+  MirVar var;
+  MirValue slot;
+  MirTy slot_ty;
+  if (!owned_local(fn, base, &var) && !closing_local(fn, base, &slot, &slot_ty) && !closing_param(fn, base, &slot, &var)) {
+    return false;
+  }
+  if (!fn_take_place(fn, base, record)) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, *record));
+  if (data->kind != MK_TYPE) {
+    return false;
+  }
+  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+  *field = mir_b_emit(&fn->b, MOP_TypeGet, record, 1, imm, fn_type(fn, ms_facts_type(fn->facts, place->id)));
+  return true;
+}
+
+/* Stores `field`, the changed value of the field `fn_take_field` took, back: the old one shares its storage, so it is
+ * not dropped. */
+bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {
+  const MsRef *ref = ms_facts_ref(fn->facts, place->id);
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, record));
+  const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+  const MirValue operands[2] = {record, field};
+  const MirValue updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, record));
+  return fn_put_place(fn, place->u.member.left, updated);
 }
 
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place

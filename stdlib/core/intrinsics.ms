@@ -8,11 +8,11 @@ import (
 
 // Every value has this operation, including unconstrained type parameters.
 interface ValueOperations:
-	fn to_string() String
+	fn to_string() move String
 
 // Data values have a deep `clone` that returns the receiver's own type.
 interface CloneOperations[T]:
-	fn clone() T
+	fn clone() move T
 
 // The integer types that share the operations of `IntegerOperations` and `SignedIntegerOperations`; the checker adds
 // an interface's operations to each type its type parameter's bound lists.
@@ -26,13 +26,13 @@ Each integer type's own `<Type>Operations` interface adds only its conversions t
 interface IntegerOperations[T: IntegerTypes]:
 	// Formats the integer in a radix from 2 through 36 using lowercase digits and a
 	// leading `-` for negatives, or none when the radix is outside 2 through 36.
-	fn to_string_radix(radix: Int) String?
+	fn to_string_radix(radix: Int) move String?
 	// Formats the integer in base 16 using lowercase digits and a leading `-` for
 	// negatives, as `to_string_radix(16)` does; it cannot fail.
-	fn to_hex() String
+	fn to_hex() move String
 	// Formats the integer in base 2 with a leading `-` for negatives, as
 	// `to_string_radix(2)` does; it cannot fail.
-	fn to_binary() String
+	fn to_binary() move String
 	// Converts to the nearest Float; integers beyond 2^53 in magnitude can lose
 	// low-order digits.
 	fn to_float() Float
@@ -47,7 +47,7 @@ interface IntegerOperations[T: IntegerTypes]:
 interface SignedIntegerOperations[T: SignedIntegerTypes]:
 	// Returns the absolute value; the most negative value has none and faults like any
 	// overflow.
-	fn abs() T
+	fn abs() move T
 	// Returns -1, 0 or 1 as this value is negative, zero or positive.
 	fn sign() Int
 
@@ -66,7 +66,7 @@ interface StringOperations:
 	fn chars() List[String]
 	// Reverses the order of Unicode scalars, so a combining sequence or grapheme
 	// cluster can come out reordered.
-	fn reverse() String
+	fn reverse() move String
 	// Returns -1, 0 or 1 in lexical scalar order, without locale or normalization.
 	fn compare(other: String) Int
 	// Splits at LF and CRLF, keeping interior empty lines and any standalone CR.
@@ -77,32 +77,32 @@ interface StringOperations:
 	// Normalizes to the form named by `form`, which must be exactly `"NFC"`, `"NFD"`,
 	// `"NFKC"` or `"NFKD"`. `max_bytes` optionally bounds the UTF-8 output. An invalid
 	// form or negative bound returns `EINVAL`; exceeding the bound returns `EOVERFLOW`.
-	fn normalize(form: String, max_bytes: Int?) String!
+	fn normalize(form: String, max_bytes: Int?) move String!
 	// Concatenates text without changing either operand.
-	fn concat(other: String) String
+	fn concat(other: String) move String
 	// Tests whether the exact text occurs, without normalization.
 	fn contains(value: String) Bool
 	// Tests whether the receiver ends with this exact suffix.
 	fn ends_with(suffix: String) Bool
 	// Returns the text in full Unicode lowercase, independent of locale. The scalar
 	// length can change.
-	fn lower() String
+	fn lower() move String
 	// Repeats the text `count` times. A count of zero or below, or empty text, gives
 	// empty text. Output beyond the string limit faults, as `concat` does.
-	fn repeat(count: Int) String
+	fn repeat(count: Int) move String
 	// Replaces the first occurrence of `old`; text without a match is unchanged. An
 	// empty `old` matches at the start, so `new` is inserted there.
-	fn replace_first(old: String, new: String) String
+	fn replace_first(old: String, new: String) move String
 	/*
     Replaces every nonoverlapping occurrence of `old`, scanning left to right; inserted text is not rescanned.
     An empty `old` matches at each scalar boundary, so `"ab".replace("", "-")` is `"-a-b-"`.
     Output beyond the string limit faults, as `concat` does; use `Regex.replace_all` for a bounded replacement.
     */
-	fn replace(old: String, new: String) String
+	fn replace(old: String, new: String) move String
 	// Counts the Unicode scalar values by scanning the text.
 	fn scalar_length() Int
 	// Returns each Unicode scalar value as an integer.
-	fn scalar_values() List[Int]
+	fn scalar_values() move List[Int]
 	// Splits at every exact separator, keeping empty pieces. Empty text with a nonempty
 	// separator yields `[""]`; an empty separator splits into scalars. The pieces
 	// borrow the receiver: use them in place, or `.clone()` the result to keep it.
@@ -111,10 +111,10 @@ interface StringOperations:
 	fn starts_with(prefix: String) Bool
 	// Removes Unicode whitespace at both ends. The exact set is listed in the text
 	// guide.
-	fn trim() String
+	fn trim() move String
 	// Returns the text in full Unicode uppercase, independent of locale. The scalar
 	// length can change.
-	fn upper() String
+	fn upper() move String
 	// Returns the Unicode scalar value that starts at byte `offset`. An offset outside
 	// the text or inside a scalar returns `default`, and without one raises a fault.
 	fn scalar_at(offset: Int, default: Int?) Int
@@ -126,17 +126,17 @@ interface StringOperations:
 	// Returns the byte offset of the last match, or `none`. An empty `value` matches at
 	// `length()`.
 	fn last_index_of(value: String) Int?
-	fn trim_start() String  // Removes Unicode whitespace at the start.
-	fn trim_end() String  // Removes Unicode whitespace at the end.
+	fn trim_start() move String  // Removes Unicode whitespace at the start.
+	fn trim_end() move String  // Removes Unicode whitespace at the end.
 	/*
     Pads on the left until the scalar length reaches `target_length`, repeating `padding` and cutting its last copy.
     A target that is not longer than the text, a negative target, or empty padding returns the text unchanged.
     Output beyond the string limit faults, as `concat` does.
     Example: `"7".pad_start(3, "0")` is `"007"`.
     */
-	fn pad_start(target_length: Int, padding: String) String
+	fn pad_start(target_length: Int, padding: String) move String
 	// Pads on the right like `pad_start`. Example: `"id".pad_end(5, ".")` is `"id..."`.
-	fn pad_end(target_length: Int, padding: String) String
+	fn pad_end(target_length: Int, padding: String) move String
 	// Copies the bytes [start, end); negative bounds are relative to the end. Bounds
 	// outside the text clamp to it, and a start at or past the end gives `""`. A bound
 	// inside a scalar moves inward (start forward, end backward), so the result is
@@ -153,7 +153,7 @@ interface StringOperations:
 	// keeps them. Use `to_bytes` for a copy.
 	fn view_bytes() Bytes
 	// Encodes the string as UTF-8 bytes.
-	fn to_bytes() Bytes
+	fn to_bytes() move Bytes
 	// Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
 	fn parse_int() Int?
 	// Parses a decimal floating-point number with the syntax of `math.parse_float`;
@@ -195,18 +195,18 @@ interface IntOperations:
 interface FloatOperations:
 	// Formats with `precision` significant digits, from 1 to 100, keeping trailing
 	// zeros; a count outside 1..100 faults.
-	fn to_precision(precision: Int) String
+	fn to_precision(precision: Int) move String
 	// Formats in scientific notation with `digits` fractional digits, from 0 to 100; a
 	// count outside 0..100 faults.
-	fn to_exponential(digits: Int) String
+	fn to_exponential(digits: Int) move String
 	// Formats with `digits` fractional digits, from 0 to 100; a magnitude of 1e21 or
 	// more uses the ordinary round-trip notation. A count outside 0..100 faults.
 	// Rounding is binary64 round half to even.
 	// Example: `3.14159.to_fixed(2)` is `"3.14"`.
-	fn to_fixed(digits: Int) String
+	fn to_fixed(digits: Int) move String
 	// Returns the shortest round-trip representation, including NaN and signed
 	// infinities.
-	fn to_string() String
+	fn to_string() move String
 	// Tests whether the value is NaN.
 	fn is_nan() Bool
 	// Tests whether the value is neither NaN nor an infinity.
@@ -302,5 +302,5 @@ interface Float32Operations:
 	fn sign() Float32
 	// Truncates toward zero, or returns none for nonfinite values or Int overflow.
 	fn truncate_to_int() Int?
-	fn to_float() Float  // Converts to Float; every Float32 converts exactly.
-	fn to_float64() Float64  // Converts to Float64; every Float32 converts exactly.
+	fn to_float() move Float  // Converts to Float; every Float32 converts exactly.
+	fn to_float64() move Float64  // Converts to Float64; every Float32 converts exactly.

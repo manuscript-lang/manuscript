@@ -157,15 +157,24 @@ static void walk_expr(Walk *pass, const MsExpr *expr) {
       walk_expr(pass, expr->u.map.ptr[index].value);
     }
     return;
-  case MS_E_LAMBDA:
+  case MS_E_LAMBDA: {
+    const bool outer = pass->site.in_constant_call;
+    pass->site.in_constant_call = pass->site.in_constant;
     walk_lambda(pass, expr);
+    pass->site.in_constant_call = outer;
     return;
-  case MS_E_CALL:
+  }
+  case MS_E_CALL: {
+    /* A call in a constant is reported as not constant; its unknown names are not reported again. */
+    const bool outer = pass->site.in_constant_call;
+    pass->site.in_constant_call = pass->site.in_constant;
     walk_expr(pass, expr->u.call.callee);
     for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
       walk_expr(pass, expr->u.call.args.ptr[index].value);
     }
+    pass->site.in_constant_call = outer;
     return;
+  }
   case MS_E_MATCH:
     walk_match(pass, expr);
     return;

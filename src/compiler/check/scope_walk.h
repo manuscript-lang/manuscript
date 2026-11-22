@@ -33,6 +33,7 @@ typedef struct MsScopeSite {
   const MsDecl *impl;
   const MsDecl *decl; /* the declaration being walked */
   bool in_constant;  /* inside the value of a module constant */
+  bool in_constant_call; /* ... and inside a call or lambda there, which the constant rules reject as a whole */
   bool type_reading; /* the name is the value reading of a bracket entry that may be a type */
 } MsScopeSite;
 

@@ -84,6 +84,15 @@ typedef struct LowerDefault {
 
 MS_LIST_DEFINE(LowerDefaultList, lower_default_list, LowerDefault)
 
+/* The equality and hash functions of a record or alternative type that a descriptor describes. */
+typedef struct LowerGlue {
+  MirTy ty;
+  uint32_t eq, hash; /* the reserved MIR functions */
+  bool lowered;
+} LowerGlue;
+
+MS_LIST_DEFINE(LowerGlueList, lower_glue_list, LowerGlue)
+
 typedef struct Lower {
   MsCheckProgram *program;
   MirModule *module;
@@ -93,6 +102,7 @@ typedef struct Lower {
   LowerInstanceList instances;
   LowerLambdaList lambdas;
   LowerDefaultList defaults;
+  LowerGlueList glues;
   MsNames vtable_keys;         /* receiver and interface type text -> dense id, the index into `vtables` */
   MirIdList vtables;           /* the MIR vtable of each key */
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
@@ -106,6 +116,7 @@ typedef struct Lower {
  * later (lower_default.c). */
 uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, MirTy record, const LowerSubst *subst);
 bool lower_default_bodies(Lower *cx, bool *progressed);
+bool lower_glue_bodies(Lower *cx, bool *progressed);
 
 /* The driver steps (lower_func.c): set up, lower every function reached so far (and their lambdas), tear down. */
 void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error);
