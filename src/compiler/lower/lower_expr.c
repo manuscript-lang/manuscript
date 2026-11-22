@@ -146,6 +146,7 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_MATCH: return fn_match(fn, expr);
     case MS_E_LIST: return fn_list(fn, expr);
     case MS_E_LAMBDA: return fn_lambda(fn, expr);
+    case MS_E_UNARY: return fn_unary(fn, expr);
     default:
       (void)fn_fail(fn, "this expression is not lowered yet");
       return MIR_NONE;
