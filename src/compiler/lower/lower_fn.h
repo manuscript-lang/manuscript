@@ -81,7 +81,7 @@ typedef struct LowerFn {
   uint32_t nwritebacks;
   bool failed;
   bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
-  uint32_t comparing[8]; /* the alternatives whose equality is being written out, innermost last */
+  MirTy comparing[8]; /* the records and alternatives whose equality is being written out, innermost last */
   uint32_t ncomparing;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
@@ -137,6 +137,9 @@ MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
 bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
+bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record);
+bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field);
+bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value
@@ -269,6 +272,9 @@ bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, ui
 bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */
+/* The shape table of `ty`, with the hooks its types declare built first. */
+MirValue fn_shape(LowerFn *fn, MirTy ty);
+bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out);
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
@@ -315,8 +321,8 @@ typedef struct VarSlot {
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
-MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out);
-bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count);
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier);
+bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count);
 MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl);
 const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode node);
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref);

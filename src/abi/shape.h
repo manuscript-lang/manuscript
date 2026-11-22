@@ -115,7 +115,8 @@ _Static_assert(sizeof(MsShapeMember) == 32 && offsetof(MsShapeMember, flags) == 
 typedef struct MsShapeHook {
   /* The type descriptor of a slot of this shape; LIST, MAP, SET and every shape built by a parse need it. */
   const MsTypeDesc *desc;
-  /* The shape's own text (`fn T.to_string() String`), used when MS_SHAPE_TEXT_FORM is set. */
+  /* The shape's own text (`fn T.to_string() String`), used when MS_SHAPE_TEXT_FORM is set. `value` is the slot that
+   * holds the value (for a boxed shape, the pointer to its block), and the text is moved into `out`. */
   void (*to_text)(const void *value, MsString *out);
   /* A shape with its own JSON form, when MS_SHAPE_JSON_FORM is set: writes the value to the JSON writer (the
    * msstd_json_w_* natives) and returns 0, or nonzero when the value has no JSON form and nothing was

@@ -345,7 +345,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   VarSlot held = {0};
   MirValue slot = MIR_NONE;
   if (on_variable) {
-    slot = fn_var_slot(fn, iter, &held);
+    slot = fn_var_slot(fn, iter, &held, NULL, 0);
     if (slot == MIR_NONE) {
       return false;
     }

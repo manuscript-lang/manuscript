@@ -286,7 +286,7 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   const uint8_t *value = ms_shape_resolve(shape, slot);
   const MsShapeHook *hook = ms_shape_hook(state->table, shape_index);
   if ((shape->flags & MS_SHAPE_JSON_FORM) != 0 && hook != NULL && hook->json_encode != NULL) {
-    return hook->json_encode(value, state->writer) == 0 ? WRITTEN : no_form(state);
+    return hook->json_encode(slot, state->writer) == 0 ? WRITTEN : no_form(state);
   }
   if ((shape->flags & MS_SHAPE_JSON_TREE) != 0 && shape->kind == MS_SHAPE_ALTERNATIVE) {
     return encode_tree(state, shape, value, depth);
@@ -322,6 +322,11 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   default: /* VOID, OPAQUE, FUNCTION, OBJECT */
     return no_form(state);
   }
+}
+
+uint8_t msstd_json_w_value(void *writer, const MsShapeTable *table, const void *slot) {
+  Encode state = {.table = table, .writer = writer};
+  return encode(&state, table->image->root, slot, 0) == WRITTEN ? 0 : 1;
 }
 
 uint8_t msstd_json_stringify(const MsShapeTable *table, const void *value, uint8_t has_max_bytes,
