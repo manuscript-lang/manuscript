@@ -158,6 +158,11 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
+  /* A literal is static, so an owner of it holds a copy too. */
+  const bool literal = expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
+  if (want == LW_MOVE && literal && value != MIR_NONE) {
+    return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+  }
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
   if (want != LW_MOVE || !place || value == MIR_NONE || !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
     return value;

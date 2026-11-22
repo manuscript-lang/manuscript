@@ -104,7 +104,8 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   }
   const MsTy value = body_expect(body, stmt->u.bind.value, declared, ms_strbuild_span(&context));
   ms_strbuild_free(&context);
-  bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : value, stmt->u.bind.is_mutable);
+  const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);
+  bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable);
 }
 
 static void stmt_assign(Body *body, const MsStmt *stmt) {

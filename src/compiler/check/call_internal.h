@@ -1,0 +1,38 @@
+/* compiler/check/call_internal.h: the call being checked, shared by calls.c and call_report.c. */
+#ifndef MS_COMPILER_CHECK_CALL_INTERNAL_H
+#define MS_COMPILER_CHECK_CALL_INTERNAL_H
+
+#include "compiler/check/body.h"
+
+typedef struct Target {
+  MsRef ref;
+  MsTy sig;               /* the function type called, receiver already bound */
+  MsTyList vars;          /* owned: the type variables to infer, in declaration order */
+  const MsParams *ast;    /* the declared parameters (for defaults), or NULL */
+  uint32_t ast_module;
+  const MsExpr *receiver; /* the written receiver of a method call */
+  MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
+  MsSpan name;
+  MsTyList explicit_args; /* owned: written type arguments */
+} Target;
+
+/* How a written argument was matched. */
+typedef enum ArgState { ARG_MATCHED, ARG_EXTRA, ARG_UNKNOWN, ARG_DUPLICATE } ArgState;
+
+typedef struct Matched {
+  int32_t *slot;    /* the argument written for each parameter, or -1 */
+  uint8_t *state;   /* ArgState of each written argument */
+  size_t count;
+} Matched;
+
+/* The written name of a parameter: the declaration's, since function types do not keep names in their identity. */
+MsName target_param_name(const Body *body, const Target *target, size_t index);
+
+/* Whether a parameter takes no label: a function value's, or one declared positional. */
+bool target_positional(const Target *target, size_t index, const MsTyTable *types);
+
+/* Reports the arguments that match no parameter and the parameters left without an argument, and types the
+ * unmatched arguments. */
+void body_report_arguments(Body *body, const Target *target, const MsExpr *call, const Matched *matched);
+
+#endif

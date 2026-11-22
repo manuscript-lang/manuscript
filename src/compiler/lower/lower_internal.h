@@ -86,6 +86,8 @@ typedef struct Lower {
 void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error);
 bool lower_pending(Lower *cx);
 void lower_release(Lower *cx);
+/* The process entry: `main` wrapped to return the exit status (lower_entry.c). */
+uint32_t lower_entry_status(Lower *cx, uint32_t main_func);
 /* The target of a module-level function symbol. */
 LowerTarget lower_symbol_target(const Lower *cx, MsSymbolId symbol);
 
