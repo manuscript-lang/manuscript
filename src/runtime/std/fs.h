@@ -8,22 +8,34 @@
 #include "abi/status.h"
 #include "base/bytes.h"
 #include "base/desc.h"
+#include "base/map.h"
 #include "base/string.h"
-
-/* FileInfo flattened: the name, then 64-bit words only. Times are seconds and nanoseconds; `kinds` is a bit set. */
-typedef struct MsFsInfo {
-  MsString name;
-  int64_t size, mode, permissions;
-  int64_t modified_seconds, modified_nanos, accessed_seconds, accessed_nanos, changed_seconds, changed_nanos;
-  int64_t created_seconds, created_nanos, created_present;
-  int64_t kinds, block_size, blocks, rdev, device, inode, links, uid, gid;
-} MsFsInfo;
 
 /* A Timestamp at the layout the compiler gives the native time type. */
 typedef struct MsFsTimestamp {
   int64_t seconds;
   int64_t nanos;
 } MsFsTimestamp;
+
+/* A FileInfo at the layout the compiler gives the record, field by field in declaration order: `kind` is the
+ * FileKind case index, `exact` the Map[String, BigInt] of unbounded copies, and `created` an Optional Timestamp (its
+ * presence flag, padded, then the Timestamp). */
+typedef struct MsFsInfo {
+  MsString name;
+  int64_t size;
+  int64_t kind;
+  MsFsTimestamp modified, accessed, changed;
+  int64_t mode, permissions, block_size, blocks, rdev;
+  MsMap exact;
+  int64_t device, inode, links, uid, gid;
+  uint64_t created_present;
+  MsFsTimestamp created;
+} MsFsInfo;
+
+_Static_assert(sizeof(MsFsInfo) == 240, "FileInfo layout");
+
+
+
 
 /* Filesystem status: type id, block size, blocks, free, available, files, free files. */
 typedef struct MsFsFilesystem {
