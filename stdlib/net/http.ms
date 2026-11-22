@@ -268,17 +268,17 @@ export interface HttpExchange:
 	// return EBADF.
 	var fn close() Void
 	// Returns an owned copy of the request headers with every repeated value retained.
-	fn headers() HttpHeaders
+	fn headers() move HttpHeaders
 	// Returns the request method, using the Custom case for extension tokens.
-	fn method() HttpMethod
+	fn method() move HttpMethod
 	// Returns the percent-decoded request path with dot segments resolved.
 	// Requests with an encoded slash or NUL are rejected before the handler runs.
-	fn path() String
+	fn path() move String
 	// Returns the protocol the request arrived over, such as `HTTP/1.1` or `HTTP/2.0`.
-	fn protocol() String
+	fn protocol() move String
 	// Returns the raw query string without the leading `?`; it is empty when there is
 	// none.
-	fn query() String
+	fn query() move String
 	// Returns the next chunk of the request body, at most `max_bytes` and never more
 	// than 65536, or none at the end of the body. Reading past `max_body_bytes` returns
 	// an `Error` of kind `EOVERFLOW`, and a non-positive `max_bytes` returns EINVAL.

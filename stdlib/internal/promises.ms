@@ -9,7 +9,7 @@ export extern fn msrt_promise_new() Int
 
 export extern fn msrt_promise_put[T](id: Int, move value: T, failed: Int) Void
 
-export extern fn msrt_promise_take[T](id: Int) T?
+export extern fn msrt_promise_take[T](id: Int) move T?
 
 export extern fn msrt_promise_done(id: Int) Bool
 
@@ -86,7 +86,7 @@ export extern fn msrt_group_poll(group: Int) Int
 
 export extern fn msrt_group_free(group: Int) Void
 
-export extern fn msrt_promise_fault_report(id: Int) String
+export extern fn msrt_promise_fault_report(id: Int) move String
 
 export extern fn msrt_promise_drop(id: Int) Void
 
@@ -113,7 +113,7 @@ export extern fn msrt_pipe_write[T](pipe: Int, move value: T) Int
 export extern fn msrt_pipe_read(pipe: Int) Int
 
 // The next queued value without a promise; none when nothing is queued right now.
-export extern fn msrt_pipe_try[T](pipe: Int) T?
+export extern fn msrt_pipe_try[T](pipe: Int) move T?
 
 // 1 when a read would end with no value: every writer closed and nothing is queued.
 export extern fn msrt_pipe_ended(pipe: Int) Int
@@ -148,7 +148,7 @@ export extern fn msrt_streams_buffered(stream: Int) Int
 
 // The last read failure or the terminal write failure (retained until close), or an
 // empty string.
-export extern fn msrt_streams_error(stream: Int) String
+export extern fn msrt_streams_error(stream: Int) move String
 
 export extern fn msrt_streams_close(stream: Int) Void
 
