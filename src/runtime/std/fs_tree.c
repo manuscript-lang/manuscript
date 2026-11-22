@@ -6,23 +6,24 @@
 void ms_fs_absolute(MsSpan path, MsStrBuild *out) {
   char buffer[1024];
   size_t size = sizeof buffer;
-  if (ms_fs_is_absolute(path) || uv_cwd(buffer, &size) != 0) {
+  if (ms_path_is_absolute(path) || uv_cwd(buffer, &size) != 0) {
     ms_strbuild_append(out, path);
     return;
   }
-  ms_fs_path_join(ms_span_of((const uint8_t *)buffer, size), path, out);
+  ms_path_from_os(buffer, size);
+  ms_path_join(ms_span_of((const uint8_t *)buffer, size), path, out);
 }
 
 bool ms_fs_within_path(MsSpan source, MsSpan target) {
   MsStrBuild clean_source = ms_strbuild_new();
   MsStrBuild clean_target = ms_strbuild_new();
-  ms_fs_path_clean(source, &clean_source);
-  ms_fs_path_clean(target, &clean_target);
+  ms_path_clean(&clean_source, source);
+  ms_path_clean(&clean_target, target);
   const MsSpan prefix = ms_strbuild_span(&clean_source);
   const MsSpan whole = ms_strbuild_span(&clean_target);
-  const bool rooted = prefix.len > 0 && ms_fs_is_separator(prefix.ptr[prefix.len - 1]);
+  const bool rooted = prefix.len > 0 && ms_path_is_separator(prefix.ptr[prefix.len - 1]);
   const bool inside = ms_span_starts_with(whole, prefix) &&
-                      (rooted || whole.len == prefix.len || ms_fs_is_separator(whole.ptr[prefix.len]));
+                      (rooted || whole.len == prefix.len || ms_path_is_separator(whole.ptr[prefix.len]));
   ms_strbuild_free(&clean_source);
   ms_strbuild_free(&clean_target);
   return inside;

@@ -50,7 +50,7 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
 }
 
 /* The modules whose types every module sees without an import. */
-static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms", "@std/intrinsics.ms"};
+static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms", "@std/intrinsics.ms", "@std/collections/ordering.ms"};
 
 /* Whether a module of the program declares a `test` or `bench` block: the test entry then needs the runner. */
 static bool has_tests(const MsCheckProgram *program) {
