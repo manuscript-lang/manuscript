@@ -171,6 +171,31 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
 }
 
+static void note_pattern_views(Uses *pass, const MsPattern *pattern) {
+  if (pattern->kind == MS_P_NAME) {
+    const MsRef *ref = ms_facts_ref(pass->facts, pattern->id);
+    if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      ms_binding_list_push(&pass->arms, ref->local);
+    }
+    return;
+  }
+  for (uint32_t at = 0; pattern->kind == MS_P_LIST && at < pattern->u.list.len; at++) {
+    note_pattern_views(pass, pattern->u.list.ptr[at]);
+  }
+  for (uint32_t at = 0; pattern->kind == MS_P_TYPE && at < pattern->u.fields.len; at++) {
+    note_pattern_views(pass, pattern->u.fields.ptr[at].pattern);
+  }
+}
+
+/* A destructuring of a place binds views of its parts; of a call's result, owners. */
+static void collect_views(void *ctx, const MsStmt *stmt) {
+  Uses *pass = ctx;
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME &&
+      (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
+    note_pattern_views(pass, stmt->u.bind.pattern);
+  }
+}
+
 /* The first pass marks every local name BORROW; the second upgrades moving operands (a parent is visited before
  * its children, so one pass would let the child's mark overwrite the move). */
 static void borrow_expr(void *ctx, const MsExpr *expr) {
@@ -191,7 +216,7 @@ static void borrow_expr(void *ctx, const MsExpr *expr) {
 /* Marks one function or method: the arms' locals are numbered per callable, so each is walked on its own. */
 static void mark_callable(Uses *pass, MsParams params, MsStmts body) {
   pass->arms.len = 0;
-  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = borrow_expr}, params, body);
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = collect_views, .expr = borrow_expr}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, params, body);
 }
 
@@ -205,7 +230,7 @@ static void mark_module(Uses *pass, const MsModule *tree) {
         mark_callable(pass, decl->u.impl.methods.ptr[at]->func.params, decl->u.impl.methods.ptr[at]->func.body);
       }
     } else {
-      ms_walk_decl(&(MsVisitor){.ctx = pass, .expr = borrow_expr}, decl);
+      ms_walk_decl(&(MsVisitor){.ctx = pass, .stmt = collect_views, .expr = borrow_expr}, decl);
       ms_walk_decl(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, decl);
     }
   }

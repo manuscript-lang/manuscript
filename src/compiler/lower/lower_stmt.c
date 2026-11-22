@@ -19,7 +19,7 @@ static void disown(LowerFn *fn, MirValue value) {
 
 /* Binds the names of `pattern` to the parts of `value`: a record pattern reads fields, a list pattern reads
  * elements. The parts are borrowed from `value`, which the binding's source keeps alive. */
-static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value) {
+static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned) {
   const MirModule *module = fn->cx->module;
   if (pattern->kind == MS_P_NAME) {
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
@@ -37,7 +37,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value) {
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
       const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
-      if (!bind_parts(fn, pattern->u.list.ptr[at], element)) {
+      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false)) {
         return false;
       }
     }
@@ -47,6 +47,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value) {
     return fn_fail(fn, "a field pattern binds a record");
   }
   const MirTypeDef *def = &module->type_defs.ptr[data->id];
+  uint32_t taken = 0;
   for (uint32_t at = 0; at < pattern->u.fields.len; at++) {
     const MsPatternField *field = &pattern->u.fields.ptr[at];
     const MsSpan wanted = ms_names_span(fn->cx->program->names, field->name);
@@ -61,10 +62,18 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value) {
       return fn_fail(fn, "a pattern names a field the record does not have");
     }
     const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = found};
-    const MirValue part = mir_b_emit(&fn->b, MOP_TypeGet, &value, 1, imm, def->fields[found].ty);
-    if (!bind_parts(fn, field->pattern, part)) {
+    MirValue part = mir_b_emit(&fn->b, MOP_TypeGet, &value, 1, imm, def->fields[found].ty);
+    const bool takes = owned && field->pattern->kind == MS_P_NAME && mir_needs_drop(module, def->fields[found].ty);
+    if (takes) { /* a fresh record hands its part to the name; what the pattern leaves out is released with it */
+      part = fn_emit(fn, MOP_MoveOut, &part, 1, (MirImm){0}, def->fields[found].ty);
+      taken |= found < 32 ? UINT32_C(1) << found : 0;
+    }
+    if (!bind_parts(fn, field->pattern, part, false)) {
       return false;
     }
+  }
+  if (taken != 0) {
+    (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, (MirImm){.tag = MI_TYPEMASK, .a = data->id, .b = taken}, MIR_NONE);
   }
   return true;
 }
@@ -76,7 +85,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
       return fn_fail(fn, "a `var` destructuring is not lowered yet");
     }
     const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
-    return source != MIR_NONE && bind_parts(fn, pattern, source);
+    return source != MIR_NONE && bind_parts(fn, pattern, source, fn_fresh_owner(fn, source));
   }
   /* A name bound to another name borrows it; anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
