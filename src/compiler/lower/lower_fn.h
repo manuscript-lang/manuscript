@@ -69,6 +69,8 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);
+/* A list literal (lower_list.c). */
+MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 

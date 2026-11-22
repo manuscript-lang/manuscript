@@ -75,7 +75,7 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
 
 static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
   if (part->expr == NULL) {
-    const MirImm imm = {.tag = MI_STR, .a = mir_name(fn->cx->module, part->lit)};
+    const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, part->lit)};
     *out = (TextPiece){mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR), false};
     return true;
   }
@@ -94,7 +94,7 @@ static bool piece_of(LowerFn *fn, const MsTextPart *part, TextPiece *out) {
 MirValue fn_text(LowerFn *fn, const MsExpr *expr) {
   const uint32_t count = expr->u.text.len;
   if (count == 0) {
-    const MirImm imm = {.tag = MI_STR, .a = mir_name(fn->cx->module, ms_span_of_text(""))};
+    const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(""))};
     return mir_b_emit(&fn->b, MOP_StrLit, NULL, 0, imm, MIR_STR);
   }
   TextPiece *pieces = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, TextPiece, count);
