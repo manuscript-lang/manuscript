@@ -44,7 +44,7 @@ void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, cons
   for (uint32_t arg = 0; arg < arg_count; arg++) {
     ms_strbuild_printf(out, "%si64 %%v%u", arg == 0 ? "" : ", ", args[arg]);
   }
-  ms_strbuild_append_text(out, ")\n  unreachable\n");
+  ms_strbuild_append_text(out, ") nomerge\n  unreachable\n");
   emit_label(out, site->block, *site->part);
   ms_strbuild_append_text(out, ":\n");
 }
