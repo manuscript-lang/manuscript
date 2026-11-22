@@ -407,9 +407,26 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   return fn_fail(fn, "unknown statement");
 }
 
+/* A statement whose calls lend temporary resources lowers in a scope of its own: they close where it ends. */
+static bool lower_scoped(LowerFn *fn, const MsStmt *stmt) {
+  if (fn->temps || !fn_stmt_has_temporary(fn, stmt)) {
+    return lower_stmt(fn, stmt);
+  }
+  (void)fn_scope_begin(fn);
+  fn->temps = true;
+  const bool ok = lower_stmt(fn, stmt);
+  fn->temps = false;
+  if (!fn->terminated) {
+    fn_scope_end(fn);
+  } else {
+    fn->nopen--;
+  }
+  return ok;
+}
+
 bool fn_stmts(LowerFn *fn, MsStmts stmts) {
   for (uint32_t index = 0; index < stmts.len && !fn->terminated; index++) {
-    if (!lower_stmt(fn, stmts.ptr[index])) {
+    if (!lower_scoped(fn, stmts.ptr[index])) {
       return false;
     }
   }

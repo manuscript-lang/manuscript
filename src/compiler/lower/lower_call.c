@@ -1,6 +1,7 @@
 /* compiler/lower/lower_call.c: calls to module functions (with their type arguments and default arguments)
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
 const MsCall *fn_find_call(const MsFacts *facts, MsNode node) {
@@ -30,7 +31,7 @@ MsSymbolId fn_symbol_at(const Lower *cx, MsNodeRef decl) {
 }
 
 /* The expression a written argument names. */
-static const MsExpr *written_arg(const MsExpr *call, MsNode node) {
+const MsExpr *fn_written_arg(const MsExpr *call, MsNode node) {
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     if (call->u.call.args.ptr[index].value->id == node) {
       return call->u.call.args.ptr[index].value;
@@ -131,22 +132,52 @@ static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
   return entry != NULL && entry->source->consuming;
 }
 
+/* Whether the call hands argument `index` (written as `written`) to its callee, rather than lending it. */
+bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
+  const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+  const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
+                              written == expr->u.call.callee->u.member.left && consuming_receiver(fn, call);
+  return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0;
+}
+
+/* Whether argument `a` is written before argument `b`: arguments are evaluated as written, which named
+ * arguments may put out of declaration order. Arguments nobody wrote (defaults) come last. */
+static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, uint32_t b) {
+  const MsExpr *left = fact->args[a].source == MS_ARG_WRITTEN ? fn_written_arg(call, fact->args[a].node.node) : NULL;
+  const MsExpr *right = fact->args[b].source == MS_ARG_WRITTEN ? fn_written_arg(call, fact->args[b].node.node) : NULL;
+  if (left == NULL || right == NULL) {
+    return left != NULL && right == NULL;
+  }
+  const MsPos from = ms_expr_start(left), to = ms_expr_start(right);
+  return from.line != to.line ? from.line < to.line : from.column < to.column;
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
-  for (uint32_t index = 0; index < call->arg_count; index++) {
+  uint32_t order[16];
+  for (uint32_t at = 0; at < call->arg_count; at++) {
+    uint32_t place = at;
+    while (place > 0 && written_before(expr, call, at, order[place - 1])) {
+      order[place] = order[place - 1];
+      place--;
+    }
+    order[place] = at;
+  }
+  for (uint32_t step = 0; step < call->arg_count; step++) {
+    const uint32_t index = order[step];
     const MsCallArg *arg = &call->args[index];
     if (arg->source == MS_ARG_WRITTEN && slots != NULL && ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) &&
         *nslots < 16) {
-      const MsExpr *place = written_arg(expr, arg->node.node);
+      const MsExpr *place = fn_written_arg(expr, arg->node.node);
       out[index] = place != NULL ? fn_var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
     } else if (arg->source == MS_ARG_WRITTEN) {
-      const MsExpr *written = written_arg(expr, arg->node.node);
+      const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
-      const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
-      const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD && written == expr->u.call.callee->u.member.left &&
-                                  consuming_receiver(fn, call);
-      const LowerWant want = owning || takes_receiver || (arg->flags & MS_PARAM_MOVE) != 0 ? LW_MOVE : LW_BORROW;
+      const LowerWant want = fn_arg_moves(fn, expr, call, index, written) ? LW_MOVE : LW_BORROW;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
+      if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
+        out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
+      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
@@ -193,7 +224,7 @@ const MsMethodEntry *fn_method_entry(const Lower *cx, uint32_t module, MsNode no
 
 /* What a call names, as something to lower: a module function or a method with a body. False for any other
  * callee (a runtime function, an operation, a builtin). */
-static bool callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
+bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
   Lower *cx = fn->cx;
   if (call->callee.kind == MS_REF_FUNCTION) {
     const MsSymbolId id = fn_symbol_at(cx, call->callee.decl);
@@ -357,7 +388,7 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   uint32_t nslots = 0;
   LowerTarget target;
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
-                      callee_target(fn, call, &target);
+                      fn_callee_target(fn, call, &target);
   const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
   if (!lower_args(fn, expr, call, args, source ? slots : NULL, &nslots, receiver_var)) {
     return MIR_NONE;
