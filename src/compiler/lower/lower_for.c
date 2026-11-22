@@ -16,7 +16,9 @@ typedef struct ForSource {
   MirValue slot; /* a cursor walk: the slot holding the cursor */
   uint32_t cursor_type;
   MirTy list_ty;
-  bool cursor, range;
+  MirValue text;  /* a `chars` walk: the string, whose scalars are read in place */
+  MirVar width;   /* a `chars` walk: the byte length of the scalar the round reads */
+  bool cursor, range, chars;
 } ForSource;
 
 static MirImm imm_field(uint32_t type, uint32_t field) {
@@ -103,6 +105,46 @@ static bool is_range(const LowerFn *fn, const MsExpr *iter) {
   }
   const MsSpan name = ms_names_span(fn->cx->program->names, iter->u.call.callee->u.sym);
   return ms_span_is_text(name, "..");
+}
+
+/* `text.chars()` on a String written as the iterable: the loop reads each scalar from the string, with no list of
+ * them. */
+static const MsExpr *chars_receiver(const LowerFn *fn, const MsExpr *iter) {
+  if (iter->kind != MS_E_CALL || iter->u.call.args.len != 0 || iter->u.call.callee->kind != MS_E_MEMBER ||
+      !ms_span_is_text(ms_names_span(fn->cx->program->names, iter->u.call.callee->u.member.name), "chars")) {
+    return NULL;
+  }
+  const MsExpr *receiver = iter->u.call.callee->u.member.left;
+  const MsTy type = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, receiver->id), fn->subst.vars,
+                                fn->subst.args, fn->subst.count);
+  return ms_ty_is(&fn->cx->program->types, type, MS_BUILTIN_String) ? receiver : NULL;
+}
+
+static bool source_chars(LowerFn *fn, const MsExpr *receiver, ForSource *src) {
+  const MirValue text = fn_expr(fn, receiver, LW_BORROW);
+  if (text == MIR_NONE) {
+    return false;
+  }
+  *src = (ForSource){.elem = MIR_STR, .text = text, .chars = true};
+  src->start = mir_b_iconst(&fn->b, 0);
+  src->len = emit(fn, MOP_StrBytes, &text, 1, (MirImm){0}, MIR_INT);
+  src->width = mir_b_declare_var(&fn->b, MIR_INT, MM_BORROW);
+  mir_b_def_var(&fn->b, src->width, mir_b_iconst(&fn->b, 1));
+  return true;
+}
+
+/* The scalar at byte offset `index` of the string, an inline string whose length is the bytes the round used. */
+static MirValue scalar_at(LowerFn *fn, const ForSource *src, MirValue index) {
+  MirParam *wanted = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, 3);
+  wanted[0] = (MirParam){MIR_STR, (uint8_t)MM_BORROW};
+  wanted[1] = (MirParam){MIR_INT, (uint8_t)MM_BORROW};
+  const MirExtern def = {.name = mir_name(fn->cx->module, ms_span_of_text("msrt_string_scalar_text")),
+                         .params = wanted, .nparams = 2, .ret = MIR_STR, .leaf = true};
+  const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
+  const MirValue args[2] = {src->text, index};
+  const MirValue scalar = mir_b_call_rt(&fn->b, ext, args, 2);
+  mir_b_def_var(&fn->b, src->width, emit(fn, MOP_StrBytes, &scalar, 1, (MirImm){0}, MIR_INT));
+  return scalar;
 }
 
 static bool source_range(LowerFn *fn, const MsExpr *iter, ForSource *src) {
@@ -198,6 +240,9 @@ static MirValue cursor_list(LowerFn *fn, const ForSource *src) {
 static MirValue element(LowerFn *fn, const ForSource *src, MirValue index, MirValue one) {
   if (src->range) {
     return index;
+  }
+  if (src->chars) {
+    return scalar_at(fn, src, index);
   }
   if (!src->cursor) {
     const MirValue args[2] = {src->list, index};
@@ -405,17 +450,20 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   }
   const MsExpr *iter = stmt->u.each.iter;
   (void)fn_scope_begin(fn);
-  const MirTy iter_ty = is_range(fn, iter) ? MIR_INT : fn_type(fn, ms_facts_type(fn->facts, iter->id));
+  const MsExpr *chars = chars_receiver(fn, iter);
+  const MirTy iter_ty = is_range(fn, iter) || chars != NULL ? MIR_INT : fn_type(fn, ms_facts_type(fn->facts, iter->id));
   const MirTyData *iter_data = mir_ty_data(fn->cx->module, iter_ty);
   const bool collection = iter_data->kind == MK_OBJ && iter_data->obj_class == MIR_OBJ_COLLECTION;
   if (iter_ty != MIR_INT && iter_data->kind != MK_LIST && !collection) {
     return for_iterator(fn, stmt, binding);
   }
   ForSource src;
-  if (!(is_range(fn, iter) ? source_range(fn, iter, &src) : source_list(fn, iter, &src))) {
+  const bool sourced = chars != NULL ? source_chars(fn, chars, &src)
+                       : is_range(fn, iter) ? source_range(fn, iter, &src) : source_list(fn, iter, &src);
+  if (!sourced) {
     return false;
   }
-  if (!src.range) {
+  if (!src.range && !src.chars) {
     src.start = mir_b_iconst(&fn->b, 0);
     const MirValue list = src.cursor ? cursor_list(fn, &src) : src.list;
     src.len = emit(fn, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
@@ -438,7 +486,8 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   if (fn->b.links.ptr[step].preds.len > 0) {
     enter(fn, step);
     mir_b_set_loc(&fn->b, fn_loc(fn, stmt->pos));
-    mir_b_def_var(&fn->b, index, mir_b_binop(&fn->b, MOP_IAdd, mir_b_use_var(&fn->b, index), one));
+    const MirValue by = src.chars ? mir_b_use_var(&fn->b, src.width) : one;
+    mir_b_def_var(&fn->b, index, mir_b_binop(&fn->b, MOP_IAdd, mir_b_use_var(&fn->b, index), by));
     mir_b_br(&fn->b, head, NULL, 0);
   }
   mir_b_seal_block(&fn->b, head);
