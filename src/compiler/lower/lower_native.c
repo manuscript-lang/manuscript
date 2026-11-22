@@ -66,6 +66,19 @@ static bool is_result_kind(uint8_t kind) {
          kind == NS_OUT_SCALAR;
 }
 
+/* A scalar operand a native reads through an address (`e: *const u8`): it goes into a stack slot. */
+static MirValue spill_scalar(LowerFn *fn, MirValue value) {
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  if (ty != MIR_INT && ty != MIR_BOOL && ty != MIR_FLOAT && ty != MIR_FLOAT32) {
+    return value;
+  }
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue store[2] = {slot, value};
+  (void)fn_emit(fn, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+  return slot;
+}
+
 /* The operands the runtime function `sig` wants for a call with the source operands `args`: the descriptors
  * its signature names are added after the collection they describe, and the trailing result parameter is the
  * call's result. False when the source operands do not fit the signature. */
@@ -84,7 +97,8 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
         return false;
       }
     } else if (next < nargs) {
-      out[used++] = args[next++];
+      out[used++] = kind == NS_ADDR_IN ? spill_scalar(fn, args[next]) : args[next];
+      next++;
     } else {
       return false;
     }
@@ -131,4 +145,50 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     return fn_runtime_call(fn, name, wanted, count, ret);
   }
   return fn_runtime_call(fn, name, args, call->arg_count, ret);
+}
+
+/* The runtime function of a BigInt operator, and whether its result is a comparison against zero. */
+typedef struct ObjectOp {
+  const char *name;
+  MirCc cc;
+  bool compare;
+} ObjectOp;
+
+static bool object_op(MsBinaryOp op, ObjectOp *out) {
+  switch (op) {
+    case MS_B_ADD: *out = (ObjectOp){"msstd_bigint_add", MCC_EQ, false}; return true;
+    case MS_B_SUB: *out = (ObjectOp){"msstd_bigint_subtract", MCC_EQ, false}; return true;
+    case MS_B_MUL: *out = (ObjectOp){"msstd_bigint_multiply", MCC_EQ, false}; return true;
+    case MS_B_DIV: *out = (ObjectOp){"msstd_bigint_quotient", MCC_EQ, false}; return true;
+    case MS_B_REM: *out = (ObjectOp){"msstd_bigint_modulo", MCC_EQ, false}; return true;
+    case MS_B_EQ: *out = (ObjectOp){"msstd_bigint_equal", MCC_EQ, false}; return true;
+    case MS_B_NE: *out = (ObjectOp){"msstd_bigint_equal", MCC_NE, false}; return true;
+    case MS_B_LT: *out = (ObjectOp){"msstd_bigint_compare", MCC_LT, true}; return true;
+    case MS_B_GT: *out = (ObjectOp){"msstd_bigint_compare", MCC_GT, true}; return true;
+    case MS_B_LE: *out = (ObjectOp){"msstd_bigint_compare", MCC_LE, true}; return true;
+    case MS_B_GE: *out = (ObjectOp){"msstd_bigint_compare", MCC_GE, true}; return true;
+    default: return false;
+  }
+}
+
+bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirValue *out) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, left));
+  ObjectOp info;
+  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_VALUE || !object_op(op, &info)) {
+    return false;
+  }
+  const MirValue operands[2] = {left, right};
+  const MirTy ret = info.compare ? MIR_INT : (op == MS_B_EQ || op == MS_B_NE ? MIR_BOOL : mir_b_ty(&fn->b, left));
+  const MirValue result =
+      fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(info.name)), operands, 2, ret);
+  if (result == MIR_NONE) {
+    *out = MIR_NONE;
+  } else if (info.compare) {
+    *out = mir_b_icmp(&fn->b, info.cc, result, mir_b_iconst(&fn->b, 0));
+  } else if (op == MS_B_NE) {
+    *out = mir_b_icmp(&fn->b, MCC_EQ, result, mir_b_bconst(&fn->b, false));
+  } else {
+    *out = result;
+  }
+  return true;
 }

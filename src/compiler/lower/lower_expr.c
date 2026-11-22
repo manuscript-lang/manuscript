@@ -242,6 +242,10 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
     const MirValue operands[2] = {left, right};
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), operands, 2, MIR_STR);
   }
+  MirValue object;
+  if (fn_object_binary(fn, (MsBinaryOp)expr->op, left, right, &object)) {
+    return object;
+  }
   const MirTy operand = mir_b_ty(&fn->b, left);
   if (operand == MIR_FLOAT || operand == MIR_FLOAT32) {
     return float_binary(fn, &ops, left, right, operand);
