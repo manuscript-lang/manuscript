@@ -446,6 +446,9 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
       /* a negative reserve reserves nothing */
       capacity = mir_b_select(&fn->b, mir_b_icmp(&fn->b, MCC_LT, capacity, mir_b_iconst(&fn->b, 0)),
                               mir_b_iconst(&fn->b, 0), capacity);
+      /* a reserve is a hint: past 2^27 items it is capped, and the list grows on demand */
+      const MirValue limit = mir_b_iconst(&fn->b, (int64_t)1 << 27);
+      capacity = mir_b_select(&fn->b, mir_b_icmp(&fn->b, MCC_GT, capacity, limit), limit, capacity);
     }
     return mir_b_list_new(&fn->b, data->elem, capacity);
   }

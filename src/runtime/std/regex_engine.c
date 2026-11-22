@@ -82,7 +82,7 @@ static size_t duplicate_name(MsSpan pattern) {
       end++;
     }
     for (size_t k = 0; k < count; k++) {
-      if (ends[k] - starts[k] == end - name && memcmp(pattern.ptr + starts[k], pattern.ptr + name, end - name) == 0) {
+      if (ms_span_equal(ms_span_of(pattern.ptr + starts[k], ends[k] - starts[k]), ms_span_of(pattern.ptr + name, end - name))) {
         return name;
       }
     }
