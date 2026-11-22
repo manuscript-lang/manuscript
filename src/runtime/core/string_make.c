@@ -27,7 +27,7 @@ MsString msrt_string_make(MsSpan text) {
     return ms_string_empty();
   }
   if (text.len == 1 && text.ptr[0] < 0x80) {
-    return ms_string_static(ms_span_of(msrt_ascii_chars[text.ptr[0]], 1));
+    return ms_string_from_span(text); /* inline: a short string is its two words */
   }
   if (text.len > MSRT_STRING_LIMIT) {
     msrt_string_limit_fault();
