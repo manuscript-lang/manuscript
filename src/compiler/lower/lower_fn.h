@@ -110,6 +110,8 @@ bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *t
 /* ---- places (lower_stmt.c) ---- */
 
 /* Whether `place` is an owning `var` local or a member path rooted in one. */
+/* Whether `place` is an owning variable (or a path in one): a value a `var` call can change in place. */
+bool fn_place_owns(LowerFn *fn, const MsExpr *place);
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
