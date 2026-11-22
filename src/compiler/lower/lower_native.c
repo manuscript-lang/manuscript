@@ -98,15 +98,33 @@ static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   return slot;
 }
 
-/* An `Int?` operand as the two parameters of a `HasRaw` pair: whether it holds a value, and the value (0 when
- * none). False when the operand is not an optional Int. */
+/* Whether `ty` is an enum whose cases carry no data: it is passed as its case index. */
+static bool is_plain_enum(const MirModule *module, MirTy ty) {
+  const MirTyData *data = mir_ty_data(module, ty);
+  if (data->kind != MK_ALT) {
+    return false;
+  }
+  const MirAltDef *alt = &module->alts.ptr[data->id];
+  for (uint32_t index = 0; index < alt->ncases; index++) {
+    if (alt->cases[index].nfields > 0) {
+      return false;
+    }
+  }
+  return alt->ncases > 0;
+}
+
+/* An `Int?` or optional plain enum operand as the two parameters of a `HasRaw` pair: whether it holds a value,
+ * and the value (the case index for an enum; 0 when none). False when the operand is neither. */
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, optional));
-  if (data->kind != MK_OPT || data->elem != MIR_INT) {
+  if (data->kind != MK_OPT || (data->elem != MIR_INT && !is_plain_enum(fn->cx->module, data->elem))) {
     return false;
   }
   const MirValue present = fn_emit(fn, MOP_OptIsSome, &optional, 1, (MirImm){0}, MIR_BOOL);
-  const MirValue payload = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, MIR_INT);
+  MirValue payload = fn_emit(fn, MOP_OptGet, &optional, 1, (MirImm){0}, data->elem);
+  if (data->elem != MIR_INT) {
+    payload = fn_emit(fn, MOP_AltTag, &payload, 1, (MirImm){0}, MIR_INT);
+  }
   out[0] = present;
   out[1] = mir_b_select(&fn->b, present, payload, mir_b_iconst(&fn->b, 0));
   return true;
