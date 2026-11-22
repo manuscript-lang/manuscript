@@ -29,6 +29,16 @@ typedef struct LowerVarParam {
   MirTy ty;
 } LowerVarParam;
 
+/* An `if var name = place[key]?` binding: the variable is a copy of the entry's bits, stored back to `address` wherever
+ * the body is left. `depth` is the number of scopes open inside the body. */
+typedef struct LowerWriteback {
+  MirVar var;
+  MirValue address;
+  MirTy ty;
+  uint32_t depth;
+} LowerWriteback;
+
+enum { LOWER_MAX_WRITEBACKS = 8 };
 enum { LOWER_MAX_VAR_PARAMS = 8, LOWER_MAX_CLOSING_PARAMS = 32 };
 
 typedef struct LowerFn {
@@ -53,6 +63,8 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
+  LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
+  uint32_t nwritebacks;
   bool failed;
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
@@ -164,6 +176,7 @@ bool fn_native_on(LowerFn *fn, const MsExpr *place, MsTy owner, MsSpan operation
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
+MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 
@@ -223,6 +236,10 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_iflet_test(LowerFn *fn, MirValue value);
 bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owns);
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt);
+bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
+bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
+void fn_probe_end(LowerFn *fn, bool falls_out);
+void fn_writebacks_put(LowerFn *fn, uint32_t keep);
 /* `match` over an alternative (lower_match.c). */
 MirValue fn_match(LowerFn *fn, const MsExpr *expr);
 

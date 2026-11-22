@@ -275,6 +275,62 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
 
+/* The address of the entry `place[key]?` names in a list or map, or a null pointer when there is none (a list index
+ * out of range counts from nothing: a negative index is no entry). `entry_ty` is the entry's type. */
+MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_expr, MirTy *entry_ty) {
+  const MirTy ty = mir_b_ty(&fn->b, container);
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
+    const MirValue key = operand_slot(fn, key_expr);
+    if (key == MIR_NONE) {
+      return MIR_NONE;
+    }
+    const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
+    const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
+    const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
+    const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
+    const MirValue operands[4] = {container, key_desc, value_desc, key};
+    const MirValue address = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_get_ptr")), operands, 4, MIR_PTR);
+    if (mir_needs_drop(fn->cx->module, data->args[0])) {
+      const MirValue gone = mir_b_emit(&fn->b, MOP_Take, &key, 1, key_ty, data->args[0]);
+      (void)mir_b_emit(&fn->b, MOP_Drop, &gone, 1, (MirImm){0}, MIR_NONE);
+    }
+    *entry_ty = data->args[1];
+    return address;
+  }
+  if (data->kind != MK_LIST) {
+    (void)fn_fail(fn, "only a list or a map can be probed");
+    return MIR_NONE;
+  }
+  const MirValue at = fn_expr(fn, key_expr, LW_BORROW);
+  if (at == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirValue zero = mir_b_iconst(&fn->b, 0);
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &container, 1, (MirImm){0}, MIR_INT);
+  const MirValue not_negative = mir_b_icmp(&fn->b, MCC_GE, at, zero);
+  const MirValue below = mir_b_icmp(&fn->b, MCC_LT, at, length);
+  const MirValue inside = mir_b_select(&fn->b, not_negative, below, mir_b_bconst(&fn->b, false));
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue address = mir_b_add_block_param(&fn->b, join, MIR_PTR, MM_BORROW);
+  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, hit);
+  const MirValue operands[2] = {container, at};
+  const MirValue found = mir_b_emit(&fn->b, MOP_ListAddrU, operands, 2, (MirImm){0}, MIR_PTR);
+  mir_b_br(&fn->b, join, &found, 1);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrNull, NULL, 0, (MirImm){0}, MIR_PTR);
+  mir_b_br(&fn->b, join, &absent, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  *entry_ty = data->elem;
+  return address;
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,

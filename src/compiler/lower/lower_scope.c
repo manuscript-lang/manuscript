@@ -79,6 +79,7 @@ static void put_var_params(LowerFn *fn) {
 }
 
 void fn_scope_unwind(LowerFn *fn, uint32_t keep) {
+  fn_writebacks_put(fn, keep);
   if (keep == 0) {
     put_var_params(fn);
   }

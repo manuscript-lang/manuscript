@@ -80,3 +80,64 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), payload);
   return !fn->failed;
 }
+
+/* `if var name = place[key]?:` tests whether the entry exists. `address` is the entry's address (null when absent) and
+ * `cond` says it is not. */
+bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty) {
+  const MsExpr *probe = stmt->u.branch.cond;
+  MsExpr *left = NULL;
+  MsExpr *index = NULL;
+  if (!ms_expr_index(probe->u.bin.left, &left, &index)) {
+    return fn_fail(fn, "this bracket is not an index");
+  }
+  const MirValue container = fn_expr(fn, left, LW_BORROW);
+  if (container == MIR_NONE) {
+    return false;
+  }
+  *address = fn_entry_address(fn, container, index, ty);
+  if (*address == MIR_NONE) {
+    return false;
+  }
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, address, 1, (MirImm){0}, MIR_BOOL);
+  *cond = mir_b_emit(&fn->b, MOP_Not, &absent, 1, (MirImm){0}, MIR_BOOL);
+  return true;
+}
+
+/* Binds the name to the entry's current value and registers the store back to the entry. */
+bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty) {
+  const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.branch.binding->id);
+  if (stmt->u.branch.binding->kind != MS_P_NAME || ref == NULL || ref->kind != MS_REF_LOCAL) {
+    return fn_fail(fn, "only a name can be bound by `if` for now");
+  }
+  if (fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
+    return fn_fail(fn, "`if var` entries nest too deeply");
+  }
+  const MirVar var = fn_local(fn, ref->local, ty);
+  const MirValue value = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+  mir_b_def_var(&fn->b, var, value);
+  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){var, address, ty, fn->nopen};
+  return !fn->failed;
+}
+
+static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
+  const MirValue stored[2] = {back->address, mir_b_use_var(&fn->b, back->var)};
+  (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+}
+
+/* Stores each entry binding opened inside the scopes above `keep` back to its entry: a return, break or continue
+ * leaving the body. */
+void fn_writebacks_put(LowerFn *fn, uint32_t keep) {
+  for (uint32_t at = fn->nwritebacks; at > 0; at--) {
+    if (fn->writebacks[at - 1].depth > keep) {
+      put_writeback(fn, &fn->writebacks[at - 1]);
+    }
+  }
+}
+
+/* The body is over: forget the newest binding, storing it back when the body falls out of its end. */
+void fn_probe_end(LowerFn *fn, bool falls_out) {
+  const LowerWriteback *back = &fn->writebacks[--fn->nwritebacks];
+  if (falls_out) {
+    put_writeback(fn, back);
+  }
+}
