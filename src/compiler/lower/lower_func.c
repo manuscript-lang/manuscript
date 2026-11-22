@@ -165,9 +165,9 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   }
 }
 
-/* Whether the callee lends its result: the checker's fact says every path returns a part of a parameter, and each
+/* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a parameter, and each
  * return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
-static bool lends_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
   if (target->entry || !ms_own_lends_pure(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;
@@ -204,7 +204,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
-  func.ret_borrowed = lends_result(cx, target, ret, mir_params, count);
+  func.ret_borrowed = borrows_result(cx, target, ret, mir_params, count);
   /* A function that takes a closure and keeps it (a promise's entry) holds what a closure into its maker's frame
    * borrows until the result is dropped. */
   const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
@@ -376,7 +376,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   fn_init_closing(&fn);
   fn_find_shared(&fn, target->func->body);
   bind_params(&fn, target);
-  fn.lends = cx->module->funcs.ptr[instance.func].ret_borrowed;
+  fn.returns_borrow = cx->module->funcs.ptr[instance.func].ret_borrowed;
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;

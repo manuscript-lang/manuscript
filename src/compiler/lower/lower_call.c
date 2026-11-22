@@ -189,7 +189,7 @@ static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
   return entry != NULL && entry->source->consuming;
 }
 
-/* Whether the call hands argument `index` (written as `written`) to its callee, rather than lending it. */
+/* Whether the call hands argument `index` (written as `written`) to its callee, rather than borrowing it. */
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
   const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
   const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
