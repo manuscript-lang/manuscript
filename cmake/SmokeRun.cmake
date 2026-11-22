@@ -1,13 +1,21 @@
 # Builds and runs a one-line program with ms-c on this platform, the check that packaging, the pipeline and the
 # linker work together: `cmake -DMS_C=<ms-c> -DWORK=<scratch dir> -P cmake/SmokeRun.cmake`. The program's exit
-# status must be 7. The LLVM tools (opt, llc, lld) come from PATH, or from Homebrew's keg-only prefixes on macOS.
+# status must be 7. The LLVM tools (opt, llc, lld) come from TOOL_DIR (the compiler's own directory), PATH, or from Homebrew's keg-only prefixes on macOS.
 cmake_minimum_required(VERSION 3.25)
 file(MAKE_DIRECTORY "${WORK}")
 file(WRITE "${WORK}/smoke.ms" "fn main() Int:\n    return 7\n")
+if(WIN32)
+  set(separator ";")
+else()
+  set(separator ":")
+endif()
 set(path "$ENV{PATH}")
+if(TOOL_DIR)
+  set(path "${TOOL_DIR}${separator}${path}")
+endif()
 foreach(prefix /opt/homebrew/opt/llvm /usr/local/opt/llvm /opt/homebrew/opt/lld /usr/local/opt/lld)
   if(IS_DIRECTORY "${prefix}/bin")
-    set(path "${prefix}/bin:${path}")
+    set(path "${prefix}/bin${separator}${path}")
   endif()
 endforeach()
 set(ENV{PATH} "${path}")

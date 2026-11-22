@@ -10,5 +10,6 @@ ms_add_musl_runtime()
 ms_package_runtime(ms-c ms_runtime)
 
 # Build and run a one-line program: packaging, pipeline and linker together on this platform.
+get_filename_component(MS_COMPILER_BIN "${CMAKE_C_COMPILER}" DIRECTORY)
 add_test(NAME smoke_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_CURRENT_BINARY_DIR}/smoke
-  -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
+  -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
