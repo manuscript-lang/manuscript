@@ -15,7 +15,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
 	// Split on LF alone: a CR before it stays until the parser knows it is outside a
 	// quoted value.
-	lines := text.cut_prefix("\u{feff}").get_or(text).split("\n")
+	lines := text.cut_prefix("\u{feff}").get_or(text.clone()).split("\n")
 	var index = 0
 
 	while index < lines.length():
