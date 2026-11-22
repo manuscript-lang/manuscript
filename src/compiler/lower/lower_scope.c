@@ -22,7 +22,37 @@ uint32_t fn_scope_begin(LowerFn *fn) {
   return id;
 }
 
+/* The scope owns what its `var` locals hold now, which only the end of the scope can know. */
+static void own_vars(LowerFn *fn, uint32_t scope) {
+  for (uint32_t at = fn->nowned_vars; at > 0; at--) {
+    if (fn->owned_vars[at - 1].scope == scope) {
+      fn_own(fn, scope, mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var));
+    }
+  }
+}
+
+bool fn_scope_own_var(LowerFn *fn, MirVar var) {
+  if (fn->nowned_vars == LOWER_MAX_OWNED_VARS) {
+    uint32_t kept = 0; /* entries of scopes that ended on a path that returned are stale */
+    for (uint32_t at = 0; at < fn->nowned_vars; at++) {
+      for (uint32_t depth = 0; depth < fn->nopen; depth++) {
+        if (fn->open[depth] == fn->owned_vars[at].scope) {
+          fn->owned_vars[kept++] = fn->owned_vars[at];
+          break;
+        }
+      }
+    }
+    fn->nowned_vars = kept;
+    if (kept == LOWER_MAX_OWNED_VARS) {
+      return fn_fail(fn, "too many mutable variables are open at once");
+    }
+  }
+  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var};
+  return true;
+}
+
 static void emit_end(LowerFn *fn, uint32_t scope) {
+  own_vars(fn, scope);
   const MirImm imm = {.tag = MI_SCOPE, .a = scope, .b = 0};
   (void)mir_b_emit(&fn->b, MOP_ScopeEnd, NULL, 0, imm, MIR_NONE);
 }
@@ -31,7 +61,11 @@ void fn_scope_end(LowerFn *fn) {
   if (fn->nopen == 0) {
     return;
   }
-  emit_end(fn, fn->open[--fn->nopen]);
+  const uint32_t scope = fn->open[--fn->nopen];
+  emit_end(fn, scope);
+  while (fn->nowned_vars > 0 && fn->owned_vars[fn->nowned_vars - 1].scope == scope) {
+    fn->nowned_vars--;
+  }
 }
 
 void fn_scope_unwind(LowerFn *fn, uint32_t keep) {
