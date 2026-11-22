@@ -62,10 +62,12 @@ static bool is_result_kind(uint8_t kind) {
          kind == NS_OUT_SCALAR;
 }
 
-/* Whether `value` is a closure or interface, which passes by value yet is given to a native by address. */
+/* Whether `value` is a closure, an interface or an optional of plain data, which a native is given by address
+ * though its leaves would pass by value. */
 static bool spilled_by_address(LowerFn *fn, MirValue value) {
-  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind;
-  return kind == MK_FN || kind == MK_IFACE;
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  const MirTyKind kind = (MirTyKind)mir_ty_data(fn->cx->module, ty)->kind;
+  return kind == MK_FN || kind == MK_IFACE || (kind == MK_OPT && !mir_needs_drop(fn->cx->module, ty));
 }
 
 /* `value` as an owned copy the scope no longer owns, because a native takes it from its address. */
@@ -906,7 +908,7 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   }
   bool described = false;
   for (uint32_t at = 0; at < sig->count; at++) {
-    described = described || sig->kinds[at] == NS_VALUE_DESC;
+    described = described || sig->kinds[at] == NS_VALUE_DESC || sig->kinds[at] == NS_SHAPE;
   }
   if (!described) {
     return false;
@@ -918,9 +920,21 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   uint32_t next = 0;
   MirTy value_ty = takes_out ? optional->elem : MIR_NONE;
   MirValue out_slot = MIR_NONE;
+  uint32_t shape_at = NS_MAX_PARAMS;
   for (uint32_t at = 0; at < sig->count; at++) {
     const uint8_t kind = sig->kinds[at];
-    if (kind == NS_VALUE_DESC) {
+    if (kind == NS_SHAPE) {
+      shape_at = used++; /* the table of the value the next address operand holds, filled once its type is known */
+    } else if (kind == NS_ADDR_IN && shape_at != NS_MAX_PARAMS && next < nargs) {
+      /* A borrowed value read through the shape table: it goes into a slot of its own. */
+      value_ty = mir_b_ty(&fn->b, args[next]);
+      const MirValue slot = stack_slot(fn, value_ty);
+      const MirValue stored[2] = {slot, args[next++]};
+      (void)mir_b_emit(&fn->b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+      wanted[used++] = slot;
+    } else if (kind == NS_STR_MUT && shape_at != NS_MAX_PARAMS && at + 1 == sig->count && ret == MIR_STR) {
+      continue; /* the String result the runtime writes */
+    } else if (kind == NS_VALUE_DESC) {
       if (value_ty == MIR_NONE) {
         for (uint32_t scan = at; scan < sig->count && value_ty == MIR_NONE; scan++) {
           value_ty = sig->kinds[scan] == NS_ADDR_MUT && next < nargs ? mir_b_ty(&fn->b, args[next]) : MIR_NONE;
@@ -950,6 +964,10 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   }
   if (next != nargs) {
     return false;
+  }
+  if (shape_at != NS_MAX_PARAMS) {
+    const MirImm of_type = {.tag = MI_TY, .a = value_ty};
+    wanted[shape_at] = mir_b_emit(&fn->b, MOP_Shape, NULL, 0, of_type, MIR_PTR);
   }
   if (!takes_out) {
     *out = fn_runtime_call(fn, name, wanted, used, ret);
