@@ -510,6 +510,7 @@ void lower_release(Lower *cx) {
   lower_lambda_list_free(&cx->lambdas);
   lower_default_list_free(&cx->defaults);
   lower_glue_list_free(&cx->glues);
+  lower_source_list_free(&cx->sources);
   mir_idlist_free(&cx->files);
 }
 

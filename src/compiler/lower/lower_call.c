@@ -232,11 +232,18 @@ static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, u
   return from.line != to.line ? from.line < to.line : from.column < to.column;
 }
 
+/* Whether the call builds a record or an alternative from its arguments. */
+static bool owning_constructor(const MsCall *call) {
+  return call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var) {
   uint32_t order[LOWER_MAX_ARGS];
+  MirValue pending[LOWER_MAX_ARGS];
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
+    pending[at] = MIR_NONE;
   }
   for (uint32_t at = 0; at < call->arg_count; at++) {
     uint32_t place = at;
@@ -286,6 +293,12 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
+      if (want == LW_MOVE && owning_constructor(call) && out[index] != MIR_NONE && written != NULL &&
+          written->kind == MS_E_CALL && step + 1 < call->arg_count) {
+        const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+                                         fn->subst.args, fn->subst.count);
+        pending[index] = fn_pending_own(fn, checked, out[index]);
+      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
@@ -304,6 +317,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     }
     if (out[index] == MIR_NONE) {
       return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);
+    }
+  }
+  for (uint32_t at = 0; at < call->arg_count; at++) {
+    if (pending[at] != MIR_NONE) {
+      out[at] = fn_pending_take(fn, pending[at], mir_b_ty(&fn->b, out[at]));
     }
   }
   return true;

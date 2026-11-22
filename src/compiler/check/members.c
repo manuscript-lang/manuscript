@@ -4,6 +4,7 @@
  * payload, a near miss, the members the type has (all of them when there are at most 40, else those that start
  * with the same letter). */
 #include "compiler/check/body.h"
+#include "compiler/check/bounds.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/suggest.h"
 
@@ -122,6 +123,57 @@ static void append_available(MsStrBuild *out, const MsSpanList *names, MsSpan na
   ms_span_list_free(&same);
 }
 
+/* A method of the receiver's type constructor whose implementation needs a bound the receiver's arguments lack:
+ * "max requires Plain to be Comparable; ...". Appends the reason and returns true when it finds one. */
+static bool unmet_member_bound(Body *body, MsTy receiver, MsName name, MsStrBuild *out) {
+  MsCheckProgram *program = body->program;
+  MsTyTable *types = &program->types;
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *entry = &program->methods.ptr[index];
+    if (entry->name != name) {
+      continue;
+    }
+    MsTyList bound = {0};
+    for (uint32_t at = 0; at < entry->shared; at++) {
+      ms_ty_list_push(&bound, MS_TY_NONE);
+    }
+    if (!ms_check_unify(types, entry->receiver, receiver, entry->variables.ptr, entry->shared, bound.ptr)) {
+      ms_ty_list_free(&bound);
+      continue;
+    }
+    for (uint32_t at = 0; at < entry->shared; at++) {
+      const MsTy actual = bound.ptr[at];
+      const MsTyVariable *record = ms_ty_variable(types, entry->variables.ptr[at]);
+      for (size_t each = 0; actual != MS_TY_NONE && record != NULL && each < record->bounds.len; each++) {
+        const MsTy wanted = ms_ty_subst(types, record->bounds.ptr[each], entry->variables.ptr, bound.ptr, entry->shared);
+        if (ms_check_implements(program, actual, wanted)) {
+          continue;
+        }
+        ms_strbuild_append_text(out, "; ");
+        ms_strbuild_append(out, ms_names_span(program->names, name));
+        ms_strbuild_append_text(out, " requires ");
+        show(body, out, actual);
+        ms_strbuild_append_text(out, " to be ");
+        show(body, out, wanted);
+        ms_strbuild_append_text(out, "; ");
+        if (ms_ty_kind(types, actual) == MS_TY_VARIABLE) {
+          ms_strbuild_append_text(out, "declare ");
+          show(body, out, actual);
+          ms_strbuild_append_text(out, ": ");
+          show(body, out, wanted);
+          ms_strbuild_append_text(out, " on the enclosing function");
+        } else {
+          ms_check_unsatisfied_message(program, actual, wanted, "use a type that implements it", out);
+        }
+        ms_ty_list_free(&bound);
+        return true;
+      }
+    }
+    ms_ty_list_free(&bound);
+  }
+  return false;
+}
+
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver) {
   const MsTyTable *types = &body->program->types;
   if (body->module >= body->program->user_modules || body->quiet || holds_invalid(types, receiver, 6) ||
@@ -142,7 +194,9 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   show(body, &text, receiver);
   MsSpanList names = {0};
   member_names(body, receiver, &names);
-  if (!payload_hint(body, receiver, name, &text)) {
+  if (unmet_member_bound(body, receiver, member->u.member.name, &text)) {
+    /* the reason is the whole hint */
+  } else if (!payload_hint(body, receiver, name, &text)) {
     if (ms_suggest_did_you_mean(&text, name, &names)) {
       if (unique_count(&names) <= 40) {
         append_available(&text, &names, name);

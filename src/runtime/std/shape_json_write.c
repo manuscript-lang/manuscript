@@ -251,6 +251,24 @@ static int encode_alternative(Encode *state, const MsShape *shape, const uint8_t
   return WRITTEN;
 }
 
+/* The untyped JSON value is its own document: its case holds the value, a number as its token text. */
+static int encode_tree(Encode *state, const MsShape *shape, const uint8_t *base, int depth) {
+  const MsShapeMember *first = ms_shape_member(state->table, shape->first);
+  const MsShapeMember *which = ms_shape_active_case(state->table, shape, base);
+  const MsShapeMember *field = ms_shape_member(state->table, which->first);
+  const uint8_t *payload = base + field->offset;
+  switch (which - first) {
+  case 2:
+    msstd_json_w_number(state->writer, AT(MsString, payload));
+    return WRITTEN;
+  case 0:
+    msstd_json_w_null(state->writer);
+    return WRITTEN;
+  default: /* bool, string, array and object: the payload's own form */
+    return encode(state, field->shape, payload, depth + 1);
+  }
+}
+
 /* A BigInt or Decimal is its digits, written as a number. */
 static int encode_digits(Encode *state, uint32_t shape_index, const uint8_t *slot) {
   MsString digits = ms_string_empty();
@@ -269,6 +287,9 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   const MsShapeHook *hook = ms_shape_hook(state->table, shape_index);
   if ((shape->flags & MS_SHAPE_JSON_FORM) != 0 && hook != NULL && hook->json_encode != NULL) {
     return hook->json_encode(value, state->writer) == 0 ? WRITTEN : no_form(state);
+  }
+  if ((shape->flags & MS_SHAPE_JSON_TREE) != 0 && shape->kind == MS_SHAPE_ALTERNATIVE) {
+    return encode_tree(state, shape, value, depth);
   }
   switch (shape->kind) {
   case MS_SHAPE_BOOL:

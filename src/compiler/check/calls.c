@@ -635,7 +635,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
 
 /* A constructor names each variable it could not infer; any other callee gets the one message. */
 static void report_uninferred(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance) {
-  if (!target->constructor) {
+  if (!target->constructor || instance->unbound.len == 0) { /* a constructor names each variable it left unbound */
     ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_string_span(&instance->message)));
     return;

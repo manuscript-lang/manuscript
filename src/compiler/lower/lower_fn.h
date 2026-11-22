@@ -173,6 +173,8 @@ uint32_t lower_close_iface(Lower *cx, MsTy ty);
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
+MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value);
+MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty);
 /* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
  * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);

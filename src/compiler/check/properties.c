@@ -459,6 +459,10 @@ static bool decided_by_method(MsCheckProgram *program, MsTy ty, MsProperty prope
   return has_own_method(program, ty, "hash", 0, MS_BUILTIN_Int, false);
 }
 
+bool ms_check_decided_by_method(MsCheckProgram *program, MsTy ty, MsProperty property) {
+  return decided_by_method(program, ty, property);
+}
+
 static bool compute(MsCheckProgram *program, MsTy ty, MsProperty property) {
   const MsTyTable *types = &program->types;
   if (property == MS_PROPERTY_CLONABLE) {
