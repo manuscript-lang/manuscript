@@ -451,7 +451,7 @@ fn var WatchSource.next() move FileEvent?!:
 fn move WatchSource.close() Void!:
 	msstd_fs_watch_close(self.watcher.native)
 
-fn watch_stream(move watcher: RawWatcher) ReadStream[FileEvent]:
+fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
 	return ReadStream[FileEvent](WatchSource(watcher, []))
 
 // The runtime handle behind a `TemporaryDirectory`.
