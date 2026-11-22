@@ -187,10 +187,16 @@ export enum Result[T, E]:
 	)
 
 // Reports whether this result contains a successful value.
-fn Result[T, E].is_ok() Bool: ...
+fn Result[T, E].is_ok() Bool:
+	match self:
+		ok(_): return true
+		error(_): return false
 
 // Reports whether this result contains an expected error.
-fn Result[T, E].is_error() Bool: ...
+fn Result[T, E].is_error() Bool:
+	match self:
+		ok(_): return false
+		error(_): return true
 
 // Returns the successful payload; an error raises a fault, so use it only when
 // failure is a bug. Prefer `?`, `if value := result:` or `get_or(default)`.

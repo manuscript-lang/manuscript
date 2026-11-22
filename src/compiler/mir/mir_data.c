@@ -12,6 +12,7 @@ void mir_data_free(MirData *data) {
   mir_idlist_free(&data->list_consts);
   mir_idlist_free(&data->strings);
   mir_desc_map_free(&data->descs);
+  mir_desc_map_free(&data->shapes);
 }
 
 uint32_t mird_add_sym(DataCx *cx, const MirDataSym *sym) {
@@ -97,6 +98,10 @@ static void point_descriptor(DataCx *cx, uint32_t sym, const MirDescPlan *plan) 
     add_reloc(cx, sym, func_reloc(MIR_DESC_EQ, plan->eq));
     add_reloc(cx, sym, func_reloc(MIR_DESC_HASH, plan->hash));
   }
+}
+
+MirRef mird_descriptor(DataCx *cx, MirTy key) {
+  return descriptor_of(cx, key);
 }
 
 static MirRef descriptor_of(DataCx *cx, MirTy key) {
@@ -214,5 +219,6 @@ void mir_data_build(MirModule *module, const MirGlue *glue, MirData *out) {
   mird_constants(&cx);
   mird_each_inst(&cx, visit_unit);
   mird_each_inst(&cx, visit_descriptor);
+  mird_each_inst(&cx, mird_visit_shape);
   mir_layouts_free(&layouts);
 }

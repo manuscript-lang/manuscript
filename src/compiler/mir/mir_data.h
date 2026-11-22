@@ -58,6 +58,7 @@ typedef struct MirData {
   MirIdList list_consts;  /* by constant list id: the symbol of its elements, MIR_NONE when unused */
   MirIdList strings;      /* by string id: the symbol of a long literal's bytes, MIR_NONE for a short or unused one */
   MirDescMap descs;       /* every descriptor key seen, with its target */
+  MirDescMap shapes;      /* every type a `shape` names, with its ShapeTable symbol */
 } MirData;
 
 /* The data of `module`: one symbol per global and vtable, one per constant a function uses, and one per
@@ -71,6 +72,10 @@ uint32_t mir_data_unit(const MirData *data, uint32_t alt, uint32_t case_index);
 /* The target of the descriptor for `key`, which mir_data_build saw in a function; a runtime reference with an
  * empty symbol when it did not. */
 MirRef mir_data_desc(const MirData *data, MirTy key);
+
+/* The ShapeTable symbol of the type a `shape` instruction names; a runtime reference with an empty symbol when
+ * mir_data_build did not see it. */
+MirRef mir_data_shape(const MirData *data, MirTy ty);
 
 /* The two words of string literal `text`. A literal of up to 15 bytes is an inline string, so `*is_static` is
  * false and `lo`, `hi` are the words; a longer one is static data (MirData.strings) whose address is the first

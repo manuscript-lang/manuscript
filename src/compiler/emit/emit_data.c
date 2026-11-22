@@ -32,6 +32,19 @@ static bool typedesc(EmitCx *cx, const MirInst *inst) {
   return true;
 }
 
+/* `shape`: the address of the ShapeTable of the type, as a word. */
+static bool shape_table(EmitCx *cx, const MirInst *inst) {
+  const MirRef ref = cx->data != NULL ? mir_data_shape(cx->data, (MirTy)inst->imm.a) : (MirRef){.kind = MREF_RUNTIME};
+  if (ref.kind == MREF_RUNTIME) {
+    cx->why = "shape of a type the data table did not see";
+    return false;
+  }
+  ms_strbuild_printf(cx->out, "  %%v%u = ptrtoint ptr ", inst->res);
+  write_ref(cx, ref);
+  ms_strbuild_append_text(cx->out, " to i64\n");
+  return true;
+}
+
 /* `str`: a short literal is two constant words; a long one is the address of its bytes and a tag. */
 static bool string_literal(EmitCx *cx, const MirInst *inst) {
   bool is_static = false;
@@ -76,6 +89,8 @@ bool emit_data_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *h
   switch ((MirOp)inst->op) {
   case MOP_TypeDesc:
     return typedesc(cx, inst);
+  case MOP_Shape:
+    return shape_table(cx, inst);
   case MOP_StrLit:
     return string_literal(cx, inst);
   case MOP_GlobalGet:
