@@ -108,7 +108,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
 }
 
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
-static bool owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
+bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
   const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
   if (ref == NULL) {
     return false;
@@ -172,7 +172,7 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   MirVar var;
   MirValue slot;
   MirTy ty;
-  return owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+  return fn_owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
 bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
@@ -182,14 +182,14 @@ bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
   if (place->kind == MS_E_MEMBER) {
     return fn_place_owns(fn, place->u.member.left);
   }
-  return closing_local(fn, place, &slot, &ty) ? mir_needs_drop(fn->cx->module, ty) : owned_local(fn, place, &var) && var_owns(fn, var);
+  return closing_local(fn, place, &slot, &ty) ? mir_needs_drop(fn->cx->module, ty) : fn_owned_local(fn, place, &var) && var_owns(fn, var);
 }
 
 /* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
  * back by `fn_put_place`), a member or element path's value is copied. */
 bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
   MirVar var;
-  if (owned_local(fn, base, &var)) {
+  if (fn_owned_local(fn, base, &var)) {
     *out = mir_b_use_var(&fn->b, var);
     return true;
   }
@@ -265,7 +265,7 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
     mir_b_def_var(&fn->b, var, mir_b_emit(&fn->b, MOP_Load, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty));
     return !fn->failed;
   }
-  if (!owned_local(fn, place, &var)) {
+  if (!fn_owned_local(fn, place, &var)) {
     return fn_fail(fn, "an assignment does not name an owning local");
   }
   mir_b_def_var(&fn->b, var, value);

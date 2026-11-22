@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -133,8 +134,10 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
     out[count++] = (MsTyParam){0, target->receiver, target->receiver_flags};
   }
   const uint32_t declared = (uint32_t)ms_ty_param_count(types, target->ty);
+  const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
   for (uint32_t index = 0; index < declared && count < LOWER_MAX_PARAMS; index++) {
-    out[count++] = ms_ty_params(types, target->ty)[index];
+    out[count] = ms_ty_params(types, target->ty)[index];
+    out[count++].flags |= index < 32 && (taken >> index & 1u) != 0 ? MS_PARAM_MOVE : 0; /* the body owns it */
   }
   return count;
 }
@@ -203,9 +206,23 @@ static void note_param_write(void *ctx, const MsStmt *stmt) {
   }
 }
 
+/* A field handed on (`param.field` where the body moves it) leaves the parameter partly moved, which only an owned
+ * variable tracks. */
+static void note_param_move(void *ctx, const MsExpr *expr) {
+  ParamWrites *writes = ctx;
+  if (expr->kind != MS_E_MEMBER || expr->u.member.left->kind != MS_E_NAME ||
+      ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(writes->facts, expr->u.member.left->id);
+  if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
+    writes->found = true;
+  }
+}
+
 static bool assigns_into_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
   ParamWrites writes = {fn->facts, index, false};
-  const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write};
+  const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write, .expr = note_param_move};
   ms_walk_block(&visitor, target->func->body);
   return writes.found;
 }

@@ -5,6 +5,7 @@
 #include "compiler/check/properties.h"
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
+#include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 
 typedef struct Uses {
@@ -12,6 +13,7 @@ typedef struct Uses {
   MsClassifier *classes;
   MsFacts *facts;
   const MsNames *names;
+  MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
 } Uses;
 
 /* Whether `expr` is a local name or a field read of one. */
@@ -22,6 +24,21 @@ static bool place_root(const Uses *pass, const MsExpr *expr) {
   }
   uint32_t binding = 0;
   return at->kind == MS_E_NAME && ms_bind_of(pass->facts, at->id, &binding);
+}
+
+/* Whether `expr` reads a name an arm of a match binds: it views the scrutinee, which stays its owner. */
+static bool is_view(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, root->id);
+  for (size_t index = 0; ref != NULL && ref->kind == MS_REF_LOCAL && index < pass->arms.len; index++) {
+    if (ref->local == pass->arms.ptr[index]) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
@@ -35,7 +52,7 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     }
     return;
   }
-  if ((expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr)) {
+  if ((expr->kind != MS_E_NAME && expr->kind != MS_E_MEMBER) || !place_root(pass, expr) || is_view(pass, expr)) {
     return;
   }
   const MsTy ty = ms_facts_type(pass->facts, expr->id);
@@ -93,7 +110,8 @@ static void visit_call(Uses *pass, const MsExpr *call) {
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value);
-    if (constructor || (arg != NULL && (arg->flags & MS_PARAM_MOVE) != 0)) {
+    if (constructor || (arg != NULL && ((arg->flags & MS_PARAM_MOVE) != 0 ||
+                                        ms_own_call_takes(pass->program, fact, (uint32_t)(arg - fact->args))))) {
       mark_move(pass, value);
     }
   }
@@ -161,25 +179,48 @@ static void borrow_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_NAME && ms_bind_of(pass->facts, expr->id, &binding)) {
     pass->facts->uses[expr->id] = MS_USE_BORROW;
   }
+  for (uint32_t arm = 0; expr->kind == MS_E_MATCH && arm < expr->u.match.arms.len; arm++) {
+    const MsArm *one = expr->u.match.arms.ptr[arm];
+    const MsRef *bound = ms_facts_ref(pass->facts, one->id);
+    for (uint32_t at = 0; bound != NULL && bound->kind == MS_REF_CASE && at < one->bindings.len; at++) {
+      ms_binding_list_push(&pass->arms, bound->local + at);
+    }
+  }
 }
 
-static void walk_module(const MsModule *tree, MsVisitor visitor) {
+/* Marks one function or method: the arms' locals are numbered per callable, so each is walked on its own. */
+static void mark_callable(Uses *pass, MsParams params, MsStmts body) {
+  pass->arms.len = 0;
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = borrow_expr}, params, body);
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, params, body);
+}
+
+static void mark_module(Uses *pass, const MsModule *tree) {
   for (uint32_t index = 0; index < tree->ndecls; index++) {
-    ms_walk_decl(&visitor, tree->decls[index]);
+    const MsDecl *decl = tree->decls[index];
+    if (decl->kind == MS_D_FN) {
+      mark_callable(pass, decl->u.fn.params, decl->u.fn.body);
+    } else if (decl->kind == MS_D_IMPL) {
+      for (uint32_t at = 0; at < decl->u.impl.methods.len; at++) {
+        mark_callable(pass, decl->u.impl.methods.ptr[at]->func.params, decl->u.impl.methods.ptr[at]->func.body);
+      }
+    } else {
+      ms_walk_decl(&(MsVisitor){.ctx = pass, .expr = borrow_expr}, decl);
+      ms_walk_decl(&(MsVisitor){.ctx = pass, .stmt = visit_stmt, .expr = visit_expr}, decl);
+    }
   }
 }
 
 void ms_own_uses(MsCheckProgram *program) {
   MsClassifier classes = ms_class_new(program);
-  for (uint32_t module = 0; module < program->user_modules; module++) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
     Uses pass = {.program = program, .classes = &classes, .facts = &program->modules.ptr[module].facts,
                  .names = program->names};
     if (pass.facts->uses == NULL) {
       continue;
     }
-    walk_module(program->modules.ptr[module].tree, (MsVisitor){.ctx = &pass, .expr = borrow_expr});
-    walk_module(program->modules.ptr[module].tree,
-                (MsVisitor){.ctx = &pass, .stmt = visit_stmt, .expr = visit_expr});
+    mark_module(&pass, program->modules.ptr[module].tree);
+    ms_binding_list_free(&pass.arms);
   }
   ms_class_free(&classes);
 }

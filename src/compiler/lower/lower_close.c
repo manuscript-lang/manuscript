@@ -220,7 +220,12 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
   MsCloser instance;
   if ((flags & MS_CLOSER_GENERIC) != 0) {
     if (!ms_own_closer_of(fn->cx->program, ty, &instance)) {
-      return false;
+      if ((flags & MS_CLOSER_VAR) == 0) {
+        return false;
+      }
+      /* A `var` of an instance with nothing to close still holds its value in a slot that drops it. */
+      instance = (MsCloser){.flags = MS_CLOSER_DROP | MS_CLOSER_CONSUMES};
+      flags = (uint16_t)(flags & ~MS_CLOSER_VAR);
     }
     flags = (uint16_t)((flags & ~MS_CLOSER_GENERIC) | instance.flags);
   }

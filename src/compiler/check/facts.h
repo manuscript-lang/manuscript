@@ -159,6 +159,7 @@ typedef struct MsFacts {
   MsConversionList conversions; /* 4. sorted by node */
   MsConstantList constants;     /* 5. sorted by node */
   MsCloserList closers;         /* 7. sorted by node; filled by the ownership pass (own/closers.c) */
+  uint32_t *taken; /* per function or method declaration node: bit i set when a resource parameter i not declared `move` is handed on by the body, so the callee owns it (own/taken.c) */
   uint32_t *local_counts; /* locals per function, indexed by the function declaration node id */
 } MsFacts;
 

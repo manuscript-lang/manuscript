@@ -179,7 +179,13 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
-  return fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  MirVar owner = 0;
+  if (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field)) &&
+      fn_owned_local(fn, expr->u.member.left, &owner)) {
+    fn_scope_var_moved(fn, owner, ref->index);
+  }
+  return field;
 }
 
 typedef struct BinaryOps {

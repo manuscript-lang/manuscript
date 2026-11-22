@@ -1,6 +1,7 @@
 /* compiler/lower/lower_call.c: calls to module functions (with their type arguments and default arguments)
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -176,7 +177,8 @@ bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t 
   const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
   const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
                               written == expr->u.call.callee->u.member.left && consuming_receiver(fn, call);
-  return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0;
+  return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0 ||
+         ms_own_call_takes(fn->cx->program, call, index);
 }
 
 /* Whether argument `a` is written before argument `b`: arguments are evaluated as written, which named

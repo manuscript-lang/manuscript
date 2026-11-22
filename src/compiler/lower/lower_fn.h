@@ -14,6 +14,7 @@ enum { LOWER_MAX_SCOPES = 64, LOWER_MAX_LOOPS = 32, LOWER_MAX_OWNED_VARS = 256 }
 typedef struct LowerOwnedVar {
   uint32_t scope;
   MirVar var;
+  uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
 } LowerOwnedVar;
 
 /* Where `break` and `continue` go, and how many scopes were open outside the loop. */
@@ -95,6 +96,10 @@ void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
+/* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
+bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
+/* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
 /* Makes the scope `scope` own `value` (kind 0 drops it). */
 void fn_own(LowerFn *fn, uint32_t scope, MirValue value);
 
