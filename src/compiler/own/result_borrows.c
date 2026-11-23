@@ -420,3 +420,24 @@ const MsFunc *ms_own_find_func(const MsCheckProgram *program, const MsRef *ref) 
   }
   return NULL;
 }
+
+MsNativeGet ms_own_native_get(const MsCheckProgram *program, const MsFacts *facts, const MsExpr *call) {
+  const MsExpr *callee = call->kind == MS_E_CALL ? call->u.call.callee : NULL;
+  const MsCall *fact = callee != NULL ? ms_facts_call(facts, call->id) : NULL;
+  if (fact == NULL || callee->kind != MS_E_MEMBER || !ms_span_is_text(ms_names_span(program->names, callee->u.member.name), "get")) {
+    return MS_NATIVE_GET_NONE;
+  }
+  const MsTyTable *types = &program->types;
+  const MsTy held = ms_facts_type(facts, callee->u.member.left->id);
+  if (held == MS_TY_NONE) {
+    return MS_NATIVE_GET_NONE;
+  }
+  if (call->u.call.args.len == 1) {
+    return ms_ty_is(types, held, MS_BUILTIN_Map) ? MS_NATIVE_GET_MAP
+           : ms_ty_is(types, held, MS_BUILTIN_List) ? MS_NATIVE_GET_LIST
+                                                    : MS_NATIVE_GET_NONE;
+  }
+  return call->u.call.args.len == 0 && (ms_ty_is(types, held, MS_BUILTIN_Optional) || ms_ty_is(types, held, MS_BUILTIN_Result))
+             ? MS_NATIVE_GET_PAYLOAD
+             : MS_NATIVE_GET_NONE;
+}

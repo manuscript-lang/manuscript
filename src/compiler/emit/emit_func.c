@@ -252,6 +252,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   MsArena scratch = {0};
   cx->framed = mir_framed_closures(&scratch, cx->module, func);
   cx->borrowed = mir_framed_iface_borrows(&scratch, cx->module, func);
+  cx->pool = emit_slot_pool(&scratch, cx);
   uint32_t subprogram = cx->debug != NULL ? emit_debug_subprogram(cx, index) : 0;
   MsStrBuild *module_out = cx->out;
   MsStrBuild body = ms_strbuild_new();
@@ -271,5 +272,6 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   ms_arena_free(&scratch);
   cx->framed = NULL;
   cx->borrowed = NULL;
+  cx->pool = NULL;
   return ok;
 }

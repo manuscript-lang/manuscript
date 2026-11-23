@@ -11,7 +11,7 @@ cmake --build --preset debug
 ctest --preset debug
 ```
 
-Presets: `debug`, `release`, `sanitize`. Ninja on every platform; clang is the compiler.
+Presets: `debug`, `ci`, `release`, `sanitize`. Ninja on every platform; clang is the compiler.
 Build output goes to `.artifacts/build/<preset>`. Generated files never go into `src/`.
 
 ## Layers (an include crosses layers only downward)

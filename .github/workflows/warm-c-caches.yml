@@ -1,0 +1,38 @@
+name: Warm C caches
+
+# Pull requests restore the ccache and OpenSSL caches that main saved: a pull request cache is visible to that
+# pull request only, and `Cache maintenance` deletes every cache that is not on main. This workflow builds the C
+# compiler with the `ci` preset after each push to main, on the two Linux legs pull requests run, and saves both.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: warm-c-caches
+  cancel-in-progress: false
+
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.artifacts/ccache
+
+jobs:
+  warm:
+    name: warm-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - run: cmake --preset ci
+      - run: cmake --build --preset ci
+      - if: always()
+        uses: ./.github/actions/save-caches

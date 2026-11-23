@@ -1,0 +1,18 @@
+name: Save caches
+description: Save the compiler and OpenSSL caches, even after a failed run, so the next run starts warm.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache/save@v6
+      with:
+        path: .artifacts/ccache
+        key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+    - if: hashFiles('.artifacts/build/ci/src/third_party/openssl_build/libcrypto.a') != ''
+      uses: actions/cache/save@v6
+      continue-on-error: true
+      with:
+        path: |
+          .artifacts/build/ci/src/third_party/openssl_build*
+          .artifacts/build/ci/musl/src/third_party/openssl_build*
+        key: openssl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'src/third_party/cmake/openssl.cmake') }}
