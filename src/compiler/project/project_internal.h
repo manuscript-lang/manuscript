@@ -35,6 +35,8 @@ MS_NODISCARD bool ms_project_source_path(MsArena *arena, MsSpan root, MsSpan pat
 /* The error as the user should read it: a cause and a fix. `import_path` is the import string when the failure
  * came from an import, else empty. */
 MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan import_path);
+/* The same naming the file by its full path, for an editor whose working directory means nothing. */
+MsSpan ms_project_explain_absolute(MsArena *arena, const MsProjectError *error, MsSpan import_path);
 
 /* The `.ms` files under `source` (when `include_source`) and the test and bench files under `root`, sorted
  * and without repeats, as absolute paths. */

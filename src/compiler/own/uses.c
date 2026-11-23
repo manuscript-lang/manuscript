@@ -171,6 +171,21 @@ static bool field_of_assigned_owner(const Uses *pass, const MsExpr *expr) {
          ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
 }
 
+/* `value.get()` of an Optional or Result the callable owns, handed on: the payload leaves `value`. The call carries the
+ * move, since the lowering of `value` itself reads it in place and takes the payload out at the call. */
+static bool payload_of_owner(Uses *pass, const MsExpr *expr) {
+  if (expr->kind != MS_E_CALL || ms_own_native_get(pass->program, pass->facts, expr) != MS_NATIVE_GET_PAYLOAD) {
+    return false;
+  }
+  const MsExpr *receiver = expr->u.call.callee->u.member.left;
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  if (receiver->kind != MS_E_NAME || !place_root(pass, receiver) || ty == MS_TY_NONE || ms_class_of(pass->classes, ty) == MS_CLASS_COPY) {
+    return false;
+  }
+  pass->facts->uses[expr->id] = MS_USE_MOVE;
+  return true;
+}
+
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr == NULL) {
@@ -363,6 +378,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_RETURN) {
     mark_move(pass, stmt->u.expr);
+    (void)(stmt->u.expr != NULL && payload_of_owner(pass, stmt->u.expr));
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME &&
              (stmt->u.bind.is_mutable || binds_assigned_local(pass, stmt->u.bind.value))) {
     mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value

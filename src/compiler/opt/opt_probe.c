@@ -245,14 +245,14 @@ static MirValue pb_answer(MirBuilder *b, PbAnswer answer, MirValue p, MirValue o
 
 /* Builds `map_probe(map, key[, out])`; a map value is stored to a slot to be read through its memory
  * form, a map held in memory arrives as its address. */
-static uint32_t pb_build(MirModule *m, const PbShape *shape, PbAnswer answer, MirTy map_ty) {
+static uint32_t pb_build(MirModule *m, const PbShape *shape, PbAnswer answer, MirTy map_ty, MirTy ret) {
   MirParam params[3] = {{map_ty, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
   MirBuilder b;
   /* The module needs distinct names: one helper per shape, answer and map type. */
   MsStrBuild name = ms_strbuild_new();
   ms_strbuild_printf(&name, "map_probe.%u", (uint32_t)m->funcs.len);
   mir_b_init_fast_path(&b, m, mir_name(m, ms_strbuild_span(&name)), params, answer == PA_GET ? 3 : 2,
-            answer == PA_ADDRESS ? MIR_PTR : MIR_BOOL);
+            ret);
   ms_strbuild_free(&name);
   MirValue ps[3];
   mir_b_params(&b, ps, 3);
@@ -263,7 +263,13 @@ static uint32_t pb_build(MirModule *m, const PbShape *shape, PbAnswer answer, Mi
     (void)mir_b_emit(&b, MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
   }
   const MirValue p = pb_find(&b, m, shape, map, ps[1]);
-  mir_b_ret(&b, pb_answer(&b, answer, p, ps[2]));
+  MirValue result = pb_answer(&b, answer, p, ps[2]);
+  if (ret == MIR_UINT8) { /* the runtime's `u8` answer, declared as uint8 */
+    const MirValue one = mir_b_emit(&b, MOP_Conv, (MirValue[]){mir_b_iconst(&b, 1)}, 1, (MirImm){0}, MIR_UINT8);
+    const MirValue zero = mir_b_emit(&b, MOP_Conv, (MirValue[]){mir_b_iconst(&b, 0)}, 1, (MirImm){0}, MIR_UINT8);
+    result = mir_b_select(&b, result, one, zero);
+  }
+  mir_b_ret(&b, result);
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
@@ -276,8 +282,10 @@ static bool pb_probe_of(const MirModule *m, uint32_t e, PbShape *shape, PbAnswer
   }
   if (ext->ret == MIR_PTR) {
     *answer = PA_ADDRESS;
-  } else {
+  } else if (ext->ret == MIR_BOOL || ext->ret == MIR_UINT8) {
     *answer = ext->nparams == 5 ? PA_GET : PA_CONTAINS;
+  } else {
+    return false;
   }
   return true;
 }
@@ -285,7 +293,7 @@ static bool pb_probe_of(const MirModule *m, uint32_t e, PbShape *shape, PbAnswer
 typedef struct PbHelper {
   uint8_t role;
   PbAnswer answer;
-  MirTy map_ty;
+  MirTy map_ty, ret;
   uint32_t func;
 } PbHelper;
 
@@ -307,16 +315,17 @@ bool opt_probe(MirModule *m) {
         const MirTy map_ty = mir_value_ty(&m->funcs.ptr[fi], inst->args[0]);
         uint32_t helper = MIR_NONE;
         for (uint32_t h = 0; h < nhelpers; h++) {
-          if (helpers[h].role == role && helpers[h].answer == answer && helpers[h].map_ty == map_ty) {
+          if (helpers[h].role == role && helpers[h].answer == answer && helpers[h].map_ty == map_ty &&
+              helpers[h].ret == m->externs.ptr[inst->imm.a].ret) {
             helper = helpers[h].func;
           }
         }
         if (helper == MIR_NONE) {
-          helper = pb_build(m, &shape, answer, map_ty);
+          helper = pb_build(m, &shape, answer, map_ty, m->externs.ptr[inst->imm.a].ret);
           if (helper == MIR_NONE) {
             continue;
           }
-          OPT_PUSH(&m->arena, helpers, nhelpers, chelpers, PbHelper, ((PbHelper){role, answer, map_ty, helper}));
+          OPT_PUSH(&m->arena, helpers, nhelpers, chelpers, PbHelper, ((PbHelper){role, answer, map_ty, m->externs.ptr[inst->imm.a].ret, helper}));
           inst = &m->funcs.ptr[fi].blocks.ptr[bi].insts.ptr[ii]; /* the function array may have moved */
         }
         /* The descriptors are unused: the helper takes the map, the key, and for a get the
@@ -324,7 +333,7 @@ bool opt_probe(MirModule *m) {
         const uint32_t kept = answer == PA_GET ? 3 : 2;
         MirValue *args = MS_ARENA_NEW_ARRAY(&m->arena, MirValue, kept);
         args[0] = inst->args[0];
-        args[1] = inst->args[3];
+        args[1] = inst->args[inst->nargs == 3 ? 2 : 3]; /* a set lookup has no value descriptor */
         if (answer == PA_GET) {
           args[2] = inst->args[4];
         }

@@ -25,7 +25,8 @@ typedef struct Change {
   uint32_t root;
   MsPos pos;     /* where the changed place starts */
   uint32_t end;  /* the offset it ends at */
-  bool assign;
+  bool assign;  /* a whole name is assigned: a field or element store is a change of the name */
+  MsPos at;     /* where the diagnostic points: a stored field's own name, else where the place starts */
   const MsExpr *place; /* the changed place; NULL when it is the whole binding */
   const MsExpr *lambda; /* the outermost open closure that captured the root and changes it, or NULL */
 } Change;
@@ -183,7 +184,11 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   if (pattern == NULL || pattern->kind != MS_P_NAME || value == NULL || !origin_of_arg(pass, value, &source) ||
-      value->kind == MS_E_NAME || value->kind == MS_E_MEMBER || !local_of(pass->facts, pattern->id, &binding)) {
+      value->kind == MS_E_NAME || !local_of(pass->facts, pattern->id, &binding)) {
+    return;
+  }
+  /* A resource field bound by name leaves its record (the next statement refills it): that is a take, not a borrow. */
+  if (value->kind == MS_E_MEMBER && ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, value->id))) {
     return;
   }
   borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
@@ -211,7 +216,9 @@ static void note_change(Borrows *pass, const MsExpr *place, bool assign) {
   }
   uint32_t root = 0;
   if (at->kind == MS_E_NAME && local_of(pass->facts, at->id, &root)) {
-    change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset, .assign = assign,
+    const bool stored_field = assign && place->kind == MS_E_MEMBER;
+    change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset,
+                                              .assign = assign && !stored_field, .at = stored_field ? place->pos : ms_expr_start(place),
                                               .place = place, .lambda = captured_by_open_closure(pass, at)});
   }
 }
@@ -474,7 +481,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     if (!stmt->u.assign.member_target && local_of(pass->facts, stmt->id, &root)) {
       const uint32_t length = (uint32_t)ms_names_span(pass->program->names, stmt->u.assign.name).len;
       change_list_push(&pass->changes, (Change){.root = root, .pos = stmt->pos, .end = stmt->pos.offset + length,
-                                                .assign = true});
+                                                .assign = true, .at = stmt->pos});
     }
   }
 }
@@ -676,7 +683,7 @@ static void judge(Borrows *pass) {
       const uint32_t offset = change->pos.offset;
       if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset) &&
           (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {
-        report(pass, borrow, change, change->pos);
+        report(pass, borrow, change, change->at);
         if (change->lambda != NULL) { /* the closure that runs the change is itself a change of what it captured */
           report(pass, borrow, change, change->lambda->pos);
         }

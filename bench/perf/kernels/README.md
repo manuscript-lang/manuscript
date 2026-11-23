@@ -6,6 +6,26 @@ The current runner reports the minimum of N rotating runs. It checks each produc
 
 Record the source revision, machine, tool versions, build type and effective backend when publishing timings. `ms build` defaults to Release; a release-built compiler binary alone does not establish LLVM use. `MS_BACKEND=cranelift` opts out of LLVM, and unavailable LLVM tools can also cause a fallback. This validation change does not rerun or change the historical results below.
 
+## main at 48f9cccf after the C-compiler fixes (2026-11-23)
+
+linux/amd64, four shared vCPUs, Go, rustc and gcc `-O2` as on 2026-11-18, `ms` Release build with LLVM built from the C compiler (`cmake --preset ci`); minimum of 5 rotating runs, microseconds. The first C-compiler run of this suite had `closures_20M` at 194 ms, `map_count_2M` at 53 ms, `stencil_1000_20` at 159 ms and `vm_5M` at 108 ms. Fixes since: cleanup entries kept across a take and refill (#6584), `Map.update` with one read probe (#6590), `StringBuilder.append` in MIR and a one-pass shrinking replace (#6595), a TBAA class for list headers in slots (#6600), `List.pop` in line (#6605). `sieve_5M` varied between 27 and 62 ms in the rotating run on this shared machine; alone it takes 27 to 32 ms.
+
+| kernel | go us | ms us | ms / go | rust us | rust / go | rust-checked us | rust-checked / go | c us | c / go | c-ms us | c-ms / go | ms / rust | ms / rust-checked |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| sieve_5M | 52693 | 62478 | 1.19x | 25977 | 0.49x | 24810 | 0.47x | 24522 | 0.47x | 24668 | 0.47x | 2.41x | 2.52x |
+| nbody_200k | 7989 | 6757 | 0.85x | 5232 | 0.65x | 5240 | 0.66x | 6432 | 0.81x | 6897 | 0.86x | 1.29x | 1.29x |
+| life_128x128_50 | 45689 | 3121 | 0.07x | 2717 | 0.06x | 2890 | 0.06x | 26091 | 0.57x | 38700 | 0.85x | 1.15x | 1.08x |
+| matmul_200 | 9579 | 6485 | 0.68x | 5664 | 0.59x | 5797 | 0.61x | 3602 | 0.38x | 10288 | 1.07x | 1.14x | 1.12x |
+| trees_d16_x20 | 34903 | 30634 | 0.88x | 27298 | 0.78x | 25642 | 0.73x | 24640 | 0.71x | 20365 | 0.58x | 1.12x | 1.19x |
+| collatz_1M | 221238 | 190435 | 0.86x | 143845 | 0.65x | 220579 | 1.00x | 183055 | 0.83x | 253517 | 1.15x | 1.32x | 0.86x |
+| map_count_2M | 18917 | 45559 | 2.41x | 18486 | 0.98x | 19492 | 1.03x | n/a | n/a | 13111 | 0.69x | 2.46x | 2.34x |
+| mandel_400 | 11580 | 11105 | 0.96x | 11111 | 0.96x | 11547 | 1.00x | 11380 | 0.98x | 11072 | 0.96x | 1.00x | 0.96x |
+| particles_1k_5k | 5295 | 3102 | 0.59x | 3089 | 0.58x | 3101 | 0.59x | 3902 | 0.74x | 3886 | 0.73x | 1.00x | 1.00x |
+| vm_5M | 51207 | 51083 | 1.00x | 40449 | 0.79x | 36854 | 0.72x | 46968 | 0.92x | 64922 | 1.27x | 1.26x | 1.39x |
+| expr_d20_x20 | 480973 | 402346 | 0.84x | 91997 | 0.19x | 383930 | 0.80x | 375077 | 0.78x | 690627 | 1.44x | 4.37x | 1.05x |
+| closures_20M | 38329 | 47585 | 1.24x | 33332 | 0.87x | 36111 | 0.94x | 70136 | 1.83x | 142564 | 3.72x | 1.43x | 1.32x |
+| stencil_1000_20 | 46599 | 84589 | 1.82x | 37640 | 0.81x | 42365 | 0.91x | 27353 | 0.59x | 65864 | 1.41x | 2.25x | 2.00x |
+
 ## main at 113a7fa5 plus the new kernels (2026-11-18)
 
 linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM; minimum of 3 rotating runs, microseconds. Six kernels added for generated-code quality: `mandel_400` (small records returned by value), `particles_1k_5k` (list of records updated in place), `vm_5M` (enum `match` bytecode loop over a list used as a stack), `expr_d20_x20` (boxed enum tree, 2^20 nodes), `closures_20M` (a captured closure and a map/filter/sum chain) and `stencil_1000_20` (four-neighbour 2D stencil on a flat list). Every version prints the same checksum. `c-ms` is the checked C (overflow, bounds, poll). Rust unchecked folds the loop-invariant `eval` in `expr`, so compare that kernel against `rust-checked`.

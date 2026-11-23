@@ -312,11 +312,11 @@ static MsSpan relative_to_cwd(MsArena *arena, MsSpan path) {
   return ms_project_text(arena, &relative);
 }
 
-MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan import_path) {
+static MsSpan explain(MsArena *arena, const MsProjectError *error, MsSpan import_path, bool relative) {
   if (error->kind != MS_PERR_PATH) {
     return ms_project_error_text(arena, error);
   }
-  const MsSpan name = relative_to_cwd(arena, error->path);
+  const MsSpan name = relative ? relative_to_cwd(arena, error->path) : error->path;
   MsStrBuild text = ms_strbuild_new();
   if (error->os_error == OS_ENOENT && import_path.len != 0) {
     ms_strbuild_append_text(&text, "cannot find module ");
@@ -339,6 +339,14 @@ MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan im
     return ms_project_error_text(arena, error);
   }
   return ms_project_text(arena, &text);
+}
+
+MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan import_path) {
+  return explain(arena, error, import_path, true);
+}
+
+MsSpan ms_project_explain_absolute(MsArena *arena, const MsProjectError *error, MsSpan import_path) {
+  return explain(arena, error, import_path, false);
 }
 
 /* The directory an import may not leave: the package holding `target` for an `@` import, otherwise the importer's own

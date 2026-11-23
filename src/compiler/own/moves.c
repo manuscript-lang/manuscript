@@ -1,5 +1,6 @@
 /* compiler/own/moves.c: a moved value used again (see moves.h). */
 #include "compiler/own/moves.h"
+#include "compiler/own/taken.h"
 
 #include "compiler/check/methods.h"
 #include "compiler/own/bind.h"
@@ -28,12 +29,14 @@ typedef struct Moves {
   MsBindingList vars;   /* binding sites of `var` locals of the body */
   MsBindingList reads;  /* `if p := name:` scrutinees that are not resources: the payload is a view, the name stays whole */
   MsBindingList moving; /* binding sites of `move` parameters of the body */
+  MsBindingList taking; /* binding sites of parameters the body hands on without declaring them `move`: it owns them too */
   uint32_t assigning; /* the binding the statement being visited assigns whole, or UINT32_MAX */
   MsBindingList plainparams; /* binding sites of parameters that are neither `move` nor `var`: the caller keeps them */
   MsBindingList varparams; /* binding sites of `var` parameters: the caller's place, which a closure cannot take */
   MsBindingList borrowed; /* binding sites of names bound to a view of another value */
   MsBindingList owners;   /* binding sites of locals that hold a value of their own: made by a call or literal, or a `var` */
   MsBindingList outer;  /* what the lambdas around the current expression capture: only borrowed inside them */
+  uint32_t taken;       /* the parameters of the body being checked that its callers' arguments move into, by index */
   uint32_t depth;       /* lambdas open around the current expression */
   bool instance;        /* checking one instance of a generic body: only a type variable that became a resource is reported */
   const MsTy *subst_vars, *subst_args;
@@ -511,7 +514,7 @@ static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var) {
   }
   const MsRef *ref = ms_facts_ref(pass->facts, name->id);
   const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(name->id, binding));
-  const bool owner = ref != NULL && (ref->kind == MS_REF_PARAM ? contains(&pass->moving, binding)
+  const bool owner = ref != NULL && (ref->kind == MS_REF_PARAM ? contains(&pass->moving, binding) || contains(&pass->taking, binding)
                                                                : ref->kind == MS_REF_LOCAL &&
                                                                      (contains(&pass->owners, binding) ||
                                                                       (allow_var && contains(&pass->vars, binding))));
@@ -629,6 +632,9 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
     return;
   }
   for (uint32_t index = 0; index < params.len; index++) {
+    if (!params.ptr[index]->moving && index < 32 && (pass->taken >> index & 1u) != 0) {
+      ms_binding_list_push(&pass->taking, params.ptr[index]->id);
+    }
     if (params.ptr[index]->moving) {
       ms_binding_list_push(&pass->moving, params.ptr[index]->id);
     } else if (params.ptr[index]->is_mutable) {
@@ -647,6 +653,7 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
   ms_binding_list_clear(&pass->owners);
   ms_binding_list_clear(&pass->reads);
   ms_binding_list_clear(&pass->moving);
+  ms_binding_list_clear(&pass->taking);
   ms_binding_list_clear(&pass->varparams);
   ms_binding_list_clear(&pass->plainparams);
   ms_binding_list_clear(&pass->borrowed);
@@ -658,6 +665,7 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
 static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   switch ((MsDeclKind)decl->kind) {
   case MS_D_FN:
+    pass->taken = ms_own_taken_mask(pass->program, pass->module, decl->id);
     check_body(pass, arena, decl->u.fn.body, decl->u.fn.params);
     return;
   case MS_D_TEST:
@@ -666,6 +674,7 @@ static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   case MS_D_IMPL:
     for (uint32_t index = 0; index < decl->u.impl.methods.len; index++) {
       const MsFunc *func = &decl->u.impl.methods.ptr[index]->func;
+      pass->taken = ms_own_taken_mask(pass->program, pass->module, decl->u.impl.methods.ptr[index]->id);
       check_body(pass, arena, func->body, func->params);
     }
     return;
@@ -724,6 +733,7 @@ void ms_own_moves(MsCheckProgram *program) {
     ms_binding_list_free(&pass.owners);
     ms_binding_list_free(&pass.reads);
     ms_binding_list_free(&pass.moving);
+    ms_binding_list_free(&pass.taking);
     ms_binding_list_free(&pass.borrowed);
     ms_binding_list_free(&pass.outer);
     ms_binding_list_free(&pass.varparams);

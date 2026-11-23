@@ -65,8 +65,13 @@ typedef struct LiveStripe {
   _Alignas(64) _Atomic int64_t bytes;
 } LiveStripe;
 static LiveStripe live_stripes[LIVE_STRIPES];
+/* Tracking costs a mi_usable_size call per allocation and free, so it runs only in a program that can ask for the
+ * figure (ms_alloc_track_live, called from the constructor of the unit that answers it). */
+static _Atomic bool tracking = false;
 static _Atomic unsigned next_stripe;
 static _Thread_local LiveStripe *my_stripe = NULL;
+
+void ms_alloc_track_live(void) { atomic_store_explicit(&tracking, true, memory_order_relaxed); }
 
 static void live_add(int64_t delta) {
   if (installed != NULL) {
@@ -79,7 +84,10 @@ static void live_add(int64_t delta) {
 }
 
 static int64_t usable(const void *block) {
-  return block == NULL || installed != NULL ? 0 : (int64_t)mi_usable_size(block);
+  if (block == NULL || installed != NULL || !atomic_load_explicit(&tracking, memory_order_relaxed)) {
+    return 0;
+  }
+  return (int64_t)mi_usable_size(block);
 }
 
 int64_t ms_alloc_live_bytes(void) {
@@ -87,7 +95,7 @@ int64_t ms_alloc_live_bytes(void) {
   for (size_t i = 0; i < LIVE_STRIPES; i++) {
     sum += atomic_load_explicit(&live_stripes[i].bytes, memory_order_relaxed);
   }
-  return sum;
+  return sum < 0 ? 0 : sum; /* blocks made before tracking began leave it below the truth, never above */
 }
 
 void *ms_alloc(size_t size) {

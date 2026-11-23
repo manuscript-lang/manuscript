@@ -58,7 +58,7 @@ static void af_copy_small(MirBuilder *b, MirValue src, MirValue dst, MirValue n,
 }
 
 /* Copies `n` (1 to 16) bytes from `src` to `dst` with overlapping fixed-width moves. */
-static void af_copy_short(MirBuilder *b, MirValue src, MirValue dst, MirValue n) {
+void opt_copy_short(MirBuilder *b, MirValue src, MirValue dst, MirValue n) {
   const MirBlock big = mir_b_new_block(b), rest = mir_b_new_block(b), mid = mir_b_new_block(b);
   const MirBlock small = mir_b_new_block(b), done = mir_b_new_block(b);
   mir_b_br_if(b, mir_b_icmp(b, MCC_GE, n, mir_b_iconst(b, 8)), big, NULL, 0, rest, NULL, 0);
@@ -163,7 +163,7 @@ static void af_fast_block(MirBuilder *b, const AfWords *w, MirValue la, MirValue
   const MirValue flat_from = ob_load(b, w->slot_b, 0, MIR_PTR);
   const MirValue from = mir_b_select(b, inline_piece, w->slot_b, flat_from);
   const MirValue dst = ob_past(b, text, la);
-  af_copy_short(b, from, dst, lb);
+  opt_copy_short(b, from, dst, lb);
   const MirValue grown = mir_b_binop(b, MOP_IAdd, w->aw1, lb);
   const MirValue used = ob_int(b, MOP_Shl, lb, AF_SPARE_SHIFT);
   const MirValue tagged = mir_b_binop(b, MOP_ISub, grown, used);

@@ -48,19 +48,24 @@
           "index": 7,
           "name": "list-replace-swap.ms::swap exchanges plain records and optional scalars in line",
           "status": "passed"
+        },
+        {
+          "index": 8,
+          "name": "list-replace-swap.ms::swap faults on an index outside the list and leaves the list unchanged",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 8,
-        "selected": 8,
-        "passed": 8,
+        "available": 9,
+        "selected": 9,
+        "passed": 9,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN list-replace-swap.ms::replace returns the old element and stores the new one\nPASS list-replace-swap.ms::replace returns the old element and stores the new one\nRUN list-replace-swap.ms::replace moves owned records\nPASS list-replace-swap.ms::replace moves owned records\nRUN list-replace-swap.ms::replace takes an optional slot\nPASS list-replace-swap.ms::replace takes an optional slot\nRUN list-replace-swap.ms::swap exchanges two elements\nPASS list-replace-swap.ms::swap exchanges two elements\nRUN list-replace-swap.ms::swap moves records without copying\nPASS list-replace-swap.ms::swap moves records without copying\nRUN list-replace-swap.ms::replace takes a scalar optional slot\nPASS list-replace-swap.ms::replace takes a scalar optional slot\nRUN list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end\nPASS list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end\nRUN list-replace-swap.ms::swap exchanges plain records and optional scalars in line\nPASS list-replace-swap.ms::swap exchanges plain records and optional scalars in line\n8 tests, 0 failed\n",
+      "stdout": "RUN list-replace-swap.ms::replace returns the old element and stores the new one\nPASS list-replace-swap.ms::replace returns the old element and stores the new one\nRUN list-replace-swap.ms::replace moves owned records\nPASS list-replace-swap.ms::replace moves owned records\nRUN list-replace-swap.ms::replace takes an optional slot\nPASS list-replace-swap.ms::replace takes an optional slot\nRUN list-replace-swap.ms::swap exchanges two elements\nPASS list-replace-swap.ms::swap exchanges two elements\nRUN list-replace-swap.ms::swap moves records without copying\nPASS list-replace-swap.ms::swap moves records without copying\nRUN list-replace-swap.ms::replace takes a scalar optional slot\nPASS list-replace-swap.ms::replace takes a scalar optional slot\nRUN list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end\nPASS list-replace-swap.ms::swap exchanges scalars, counting negative indexes from the end\nRUN list-replace-swap.ms::swap exchanges plain records and optional scalars in line\nPASS list-replace-swap.ms::swap exchanges plain records and optional scalars in line\nRUN list-replace-swap.ms::swap faults on an index outside the list and leaves the list unchanged\nPASS list-replace-swap.ms::swap faults on an index outside the list and leaves the list unchanged\n9 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

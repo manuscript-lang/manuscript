@@ -102,6 +102,12 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
   }
+  MirTy local_ty = MIR_VOID;
+  if (place->kind == MS_E_NAME && fn_closing_local(fn, place, &element, &local_ty)) {
+    /* A `var` resource local is lent in place, as one of its fields is: its slot keeps closing it if the callee faults. */
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
   if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &element)) { /* a field of a closing local changes where it lies */
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
@@ -278,6 +284,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
   const bool big = call->arg_count > LOWER_MAX_ARGS;
   uint32_t *order = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint32_t, call->arg_count) : order_small;
   MirValue *pending = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, call->arg_count) : pending_small;
+  MirValue receiver_slot = MIR_NONE; /* a fresh list literal receiver that closes its resources: registered before the arguments */
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
     pending[at] = MIR_NONE;
@@ -355,6 +362,18 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
+      if (index == 0 && native && call->callee.kind == MS_REF_NATIVE && call->arg_count > 1 && want == LW_BORROW && written != NULL &&
+          written->kind == MS_E_LIST && out[index] != MIR_NONE && fn_fresh_owner(fn, out[index])) {
+        /* The receiver closes after the arguments that follow it, so its slot is registered first: a fault in the call
+         * closes the incoming operands before it. */
+        const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+                                         fn->subst.args, fn->subst.count);
+        receiver_slot = fn_pending_own(fn, checked, out[index]);
+        if (receiver_slot != MIR_NONE) {
+          const MirTy held_ty = mir_b_ty(&fn->b, out[index]);
+          out[index] = fn_emit(fn, MOP_Load, &receiver_slot, 1, (MirImm){.tag = MI_TY, .a = held_ty}, held_ty);
+        }
+      }
       if (want == LW_MOVE && out[index] != MIR_NONE && written != NULL &&
           (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
           (step + 1 < call->arg_count || held_across(call, native))) {
@@ -378,7 +397,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       fn->default_has_self = false;
       fn->default_call = call;
       fn->default_args = out;
+      const DefaultExit *saved_exit = fn->default_exit;
+      fn->default_exit = fn->call_exit != NULL ? fn->call_exit : saved_exit;
       out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty), &caller);
+      fn->default_exit = saved_exit;
       fn->default_call = NULL;
       fn->default_args = NULL;
       fn->default_has_self = outer_has_self;
@@ -412,6 +434,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);
     }
   }
+  fn->receiver_slot = receiver_slot;
   for (uint32_t at = 0; at < call->arg_count; at++) {
     if (pending[at] != MIR_NONE && held_across(call, native)) {
       held[at] = pending[at];
@@ -913,14 +936,54 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     bufs.held[at] = MIR_NONE;
   }
   const uint32_t lent = fn->nwritebacks; /* the `var` arguments' slots, lent for this call only */
-  const MirValue result = call_body(fn, expr, &bufs);
+  /* A `?` in a default the call omits leaves the call, not the caller: the call is a scope of its own, and its failed
+   * Result and its result meet at a join. */
+  const bool exits = found != NULL && fn_call_default_tries(fn, found);
+  DefaultExit exit = {.keep = fn->nopen};
+  const DefaultExit *saved_call = fn->call_exit;
+  const DefaultExit *saved_default = fn->default_exit;
+  fn->call_exit = NULL;
+  MirValue joined = MIR_NONE;
+  if (exits) {
+    exit.ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+    exit.join = mir_b_new_block(&fn->b);
+    joined = mir_b_add_block_param(&fn->b, exit.join, exit.ret, MM_MOVE);
+    (void)fn_scope_begin(fn);
+    fn->call_exit = &exit;
+  }
+  fn->receiver_slot = MIR_NONE;
+  MirValue result = call_body(fn, expr, &bufs);
+  fn->receiver_slot = MIR_NONE;
+  fn->call_exit = saved_call;
+  fn->default_exit = saved_default;
   fn->nwritebacks = lent;
   for (uint32_t at = 0; at < count && !fn->terminated; at++) {
     if (bufs.held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &bufs.held[at], 1, (MirImm){0}, MIR_NONE);
     }
   }
-  return result;
+  if (!exits) {
+    return result;
+  }
+  if (result == MIR_NONE || fn->terminated || fn->failed) {
+    return MIR_NONE;
+  }
+  if (mir_b_ty(&fn->b, result) != exit.ret) {
+    (void)fn_fail(fn, "a call whose default uses `?` must return a Result");
+    return MIR_NONE;
+  }
+  if (mir_needs_drop(fn->cx->module, exit.ret)) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(fn, exit.keep);
+  mir_b_br(&fn->b, exit.join, &result, 1);
+  mir_b_seal_block(&fn->b, exit.join);
+  mir_b_switch_to(&fn->b, exit.join);
+  fn_scope_pop(fn);
+  if (mir_needs_drop(fn->cx->module, exit.ret)) {
+    fn_own(fn, fn_scope(fn), joined);
+  }
+  return joined;
 }
 
 /* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */

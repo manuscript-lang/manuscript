@@ -115,7 +115,7 @@ ms_library(ms_std_system runtime/std
 # @std/process natives that need the scheduler or the OS beyond libuv: ids, groups, title, usage, signal watchers.
 ms_library(ms_std_process runtime/std
   SOURCES
-    fail.c process.c signals.c command.c child.c run.c spawn.c
+    fail.c process.c process_memory.c signals.c command.c child.c run.c spawn.c
   LINK ms_base ms_values ms_sys ms_io ms_core ms_entry ms_std_fs uv)
 
 # @std/net sockets on libuv: one loop thread, connections, listeners, datagrams, the Network handle.

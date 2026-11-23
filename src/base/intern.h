@@ -22,15 +22,22 @@ MS_LIST_DEFINE(MsSpanList, ms_span_list, MsSpan)
 MS_LIST_DEFINE(MsHashList, ms_hash_list, uint64_t)
 
 typedef struct MsNames {
-  MsArena bytes;     /* owned: the interned texts */
-  MsSpanList spans;  /* owned: by id */
-  MsHashList hashes; /* owned: by id */
-  uint32_t *table;   /* owned: open addressing, id + 1, 0 for an empty slot */
-  size_t table_size; /* a power of two */
+  const struct MsNames *base; /* a frozen table whose ids come first, or NULL: see ms_names_init_over */
+  uint32_t base_len;          /* the base's id count; this table's own ids start here */
+  MsArena bytes;              /* owned: the interned texts */
+  MsSpanList spans;           /* owned: by id - base_len */
+  MsHashList hashes;          /* owned: by id - base_len */
+  uint32_t *table;            /* owned: open addressing, own index + 1, 0 for an empty slot */
+  size_t table_size;          /* a power of two */
 } MsNames;
 
 /* Starts a table holding the empty text as id 0. */
 void ms_names_init(MsNames *names);
+
+/* Starts a table layered over `base`, which must not change while this table or anything keyed by its ids lives: the
+ * base's texts keep their ids, new texts get the ids after them, and the base is only read, so any number of tables
+ * may share one across threads. */
+void ms_names_init_over(MsNames *names, const MsNames *base);
 
 /* The id of `text`, adding it when new. */
 MsName ms_names_intern(MsNames *names, MsSpan text);
@@ -42,7 +49,7 @@ MS_NODISCARD MS_NONNULL bool ms_names_find(const MsNames *names, MsSpan text, Ms
 MsSpan ms_names_span(const MsNames *names, MsName name);
 
 static inline size_t ms_names_count(const MsNames *names) {
-  return names->spans.len;
+  return names->base_len + names->spans.len;
 }
 
 void ms_names_free(MsNames *names);

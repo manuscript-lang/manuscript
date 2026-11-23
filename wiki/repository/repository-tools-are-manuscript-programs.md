@@ -11,3 +11,5 @@ Verify: `ms run tools/conform.ms`, `tools/conform.ms`, `tools/count-check.ms` pa
 Verified (2026-11-10): `tools/package.ms` must copy the repository `LICENSE` into every binary archive with a readable file mode. The local distribution check and both CI packaging paths compare the extracted file with the source, so successful compiler smoke tests alone cannot hide a missing or altered license.
 
 Verified (2026-11-10): the extension is bundled with esbuild and packaged without `node_modules`, so upstream notice files must be carried separately. `extensions/vscode/build.js` derives the packages from esbuild inputs and writes their exact notice texts into `dist/THIRD-PARTY-NOTICES.txt`, which the VSIX includes. `tests/notices.test.js` covers missing notices, deduplication, scoped/nested paths and byte-preserving text.
+
+Verified (2026-11-23): the pinned LLVM library is fetched by `tools/fetch-llvm-lib.ms` (CMake target `llvm-lib`, run after the ms build in `ci.yml`, which exports `MS_LLVM` through `GITHUB_ENV`). A shell fetch script tripped the new-script lint rule; a step that needs the library only after `ms` exists belongs in a tool, not a script.
