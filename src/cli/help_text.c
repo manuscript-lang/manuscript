@@ -57,7 +57,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.\n"
     "MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.\n"},
     {"check",
-    "Usage: ms check <file.ms|directory|ms.toml>... [--json [--with-text [--each]]] [--watch] [--fix]\n"
+    "Usage: ms check <file.ms|directory|ms.toml>... [--json [--with-text [--each]]] [--watch] [--fix] [--std]\n"
     "\n"
     "Parse, resolve imports, and type-check independent inputs without executing source.\n"
     "A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.\n"
@@ -68,6 +68,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
     "  --with-text  With --json, also carry the terminal output as text.stdout and text.stderr\n"
     "  --each  With --json --with-text, report every input as its own result, `{\"results\": [{\"target\", \"exit_code\", \"document\"}]}`, from one standard-library load\n"
+    "  --std   Check every bundled standard-library body, not only those the program reaches\n"
     "  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
     "  --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)\n"
     "  -h, --help  Show this help without executing the command\n"

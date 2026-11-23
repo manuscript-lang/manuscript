@@ -126,6 +126,18 @@ typedef struct MsCheckDiag {
 
 MS_LIST_DEFINE(MsCheckDiagList, ms_check_diag_list, MsCheckDiag)
 
+/* A standard function or method whose body lazy_std.c set aside, until something reaches it. */
+typedef struct MsDeferredBody {
+  uint32_t module;
+  uint32_t node;      /* the function's or method's id */
+  MsDecl *decl;       /* the function, or the impl that holds the method */
+  MsMethod *method;   /* NULL for a function */
+  MsStmts body;
+  bool restored;
+} MsDeferredBody;
+
+MS_LIST_DEFINE(MsDeferredBodyList, ms_deferred_body_list, MsDeferredBody)
+
 typedef struct MsCheckProgram {
   MsArena arena;
   MsNames *names; /* borrowed */
@@ -147,6 +159,10 @@ typedef struct MsCheckProgram {
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
   bool check_std; /* the bundled standard modules report their diagnostics too */
+  bool all_std;   /* load every bundled standard module, not only the imported ones (`ms check --std`) */
+  bool lazy_std;  /* standard bodies are checked only once reached (lazy_std.c): the program is analyzed, never lowered */
+  MsDeferredBodyList deferred_bodies;
+  MsMethodKeyList deferred_index; /* the deferred bodies by (module, node), sorted */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
 } MsCheckProgram;
 
@@ -232,5 +248,10 @@ void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
  * outlive `program`. Passes are added as they land; a program is accepted only when `program->diagnostics`
  * is empty. */
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
+/* The same for a program that is only analyzed (check, lint, the language server): the bodies of bundled standard
+ * functions nothing in it reaches are not checked. Its facts must not be lowered. */
+void ms_check_graph_analysis(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
+/* The eager check over every bundled standard module: the gate that every bundled body checks. */
+void ms_check_graph_std(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
 
 #endif

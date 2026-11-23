@@ -1,0 +1,1 @@
+ms verify: . is a directory without an ms.toml; pass a .ms file or a project ms.toml, e.g. ms verify ms.toml

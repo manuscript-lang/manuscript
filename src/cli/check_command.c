@@ -32,6 +32,7 @@ MS_LIST_DEFINE(TargetList, target_list, MsSpan)
 
 typedef struct CheckOptions {
   bool json, with_text, each, fix, watch;
+  bool std; /* `ms check --std`: check every bundled standard body */
   bool lint, deny_warnings, syntax; /* `ms lint` */
   const char *name;         /* "check" or "lint" */
   TargetList targets;
@@ -74,6 +75,11 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       options->fix = true;
     } else if (is_option(argument, "--watch")) {
       options->watch = true;
+    } else if (is_option(argument, "--std")) {
+      if (options->lint) {
+        return refuse("--std requires check, not lint", STATUS_USAGE);
+      }
+      options->std = true;
     } else if (is_option(argument, "--syntax")) {
       if (!options->lint) {
         return refuse("--syntax requires lint, not check; use ms lint <file> --syntax", STATUS_USAGE);
@@ -213,6 +219,8 @@ static void collect_fixes(MsArena *arena, MsSpan root, const FindingList *found,
   }
 }
 
+static bool check_all_std; /* `--std`: set once by the command before any input is checked */
+
 /* Checks one input and adds what it found to `analysis`. */
 static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input, bool fix,
                         bool watching, bool lint_findings, Analysis *analysis) {
@@ -225,7 +233,11 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
   MsCheckProgram program = {0};
   finding_add_graph(&graph, &found);
   if (found.len == 0) {
-    ms_check_graph(&program, &names, &graph);
+    if (check_all_std) {
+      ms_check_graph_std(&program, &names, &graph);
+    } else {
+      ms_check_graph_analysis(&program, &names, &graph);
+    }
     ms_own_check(&program);
     finding_add_check(&program, &names, &found);
     if (found.len == 0 && !graph.library && graph.project_root.len == 0) {
@@ -409,6 +421,7 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
 /* One run of the command: with --fix, rounds of fixing until no fix applies. */
 static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList *watched) {
   CheckFixRun run = {0};
+  check_all_std = options->std;
   Analysis analysis = {.summaries = ms_strbuild_new()};
   const size_t passes = 64;
   for (size_t pass = 0; pass < passes; pass++) {

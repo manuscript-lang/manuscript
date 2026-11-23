@@ -117,7 +117,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     MsExpr *key = NULL;
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
     const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
-    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && ms_expr_index(stmt->u.bind.value, &container, &key) &&
+    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn_entry_read_parts(fn, stmt->u.bind.value, &container, &key) &&
         mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
       MirValue address = MIR_NONE;
       MirTy ty = MIR_VOID;
@@ -189,7 +189,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
-  const bool fresh = fn_fresh_owner(fn, value) || is_empty_optional(fn, value);
+  MirVar read = 0;
+  /* A name read as the owning `var`'s current value is not a new value, whatever op wrote the `var` last. */
+  const bool reads_var = borrow && kind == MS_E_NAME && fn_owned_local(fn, stmt->u.bind.value, &read) && var_owns(fn, read) &&
+                         mir_b_use_var(&fn->b, read) == value;
+  const bool fresh = !reads_var && (fn_fresh_owner(fn, value) || is_empty_optional(fn, value));
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
   if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&

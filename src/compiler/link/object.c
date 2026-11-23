@@ -41,30 +41,13 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   return run_tool(ms_span_of_text("opt (LLVM optimizer)"), argv, argc, log, why);
 }
 
-/* Whether the IR holds a function the emitter marked `optnone`, which is how a size tier shows. */
-static bool has_optnone(MsSpan ir) {
-  MsSpan needle = ms_span_of_text(" optnone");
-  for (size_t at = 0; at + needle.len <= ir.len; at++) {
-    if (ms_span_equal(ms_span_of(ir.ptr + at, needle.len), needle)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/* `llc` over `input`, writing the object. A module with an `optnone` function (a size tier, #3928) goes through
- * the fast code generator: llc's -O3 two-address and register-allocation passes are superlinear in one
- * function's size even when it is optnone. AArch64's -O0 GlobalISel Localizer pass is too (#5540), so the
- * selection-DAG path is used. */
+/* `llc` over `input`, writing the object. */
 static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
-                     bool size_tiered, const char *filetype, MsStrBuild *why) {
+                     const char *filetype, MsStrBuild *why) {
   MsSpan argv[12];
   size_t argc = 0;
   argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed && !size_tiered ? (options->debug ? "-O2" : "-O3") : "-O0");
-  if (size_tiered) {
-    argv[argc++] = ms_span_of_text("-global-isel=0");
-  }
+  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O2" : "-O3") : "-O0");
   argv[argc++] = ms_span_of_text(filetype);
   argv[argc++] = ms_span_of_text("-relocation-model=pic");
   argv[argc++] = triple_flag;
@@ -110,10 +93,10 @@ static void wrap_assembly(MsSpan triple, MsSpan text, MsStrBuild *ir) {
 /* The object of a program with fault tables: `llc` writes the assembly, the tables are added to it, and `llc`
  * assembles the result. */
 static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
-                          bool size_tiered, MsStrBuild *why) {
+                          MsStrBuild *why) {
   MsString assembly_path = in_directory(options->directory, "program.s");
   MsString wrapped_path = in_directory(options->directory, "tables.ll");
-  bool ok = generate(options, triple_flag, input, ms_string_span(&assembly_path), log, size_tiered,
+  bool ok = generate(options, triple_flag, input, ms_string_span(&assembly_path), log,
                      "-filetype=asm", why);
   MsBytes assembly = {0};
   ok = ok && ms_file_read(ms_string_span(&assembly_path), &assembly);
@@ -127,7 +110,7 @@ static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSp
   }
   ObjectOptions plain = *options;
   plain.speed = false;
-  ok = ok && generate(&plain, triple_flag, ms_string_span(&wrapped_path), object, log, false, "-filetype=obj", why);
+  ok = ok && generate(&plain, triple_flag, ms_string_span(&wrapped_path), object, log, "-filetype=obj", why);
   ms_path_remove(ms_string_span(&assembly_path));
   ms_path_remove(ms_string_span(&wrapped_path));
   ms_strbuild_free(&ir);
@@ -162,11 +145,10 @@ bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, Ms
     ok = optimize(options, ms_string_span(&triple_flag), input, ms_string_span(&bitcode), ms_string_span(&log), why);
     input = ms_string_span(&bitcode);
   }
-  bool tiered = has_optnone(ir);
   if (ok && options->tables != NULL) {
-    ok = tables_object(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), tiered, why);
+    ok = tables_object(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), why);
   } else {
-    ok = ok && generate(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), tiered,
+    ok = ok && generate(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log),
                         "-filetype=obj", why);
   }
   ms_path_remove(ms_string_span(&text));

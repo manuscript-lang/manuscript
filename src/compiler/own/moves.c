@@ -312,6 +312,24 @@ static MsSpan place_text(const Moves *pass, const MsExpr *expr) {
   return (MsSpan){source.ptr + start.offset, expr->end.offset - start.offset};
 }
 
+/* A place as the diagnostics write it: names and members as written, every index as `[..]`. */
+static void append_place_text(const Moves *pass, MsStrBuild *out, const MsExpr *expr) {
+  MsExpr *left = NULL;
+  MsExpr *index = NULL;
+  if (expr->kind == MS_E_MEMBER) {
+    append_place_text(pass, out, expr->u.member.left);
+    ms_strbuild_append_text(out, ".");
+    ms_strbuild_append(out, ms_names_span(pass->program->names, expr->u.member.name));
+  } else if (ms_expr_index(expr, &left, &index)) {
+    append_place_text(pass, out, left);
+    ms_strbuild_append_text(out, "[..]");
+  } else if (expr->kind == MS_E_NAME) {
+    ms_strbuild_append(out, ms_names_span(pass->program->names, expr->u.sym));
+  } else {
+    ms_strbuild_append(out, place_text(pass, expr));
+  }
+}
+
 /* `res.close()` on a parameter the caller keeps: a `move` receiver must be declared `move`. */
 static void check_move_receiver(Moves *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
@@ -323,35 +341,45 @@ static void check_move_receiver(Moves *pass, const MsExpr *call) {
     return;
   }
   const MsExpr *receiver = callee->u.member.left;
-  if (receiver->kind == MS_E_MEMBER) {
-    /* `pair.first.close()` on a `var` holder: the field would leave a record that stays in use with a hole in it. */
+  MsExpr *indexed_left = NULL;
+  MsExpr *indexed_at = NULL;
+  if (receiver->kind == MS_E_MEMBER || ms_expr_index(receiver, &indexed_left, &indexed_at)) {
+    /* `pair.first.close()` on a `var` holder: the field would leave a record that stays in use with a hole in it.
+     * An element never leaves its collection, whatever the binding. */
+    bool element = false;
     const MsExpr *root = receiver;
-    while (root->kind == MS_E_MEMBER) {
-      root = root->u.member.left;
+    while (root->kind == MS_E_MEMBER || ms_expr_index(root, &indexed_left, &indexed_at)) {
+      element = element || root->kind != MS_E_MEMBER;
+      root = root->kind == MS_E_MEMBER ? root->u.member.left : indexed_left;
     }
     const MsTy field = ms_facts_type(pass->facts, receiver->id);
     if (root->kind == MS_E_NAME && ms_bind_of(pass->facts, root->id, &binding) &&
-        (contains(&pass->vars, binding) || contains(&pass->varparams, binding)) && field != MS_TY_NONE &&
+        (element || contains(&pass->vars, binding) || contains(&pass->varparams, binding)) && field != MS_TY_NONE &&
         ms_check_holds_resource(pass->program, field)) {
+      MsStrBuild place = ms_strbuild_new();
+      append_place_text(pass, &place, receiver);
+      const MsSpan place_span = ms_strbuild_span(&place);
+      const MsSpan root_name = ms_names_span(pass->program->names, root->u.sym);
       MsStrBuild moved = ms_strbuild_new();
       ms_strbuild_append_text(&moved, "cannot move the resource `");
-      ms_strbuild_append(&moved, place_text(pass, receiver));
+      ms_strbuild_append(&moved, place_span);
       ms_strbuild_append_text(&moved, "` out of `");
-      ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));
+      ms_strbuild_append(&moved, root_name);
       ms_strbuild_append_text(&moved, "`: a resource cannot be cloned, and it leaves `");
-      ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));
+      ms_strbuild_append(&moved, root_name);
       ms_strbuild_append_text(&moved, "` only when `");
-      ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));
-      ms_strbuild_append_text(&moved, "` is a `:=` binding or a parameter and no type on the path has a `close` of its own; use `");
-      ms_strbuild_append(&moved, place_text(pass, receiver));
+      ms_strbuild_append(&moved, root_name);
+      ms_strbuild_append_text(&moved, "` is a `let` or a parameter and no type on the path has a `close` of its own; use `");
+      ms_strbuild_append(&moved, place_span);
       ms_strbuild_append_text(&moved, "` in place, move the whole `");
-      ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));
+      ms_strbuild_append(&moved, root_name);
       ms_strbuild_append_text(&moved, "`, or take it with `part := ");
-      ms_strbuild_append(&moved, place_text(pass, receiver));
+      ms_strbuild_append(&moved, place_span);
       ms_strbuild_append_text(&moved, "` and refill `");
-      ms_strbuild_append(&moved, place_text(pass, receiver));
+      ms_strbuild_append(&moved, place_span);
       ms_strbuild_append_text(&moved, " = ...` in the next statement");
       ms_check_report(pass->program, pass->module, receiver->pos, MS_CHECK_TYPE, ms_strbuild_finish(&moved));
+      ms_strbuild_free(&place);
     }
     return;
   }

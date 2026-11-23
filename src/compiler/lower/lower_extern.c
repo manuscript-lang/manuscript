@@ -139,7 +139,15 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     payload_ty = mir_ty_data(fn->cx->module, ok_ty)->elem;
   }
   const bool has_out = payload_ty != MIR_VOID;
-  const uint32_t tail = (has_err ? 1u : 0u) + (has_out ? 1u : 0u);
+  bool by_shape_sig = false;
+  for (uint32_t at = 0; at < sig->count; at++) {
+    by_shape_sig = by_shape_sig || sig->kinds[at] == NS_SHAPE;
+  }
+  /* A native that fills a value by shape still takes its out address when the value is `Void`: it gets a scratch slot. */
+  const uint32_t err_params = has_err ? 1u : 0u;
+  const bool scratch_out = !has_out && by_shape_sig && sig->count > err_params &&
+                           sig->kinds[sig->count - err_params - 1] == NS_ADDR_MUT;
+  const uint32_t tail = err_params + (has_out || scratch_out ? 1u : 0u);
   if (sig->count < tail) {
     return false;
   }
@@ -241,6 +249,9 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   if (has_out) {
     out_slot = stack_slot(fn, payload_ty);
     wanted[count++] = out_slot;
+  }
+  if (scratch_out) {
+    wanted[count++] = stack_slot(fn, MIR_INT);
   }
   if (has_err) {
     err_slot = stack_slot(fn, MIR_STR);

@@ -216,6 +216,54 @@ uint8_t msstd_json_parse_tree(const MsString *text, uint8_t has_max_bytes, int64
   return status;
 }
 
+/* Feeds the node `id` of a parsed document, and everything under it, to the builder in document order. */
+static uint8_t feed_node(TreeBuilder *builder, const void *doc, uint32_t id) {
+  const uint8_t kind = msstd_json_kind(doc, id);
+  if (kind == CASE_NULL) {
+    return tree_null(builder);
+  }
+  if (kind == CASE_BOOL) {
+    return tree_boolean(builder, msstd_json_bool(doc, id) != 0);
+  }
+  if (kind == CASE_NUMBER || kind == CASE_STRING) {
+    MsString text = ms_string_empty();
+    msstd_json_text(doc, id, &text);
+    const JsonText view = {.bytes = ms_string_span(&text)};
+    const uint8_t status = kind == CASE_NUMBER ? tree_number(builder, view) : tree_string(builder, view);
+    ms_string_release(&text);
+    return status;
+  }
+  const bool is_array = kind == CASE_ARRAY;
+  uint8_t status = tree_open(builder, is_array);
+  const int64_t count = msstd_json_len(doc, id);
+  for (int64_t at = 0; at < count && status == MS_STATUS_OK; at++) {
+    if (!is_array) {
+      MsString key = ms_string_empty();
+      msstd_json_key(doc, id, at, &key);
+      status = tree_key(builder, (JsonText){.bytes = ms_string_span(&key)});
+      ms_string_release(&key);
+    }
+    status = status == MS_STATUS_OK ? feed_node(builder, doc, msstd_json_item(doc, id, at)) : status;
+  }
+  return status == MS_STATUS_OK ? tree_close(builder, is_array) : status;
+}
+
+uint8_t msstd_json_node_tree(const void *doc, uint32_t id, const MsTypeDesc *desc, JsonCtorFn ctor, uint8_t *out) {
+  if (desc->align > 8 || desc->size % 8 != 0 || desc->size == 0) {
+    return MS_STATUS_FAILED;
+  }
+  TreeBuilder builder = {.desc = desc, .ctor = ctor, .size = desc->size};
+  uint8_t status = feed_node(&builder, doc, id);
+  if (status == MS_STATUS_OK && builder.value_count == 1 && builder.mark_count == 0) {
+    memcpy(out, builder.values, builder.size);
+    builder.value_count = 0; /* moved to the caller */
+  } else if (status == MS_STATUS_OK) {
+    status = MS_STATUS_FAILED;
+  }
+  builder_free(&builder);
+  return status;
+}
+
 /* ---- walking a tree into the writer ---- */
 
 /* An open container of a walk: the next element of an array, or the next slot of a map's storage. */

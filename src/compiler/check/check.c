@@ -7,13 +7,16 @@
 #include "compiler/check/exports.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/mutate.h"
+#include "compiler/check/lazy_std.h"
 #include "compiler/check/names.h"
 #include "compiler/check/returns.h"
 #include "compiler/check/shadow.h"
 #include "compiler/check/program.h"
 
-void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
+static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph, bool lazy_std, bool all_std) {
   ms_check_program_init(program, names);
+  program->all_std = all_std;
+  program->lazy_std = lazy_std;
   for (size_t index = 0; index < graph->count; index++) {
     const MsGraphModule *module = &graph->modules[index];
     const MsName file = ms_names_intern(names, module->name);
@@ -59,8 +62,14 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     program->stage = MS_STAGE_DECLARATIONS;
   }
   program->stage = MS_STAGE_WALK;
+  if (lazy_std) {
+    ms_check_defer_std_bodies(program);
+  }
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
+  }
+  if (lazy_std) {
+    ms_check_restore_reached(program);
   }
   ms_check_release_rest(program);
   ms_check_flush_pending_bounds(program);
@@ -76,4 +85,16 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   }
   ms_check_order_diagnostics(program);
   ms_check_attach_message_fixes(program);
+}
+
+void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
+  check_graph(program, names, graph, false, false);
+}
+
+void ms_check_graph_analysis(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
+  check_graph(program, names, graph, true, false);
+}
+
+void ms_check_graph_std(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
+  check_graph(program, names, graph, false, true);
 }
