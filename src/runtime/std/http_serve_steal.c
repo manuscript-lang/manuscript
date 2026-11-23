@@ -236,6 +236,18 @@ MsServeIdle *ms_serve_idle_open(MsServeWorker *worker) {
   return idle;
 }
 
+#ifdef MS_STATS
+void ms_serve_idle_release_registry(void) {
+  registry_lock();
+  if (registry.count == 0) {
+    ms_free(registry.all);
+    registry.all = NULL;
+    registry.capacity = 0;
+  }
+  registry_unlock();
+}
+#endif
+
 void ms_serve_idle_close(MsServeIdle *idle) {
   registry_lock();
   for (size_t i = 0; i < registry.count; i++) {

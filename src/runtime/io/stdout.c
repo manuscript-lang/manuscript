@@ -59,7 +59,12 @@ void ms_stdout_flush(void) {
   }
 }
 
-void ms_stdout_release(void) { ms_stdout_flush(); }
+void ms_stdout_release(void) {
+  ms_stdout_flush();
+  ms_spin_lock(&captures.lock);
+  capture_list_free(&captures.list); /* every capture has ended by now; the table itself is the last block */
+  ms_spin_unlock(&captures.lock);
+}
 
 /* Appends to capture `id`; false when it has ended (the output then goes to standard output). */
 static bool capture_append(uint64_t id, MsSpan data) {

@@ -14,6 +14,7 @@ typedef struct BackendOptions {
   bool count_ops; /* each block counts its operations (`ms bench --ops`) */
   uint32_t wide_leaves; /* a value of more leaves than this lives in a stack cell; 0 for never */
   bool wide_hide;       /* keep those cells out of LLVM's reach (volatile leaf loads): Debug frames, not optimization */
+  bool poison_slots;    /* EmitOptions.poison_slots */
 } BackendOptions;
 
 /* A compiled program kept for the fault tables: the renamed module and what the tables need to know of it. */

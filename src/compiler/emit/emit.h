@@ -14,6 +14,7 @@ typedef struct EmitOptions {
   bool places;     /* tag each instruction with its source line for the fault tables */
   uint32_t wide_leaves; /* a value of more leaves than this lives in a stack cell; 0 for never */
   bool wide_hide;       /* keep those cells out of LLVM's reach (volatile leaf loads, an opaque `asm`) */
+  bool poison_slots;    /* fill a shared stack cell with 0xDD where its occupant is last read (MS_POISON_SLOTS) */
 } EmitOptions;
 
 /* The symbol of the entry function once renamed; the user's `main` cannot keep its own name, which the C entry

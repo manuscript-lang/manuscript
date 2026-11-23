@@ -5,6 +5,7 @@
 #include "runtime/core/list.h"
 
 #include "base/alloc.h"
+#include "runtime/core/stats.h"
 #include "base/hash.h"
 #include "base/index.h"
 #include "runtime/core/index_fault.h"
@@ -31,11 +32,14 @@ void msrt_list_drop(MsList *v, const MsTypeDesc *d) {
 }
 
 void msrt_list_copy(const MsList *v, const MsTypeDesc *d, MsList *out) {
+  if (v->len != 0) {
+    ms_stats_copy(0, v->len * d->size);
+  }
   ms_list_clone_desc(v, d, out);
 }
 
 void msrt_list_clone(const MsList *v, const MsTypeDesc *d, MsList *out) {
-  ms_list_clone_desc(v, d, out);
+  msrt_list_copy(v, d, out);
 }
 
 /* One copy of the `count` elements of `v` from `start`, pushed onto the list of lists `out`. */
