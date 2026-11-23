@@ -428,9 +428,10 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name:` does. */
   const MsExpr *named = expr->u.bin.left;
-  const bool moving = named->kind == MS_E_NAME && (fn->narrow_take == expr || ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
+  const bool moving = (named->kind == MS_E_CALL && ms_facts_use(fn->facts, named->id) == MS_USE_MOVE) ||
+                      (named->kind == MS_E_NAME && (fn->narrow_take == expr || ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
                                                    ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
-                                                   (fn->facts->last != NULL && fn->facts->last[named->id] != 0));
+                                                   (fn->facts->last != NULL && fn->facts->last[named->id] != 0)));
   const MirValue left = fn_expr(fn, named, moving ? LW_MOVE : LW_BORROW);
   if (left == MIR_NONE || result_ty == MIR_VOID) {
     return MIR_NONE;
@@ -445,7 +446,7 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   mir_b_seal_block(&fn->b, some_block);
   mir_b_seal_block(&fn->b, null_block);
   mir_b_switch_to(&fn->b, some_block);
-  const bool owns = fn_fresh_owner(fn, left);
+  const bool owns = (fn_fresh_owner(fn, left) && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving);
   /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
   const bool view_only = !owns && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
                          ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
@@ -773,6 +774,11 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
   return ops.compare ? mir_b_icmp(&fn->b, ops.cc, left, right) : mir_b_binop(&fn->b, ops.op, left, right);
 }
 
+/* The literal `null`, as written (not a local that happens to be named so). */
+static bool is_null_literal(const LowerFn *fn, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && ms_span_is_text(ms_names_span(fn->cx->program->names, expr->u.sym), "null");
+}
+
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (expr->op == MS_B_OR && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
     return lower_or_null(fn, expr);
@@ -784,6 +790,20 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
   if (!binary_ops((MsBinaryOp)expr->op, &ops)) {
     (void)fn_fail(fn, "this binary operator is not lowered yet");
     return MIR_NONE;
+  }
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    const bool null_right = is_null_literal(fn, expr->u.bin.right);
+    const MsExpr *tested = null_right ? expr->u.bin.left : expr->u.bin.right;
+    if ((null_right || is_null_literal(fn, expr->u.bin.left)) && !is_null_literal(fn, tested)) {
+      /* `x == null` asks only whether `x` holds a value; its payload is never compared. */
+      MirValue value = fn_expr(fn, tested, LW_BORROW);
+      if (value == MIR_NONE) {
+        return MIR_NONE;
+      }
+      value = fn_closing_operand(fn, tested, value);
+      const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &value, 1, (MirImm){0}, MIR_BOOL);
+      return expr->op == MS_B_NE ? present : mir_b_emit(&fn->b, MOP_Not, &present, 1, (MirImm){0}, MIR_BOOL);
+    }
   }
   MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
   MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);

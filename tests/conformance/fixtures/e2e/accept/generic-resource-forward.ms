@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	Closeable, Iterator from "@std/core.ms",
+	Closeable, Iterator, panic from "@std/core.ms",
 	Source from "@std/io/io.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
 	expect_equal, expect_ok from "@std/test/test.ms",
@@ -34,10 +34,9 @@ fn var Forward[T].next() T!?:
 	result := self.source.next()
 	if result.is_error(): return error(result.err().clone())
 
-	item := result.get()
-	if item != null: return ok(item)
+	if result.get() == null: return null
 
-	return null
+	return ok(result.get() or panic("called Optional.get() on null"))
 
 fn first_body(log: String) Void!:
 	for item in Forward[Token](Tokens(log.clone())):

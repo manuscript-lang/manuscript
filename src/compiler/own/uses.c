@@ -203,6 +203,10 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
   }
   if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR) { /* `x or d` hands the payload of the local `x` on */
     const MsExpr *named = expr->u.bin.left;
+    if (named->kind == MS_E_CALL) { /* `r.get() or d` hands the payload of the owner `r` on */
+      (void)payload_of_owner(pass, named);
+      return;
+    }
     const MsTy ty = ms_facts_type(pass->facts, expr->id);
     if (named->kind == MS_E_NAME && place_root(pass, named) && ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY &&
         ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, named->id), MS_BUILTIN_Optional)) {
