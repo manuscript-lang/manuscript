@@ -32,6 +32,9 @@ void ms_alloc_counts(int64_t *allocations, int64_t *bytes);
 /* The bytes of all live blocks of every thread (usable sizes, so a little over what was asked for); 0 under a
  * test allocator. */
 int64_t ms_alloc_live_bytes(void);
+/* Starts counting live bytes (until then ms_alloc_live_bytes is 0): a program that reads the figure calls this before
+ * main; the count excludes blocks made earlier. */
+void ms_alloc_track_live(void);
 
 /* `size` bytes, uninitialised, aligned for any scalar. size 0 gives a valid block. */
 MS_NODISCARD MS_RETURNS_NONNULL void *ms_alloc(size_t size);
