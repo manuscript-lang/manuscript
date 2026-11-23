@@ -1,6 +1,5 @@
 /* Owns the token kind table: display texts, keyword lookup and contextual keywords. */
 #include "compiler/syntax/token.h"
-#include <string.h>
 
 static const char *const TOKEN_TEXT[] = {
 #define X(name, text) text,
@@ -74,7 +73,7 @@ MsTok ms_tok_from_word(MsSpan word) {
   }
   for (; low < MS_COUNT_OF(KEYWORDS) - 1 && (uint8_t)KEYWORDS[low].word[0] == first; low++) {
     const Keyword *keyword = &KEYWORDS[low];
-    if (keyword->len == word.len && memcmp(keyword->word, word.ptr, word.len) == 0) {
+    if (keyword->len == word.len && __builtin_memcmp(keyword->word, word.ptr, word.len) == 0) {
       return (MsTok)keyword->kind;
     }
   }

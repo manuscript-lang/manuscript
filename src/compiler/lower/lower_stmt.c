@@ -117,7 +117,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     MsExpr *key = NULL;
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
     const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
-    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && ms_expr_index(stmt->u.bind.value, &container, &key) &&
+    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn_entry_read_parts(fn, stmt->u.bind.value, &container, &key) &&
         mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
       MirValue address = MIR_NONE;
       MirTy ty = MIR_VOID;
@@ -856,7 +856,10 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   enter(fn, head);
   /* What the condition makes (a constant list read, a copy) lives for one trip: it goes before the test branches. */
   (void)fn_scope_begin(fn);
+  const bool saved_temps = fn->temps;
+  fn->temps = saved_temps || fn_expr_has_temporary(fn, stmt->u.loop.cond); /* its temporaries close on each trip */
   const MirValue cond = fn_expr(fn, stmt->u.loop.cond, LW_BORROW);
+  fn->temps = saved_temps;
   if (cond == MIR_NONE) {
     return false;
   }

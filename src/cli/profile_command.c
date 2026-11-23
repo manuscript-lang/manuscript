@@ -16,6 +16,7 @@
 #include "base/utf8.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/checked_input.h"
+#include "cli/build_command.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
 #include "cli/profile_folded.h"
@@ -612,6 +613,9 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
     ms_path_remove_tree(profile->output); /* this run made the directory, and a failed build must not block a retry */
     print_span(stderr, ms_message_format(profile->arena, "%S\n", error));
     return fail(profile, "build", error, STATUS_FAILED);
+  }
+  if (!ms_build_metadata_write(profile->arena, profile->program, invocation->build_type)) {
+    return fail(profile, "build", ms_span_of_text("cannot write the build metadata beside the program"), STATUS_FAILED);
   }
   add_artifact(profile, "executable", profile->program, "verified");
   const MsString temp = ms_temp_dir();

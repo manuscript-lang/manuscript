@@ -237,6 +237,10 @@ static bool has_back_edge(const MirFunc *func) {
 static const char *size_tier(const EmitCx *cx, uint32_t lines) {
   bool huge = lines > EMIT_HUGE_FUNCTION_LINES ||
               (lines > EMIT_LOOPFREE_HUGE_FUNCTION_LINES && !has_back_edge(cx->func));
+  if (lines > EMIT_HUGE_FUNCTION_LINES) {
+    /* The marker tells the linker to generate the whole module without optimizing (object.c). */
+    return cx->noinline ? " optnone \"ms-huge\"" : " optnone noinline \"ms-huge\"";
+  }
   if (huge) {
     return cx->noinline ? " optnone" : " optnone noinline"; /* `optnone` needs `noinline` */
   }

@@ -65,8 +65,11 @@ bool em_flag_of(const MirHash *map, MirValue key, MirValue *out) {
 
 void em_discard(ElEm *em, uint32_t at, MirValue value) {
   MirValue handle = MIR_NONE;
-  if (em_flag_of(&em->handles, value, &handle) && em->cx->discard != MIR_NONE) {
-    em_push(em, at, MOP_CallRt, &handle, 1, mir_imm_ext(em->cx->discard), MIR_VOID);
+  /* Cancel, not discard, for an entry a newer entry of an outer scope (a name bound by the statement that ends) sits above. */
+  const bool late = value < em->cx->nvalues0 && mir_bits_test(&em->cx->cancel_end, value);
+  const uint32_t drop = late && em->cx->cancel != MIR_NONE ? em->cx->cancel : em->cx->discard;
+  if (em_flag_of(&em->handles, value, &handle) && drop != MIR_NONE) {
+    em_push(em, at, MOP_CallRt, &handle, 1, mir_imm_ext(drop), MIR_VOID);
   }
 }
 

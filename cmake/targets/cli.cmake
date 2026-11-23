@@ -1,6 +1,6 @@
 ms_executable(ms cli
   SOURCES
-    pipeline.c backend.c emit_command.c diagram_command.c review_command.c search_symbol_command.c search_project.c
+    install_layout.c pipeline.c backend.c emit_command.c diagram_command.c review_command.c search_symbol_command.c search_project.c
     fault_record.c inspect_command.c main.c phases.c check_command.c verify_command.c json_value.c fmt_command.c
     check_fix.c checked_input.c findings.c check_selection.c display.c fmt_targets.c fmt_labels.c init_command.c
     invocation.c invocation_rules.c build_type.c build_command.c run_command.c test_command.c test_document.c
@@ -25,6 +25,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_test(NAME smoke_run_static COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DRUN_FLAGS=--static
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
+
+# Every bundled standard-library body checks: `ms check` and `ms lint` check only the bodies a program reaches.
+file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void:\n    return\n")
+add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)
 
 # `ms add`, `ms install` and `ms remove` against a local git repository.
 add_test(NAME package_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/package

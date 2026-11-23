@@ -12,7 +12,21 @@
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 
+typedef struct SeenModule {
+  uint8_t *uses;
+  uint32_t *taken;
+  size_t count;
+} SeenModule;
+
+struct MsUsesSeen {
+  unsigned runs; /* full or partial runs so far: marking settles only after two full ones */
+  SeenModule *modules;
+  size_t count;
+};
+
 typedef struct Uses {
+  const MsUsesSeen *seen; /* the run before, or NULL when every callable is marked */
+  bool dirty;             /* the callable being scanned reaches a changed input */
   MsCheckProgram *program;
   uint32_t module;
   bool report; /* the pass that only reports moves out of a borrowed call result: its markings are discarded */
@@ -223,13 +237,8 @@ bool ms_own_consuming_method(const MsCheckProgram *program, const MsRef *callee)
   if (callee->kind != MS_REF_METHOD) {
     return false;
   }
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->module == callee->decl.module && entry->source->id == callee->decl.node) {
-      return entry->source->consuming;
-    }
-  }
-  return false;
+  const MsMethodEntry *entry = ms_check_method_at(program, callee->decl.module, callee->decl.node);
+  return entry != NULL && entry->source->consuming;
 }
 
 static void visit_call(Uses *pass, const MsExpr *call) {
@@ -632,7 +641,43 @@ static void consume_loops(void *ctx, const MsStmt *stmt) {
   }
 }
 
+/* Whether a call in the unit being scanned reaches a changed taken mask, or a lambda's use changed. */
+static void note_changed_input(void *ctx, const MsExpr *expr) {
+  Uses *pass = ctx;
+  const MsUsesSeen *seen = pass->seen;
+  if (pass->dirty) {
+    return;
+  }
+  bool changed = false;
+  if (expr->kind == MS_E_LAMBDA) {
+    const SeenModule *mine = &seen->modules[pass->module];
+    changed = expr->id < mine->count && mine->uses[expr->id] != pass->facts->uses[expr->id];
+  } else if (expr->kind == MS_E_CALL) {
+    const MsCall *fact = ms_facts_call(pass->facts, expr->id);
+    if (fact != NULL && (fact->callee.kind == MS_REF_FUNCTION || fact->callee.kind == MS_REF_METHOD)) {
+      const uint32_t module = fact->callee.decl.module;
+      const uint32_t node = fact->callee.decl.node;
+      const uint32_t before = module < seen->count && node < seen->modules[module].count ? seen->modules[module].taken[node] : 0;
+      changed = before != ms_own_taken_mask(pass->program, module, node);
+    }
+  }
+  pass->dirty = pass->dirty || changed;
+}
+
+/* Whether marking the callable again could differ from the last run. */
+static bool needs_marking(Uses *pass, MsParams params, MsStmts body) {
+  if (pass->seen == NULL) {
+    return true;
+  }
+  pass->dirty = false;
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = note_changed_input}, params, body);
+  return pass->dirty;
+}
+
 static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consuming) {
+  if (!needs_marking(pass, params, body)) {
+    return;
+  }
   pass->params = params;
   pass->body = body;
   pass->arms.len = 0;
@@ -673,10 +718,10 @@ static void mark_module(Uses *pass, const MsModule *tree) {
   }
 }
 
-static void run_uses(MsCheckProgram *program, bool report) {
+static void run_uses(MsCheckProgram *program, bool report, const MsUsesSeen *seen) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->modules.len; module++) {
-    Uses pass = {.program = program, .module = module, .report = report, .classes = &classes, .facts = &program->modules.ptr[module].facts,
+    Uses pass = {.program = program, .module = module, .report = report, .seen = seen, .classes = &classes, .facts = &program->modules.ptr[module].facts,
                  .names = program->names, .assigned = UINT32_MAX};
     if (pass.facts->uses == NULL) {
       continue;
@@ -691,8 +736,51 @@ static void run_uses(MsCheckProgram *program, bool report) {
   ms_class_free(&classes);
 }
 
-void ms_own_uses(MsCheckProgram *program) {
-  run_uses(program, false);
+void ms_own_uses_seen_free(MsUsesSeen *seen) {
+  for (size_t module = 0; seen != NULL && module < seen->count; module++) {
+    free(seen->modules[module].uses);
+    free(seen->modules[module].taken);
+  }
+  if (seen != NULL) {
+    free(seen->modules);
+    free(seen);
+  }
+}
+
+/* Records the columns as the run left them. */
+static MsUsesSeen *take_seen(MsCheckProgram *program, MsUsesSeen *old) {
+  const unsigned runs = old == NULL ? 1 : old->runs + 1;
+  ms_own_uses_seen_free(old);
+  MsUsesSeen *seen = calloc(1, sizeof *seen);
+  if (seen == NULL) {
+    return NULL;
+  }
+  seen->runs = runs;
+  seen->count = program->modules.len;
+  seen->modules = calloc(seen->count + 1, sizeof *seen->modules);
+  for (size_t module = 0; seen->modules != NULL && module < seen->count; module++) {
+    const MsFacts *facts = &program->modules.ptr[module].facts;
+    SeenModule *mine = &seen->modules[module];
+    mine->count = facts->uses == NULL ? 0 : facts->node_count;
+    mine->uses = malloc(mine->count + 1);
+    mine->taken = calloc(mine->count + 1, sizeof *mine->taken);
+    if (mine->uses == NULL || mine->taken == NULL) {
+      ms_own_uses_seen_free(seen);
+      return NULL;
+    }
+    if (mine->count != 0) {
+      memcpy(mine->uses, facts->uses, mine->count);
+    }
+    if (mine->count != 0 && facts->taken != NULL) {
+      memcpy(mine->taken, facts->taken, mine->count * sizeof *mine->taken);
+    }
+  }
+  return seen;
+}
+
+void ms_own_uses(MsCheckProgram *program, MsUsesSeen **seen) {
+  run_uses(program, false, *seen != NULL && (*seen)->runs >= 2 ? *seen : NULL);
+  *seen = take_seen(program, *seen);
 }
 
 void ms_own_uses_report(MsCheckProgram *program) {
@@ -713,7 +801,7 @@ void ms_own_uses_report(MsCheckProgram *program) {
   if (saved == NULL) {
     return;
   }
-  run_uses(program, true);
+  run_uses(program, true, NULL);
   at = 0;
   for (uint32_t module = 0; module < program->modules.len; module++) {
     const MsFacts *facts = &program->modules.ptr[module].facts;

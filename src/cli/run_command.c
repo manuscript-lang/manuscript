@@ -1,6 +1,5 @@
 /* Owns `ms run` (run_command.h): builds a temporary executable and runs it, with the program's own standard streams
- * or, with --json, captured into one document. Port of crates/ms-cli/src/engine/run.rs. Not yet ported: --watch and
- * the structured `fault` member of a document. */
+ * or, with --json, captured into one document. Port of crates/ms-cli/src/engine/run.rs. Not yet ported: --watch. */
 #include "cli/run_command.h"
 
 #include <stdio.h>
@@ -12,6 +11,7 @@
 #include "base/process.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/checked_input.h"
+#include "cli/fault_record.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
 #include "cli/watch.h"
@@ -85,6 +85,27 @@ static MsSpan read_text(MsArena *arena, MsSpan path) {
   return text;
 }
 
+/* Appends `,\n  "fault": {...}` for the record at `path`, moving the object from the six-space nesting of
+ * fault_record_json to two; nothing when the process left no record. */
+static void append_fault(MsStrBuild *out, MsArena *arena, MsSpan path) {
+  const MsSpan json = fault_record_json(arena, read_text(arena, path));
+  if (json.len == 0) {
+    return;
+  }
+  ms_strbuild_append_text(out, ",\n  \"fault\": ");
+  for (size_t i = 0; i < json.len; i++) {
+    ms_strbuild_append(out, (MsSpan){json.ptr + i, 1});
+    if (json.ptr[i] != '\n') {
+      continue;
+    }
+    size_t spaces = 0;
+    while (spaces < 4 && i + 1 < json.len && json.ptr[i + 1] == ' ') {
+      i++;
+      spaces++;
+    }
+  }
+}
+
 /* Starts the executable with the program's arguments; the process status is its own. */
 static int execute(const RunContext *context, MsSpan executable, MsSpan directory) {
   const MsInvocation *invocation = context->invocation;
@@ -95,7 +116,10 @@ static int execute(const RunContext *context, MsSpan executable, MsSpan director
   }
   const MsSpan out_path = ms_message_format(context->arena, "%S/stdout", directory, (MsSpan){0});
   const MsSpan err_path = ms_message_format(context->arena, "%S/stderr", directory, (MsSpan){0});
+  const MsSpan record_path = ms_message_format(context->arena, "%S/fault", directory, (MsSpan){0});
+  const MsSpan record_env = ms_message_format(context->arena, "MS_FAULT_RECORD=%S", record_path, (MsSpan){0});
   const MsProcessSpec spec = {.argv = argv.ptr, .argc = argv.len, .log_path = out_path, .error_path = err_path,
+                              .env = invocation->json ? &record_env : NULL, .envc = invocation->json ? 1 : 0,
                               .inherit = !invocation->json};
   MsStrBuild why = ms_strbuild_new();
   int status = 0;
@@ -106,6 +130,7 @@ static int execute(const RunContext *context, MsSpan executable, MsSpan director
   } else if (invocation->json) {
     MsStrBuild out = ms_strbuild_new();
     begin_document(&out, context, status, read_text(context->arena, out_path), read_text(context->arena, err_path));
+    append_fault(&out, context->arena, record_path);
     ms_strbuild_append_text(&out, ",\n  \"diagnostics\": []\n}\n");
     print_span(stdout, ms_strbuild_span(&out));
     ms_strbuild_free(&out);

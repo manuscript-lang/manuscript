@@ -59,7 +59,7 @@ void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
   }
   fn_presolve_keys(fn, container);
   const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved)) {
     return;
   }
   const MirValue value = fn_expr(fn, key, LW_BORROW);
@@ -99,6 +99,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     return element;
   }
   if (fn_list_element_addr(fn, place, &element)) {
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
+  if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &element)) { /* a field of a closing local changes where it lies */
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
   }
@@ -383,6 +387,15 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
         const MsTy param = ms_ty_subst(&fn->cx->program->types, ms_ty_params(types, call->callee_ty)[at].ty, fn->subst.vars, fn->subst.args,
                                        fn->subst.count);
         pending[index] = fn_pending_own(fn, param, out[index]);
+      }
+    } else if (arg->source == MS_ARG_MISSING_VALUE) {
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = ms_ty_param_count(types, call->callee_ty);
+      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      out[index] = fn_missing_value(fn, expr->pos);
+      if (out[index] != MIR_NONE && (ms_ty_params(types, call->callee_ty)[at].flags & MS_PARAM_LIFTED) != 0) {
+        const MirTy opt = mir_ty_opt(fn->cx->module, mir_b_ty(&fn->b, out[index])); /* an omittable parameter is passed as an optional */
+        out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, opt);
       }
     } else {
       const MsTyTable *types = &fn->cx->program->types;
