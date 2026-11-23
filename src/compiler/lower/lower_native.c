@@ -4,7 +4,7 @@
  * one MIR instruction are written out here: copying a string is `clone`, and joining two strings is the concat
  * function with its result fresh. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* `msrt_<receiver>_<operation>`: the receiver's type name lowercased. */

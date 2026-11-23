@@ -2,7 +2,7 @@
  * substitution of the instance being lowered, so MIR never sees a variable. */
 #include "compiler/lower/lower_internal.h"
 #include "compiler/check/methods.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 
 static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
   if (subst == NULL || subst->count == 0 || !ms_ty_has_variable(&cx->program->types, ty)) {

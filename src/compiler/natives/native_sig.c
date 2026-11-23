@@ -1,5 +1,5 @@
-/* compiler/lower/native_sig.c: looks a runtime native up in the generated table of signatures. */
-#include "compiler/lower/native_sigs.h"
+/* compiler/natives/native_sig.c: looks a runtime native up in the generated table of signatures. */
+#include "compiler/natives/native_sigs.h"
 
 const MsNativeSig *ms_native_sig_find(MsSpan name) {
   for (unsigned at = 0; at < ms_native_sig_count; at++) {

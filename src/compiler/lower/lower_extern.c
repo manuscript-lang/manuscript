@@ -5,7 +5,7 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/check/effects_directives.h"
 #include "compiler/mir/mir_json_tree.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* ---- externs that return `T!` ---- */
