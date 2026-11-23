@@ -75,7 +75,7 @@ test "rate limiter rejects a count or burst below one":
 
 test "rate limiter refills a full maximum burst without overflowing":
 	var limiter = rate_limiter(1, burst: 9223372036854775807)?
-	limiter.stamp -= Duration(nanos: 1000000000)
+	limiter.stamp = limiter.stamp.shift(Duration(nanos: -1000000000))
 	expect_true(limiter.try_acquire())?
 	expect_equal(limiter.tokens, 9223372036854775807 - 1)?
 

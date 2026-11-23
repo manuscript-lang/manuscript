@@ -20,6 +20,9 @@ typedef struct MsAllocator {
  * any other thread starts: blocks must be freed by the allocator that made them. */
 void ms_alloc_install(const MsAllocator *allocator);
 
+/* The allocations the calling thread has made and the bytes they asked for (a resize counts as one more). */
+void ms_alloc_counts(int64_t *allocations, int64_t *bytes);
+
 /* `size` bytes, uninitialised, aligned for any scalar. size 0 gives a valid block. */
 MS_NODISCARD MS_RETURNS_NONNULL void *ms_alloc(size_t size);
 

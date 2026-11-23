@@ -138,24 +138,48 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
          case_target(body, callee, callee->u.sym, owner, target);
 }
 
+/* Whether a call of `nargs` arguments fills the parameters of `match`. */
+static bool fits_arguments(const Body *body, const MsMethodMatch *match, size_t nargs) {
+  const size_t total = ms_ty_param_count(&body->program->types, match->ty);
+  size_t required = 0;
+  for (size_t at = 0; at < total; at++) {
+    const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
+    const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
+    const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
+                                                                       : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
+    required += defaulted ? 0 : 1;
+  }
+  return nargs >= required && nargs <= total;
+}
+
 /* The match whose parameters a call of `nargs` arguments fills; the first when none does. */
 static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchList *found, size_t nargs) {
   for (size_t index = 0; index < found->len; index++) {
-    const MsMethodMatch *match = &found->ptr[index];
-    const size_t total = ms_ty_param_count(&body->program->types, match->ty);
-    size_t required = 0;
-    for (size_t at = 0; at < total; at++) {
-      const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
-      const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
-      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
-                                                                         : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
-      required += defaulted ? 0 : 1;
-    }
-    if (nargs >= required && nargs <= total) {
-      return match;
+    if (fits_arguments(body, &found->ptr[index], nargs)) {
+      return &found->ptr[index];
     }
   }
   return &found->ptr[0];
+}
+
+/* More than one implementation provides the member for this many arguments: reports it and answers true. */
+static bool report_ambiguous(Body *body, const MsExpr *callee, MsTy receiver, const MsMethodMatchList *found,
+                             size_t nargs) {
+  size_t fitting = 0;
+  for (size_t index = 0; index < found->len; index++) {
+    fitting += fits_arguments(body, &found->ptr[index], nargs) ? 1 : 0;
+  }
+  if (fitting < 2 || body->module >= body->program->user_modules || body->quiet) {
+    return fitting >= 2;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "ambiguous member ");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, callee->u.member.name));
+  ms_strbuild_append_text(&text, " on ");
+  ms_ty_show(&text, body->program->names, &body->program->types, receiver);
+  ms_strbuild_append_text(&text, "; more than one implementation provides it");
+  ms_check_report(body->program, body->module, callee->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  return true;
 }
 
 /* The method a member name calls: `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`. */
@@ -173,6 +197,11 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
   MsMethodMatchList found = {0};
   ms_check_find_method(body->program, receiver, called_name(body, callee, receiver), &found);
   bool ok = found.len != 0;
+  if (ok && report_ambiguous(body, callee, receiver, &found, target->nargs)) {
+    ms_method_match_list_free(&found);
+    body_set_ref(body, callee->id, target->ref);
+    return false;
+  }
   if (ok) {
     const MsMethodMatch *match = pick_overload(body, &found, target->nargs);
     target->sig = match->ty;
@@ -726,6 +755,48 @@ static void append_callee_name(const Body *body, MsStrBuild *out, const MsExpr *
   }
 }
 
+/* `Int("1")`: a primitive type is built from a literal or a standard function, not called. */
+static bool report_builtin_constructor(Body *body, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind != MS_E_NAME || body_find_local(body, callee->u.sym) != NULL) {
+    return false;
+  }
+  if (body_find_symbol(body, callee->u.sym) != NULL ||
+      ms_builtin_primitive(ms_names_span(body->program->names, callee->u.sym)) == MS_BUILTIN_NONE) {
+    return false;
+  }
+  const MsSpan name = ms_names_span(body->program->names, callee->u.sym);
+  for (size_t index = 0; index < body->program->diagnostics.len; index++) { /* a declaration reusing the name is rejected */
+    const MsCheckDiag *diag = &body->program->diagnostics.ptr[index];
+    const MsSpan message = ms_string_span(&diag->message);
+    MsStrBuild reused = ms_strbuild_new();
+    ms_strbuild_append_text(&reused, "duplicate or intrinsic name ");
+    ms_strbuild_append(&reused, name);
+    ms_strbuild_append_text(&reused, ";");
+    const bool match = diag->module == body->module && ms_span_starts_with(message, ms_strbuild_span(&reused));
+    ms_strbuild_free(&reused);
+    if (match) {
+      return true;
+    }
+  }
+  if (body->module < body->program->user_modules && !body->quiet) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "this type has no source constructor: ");
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, " is built in; write a literal or call a standard function that returns it");
+    if (ms_span_is_text(name, "String")) {
+      ms_strbuild_append_text(&text, "; make text with interpolation f\"{value}\" or value.to_string()");
+    } else if (ms_span_is_text(name, "Int")) {
+      ms_strbuild_append_text(&text, "; parse text with text.parse_int() (Int?); Float has truncate_to_int()");
+    } else if (ms_span_is_text(name, "Float")) {
+      ms_strbuild_append_text(&text, "; convert an Int with value.to_float(); parse text with parse_float (import parse_float "
+                                     "from \"@std/math/math.ms\")");
+    }
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  return true;
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -753,8 +824,11 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     MsTy hint[16] = {0};
     result_hint(body, &target, expected, hint);
     type_args(body, &target, expr, &matched, arg_tys, bound, hint);
+    matched.bound = bound;
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
+  } else if (report_builtin_constructor(body, expr)) {
+    /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {
     const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
     body->quiet = true;

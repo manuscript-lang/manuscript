@@ -429,6 +429,7 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List) && ms_ty_arg_count(types, receiver) == 1;
   (void)body_expr(body, index, map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int));
   if (list) {
+    body_check_constant_index(body, expr, left, index);
     return ms_ty_args(types, receiver)[0];
   }
   if (map) {
