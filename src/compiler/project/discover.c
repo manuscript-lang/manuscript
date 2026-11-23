@@ -62,6 +62,54 @@ static int64_t entry_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   return (x->kind == MS_PATH_DIRECTORY) - (y->kind == MS_PATH_DIRECTORY);
 }
 
+enum { NESTED_DEPTH = 6, NESTED_SHOWN = 4 };
+
+/* The directories below `dir` that hold their own ms.toml, as paths relative to the walk's start (`prefix`), not
+ * descending into one. */
+static void collect_nested(MsArena *arena, MsSpan dir, MsSpan prefix, size_t depth, MsSpanList *found) {
+  MsDirEntryList entries = {0};
+  if (depth > NESTED_DEPTH || !ms_dir_list(dir, &entries)) {
+    return;
+  }
+  ms_sort((uint8_t *)entries.ptr, entries.len, sizeof(MsDirEntry), entry_order, NULL);
+  for (size_t i = 0; i < entries.len; i++) {
+    const MsSpan name = ms_string_span(&entries.ptr[i].name);
+    if (entries.ptr[i].kind != MS_PATH_DIRECTORY || ms_project_skips_name(name)) {
+      continue;
+    }
+    const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
+    const MsSpan shown = prefix.len == 0 ? name : ms_message_format(arena, "%S/%S", prefix, name);
+    if (is_nested_project(arena, path)) {
+      ms_span_list_push(found, ms_arena_copy(arena, shown));
+    } else {
+      collect_nested(arena, path, shown, depth + 1, found);
+    }
+  }
+  ms_dir_entries_free(&entries);
+}
+
+MsSpan ms_project_nested_hint(MsArena *arena, MsSpan dir) {
+  MsSpanList found = {0};
+  collect_nested(arena, dir, (MsSpan){0}, 0, &found);
+  if (found.len == 0) {
+    return (MsSpan){0};
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "; it holds the projects ");
+  for (size_t i = 0; i < found.len && i < NESTED_SHOWN; i++) {
+    ms_strbuild_append_text(&text, i == 0 ? "" : ", ");
+    ms_strbuild_append(&text, found.ptr[i]);
+  }
+  if (found.len > NESTED_SHOWN) {
+    ms_strbuild_printf(&text, " and %zu more", found.len - NESTED_SHOWN);
+  }
+  ms_strbuild_append_text(&text, ", so name one's ms.toml or run the command inside one");
+  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  ms_span_list_free(&found);
+  return copy;
+}
+
 /* Whether a directory is entered: not the hidden, vendored or nested ones, but always the scan's own root. */
 static bool enters(const Scan *scan, MsSpan scan_root, bool all, MsSpan path, MsSpan name) {
   if (scan->include_source && !all && ms_span_equal(path, scan->source)) {

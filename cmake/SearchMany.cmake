@@ -1,6 +1,6 @@
-# `ms search_symbol` over a folder with more .ms files than its budget: it answers from the first files in name order and
-# says so, instead of spending a check per file on the whole tree:
-# `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/SearchBudget.cmake`.
+# `ms search_symbol` over a folder of many .ms files searches all of them, in batches that share one standard-library
+# check:
+# `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/SearchMany.cmake`.
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
@@ -22,17 +22,12 @@ function(search query out_text out_error)
   set(${out_error} "${error}" PARENT_SCOPE)
 endfunction()
 
-# Every file matches; the total counts only the 120 searched, and the answer says the tree was cut.
+# Every file matches and every file is searched: the total counts all 130, and nothing is left out.
 search("probe_ --json" text error)
-string(FIND "${text}" "\"project_total\": 120," at)
+string(FIND "${text}" "\"project_total\": 130," at)
 if(at EQUAL -1)
-  message(FATAL_ERROR "expected 120 project matches:\n${text}")
+  message(FATAL_ERROR "expected 130 project matches:\n${text}")
 endif()
-string(FIND "${error}" "searched the first 120 .ms files" at)
-if(at EQUAL -1)
-  message(FATAL_ERROR "no notice that the search was cut:\n${error}")
-endif()
-string(FIND "${error}" "narrower folder" at)
-if(at EQUAL -1)
-  message(FATAL_ERROR "no hint to narrow the folder:\n${error}")
+if(NOT "${error}" STREQUAL "")
+  message(FATAL_ERROR "unexpected notice:\n${error}")
 endif()
