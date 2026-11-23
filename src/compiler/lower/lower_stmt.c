@@ -479,7 +479,10 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
   const MirValue args[3] = {receiver, at, value};
   MirValue out = MIR_NONE;
   const MsSpan operation = ms_span_of_text(ms_ty_is(types, owner, MS_BUILTIN_Map) ? "add" : "set");
-  if (!fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out)) {
+  fn->native_arg_moves = 1u << 2; /* the stored value is owned and held by no scope: the container takes it */
+  const bool done = fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out);
+  fn->native_arg_moves = 0;
+  if (!done) {
     return fn_fail(fn, "an element of this container cannot be assigned yet");
   }
   return !fn->failed;
