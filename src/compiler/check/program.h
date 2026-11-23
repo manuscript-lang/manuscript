@@ -83,6 +83,15 @@ typedef struct MsTypeRefRecord {
 
 MS_LIST_DEFINE(MsTypeRefRecordList, ms_type_ref_record_list, MsTypeRefRecord)
 
+/* A written generic type whose arguments await the bound check, which needs every method declared first. */
+typedef struct MsPendingBound {
+  uint32_t module;
+  MsPos pos;
+  MsTy ty;
+} MsPendingBound;
+
+MS_LIST_DEFINE(MsPendingBoundList, ms_pending_bound_list, MsPendingBound)
+
 typedef enum MsCheckPhase { MS_CHECK_RESOLUTION, MS_CHECK_TYPE } MsCheckPhase;
 
 /* Where in the oracle's order a diagnostic is found: imports, then the declaration passes, then each body. The
@@ -119,6 +128,7 @@ typedef struct MsCheckProgram {
   MsCheckDiagList diagnostics;
   MsLocalRecordList bindings; /* every local, parameter and loop or match variable the bodies declared */
   MsTypeRefRecordList type_refs; /* every written type of the user's modules, as resolved */
+  MsPendingBoundList pending_bounds;
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */

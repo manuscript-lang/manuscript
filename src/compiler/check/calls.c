@@ -845,7 +845,11 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     MsTy hint[16] = {0};
     result_hint(body, &target, expected, hint);
     type_args(body, &target, expr, &matched, arg_tys, bound, hint);
-    matched.bound = bound;
+    MsTy *shown = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, target.vars.len + 1);
+    for (size_t index = 0; index < target.vars.len; index++) { /* the expected result fixes what the arguments left open */
+      shown[index] = bound[index] != MS_TY_NONE || index >= 16 ? bound[index] : hint[index];
+    }
+    matched.bound = shown;
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
     /* an argument that already disagreed with the expected result's type is the one error: the call has that type */

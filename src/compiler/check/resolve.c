@@ -5,6 +5,9 @@
  * without a diagnostic. A name given type arguments becomes the nominal type applied to them. */
 #include "compiler/check/resolve_internal.h"
 #include "compiler/check/std_exports.h"
+#include "compiler/check/bounds.h"
+#include "compiler/check/suggest.h"
+#include <string.h>
 
 static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",
@@ -109,7 +112,46 @@ static MsSpan type_habit(MsSpan name) {
 }
 
 /* Appends the oracle's advice for an unknown type; fills `statement` with the import it names, when it does. */
-static void unknown_type_advice(MsCheckProgram *program, MsSpan name, MsStrBuild *text, MsStrBuild *statement) {
+/* The type names a misspelling could mean: type variables, primitives, the prelude and the module's own and imported types. */
+static void type_candidates(const Resolver *resolver, MsSpanList *out) {
+  static const char *const PRIMITIVES[] = {"Int",   "Int8",   "Int16",  "Int32",   "Int64",   "UInt8",   "UInt16",
+                                           "UInt32", "UInt64", "Float",  "Float32", "Float64", "Bool",    "String", "Void"};
+  const MsCheckProgram *program = resolver->program;
+  for (size_t index = 0; index < resolver->names.len; index++) {
+    ms_span_list_push(out, ms_names_span(program->names, resolver->names.ptr[index]));
+  }
+  for (size_t index = 0; index < MS_COUNT_OF(PRIMITIVES); index++) {
+    ms_span_list_push(out, ms_span_of_text(PRIMITIVES[index]));
+  }
+  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_TYPES); index++) {
+    if (strcmp(PRELUDE_TYPES[index], "Optional") != 0) {
+      ms_span_list_push(out, ms_span_of_text(PRELUDE_TYPES[index]));
+    }
+  }
+  const MsModuleInfo *module = &program->modules.ptr[resolver->module];
+  const MsScope *scopes[2] = {&module->scope, &module->imports};
+  for (size_t at = 0; at < 2; at++) {
+    size_t cursor = 0;
+    MsName key = 0;
+    MsSymbolId *id = NULL;
+    while (ms_scope_next(scopes[at], &cursor, &key, &id)) {
+      if (*id != 0 && program->symbols.ptr[*id].kind == MS_SYMBOL_TYPE) {
+        ms_span_list_push(out, ms_names_span(program->names, key));
+      }
+    }
+  }
+}
+
+static bool did_you_mean(const Resolver *resolver, MsSpan name, MsStrBuild *text) {
+  MsSpanList candidates = {0};
+  type_candidates(resolver, &candidates);
+  const bool found = ms_suggest_did_you_mean(text, name, &candidates);
+  ms_span_list_free(&candidates);
+  return found;
+}
+
+static void unknown_type_advice(const Resolver *resolver, MsSpan name, MsStrBuild *text, MsStrBuild *statement) {
+  MsCheckProgram *program = resolver->program;
   MsStrBuild module_path = ms_strbuild_new();
   const MsSpan habit = type_habit(name);
   if (ms_std_exporter(program, name, true, &module_path)) {
@@ -132,6 +174,8 @@ static void unknown_type_advice(MsCheckProgram *program, MsSpan name, MsStrBuild
     ms_strbuild_append_text(text, "; did you mean '");
     ms_strbuild_append(text, habit);
     ms_strbuild_append_text(text, "'?");
+  } else if (did_you_mean(resolver, name, text)) {
+    /* a near miss of a type that is in scope */
   } else {
     ms_strbuild_append_text(text, "; declare it with 'type ");
     ms_strbuild_append(text, name);
@@ -151,7 +195,7 @@ static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   const MsSpan name = ms_names_span(program->names, type->name);
   ms_strbuild_append_text(&text, "unknown type ");
   ms_strbuild_append(&text, name);
-  unknown_type_advice(program, name, &text, &statement);
+  unknown_type_advice(resolver, name, &text, &statement);
   ms_check_report(program, resolver->module, type->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
   if (ms_strbuild_length(&statement) != 0) {
     const MsPos start = {.offset = 0, .line = 1, .column = 1};
@@ -215,6 +259,30 @@ static void report_arity(Resolver *resolver, const MsTypeRef *type, MsTy base, s
   ms_check_report(program, resolver->module, type->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* A written type argument that does not satisfy the bound of the parameter it fills. */
+static void report_unsatisfied(MsCheckProgram *program, uint32_t module, MsPos pos, MsTy applied) {
+  const MsTyRow *row = ms_ty_row(&program->types, applied);
+  const MsDef *def = row->def == 0 ? NULL : ms_defs_get(&program->defs, row->def);
+  const MsTy *args = ms_ty_args(&program->types, applied);
+  for (size_t index = 0; def != NULL && index < def->variables.len && index < row->arg_count; index++) {
+    MsString why = ms_string_empty();
+    if (args[index] == MS_TY_NONE || ms_ty_is_invalid(&program->types, args[index]) ||
+        ms_check_bounds_hold_with(program, def->variables.ptr[index], args[index], def->variables.ptr, args,
+                                  def->variables.len, "use a type that implements it", &why)) {
+      continue;
+    }
+    ms_check_report(program, module, pos, MS_CHECK_TYPE, why);
+  }
+}
+
+void ms_check_flush_pending_bounds(MsCheckProgram *program) {
+  for (size_t index = 0; index < program->pending_bounds.len; index++) {
+    const MsPendingBound pending = program->pending_bounds.ptr[index];
+    report_unsatisfied(program, pending.module, pending.pos, pending.ty);
+  }
+  program->pending_bounds.len = 0;
+}
+
 /* The nominal type `base` applied to the arguments written after its name. */
 static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   MsTyList args = {0};
@@ -235,6 +303,13 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
     report_arity(resolver, type, base, type->args.len, arity, required);
   }
   const MsTy applied = resolver_apply(resolver->program, base, args.ptr, args.len);
+  if (resolver->report && args.len == arity && arity != 0) {
+    if (program->stage == MS_STAGE_DECLARATIONS) { /* signatures resolve before the methods that satisfy bounds */
+      ms_pending_bound_list_push(&program->pending_bounds, (MsPendingBound){resolver->module, type->pos, applied});
+    } else {
+      report_unsatisfied(program, resolver->module, type->pos, applied);
+    }
+  }
   ms_ty_list_free(&args);
   return applied;
 }
