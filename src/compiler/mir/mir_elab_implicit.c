@@ -10,22 +10,24 @@
  * result's owner takes over. */
 static MirBits named_values(MsArena *ma, const MirFunc *func, MirBits *alias_moved) {
   MirBits named = mir_bits_new(ma, (uint32_t)func->values.len + 1);
-  MirBits disowned = mir_bits_new(ma, (uint32_t)func->values.len + 1);
   MirBits carried = mir_bits_new(ma, (uint32_t)func->values.len + 1);
   for (size_t b = 0; b < func->blocks.len; b++) {
     const MirInstList *insts = &func->blocks.ptr[b].insts;
+    MirBits here = mir_bits_new(ma, (uint32_t)func->values.len + 1); /* disowned in this block */
     for (size_t i = 0; i < insts->len; i++) {
       const MirInst *inst = &insts->ptr[i];
+      for (uint32_t a = 0; inst->op == MOP_ScopeDisown && a < inst->nargs; a++) {
+        mir_bits_set(&here, inst->args[a]);
+      }
       const bool marker = inst->op == MOP_ScopeOwn || inst->op == MOP_ScopeMark ||
                           inst->op == MOP_ScopeUnpin;
       for (uint32_t a = 0; marker && a < inst->nargs; a++) {
         mir_bits_set(&named, inst->args[a]);
       }
-      for (uint32_t a = 0; inst->op == MOP_ScopeDisown && a < inst->nargs; a++) {
-        mir_bits_set(&disowned, inst->args[a]);
-      }
       for (uint32_t a = 0; inst->op == MOP_Put && a < inst->nargs; a++) {
-        mir_bits_set(&carried, inst->args[a]); /* stored into a slot that keeps it */
+        if (!mir_bits_test(&here, inst->args[a])) {
+          mir_bits_set(&carried, inst->args[a]); /* stored into a slot that keeps it */
+        }
       }
     }
     /* A value carried on an edge or returned leaves its scope by that edge: lowering ended its ownership there. */
@@ -33,15 +35,17 @@ static MirBits named_values(MsArena *ma, const MirFunc *func, MirBits *alias_mov
     for (uint32_t t = 0; t < mir_term_ntargets(term); t++) {
       const MirTarget *edge = mir_term_target(term, t);
       for (uint32_t a = 0; a < edge->nargs; a++) {
-        mir_bits_set(&carried, edge->args[a]);
+        if (!mir_bits_test(&here, edge->args[a])) {
+          mir_bits_set(&carried, edge->args[a]);
+        }
       }
     }
-    if (term->value != MIR_NONE && term->kind == MT_RET) {
+    if (term->value != MIR_NONE && term->kind == MT_RET && !mir_bits_test(&here, term->value)) {
       mir_bits_set(&carried, term->value);
     }
   }
   for (uint32_t v = 0; v < (uint32_t)func->values.len; v++) {
-    if (mir_bits_test(&carried, v) && !mir_bits_test(&disowned, v)) {
+    if (mir_bits_test(&carried, v)) {
       mir_bits_set(&named, v);
     }
   }
