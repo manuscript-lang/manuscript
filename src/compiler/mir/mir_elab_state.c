@@ -341,6 +341,7 @@ bool el_apply(ElCx *cx, ElState *state, const MirInst *inst) {
   }
   MirMode result = MM_BORROW;
   if (!consume_args(cx, state, inst) || !apply_take(cx, state, inst)) {
+    (void)ms_strbuild_printf(cx->error, " (by op %u)", (unsigned)inst->op);
     return false;
   }
   if (mir_result_mode(cx->m, cx->f, inst, &result) && result == MM_MOVE && inst->res != MIR_NONE) {
@@ -371,9 +372,18 @@ bool el_edge_state(ElCx *cx, const ElState *state, const MirTarget *target, ElSt
   *out = *state;
   const size_t count = target->nargs < dest->params.len ? target->nargs : dest->params.len;
   for (size_t index = 0; index < count; index++) {
+    ElSt kind = 0;
+    if (dest->params.ptr[index].mode == MM_MOVE && mir_needs_drop(cx->m, mir_value_ty(cx->f, target->args[index])) &&
+        el_get(out, target->args[index], &kind) && kind == EL_MOVED && !mh_has(&cx->disown_moves, target->args[index])) {
+      /* A variable that was moved out earlier travels on as a parameter (a loop carries it to the exits that
+       * settle it): the parameter is moved too, and nothing in the destination closes it. */
+      el_set(cx, out, dest->params.ptr[index].value, EL_MOVED);
+      continue;
+    }
     if (dest->params.ptr[index].mode == MM_MOVE &&
         mir_needs_drop(cx->m, mir_value_ty(cx->f, target->args[index])) &&
         !el_consume_value(cx, out, target->args[index])) {
+      (void)ms_strbuild_printf(cx->error, " (on the edge to b%u arg %zu)", (unsigned)target->block, index);
       return false;
     }
   }
@@ -442,7 +452,10 @@ static bool walk_block(ElCx *cx, uint32_t block, ElState *state) {
   uint32_t nparams = 0;
   const MirValue *params = el_own_params(cx, block, &nparams);
   for (uint32_t index = 0; index < nparams; index++) {
-    el_push(cx, state, params[index], EL_LIVE);
+    ElSt kind = 0;
+    if (!el_get(state, params[index], &kind)) { /* an edge may have brought it in as moved */
+      el_push(cx, state, params[index], EL_LIVE);
+    }
   }
   const MirBlockData *data = &cx->f->blocks.ptr[block];
   for (size_t index = 0; index < data->insts.len; index++) {

@@ -1,6 +1,8 @@
 /* compiler/mir/mir_elab.c: drop elaboration: places the scope-exit cleanup of every Raw function (see
  * mir_elab.h). This file reads the scope markers, runs the move-state dataflow and drives the emitter. */
 #include "compiler/mir/mir_elab.h"
+#include "compiler/mir/mir_print.h"
+#include <stdio.h>
 
 #include "base/env.h"
 #include "base/sort.h"
@@ -284,6 +286,25 @@ static bool run_one(MirModule *module, uint32_t index, const ElCx *shared, MsAre
   module->funcs.ptr[index] = func;
   mir_func_release(&stand_in);
   if (!ok) {
+    MsString dump = ms_string_empty();
+    if (ms_env_get("MS_ELAB_DUMP", &dump) && ms_string_span(&dump).len != 0) { /* the function elaboration rejected */
+      MsStrBuild text = ms_strbuild_new();
+      for (size_t b = 0; b < func.blocks.len; b++) {
+        for (size_t k = 0; k < func.blocks.ptr[b].params.len; k++) {
+          ms_strbuild_printf(&text, "param %u of b%u\n", (unsigned)func.blocks.ptr[b].params.ptr[k].value, (unsigned)b);
+        }
+        for (size_t i = 0; i < func.blocks.ptr[b].insts.len; i++) {
+          const MirInst *in = &func.blocks.ptr[b].insts.ptr[i];
+          if (in->res != MIR_NONE) {
+            ms_strbuild_printf(&text, "id %u = op %u in b%u\n", (unsigned)in->res, (unsigned)in->op, (unsigned)b);
+          }
+        }
+      }
+      mir_print_func(module, &func, &text);
+      (void)fwrite(ms_strbuild_span(&text).ptr, 1, ms_strbuild_span(&text).len, stderr);
+      ms_strbuild_free(&text);
+    }
+    ms_string_release(&dump);
     ms_strbuild_append(error, ms_names_span(&module->names, func.name));
     ms_strbuild_append_text(error, ": ");
     ms_strbuild_append(error, ms_strbuild_span(&message));

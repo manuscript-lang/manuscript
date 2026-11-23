@@ -72,7 +72,8 @@ static uint32_t moved_args(ElEm *em, const MirTarget *target, const ElFparams *f
   return nmoved;
 }
 
-static bool edge_build(ElEm *em, uint32_t cur, const MirTarget *target, const ElFparams *fparams, EmEdge *out) {
+static bool edge_build(ElEm *em, uint32_t cur, const ElState *state, const MirTarget *target, const ElFparams *fparams,
+                       EmEdge *out) {
   const MirBlockData *dest = &em->f->blocks.ptr[target->block];
   const ElFparams *fp = &fparams[target->block];
   MirValue *args = MS_ARENA_NEW_ARRAY(&em->m->arena, MirValue, (size_t)target->nargs + fp->key.len + 1);
@@ -98,7 +99,12 @@ static bool edge_build(ElEm *em, uint32_t cur, const MirTarget *target, const El
       continue;
     }
     const MirValue arg = args[used];
-    if (dest->params.ptr[p].mode == MM_MOVE && mir_needs_drop(em->m, mir_value_ty(em->f, arg))) {
+    ElSt kind = 0;
+    if (dest->params.ptr[p].mode == MM_MOVE && mir_needs_drop(em->m, mir_value_ty(em->f, arg)) &&
+        el_get(state, arg, &kind) && kind == EL_MOVED && !mh_has(&em->cx->disown_moves, arg)) {
+      /* The value left earlier and the parameter is moved with it: nothing is passed that anything could close. */
+      args[used] = em_push(em, at, MOP_Undef, NULL, 0, mir_imm_none(), mir_value_ty(em->f, arg));
+    } else if (dest->params.ptr[p].mode == MM_MOVE && mir_needs_drop(em->m, mir_value_ty(em->f, arg))) {
       args[used] = em_move_arg(em, at, arg);
     }
     used++;
@@ -137,13 +143,13 @@ static MirBlock make_trampoline(ElEm *em, MirTarget *target, const EmEdge *edge)
 }
 
 /* Each edge: the consumed owners retire their cleanup entry and the flags follow. */
-bool em_edges(ElEm *em, uint32_t cur, MirTerm *term, const ElFparams *fparams) {
+bool em_edges(ElEm *em, uint32_t cur, const ElState *state, MirTerm *term, const ElFparams *fparams) {
   const uint32_t ntargets = mir_term_ntargets(term);
   MirBlock *tramps = MS_ARENA_NEW_ARRAY(em->cx->ma, MirBlock, (size_t)ntargets + 1);
   EmEdge *edges = MS_ARENA_NEW_ARRAY(em->cx->ma, EmEdge, (size_t)ntargets + 1);
   for (uint32_t i = 0; i < ntargets; i++) {
     MirTarget *target = mir_term_target(term, i);
-    if (!edge_build(em, cur, target, fparams, &edges[i])) {
+    if (!edge_build(em, cur, state, target, fparams, &edges[i])) {
       return false;
     }
     if (edges[i].trampoline) {

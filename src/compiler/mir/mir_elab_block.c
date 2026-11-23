@@ -150,7 +150,10 @@ static bool emit_insts(ElEm *em, uint32_t block, const MirBlockData *old, ElStat
   uint32_t nparams = 0;
   const MirValue *params = el_own_params(em->cx, block, &nparams);
   for (uint32_t i = 0; i < nparams; i++) {
-    el_push(em->cx, state, params[i], EL_LIVE);
+    ElSt kind = 0;
+    if (!el_get(state, params[i], &kind)) {
+      el_push(em->cx, state, params[i], EL_LIVE);
+    }
     em_birth(em, *cur, params[i]);
   }
   for (size_t i = first; i < old->insts.len; i++) {
@@ -186,7 +189,7 @@ bool el_emit_block(ElEm *em, uint32_t block, const ElState *entry, const ElFpara
     em_discard(em, cur, returned);
   }
   MirTerm term = old.term;
-  ok = ok && em_edges(em, cur, &term, fparams);
+  ok = ok && em_edges(em, cur, &state, &term, fparams);
   func->blocks.ptr[cur].term = term;
   func->blocks.ptr[cur].term_loc = old.term_loc;
   mir_inst_list_free(&old.insts);

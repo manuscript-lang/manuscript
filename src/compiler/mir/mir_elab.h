@@ -175,7 +175,7 @@ bool em_exit(ElEm *em, uint32_t *cur, ElState *state, int64_t scope);
 bool em_cleanup_one(ElEm *em, uint32_t *at, MirValue value, ElSt state, MirValue *outcome);
 
 /* Edge, flag and slot-refill code (mir_elab_edge.c, mir_elab_flags.c). */
-bool em_edges(ElEm *em, uint32_t cur, MirTerm *term, const ElFparams *fparams);
+bool em_edges(ElEm *em, uint32_t cur, const ElState *state, MirTerm *term, const ElFparams *fparams);
 bool em_refill(ElEm *em, uint32_t *at, MirValue value, bool has_state, ElSt was);
 bool em_reregister(ElEm *em, uint32_t at, MirValue value, MirValue key, MirValue *handle);
 void em_cancel(ElEm *em, uint32_t at, MirValue value);
