@@ -258,13 +258,12 @@ export fn promise[U](
 ) Promise[U]:
 	id := msrt_promise_new()
 
+	work := fn: complete(id, entry())
+
 	match options.placement:
-		Placement.Any:
-			msrt_promise_start(id, fn: complete(id, entry()))
-		Placement.Spread:
-			msrt_promise_start_spread(id, fn: complete(id, entry()))
-		Placement.Here:
-			msrt_promise_start_here(id, fn: complete(id, entry()))
+		Placement.Any: msrt_promise_start(id, work)
+		Placement.Spread: msrt_promise_start_spread(id, work)
+		Placement.Here: msrt_promise_start_here(id, work)
 
 	limit(id, options)
 	return Promise[U](id: id)
