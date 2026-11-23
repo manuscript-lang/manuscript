@@ -58,6 +58,13 @@ jobs:
       - run: cmake --build --preset release
       - name: Assemble the archive and build the hello example with it alone
         run: cmake --build --preset release --target dist-smoke
+      - name: Diagnose a failed smoke test
+        if: failure() && matrix.container
+        run: |
+          dnf install -y gdb || true
+          root=$(ls -d .artifacts/build/release/dist-smoke/unpacked/manuscript-*)
+          cd "$root/examples/hello"
+          gdb -batch -ex 'set follow-fork-mode child' -ex 'set detach-on-fork off' -ex run -ex bt -ex 'info sharedlibrary' --args "$OLDPWD/$root/bin/ms" test test.ms 2>&1 | tail -60 || true
       # The shipped ms must run on glibc 2.28 (the floor of programs it builds, proposals/glibc-2-28-floor.md).
       - name: Check the glibc floor of ms
         if: matrix.os == 'linux'
