@@ -60,13 +60,19 @@ export extern fn msstd_url_resolve(base: Url, reference: String) move Url!
 
 export extern fn msstd_net_connection_close(handle: NativeConnection) Void
 
-export extern fn msstd_net_connection_share(handle: NativeConnection) move NativeConnection
+export extern fn msstd_net_connection_share(
+	handle: NativeConnection
+) move NativeConnection
 
-export extern fn msstd_net_connection_alias(handle: NativeConnection) move NativeConnection
+export extern fn msstd_net_connection_alias(
+	handle: NativeConnection
+) move NativeConnection
 
 export extern fn msstd_net_connection_close_if_last(handle: NativeConnection) Void
 
-export extern fn msstd_net_connection_local_address(handle: NativeConnection) move String
+export extern fn msstd_net_connection_local_address(
+	handle: NativeConnection
+) move String
 
 export extern fn msstd_net_connection_peer_address(handle: NativeConnection) move String
 
@@ -158,7 +164,9 @@ export extern fn msstd_websocket_ping(handle: NativeWebSocket, data: String) Voi
 
 export extern fn msstd_websocket_ping_bytes(handle: NativeWebSocket, data: Bytes) Void!
 
-export extern fn msstd_websocket_receive(handle: NativeWebSocket) move RawWebSocketMessage?!
+export extern fn msstd_websocket_receive(
+	handle: NativeWebSocket
+) move RawWebSocketMessage?!
 
 export extern fn msstd_websocket_send_bytes(
 	handle: NativeWebSocket,
@@ -199,7 +207,10 @@ export extern fn msstd_net_network_http_client(
 	options: HttpClientOptions,
 ) move HttpClient!
 
-export extern fn msstd_net_network_listen(net: NativeNetwork, address: String) move Listener!
+export extern fn msstd_net_network_listen(
+	net: NativeNetwork,
+	address: String,
+) move Listener!
 
 export extern fn msstd_net_network_listen_tls(
 	net: NativeNetwork,

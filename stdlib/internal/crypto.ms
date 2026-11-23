@@ -103,7 +103,11 @@ export extern fn msstd_crypto_rsa_decrypt(
 
 export extern fn msstd_crypto_digest(value: HashAlgorithm, data: Bytes) move Bytes
 
-export extern fn msstd_crypto_hmac(value: HashAlgorithm, key: Bytes, data: Bytes) move Bytes!
+export extern fn msstd_crypto_hmac(
+	value: HashAlgorithm,
+	key: Bytes,
+	data: Bytes,
+) move Bytes!
 
 export extern fn msstd_crypto_derive_key(
 	value: HashAlgorithm,

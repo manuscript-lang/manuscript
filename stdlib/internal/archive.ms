@@ -9,9 +9,15 @@ export type ArchiveLimits:
 	max_entry_bytes: Int?
 	max_total_bytes: Int?
 
-export extern fn msstd_compress_encoder_new(format: String, level: Int) move NativeEncoder!
+export extern fn msstd_compress_encoder_new(
+	format: String,
+	level: Int,
+) move NativeEncoder!
 
-export extern fn msstd_compress_encoder_push(encoder: NativeEncoder, data: Bytes) move Bytes
+export extern fn msstd_compress_encoder_push(
+	encoder: NativeEncoder,
+	data: Bytes,
+) move Bytes
 
 export extern fn msstd_compress_encoder_end(encoder: NativeEncoder) move Bytes
 
@@ -20,7 +26,10 @@ export extern fn msstd_compress_decoder_new(
 	max_bytes: Int?,
 ) move NativeDecoder!
 
-export extern fn msstd_compress_decoder_push(decoder: NativeDecoder, data: Bytes) move Bytes!
+export extern fn msstd_compress_decoder_push(
+	decoder: NativeDecoder,
+	data: Bytes,
+) move Bytes!
 
 export extern fn msstd_compress_decoder_end(decoder: NativeDecoder) move Bytes!
 

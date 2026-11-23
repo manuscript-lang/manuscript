@@ -213,6 +213,7 @@ export fn set_options[T](
 fn taken_result[V](id: Int) V!:
 	taken := msrt_promise_take[V](id)
 	if value := taken: return ok(value)
+
 	return error(outcome(id, 4))
 
 // Internal: the error in the slot of `id`, moved out.

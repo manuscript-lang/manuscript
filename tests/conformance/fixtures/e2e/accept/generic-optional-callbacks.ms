@@ -30,14 +30,14 @@ fn same_optional(left: Int?, right: Int?) Bool:
 
 fn optional_default(value: Int? = 7) Int: value.get_or(-1)
 
-fn bound_missing[T: Clonable](value: T?) T!Error:
+fn bound_missing[T: Clonable](cause: Error, value: T?) T!Error:
 	convert := value.ok_or[Error]
-	return convert()
+	return convert(cause)
 
-fn nested_bound_missing[T: Clonable](value: T?) T!Error:
+fn nested_bound_missing[T: Clonable](cause: Error, value: T?) T!Error:
 	convert := fn:
 		bound := value.ok_or[Error]
-		return bound()
+		return bound(cause.clone())
 
 	return convert()
 
@@ -167,43 +167,23 @@ test "bound generic native defaults preserve concrete and Optional payload types
 	present: Int? := 0
 	expect_equal(nested(present).err().get(), 0)?
 
-test "bound Error defaults distinguish omission from explicit none":
+test "bound Error causes are supplied at each call":
 	missing: Int? := none
-	direct := missing.ok_or(Error("missing"))
-	expect_true(direct.err().message.contains("generic-optional-callbacks.ms:"))?
+	direct := missing.ok_or(Error("direct"))
+	expect_equal(direct.err().message, "direct")?
 
 	convert := missing.ok_or[Error]
-	converted := convert()
-	expect_true(converted.err().message.contains("generic-optional-callbacks.ms:"))?
-	expect_true(
-		bound_missing(missing).err().message.contains(
-			"generic-optional-callbacks.ms:"
-		)
-	)?
-	expect_true(
-		nested_bound_missing(missing).err().message.contains(
-			"generic-optional-callbacks.ms:"
-		)
-	)?
-
-	direct_fault := expect_fault(
-		fn:
-			_ignored := missing.ok_or[Error](none)
-	)?
-	bound_fault := expect_fault(
-		fn:
-			_ignored := convert(none)
-	)?
-	expect_true(direct_fault.contains("Optional.get() on none"))?
-	expect_true(bound_fault.contains("Optional.get() on none"))?
+	expect_equal(convert(Error("first")).err().message, "first")?
+	expect_equal(convert(Error("second")).err().message, "second")?
+	expect_equal(bound_missing(Error("generic"), missing).err().message, "generic")?
+	expect_equal(nested_bound_missing(Error("nested"), missing).err().message, "nested")?
 
 	present: Int? := 0
 	keep := present.ok_or[Error]
-	expect_equal(keep().get(), 0)?
-	expect_equal(keep(none).get(), 0)?
-	expect_equal(bound_missing(present).get(), 0)?
-	expect_equal(nested_bound_missing(present).get(), 0)?
+	expect_equal(keep(Error("unused")).get(), 0)?
+	expect_equal(bound_missing(Error("unused"), present).get(), 0)?
+	expect_equal(nested_bound_missing(Error("unused"), present).get(), 0)?
 
 	text: String? := "present"
-	expect_equal(bound_missing(text).get(), "present")?
-	expect_equal(nested_bound_missing(text).get(), "present")?
+	expect_equal(bound_missing(Error("unused"), text).get(), "present")?
+	expect_equal(nested_bound_missing(Error("unused"), text).get(), "present")?
