@@ -338,7 +338,14 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                   expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
-  const MirValue read = fn_expr(fn, expr->u.member.left, LW_BORROW);
+  /* A field moves out of a narrowed local: the payload is taken whole, and the rest closes with it. */
+  const MsExpr *left = expr->u.member.left;
+  const bool narrowed = left->kind == MS_E_NAME && fn_read_type(fn, left) != ms_facts_type(fn->facts, left->id);
+  const bool leaves = narrowed && fn->placing_member != expr && taking && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
+                      mir_needs_drop(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  fn->narrow_take = leaves ? left : NULL;
+  const MirValue read = fn_expr(fn, left, leaves ? LW_MOVE : LW_BORROW);
+  fn->narrow_take = NULL;
   if (read == MIR_NONE) {
     return MIR_NONE;
   }
@@ -358,13 +365,13 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
-  if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
+  if (moves && !leaves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
     fn_scope_var_moved(fn, owner, ref->index, ms_facts_type(fn->facts, expr->u.member.left->id));
     /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
     return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }
-  const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME && fn->facts->last != NULL &&
-                          fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base);
+  const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME &&
+                          (leaves || (fn->facts->last != NULL && fn->facts->last[expr->id] != 0)) && fn_fresh_owner(fn, base);
   if (moves && (expr->u.member.left->kind == MS_E_CALL || last_field) && fn_fresh_owner(fn, base)) {
     /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
      * released with it. */
@@ -959,7 +966,7 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
 
 /* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read (own/moves.c). */
 static bool leaves_binding(const LowerFn *fn, const MsExpr *expr) {
-  return ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
+  return ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || fn->narrow_take == expr ||
          (expr->kind == MS_E_NAME && fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0);
 }
 

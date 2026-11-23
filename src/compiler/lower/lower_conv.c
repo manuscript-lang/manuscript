@@ -376,9 +376,15 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
     if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
       return value;
     }
-    if (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value)) {
+    if (fn->narrow_take == expr || (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value))) {
       MirTy taken = payload;
-      return fn_take_payload(fn, value, &taken);
+      const MirValue unboxed = fn_take_payload(fn, value, &taken);
+      MirVar owner = 0;
+      if (expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
+        /* The binding gave its payload up: it holds an empty optional, which the scope's end closes as nothing. */
+        mir_b_def_var(&fn->b, owner, mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, mir_b_ty(&fn->b, value)));
+      }
+      return unboxed;
     }
     return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
   }
