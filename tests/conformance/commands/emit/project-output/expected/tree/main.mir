@@ -39,108 +39,146 @@ b0:
 
 fn @parse_total(%0: list<str>) -> int !2:0:0 {
 b0:
-  %1: int = iconst 0 !2:16:5
-  %2: int = iconst 0 !2:17:5
-  %3: int = list.len %0 !2:17:5
-  %4: int = iconst 1 !2:17:5
-  br b1(%2, %1) !2:17:5
+  %1: int = iconst 0 !2:18:5
+  %2: int = iconst 0 !2:19:5
+  %3: int = list.len %0 !2:19:5
+  %4: int = iconst 1 !2:19:5
+  br b1(%2, %1) !2:19:5
 b1(%5: int, %6: int):
-  %7: bool = icmp.lt %5, %3 !2:17:5
-  br_if %7, b2(), b4() !2:17:5
+  %7: bool = icmp.lt %5, %3 !2:19:5
+  br_if %7, b2(), b4() !2:19:5
 b2():
-  %8: str = list.get %0, %5 !2:17:5
-  %9: Result[Int, Failure] = call @read_number (%8) !2:18:18
-  %10: int = iconst 0 !2:18:18
-  %11: opt<int> = opt.some %10 !2:18:18
-  %12: int = call @get_or[Int,Failure] (%9, %11) !2:18:36
-  %13: int = iadd.chk %6, %12 !2:18:36
-  br b3() !2:18:36
+  %8: str = list.get %0, %5 !2:19:5
+  %9: Result[Int, Failure] = call @read_number (%8) !2:20:18
+  %10: int = iconst 0 !2:20:18
+  %11: opt<int> = opt.some %10 !2:20:18
+  %12: int = call @get_or[Int,Failure] (%9, %11) !2:20:36
+  %13: int = iadd.chk %6, %12 !2:20:36
+  br b3() !2:20:36
 b3():
-  %14: int = iadd %5, %4 !2:17:5
-  br b1(%14, %13) !2:17:5
+  %14: int = iadd %5, %4 !2:19:5
+  br b1(%14, %13) !2:19:5
 b4():
-  %15: int = iconst 1 !2:19:5
-  %16: int = iconst 1 !2:19:5
-  %17: Shape = type.new Shape %15, %16 !2:19:25
-  %18: int = call @area (%17) !2:19:20
-  %19: int = iadd.chk %6, %18 !2:19:20
-  %20: int = iconst 1 !2:19:20
-  %21: int = isub.chk %19, %20 !2:19:20
-  ret %21 !2:19:20
+  %15: int = iconst 1 !2:21:5
+  %16: int = iconst 1 !2:21:5
+  %17: Shape = type.new Shape %15, %16 !2:21:25
+  %18: int = call @area (%17) !2:21:20
+  %19: int = iadd.chk %6, %18 !2:21:20
+  %20: int = iconst 1 !2:21:20
+  %21: int = isub.chk %19, %20 !2:21:20
+  ret %21 !2:21:20
   name %0 "items" param 0
 }
 
 fn @print[String](%0: str, %1: str) -> void !1:0:0 {
 b0:
-  %2: ptr = shape str !1:187:32
-  %3: ptr = slot str !1:187:32
-  store %3, %0 !1:187:32
-  %4: str = call.rt @msstd_value_to_string (%2, %3) !1:187:32
-  %5: str = call.rt @msrt_string_concat (%4, %1) !1:187:32
-  %6: void = call.rt @msrt_io_write_stdout (%5) !1:187:5
+  %2: ptr = shape str !1:189:32
+  %3: ptr = slot str !1:189:32
+  store %3, %0 !1:189:32
+  %4: str = call.rt @msstd_value_to_string (%2, %3) !1:189:32
+  %5: str = call.rt @msrt_string_concat (%4, %1) !1:189:32
+  %6: void = call.rt @msrt_io_write_stdout (%5) !1:189:5
   drop %5
   drop %4
-  ret !1:187:5
+  ret !1:189:5
   name %0 "value" param 0
   name %1 "end" param 0
 }
 
 fn @read_number(%0: str) -> Result[Int, Failure] !2:0:0 {
 b0:
-  %1: ptr = slot int !2:12:22
-  %2: uint8 = call.rt @msrt_string_parse_int (%0, %1) !2:12:22
-  %3: uint8 = iconst 0 !2:12:22
-  %4: bool = icmp.ne %2, %3 !2:12:22
-  br_if %4, b1(), b2() !2:12:22
+  %1: ptr = slot int !2:12:19
+  %2: uint8 = call.rt @msrt_string_parse_int (%0, %1) !2:12:19
+  %3: uint8 = iconst 0 !2:12:19
+  %4: bool = icmp.ne %2, %3 !2:12:19
+  br_if %4, b1(), b2() !2:12:19
 b1():
-  %5: int = load int %1 !2:12:22
-  %6: opt<int> = opt.some %5 !2:12:22
-  br b3(%6) !2:12:22
+  %5: int = load int %1 !2:12:19
+  %6: opt<int> = opt.some %5 !2:12:19
+  br b3(%6) !2:12:19
 b2():
-  %7: opt<int> = opt.none !2:12:22
-  br b3(%7) !2:12:22
+  %7: opt<int> = opt.none !2:12:19
+  br b3(%7) !2:12:19
 b3(%8: move opt<int>):
-  %9: bool = opt.is_some %8 !2:12:22
-  br_if %9, b4(), b5() !2:12:22
+  %9: opt<int> = opt.none !2:13:5
+  %10: bool = opt.is_some %8 !2:13:5
+  %11: bool = opt.is_some %9 !2:13:5
+  %12: bool = icmp.eq %10, %11 !2:13:5
+  br_if %12, b4(), b5() !2:13:5
 b4():
-  %10: int = opt.unbox %8 !2:12:22
-  %11: Result[Int, Failure] = alt.new Result[Int, Failure].ok %10 !2:12:42
-  ret %11 !2:12:42
+  br_if %10, b6(), b7() !2:13:5
 b5():
-  br b6() !2:12:42
+  %13: bool = bconst false !2:13:5
+  br b8(%13) !2:13:5
 b6():
-  %12: str = call.rt @msrt_string_clone (%0) !2:13:35
-  %13: Failure = alt.new Failure.Bad %12 !2:13:26
-  %14: Result[Int, Failure] = alt.new Result[Int, Failure].error %13 !2:13:12
-  ret %14 !2:13:12
+  %14: int = opt.get %8 !2:13:5
+  %15: int = opt.get %9 !2:13:5
+  %16: bool = icmp.eq %14, %15 !2:13:5
+  br b8(%16) !2:13:5
+b7():
+  %17: bool = bconst true !2:13:5
+  br b8(%17) !2:13:5
+b8(%18: bool):
+  %19: bool = not %18 !2:13:5
+  br_if %19, b9(), b10() !2:13:5
+b9():
+  %20: int = opt.get %8 !2:13:23
+  %21: Result[Int, Failure] = alt.new Result[Int, Failure].ok %20 !2:13:30
+  ret %21 !2:13:30
+b10():
+  br b11() !2:13:30
+b11():
+  %22: str = call.rt @msrt_string_clone (%0) !2:15:35
+  %23: Failure = alt.new Failure.Bad %22 !2:15:26
+  %24: Result[Int, Failure] = alt.new Result[Int, Failure].error %23 !2:15:12
+  ret %24 !2:15:12
   name %0 "text" param 0
 }
 
 fn @get_or[Int,Failure](%0: move Result[Int, Failure], %1: move opt<int>) -> int !1:0:0 {
 b0:
-  %2: int = alt.tag %0 !1:342:5
-  %3: int = iconst 0 !1:342:5
-  %4: bool = icmp.eq %2, %3 !1:342:5
-  br_if %4, b1(), b2() !1:342:5
+  %2: int = alt.tag %0 !1:283:5
+  %3: int = iconst 0 !1:283:5
+  %4: bool = icmp.eq %2, %3 !1:283:5
+  br_if %4, b1(), b2() !1:283:5
 b1():
-  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:342:5
-  alt.release Result[Int, Failure].ok.value %0 !1:342:5
-  ret %5 !1:342:23
+  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:283:5
+  alt.release Result[Int, Failure].ok.value %0 !1:283:5
+  ret %5 !1:283:23
 b2():
-  br b3() !1:342:23
+  br b3() !1:283:23
 b3():
-  %6: bool = opt.is_some %1 !1:343:5
-  br_if %6, b4(), b5() !1:343:5
+  %6: opt<int> = opt.none !1:284:5
+  %7: bool = opt.is_some %1 !1:284:5
+  %8: bool = opt.is_some %6 !1:284:5
+  %9: bool = icmp.eq %7, %8 !1:284:5
+  br_if %9, b4(), b5() !1:284:5
 b4():
-  %7: int = opt.unbox %1 !1:343:5
-  drop %0
-  ret %7 !1:343:29
+  br_if %7, b6(), b7() !1:284:5
 b5():
-  br b6() !1:343:29
+  %10: bool = bconst false !1:284:5
+  br b8(%10) !1:284:5
 b6():
-  %8: str = str "called Result.get_or with a none default" !1:345:5
-  %9: void = call.rt @msrt_panic (%8) !1:345:5
-  unreachable !1:345:5
+  %11: int = opt.get %1 !1:284:5
+  %12: int = opt.get %6 !1:284:5
+  %13: bool = icmp.eq %11, %12 !1:284:5
+  br b8(%13) !1:284:5
+b7():
+  %14: bool = bconst true !1:284:5
+  br b8(%14) !1:284:5
+b8(%15: bool):
+  %16: bool = not %15 !1:284:5
+  br_if %16, b9(), b10() !1:284:5
+b9():
+  %17: int = opt.get %1 !1:284:25
+  drop %0
+  ret %17 !1:284:25
+b10():
+  br b11() !1:284:25
+b11():
+  %18: str = str "called Result.get_or with a none default" !1:286:5
+  %19: void = call.rt @msrt_panic (%18) !1:286:5
+  unreachable !1:286:5
   name %0 "self" param 0
   name %1 "default" param 0
 }
