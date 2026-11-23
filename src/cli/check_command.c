@@ -373,6 +373,11 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
       ms_strbuild_append_text(err, i == 0 ? "" : ", ");
       ms_strbuild_append(err, targets[i]);
     }
+    if (count == 1) {
+      MsArena scratch = ms_arena_new();
+      ms_strbuild_append(err, ms_project_nested_hint(&scratch, targets[0]));
+      ms_arena_free(&scratch);
+    }
     ms_strbuild_append_byte(err, '\n');
   }
   finding_terminal_text(err, analysis->root, &analysis->findings, options->deny_warnings);

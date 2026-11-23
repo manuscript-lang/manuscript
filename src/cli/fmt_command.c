@@ -12,6 +12,7 @@
 #include "base/list.h"
 #include "base/strbuild.h"
 #include "base/sort.h"
+#include "compiler/project/project.h"
 #include "compiler/syntax/diag_json.h"
 #include "compiler/syntax/format.h"
 #include "cli/fmt_labels.h"
@@ -284,6 +285,11 @@ int ms_fmt_command(int argc, char **argv) {
     for (size_t index = 0; index < targets.len; index++) {
       (void)fprintf(stderr, "%s%.*s", index == 0 ? "" : ", ", (int)targets.ptr[index].len,
                     (const char *)targets.ptr[index].ptr);
+    }
+    if (targets.len == 1) {
+      MsArena scratch = ms_arena_new();
+      print_span(stderr, ms_project_nested_hint(&scratch, targets.ptr[0]));
+      ms_arena_free(&scratch);
     }
     (void)fputc('\n', stderr);
     status = 1;
