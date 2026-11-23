@@ -3,51 +3,47 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "report": {
+      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [],
+      "tests": [
+        {
+          "index": 0,
+          "name": "list-chain-fusion.ms::a map, filter and sum chain gives the staged answer",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "list-chain-fusion.ms::an empty source and a filter that keeps nothing give zero",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "list-chain-fusion.ms::a chain inside a loop builds each pass from nothing",
+          "status": "passed"
+        }
+      ],
       "summary": {
-        "available": 0,
-        "selected": 0,
-        "passed": 0,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": false,
-      "exit_code": 1,
-      "reason": "build_error",
-      "stdout": "",
-      "diagnostics": [
-        {
-          "code": "MST001",
-          "phase": "build",
-          "message": "internal compiler error: module does not verify after optimising:\ncounted: b4: terminator: use of undefined value %140\ncounted: b5: terminator: use of undefined value %140\n\nThis is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n",
-          "position": {
-            "file": "list-chain-fusion.ms",
-            "line": 1,
-            "column": 1,
-            "offset": 0
-          }
-        }
-      ]
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN list-chain-fusion.ms::a map, filter and sum chain gives the staged answer\nPASS list-chain-fusion.ms::a map, filter and sum chain gives the staged answer\nRUN list-chain-fusion.ms::an empty source and a filter that keeps nothing give zero\nPASS list-chain-fusion.ms::an empty source and a filter that keeps nothing give zero\nRUN list-chain-fusion.ms::a chain inside a loop builds each pass from nothing\nPASS list-chain-fusion.ms::a chain inside a loop builds each pass from nothing\n3 tests, 0 failed\n",
+      "diagnostics": []
     },
     "shape": [
       "completed",
       "diagnostics",
-      "diagnostics[].code",
-      "diagnostics[].message",
-      "diagnostics[].phase",
-      "diagnostics[].position",
-      "diagnostics[].position.column",
-      "diagnostics[].position.file",
-      "diagnostics[].position.line",
-      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "reason",
+      "repeat",
       "source_root",
       "stdout",
       "summary",
@@ -58,8 +54,12 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests"
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
     ],
-    "stderr": "internal compiler error: module does not verify after optimising:\ncounted: b4: terminator: use of undefined value %140\ncounted: b5: terminator: use of undefined value %140\n\nThis is a bug in ms, not in your program. Please report it at https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n\n"
+    "stderr": ""
   }
 }
