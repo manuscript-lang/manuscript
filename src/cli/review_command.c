@@ -9,7 +9,7 @@
 #include "base/path.h"
 #include "tooling/diff.h"
 #include "tooling/review.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/invocation.h"
 #include "tooling/facts.h"
 #include "tooling/report.h"

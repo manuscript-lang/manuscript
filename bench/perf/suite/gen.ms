@@ -4,7 +4,6 @@
 import (
 	arguments from "@std/os/env.ms",
 	create_directory, write_file from "@std/os/fs.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 type Rng:
@@ -22,75 +21,67 @@ fn logs(n: Int, seed: Int) String:
 	levels := ["DEBUG", "INFO", "INFO", "INFO", "WARN", "ERROR"]
 	methods := ["GET", "GET", "GET", "POST", "PUT", "DELETE"]
 	statuses := ["200", "200", "200", "200", "201", "301", "304", "404", "500", "503"]
-	var b = StringBuilder()
+	var b = ""
 
 	for i in 0..n:
 		path := f"/api/v{1 + r.next(3)}/item/{r.next(2000)}"
-		b.append(
-			f"2026-11-12T{10 + r.next(10)}:{10 + r.next(50)}:{10 + r.next(50)}Z {levels[r.next(6)]} {methods[r.next(6)]} {path} {statuses[r.next(10)]} {r.next(900)}\n"
-		)
+		b += f"2026-11-12T{10 + r.next(10)}:{10 + r.next(50)}:{10 + r.next(50)}Z {levels[r.next(6)]} {methods[r.next(6)]} {path} {statuses[r.next(10)]} {r.next(900)}\n"
 
-	return b.build()
+	return b
 
 fn csv(n: Int) String:
 	var r = Rng(2)
 	regions := ["north", "south", "east", "west", "central", "overseas"]
-	var b = StringBuilder()
-	b.append("id,region,product,qty,price_cents,note\n")
+	var b = ""
+	b += "id,region,product,qty,price_cents,note\n"
 
 	for i in 0..n:
 		note := if r.next(10) == 0: "\"gift, wrapped \"\"fast\"\"\"" else: "plain"
-		b.append(
-			f"{i},{regions[r.next(6)]},sku-{r.next(500)},{1 + r.next(9)},{100 + r.next(99900)},{note}\n"
-		)
+		b += f"{i},{regions[r.next(6)]},sku-{r.next(500)},{1 + r.next(9)},{100 + r.next(99900)},{note}\n"
 
-	return b.build()
+	return b
 
 fn json(n: Int) String:
 	var r = Rng(3)
 	tags := ["red", "green", "blue", "fast", "slow", "new", "old"]
-	var b = StringBuilder()
-	b.append("[")
+	var b = ""
+	b += "["
 
 	for i in 0..n:
-		if i > 0: b.append(",")
+		if i > 0: b += ","
 
 		active := if r.next(2) == 0: "true" else: "false"
 		t1 := tags[r.next(7)]
 		t2 := tags[r.next(7)]
-		b.append(
-			f"\{\"id\":{i},\"user\":\"user{r.next(1000)}\",\"score\":{r.next(10000)},\"active\":{active},\"tags\":[\"{t1}\",\"{t2}\"],\"name\":\"item \\\"{r.next(100)}\\\"\"\}\n"
-		)
+		b += f"\{\"id\":{i},\"user\":\"user{r.next(1000)}\",\"score\":{r.next(10000)},\"active\":{active},\"tags\":[\"{t1}\",\"{t2}\"],\"name\":\"item \\\"{r.next(100)}\\\"\"\}\n"
 
-	b.append("]")
-	return b.build()
+	b += "]"
+	return b
 
 fn words(n: Int) String:
 	var r = Rng(4)
-	var b = StringBuilder()
+	var b = ""
 
 	for i in 0..n:
-		var line = StringBuilder()
+		var line = ""
 
 		for j in 0..12:
 			k := r.next(5000)
 
 			// A skewed vocabulary: low ids are frequent.
 			w := (k * k) / 5000
-			line.append(
-				f"{if j > 0: " " else: ""}{if w % 7 == 0: "Word" else: "word"}{w}"
-			)
+			line += f"{if j > 0: " " else: ""}{if w % 7 == 0: "Word" else: "word"}{w}"
 
-		b.append(f"{line.build()}.\n")
+		b += f"{line}.\n"
 
-	return b.build()
+	return b
 
 fn records(n: Int) String:
 	var r = Rng(5)
-	var b = StringBuilder()
+	var b = ""
 	for i in 0..n:
-		b.append(f"name{r.next(100000)} {r.next(1000000)}\n")
-	return b.build()
+		b += f"name{r.next(100000)} {r.next(1000000)}\n"
+	return b
 
 // A tree of 20 directories with 100 log files each, 200 lines per file at scale 1.
 fn tree(dir: String, scale: Int) Void:

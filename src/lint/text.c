@@ -22,6 +22,13 @@ bool lint_text_starts_with(const char *text, const char *prefix) {
   return true;
 }
 
+bool lint_text_contains(const char *text, const char *needle) {
+  for (size_t at = 0; text[at] != '\0'; at++) {
+    if (lint_text_starts_with(text + at, needle)) return true;
+  }
+  return false;
+}
+
 bool lint_text_ends_with(const char *text, const char *suffix) {
   size_t text_length = lint_text_length(text);
   size_t suffix_length = lint_text_length(suffix);

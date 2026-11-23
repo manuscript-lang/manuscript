@@ -2,7 +2,6 @@
 // conform: phase=test
 import (
 	YamlValue, parse, parse_all from "@std/data/yaml.ms",
-	StringBuilder from "@std/string_builder.ms",
 	expect_equal, expect_error, expect_ok, expect_true, fail from "@std/test/test.ms",
 )
 
@@ -586,17 +585,17 @@ type FoldControl:
 	output: String
 
 test "YAML long multiline flow retains every scalar":
-	var source = StringBuilder()
+	var source = ""
 	var expected: List[YamlValue] = []
-	source.append("[")
+	source += "["
 
 	for i in 0..2000:
-		if i > 0: source.append(",")
-		source.append(f"\n{i}")
+		if i > 0: source += ","
+		source += f"\n{i}"
 		expected.append(YamlValue.NumberValue(i.to_string()))
 
-	source.append("]")
-	(parse(source.build()) | expect_ok? | expect_equal(YamlValue.ArrayValue(expected))?)
+	source += "]"
+	(parse(source) | expect_ok? | expect_equal(YamlValue.ArrayValue(expected))?)
 	for control in [
 		FoldControl(input: "[alpha\n beta]", output: "alpha beta"),
 		FoldControl(input: "[alpha\n\n beta]", output: "alpha\nbeta"),

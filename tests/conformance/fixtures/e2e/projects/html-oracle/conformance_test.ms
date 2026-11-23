@@ -2,7 +2,6 @@ import (
 	crc32 from "@std/data/checksum.ms",
 	hex_decode, hex_encode from "@std/data/encoding.ms",
 	HtmlNode, HtmlOptions, parse from "@std/data/html.ms",
-	StringBuilder from "@std/string_builder.ms",
 	expect_equal, fail from "@std/test/test.ms",
 
 	files from "@assets",
@@ -29,30 +28,28 @@ fn limit(token: String) Int?:
 	if token == "-": return none
 	return token.parse_int()
 
-fn dump(node: HtmlNode, var out: StringBuilder) Void:
+fn dump(node: HtmlNode, var out: String) Void:
 	match node:
 		Document(children):
-			out.append("D[")
+			out += "D["
 			for child in children: dump(child, out)
-			out.append("]")
+			out += "]"
 		Element(tag, namespace, attributes, children):
-			out.append(f"E{hx(tag)},{hx(namespace)}\{")
-			for a in attributes: out.append(
-				f"{hx(a.name)},{hx(a.namespace)},{hx(a.value)};"
-			)
-			out.append("}[")
+			out += f"E{hx(tag)},{hx(namespace)}\{"
+			for a in attributes: out += f"{hx(a.name)},{hx(a.namespace)},{hx(a.value)};"
+			out += "}["
 			for child in children: dump(child, out)
-			out.append("]")
-		Text(text): out.append(f"T{hx(text)};")
-		Comment(text): out.append(f"C{hx(text)};")
+			out += "]"
+		Text(text): out += f"T{hx(text)};"
+		Comment(text): out += f"C{hx(text)};"
 		Doctype(name, public_id, system_id):
-			out.append(f"Y{hx(name)},{hx(public_id)},{hx(system_id)};")
+			out += f"Y{hx(name)},{hx(public_id)},{hx(system_id)};"
 
 fn render(result: HtmlNode!) String:
 	if value := result:
-		var sb = StringBuilder()
+		var sb = ""
 		dump(value, sb)
-		return f"ok {sb.build()}"
+		return f"ok {sb}"
 
 	if result.err().kind == "EOVERFLOW": return "err LimitExceeded"
 

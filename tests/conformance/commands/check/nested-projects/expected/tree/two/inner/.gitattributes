@@ -1,0 +1,3 @@
+*.ms text eol=lf
+*.toml text eol=lf
+ms.lock text eol=lf

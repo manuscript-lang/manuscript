@@ -365,14 +365,14 @@ Strings join as they are and numbers as decimal text. A record or alternative jo
 Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
 */
 fn List[T].join(separator: String) String:
-	var out = StringBuilder()
+	var out = ""
 
 	for i in 0..self.length():
 		if i > 0:
-			out.append(separator)
-		out.append(f"{self[i]}")
+			out += separator
+		out += f"{self[i]}"
 
-	return out.build()
+	return out
 
 /*
 Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
@@ -1020,7 +1020,6 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Void:
 
 import (
 	panic from "@std/core.ms",
-	StringBuilder from "@std/string_builder.ms",
 
 	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
 )

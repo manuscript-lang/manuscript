@@ -21,7 +21,7 @@
 #include "cli/fmt_command.h"
 #include "cli/help_command.h"
 #include "cli/init_command.h"
-#include "cli/lsp_command.h"
+#include "lsp/lsp_command.h"
 #include "cli/package_commands.h"
 #include "cli/phases.h"
 #include "cli/profile_command.h"

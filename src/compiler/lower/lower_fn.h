@@ -42,6 +42,7 @@ typedef struct LowerFnLocals {
   MirValue *closing;
   bool *closing_var;
   uint8_t *shared;
+  bool *holds_value;
   MirTy *closing_types;
   uint32_t nvars;
 } LowerFnLocals;
@@ -100,6 +101,7 @@ typedef struct LowerFn {
   MirTy default_record_ty;
   uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
+  bool *holds_value;     /* by local id: the body assigns the whole local or moves a field out of it, so it stays a variable, not a cell */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
@@ -490,6 +492,10 @@ typedef struct VarSlot {
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 /* A field of a closing local, as its address in the local's slot (lower_field.c). */
 bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr);
+/* Assigns `value` to the field at `address` where it lies: the old one is dropped or closed first. */
+bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address, MirValue value);
+/* Reads the field `expr` names where it lies, when its record stays in a cell. */
+bool fn_read_field_in_place(LowerFn *fn, const MsExpr *expr, MirValue *value);
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 /* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */

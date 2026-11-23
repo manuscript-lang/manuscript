@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 #include "base/file.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/invocation.h"
 #include "cli/review_command.h"

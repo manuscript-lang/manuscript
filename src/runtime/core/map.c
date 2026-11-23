@@ -92,8 +92,11 @@ void msrt_map_add_default(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, 
   ms_map_insert(m, kd, vd, key, val);
 }
 
-void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key) {
-  (void)ms_map_remove(m, ms_map_key_desc(m, kd), vd, key);
+/* `remove(move key)`: the key is consumed whether or not an entry held it. */
+void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key) {
+  kd = ms_map_key_desc(m, kd);
+  (void)ms_map_remove(m, kd, vd, key);
+  ms_slot_drop(kd, key);
 }
 
 /* ---- changes whose dropped values move out ---- */
@@ -112,20 +115,17 @@ static void take_value(MsList *taken, const MsTypeDesc *vd, const uint8_t *value
 }
 
 /* As `remove`, but the value moves into the list `taken` (empty when the key is absent) instead of being dropped. */
-void msrt_map_remove_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, MsList *taken) {
+void msrt_map_remove_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, MsList *taken) {
   kd = ms_map_key_desc(m, kd);
   *taken = (MsList){0};
-  if (m->len == 0) {
-    return;
-  }
   const MsMapLayout layout = ms_map_layout(kd, vd);
-  const MsMapProbe probe = ms_map_probe(m, kd, &layout, key);
-  if (probe.entry == MS_MAP_NO_ENTRY) {
-    return;
+  const MsMapProbe probe = m->len == 0 ? (MsMapProbe){.entry = MS_MAP_NO_ENTRY} : ms_map_probe(m, kd, &layout, key);
+  if (probe.entry != MS_MAP_NO_ENTRY) {
+    take_value(taken, vd, ms_table_entry(m, &layout, probe.entry) + layout.value_offset);
+    const MsTypeDesc plain = moved_out(vd);
+    (void)ms_map_remove(m, kd, &plain, key);
   }
-  take_value(taken, vd, ms_table_entry(m, &layout, probe.entry) + layout.value_offset);
-  const MsTypeDesc plain = moved_out(vd);
-  (void)ms_map_remove(m, kd, &plain, key);
+  ms_slot_drop(kd, key); /* the key is consumed whether or not an entry held it */
 }
 
 /* As `add`, but the value an existing key held moves into the list `taken` instead of being dropped. */

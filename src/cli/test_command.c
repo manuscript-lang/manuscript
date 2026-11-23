@@ -10,7 +10,7 @@
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"

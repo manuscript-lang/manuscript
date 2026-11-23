@@ -1,6 +1,5 @@
 // A tokenizer, recursive-descent parser and evaluator for arithmetic: strings, enums
 // with payloads, recursive values.
-import StringBuilder from "@std/string_builder.ms"
 
 enum Tok:
 	Num(v: Int)
@@ -17,21 +16,21 @@ type Parser:
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn gen(depth: Int, var x: Int, var out: StringBuilder) Void:
+fn gen(depth: Int, var x: Int, var out: String) Void:
 	x = lcg(x)
 
 	if depth == 0 or x % 5 == 0:
-		out.append(f"{x / 7 % 100}")
+		out += f"{x / 7 % 100}"
 		return
 
 	x = lcg(x)
 
 	op := ["+", "-", "*", "%"][x / 3 % 4]
-	out.append("(")
+	out += "("
 	gen(depth - 1, x, out)
-	out.append(f" {op} ")
+	out += f" {op} "
 	gen(depth - 1, x, out)
-	out.append(")")
+	out += ")"
 
 fn tokenize(text: String) List[Tok]:
 	var toks: List[Tok] = []
@@ -97,10 +96,10 @@ fn main() Void:
 	var chars = 0
 
 	for i in 0..60000:
-		var sb = StringBuilder()
+		var sb = ""
 		gen(9, x, sb)
 
-		text := sb.build()
+		text := sb
 		chars += text.length()
 
 		toks := tokenize(text)

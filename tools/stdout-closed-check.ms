@@ -6,15 +6,22 @@
 // tools/stdout-closed-check.ms
 import (
 	working_directory from "@std/os/env.ms",
-	spawn from "@std/os/process.ms",
+	Subprocess, spawn from "@std/os/process.ms",
 	seconds from "@std/time.ms",
 
-	tool_ms from "./lib.ms",
+	host, tool_ms from "./lib.ms",
 )
+
+// `ms doc` with piped output. On Linux and macOS it ignores SIGPIPE, as a program under a shell with `trap '' PIPE` does,
+// so the closed pipe fails the write instead of killing it; Windows has no signal and
+// fails the write anyway.
+fn start(ms: String) Result[Subprocess, Error]:
+	if host() == "windows": return spawn(ms, ["doc"])
+	return spawn("sh", ["-c", "trap '' PIPE; exec \"$0\" doc", ms])
 
 fn main() Void!:
 	ms := tool_ms(working_directory().get().clone())
-	child := spawn(ms, ["doc"])?
+	child := start(ms)?
 	var stdout = child.stdout()
 	void stdout.next()?
 	void stdout.close()?
