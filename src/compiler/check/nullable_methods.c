@@ -268,9 +268,20 @@ bool body_present_get(Body *body, const MsExpr *call, MsTy *result) {
   return true;
 }
 
-void body_redundant_or(Body *body, const MsExpr *expr) {
+/* Whether `expr` reads a narrowed local, possibly through members and calls (`v.clone()`). */
+static bool reads_narrowed(const Body *body, const MsExpr *expr) {
+  while (expr->kind == MS_E_MEMBER || expr->kind == MS_E_CALL) {
+    expr = expr->kind == MS_E_MEMBER ? expr->u.member.left : expr->u.call.callee;
+  }
+  return narrowed_name(body, expr);
+}
+
+bool body_redundant_or(Body *body, const MsExpr *expr) {
+  if (!reads_narrowed(body, expr->u.bin.left)) {
+    return false;
+  }
   if (!body_reports(body) || body->quiet) {
-    return;
+    return true;
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "the left of `or` is never null here, so the right is never used; write the left alone");
@@ -281,6 +292,7 @@ void body_redundant_or(Body *body, const MsExpr *expr) {
     ms_strbuild_append(&fix, written);
     ms_check_attach_fix(body->program, ms_expr_start(expr), expr->end, ms_strbuild_finish(&fix));
   }
+  return true;
 }
 
 /* `if v := x:` over an Optional: the binding is written as a declaration and a `v != null` test, which narrows `v`. */

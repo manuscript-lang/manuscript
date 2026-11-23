@@ -158,7 +158,8 @@ fn var PriorityQueue[T].dequeue() T?:
 
 	top := self.heap.pop()
 	self.sift_down(0)
-	return top.map(fn entry: entry.value)
+	if top == null: return null
+	return top.value
 
 // Returns the next value by priority without removing it, or `null` when empty.
 fn PriorityQueue[T].peek() T?:

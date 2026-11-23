@@ -159,7 +159,7 @@ test "bound generic native defaults preserve concrete and Optional payload types
 
 test "bound Error causes are supplied at each call":
 	missing: Int? := null
-	direct := missing.ok_or(Error("direct"))
+	direct := ok_or(missing, Error("direct"))
 	expect_equal(direct.err().message, "direct")?
 
 	convert := missing.ok_or[Error]

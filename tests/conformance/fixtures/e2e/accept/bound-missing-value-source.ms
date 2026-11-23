@@ -42,7 +42,7 @@ test "generic callers and direct calls supply their cause":
 	absent: Int? := null
 	expect_equal(generic_convert(Error("generic"), absent).err().message, "generic")?
 
-	direct := absent.ok_or(Error("direct"))
+	direct := ok_or(absent, Error("direct"))
 	expect_equal(direct.err().message, "direct")?
 
 	zero: Int? := 0
@@ -75,7 +75,7 @@ test "required joins preserve native behavior":
 test "nested Optional errors remain intact":
 	absent: Int? := null
 	convert := absent.ok_or[Error]
-	supplied := absent.ok_or(Error("missing")).err()
+	supplied := ok_or(absent, Error("missing")).err()
 	expect_equal(convert(supplied.clone()).err().message, supplied.message)?
 
 	nested := absent.ok_or[Int?]

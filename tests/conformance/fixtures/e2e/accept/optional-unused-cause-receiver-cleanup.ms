@@ -18,7 +18,7 @@ fn move Marker.close() Void!:
 fn source(move log: String) Marker?: Marker(1, log, false)
 
 fn discard(log: String) Void:
-	_kept := source(log.clone()).ok_or(Marker(2, log, true))
+	_kept := ok_or(source(log.clone()), Marker(2, log, true))
 
 test "closing an unused cause does not lose the retained receiver on fault":
 	tmp := temporary("cause-fault-") | expect_ok?
@@ -29,7 +29,7 @@ test "closing an unused cause does not lose the retained receiver on fault":
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "2,1,")?
 
 fn normal_transfer(log: String) Void!:
-	kept := source(log.clone()).ok_or(Marker(2, log.clone(), false))
+	kept := ok_or(source(log.clone()), Marker(2, log.clone(), false))
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "2,")?
 	expect_equal(kept.get().id, 1)?
 

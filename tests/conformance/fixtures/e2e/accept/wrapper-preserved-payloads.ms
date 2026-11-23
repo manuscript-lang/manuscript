@@ -14,7 +14,7 @@ fn move Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
 fn optional_cause(move log: String) Void:
 	value: Marker? := Marker(1, log)
-	_kept := value.ok_or("failure")
+	_kept := ok_or(value, "failure")
 
 fn optional_callback(move log: String) Void:
 	value: Marker? := Marker(2, log)
@@ -97,7 +97,7 @@ test "map takes a resource payload while reusable methods copy only retained dat
 
 test "empty and transformed branches do not manufacture retained payloads":
 	absent: Int? := null
-	expect_equal(absent.ok_or("failure").is_error(), true)?
+	expect_equal(ok_or(absent, "failure").is_error(), true)?
 	expect_equal(absent.ok_or_else(fn: "failure").is_error(), true)?
 
 	failed: Int!Int := error(3)

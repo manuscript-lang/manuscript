@@ -66,18 +66,14 @@ For omitted and labeled arguments, see [declarations and calls](../functions/dec
 
 ## Checking and extracting values
 
-Receiver methods:
+A `T?` has no methods. Compare it with `null`, give a fallback with `or`, and read the payload where the compiler can see it is present:
 
-| Method | Behavior |
+| Written | Meaning |
 | --- | --- |
-| `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
-| `is_none() Bool` | Whether the optional is absent |
-| `get() T` | Return the contained value; on `null`, [fault](../errors/faults.md) with `called Optional.get() on null` |
-| `get_or(default: T?) T` | Return the contained value, or `default` when absent |
-| `map[U](transform: fn(move T) U) U?` | Consume the Optional and hand a present payload to `transform` once; preserve absence |
-| `and_then[U](transform: fn(move T) U?) U?` | Consume the Optional and return the callback's Optional when present; preserve absence |
-| `get_or_else(create: fn() T) T` | Return the contained value, or call `create` once when absent |
-| `or_else(create: fn() T?) T?` | Consume the Optional: return it when present, or call `create` once when absent |
+| `x == null`, `x != null` | Whether the optional is absent or present, including a present `false`, zero, or empty string |
+| `x or d` | The payload, or `d` when absent; `d` is evaluated only when `x` is absent. With a `T` on the right the result is `T`; with a `T?` on the right it is `T?` |
+| `ok_or(x, cause)` | `Ok(payload)`, or `Error(cause)` when absent |
+| `x?` | The payload, or leave the function with `null` (see below) |
 
 Fallback for routine absence:
 
@@ -87,7 +83,7 @@ fn display_name(name: String?) String:
     return name or "Anonymous"
 ```
 
-`get_or(default)` always evaluates its argument. Use `get_or_else` when the fallback costs work:
+The right side of `or` is evaluated only when the left is `null`, so a fallback that costs work is written directly:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -95,45 +91,28 @@ fn display_name(create: fn() String, name: String?) String:
     return name or create()
 ```
 
-Prefer `if v := x` to test and unwrap in one step, rather than `is_some()` followed by `get()`. `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `null`; use `get_or(default)` or unwrap with `if v := x` instead.
+For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key) or fallback`. `ms lint --fix` rewrites the first form.
 
-For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key) or fallback` or `m.get(key).get()`. `ms lint --fix` rewrites the first form.
-
-Unwrapping with `if v := x`:
+After `if v != null`, an immutable binding or parameter `v` reads as its payload type inside the block. A `v == null` test that exits (`return`, `break`, `continue`) leaves `v` present for the rest of the block, and `and`/`or` operands and `while` conditions narrow the same way. A `var` binding is not narrowed, because it can change; copy it into an immutable one first.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn greet(name: String?) String:
-    if value := name:
-        return "Hello, " + value
+    if name != null:
+        return "Hello, " + name
     return "Hello!"
 ```
 
-Extraction returns the payload itself: no clone, no flattening. `map` transforms a payload; `and_then` chains an operation that returns an Optional:
+To test a value that is produced by a call, bind it first:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn first_number(text: String?) Int?:
-    return text.map(fn value: value.trim().clone()).and_then(fn value: value.parse_int())
+    if text == null: return null
+    return text.trim().parse_int()
 ```
 
-`map` keeps nesting if its callback returns an Optional; `and_then` does not. Callbacks run in the caller's context; faults and cancellation propagate.
-
-`map`, `and_then` and `or_else` take their receiver (`fn move`), so the callback owns the payload and the Optional is gone after the call. Write `x.clone().map(...)` to keep `x`.
-
-An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give away. Read it with `if v := xs.first():`, or `.clone()` it first.
-
-A callback that only reads its argument is accepted where `fn(move T)` is expected; the call drops the payload when the callback returns.
-
-[`if v := x`](../control-flow/conditionals.md#unwrapping-an-optional-or-result) binds the payload for a block, with optional `else`:
-
-<!-- manuscript-example: {"mode":"check"} -->
-```manuscript
-fn display_name(name: String?) String:
-    if value := name:
-        return value.clone()
-    return "Anonymous"
-```
+An Optional read in place from a collection or another value (`xs.first()`, `m.get(key)`) is not the caller's to give away. Bind it with `v := xs.first()` and test `v != null`, or `.clone()` it first.
 
 A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `null:`; `v:` binds the payload. `ms lint` reports a two-arm match as MSL108.
 
@@ -157,7 +136,7 @@ fn city_length(user: User?) Int?:
 
 `user?.address` is `(user?).address`. If `user` is `null`, the function returns `null` at that point; nothing after it on the line runs, so `a?.f(args)` evaluates `args` only when `a` is present. There is no separate chaining operator.
 
-A function cannot mix the two kinds: `?` on a Result needs a Result return, and `?` on an Optional needs an Optional or `Void` return. Convert explicitly with `ok_or`, `if v := x:`, or `get_or(default)`.
+A function cannot mix the two kinds: `?` on a Result needs a Result return, and `?` on an Optional needs an Optional or `Void` return. Convert explicitly with `ok_or(x, cause)`, an `if x != null:` test, or `x or default`.
 
 `?` takes its access from the value it is applied to. It borrows the optional it starts from; when that place is a `var` (a `var` binding or parameter, or a field of one), a `var fn` called through it, or a change to the payload, lands in the optional itself, in place:
 

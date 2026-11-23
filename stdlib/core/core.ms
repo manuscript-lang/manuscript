@@ -237,8 +237,8 @@ fn Optional[T].get() T:
 // Returns the payload, or `default` when this is `null`. The default is always
 // evaluated; use `get_or_else` when it costs work.
 fn move Optional[T].get_or(move default: T?) T:
-	if value := self: return value
-	if fallback := default: return fallback
+	if self != null: return self
+	if default != null: return default
 
 	panic("called Optional.get_or with a none default")
 
@@ -271,7 +271,7 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used.
 fn move Optional[T].ok_or[E](move cause: E) move T!E:
-	if value := self: return ok(value)
+	if self != null: return ok(self)
 	return error(cause)
 
 // Returns `ok` with the payload; for `null`, calls `create` once and returns its
@@ -324,7 +324,7 @@ fn Result[T, E].get() T:
 // always evaluated; use `get_or_else` when it costs work.
 fn move Result[T, E].get_or(move default: T?) T:
 	if value := self: return value
-	if fallback := default: return fallback
+	if default != null: return default
 
 	panic("called Result.get_or with a none default")
 

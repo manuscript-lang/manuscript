@@ -24,7 +24,7 @@ fn success(id: Int) Marker!Int: ok(Marker(id))
 fn failure(id: Int) Int!Marker: error(Marker(id))
 
 fn optional_cause() Void:
-	_kept := present(1).ok_or(0)
+	_kept := ok_or(present(1), 0)
 
 fn optional_callback() Void:
 	_kept := present(2).ok_or_else(fn: 0)

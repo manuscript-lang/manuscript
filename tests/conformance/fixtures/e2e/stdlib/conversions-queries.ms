@@ -13,7 +13,7 @@ fn counted(var counter: Counter) Counter:
 	return counter.clone()
 
 fn require_value[T, E](cause: E, value: T?) T!E:
-	return value.ok_or(cause)
+	return ok_or(value, cause)
 
 fn require_lazy[T, E](create: fn() E, value: T?) T!E:
 	return value.ok_or_else[E](create)
@@ -41,7 +41,7 @@ fn locate[K: Hashable, V: Clonable](
 test "conversions and collection queries are callable":
 	present: Int? := 2
 	missing: Int? := null
-	present.ok_or(Error("absent")).get() | expect_equal(2)?
+	ok_or(present, Error("absent")).get() | expect_equal(2)?
 	expect_equal(missing.ok_or_else(fn: Error("absent")).err().message, "absent")?
 
 	failed: Int!Error := error(Error("failed"))
@@ -101,21 +101,22 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 
 	nested_none: Int? := null
 	nested: Int?? := nested_none
-	converted := nested.ok_or(Error("absent"))
+	converted := ok_or(nested, Error("absent"))
 	converted.is_error() | expect_true?
 	(converted.to_optional() == null) | expect_true?
 
 	false_value: Bool? := false
-	false_value.ok_or(Error("absent")).to_optional().get() | expect_false?
+	ok_or(false_value, Error("absent")).to_optional().get() | expect_false?
 
 	unit_value: Void? := void
-	(unit_value.ok_or(Error("absent")).to_optional() != null) | expect_true?
+	(ok_or(unit_value, Error("absent")).to_optional() != null) | expect_true?
 
 	nested_inner: Int!Error := error(Error("nested"))
 	nested_result: Int!Error? := nested_inner
 	(
-		nested_result.ok_or(
-			Error("absent")
+		ok_or(
+			nested_result,
+			Error("absent"),
 		).to_optional().get().err().message | expect_equal("nested")?
 	)
 
@@ -507,15 +508,15 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	)?
 
 fn find_port(port: Int?) Int!:
-	value := port.ok_or(Error("missing"))?
+	value := ok_or(port, Error("missing"))?
 	return ok(value)
 
 test "ok_or reports its explicit cause":
 	absent: Int? := null
-	direct: Int! := absent.ok_or(Error("missing"))
+	direct: Int! := ok_or(absent, Error("missing"))
 	direct.err().message | expect_equal("missing")?
 	find_port(null).err().message | expect_equal("missing")?
 	find_port(8080).get() | expect_equal(8080)?
 
-	named: Int!Error := absent.ok_or(Error("port"))
+	named: Int!Error := ok_or(absent, Error("port"))
 	named.err().message | expect_equal("port")?

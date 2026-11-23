@@ -244,10 +244,10 @@ fn end_line(
 		dispatch(decoder, events)
 		return ok()
 
-	line := bytes.decode_utf8_range(
-		from,
-		end,
-	).ok_or(Error("SSE line is not valid UTF-8", kind: "EBADMSG"))?
+	line := ok_or(
+		bytes.decode_utf8_range(from, end),
+		Error("SSE line is not valid UTF-8", kind: "EBADMSG"),
+	)?
 	if line.starts_with(":"): return ok()
 
 	decoder.event_bytes += end - from

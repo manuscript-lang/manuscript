@@ -7,7 +7,7 @@ type Node:
 	next: Node?
 
 fn parse(text: String) Int!:
-	return text.parse_int().ok_or(Error("not a number"))
+	return ok_or(text.parse_int(), Error("not a number"))
 
 fn parse_digits(text: String) String!:
 	return ok(parse(text)?.to_string())
@@ -43,6 +43,7 @@ test "? on an absent Optional returns early from a function returning nothing":
 	var present: List[Int] = []
 	mark(present, make())
 	expect_equal(present, [1, 99])?
+
 	var absent: List[Int] = []
 	mark(absent, null)
 	expect_equal(absent, [])?

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn greet(name: String?) String:\n\tif value := name: return \"Hello, \" + value\n\treturn \"Hello!\"\n"
+    "fmt": "fn greet(name: String?) String:\n\tif name != null: return \"Hello, \" + name\n\treturn \"Hello!\"\n"
   }
 }

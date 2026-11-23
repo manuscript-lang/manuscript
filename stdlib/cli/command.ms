@@ -585,7 +585,7 @@ fn walk_from(
 						flag = positive
 						negated = true
 
-			chosen := flag.ok_or(cli_unknown_flag(token))?
+			chosen := ok_or(flag, cli_unknown_flag(token))?
 
 			if is_bool(chosen.kind):
 				if negated: values[chosen.name.clone()] = ["false"]

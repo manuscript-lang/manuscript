@@ -226,11 +226,14 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
   if (local != NULL) {
     target->ref = body_local_ref(body, local);
     body_set_ref(body, callee->id, target->ref); /* a call of a function value reads the local */
-    target->sig = local->ty;
+    const MsTy shown = local->narrowed != MS_TY_NONE ? local->narrowed : local->ty;
+    body_set_type(body, callee->id, shown);
+    body_note_narrowing(body, callee, shown);
+    target->sig = shown;
     target->ast = local->fn_params;
     target->names = local->fn_names;
     target->ast_module = local->fn_module;
-    return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
+    return shown != MS_TY_NONE && ms_ty_kind(&body->program->types, shown) == MS_TY_FUNCTION;
   }
   const MsSymbol *symbol = body_find_symbol(body, callee->u.sym);
   if (symbol == NULL && body->resolver.self != MS_TY_NONE &&

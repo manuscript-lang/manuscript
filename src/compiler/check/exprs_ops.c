@@ -476,8 +476,7 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   if (op == MS_B_OR && is_nullable(body, left)) {
     ty = nullable_or_type(body, expr, left, right);
   } else if (op == MS_B_OR && !is_invalid(body, left) && left != MS_TY_NONE && left == right &&
-             !ms_ty_is(&body->program->types, left, MS_BUILTIN_Bool)) {
-    body_redundant_or(body, expr);
+             !ms_ty_is(&body->program->types, left, MS_BUILTIN_Bool) && body_redundant_or(body, expr)) {
     ty = left;
   } else if (is_logical(op)) {
     body_check_logical(body, expr, left, right);

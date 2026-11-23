@@ -14,7 +14,10 @@ fn group[T: Clonable, K: Hashable](values: List[T], key: fn(T) K) Map[K, List[T]
 
 fn index[T: Equal](values: List[T], value: T) Int?: values.index_of(value)
 
-fn first(values: List[Int]) Int!: values.first().ok_or(Error("missing", kind: "ENOENT"))
+fn first(values: List[Int]) Int!: ok_or(
+	values.first(),
+	Error("missing", kind: "ENOENT"),
+)
 
 fn unique[T: Hashable & Clonable](values: List[T]) Set[T]: values.to_set()
 

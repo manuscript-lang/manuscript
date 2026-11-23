@@ -2,8 +2,5 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:86
 fn first_number(text: String?) Int?:
-    return (
-        text
-        .map(fn value: value.trim().clone())
-        .and_then(fn value: value.parse_int())
-    )
+	if text == null: return null
+	return text.trim().parse_int()
