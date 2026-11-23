@@ -74,6 +74,9 @@ static void mark_dead(MsH2Conn *owner) {
 static void writer_body(void *arg) {
   MsH2Conn *owner = arg;
   for (;;) {
+    if (owner->handed) {
+      return;
+    }
     MsBytes out = {0};
     ms_h2_take_output(owner->h2, &out);
     if (out.len > 0) {
@@ -95,7 +98,9 @@ static void writer_body(void *arg) {
     }
     uint64_t value = 0;
     uint32_t result = 0;
+    atomic_store(&owner->writer_parked, true);
     (void)ms_token_park(owner->out_token, -1, &value, &result);
+    atomic_store(&owner->writer_parked, false);
     if ((result & MS_WAIT_CANCELLED) != 0) {
       return;
     }
@@ -260,12 +265,21 @@ static void pump(MsH2Conn *owner) {
     if (owner->dead || (conn->worker->closing && owner->count == 0)) {
       return;
     }
-    const int64_t deadline = owner->count == 0 ? ms_sched_deadline_after(limits->timeout_ns) : MS_NO_DEADLINE;
-    MsString err = ms_string_empty();
-    const uint8_t status = ms_serve_fill(conn, deadline, &err);
-    ms_string_release(&err);
-    if (status != MS_STATUS_OK) {
-      return;
+    if (ms_serve_unread(conn).len == 0) { /* a resumed connection starts with the bytes the take claimed */
+      const int64_t deadline = owner->count == 0 ? ms_sched_deadline_after(limits->timeout_ns) : MS_NO_DEADLINE;
+      MsString err = ms_string_empty();
+      const bool waiting = owner->count == 0;
+      if (waiting) {
+        ms_serve_idle_list(conn); /* another thread may take the connection while this one is held up */
+      }
+      const uint8_t status = ms_serve_fill(conn, deadline, &err);
+      ms_string_release(&err);
+      if (waiting && ms_serve_idle_unlist(conn)) {
+        return;
+      }
+      if (status != MS_STATUS_OK) {
+        return;
+      }
     }
     const MsSpan input = ms_serve_unread(conn);
     const bool fed = ms_h2_feed(owner->h2, input);
@@ -304,6 +318,19 @@ static void wind_down(MsH2Conn *owner) {
   ms_shield_exit();
 }
 
+bool ms_h2_movable(const MsH2Conn *owner) {
+  return owner->count == 0 && !owner->dead && atomic_load(&owner->writer_parked) && !ms_h2_wants_write(owner->h2);
+}
+
+/* The session moved to another thread's connection: ends the writer without touching it. */
+static void hand_over(MsH2Conn *owner) {
+  owner->handed = true;
+  ms_h2_wake(owner->out_token);
+  while (!owner->writer_done) {
+    ms_task_sleep(SETTLE_NS);
+  }
+}
+
 void ms_serve_h2(MsServeConn *conn) {
   const MsServeLimits *limits = &conn->worker->shared->limits;
   const MsH2Settings settings = {.max_concurrent = clamp32(limits->admission),
@@ -312,7 +339,9 @@ void ms_serve_h2(MsServeConn *conn) {
                                  .connection_window = CONNECTION_WINDOW};
   MsH2Conn *owner = ms_alloc_zeroed(sizeof *owner);
   owner->conn = conn;
-  owner->h2 = ms_h2_new(true, &settings);
+  owner->h2 = conn->session != NULL ? conn->session : ms_h2_new(true, &settings);
+  conn->session = NULL;
+  conn->owner = owner;
   owner->out_token = ms_token_new(0);
   MsTaskStatus spawned = MS_TASK_OK;
   if (ms_task_spawn(writer_task, owner, MS_SPAWN_DETACHED, 0, &spawned) != 0) {
@@ -320,10 +349,18 @@ void ms_serve_h2(MsServeConn *conn) {
     ms_h2_flush(owner);
     (void)ms_guard_call(pump_body, owner, &message);
     ms_fault_text_free(&message);
-    wind_down(owner);
+    if (ms_serve_idle_taken(conn)) {
+      hand_over(owner);
+      owner->h2 = NULL;
+    } else {
+      wind_down(owner);
+    }
   }
+  conn->owner = NULL;
   (void)ms_token_free(owner->out_token);
-  ms_h2_free(owner->h2);
+  if (owner->h2 != NULL) {
+    ms_h2_free(owner->h2);
+  }
   ms_free(owner->streams);
   ms_free(owner);
 }
