@@ -27,6 +27,10 @@ static MsString in_directory(MsSpan directory, const char *name) {
  * not used: it changes the line a fault trace reports. */
 static const char debug_pipeline[] = "-passes=function(sroa,early-cse,simplifycfg,instcombine<no-verify-fixpoint>,sroa,simplifycfg)";
 
+/* DSE's default memory-walk limit makes one huge generated function (60k lines in the YAML parser) cost 4 s of a
+ * 15 s optimizer run; 10 takes 15% off the module's optimizer time and leaves the suite's binaries unchanged. */
+#define DSE_WALK_LIMIT "-dse-memoryssa-walklimit=10"
+
 /* `opt` over `input`, writing the bitcode to `bitcode`. */
 static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan bitcode, MsSpan log,
                      MsStrBuild *why) {
@@ -40,6 +44,7 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   if (options->verify) {
     argv[argc++] = ms_span_of_text("-verify-each");
   }
+  argv[argc++] = ms_span_of_text(DSE_WALK_LIMIT);
   argv[argc++] = triple_flag;
   argv[argc++] = ms_span_of_text(options->debug ? debug_pipeline : "-passes=default<O3>");
   argv[argc++] = input;
