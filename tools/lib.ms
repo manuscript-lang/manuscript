@@ -55,6 +55,12 @@ export fn status(code: Int) Int:
 // searched. A program that cannot start, or one that ends with a status above 125,
 // reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
+	return run_program_in(program, arguments, none)
+
+// `run_program` in the directory `cwd` (the caller's when none). A path with a drive
+// letter in an argument reads as `host:file` to GNU tar, so a caller on Windows names
+// files relative to `cwd` instead.
+export fn run_program_in(program: String, arguments: List[String], cwd: String?) Int:
 	if child := spawn(
 		program,
 		arguments,
@@ -62,6 +68,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
+			cwd: cwd,
 		),
 	):
 		return status(child.wait().clone().get_or(125))
