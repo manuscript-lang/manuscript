@@ -9,7 +9,7 @@ fn lifted[T](value: T) Result[T?, String]:
 fn passed[T](value: T?) Result[T?, String]:
 	return ok(value)
 
-fn lifted_text(value: String) Result[String?, String]:
+fn lifted_text(move value: String) Result[String?, String]:
 	return ok(value)
 
 test "a generic Result lifts a scalar payload into its optional field":

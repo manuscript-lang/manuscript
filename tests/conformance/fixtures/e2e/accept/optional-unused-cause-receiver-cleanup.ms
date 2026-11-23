@@ -44,7 +44,7 @@ fn failing_callback(move log: String) fn() Marker:
 	captured := Marker(2, log, true)
 	return fn: Marker(3, captured.log.clone(), false)
 
-fn discard_callback(log: String) Void:
+fn discard_callback(move log: String) Void:
 	_kept := source(log.clone()).ok_or_else(failing_callback(log))
 
 // Capture closer thunks discard returned close errors; this is a cleanup control, not a
