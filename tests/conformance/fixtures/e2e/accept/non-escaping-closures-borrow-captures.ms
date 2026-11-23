@@ -84,7 +84,7 @@ fn keep_opt(text: String) Int:
 		t += o.get()()
 	return t
 
-fn store(var fs: List[fn() Int], f: fn() Int) Void:
+fn store(var fs: List[fn() Int], move f: fn() Int) Void:
 	fs.append(f)
 
 fn keep_user(text: String) Int:

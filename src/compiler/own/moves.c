@@ -5,6 +5,7 @@
 #include "compiler/own/bind.h"
 #include "compiler/own/class.h"
 #include "compiler/own/live.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/syntax/walk.h"
 
 /* A name use, to say where a later use is. */
@@ -26,6 +27,7 @@ typedef struct Moves {
   MsBindingList vars;   /* binding sites of `var` locals of the body */
   MsBindingList reads;  /* `if p := name:` scrutinees that are not resources: the payload is a view, the name stays whole */
   MsBindingList moving; /* binding sites of `move` parameters of the body */
+  MsBindingList borrowed; /* binding sites of names bound to a view of another value */
   MsBindingList outer;  /* what the lambdas around the current expression capture: only borrowed inside them */
   uint32_t depth;       /* lambdas open around the current expression */
   uint32_t marks[16];   /* `outer.len` before each open lambda's captures */
@@ -73,6 +75,18 @@ static void report(const Moves *pass, const MsExpr *expr, MsNode next) {
     ms_strbuild_append(&text, name);
     ms_strbuild_append_text(&text, ".clone()` if the original is still needed");
   }
+  ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
+/* A plain parameter is the caller's: handing it on needs `move` on the parameter, or `.clone()` to give a copy. */
+static void report_borrowed(const Moves *pass, const MsExpr *expr) {
+  const MsSpan name = ms_names_span(pass->program->names, expr->u.sym);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "`");
+  ms_strbuild_append(&text, name);
+  ms_strbuild_append_text(&text, "` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `");
+  ms_strbuild_append(&text, name);
+  ms_strbuild_append_text(&text, ".clone()`");
   ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
@@ -222,9 +236,38 @@ static void leave_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* A borrowed parameter, or a payload of one, written where a new owner is made: a constructor argument, a `move`
+ * parameter's argument, or the returned value. */
+static void check_handed_on(Moves *pass, const MsExpr *value) {
+  uint32_t binding = 0;
+  const MsTy ty = ms_facts_type(pass->facts, value->id);
+  if (pass->depth == 0 && value->kind == MS_E_NAME && ms_bind_of(pass->facts, value->id, &binding) &&
+      contains(&pass->borrowed, binding) && ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
+    report_borrowed(pass, value);
+  }
+}
+
+static void visit_stmt(void *ctx, const MsStmt *stmt) {
+  Moves *pass = ctx;
+  if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL) {
+    check_handed_on(pass, stmt->u.expr);
+  }
+}
+
 static void visit_expr(void *ctx, const MsExpr *expr) {
   Moves *pass = ctx;
   uint32_t binding = 0;
+  const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
+  for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
+    if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0)) {
+      continue;
+    }
+    for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
+      if (expr->u.call.args.ptr[at].value->id == call->args[index].node.node) {
+        check_handed_on(pass, expr->u.call.args.ptr[at].value);
+      }
+    }
+  }
   if (expr->kind == MS_E_LAMBDA) {
     if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
       check_lambda(pass, expr);
@@ -238,6 +281,14 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     ms_binding_list_free(&captures);
     return;
   }
+  if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
+      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && contains(&pass->borrowed, binding)) {
+    /* The payloads of a borrowed value are borrowed too. */
+    for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
+      const MsArm *one = expr->u.match.arms.ptr[arm];
+      ms_binding_list_push(&pass->borrowed, one->id);
+    }
+  }
   if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || contains(&pass->reads, expr->id) ||
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;
@@ -245,11 +296,28 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(expr->id, binding));
   if (use != NULL && !use->last) {
     report(pass, expr, use->next);
+    return;
+  }
+
+}
+
+/* A name bound to a call result that borrows (`secure := outcome.get()`) holds a view, not an owner. */
+static void note_view(Moves *pass, const MsStmt *stmt) {
+  const MsExpr *value = stmt->u.bind.value;
+  const MsCall *call = value != NULL && value->kind == MS_E_CALL ? ms_facts_call(pass->facts, value->id) : NULL;
+  for (uint32_t position = 0; call != NULL && position < call->arg_count; position++) {
+    if (ms_own_call_borrows(pass->program, call, position)) {
+      ms_binding_list_push(&pass->borrowed, stmt->u.bind.pattern->id);
+      return;
+    }
   }
 }
 
 static void note_var(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
+  if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    note_view(pass, stmt);
+  }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     ms_binding_list_push(&pass->vars, stmt->u.bind.pattern->id);
   }
@@ -272,11 +340,12 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
   MsLiveness live = ms_live_compute(pass->facts, pass->program->names, arena, body);
   pass->live = &live;
   ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = note_spot}, params, body);
-  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = visit_expr, .leave_expr = leave_expr}, params, body);
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = visit_expr, .stmt = visit_stmt, .leave_expr = leave_expr}, params, body);
   spot_list_clear(&pass->spots);
   ms_binding_list_clear(&pass->vars);
   ms_binding_list_clear(&pass->reads);
   ms_binding_list_clear(&pass->moving);
+  ms_binding_list_clear(&pass->borrowed);
   ms_binding_list_clear(&pass->outer);
   pass->depth = 0;
   ms_liveness_free(&live);
@@ -319,6 +388,7 @@ void ms_own_moves(MsCheckProgram *program) {
     ms_binding_list_free(&pass.vars);
     ms_binding_list_free(&pass.reads);
     ms_binding_list_free(&pass.moving);
+    ms_binding_list_free(&pass.borrowed);
     ms_binding_list_free(&pass.outer);
   }
   ms_class_free(&classes);
