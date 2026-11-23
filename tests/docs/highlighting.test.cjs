@@ -85,9 +85,8 @@ test('from is a keyword only on import lines', () => {
 });
 
 test('all compiler keywords have scopes; contextual and retired words stay identifiers', () => {
-  const rust = fs.readFileSync(path.join(root, 'crates/ms-syntax/src/token.rs'), 'utf8');
-  const keywords = [...rust.match(/pub const KEYWORDS:[\s\S]*?= &\[([\s\S]*?)\];/)[1].matchAll(/"([^"]+)"/g)]
-    .map(match => match[1]);
+  const table = fs.readFileSync(path.join(root, 'src/compiler/syntax/token.c'), 'utf8');
+  const keywords = [...table.matchAll(/KW\("(\w+)", MS_T_/g)].map(match => match[1]).filter(word => word !== '_');
   assert.ok(keywords.length >= 25, 'Read the current compiler keyword inventory');
   for (const word of keywords) {
     assertScopes(word, [[word, ['true', 'false', 'void'].includes(word) ? 'kc' : 'k']]);
@@ -102,8 +101,8 @@ test('all compiler keywords have scopes; contextual and retired words stay ident
 });
 
 test('compiler symbolic tokens and compound assignments have operator or punctuation scopes', () => {
-  const rust = fs.readFileSync(path.join(root, 'crates/ms-syntax/src/token.rs'), 'utf8');
-  const symbols = [...rust.matchAll(/\w+ => "([^"\w\s]+)"/g)].map(match => match[1]);
+  const tokens = fs.readFileSync(path.join(root, 'src/compiler/syntax/token.h'), 'utf8');
+  const symbols = [...tokens.matchAll(/X\(\w+, "([^"\w\s]+)"\)/g)].map(match => match[1]);
   assert.ok(symbols.length >= 25, 'Read the current compiler symbol inventory');
   for (const symbol of [...symbols, '+=', '-=', '*=', '/=', '%=']) {
     assertScopes(symbol, [[symbol, /^[()[\]{}:,.]$/.test(symbol) ? 'p' : 'o']]);

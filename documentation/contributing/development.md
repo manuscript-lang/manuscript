@@ -14,7 +14,7 @@ make doctor
 make verify
 ```
 
-- `make doctor` first builds `ms`, then reports available and missing prerequisites. The doctor program itself does not download tools; its prerequisite build can fetch Cargo dependencies. If you already have a built compiler, run `target/release/ms run tools/doctor.ms` to inspect the environment directly.
+- `make doctor` first builds `ms`, then reports available and missing prerequisites (git, tar, cmake, ninja, clang, a C compiler, Python, Node, Hugo). If you already have a built compiler, run `.artifacts/build/ci/src/cli/ms run tools/doctor.ms` to inspect the environment directly.
 - `make verify` runs `make check` (ABI-symbol validation, Rust formatting and clippy), `make repo-check`, `make workflow-check` (CI scheduling and deployment), `make bench-check` (benchmark sources and tool tests), `make unit` (workspace tests, doc tests and program-map tests), `make docs-check`, and `make licenses-check`.
 - `make runtime` (`cargo xtask runtime`) builds the native runtime into `target/ms-native/`. `ms-cli`'s build script only embeds that archive, so run it first (and after runtime changes) before any cargo command that compiles `ms-cli`, such as clippy, nextest, or `cargo build`; `make check`, `make unit`, and `make build` do it for you. In CI it runs once per Rust job, ahead of sccache-wrapped cargo calls, so the runtime's compiler outputs are cached like any other crate.
 - `make build` produces `target/release/ms`; the Rust build details are in [Rust toolchain](rust-toolchain.md).
