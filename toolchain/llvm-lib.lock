@@ -1,5 +1,5 @@
 # The shared LLVM library ms loads in-process (manuscript-lang/llvm-bundle, built from LLVM 23.1.1 on each platform).
-# toolchain/fetch-llvm-lib.sh downloads the archive for the host and checks it against these digests; they are the
+# tools/fetch-llvm-lib.ms downloads the archive for the host and checks it against these digests; they are the
 # release's SHA256SUMS. Update the tag and every digest together.
 tag llvm-23.1.1-r5
 version 23.1.1

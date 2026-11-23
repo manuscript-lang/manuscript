@@ -19,7 +19,7 @@ Proposal, 2026-11-23, after the Debug pipeline change (#6542). Owner direction (
 
 - `src/base/dylib.[ch]`: `ms_dylib_open` (absolute paths only, never searched), `ms_dylib_symbol`, `ms_dylib_close`, over libuv.
 - `src/compiler/link/llvm_inproc.[ch]`: resolves the C API once, parses IR, runs `LLVMRunPasses`, emits an object or assembly into memory. Process-global `cl::opts` are restated on every call. `LLVMInstallFatalErrorHandler` reports an LLVM fatal error as an `ms` internal compiler error with the fault exit status.
-- `MS_LLVM` names the library file; empty keeps the `opt`/`llc` route. `toolchain/llvm-lib.lock` pins the llvm-bundle tag and SHA-256 per platform, `toolchain/fetch-llvm-lib.sh` fetches it, and the CI toolchain action exports `MS_LLVM`.
+- `MS_LLVM` names the library file; empty keeps the `opt`/`llc` route. `toolchain/llvm-lib.lock` pins the llvm-bundle tag and SHA-256 per platform, `tools/fetch-llvm-lib.ms` fetches it, and the CI toolchain action exports `MS_LLVM`.
 - Pipelines match the process route: Debug `function(sroa,...)` with `-O1`, basic register allocator; Release `default<O3>`.
 
 ## Evidence
