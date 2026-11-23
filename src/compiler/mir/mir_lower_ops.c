@@ -210,6 +210,7 @@ static void make_releases(LowerCx *cx, size_t nfuncs) {
 static void lower_function(LowerCx *cx, MirFunc *func) {
   mirlo_list_drops(cx, func);
   mirlo_str_eq_lits(cx, func);
+  mirlo_str_drops(cx, func);
   mirlo_block_clones(cx, func);
   mirlo_expand_sets(cx, func);
   mirlo_split_drop_ifs(cx->module, func);
