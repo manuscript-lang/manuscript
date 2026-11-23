@@ -60,10 +60,8 @@ bool url_should_escape(uint8_t byte, UrlEnc mode);
 bool url_valid_encoded(MsSpan text, UrlEnc mode);
 bool url_valid_optional_port(MsSpan port);
 bool url_is_canonical(MsSpan text, UrlEnc mode);
-bool url_has_byte(MsSpan text, uint8_t byte);
 /* The index of the last `byte` in `text`, or false. */
 bool url_find_last(MsSpan text, uint8_t byte, size_t *at);
-bool url_find_first(MsSpan text, uint8_t byte, size_t *at);
 
 /* url_parse.c: Go's url.Parse; false when the text is malformed. */
 MS_NODISCARD bool url_parse(MsSpan raw, UrlParts *out);

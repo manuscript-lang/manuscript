@@ -16,7 +16,7 @@
 #include "base/sort.h"
 #include "base/utf8.h"
 #include "compiler/syntax/diag_json.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/build_command.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"

@@ -1,7 +1,6 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	StringBuilder from "@std/string_builder.ms",
 	expect_equal from "@std/test/test.ms",
 )
 
@@ -65,9 +64,9 @@ test "an interface method value shares the underlying value":
 	step()
 	expect_equal(view.step(), 30)?
 
-test "a builder method value appends to the builder":
-	var sb = StringBuilder()
-	append := sb.append
+test "a list method value appends to the list":
+	var names: List[String] = []
+	append := names.append
 	append("a")
 	append("b")
-	sb.build() | expect_equal("ab")?
+	names | expect_equal(["a", "b"])?

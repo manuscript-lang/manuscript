@@ -116,17 +116,13 @@ MsString ms_http_clean_path(MsSpan path) {
   return result;
 }
 
-static bool find_byte(MsSpan s, uint8_t b, size_t *at) {
-  return ms_span_find(s, ms_span_of(&b, 1), at);
-}
-
 /* `rest` without a fragment, split at the first `?`. */
 static void split_query(MsSpan rest, MsSpan *path, MsSpan *query) {
   size_t at = 0;
-  if (find_byte(rest, '#', &at)) {
+  if (ms_span_find_byte(rest, '#', &at)) {
     rest.len = at;
   }
-  if (find_byte(rest, '?', &at)) {
+  if (ms_span_find_byte(rest, '?', &at)) {
     *path = ms_span_of(rest.ptr, at);
     *query = ms_span_of(rest.ptr + at + 1, rest.len - at - 1);
     return;
@@ -152,7 +148,7 @@ static bool has_text_ci(MsSpan s, const char *needle_lower) {
 
 static bool has_nul(MsSpan s) {
   size_t at = 0;
-  return find_byte(s, 0, &at);
+  return ms_span_find_byte(s, 0, &at);
 }
 
 /* Strips an http:// or https:// prefix, recording the authority up to the first / or ?. */

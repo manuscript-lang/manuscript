@@ -77,6 +77,8 @@ MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_
 /* The reference a use of `local` records. */
 MsRef body_local_ref(const Body *body, const MsLocal *local);
 const MsLocal *body_find_local(const Body *body, MsName name);
+/* Whether `expr` is the bare name `none` and no local of that name shadows it. */
+bool body_is_none_name(const Body *body, const MsExpr *expr);
 /* The innermost local of that name, including one a rejected pattern named. */
 const MsLocal *body_find_any_local(const Body *body, MsName name);
 

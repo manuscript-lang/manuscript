@@ -43,7 +43,7 @@ endforeach()
 if(MS_LIBC STREQUAL "musl")
   return() # the inner build of the `--static` runtime holds the runtime archives only
 endif()
-foreach(layer compiler tooling cli lint)
+foreach(layer compiler tooling lsp cli lint)
   include(targets/${layer})
 endforeach()
 

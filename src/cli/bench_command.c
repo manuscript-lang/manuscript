@@ -12,10 +12,10 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "base/process.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/fault_record.h"
 #include "cli/invocation.h"
-#include "cli/json_value.h"
+#include "tooling/json_value.h"
 #include "cli/pipeline.h"
 #include "cli/test_document.h"
 #include "cli/test_options.h"
@@ -112,8 +112,7 @@ static MsSpan describe_stats(MsArena *arena, const MsJson *stats) {
     ms_strbuild_append_text(&out, " string clones per op");
   }
   ms_strbuild_append_byte(&out, ')');
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -541,18 +540,6 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   return status;
 }
 
-/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
-static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
-  TestFilters filters = {0};
-  MsSpan error = {0};
-  const bool valid = test_filters_compile(arena, options, &filters, &error);
-  test_filters_free(&filters);
-  if (!valid) {
-    test_print(stderr, ms_message_format(arena, "%S\n", error));
-  }
-  return valid;
-}
-
 int ms_bench_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -560,7 +547,7 @@ int ms_bench_command(int argc, char **argv) {
   MsTestOptions options;
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
-  if (status == 0 && !selection_valid(&arena, &options)) {
+  if (status == 0 && !test_selection_valid(&arena, &options)) {
     status = STATUS_USAGE;
   } else if (status == 0 && options.baseline.len > 0 && read_baseline(&arena, options.baseline) == NULL) {
     status = STATUS_USAGE; /* before the build and the run, which can take minutes */

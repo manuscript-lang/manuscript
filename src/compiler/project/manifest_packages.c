@@ -6,6 +6,7 @@
 #include "base/path.h"
 #include "base/string.h"
 #include "base/sort.h"
+#include "base/message.h"
 #include "compiler/project/manifest_internal.h"
 #include "compiler/project/package.h"
 
@@ -19,7 +20,7 @@ static const ListKind EFFECT_LIST = {"effect", "effects", "[\"std.net.*\", \"std
 static const ListKind MEMBER_LIST = {"member", "members", "[\"app\", \"libs/*\"]", "\"app\"", true};
 
 static MsSpan text_of(Reader *r, MsStrBuild *builder) {
-  return ms_project_text(r->arena, builder);
+  return ms_message_take_builder(r->arena, builder);
 }
 
 static MsSpan list_shape(Reader *r, const ListKind *kind) {

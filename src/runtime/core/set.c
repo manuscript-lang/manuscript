@@ -21,8 +21,14 @@ void msrt_set_add_copy(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
   add_copy(m, ms_map_key_desc(m, kd), key, true);
 }
 
-void msrt_set_add(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
-  msrt_set_add_copy(m, kd, key);
+/* `add(move value)`: the set takes the value, or drops it when an equal one is already present. */
+void msrt_set_add(MsMap *m, const MsTypeDesc *kd, uint8_t *key) {
+  kd = ms_map_key_desc(m, kd);
+  if (ms_map_has(m, kd, NULL, key)) {
+    ms_slot_drop(kd, key);
+    return;
+  }
+  ms_map_insert(m, kd, NULL, key, NULL);
 }
 
 int64_t msrt_set_length(const MsMap *m) {
@@ -33,7 +39,8 @@ uint8_t msrt_set_contains(const MsMap *m, const MsTypeDesc *kd, const uint8_t *k
   return msrt_map_contains(m, kd, NULL, key);
 }
 
-void msrt_set_remove(MsMap *m, const MsTypeDesc *kd, const uint8_t *key) {
+/* `remove(move value)`: the value is consumed whether or not it was present. */
+void msrt_set_remove(MsMap *m, const MsTypeDesc *kd, uint8_t *key) {
   msrt_map_remove(m, kd, NULL, key);
 }
 

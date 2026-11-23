@@ -9,7 +9,7 @@
 #include "base/path.h"
 #include "tooling/diff.h"
 #include "tooling/review.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/invocation.h"
 #include "tooling/facts.h"
 #include "tooling/report.h"
@@ -23,16 +23,14 @@ static bool path_exists(MsSpan path) {
 static MsSpan path_dir(MsArena *arena, MsSpan path) {
   MsStrBuild out = ms_strbuild_new();
   ms_path_dir(path, &out);
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
 static MsSpan path_join(MsArena *arena, MsSpan left, MsSpan right) {
   MsStrBuild out = ms_strbuild_new();
   ms_path_join(left, right, &out);
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -113,8 +111,7 @@ static bool review_input(MsArena *arena, const MsDiffFiles *files, MsSpan root, 
     const MsSpan absolute = locate_diff_path(arena, root, name, deleted);
     MsStrBuild rel = ms_strbuild_new();
     const bool related = ms_path_relative(&rel, root, absolute);
-    const MsSpan relative = ms_arena_copy(arena, ms_strbuild_span(&rel));
-    ms_strbuild_free(&rel);
+    const MsSpan relative = ms_message_take_builder(arena, &rel);
     if (!related || ms_path_escapes(relative)) {
       continue;
     }

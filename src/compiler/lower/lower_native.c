@@ -312,6 +312,7 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret),
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
                                            : sig != NULL && sig->spawns ? MR_SPAWNS_TASK
+                                           : sig != NULL && sig->keeps ? MR_KEEPS_SLOT
                                            : fn_native_role(fn->cx->module, text, nargs > 0 ? params[0].ty : MIR_VOID))};
   return mir_extern_intern(fn->cx->module, &def);
 }

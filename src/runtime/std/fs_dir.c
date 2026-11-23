@@ -67,8 +67,7 @@ uint8_t msstd_fs_directory_open(const MsString *path, MsObj **out, MsString *err
     handle->dir->nentries = 1;
     *out = &handle->header;
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -113,8 +112,7 @@ uint8_t msstd_fs_directory_read(MsObj *handle, MsFsEntry *out, MsString *err) {
     out->directory = directory ? 1 : 0;
     out->symlink = symlink ? 1 : 0;
   }
-  const uint8_t finished = ms_fail_finish(&job.fail, err);
-  ms_fs_job_free(&job);
+  const uint8_t finished = ms_fs_job_finish(&job, ms_span_of(NULL, 0), err);
   return finished != MS_STATUS_OK ? finished : status;
 }
 
@@ -169,7 +167,6 @@ uint8_t msstd_fs_temporary_close(MsObj *handle, MsString *err) {
       temporary->closed = true;
     }
   }
-  const uint8_t status = ms_fail_finish(&job.fail, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, ms_span_of(NULL, 0), err);
   return status;
 }

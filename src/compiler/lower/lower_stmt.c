@@ -200,7 +200,10 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool fresh = !reads_var && (fn_fresh_owner(fn, value) || is_empty_optional(fn, value));
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
-  if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+  const bool in_cell = stmt->u.bind.is_mutable && fn->closing != NULL && local < fn->nvars &&
+                       fn->holds_value != NULL && !fn->holds_value[local] &&
+                       mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE && mir_needs_drop(fn->cx->module, ty) && fresh;
+  if (shared || in_cell || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
@@ -397,6 +400,10 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
   const MsExpr *base = place->u.member.left;
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     return fn_fail(fn, "this member is not a record field");
+  }
+  MirValue address = MIR_NONE;
+  if (fn_field_address(fn, place, &address)) {
+    return fn_store_field_in_place(fn, place, address, value);
   }
   MirValue record = MIR_NONE;
   if (!fn_take_place(fn, base, &record)) {
@@ -874,9 +881,6 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
 }
 
 static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
-  if (fn->nloops == LOWER_MAX_LOOPS) {
-    return fn_fail(fn, "loops nest too deeply");
-  }
   const MirBlock head = mir_b_new_block(&fn->b);
   const MirBlock body = mir_b_new_block(&fn->b);
   const MirBlock done = mir_b_new_block(&fn->b);
@@ -895,7 +899,7 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   mir_b_br_if(&fn->b, cond, body, NULL, 0, done, NULL, 0);
   mir_b_seal_block(&fn->b, body);
   enter(fn, body);
-  fn->loops[fn->nloops++] = (LowerLoop){done, head, fn->nopen};
+  fn_loop_push(fn, done, head);
   const bool ok = lower_block(fn, stmt->u.loop.body);
   fn->nloops--;
   if (!fn->terminated) {

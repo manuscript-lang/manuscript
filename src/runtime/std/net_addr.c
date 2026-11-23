@@ -1,13 +1,8 @@
 /* runtime/std/net_addr.c: host:port text shared by the network modules. */
 #include "runtime/std/net_ip.h"
 
-static bool has_byte(MsSpan text, uint8_t byte) {
-  size_t at = 0;
-  return ms_span_find(text, ms_span_of(&byte, 1), &at);
-}
-
 static bool has_bracket(MsSpan text) {
-  return has_byte(text, '[') || has_byte(text, ']');
+  return ms_span_has_byte(text, '[') || ms_span_has_byte(text, ']');
 }
 
 static bool split_bracketed(MsSpan rest, MsSpan *host, MsSpan *port) {
@@ -21,7 +16,7 @@ static bool split_bracketed(MsSpan rest, MsSpan *host, MsSpan *port) {
       after.len == 0 || after.ptr[0] != ':' || !ms_span_slice(after, 1, after.len, port)) {
     return false;
   }
-  return !has_byte(*port, ':') && !has_bracket(*port) && !has_byte(*host, '[');
+  return !ms_span_has_byte(*port, ':') && !has_bracket(*port) && !ms_span_has_byte(*host, '[');
 }
 
 bool ms_split_host_port(MsSpan text, MsSpan *host, MsSpan *port) {
@@ -36,7 +31,7 @@ bool ms_split_host_port(MsSpan text, MsSpan *host, MsSpan *port) {
   if (colon == 0 || !ms_span_slice(text, 0, colon - 1, host) || !ms_span_slice(text, colon, text.len, port)) {
     return false;
   }
-  return !has_byte(*host, ':') && !has_bracket(*host) && !has_bracket(*port);
+  return !ms_span_has_byte(*host, ':') && !has_bracket(*host) && !has_bracket(*port);
 }
 
 bool ms_parse_port(MsSpan text, uint16_t *out) {
@@ -58,7 +53,7 @@ bool ms_parse_port(MsSpan text, uint16_t *out) {
 }
 
 void ms_join_host_port(MsSpan host, uint16_t port, MsStrBuild *out) {
-  const bool bracket = has_byte(host, ':');
+  const bool bracket = ms_span_has_byte(host, ':');
   if (bracket) {
     ms_strbuild_append_byte(out, '[');
   }

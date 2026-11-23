@@ -9,6 +9,7 @@
 #include "runtime/core/fault.h"
 #include "runtime/std/bigint.h"
 #include "runtime/std/bignum.h"
+#include "runtime/std/shape_text.h"
 
 /* Results of pow and shift_left may not exceed this many bits. */
 #define MS_BIGINT_MAX_BITS ((int64_t)1 << 24)
@@ -24,7 +25,12 @@ static MsObj *cell_clone_entry(MsObj *object);
 static void cell_drop_entry(MsObj *object);
 
 /* A new object that takes ownership of the limbs of `value`, which is left zero. */
+static void cell_text(const void *cell, MsString *out) {
+  msstd_bigint_to_string_radix((const MsBigCell *)cell, 10, out);
+}
+
 static MsBigCell *cell_new(MsBig *value) {
+  ms_shape_text_set_bigint(cell_text);
   MsBigCell *const cell = ms_alloc(sizeof *cell);
   cell->header.clone = cell_clone_entry;
   cell->header.drop = cell_drop_entry;

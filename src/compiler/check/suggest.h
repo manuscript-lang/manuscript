@@ -17,7 +17,5 @@ bool ms_suggest_did_you_mean(MsStrBuild *out, MsSpan name, const MsSpanList *can
 /* Appends the names sorted and de-duplicated, at most `limit` of them, then `, ...` when more were left out. */
 void ms_suggest_list(MsStrBuild *out, const MsSpanList *names, size_t limit);
 
-/* Byte order of two spans: negative, zero or positive. */
-int ms_suggest_compare(MsSpan a, MsSpan b);
 
 #endif

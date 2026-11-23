@@ -80,6 +80,12 @@ const MsFact *ms_fact_find(const MsFactModel *model, MsSpan key);
 MsViewNode *ms_view_node(MsArena *arena, MsSpan label);
 MsViewNode *ms_view_node_text(MsArena *arena, const char *label);
 
+/* The fact key of the inspection entity with `id` (`keys` holds one per entity, in order), or empty. */
+MsSpan ms_entity_key(const MsInspection *inspection, const MsSpan *keys, MsSpan id);
+
+/* The texts of `list` joined by `separator`. */
+MsSpan ms_spans_joined(MsArena *arena, const MsSpans *list, const char *separator);
+
 /* The effects of an entity joined by `+`, or `none`. */
 MsSpan ms_effects_joined(MsArena *arena, const MsSpans *effects);
 

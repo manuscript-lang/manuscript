@@ -22,7 +22,13 @@ typedef enum MsStatus {
   MS_STATUS_NOT_TERMINAL = 15,          /* a descriptor that is not a terminal */
   MS_STATUS_NONE = 16,                  /* nothing to report: a watched root that is gone */
   MS_STATUS_BUSY = 17,                  /* a resource in use */
-  MS_STATUS_AUTHENTICATION_FAILED = 18 /* a tag or signature that does not verify */
+  MS_STATUS_AUTHENTICATION_FAILED = 18, /* a tag or signature that does not verify */
+  MS_STATUS_NAME_TOO_LONG = 19,         /* a file name or path past the host's limit */
+  MS_STATUS_LINK_LOOP = 20,             /* too many symbolic links on a path */
+  MS_STATUS_NO_SPACE = 21,              /* the device is full */
+  MS_STATUS_READ_ONLY = 22,             /* a read-only file system */
+  MS_STATUS_CROSS_DEVICE = 23,          /* a link or rename across devices */
+  MS_STATUS_TOO_MANY_OPEN = 24          /* the process or system has no file descriptors left */
 } MsStatus;
 
 #endif

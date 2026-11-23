@@ -168,23 +168,19 @@ bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty) 
   if (stmt->u.branch.binding->kind != MS_P_NAME || ref == NULL || ref->kind != MS_REF_LOCAL) {
     return fn_fail(fn, "only a name can be bound by `if` for now");
   }
-  if (fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
-    return fn_fail(fn, "`if var` entries nest too deeply");
-  }
   const MirVar var = fn_local(fn, ref->local, ty);
   /* An entry that owns something is taken out of its place, and the writeback puts the changed value back. */
   const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &address, 1,
                                     (MirImm){.tag = MI_TY, .a = ty}, ty);
   mir_b_def_var(&fn->b, var, value);
+  fn->writebacks = fn_grow(fn, fn->writebacks, &fn->writebacks_cap, fn->nwritebacks, sizeof(LowerWriteback));
   fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.var = var, .address = address, .ty = ty, .depth = fn->nopen, .env = fn->nouter};
   return !fn->failed;
 }
 
 /* A `for` over a variable lends it to the iterator slot for the loop: leaving the function meanwhile puts it back. */
 bool fn_lend_writeback(LowerFn *fn, VarSlot *lent) {
-  if (fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
-    return fn_fail(fn, "loops over variables nest too deeply");
-  }
+  fn->writebacks = fn_grow(fn, fn->writebacks, &fn->writebacks_cap, fn->nwritebacks, sizeof(LowerWriteback));
   fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.depth = fn->nopen, .env = fn->nouter, .lent = lent};
   return true;
 }

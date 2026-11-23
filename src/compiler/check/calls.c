@@ -77,12 +77,6 @@ static bool unapplied(const Body *body, MsTy ty) {
   return true;
 }
 
-/* Whether `expr` is the bare `none`, which takes its type from the parameter and so says nothing about type arguments. */
-static bool is_none_literal(const Body *body, const MsExpr *expr) {
-  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
-}
-
 /* The parameter type with the variables bound so far substituted. */
 static MsTy expected_param(Body *body, const Target *target, MsTy param, const MsTy *bound) {
   size_t known = 0;
@@ -228,7 +222,7 @@ static bool head_differs(const MsTyTable *types, MsTy pattern, MsTy actual) {
  * the parameter's type and what the argument is (a callback gets its result named). */
 static bool report_shape_mismatch(Body *body, const Target *target, const MsExpr *value, MsTy param, MsTy actual) {
   const MsTyTable *types = &body->program->types;
-  if (!mentions_vars(types, param, &target->vars) || is_none_literal(body, value) || holds_invalid(types, actual, 6)) {
+  if (!mentions_vars(types, param, &target->vars) || body_is_none_name(body, value) || holds_invalid(types, actual, 6)) {
     return false;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -375,7 +369,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
-        !is_none_literal(body, arg->value) && !(is_function(types, arg_tys[index]) && unapplied(body, ms_ty_result(types, arg_tys[index]))) &&
+        !body_is_none_name(body, arg->value) && !(is_function(types, arg_tys[index]) && unapplied(body, ms_ty_result(types, arg_tys[index]))) &&
         !report_callback_arity(body, target, arg->value, param, arg_tys[index])) {
       if (!ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound)) {
         (void)report_shape_mismatch(body, target, arg->value, param, arg_tys[index]);
@@ -647,10 +641,10 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   if (target->vars.len != 0 && typed.len == 0) {
     bool bare = false;
     for (size_t index = 0; index < matched->count; index++) {
-      bare = bare || (matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value));
+      bare = bare || (matched->slot[index] >= 0 && body_is_none_name(body, call->u.call.args.ptr[matched->slot[index]].value));
     }
     for (size_t index = 0; bare && index < matched->count; index++) {
-      const bool none = matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value);
+      const bool none = matched->slot[index] >= 0 && body_is_none_name(body, call->u.call.args.ptr[matched->slot[index]].value);
       ms_ty_list_push(&typed, none ? MS_TY_NONE : arg_tys[index]);
     }
     arg_tys = bare ? typed.ptr : arg_tys;

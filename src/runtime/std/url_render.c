@@ -60,8 +60,8 @@ static void render_hierarchy(const UrlParts *url, MsStrBuild *out) {
     ms_strbuild_append_byte(out, '/');
   }
   size_t slash = text.len;
-  (void)url_find_first(text, '/', &slash);
-  if (ms_strbuild_length(out) == 0 && url_has_byte(ms_span_of(text.ptr, slash), ':')) {
+  (void)ms_span_find_byte(text, '/', &slash);
+  if (ms_strbuild_length(out) == 0 && ms_span_has_byte(ms_span_of(text.ptr, slash), ':')) {
     ms_strbuild_append_text(out, "./");
   }
   url_append(out, text);
@@ -112,7 +112,7 @@ static void resolve_path(MsSpan base, MsSpan reference, MsStrBuild *out) {
   MsSpan element = ms_span_of(NULL, 0);
   for (bool more = true; more;) {
     size_t slash = 0;
-    more = url_find_first(remaining, '/', &slash);
+    more = ms_span_find_byte(remaining, '/', &slash);
     element = more ? ms_span_of(remaining.ptr, slash) : remaining;
     remaining = more ? ms_span_of(remaining.ptr + slash + 1, remaining.len - slash - 1) : remaining;
     if (ms_span_is_text(element, ".")) {

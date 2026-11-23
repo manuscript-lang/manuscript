@@ -2,7 +2,6 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	StringBuilder from "@std/string_builder.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
@@ -59,7 +58,7 @@ test "default insertion keeps eager and lazy calls and receiver identity":
 	expect_false(counter.calls != 1 or values.get("a") != 1)?
 	expect_equal(values.keys(), ["a", "b", "ccc", "d", "ff"])?
 
-test "text and byte builders keep Void mutation function types":
+test "byte builders keep Void mutation function types":
 	var bytes = BytesBuilder()
 	append_byte: fn(UInt8) Void := bytes.append
 	append_byte(65)
@@ -67,11 +66,6 @@ test "text and byte builders keep Void mutation function types":
 	concat_bytes: fn(Bytes) Void := bytes.append_bytes
 	concat_bytes("B".to_bytes())
 	expect_false(bytes.build() != "AB".to_bytes())?
-
-	var text = StringBuilder()
-	append_text: fn(String) Void := text.append
-	append_text("ab")
-	expect_false(text.build() != "ab")?
 
 test "copy names preserve Bytes and collection storage":
 	bytes := Bytes([1, 2, 3])

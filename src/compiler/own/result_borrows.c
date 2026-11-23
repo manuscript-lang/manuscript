@@ -64,11 +64,6 @@ static Reach join(Reach left, Reach right) {
   return (Reach){.mask = left.mask | right.mask, .owned = left.owned || right.owned};
 }
 
-static bool owns_memory(const Pass *pass, const MsExpr *expr) {
-  const MsTy ty = ms_facts_type(pass->facts, expr->id);
-  return ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
-}
-
 static const Reach NEUTRAL = {0, false};
 static const Reach OWNED = {0, true};
 
@@ -192,7 +187,7 @@ static Reach classify_call(Pass *pass, const MsExpr *call) {
 }
 
 static Reach classify(Pass *pass, const MsExpr *expr) {
-  if (!owns_memory(pass, expr)) {
+  if (!ms_class_owns_memory(pass->facts, pass->classes, expr)) {
     return NEUTRAL;
   }
   if (expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER) {

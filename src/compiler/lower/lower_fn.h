@@ -8,7 +8,6 @@
 /* How the consumer takes an expression's value: it reads it in place, or it takes ownership. */
 typedef enum LowerWant { LW_BORROW, LW_MOVE } LowerWant;
 
-enum { LOWER_MAX_SCOPES = 64, LOWER_MAX_LOOPS = 32, LOWER_MAX_OWNED_VARS = 256 };
 
 /* A `var` local that owns its current value: the scope that declared it owns that value where the scope ends. */
 typedef struct LowerOwnedVar {
@@ -43,6 +42,7 @@ typedef struct LowerFnLocals {
   MirValue *closing;
   bool *closing_var;
   uint8_t *shared;
+  bool *holds_value;
   MirTy *closing_types;
   uint32_t nvars;
 } LowerFnLocals;
@@ -59,7 +59,6 @@ typedef struct LowerOuterEnv {
   const MsParams *default_params;
   bool default_has_self;
 } LowerOuterEnv;
-enum { LOWER_MAX_DEFAULT_DEPTH = 8 };
 
 /* An `if var name = place[key]?` binding: the variable is a copy of the entry's bits, stored back to `address` wherever
  * the body is left. `depth` is the number of scopes open inside the body. */
@@ -72,8 +71,7 @@ typedef struct LowerWriteback {
   struct VarSlot *lent; /* a `for` over a variable: the slot the iterator was lent in, which goes back to its place */
 } LowerWriteback;
 
-enum { LOWER_MAX_WRITEBACKS = 8 };
-enum { LOWER_MAX_VAR_PARAMS = 8, LOWER_MAX_CLOSING_PARAMS = 32 };
+enum { LOWER_MAX_CLOSING_PARAMS = 32 };
 
 /* The exit of a call whose default argument uses `?`: the error leaves the call as its result, not the caller (lower_call.c). */
 typedef struct DefaultExit {
@@ -103,6 +101,7 @@ typedef struct LowerFn {
   MirTy default_record_ty;
   uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
+  bool *holds_value;     /* by local id: the body assigns the whole local or moves a field out of it, so it stays a variable, not a cell */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
@@ -122,11 +121,11 @@ typedef struct LowerFn {
   MirTy ret;
   MsTy ret_checked; /* the checked result type of a named function (MS_TY_NONE for a lambda): a pending result closes through it */
   uint32_t next_scope;               /* the next scope id to hand out */
-  uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
-  bool open_closes[LOWER_MAX_SCOPES]; /* whether the scope at that depth owns a slot that closes where it ends */
-  uint32_t nopen;
-  LowerOwnedVar owned_vars[LOWER_MAX_OWNED_VARS];
-  uint32_t nowned_vars;
+  uint32_t *open;   /* the scopes open now, outermost first (grown in the module arena) */
+  bool *open_closes; /* whether the scope at that depth owns a slot that closes where it ends */
+  uint32_t nopen, open_cap;
+  LowerOwnedVar *owned_vars;
+  uint32_t nowned_vars, owned_vars_cap;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
   const MsExpr *placing_member; /* the receiver a native takes out of its place itself: reading it leaves it there */
@@ -134,13 +133,13 @@ typedef struct LowerFn {
   const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
   const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
   uint32_t nmoved_fields;
-  LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
-  uint32_t nvar_params;
+  LowerVarParam *var_params;
+  uint32_t nvar_params, var_params_cap;
   MirVar refilling_var; /* plus one: the `var` parameter an assignment to it is refilling, whose value the right side may take */
-  LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
-  uint32_t nwritebacks;
-  LowerOuterEnv outer[LOWER_MAX_DEFAULT_DEPTH]; /* the environments of the calls whose defaults are being lowered, outermost first */
-  uint32_t nouter;
+  LowerWriteback *writebacks;
+  uint32_t nwritebacks, writebacks_cap;
+  LowerOuterEnv *outer; /* the environments of the calls whose defaults are being lowered, outermost first */
+  uint32_t nouter, outer_cap;
   bool failed;
   bool returns_view; /* the result is a view lender's owned box of an interface that borrows: a returned reference is boxed by `iface.own` */
   bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
@@ -156,11 +155,18 @@ typedef struct LowerFn {
   const MsStmt *sink_stmt; /* a bench body's last statement: when it is a call, its value goes to the bench sink */
   uint32_t bind_scope; /* with `temps` on a bind: the scope the name it binds belongs to, plus one; zero when none */
   uint32_t nloops;
-  LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
+  LowerLoop *loops; /* the loops open now, outermost first */
+  uint32_t loops_cap;
   const LowerLambda *lambda; /* the lambda whose body this is, or NULL */
   MirVar *cap_vars;           /* a lambda body: the variable holding each capture */
   uint32_t local_count; /* the current block ended in a return: the statements after it are unreachable */
 } LowerFn;
+
+/* Room for one more element of a per-function table (module arena memory): the tables are bounded only by memory. */
+void *fn_grow(LowerFn *fn, void *items, uint32_t *cap, uint32_t used, size_t size);
+
+/* Opens a loop for `break` and `continue`; nesting is bounded only by memory. */
+void fn_loop_push(LowerFn *fn, MirBlock break_to, MirBlock continue_to);
 
 LowerFnLocals fn_locals_save(const LowerFn *fn);
 /* Replaces the tables with empty ones for `nvars` locals (closing slots included). */
@@ -486,6 +492,10 @@ typedef struct VarSlot {
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 /* A field of a closing local, as its address in the local's slot (lower_field.c). */
 bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr);
+/* Assigns `value` to the field at `address` where it lies: the old one is dropped or closed first. */
+bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address, MirValue value);
+/* Reads the field `expr` names where it lies, when its record stays in a cell. */
+bool fn_read_field_in_place(LowerFn *fn, const MsExpr *expr, MirValue *value);
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 /* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */

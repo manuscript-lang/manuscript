@@ -139,6 +139,13 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
 /* The source files a command target stands for: a .ms file is itself; a directory or an ms.toml stands for the
  * project's modules (every .ms file below its source directory, its test and bench files, and its entry),
  * confined to the project root. Paths are appended to `paths`. */
+/* Whether a directory of this name is left out of discovery and search: hidden, `vendor` or `node_modules`. */
+bool ms_project_skips_name(MsSpan name);
+
+/* For a directory with no `.ms` files of its own: text starting with "; " that names the projects (directories with
+ * their own ms.toml) below it, or empty when there are none. */
+MsSpan ms_project_nested_hint(MsArena *arena, MsSpan dir);
+
 MS_NODISCARD bool ms_project_format_files(MsArena *arena, MsSpan target, MsSpanList *paths,
                                           MsProjectError *error);
 

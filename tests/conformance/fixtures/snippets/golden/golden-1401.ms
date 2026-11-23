@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn %s(visits: List[Int], scoped: Bool) String:
-    b := StringBuilder()
+    b := ""
     var i = 0
     if scoped:
         with resource = Resource(visits):

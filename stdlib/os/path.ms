@@ -14,7 +14,6 @@ print(name)
 */
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	StringBuilder from "@std/string_builder.ms",
 
 	msstd_path_compile_glob,
 	msstd_path_glob_matches,
@@ -363,14 +362,14 @@ fn normalize_core(windows: Bool, text: String) String:
 		start = end + 1
 
 	// Segments are runs between slashes of valid text, so they are copied as views.
-	var out = StringBuilder()
+	var out = ""
 
 	if windows and root.starts_with("//") and not is_device(root):
-		out.append(canonical_unc_root(root))
+		out += canonical_unc_root(root)
 	else:
-		out.append(text.view(0, root_bytes))
+		out += text.view(0, root_bytes)
 
-	if unc_open: out.append("/")
+	if unc_open: out += "/"
 
 	// Segments one separator apart in the input are one run of the input: copy a run
 	// at a time, not a segment and a separator at a time.
@@ -386,18 +385,16 @@ fn normalize_core(windows: Bool, text: String) String:
 			run_end = span_end(stack[index])
 			index += 1
 
-		if not first_run: out.append("/")
+		if not first_run: out += "/"
 		first_run = false
-		out.append(text.view(run_start, run_end))
+		out += text.view(run_start, run_end)
 
-	if root.is_empty() and stack.is_empty(): out.append(".")
+	if root.is_empty() and stack.is_empty(): out += "."
 
 	// A trailing separator survives unless the result already ends with one.
-	if text.ends_with("/") and not (stack.is_empty() and root_ends_slash): out.append(
-		"/"
-	)
+	if text.ends_with("/") and not (stack.is_empty() and root_ends_slash): out += "/"
 
-	var value = out.build()
+	var value = out
 	if not windows: return value
 
 	if root.length() == 2 and stack.is_empty(): value = f"{root}."
@@ -565,8 +562,8 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 		if not has_tail:
 			value = anchor.clone()
 		else:
-			var out = StringBuilder()
-			out.append(anchor)
+			var out = ""
+			out += anchor
 
 			var separated = anchor.ends_with("/")
 
@@ -574,11 +571,11 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 				part := parts[at]
 				if part.is_empty(): continue
 
-				if not separated: out.append("/")
-				out.append(part)
+				if not separated: out += "/"
+				out += part
 				separated = part.ends_with("/")
 
-			value = out.build()
+			value = out
 
 	var normalized = normalize_in(windows, value)
 
@@ -661,17 +658,17 @@ fn join_in(windows: Bool, items: List[String]) String:
 	if not has_empty:
 		joined = items.join("/")
 	else:
-		var out = StringBuilder()
+		var out = ""
 		var count = 0
 
 		for part in items:
 			if part.is_empty(): continue
 
-			if count > 0: out.append("/")
-			out.append(part)
+			if count > 0: out += "/"
+			out += part
 			count += 1
 
-		joined = out.build()
+		joined = out
 
 	if windows and slash(true, joined).starts_with("//"):
 		unc := (
@@ -730,7 +727,7 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 		base_at = base_end + 1
 		target_at = target_end + 1
 
-	var out = StringBuilder()
+	var out = ""
 	var climbs = 0
 	var scan = base_at
 
@@ -739,14 +736,14 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 		scan = base_data.index_of_byte(47, scan).get_or(base_count) + 1
 
 	for step in 0..climbs:
-		if step > 0: out.append("/")
-		out.append("..")
+		if step > 0: out += "/"
+		out += ".."
 
 	if target_at < target_count:
-		if climbs > 0: out.append("/")
-		out.append(target_rest.view(target_at, target_count))
+		if climbs > 0: out += "/"
+		out += target_rest.view(target_at, target_count)
 
-	return ok(native(windows, out.build()))
+	return ok(native(windows, out))
 
 fn same_text(windows: Bool, left: String, right: String) Bool:
 	if windows: return equal_fold(left, right)

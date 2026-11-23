@@ -77,14 +77,27 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
 export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 	var source = input
 	var all = BytesBuilder()
+	var first: Bytes? = none
 	var total = 0
 
 	for chunk in source:
-		all.append_bytes(chunk)
 		total += chunk.length()
 		if limit := max_bytes:
 			if total > limit:
 				return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
+
+		// A stream that ends after one chunk (a file read in one piece) hands that
+		// chunk back uncopied.
+		if held := first:
+			all.append_bytes(held)
+			first = none
+
+		if total == chunk.length():
+			first = chunk
+		else:
+			all.append_bytes(chunk)
+
+	if one := first: return ok(one)
 
 	return ok(all.build())
 

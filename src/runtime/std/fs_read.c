@@ -220,8 +220,7 @@ uint8_t msstd_fs_read_file(const MsString *path, uint8_t has_max, int64_t max, M
     *out = job.data;
     job.data = (MsBytes){0};
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -295,8 +294,7 @@ static uint8_t write_with(const MsString *path, const MsBytes *data, int flags, 
   } else {
     write_whole_here(&job);
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 

@@ -13,6 +13,11 @@ void ms_shape_text_of(const MsShapeTable *table, const void *value, bool repr, M
 /* The same for the value of shape `shape` of the table, such as a map key. */
 void ms_shape_text_at(const MsShapeTable *table, uint32_t shape, const void *value, bool repr, MsString *out);
 
+/* The decimal digits of the BigInt handle `cell`. The BigInt natives install this when they make their first handle, so
+ * a program that formats values but never makes a BigInt does not link the arbitrary-precision code. */
+typedef void (*MsShapeBigIntText)(const void *cell, MsString *out);
+void ms_shape_text_set_bigint(MsShapeBigIntText text);
+
 /* ms-sig: msstd_test_repr(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=test @end */
 void msstd_test_repr(const MsShapeTable *table, const void *value, MsString *out);
 

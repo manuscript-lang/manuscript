@@ -102,3 +102,12 @@ MsBindingList ms_bind_captures(const MsFacts *facts, const MsExpr *lambda) {
   ms_binding_list_free(&scan.seen);
   return captures;
 }
+
+bool ms_bind_is_constructor(const MsFacts *facts, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
+    callee = callee->u.apply.left;
+  }
+  const MsRef *ref = ms_facts_ref(facts, callee->id);
+  return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
+}

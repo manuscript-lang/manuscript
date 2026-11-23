@@ -195,6 +195,23 @@ static inline bool ms_span_ends_with(MsSpan span, MsSpan suffix) {
          ms_span_equal(ms_span_of(span.ptr + (span.len - suffix.len), suffix.len), suffix);
 }
 
+/* The offset of the first `byte` in `text`; false when absent, `at` untouched. */
+MS_NODISCARD MS_NONNULL static inline bool ms_span_find_byte(MsSpan text, uint8_t byte, size_t *at) {
+  for (size_t i = 0; i < text.len; i++) {
+    if (text.ptr[i] == byte) {
+      *at = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Whether `text` holds `byte`. */
+static inline bool ms_span_has_byte(MsSpan text, uint8_t byte) {
+  size_t at = 0;
+  return ms_span_find_byte(text, byte, &at);
+}
+
 /* The offset of the first occurrence of `needle` in `hay` (an empty needle matches at 0). False when absent,
  * `at` untouched. */
 MS_NODISCARD MS_NONNULL static inline bool ms_span_find(MsSpan hay, MsSpan needle, size_t *at) {

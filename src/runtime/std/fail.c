@@ -47,6 +47,22 @@ uint8_t ms_fail_classify(int code) {
     case UV_ENOTSUP:
     case UV_ENOSYS:
       return MS_STATUS_UNSUPPORTED;
+    case UV_EBUSY:
+    case UV_ETXTBSY:
+      return MS_STATUS_BUSY;
+    case UV_ENAMETOOLONG:
+      return MS_STATUS_NAME_TOO_LONG;
+    case UV_ELOOP:
+      return MS_STATUS_LINK_LOOP;
+    case UV_ENOSPC:
+      return MS_STATUS_NO_SPACE;
+    case UV_EROFS:
+      return MS_STATUS_READ_ONLY;
+    case UV_EXDEV:
+      return MS_STATUS_CROSS_DEVICE;
+    case UV_EMFILE:
+    case UV_ENFILE:
+      return MS_STATUS_TOO_MANY_OPEN;
     default:
       return MS_STATUS_FAILED;
   }
@@ -86,10 +102,12 @@ bool ms_fail_poll_cancel(MsFail *fail) {
   return true;
 }
 
+bool ms_fail_cancel_pending(const MsFail *fail) { return fail->status != MS_STATUS_OK && ms_fail_cancel_requested(); }
+
 uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err) {
   const uint8_t status = fail->status;
   *err = ms_string_empty();
-  if (status != MS_STATUS_OK && ms_fail_cancel_requested()) {
+  if (ms_fail_cancel_pending(fail)) {
     ms_fail_free(fail);
     ms_cancelled(); /* the text is dropped first, while the cancel can still unwind */
   }

@@ -1,6 +1,7 @@
 /* Owns the syntax-only lint of lint.h: the rules that need a parse and no type checking, over a source file or the
  * code fences of a Markdown file. Port of the nested-match check of crates/ms-repo-check. */
 #include "base/strbuild.h"
+#include "base/message.h"
 #include "compiler/syntax/parse.h"
 #include "tooling/lint.h"
 
@@ -81,8 +82,7 @@ static MsSpan wrapped(MsArena *arena, MsSpan code, size_t *removed_indent) {
                                       .len = text.len - (text.len >= common ? common : 0)});
     ms_strbuild_append_byte(&out, '\n');
   }
-  const MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan result = ms_message_take_builder(arena, &out);
   return result;
 }
 

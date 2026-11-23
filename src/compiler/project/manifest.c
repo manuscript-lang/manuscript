@@ -7,6 +7,7 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "base/message.h"
 
 
 bool manifest_fail_at(Reader *r, MsPos at, MsSpan message) {
@@ -31,7 +32,7 @@ MsSpan manifest_formatted(Reader *r, const char *format, MsSpan a, MsSpan b) {
       ms_strbuild_append(&text, b);
     }
   }
-  return ms_project_text(r->arena, &text);
+  return ms_message_take_builder(r->arena, &text);
 }
 
 bool manifest_valid_alias(MsSpan key) {
@@ -132,7 +133,7 @@ static bool name_entry(Reader *r, const TomlEntry *entry, bool embed) {
       ms_strbuild_append_text(&text, " (did you mean @");
       ms_strbuild_append(&text, key);
       ms_strbuild_append_text(&text, "?)");
-      hint = ms_project_text(r->arena, &text);
+      hint = ms_message_take_builder(r->arena, &text);
     }
     ms_strbuild_free(&at_key);
     return manifest_fail_at(r, entry->key_at,
@@ -224,7 +225,7 @@ static MsSpan quoted(Reader *r, MsSpan text) {
     ms_strbuild_append_byte(&out, text.ptr[i]);
   }
   ms_strbuild_append_byte(&out, '"');
-  return ms_project_text(r->arena, &out);
+  return ms_message_take_builder(r->arena, &out);
 }
 
 /* Canonicalises `path` inside the manifest root. */
@@ -248,7 +249,7 @@ static MsSpan manifest_path_message(Reader *r, const MsProjectError *cause) {
   }
   ms_strbuild_append(&text, head);
   ms_strbuild_append_text(&text, "; this path comes from ms.toml, so create it or correct the value there");
-  return ms_project_text(r->arena, &text);
+  return ms_message_take_builder(r->arena, &text);
 }
 
 static bool check_source(Reader *r) {
@@ -399,7 +400,7 @@ static bool check_project(Reader *r) {
     return manifest_fail_at(r, m->location,
                             manifest_formatted(r, "[project] requires name and source; missing: %a, e.g. name = \"app\", "
                                                   "source = \"src\" (add entry = \"src/main.ms\" for an executable)",
-                                               ms_project_text(r->arena, &missing), m->name));
+                                               ms_message_take_builder(r->arena, &missing), m->name));
   }
   return check_source(r) && check_entry(r) && check_aliases(r) && manifest_check_packages(r) && check_embeds(r);
 }
