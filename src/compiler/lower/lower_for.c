@@ -390,7 +390,13 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   const bool on_variable = fn_place_changeable(fn, iter);
   VarSlot held = {0};
   MirValue slot = MIR_NONE;
-  if (on_variable) {
+  const MsRef *iter_ref = iter->kind == MS_E_NAME ? ms_facts_ref(fn->facts, iter->id) : NULL;
+  const uint32_t closing_at = fn_closing_at(fn, iter_ref, iter->kind == MS_E_NAME ? iter->u.sym : 0);
+  if (on_variable && closing_at != UINT32_MAX) {
+    /* A resource variable is advanced where it lives, so the body can still name it (`input.close()`). */
+    slot = fn->closing[closing_at];
+    held = (VarSlot){NULL, slot, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+  } else if (on_variable) {
     slot = fn_var_slot(fn, iter, &held, NULL, 0);
     if (slot == MIR_NONE) {
       return false;
