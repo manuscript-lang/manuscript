@@ -106,6 +106,13 @@ void *ms_alloc(size_t size) {
 }
 
 void *ms_alloc_zeroed(size_t size) {
+  if (installed == NULL) {
+    /* mimalloc knows when a block comes from fresh pages that are already zero, so it skips the clearing. */
+    count(size);
+    void *fresh = checked(mi_zalloc(size));
+    live_add(usable(fresh));
+    return fresh;
+  }
   void *block = ms_alloc(size);
   __builtin_memset(block, 0, size);
   return block;

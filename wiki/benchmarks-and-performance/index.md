@@ -5,6 +5,7 @@
 Perf benchmarks, profiling.
 
 - [Binary search moves one select per step, and a captured comparator still gets the generated sort](binary-search-and-captured-comparators-must-not-branch-or-call.md): `binary_search` 270 to 31 ms per 2M searches (Rust 90); sorts by a capturing comparator 148 to 35 ms.
+- [Eager arena commit made a program's first large allocations slow](eager-arena-commit-made-the-first-large-allocations-slow.md): a first run of a map block took 1.8 ms and the second 0.22 ms; `map_put_get_8k` 92 to 33 ns per op (Rust 33).
 - [A bound on `n - 1` also bounds `n`](a-bound-on-n-minus-one-also-bounds-n.md): range analysis narrows the operand of a checked constant add or subtract; a stencil's index wraps vanish (Cranelift 1,949M to 1,412M instructions, C 438M).
 - [`ms run` builds Debug: time `ms build` binaries](ms-run-builds-debug-so-time-ms-build.md): an HTML parse read 2,000 ms under `ms run` and 150 ms built.
 - [A lone file read runs where it is waited on](a-lone-file-read-runs-where-it-is-waited-on.md): `read_file` defers to its waiter when nothing else runs and opens with one `fstat` (3.7 to 2.2 us per small read; Rust 1.8).
