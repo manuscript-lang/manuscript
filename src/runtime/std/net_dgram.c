@@ -5,6 +5,8 @@
 
 #include "base/alloc.h"
 #include "base/bytes.h"
+#include "runtime/std/fail.h"
+#include "runtime/std/net_calls.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
 #include "runtime/std/net_dgram.h"
@@ -116,7 +118,7 @@ static DgramOp *dgram_new(MsNetCore *core, bool sending) {
   return dgram;
 }
 
-uint8_t msstd_net_datagram_receive(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
+uint8_t ms_net_datagram_receive(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
                                    int64_t timeout, MsDatagramWire *out, MsString *err) {
   *err = ms_string_empty();
   if (has_max != 0 && max < 0) {
@@ -140,7 +142,12 @@ uint8_t msstd_net_datagram_receive(const MsObj *handle, uint8_t has_max, int64_t
   return status;
 }
 
-uint8_t msstd_net_datagram_send_bytes(const MsObj *handle, const MsBytes *data, const MsString *address,
+uint8_t msstd_net_datagram_receive(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
+                                   int64_t timeout, MsDatagramWire *out, MsString *err) {
+  return ms_native_return(ms_net_datagram_receive(handle, has_max, max, has_timeout, timeout, out, err), err);
+}
+
+uint8_t ms_net_datagram_send_bytes(const MsObj *handle, const MsBytes *data, const MsString *address,
                                       uint8_t has_timeout, int64_t timeout, MsString *err) {
   struct sockaddr_storage target;
   *err = ms_string_empty();
@@ -160,6 +167,11 @@ uint8_t msstd_net_datagram_send_bytes(const MsObj *handle, const MsBytes *data, 
     ms_net_op_free(&dgram->op);
   }
   return status;
+}
+
+uint8_t msstd_net_datagram_send_bytes(const MsObj *handle, const MsBytes *data, const MsString *address,
+                                      uint8_t has_timeout, int64_t timeout, MsString *err) {
+  return ms_native_return(ms_net_datagram_send_bytes(handle, data, address, has_timeout, timeout, err), err);
 }
 
 void msstd_net_datagram_address(const MsObj *handle, MsString *out) {

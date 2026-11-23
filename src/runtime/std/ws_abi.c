@@ -1,6 +1,7 @@
 /* runtime/std/ws_abi.c: the WebSocket natives (ws_abi.h). */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 #include "runtime/std/ws_abi.h"
+#include "runtime/std/net_calls.h"
 
 #include "base/alloc.h"
 #include "runtime/std/fail.h"
@@ -31,12 +32,12 @@ static MsWsSession *session_of(const MsObj *object) {
 /* ---- the transport: a connection handle of @std/net ---- */
 
 static uint8_t conn_read(void *context, int64_t timeout_ns, MsBytes *out, MsString *err) {
-  return msstd_net_connection_read(context, 0, 0, timeout_ns >= 0, timeout_ns, out, err);
+  return ms_net_connection_read(context, 0, 0, timeout_ns >= 0, timeout_ns, out, err);
 }
 
 static uint8_t conn_write(void *context, MsSpan data, int64_t timeout_ns, MsString *err) {
   const MsBytes view = ms_bytes_view(data);
-  return msstd_net_connection_write_bytes(context, &view, timeout_ns >= 0, timeout_ns, err);
+  return ms_net_connection_write_bytes(context, &view, timeout_ns >= 0, timeout_ns, err);
 }
 
 static void conn_close(void *context) {
@@ -49,7 +50,7 @@ static bool conn_is_closed(void *context) {
 
 static void conn_shutdown_write(void *context) {
   MsString err = ms_string_empty();
-  (void)msstd_net_connection_shutdown_write(context, &err);
+  (void)ms_net_connection_shutdown_write(context, &err);
   ms_string_release(&err);
 }
 

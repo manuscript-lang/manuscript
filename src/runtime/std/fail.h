@@ -36,6 +36,11 @@ void ms_fail_uv_text(MsFail *fail, int code, const char *operation, MsSpan name)
 bool ms_fail_cancel_pending(const MsFail *fail);
 uint8_t ms_fail_finish(MsFail *fail, MsString *err);
 uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err);
+/* The end of a native entry (an `msstd_` function the compiled code calls) whose work ran in layers below that only
+ * return: a failed `status` while a stop request is pending ends the call by the cancel, with `err` dropped first;
+ * anything else returns as it is. Layers beneath an entry never end a call by the cancel: a cancelled wait reaches
+ * them as a failed status and each frees what it holds on its ordinary error path. */
+uint8_t ms_native_return(uint8_t status, MsString *err);
 /* Ends a native with a call's `status` and the text it left, which moves into the failure. */
 uint8_t ms_fail_finish_with(uint8_t status, MsString *text, MsString *err);
 

@@ -104,7 +104,8 @@ void ms_net_dgram_close_ops(MsNetCore *core);
 
 
 /* Ends a native: the status for how a wait ended and the libuv `status` of the operation, with `err` filled for a
- * failure ("<operation>: <reason>"). A stop request cancels the task and does not return. */
+ * failure ("<operation>: <reason>"). A stop request returns MS_STATUS_FAILED ("cancelled"); the
+ * native entry above ends the call (ms_native_return). */
 uint8_t ms_net_finish(MsNetWait wait, int status, const char *operation, MsString *err);
 /* Loop thread, TLS: collects the ciphertext the session has queued into a new buffer (`*length` 0 for none). */
 void ms_net_cipher_collect(MsNetCore *core, uint8_t **data, size_t *length);

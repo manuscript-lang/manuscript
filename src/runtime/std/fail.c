@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "runtime/std/fail.h"
+#include "runtime/core/fault_abi.h"
 
 #include <uv.h>
 
@@ -116,6 +117,15 @@ uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err) {
     fail->message = ms_string_empty();
   } else if (status != MS_STATUS_OK) {
     *err = ms_string_from_span(detail);
+  }
+  return status;
+}
+
+uint8_t ms_native_return(uint8_t status, MsString *err) {
+  if (status != MS_STATUS_OK && ms_fail_cancel_requested()) {
+    ms_string_release(err);
+    *err = ms_string_empty();
+    ms_sched_cancel_return();
   }
   return status;
 }

@@ -16,6 +16,8 @@
 #include "runtime/core/isolate.h"
 #include "runtime/core/task.h"
 #include "runtime/io/reactor.h"
+#include "runtime/std/fail.h"
+#include "runtime/std/net_calls.h"
 #include "runtime/std/net.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
@@ -511,7 +513,7 @@ static bool read_edge(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBy
   }
   atomic_fetch_sub(&core->direct, 1);
   if (ended != MS_NET_WAIT_DONE) {
-    *result = ms_net_finish(ended, 0, "read", err); /* a cancel unwinds here, after the fence is released */
+    *result = ms_net_finish(ended, 0, "read", err);
   }
   return handled;
 #endif
@@ -734,7 +736,7 @@ void ms_net_conn_close_ops(MsNetCore *core) {
 
 /* ---- natives ---- */
 
-uint8_t msstd_net_connection_read(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
+uint8_t ms_net_connection_read(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
                                   int64_t timeout, MsBytes *out, MsString *err) {
   *err = ms_string_empty();
   if (has_max != 0 && max < 0) {
@@ -750,13 +752,27 @@ uint8_t msstd_net_connection_read(const MsObj *handle, uint8_t has_max, int64_t 
   return ms_net_read(ms_net_handle_core(handle), capacity, ms_net_timeout(has_timeout, timeout), out, err);
 }
 
-uint8_t msstd_net_connection_write_bytes(const MsObj *handle, const MsBytes *data, uint8_t has_timeout, int64_t timeout,
+uint8_t msstd_net_connection_read(const MsObj *handle, uint8_t has_max, int64_t max, uint8_t has_timeout,
+                                  int64_t timeout, MsBytes *out, MsString *err) {
+  return ms_native_return(ms_net_connection_read(handle, has_max, max, has_timeout, timeout, out, err), err);
+}
+
+uint8_t ms_net_connection_write_bytes(const MsObj *handle, const MsBytes *data, uint8_t has_timeout, int64_t timeout,
                                          MsString *err) {
   return ms_net_write(ms_net_handle_core(handle), ms_bytes_span(data), ms_net_timeout(has_timeout, timeout), err);
 }
 
-uint8_t msstd_net_connection_shutdown_write(const MsObj *handle, MsString *err) {
+uint8_t msstd_net_connection_write_bytes(const MsObj *handle, const MsBytes *data, uint8_t has_timeout, int64_t timeout,
+                                         MsString *err) {
+  return ms_native_return(ms_net_connection_write_bytes(handle, data, has_timeout, timeout, err), err);
+}
+
+uint8_t ms_net_connection_shutdown_write(const MsObj *handle, MsString *err) {
   return ms_net_shutdown(ms_net_handle_core(handle), err);
+}
+
+uint8_t msstd_net_connection_shutdown_write(const MsObj *handle, MsString *err) {
+  return ms_native_return(ms_net_connection_shutdown_write(handle, err), err);
 }
 
 void msstd_net_connection_close(const MsObj *handle) { ms_net_handle_close(handle); }

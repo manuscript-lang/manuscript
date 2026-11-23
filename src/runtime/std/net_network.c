@@ -1,6 +1,8 @@
 /* The Network handle and the natives that open sockets through it (see net_network.h). */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include "runtime/std/fail.h"
+#include "runtime/std/net_calls.h"
 #include "runtime/std/net_network.h"
 
 #include <stdatomic.h>
@@ -176,7 +178,7 @@ static uint8_t adopt(Network *network, MsObj *socket, MsObj **out) {
 
 /* ---- opening sockets ---- */
 
-uint8_t msstd_net_network_connect(const MsObj *net, const MsString *address, uint8_t has_timeout, int64_t timeout,
+uint8_t ms_net_network_connect(const MsObj *net, const MsString *address, uint8_t has_timeout, int64_t timeout,
                                   MsObj **out, MsString *err) {
   Network *network = network_of(net);
   MsSpan host = {0};
@@ -194,7 +196,12 @@ uint8_t msstd_net_network_connect(const MsObj *net, const MsString *address, uin
   return status == MS_STATUS_OK ? adopt(network, socket, out) : status;
 }
 
-uint8_t msstd_net_network_connect_unix(const MsObj *net, const MsString *path, uint8_t has_timeout, int64_t timeout,
+uint8_t msstd_net_network_connect(const MsObj *net, const MsString *address, uint8_t has_timeout, int64_t timeout,
+                                  MsObj **out, MsString *err) {
+  return ms_native_return(ms_net_network_connect(net, address, has_timeout, timeout, out, err), err);
+}
+
+uint8_t ms_net_network_connect_unix(const MsObj *net, const MsString *path, uint8_t has_timeout, int64_t timeout,
                                        MsObj **out, MsString *err) {
   Network *network = network_of(net);
   MsObj *socket = NULL;
@@ -209,6 +216,11 @@ uint8_t msstd_net_network_connect_unix(const MsObj *net, const MsString *path, u
   return status == MS_STATUS_OK ? adopt(network, socket, out) : status;
 }
 
+uint8_t msstd_net_network_connect_unix(const MsObj *net, const MsString *path, uint8_t has_timeout, int64_t timeout,
+                                       MsObj **out, MsString *err) {
+  return ms_native_return(ms_net_network_connect_unix(net, path, has_timeout, timeout, out, err), err);
+}
+
 /* Whether `network` may listen or bind on the IP literal `address`. */
 static bool may_listen(const Network *network, MsSpan address) {
   struct sockaddr_storage parsed;
@@ -219,7 +231,7 @@ static bool may_listen(const Network *network, MsSpan address) {
          ms_net_filter_address_allowed(network->filter, (const struct sockaddr *)(const void *)&parsed);
 }
 
-uint8_t msstd_net_network_listen(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
+uint8_t ms_net_network_listen(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
   Network *network = network_of(net);
   MsObj *socket = NULL;
   *err = ms_string_empty();
@@ -233,7 +245,11 @@ uint8_t msstd_net_network_listen(const MsObj *net, const MsString *address, MsOb
   return status == MS_STATUS_OK ? adopt(network, socket, out) : status;
 }
 
-uint8_t msstd_net_network_listen_unix(const MsObj *net, const MsString *path, MsObj **out, MsString *err) {
+uint8_t msstd_net_network_listen(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
+  return ms_native_return(ms_net_network_listen(net, address, out, err), err);
+}
+
+uint8_t ms_net_network_listen_unix(const MsObj *net, const MsString *path, MsObj **out, MsString *err) {
   Network *network = network_of(net);
   MsObj *socket = NULL;
   *err = ms_string_empty();
@@ -247,7 +263,11 @@ uint8_t msstd_net_network_listen_unix(const MsObj *net, const MsString *path, Ms
   return status == MS_STATUS_OK ? adopt(network, socket, out) : status;
 }
 
-uint8_t msstd_net_network_bind_datagram(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
+uint8_t msstd_net_network_listen_unix(const MsObj *net, const MsString *path, MsObj **out, MsString *err) {
+  return ms_native_return(ms_net_network_listen_unix(net, path, out, err), err);
+}
+
+uint8_t ms_net_network_bind_datagram(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
   Network *network = network_of(net);
   MsObj *socket = NULL;
   *err = ms_string_empty();
@@ -259,6 +279,10 @@ uint8_t msstd_net_network_bind_datagram(const MsObj *net, const MsString *addres
   }
   const uint8_t status = ms_net_bind_datagram(ms_string_span(address), &socket, err);
   return status == MS_STATUS_OK ? adopt(network, socket, out) : status;
+}
+
+uint8_t msstd_net_network_bind_datagram(const MsObj *net, const MsString *address, MsObj **out, MsString *err) {
+  return ms_native_return(ms_net_network_bind_datagram(net, address, out, err), err);
 }
 
 /* ---- names ---- */
@@ -360,9 +384,14 @@ static uint8_t lookup_run(const MsObj *net, const MsString *name, int family, ui
   return status;
 }
 
-uint8_t msstd_net_network_lookup(const MsObj *net, const MsString *name, uint8_t has_max, int64_t max,
+uint8_t ms_net_network_lookup(const MsObj *net, const MsString *name, uint8_t has_max, int64_t max,
                                  uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err) {
   return lookup_run(net, name, AF_UNSPEC, has_max, max, has_timeout, timeout, out, err);
+}
+
+uint8_t msstd_net_network_lookup(const MsObj *net, const MsString *name, uint8_t has_max, int64_t max,
+                                 uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err) {
+  return ms_native_return(ms_net_network_lookup(net, name, has_max, max, has_timeout, timeout, out, err), err);
 }
 
 /* Whether the address text of a record may be used under the network's filter. */
@@ -396,7 +425,7 @@ static void keep_allowed(const MsNetFilter *filter, MsList *records, size_t limi
   records->len = kept;
 }
 
-uint8_t msstd_net_network_resolve(const MsObj *net, const MsString *name, int64_t kind, uint8_t has_max, int64_t max,
+uint8_t ms_net_network_resolve(const MsObj *net, const MsString *name, int64_t kind, uint8_t has_max, int64_t max,
                                   uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err) {
   Network *network = network_of(net);
   const MsSpan text = ms_string_span(name);
@@ -434,6 +463,11 @@ uint8_t msstd_net_network_resolve(const MsObj *net, const MsString *name, int64_
   keep_allowed(network->filter, &found, limit);
   *out = found;
   return MS_STATUS_OK;
+}
+
+uint8_t msstd_net_network_resolve(const MsObj *net, const MsString *name, int64_t kind, uint8_t has_max, int64_t max,
+                                  uint8_t has_timeout, int64_t timeout, MsList *out, MsString *err) {
+  return ms_native_return(ms_net_network_resolve(net, name, kind, has_max, max, has_timeout, timeout, out, err), err);
 }
 
 /* ---- restrict ---- */

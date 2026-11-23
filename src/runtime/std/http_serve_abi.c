@@ -155,15 +155,6 @@ static MsNetTlsCtx *server_context(const MsHttpServerOptionsWire *wire) {
 
 /* ---- the serving ---- */
 
-/* A cancel unwinds out of the bind below and never returns, so the handler and the TLS context, which this native
- * owns until the serving takes them, are cleanup entries for that wait. */
-static void drop_held_object(uint8_t *held) {
-  MsObj *object = *(MsObj **)(void *)held;
-  object->drop(object);
-}
-
-static void release_held_context(uint8_t *held) { ms_net_tls_ctx_release(*(MsNetTlsCtx **)(void *)held); }
-
 uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOptionsWire *wire, MsObj *handler,
                                MsObj **out, MsString *err) {
   *err = ms_string_empty();
@@ -176,15 +167,12 @@ uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOption
   }
   MsObj *listener = NULL;
   if (valid && (!wire->tls_present || ctx != NULL)) {
-    const size_t held = ms_cleanup_push(drop_held_object, (uint8_t *)(void *)&handler);
-    (void)ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
     status = ms_net_listen(ms_string_span(address), &listener, err);
-    ms_cleanup_discard(held);
   }
   if (status != MS_STATUS_OK) {
     handler->drop(handler);
     ms_net_tls_ctx_release(ctx);
-    return status;
+    return ms_native_return(status, err);
   }
   Serving *serving = ms_alloc_zeroed(sizeof *serving);
   serving->header.drop = serving_drop;

@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "runtime/std/ws_dial.h"
+#include "runtime/std/net_calls.h"
 
 #include "base/alloc.h"
 #include "base/chars.h"
@@ -169,7 +170,7 @@ static uint8_t connect_to(const Dial *dial, const MsHttpUrl *url, bool secure,
   MsString address = ms_http_url_dial_address(url);
   const int64_t left = time_left(dial);
   if (!secure) {
-    const uint8_t status = msstd_net_network_connect(dial->net, &address, left >= 0, left, conn, err);
+    const uint8_t status = ms_net_network_connect(dial->net, &address, left >= 0, left, conn, err);
     ms_string_release(&address);
     return status;
   }
@@ -184,7 +185,7 @@ static uint8_t connect_to(const Dial *dial, const MsHttpUrl *url, bool secure,
                             .alpn = alpn,
                             .require_client_certificate = o->tls_require_client_certificate};
   const uint8_t status =
-      msstd_net_network_connect_tls_config(dial->net, &address, &tls, left >= 0, left, conn, err);
+      ms_net_network_connect_tls_config(dial->net, &address, &tls, left >= 0, left, conn, err);
   ms_string_release(&protocol);
   ms_list_free(&alpn);
   ms_string_release(&host);
@@ -211,7 +212,7 @@ static uint8_t read_head(const Dial *dial, MsObj *conn, uint16_t *status, MsHead
     } else {
       const int64_t left = time_left(dial);
       MsBytes chunk = {0};
-      result = msstd_net_connection_read(conn, 1, 8192, left >= 0, left, &chunk, err);
+      result = ms_net_connection_read(conn, 1, 8192, left >= 0, left, &chunk, err);
       if (result == MS_STATUS_OK) {
         __builtin_memcpy(ms_list_extend(&buffer, 1, chunk.len), chunk.ptr, chunk.len);
         ms_bytes_free(&chunk);
@@ -249,7 +250,7 @@ static uint8_t handshake(const Dial *dial, MsObj *conn, const MsHttpUrl *url, co
   MsBytes wire = {0};
   ms_ws_client_request(&request, &wire);
   const int64_t left = time_left(dial);
-  uint8_t status = msstd_net_connection_write_bytes(conn, &wire, left >= 0, left, err);
+  uint8_t status = ms_net_connection_write_bytes(conn, &wire, left >= 0, left, err);
   ms_bytes_free(&wire);
   uint16_t code = 0;
   MsHeaders *fields = NULL;
