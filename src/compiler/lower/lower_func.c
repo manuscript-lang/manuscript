@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/moves.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
@@ -439,11 +440,21 @@ static bool lower_body(Lower *cx, uint32_t index) {
   if (instance.nargs > 0 && !decl_variables(cx, target, vars, instance.nargs)) {
     return false;
   }
+  MsPos moved_at = {0};
+  MsName moved_name = 0;
+  if (instance.nargs > 0 && ms_own_moves_instance(cx->program, target->module, target->func, vars, instance.args,
+                                                 instance.nargs, &moved_at, &moved_name)) {
+    const MsSpan name = ms_names_span(cx->program->names, moved_name);
+    return lower_fail(cx,
+                      "`%.*s` (%u:%u) is borrowed and cannot be moved on once its type is a resource; declare the parameter `move`",
+                      (int)name.len, (const char *)name.ptr, moved_at.line, moved_at.column);
+  }
   const MirFunc stub = cx->module->funcs.ptr[instance.func];
   const MirFunc *reserved = &stub;
   LowerFn fn = {.cx = cx,
                 .facts = &cx->program->modules.ptr[target->module].facts,
                 .func = target->func,
+                .keeps_scoped = stub.keeps_scoped,
                 .module_index = target->module,
                 .file = lower_file(cx, target->module),
                 .subst = {vars, instance.args, instance.nargs},
@@ -482,7 +493,7 @@ bool lower_pending(Lower *cx) {
     for (size_t index = 0; index < cx->instances.len; index++) {
       if (!cx->instances.ptr[index].lowered) {
         progressed = true;
-        if (!lower_body(cx, (uint32_t)index)) {
+        if (!lower_body(cx, (uint32_t)index) || cx->failed) {
           const MsSpan name = ms_names_span(cx->program->names, cx->instances.ptr[index].target.name);
           return lower_fail(cx, "  while lowering `%.*s`", (int)name.len, (const char *)name.ptr);
         }
@@ -553,5 +564,5 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
     }
   }
   lower_release(&cx);
-  return ok;
+  return ok && !cx.failed;
 }

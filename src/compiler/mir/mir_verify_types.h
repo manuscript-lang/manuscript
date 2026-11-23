@@ -2,6 +2,7 @@
 #ifndef MS_COMPILER_MIR_MIR_VERIFY_TYPES_H
 #define MS_COMPILER_MIR_MIR_VERIFY_TYPES_H
 
+#include "base/message.h"
 #include "compiler/mir/mir_print.h"
 #include "compiler/mir/mir_verify.h"
 
@@ -26,7 +27,8 @@ typedef const char *(*MvtRule)(const MvtCx *c);
   } while (0)
 
 /* `format` (ms_message_format conversions) as a NUL-terminated C string in `arena`. */
-const char *mvt_fmt(MsArena *arena, const char *format, ...);
+const char *mvt_fmt_(MsArena *arena, const char *format, ...);
+#define mvt_fmt(arena, ...) mvt_fmt_((arena), MS_FMT_ARGS(__VA_ARGS__))
 
 /* Whether operand 0 and the result are a borrowing variant and its ordinary alternative. */
 bool mvt_plain_of(const MvtCx *c);

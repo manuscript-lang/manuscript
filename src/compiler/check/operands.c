@@ -13,7 +13,7 @@ typedef struct Range {
 } Range;
 
 static bool reporting(const Body *body) {
-  return body->module < body->program->user_modules && !body->quiet;
+  return body_reports(body) && !body->quiet;
 }
 
 /* Whether a type is known and is not Bool, so `not`/`and`/`or` cannot take it. */

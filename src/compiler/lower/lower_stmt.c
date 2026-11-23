@@ -99,10 +99,14 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
 
 /* Whether a call reads a value that dies with the statement (`make().get()`): a result that borrows from it
  * cannot outlive the statement. */
-static bool call_reads_temporary(const MsExpr *call) {
+static bool call_reads_temporary(const MsFacts *facts, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
   if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_CALL) {
     return true;
+  }
+  if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_NAME && facts != NULL &&
+      facts->last != NULL && facts->last[callee->u.member.left->id] != 0) {
+    return true; /* an owner at its last use dies with the call */
   }
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     if (call->u.call.args.ptr[index].value->kind == MS_E_CALL) {
@@ -153,7 +157,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   fn->moving_field = NULL;
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
-    if (call_reads_temporary(stmt->u.bind.value) &&
+    if (call_reads_temporary(fn->facts, stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
       /* A temporary resource closes where its statement ends: a part kept past it is taken out of the temporary. */
       const MirValue owned = fn_take_from_temporary(fn, stmt->u.bind.value, value);
@@ -406,6 +410,10 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
     return false;
   }
   *field = values[count];
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, *field))) {
+    /* The field leaves its record for the change, which owns it; `fn_put_field_chain` fills it again. */
+    *field = mir_b_emit(&fn->b, MOP_MoveOut, field, 1, (MirImm){0}, mir_b_ty(&fn->b, *field));
+  }
   return true;
 }
 
@@ -427,6 +435,9 @@ bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirVa
   }
   MirValue updated = field;
   for (uint32_t index = count; index-- > 0;) {
+    if (index > 0) { /* an inner record leaves the one above it and goes back into it with the field filled */
+      values[index] = mir_b_emit(&fn->b, MOP_MoveOut, &values[index], 1, (MirImm){0}, mir_b_ty(&fn->b, values[index]));
+    }
     const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, values[index]));
     const MsRef *ref = ms_facts_ref(fn->facts, fields[index]->id);
     const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
@@ -660,6 +671,7 @@ static MirValue take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var) {
 
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
+    fn_presolve_keys(fn, stmt->u.assign.target); /* the target's indices run before the value, once */
     const MirValue value = take_value(fn, stmt->u.assign.value);
     if (value == MIR_NONE) {
       return false;
@@ -910,6 +922,7 @@ static bool lower_call_stmt(LowerFn *fn, const MsStmt *stmt) {
 static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   fn->stmt_loc = fn_loc(fn, stmt->pos);
   mir_b_set_loc(&fn->b, fn->stmt_loc);
+  fn->npresolved = 0;
   switch ((MsStmtKind)stmt->kind) {
     case MS_S_BIND: return lower_bind(fn, stmt);
     case MS_S_ASSIGN: return lower_assign(fn, stmt);

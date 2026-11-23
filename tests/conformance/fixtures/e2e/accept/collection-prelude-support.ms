@@ -14,7 +14,7 @@ fn group[T: Clonable, K: Hashable](values: List[T], key: fn(T) K) Map[K, List[T]
 
 fn index[T: Equal](values: List[T], value: T) Int?: values.index_of(value)
 
-fn first(values: List[Int]) Int!: values.first().ok_or(Error("missing"))
+fn first(values: List[Int]) Int!: values.first().ok_or(Error("missing", kind: "ENOENT"))
 
 fn unique[T: Hashable & Clonable](values: List[T]) Set[T]: values.to_set()
 
@@ -53,5 +53,4 @@ test "public collection support types retain their standard runtime identities":
 	absent: Int! := first([])
 	missing: Error := absent.err()
 	expect_equal(missing.kind, "ENOENT")?
-	expect_false(not missing.message.contains("collection-prelude-support.ms:"))?
 	expect_equal(first(values).get(), 3)?

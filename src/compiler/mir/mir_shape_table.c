@@ -102,7 +102,7 @@ static void optional_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, M
       shape->extra = 8;
     }
   } else {
-    shape->flags |= MS_SHAPE_NULLABLE;
+    shape->flags |= MS_SHAPE_NULLABLE | (mir_layouts_opt_boxed(layouts, data->elem) ? MS_SHAPE_HEAP_PAYLOAD : 0);
   }
   shape->elem = MS_SHAPE_NONE;
   (void)data;

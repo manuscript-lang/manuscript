@@ -102,7 +102,7 @@ static bool numeric_variable(Body *body, MsTy ty, bool integer) {
  * quiet. */
 static void report_missing_decimal(Body *body, const MsExpr *expr) {
   MsCheckProgram *program = body->program;
-  if (body->quiet || body->module >= program->user_modules) {
+  if (body->quiet || !body_reports(body)) {
     return;
   }
   for (size_t index = 0; index < program->diagnostics.len; index++) {
@@ -281,7 +281,7 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
       const MsBuiltin builtin = ms_ty_builtin(&body->program->types, value);
       if (op == MS_U_NEG && (builtin == MS_BUILTIN_UInt8 || builtin == MS_BUILTIN_UInt16 || builtin == MS_BUILTIN_UInt32 ||
                              builtin == MS_BUILTIN_UInt64) &&
-          body->module < body->program->user_modules && !body->quiet) {
+          body_reports(body) && !body->quiet) {
         MsStrBuild text = ms_strbuild_new();
         ms_strbuild_append_text(&text, "unary - is not defined for ");
         ms_ty_show(&text, body->program->names, &body->program->types, value);
@@ -351,7 +351,7 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
     record_wrap(body, expr->u.bin.left, left, right);
   }
   const MsTy common = right_optional && !left_optional ? right : left;
-  if (common != MS_TY_NONE && !is_invalid(body, common) && body->module < body->program->user_modules && !body->quiet &&
+  if (common != MS_TY_NONE && !is_invalid(body, common) && body_reports(body) && !body->quiet &&
       !ms_check_property(body->program, common, MS_PROPERTY_EQUAL)) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "equality requires Equal operands; ");
@@ -370,14 +370,14 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
   const bool text = ms_ty_is(&body->program->types, left, MS_BUILTIN_String);
   if (left != right || !(is_numeric(body, left) || (text && op == MS_B_ADD))) {
     if (!holds_invalid(&body->program->types, left, 6) && !holds_invalid(&body->program->types, right, 6) &&
-        body->module < body->program->user_modules && !body->quiet) {
+        body_reports(body) && !body->quiet) {
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("arithmetic requires numeric operands")));
     }
     return left == right ? left : MS_TY_NONE;
   }
   const MsBuiltin builtin = ms_ty_builtin(&body->program->types, left);
-  if (op == MS_B_REM && (ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_Decimal) && body->module < body->program->user_modules &&
+  if (op == MS_B_REM && (ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_Decimal) && body_reports(body) &&
       !body->quiet) {
     MsStrBuild message = ms_strbuild_new();
     ms_strbuild_append_text(&message, "remainder requires integer operands, found ");
@@ -398,7 +398,7 @@ static bool names_none(Body *body, const MsExpr *expr) {
 static MsTy none_comparison(Body *body, const MsExpr *expr) {
   const MsExpr *other = names_none(body, expr->u.bin.left) ? expr->u.bin.right : expr->u.bin.left;
   const MsTy ty = body_expr(body, other, MS_TY_NONE);
-  if (ty != MS_TY_NONE && !is_invalid(body, ty) && body->module < body->program->user_modules && !body->quiet) {
+  if (ty != MS_TY_NONE && !is_invalid(body, ty) && body_reports(body) && !body->quiet) {
     const bool optional = ms_ty_is(&body->program->types, ty, MS_BUILTIN_Optional);
     ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_span_of_text(

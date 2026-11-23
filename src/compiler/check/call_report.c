@@ -185,7 +185,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
 }
 
 void body_report_arguments(Body *body, const Target *target, const MsExpr *call, const Matched *matched) {
-  const bool report = body->module < body->program->user_modules && !body->quiet && !target->builtin;
+  const bool report = body_reports(body) && !body->quiet && !target->builtin;
   bool hinted = false;
   for (uint32_t at = 0; at < call->u.call.args.len; at++) {
     const MsArg *arg = &call->u.call.args.ptr[at];
