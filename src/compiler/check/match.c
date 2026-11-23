@@ -334,6 +334,10 @@ static void check_contract_arm(Body *body, ArmState *state, const MsArm *arm) {
 
 static void check_arm(Body *body, ArmState *state, const MsArm *arm) {
   if (!state->report) {
+    /* Lowering reads the type of every literal arm, so it is recorded even where nothing is reported. */
+    if (state->literal && literal_key(body, arm->path) != MS_NAME_EMPTY) {
+      (void)body_expr(body, arm->path, state->scrutinee);
+    }
     return;
   }
   if (state->contract) {

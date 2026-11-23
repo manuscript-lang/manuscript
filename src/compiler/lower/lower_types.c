@@ -259,6 +259,7 @@ static MirTy lower_by_kind(Lower *cx, MsTy ty) {
   (void)lower_fail(cx, "a type with no MIR form reached lowering: %.*s (kind %s)", (int)text.len,
                    (const char *)text.ptr, ms_ty_kind_name(ms_ty_kind(&cx->program->types, ty)));
   ms_strbuild_free(&shown);
+  cx->failed = true;
   return MIR_VOID;
 }
 
