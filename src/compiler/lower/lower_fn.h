@@ -388,7 +388,7 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 /* `value` as a function value of type `to`, which differs from its own only in the parameters a call may leave out. */
-MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty);
+MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_checked);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
 typedef struct VarSlot {
