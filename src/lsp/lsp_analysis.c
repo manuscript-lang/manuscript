@@ -71,6 +71,27 @@ LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri) {
   return NULL;
 }
 
+/* `path` as the project loader spells it. A client names a file by the path it knows (`/var/...` on macOS, where the
+ * temporary directory is a symlink to `/private/var`), the loader by its real path, and a document is found again
+ * from the loader's paths by equality. A file that does not exist yet (the stand-in of a bundled module) keeps its
+ * name under its real directory. */
+static void canonicalize_path(MsStrBuild *path) {
+  const MsSpan text = ms_strbuild_span(path);
+  MsString real = ms_string_empty();
+  MsStrBuild result = ms_strbuild_new();
+  if (ms_file_real_path(text, &real)) {
+    ms_strbuild_append(&result, ms_string_span(&real));
+  } else if (ms_file_real_path(ms_path_parent(text), &real)) {
+    ms_path_append_joined(&result, ms_string_span(&real), ms_path_base(text));
+  } else {
+    ms_strbuild_free(&result);
+    return;
+  }
+  ms_string_release(&real);
+  ms_strbuild_free(path);
+  *path = result;
+}
+
 void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text) {
   LspDoc *doc = lsp_doc_find(docs, uri);
   if (doc == NULL) {
@@ -89,6 +110,7 @@ void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text) {
     } else {
       lsp_uri_filename(uri, &path);
     }
+    canonicalize_path(&path);
     lsp_doc_list_push(docs, (LspDoc){.uri = ms_string_from_span(uri), .path = ms_strbuild_finish(&path)});
     doc = &docs->ptr[docs->len - 1];
   }

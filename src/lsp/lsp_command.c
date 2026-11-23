@@ -304,11 +304,12 @@ static int handle_message(Session *session, MsSpan body) {
   MsArena arena = ms_arena_new();
   int status = -1;
   const MsJson *id = NULL;
-  const MsJson *message = ms_json_parse(&arena, body);
+  MsJson *message = ms_json_parse(&arena, body);
   if (message == NULL) {
     reply_error(NULL, ERROR_PARSE, "invalid JSON");
     goto done;
   }
+  lsp_normalize_uris(&arena, message);
   id = message->kind == MS_JSON_OBJECT ? ms_json_member(message, "id") : NULL;
   const MsJson *jsonrpc = message->kind == MS_JSON_OBJECT ? ms_json_member(message, "jsonrpc") : NULL;
   const MsJson *method = message->kind == MS_JSON_OBJECT ? ms_json_member(message, "method") : NULL;

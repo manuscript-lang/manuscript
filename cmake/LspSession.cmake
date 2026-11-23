@@ -2,7 +2,7 @@
 #   cmake -DMS_C=<ms> -DCASE=<dir> -DWORK=<dir> -P LspSession.cmake
 # CASE holds `requests.jsonl` (one JSON message per line) and `expected.jsonl` (the messages the server sends, one per
 # line). `$ROOT` in either names the case directory as a path and `$ROOT_URI` as a file URI. Set RECORD=1 to write
-# `expected.jsonl` from the run instead of comparing.
+# `expected.jsonl` from the run instead of comparing. A case holding a `symlinked_tmp` file runs with TMPDIR behind a symlink.
 cmake_minimum_required(VERSION 3.20)
 
 file(MAKE_DIRECTORY ${WORK})
@@ -31,7 +31,14 @@ foreach(line IN LISTS lines)
 endforeach()
 file(WRITE ${WORK}/input.bin "${input}")
 
-execute_process(COMMAND ${MS_C} lsp INPUT_FILE ${WORK}/input.bin OUTPUT_FILE ${WORK}/output.bin ERROR_VARIABLE errors
+# A case holding `symlinked_tmp` runs with TMPDIR reached through a symlink, as on macOS (`/var` is `/private/var`).
+set(run_prefix "")
+if(EXISTS ${CASE}/symlinked_tmp)
+  file(MAKE_DIRECTORY ${WORK}/real_tmp)
+  file(CREATE_LINK ${WORK}/real_tmp ${WORK}/link_tmp SYMBOLIC)
+  set(run_prefix ${CMAKE_COMMAND} -E env TMPDIR=${WORK}/link_tmp)
+endif()
+execute_process(COMMAND ${run_prefix} ${MS_C} lsp INPUT_FILE ${WORK}/input.bin OUTPUT_FILE ${WORK}/output.bin ERROR_VARIABLE errors
   RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
   message(FATAL_ERROR "ms lsp exited with ${status}: ${errors}")
