@@ -14,6 +14,7 @@
 #include "cli/lsp_internal.h"
 #include "cli/lsp_nav.h"
 #include "cli/lsp_semantic.h"
+#include "cli/lsp_signature.h"
 #include "cli/lsp_symbols.h"
 
 enum { ERROR_PARSE = -32700, ERROR_INVALID_REQUEST = -32600, ERROR_NOT_FOUND = -32601, ERROR_INVALID_PARAMS = -32602,
@@ -102,7 +103,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\",\":\"],\"retriggerCharacters\":[\",\"]},\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -181,7 +182,7 @@ static void handle_close(Session *session, const MsJson *params) {
 
 /* The textDocument requests that read one document at a position. Returns false for a method it does not serve. */
 static bool handle_document_request(Session *session, const MsJson *id, MsSpan method, const MsJson *params) {
-  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "semanticTokens/full", "prepareRename", "rename"};
+  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "signatureHelp", "semanticTokens/full", "prepareRename", "rename"};
   bool served = false;
   for (size_t i = 0; i < sizeof SERVED / sizeof SERVED[0]; i++) {
     MsStrBuild name = ms_strbuild_new();
@@ -239,6 +240,8 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
       }
     }
     lsp_nav_inlay_hints(&session->docs, doc, wanted, &result);
+  } else if (ms_span_is_text(kind, "signatureHelp")) {
+    lsp_signature_help(&session->docs, doc, position, &result);
   } else if (ms_span_is_text(kind, "semanticTokens/full")) {
     lsp_semantic_tokens(&session->docs, doc, &result);
   } else if (ms_span_is_text(kind, "foldingRange")) {
