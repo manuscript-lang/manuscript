@@ -5,6 +5,7 @@
 #include "base/fatal.h"
 
 #define MS_LIST_MIN_CAPACITY 4
+#define MS_LIST_MIN_BYTES 32 /* a byte builder starts here, not at 4 bytes and four doublings from the first line */
 
 void ms_list_out_of_range(size_t index, size_t length) {
   (void)index;
@@ -12,8 +13,10 @@ void ms_list_out_of_range(size_t index, size_t length) {
   ms_fatal(MS_FATAL_OUT_OF_RANGE, "list index out of range");
 }
 
-static size_t grown_capacity(size_t current, size_t needed) {
-  size_t capacity = current < MS_LIST_MIN_CAPACITY ? MS_LIST_MIN_CAPACITY : current;
+static size_t grown_capacity(size_t current, size_t needed, size_t element_size) {
+  size_t minimum = element_size != 0 ? MS_LIST_MIN_BYTES / element_size : 0;
+  minimum = minimum < MS_LIST_MIN_CAPACITY ? MS_LIST_MIN_CAPACITY : minimum;
+  size_t capacity = current < minimum ? minimum : current;
   while (capacity < needed) {
     size_t doubled = 0;
     if (!ms_size_mul(capacity, 2, &doubled)) {
@@ -32,7 +35,7 @@ void ms_list_reserve(MsList *list, size_t element_size, size_t extra) {
   if (needed <= list->cap) {
     return;
   }
-  const size_t capacity = grown_capacity(list->cap, needed);
+  const size_t capacity = grown_capacity(list->cap, needed, element_size);
   size_t bytes = 0;
   if (!ms_size_mul(capacity, element_size, &bytes)) {
     ms_fatal(MS_FATAL_OVERFLOW, "list size overflow");

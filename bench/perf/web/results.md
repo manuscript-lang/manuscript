@@ -31,6 +31,19 @@ Revision: `4fc7255da7` plus this change, Release build of the C port; callgrind 
 
 `ms_alloc`, `ms_realloc` and `ms_free` each called `mi_usable_size` to keep the live-byte count that `process.memory_usage().heap_used` reads. The count now starts before `main` only in a program that links `process_memory.c` (the unit holding `msstd_process_memory_usage`), so a program that never asks pays nothing; one that does gets the same figure as before, minus blocks made before `main`. Throughput on one CPU is within the 15% run-to-run noise of this VM (median of 9 alternating runs 71k before and after the earlier allocation experiment); the server is at 12.5 µs per request, of which a thread handoff is about 1.2 µs and a heap accounting call pair was about 0.3 µs.
 
+## 2026-11-24 (request path: date cache, content-type gate, byte-builder start size)
+
+Callgrind on the release server (one worker, `/health` from `loadc`, 16 connections), instructions per request as (total minus 6M startup) over requests served.
+
+| Step | Instructions per `/health` request |
+| --- | ---: |
+| After live-bytes opt-in (2026-11-23) | 24.65k |
+| `Date` formatted once a second per thread, not per response | 22.92k |
+| Content-type sniff skips the HTML and XML probes unless the first non-space byte is `<`, and tests each signature's first byte before the masked compare | 22.25k |
+| Byte builders start at 32 bytes, not 4 (allocations per request 42.4 to 39.5) | 21.95k |
+
+The remaining top self costs per request are list growth (1.1k), `memcpy` (0.8k), allocation (0.7k), the task switch (0.6k), llhttp (0.6k), and `exchange.headers()` copying the received headers (0.5k, in the frozen stdlib wrapper).
+
 ## History
 
 | Change | `/health` req/s | System calls per request | Idle system calls in 5 s |
