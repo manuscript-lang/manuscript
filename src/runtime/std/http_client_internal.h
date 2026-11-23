@@ -86,6 +86,8 @@ struct MsHttpResponse {
 void ms_http_engine_start(MsHttpResponse *response);    /* adds the response's easy handle */
 void ms_http_engine_resume(MsHttpResponse *response);   /* continues a paused transfer */
 void ms_http_engine_cancel(MsHttpResponse *response);   /* ends an unfinished transfer */
+/* The same, returning once the engine has ended it and closed what it held (not for the engine thread). */
+void ms_http_engine_cancel_and_wait(MsHttpResponse *response);
 void ms_http_engine_close_client(MsHttpClient *client); /* ends every transfer of the client */
 void ms_http_engine_free_client(
     MsHttpClient *client); /* destroys the client's multi handle, then the record */
