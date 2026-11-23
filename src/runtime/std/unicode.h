@@ -13,7 +13,7 @@
 uint8_t msstd_unicode_display_width(const MsString *text, int64_t *out);
 /* Whether the scalar has the Unicode general category "P", "S" or "M"; any other category is false. */
 /* ms-sig: msstd_unicode_in_category(value: i64, category: *const StrVal) -> u8 @domain=regular expression
- * @leaf */
+ * */
 uint8_t msstd_unicode_in_category(int64_t value, const MsString *category);
 /* ms-sig: msstd_unicode_is_alphabetic(value: i64) -> u8 @domain=unicode */
 uint8_t msstd_unicode_is_alphabetic(int64_t value);

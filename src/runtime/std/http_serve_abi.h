@@ -45,8 +45,8 @@ _Static_assert(offsetof(MsHttpServerOptionsWire, tls_require_client_certificate)
  * Closure, out: *mut *mut ObjCell<ServingH>, err: ErrSlot) -> u8 @domain=HTTP */
 uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOptionsWire *options,
                                MsObj *handler, MsObj **out, MsString *err);
-/* ms-sig: msstd_http_serving_spec(handle s: *const ObjCell<ServingH>) -> *mut ObjCell<SpecH> @handle
- * @domain=HTTP */
+/* ms-sig: msstd_http_serving_spec(handle s: *const ObjCell<ServingH>) -> *mut ObjCell<SpecH>
+ * @domain=HTTP @end */
 MsObj *msstd_http_serving_spec(const MsObj *serving);
 /* ms-sig: msstd_http_serving_address(handle s: *const ObjCell<ServingH>, out: *mut StrVal) @domain=HTTP */
 void msstd_http_serving_address(const MsObj *serving, MsString *out);
@@ -65,8 +65,8 @@ void msstd_http_serving_release(const MsObj *serving);
 
 /* ms-sig: msstd_http_exchange_close(handle x: *const ObjCell<ExchH>) @domain=HTTP */
 void msstd_http_exchange_close(const MsObj *exchange);
-/* ms-sig: msstd_http_exchange_headers(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH> @handle
- * @domain=HTTP */
+/* ms-sig: msstd_http_exchange_headers(handle x: *const ObjCell<ExchH>) -> *mut ObjCell<HeadersH>
+ * @domain=HTTP @end */
 MsObj *msstd_http_exchange_headers(const MsObj *exchange);
 /* ms-sig: msstd_http_exchange_method(handle x: *const ObjCell<ExchH>, out: *mut StrVal) @domain=HTTP */
 void msstd_http_exchange_method(const MsObj *exchange, MsString *out);

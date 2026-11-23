@@ -40,8 +40,8 @@ void ms_http_install_task_waiter(void);
 
 /* ms-sig: msstd_http_client_close(handle c: *const ObjCell<ClientH>) @domain=HTTP */
 void msstd_http_client_close(const MsObj *c);
-/* ms-sig: msstd_http_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle
- * @domain=HTTP */
+/* ms-sig: msstd_http_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH>
+ * @domain=HTTP @end */
 MsObj *msstd_http_client_share(const MsObj *c);
 /* ms-sig: msstd_http_client_request_bytes(handle c: *const ObjCell<ClientH>, method: *const StrVal, address:
  * *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64,

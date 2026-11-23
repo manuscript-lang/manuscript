@@ -25,7 +25,7 @@ void msrt_args(MsList *out);
 /* ms-sig: msrt_args_consume() */
 void msrt_args_consume(void);
 
-/* ms-sig: msrt_exit_frees() -> u8 @domain=unwind @leaf */
+/* ms-sig: msrt_exit_frees() -> u8 @domain=unwind @end */
 uint8_t msrt_exit_frees(void);
 
 /* ms-sig: msrt_process_on_exit(hook: extern "C" fn()) */

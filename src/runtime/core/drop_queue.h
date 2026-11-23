@@ -5,9 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* ms-sig: msrt_drop_enter() -> i64 @leaf */
+/* ms-sig: msrt_drop_enter() -> i64 @end */
 int64_t msrt_drop_enter(void);
-/* ms-sig: msrt_drop_defer(run: *const u8, block: *mut u8) @leaf */
+/* ms-sig: msrt_drop_defer(run: *const u8, block: *mut u8) @end */
 void msrt_drop_defer(void (*run)(uint8_t *block), uint8_t *block);
 /* ms-sig: msrt_drop_leave() */
 void msrt_drop_leave(void);
