@@ -323,6 +323,8 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const bool moves = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
+    /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
+    return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }
   if (moves && expr->u.member.left->kind == MS_E_CALL && fn_fresh_owner(fn, base)) {
     /* The field leaves a temporary that dies with the statement: the rest of the record is released with it. */

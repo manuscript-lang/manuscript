@@ -40,8 +40,11 @@ uint32_t uw_hole_step(uint32_t open, MirOp op, const MirInst *next) {
       return open;
     }
     return open + 1 < 8 ? open + 1 : 8;
+  case MOP_AltTake: /* the payload leaves its alternative; `alt.release` frees what is left */
+    return open + 1 < 8 ? open + 1 : 8;
   case MOP_TypeFill:
   case MOP_ListFill:
+  case MOP_AltRelease:
     return open > 0 ? open - 1 : 0;
   default:
     return open;
@@ -117,6 +120,10 @@ static UwHash uw_field_defs(MsArena *a, const MirFunc *f) {
 
 static bool uw_hole_base(const UwHash *defs, const MirInst *inst, uint32_t *base) {
   uint64_t v = 0;
+  if (inst->op == MOP_AltTake && inst->nargs > 0) { /* the alternative itself is the owner */
+    *base = inst->args[0];
+    return true;
+  }
   if (inst->nargs == 0 || !uh_get(defs, inst->args[0], &v)) {
     return false;
   }
