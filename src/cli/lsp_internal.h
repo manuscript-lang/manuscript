@@ -50,6 +50,15 @@ bool lsp_offset(MsSpan source, LspPosition position, bool clamp, size_t *offset)
 /* The range of the token containing `offset`, or an empty range at it. */
 LspRange lsp_diagnostic_range(MsSpan source, size_t offset);
 
+/* The forgiving scanner: comments, strings, names (identifiers, keywords and numbers) and single characters. */
+typedef enum LspTokenKind { LSP_TOKEN_COMMENT, LSP_TOKEN_STRING, LSP_TOKEN_NAME, LSP_TOKEN_CHAR } LspTokenKind;
+typedef struct LspEditorToken {
+  LspTokenKind kind;
+  size_t start, end;
+} LspEditorToken;
+MS_LIST_DEFINE(LspTokenList, lsp_token_list, LspEditorToken)
+void lsp_scan_tokens(MsSpan source, LspTokenList *tokens);
+
 /* The byte offset of `name` as a token on the line after `offset` (a newline exactly at `offset` is skipped): where a
  * header's declared name is, whatever precedes it. */
 bool lsp_header(MsSpan source, size_t offset, MsSpan name, size_t *at);
