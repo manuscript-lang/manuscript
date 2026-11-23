@@ -15,6 +15,7 @@ typedef struct Resolver {
   MsCheckProgram *program;
   uint32_t module;
   bool report;
+  bool allow_type_set; /* a type set may be named: as a bound, as a member of another set, or as the receiver of its methods */
   MsNameList names; /* owned: type variable names in scope */
   MsTyList types;   /* owned: their types, in step with `names` */
   MsTy self;        /* the type `Self` denotes, or MS_TY_NONE */
@@ -45,5 +46,8 @@ MsSymbolId resolver_prelude_symbol(const MsCheckProgram *program, MsName name);
 
 /* The nominal type `base` applied to `count` type arguments; `base` itself when there are none. */
 MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t count);
+
+/* Reports written type arguments that fail their bounds; run once the module's methods are declared. */
+void ms_check_flush_pending_bounds(MsCheckProgram *program);
 
 #endif

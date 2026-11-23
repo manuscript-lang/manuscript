@@ -93,8 +93,8 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
 }
 
 /* The container and key an `if` that edits an entry names: `if var name = place[key]?:`, or `if var name =
- * place.get(key):` over a list or map, whose binding edits the entry itself (hack: matched by the method's name, see
- * hacks-and-oddities). */
+ * place.operation(key):` where the operation is a native that answers the entry the key selects in a list or map (an
+ * Optional of the container's value type, given the container's key type): its binding edits the entry itself. */
 bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index) {
   const MsExpr *cond = stmt->u.branch.cond;
   if (stmt->u.branch.binding == NULL) {
@@ -104,13 +104,25 @@ bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr
     return ms_expr_index(cond->u.bin.left, left, index);
   }
   const MsExpr *callee = cond->kind == MS_E_CALL ? cond->u.call.callee : NULL;
-  if (!stmt->u.branch.is_mutable || callee == NULL || callee->kind != MS_E_MEMBER || cond->u.call.args.len != 1 ||
-      !ms_span_equal(ms_names_span(fn->cx->program->names, callee->u.member.name), ms_span_of_text("get"))) {
+  const MsCall *call = callee != NULL ? fn_find_call(fn->facts, cond->id) : NULL;
+  if (!stmt->u.branch.is_mutable || call == NULL || call->callee.kind != MS_REF_NATIVE || callee->kind != MS_E_MEMBER ||
+      cond->u.call.args.len != 1) {
     return false;
   }
   const MsTyTable *types = &fn->cx->program->types;
   const MsTy held = ms_facts_type(fn->facts, callee->u.member.left->id);
-  if (held == MS_TY_NONE || (!ms_ty_is(types, held, MS_BUILTIN_Map) && !ms_ty_is(types, held, MS_BUILTIN_List))) {
+  const MsTy result = ms_facts_type(fn->facts, cond->id);
+  const MsTy key = ms_facts_type(fn->facts, cond->u.call.args.ptr[0].value->id);
+  if (held == MS_TY_NONE || result == MS_TY_NONE || key == MS_TY_NONE || !ms_ty_is(types, result, MS_BUILTIN_Optional) ||
+      ms_ty_arg_count(types, result) != 1) {
+    return false;
+  }
+  const MsTy entry = ms_ty_args(types, result)[0];
+  const bool map = ms_ty_is(types, held, MS_BUILTIN_Map) && ms_ty_arg_count(types, held) == 2 &&
+                   ms_ty_args(types, held)[0] == key && ms_ty_args(types, held)[1] == entry;
+  const bool list = ms_ty_is(types, held, MS_BUILTIN_List) && ms_ty_arg_count(types, held) == 1 &&
+                    ms_ty_args(types, held)[0] == entry && ms_ty_is(types, key, MS_BUILTIN_Int);
+  if (!map && !list) {
     return false;
   }
   *left = callee->u.member.left;

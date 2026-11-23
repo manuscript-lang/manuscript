@@ -9,6 +9,8 @@
 static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
   MsCheckProgram *program = resolver->program;
   const MsTypeParams params = ms_check_decl_type_params(symbol->decl);
+  const size_t scope = resolver->names.len - (params.len < symbol->var_count ? params.len : symbol->var_count);
+  bool defaulted = false;
   for (uint32_t index = 0; index < params.len && index < symbol->var_count; index++) {
     MsTyVariable *variable =
         ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + index]);
@@ -18,8 +20,32 @@ static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
         ms_ty_list_push(&variable->bounds, resolved);
       }
     }
-    if (params.ptr[index]->def != NULL) {
-      variable->default_ty = resolver_type(resolver, params.ptr[index]->def);
+    if (params.ptr[index]->def == NULL) {
+      if (defaulted && resolver->report) {
+        MsStrBuild text = ms_strbuild_new();
+        const MsSpan name = ms_names_span(program->names, params.ptr[index]->name);
+        ms_strbuild_append_text(&text, "type parameter ");
+        ms_strbuild_append(&text, name);
+        ms_strbuild_append_text(&text, " needs a default because an earlier parameter has one; give ");
+        ms_strbuild_append(&text, name);
+        ms_strbuild_append_text(&text, " a default or move it before the defaulted parameters");
+        ms_check_report(program, resolver->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+      continue;
+    }
+    defaulted = true;
+    /* a default sees the receiver's variables and the parameters before it, not itself or those after */
+    const size_t names = resolver->names.len;
+    const size_t types = resolver->types.len;
+    resolver->names.len = scope + index;
+    resolver->types.len = scope + index;
+    variable->default_ty = resolver_type(resolver, params.ptr[index]->def);
+    resolver->names.len = names;
+    resolver->types.len = types;
+    if (resolver->report && variable->default_ty != MS_TY_NONE) {
+      ms_pending_default_list_push(&program->pending_defaults, (MsPendingDefault){
+          .module = resolver->module, .pos = params.ptr[index]->def->pos, .variable = variable->default_ty,
+          .owner = program->symbol_vars.ptr[symbol->var_at + index]});
     }
   }
 }
@@ -31,6 +57,43 @@ static void resolve_enum(Resolver *resolver, MsDef *def, const MsDecl *decl) {
     resolver_params(resolver, source->fields, &checked.fields);
     ms_ty_case_list_push(&def->cases, checked);
   }
+}
+
+/* Whether the written type `type` mentions `Self` anywhere, including inside arguments and function types. */
+static bool mentions_self(const MsCheckProgram *program, const MsTypeRef *type) {
+  if (type == NULL) {
+    return false;
+  }
+  if (ms_span_is_text(ms_names_span(program->names, type->name), "Self")) {
+    return true;
+  }
+  for (uint32_t at = 0; at < type->args.len; at++) {
+    if (mentions_self(program, type->args.ptr[at])) {
+      return true;
+    }
+  }
+  for (uint32_t at = 0; at < type->params.len; at++) {
+    if (mentions_self(program, type->params.ptr[at]->ty)) {
+      return true;
+    }
+  }
+  return mentions_self(program, type->result);
+}
+
+/* `Self` is limited to whole parameter and result types, the positions where a call can substitute the implementing type. */
+static bool self_misplaced(const MsCheckProgram *program, const MsFunc *func) {
+  for (uint32_t at = 0; at < func->params.len; at++) {
+    const MsTypeRef *type = func->params.ptr[at]->ty;
+    const bool whole = type != NULL && type->args.len == 0 && type->params.len == 0 &&
+                       ms_span_is_text(ms_names_span(program->names, type->name), "Self");
+    if (!whole && mentions_self(program, type)) {
+      return true;
+    }
+  }
+  const MsTypeRef *result = func->result;
+  const bool whole = result != NULL && result->args.len == 0 && result->params.len == 0 &&
+                     ms_span_is_text(ms_names_span(program->names, result->name), "Self");
+  return !whole && mentions_self(program, result);
 }
 
 static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl, MsTy self) {
@@ -61,6 +124,10 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
       }
     }
     const MsTy ty = resolver_function(resolver, method->func.params, method->func.result);
+    if (!decl->synthetic && self_misplaced(resolver->program, &method->func)) {
+      ms_check_report(resolver->program, resolver->module, method->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("Self can only be a whole parameter or result type of an interface operation; write 'other: Self', not 'List[Self]'")));
+    }
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     ms_operation_list_push(&def->operations, (MsOperation){.name = method->func.name, .ty = ty,
@@ -117,7 +184,10 @@ void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
     /* A single target is another name for that type, over the alias's own variables. */
     const size_t mark = resolver->names.len;
     resolver_enter_symbol(resolver, symbol);
+    const bool allowed = resolver->allow_type_set;
+    resolver->allow_type_set = true;
     symbol->ty = resolver_type(resolver, decl->u.alias.targets.ptr[0]);
+    resolver->allow_type_set = allowed;
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     symbol->alias_state = 2;
@@ -125,7 +195,10 @@ void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   }
   MsTyList members = {0};
   for (uint32_t index = 0; index < decl->u.alias.targets.len; index++) {
+    const bool allowed = resolver->allow_type_set;
+    resolver->allow_type_set = true;
     ms_ty_list_push(&members, resolver_type(resolver, decl->u.alias.targets.ptr[index]));
+    resolver->allow_type_set = allowed;
   }
   const MsTyDesc desc = {.name = decl->u.alias.name, .id = decl->u.alias.name, .kind = MS_TY_CONTRACT,
                          .builtin = MS_BUILTIN_TypeSet, .args = members.ptr, .arg_count = (uint32_t)members.len};

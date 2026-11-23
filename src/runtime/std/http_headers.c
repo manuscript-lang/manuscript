@@ -109,9 +109,14 @@ static void headers_drop(MsObj *object) {
   ms_headers_free(headers);
 }
 
+/* The copy a record's `.clone()` makes of the headers it holds; headers have one owner, so nothing else copies them. */
+static MsObj *headers_clone(MsObj *object) {
+  return &ms_headers_copy((const MsHeaders *)(const void *)object)->object;
+}
+
 MsHeaders *ms_headers_new(void) {
   MsHeaders *headers = ms_alloc(sizeof *headers);
-  *headers = (MsHeaders){.object = {.clone = NULL, .drop = headers_drop}};
+  *headers = (MsHeaders){.object = {.clone = headers_clone, .drop = headers_drop}};
   return headers;
 }
 

@@ -18,5 +18,5 @@ export fn list_headers(fields: Map[String, List[String]]) HttpHeaders!:
     return ok(result)
 
 // Streaming callbacks return plain Error values, so a result from any operation passes through unchanged.
-export fn http_result[T](outcome: T!) T!:
+export fn http_result[T](move outcome: T!) T!:
     return outcome

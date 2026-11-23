@@ -18,7 +18,7 @@ fn var Counter.bump() Void:
 fn Counter.value() Int:
 	return self.count
 
-export fn approve(entity: String) Approved:
+export fn approve(move entity: String) Approved:
 	return Approved(entity: entity, nonce: "n1")
 
 export fn entity(a: Approved) String:

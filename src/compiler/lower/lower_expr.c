@@ -837,8 +837,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A parameter taken by borrow is never the callee's to give away. */
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
+  MirVar param_var = 0;
+  /* A `var` parameter the body owns while it runs (it is refilled before the caller sees it) may hand its value on. */
   const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
-                              fn->b.func.params[param_at].mode != MM_MOVE;
+                              fn->b.func.params[param_at].mode != MM_MOVE &&
+                              !(expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var));
   /* A field of a `var` binding stays in the record the binding puts back whole, so reading it as a move would free it
    * twice; it is copied. */
   MirVar root_var;
@@ -855,12 +858,12 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
-  /* A field of a call's answer that views another owner's value stays there; the move out of it copies. */
-  const MsCall *root_call = expr->kind == MS_E_MEMBER && root->kind == MS_E_CALL ? ms_facts_call(fn->facts, root->id) : NULL;
-  const bool in_call_result = root_call != NULL &&
-                              (root_call->callee.kind == MS_REF_FUNCTION || root_call->callee.kind == MS_REF_METHOD) &&
-                              ms_own_result_is_borrowed(fn->cx->program, root_call->callee.decl.module, root_call->callee.decl.node);
-  if (!borrowed_param && !in_var_record && !view_local && !in_call_result && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  if (in_var_record && fn->moving_field == expr && fn->nmoved_fields < 4 && !borrowed_param) {
+    /* `old := self.f` followed by `self.f = g`: the field leaves the record and the assignment drops nothing. */
+    fn->moved_fields[fn->nmoved_fields++] = expr;
+    return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
+  }
+  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

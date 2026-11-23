@@ -34,6 +34,7 @@ void mir_module_free(MirModule *module) {
   mir_func_list_free(&module->funcs);
   mir_type_def_list_free(&module->type_defs);
   mir_alt_def_list_free(&module->alts);
+  mir_obj_hook_list_free(&module->obj_hooks);
   mir_iface_def_list_free(&module->ifaces);
   mir_vtable_list_free(&module->vtables);
   mir_desc_glue_list_free(&module->desc_glue);

@@ -44,7 +44,7 @@ static MsSpan mv_func_name(const Mv *v) {
   return ms_arena_copy(&v->errs->arena, ms_names_span(&v->cx.m->names, v->cx.f->name));
 }
 
-void mv_err(Mv *v, MirBlock block, const char *fmt, ...) {
+void mv_err_(Mv *v, MirBlock block, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   MsSpan message = ms_message_vformat(&v->errs->arena, fmt, ap);
@@ -398,9 +398,10 @@ static void mv_function(MirVerifyErrors *errs, const MirModule *m, const MirFunc
 
 /* ---- module ---- */
 
-static void mv_module_err(MirVerifyErrors *errs, const char *fmt, ...);
+static void mv_module_err_(MirVerifyErrors *errs, const char *fmt, ...);
+#define mv_module_err(errs, ...) mv_module_err_((errs), MS_FMT_ARGS(__VA_ARGS__))
 
-static void mv_module_err(MirVerifyErrors *errs, const char *fmt, ...) {
+static void mv_module_err_(MirVerifyErrors *errs, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   MsSpan message = ms_message_vformat(&errs->arena, fmt, ap);

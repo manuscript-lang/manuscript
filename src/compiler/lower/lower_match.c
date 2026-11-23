@@ -49,13 +49,29 @@ static bool arm_case(const LowerFn *fn, const Match *match, const MsArm *arm, ui
   return true;
 }
 
-/* The checked type of what an arm of a Result or an Optional binds, or none for another alternative. */
-static MsTy payload_type(const LowerFn *fn, const Match *match, uint32_t kase) {
-  const MsTyTable *types = &fn->cx->program->types;
+/* The checked type of what binding `at` of an arm over the case `kase` binds. */
+static MsTy payload_type(const LowerFn *fn, const Match *match, uint32_t kase, uint32_t at) {
+  MsCheckProgram *program = fn->cx->program;
+  const MsTyTable *types = &program->types;
   const bool result = ms_ty_is(types, match->checked, MS_BUILTIN_Result);
-  const uint32_t which = result ? kase : 0;
-  const bool known = result || ms_ty_is(types, match->checked, MS_BUILTIN_Optional);
-  return known && ms_ty_arg_count(types, match->checked) > which ? ms_ty_args(types, match->checked)[which] : MS_TY_NONE;
+  if (result || ms_ty_is(types, match->checked, MS_BUILTIN_Optional)) {
+    const uint32_t which = result ? kase : 0;
+    return at == 0 && ms_ty_arg_count(types, match->checked) > which ? ms_ty_args(types, match->checked)[which] : MS_TY_NONE;
+  }
+  const MsDef *def = ms_check_def_of(program, match->checked);
+  if (def == NULL || ms_ty_kind(types, match->checked) != MS_TY_ALTERNATIVE || kase >= def->cases.len ||
+      at >= def->cases.ptr[kase].fields.len) {
+    return MS_TY_NONE;
+  }
+  return ms_check_part_type(program, match->checked, def, def->cases.ptr[kase].fields.ptr[at].ty);
+}
+
+/* Whether the arm's closer names binding `at`, whose checked type is `payload`. */
+static bool closes_binding(LowerFn *fn, const MsArm *arm, uint32_t at, MsTy payload) {
+  const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
+  const MsCloser *closer = ms_facts_closer(fn->facts, arm->id);
+  return payload != MS_TY_NONE && closer != NULL && ref != NULL && closer->local == ref->local + at &&
+         fn_closer_for(fn, closer, payload);
 }
 
 /* An arm over a consumed scrutinee owns the payload it binds: the scrutinee is released but for the bound fields,
@@ -67,8 +83,8 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   if (match->kind == MK_OPT) {
     const MirTy elem = mir_ty_data(module, match->ty)->elem;
     const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &match->scrutinee, 1, (MirImm){0}, elem);
-    const MsTy payload = payload_type(fn, match, 1);
-    if (payload != MS_TY_NONE && fn_closer_for(fn, ms_facts_closer(fn->facts, arm->id), payload)) {
+    const MsTy payload = payload_type(fn, match, 1, 0);
+    if (closes_binding(fn, arm, 0, payload)) {
       (void)fn_bind_closing(fn, ref->local, payload, item, false); /* the arm closes it where it ends */
       return;
     }
@@ -84,10 +100,10 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   for (uint32_t at = 0; at < arm->bindings.len && at < def->nfields; at++) {
     const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
     const MirValue field = mir_b_emit(&fn->b, MOP_AltTake, &match->scrutinee, 1, imm, def->fields[at].ty);
-    const MsTy payload = payload_type(fn, match, kase);
+    const MsTy payload = payload_type(fn, match, kase, at);
     mask |= UINT32_C(1) << at;
-    if (at == 0 && payload != MS_TY_NONE && fn_closer_for(fn, ms_facts_closer(fn->facts, arm->id), payload)) {
-      (void)fn_bind_closing(fn, ref->local, payload, field, false); /* the arm closes it where it ends */
+    if (closes_binding(fn, arm, at, payload)) {
+      (void)fn_bind_closing(fn, ref->local + at, payload, field, false); /* the arm closes it where it ends */
       continue;
     }
     if (mir_needs_drop(module, def->fields[at].ty)) {
@@ -119,10 +135,28 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   }
 }
 
+/* Whether an arm over an interface value names a type: the arm the value's own type selects. */
+static bool is_type_arm(const LowerFn *fn, const MsArm *arm) {
+  const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
+  return ref != NULL && ref->kind == MS_REF_TYPE;
+}
+
+/* The arm's binding: the interface value's payload read as the type the arm names, a view of what the value holds. */
+static void bind_concrete(LowerFn *fn, const Match *match, const MsArm *arm) {
+  const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
+  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, arm->id));
+  const MirValue data = mir_b_emit(&fn->b, MOP_IfaceData, &match->scrutinee, 1, (MirImm){0}, MIR_PTR);
+  const MirValue value = mir_b_emit(&fn->b, MOP_Load, &data, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+  mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), value);
+}
+
 static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   uint32_t kase = 0;
-  const bool named = arm_case(fn, match, arm, &kase);
+  const bool named = match->kind == MK_IFACE ? false : arm_case(fn, match, arm, &kase);
   (void)fn_scope_begin(fn);
+  if (match->kind == MK_IFACE && is_type_arm(fn, arm)) {
+    bind_concrete(fn, match, arm);
+  }
   if (named && arm->bindings.len > 0) {
     if (match->consumed && !(match->kind == MK_OPT && kase != 1)) {
       take_payload(fn, match, arm, kase);
@@ -187,6 +221,33 @@ static void dispatch_tag(LowerFn *fn, const Match *match, const MsExpr *expr, co
   }
 }
 
+/* Tests each type arm in turn against the interface value's vtable, then falls to the wildcard arm. */
+static bool dispatch_types(LowerFn *fn, const Match *match, const MsExpr *expr, const MirBlock *blocks) {
+  MirBlock fallback = MIR_NONE;
+  for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    const MsArm *arm = expr->u.match.arms.ptr[index];
+    if (!is_type_arm(fn, arm)) {
+      fallback = fallback == MIR_NONE ? blocks[index] : fallback;
+      continue;
+    }
+    const uint32_t vtable = lower_vtable(fn->cx, &fn->subst, ms_facts_type(fn->facts, arm->id), match->checked);
+    if (vtable == MIR_NONE) {
+      return fn_fail(fn, "a value cannot be viewed as this interface: a method of the interface has no body for its type");
+    }
+    const MirImm imm = {.tag = MI_VTABLE, .a = vtable};
+    const MirValue same = mir_b_emit(&fn->b, MOP_IfaceIs, &match->scrutinee, 1, imm, MIR_BOOL);
+    const MirBlock next = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, same, blocks[index], NULL, 0, next, NULL, 0);
+    enter(fn, next);
+  }
+  if (fallback == MIR_NONE) {
+    mir_b_unreachable(&fn->b);
+  } else {
+    mir_b_br(&fn->b, fallback, NULL, 0);
+  }
+  return true;
+}
+
 /* Tests each literal arm in turn, then falls to the wildcard arm. */
 static bool dispatch_literals(LowerFn *fn, const Match *match, const MsExpr *expr, const MirBlock *blocks) {
   MirBlock fallback = MIR_NONE;
@@ -235,7 +296,7 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
     match.consumed = true;
   }
   const bool literal = match.ty == MIR_INT || match.ty == MIR_BOOL || match.ty == MIR_STR;
-  if (match.kind != MK_ALT && match.kind != MK_OPT && !literal) {
+  if (match.kind != MK_ALT && match.kind != MK_OPT && match.kind != MK_IFACE && !literal) {
     (void)fn_fail(fn, "`match` over this type is not lowered yet");
     return MIR_NONE;
   }
@@ -251,7 +312,9 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
     blocks[index] = mir_b_new_block(&fn->b);
   }
   bool ok = true;
-  if (literal) {
+  if (match.kind == MK_IFACE) {
+    ok = dispatch_types(fn, &match, expr, blocks);
+  } else if (literal) {
     ok = dispatch_literals(fn, &match, expr, blocks);
   } else {
     dispatch_tag(fn, &match, expr, blocks);

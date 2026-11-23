@@ -1,7 +1,9 @@
 /* runtime/std/net.c: IpAddress and Cidr objects and the network diagnostic texts. */
+#include "runtime/std/shape_json.h"
 #include "runtime/std/net.h"
 
 #include "base/alloc.h"
+#include "base/cstr.h"
 #include "runtime/std/net_ip.h"
 
 typedef struct IpCell {
@@ -141,4 +143,18 @@ void msstd_net_error_message(uint8_t status, uint8_t has_failed, const MsString 
   ms_strbuild_append_text(&text, "network: ");
   ms_strbuild_append_text(&text, reason);
   finish_text(&text, out);
+}
+
+static const MsObjectCodec OBJECT_CODECS[] = {
+    {"IpAddress", msstd_net_ip_address_text, msstd_json_dec_ip},
+    {"Cidr", msstd_net_cidr_text, msstd_json_dec_cidr},
+};
+
+const MsObjectCodec *ms_object_codec(const char *name) {
+  for (size_t index = 0; index < sizeof OBJECT_CODECS / sizeof OBJECT_CODECS[0]; index++) {
+    if (ms_cstr_equal(OBJECT_CODECS[index].name, name)) {
+      return &OBJECT_CODECS[index];
+    }
+  }
+  return NULL;
 }

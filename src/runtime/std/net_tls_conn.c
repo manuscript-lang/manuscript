@@ -275,7 +275,7 @@ uint8_t ms_net_tls_serve(MsNetCore *core, int64_t timeout_ns, MsString *err) {
 uint8_t msstd_net_connection_tls_info(const MsObj *handle, MsTlsInfo *out) {
   const MsNetTls *tls = ms_net_handle_core(handle)->tls;
   if (tls == NULL) {
-    return 0;
+    return MS_STATUS_INVALID_INPUT; /* a plain connection has no TLS details */
   }
   out->version = ms_net_tls_version(tls);
   out->cipher_suite = ms_net_tls_cipher(tls);
@@ -287,7 +287,7 @@ uint8_t msstd_net_connection_tls_info(const MsObj *handle, MsTlsInfo *out) {
     ms_list_push(&out->peer_certificates, sizeof der, &der);
   }
   out->verified = ms_net_tls_verified(tls) ? 1 : 0;
-  return 1;
+  return MS_STATUS_OK;
 }
 
 uint8_t msstd_net_network_connect_tls_config(const MsObj *net, const MsString *address, const MsTlsOptions *options,

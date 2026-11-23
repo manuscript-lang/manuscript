@@ -1,6 +1,9 @@
 /* compiler/own/uses.c: fills the `uses` fact column (see uses.h). */
 #include "compiler/own/uses.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "compiler/check/methods.h"
 #include "compiler/check/properties.h"
 #include "compiler/own/bind.h"
@@ -11,12 +14,18 @@
 
 typedef struct Uses {
   MsCheckProgram *program;
+  uint32_t module;
+  bool report; /* the pass that only reports moves out of a borrowed call result: its markings are discarded */
   MsClassifier *classes;
   MsFacts *facts;
   const MsNames *names;
+  MsParams params; /* the callable being marked */
+  MsStmts body;
   uint32_t moving; /* the parameters of the callable being marked that it owns, by index */
   MsBindingList cand_locals, cand_nodes; /* `x := y` binds of a local `y` that nothing has read or assigned since */
   MsBindingList swapped; /* the reads that bind a local assigned while the binding lives (`old := a; a = b`) */
+  const MsExpr *cand_places[16]; /* `x := a.f` binds of a field place that nothing has read or assigned since */
+  uint32_t ncand_places;
   MsBindingList moved; /* the locals a name moves in the callable being marked */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
 } Uses;
@@ -59,7 +68,7 @@ static bool is_view(const Uses *pass, const MsExpr *expr) {
 /* Whether `call` answers a new value: a function or method with a body whose result borrows none of its arguments. */
 static bool fresh_call(const Uses *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
-  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
+  if (!pass->report || fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
     return false;
   }
   const MsFunc *func = ms_own_find_func(pass->program, &fact->callee);
@@ -90,6 +99,35 @@ static bool stored_param(const Uses *pass, const MsExpr *expr) {
   return ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_VARIABLE;
 }
 
+/* A field read of a call whose answer views another owner's value (`result.err().message`): the owner keeps the field,
+ * so handing it on needs `.clone()`. Reports it and answers true. */
+static bool moves_out_of_borrowed_result(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (expr->kind != MS_E_MEMBER || root->kind != MS_E_CALL) {
+    return false;
+  }
+  const MsCall *fact = ms_facts_call(pass->facts, root->id);
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD) || ty == MS_TY_NONE ||
+      ms_class_of(pass->classes, ty) == MS_CLASS_COPY ||
+      !ms_own_result_is_borrowed(pass->program, fact->callee.decl.module, fact->callee.decl.node)) {
+    return false;
+  }
+  /* A value the call borrows from a temporary dies with the statement, so the field leaves with it. */
+  const MsExpr *owner = root->u.call.callee->kind == MS_E_MEMBER && fact->callee.kind == MS_REF_METHOD
+                            ? root->u.call.callee->u.member.left
+                            : (root->u.call.args.len != 0 ? root->u.call.args.ptr[0].value : NULL);
+  if (owner != NULL && owner->kind == MS_E_CALL) {
+    return false;
+  }
+  ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("this field belongs to a borrowed call result, which keeps owning it; end it with `.clone()` to take a copy")));
+  return true;
+}
+
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr == NULL) {
@@ -99,6 +137,17 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     if (expr->u.bin.left->kind == MS_E_NAME && place_root(pass, expr->u.bin.left)) {
       pass->facts->uses[expr->id] = MS_USE_MOVE;
     }
+    return;
+  }
+  if (expr->kind == MS_E_MATCH) { /* `if c: a else: b` hands on whichever arm it picks */
+    for (uint32_t at = 0; at < expr->u.match.arms.len; at++) {
+      if (expr->u.match.arms.ptr[at]->from_if && expr->u.match.arms.ptr[at]->value != NULL) {
+        mark_move(pass, expr->u.match.arms.ptr[at]->value);
+      }
+    }
+    return;
+  }
+  if (moves_out_of_borrowed_result(pass, expr)) {
     return;
   }
   const bool temporary = expr->kind == MS_E_MEMBER && part_of_fresh_call(pass, expr);
@@ -243,7 +292,7 @@ static const MsExpr *bound_local_source(const Uses *pass, const MsExpr *value) {
 }
 
 static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
-  const MsExpr *source = bound_local_source(pass, expr);
+  const MsExpr *source = expr->kind == MS_E_MEMBER ? expr : bound_local_source(pass, expr);
   for (size_t index = 0; source != NULL && index < pass->swapped.len; index++) {
     if (pass->swapped.ptr[index] == source->id) {
       return true;
@@ -252,18 +301,38 @@ static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
   return false;
 }
 
+static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts body, const MsStmt *loop, const MsExpr *iter);
+
+/* Whether `if r := o:` gives the payload of `o` to `r`: always for a resource or a parameter, and for another local only when `o` is
+ * not read again, so a later read of `o` still finds its payload. */
+static bool hands_payload_on(const Uses *pass, const MsStmt *stmt) {
+  const MsExpr *cond = stmt->u.branch.cond;
+  if (ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, cond->id))) {
+    return true;
+  }
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
+  return ref == NULL || ref->kind != MS_REF_LOCAL || last_use_outside_loops(pass, pass->params, pass->body, stmt, cond);
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_RETURN) {
     mark_move(pass, stmt->u.expr);
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME &&
              (stmt->u.bind.is_mutable || binds_assigned_local(pass, stmt->u.bind.value))) {
-    mark_move(pass, stmt->u.bind.is_mutable ? stmt->u.bind.value : bound_local_source(pass, stmt->u.bind.value));
+    mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value
+                    : stmt->u.bind.value->kind == MS_E_MEMBER ? stmt->u.bind.value
+                                                              : bound_local_source(pass, stmt->u.bind.value));
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_TYPE && !stmt->u.bind.is_mutable &&
+             stmt->u.bind.value->kind == MS_E_NAME) {
+    mark_move(pass, stmt->u.bind.value); /* `{a: x, b: y} := record` hands the parts to the names */
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
+    mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
-             owns_place(pass, stmt->u.branch.cond)) {
+             owns_place(pass, stmt->u.branch.cond) && hands_payload_on(pass, stmt)) {
     mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
   }
 }
@@ -297,6 +366,12 @@ static void collect_views(void *ctx, const MsStmt *stmt) {
   if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME &&
       (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
     note_pattern_views(pass, stmt->u.bind.pattern);
+  }
+  /* An `if` binding of an owned local that is read again views its payload: the local stays the owner. */
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+      !stmt->u.branch.is_mutable && stmt->u.branch.cond->kind == MS_E_NAME && owns_place(pass, stmt->u.branch.cond) &&
+      !hands_payload_on(pass, stmt)) {
+    note_pattern_views(pass, stmt->u.branch.binding);
   }
 }
 
@@ -347,16 +422,44 @@ static void consume_scrutinees(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* Whether two expressions name the same local or the same field path of one. */
+static bool same_place(const Uses *pass, const MsExpr *a, const MsExpr *b) {
+  if (a->kind != b->kind) {
+    return false;
+  }
+  if (a->kind == MS_E_NAME) {
+    const MsRef *left = ms_facts_ref(pass->facts, a->id);
+    const MsRef *right = ms_facts_ref(pass->facts, b->id);
+    return left != NULL && right != NULL && left->kind == right->kind && left->local == right->local;
+  }
+  return a->kind == MS_E_MEMBER && ms_span_equal(ms_names_span(pass->names, a->u.member.name), ms_names_span(pass->names, b->u.member.name)) &&
+         same_place(pass, a->u.member.left, b->u.member.left);
+}
+
 /* `old := a` borrows `a`; if the next thing the callable does with `a` is assign it, the binding must own the value,
  * or the assignment frees what the binding still reads. A read of `a` in between keeps the plain borrow. */
 static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    if (stmt->u.bind.value->kind == MS_E_MEMBER && place_root(pass, stmt->u.bind.value) &&
+        pass->ncand_places < sizeof pass->cand_places / sizeof pass->cand_places[0]) {
+      pass->cand_places[pass->ncand_places++] = stmt->u.bind.value; /* `old := self.f; self.f = g` */
+      return;
+    }
     const MsExpr *source_name = bound_local_source(pass, stmt->u.bind.value);
     const MsRef *source = source_name == NULL ? NULL : ms_facts_ref(pass->facts, source_name->id);
     if (source != NULL && source->kind == MS_REF_LOCAL) {
       ms_binding_list_push(&pass->cand_locals, source->local);
       ms_binding_list_push(&pass->cand_nodes, source_name->id);
+    }
+    return;
+  }
+  if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.member_target && !stmt->u.assign.has_compound) {
+    for (uint32_t at = 0; at < pass->ncand_places; at++) {
+      if (pass->cand_places[at] != NULL && same_place(pass, pass->cand_places[at], stmt->u.assign.target)) {
+        ms_binding_list_push(&pass->swapped, pass->cand_places[at]->id);
+        pass->cand_places[at] = NULL;
+      }
     }
     return;
   }
@@ -374,6 +477,11 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
 
 static void note_swap_expr(void *ctx, const MsExpr *expr) {
   Uses *pass = ctx;
+  for (uint32_t at = 0; expr->kind == MS_E_MEMBER && at < pass->ncand_places; at++) {
+    if (pass->cand_places[at] != NULL && pass->cand_places[at] != expr && same_place(pass, pass->cand_places[at], expr)) {
+      pass->cand_places[at] = NULL; /* read again before any assignment */
+    }
+  }
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
   for (size_t index = 0; ref != NULL && ref->kind == MS_REF_LOCAL && index < pass->cand_locals.len; index++) {
     if (pass->cand_locals.ptr[index] == ref->local && pass->cand_nodes.ptr[index] != expr->id) {
@@ -396,6 +504,61 @@ static void find_moved_loop_name(void *ctx, const MsExpr *expr) {
                                   moved->pass->facts->uses[expr->id] == MS_USE_MOVE);
 }
 
+/* The reads of one local: where the last one starts, and the furthest offset any expression of a scan ends at. */
+typedef struct LastRead {
+  const Uses *pass;
+  uint32_t local;
+  uint32_t last;
+  uint32_t end;
+} LastRead;
+
+static void note_last_read(void *ctx, const MsExpr *expr) {
+  LastRead *scan = ctx;
+  const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(scan->pass->facts, expr->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local == scan->local && ms_expr_start(expr).offset >= scan->last) {
+    scan->last = ms_expr_start(expr).offset;
+  }
+  if (expr->end.offset > scan->end) {
+    scan->end = expr->end.offset;
+  }
+}
+
+/* The furthest offset any expression of a scan ends at. */
+static void note_extent(void *ctx, const MsExpr *expr) {
+  uint32_t *end = ctx;
+  if (expr->end.offset > *end) {
+    *end = expr->end.offset;
+  }
+}
+
+typedef struct Enclosing {
+  uint32_t at;
+  bool inside;
+  MsStmts body;
+} Enclosing;
+
+static void note_enclosing(void *ctx, const MsStmt *stmt) {
+  Enclosing *scan = ctx;
+  const MsStmts body = stmt->kind == MS_S_WHILE ? stmt->u.loop.body : stmt->kind == MS_S_FOR ? stmt->u.each.body : (MsStmts){0};
+  if (body.len == 0 || stmt->pos.offset >= scan->at) {
+    return;
+  }
+  uint32_t end = 0;
+  ms_walk_block(&(MsVisitor){.ctx = &end, .expr = note_extent}, body);
+  scan->inside = scan->inside || end > scan->at;
+}
+
+/* Whether the name `iter` of a `for` is the last read of its local and the loop is not inside another loop: the loop
+ * is then the last owner of the list, so it takes the list's elements. */
+static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts body, const MsStmt *loop, const MsExpr *iter) {
+  const MsRef *ref = ms_facts_ref(pass->facts, iter->id);
+  LastRead reads = {.pass = pass, .local = ref->local};
+  ms_walk_callable(&(MsVisitor){.ctx = &reads, .expr = note_last_read}, params, body);
+  Enclosing enclosing = {.at = loop->pos.offset};
+  ms_walk_callable(&(MsVisitor){.ctx = &enclosing, .stmt = note_enclosing}, params, body);
+  return reads.last == ms_expr_start(iter).offset && !enclosing.inside;
+}
+
 /* `for item in items:` over a local list of resources whose body moves `item` on: the loop owns the elements, so each
  * one is closed in its round unless the body moves it away. */
 static void consume_loops(void *ctx, const MsStmt *stmt) {
@@ -413,17 +576,20 @@ static void consume_loops(void *ctx, const MsStmt *stmt) {
   }
   Moved moved = {.pass = pass, .local = binding->local};
   ms_walk_block(&(MsVisitor){.ctx = &moved, .expr = find_moved_loop_name}, stmt->u.each.body);
-  if (moved.found) {
+  if (moved.found || last_use_outside_loops(pass, pass->params, pass->body, stmt, iter)) {
     pass->facts->uses[iter->id] = MS_USE_MOVE;
   }
 }
 
 static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consuming) {
+  pass->params = params;
+  pass->body = body;
   pass->arms.len = 0;
   pass->moved.len = 0;
   pass->cand_locals.len = 0;
   pass->cand_nodes.len = 0;
   pass->swapped.len = 0;
+  pass->ncand_places = 0;
   pass->moving = consuming ? 1u : 0u; /* the receiver of a consuming method is parameter 0 */
   for (uint32_t at = 0; at < params.len; at++) {
     const MsRef *ref = ms_facts_ref(pass->facts, params.ptr[at]->id);
@@ -456,10 +622,10 @@ static void mark_module(Uses *pass, const MsModule *tree) {
   }
 }
 
-void ms_own_uses(MsCheckProgram *program) {
+static void run_uses(MsCheckProgram *program, bool report) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->modules.len; module++) {
-    Uses pass = {.program = program, .classes = &classes, .facts = &program->modules.ptr[module].facts,
+    Uses pass = {.program = program, .module = module, .report = report, .classes = &classes, .facts = &program->modules.ptr[module].facts,
                  .names = program->names};
     if (pass.facts->uses == NULL) {
       continue;
@@ -472,4 +638,38 @@ void ms_own_uses(MsCheckProgram *program) {
     ms_binding_list_free(&pass.swapped);
   }
   ms_class_free(&classes);
+}
+
+void ms_own_uses(MsCheckProgram *program) {
+  run_uses(program, false);
+}
+
+void ms_own_uses_report(MsCheckProgram *program) {
+  /* The borrowed-result masks exist only now, so the walk runs again with them; what it marks is already settled. */
+  size_t total = 0;
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    total += program->modules.ptr[module].facts.uses == NULL ? 0 : program->modules.ptr[module].facts.node_count;
+  }
+  uint8_t *saved = malloc(total == 0 ? 1 : total);
+  size_t at = 0;
+  for (uint32_t module = 0; saved != NULL && module < program->modules.len; module++) {
+    const MsFacts *facts = &program->modules.ptr[module].facts;
+    if (facts->uses != NULL) {
+      memcpy(saved + at, facts->uses, facts->node_count);
+      at += facts->node_count;
+    }
+  }
+  if (saved == NULL) {
+    return;
+  }
+  run_uses(program, true);
+  at = 0;
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    const MsFacts *facts = &program->modules.ptr[module].facts;
+    if (facts->uses != NULL) {
+      memcpy(facts->uses, saved + at, facts->node_count);
+      at += facts->node_count;
+    }
+  }
+  free(saved);
 }

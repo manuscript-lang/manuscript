@@ -7,7 +7,7 @@ import (
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
 
-fn write_one(path: String, data: Bytes) fn() Void!:
+fn write_one(move path: String,move data: Bytes) fn() Void!:
 	return fn: write_file(path.clone(), data, replace: true).wait()
 
 test "more large writes than pool slots all complete":

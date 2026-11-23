@@ -8,12 +8,12 @@ import (
 
 fn entries(value: TomlValue) Map[String, TomlValue]!:
 	match value:
-		TableValue(values): return ok(values)
+		TableValue(values): return ok(values.clone())
 		_: return error(Error("expected TOML table"))
 
 fn items(value: TomlValue) List[TomlValue]!:
 	match value:
-		ArrayValue(values): return ok(values)
+		ArrayValue(values): return ok(values.clone())
 		_: return error(Error("expected TOML array"))
 
 fn limits(bytes: Int?, depth: Int?, values: Int?) TomlOptions:

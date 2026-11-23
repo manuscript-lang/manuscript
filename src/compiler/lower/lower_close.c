@@ -199,18 +199,19 @@ void lower_close_check(MirBuilder *b, MirValue result) {
 /* ---- the binding ---- */
 
 /* A `var` slot that only drops serves a `var` that moves: the others keep their value in a variable. */
-static bool lowerable(uint16_t flags) {
-  if ((flags & MS_CLOSER_DROP) != 0 && ((flags & MS_CLOSER_MOVED) == 0 || (flags & MS_CLOSER_RECEIVER) != 0)) {
+/* `in_slot`: the binding is a parameter, whose slot an assignment into it takes from and puts back into. */
+static bool lowerable(uint16_t flags, bool in_slot) {
+  if ((flags & MS_CLOSER_DROP) != 0 && (flags & MS_CLOSER_MOVED) == 0) {
     return false;
   }
   const bool taken = (flags & MS_CLOSER_PARTS) != 0 && (flags & MS_CLOSER_TAKEN) != 0;
   /* A `var` slot changes in place through its slot; any other closer must not be changed. */
-  const bool changed = (flags & MS_CLOSER_MUTATED) != 0 && (flags & (MS_CLOSER_DROP | MS_CLOSER_VAR)) == 0;
+  const bool changed = !in_slot && (flags & MS_CLOSER_MUTATED) != 0 && (flags & (MS_CLOSER_DROP | MS_CLOSER_VAR)) == 0;
   return (flags & MS_CLOSER_CONSUMES) != 0 && !taken && !changed &&
          (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_PARTIAL)) == 0;
 }
 
-bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+static bool closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked, bool in_slot) {
   if (closer == NULL || fn->closing == NULL) {
     return false;
   }
@@ -232,19 +233,31 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
   if ((flags & MS_CLOSER_DROP) != 0 && !mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
     return false;
   }
-  return lowerable(flags) && ((flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, ty));
+  return lowerable(flags, in_slot) && ((flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, ty));
+}
+
+bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+  return closer_for(fn, closer, checked, false);
+}
+
+bool fn_param_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+  return closer_for(fn, closer, checked, true);
 }
 
 /* Puts `value` in a fresh slot owned by the innermost scope and returns the slot; `owns` says it needs a drop. */
-static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent) {
+static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue value, uint32_t silent) {
   const MirImm none = {0};
   const bool owns = mir_needs_drop(fn->cx->module, ty);
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
   const MirValue stored[2] = {slot, value};
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, none, MIR_NONE);
-  const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = silent + 2};
+  const MirImm own = {.tag = MI_SCOPE, .a = scope, .b = silent + 2};
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
   return slot;
+}
+
+static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent) {
+  return own_slot_in(fn, fn_scope(fn), ty, value, silent);
 }
 
 /* `fn(slot)`: takes the value the slot holds and drops it. */
@@ -272,7 +285,7 @@ static uint32_t drop_thunk(Lower *cx, MirTy ty) {
 
 /* The silent close thunk for the type `checked` (in the function's terms), with its exits made. A type that is not
  * Closeable closes its parts. */
-static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
+static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint32_t *silent) {
   Lower *cx = fn->cx;
   const MsTy concrete = ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
   MsCloser plain;
@@ -280,7 +293,7 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
     *silent = drop_thunk(cx, ty);
     return *silent != MIR_NONE || fn_fail(fn, "the drop of a variable could not be lowered");
   }
-  const bool parts = !ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT;
+  const bool parts = fields_only || (!ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT);
   const bool iface = ms_ty_kind(&cx->program->types, concrete) == MS_TY_CONTRACT;
   const uint32_t method = iface ? lower_close_iface(cx, concrete)
                           : parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
@@ -294,10 +307,20 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
   return true;
 }
 
-bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var) {
+bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
+  const MsTy concrete = ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
+  MsCloser plain;
+  if (!ms_own_closer_of(fn->cx->program, concrete, &plain) || (plain.flags & MS_CLOSER_DROP) != 0 ||
+      ((plain.flags & MS_CLOSER_PARTS) != 0 && !lower_parts_supported(fn->cx, concrete))) {
+    return false;
+  }
+  return prepare(fn, checked, ty, false, silent);
+}
+
+bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
-  if (!prepare(fn, checked, ty, &silent)) {
+  if (!prepare(fn, checked, ty, fields_only, &silent)) {
     return false;
   }
   const MirValue slot = own_slot(fn, ty, value, silent);
@@ -319,7 +342,20 @@ void fn_init_closing(LowerFn *fn) {
   }
 }
 
+bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old) {
+  uint32_t silent = MIR_NONE;
+  if (!prepare(fn, checked, mir_b_ty(&fn->b, old), false, &silent)) {
+    return false;
+  }
+  (void)own_slot(fn, mir_b_ty(&fn->b, old), old, silent); /* closed where the scope ends */
+  return !fn->failed;
+}
+
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var) {
+  return fn_bind_closing_in(fn, fn_scope(fn), local, checked, value, is_var);
+}
+
+bool fn_bind_closing_in(LowerFn *fn, uint32_t scope, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   if (fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !mir_needs_drop(fn->cx->module, ty)) {
     /* A variable of plain data that a lambda changes: a slot nothing closes. */
@@ -333,13 +369,13 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
     return !fn->failed;
   }
   uint32_t silent = MIR_NONE;
-  if (!prepare(fn, checked, ty, &silent)) {
+  if (!prepare(fn, checked, ty, false, &silent)) {
     return false;
   }
   if (mir_needs_drop(fn->cx->module, ty)) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
-  const MirValue slot = own_slot(fn, ty, value, silent);
+  const MirValue slot = own_slot_in(fn, scope, ty, value, silent);
   fn->closing[local] = slot;
   fn->closing_var[local] = is_var;
   fn->closing_types[local] = ty;
@@ -355,13 +391,13 @@ bool fn_temp_closes(LowerFn *fn, MsTy checked) {
   if (fn->closing == NULL || !ms_own_closer_of(fn->cx->program, checked, &closer)) {
     return false;
   }
-  return lowerable(closer.flags) && ((closer.flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, checked));
+  return lowerable(closer.flags, false) && ((closer.flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, checked));
 }
 
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
-  if (!prepare(fn, checked, ty, &silent)) {
+  if (!prepare(fn, checked, ty, false, &silent)) {
     return value;
   }
   if (mir_needs_drop(fn->cx->module, ty)) {
@@ -378,7 +414,7 @@ MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
   if (!fn_temp_closes(fn, checked) || fn_type(fn, checked) != ty ||
-      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) || !prepare(fn, checked, ty, &silent)) {
+      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) || !prepare(fn, checked, ty, false, &silent)) {
     return MIR_NONE;
   }
   if (mir_needs_drop(fn->cx->module, ty)) {

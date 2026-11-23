@@ -30,17 +30,17 @@ fn replaces_field(move log: String) Int:
 	p.first = track(log, 3)
 	return p.first.id
 
-fn replaces_element(log: String) Int:
+fn replaces_element(move log: String) Int:
 	var xs = [track(log.clone(), 1), track(log.clone(), 2)]
 	xs.set(0, track(log, 3))
 	return xs.length()
 
-fn replaces_from_end(log: String) Int:
+fn replaces_from_end(move log: String) Int:
 	var xs = [track(log.clone(), 1), track(log.clone(), 2)]
 	xs.set(-1, track(log, 3))
 	return xs.length()
 
-fn removes_element(log: String) Int:
+fn removes_element(move log: String) Int:
 	var xs = [track(log.clone(), 1), track(log.clone(), 2), track(log, 3)]
 	xs.remove(1)
 	return xs.length()
@@ -69,20 +69,20 @@ test "remove closes the element it drops":
 	expect_equal(removes_element(log.clone()), 2)?
 	expect_equal(closed(log), "2,3,1,")?
 
-fn replaces_map_value(log: String) Int:
+fn replaces_map_value(move log: String) Int:
 	var m = Map[String, Tracked]()
 	m.add("a", track(log.clone(), 1))
 	m.add("b", track(log.clone(), 2))
 	m.add("a", track(log, 3))
 	return m.length()
 
-fn adds_new_map_key(log: String) Int:
+fn adds_new_map_key(move log: String) Int:
 	var m = Map[String, Tracked]()
 	m.add("a", track(log.clone(), 1))
 	m.add("b", track(log, 2))
 	return m.length()
 
-fn removes_map_value(log: String) Int:
+fn removes_map_value(move log: String) Int:
 	var m = Map[String, Tracked]()
 	m.add("a", track(log.clone(), 1))
 	m.add("b", track(log, 2))
@@ -90,7 +90,7 @@ fn removes_map_value(log: String) Int:
 	m.remove("missing")
 	return m.length()
 
-fn clears_map(log: String) Int:
+fn clears_map(move log: String) Int:
 	var m = Map[String, Tracked]()
 	m.add("a", track(log.clone(), 1))
 	m.add("b", track(log, 2))
@@ -121,7 +121,7 @@ test "clear closes every value, last inserted first":
 	expect_equal(clears_map(log.clone()), 0)?
 	expect_equal(closed(log), "2,1,")?
 
-fn splices_elements(log: String) Int:
+fn splices_elements(move log: String) Int:
 	var xs = [
 		track(log.clone(), 1),
 		track(log.clone(), 2),
@@ -131,7 +131,7 @@ fn splices_elements(log: String) Int:
 	xs.splice(1, 2, [track(log, 5)])
 	return xs.length()
 
-fn pops_into_ignored(log: String) Int:
+fn pops_into_ignored(move log: String) Int:
 	var xs = [track(log.clone(), 1), track(log, 2)]
 	_last := xs.pop()
 	return xs.length()

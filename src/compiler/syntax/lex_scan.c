@@ -56,7 +56,7 @@ bool lex_fail_at_text(Scanner *s, MsPos pos, const char *message) {
   return lex_fail_at(s, pos, ms_span_of_text(message));
 }
 
-bool lex_fail_format(Scanner *s, const char *format, ...) {
+bool lex_fail_format_(Scanner *s, const char *format, ...) {
   va_list arguments;
   va_start(arguments, format);
   MsSpan message = ms_message_vformat(s->arena, format, arguments);
@@ -64,7 +64,7 @@ bool lex_fail_format(Scanner *s, const char *format, ...) {
   return lex_fail(s, message);
 }
 
-bool lex_fail_at_format(Scanner *s, MsPos pos, const char *format, ...) {
+bool lex_fail_at_format_(Scanner *s, MsPos pos, const char *format, ...) {
   va_list arguments;
   va_start(arguments, format);
   MsSpan message = ms_message_vformat(s->arena, format, arguments);

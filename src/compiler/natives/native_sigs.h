@@ -1,9 +1,9 @@
-/* compiler/lower/native_sigs.h: the C parameters of the runtime's `msrt_` natives, generated from the `ms-sig:`
+/* compiler/natives/native_sigs.h: the C parameters of the runtime's `msrt_` natives, generated from the `ms-sig:`
  * comments of src/runtime (cmake/EmbedNativeSigs.cmake). A bodiless standard operation is called with the values
  * the source gives it; the signature says where the runtime also wants the element, key or value descriptors of
  * the collection and which trailing parameter is the result. */
-#ifndef MS_COMPILER_LOWER_NATIVE_SIGS_H
-#define MS_COMPILER_LOWER_NATIVE_SIGS_H
+#ifndef MS_COMPILER_NATIVES_NATIVE_SIGS_H
+#define MS_COMPILER_NATIVES_NATIVE_SIGS_H
 
 #include <stdbool.h>
 #include <stdint.h>

@@ -2,6 +2,7 @@
 #include "compiler/own/closers.h"
 #include "compiler/own/bind.h"
 #include "compiler/own/taken.h"
+#include "compiler/own/result_borrows.h"
 
 #include "base/sort.h"
 #include "compiler/check/methods.h"
@@ -122,31 +123,45 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
 }
 
-/* `match call():` over an Optional or a Result: an arm that binds the payload of a call's result owns it, so a
- * resource it holds closes where the arm ends unless the arm moves it on. The closer is keyed on the arm. */
+/* The type of what binding `at` of an arm over the case `kase` of `scrutinee` binds. */
+static MsTy bound_type(const Closers *pass, MsTy scrutinee, uint32_t kase, uint32_t at) {
+  const MsTyTable *types = &pass->program->types;
+  const bool result = ms_ty_is(types, scrutinee, MS_BUILTIN_Result);
+  if (result || ms_ty_is(types, scrutinee, MS_BUILTIN_Optional)) {
+    const uint32_t which = result ? kase : 0; /* `ok` and `error` carry the first and second argument, `some` its only one */
+    return at == 0 && ms_ty_arg_count(types, scrutinee) > which ? ms_ty_args(types, scrutinee)[which] : MS_TY_NONE;
+  }
+  const MsDef *def = ms_check_def_of(pass->program, scrutinee);
+  if (def == NULL || ms_ty_kind(types, scrutinee) != MS_TY_ALTERNATIVE || kase >= def->cases.len ||
+      at >= def->cases.ptr[kase].fields.len) {
+    return MS_TY_NONE;
+  }
+  return ms_check_part_type(pass->program, scrutinee, def, def->cases.ptr[kase].fields.ptr[at].ty);
+}
+
+/* `match call():` over an alternative: an arm that binds a part of a call's result owns it, so a resource it holds
+ * closes where the arm ends unless the arm moves it on. The closer is keyed on the arm and names the first binding
+ * that holds a resource. */
 static void visit_match(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
-  const MsTyTable *types = &pass->program->types;
   const MsExpr *subject = expr->kind == MS_E_MATCH ? expr->u.match.scrutinee : NULL;
   const MsTy scrutinee = subject != NULL && subject->kind == MS_E_CALL ? ms_facts_type(pass->facts, subject->id) : MS_TY_NONE;
-  const bool optional = scrutinee != MS_TY_NONE && ms_ty_is(types, scrutinee, MS_BUILTIN_Optional);
-  const bool result = scrutinee != MS_TY_NONE && ms_ty_is(types, scrutinee, MS_BUILTIN_Result);
-  if (!optional && !result) {
+  if (scrutinee == MS_TY_NONE) {
     return;
   }
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
     const MsArm *arm = expr->u.match.arms.ptr[index];
     const MsRef *bound = ms_facts_ref(pass->facts, arm->id);
-    if (bound == NULL || bound->kind != MS_REF_CASE || arm->bindings.len != 1) {
+    if (bound == NULL || bound->kind != MS_REF_CASE) {
       continue;
     }
-    /* A Result's cases are `ok` (0) and `error` (1) and carry its first and second type arguments; an Optional's
-     * `some` (1) carries its only one. */
-    const uint32_t which = result ? bound->index : 0;
-    if (ms_ty_arg_count(types, scrutinee) <= which) {
-      continue;
+    for (uint32_t at = 0; at < arm->bindings.len; at++) {
+      const MsTy ty = bound_type(pass, scrutinee, bound->index, at);
+      if (ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
+        add_closer(pass, arm->id, MS_REF_LOCAL, bound->local + at, ty);
+        break;
+      }
     }
-    add_closer(pass, arm->id, MS_REF_LOCAL, bound->local, ms_ty_args(types, scrutinee)[which]);
   }
 }
 
@@ -171,9 +186,26 @@ static const MsMethodEntry *entry_of(const Closers *pass, const MsMethod *method
   return NULL;
 }
 
-/* The receiver of a method that consumes it is owned by the body, except in `close` itself. */
+/* Whether a field of `ty` holds a resource. */
+static bool fields_hold_resource(Closers *pass, MsTy ty) {
+  const MsDef *def = ms_check_def_of(pass->program, ty);
+  for (size_t index = 0; def != NULL && ms_ty_kind(&pass->program->types, ty) == MS_TY_TYPE && index < def->fields.len; index++) {
+    if (ms_check_holds_resource(pass->program, ms_check_part_type(pass->program, ty, def, def->fields.ptr[index].ty))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* The receiver of a method that consumes it is owned by the body; in `close` itself it only closes its fields. */
 static void add_receiver(Closers *pass, const MsMethod *method) {
   const MsMethodEntry *entry = entry_of(pass, method);
+  if (method->consuming && entry != NULL && method->func.name == pass->close && fields_hold_resource(pass, entry->receiver) &&
+      !ms_ty_has_variable(&pass->program->types, entry->receiver)) {
+    ms_closer_list_push(&pass->facts->closers, (MsCloser){.node = method->id, .ref_kind = MS_REF_PARAM, .local = 0,
+                                                            .flags = MS_CLOSER_PARTS | MS_CLOSER_CONSUMES | MS_CLOSER_FIELDS});
+    return;
+  }
   if (!method->consuming || entry == NULL || method->func.name == pass->close) {
     return;
   }
@@ -217,6 +249,35 @@ static void flag_root(Closers *pass, const MsExpr *place, uint16_t flags) {
 
 /* A call that returns a value which may hold a resource (or whose type is not known yet) may take a part out of
  * a holder it is given, or called on: a holder closes whole only when no call does. */
+/* Whether `call` leaves the holder `value` whole: its result is a view of it, or the callee changes it in place (a
+ * `var` argument, a mutating method), so what it hands out leaves the holder consistent. */
+static bool keeps_holder(const Closers *pass, const MsExpr *call, const MsExpr *value) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  for (uint32_t index = 0; fact != NULL && index < fact->arg_count; index++) {
+    if (fact->args[index].source != MS_ARG_WRITTEN || fact->args[index].node.node != value->id) {
+      continue;
+    }
+    if (ms_own_call_borrows(pass->program, fact, index) || (fact->args[index].flags & MS_PARAM_VAR) != 0) {
+      return true;
+    }
+    for (size_t at = 0; at < pass->program->methods.len; at++) {
+      const MsMethodEntry *entry = &pass->program->methods.ptr[at];
+      if (entry->module == fact->callee.decl.module && entry->source->id == fact->callee.decl.node && entry->source->mutating &&
+          !entry->source->consuming) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* A parameter the callable owns (`move`) hands its payload out through a view of it at its last use; a borrowed
+ * parameter has no closer, so flagging it changes nothing. */
+static bool names_param(const Closers *pass, const MsExpr *place) {
+  const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(pass->facts, place->id) : NULL;
+  return ref != NULL && ref->kind == MS_REF_PARAM;
+}
+
 static void flag_taken_by(Closers *pass, const MsExpr *call) {
   const MsTy result = ms_facts_type(pass->facts, call->id);
   if (result == MS_TY_NONE ||
@@ -224,9 +285,19 @@ static void flag_taken_by(Closers *pass, const MsExpr *call) {
     return;
   }
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
-    flag_root(pass, call->u.call.args.ptr[index].value, MS_CLOSER_TAKEN);
+    const MsExpr *arg = call->u.call.args.ptr[index].value;
+    const MsTy arg_ty = ms_facts_type(pass->facts, arg->id);
+    /* An argument that holds no resource has none to hand to the result. */
+    if (arg_ty != MS_TY_NONE && !ms_ty_has_variable(&pass->program->types, arg_ty) &&
+        !ms_check_holds_resource(pass->program, arg_ty)) {
+      continue;
+    }
+    if (!keeps_holder(pass, call, arg) || names_param(pass, arg)) {
+      flag_root(pass, arg, MS_CLOSER_TAKEN);
+    }
   }
-  if (call->u.call.callee->kind == MS_E_MEMBER) {
+  if (call->u.call.callee->kind == MS_E_MEMBER &&
+      (!keeps_holder(pass, call, call->u.call.callee->u.member.left) || names_param(pass, call->u.call.callee->u.member.left))) {
     flag_root(pass, call->u.call.callee->u.member.left, MS_CLOSER_TAKEN);
   }
 }
@@ -267,6 +338,10 @@ static void visit_stmt_changes(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
   if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.member_target && stmt->u.assign.target != NULL) {
     flag_root(pass, stmt->u.assign.target, MS_CLOSER_MUTATED);
+    if (stmt->u.assign.target->kind == MS_E_MEMBER && !stmt->u.assign.has_compound) {
+      /* A field that holds a resource closes the value an assignment replaces. */
+      add_closer(pass, stmt->u.assign.target->id, MS_REF_LOCAL, 0, ms_facts_type(pass->facts, stmt->u.assign.target->id));
+    }
   }
 }
 

@@ -218,7 +218,7 @@ test "row and cell budgets bound parse only, never depending on chunk size":
 
 // The rows joined for comparison, or the error kind.
 fn csv_outcome(result: List[List[String]]!) String:
-	if result.is_error(): return result.err().kind.get_or("none")
+	if result.is_error(): return result.err().kind.clone().get_or("none")
 
 	var text = "ok"
 

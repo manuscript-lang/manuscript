@@ -5,7 +5,7 @@ import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 type Visits:
 	count: Int
 
-fn mutate[T: Clonable](var values: List[T], mode: String, fill: List[T]) Void:
+fn mutate[T: Clonable](var values: List[T], mode: String, move fill: List[T]) Void:
 	if mode == "remove":
 		values.remove(0)
 	if mode == "splice":
@@ -21,9 +21,9 @@ fn step[T: Clonable](
 	var seen: List[T],
 	var visits: Visits,
 	var values: List[T],
-	value: T,
+	move value: T,
 	mode: String,
-	fill: List[T],
+	move fill: List[T],
 ) Void:
 	seen.append(value)
 	if visits.count == 0:
@@ -61,7 +61,7 @@ fn observe[T: Clonable](
 	visits.count | expect_equal(3)?
 	return ok(seen)
 
-fn remaining[T: Clonable](mode: String, items: List[T], fill: List[T]) List[T]:
+fn remaining[T: Clonable](mode: String,move items: List[T],move fill: List[T]) List[T]:
 	var out = items
 	if mode == "remove": out.remove(0)
 	if mode == "splice": out.splice(

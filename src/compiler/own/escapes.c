@@ -3,6 +3,7 @@
 
 #include "base/map.h"
 #include "compiler/own/bind.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/syntax/walk.h"
 
 typedef struct Callable {
@@ -23,6 +24,7 @@ MS_MAP_DEFINE(KeptMap, kept_map, uint64_t, bool, ms_hash_u64_key, ms_equal_u64_k
 
 typedef struct Module {
   CallableList callables;
+  TieList stored; /* a call whose result a local collection takes (`running.append(promise(..))`): `call` is the call, `lambda` the collection's binding */
   uint8_t *ok;  /* per node: a name or lambda consumed in place (called, or passed to a parameter not kept) */
   uint8_t *bad; /* per binding site: used where it may be kept, or captured by an escaping closure */
   uint8_t *kept; /* per binding site: used where it may be kept */
@@ -104,6 +106,10 @@ static bool keeps(const Escapes *pass, const MsCall *call, const MsCallArg *arg,
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
     return true;
   }
+  const MsFunc *func = kind == MS_REF_FUNCTION ? ms_own_find_func(pass->program, &call->callee) : NULL;
+  if (func != NULL && func->external) {
+    return true; /* the runtime keeps a closure it is handed (a started promise): nothing says when it lets go */
+  }
   return is_kept(pass, call->callee.decl.module, call->callee.decl.node, index);
 }
 
@@ -112,6 +118,17 @@ static bool holds(const Escapes *pass, const MsCall *call, uint32_t index) {
   const MsRefKind kind = call->callee.kind;
   return (kind == MS_REF_FUNCTION || kind == MS_REF_METHOD) &&
          is_held(pass, call->callee.decl.module, call->callee.decl.node, index);
+}
+
+/* Whether the callee takes parameter `index` and neither keeps it nor hands it on in its result: it only consumes it. */
+static bool joins(const Escapes *pass, const MsCall *call, uint32_t index) {
+  const MsRefKind kind = call->callee.kind;
+  if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
+    return false;
+  }
+  const MsFunc *func = kind == MS_REF_FUNCTION ? ms_own_find_func(pass->program, &call->callee) : NULL;
+  return (func == NULL || !func->external) && !is_kept(pass, call->callee.decl.module, call->callee.decl.node, index) &&
+         !is_held(pass, call->callee.decl.module, call->callee.decl.node, index);
 }
 
 static void mark_ok(Escapes *pass, const MsExpr *expr) {
@@ -164,8 +181,24 @@ static void visit_call(Escapes *pass, const MsExpr *call) {
     const MsExpr *value = call->u.call.args.ptr[at].value;
     uint32_t index = 0;
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value, &index);
+    if (arg != NULL && value->kind == MS_E_LIST && joins(pass, fact, index)) {
+      mark_elements_ok(pass, value); /* promises started in a list literal only the callee joins stay in the function */
+      continue;
+    }
     if (arg == NULL || keeps(pass, fact, arg, index)) {
-      mark_result_kept(pass, value);
+      /* A result a local collection takes stays in the function while the collection does. */
+      const MsRef *receiver = callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_NAME
+                                  ? ms_facts_ref(facts, callee->u.member.left->id)
+                                  : NULL;
+      uint32_t holder = 0;
+      if (value->kind == MS_E_CALL && fact != NULL && (fact->callee.kind == MS_REF_METHOD || fact->callee.kind == MS_REF_NATIVE) &&
+          receiver != NULL && receiver->kind == MS_REF_LOCAL && index > 0 &&
+          ms_bind_of(facts, callee->u.member.left->id, &holder)) {
+        tie_list_push(&module->stored, (Tie){holder, value->id});
+        mark_ok(pass, callee->u.member.left); /* the collection is only added to */
+      } else {
+        mark_result_kept(pass, value);
+      }
       continue;
     }
     const bool holding = holds(pass, fact, index);
@@ -267,6 +300,11 @@ static bool result_escapes(const Module *state, const MsFacts *facts, const Pass
   if (state->kept_result[call]) {
     return true;
   }
+  for (size_t index = 0; index < state->stored.len; index++) {
+    if (state->stored.ptr[index].call == call) {
+      return state->bad[state->stored.ptr[index].lambda] != 0; /* the collection itself leaves the function */
+    }
+  }
   for (size_t index = 0; index < scan->call_bound.len; index++) {
     if (scan->call_bound.ptr[index].lambda->id == call) {
       return state->moved[scan->call_bound.ptr[index].binding] != 0;
@@ -299,6 +337,7 @@ static void settle(Escapes *pass, uint32_t module, Pass *scan) {
     state->kept_result[node] = 0;
   }
   tie_list_clear(&state->ties);
+  tie_list_clear(&state->stored);
   for (size_t at = 0; at < state->callables.len; at++) {
     const Callable *callable = &state->callables.ptr[at];
     ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = roles_expr, .stmt = roles_stmt}, callable->params, callable->body);
@@ -407,6 +446,7 @@ void ms_own_escapes(MsCheckProgram *program) {
   for (size_t module = 0; module < count; module++) {
     callable_list_free(&pass.modules[module].callables);
     tie_list_free(&pass.modules[module].ties);
+    tie_list_free(&pass.modules[module].stored);
     call_bind_list_free(&scans[module].call_bound);
     bound_list_free(&scans[module].bound);
     lambda_list_free(&scans[module].lambdas);

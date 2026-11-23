@@ -25,7 +25,7 @@ fn var Cursor.advance() Int:
 	self.seen.append(at)
 	return self.data[at].to_int()
 
-fn var Cursor.reset(label: String) Void:
+fn var Cursor.reset(move label: String) Void:
 	self.start = 0
 	self.label = label
 	self.seen = []
