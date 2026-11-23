@@ -408,6 +408,15 @@ bool ms_frames_collector_add(uintptr_t return_address, void *context) {
     return ++collector->native <= MS_FRAMES_NATIVE_MAX;
   }
   Position position = find_line(tables, function, return_address);
+  {
+    const size_t through = lines_through(tables, return_address);
+    ms_probe_line("add ret/func.addr", return_address, function->address);
+    ms_probe_line("func.line/line_count", function->line, tables->line_count);
+    ms_probe_line("through/pos.line", through, position.line);
+    if (through > 0) {
+      ms_probe_line("entry.pc/entry.line", tables->lines[through - 1].pc, tables->lines[through - 1].line);
+    }
+  }
   /* The frame that raised the fault may sit in a call without a position of its own; it takes the nearest
    * earlier line. */
   if (position.line == 0 && collector->innermost) {
