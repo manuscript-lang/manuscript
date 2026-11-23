@@ -24,6 +24,7 @@ typedef struct MsLocal {
   bool written_fn; /* declared with a written function type (`f: fn(Int) Int`): its parameters have no labels */
   const MsParams *fn_params; /* the parameters of the lambda or method it was bound to: their names and defaults */
   uint32_t fn_module;       /* the module that declares fn_params */
+  bool rejected;            /* named by a pattern the checker rejected: reading it reports an unknown binding */
   const MsParams *fn_names; /* the parameter names of a native method it was bound to, which has no source */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;

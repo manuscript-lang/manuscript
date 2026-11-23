@@ -33,7 +33,9 @@ MirValue fn_iflet_test(LowerFn *fn, MirValue value) {
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *cond = stmt->u.branch.cond;
   /* A call's result, or a name the statement moves, is the binding's to own: the payload leaves the temporary. */
-  const bool fresh = cond->kind == MS_E_CALL ||
+  /* `x.next()?`: the Result is a temporary, so what `?` takes out of it is the binding's. */
+  const bool tried_call = cond->kind == MS_E_UNARY && cond->op == MS_U_TRY && cond->u.bin.left->kind == MS_E_CALL;
+  const bool fresh = cond->kind == MS_E_CALL || tried_call ||
                      (cond->kind == MS_E_NAME && (ms_facts_use(fn->facts, cond->id) == MS_USE_MOVE ||
                                                   (fn->facts->last != NULL && fn->facts->last[cond->id] != 0)));
   /* A `var` binding of a name writes back to what it names; a call's result has nothing to write back to. */

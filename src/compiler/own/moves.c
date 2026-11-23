@@ -27,6 +27,8 @@ typedef struct Moves {
   MsBindingList vars;   /* binding sites of `var` locals of the body */
   MsBindingList reads;  /* `if p := name:` scrutinees that are not resources: the payload is a view, the name stays whole */
   MsBindingList moving; /* binding sites of `move` parameters of the body */
+  uint32_t assigning; /* the binding the statement being visited assigns whole, or UINT32_MAX */
+  MsBindingList varparams; /* binding sites of `var` parameters: the caller's place, which a closure cannot take */
   MsBindingList borrowed; /* binding sites of names bound to a view of another value */
   MsBindingList owners;   /* binding sites of locals that hold a value of their own: made by a call or literal, or a `var` */
   MsBindingList outer;  /* what the lambdas around the current expression capture: only borrowed inside them */
@@ -204,7 +206,13 @@ static void check_lambda(const Moves *pass, const MsExpr *lambda) {
       ms_strbuild_append_text(&changed, "`");
       ms_check_report(pass->program, pass->module, lambda->pos, MS_CHECK_TYPE, ms_strbuild_finish(&changed));
     }
-    if (!copy && contains(&pass->outer, first.binding)) {
+    if (!copy && contains(&pass->varparams, first.binding)) {
+      ms_strbuild_append_text(&text, "this closure outlives the statement but captures the `var` parameter `");
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, "`, which the caller keeps; bind `own := ");
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, ".clone()` before the closure and capture `own` instead, or take it by `move`");
+    } else if (!copy && contains(&pass->outer, first.binding)) {
       ms_strbuild_append_text(&text, "this closure outlives the statement but captures `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "`, which is borrowed, not owned; bind `own := ");
@@ -218,7 +226,12 @@ static void check_lambda(const Moves *pass, const MsExpr *lambda) {
       ms_strbuild_append_text(&text, "; the closure would keep a stale value, so bind an immutable snapshot with `snapshot := ");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "` before the closure and capture `snapshot`");
+    } else if (again && !copy && ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+      pass->facts->uses[first.use->id] = MS_USE_CLONE; /* the closure takes a copy of the function value; the maker keeps the original */
+      ms_strbuild_free(&text);
+      continue;
     } else if (again && !copy) {
+      /* A function value never changes, so each closure takes its own copy of it and the maker keeps using the original. */
       ms_strbuild_append_text(&text, "this closure outlives the statement, so it takes `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "` with it, but `");
@@ -267,6 +280,11 @@ static void check_handed_on(Moves *pass, const MsExpr *value) {
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
+  uint32_t assigned = 0;
+  pass->assigning = stmt->kind == MS_S_ASSIGN && stmt->u.assign.target == NULL && !stmt->u.assign.has_compound &&
+                            ms_bind_of(pass->facts, stmt->id, &assigned)
+                        ? assigned
+                        : UINT32_MAX;
   if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL) {
     check_handed_on(pass, stmt->u.expr);
   }
@@ -339,8 +357,34 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;
   }
+  if (!pass->instance && pass->depth == 0 && binding != pass->assigning && contains(&pass->varparams, binding)) {
+    const MsTy held = ms_facts_type(pass->facts, expr->id);
+    const bool resource = held != MS_TY_NONE && ms_check_holds_resource(pass->program, held);
+    if (held != MS_TY_NONE && ms_class_of(pass->classes, held) != MS_CLASS_COPY &&
+        ms_ty_kind(&pass->program->types, held) != MS_TY_FUNCTION) {
+      MsStrBuild text = ms_strbuild_new();
+      const MsSpan name = ms_names_span(pass->program->names, expr->u.sym);
+      ms_strbuild_append_text(&text, "cannot move `");
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, "` out of the function: the caller keeps ownership of a var parameter");
+      if (resource) {
+        ms_strbuild_append_text(&text, " and closes it; a resource cannot be cloned, so change it in place");
+      } else {
+        ms_strbuild_append_text(&text, "; return `");
+        ms_strbuild_append(&text, name);
+        ms_strbuild_append_text(&text, ".clone()` or change the value in place");
+      }
+      ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      return;
+    }
+  }
   const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(expr->id, binding));
   if (use != NULL && !use->last) {
+    const MsTy ty = ms_facts_type(pass->facts, expr->id);
+    if (ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+      pass->facts->uses[expr->id] = MS_USE_BORROW; /* a function value never changes, so what takes it before its last use gets a copy */
+      return;
+    }
     report(pass, expr, use->next);
     return;
   }
@@ -389,6 +433,11 @@ static void note_view(Moves *pass, const MsStmt *stmt) {
       if (position == 0 && last_use_receiver(pass, value)) {
         return; /* the receiver dies here, so the result is taken out of it and owns what it holds */
       }
+      for (uint32_t arg = 0; arg < value->u.call.args.len; arg++) {
+        if (value->u.call.args.ptr[arg].value->kind == MS_E_CALL) {
+          return; /* what the call borrows from is a temporary, which moves into the result (`ok(Token(..))`) */
+        }
+      }
       ms_binding_list_push(&pass->borrowed, stmt->u.bind.pattern->id);
       return;
     }
@@ -433,6 +482,8 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
   for (uint32_t index = 0; index < params.len; index++) {
     if (params.ptr[index]->moving) {
       ms_binding_list_push(&pass->moving, params.ptr[index]->id);
+    } else if (params.ptr[index]->is_mutable) {
+      ms_binding_list_push(&pass->varparams, params.ptr[index]->id);
     }
   }
   MsLiveness live = ms_live_compute(pass->facts, pass->program->names, arena, body);
@@ -445,6 +496,7 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
   ms_binding_list_clear(&pass->owners);
   ms_binding_list_clear(&pass->reads);
   ms_binding_list_clear(&pass->moving);
+  ms_binding_list_clear(&pass->varparams);
   ms_binding_list_clear(&pass->borrowed);
   ms_binding_list_clear(&pass->outer);
   pass->depth = 0;
@@ -494,6 +546,7 @@ bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFun
   ms_binding_list_free(&pass.reads);
   ms_binding_list_free(&pass.moving);
   ms_binding_list_free(&pass.outer);
+  ms_binding_list_free(&pass.varparams);
   ms_binding_list_free(&pass.vars);
   ms_binding_list_free(&pass.owners);
   spot_list_free(&pass.spots);
@@ -519,6 +572,7 @@ void ms_own_moves(MsCheckProgram *program) {
     ms_binding_list_free(&pass.moving);
     ms_binding_list_free(&pass.borrowed);
     ms_binding_list_free(&pass.outer);
+    ms_binding_list_free(&pass.varparams);
   }
   ms_class_free(&classes);
   ms_arena_free(&arena);

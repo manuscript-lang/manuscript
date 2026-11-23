@@ -148,7 +148,7 @@ price := discount(price: 20d, percent: 10d).get_or(0d)
 text := discount(price: 20d, percent: 10d).map(fn value: value.to_string())
 ```
 
-Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the error's message; use it only when success is established. Routine failures use a fallback, `if v := x`, or `?`.
+Callbacks run sequentially in the caller's context; faults and cancellation propagate normally. `get` faults with `called Result.get() on error` followed by the whole error; use it only when success is established. Routine failures use a fallback, `if v := x`, or `?`.
 
 ## Converting success to an Optional
 

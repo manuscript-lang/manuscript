@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "`first` holds a function value, which owns its captures and has one owner, so it cannot be cloned; move it, or build the value again",
-        "position": {
-          "file": "clone-holds-function-value.ms",
-          "line": 10,
-          "column": 20,
-          "offset": 312
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/clone-holds-function-value.ms:10:20: type: `first` holds a function value, which owns its captures and has one owner, so it cannot be cloned; move it, or build the value again\n    |\n 10 |     again := first.clone()\n    |                    ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked clone-holds-function-value.ms\n",
+      "stderr": ""
     }
   }
 }

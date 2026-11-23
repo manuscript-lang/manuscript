@@ -1,7 +1,7 @@
 // conform: tags=closures,control-flow,lists,tier-stdlib
 // conform: phase=check
-// A promise kept past the loop body reads `body` where it sits, so a binding that only
-// borrows a list element ends before `running` does, like an owned local (#3845).
+// A promise kept past the loop body owns what it captures, because it is not waited in the
+// round: `body` is a function value, which is shared, so the promise gets its own copy (#3845).
 import Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms"
 
 fn ten(k: Int) Int!:
