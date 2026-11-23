@@ -45,5 +45,9 @@ MsNetFilter *ms_net_network_filter(const MsObj *net);
 /* Records `client`, an HTTP client handle the network now owns and closes with it; false (the caller closes it)
  * when the network is closed. */
 bool ms_net_network_adopt_client(const MsObj *net, MsObj *client);
+/* Ends the network's ownership of `client`, a handle it adopted: removes it and drops it (a no-op when the
+ * network has closed and already dropped it). A one-shot request calls it so its client does not wait for the
+ * next sweep. */
+void ms_net_network_forget_client(const MsObj *net, MsObj *client);
 
 #endif

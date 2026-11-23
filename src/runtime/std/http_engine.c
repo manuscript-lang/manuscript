@@ -15,6 +15,7 @@ typedef struct Cmd {
   CmdKind kind;
   MsHttpResponse *response;
   MsHttpClient *client;
+  uv_sem_t *done; /* posted once the command, and every handle it closed, is finished; NULL for none */
   struct Cmd *next;
 } Cmd;
 
@@ -236,8 +237,36 @@ static void run(Cmd *cmd) {
   }
 }
 
+/* A handle closed before the work of a drain: libuv runs close callbacks last-closed first, so its callback runs
+ * after every handle that work closed, and only then wakes the callers waiting on a command. */
+typedef struct Fence {
+  uv_timer_t timer;
+  uv_sem_t **waiters;
+  size_t count;
+} Fence;
+
+static void on_fence_closed(uv_handle_t *handle) {
+  Fence *fence = (Fence *)handle;
+  for (size_t i = 0; i < fence->count; i++) {
+    uv_sem_post(fence->waiters[i]);
+  }
+  ms_free(fence->waiters);
+  ms_free(fence);
+}
+
+static void fence_add(Fence **fence, uv_sem_t *done) {
+  if (*fence == NULL) {
+    *fence = ms_alloc_zeroed(sizeof **fence);
+    uv_timer_init(&engine.loop, &(*fence)->timer);
+    uv_close((uv_handle_t *)&(*fence)->timer, on_fence_closed);
+  }
+  (*fence)->waiters = ms_realloc((*fence)->waiters, ((*fence)->count + 1) * sizeof *(*fence)->waiters);
+  (*fence)->waiters[(*fence)->count++] = done;
+}
+
 static void on_async(uv_async_t *async) {
   (void)async;
+  Fence *fence = NULL;
   for (;;) {
     uv_mutex_lock(&engine.lock);
     Cmd *cmd = engine.head;
@@ -250,6 +279,9 @@ static void on_async(uv_async_t *async) {
     uv_mutex_unlock(&engine.lock);
     if (cmd == NULL) {
       return;
+    }
+    if (cmd->done != NULL) {
+      fence_add(&fence, cmd->done);
     }
     run(cmd);
     ms_free(cmd);
@@ -268,12 +300,13 @@ static void engine_init(void) {
   (void)uv_thread_create(&engine.thread, engine_main, NULL);
 }
 
-static void submit(CmdKind kind, MsHttpResponse *response, MsHttpClient *client) {
+static void submit(CmdKind kind, MsHttpResponse *response, MsHttpClient *client, uv_sem_t *done) {
   uv_once(&engine.once, engine_init);
   Cmd *cmd = ms_alloc_zeroed(sizeof *cmd);
   cmd->kind = kind;
   cmd->response = response;
   cmd->client = client;
+  cmd->done = done;
   uv_mutex_lock(&engine.lock);
   if (engine.tail != NULL) {
     engine.tail->next = cmd;
@@ -292,23 +325,44 @@ static void hold(MsHttpResponse *response) {
 
 void ms_http_engine_start(MsHttpResponse *response) {
   hold(response); /* the engine's, given back by retire */
-  submit(CMD_START, response, NULL);
+  submit(CMD_START, response, NULL, NULL);
 }
 
 void ms_http_engine_resume(MsHttpResponse *response) {
   hold(response);
-  submit(CMD_RESUME, response, NULL);
+  submit(CMD_RESUME, response, NULL, NULL);
 }
 
 void ms_http_engine_cancel(MsHttpResponse *response) {
   hold(response);
-  submit(CMD_CANCEL, response, NULL);
+  submit(CMD_CANCEL, response, NULL, NULL);
+}
+
+void ms_http_engine_cancel_and_wait(MsHttpResponse *response) {
+  uv_once(&engine.once, engine_init);
+  uv_sem_t done;
+  (void)uv_sem_init(&done, 0);
+  hold(response);
+  submit(CMD_CANCEL, response, NULL, &done);
+  uv_sem_wait(&done);
+  uv_sem_destroy(&done);
 }
 
 void ms_http_engine_close_client(MsHttpClient *client) {
-  submit(CMD_CLOSE_CLIENT, NULL, client);
+  submit(CMD_CLOSE_CLIENT, NULL, client, NULL);
 }
 
 void ms_http_engine_free_client(MsHttpClient *client) {
-  submit(CMD_FREE_CLIENT, NULL, client);
+  uv_once(&engine.once, engine_init);
+  uv_thread_t self = uv_thread_self();
+  if (uv_thread_equal(&self, &engine.thread)) {
+    submit(CMD_FREE_CLIENT, NULL, client, NULL); /* the engine cannot wait on itself */
+    return;
+  }
+  /* Wait until the engine has freed it, so what a request left behind is gone when the call returns. */
+  uv_sem_t done;
+  (void)uv_sem_init(&done, 0);
+  submit(CMD_FREE_CLIENT, NULL, client, &done);
+  uv_sem_wait(&done);
+  uv_sem_destroy(&done);
 }

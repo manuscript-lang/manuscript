@@ -8,6 +8,7 @@
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/overlaps.h"
+#include "compiler/own/relays.h"
 #include "compiler/own/taken.h"
 #include "compiler/own/unused.h"
 #include "compiler/own/uses.h"
@@ -37,6 +38,9 @@ void ms_own_check(MsCheckProgram *program) {
     ms_own_moves(program);
     if (program->diagnostics.len == 0) {
       ms_own_overlaps(program);
+    }
+    if (program->diagnostics.len == 0) {
+      ms_own_relays(program);
     }
   }
   ms_own_unused(program); /* a clean program only: any other diagnostic leaves unread bindings unreported */

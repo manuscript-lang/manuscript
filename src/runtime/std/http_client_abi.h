@@ -32,7 +32,7 @@ MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolic
 /* Sends `request` through the handle's client under the handle's policy (see ms_http_client_send). */
 MS_NODISCARD uint8_t ms_http_handle_send(const MsObj *handle, const MsHttpRequest *request,
                                          MsHttpResponse **out, MsString *err);
-/* Whether the client behind the handle was closed. */
+/* Whether the client behind the handle ended, or this handle is the last that names it. */
 bool ms_http_client_handle_closed(const MsObj *handle);
 
 /* Makes http_client.h wait through scheduler tokens. Once per process, before any task runs. */

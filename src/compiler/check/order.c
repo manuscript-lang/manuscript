@@ -97,4 +97,20 @@ void ms_check_order_diagnostics(MsCheckProgram *program) {
     }
     start = end;
   }
+  /* A finding made twice at one place (a signature resolved by two passes) is one finding. */
+  size_t kept = 0;
+  for (size_t index = 0; index < total; index++) {
+    bool again = false;
+    for (size_t before = 0; before < kept && !again; before++) {
+      const MsCheckDiag *a = &all[before];
+      const MsCheckDiag *b = &all[index];
+      again = a->module == b->module && a->pos.offset == b->pos.offset && a->phase == b->phase &&
+              ms_span_equal(ms_string_span(&a->message), ms_string_span(&b->message));
+    }
+    if (again) {
+      continue;
+    }
+    all[kept++] = all[index];
+  }
+  program->diagnostics.len = kept;
 }

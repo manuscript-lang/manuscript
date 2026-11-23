@@ -32,6 +32,7 @@ typedef struct Network {
   Member *members;
   size_t count;
   size_t capacity;
+  size_t swept; /* the members that stayed at the last sweep */
 } Network;
 
 typedef struct NetworkHandle {
@@ -104,8 +105,11 @@ static bool track(Network *network, MsObj *object, bool is_network, bool is_clie
   uv_mutex_lock(&network->lock);
   const bool open = !network->closed;
   if (open) {
-    if (network->count == network->capacity) {
+    /* Sweep when the members have doubled since the last sweep, so the closed ones a long-lived network holds
+     * stay in proportion to the open ones. */
+    if (network->count >= 8 && network->count >= 2 * network->swept) {
       sweep(network);
+      network->swept = network->count;
     }
     if (network->count == network->capacity) {
       network->capacity = network->capacity == 0 ? 8 : network->capacity * 2;
@@ -138,6 +142,7 @@ static void close_network(Network *network) {
   network->members = NULL;
   network->count = 0;
   network->capacity = 0;
+  network->swept = 0;
   uv_mutex_unlock(&network->lock);
   if (!first) {
     return;
@@ -488,4 +493,20 @@ MsNetFilter *ms_net_network_filter(const MsObj *net) {
 
 bool ms_net_network_adopt_client(const MsObj *net, MsObj *client) {
   return track(network_of(net), client, false, true);
+}
+
+void ms_net_network_forget_client(const MsObj *net, MsObj *client) {
+  Network *network = network_of(net);
+  uv_mutex_lock(&network->lock);
+  bool found = false;
+  for (size_t i = 0; i < network->count && !found; i++) {
+    found = network->members[i].object == client;
+    if (found) {
+      network->members[i] = network->members[--network->count];
+    }
+  }
+  uv_mutex_unlock(&network->lock);
+  if (found) {
+    drop_object(client);
+  }
 }
