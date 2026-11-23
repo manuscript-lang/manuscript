@@ -196,6 +196,10 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
   if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) {
     return classify(pass, expr->u.bin.left);
   }
+  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
+    return classify(pass, expr->u.bin.left); /* `x or d` hands out the payload of `x`, which stays where `x` keeps it */
+  }
   MsExpr *container = NULL;
   MsExpr *position = NULL;
   if (ms_expr_index(expr, &container, &position) &&
@@ -279,7 +283,9 @@ static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
   if (!reached.known) {
     return 0;
   }
-  return reached.all.mask | (reached.all.owned || reached.all.mask == 0 ? 0 : MS_RESULT_BORROWED);
+  /* A `move` parameter is the callable's own: what it hands on is the result's, not a borrow of the caller's argument. */
+  const uint32_t borrowed = reached.all.mask & ~moved_positions(pass, params);
+  return borrowed | (reached.all.owned || reached.all.mask == 0 ? 0 : MS_RESULT_BORROWED);
 }
 
 /* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */

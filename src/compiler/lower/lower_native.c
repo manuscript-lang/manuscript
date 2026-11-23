@@ -531,6 +531,15 @@ bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, M
     return true;
   }
   const MsExpr *read = place;
+  if (read->kind == MS_E_BINARY && read->op == MS_B_OR && fn_call_never(fn, read->u.bin.right)) {
+    read = read->u.bin.left; /* `m.get(k) or panic(..)` reads the entry `m.get(k)` names, or does not return */
+    if (read->kind != MS_E_CALL || ms_own_native_get(fn->cx->program, fn->facts, read) != MS_NATIVE_GET_MAP) {
+      return false;
+    }
+    *container = read->u.call.callee->u.member.left;
+    *key = read->u.call.args.ptr[0].value;
+    return true;
+  }
   if (read->kind == MS_E_CALL && read->u.call.args.len == 0 && read->u.call.callee->kind == MS_E_MEMBER &&
       read->u.call.callee->u.member.left->kind == MS_E_CALL &&
       ms_own_native_get(fn->cx->program, fn->facts, read) == MS_NATIVE_GET_PAYLOAD) {

@@ -197,6 +197,15 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     }
     return;
   }
+  if (expr->kind == MS_E_BINARY && expr->op == MS_B_OR) { /* `x or d` hands the payload of the local `x` on */
+    const MsExpr *named = expr->u.bin.left;
+    const MsTy ty = ms_facts_type(pass->facts, expr->id);
+    if (named->kind == MS_E_NAME && place_root(pass, named) && ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY &&
+        ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, named->id), MS_BUILTIN_Optional)) {
+      pass->facts->uses[expr->id] = MS_USE_MOVE; /* the expression carries the move, as `x.get()` does */
+    }
+    return;
+  }
   if (expr->kind == MS_E_MATCH) { /* `if c: a else: b` hands on whichever arm it picks */
     for (uint32_t at = 0; at < expr->u.match.arms.len; at++) {
       if (expr->u.match.arms.ptr[at]->from_if && expr->u.match.arms.ptr[at]->value != NULL) {
