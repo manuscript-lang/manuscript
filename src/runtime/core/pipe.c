@@ -286,7 +286,6 @@ void ms_pipe_release_all(void) {
     registry.free_count = registry.free_cap = registry.count = 0;
   }
 }
-#endif
 
 /* ---- the reader's side ---- */
 
