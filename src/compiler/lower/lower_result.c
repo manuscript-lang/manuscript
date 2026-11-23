@@ -176,7 +176,7 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
   const bool owned = drops && fn_fresh_owner(fn, value);
   MirValue err = mir_b_emit(&fn->b, owned ? MOP_AltTake : MOP_AltGet, &value, 1, err_imm, err_ty);
   if (drops && !owned) {
-    err = mir_b_emit(&fn->b, MOP_Clone, &err, 1, (MirImm){0}, err_ty); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
+    err = fn_implicit_clone(fn, err, false); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
   }
   const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, fn->ret);
   const MirImm none = {0};
