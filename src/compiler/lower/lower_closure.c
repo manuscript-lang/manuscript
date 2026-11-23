@@ -43,7 +43,8 @@ static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
     return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] == 1 &&
            (fn->closing == NULL || !fn->closing_var[capture->index]);
   }
-  return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&
+  const uint32_t param_at = capture->index + (fn->lambda != NULL ? 1u : 0u); /* a closure's first parameter is its environment */
+  return param_at < fn->b.func.nparams && fn->b.func.params[param_at].mode == MM_MOVE &&
          (fn->closing == NULL || capture->index >= LOWER_MAX_CLOSING_PARAMS ||
           !fn->closing_var[fn->nvars + capture->index]);
 }
@@ -95,8 +96,12 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
       } else if (!fn_capture_moves(fn, &captures[index])) {
         MirValue taken = MIR_NONE;
+        MirVar owned_var = 0;
         if (fn_capture_slot_owned(fn, &captures[index]) && fn_closing_take(fn, &ref, value, &taken)) {
           value = taken; /* a resource or var in a slot gives its value to the closure */
+        } else if (captures[index].kind == MS_REF_LOCAL && captures[index].use != NULL &&
+                   fn_owned_local(fn, captures[index].use, &owned_var) && fn->b.vars.ptr[owned_var].mode == MM_MOVE) {
+          fn_scope_var_released(fn, owned_var, true); /* an owning `var` the maker does not use again goes to the closure */
         } else {
           value = fn_implicit_clone(fn, value, false);
         }
@@ -138,6 +143,11 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   fn->cx->module->funcs.ptr[func].capture_closers = closers;
   fn->cx->module->funcs.ptr[func].ncapture_closers = nclosers;
   fn->cx->module->funcs.ptr[func].scoped = borrows;
+  /* An escaping closure of a function that keeps its closure arguments owns what it captured, and so keeps a
+   * closure into its caller's frame that it took: whoever builds it holds the same borrow (the promise's start). */
+  for (uint32_t index = 0; escapes && fn->keeps_scoped && index < count; index++) {
+    fn->cx->module->funcs.ptr[func].keeps_scoped |= mir_ty_data(fn->cx->module, captures[index].ty)->kind == MK_FN;
+  }
   /* A fault trace calls a lambda `<enclosing function>.closure`. */
   const MsName enclosing = fn->b.func.display != MS_NAME_EMPTY ? fn->b.func.display : fn->b.func.name;
   fn->cx->module->funcs.ptr[func].display = mir_name(
@@ -317,6 +327,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   built.capture_closers = reserved.capture_closers;
   built.ncapture_closers = reserved.ncapture_closers;
   built.display = reserved.display;
@@ -592,6 +603,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -644,6 +656,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -744,6 +757,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};

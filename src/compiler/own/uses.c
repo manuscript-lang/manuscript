@@ -301,6 +301,19 @@ static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
   return false;
 }
 
+static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts body, const MsStmt *loop, const MsExpr *iter);
+
+/* Whether `if r := o:` gives the payload of `o` to `r`: always for a resource or a parameter, and for another local only when `o` is
+ * not read again, so a later read of `o` still finds its payload. */
+static bool hands_payload_on(const Uses *pass, const MsStmt *stmt) {
+  const MsExpr *cond = stmt->u.branch.cond;
+  if (ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, cond->id))) {
+    return true;
+  }
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
+  return ref == NULL || ref->kind != MS_REF_LOCAL || last_use_outside_loops(pass, pass->params, pass->body, stmt, cond);
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_RETURN) {
@@ -310,13 +323,16 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value
                     : stmt->u.bind.value->kind == MS_E_MEMBER ? stmt->u.bind.value
                                                               : bound_local_source(pass, stmt->u.bind.value));
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_TYPE && !stmt->u.bind.is_mutable &&
+             stmt->u.bind.value->kind == MS_E_NAME) {
+    mark_move(pass, stmt->u.bind.value); /* `{a: x, b: y} := record` hands the parts to the names */
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
     mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
-             owns_place(pass, stmt->u.branch.cond)) {
+             owns_place(pass, stmt->u.branch.cond) && hands_payload_on(pass, stmt)) {
     mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
   }
 }
@@ -350,6 +366,12 @@ static void collect_views(void *ctx, const MsStmt *stmt) {
   if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME &&
       (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
     note_pattern_views(pass, stmt->u.bind.pattern);
+  }
+  /* An `if` binding of an owned local that is read again views its payload: the local stays the owner. */
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+      !stmt->u.branch.is_mutable && stmt->u.branch.cond->kind == MS_E_NAME && owns_place(pass, stmt->u.branch.cond) &&
+      !hands_payload_on(pass, stmt)) {
+    note_pattern_views(pass, stmt->u.branch.binding);
   }
 }
 

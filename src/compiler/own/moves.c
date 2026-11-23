@@ -327,6 +327,14 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     ms_binding_list_free(&captures);
     return;
   }
+  if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
+      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && contains(&pass->borrowed, binding)) {
+    /* The payloads of a borrowed value are borrowed too. */
+    for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
+      const MsArm *one = expr->u.match.arms.ptr[arm];
+      ms_binding_list_push(&pass->borrowed, one->id);
+    }
+  }
   if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || contains(&pass->reads, expr->id) ||
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;

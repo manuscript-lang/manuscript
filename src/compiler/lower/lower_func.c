@@ -454,6 +454,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   LowerFn fn = {.cx = cx,
                 .facts = &cx->program->modules.ptr[target->module].facts,
                 .func = target->func,
+                .keeps_scoped = stub.keeps_scoped,
                 .module_index = target->module,
                 .file = lower_file(cx, target->module),
                 .subst = {vars, instance.args, instance.nargs},
@@ -492,7 +493,7 @@ bool lower_pending(Lower *cx) {
     for (size_t index = 0; index < cx->instances.len; index++) {
       if (!cx->instances.ptr[index].lowered) {
         progressed = true;
-        if (!lower_body(cx, (uint32_t)index)) {
+        if (!lower_body(cx, (uint32_t)index) || cx->failed) {
           const MsSpan name = ms_names_span(cx->program->names, cx->instances.ptr[index].target.name);
           return lower_fail(cx, "  while lowering `%.*s`", (int)name.len, (const char *)name.ptr);
         }
@@ -563,5 +564,5 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
     }
   }
   lower_release(&cx);
-  return ok;
+  return ok && !cx.failed;
 }

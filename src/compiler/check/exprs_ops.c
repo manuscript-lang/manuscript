@@ -350,6 +350,19 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
   } else if (right_optional && !left_optional && left == ms_ty_args(types, right)[0]) {
     record_wrap(body, expr->u.bin.left, left, right);
   }
+  const MsTy common = right_optional && !left_optional ? right : left;
+  if (common != MS_TY_NONE && !is_invalid(body, common) && body->module < body->program->user_modules && !body->quiet &&
+      !ms_check_property(body->program, common, MS_PROPERTY_EQUAL)) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "equality requires Equal operands; ");
+    ms_ty_show(&text, body->program->names, types, common);
+    ms_strbuild_append_text(&text, " has no equality, so give it 'fn ");
+    ms_ty_show(&text, body->program->names, types, common);
+    ms_strbuild_append_text(&text, ".equals(other: ");
+    ms_ty_show(&text, body->program->names, types, common);
+    ms_strbuild_append_text(&text, ") Bool' or compare fields");
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
   return body_primitive(body, MS_BUILTIN_Bool);
 }
 

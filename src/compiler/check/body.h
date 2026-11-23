@@ -38,6 +38,7 @@ typedef struct Body {
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
   MsSpan source;  /* the module's text, for repairing edits; empty for a bundled module */
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
+  const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
@@ -143,6 +144,7 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol);
 bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
 
 /* members.c: a member the receiver does not have. */
+bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, bool call);
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver);
 
 /* externs.c: the signature of a user `extern fn`. */

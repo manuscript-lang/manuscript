@@ -266,7 +266,7 @@ static MsString export_message(const ImportView *view, uint32_t target) {
   return ms_strbuild_finish(&text);
 }
 
-static bool is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol) {
+bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol) {
   const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].file);
   const bool prelude_module = ms_span_is_text(file, "@std/core.ms") || ms_span_is_text(file, "@std/collections/collections.ms");
   return prelude_module && is_prelude_name(ms_names_span(program->names, symbol->name));
@@ -379,7 +379,7 @@ void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan so
     }
     if (*found == 0) {
       report_unresolved(&view, index, source);
-    } else if (is_prelude_symbol(program, &program->symbols.ptr[*found])) {
+    } else if (ms_check_is_prelude_symbol(program, &program->symbols.ptr[*found])) {
       report_redundant(&view, index, source);
     }
   }

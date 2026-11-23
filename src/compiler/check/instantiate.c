@@ -192,7 +192,8 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
   }
   for (size_t index = 0; index < nvars; index++) {
     MsString why = ms_string_empty();
-    if (!ms_check_bounds_hold_with(program, variables[index], bound[index], variables, bound, nvars, &why)) {
+    if (!ms_check_bounds_hold_with(program, variables[index], bound[index], variables, bound, nvars,
+                                  index < nexplicit ? "use a type that implements it" : "pass a type that already implements it", &why)) {
       out->message = why;
       return false;
     }

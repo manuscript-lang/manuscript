@@ -242,7 +242,8 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
       body_set_ref(body, left->u.apply.left->id, body_symbol_ref(body, symbol));
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+      return !body_report_type_member(body, callee->pos, symbol->ty, callee->u.member.name, true) &&
+             case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   if (left->kind == MS_E_NAME && body_find_local(body, left->u.sym) == NULL) {
@@ -250,7 +251,8 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
     if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+      return !body_report_type_member(body, callee->pos, symbol->ty, callee->u.member.name, true) &&
+             case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   const MsTy receiver = body_expr(body, left, MS_TY_NONE);
@@ -347,6 +349,11 @@ static void match_args(const Body *body, const Target *target, const MsExpr *cal
     while (cursor < nparams && matched->slot[cursor] >= 0) {
       cursor++;
     }
+    const bool named_only = target->nominal != MS_TY_NONE && /* `reserve` of a List is named-only */
+                            ms_ty_is(types, target->nominal, MS_BUILTIN_List);
+    if (named_only) {
+      cursor = nparams;
+    }
     matched->state[at] = cursor < nparams ? ARG_MATCHED : ARG_EXTRA;
     if (cursor < nparams) {
       matched->slot[cursor] = (int32_t)at;
@@ -371,6 +378,12 @@ static bool unapplied(const Body *body, MsTy ty) {
     }
   }
   return true;
+}
+
+/* Whether `expr` is the bare `none`, which takes its type from the parameter and so says nothing about type arguments. */
+static bool is_none_literal(const Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
 }
 
 /* The parameter type with the variables bound so far substituted. */
@@ -402,6 +415,10 @@ static void result_hint(Body *body, const Target *target, MsTy expected, MsTy *h
   const MsTyTable *types = &body->program->types;
   const size_t count = target->vars.len;
   const MsTy result = target->sig == MS_TY_NONE ? MS_TY_NONE : ms_ty_result(types, target->sig);
+  if (expected != MS_TY_NONE && result != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) &&
+      ms_ty_arg_count(types, expected) == 1 && !ms_ty_is(types, result, MS_BUILTIN_Optional)) {
+    expected = ms_ty_args(types, expected)[0]; /* a value wrapped as an optional is typed as its payload */
+  }
   if (expected == MS_TY_NONE || ms_ty_is_invalid(types, expected) || count == 0 || count > 16 || result == MS_TY_NONE ||
       !ms_ty_has_variable(types, result) || ms_ty_has_variable(types, expected)) {
     return;
@@ -502,6 +519,16 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
   return true;
 }
 
+/* The type the expected result gives the callee's own variable `variable`, or MS_TY_NONE. */
+static MsTy hint_for(const Target *target, MsTy variable, const MsTy *hint) {
+  for (size_t at = 0; at < target->vars.len && at < 16; at++) {
+    if (target->vars.ptr[at] == variable) {
+      return hint[at];
+    }
+  }
+  return MS_TY_NONE;
+}
+
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound, const MsTy *hint) {
@@ -527,7 +554,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     MsTy wanted = expected_param(body, target, param, bound);
     bool open = mentions_vars(types, wanted, &target->vars);
     bool by_hint = false; /* only the call's expected result closes the parameter: a function argument is judged later */
-    if (open && !is_own_variable(target, wanted)) {
+    if (open && (!is_own_variable(target, wanted) || (target->constructor && ms_ty_is(types, ms_ty_result(types, target->sig), MS_BUILTIN_Result) && hint_for(target, wanted, hint) != MS_TY_NONE))) {
       MsTy known[16] = {0};
       for (size_t at = 0; at < target->vars.len && at < 16; at++) {
         known[at] = bound[at] != MS_TY_NONE ? bound[at] : hint[at];
@@ -551,7 +578,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
-        !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
+        !is_none_literal(body, arg->value) && !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
   }
@@ -706,12 +733,24 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   MsTy sig = target->sig;
   bool instantiated = true;
   MsTyList typed = {0};
+  const MsTy *written = arg_tys; /* the arguments' own types, before any is held back from inference */
   if (body->program->diagnostics.len > diagnostics_before && only_callback_diagnostics(body->program, diagnostics_before)) {
     /* a callback that could not be typed gives the call no evidence about its type arguments */
     for (size_t index = 0; index < matched->count; index++) {
       ms_ty_list_push(&typed, holds_invalid(&body->program->types, arg_tys[index], 6) ? MS_TY_NONE : arg_tys[index]);
     }
     arg_tys = typed.ptr;
+  }
+  if (target->vars.len != 0 && typed.len == 0) {
+    bool bare = false;
+    for (size_t index = 0; index < matched->count; index++) {
+      bare = bare || (matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value));
+    }
+    for (size_t index = 0; bare && index < matched->count; index++) {
+      const bool none = matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value);
+      ms_ty_list_push(&typed, none ? MS_TY_NONE : arg_tys[index]);
+    }
+    arg_tys = bare ? typed.ptr : arg_tys;
   }
   if (target->vars.len != 0) {
     const MsSpan name = target->name;
@@ -722,7 +761,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
-      if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
+      if (uninferable(body, &instance, written, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
         /* the call's failure comes before the callbacks it could not type */
         MsCheckDiagList *list = &body->program->diagnostics;
@@ -797,6 +836,27 @@ static bool report_builtin_constructor(Body *body, const MsExpr *call) {
   return true;
 }
 
+/* A call whose callee is a value that is not a function. */
+static void report_not_callable(Body *body, const MsExpr *call, const Target *target) {
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
+  }
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  if (target->name.len != 0) {
+    ms_strbuild_append(&text, target->name);
+    ms_strbuild_append_text(&text, " is not a function");
+  } else {
+    ms_strbuild_append_text(&text, "callee is not a function");
+  }
+  ms_strbuild_append_text(&text, " (it has type ");
+  ms_ty_show(&text, body->program->names, &body->program->types, target->sig);
+  ms_strbuild_append_text(&text, "); only functions and methods can be called, so remove the (...) or call a function instead");
+  ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -824,9 +884,22 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     MsTy hint[16] = {0};
     result_hint(body, &target, expected, hint);
     type_args(body, &target, expr, &matched, arg_tys, bound, hint);
-    matched.bound = bound;
+    MsTy *shown = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, target.vars.len + 1);
+    for (size_t index = 0; index < target.vars.len; index++) { /* the expected result fixes what the arguments left open */
+      shown[index] = bound[index] != MS_TY_NONE || index >= 16 ? bound[index] : hint[index];
+    }
+    matched.bound = shown;
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
+    /* an argument that already disagreed with the expected result's type is the one error: the call has that type */
+    if (target.constructor && expected != MS_TY_NONE && body->program->diagnostics.len > diagnostics_before &&
+        result != MS_TY_NONE && ms_ty_is(&body->program->types, result, MS_BUILTIN_Result) &&
+        ms_ty_is(&body->program->types, expected, MS_BUILTIN_Result) && !ms_ty_has_variable(&body->program->types, expected)) {
+      result = expected;
+    }
+  } else if (target.sig != MS_TY_NONE && !ms_ty_is_invalid(&body->program->types, target.sig) &&
+             ms_ty_kind(&body->program->types, target.sig) != MS_TY_FUNCTION) {
+    report_not_callable(body, expr, &target);
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {

@@ -51,6 +51,7 @@ typedef struct LowerFn {
   MirBuilder b;
   const MsFacts *facts;
   const MsFunc *func;
+  bool keeps_scoped; /* this function keeps the closures it is given (the flag of its MIR function) */
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
   MirLoc stmt_loc; /* the statement being lowered: what `caller_site()` names */

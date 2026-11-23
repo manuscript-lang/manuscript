@@ -27,7 +27,7 @@ fn saved_variable(values: Map[String, String], name: String) String?:
 	windows := os() == Os.Windows
 
 	for entry in values.entries():
-		key := if windows: entry.key.upper() else: entry.key
+		key := if windows: entry.key.upper() else: entry.key.clone()
 		if key == name: return entry.value.clone()
 
 	return none

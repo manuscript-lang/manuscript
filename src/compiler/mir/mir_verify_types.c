@@ -6,7 +6,7 @@
 #include "compiler/mir/mir_verify_types.h"
 
 /* `format` (ms_message_format conversions) as a NUL-terminated C string in `arena`. */
-const char *mvt_fmt(MsArena *arena, const char *format, ...) {
+const char *mvt_fmt_(MsArena *arena, const char *format, ...) {
   va_list arguments;
   va_start(arguments, format);
   MsSpan text = ms_message_vformat(arena, format, arguments);

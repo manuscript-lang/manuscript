@@ -93,7 +93,7 @@ void ms_check_unsatisfied_message(MsCheckProgram *program, MsTy ty, MsTy bound, 
 }
 
 bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg, const MsTy *vars, const MsTy *args,
-                               size_t count, MsString *why) {
+                               size_t count, const char *alternative, MsString *why) {
   const MsTyVariable *record = ms_ty_variable(&program->types, variable);
   if (record == NULL) {
     return true;
@@ -105,7 +105,7 @@ bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg,
     }
     if (why != NULL) {
       MsStrBuild text = ms_strbuild_new();
-      ms_check_unsatisfied_message(program, arg, wanted, "pass a type that already implements it", &text);
+      ms_check_unsatisfied_message(program, arg, wanted, alternative, &text);
       *why = ms_strbuild_finish(&text);
     }
     return false;
@@ -114,5 +114,5 @@ bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg,
 }
 
 bool ms_check_bounds_hold(MsCheckProgram *program, MsTy variable, MsTy arg, MsString *why) {
-  return ms_check_bounds_hold_with(program, variable, arg, NULL, NULL, 0, why);
+  return ms_check_bounds_hold_with(program, variable, arg, NULL, NULL, 0, "pass a type that already implements it", why);
 }

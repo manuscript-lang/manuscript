@@ -125,8 +125,14 @@ static bool is_empty_optional(const LowerFn *fn, MirValue value) {
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
-    const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
+    MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
     MirVar owner = 0;
+    MirValue taken = MIR_NONE;
+    if (source != MIR_NONE && !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_NAME &&
+        fn_closing_move(fn, stmt->u.bind.value, source, &taken)) {
+      /* A record destructured out of a closing slot hands its parts to the names: the slot gives the record up. */
+      return bind_parts(fn, pattern, taken, true, NULL, false);
+    }
     const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
     return source != MIR_NONE &&
            bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
@@ -404,6 +410,10 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
     return false;
   }
   *field = values[count];
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, *field))) {
+    /* The field leaves its record for the change, which owns it; `fn_put_field_chain` fills it again. */
+    *field = mir_b_emit(&fn->b, MOP_MoveOut, field, 1, (MirImm){0}, mir_b_ty(&fn->b, *field));
+  }
   return true;
 }
 
@@ -425,6 +435,9 @@ bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirVa
   }
   MirValue updated = field;
   for (uint32_t index = count; index-- > 0;) {
+    if (index > 0) { /* an inner record leaves the one above it and goes back into it with the field filled */
+      values[index] = mir_b_emit(&fn->b, MOP_MoveOut, &values[index], 1, (MirImm){0}, mir_b_ty(&fn->b, values[index]));
+    }
     const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, values[index]));
     const MsRef *ref = ms_facts_ref(fn->facts, fields[index]->id);
     const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
