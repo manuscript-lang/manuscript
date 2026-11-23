@@ -182,6 +182,20 @@ const MsParams *body_function_names(Body *body, const MsExpr *value, MsTy ty) {
   return names;
 }
 
+/* Whether `value` is `opt.ok_or` of an Optional (with or without type arguments): its `cause` may be left out, and a call
+ * that does fills it with the `Error` "missing value at <file>:<line>". */
+static bool is_ok_or_value(Body *body, const MsExpr *value) {
+  const MsExpr *member = value->kind == MS_E_APPLY ? value->u.apply.left : value;
+  if (member->kind != MS_E_MEMBER || !ms_span_is_text(ms_names_span(body->program->names, member->u.member.name), "ok_or")) {
+    return false;
+  }
+  const bool quiet = body->quiet;
+  body->quiet = true;
+  const MsTy receiver = body_expr(body, member->u.member.left, MS_TY_NONE);
+  body->quiet = quiet;
+  return receiver != MS_TY_NONE && ms_ty_is(&body->program->types, receiver, MS_BUILTIN_Optional);
+}
+
 MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
   const MsTyTable *types = &body->program->types;
   uint32_t module = 0;
@@ -193,7 +207,10 @@ MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
   bool lifted = false;
   for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
     MsTyParam param = ms_ty_params(types, ty)[index];
-    if (index < ast->len && body_param_omittable(body, ast->ptr[index])) {
+    const bool missing_value = index == 0 && ms_ty_kind(types, param.ty) == MS_TY_TYPE &&
+                               ms_span_is_text(ms_names_span(body->program->names, ms_ty_row(types, param.ty)->name), "Error") &&
+                               is_ok_or_value(body, value);
+    if (missing_value || (index < ast->len && body_param_omittable(body, ast->ptr[index]))) {
       param.flags |= MS_PARAM_LIFTED;
       lifted = true;
     }

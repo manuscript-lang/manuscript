@@ -52,7 +52,8 @@ typedef struct MsRef {
 typedef enum MsArgSource {
   MS_ARG_WRITTEN,  /* the call wrote this argument: `node` is its expression */
   MS_ARG_DEFAULT,  /* the parameter's default expression, evaluated at the call: `node` is it */
-  MS_ARG_OMITTED   /* an omittable parameter left out; the value is "none" */
+  MS_ARG_OMITTED,  /* an omittable parameter left out; the value is "none" */
+  MS_ARG_MISSING_VALUE /* `Optional.ok_or`'s cause left out: the `Error` "missing value at <file>:<line>" of the call */
 } MsArgSource;
 
 /* How one parameter of the callee is filled, in parameter order. */

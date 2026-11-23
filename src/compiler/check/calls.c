@@ -462,6 +462,8 @@ static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *cal
                          .label = arg->has_name ? arg->name : 0, .flags = out->flags};
     } else if (def != NULL) {
       *out = (MsCallArg){.source = MS_ARG_DEFAULT, .node = {target->ast_module, def->id}, .flags = out->flags};
+    } else if ((param->flags & MS_PARAM_LIFTED) != 0 && !ms_ty_is(types, param->ty, MS_BUILTIN_Optional)) {
+      out->source = MS_ARG_MISSING_VALUE; /* a function value of `ok_or` keeps its cause optional */
     } else {
       out->source = MS_ARG_OMITTED;
     }
