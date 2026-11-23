@@ -166,24 +166,6 @@ bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
   return true;
 }
 
-/* `fn(comparator, ptr, ptr) -> int` for the runtime sort: loads the two element slots and calls the source comparator
- * on them. `sort.cmp` is what `opt_inline_specialize_sort_thunks` and `opt_sortgen` recognise; a comparator the module
- * knows is called directly there. MIR_NONE when the build fails. */
-static uint32_t sort_thunk(LowerFn *fn, MirTy elem, MirTy closure) {
-  const MirParam params[3] = {{closure, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
-  MirBuilder b;
-  mir_b_init(&b, fn->cx->module, mir_name(fn->cx->module, ms_span_of_text("sort.cmp")), params, 3, MIR_INT);
-  mir_b_func(&b)->sort = MSORT_GENERIC;
-  MirValue args[3];
-  mir_b_params(&b, args, 3);
-  const MirImm of_elem = {.tag = MI_TY, .a = elem};
-  const MirValue call[3] = {args[0], mir_b_emit(&b, MOP_Load, &args[1], 1, of_elem, elem),
-                            mir_b_emit(&b, MOP_Load, &args[2], 1, of_elem, elem)};
-  mir_b_ret(&b, mir_b_emit(&b, MOP_CallInd, call, 3, (MirImm){0}, MIR_INT));
-  uint32_t id = MIR_NONE;
-  return mir_b_finish(&b, &id) ? id : MIR_NONE;
-}
-
 /* The operands the runtime function `sig` wants for a call with the source operands `args`: the descriptors
  * its signature names are added after the collection they describe, and the trailing result parameter is the
  * call's result. False when the source operands do not fit the signature. */
@@ -204,7 +186,7 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       }
     } else if (kind == NS_CMP_FN && next < nargs && next > 0 && at + 1 < params) {
       const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
-      const uint32_t thunk = list->kind == MK_LIST ? sort_thunk(fn, list->elem, mir_b_ty(&fn->b, args[next])) : MIR_NONE;
+      const uint32_t thunk = list->kind == MK_LIST ? fn_sort_thunk(fn, list->elem, mir_b_ty(&fn->b, args[next])) : MIR_NONE;
       if (thunk == MIR_NONE) {
         return false;
       }
@@ -349,7 +331,7 @@ static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
 
 /* An operand in a new slot of its own: the runtime function takes the value from the slot's address. A `lookup`
  * only reads the value (a map key it searches for), so the slot borrows it and nothing is copied. */
-static MirValue operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
+MirValue fn_operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
   MirValue value = fn_expr(fn, expr, lookup ? LW_BORROW : LW_MOVE);
   if (value == MIR_NONE) {
     return MIR_NONE;
@@ -370,40 +352,6 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
   return slot;
 }
 
-MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
-  MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
-  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  if (fn->hint != MIR_VOID && (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2)) {
-    ty = fn->hint; /* the checker left the literal's type open: the parameter it fills gives it */
-    data = mir_ty_data(fn->cx->module, ty);
-  }
-  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
-    (void)fn_fail(fn, "a map literal is not typed as a map");
-    return MIR_NONE;
-  }
-  const MirValue empty = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
-  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
-  const MirImm of_map = {.tag = MI_TY, .a = ty};
-  const MirValue map = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_map, MIR_PTR);
-  const MirValue created[2] = {map, empty};
-  (void)mir_b_emit(&fn->b, MOP_Put, created, 2, (MirImm){0}, MIR_NONE);
-  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
-  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
-  const MsName add = mir_name(fn->cx->module, ms_span_of_text("msrt_map_add"));
-  for (uint32_t at = 0; at < expr->u.map.len; at++) {
-    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key, false);
-    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value, false);
-    if (value == MIR_NONE) {
-      return MIR_NONE;
-    }
-    const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
-    const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
-    const MirValue operands[5] = {map, key_desc, value_desc, key, value};
-    (void)fn_runtime_call(fn, add, operands, 5, MIR_VOID);
-  }
-  return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
-}
-
 /* Ends the current block with the fault of a missing map key: `key` is the slot holding the key of type `key_ty`. */
 static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
   const MirImm of_key = {.tag = MI_TY, .a = key_ty};
@@ -421,7 +369,7 @@ static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  const MirValue key = operand_slot(fn, key_expr, true);
+  const MirValue key = fn_operand_slot(fn, key_expr, true);
   if (key == MIR_NONE) {
     return MIR_NONE;
   }
@@ -450,7 +398,7 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
   const MirTy ty = mir_b_ty(&fn->b, container);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
-    const MirValue key = operand_slot(fn, key_expr, true);
+    const MirValue key = fn_operand_slot(fn, key_expr, true);
     if (key == MIR_NONE) {
       return MIR_NONE;
     }
@@ -608,7 +556,7 @@ bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *t
   mir_b_seal_block(&fn->b, miss);
   mir_b_seal_block(&fn->b, hit);
   mir_b_switch_to(&fn->b, miss);
-  const MirValue key_slot = operand_slot(fn, key, true); /* the key again, for the fault text only */
+  const MirValue key_slot = fn_operand_slot(fn, key, true); /* the key again, for the fault text only */
   fault_missing_key(fn, key_slot, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder))->args[0]);
   mir_b_switch_to(&fn->b, hit);
   *addr = address;
