@@ -344,9 +344,10 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     if (stmt->kind == MS_S_BIND && fn_temp_closes(fn, bound)) {
       return scan.receiver || scan.found;
     }
-    /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
-    const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&
-                       call_answers_owner(fn, value);
+    /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`); a returned
+     * answer of such a call is its own value too, so the statement's temporaries close before the function leaves. */
+    const bool outer = ((stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable) || stmt->kind == MS_S_RETURN) &&
+                       !fn_temp_closes(fn, bound) && call_answers_owner(fn, value);
     if (!outer && !(stmt->kind == MS_S_RETURN && builds_plain_case(fn, value)) && (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound))) {
       return false;
     }

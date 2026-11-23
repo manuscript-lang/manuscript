@@ -12,7 +12,7 @@ const binary = process.env.MS_BIN
   : path.resolve(root, '.artifacts/build/ci/src/cli', process.platform === 'win32' ? 'ms.exe' : 'ms');
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'ms-html-ownership-'));
 after(() => fs.rmSync(fixture, {recursive: true, force: true}));
-fs.copyFileSync(path.join(root, 'tests/diagram/fixtures/ownership-modes.ms'), path.join(fixture, 'main.ms'));
+fs.copyFileSync(path.join(__dirname, 'ownership-modes.ms'), path.join(fixture, 'main.ms'));
 const run = args => execFileSync(binary, ['diagram', 'main.ms', ...args], {cwd: fixture, encoding: 'utf8'});
 const page = run(['--format', 'html']);
 const data = embeddedData(page);
@@ -58,11 +58,11 @@ test('HTML explicit parameter and result modes agree with checked JSON and Merma
     assert.ok(mermaid.includes('|"' + mode + '"|'), mermaid);
     seen.add(mode);
   }
-  assert.deepEqual([...seen].sort(), ['borrow', 'copy', 'move', 'owned', 'var'].sort());
+  assert.deepEqual([...seen].sort(), ['borrow', 'copy', 'owned', 'var'].sort());
 });
 
 test('signature type spans expose exact checked modes with the existing palette', () => {
-  const palette = {borrow: 'brw', copy: 'hint', move: 'own', var: 'var', owned: 'own'};
+  const palette = {borrow: 'brw', copy: 'hint', var: 'var', owned: 'own'};
   for (const e of callables) {
     const spans = [...p.sigOf(e).matchAll(/<span class="([^"]*)" data-ownership="([^"]*)" title="([^"]*)">([^<]*)<\/span>/g)];
     const positions = [...e.slots, e.result];
