@@ -1,4 +1,4 @@
-# Fills the startup-files directory (MS_FILES) next to ms-c; run after each build by MsRuntimePackage.cmake.
+# Fills the startup-files directory (MS_FILES) next to ms; run after each build by MsRuntimePackage.cmake.
 #   -DFILES=<dir> -DSOURCE_DIR=<repo> -DOS=<Linux|Darwin|Windows> -DARCH=<processor>
 #   -DMUSL_SYSROOT=<the musl sysroot of cmake/MsSysroot.cmake> -DMINGW_DIR=<llvm-mingw root> -DCOMPILER=<the C compiler>
 # Linux gets the glibc export table (and the musl and unwinder files for `--static` and the unwinder input);

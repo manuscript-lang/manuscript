@@ -1,4 +1,4 @@
-ms_executable(ms-c cli
+ms_executable(ms cli
   SOURCES
     pipeline.c backend.c emit_command.c diagram_command.c review_command.c search_symbol_command.c search_project.c
     fault_record.c inspect_command.c main.c phases.c check_command.c verify_command.c json_value.c fmt_command.c
@@ -9,16 +9,16 @@ ms_executable(ms-c cli
     explain_command.c lsp_command.c lsp_analysis.c lsp_frame.c lsp_uri.c lsp_text.c lsp_nav.c lsp_symbols.c lsp_semantic.c
   LINK ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link ms_tooling ms_std_text)
 file(STRINGS ${CMAKE_SOURCE_DIR}/.msversion MS_VERSION_TEXT LIMIT_COUNT 1)
-target_compile_definitions(ms-c PRIVATE MS_VERSION="${MS_VERSION_TEXT}")
+target_compile_definitions(ms PRIVATE MS_VERSION="${MS_VERSION_TEXT}")
 
 set(MS_MINGW_DIR "" CACHE PATH "llvm-mingw root for Windows links (default: the compiler's own prefix)")
 include(MsRuntimePackage)
 ms_add_musl_runtime()
-ms_package_runtime(ms-c ms_runtime)
+ms_package_runtime(ms ms_runtime)
 
 # Build and run a one-line program: packaging, pipeline and linker together on this platform.
 get_filename_component(MS_COMPILER_BIN "${CMAKE_C_COMPILER}" DIRECTORY)
-add_test(NAME smoke_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke
+add_test(NAME smoke_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 
 # The folded-stack conversion of `ms profile`, without the compiler.
@@ -26,11 +26,11 @@ ms_executable(profile_folded_unit cli SOURCES profile_folded_unit.c profile_fold
 add_test(NAME driver_profile_folded COMMAND profile_folded_unit)
 
 # `ms profile` end to end: a program that burns CPU is built, run under the sampler and turned into a bundle.
-add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_BINARY_DIR}/src/cli/profile
+add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/profile
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/ProfileRun.cmake)
 
 # `ms bench` end to end: a real bench block is built and run, and the report's shape is checked.
-add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
+add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
 
 # Replays recorded language-server sessions (tests/lsp/<case>) over standard input and output.
@@ -38,7 +38,7 @@ file(GLOB MS_LSP_CASES LIST_DIRECTORIES true ${CMAKE_SOURCE_DIR}/tests/lsp/*)
 foreach(case IN LISTS MS_LSP_CASES)
   if(IS_DIRECTORY ${case})
     get_filename_component(case_name ${case} NAME)
-    add_test(NAME lsp_${case_name} COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DCASE=${case}
+    add_test(NAME lsp_${case_name} COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DCASE=${case}
       -DWORK=${CMAKE_BINARY_DIR}/src/cli/lsp-${case_name} -P ${CMAKE_SOURCE_DIR}/cmake/LspSession.cmake)
   endif()
 endforeach()

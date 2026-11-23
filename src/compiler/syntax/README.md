@@ -11,4 +11,4 @@ Layer L2: source text to syntax tree and back. Allowed includes: see `src/layers
 | `walk.c/.h` | tree visitor and `ms_expr_start` |
 | `diag_codes.c`, `diag.h`, `diag_json.c/.h`, `message.c/.h` | stable diagnostic codes, JSON text of diagnostics, message building |
 
-Gate: `ms-conform run --ms <ms-c> --phase parse` (the `fmt <entry> --check --json` and `fmt <entry>` commands).
+Gate: `ms-conform run --ms <ms> --phase parse` (the `fmt <entry> --check --json` and `fmt <entry>` commands).
