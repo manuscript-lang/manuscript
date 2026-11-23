@@ -59,6 +59,22 @@ On one CPU Manuscript serves about 62% of hyper's rate, and the gap grows with C
 
 The remaining top self costs per request are list growth (1.1k), `memcpy` (0.8k), allocation (0.7k), the task switch (0.6k), llhttp (0.6k), and `exchange.headers()` copying the received headers (0.5k, in the frozen stdlib wrapper).
 
+## 2026-11-24 (the server uses every thread it was given; writes leave the loop thread)
+
+Two findings from per-thread CPU time (`/proc/<pid>/task/*/stat`) with the server on 2 CPUs:
+- With `cores: 2` both worker promises of `serve` ran on the main thread. A thread started by an earlier wake had not registered when `ms_workers_spread_pick` scored the isolates, so the second pick saw one thread and chose it again; the second thread stayed idle. The pick now waits for every started thread to register.
+- The single network loop thread was 98% busy at 108k requests a second: a send on loopback costs about 7 µs because the peer's receive work runs inside the `write`, and every send ran there. A write on a plain TCP connection now goes straight to the socket from the calling thread (`uv_try_write`) when no write operation is queued and more than one scheduler thread runs; otherwise, and for what the kernel does not take, it uses the loop as before. The loop thread waits for threads inside such a call before it closes the handle.
+
+`multicpu.sh`-style rows, `/health`, `loadc` with 128 connections on the other CPUs, two runs each (req/s):
+
+| Server CPUs | Before | Placement fix and direct write | hyper (same VM, earlier run) |
+| --- | ---: | ---: | ---: |
+| 1 | 66k, 78k | 71k, 76k | 120k |
+| 2 | 114k, 118k | 100k, 104k | 218k to 233k |
+| 4, load shared | 89k, 101k | 141k, 162k | 245k to 261k |
+
+With one scheduler thread the direct write is slower (70k against 54k at one CPU: the loop thread's send overlaps the thread's other work), so it is off there. At two CPUs both threads now work but the loop thread still carries every read and the epoll, so the gain waits on moving reads off it.
+
 ## History
 
 | Change | `/health` req/s | System calls per request | Idle system calls in 5 s |

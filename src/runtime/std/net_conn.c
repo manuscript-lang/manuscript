@@ -6,6 +6,7 @@
 
 #include "base/alloc.h"
 #include "base/bytes.h"
+#include "runtime/core/isolate.h"
 #include "runtime/std/net.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
@@ -428,6 +429,7 @@ typedef struct WriteOp {
 
 static void write_release(MsNetOp *op) {
   WriteOp *write = (WriteOp *)op;
+  atomic_fetch_sub(&write->core->writing, 1);
   ms_net_core_unref(write->core);
   ms_free(write->data);
 }
@@ -498,10 +500,46 @@ static void write_start(MsNetOp *op) {
 /* A write that cannot be taken back is under way: the stream is torn for whoever writes next. */
 static void write_abandon(MsNetOp *op) { ((WriteOp *)op)->core->broken = true; }
 
+/* Writes straight to a plain TCP socket from the calling thread when nothing else is writing it and the kernel
+ * takes bytes now, which skips the hand-off to the loop thread (a queue, a wake and two task switches) and moves
+ * the send, which on loopback includes the peer's receive work, off the loop thread. Returns the bytes written, or
+ * a negative libuv status; 0 and UV_EAGAIN mean "use the loop for the rest". */
+static ssize_t write_direct(MsNetCore *core, MsSpan data) {
+  /* With one scheduler thread the loop thread's send overlaps the thread's own work and wins (one CPU: 70k against
+   * 54k requests a second); with several the loop thread is the ceiling and the send spreads over them (four CPUs:
+   * 98k against 150k). */
+  if (core->kind != MS_NET_CONNECTION || core->is_pipe || core->tls != NULL || data.len == 0 ||
+      data.len > (size_t)INT32_MAX || atomic_load(&core->writing) != 0 || ms_isolate_count() < 2) {
+    return UV_EAGAIN;
+  }
+  atomic_fetch_add(&core->direct, 1);
+  ssize_t result = UV_EAGAIN;
+  if (!atomic_load(&core->closed) && atomic_load(&core->writing) == 0) {
+    uv_buf_t buffer = uv_buf_init((char *)(uintptr_t)data.ptr, (unsigned int)data.len); /* libuv only reads it */
+    result = uv_try_write(&core->h.stream, &buffer, 1);
+  }
+  atomic_fetch_sub(&core->direct, 1);
+  return result;
+}
+
 static uint8_t write_run(MsNetCore *core, MsSpan data, bool shutting, int64_t timeout_ns, const char *operation,
                          MsString *err) {
+  if (!shutting) {
+    const ssize_t sent = write_direct(core, data);
+    if (sent >= 0 && (size_t)sent == data.len) {
+      *err = ms_string_empty();
+      return MS_STATUS_OK;
+    }
+    if (sent < 0 && sent != UV_EAGAIN) {
+      return ms_net_finish(MS_NET_WAIT_DONE, (int)sent, operation, err);
+    }
+    if (sent > 0) {
+      data = ms_span_of(data.ptr + sent, data.len - (size_t)sent);
+    }
+  }
   WriteOp *write = ms_net_op_new(sizeof *write, write_start, write_abandon, write_release);
   atomic_fetch_add(&core->references, 1);
+  atomic_fetch_add(&core->writing, 1);
   write->core = core;
   write->shutting = shutting;
   write->length = data.len;
