@@ -472,17 +472,8 @@ static void function_decl(Body *body, const MsSymbol *symbol) {
   ms_ty_list_truncate(&body->resolver.types, mark);
 }
 
-static const MsMethodEntry *find_entry(const MsCheckProgram *program, const MsMethod *method) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    if (program->methods.ptr[index].source == method) {
-      return &program->methods.ptr[index];
-    }
-  }
-  return NULL;
-}
-
 static void method_decl(Body *body, const MsMethod *method) {
-  const MsMethodEntry *entry = find_entry(body->program, method);
+  const MsMethodEntry *entry = ms_check_method_at(body->program, body->module, method->id);
   if (entry == NULL) {
     return;
   }

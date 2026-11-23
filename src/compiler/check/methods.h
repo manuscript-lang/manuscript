@@ -39,6 +39,7 @@ MS_LIST_DEFINE(MsMethodKeyList, ms_method_key_list, MsMethodKey)
 typedef struct MsMethodIndex {
   MsMethodKeyList by_name;
   MsMethodKeyList by_decl;
+  size_t indexed; /* the entries both lists cover */
 } MsMethodIndex;
 
 /* A method found for a receiver: an implemented method, or an operation of an interface. */
