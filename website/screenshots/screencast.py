@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Renders the feature screencast used on the docs home page, the README and social posts.
 
-Usage: python3 website/screenshots/screencast.py [--ms target/release/ms] [-o out.gif] [--mp4 out.mp4]
+Usage: python3 website/screenshots/screencast.py [--ms .artifacts/build/ci/src/cli/ms] [-o out.gif] [--mp4 out.mp4]
 
 Every command runs for real with the given `ms`, so the output shown is what the compiler prints.
 Needs Python 3 with Pillow and the DejaVu Sans Mono font (and ffmpeg for --mp4); none are project
@@ -249,7 +249,7 @@ def wrap(lines, cut, width=COLS):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ms", default="target/release/ms")
+    ap.add_argument("--ms", default=".artifacts/build/ci/src/cli/ms")
     ap.add_argument("-o", "--output", default=os.path.join(HERE, "../static/images/screencast.gif"))
     ap.add_argument("--mp4", help="also write an H.264 MP4 (needs ffmpeg)")
     ap.add_argument("--width", type=int, default=1024, help="GIF width in pixels")

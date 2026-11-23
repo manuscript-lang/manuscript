@@ -23,7 +23,7 @@ test "checked decrement":
 Run it with the compiler built from your checkout:
 
 ```sh
-target/release/ms test decrement.ms
+.artifacts/build/ci/src/cli/ms test decrement.ms
 ```
 
 ```text
