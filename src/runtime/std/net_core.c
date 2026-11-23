@@ -1,5 +1,7 @@
 /* The socket core and its handles (see net_core.h). */
+#ifndef __APPLE__                /* Apple hides MSG_DONTWAIT once _POSIX_C_SOURCE is set */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
+#endif
 
 #include "runtime/std/net_core.h"
 
