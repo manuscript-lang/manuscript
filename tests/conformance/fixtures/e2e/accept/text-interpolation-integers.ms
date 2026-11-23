@@ -6,7 +6,7 @@ import (
 )
 
 // Integer interpolations are written straight into the joined text (the `strfuse` pass
-// passes the integer to `msrt_string_fmtN`), so every integer shape and length must
+// writes the integer into a frame and copies it after the other parts), so every integer shape and length must
 // still read back the same.
 fn label(prefix: String, n: Int) String:
 	return f"{prefix}{n}"

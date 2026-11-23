@@ -82,6 +82,31 @@ static void string_byte(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
                      number, number, number, inst->res, number);
 }
 
+/* `str.data`: the address of the bytes. An inline string's bytes are its two words, written to a frame slot first. */
+static void string_data(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
+  uint32_t number = cx->next++;
+  MirValue text = inst->args[0];
+  uint32_t block = site->block;
+  uint32_t index = site->index;
+  ms_strbuild_printf(cx->out,
+                     "  store i64 %%v%u, ptr %%y%u_%u\n  %%o%ua = getelementptr i8, ptr %%y%u_%u, i64 8\n"
+                     "  store i64 %%v%u.1, ptr %%o%ua\n",
+                     text, block, index, number, block, index, text, number);
+  string_is_inline(cx, number, text);
+  ms_strbuild_printf(cx->out,
+                     "  %%o%uy = ptrtoint ptr %%y%u_%u to i64\n  %%v%u = select i1 %%o%ui, i64 %%o%uy, i64 %%v%u\n",
+                     number, block, index, inst->res, number, number, text);
+}
+
+/* `mem.copy`: `len` bytes from `src` to `dst`, which do not overlap. */
+static void memory_copy(EmitCx *cx, const MirInst *inst) {
+  uint32_t number = cx->next++;
+  ms_strbuild_printf(cx->out,
+                     "  %%o%ud = inttoptr i64 %%v%u to ptr\n  %%o%us = inttoptr i64 %%v%u to ptr\n"
+                     "  call void @llvm.memcpy.p0.p0.i64(ptr %%o%ud, ptr %%o%us, i64 %%v%u, i1 false)\n",
+                     number, inst->args[0], number, inst->args[1], number, number, inst->args[2]);
+}
+
 /* `bytes.push`: appends byte `v` to the builder at the address in the first operand when it is a byte and there
  * is room; the result says whether it did. The store is a block of its own. */
 static void bytes_push(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
@@ -175,6 +200,12 @@ bool emit_string_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool 
     return true;
   case MOP_StrByte:
     string_byte(cx, inst, site);
+    return true;
+  case MOP_StrData:
+    string_data(cx, inst, site);
+    return true;
+  case MOP_MemCopy:
+    memory_copy(cx, inst);
     return true;
   case MOP_BytesLit:
   case MOP_ListConst:

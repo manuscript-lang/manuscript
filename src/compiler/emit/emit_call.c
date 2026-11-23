@@ -94,7 +94,7 @@ static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
   const MirExtern *def = &cx->module->externs.ptr[inst->imm.a];
   const bool share = temps_shared(cx, inst);
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
-    if (emit_rt_direct(cx, def->params[arg].ty)) {
+    if (emit_rt_direct(cx, def->params[arg].ty) || emit_wide_held(cx, inst->args[arg])) {
       continue;
     }
     const uint32_t bytes = emit_slot_bytes(cx, def->params[arg].ty);
@@ -105,7 +105,9 @@ static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
     }
   }
   if (!emit_rt_direct(cx, def->ret)) {
-    note_result_area(area, emit_slot_bytes(cx, def->ret));
+    if (inst->res == MIR_NONE || !emit_wide_held(cx, inst->res)) {
+      note_result_area(area, emit_slot_bytes(cx, def->ret));
+    }
   } else if (emit_rt_scalar_option(cx, def->ret)) {
     note_result_area(area, 8);
   }
@@ -115,12 +117,12 @@ static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
  * copy of each argument that passes by address. */
 static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared, uint32_t *area) {
   const bool share = temps_shared(cx, inst);
-  if (inst->res != MIR_NONE && emit_value_leaves(cx, inst->res).len > 1) {
+  if (inst->res != MIR_NONE && emit_value_leaves(cx, inst->res).len > 1 && !emit_wide_held(cx, inst->res)) {
     note_result_area(area, emit_slot_bytes(cx, value_type(cx, inst->res)));
   }
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     MirTy type = value_type(cx, inst->args[arg]);
-    if (!emit_is_indirect(cx, type)) {
+    if (!emit_is_indirect(cx, type) || emit_wide_held(cx, inst->args[arg])) {
       continue;
     }
     const uint32_t bytes = emit_slot_bytes(cx, type);
@@ -132,72 +134,113 @@ static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t
   }
 }
 
-/* Slots whose live ranges are disjoint share one `%cell` alloca: the slots are taken in order of their first
- * position and each goes to the free cell that fits it best (the smallest that is big enough, else the largest,
- * which then grows). */
-const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx) {
+/* Slots and held values that are never live together share one `%cell` alloca: the biggest go first, each into the
+ * first cell none of whose occupants it conflicts with. A function whose conflicts cannot be analysed gives each
+ * held value a cell of its own and its slots their own allocas. */
+const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
   const MirFunc *func = cx->func;
-  uint32_t *lo = NULL;
-  uint32_t *hi = NULL;
-  uint32_t length = 0;
-  if (!mir_slot_ranges(arena, cx->module, func, &lo, &hi, &length)) {
-    return NULL;
-  }
+  cx->ncells = 0;
+  cx->cell_bytes = NULL;
+  cx->cell_escape = NULL;
   const size_t count = func->values.len + 1;
   uint32_t *pool = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  uint32_t *bytes = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  uint32_t *next = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  uint32_t *head = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)length + 1);
-  for (size_t position = 0; position <= length; position++) {
-    head[position] = UINT32_MAX;
-  }
   for (size_t value = 0; value < count; value++) {
     pool[value] = UINT32_MAX;
+  }
+  MirCellMap map;
+  if (!mir_cell_conflicts(arena, cx->module, func, held, &map)) {
+    if (held == NULL) {
+      return NULL;
+    }
+    uint32_t *sizes = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
+    bool *escape = MS_ARENA_NEW_ARRAY(arena, bool, count);
+    uint32_t ncells = 0;
+    for (uint32_t value = 0; value < func->values.len; value++) {
+      if (held[value]) {
+        pool[value] = ncells;
+        sizes[ncells] = emit_slot_bytes(cx, func->values.ptr[value]);
+        escape[ncells++] = true;
+      }
+    }
+    cx->cell_bytes = sizes;
+    cx->cell_escape = escape;
+    cx->ncells = ncells;
+    return ncells != 0 ? pool : NULL;
+  }
+  /* The type of each slot: its instruction names it. */
+  uint32_t *bytes = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)map.nobjects + 1);
+  for (uint32_t object = 0; object < map.nobjects; object++) {
+    bytes[object] = 0;
+    if (held != NULL && held[map.value[object]]) {
+      bytes[object] = emit_slot_bytes(cx, func->values.ptr[map.value[object]]);
+    }
   }
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirInstList *insts = &func->blocks.ptr[block].insts;
     for (uint32_t index = 0; index < insts->len; index++) {
       const MirInst *inst = &insts->ptr[index];
-      if (inst->op == MOP_Slot && hi[inst->res] != UINT32_MAX) {
-        bytes[inst->res] = emit_slot_bytes(cx, inst->imm.a);
-        next[inst->res] = head[lo[inst->res]];
-        head[lo[inst->res]] = inst->res;
+      if (inst->op == MOP_Slot && map.ordinal[inst->res] != MIR_NONE) {
+        bytes[map.ordinal[inst->res]] = emit_slot_bytes(cx, inst->imm.a);
       }
     }
   }
-  uint32_t *free_from = NULL; /* by cell: the first position its last slot no longer holds */
+  uint32_t *order = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)map.nobjects + 1);
+  uint32_t norder = 0;
+  for (uint32_t object = 0; object < map.nobjects; object++) {
+    if (map.shareable[object] && bytes[object] != 0) {
+      uint32_t at = norder++;
+      while (at > 0 && bytes[order[at - 1]] < bytes[object]) { /* insertion, biggest first, stable */
+        order[at] = order[at - 1];
+        at--;
+      }
+      order[at] = object;
+    }
+  }
   uint32_t *cell_bytes = NULL;
+  bool *cell_escape = NULL;
+  uint64_t *cell_rows = NULL; /* by cell: the objects some occupant conflicts with */
   uint32_t ncells = 0;
-  bool any = false;
-  for (uint32_t position = 0; position <= length; position++) {
-    for (uint32_t slot = head[position]; slot != UINT32_MAX; slot = next[slot]) {
-      uint32_t best = UINT32_MAX;
-      for (uint32_t cell = 0; cell < ncells; cell++) {
-        if (free_from[cell] > position) {
-          continue;
-        }
-        const bool fits = cell_bytes[cell] >= bytes[slot];
-        const bool best_fits = best != UINT32_MAX && cell_bytes[best] >= bytes[slot];
-        if (best == UINT32_MAX || (fits && (!best_fits || cell_bytes[cell] < cell_bytes[best])) ||
-            (!fits && !best_fits && cell_bytes[cell] > cell_bytes[best])) {
-          best = cell;
-        }
+  for (uint32_t at = 0; at < norder; at++) {
+    const uint32_t object = order[at];
+    uint32_t chosen = UINT32_MAX;
+    for (uint32_t cell = 0; cell < ncells && chosen == UINT32_MAX; cell++) {
+      const uint64_t *row = cell_rows + (size_t)cell * map.words;
+      if ((row[object / 64] >> (object % 64) & 1) == 0) {
+        chosen = cell;
       }
-      if (best == UINT32_MAX) {
-        free_from = ms_realloc(free_from, (ncells + 1) * sizeof(uint32_t));
-        cell_bytes = ms_realloc(cell_bytes, (ncells + 1) * sizeof(uint32_t));
-        best = ncells++;
-        cell_bytes[best] = 0;
-      }
-      cell_bytes[best] = bytes[slot] > cell_bytes[best] ? bytes[slot] : cell_bytes[best];
-      free_from[best] = hi[slot] + 1;
-      pool[slot] = best;
-      any = true;
     }
+    if (chosen == UINT32_MAX) {
+      cell_bytes = ms_realloc(cell_bytes, (ncells + 1) * sizeof(uint32_t));
+      cell_escape = ms_realloc(cell_escape, (ncells + 1) * sizeof(bool));
+      cell_rows = ms_realloc(cell_rows, ((size_t)ncells + 1) * map.words * sizeof(uint64_t));
+      for (uint32_t word = 0; word < map.words; word++) {
+        cell_rows[(size_t)ncells * map.words + word] = 0;
+      }
+      cell_bytes[ncells] = 0;
+      cell_escape[ncells] = false;
+      chosen = ncells++;
+    }
+    const uint64_t *conflict = map.conflict + (size_t)object * map.words;
+    for (uint32_t word = 0; word < map.words; word++) {
+      cell_rows[(size_t)chosen * map.words + word] |= conflict[word];
+    }
+    cell_bytes[chosen] = bytes[object] > cell_bytes[chosen] ? bytes[object] : cell_bytes[chosen];
+    cell_escape[chosen] = cell_escape[chosen] || (held != NULL && held[map.value[object]]);
+    pool[map.value[object]] = chosen;
   }
-  ms_free(free_from);
+  uint32_t *sizes = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)ncells + 1);
+  bool *escape = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)ncells + 1);
+  for (uint32_t cell = 0; cell < ncells; cell++) {
+    sizes[cell] = cell_bytes[cell];
+    escape[cell] = cell_escape[cell];
+  }
   ms_free(cell_bytes);
-  return any ? pool : NULL;
+  ms_free(cell_escape);
+  ms_free(cell_rows);
+  cx->cell_bytes = sizes;
+  cx->cell_escape = escape;
+  cx->ncells = ncells;
+  return ncells != 0 ? pool : NULL;
 }
 
 void emit_frame_slots(EmitCx *cx) {
@@ -205,8 +248,6 @@ void emit_frame_slots(EmitCx *cx) {
   uint32_t shared_x[SHARED_ARGS] = {0};
   uint32_t shared_p[SHARED_ARGS] = {0};
   uint32_t result_area = 0;
-  uint32_t *cells = NULL; /* bytes of each shared cell */
-  uint32_t ncells = 0;
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
     for (uint32_t index = 0; index < data->insts.len; index++) {
@@ -214,13 +255,7 @@ void emit_frame_slots(EmitCx *cx) {
       switch ((MirOp)inst->op) {
       case MOP_Slot:
         if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
-          const uint32_t cell = cx->pool[inst->res];
-          while (ncells <= cell) {
-            cells = ms_realloc(cells, (ncells + 1) * sizeof(uint32_t));
-            cells[ncells++] = 0;
-          }
-          note_result_area(&cells[cell], emit_slot_bytes(cx, inst->imm.a));
-          break;
+          break; /* in a shared cell */
         }
         /* Zeroed, so padding bytes compare equal when a descriptor compares a slot as bytes. */
         ms_strbuild_printf(cx->out,
@@ -248,6 +283,7 @@ void emit_frame_slots(EmitCx *cx) {
         }
         break;
       case MOP_StrByte:
+      case MOP_StrData:
         ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", block, index);
         break;
       case MOP_CallRt:
@@ -258,10 +294,13 @@ void emit_frame_slots(EmitCx *cx) {
       }
     }
   }
-  for (uint32_t cell = 0; cell < ncells; cell++) {
-    ms_strbuild_printf(cx->out, "  %%cell%u = alloca [%u x i8], align 8\n", cell, cells[cell]);
+  for (uint32_t cell = 0; cell < cx->ncells; cell++) {
+    ms_strbuild_printf(cx->out, "  %%cell%u = alloca [%u x i8], align 8\n", cell, cx->cell_bytes[cell]);
+    if (cx->cell_escape[cell]) {
+      /* An empty `asm` takes the address, so LLVM keeps the cell in memory instead of promoting it to registers. */
+      ms_strbuild_printf(cx->out, "  call void asm sideeffect \"\", \"r,~{memory}\"(ptr %%cell%u)\n", cell);
+    }
   }
-  ms_free(cells);
   if (result_area != 0) {
     ms_strbuild_printf(cx->out, "  %%R = alloca [%u x i8], align 8\n", result_area);
   }
@@ -292,7 +331,9 @@ static void call_arguments(EmitCx *cx, const MirInst *inst, const char *result_a
     MirTy type = value_type(cx, inst->args[arg]);
     if (emit_is_indirect(cx, type)) {
       char slot[48];
-      arg_slot_name(cx, inst, slot, 'x', block, index, arg);
+      if (!emit_wide_address(cx, inst->args[arg], slot, sizeof slot)) {
+        arg_slot_name(cx, inst, slot, 'x', block, index, arg);
+      }
       ms_strbuild_printf(out, "%sptr %s", first ? "" : ", ", slot);
       first = false;
       continue;
@@ -310,7 +351,7 @@ static void call_arguments(EmitCx *cx, const MirInst *inst, const char *result_a
 static void spill_arguments(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
   char slot[48];
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
-    if (emit_is_indirect(cx, value_type(cx, inst->args[arg]))) {
+    if (emit_is_indirect(cx, value_type(cx, inst->args[arg])) && !emit_wide_held(cx, inst->args[arg])) {
       arg_slot_name(cx, inst, slot, 'x', block, index, arg);
       emit_leaves_at(cx, inst->args[arg], slot, false);
     }
@@ -326,7 +367,11 @@ void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const c
   MsStrBuild *out = cx->out;
   spill_arguments(cx, inst, block, index);
   uint32_t result_leaves = inst->res == MIR_NONE ? 0 : (uint32_t)emit_value_leaves(cx, inst->res).len;
+  char held_area[24];
   const char *area = "%R";
+  if (result_leaves > 1 && emit_wide_result(cx, inst->res, held_area, sizeof held_area)) {
+    area = held_area;
+  }
   if (result_leaves == 1) {
     ms_strbuild_printf(out, "  %%v%u = call %s ", inst->res, emit_value_register_type(cx, inst->res));
   } else {
@@ -359,6 +404,11 @@ static void rt_argument(EmitCx *cx, MsStrBuild *args, MirTy type, MirValue value
                         bool c_float) {
   const char *separator = ms_strbuild_length(args) > 0 ? ", " : "";
   if (!emit_rt_direct(cx, type)) {
+    char held[24];
+    if (emit_wide_address(cx, value, held, sizeof held)) {
+      ms_strbuild_printf(args, "%sptr %s", separator, held);
+      return;
+    }
     emit_leaves_at(cx, value, area, false);
     ms_strbuild_printf(args, "%sptr %s", separator, area);
     return;
@@ -453,6 +503,9 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
   area[0] = '%';
   area[1] = 'R';
   area[2] = 0; /* the area every call shares */
+  if (!direct && inst->res != MIR_NONE) {
+    (void)emit_wide_result(cx, inst->res, area, sizeof area); /* a held result goes straight to its cell */
+  }
   if (!direct || option) {
     ms_strbuild_printf(&args, "%sptr %s", ms_strbuild_length(&args) > 0 ? ", " : "", area);
   }

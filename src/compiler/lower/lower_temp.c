@@ -54,7 +54,8 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   MsTyTable *types = &fn->cx->program->types;
   if (call == NULL || written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) ||
-      callee_consumes(fn, call, index)) {
+      callee_consumes(fn, call, index) ||
+      ms_own_native_get(fn->cx->program, fn->facts, written) == MS_NATIVE_GET_MAP) { /* `m.get(k)` views the entry: its map closes it */
     return false;
   }
   const MsTy result = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);

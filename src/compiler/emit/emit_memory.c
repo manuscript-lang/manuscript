@@ -20,11 +20,13 @@ void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, uint
   if (kind->widen == EMIT_SAME) {
     ms_strbuild_append_text(out, "  ");
     emit_name(out, dst, index);
-    ms_strbuild_printf(out, " = load %s, ptr %%a%u%s\n", kind->mem, address, tbaa_text(cx));
+    ms_strbuild_printf(out, " = load %s%s, ptr %%a%u%s\n", cx->volatile_loads ? "volatile " : "", kind->mem, address,
+                       tbaa_text(cx));
     return;
   }
   uint32_t number = cx->next++;
-  ms_strbuild_printf(out, "  %%l%u = load %s, ptr %%a%u%s\n  ", number, kind->mem, address, tbaa_text(cx));
+  ms_strbuild_printf(out, "  %%l%u = load %s%s, ptr %%a%u%s\n  ", number, cx->volatile_loads ? "volatile " : "", kind->mem,
+                     address, tbaa_text(cx));
   emit_name(out, dst, index);
   switch (kind->widen) {
   case EMIT_SEXT:

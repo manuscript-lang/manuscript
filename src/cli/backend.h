@@ -12,6 +12,7 @@ typedef struct BackendOptions {
   bool tests;    /* start at the test entry (ms_lower_tests) instead of `main` */
   bool bench;    /* with `tests`: the program's `bench` blocks run as the tests (ms_lower_benches) */
   bool count_ops; /* each block counts its operations (`ms bench --ops`) */
+  uint32_t wide_leaves; /* a value of more leaves than this lives in a stack cell; 0 for never */
 } BackendOptions;
 
 /* A compiled program kept for the fault tables: the renamed module and what the tables need to know of it. */
