@@ -57,6 +57,15 @@ add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWO
 add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
 
+# `ms search_symbol` over more files than its budget answers from the first ones and says so.
+add_test(NAME search_budget COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-budget
+  -P ${CMAKE_SOURCE_DIR}/cmake/SearchBudget.cmake)
+
+# A command whose standard output cannot be written fails. Only Linux has /dev/full to write to.
+if(EXISTS /dev/full)
+  add_test(NAME stdout_full COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -P ${CMAKE_SOURCE_DIR}/cmake/StdoutFull.cmake)
+endif()
+
 # Replays recorded language-server sessions (tests/lsp/<case>) over standard input and output.
 file(GLOB MS_LSP_CASES LIST_DIRECTORIES true ${CMAKE_SOURCE_DIR}/tests/lsp/*)
 foreach(case IN LISTS MS_LSP_CASES)
