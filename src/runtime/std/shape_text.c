@@ -1,10 +1,10 @@
 /* The text form of a value, walked through its shape table. See shape_text.h. */
 #include <string.h>
+#include <stdatomic.h>
 #include "base/map.h"
 #include "base/strbuild.h"
 #include "runtime/core/num.h"
 #include "runtime/core/string_text.h"
-#include "runtime/std/bigint.h"
 #include "runtime/std/shape_text.h"
 #include "runtime/std/shape_slot.h"
 
@@ -18,6 +18,12 @@ typedef struct Text {
   MsStrBuild out;
   bool repr;
 } Text;
+
+static _Atomic(MsShapeBigIntText) bigint_text;
+
+void ms_shape_text_set_bigint(MsShapeBigIntText text) {
+  atomic_store_explicit(&bigint_text, text, memory_order_release);
+}
 
 static void emit(Text *text, uint32_t shape, const uint8_t *slot, int depth, bool nested);
 
@@ -274,8 +280,12 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
     emit_alternative(text, shape, value, depth);
     return;
   case MS_SHAPE_BIGINT: {
+    /* A BigInt exists only after the BigInt natives made one, and they installed this hook then. */
+    const MsShapeBigIntText digits_of = atomic_load_explicit(&bigint_text, memory_order_acquire);
     MsString digits = ms_string_empty();
-    msstd_bigint_to_string_radix(*(MsBigCell *const *)(const void *)slot, 10, &digits);
+    if (digits_of != NULL) {
+      digits_of(*(const void *const *)(const void *)slot, &digits);
+    }
     append_owned(text, &digits);
     return;
   }

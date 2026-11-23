@@ -16,6 +16,7 @@
 #include "base/strbuild.h"
 #include "runtime/core/fault_abi.h"
 #include "runtime/core/promise.h"
+#include "runtime/core/release.h"
 #include "runtime/core/task.h"
 #include "runtime/sys/spin.h"
 #include "runtime/sys/sys.h"
@@ -213,6 +214,9 @@ static size_t slot_take(void) {
   }
   if (slot == table.count) {
     if (table.count == table.cap) {
+      if (table.cap == 0) {
+        ms_release_at_exit(ms_streams_release_all);
+      }
       table.cap = table.cap == 0 ? FIRST_ENTRIES : table.cap * 2;
       table.entries = ms_realloc(table.entries, table.cap * sizeof(Entry));
     }
