@@ -44,7 +44,7 @@ test "core parity operations are callable":
 	missing: Int? := null
 	expect_equal(present.map(fn n: n + 1).get(), 3)?
 	expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")?
-	expect_equal((missing or 4).get(), 4)?
+	expect_equal(missing or 4, 4)?
 
 	values: Map[String, Int] := {"a": 1, "b": 2}
 	expect_false(values.is_empty() or values.get_or("absent", 8) != 8)?
