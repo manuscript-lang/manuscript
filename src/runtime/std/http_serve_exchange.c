@@ -6,6 +6,7 @@
 
 #include "base/alloc.h"
 #include "base/chars.h"
+#include "runtime/core/unwind.h"
 #include "runtime/std/http_serve_internal.h"
 #include "runtime/std/time_internal.h"
 
@@ -560,6 +561,7 @@ bool ms_exchange_finish(MsExchange *exchange, int failure) {
     ms_strbuild_append_text(&out, "\r\n");
   }
   MsString err = ms_string_empty();
+  const size_t held = ms_cleanup_push(ms_serve_free_built, (uint8_t *)(void *)&out);
   if (!failed && exchange->sent && !exchange->head_written && !exchange->rejected) {
     close = write_head(exchange, ms_span_of(NULL, 0), 0, &err) != MS_STATUS_OK || close;
   } else if (!failed && exchange->chunked) {
@@ -567,6 +569,7 @@ bool ms_exchange_finish(MsExchange *exchange, int failure) {
   }
   close = close || !drain_request_body(exchange);
   const bool written = ms_serve_send(conn, ms_strbuild_span(&out), MS_NO_DEADLINE, &err) == MS_STATUS_OK;
+  ms_cleanup_discard(held);
   ms_string_release(&err);
   ms_strbuild_free(&out);
   exchange->conn = NULL;

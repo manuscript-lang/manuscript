@@ -20,6 +20,7 @@ typedef struct Queue {
   size_t capacity;
   size_t head;
   size_t length;       /* slots in use, removed ones included */
+  uint64_t head_sequence; /* the sequence number of the entry at `head`: entry `sequence` is at `sequence - head_sequence` */
   _Atomic size_t live; /* entries still wanting to run; thieves read it without the lock to skip an empty queue */
 } Queue;
 
@@ -34,6 +35,7 @@ static void trim(Queue *queue) {
   while (queue->length > 0 && queue->items[queue->head].id == 0) {
     queue->head = (queue->head + 1) % queue->capacity;
     queue->length--;
+    queue->head_sequence++;
   }
   while (queue->length > 0 && queue->items[slot(queue, queue->length - 1)].id == 0) {
     queue->length--;
@@ -52,7 +54,7 @@ static void grow(Queue *queue) {
   queue->head = 0;
 }
 
-bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns) {
+bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns, uint64_t *sequence) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL || id == 0) {
     return false;
@@ -62,30 +64,29 @@ bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns) {
     grow(queue);
   }
   queue->items[slot(queue, queue->length)] = (Entry){id, now_ns, work};
+  *sequence = queue->head_sequence + queue->length;
   queue->length++;
-  atomic_fetch_add_explicit(&queue->live, 1, memory_order_relaxed);
+  atomic_fetch_add(&queue->live, 1); /* ordered against a looker's last look (ms_workers_nudge) */
   ms_spin_unlock(&queue->lock);
   return true;
 }
 
-bool ms_queue_remove(uint32_t isolate, uint64_t id) {
+bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequence) {
   Queue *const queue = queue_of(isolate);
   if (queue == NULL) {
     return false;
   }
   bool found = false;
   ms_spin_lock(&queue->lock);
-  /* Waiters mostly want the newest promise: search from that end. */
-  for (size_t i = queue->length; i > 0 && !found; i--) {
-    Entry *const entry = &queue->items[slot(queue, i - 1)];
+  const uint64_t offset = sequence - queue->head_sequence; /* wraps to a huge value for an entry already trimmed */
+  if (offset < queue->length) {
+    Entry *const entry = &queue->items[slot(queue, (size_t)offset)];
     if (entry->id == id) {
       entry->id = 0;
       atomic_fetch_sub_explicit(&queue->live, 1, memory_order_relaxed);
       found = true;
+      trim(queue);
     }
-  }
-  if (found) {
-    trim(queue);
   }
   ms_spin_unlock(&queue->lock);
   return found;
@@ -114,7 +115,7 @@ bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id, void *
 
 size_t ms_queue_length(uint32_t isolate) {
   const Queue *const queue = queue_of(isolate);
-  return queue == NULL ? 0 : atomic_load_explicit(&queue->live, memory_order_relaxed);
+  return queue == NULL ? 0 : atomic_load(&queue->live);
 }
 
 int64_t ms_queue_oldest(uint32_t isolate) {
@@ -145,6 +146,7 @@ void ms_queue_release(uint32_t isolate, void (*drop)(void *work)) {
   queue->items = NULL;
   queue->capacity = 0;
   queue->head = 0;
+  queue->head_sequence += queue->length;
   queue->length = 0;
   atomic_store_explicit(&queue->live, 0, memory_order_relaxed);
   ms_spin_unlock(&queue->lock);

@@ -65,6 +65,9 @@ static void detail_free(MsFaultDetail *detail) {
 }
 
 void ms_fault_text_free(MsFaultText *text) {
+  if (text->bytes == NULL && text->detail == NULL) {
+    return;
+  }
   ms_free(text->bytes);
   detail_free(text->detail);
   *text = (MsFaultText){0};
@@ -290,8 +293,8 @@ size_t ms_fault_capture_frames(uintptr_t *out, size_t capacity) {
                            window_of(&ms_task_running()->unwind), out, capacity);
 }
 
-/* The frames a task was started from begin inside the standard library's `promise`; the report names where the
- * program started it, so those leading frames are left out. */
+/* The frames a task was started from begin inside the standard library's `promise`; the report names the line
+ * of the program that started it, so those leading frames are left out. */
 static void drop_library_frames(MsFrameList *list) {
   size_t skip = 0;
   while (skip < list->count && is_library_frame(&list->frames[skip])) {
@@ -316,6 +319,7 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
   if (started->count == 0) {
     return;
   }
+  started->count = 1; /* the line that started the work; its callers are not kept (a start walks few frames) */
   /* The report's bytes are an owned block: rebuild it with the new lines on the end. */
   MsStrBuild grown = ms_strbuild_new();
   ms_strbuild_append(&grown, ms_span_of(text->bytes, text->length));

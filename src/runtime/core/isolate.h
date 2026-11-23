@@ -81,8 +81,17 @@ void ms_isolate_idle_leave(void);
  * live isolates in the same bits. Safe from any thread (the watcher reads it). */
 uint64_t ms_isolate_resting(uint64_t *live);
 
-/* Wakes one sleeping isolate other than `except`; false when none sleeps. Safe from any thread. */
+/* Wakes one sleeping isolate other than `except` and marks it nudged; false when none sleeps. Safe from any thread. */
 bool ms_isolate_wake_one(uint32_t except);
+/* Whether this isolate was woken by ms_isolate_wake_one since it last asked. */
+bool ms_isolate_take_nudge(void);
+
+/* Looking: an isolate that rests in timed waits for queued work to become takeable. While one looks, queued work
+ * needs no wake (ms_isolate_any_looking), so a burst of short work costs its creator no system call. The count is
+ * sequentially consistent with the queues: a looker that stops looks at the queues once more afterwards. */
+void ms_isolate_look_begin(void);
+void ms_isolate_look_end(void);
+bool ms_isolate_any_looking(void);
 
 /* Posts `value` to a token of another isolate (or this one): the program-ABI msrt_token_post_remote. */
 void ms_token_post_remote(uint64_t token, uint64_t value);
