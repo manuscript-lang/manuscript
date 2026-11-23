@@ -427,7 +427,8 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   }
   const bool map = ms_ty_is(types, receiver, MS_BUILTIN_Map) && ms_ty_arg_count(types, receiver) == 2;
   const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List) && ms_ty_arg_count(types, receiver) == 1;
-  (void)body_expr(body, index, map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int));
+  const MsTy key = map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int);
+  (void)((list || map || ms_ty_is(types, receiver, MS_BUILTIN_Bytes)) ? body_expect(body, index, key, (MsSpan){0}) : body_expr(body, index, key));
   if (list) {
     body_check_constant_index(body, expr, left, index);
     return ms_ty_args(types, receiver)[0];
