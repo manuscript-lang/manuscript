@@ -50,7 +50,8 @@ jobs:
         if: matrix.container
         run: |
           dnf install -y clang llvm lld ninja-build ccache perl-IPC-Cmd which
-          pip install --quiet 'cmake>=3.25'
+          /opt/python/cp312-cp312/bin/pip install --quiet 'cmake>=3.25'
+          echo /opt/python/cp312-cp312/bin >> "$GITHUB_PATH"
       - uses: ./.github/actions/toolchain
         if: ${{ !matrix.container }}
       - run: cmake --preset release
