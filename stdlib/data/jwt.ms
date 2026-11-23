@@ -124,7 +124,7 @@ export fn verify_token[T: Data = JsonValue](
 
 	header := decode_json[JsonValue](parts[0], check.max_bytes)?
 	if not header_algorithm_matches(
-		header.get("alg").get_or(JsonValue.Null),
+		header.get("alg").clone().get_or(JsonValue.Null),
 		check.algorithm,
 	): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
@@ -268,7 +268,7 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 		)
 
 	if issuer := check.issuer:
-		actual := claims.get("iss").get_or(JsonValue.Null).as_string()
+		actual := claims.get("iss").clone().get_or(JsonValue.Null).as_string()
 		if actual.is_none() or actual.get_or("") != issuer: return error(
 			Error("jwt: wrong issuer", kind: "EBADMSG")
 		)
@@ -291,7 +291,7 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 				)
 
 	if audience := check.audience:
-		if not includes_audience(claims.get("aud").get_or(JsonValue.Null), audience): return error(
+		if not includes_audience(claims.get("aud").clone().get_or(JsonValue.Null), audience): return error(
 			Error("jwt: wrong audience", kind: "EBADMSG")
 		)
 
