@@ -238,6 +238,7 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
     shape.value = data->nargs > 1 ? shape_of(build, data->args[1]) : MS_SHAPE_NONE;
   } else if (data->kind == MK_OBJ) {
     shape.kind = MS_SHAPE_OBJECT;
+    shape.name = add_mir_name(build, data->name);
   }
   (void)layouts;
   build->shapes.ptr[index] = shape;

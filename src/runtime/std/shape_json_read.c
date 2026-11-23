@@ -531,7 +531,23 @@ static bool decode(Decode *state, uint32_t shape_index, uint32_t id, uint8_t *sl
   case MS_SHAPE_RECORD:
   case MS_SHAPE_ALTERNATIVE:
     return decode_composite(state, shape, id, slot, depth);
-  default: /* VOID, BIGINT and DECIMAL without a hook, OPAQUE, FUNCTION, OBJECT: never readable */
+  case MS_SHAPE_OBJECT: {
+    const MsObjectCodec *codec = ms_object_codec(ms_shape_text(state->table, shape->name));
+    MsString text = ms_string_empty();
+    if (codec == NULL || !expect_kind(state, id, KIND_STRING)) {
+      return codec == NULL ? misfit(state, id, shape) : false;
+    }
+    msstd_json_text(state->doc, id, &text);
+    MsObj *object = NULL;
+    const uint8_t status = codec->parse(&text, &object);
+    ms_string_release(&text);
+    if (status != MS_STATUS_OK) {
+      return misfit(state, id, shape);
+    }
+    memcpy(slot, &object, sizeof object);
+    return true;
+  }
+  default: /* VOID, BIGINT and DECIMAL without a hook, OPAQUE, FUNCTION: never readable */
     return misfit(state, id, shape);
   }
 }
