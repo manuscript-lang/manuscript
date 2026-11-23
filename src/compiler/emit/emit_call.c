@@ -204,6 +204,7 @@ void emit_frame_slots(EmitCx *cx) {
         }
         break;
       case MOP_StrByte:
+      case MOP_StrData:
         ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", block, index);
         break;
       case MOP_CallRt:

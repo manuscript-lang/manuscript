@@ -119,7 +119,7 @@ MsSpan mir_cc_name(MirCc cc) {
 static const char *const role_names[] = {
     [MR_BORROWS_ARGUMENT] = "borrows_argument", [MR_STRBUILDER_APPEND] = "strbuilder_append",
     [MR_STRBUILDER_APPEND_INT] = "strbuilder_append_int", [MR_STRING_CONCAT] = "string_concat",
-    [MR_STRING_JOIN] = "string_join", [MR_STRING_APPEND] = "string_append",
+    [MR_STRING_JOIN] = "string_join", [MR_STRING_JOIN_GROW] = "string_join_grow", [MR_STRING_APPEND] = "string_append",
     [MR_INT_TO_STRING] = "int_to_string", [MR_LIST_SORTED] = "list_sorted", [MR_RAW_SLOTS] = "raw_slots",
     [MR_RAW_FREE] = "raw_free", [MR_LIST_SORT_INTS] = "list_sort_ints",
     [MR_LIST_SORTED_BY_DIFFERENCE] = "list_sorted_by_difference", [MR_LIST_NEW] = "list_new",
