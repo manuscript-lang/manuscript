@@ -850,6 +850,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   target.nargs = expr->u.call.args.len;
   if (body_resolve_target(body, callee, expected, &target)) {
     body_deny_opaque_build(body, expr, &target);
+    body_reject_nullable_method(body, expr, &target);
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1),
                        .state = MS_ARENA_NEW_ARRAY(&body->program->arena, uint8_t, expr->u.call.args.len + 1),
