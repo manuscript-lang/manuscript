@@ -307,11 +307,17 @@ typedef struct UwCovered {
   UwHash handle; /* cleanup handle -> slot */
 } UwCovered;
 
+/* A cleanup thunk that closes the value its slot holds: `fn(slot: ptr) -> void`, as lowering makes them. */
+static bool uw_slot_thunk(const MirModule *m, uint32_t g) {
+  return g < m->funcs.len && m->funcs.ptr[g].nparams == 1 && m->funcs.ptr[g].params[0].ty == MIR_PTR &&
+         m->funcs.ptr[g].ret == MIR_VOID;
+}
+
 static bool uw_slot_push(const UwCovered *c, const MirInst *inst, MirValue *slot) {
   MirTy ty = 0;
   uint32_t g = 0;
-  if (!uw_is_func(inst, MOP_CleanupPush, &g) || !uw_slot_close_value(c->m, g, &ty) ||
-    inst->nargs == 0) {
+  if (!uw_is_func(inst, MOP_CleanupPush, &g) || inst->nargs == 0 ||
+    !(uw_slot_close_value(c->m, g, &ty) || uw_slot_thunk(c->m, g))) {
     return false;
   }
   *slot = inst->args[0];
@@ -373,9 +379,13 @@ static void uw_covered_flow(UwCovered *c, const MirFunc *f, const MirBlock *orde
 UwHash uw_covered_slot_takes(MsArena *a, const MirModule *m, const MirFunc *f, bool borrowed_only) {
   UwHash out = {0};
   UwCovered c = {.m = m, .a = a};
+  UwHash field_of = {0}; /* a field address -> the address it lies in */
   bool any = false;
   UW_INSTS(f, b, i, inst) {
     MirValue slot = 0;
+    if (inst->op == MOP_PtrField && inst->res != MIR_NONE && inst->nargs > 0) {
+      (void)uh_put(a, &field_of, inst->res, inst->args[0]);
+    }
     if (uw_slot_push(&c, inst, &slot)) {
       any = true;
       if (inst->res != MIR_NONE) {
@@ -401,8 +411,13 @@ UwHash uw_covered_slot_takes(MsArena *a, const MirModule *m, const MirFunc *f, b
     const MirBlockData *blk = &f->blocks.ptr[order[oi]];
     for (uint32_t n = 0; n < blk->insts.len; n++) {
       const MirInst *inst = &blk->insts.ptr[n];
+      /* A field of a covered slot is covered with it: the slot's close drops the field too. */
+      MirValue root = inst->nargs > 0 ? inst->args[0] : 0;
+      for (uint64_t up = 0; inst->nargs > 0 && uh_get(&field_of, root, &up);) {
+        root = (MirValue)up;
+      }
       if (inst->op == MOP_Take && inst->nargs > 0 && inst->res != MIR_NONE &&
-        uh_has(&covered, inst->args[0]) &&
+        uh_has(&covered, root) &&
         (!borrowed_only || uw_only_borrowed_until_put(m, a, f, inst->res, inst->args[0]))) {
         (void)uh_put(a, &out, inst->res, 0);
       }
