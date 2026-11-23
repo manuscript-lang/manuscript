@@ -13,7 +13,7 @@ runs:
       run: cmake -P cmake/CiMacosEnv.cmake
     - if: runner.os == 'Linux'
       shell: bash
-      run: sudo apt-get install -y ninja-build ccache llvm lld
+      run: sudo apt-get install -y ninja-build ccache llvm lld gdb
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
     # pair OpenSSL's Configure needs.
     - if: runner.os == 'Windows'
