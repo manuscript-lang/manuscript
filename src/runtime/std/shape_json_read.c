@@ -373,6 +373,15 @@ static bool decode_optional(Decode *state, const MsShape *shape, uint32_t id, ui
     return true; /* the slot is zero: none */
   }
   const bool nullable = (shape->flags & MS_SHAPE_NULLABLE) != 0;
+  if ((shape->flags & MS_SHAPE_HEAP_PAYLOAD) != 0) {
+    uint8_t *block = ms_alloc_zeroed(ms_shape_at(state->table, shape->elem)->size);
+    if (!decode(state, shape->elem, id, block, depth + 1)) {
+      ms_free(block);
+      return false;
+    }
+    memcpy(slot, &block, sizeof block);
+    return true;
+  }
   if (!decode(state, shape->elem, id, nullable ? slot : slot + (int32_t)shape->extra, depth + 1)) {
     return false;
   }

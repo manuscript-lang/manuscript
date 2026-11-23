@@ -97,7 +97,7 @@ static MsTy element_type(Body *body, MsTy iterable) {
 }
 
 static void report_pattern(Body *body, MsPos pos, const char *text) {
-  if (body->module < body->program->user_modules && !body->quiet) {
+  if (body_reports(body) && !body->quiet) {
     ms_check_report(body->program, body->module, pos, MS_CHECK_TYPE, ms_string_from_span(ms_span_of_text(text)));
   }
 }
@@ -152,7 +152,7 @@ static void bind_fields(Body *body, const MsPattern *pattern, MsTy ty, bool is_v
         ms_strbuild_append_text(&text, "duplicate type field ");
         ms_strbuild_append(&text, ms_names_span(body->program->names, field->name));
         ms_strbuild_append_text(&text, "; bind each field once");
-        if (body->module < body->program->user_modules && !body->quiet) {
+        if (body_reports(body) && !body->quiet) {
           ms_check_report(body->program, body->module, field->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
         }
         break;
@@ -172,7 +172,7 @@ static void bind_fields(Body *body, const MsPattern *pattern, MsTy ty, bool is_v
       ms_strbuild_append_text(&text, "; fields: ");
       ms_suggest_list(&text, &names, 12);
       ms_span_list_free(&names);
-      if (body->module < body->program->user_modules && !body->quiet) {
+      if (body_reports(body) && !body->quiet) {
         ms_check_report(body->program, body->module, field->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
       }
     }
@@ -203,13 +203,19 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   if (stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.ty != NULL && stmt->u.bind.ty->kind == MS_TYPE_FN) {
     ms_local_list_last(&body->locals)->written_fn = true;
   }
+  const MsExprKind written = stmt->u.bind.value->kind; /* a function name bound to a local does not keep labels */
+  if (stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.ty == NULL && !stmt->u.bind.is_mutable &&
+      (written == MS_E_LAMBDA || written == MS_E_MEMBER || written == MS_E_APPLY)) {
+    MsLocal *bound = ms_local_list_last(&body->locals);
+    bound->fn_params = body_function_params(body, stmt->u.bind.value, value, &bound->fn_module);
+  }
 }
 
 /* `x.field = ...` needs a field of a type value; a method, a case or an unknown member cannot be assigned. */
 static void check_field_target(Body *body, const MsExpr *target) {
   const MsRef *ref = ms_facts_ref(body->facts, target->id);
   if (target->kind != MS_E_MEMBER || (ref != NULL && ref->kind == MS_REF_FIELD) ||
-      body->module >= body->program->user_modules || body->quiet) {
+      !body_reports(body) || body->quiet) {
     return;
   }
   ms_check_report(body->program, body->module, target->pos, MS_CHECK_TYPE,
@@ -257,7 +263,7 @@ static void stmt_for(Body *body, const MsStmt *stmt) {
   const MsTy iterable = body_expr(body, stmt->u.each.iter, MS_TY_NONE);
   const MsTy element = element_type(body, iterable);
   if (element == MS_TY_NONE && iterable != MS_TY_NONE && !holds_invalid(&body->program->types, iterable, 6) &&
-      ms_ty_kind(&body->program->types, iterable) != MS_TY_VARIABLE && body->module < body->program->user_modules &&
+      ms_ty_kind(&body->program->types, iterable) != MS_TY_VARIABLE && body_reports(body) &&
       !body->quiet) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "for requires List, Set, Map, a ReadStream, or an Iterator, found ");
@@ -333,7 +339,7 @@ static void report_optionals_last(Body *body, MsParams params) {
   while (first < params.len && !body_param_omittable(body, params.ptr[first])) {
     first++;
   }
-  if (first == params.len || body->module >= body->program->user_modules || body->quiet) {
+  if (first == params.len || !body_reports(body) || body->quiet) {
     return;
   }
   const MsParam *optional = params.ptr[first];
@@ -503,7 +509,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     /* The constants pass reported an initializer it rejects; the oracle then leaves the annotation alone. */
     body->resolver.report = body->resolver.report && !rejected_value(body, decl->u.konst.value);
     const MsTy declared = decl->u.konst.ty != NULL ? resolver_type(&body->resolver, decl->u.konst.ty) : MS_TY_NONE;
-    body->resolver.report = body->module < body->program->user_modules;
+    body->resolver.report = body_reports(body);
     body->quiet = true; /* the initializer is reported by the constants pass */
     (void)body_expr(body, decl->u.konst.value, declared);
     body->quiet = false;

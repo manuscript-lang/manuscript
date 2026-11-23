@@ -119,12 +119,18 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   const LowerSubst saved_subst = fn->subst;
   MsTy *own_args = NULL;
   const MsSymbol *owner = callee_id != 0 ? &fn->cx->program->symbols.ptr[callee_id] : NULL;
-  if (owner != NULL && owner->var_count != 0 && owner->var_count == call->type_arg_count) {
-    own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, owner->var_count);
-    for (uint32_t at = 0; at < owner->var_count; at++) {
+  const MsTy *own_vars = owner != NULL ? fn->cx->program->symbol_vars.ptr + owner->var_at : NULL;
+  uint32_t own_count = owner != NULL ? owner->var_count : 0;
+  if (method != NULL && method->variables.len >= method->shared) { /* a method's own variables follow its receiver's */
+    own_vars = method->variables.ptr + method->shared;
+    own_count = (uint32_t)(method->variables.len - method->shared);
+  }
+  if (own_count != 0 && own_count == call->type_arg_count) {
+    own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, own_count);
+    for (uint32_t at = 0; at < own_count; at++) {
       own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
     }
-    fn->subst = (LowerSubst){fn->cx->program->symbol_vars.ptr + owner->var_at, own_args, owner->var_count};
+    fn->subst = (LowerSubst){own_vars, own_args, own_count};
   }
   /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
    * would let the default's `var _resource` stand for a caller local with the same number. */
@@ -143,6 +149,30 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
 
 bool fn_is_text_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
+}
+
+void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
+  while (place->kind == MS_E_MEMBER || (place->kind == MS_E_UNARY && place->op == MS_U_TRY)) {
+    place = place->kind == MS_E_MEMBER ? place->u.member.left : place->u.bin.left;
+  }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (!ms_expr_index(place, &container, &key)) {
+    return;
+  }
+  fn_presolve_keys(fn, container);
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+    return;
+  }
+  const MirValue value = fn_expr(fn, key, LW_BORROW);
+  if (value == MIR_NONE) {
+    return;
+  }
+  fn->presolved[fn->npresolved].expr = key;
+  fn->presolved[fn->npresolved++].value = value;
+  MirValue element = MIR_NONE; /* a list element that is not there faults now, before a later argument runs */
+  (void)fn_list_element_addr(fn, place, &element);
 }
 
 /* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
@@ -324,6 +354,13 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                          (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
     /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
     const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
+    const bool receiver_place = index == 0 && (call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE) && arg->source == MS_ARG_WRITTEN;
+    if ((by_slot || receiver_place) && step < call->arg_count) { /* the keys of its place run where it is written, once */
+      const MsExpr *written = fn_written_arg(expr, arg->node.node);
+      if (written != NULL) {
+        fn_presolve_keys(fn, written);
+      }
+    }
     if (phase != step / call->arg_count) {
       continue;
     }

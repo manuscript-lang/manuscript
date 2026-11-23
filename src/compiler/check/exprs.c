@@ -124,7 +124,7 @@ bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsT
   }
   ms_symbol_list_free(&seen);
   (void)expected;
-  if (matches > 1 && at != NULL && !body->quiet && body->module < program->user_modules) {
+  if (matches > 1 && at != NULL && !body->quiet && body_reports(body)) {
     MsStrBuild text = ms_strbuild_new();
     const MsSpan written = ms_names_span(program->names, name);
     ms_strbuild_append_text(&text, "ambiguous alternative case ");
@@ -194,6 +194,16 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
+    if (ref.kind != MS_REF_CONSTANT && symbol->kind == MS_SYMBOL_FN && symbol->var_count != 0 && expected == MS_TY_NONE) {
+      if (!body->quiet && body_reports(body)) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "a generic function value requires explicit specialization; write ");
+        ms_strbuild_append(&text, ms_names_span(body->program->names, name));
+        ms_strbuild_append_text(&text, "[Type] or call it with arguments");
+        ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+      return MS_TY_NONE;
+    }
     return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : generic_as_value(body, symbol, expected);
   }
   const MsSpan text = ms_names_span(body->program->names, name);
@@ -233,7 +243,7 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
   if (!optional && !contract && !bare) {
     return false;
   }
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return true;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -265,7 +275,7 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
 /* `Type.name` where the type has no such case: an enum lists its cases, any other type has none to name. */
 static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
   const MsDef *def = body_def(body, owner);
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return;
   }
   if (def == NULL || def->cases.len == 0) {
@@ -494,7 +504,7 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   if (ms_ty_is(types, receiver, MS_BUILTIN_Bytes)) {
     return body_primitive(body, MS_BUILTIN_UInt8);
   }
-  if (receiver != MS_TY_NONE && !ms_ty_is_invalid(types, receiver) && body->module < body->program->user_modules &&
+  if (receiver != MS_TY_NONE && !ms_ty_is_invalid(types, receiver) && body_reports(body) &&
       !body->quiet) {
     ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_span_of_text(
@@ -548,7 +558,7 @@ static uint8_t context_modes(const MsTyTable *types, MsTy expected, bool shaped,
 
 /* A callback parameter with no written type and no context to take one from. */
 static void report_uninferred_callback(Body *body, const MsParam *param) {
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -566,7 +576,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
   bool miscounted = false;
   if (shaped && ms_ty_param_count(types, expected) != expr->u.lambda.params.len) {
-    if (body->module < body->program->user_modules && !body->quiet) {
+    if (body_reports(body) && !body->quiet) {
       const size_t want = ms_ty_param_count(types, expected);
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_printf(&text, "callback parameter count does not match its context; the context expects %zu parameter%s, "
@@ -581,7 +591,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const size_t mark = body_scope_mark(body);
   for (uint32_t index = 0; index < expr->u.lambda.params.len; index++) {
     const MsParam *param = expr->u.lambda.params.ptr[index];
-    for (uint32_t before = 0; !body->quiet && body->module < body->program->user_modules && before < index; before++) {
+    for (uint32_t before = 0; !body->quiet && body_reports(body) && before < index; before++) {
       if (expr->u.lambda.params.ptr[before]->name == param->name) {
         MsStrBuild text = ms_strbuild_new();
         ms_strbuild_append_text(&text, "duplicate parameter or field ");

@@ -671,6 +671,7 @@ static MirValue take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var) {
 
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
+    fn_presolve_keys(fn, stmt->u.assign.target); /* the target's indices run before the value, once */
     const MirValue value = take_value(fn, stmt->u.assign.value);
     if (value == MIR_NONE) {
       return false;
@@ -921,6 +922,7 @@ static bool lower_call_stmt(LowerFn *fn, const MsStmt *stmt) {
 static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   fn->stmt_loc = fn_loc(fn, stmt->pos);
   mir_b_set_loc(&fn->b, fn->stmt_loc);
+  fn->npresolved = 0;
   switch ((MsStmtKind)stmt->kind) {
     case MS_S_BIND: return lower_bind(fn, stmt);
     case MS_S_ASSIGN: return lower_assign(fn, stmt);

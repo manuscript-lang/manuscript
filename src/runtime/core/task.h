@@ -245,6 +245,10 @@ bool ms_task_stack_overflow_at(uintptr_t address);
 /* Runs `shim(block)` on the task's next stack segment: the recursion check of a cyclic function found the stack
  * pointer below the limit of the current one. The segment is a guarded slot kept until the task ends. */
 MsTaskStatus ms_task_grow(void (*shim)(void *), void *block) MS_NONNULL_ARGS(1);
+/* Runs `fn(arg)`, on the task's next stack segment when fewer than MS_STACK_NATIVE_ROOM bytes remain before its
+ * recursion limit: the check a recursive native makes the way a written cyclic function does. A stack that cannot grow
+ * is a stack overflow fault. */
+void ms_stack_call(void (*fn)(void *), void *arg) MS_NONNULL_ARGS(1);
 /* The segment the running task is on (0 is its home slot). */
 uint32_t ms_task_segment(void);
 /* Puts the running task back on `segment` after a guard exit skipped the returns of the grows above it. */

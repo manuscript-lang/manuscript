@@ -5,7 +5,7 @@
 bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what) {
   const MsTyTable *types = &body->program->types;
   const MsDef *def = body_def(body, ty);
-  if (body->module >= body->program->user_modules || body->quiet || def == NULL || !ms_check_def_opaque(body->program, def)) {
+  if (!body_reports(body) || body->quiet || def == NULL || !ms_check_def_opaque(body->program, def)) {
     return false;
   }
   const MsSymbol *home = &body->program->symbols.ptr[def->symbol];

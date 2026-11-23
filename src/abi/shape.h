@@ -16,7 +16,8 @@
  * cases.
  *   - A shape with MS_SHAPE_BOXED holds one pointer to a heap block with that same layout (recursive types).
  *   - OPTIONAL: with MS_SHAPE_NULLABLE the value is none when the first eight bytes are zero and the payload
- *     is the slot itself; otherwise a presence byte sits at offset 0 and the payload at `extra`.
+ *     is the slot itself (with MS_SHAPE_HEAP_PAYLOAD the slot is a pointer, null for none, to a heap block that
+ *     holds the payload: an optional of a recursive type); otherwise a presence byte sits at offset 0 and the payload at `extra`.
  *   - Result is an ALTERNATIVE (`ok` is case 0, `error` case 1), named Result.
  *
  * Every integer is in the machine's byte order. A table passes MsShapeImage's magic and the static asserts
@@ -61,6 +62,7 @@ enum {
   MS_SHAPE_TEXT_FORM = 1u << 2, /* the shape's hooks supply the text form (its own `to_string`) */
   MS_SHAPE_JSON_FORM =
       1u << 3, /* the shape's hooks supply its JSON form (a JsonEncode, Url, Timestamp, ...) */
+  MS_SHAPE_HEAP_PAYLOAD = 1u << 5, /* OPTIONAL with NULLABLE: the slot points to a heap block holding the payload */
   MS_SHAPE_JSON_TREE = 1u << 4 /* ALTERNATIVE: the untyped JSON value (null, bool, number, string, array, object cases),
                                   written as its own document */
 };
@@ -161,6 +163,9 @@ static inline const uint8_t *ms_shape_resolve(const MsShape *shape, const uint8_
 
 /* The payload of an OPTIONAL slot, or NULL when it is none. */
 static inline const uint8_t *ms_shape_some(const MsShape *shape, const uint8_t *slot) {
+  if ((shape->flags & MS_SHAPE_HEAP_PAYLOAD) != 0) {
+    return *(const uint8_t *const *)(const void *)slot;
+  }
   if ((shape->flags & MS_SHAPE_NULLABLE) != 0) {
     return *(const uint64_t *)(const void *)slot != 0 ? slot : NULL;
   }

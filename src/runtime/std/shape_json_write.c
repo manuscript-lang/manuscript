@@ -4,12 +4,15 @@
 #include "abi/status.h"
 #include "runtime/core/obj.h"
 #include "runtime/std/encoding.h"
+#include "runtime/core/task.h"
 #include "runtime/std/json.h"
+#include "runtime/std/json_internal.h"
 #include "runtime/std/shape_json.h"
 #include "runtime/std/shape_text.h"
 
-/* Deeper data than this has no JSON form: the walk is recursive. */
-enum { MAX_DEPTH = 2048 };
+/* The walk is recursive and grows the task's stack; the writer refuses data nested past JSON_DEPTH_CEILING, and the
+ * walk stops once it has. */
+enum { MAX_DEPTH = 2 * JSON_DEPTH_CEILING };
 
 #define AT(type, address) ((const type *)(const void *)(address))
 
@@ -278,7 +281,7 @@ static int encode_digits(Encode *state, uint32_t shape_index, const uint8_t *slo
   return WRITTEN;
 }
 
-static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int depth) {
+static int encode_here(Encode *state, uint32_t shape_index, const uint8_t *slot, int depth) {
   const MsShape *shape = ms_shape_at(state->table, shape_index);
   if (depth >= MAX_DEPTH) {
     return no_form(state);
@@ -333,6 +336,25 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   default: /* VOID, OPAQUE, FUNCTION */
     return no_form(state);
   }
+}
+
+typedef struct EncodeCall {
+  Encode *state;
+  uint32_t shape_index;
+  const uint8_t *slot;
+  int depth;
+  int result;
+} EncodeCall;
+
+static void encode_call(void *argument) {
+  EncodeCall *call = argument;
+  call->result = encode_here(call->state, call->shape_index, call->slot, call->depth);
+}
+
+static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int depth) {
+  EncodeCall call = {.state = state, .shape_index = shape_index, .slot = slot, .depth = depth};
+  ms_stack_call(encode_call, &call);
+  return call.result;
 }
 
 uint8_t msstd_json_w_value(void *writer, const MsShapeTable *table, const void *slot) {

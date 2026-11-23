@@ -66,7 +66,7 @@ static void merge_group(MsCheckDiag *group, size_t count) {
   size_t next = 0;
   size_t at = 0;
   for (size_t index = 0; index < walk.len; index++) {
-    while (next < side.len && side.ptr[next].pos.offset <= walk.ptr[index].pos.offset) {
+    while (next < side.len && side.ptr[next].pos.offset < walk.ptr[index].pos.offset) {
       group[at++] = side.ptr[next++];
     }
     group[at++] = walk.ptr[index];

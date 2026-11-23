@@ -22,6 +22,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     program->modules.ptr[added].source = module->source;
   }
   program->user_modules = (uint32_t)program->modules.len;
+  program->check_std = true; /* an error in the bundled standard library fails every build that loads it */
   ms_check_load_std(program);
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_declare(program, index);
