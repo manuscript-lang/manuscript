@@ -238,6 +238,7 @@ static uint32_t cleanup_push_extern(LowerCx *cx) {
   const MirTy pair[2] = {MIR_PTR, MIR_PTR};
   const uint32_t push = mirlo_rt(cx, &cx->cleanup_push, "msrt_cleanup_push", pair, 2, MIR_INT);
   cx->module->externs.ptr[push].retains = true;
+  cx->module->externs.ptr[push].handle = true;
   return push;
 }
 
