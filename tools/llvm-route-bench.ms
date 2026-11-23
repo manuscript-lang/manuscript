@@ -31,7 +31,7 @@ fn route_env(inproc: Bool) Map[String, String]:
 	if inproc:
 		vars.add("MS_LLVM", env("MS_LLVM", ""))
 	else:
-		vars.add("MS_LLVM", "")
+		vars.add("MS_LLVM", "none")
 
 	return vars
 

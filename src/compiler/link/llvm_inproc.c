@@ -122,6 +122,13 @@ static bool message_failure(char *message, const char *what, MsStrBuild *why) {
   return false;
 }
 
+bool llvm_usable(MsSpan path) {
+  MsStrBuild why = ms_strbuild_new();
+  const bool usable = load(path, &why);
+  ms_strbuild_free(&why);
+  return usable;
+}
+
 bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why) {
   if (!load(settings->library, why)) {
     return false;
