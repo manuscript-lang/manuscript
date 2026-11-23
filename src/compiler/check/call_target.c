@@ -229,6 +229,10 @@ static bool fits_arguments(const Body *body, const MsMethodMatch *match, size_t 
   for (size_t at = 0; at < total; at++) {
     const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
     const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
+    if (ast == NULL && match->operation != NULL) {
+      const MsMethod *declared = ms_check_operation_declaration(body->program, match->contract, match->operation);
+      ast = declared == NULL ? NULL : &declared->func.params;
+    }
     const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
                                                                        : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
     required += defaulted ? 0 : 1;

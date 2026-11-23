@@ -97,7 +97,10 @@ static Flow expression_flow(const Ctx *ctx, const MsExpr *expr) {
 static Flow value_flow(const Ctx *ctx, const MsExpr *value) {
   const MsTy ty = ms_facts_type(ctx->facts, value->id);
   const bool never = ty != MS_TY_NONE && ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never);
-  return (Flow){.reach = never ? REACH_NO : REACH_YES};
+  /* a match whose every arm returns, or a call whose operand never returns, ends the path as well */
+  const bool ends = !never && (value->kind == MS_E_MATCH || value->kind == MS_E_CALL) &&
+                    expression_flow(ctx, value).reach == REACH_NO;
+  return (Flow){.reach = never || ends ? REACH_NO : REACH_YES};
 }
 
 static Flow branch_flow(const Ctx *ctx, const MsStmt *stmt) {

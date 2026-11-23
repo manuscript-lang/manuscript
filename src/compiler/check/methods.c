@@ -92,6 +92,27 @@ static void append_parameter_names(const Context *context, const MsSymbol *symbo
   ms_strbuild_append_text(text, params.len > 0 ? "]" : "");
 }
 
+/* Whether `name` is written inside `ref`, as a type or a type argument, in any nested position. */
+static bool writes_name(const MsTypeRef *ref, MsName name) {
+  if (ref == NULL) {
+    return false;
+  }
+  if (ref->name == name && ref->args.len == 0 && ref->params.len == 0) {
+    return true;
+  }
+  for (uint32_t index = 0; index < ref->args.len; index++) {
+    if (writes_name(ref->args.ptr[index], name)) {
+      return true;
+    }
+  }
+  for (uint32_t index = 0; index < ref->params.len; index++) {
+    if (writes_name(ref->params.ptr[index]->ty, name)) {
+      return true;
+    }
+  }
+  return writes_name(ref->result, name);
+}
+
 /* Gives the receiver form a fresh variable per type parameter of `symbol`, bounded as the declaration bounds it
  * (and as the form writes), and enters their names. */
 static void enter_form_variables(Context *context, const MsSymbol *symbol, const MsDecl *decl) {
@@ -103,11 +124,26 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
     ms_ty_list_push(&context->fresh, variable);
     /* The name is in scope only where the receiver writes it as a bare argument: `fn Box[Int].get() T` does not. */
     const MsTypeRef *written = index < decl->u.impl.receiver->args.len ? decl->u.impl.receiver->args.ptr[index] : NULL;
-    if (written != NULL && written->name == params.ptr[index]->name && written->args.len == 0) {
+    const bool nested = written != NULL && written->args.len + written->params.len != 0 && writes_name(written, params.ptr[index]->name);
+    if (written != NULL && ((written->name == params.ptr[index]->name && written->args.len == 0) || nested)) {
       ms_name_list_push(&context->resolver.names, params.ptr[index]->name);
       ms_ty_list_push(&context->resolver.types, variable);
     }
   }
+  /* A bound names the type's other parameters: where the form writes a type there, the bound names that type. */
+  MsTyList shown = {0};
+  const bool report = context->resolver.report;
+  context->resolver.report = false;
+  for (uint32_t index = 0; index < params.len; index++) {
+    const MsTypeRef *written = index < decl->u.impl.receiver->args.len ? decl->u.impl.receiver->args.ptr[index] : NULL;
+    const bool bare = written != NULL && written->name == params.ptr[index]->name && written->args.len == 0;
+    const bool named = written != NULL && !bare && !writes_name(written, params.ptr[index]->name);
+    ms_ty_list_push(&shown, named ? resolver_type(&context->resolver, written) : context->fresh.ptr[index]);
+    if (shown.ptr[index] == MS_TY_NONE) {
+      shown.ptr[index] = context->fresh.ptr[index];
+    }
+  }
+  context->resolver.report = report;
   for (uint32_t index = 0; index < params.len; index++) {
     MsTyVariable *record = ms_ty_variable(&program->types, context->fresh.ptr[index]);
     const MsTyVariable *declared =
@@ -115,7 +151,7 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
     for (size_t at = 0; at < declared->bounds.len; at++) {
       ms_ty_list_push(&record->bounds,
                       ms_ty_subst(&program->types, declared->bounds.ptr[at],
-                                  program->symbol_vars.ptr + symbol->var_at, context->fresh.ptr, params.len));
+                                  program->symbol_vars.ptr + symbol->var_at, shown.ptr, params.len));
     }
     for (uint32_t written = 0; written < decl->u.impl.bounds.len; written++) {
       const MsTypeParam *param = decl->u.impl.bounds.ptr[written];
@@ -126,6 +162,7 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
       }
     }
   }
+  ms_ty_list_free(&shown);
 }
 
 /* ---- one method ---- */

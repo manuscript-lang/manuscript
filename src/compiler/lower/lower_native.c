@@ -428,7 +428,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_switch_to(&fn->b, miss);
   fault_missing_key(fn, key, data->args[0]);
   mir_b_switch_to(&fn->b, hit);
-  return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
+  return fn_emit(fn, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
 
 /* The address of the entry `place[key]?` names in a list or map, or a null pointer when there is none (a list index

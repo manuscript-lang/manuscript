@@ -3,6 +3,7 @@
  * A name resolves in this order: `Self`, the declaration's type variables, the primitives, the module's own
  * types, its imports, then the prelude. A qualified name (`mod.Type`) is not resolved yet and is invalid
  * without a diagnostic. A name given type arguments becomes the nominal type applied to them. */
+#include "base/cstr.h"
 #include "compiler/check/resolve_internal.h"
 #include "compiler/check/std_exports.h"
 #include "compiler/check/bounds.h"

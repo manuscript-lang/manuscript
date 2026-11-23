@@ -233,12 +233,9 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   mir_b_seal_block(&fn->b, ok_block);
   mir_b_seal_block(&fn->b, fail_block);
   mir_b_switch_to(&fn->b, ok_block);
-  MirValue value = mir_b_unit(&fn->b);
-  if (has_out) {
-    const MirImm of_type = {.tag = MI_TY, .a = payload_ty};
-    value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload_ty) ? MOP_Take : MOP_Load, &out_slot, 1, of_type,
-                       payload_ty);
-  }
+  /* The payload is read only where the native wrote it: a status that ends the stream leaves the slot empty. */
+  const MirImm payload_imm = {.tag = MI_TY, .a = payload_ty};
+  const MirOp read_op = mir_needs_drop(fn->cx->module, payload_ty) ? MOP_Take : MOP_Load;
   MirValue success;
   if (ends) {
     const MirValue some_ok = mir_b_icmp(&fn->b, MCC_EQ, status, zero);
@@ -248,6 +245,7 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     mir_b_seal_block(&fn->b, some_block);
     mir_b_seal_block(&fn->b, none_block);
     mir_b_switch_to(&fn->b, some_block);
+    const MirValue value = has_out ? mir_b_emit(&fn->b, read_op, &out_slot, 1, payload_imm, payload_ty) : mir_b_unit(&fn->b);
     const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ok_ty);
     const MirValue ok_some = build_result(fn, alt, 0, some, ret);
     mir_b_br(&fn->b, join, &ok_some, 1);
@@ -255,14 +253,18 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ok_ty);
     success = build_result(fn, alt, 0, none, ret);
   } else {
+    const MirValue value = has_out ? mir_b_emit(&fn->b, read_op, &out_slot, 1, payload_imm, payload_ty) : mir_b_unit(&fn->b);
     success = build_result(fn, alt, 0, value, ret);
   }
   mir_b_br(&fn->b, join, &success, 1);
   mir_b_switch_to(&fn->b, fail_block);
-  MirValue said = string_literal(fn, "");
+  MirValue said = MIR_NONE;
   if (has_err) {
     const MirImm of_type = {.tag = MI_TY, .a = MIR_STR};
     said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
+  } else {
+    const MirValue empty = string_literal(fn, "");
+    said = mir_b_emit(&fn->b, MOP_Clone, &empty, 1, (MirImm){0}, MIR_STR); /* an owned one: the callee takes it */
   }
   const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
   const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, module)};

@@ -169,6 +169,7 @@ static MirValue scalar_at(LowerFn *fn, const ForSource *src, MirValue index) {
   const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
   const MirValue args[2] = {src->text, index};
   const MirValue scalar = mir_b_call_rt(&fn->b, ext, args, 2);
+  fn_own_result(fn, scalar); /* a String like any other: the loop body's scope drops it */
   mir_b_def_var(&fn->b, src->width, emit(fn, MOP_StrBytes, &scalar, 1, (MirImm){0}, MIR_INT));
   return scalar;
 }
