@@ -147,7 +147,8 @@ static void build_vtables(DataCx *cx) {
                       .size = nslots * 8,
                       .align = 8,
                       .relocs = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirReloc, nslots)};
-    sym.relocs[sym.nrelocs++] = func_reloc(0, mir_glue_find(cx->glue, MG_BLOCK_DROP, data_ty, 0, 0));
+    sym.relocs[sym.nrelocs++] = func_reloc(0, vtable->close_drop != 0 ? vtable->close_drop - 1
+                                                                     : mir_glue_find(cx->glue, MG_BLOCK_DROP, data_ty, 0, 0));
     for (uint32_t method = 0; method < vtable->nmethods; method++) {
       sym.relocs[sym.nrelocs++] = func_reloc((method + 1) * 8, vtable->methods[method]);
     }

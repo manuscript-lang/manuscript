@@ -204,7 +204,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
   const MirTy iface_ty = lower_type(cx, subst, iface);
   /* Added before its methods are built: a method taking `Self` checks its argument against this vtable. */
   const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len + 1,
-                            lower_type(cx, subst, receiver)};
+                            lower_type(cx, subst, receiver), 0};
   const uint32_t own = mir_add_vtable(cx->module, &vtable);
   for (size_t index = 0; index <= def->operations.len; index++) { /* the last slot is the payload's text */
     const MsName operation = index < def->operations.len ? def->operations.ptr[index].name : text_name;
@@ -236,6 +236,12 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
     if (methods[index] == MIR_NONE) {
       return MIR_NONE;
     }
+  }
+  /* An owned interface value whose payload is a resource closes it where it drops: the vtable's drop slot closes. */
+  const uint32_t closer = lower_vtable_close_drop(cx, receiver,
+                                                  lower_type(cx, subst, receiver));
+  if (closer != MIR_NONE) {
+    cx->module->vtables.ptr[own].close_drop = closer + 1;
   }
   return own;
 }
