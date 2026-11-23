@@ -396,3 +396,17 @@ The Go load generator saturates near 185k req/s, so the earlier two-CPU comparis
 | `/user/42`, 4 (shared with load) | 245–251 | 363–397 | 245–261 |
 
 Manuscript is about 0.55–0.6x of C at every size and level with hyper at two CPUs; at one CPU it is about 0.85x of hyper. The four-CPU row shares CPUs with the load generator, so it shows the ratio, not scaling. A three-CPU row (one load CPU) was limited by the generator and is not reported.
+
+## 2026-11-23, plain TCP reads on the calling thread
+
+After #6665 writes went straight to the socket, but every read still went through the one network loop thread (`uv_read_start`, epoll, wake the waiter). `ms_net_read` now reads on the calling thread first when no read is posted on the connection, the stream is plain TCP and the program has two or more scheduler threads (a connection that has no bytes yet waits on the loop as before; a count of posted reads and the `direct` fence keep the loop's stash, end flag and close ordering intact). On Windows the same path uses a non-blocking `recv` (libuv's Windows TCP reads are zero-length overlapped ones that take no bytes); it has not been run on Windows yet, which needs the Windows CI dispatched on the branch. A write the loop abandoned (`broken`) now makes the direct read decline.
+
+`/health`, C port, release build, 128 keep-alive connections, 4 s, three runs each on the shared 4-CPU VM (±15%), server CPUs (load CPUs), req/s in thousands, median of three with the range:
+
+| Server CPUs | Before (#6665) | After |
+| --- | ---: | ---: |
+| 1 (3) | 72 (54–74) | 74 (67–83) |
+| 2 (2) | 73 (53–86) | 156 (152–173) |
+| 4 (shared with load) | 95 (53–99) | 228 (206–235) |
+
+The two-CPU row had regressed in #6665 (two worker threads plus the loop thread on two CPUs); with the loop out of the read path it doubles. One CPU is unchanged because a single scheduler thread keeps the loop path (without the gate: 58 against 62 on the same runs). hyper at the same sizes is 120, 218–233 and 245–261 (2026-11-22 run).

@@ -9,3 +9,9 @@ a8cc583ca12317494198fe884afea46740db81b4a348cc4214d3aaf31fb033f8  llvm-lib-23.1.
 ab04591cb87af10f763e12c51afba94aa8ebbbb46f9a460cad14498febb0af53  llvm-lib-23.1.1-linux-arm64.tar.gz
 1cf1fde0f57c153a97826a7d7f3a1813017f1ebc46321289a98986552fcdf713  llvm-lib-23.1.1-windows-amd64.tar.gz
 4110218ae19b334f2aec5cccef8733a332d29251c30dde7de866485450714272  llvm-lib-23.1.1-windows-arm64.tar.gz
+d6f699c35289a5d0c4ae11e4ea024f5e964d73ad29bb1a321daaa47514da03db  llvm-tools-23.1.1-darwin-amd64.tar.gz
+79c3ea72392bd1449ce038a8f8e54a4efe8baa2d4ef426ad9b0a6c604abda2ec  llvm-tools-23.1.1-darwin-arm64.tar.gz
+b06a8141521f50c141cd2655b1c8c8155f0d4a174012a0a21b25e94bb2b789f0  llvm-tools-23.1.1-linux-amd64.tar.gz
+638f501f1aa46d8909245c794f719f21e66e0a029fe73932ec92be7baf72a17a  llvm-tools-23.1.1-linux-arm64.tar.gz
+87e648ac216834796aa2096f56220b81880c217da50e8acefcd9d77ae48d402c  llvm-tools-23.1.1-windows-amd64.tar.gz
+075e371441a9d5bff4ca7aca2b4e6db68ab5b7b64ba030683dfbc05513aa98d2  llvm-tools-23.1.1-windows-arm64.tar.gz
