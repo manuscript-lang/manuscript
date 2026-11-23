@@ -6,6 +6,16 @@ BENCHREPEATS ?= 5
 BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 
+# Formatting, nested matches (.ms and Markdown fences), release pins, workflow triggers and the license inventory
+# (tools/repo-check.ms; `make licenses` rewrites the inventory).
+repo-check: build
+	cmake --build --preset ci --target repo-check
+
+licenses: build
+	$(MS) run tools/repo-check.ms -- licenses
+
+licenses-check: repo-check
+
 # Each of these runs tools/<name>.ms with the built ms; the tool's header comment says what it checks.
 TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts resource-matrix close-matrix copy-check removed-check
 
@@ -57,18 +67,7 @@ vscode-install: vscode-package
 	@vsix=$$(node -p 'const p = require("./extensions/vscode/package.json"); "extensions/vscode/" + p.name + "-" + p.version + ".vsix"') && \
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
-# Rust tools kept until they are ported to Manuscript (#6380): repo-check, licenses, docs.
-# Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
-repo-check:
-	cargo run --release --locked -q -p ms-repo-check
-
-# The dependency license inventory: crate licenses from cargo metadata plus bundled notice hashes.
-licenses:
-	cargo run --release --locked -q -p ms-repo-check -- licenses
-
-licenses-check:
-	cargo run --release --locked -q -p ms-repo-check -- licenses -check
-
+# Rust tool kept until it is ported to Manuscript (#6380): docs.
 # The book and API reference come from the Rust docgen (crates/ms-tooling).
 docs:
 	cargo run -q --release --locked -p ms-tooling --bin ms-docgen

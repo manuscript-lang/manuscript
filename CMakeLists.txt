@@ -53,3 +53,12 @@ endfunction()
 ms_conform_target(conform "" "Replaying the conformance corpus and the command fixtures")
 ms_conform_target(conform-commands commands "Replaying the command fixtures")
 
+# Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms).
+add_custom_target(repo-check
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/repo-check.ms
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/repo-check.ms -- licenses --check
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  DEPENDS ms
+  USES_TERMINAL
+  COMMENT "Checking repository invariants")
+

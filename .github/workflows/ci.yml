@@ -53,6 +53,7 @@ jobs:
       - run: cmake --build --preset ci
       - run: ctest --preset ci
       - run: cmake --build --preset ci --target lint
+      - run: cmake --build --preset ci --target repo-check
       # Each check reports on its own: a lint violation does not hide the corpus counts.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target conform
@@ -93,17 +94,6 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: .artifacts/book
-
-  # Repository rules and third-party licenses. Still the Rust ms-repo-check, which does not build while the Rust
-  # tree is red, so it runs on main and by hand only, not on pull requests, until it is ported to Manuscript (#6380).
-  repo-rules:
-    name: repo-rules
-    if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - run: make repo-check licenses-check
 
   # The VS Code extension package.
   checks:
