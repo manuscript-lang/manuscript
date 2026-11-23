@@ -1,6 +1,7 @@
 /* compiler/check/effects_scan.c: the effects scan over a checked program (see effects_scan.h). */
 #include "compiler/check/effects_scan.h"
 
+#include "compiler/check/dispatch_targets.h"
 #include "compiler/check/effects_directives.h"
 #include "compiler/check/properties.h"
 #include "compiler/syntax/walk.h"
@@ -138,90 +139,18 @@ static void note_ref(Scan *scan, const MsRef *ref, MsPos pos) {
   }
 }
 
-/* The definition of an interface type, or NULL. */
-static const MsDef *contract_def(const MsCheckProgram *program, MsTy ty) {
-  const MsTyRow *row = ms_ty_row(&program->types, ty);
-  return row->kind == MS_TY_CONTRACT && row->def != 0 ? ms_defs_get(&program->defs, row->def) : NULL;
-}
+/* A method a view or instantiation runs is an edge of the holder, at the expression. */
+typedef struct Target {
+  Scan *scan;
+  MsPos pos;
+} Target;
 
-/* The methods of `concrete` that `contract`'s operations name are edges of the holder, at `pos`. */
-static void note_implementor(Scan *scan, const MsDef *contract, const MsDef *concrete, MsPos pos) {
-  const MsCheckProgram *program = scan->program;
-  for (size_t index = 0; contract != NULL && concrete != NULL && index < contract->operations.len; index++) {
-    for (size_t at = 0; at < program->methods.len; at++) {
-      const MsMethodEntry *entry = &program->methods.ptr[at];
-      if (entry->name != contract->operations.ptr[index].name || entry->source == NULL ||
-          ms_check_def_of(program, entry->receiver) != concrete) {
-        continue;
-      }
-      const uint32_t *target = node_index_get(&scan->by_decl, decl_key(entry->module, entry->source->id));
-      if (target != NULL) {
-        edge_list_push(&scan->edges, (Edge){.node = scan->holder, .callee = scan->nodes.ptr[*target].id, .pos = pos});
-      }
-    }
-  }
-}
-
-/* A value seen as an interface hands out the methods of its type that the interface's operations name: each is an
- * edge of the holder, where the conversion is. */
-static void note_view(Scan *scan, const MsConversion *conversion, MsPos pos) {
-  const MsCheckProgram *program = scan->program;
-  note_implementor(scan, contract_def(program, conversion->to), ms_check_def_of(program, conversion->from), pos);
-}
-
-/* The symbol of the function declared at `ref`, or NULL. */
-static const MsSymbol *function_symbol(const Scan *scan, const MsRef *ref) {
-  const MsCheckProgram *program = scan->program;
-  for (size_t index = 0; index < program->symbols.len; index++) {
-    const MsSymbol *symbol = &program->symbols.ptr[index];
-    if (symbol->decl != NULL && symbol->module == ref->decl.module && symbol->decl->id == ref->decl.node) {
-      return symbol;
-    }
-  }
-  return NULL;
-}
-
-/* A generic function called at a concrete type reaches that type's methods through the bounds of the parameter
- * (`fn f[T: Show](x: T)` called with a `Point` calls `Point.show` when its body calls `x.show()`): each method a
- * bound's operations name is an edge of the caller, at the call. */
-static void note_closes(Scan *scan, MsTy ty, MsPos pos, uint32_t depth) {
-  const MsCheckProgram *program = scan->program;
-  const MsDef *concrete = ms_check_def_of(program, ty);
-  for (size_t at = 0; concrete != NULL && at < program->methods.len; at++) {
-    const MsMethodEntry *entry = &program->methods.ptr[at];
-    if (entry->source != NULL && ms_span_is_text(ms_names_span(program->names, entry->name), "close") &&
-        ms_check_def_of(program, entry->receiver) == concrete) {
-      const uint32_t *target = node_index_get(&scan->by_decl, decl_key(entry->module, entry->source->id));
-      if (target != NULL) {
-        edge_list_push(&scan->edges, (Edge){.node = scan->holder, .callee = scan->nodes.ptr[*target].id, .pos = pos});
-      }
-    }
-  }
-  const size_t count = ms_ty_arg_count(&program->types, ty);
-  for (size_t index = 0; depth < 4 && index < count; index++) {
-    note_closes(scan, ms_ty_args(&program->types, ty)[index], pos, depth + 1);
-  }
-}
-
-static void note_instantiation(Scan *scan, const MsCall *call, MsPos pos) {
-  const MsCheckProgram *program = scan->program;
-  if (call->callee.kind != MS_REF_FUNCTION || call->type_arg_count == 0) {
-    return;
-  }
-  for (uint32_t index = 0; index < call->type_arg_count; index++) {
-    note_closes(scan, call->type_args[index], pos, 0);
-  }
-  const MsSymbol *symbol = function_symbol(scan, &call->callee);
-  for (uint32_t index = 0; symbol != NULL && index < call->type_arg_count && index < symbol->var_count; index++) {
-    const MsTyRow *row = ms_ty_row(&program->types, program->symbol_vars.ptr[symbol->var_at + index]);
-    const MsDef *concrete = ms_check_def_of(program, call->type_args[index]);
-      if (row->kind != MS_TY_VARIABLE || concrete == NULL) {
-      continue;
-    }
-    const MsTyList *bounds = &program->types.variables.ptr[row->def].bounds;
-      for (size_t bound = 0; bound < bounds->len; bound++) {
-      note_implementor(scan, contract_def(program, bounds->ptr[bound]), concrete, pos);
-    }
+static void note_target(void *context, uint32_t module, uint32_t node) {
+  Target *target = context;
+  const uint32_t *found = node_index_get(&target->scan->by_decl, decl_key(module, node));
+  if (found != NULL) {
+    edge_list_push(&target->scan->edges,
+                   (Edge){.node = target->scan->holder, .callee = target->scan->nodes.ptr[*found].id, .pos = target->pos});
   }
 }
 
@@ -235,13 +164,13 @@ static void visit_expr(void *context, const MsExpr *expr) {
     const MsCall *call = ms_facts_call(facts, expr->id);
     note_ref(scan, call != NULL ? &call->callee : NULL, expr->pos);
     if (call != NULL) {
-      note_instantiation(scan, call, expr->pos);
+      ms_check_instantiation_targets(scan->program, call, note_target, &(Target){scan, expr->pos});
     }
   }
   note_ref(scan, ms_facts_ref(facts, expr->id), expr->pos);
   const MsConversion *conversion = ms_facts_conversion(facts, expr->id);
   if (conversion != NULL && conversion->kind == MS_CONV_INTERFACE_VIEW) {
-    note_view(scan, conversion, expr->pos);
+    ms_check_view_targets(scan->program, conversion, note_target, &(Target){scan, expr->pos});
   }
 }
 
