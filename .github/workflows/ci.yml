@@ -51,7 +51,9 @@ jobs:
       - run: cmake --build --preset ci
       - run: ctest --preset ci
       - run: cmake --build --preset ci --target lint
-      - run: cmake --build --preset ci --target conform
+      # Each check reports on its own: a lint violation does not hide the corpus counts.
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target conform
       - if: always()
         uses: ./.github/actions/save-caches
 
