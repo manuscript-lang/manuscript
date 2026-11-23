@@ -492,10 +492,10 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
 
 bool fn_bind_closing_in(LowerFn *fn, uint32_t scope, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
-  const bool shared_plain = fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED;
   MsCloser plain_closer;
-  const bool plain_record = is_var && local < fn->nvars && mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE &&
-                            (checked == MS_TY_NONE || !ms_own_closer_of(fn->cx->program, checked, &plain_closer));
+  const bool closes = checked != MS_TY_NONE && ms_own_closer_of(fn->cx->program, checked, &plain_closer);
+  const bool shared_plain = fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !closes;
+  const bool plain_record = is_var && local < fn->nvars && mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE && !closes;
   if ((shared_plain || plain_record) && !mir_needs_drop(fn->cx->module, ty)) {
     /* A variable of plain data that a lambda changes, or a `var` record: a slot nothing closes. */
     if (shared_plain) {
