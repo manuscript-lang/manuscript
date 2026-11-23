@@ -312,7 +312,8 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret),
-                         .role = (uint8_t)(views ? MR_VIEW_RESULT : string_role(text))};
+                         .role = (uint8_t)(views ? MR_VIEW_RESULT
+                                           : sig != NULL && sig->spawns ? MR_SPAWNS_TASK : string_role(text))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
