@@ -11,7 +11,7 @@ TAGS: List[String] := [
 	"diagnostics", "mutation", "json-protocol", "docs", "examples", "perf", "fuzz",
 	"bench", "stdlib", "cli", "testing", "aliasing", "tier-core", "tier-stdlib",
 	"tier-io", "cancellation", "defaults", "lowering", "ownership", "resources",
-	"syntax", "text", "var-parameters"
+	"syntax", "text", "var-parameters", "cleanup", "promises"
 ]
 // Projects that bind sockets, wait for signals or spawn processes; they are checked,
 // not run.
