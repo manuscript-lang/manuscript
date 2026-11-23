@@ -128,3 +128,9 @@ int ms_sys_fs_redirect_null(int which) {
   (void)close(null);
   return code;
 }
+
+int ms_sys_fs_refine_error(int code, const char *path, size_t length) {
+  (void)path;
+  (void)length;
+  return code;
+}
