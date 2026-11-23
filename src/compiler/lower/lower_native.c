@@ -584,6 +584,18 @@ bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *t
   return true;
 }
 
+/* Whether `value` was moved out of its place (a field the record gave up), so the place holds nothing of it any more:
+ * a copy read from a map or list leaves the place whole, and the copy is still the scope's to release. */
+static bool left_its_place(LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  for (size_t at = insts->len; at-- > 0;) {
+    if (insts->ptr[at].res == value) {
+      return insts->ptr[at].op == MOP_MoveOut;
+    }
+  }
+  return false;
+}
+
 /* A native that changes its receiver (`var` list or string): the receiver's value moves into a slot, the native
  * writes through the slot's address, and the value in the slot goes back to the place. `wanted[0]` is replaced. */
 static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, MirValue *wanted, uint32_t count,
@@ -827,7 +839,8 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       wanted[0] = slot;
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
-      if (argc > 0 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[0])) && fn_fresh_owner(fn, args[0])) {
+      if (argc > 0 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[0])) && fn_fresh_owner(fn, args[0]) &&
+          left_its_place(fn, args[0])) {
         /* The receiver was read out of its place once already (a `move` method takes a field): the call below takes the
          * place itself, so that read must not be released as well. */
         (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);

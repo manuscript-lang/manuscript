@@ -982,11 +982,6 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     }
     return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  /* A `var` parameter goes back to the caller's variable when the function returns: what another owner took is a copy. */
-  bool var_param = false;
-  for (uint32_t at = 0; at < fn->nvar_params && expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var); at++) {
-    var_param = var_param || fn->var_params[at].var == param_var;
-  }
   if (!borrowed_param && !borrowed_root && !in_var_record && !view_local && !var_param && leaves_binding(fn, expr)) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
