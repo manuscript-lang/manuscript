@@ -385,12 +385,13 @@ fn method_of(move text: String) HttpMethod:
 
 	return HttpMethod.Custom(value: text)
 
-// The closure the runtime calls for each request: it presents the native exchange as
-// an `HttpExchange` to the program's handler.
+// The closure the runtime calls for each request: it presents the native exchange as an
+// `HttpExchange` to the program's handler and answers whether the handler returned an
+// error (the runtime reads one byte, so the error value is released here).
 export fn native_handler(
 	handler: fn(var HttpExchange) Void!
-) fn(move NativeExchange) Void!:
-	return fn(move native: NativeExchange): handler(ServerExchange(native: native))
+) fn(move NativeExchange) Bool:
+	return fn(move native: NativeExchange): handler(ServerExchange(native: native)).is_error()
 
 // Buffered request accepted by the simple HTTP server handler.
 export type HttpRequest:

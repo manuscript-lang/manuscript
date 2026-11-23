@@ -125,7 +125,7 @@ static const char *const role_names[] = {
     [MR_LIST_SORTED_BY_DIFFERENCE] = "list_sorted_by_difference", [MR_LIST_NEW] = "list_new",
     [MR_MAP_NEW] = "map_new", [MR_BYTES_VALUES] = "bytes_values", [MR_STRING_EQ] = "string_eq",
     [MR_CLEANUP_DISCARD] = "cleanup_discard", [MR_CLEANUP_CANCEL] = "cleanup_cancel", [MR_BYTES_APPEND] = "bytes_append",
-    [MR_VIEW_RESULT] = "view_result", [MR_TAKES_DYING] = "takes_dying", [MR_SPAWNS_TASK] = "spawns_task",
+    [MR_VIEW_RESULT] = "view_result", [MR_TAKES_DYING] = "takes_dying", [MR_SPAWNS_TASK] = "spawns_task", [MR_KEEPS_SLOT] = "keeps_slot",
     [MR_SHIELD_ENTER] = "shield_enter", [MR_SHIELD_EXIT] = "shield_exit", [MR_UNWINDING] = "unwinding",
     [MR_MAP_PROBE_INT] = "map_probe_int", [MR_MAP_PROBE_STR] = "map_probe_str",
     [MR_SET_PROBE_INT] = "set_probe_int", [MR_SET_PROBE_STR] = "set_probe_str", [MR_STRING_SLICE] = "string_slice",
