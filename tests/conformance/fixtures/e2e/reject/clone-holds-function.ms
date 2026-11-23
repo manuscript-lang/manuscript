@@ -1,8 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-// A function value owns its captures and has one owner, so a record that holds one is
-// not Clonable: neither `.clone()` nor a copying operation such as `concat` applies to
-// it.
+// A function value never changes once made, so it is shared: a record that holds one
+// can be copied by `concat` and the copies run the same function.
 type Handler:
 	name: String
 	run: fn(Int) Int
