@@ -80,6 +80,7 @@ jobs:
       - if: failure() && runner.os == 'Windows' && matrix.arch == 'arm64'
         shell: msys2 {0}
         run: |
+          clang -O0 probe_va.c -o /tmp/va.exe && /tmp/va.exe; clang -O2 probe_va.c -o /tmp/va2.exe && /tmp/va2.exe
           cd tests/conformance/commands/diagram/overview/input
           ms=$(find "$GITHUB_WORKSPACE/.artifacts/build/debug" -name ms-c.exe | head -1)
           "$ms" diagram ms.toml --view overview > /tmp/out.txt 2> /tmp/err.txt || true
