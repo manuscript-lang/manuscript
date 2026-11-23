@@ -268,7 +268,28 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   return MIR_NONE;
 }
 
+/* `__LINE__` and `__FILE__`: the position of the name itself, and the file it is written in. */
+static MirValue source_constant(LowerFn *fn, const MsExpr *expr) {
+  const MsSpan text = ms_names_span(fn->cx->program->names, expr->u.sym);
+  if (ms_span_is_text(text, "__LINE__")) {
+    return mir_b_iconst(&fn->b, (int64_t)expr->pos.line);
+  }
+  if (!ms_span_is_text(text, "__FILE__")) {
+    return MIR_NONE;
+  }
+  const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, file)};
+  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
 static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
+  const MsRef *named = ms_facts_ref(fn->facts, expr->id);
+  if (named == NULL || named->kind == MS_REF_NONE) {
+    const MirValue constant = source_constant(fn, expr);
+    if (constant != MIR_NONE) {
+      return constant;
+    }
+  }
   return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
@@ -834,12 +855,7 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
-  /* A field of a call's answer that views another owner's value stays there; the move out of it copies. */
-  const MsCall *root_call = expr->kind == MS_E_MEMBER && root->kind == MS_E_CALL ? ms_facts_call(fn->facts, root->id) : NULL;
-  const bool in_call_result = root_call != NULL &&
-                              (root_call->callee.kind == MS_REF_FUNCTION || root_call->callee.kind == MS_REF_METHOD) &&
-                              ms_own_result_is_borrowed(fn->cx->program, root_call->callee.decl.module, root_call->callee.decl.node);
-  if (!borrowed_param && !in_var_record && !view_local && !in_call_result && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

@@ -289,6 +289,16 @@ static void check_arm(Body *body, ArmState *state, const MsArm *arm) {
   }
 }
 
+/* The type an arm names over an interface-typed scrutinee, or none for another arm or scrutinee. */
+static MsTy contract_arm_type(Body *body, const MsArm *arm, MsTy scrutinee) {
+  if (arm->path == NULL || arm->path->kind != MS_E_NAME || ms_ty_kind(&body->program->types, scrutinee) != MS_TY_CONTRACT ||
+      arm->bindings.len != 1) {
+    return MS_TY_NONE;
+  }
+  const MsSymbol *symbol = body_find_symbol(body, arm->path->u.sym);
+  return symbol != NULL && symbol->kind == MS_SYMBOL_TYPE ? symbol->ty : MS_TY_NONE;
+}
+
 static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expected, ArmState *state) {
   check_arm(body, state, arm);
   const size_t mark = body_scope_mark(body);
@@ -302,8 +312,14 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
   if (kase == NULL && bare_payload(body, arm, scrutinee) != MS_TY_NONE) {
     body_set_ref(body, arm->id, (MsRef){.kind = MS_REF_CASE, .index = 1, .local = body->next_local, .owner = scrutinee});
   }
+  /* An arm that names a type over an interface value (`Wrap(w):`) binds the value as that type when it has it. */
+  const MsTy concrete = kase == NULL ? contract_arm_type(body, arm, scrutinee) : MS_TY_NONE;
+  if (concrete != MS_TY_NONE) {
+    body_set_ref(body, arm->id, (MsRef){.kind = MS_REF_TYPE, .local = body->next_local, .owner = scrutinee});
+    body_set_type(body, arm->id, concrete);
+  }
   for (uint32_t at = 0; at < arm->bindings.len; at++) {
-    const MsTy ty = kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
+    const MsTy ty = concrete != MS_TY_NONE ? concrete : kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
     (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id, arm->pos);
   }
   body_block(body, arm->body);
