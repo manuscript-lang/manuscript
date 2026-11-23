@@ -714,6 +714,33 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
       return expr->op == MS_B_NE ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
     }
   }
+  const char *operation = expr->op == MS_B_ADD ? "add" : expr->op == MS_B_SUB ? "subtract" : expr->op == MS_B_MUL ? "multiply"
+                          : expr->op == MS_B_DIV ? "divide" : expr->op == MS_B_REM ? "remainder" : NULL;
+  if (operation != NULL && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, left))->kind == MK_TYPE) {
+    /* A record that declares the operator's operation (`Duration.add`) is calculated by it. */
+    const MsTy checked = lower_source_type(fn->cx, mir_b_ty(&fn->b, left));
+    const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(fn->cx, checked, operation);
+    if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == 2 &&
+        fn->cx->module->funcs.ptr[method].params[1].ty == mir_b_ty(&fn->b, right)) {
+      const MirValue operands[2] = {left, right};
+      const MirValue answer = mir_b_call(&fn->b, method, operands, 2);
+      fn_own_result(fn, answer);
+      return answer;
+    }
+  }
+  if (expr->op == MS_B_LT || expr->op == MS_B_GT || expr->op == MS_B_LE || expr->op == MS_B_GE) {
+    /* A record that declares its own `compare` is ordered by it. */
+    const MirTy operand = mir_b_ty(&fn->b, left);
+    const MsTy checked = mir_ty_data(fn->cx->module, operand)->kind == MK_TYPE && operand == mir_b_ty(&fn->b, right)
+                             ? lower_source_type(fn->cx, operand)
+                             : MS_TY_NONE;
+    const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(fn->cx, checked, "compare");
+    if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == 2 && fn->cx->module->funcs.ptr[method].ret == MIR_INT) {
+      const MirValue operands[2] = {left, right};
+      const MirValue order = mir_b_call(&fn->b, method, operands, 2);
+      return order == MIR_NONE ? order : mir_b_icmp(&fn->b, ops.cc, order, mir_b_iconst(&fn->b, 0));
+    }
+  }
   return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
 

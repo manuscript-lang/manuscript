@@ -108,6 +108,13 @@ static MirValue convert(MirBuilder *b, MirModule *module, MirValue outcome, uint
   return mir_b_emit(b, MOP_AltNew, &payload, 1, failed, ret);
 }
 
+/* Drops `value` when it owns anything: a scalar wrapper's `Result` has nothing to release. */
+static void drop_owned(MirBuilder *b, const MirModule *module, MirValue value) {
+  if (mir_needs_drop(module, mir_b_ty(b, value))) {
+    (void)mir_b_emit(b, MOP_Drop, &value, 1, (MirImm){0}, MIR_NONE);
+  }
+}
+
 /* `fn(move outcome [, move pending]) -> ret`: the function's result for a failed close, `outcome` being the
  * close's `Result`. A function returning a Result with the same error type returns that error (the pending result
  * wins when it already failed); any other function faults, since the close has nowhere to return its error. */
@@ -141,13 +148,13 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
       mir_b_seal_block(&b, keep);
       mir_b_seal_block(&b, replace);
       mir_b_switch_to(&b, keep);
-      (void)mir_b_emit(&b, MOP_Drop, &values[0], 1, none, MIR_NONE);
+      drop_owned(&b, module, values[0]);
       mir_b_ret(&b, values[1]);
       mir_b_switch_to(&b, replace);
-      (void)mir_b_emit(&b, MOP_Drop, &values[1], 1, none, MIR_NONE);
+      drop_owned(&b, module, values[1]);
     }
     if (keeps_pending) {
-      (void)mir_b_emit(&b, MOP_Drop, &values[0], 1, none, MIR_NONE);
+      drop_owned(&b, module, values[0]);
       const MirBlock block = b.cur;
       mir_b_fault(&b, MF_MESSAGE);
       b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
@@ -157,9 +164,7 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
     mir_b_ret(&b, convert(&b, module, values[0], (uint32_t)(from - module->alts.ptr), ret, (uint32_t)(to - module->alts.ptr)));
   } else {
     for (uint32_t at = 0; at < (pending ? 2u : 1u); at++) {
-      if (mir_needs_drop(module, params[at].ty)) {
-        (void)mir_b_emit(&b, MOP_Drop, &values[at], 1, none, MIR_NONE);
-      }
+      drop_owned(&b, module, values[at]);
     }
     const MirBlock block = b.cur;
     mir_b_fault(&b, MF_MESSAGE);

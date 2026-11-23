@@ -18,6 +18,8 @@ typedef struct ForSource {
   MirTy list_ty;
   MirValue text;  /* a `chars` walk: the string, whose scalars are read in place */
   MirVar width;   /* a `chars` walk: the byte length of the scalar the round reads */
+  MirVar var;     /* a borrowed walk of an owning `var`: the loop reads the variable's value, which the loop carries */
+  bool has_var;
   bool cursor, range, chars;
 } ForSource;
 
@@ -231,6 +233,7 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
   const bool place = iter->kind == MS_E_NAME || iter->kind == MS_E_MEMBER;
   const bool fresh = !place && fn_fresh_owner(fn, list);
   *src = (ForSource){.elem = elem, .list_ty = list_ty, .list = list};
+  src->has_var = !moved && !fresh && items == MIR_NONE && fn_owned_local(fn, iter, &src->var);
   if ((moved || fresh) && mir_needs_drop(module, elem)) {
     if (fresh) {
       const MirImm none = {0};
@@ -280,7 +283,7 @@ static MirValue element(LowerFn *fn, const ForSource *src, MirValue index, MirVa
     return scalar_at(fn, src, index);
   }
   if (!src->cursor) {
-    const MirValue args[2] = {src->list, index};
+    const MirValue args[2] = {src->has_var ? mir_b_use_var(&fn->b, src->var) : src->list, index};
     return emit(fn, MOP_ListGet, args, 2, (MirImm){0}, src->elem);
   }
   /* The cursor moves past the element before it is taken, so that leaving the loop anywhere after releases
@@ -398,7 +401,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     held = (VarSlot){NULL, slot, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
   } else if (on_variable) {
     slot = fn_var_slot(fn, iter, &held, NULL, 0);
-    if (slot == MIR_NONE) {
+    if (slot == MIR_NONE || !fn_lend_writeback(fn, &held)) {
       return false;
     }
   } else {
@@ -541,8 +544,11 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   mir_b_seal_block(&fn->b, head);
   mir_b_seal_block(&fn->b, exit);
   enter(fn, exit);
-  if (on_variable && !fn_var_slots_back(fn, &held, 1)) {
-    return false;
+  if (on_variable) {
+    fn_probe_end(fn, false);
+    if (!fn_var_slots_back(fn, &held, 1)) {
+      return false;
+    }
   }
   fn_scope_end(fn);
   return ok && !fn->failed;

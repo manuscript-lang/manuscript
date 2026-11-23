@@ -2,6 +2,7 @@
  * A parameter the function type lets a caller omit crosses it as an optional: a call fills a missing argument with
  * none, and the function takes a none to its default. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -91,13 +92,42 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
   uint32_t ndropped = 0;
   for (uint32_t at = 0; at < from->nargs; at++) {
     args[at + 1] = values[at + 1];
+    const bool gives = mir_owns(to->owned, at), takes = mir_owns(from->owned, at);
     if (from->args[at] != to->args[at]) {
       const MirTyData *want = mir_ty_data(cx->module, from->args[at]);
       const MirTyData *have = mir_ty_data(cx->module, to->args[at]);
+      const MirImm none = {0};
       if (want->kind == MK_OPT && want->elem == to->args[at]) {
-        args[at + 1] = mir_b_emit(&b, MOP_OptSome, &values[at + 1], 1, (MirImm){0}, from->args[at]);
+        /* The function wants an Optional of the argument: it moves in a copy, or looks at the argument as one. */
+        const bool plain = !mir_needs_drop(cx->module, to->args[at]);
+        if (takes && !plain && !gives) {
+          const MirValue copy = mir_b_emit(&b, MOP_Clone, &values[at + 1], 1, none, to->args[at]);
+          args[at + 1] = mir_b_emit(&b, MOP_OptSome, &copy, 1, none, from->args[at]);
+        } else if (plain || gives) {
+          args[at + 1] = mir_b_emit(&b, MOP_OptSome, &values[at + 1], 1, none, from->args[at]);
+          if (!takes && !plain && ndropped < 16) {
+            dropped[ndropped++] = args[at + 1];
+          }
+          continue;
+        } else if (mir_ty_opt_boxed(cx->module, to->args[at])) {
+          const MirValue copy = mir_b_emit(&b, MOP_Clone, &values[at + 1], 1, none, to->args[at]);
+          args[at + 1] = mir_b_emit(&b, MOP_OptSome, &copy, 1, none, from->args[at]);
+          if (ndropped < 16) {
+            dropped[ndropped++] = args[at + 1];
+          }
+        } else {
+          args[at + 1] = mir_b_emit(&b, MOP_OptView, &values[at + 1], 1, none, from->args[at]);
+        }
+        continue;
       } else if (have->kind == MK_OPT && have->elem == from->args[at]) {
-        args[at + 1] = mir_b_emit(&b, MOP_OptGet, &values[at + 1], 1, (MirImm){0}, from->args[at]);
+        args[at + 1] = mir_b_emit(&b, MOP_OptGet, &values[at + 1], 1, none, from->args[at]);
+        if (takes && mir_needs_drop(cx->module, from->args[at])) {
+          args[at + 1] = mir_b_emit(&b, MOP_Clone, &args[at + 1], 1, none, from->args[at]);
+        }
+        if (gives && mir_needs_drop(cx->module, to->args[at]) && ndropped < 16) {
+          dropped[ndropped++] = values[at + 1];
+        }
+        continue;
       } else {
         (void)fn_fail(fn, "a function value of another shape cannot be adapted");
         return MIR_NONE;
@@ -106,7 +136,6 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
     /* The wrapper takes the argument as the new type says and hands it on as the old one does: a value it owns that
      * the function only borrows is dropped after the call, and one the function moves but the wrapper borrows is
      * copied for it. */
-    const bool gives = mir_owns(to->owned, at), takes = mir_owns(from->owned, at);
     if (gives && !takes && mir_needs_drop(cx->module, to->args[at]) && ndropped < 16) {
       dropped[ndropped++] = values[at + 1];
     } else if (!gives && takes && mir_needs_drop(cx->module, from->args[at])) {

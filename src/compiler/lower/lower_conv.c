@@ -2,6 +2,7 @@
  * implements (a vtable of the type's methods, made on first use), and the other conversions. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_layout.h"
 
 static const MsConversion *find_conversion(const MsFacts *facts, MsNode node) {
   size_t lo = 0;
@@ -134,7 +135,7 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
     mir_b_seal_block(&b, no);
     mir_b_switch_to(&b, no);
     if (target.ret == MIR_BOOL) {
-      mir_b_ret(&b, mir_b_emit(&b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_BOOL));
+      mir_b_ret(&b, mir_b_bconst(&b, false));
     } else {
       mir_b_unreachable(&b);
     }
@@ -309,7 +310,12 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     if (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) || (!kept && fn_fresh_owner(fn, value))) {
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
-    /* A view of a value something else owns: `opt.view` is borrowed, so dropping it closes nothing. */
+    /* A view of a value something else owns: `opt.view` is borrowed, so dropping it closes nothing. A boxed Optional
+     * holds its payload in a heap block of its own, which a view cannot own: it holds a copy. */
+    if (mir_ty_opt_boxed(fn->cx->module, mir_b_ty(&fn->b, value))) {
+      value = fn_implicit_clone(fn, value, true);
+      return value == MIR_NONE ? MIR_NONE : fn_emit(fn, MOP_OptSome, &value, 1, none, to);
+    }
     return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {

@@ -188,25 +188,38 @@ bool fn_iflet_writeback(LowerFn *fn, const MsStmt *stmt, MirValue entry) {
   }
   const MirVar var = fn_local(fn, ref->local, data->elem);
   fn->writebacks[fn->nwritebacks++] = (LowerWriteback){var, MIR_NONE, data->elem, fn->nopen, owner,
-                                                       mir_b_ty(&fn->b, entry), true, NULL};
+                                                       mir_b_ty(&fn->b, entry), true, NULL, NULL};
   return true;
 }
 
-/* `if var name = owner:` over an Optional that lives in a closing slot: the Optional is
+/* `if var name = owner:` over an Optional that lives in a closing slot or owns heap data: the Optional is
  * lent out of its place for the body, the binding owns the payload, and the Optional is made again and put back
  * wherever the body is left. */
 bool fn_iflet_lends(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *cond = stmt->u.branch.cond;
   const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(fn->facts, cond->id) : NULL;
-  if (!stmt->u.branch.is_mutable || stmt->u.branch.binding == NULL || stmt->u.branch.binding->kind != MS_P_NAME || ref == NULL ||
-      fn_closing_at(fn, ref, cond->u.sym) == UINT32_MAX) {
+  if (!stmt->u.branch.is_mutable || stmt->u.branch.binding == NULL || stmt->u.branch.binding->kind != MS_P_NAME || ref == NULL) {
     return false;
   }
-  const MirTyData *data = mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, cond->id)));
-  return data->kind == MK_OPT;
+  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, cond->id));
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  MirVar owner;
+  /* An Optional of something that owns heap data is lent too: the binding changes the payload itself, not a view of it. */
+  const bool lent = fn_closing_at(fn, ref, cond->u.sym) != UINT32_MAX ||
+                    (mir_needs_drop(fn->cx->module, ty) && fn_owned_local(fn, cond, &owner));
+  return lent && data->kind == MK_OPT;
 }
 
 /* The then branch of a lent `if var`: the payload leaves the Optional into the binding. */
+/* A `for` over a variable lends it to the iterator slot for the loop: leaving the function meanwhile puts it back. */
+bool fn_lend_writeback(LowerFn *fn, VarSlot *lent) {
+  if (fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
+    return fn_fail(fn, "loops over variables nest too deeply");
+  }
+  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.depth = fn->nopen, .lent = lent};
+  return true;
+}
+
 bool fn_iflet_lend_bind(LowerFn *fn, const MsStmt *stmt, MirValue entry) {
   const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.branch.binding->id);
   const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, entry));
@@ -222,6 +235,10 @@ bool fn_iflet_lend_bind(LowerFn *fn, const MsStmt *stmt, MirValue entry) {
 }
 
 static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
+  if (back->lent != NULL) {
+    (void)fn_var_slots_back(fn, back->lent, 1);
+    return;
+  }
   if (back->place != NULL) {
     const MirValue payload = mir_b_use_var(&fn->b, back->var);
     (void)fn_put_place(fn, back->place, mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, back->owner_ty));

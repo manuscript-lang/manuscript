@@ -43,6 +43,7 @@ typedef struct LowerWriteback {
   MirTy owner_ty; /* with `rewrap`: its type */
   bool rewrap;    /* store back by making the Optional again, not by writing to `address` */
   const MsExpr *place; /* with `rewrap`: the place the Optional was taken from, which the Optional goes back to */
+  struct VarSlot *lent; /* a `for` over a variable: the slot the iterator was lent in, which goes back to its place */
 } LowerWriteback;
 
 enum { LOWER_MAX_WRITEBACKS = 8 };
@@ -433,6 +434,7 @@ bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_iflet_writeback(LowerFn *fn, const MsStmt *stmt, MirValue entry);
 bool fn_iflet_lends(LowerFn *fn, const MsStmt *stmt);
+bool fn_lend_writeback(LowerFn *fn, struct VarSlot *lent);
 bool fn_iflet_lend_bind(LowerFn *fn, const MsStmt *stmt, MirValue entry);
 bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);

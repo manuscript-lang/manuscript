@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
@@ -304,6 +305,10 @@ static bool body_closes(const Lower *cx, const LowerTarget *target) {
 }
 
 static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+  const MirTyData *ret_data = mir_ty_data(cx->module, ret);
+  if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
+    return false; /* a boxed Optional owns the heap block that holds its payload: a view of a part cannot be one */
+  }
   if (target->entry || body_closes(cx, target) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;
@@ -475,7 +480,10 @@ static void finish_body(LowerFn *fn) {
     mir_b_unreachable(&fn->b);
     return;
   }
-  const MirValue done = fn_result_wrap(fn, MIR_NONE);
+  MirValue done = fn_result_wrap(fn, MIR_NONE);
+  if (done == MIR_NONE) {
+    done = fn_default_result(fn);
+  }
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, done);
 }

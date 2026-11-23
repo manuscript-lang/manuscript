@@ -403,7 +403,7 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     return true;
   }
   if (fn_closing_param(fn, base, &slot, &var)) {
-    const MirTy ty = mir_b_ty(&fn->b, mir_b_use_var(&fn->b, var));
+    const MirTy ty = fn->b.vars.ptr[var].ty; /* the declared type: reading the variable would carry it through every loop */
     *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
     return true;
   }
@@ -476,10 +476,16 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
   if (at == MIR_NONE) {
     return false;
   }
-  const MirValue args[3] = {receiver, at, value};
+  const bool map = ms_ty_is(types, owner, MS_BUILTIN_Map);
+  /* A map stores its key as well: the key is the container's own copy, not the borrow the statement read. */
+  const MirValue stored_key = map && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, at)) ? fn_implicit_clone(fn, at, true) : at;
+  if (stored_key == MIR_NONE) {
+    return false;
+  }
+  const MirValue args[3] = {receiver, stored_key, value};
   MirValue out = MIR_NONE;
-  const MsSpan operation = ms_span_of_text(ms_ty_is(types, owner, MS_BUILTIN_Map) ? "add" : "set");
-  fn->native_arg_moves = 1u << 2; /* the stored value is owned and held by no scope: the container takes it */
+  const MsSpan operation = ms_span_of_text(map ? "add" : "set");
+  fn->native_arg_moves = (map && stored_key != at ? 1u << 1 : 0u) | (1u << 2); /* the stored value (and key) are owned and held by no scope: the container takes them */
   const bool done = fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out);
   fn->native_arg_moves = 0;
   if (!done) {
@@ -741,6 +747,9 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
 /* What a function returns when it ends without a value: nothing, except the entry declared Void, which returns
  * the status 0. */
 MirValue fn_default_result(LowerFn *fn) {
+  if (mir_ty_data(fn->cx->module, fn->ret)->kind == MK_OPT) {
+    return mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret); /* an Optional function that returns nothing returns none */
+  }
   return fn->ret == MIR_INT && fn->b.func.ret == MIR_INT && fn->decl_void ? mir_b_iconst(&fn->b, 0) : MIR_NONE;
 }
 
