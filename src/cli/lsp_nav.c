@@ -6,6 +6,8 @@
 
 #include "compiler/syntax/lex.h"
 #include "tooling/doc_comment.h"
+#include "base/file.h"
+#include "cli/lsp_workspace.h"
 #include "tooling/inspect.h"
 
 typedef struct Place {
@@ -30,16 +32,8 @@ static MsSpan source_of(const LspAnalysis *analysis, const MsOccurrence *entry) 
   return analysis->checked.program.modules.ptr[entry->module].source;
 }
 
-/* The URI an editor opened `path` under, else its `file:` URI (in the analysis arena). */
 static MsSpan uri_of(LspAnalysis *analysis, const LspDocList *docs, MsSpan path) {
-  for (size_t i = 0; i < docs->len; i++) {
-    if (ms_span_equal(ms_string_span(&docs->ptr[i].path), path)) return ms_string_span(&docs->ptr[i].uri);
-  }
-  MsStrBuild uri = ms_strbuild_new();
-  lsp_file_uri(path, &uri);
-  const MsSpan copy = ms_arena_copy(&analysis->arena, ms_strbuild_span(&uri));
-  ms_strbuild_free(&uri);
-  return copy;
+  return lsp_path_uri(docs, &analysis->arena, path);
 }
 
 static void write_range(MsStrBuild *out, LspRange range) {
@@ -215,6 +209,51 @@ void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition p
   lsp_analysis_release(&analysis);
 }
 
+/* Whether uses of `selected` can sit in files outside the document's own graph: not a local, not a private function. */
+static bool crosses_files(const LspAnalysis *analysis, const MsOccurrence *selected) {
+  if (ms_span_starts_with(selected->key, ms_span_of_text("binding:")) || ms_span_starts_with(selected->key, ms_span_of_text("parameter:"))) {
+    return false;
+  }
+  const MsCheckProgram *program = &analysis->checked.program;
+  if (selected->symbol != 0 && program->symbols.ptr[selected->symbol].kind == MS_SYMBOL_FN && !program->symbols.ptr[selected->symbol].exported) {
+    return false;
+  }
+  return true;
+}
+
+/* Adds the places of `selected`'s identity found by checking every other file of the project that mentions its name. */
+static void workspace_places(LspAnalysis *analysis, const LspDocList *docs, const LspDoc *doc, const MsOccurrence *selected, bool include,
+                             PlaceList *places) {
+  MsSpanList paths = {0};
+  lsp_workspace_files(&analysis->arena, ms_string_span(&doc->path), &paths);
+  for (size_t i = 0; i < paths.len; i++) {
+    if (ms_span_equal(paths.ptr[i], ms_string_span(&doc->path))) continue;
+    MsBytes bytes = {0};
+    MsSpan text = {0};
+    for (size_t d = 0; d < docs->len; d++) {
+      if (ms_span_equal(ms_string_span(&docs->ptr[d].path), paths.ptr[i])) text = ms_string_span(&docs->ptr[d].text);
+    }
+    const bool on_disk = text.ptr == NULL && ms_file_read(paths.ptr[i], &bytes);
+    if (on_disk) text = ms_bytes_span(&bytes);
+    const bool mentions = text.ptr != NULL && lsp_text_mentions(text, selected->name);
+    if (on_disk) ms_bytes_free(&bytes);
+    if (!mentions) continue;
+    LspDoc entry = {.path = ms_string_from_span(paths.ptr[i])};
+    LspAnalysis other;
+    lsp_analyze(docs, &entry, &other);
+    for (size_t e = 0; other.resolved && e < other.index.len; e++) {
+      const MsOccurrence *candidate = &other.index.ptr[e];
+      if (!ms_span_equal(candidate->key, selected->key) || (!include && candidate->declaration)) continue;
+      const MsSpan source = source_of(&other, candidate);
+      place_list_push(places, (Place){uri_of(analysis, docs, other.paths[candidate->module]),
+                                      {lsp_position(source, candidate->offset), lsp_position(source, candidate->end)}});
+    }
+    lsp_analysis_release(&other);
+    ms_string_release(&entry.path);
+  }
+  ms_span_list_free(&paths);
+}
+
 void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool include_declaration,
                         MsStrBuild *out) {
   LspAnalysis analysis;
@@ -222,6 +261,8 @@ void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition p
   PlaceList places = {0};
   if (select(docs, doc, position, &analysis, &selected)) {
     collect_places(&analysis, docs, selected, include_declaration, false, doc, &places);
+    if (crosses_files(&analysis, selected)) workspace_places(&analysis, docs, doc, selected, include_declaration, &places);
+    if (places.len > 1) qsort(places.ptr, places.len, sizeof(Place), compare_place);
   }
   write_places(out, &places, NULL);
   place_list_free(&places);
