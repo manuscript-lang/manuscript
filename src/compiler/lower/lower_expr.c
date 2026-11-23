@@ -378,7 +378,8 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
     /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
      * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
-    const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+    /* A resource the scope closes by its closer holds nothing a drop frees: it leaves as the field read itself. */
+    const MirValue taken = mir_needs_drop(fn->cx->module, field_ty) ? fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty) : field;
     uint32_t released = ref->index < 32 ? UINT32_C(1) << ref->index : 0;
     released |= fn_close_rest(fn, expr, base, data->id, ref->index);
     const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = released};
