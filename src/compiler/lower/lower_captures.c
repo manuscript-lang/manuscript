@@ -183,7 +183,7 @@ bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out, uint32
       continue;
     }
     if (!have_capture(captures, used, (uint8_t)ref->kind, ref->local, sym)) {
-      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, sym, name, MIR_VOID, false, MIR_VOID};
+      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, sym, name, MIR_VOID, false, MIR_VOID, false};
     }
   }
   *out = captures;
