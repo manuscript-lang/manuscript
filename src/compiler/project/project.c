@@ -1,13 +1,8 @@
 /* compiler/project/project.c: error text and the bundled standard-library table. */
 #include "compiler/project/project_internal.h"
 
+#include "base/message.h"
 #include "base/ostext.h"
-
-MsSpan ms_project_text(MsArena *arena, MsStrBuild *builder) {
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(builder));
-  ms_strbuild_free(builder);
-  return text;
-}
 
 void ms_project_error_message(MsProjectError *error, MsSpan message) {
   *error = (MsProjectError){.kind = MS_PERR_MESSAGE, .message = message};
@@ -48,7 +43,7 @@ MsSpan ms_project_error_text(MsArena *arena, const MsProjectError *error) {
     ms_strbuild_append(&text, error->message);
     break;
   }
-  return ms_project_text(arena, &text);
+  return ms_message_take_builder(arena, &text);
 }
 
 bool ms_std_source_find(MsSpan name, MsStdSource *out) {
@@ -86,5 +81,5 @@ MsSpan ms_project_quote(MsArena *arena, MsSpan text) {
     }
   }
   ms_strbuild_append_byte(&out, '"');
-  return ms_project_text(arena, &out);
+  return ms_message_take_builder(arena, &out);
 }

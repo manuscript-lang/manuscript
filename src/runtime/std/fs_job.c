@@ -20,6 +20,30 @@ void ms_fs_job_free(MsFsJob *job) {
   ms_bytes_free(&job->data);
 }
 
+uint8_t ms_fs_job_finish(MsFsJob *job, MsSpan detail, MsString *err) {
+  MsFail fail = job->fail;
+  job->fail = ms_fail_new();
+  ms_fs_job_free(job); /* a stop request unwinds out of the finish below, so nothing may be left for the caller */
+  return ms_fail_finish_at(&fail, detail, err);
+}
+
+uint8_t ms_fs_job_finish_pair(MsFsJob *job, MsString *err) {
+  MsStrBuild both = ms_strbuild_new();
+  ms_strbuild_append(&both, job->path);
+  ms_strbuild_append_text(&both, " -> ");
+  ms_strbuild_append(&both, job->other);
+  if (ms_fail_cancel_pending(&job->fail)) {
+    ms_strbuild_free(&both);
+    return ms_fs_job_finish(job, ms_span_of(NULL, 0), err);
+  }
+  MsFail fail = job->fail;
+  job->fail = ms_fail_new();
+  ms_fs_job_free(job);
+  const uint8_t status = ms_fail_finish_at(&fail, ms_strbuild_span(&both), err);
+  ms_strbuild_free(&both);
+  return status;
+}
+
 void ms_fs_run(MsFsJob *job, void (*run)(void *job)) {
   /* The only task has nothing to keep running while the call blocks, and handing the job to the pool and back
    * costs two thread wake-ups (about 50 microseconds, most of a small file read). */

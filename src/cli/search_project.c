@@ -3,6 +3,7 @@
  * directory, each checked on its own. A source with errors still lists its declarations; one that does not parse yields nothing. */
 #include "cli/search_project.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "base/dir.h"
@@ -11,7 +12,7 @@
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "compiler/project/project.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/check/std_cache.h"
 #include "tooling/doc_comment.h"
 #include "tooling/facts.h"
@@ -45,7 +46,11 @@ static bool equal_span_key(const MsSpan *a, const MsSpan *b) { return ms_span_eq
 MS_SET_DEFINE(PathSet, path_set, MsSpan, hash_span_key, equal_span_key)
 
 /* What the scan of the tree carries from file to file. */
+enum { MAX_TREE_FILES = 120 }; /* each file costs a full check, about 25 ms, so a whole repository would take minutes */
+
 typedef struct Scan {
+  size_t tree_files;  /* files analysed by the walk of the tree, which the budget bounds */
+  bool truncated;     /* the budget ran out with files left */
   MsSpan query, cwd;
   Candidates candidates;
   PathSet covered; /* the files an analysis loaded as modules */
@@ -95,23 +100,37 @@ static void analyze(MsArena *arena, MsSpan filename, Scan *scan) {
 
 /* Every `.ms` file below `dir` that no analysis covers yet, each checked on its own: dot directories, `node_modules`
  * and `vendor` are skipped. */
+static int64_t entry_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const MsDirEntry *left = (const MsDirEntry *)(const void *)a;
+  const MsDirEntry *right = (const MsDirEntry *)(const void *)b;
+  return ms_span_compare(ms_string_span(&left->name), ms_string_span(&right->name));
+}
+
 static void analyze_tree(MsArena *arena, MsSpan dir, Scan *scan) {
   MsDirEntryList entries = {0};
   if (!ms_dir_list(dir, &entries)) {
     return;
   }
-  for (size_t i = 0; i < entries.len; i++) {
+  /* The host's order differs between machines, and the budget stops the walk part way: sort for one answer. */
+  ms_sort((uint8_t *)entries.ptr, entries.len, sizeof(MsDirEntry), entry_order, NULL);
+  for (size_t i = 0; i < entries.len && !scan->truncated; i++) {
     const MsSpan name = ms_string_span(&entries.ptr[i].name);
     if (name.len == 0 || name.ptr[0] == '.') {
       continue;
     }
     const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
     if (entries.ptr[i].kind == MS_PATH_DIRECTORY) {
-      if (!ms_span_is_text(name, "node_modules") && !ms_span_is_text(name, "vendor")) {
+      if (!ms_project_skips_name(name)) {
         analyze_tree(arena, path, scan);
       }
     } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms")) &&
                !path_set_contains(&scan->covered, path)) {
+      if (scan->tree_files >= MAX_TREE_FILES) {
+        scan->truncated = true;
+        break;
+      }
+      scan->tree_files++;
       analyze(arena, path, scan);
     }
   }
@@ -330,8 +349,7 @@ static MsSpan effects_of(MsArena *arena, const Candidate *c) {
         ms_strbuild_append(&out, entity->permits.ptr[p]);
       }
     }
-    const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-    ms_strbuild_free(&out);
+    const MsSpan text = ms_message_take_builder(arena, &out);
     return text;
   }
   return (MsSpan){0};
@@ -390,6 +408,10 @@ MsSymbolMatches ms_search_project(MsArena *arena, MsSpan query, size_t limit, si
   MsStdCache *std = ms_std_cache_new();
   Scan scan = {.query = query, .cwd = cwd, .std = std};
   analyze_project(arena, cwd, &scan);
+  if (scan.truncated) {
+    (void)fprintf(stderr, "ms search_symbol: searched the first %d .ms files of the folder tree that the project does not "
+                          "import; run it from a narrower folder to search the rest\n", (int)MAX_TREE_FILES);
+  }
   Candidates candidates = scan.candidates;
   path_set_free(&scan.covered);
   if (candidates.len > 1) {

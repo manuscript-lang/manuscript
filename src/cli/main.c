@@ -21,7 +21,7 @@
 #include "cli/fmt_command.h"
 #include "cli/help_command.h"
 #include "cli/init_command.h"
-#include "cli/lsp_command.h"
+#include "lsp/lsp_command.h"
 #include "cli/package_commands.h"
 #include "cli/phases.h"
 #include "cli/profile_command.h"
@@ -49,7 +49,22 @@ static bool is_command(const char *word) {
   return false;
 }
 
+static int dispatch(int argc, char **argv);
+
+/* Runs the command, then reports a standard output that could not be written (a full disk behind
+ * `ms doc > file`, a closed descriptor): the buffered write fails only when the buffer is flushed, after the
+ * command has succeeded, so without this check the truncated output would come with status 0. */
 int main(int argc, char **argv) {
+  const int status = dispatch(argc, argv);
+  const bool flushed = fflush(stdout) == 0 && !ferror(stdout);
+  if (!flushed) {
+    (void)fprintf(stderr, "ms: cannot write to standard output; the output is incomplete\n");
+    return status == 0 ? 1 : status;
+  }
+  return status;
+}
+
+static int dispatch(int argc, char **argv) {
 #ifdef _WIN32
   /* Recorded output is byte exact: no LF to CRLF translation on the standard streams. */
   (void)_setmode(_fileno(stdin), _O_BINARY);

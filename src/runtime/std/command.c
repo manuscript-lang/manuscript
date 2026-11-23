@@ -184,6 +184,9 @@ uint8_t ms_command_finish(MsFail *fail, const MsString *program, const MsString 
   MsStrBuild detail = ms_strbuild_new();
   ms_strbuild_append_text(&detail, "working directory ");
   ms_strbuild_append(&detail, ms_string_span(cwd));
+  if (ms_fail_cancel_pending(fail)) {
+    ms_strbuild_free(&detail); /* the finish below unwinds */
+  }
   const uint8_t status = ms_fail_finish_at(fail, ms_strbuild_span(&detail), err);
   ms_strbuild_free(&detail);
   return status;

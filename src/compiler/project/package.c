@@ -38,19 +38,9 @@ static bool is_space_or_control(MsSpan text) {
   return false;
 }
 
-static bool find_byte(MsSpan text, uint8_t byte, size_t *at) {
-  for (size_t i = 0; i < text.len; i++) {
-    if (text.ptr[i] == byte) {
-      *at = i;
-      return true;
-    }
-  }
-  return false;
-}
-
 bool ms_package_check_spec(MsArena *arena, MsSpan spec, MsSpan *why) {
   size_t hash = 0;
-  const bool split = find_byte(spec, '#', &hash);
+  const bool split = ms_span_find_byte(spec, '#', &hash);
   const MsSpan url = split ? ms_span_of(spec.ptr, hash) : spec;
   const MsSpan tag = split ? ms_span_of(spec.ptr + hash + 1, spec.len - hash - 1) : (MsSpan){0};
   if (!split || url.len == 0 || tag.len == 0 || is_space_or_control(spec)) {

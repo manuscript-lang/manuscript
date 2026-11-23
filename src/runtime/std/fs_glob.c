@@ -642,7 +642,8 @@ uint8_t msstd_fs_glob_entries(const MsString *path, const MsList *patterns, cons
   if (!ms_fail_failed(&walk.fail)) {
     write_found(&walk, out);
   }
-  const uint8_t status = ms_fail_finish_at(&walk.fail, given, err);
+  MsFail fail = walk.fail; /* a stop request unwinds out of the finish, so the walk is freed before it */
+  walk.fail = ms_fail_new();
   walk_free(&walk);
-  return status;
+  return ms_fail_finish_at(&fail, given, err);
 }

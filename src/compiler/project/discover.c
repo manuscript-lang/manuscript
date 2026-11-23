@@ -8,6 +8,7 @@
 #include "base/path.h"
 #include "base/sort.h"
 #include "base/utf8.h"
+#include "base/message.h"
 #include "compiler/project/project_internal.h"
 
 typedef struct Scan {
@@ -24,7 +25,7 @@ static bool is_test_name(MsSpan name) {
          ms_span_is_text(name, "bench.ms") || ms_span_ends_with(name, ms_span_of_text("_bench.ms"));
 }
 
-static bool skipped_name(MsSpan name) {
+bool ms_project_skips_name(MsSpan name) {
   return (name.len > 0 && name.ptr[0] == '.') || ms_span_is_text(name, "vendor") ||
          ms_span_is_text(name, "node_modules");
 }
@@ -67,7 +68,7 @@ static bool enters(const Scan *scan, MsSpan scan_root, bool all, MsSpan path, Ms
     return false;
   }
   return ms_span_equal(path, scan_root) || ms_span_equal(path, scan->root) ||
-         !(skipped_name(name) || is_nested_project(scan->arena, path));
+         !(ms_project_skips_name(name) || is_nested_project(scan->arena, path));
 }
 
 static bool walk_entry(Scan *scan, MsSpan scan_root, bool all, MsSpan path, MsSpan name, bool is_dir);
@@ -86,7 +87,7 @@ static bool walk_children(Scan *scan, MsSpan scan_root, bool all, MsSpan path) {
     const MsSpan name = ms_string_span(&entry->name);
     MsStrBuild child = ms_strbuild_new();
     ms_path_append_joined(&child, path, name);
-    const MsSpan full = ms_project_text(scan->arena, &child);
+    const MsSpan full = ms_message_take_builder(scan->arena, &child);
     if (is_directory_link(full, entry->kind)) {
       continue;
     }
@@ -98,7 +99,7 @@ static bool walk_children(Scan *scan, MsSpan scan_root, bool all, MsSpan path) {
         ms_strbuild_append_text(&text, "discovered source path \"");
         ms_strbuild_append(&text, full);
         ms_strbuild_append_text(&text, "\" is not valid UTF-8; rename the file or directory using valid UTF-8");
-        ms_project_error_message(scan->error, ms_project_text(scan->arena, &text));
+        ms_project_error_message(scan->error, ms_message_take_builder(scan->arena, &text));
         ok = false;
       }
       continue;
@@ -131,26 +132,13 @@ static bool scan_tree(Scan *scan, MsSpan root, bool all) {
   return walk_entry(scan, root, all, root, ms_path_file_name(root), kind == MS_PATH_DIRECTORY);
 }
 
-static int64_t span_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  const MsSpan *x = (const void *)a;
-  const MsSpan *y = (const void *)b;
-  const size_t common = x->len < y->len ? x->len : y->len;
-  for (size_t i = 0; i < common; i++) {
-    if (x->ptr[i] != y->ptr[i]) {
-      return x->ptr[i] < y->ptr[i] ? -1 : 1;
-    }
-  }
-  return x->len == y->len ? 0 : (x->len < y->len ? -1 : 1);
-}
-
 bool ms_project_discover(MsArena *arena, MsSpan root, MsSpan source, bool include_source, MsSpanList *files,
                          MsProjectError *error) {
   MsSpanList found = {0};
   Scan scan = {.arena = arena, .root = root, .source = source, .include_source = include_source,
                .files = &found, .error = error};
   const bool ok = (!include_source || scan_tree(&scan, source, true)) && scan_tree(&scan, root, false);
-  ms_sort((uint8_t *)found.ptr, found.len, sizeof(MsSpan), span_order, NULL);
+  ms_sort((uint8_t *)found.ptr, found.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   for (size_t i = 0; ok && i < found.len; i++) {
     if (i == 0 || !ms_span_equal(found.ptr[i - 1], found.ptr[i])) {
       ms_span_list_push(files, found.ptr[i]);

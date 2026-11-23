@@ -24,8 +24,7 @@ MsSpan ms_invocation_quote(MsArena *arena, MsSpan text) {
     ms_strbuild_append_byte(&out, text.ptr[i]);
   }
   ms_strbuild_append_byte(&out, '"');
-  const MsSpan quoted = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan quoted = ms_message_take_builder(arena, &out);
   return quoted;
 }
 
@@ -101,8 +100,7 @@ static int resolve_input(MsArena *arena, MsSpan command, MsSpan *filename) {
   }
   MsStrBuild manifest = ms_strbuild_new();
   ms_path_append_joined(&manifest, *filename, ms_span_of_text("ms.toml"));
-  const MsSpan path = ms_arena_copy(arena, ms_strbuild_span(&manifest));
-  ms_strbuild_free(&manifest);
+  const MsSpan path = ms_message_take_builder(arena, &manifest);
   if (ms_path_kind(path) == MS_PATH_MISSING) {
     return ms_usage_error(arena, ms_message_format(arena, "ms %S: %S is a directory without an ms.toml; pass a .ms file "
                                                           "or a project ms.toml, e.g. ms %S ms.toml",

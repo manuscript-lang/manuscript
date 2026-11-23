@@ -880,9 +880,6 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
 }
 
 static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
-  if (fn->nloops == LOWER_MAX_LOOPS) {
-    return fn_fail(fn, "loops nest too deeply");
-  }
   const MirBlock head = mir_b_new_block(&fn->b);
   const MirBlock body = mir_b_new_block(&fn->b);
   const MirBlock done = mir_b_new_block(&fn->b);
@@ -901,7 +898,7 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   mir_b_br_if(&fn->b, cond, body, NULL, 0, done, NULL, 0);
   mir_b_seal_block(&fn->b, body);
   enter(fn, body);
-  fn->loops[fn->nloops++] = (LowerLoop){done, head, fn->nopen};
+  fn_loop_push(fn, done, head);
   const bool ok = lower_block(fn, stmt->u.loop.body);
   fn->nloops--;
   if (!fn->terminated) {

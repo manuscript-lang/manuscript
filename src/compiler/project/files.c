@@ -4,6 +4,7 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "base/message.h"
 #include "compiler/project/manifest.h"
 #include "compiler/project/workspace.h"
 
@@ -16,7 +17,8 @@ static bool stat_failure(MsArena *arena, MsSpan target, MsProjectError *error) {
   return false;
 }
 
-static bool absolute_target(MsArena *arena, MsSpan target, MsSpan *absolute, MsProjectError *error) {
+/* The absolute, cleaned spelling of `target`, against the working directory. */
+bool ms_project_absolute_path(MsArena *arena, MsSpan target, MsSpan *absolute, MsProjectError *error) {
   MsStrBuild joined = ms_strbuild_new();
   if (ms_path_is_absolute(target)) {
     ms_strbuild_append(&joined, target);
@@ -33,7 +35,7 @@ static bool absolute_target(MsArena *arena, MsSpan target, MsSpan *absolute, MsP
   MsStrBuild cleaned = ms_strbuild_new();
   ms_path_clean(&cleaned, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
-  *absolute = ms_project_text(arena, &cleaned);
+  *absolute = ms_message_take_builder(arena, &cleaned);
   return true;
 }
 
@@ -65,7 +67,7 @@ bool ms_project_format_files(MsArena *arena, MsSpan target, MsSpanList *paths, M
   MsSpan root = {0};
   MsSpan source = {0};
   MsSpan entry = {0};
-  if (!absolute_target(arena, target, &absolute, error)) {
+  if (!ms_project_absolute_path(arena, target, &absolute, error)) {
     return false;
   }
   MsString real = ms_string_empty();
@@ -104,7 +106,7 @@ bool ms_project_workspace_members(MsArena *arena, MsSpan target, MsSpanList *man
   if (!ms_span_is_text(ms_path_file_name(target), "ms.toml") || !ms_file_is_regular(target)) {
     return true;
   }
-  if (!absolute_target(arena, target, &absolute, error)) {
+  if (!ms_project_absolute_path(arena, target, &absolute, error)) {
     return false;
   }
   MsWorkspace workspace = {0};

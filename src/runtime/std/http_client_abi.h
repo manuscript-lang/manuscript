@@ -35,8 +35,6 @@ MS_NODISCARD uint8_t ms_http_handle_send(const MsObj *handle, const MsHttpReques
 /* Whether the client behind the handle ended, or this handle is the last that names it. */
 bool ms_http_client_handle_closed(const MsObj *handle);
 
-/* Makes http_client.h wait through scheduler tokens. Once per process, before any task runs. */
-void ms_http_install_task_waiter(void);
 /* Ends the engine thread and frees its loop, for a process that ends with balanced books (MS_FREE_AT_EXIT); a no-op
  * when no request ever ran. */
 void ms_http_engine_release_all(void);

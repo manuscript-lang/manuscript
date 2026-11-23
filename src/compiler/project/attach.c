@@ -37,7 +37,7 @@ static bool fail(Wiring *w, MsSpan message) {
 static MsSpan joined(MsArena *arena, MsSpan left, MsSpan right) {
   MsStrBuild path = ms_strbuild_new();
   ms_path_append_joined(&path, left, right);
-  return ms_project_text(arena, &path);
+  return ms_message_take_builder(arena, &path);
 }
 
 static const MsPackage *loaded_id(const Wiring *w, MsSpan id) {

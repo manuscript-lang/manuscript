@@ -162,7 +162,7 @@ static MirMode param_mode(uint8_t flags) {
   return (flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : MM_BORROW;
 }
 
-enum { LOWER_MAX_PARAMS = 32 };
+enum { LOWER_MAX_PARAMS = 33 }; /* the checker allows 32 declared parameters; a method's receiver is one more */
 
 /* The parameters of a target as MIR sees them: a method's receiver, then the signature's parameters. */
 static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyParam *out) {
@@ -503,13 +503,14 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
       fn->closing_types[fn->nvars + index] = ty;
       continue;
     }
-    if ((params[index].flags & MS_PARAM_VAR) != 0 && fn->nvar_params < LOWER_MAX_VAR_PARAMS) {
+    if ((params[index].flags & MS_PARAM_VAR) != 0) {
       const MirTy ty = fn_type(fn, params[index].ty);
       const bool owns = mir_needs_drop(fn->cx->module, ty);
       const MirImm of_type = {.tag = MI_TY, .a = ty};
       const MirValue held = mir_b_emit(&fn->b, owns ? MOP_Take : MOP_Load, &values[index], 1, of_type, ty);
       fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, owns ? MM_MOVE : MM_BORROW);
       mir_b_def_var(&fn->b, fn->param_vars[index], held);
+      fn->var_params = fn_grow(fn, fn->var_params, &fn->var_params_cap, fn->nvar_params, sizeof(LowerVarParam));
       fn->var_params[fn->nvar_params++] = (LowerVarParam){fn->param_vars[index], values[index], ty};
       continue;
     }

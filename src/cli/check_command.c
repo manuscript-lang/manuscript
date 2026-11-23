@@ -19,10 +19,10 @@
 #include "compiler/syntax/diag_json.h"
 #include "cli/check_fix.h"
 #include "cli/check_selection.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/display.h"
-#include "cli/findings.h"
-#include "cli/snippet.h"
+#include "tooling/findings.h"
+#include "tooling/snippet.h"
 #include "cli/watch.h"
 #include "tooling/lint.h"
 

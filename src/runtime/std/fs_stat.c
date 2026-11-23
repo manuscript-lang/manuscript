@@ -148,8 +148,7 @@ uint8_t msstd_fs_stat(const MsString *path, uint8_t follow, MsFsInfo *out, MsStr
     ms_fs_info_fill(out, &job.stat);
     out->name = ms_string_from_span(ms_strbuild_span(&job.text));
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -177,8 +176,7 @@ uint8_t msstd_fs_exists(const MsString *path, uint8_t follow, int64_t *out, MsSt
   if (!ms_fail_failed(&job.fail)) {
     *out = job.found ? 1 : 0;
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -211,8 +209,7 @@ uint8_t msstd_fs_stat_filesystem(const MsString *path, MsFsFilesystem *out, MsSt
     out->files = (int64_t)job.filesystem.f_files;
     out->files_free = (int64_t)job.filesystem.f_ffree;
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -317,8 +314,6 @@ uint8_t msstd_fs_list(const MsString *path, uint8_t has_limit, int64_t limit, Ms
     *out = job.entries;
     job.entries = (MsList){0};
   }
-  const uint8_t status = ms_fail_finish_at(&job.base.fail, job.base.path, err);
   entries_free(&job.entries);
-  ms_fs_job_free(&job.base);
-  return status;
+  return ms_fs_job_finish(&job.base, job.base.path, err);
 }

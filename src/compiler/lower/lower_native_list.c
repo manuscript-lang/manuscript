@@ -5,11 +5,7 @@
 #include "compiler/mir/mir_analysis.h"
 
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
-  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
-  const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
-  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, mir_b_iconst(&fn->b, 0));
-  const MirValue at = mir_b_select(&fn->b, negative, from_end, index);
-  const MirValue args[2] = {list, at};
+  const MirValue args[2] = {list, index}; /* the op counts a negative index from the end */
   return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 

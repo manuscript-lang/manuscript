@@ -51,16 +51,11 @@ static void add_input(MsArena *arena, CheckSelection *out, MsSpan path) {
 
 /* ---- the .ms files below a directory ---- */
 
-static bool skipped_directory(MsSpan name) {
-  return (name.len > 0 && name.ptr[0] == '.') || ms_span_is_text(name, "vendor") ||
-         ms_span_is_text(name, "node_modules");
-}
-
 static bool selectable(MsArena *arena, MsSpan directory, const MsDirEntry *entry, bool *is_dir) {
   const MsSpan name = ms_string_span(&entry->name);
   *is_dir = entry->kind == MS_PATH_DIRECTORY;
   if (*is_dir) {
-    return !skipped_directory(name) &&
+    return !ms_project_skips_name(name) &&
            ms_path_kind(ms_cli_joined(arena, ms_cli_joined(arena, directory, name), ms_span_of_text("ms.toml"))) == MS_PATH_MISSING;
   }
   const bool linked_directory = entry->kind == MS_PATH_SYMLINK && ms_dir_exists(ms_cli_joined(arena, directory, name));

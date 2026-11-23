@@ -98,25 +98,6 @@ static const MsCallSite *site_at(const MsFlow *flow, const MsExpr *e) {
   return NULL;
 }
 
-/* The fact key of the entity with `id`, or empty. */
-static MsSpan key_of(const MsFlow *flow, MsSpan id) {
-  size_t low = 0;
-  size_t high = flow->inspection->entities.len;
-  while (low < high) {
-    const size_t mid = low + (high - low) / 2;
-    const int order = ms_span_compare(flow->inspection->entities.ptr[mid].id, id);
-    if (order == 0) {
-      return flow->keys[mid];
-    }
-    if (order < 0) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
-  }
-  return (MsSpan){0};
-}
-
 /* The node of a call or constant use, and whether it spawns; NULL when it is not a step. */
 static MsViewNode *call_node(const MsFlow *flow, const MsExpr *e, bool *spawn) {
   const MsCallSite *site = site_at(flow, e);
@@ -124,7 +105,7 @@ static MsViewNode *call_node(const MsFlow *flow, const MsExpr *e, bool *spawn) {
     return NULL;
   }
   *spawn = site->spawn;
-  const MsSpan key = key_of(flow, site->target);
+  const MsSpan key = ms_entity_key(flow->inspection, flow->keys, site->target);
   MsViewNode *node = ms_view_node(flow->arena, (MsSpan){0});
   if (key.len > 0) {
     node->kind = ms_span_of_text("call");

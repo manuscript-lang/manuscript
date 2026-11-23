@@ -116,15 +116,10 @@ uint8_t msstd_process_set_groups(const MsList *groups, MsString *err) {
   return apply_groups(list, groups->len, err);
 }
 
-static bool has_byte(MsSpan span, uint8_t byte) {
-  size_t at = 0;
-  return ms_span_find(span, ms_span_of(&byte, 1), &at);
-}
-
 /* `gid` first, then the groups of `username`, each once. */
 uint8_t msstd_process_initialize_groups(const MsString *username, int64_t gid, MsString *err) {
   const MsSpan name = ms_string_span(username);
-  if (!in_id_range(gid) || name.len == 0 || has_byte(name, 0)) {
+  if (!in_id_range(gid) || name.len == 0 || ms_span_has_byte(name, 0)) {
     return invalid(err);
   }
   MsOsText text = ms_os_text_new(name);
@@ -202,7 +197,7 @@ uint8_t msstd_process_title(MsString *out, MsString *err) {
 
 uint8_t msstd_process_set_title(const MsString *title, MsString *err) {
   const MsSpan text = ms_string_span(title);
-  if (has_byte(text, 0) || has_byte(text, '\n')) {
+  if (ms_span_has_byte(text, 0) || ms_span_has_byte(text, '\n')) {
     return invalid(err);
   }
   char *copy = ms_alloc(text.len + 1);

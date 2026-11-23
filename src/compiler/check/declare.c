@@ -3,6 +3,7 @@
  * Gives every type, enum, interface, alias, function and constant a symbol and a scope entry. A type-like
  * declaration also gets its (still empty) definition and nominal type, so later passes can name it before its
  * fields are resolved. A name already in scope is a duplicate. */
+#include "abi/prelude.h"
 #include "compiler/check/lazy_std.h"
 #include "base/alloc.h"
 #include "compiler/check/program.h"
@@ -218,19 +219,10 @@ static void report_duplicate(MsCheckProgram *program, uint32_t module, const MsD
   ms_check_report(program, module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
 }
 
-static const char *const PRELUDE_NAMES[] = {"Equal",    "Stringable", "Comparable", "Hashable", "Clonable",
-                                            "Optional", "Result",     "Error",      "List",     "Map",
-                                            "Set",      "ListEntry",  "MapEntry",   "print"};
-
 /* Whether `name` is declared by the prelude, which every module sees under that name. */
 static bool is_prelude_name(const MsCheckProgram *program, MsName name) {
   const MsSpan text = ms_names_span(program->names, name);
-  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_NAMES); index++) {
-    if (ms_span_is_text(text, PRELUDE_NAMES[index])) {
-      return true;
-    }
-  }
-  return false;
+  return ms_is_prelude_type(text) || ms_span_is_text(text, "print");
 }
 
 static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const MsDecl *decl, MsName name) {
