@@ -19,6 +19,7 @@ void emit_debug_init(EmitDebug *debug) {
   debug->block_nodes = NULL;
   debug->nfiles = 0;
   debug->func_file = MIR_NONE;
+  memset(debug->basic_types, 0, sizeof debug->basic_types);
 }
 
 void emit_debug_free(EmitDebug *debug) {
@@ -88,7 +89,8 @@ uint32_t emit_debug_subprogram(EmitCx *cx, uint32_t index) {
   debug->func_file = func->loc.file;
   const uint32_t file = file_node(cx, func->loc.file);
   ms_strbuild_printf(&debug->nodes, "!%u = distinct !DISubprogram(name: \"", debug->subprogram);
-  append_quoted(&debug->nodes, ms_names_span(&cx->module->names, func->name));
+  /* A debugger finds `work`, not the symbol `work.1` (a linkage name would make gdb show the symbol). */
+  append_quoted(&debug->nodes, ms_names_span(&cx->module->names, func->display != MS_NAME_EMPTY ? func->display : func->name));
   ms_strbuild_printf(&debug->nodes,
                      "\", scope: !%u, file: !%u, line: %u, type: !%u, scopeLine: %u, spFlags: DISPFlagDefinition, "
                      "unit: !%u)\n",
@@ -174,13 +176,82 @@ void emit_debug_place(EmitCx *cx, size_t from, MirLoc loc) {
   tag_text(cx->out, from, location_node(cx->debug, line, scope, scope_node(cx, file)));
 }
 
+/* DWARF base type encodings. */
+enum { DW_BOOLEAN = 2, DW_FLOAT = 4, DW_SIGNED = 5, DW_UNSIGNED = 7 };
+
+typedef struct ScalarInfo {
+  uint32_t kind;
+  const char *name;
+  uint32_t bits, encoding;
+} ScalarInfo;
+
+static const ScalarInfo scalars[] = {
+    {MK_BOOL, "Bool", 8, DW_BOOLEAN},     {MK_INT, "Int", 64, DW_SIGNED},       {MK_FLOAT, "Float", 64, DW_FLOAT},
+    {MK_INT8, "Int8", 8, DW_SIGNED},      {MK_INT16, "Int16", 16, DW_SIGNED},   {MK_INT32, "Int32", 32, DW_SIGNED},
+    {MK_FLOAT32, "Float32", 32, DW_FLOAT}, {MK_UINT8, "UInt8", 8, DW_UNSIGNED}, {MK_UINT16, "UInt16", 16, DW_UNSIGNED},
+    {MK_UINT32, "UInt32", 32, DW_UNSIGNED}, {MK_UINT64, "UInt64", 64, DW_UNSIGNED},
+};
+
+/* The DIBasicType of scalar type `ty`, or 0 when it is not one. */
+static uint32_t basic_type(EmitCx *cx, MirTy ty) {
+  const uint32_t kind = mir_ty_data(cx->module, ty)->kind;
+  for (size_t at = 0; at < sizeof scalars / sizeof scalars[0]; at++) {
+    if (scalars[at].kind != kind) {
+      continue;
+    }
+    EmitDebug *debug = cx->debug;
+    if (debug->basic_types[at] == 0) {
+      debug->basic_types[at] = debug->next++;
+      ms_strbuild_printf(&debug->nodes, "!%u = !DIBasicType(name: \"%s\", size: %u, encoding: %u)\n",
+                         debug->basic_types[at], scalars[at].name, scalars[at].bits, scalars[at].encoding);
+    }
+    return debug->basic_types[at];
+  }
+  return 0;
+}
+
+void emit_debug_params(EmitCx *cx) {
+  EmitDebug *debug = cx->debug;
+  const MirFunc *func = cx->func;
+  if (debug == NULL) {
+    return;
+  }
+  for (size_t at = 0; at < func->names.len; at++) {
+    const MirNamedValue *named = &func->names.ptr[at];
+    uint32_t arg = 0;
+    for (uint32_t param = 0; param < func->nparams && arg == 0; param++) {
+      arg = func->blocks.ptr[0].params.ptr[param].value == named->value ? param + 1 : 0;
+    }
+    const MirTy ty = arg == 0 ? MIR_NONE : func->params[arg - 1].ty;
+    /* An inlined callee's names (scope above 0) belong to its own frame, which has no subprogram of its own yet. */
+    if (arg == 0 || !named->param || named->scope != 0 || emit_is_indirect(cx, ty)) {
+      continue;
+    }
+    const MsSpan leaves = emit_leaves(cx, ty);
+    const uint32_t type = leaves.len == 1 ? basic_type(cx, ty) : 0;
+    if (type == 0) {
+      continue;
+    }
+    const uint32_t variable = debug->next++;
+    const uint32_t line = func->loc.line;
+    ms_strbuild_printf(&debug->nodes, "!%u = !DILocalVariable(name: \"", variable);
+    append_quoted(&debug->nodes, ms_names_span(&cx->module->names, named->name));
+    ms_strbuild_printf(&debug->nodes, "\", arg: %u, scope: !%u, file: !%u, line: %u, type: !%u)\n", arg,
+                       debug->subprogram, file_node(cx, func->loc.file), line, type);
+    ms_strbuild_printf(cx->out, "  call void @llvm.dbg.value(metadata %s ", emit_leaf_type(leaves.ptr[0]));
+    emit_name(cx->out, named->value, 0);
+    ms_strbuild_printf(cx->out, ", metadata !%u, metadata !DIExpression()), !dbg !%u\n", variable,
+                       location_node(debug, line, cx->body_scope, debug->subprogram));
+  }
+}
+
 void emit_debug_finish(const EmitCx *cx, MsSpan source) {
   EmitDebug *debug = cx->debug;
   MsStrBuild *out = cx->out;
   ms_strbuild_printf(out,
                      "\n!llvm.dbg.cu = !{!%u}\n!llvm.module.flags = !{!%u}\n"
                      "!%u = distinct !DICompileUnit(language: DW_LANG_C99, file: !%u, producer: \"ms\", "
-                     "isOptimized: true, runtimeVersion: 0, emissionKind: LineTablesOnly)\n"
+                     "isOptimized: true, runtimeVersion: 0, emissionKind: FullDebug)\n"
                      "!%u = !DIFile(filename: \"",
                      MD_UNIT, MD_FLAGS, MD_UNIT, MD_FILE, MD_FILE);
   append_quoted(out, source);

@@ -3,6 +3,7 @@
  * a work list until nothing is left. */
 #include "base/fatal.h"
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/closers.h"
 #include "compiler/mir/mir_layout.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/result_borrows.h"
@@ -431,6 +432,7 @@ typedef struct ParamWrites {
   const MsFacts *facts;
   uint32_t index;
   bool found;
+  bool moves; /* a field leaves the parameter */
 } ParamWrites;
 
 static void note_param_write(void *ctx, const MsStmt *stmt) {
@@ -467,21 +469,53 @@ static void note_param_move(void *ctx, const MsExpr *expr) {
       writes->found = true;
     }
   }
-  if (expr->kind != MS_E_MEMBER || expr->u.member.left->kind != MS_E_NAME ||
-      ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
+  if (expr->kind != MS_E_MEMBER || ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
     return;
   }
-  const MsRef *ref = ms_facts_ref(writes->facts, expr->u.member.left->id);
+  const MsExpr *base = expr->u.member.left;
+  while (base->kind == MS_E_MEMBER) { /* `param.field.part` leaves the parameter partly moved too */
+    base = base->u.member.left;
+  }
+  if (base->kind != MS_E_NAME) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(writes->facts, base->id);
   if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
     writes->found = true;
+    writes->moves = true;
   }
 }
 
-static bool assigns_into_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
-  ParamWrites writes = {fn->facts, index, false};
+static ParamWrites param_writes(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
+  ParamWrites writes = {fn->facts, index, false, false};
   const MsVisitor visitor = {.ctx = &writes, .stmt = note_param_write, .expr = note_param_move};
   ms_walk_block(&visitor, target->func->body);
-  return writes.found;
+  return writes;
+}
+
+static bool assigns_into_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
+  return param_writes(fn, target, index).found;
+}
+
+/* Whether a `move` record parameter lives in a cell: the body assigns its fields and moves none out (a partly moved
+ * record needs the per-field mask only an owned variable keeps). */
+static bool cell_param(const LowerFn *fn, const LowerTarget *target, uint32_t index) {
+  const ParamWrites writes = param_writes(fn, target, index);
+  return writes.found && !writes.moves;
+}
+
+/* Records the source name of a by-value parameter for the debugger (`self` for the receiver). */
+static void note_param_name(LowerFn *fn, const LowerTarget *target, uint32_t index, MirValue value) {
+  const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
+  MsName name = MS_NAME_EMPTY;
+  if (index < offset) {
+    name = mir_name(fn->cx->module, ms_span_of_text("self"));
+  } else if (index - offset < target->func->params.len) {
+    name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, target->func->params.ptr[index - offset]->name));
+  }
+  if (name != MS_NAME_EMPTY) {
+    mir_named_value_list_push(&mir_b_func(&fn->b)->names, (MirNamedValue){value, name, true, 0});
+  }
 }
 
 /* Declares the parameters as variables and gives the function scope the owned ones. */
@@ -515,6 +549,7 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
       continue;
     }
     const MirTy ty = mir_b_ty(&fn->b, values[index]);
+    note_param_name(fn, target, index, values[index]);
     const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
     const MsParam *declared = (params[index].flags & MS_PARAM_MOVE) != 0 && index >= offset && index - offset < target->func->params.len
                                   ? target->func->params.ptr[index - offset]
@@ -529,11 +564,22 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
       (void)fn_own_param(fn, index, checked, values[index], fn->param_vars[index], closer != NULL && (closer->flags & MS_CLOSER_FIELDS) != 0);
       continue;
     }
+    if ((params[index].flags & MS_PARAM_MOVE) != 0 && mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE &&
+        mir_needs_drop(fn->cx->module, ty) && index < LOWER_MAX_CLOSING_PARAMS && cell_param(fn, target, index) &&
+        !(checked != MS_TY_NONE && ms_own_closer_of(fn->cx->program, ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count), &(MsCloser){0}))) {
+      /* A record parameter the body assigns fields of lives in a slot its scope owns, like a local. */
+      fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);
+      if (fn_own_param(fn, index, checked, values[index], fn->param_vars[index], false)) {
+        fn->closing_var[fn->nvars + index] = true;
+        fn->closing_types[fn->nvars + index] = ty;
+      }
+      continue;
+    }
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));
     mir_b_def_var(&fn->b, fn->param_vars[index], values[index]);
     if ((params[index].flags & MS_PARAM_MOVE) != 0 && mir_needs_drop(fn->cx->module, ty)) {
       if (assigns_into_param(fn, target, index)) {
-        (void)fn_scope_own_var(fn, fn->param_vars[index]); /* the variable owns what it holds */
+        (void)fn_scope_own_var(fn, fn->param_vars[index], checked); /* the variable owns what it holds */
       } else {
         fn_own(fn, fn_scope(fn), values[index]);
       }

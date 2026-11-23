@@ -17,6 +17,12 @@ typedef struct LowerOwnedVar {
   MsTy checked;   /* the record's checked type once a field moved, so the scope end can close the fields left */
   MirVar mask;    /* the fields handed on along the path taken, as a bit mask; a record's variable only */
   bool has_mask;
+  bool leaves;    /* a record whose fields the body hands on: an exit before the first move closes the fields it still holds */
+  uint32_t partial; /* fields of the record that handed a part of their own on (`record.field.part`); also in `moved` */
+  uint64_t nbits;   /* the parts handed on, bit `field * 8 + part` */
+  MirVar nmask;     /* the parts handed on along the path taken, same layout; a record that holds a record field only */
+  bool has_nmask;
+  MsTy inner[8];    /* the checked type of each partial field */
   bool released;  /* a return is handing the whole value on: the unwind it starts must not own it */
   MirValue pinned; /* the value an inner scope's end owns for it while a close failure may leave the function, else MIR_NONE */
 } LowerOwnedVar;
@@ -101,7 +107,9 @@ typedef struct LowerFn {
   MirTy default_record_ty;
   uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
-  bool *holds_value;     /* by local id: the body assigns the whole local or moves a field out of it, so it stays a variable, not a cell */
+  bool *holds_value;    /* by local id: a field of the local is moved out, so it stays a variable that keeps the mask of what is left */
+  uint32_t cell_old_at;  /* local + 1 while `x = rhs` is lowered: the cell of `x` has given its value up, and `rhs` reads it as `cell_old` */
+  MirValue cell_old;
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
@@ -194,23 +202,39 @@ void fn_scope_pop(LowerFn *fn);
 void fn_scope_unwind(LowerFn *fn, uint32_t keep);
 /* The innermost open scope. */
 uint32_t fn_scope(const LowerFn *fn);
-/* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
-bool fn_scope_own_var(LowerFn *fn, MirVar var);
+/* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. `leaves` is the
+ * checked type of a record the body hands fields of on (MS_TY_NONE otherwise). */
+bool fn_scope_own_var(LowerFn *fn, MirVar var, MsTy leaves);
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
 void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field, MsTy checked);
+/* The variable handed part `part` of its field `field` on (`name.field.part`): the field's other parts stay with it. */
+bool fn_scope_var_moved_part(LowerFn *fn, MirVar var, uint32_t field, uint32_t part, MsTy checked, MsTy field_type);
+/* The parts of record fields handed on, for `fn_close_left_fields`: `partial` fields, their `bits` and the `flag` of the
+ * parts handed on along this path (bit `field * 8 + part`), and the checked type of each partial field. */
+typedef struct LowerPartMoves {
+  uint32_t partial;
+  uint64_t bits;
+  MirValue flag;
+  const MsTy *inner;
+} LowerPartMoves;
 /* Settles what the record `value` (of checked type `record`) still holds, last field first: a resource field closes,
  * and a field that only owns memory drops when it is one of `maybe` (the fields handed on along some path, whose
  * `flag` bit says whether this path did). `taken` fields are gone already. Returns `taken` with the fields handled
  * added, which the record's release then skips. */
 uint32_t fn_close_left_fields(LowerFn *fn, MirValue value, MsTy record, uint32_t taken, const MirVar *owner, uint32_t maybe,
-                              MirValue flag);
+                              MirValue flag, const LowerPartMoves *parts);
 void fn_scope_var_released(LowerFn *fn, MirVar var, bool released);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
 bool fn_is_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
+/* The field `expr` (field number `index`) of an owned variable (`name.field`) or of one of its fields (`name.field.part`)
+ * leaves it: records the move; false when the record is not an owned variable. */
+bool fn_move_field(LowerFn *fn, const MsExpr *expr, uint32_t index);
+/* Whether the body hands fields of the record local `local` (of MIR type `ty`) on, so a variable owns it. */
+bool fn_leaves_fields(const LowerFn *fn, uint32_t local, MirTy ty);
 bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
 bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record, bool store);
@@ -310,6 +334,12 @@ bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent);
 /* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
 void fn_init_closing(LowerFn *fn);
 /* The index in the closing tables of the `var` variable (local or parameter) `ref` names that lives in a slot, or UINT32_MAX. */
+/* `x = rhs` on a record local that lives in a cell: the cell gives the old record up before `rhs` is lowered, and `rhs`
+ * reads it as a value (`fn_cell_old_read`), so a dying receiver is a value the optimizer can move from, as for a variable.
+ * `fn_cell_takes_back` drops what `rhs` did not move and stores the new value. */
+bool fn_cell_gives_up(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked);
+bool fn_cell_old_read(const LowerFn *fn, const MsRef *ref, MsName name, MirValue *value);
+void fn_cell_takes_back(LowerFn *fn, const MsRef *ref, MsName name, MirValue value);
 uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
 /* A value an assignment replaced: the innermost scope closes it where it ends. */
 bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old);
@@ -342,6 +372,7 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 /* As `fn_place_changeable`, or a member path through the `?` of such a place (`n?.next`): the receiver of `n?.next?.change()`. */
 bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
+bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out);
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
 bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);
@@ -364,6 +395,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
+/* A new empty map or set of type `ty`: a pure, fresh runtime call, so an unused one is removed. */
+MirValue fn_empty_map(LowerFn *fn, MirTy ty);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
 bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first);

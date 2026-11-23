@@ -96,6 +96,7 @@ static const Step late_steps[] = {
     {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
+    {"thread", opt_thread},
     {"bytetake", opt_bytetake},
     {"copyelim takes", opt_copyelim_takes},
     {"simplify", opt_simplify},

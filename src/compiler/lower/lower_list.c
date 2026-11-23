@@ -94,7 +94,7 @@ MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty) {
   const MirTy elem_ty = list->elem;
   const MirImm set_imm = {.tag = MI_TY, .a = ty};
   const MirImm elem_imm = {.tag = MI_TY, .a = elem_ty};
-  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  const MirValue empty = fn_empty_map(fn, ty);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirValue set_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, set_imm, MIR_PTR);
   const MirValue created[2] = {set_slot, empty};
@@ -143,7 +143,7 @@ bool fn_list_group_by(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *ou
   const MirImm map_imm = {.tag = MI_TY, .a = ret};
   const MirImm key_imm = {.tag = MI_TY, .a = key_ty};
   const MirImm group_imm = {.tag = MI_TY, .a = group_ty};
-  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ret);
+  const MirValue empty = fn_empty_map(fn, ret);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirValue map_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, map_imm, MIR_PTR);
   const MirValue created[2] = {map_slot, empty};
@@ -232,7 +232,7 @@ bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue 
   const MirImm map_imm = {.tag = MI_TY, .a = ret};
   const MirImm key_imm = {.tag = MI_TY, .a = key_ty};
   const MirImm value_imm = {.tag = MI_TY, .a = value_ty};
-  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ret);
+  const MirValue empty = fn_empty_map(fn, ret);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirValue map_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, map_imm, MIR_PTR);
   const MirValue created[2] = {map_slot, empty};
@@ -286,7 +286,7 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
     (void)fn_fail(fn, "a map literal is not typed as a map");
     return MIR_NONE;
   }
-  const MirValue empty = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  const MirValue empty = fn_empty_map(fn, ty);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirImm of_map = {.tag = MI_TY, .a = ty};
   const MirValue map = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_map, MIR_PTR);

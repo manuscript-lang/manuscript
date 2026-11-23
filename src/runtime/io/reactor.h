@@ -19,6 +19,8 @@ enum {
   MS_IO_BIT_HUP = 4,
   /* Interest only: keep the descriptor's handle after the event instead of closing it on unwatch. */
   MS_IO_BIT_KEEP = 32,
+  /* Interest only: the caller's system call just reported nothing more to take; report the next edge (edge.h). */
+  MS_IO_BIT_EDGE = 256,
 };
 
 /* A descriptor that became ready. The layout equals MsPollReady (core/task.h). */
@@ -54,6 +56,17 @@ void ms_io_kick(void);
 /* Watches `fd` once for the MS_IO_BIT_READ and MS_IO_BIT_WRITE bits of `events` (neither: reads), reporting it at
  * once if it is already ready. MS_IO_BIT_KEEP keeps the descriptor's handle across waits until ms_io_forget. */
 MsIoWatch ms_io_watch(int fd, uint32_t events);
+
+/* Whether the calling thread's reactor registers descriptors edge-triggered (MS_IO_BIT_EDGE). */
+bool ms_io_edge_supported(void);
+
+/* Registers `fd` for `cookie` (a number that names this connection among the ones that ever had the descriptor
+ * number) and clears the bits in `bits` of what edges reported. Call it before the system call whose "nothing more"
+ * ends in a wait with MS_IO_BIT_EDGE. False when edges cannot be used for the descriptor. */
+bool ms_io_edge_reset(int fd, uint64_t cookie, uint32_t bits);
+
+/* Whether an edge for `bits` arrived since ms_io_edge_reset: the descriptor may have more to take. */
+bool ms_io_edge_ready(int fd, uint32_t bits);
 
 /* Stops watching `fd`. */
 void ms_io_unwatch(int fd);

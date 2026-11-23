@@ -67,6 +67,7 @@ b4():
   %20: int = iconst 1 !2:19:20
   %21: int = isub.chk %19, %20 !2:19:20
   ret %21 !2:19:20
+  name %0 "items" param 0
 }
 
 fn @print[String](%0: str, %1: str) -> void !1:0:0 {
@@ -80,6 +81,8 @@ b0:
   drop %5
   drop %4
   ret !1:187:5
+  name %0 "value" param 0
+  name %1 "end" param 0
 }
 
 fn @read_number(%0: str) -> Result[Int, Failure] !2:0:0 {
@@ -110,6 +113,7 @@ b6():
   %13: Failure = alt.new Failure.Bad %12 !2:13:26
   %14: Result[Int, Failure] = alt.new Result[Int, Failure].error %13 !2:13:12
   ret %14 !2:13:12
+  name %0 "text" param 0
 }
 
 fn @get_or[Int,Failure](%0: move Result[Int, Failure], %1: move opt<int>) -> int !1:0:0 {
@@ -137,6 +141,8 @@ b6():
   %8: str = str "called Result.get_or with a none default" !1:345:5
   %9: void = call.rt @msrt_panic (%8) !1:345:5
   unreachable !1:345:5
+  name %0 "self" param 0
+  name %1 "default" param 0
 }
 
 fn @area(%0: Shape) -> int !2:0:0 {
@@ -145,4 +151,5 @@ b0:
   %2: int = type.get Shape.height %0 !2:9:5
   %3: int = imul.chk %1, %2 !2:9:5
   ret %3 !2:9:5
+  name %0 "shape" param 0
 }

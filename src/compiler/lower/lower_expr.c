@@ -211,6 +211,9 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (fn_lambda_name(fn, expr, ref, &captured)) {
     return captured;
   }
+  if (fn_cell_old_read(fn, ref, expr != NULL && expr->kind == MS_E_NAME ? expr->u.sym : 0, &captured)) {
+    return captured;
+  }
   if (fn_closing_read(fn, ref, expr != NULL && expr->kind == MS_E_NAME ? expr->u.sym : 0, &captured)) {
     return captured;
   }
@@ -295,30 +298,6 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
   return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
-/* `self.value` in a method of a type set: `self` is the variable `Self`, so the checker knew no field. Once the call
- * binds `Self` to a member, the field is looked up by name in that member's record. */
-static bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out) {
-  const MsTy left = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.member.left->id), fn->subst.vars,
-                                fn->subst.args, fn->subst.count);
-  if (left == MS_TY_NONE || fn->subst.count == 0) {
-    return false;
-  }
-  const MirTyData *data = mir_ty_data(fn->cx->module, fn_type(fn, left));
-  if (data->kind != MK_TYPE) {
-    return false;
-  }
-  const MirTypeDef *def = &fn->cx->module->type_defs.ptr[data->id];
-  const MsSpan name = ms_names_span(fn->cx->program->names, expr->u.member.name);
-  for (uint32_t index = 0; index < def->nfields; index++) {
-    if (ms_span_equal(name, ms_names_span(&fn->cx->module->names, def->fields[index].name))) {
-      out->kind = MS_REF_FIELD;
-      out->index = index;
-      return true;
-    }
-  }
-  return false;
-}
-
 /* `value.field`: a field of a record, read from the value in place. */
 static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const bool taking = fn->taking_member == expr;
@@ -339,7 +318,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   MirValue in_place = MIR_NONE;
-  if (late.kind != MS_REF_FIELD && !taking && fn_read_field_in_place(fn, expr, &in_place)) {
+  if (late.kind != MS_REF_FIELD && fn_read_field_in_place(fn, expr, &in_place)) {
     return in_place;
   }
   const MirValue read = fn_expr(fn, expr->u.member.left, LW_BORROW);
@@ -356,14 +335,12 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MirTy read_ty = late.kind == MS_REF_FIELD ? fn->cx->module->type_defs.ptr[data->id].fields[ref->index].ty
                                                    : fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, read_ty);
-  MirVar owner = 0;
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
                                         expr->u.member.left->kind == MS_E_CALL);
   const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
-  if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
-    fn_scope_var_moved(fn, owner, ref->index, ms_facts_type(fn->facts, expr->u.member.left->id));
+  if (moves && fn_move_field(fn, expr, ref->index)) {
     /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
     return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }

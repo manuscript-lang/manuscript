@@ -81,6 +81,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 add_subdirectory(${MS_TP}/nghttp2 EXCLUDE_FROM_ALL)
 set_target_properties(nghttp2_static PROPERTIES SYSTEM ON)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/openssl.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/libpsl.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/curl.cmake)
 # The vendored files must match the lock (offline).
 add_test(NAME third_party_lock
