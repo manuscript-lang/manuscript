@@ -259,28 +259,36 @@ static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const 
   return outcome;
 }
 
-/* Compares the work counters of every measured bench with the `--baseline` result and reports each one that rose by
- * more than `--fail-over` percent. `*regressed` says whether any did; false when the baseline cannot be read. */
-static bool check_baseline(MsArena *arena, const MsTestOptions *options, const DocumentCase *cases, size_t count,
-                           bool *regressed) {
-  const MsSpan path = options->baseline;
+/* The `benches` array of the `--baseline` result at `path`, or NULL with the reason on stderr. */
+static const MsJson *read_baseline(MsArena *arena, MsSpan path) {
   MsBytes bytes = {0};
   if (!ms_file_read(path, &bytes)) {
     test_print(stderr, ms_message_format(arena, "cannot read --baseline %S; check that the file exists and can be read\n", path,
                                          (MsSpan){0}));
-    return false;
+    return NULL;
   }
   const MsJson *baseline = ms_json_parse(arena, ms_arena_copy(arena, ms_bytes_span(&bytes)));
   ms_bytes_free(&bytes);
   if (baseline == NULL) {
     test_print(stderr, ms_message_format(arena, "--baseline %S is not the JSON that `ms bench --json` writes\n", path,
                                          (MsSpan){0}));
-    return false;
+    return NULL;
   }
   const MsJson *earlier = ms_json_member(baseline, "benches");
   if (earlier == NULL || earlier->kind != MS_JSON_ARRAY) {
     test_print(stderr, ms_message_format(arena, "--baseline %S has no benches; save `ms bench --json` output\n", path,
                                          (MsSpan){0}));
+    return NULL;
+  }
+  return earlier;
+}
+
+/* Compares the work counters of every measured bench with the `--baseline` result and reports each one that rose by
+ * more than `--fail-over` percent. `*regressed` says whether any did; false when the baseline cannot be read. */
+static bool check_baseline(MsArena *arena, const MsTestOptions *options, const DocumentCase *cases, size_t count,
+                           bool *regressed) {
+  const MsJson *earlier = read_baseline(arena, options->baseline);
+  if (earlier == NULL) {
     return false;
   }
   const double bound = options->fail_over;
@@ -554,6 +562,8 @@ int ms_bench_command(int argc, char **argv) {
   MsStrBuild captured = ms_strbuild_new();
   if (status == 0 && !selection_valid(&arena, &options)) {
     status = STATUS_USAGE;
+  } else if (status == 0 && options.baseline.len > 0 && read_baseline(&arena, options.baseline) == NULL) {
+    status = STATUS_USAGE; /* before the build and the run, which can take minutes */
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
     status = bench_input(&arena, &invocation);
