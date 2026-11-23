@@ -58,10 +58,12 @@ test "max_by and min_by pick the first of ties and call key once per element":
 	)
 
 	expect_equal(calls, 4)?
-	expect_equal(oldest.map(fn(p: Person) String: p.name.clone()), "ann")?
+	expect_true(oldest != null)?
+	if oldest != null: expect_equal(oldest.name, "ann")?
 
 	youngest := people().min_by(fn(p: Person) Int: p.age)
-	expect_equal(youngest.map(fn(p: Person) String: p.name.clone()), "bob")?
+	expect_true(youngest != null)?
+	if youngest != null: expect_equal(youngest.name, "bob")?
 
 test "max_by supports owned String keys":
 	words := ["pear", "fig", "banana", "kiwi"]

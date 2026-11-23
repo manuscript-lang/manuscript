@@ -64,7 +64,7 @@ fn main() Void:
 	print(f"named keeps {apply(keep, Door(4))}")
 
 	maybe: Door? := Door(5)
-	print(f"map {(maybe.map(fn d: d.id * 10) or 0)}")
+	if maybe != null: print(f"map {maybe.id * 10}")
 
 	var t: Taker = Counter(0)
 	print(f"interface {give(t, Door(6))}")

@@ -11,7 +11,9 @@ fn read_one(address: String) Int:
 	got := client.input.next()
 
 	match got:
-		ok(chunk): return chunk.map(fn b: b.length()) or (-1)
+		ok(chunk):
+			if chunk != null: return chunk.length()
+			return -1
 		error(_): return -1
 
 fn main() Void:

@@ -20,14 +20,17 @@ fn observed(value: Resource?) Bool: value != null
 
 // Reads the payload in place: `map` would take the resource.
 fn mapped(value: Resource?) Int?:
-	item := value
-	if item != null: return item.id
+	if value != null: return value.id
 
 	return null
 
-fn generic_map[T, U](transform: fn(T) U, value: T?) U?: value.map(transform)
+fn generic_map[T, U](transform: fn(T) U, value: T?) U?:
+	if value == null: return null
+	return transform(value)
 
-fn generic_then[T, U](transform: fn(T) U?, value: T?) U?: value.and_then(transform)
+fn generic_then[T, U](transform: fn(T) U?, value: T?) U?:
+	if value == null: return null
+	return transform(value)
 
 fn identity[T](value: T) T: value
 
@@ -61,7 +64,7 @@ test "borrowed source helpers close intact owned wrapper temporaries once":
 	expect_equal(mapped(present(path, 2)), 2)?
 	expect_equal(generic_map(fn item: item.id, present(path, 3)), 3)?
 	expect_equal(generic_then(fn(item: Resource) Int?: item.id, present(path, 4)), 4)?
-	expect_equal(present(path, 5).map(fn item: item.id), 5)?
+	expect_equal(generic_map(fn item: item.id, present(path, 5)), 5)?
 	expect_equal(observed(null), false)?
 	expect_equal(log_text(path)?, "1,2,3,4,5,")?
 

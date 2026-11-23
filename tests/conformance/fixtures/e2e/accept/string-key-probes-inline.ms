@@ -32,5 +32,5 @@ test "string keys of every size are found and missing ones are not":
 		if v != null:
 			sum += v
 
-	expect_equal(hits, 1200)
-	expect_equal(sum, 224950)
+	expect_equal(hits, 1200)?
+	expect_equal(sum, 224950)?

@@ -508,7 +508,7 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	)?
 
 fn find_port(port: Int?) Int!:
-	value := ok_or(port, Error("missing"))?
+	value := ok_or(port.clone(), Error("missing"))?
 	return ok(value)
 
 test "ok_or reports its explicit cause":

@@ -23,7 +23,12 @@ fn chain_result[T, E, U](value: T!E, transform: fn(T) U!E) U!E:
 	return value.and_then(transform)
 
 fn map_optional[T, U](transform: fn(T) U, value: T?) U?:
-	return value.map(transform)
+	if value == null: return null
+	return transform(value)
+
+fn then_optional[T, U](transform: fn(T) U?, value: T?) U?:
+	if value == null: return null
+	return transform(value)
 
 fn map_set[T: Hashable, U: Hashable](values: Set[T], transform: fn(T) U) Set[U]:
 	return values.map[U](transform)
@@ -40,10 +45,7 @@ test "core parity operations are callable":
 	chained: String!Error := success.and_then(fn n: ok(n.to_string()))
 	expect_equal(chained.get(), "2")?
 
-	present: Int? := 2
 	missing: Int? := null
-	expect_equal(present.map(fn n: n + 1).get(), 3)?
-	expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")?
 	expect_equal(missing or 4, 4)?
 
 	values: Map[String, Int] := {"a": 1, "b": 2}
@@ -149,7 +151,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
 	expect_false(not (map_optional(unexpected, missing.clone()) == null))?
 
-	mapped := present.clone().map(transform)
+	mapped := map_optional(transform, present.clone())
 	expect_equal(mapped.get().calls, 1)?
 	expect_equal(counter.calls, 0)?
 
@@ -157,10 +159,10 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	edited.calls = 2
 	expect_equal(mapped.get().calls, 1)?
 
-	chained := present.clone().and_then(fn(value: Counter) Counter?: value)
+	chained := then_optional(fn(value: Counter) Counter?: value, present.clone())
 	expect_equal(chained.get().calls, 0)?
 
-	absent := present.clone().and_then(fn(unused: Counter) Int?: null)
+	absent := then_optional(fn(unused: Counter) Int?: null, present.clone())
 	expect_false(not (absent == null))?
 
 	create := fn() Counter?: Counter(5)
@@ -170,11 +172,19 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	fallback := missing.clone() or create()
 	expect_equal(fallback.get().calls, 5)?
 
-	nested := present.clone().map(fn(unused: Counter) Int?: null)
+	nested := map_optional(fn(unused: Counter) Int?: null, present.clone())
 	expect_true(nested == null)?
-	expect_equal(mapped.clone().map(fn value: value.calls.to_string()).get(), "1")?
+	expect_equal(
+		map_optional(fn value: value.calls.to_string(), mapped.clone()).get(),
+		"1",
+	)?
 	expect_false(
-		not (missing.clone().and_then[String](fn unused: "unexpected") == null)
+		not (
+			then_optional(
+				fn(unused: Counter) String?: "unexpected",
+				missing.clone()
+			) == null
+		)
 	)?
 
 test "Map filter copies ordered membership and get_or never inserts":

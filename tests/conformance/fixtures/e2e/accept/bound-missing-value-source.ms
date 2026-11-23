@@ -75,7 +75,7 @@ test "required joins preserve native behavior":
 test "nested Optional errors remain intact":
 	absent: Int? := null
 	convert := absent.ok_or[Error]
-	supplied := ok_or(absent, Error("missing")).err()
+	supplied := ok_or(absent.clone(), Error("missing")).err()
 	expect_equal(convert(supplied.clone()).err().message, supplied.message)?
 
 	nested := absent.ok_or[Int?]
