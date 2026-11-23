@@ -26,11 +26,22 @@ static void print(FILE *stream, MsSpan text) {
   (void)fwrite(text.ptr, 1, text.len, stream);
 }
 
-static int report(const char *command, MsSpan message) {
+static int report_status(const char *command, MsSpan message, int status) {
   (void)fprintf(stderr, "ms %s: ", command);
   print(stderr, message);
   (void)fputc('\n', stderr);
-  return 1;
+  return status;
+}
+
+static int report(const char *command, MsSpan message) {
+  return report_status(command, message, 1);
+}
+
+/* An option the command does not have is a usage error, like every other command's: status 2. */
+static int report_unknown_option(const char *command, MsArena *arena, MsSpan option) {
+  return report_status(command,
+                       ms_message_format(arena, "unknown option %S; run 'ms help %s' for its options", option, command),
+                       2);
 }
 
 /* `path` made absolute against the working directory. */
@@ -208,7 +219,7 @@ int ms_install_command(int argc, char **argv) {
         span_list_push(&update, ms_span_of_text(argv[++i]));
       }
     } else if (arg.len > 0 && arg.ptr[0] == '-') {
-      status = report("install", ms_message_format(&arena, "unknown option %S; run 'ms help install' for its options", arg));
+      status = report_unknown_option("install", &arena, arg);
     } else {
       manifest = absolute(&arena, arg);
     }
@@ -264,6 +275,7 @@ typedef struct AddOptions {
   MsSpan url, pin, name;
   MsSourceKind kind;
   bool has_pin, allow;
+  bool usage; /* the error is an unknown option */
 } AddOptions;
 
 static bool take_value(MsArena *arena, int argc, char **argv, int *i, const char *what, MsSpan *value, MsSpan *error) {
@@ -301,6 +313,7 @@ static bool parse_add(MsArena *arena, int argc, char **argv, AddOptions *o, MsSp
       o->allow = true;
     } else if (arg.len > 0 && arg.ptr[0] == '-') {
       *error = ms_message_format(arena, "unknown option %S; run 'ms help add' for its options", arg);
+      o->usage = true;
       ok = false;
     } else if (o->url.len == 0) {
       o->url = arg;
@@ -413,7 +426,7 @@ int ms_add_command(int argc, char **argv) {
   MsSpan error = {0};
   int status = 0;
   if (!parse_add(&arena, argc, argv, &options, &error) || !add_dependency(&in, &options, &error)) {
-    status = report("add", error);
+    status = report_status("add", error, options.usage ? 2 : 1);
   }
   finish_install(&in);
   ms_arena_free(&arena);
@@ -449,7 +462,9 @@ int ms_remove_command(int argc, char **argv) {
   Install in = {.arena = &arena};
   MsSpan error = {0};
   int status = 0;
-  if (argc != 1) {
+  if (argc > 0 && argv[0][0] == '-') {
+    status = report_unknown_option("remove", &arena, ms_span_of_text(argv[0]));
+  } else if (argc != 1) {
     status = report("remove", ms_span_of_text("name one package: ms remove @name"));
   } else if (!remove_dependency(&in, ms_span_of_text(argv[0]), &error)) {
     status = report("remove", error);
