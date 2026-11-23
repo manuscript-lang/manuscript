@@ -15,7 +15,7 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
   if (!mir_pipeline_prepare(module, &pipeline, why)) {
     return false;
   }
-  if ((options->optimize && !mir_optimize(module, options->verify, why)) ||
+  if ((options->optimize && !mir_optimize(module, options->compact, options->verify, why)) ||
       !mir_pipeline_finish(module, &pipeline, glue, why)) {
     return false;
   }
@@ -32,7 +32,8 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
   }
   emit_name_symbols(module);
   const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
-                          .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide};
+                          .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide,
+                          .poison_slots = options->poison_slots};
   if (!emit_module(module, data, glue, &emit, ir, why)) {
     return false;
   }

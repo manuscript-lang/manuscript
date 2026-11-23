@@ -27,6 +27,8 @@ static Access access_of(const MirModule *module, const MirInst *inst, uint32_t a
     return arg == 0 ? ACCESS_WRITE : ACCESS_ESCAPE;
   case MOP_PtrField: case MOP_PtrAdd:
     return arg == 0 ? ACCESS_DERIVE : ACCESS_ESCAPE;
+  case MOP_MemCopy: /* (destination, source, length): the bytes are read or written where the instruction is */
+    return arg == 0 ? ACCESS_WRITE : ACCESS_READ;
   case MOP_Call: case MOP_CallInd: case MOP_CallMethod:
     return ACCESS_WRITE;
   case MOP_CallRt:
@@ -68,7 +70,8 @@ static bool find_slots(const MirFunc *func, const bool *values, uint32_t *owner)
   for (size_t block = 0; block < func->blocks.len; block++) {
     const MirInstList *insts = &func->blocks.ptr[block].insts;
     for (size_t index = 0; index < insts->len; index++) {
-      if (insts->ptr[index].op == MOP_Slot && insts->ptr[index].res != MIR_NONE) {
+      /* `str.data` of an inline string points into a 16-byte frame slot of its own, which lives as long as the address. */
+      if ((insts->ptr[index].op == MOP_Slot || insts->ptr[index].op == MOP_StrData) && insts->ptr[index].res != MIR_NONE) {
         owner[insts->ptr[index].res] = insts->ptr[index].res;
         any = true;
       }
@@ -167,6 +170,8 @@ typedef struct Walk {
   const Live *live;
   uint32_t words;
   uint64_t *conflict; /* a row per object: the objects live at a point where it is made */
+  MirCellDeath *deaths; /* NULL unless the caller wants them: room for every operand of the function */
+  uint32_t ndeaths;
 } Walk;
 
 static uint64_t *conflict_row(const Walk *walk, uint32_t object) {
@@ -238,7 +243,7 @@ static void walk_edges(const Walk *walk, uint32_t block, uint64_t *scratch) {
 
 /* Walks the block backwards from what is live at its end, so each object made there conflicts with everything live
  * where it is made, including the operands of the instruction that makes it. */
-static void walk_block(const Walk *walk, uint32_t block, uint64_t *set) {
+static void walk_block(Walk *walk, uint32_t block, uint64_t *set) {
   const MirBlockData *data = &walk->func->blocks.ptr[block];
   for (uint32_t word = 0; word < walk->words; word++) {
     set[word] = row(walk->live->out, walk->live, block)[word];
@@ -265,6 +270,9 @@ static void walk_block(const Walk *walk, uint32_t block, uint64_t *set) {
     for (uint32_t arg = 0; arg < inst->nargs; arg++) {
       const uint32_t owner = walk->owner[inst->args[arg]];
       if (owner != MIR_NONE) {
+        if (walk->deaths != NULL && !has_bit(set, walk->ordinal[owner])) {
+          walk->deaths[walk->ndeaths++] = (MirCellDeath){block, (uint32_t)index, walk->ordinal[owner]};
+        }
         set_bit(set, walk->ordinal[owner]);
       }
     }
@@ -278,7 +286,7 @@ static void walk_block(const Walk *walk, uint32_t block, uint64_t *set) {
 }
 
 bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *func, const bool *values,
-                        MirCellMap *map) {
+                        bool want_deaths, MirCellMap *map) {
   const size_t count = func->values.len + 1;
   uint32_t *owner = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
   if (!find_slots(func, values, owner)) {
@@ -379,7 +387,7 @@ bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *
     for (uint32_t word = 0; word < live.words; word++) {
       term_set[word] = 0;
     }
-    Walk shallow = {func, owner, ordinal, &live, live.words, NULL};
+    Walk shallow = {func, owner, ordinal, &live, live.words, NULL, NULL, 0};
     TermLive collect = {&shallow, term_set};
     mir_term_each_value(&data->term, term_live, &collect);
     for (uint32_t word = 0; word < live.words; word++) {
@@ -413,7 +421,14 @@ bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *
   for (size_t word = 0; word < (size_t)nobjects * live.words + 1; word++) {
     rows[word] = 0;
   }
-  Walk walk = {func, owner, ordinal, &live, live.words, rows};
+  uint32_t operands = 0;
+  for (uint32_t block = 0; want_deaths && block < func->blocks.len; block++) {
+    for (size_t index = 0; index < func->blocks.ptr[block].insts.len; index++) {
+      operands += func->blocks.ptr[block].insts.ptr[index].nargs;
+    }
+  }
+  MirCellDeath *deaths = want_deaths ? MS_ARENA_NEW_ARRAY(arena, MirCellDeath, (size_t)operands + 1) : NULL;
+  Walk walk = {func, owner, ordinal, &live, live.words, rows, deaths, 0};
   uint64_t *set = MS_ARENA_NEW_ARRAY(arena, uint64_t, live.words + 1);
   uint64_t *scratch = MS_ARENA_NEW_ARRAY(arena, uint64_t, live.words + 1);
   for (uint32_t block = 0; block < func->blocks.len; block++) {
@@ -425,6 +440,6 @@ bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *
     keep[object] = !bad[object_value[object]];
   }
   *map = (MirCellMap){.nobjects = nobjects, .words = live.words, .value = object_value, .ordinal = ordinal,
-                      .conflict = rows, .shareable = keep};
+                      .conflict = rows, .shareable = keep, .deaths = deaths, .ndeaths = walk.ndeaths};
   return true;
 }

@@ -17,6 +17,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch6
   set(MS_ATOMIC_FLAGS -mno-outline-atomics)
   string(APPEND CMAKE_C_FLAGS " -mno-outline-atomics")
 endif()
+# The counting runtime (live blocks, parks, copies) for the leak, cancel and count gates: `cmake --preset stats`.
+option(MS_STATS "Compile the runtime's counters in" OFF)
+if(MS_STATS)
+  add_compile_definitions(MS_STATS=1)
+endif()
 set(MS_MUSL_BUILD_DIR "${CMAKE_BINARY_DIR}/musl")
 
 find_program(MS_CCACHE ccache)
@@ -62,10 +67,12 @@ add_custom_target(llvm-lib
   USES_TERMINAL
 )
 
-# Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms).
+# Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms). The tool
+# lists the files with git, which the MSYS2 shell of the Windows runners does not have on PATH: Git for Windows is.
+find_program(MS_GIT git PATHS "$ENV{ProgramFiles}/Git/cmd")
 add_custom_target(repo-check
-  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/repo-check.ms
-  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/repo-check.ms -- licenses --check
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" "GIT=${MS_GIT}" $<TARGET_FILE:ms> run tools/repo-check.ms
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" "GIT=${MS_GIT}" $<TARGET_FILE:ms> run tools/repo-check.ms -- licenses --check
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   DEPENDS ms
   USES_TERMINAL

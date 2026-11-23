@@ -364,7 +364,7 @@ typedef enum MirRole {
   MR_SHIELD_EXIT, MR_UNWINDING, MR_MAP_PROBE_INT, MR_MAP_PROBE_STR, MR_SET_PROBE_INT, MR_STRING_SLICE,
   MR_BYTES_READ_WORD, MR_BYTES_INDEX_OF_BYTE, MR_STRING_PARSE_INT, MR_STRING_CONTAINS,
   MR_STRING_STARTS_WITH, MR_STRING_ENDS_WITH, MR_STRING_COMPARE, MR_STRING_SCALAR_STEP,
-  MR_STRING_SCALAR_AT, MR_SET_PROBE_STR
+  MR_STRING_SCALAR_AT, MR_SET_PROBE_STR, MR_STRING_SCALAR_TEXT
 } MirRole;
 
 typedef struct MirExtern {
@@ -433,6 +433,7 @@ typedef struct MirModule {
   MirGlobalList globals;
   MirFuncList funcs;
   uint32_t entry; /* function id or MIR_NONE */
+  uint32_t inline_base; /* instruction count up to which the optimiser inlines a callee; set by mir_optimize; 0 for the default */
   uint32_t close; /* the `fn(move T) -> int` that kind-1 `scope.own` owners close with, or MIR_NONE */
   /* Declaration index by name id, MIR_NONE where the name declares nothing; the first declaration wins. */
   MirIdList by_func, by_type, by_alt, by_iface, by_vtable, by_global, by_extern;

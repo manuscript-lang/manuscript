@@ -1,6 +1,6 @@
 // Ownership count gate (`make count-check`): runs the programs of
-// tests/ownership-counts in Debug and Release against a runtime built with counters
-// (`ms-rt` feature `stats`) and compares what they report with the `// expect-debug:`
+// tests/ownership-counts in Debug and Release against the counting runtime
+// (`cmake --preset stats`) and compares what they report with the `// expect-debug:`
 // and
 // `// expect-release:` headers (`key=value` pairs from the runtime's "ms-rt counts:" line; absent keys are not checked)
 // and `// expect-stdout:` lines (the program's stdout, in order, on both). Cleanup

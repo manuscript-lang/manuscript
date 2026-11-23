@@ -11,7 +11,7 @@ MS_NORETURN void msrt_index_fault(int64_t index, int64_t length) {
   ms_strbuild_append_text(&message, " out of range for length ");
   ms_strbuild_append_i64(&message, length);
   ms_strbuild_append_text(&message, "; use get_or(index, default) to avoid the fault");
-  ms_fault(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
 }
 
 MS_NORETURN void msrt_collection_index_fault(const char *operation, int64_t length, int64_t index) {
@@ -27,7 +27,7 @@ MS_NORETURN void msrt_collection_index_fault(const char *operation, int64_t leng
     ms_strbuild_append_text(&message, " (negative indexes count from the end), found ");
   }
   ms_strbuild_append_i64(&message, index);
-  ms_fault(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
 }
 
 /* The name of a list mutator and the highest index it accepts. */
@@ -62,5 +62,5 @@ MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t
   ms_strbuild_append_i64(&message, highest);
   ms_strbuild_append_text(&message, " (negative indexes count from the end), found ");
   ms_strbuild_append_i64(&message, index);
-  ms_fault(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, &message);
 }

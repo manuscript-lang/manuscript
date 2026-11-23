@@ -8,12 +8,14 @@
 
 typedef struct BackendOptions {
   bool optimize; /* run the MIR optimiser; only `ms emit` leaves it off, to show the MIR before it */
+  bool compact;  /* the MIR optimiser inlines only small callees (Debug: a smaller module compiles faster) */
   bool verify;   /* verify the module after the pipeline's passes */
   bool tests;    /* start at the test entry (ms_lower_tests) instead of `main` */
   bool bench;    /* with `tests`: the program's `bench` blocks run as the tests (ms_lower_benches) */
   bool count_ops; /* each block counts its operations (`ms bench --ops`) */
   uint32_t wide_leaves; /* a value of more leaves than this lives in a stack cell; 0 for never */
   bool wide_hide;       /* keep those cells out of LLVM's reach (volatile leaf loads): Debug frames, not optimization */
+  bool poison_slots;    /* EmitOptions.poison_slots */
 } BackendOptions;
 
 /* A compiled program kept for the fault tables: the renamed module and what the tables need to know of it. */

@@ -15,7 +15,13 @@ import (
 	remove,
 	rename from "@std/os/fs.ms",
 
-	dist_arch, dist_os, env, file_sha256, note, run_program from "./lib.ms",
+	dist_arch,
+	dist_os,
+	env,
+	file_sha256,
+	note,
+	run_program,
+	run_program_in from "./lib.ms",
 )
 
 // The value after `key ` on the first lock line that starts with it.
@@ -90,7 +96,7 @@ fn main() Int:
 			note(f"{asset} checksum mismatch: expected {want}, got {got}")
 			return 1
 
-		code = run_program("tar", ["-xzf", archive.clone(), "-C", partial.clone()])
+		code = run_program_in("tar", ["-xzf", asset.clone()], partial.clone())
 		if code != 0: return code
 
 		void remove(archive.clone(), recursive: false)

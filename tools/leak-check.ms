@@ -1,12 +1,11 @@
 // Leak sweep (`make leak-check`): runs the programs of the conformance corpus that
-// finish normally against a runtime built with allocation counters (`ms-rt` feature
-// `stats`), which prints the count of live heap blocks at exit. A correct program frees
-// everything it allocated, so any nonzero count is a leak. Faulting and rejected
-// programs print no count and are skipped. The `test` blocks of
-// tests/conformance/fixtures/e2e run the same way, one count per test. Arguments name
-// the files to sweep instead; a file with test blocks is run with `ms test`. MS names
-// the ms that runs the programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
-// tools/leak-check.ms [-- files]
+// finish normally against the counting runtime (`cmake --preset stats`), which prints
+// the count of live heap blocks at exit. A correct program frees everything it
+// allocated, so any nonzero count is a leak. Faulting and rejected programs print no
+// count and are skipped. The `test` blocks of tests/conformance/fixtures/e2e run the
+// same way, one count per test. Arguments name the files to sweep instead; a file with
+// test blocks is run with `ms test`. MS names the ms that runs the programs (default
+// .artifacts/build/ci/src/cli/ms). Usage: ms run tools/leak-check.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",

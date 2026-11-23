@@ -46,6 +46,13 @@ static void uw_slot_params(UwDefs *d, uint32_t fi) {
       (void)uh_put(a, &d->slot_params, inst->res, 0);
     }
   }
+  /* A field lent in place lies in such a slot, so it is the enclosing function's too. */
+  UW_INSTS(f, b2, i2, field) {
+    if (field->op == MOP_PtrField && field->res != MIR_NONE && field->nargs > 0 &&
+      uh_has(&d->slot_params, field->args[0]) && !uh_has(&d->owned_params, field->args[0])) {
+      (void)uh_put(a, &d->slot_params, field->res, 0);
+    }
+  }
 }
 
 static bool uw_from_caller_param(const UwDefs *d, const MirInst *inst) {
