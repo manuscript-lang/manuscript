@@ -328,7 +328,11 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                                     fn->subst.count);
   const bool leaves = narrowed && fn->placing_member != expr && taking && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
                       (mir_needs_drop(fn->cx->module, fn_type(fn, member_ty)) || ms_check_holds_resource(fn->cx->program, member_ty));
-  fn->narrow_take = leaves ? left : NULL;
+  /* `(x or d).field` at the last use of `x`: the payload is taken from `x` rather than copied. */
+  const bool or_take = taking && left->kind == MS_E_BINARY && left->op == MS_B_OR && fn->placing_member != expr &&
+                       ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
+                       (mir_needs_drop(fn->cx->module, fn_type(fn, member_ty)) || ms_check_holds_resource(fn->cx->program, member_ty));
+  fn->narrow_take = leaves || or_take ? left : NULL;
   const MirValue read = fn_expr(fn, left, leaves ? LW_MOVE : LW_BORROW);
   fn->narrow_take = NULL;
   if (read == MIR_NONE) {
@@ -345,7 +349,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                                                    : fn_type(fn, ms_facts_type(fn->facts, expr->id));
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, read_ty);
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
-                                        expr->u.member.left->kind == MS_E_CALL);
+                                        expr->u.member.left->kind == MS_E_CALL || expr->u.member.left->kind == MS_E_BINARY);
   const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      (leaves || mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field)));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
@@ -355,7 +359,8 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   }
   const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME &&
                           (leaves || (fn->facts->last != NULL && fn->facts->last[expr->id] != 0)) && fn_fresh_owner(fn, base);
-  if (moves && (expr->u.member.left->kind == MS_E_CALL || last_field) && fn_fresh_owner(fn, base)) {
+  if (moves && (expr->u.member.left->kind == MS_E_CALL || expr->u.member.left->kind == MS_E_BINARY || last_field) &&
+      fn_fresh_owner(fn, base)) {
     /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
      * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
@@ -423,7 +428,7 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name:` does. */
   const MsExpr *named = expr->u.bin.left;
-  const bool moving = named->kind == MS_E_NAME && (ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
+  const bool moving = named->kind == MS_E_NAME && (fn->narrow_take == expr || ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
                                                    ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
                                                    (fn->facts->last != NULL && fn->facts->last[named->id] != 0));
   const MirValue left = fn_expr(fn, named, moving ? LW_MOVE : LW_BORROW);
@@ -441,6 +446,9 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   mir_b_seal_block(&fn->b, null_block);
   mir_b_switch_to(&fn->b, some_block);
   const bool owns = fn_fresh_owner(fn, left);
+  /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
+  const bool view_only = !owns && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
+                         ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
   MirTy payload_ty = MIR_VOID;
   MirValue payload;
   if (owns) {
@@ -448,7 +456,7 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   } else {
     payload_ty = mir_ty_data(fn->cx->module, opt_ty)->elem;
     payload = mir_b_emit(&fn->b, MOP_OptGet, &left, 1, (MirImm){0}, payload_ty);
-    if (mir_needs_drop(fn->cx->module, payload_ty)) {
+    if (mir_needs_drop(fn->cx->module, payload_ty) && !view_only) {
       payload = fn_implicit_clone(fn, payload, true);
       if (payload == MIR_NONE) {
         return MIR_NONE;
@@ -458,7 +466,7 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   if (mir_b_ty(&fn->b, payload) != result_ty) { /* the result is nullable too: `x or y` with `y: T?` */
     payload = mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, result_ty);
   }
-  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, payload))) {
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, payload)) && !view_only) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &payload, 1, (MirImm){0}, MIR_NONE);
   }
   mir_b_def_var(&fn->b, result, payload);
@@ -475,7 +483,7 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
     mir_b_seal_block(&fn->b, join);
     mir_b_switch_to(&fn->b, join);
     const MirValue only = mir_b_use_var(&fn->b, result);
-    if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, only))) {
+    if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, only)) && !view_only) {
       fn_own(fn, fn_scope(fn), only);
     }
     return only;

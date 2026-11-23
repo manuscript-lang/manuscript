@@ -104,6 +104,10 @@ static bool part_of_fresh_call(const Uses *pass, const MsExpr *expr) {
   while (at->kind == MS_E_MEMBER) {
     at = at->u.member.left;
   }
+  if (at != expr && at->kind == MS_E_BINARY && at->op == MS_B_OR) { /* `(x or d).field`: the payload leaves the local `x` */
+    return at->u.bin.left->kind == MS_E_NAME && place_root(pass, at->u.bin.left) &&
+           ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, at->u.bin.left->id), MS_BUILTIN_Optional);
+  }
   return at != expr && at->kind == MS_E_CALL && fresh_call(pass, at);
 }
 

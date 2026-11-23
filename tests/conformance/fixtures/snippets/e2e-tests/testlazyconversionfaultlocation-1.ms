@@ -7,4 +7,4 @@ fn crash() Error:
 
 fn main() Void:
     value: Int? := null
-    _result := value.ok_or_else(crash)
+    _result := ok_or(value, crash())

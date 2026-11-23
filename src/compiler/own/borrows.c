@@ -127,7 +127,8 @@ static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
   }
   if (arg->kind == MS_E_BINARY && arg->op == MS_B_OR &&
       ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, arg->u.bin.left->id), MS_BUILTIN_Optional)) {
-    return origin_of_arg(pass, arg->u.bin.left, out); /* `x or d` hands out the payload of `x` */
+    /* `x or d` takes the payload out of a place; only a call's result (`m.get(k) or d`) is a view of something else */
+    return arg->u.bin.left->kind == MS_E_CALL && origin_of_arg(pass, arg->u.bin.left, out);
   }
   return arg->kind == MS_E_CALL && origin_of_call(pass, arg, out);
 }

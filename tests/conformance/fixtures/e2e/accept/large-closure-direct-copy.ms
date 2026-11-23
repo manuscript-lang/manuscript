@@ -12,7 +12,7 @@ fn main() Void:
 		fn xs:
 			var m = Map[Int, Int]()
 			for x in xs:
-				m[x] = m.get(x).get_or(0) + 1
+				m[x] = m.get_or(x, 0) + 1
 			return m.length()
 	)
 
