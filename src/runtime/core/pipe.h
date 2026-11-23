@@ -19,7 +19,7 @@ int64_t msrt_pipe_new(int64_t capacity);
 /* ms-sig: msrt_pipe_add_writer(pipe: i64) @domain=pipe */
 void msrt_pipe_add_writer(int64_t pipe);
 /* Moves the owned value at `value` (of `desc`) into the pipe; never waits. */
-/* ms-sig: msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64 @domain=pipe @takes:value */
+/* ms-sig: msrt_pipe_write(pipe: i64, value: *mut u8, d: ValueDesc) -> i64 @domain=pipe @end */
 int64_t msrt_pipe_write(int64_t pipe, uint8_t *value, const MsTypeDesc *desc);
 /* A promise for the next value (take it with msrt_promise_take), or no value once every writer has closed and the
  * queues are empty. A second read while one waits faults. */

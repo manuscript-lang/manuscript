@@ -32,7 +32,7 @@ MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolic
 /* Sends `request` through the handle's client under the handle's policy (see ms_http_client_send). */
 MS_NODISCARD uint8_t ms_http_handle_send(const MsObj *handle, const MsHttpRequest *request,
                                          MsHttpResponse **out, MsString *err);
-/* Whether the client behind the handle was closed. */
+/* Whether the client behind the handle ended, or this handle is the last that names it. */
 bool ms_http_client_handle_closed(const MsObj *handle);
 
 /* Makes http_client.h wait through scheduler tokens. Once per process, before any task runs. */
@@ -40,8 +40,8 @@ void ms_http_install_task_waiter(void);
 
 /* ms-sig: msstd_http_client_close(handle c: *const ObjCell<ClientH>) @domain=HTTP */
 void msstd_http_client_close(const MsObj *c);
-/* ms-sig: msstd_http_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH> @handle
- * @domain=HTTP */
+/* ms-sig: msstd_http_client_share(handle c: *const ObjCell<ClientH>) -> *mut ObjCell<ClientH>
+ * @domain=HTTP @end */
 MsObj *msstd_http_client_share(const MsObj *c);
 /* ms-sig: msstd_http_client_request_bytes(handle c: *const ObjCell<ClientH>, method: *const StrVal, address:
  * *const StrVal, handle headers: *const ObjCell<HeadersH>, body: *const VecVal, has_max: HasRaw, max: i64,

@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* The bytes of the heap in use and the bytes it has committed from the system, as the allocator counts them. */
+/* The bytes of live blocks (base/alloc counts them) and the bytes the heap has committed from the system. */
 void ms_core_heap_stats(int64_t *used, int64_t *committed);
 
 /* The heap of compiled programs: blocks of the allocator base/alloc uses (mimalloc). Out of memory is a fault, so
@@ -25,7 +25,7 @@ void msrt_free(void *block);
 
 /* Operations executed, as the counting calls of an `ms bench --ops` build add them (a block's instruction count). */
 
-/* ms-sig: msrt_ops_add(n: i64) @leaf */
+/* ms-sig: msrt_ops_add(n: i64) @end */
 void msrt_ops_add(int64_t count);
 
 /* The operations counted so far. */

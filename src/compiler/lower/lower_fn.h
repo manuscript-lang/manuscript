@@ -186,6 +186,11 @@ void fn_own_result(LowerFn *fn, MirValue result);
 /* Whether `value` is the result of the instruction just emitted and a borrowed view of something that owns it. */
 bool fn_is_borrowed_view(LowerFn *fn, MirValue value);
 bool fn_fresh_owner(LowerFn *fn, MirValue value);
+/* Whether `value` is a result the caller owns: `fn_fresh_owner` for a type with heap parts, and for a flat one (a
+ * resource record of integers) not a view of an element or field that its collection or record still owns. */
+bool fn_owns_result(LowerFn *fn, MirValue value);
+/* lower_temp.c: `list` is the call result `index` reads an element from: it closes with the statement. */
+MirValue fn_closing_indexed(LowerFn *fn, const MsExpr *index, MirValue list);
 
 /* ---- resources closed at scope end (lower_close.c) ---- */
 
@@ -390,7 +395,7 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 /* `value` as a function value of type `to`, which differs from its own only in the parameters a call may leave out. */
-MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty);
+MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_checked);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
 typedef struct VarSlot {

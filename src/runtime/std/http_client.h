@@ -96,6 +96,11 @@ void ms_http_client_release(MsHttpClient *client);
 /* Cancels in-flight exchanges, drops idle connections, and refuses later ones with MS_STATUS_CLOSED. */
 void ms_http_client_close(MsHttpClient *client);
 bool ms_http_client_closed(const MsHttpClient *client);
+/* Counts a handle (an HttpClient value) that names the client, and a handle that no longer does; the number of
+ * handles left. Requests in flight hold the client through its references, not through handles. */
+void ms_http_client_handle_add(MsHttpClient *client);
+int ms_http_client_handle_remove(MsHttpClient *client);
+int ms_http_client_handle_count(const MsHttpClient *client);
 
 /* Sends the request and returns once the final response head is read. Status: OK, INVALID_INPUT (method,
  * URL or headers), PERMISSION_DENIED (host), CLOSED, TIMED_OUT, INVALID_DATA (non-text headers) or FAILED

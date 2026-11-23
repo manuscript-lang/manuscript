@@ -10,7 +10,7 @@
 #include "base/string.h"
 #include "runtime/core/task.h"
 
-/* ms-sig: msrt_task_spawn(entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize) -> u64 @domain=task @retains */
+/* ms-sig: msrt_task_spawn(entry: Entry, arg: *mut u8, flags: u32, stack_bytes: usize) -> u64 @domain=task @end */
 uint64_t msrt_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t stack_bytes);
 /* ms-sig: msrt_task_yield() @domain=task */
 void msrt_task_yield(void);

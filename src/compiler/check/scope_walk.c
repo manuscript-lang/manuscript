@@ -242,6 +242,9 @@ static void walk_stmt(Walk *pass, const MsStmt *stmt) {
   case MS_S_ASSIGN:
     if (stmt->u.assign.member_target) {
       walk_expr(pass, stmt->u.assign.target);
+      if (pass->visitor->store != NULL) {
+        pass->visitor->store(pass->visitor->context, stmt, &pass->scope, &pass->site);
+      }
     } else {
       if (pass->visitor->assign != NULL) {
         pass->visitor->assign(pass->visitor->context, stmt, &pass->scope, &pass->site);

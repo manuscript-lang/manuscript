@@ -10,7 +10,8 @@
 // comparing (`--only-missing` keeps recorded ones, `--no-stable-check` skips the second
 // observation, `--prune` deletes fixtures that cannot be recorded). Fuzz and harvest
 // are not ported (#6225, #6226). MS names the ms under test (default
-// target/release/ms). CONFORM_BUILD_TYPE picks the build type of run and test (default
+// target/release/ms). CONFORM_DIFF=1 prints each failure's expected and observed (first
+// 600 characters). CONFORM_BUILD_TYPE picks the build type of run and test (default
 // Release). Fixtures tagged `aliasing` are left out of check, run and test as the gate
 // does (`--exclude-tag aliasing`). Usage: ms run tools/conform-run.ms -- [--phase
 // parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
@@ -246,7 +247,8 @@ fn default_timeout(phase: String) Int:
 	if phase == "check": return 60
 	if phase == "run": return 120
 
-	return 180
+	// The slowest test fixture takes about 15 s (many-tasks); twice that is a hang.
+	return 30
 
 fn invoke(
 	ms: String,
@@ -564,14 +566,31 @@ fn same(left: JsonValue, right: JsonValue) Bool:
 	return stringify(left).get() == stringify(right).get()
 
 // Observes each fixture of `chunk`: one `ok` or `FAIL <id>` line apiece.
-fn sweep(ms: String, build_type: String, chunk: List[Fixture]) List[String]:
+fn sweep(
+	ms: String,
+	build_type: String,
+	chunk: List[Fixture],
+	detail: Bool,
+) List[String]:
 	var lines = List[String]()
 
 	for fx in chunk:
-		if same(fx.expected, observe(ms, fx, build_type)): lines.append("ok")
+		observed := observe(ms, fx, build_type)
+
+		if same(fx.expected, observed): lines.append("ok")
+		else if detail: lines.append(
+			f"FAIL {fx.id}\n  expected: {clipped(fx.expected)}\n  observed: {clipped(observed)}"
+		)
 		else: lines.append(f"FAIL {fx.id}")
 
 	return lines
+
+// The first 600 characters of a value, for `CONFORM_DIFF=1` failure reports.
+fn clipped(value: JsonValue) String:
+	text := stringify(value).get()
+	if text.length() <= 600: return text.clone()
+
+	return f"{text.slice(0, 600)}..."
 
 // The text of `ms version`, stored in each expectation for provenance.
 fn oracle_version(ms: String) String:
@@ -681,6 +700,9 @@ fn main() Int:
 		Map[String, String]()
 	).get("CONFORM_BUILD_TYPE"): build_type = configured.clone()
 
+	show_diff := environment().get_or(
+		Map[String, String]()
+	).get("CONFORM_DIFF").is_some()
 	var chosen = List[Fixture]()
 
 	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters):
@@ -703,19 +725,29 @@ fn main() Int:
 
 	if recording:
 		version := oracle_version(ms.clone())
+
+		// A promise keeps what it captures, so each one gets its own copies.
+		stable_now := stable
+		only_missing_now := only_missing
+		prune_now := prune
 		var recorders = List[Promise[List[String]]]()
+
 		for worker in 0..jobs_count:
+			tool := ms.clone()
+			kind := build_type.clone()
+			mine := chunks[worker].clone()
+			release := version.clone()
 			recorders.append(
 				promise(
 					fn: ok(
 						record_chunk(
-							ms,
-							build_type,
-							chunks[worker],
-							version,
-							stable,
-							only_missing,
-							prune,
+							tool,
+							kind,
+							mine,
+							release,
+							stable_now,
+							only_missing_now,
+							prune_now,
 						)
 					)
 				)
@@ -738,8 +770,13 @@ fn main() Int:
 		return 0
 
 	var tasks = List[Promise[List[String]]]()
+
 	for worker in 0..jobs_count:
-		tasks.append(promise(fn: ok(sweep(ms, build_type, chunks[worker]))))
+		tool := ms.clone()
+		kind := build_type.clone()
+		mine := chunks[worker].clone()
+		detail := show_diff
+		tasks.append(promise(fn: ok(sweep(tool, kind, mine, detail))))
 
 	var passed = 0
 

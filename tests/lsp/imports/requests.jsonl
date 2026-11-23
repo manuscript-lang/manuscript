@@ -1,0 +1,12 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/std.ms", "languageId": "manuscript", "version": 1, "text": "import x from \"@std/ma\"\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/std.ms"}, "position": {"line": 0, "character": 22}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/rel.ms", "languageId": "manuscript", "version": 1, "text": "import x from \"./su\"\nimport y from \"./sub/\"\n"}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/rel.ms"}, "position": {"line": 0, "character": 19}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/rel.ms"}, "position": {"line": 1, "character": 21}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/names.ms", "languageId": "manuscript", "version": 1, "text": "import hel from \"./lib.ms\"\n"}}}
+{"jsonrpc": "2.0", "id": 5, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/names.ms"}, "position": {"line": 0, "character": 10}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/group.ms", "languageId": "manuscript", "version": 1, "text": "import (\n\tSh from \"./lib.ms\",\n)\n"}}}
+{"jsonrpc": "2.0", "id": 6, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/group.ms"}, "position": {"line": 1, "character": 3}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/bare.ms", "languageId": "manuscript", "version": 1, "text": "import maxx\n"}}}
+{"jsonrpc": "2.0", "id": 7, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/bare.ms"}, "position": {"line": 0, "character": 10}}}

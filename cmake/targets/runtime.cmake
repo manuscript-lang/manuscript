@@ -131,7 +131,7 @@ endif()
 # The WebSocket natives, over the connections of ms_std_sockets.
 ms_library(ms_std_ws runtime/std
   SOURCES
-    ws_abi.c ws_dial.c http_network.c http_serve_conn.c http_serve_exchange.c http_serve_h2.c
+    ws_abi.c ws_dial.c http_network.c http_serve_conn.c http_serve_steal.c http_serve_exchange.c http_serve_h2.c
     http_serve_h2_exchange.c http_serve_abi.c
   LINK ms_base ms_values ms_core ms_std_net ms_std_sockets)
 
@@ -177,7 +177,7 @@ target_link_libraries(ms_runtime INTERFACE ms_abi ms_sys ms_io ms_core ms_entry 
   ms_std_time ms_std_math ms_std_random ms_std_compress ms_std_crypto ms_std_path ms_std_bignum ms_std_system
   ms_std_net ms_std_sockets ms_std_ws ms_std_process ms_std_fs)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND MS_LIBC STREQUAL "glibc")
-  # The process entry, the stat family and aarch64 pthread_atfork that glibc 2.28 lacks; for program links, never for ms-c itself.
+  # The process entry, the stat family and aarch64 pthread_atfork that glibc 2.28 lacks; for program links, never for ms itself.
   set(glibc_compat sys/glibc_stat.c sys/glibc_start.c)
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     list(APPEND glibc_compat sys/glibc_atfork.c)

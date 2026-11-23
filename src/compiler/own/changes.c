@@ -8,6 +8,7 @@ typedef struct Changes {
   MsCheckProgram *program;
   uint32_t module;
   MsSpan source;
+  const MsScopeSite *site; /* where the visited node sits */
 } Changes;
 
 /* The local name a place expression (`b`, `b.f`, `b.xs[i]`) is rooted at, or false. */
@@ -41,17 +42,26 @@ static bool parameter_fix(MsPos decl, MsVarFix *fix) {
 }
 
 /* Reports `place` changed through a binding that does not allow it; the first line of the oracle's wording. */
-static void report(Changes *pass, const MsExpr *place, const MsBinding *binding) {
-  const size_t length = place->end.offset > place->pos.offset ? place->end.offset - place->pos.offset : 0;
+static void report(Changes *pass, const MsExpr *place, const MsExpr *root, const MsBinding *binding) {
+  const size_t start = root->pos.offset < place->pos.offset ? root->pos.offset : place->pos.offset; /* the written place */
+  const size_t length = place->end.offset > start ? place->end.offset - start : 0;
   if (place->end.offset > pass->source.len) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "cannot change `");
-  ms_strbuild_append(&text, (MsSpan){pass->source.ptr + place->pos.offset, length});
+  ms_strbuild_append(&text, (MsSpan){pass->source.ptr + start, length});
   ms_strbuild_append_text(&text, "`: ");
   const bool parameter = binding->kind == MS_BK_PARAM;
-  if (parameter) {
+  const bool receiver = binding->kind == MS_BK_SELF;
+  const MsMethod *method = NULL; /* the method whose receiver it is */
+  for (uint32_t at = 0; receiver && pass->site != NULL && pass->site->impl != NULL && at < pass->site->impl->u.impl.methods.len; at++) {
+    const MsMethod *candidate = pass->site->impl->u.impl.methods.ptr[at];
+    method = candidate->pos.offset == binding->decl.offset ? candidate : method;
+  }
+  if (receiver) {
+    ms_strbuild_append_text(&text, "this method does not change its receiver; write `fn var` in its declaration to allow that");
+  } else if (parameter) {
     ms_strbuild_append_text(&text, "parameter `");
     append_name(pass, &text, binding->name);
     ms_strbuild_append_text(&text, "` is not declared var; write `var ");
@@ -65,7 +75,8 @@ static void report(Changes *pass, const MsExpr *place, const MsBinding *binding)
     ms_strbuild_append_text(&text, "` to change it");
   }
   MsVarFix fix = {0};
-  const bool has_fix = parameter ? parameter_fix(binding->decl, &fix) : ms_var_fix(pass->source, binding->decl, &fix);
+  const bool has_fix = receiver ? (method != NULL && parameter_fix(method->var_at, &fix))
+                       : parameter ? parameter_fix(binding->decl, &fix) : ms_var_fix(pass->source, binding->decl, &fix);
   ms_check_report(pass->program, pass->module, place->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   if (has_fix) {
     ms_check_attach_fix(pass->program, fix.pos, fix.end, fix.replacement);
@@ -73,28 +84,29 @@ static void report(Changes *pass, const MsExpr *place, const MsBinding *binding)
 }
 
 /* A parameter, `:=` local or loop variable that is not `var` cannot be changed in place. */
-static bool refuses_change(const MsBinding *binding) {
+static bool refuses_change(const MsBinding *binding, bool by_argument) {
   if (binding->mutable_ || binding->invalid) {
     return false;
   }
-  return binding->kind == MS_BK_PARAM || binding->kind == MS_BK_LOOP ||
+  return binding->kind == MS_BK_PARAM || (binding->kind == MS_BK_SELF && !by_argument) || binding->kind == MS_BK_LOOP ||
          (binding->kind == MS_BK_OTHER && binding->origin == MS_BIND_LOCAL);
 }
 
-static void check_place(Changes *pass, const MsExpr *place, const MsBindingList *scope) {
+/* `by_argument`: the place is passed as a `var` argument, which a method may do with its own receiver. */
+static void check_place(Changes *pass, const MsExpr *place, const MsBindingList *scope, bool by_argument) {
   const MsExpr *root = NULL;
   if (!place_root(place, &root)) {
     return;
   }
   const MsBinding *binding = ms_scope_lookup(scope, root->u.sym);
-  if (binding != NULL && refuses_change(binding)) {
-    report(pass, place, binding);
+  if (binding != NULL && refuses_change(binding, by_argument)) {
+    report(pass, place, root, binding);
   }
 }
 
 static void visit_expr(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site) {
-  (void)site;
   Changes *pass = context;
+  pass->site = site;
   if (expr->kind != MS_E_CALL) {
     return;
   }
@@ -109,15 +121,21 @@ static void visit_expr(void *context, const MsExpr *expr, const MsBindingList *s
       continue;
     }
     if (callee->kind == MS_E_MEMBER && arg->node.node == callee->u.member.left->id) {
-      check_place(pass, callee->u.member.left, scope);
+      check_place(pass, callee->u.member.left, scope, false);
       continue;
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
       if (expr->u.call.args.ptr[at].value->id == arg->node.node) {
-        check_place(pass, expr->u.call.args.ptr[at].value, scope);
+        check_place(pass, expr->u.call.args.ptr[at].value, scope, true);
       }
     }
   }
+}
+
+static void visit_store(void *context, const MsStmt *stmt, const MsBindingList *scope, const MsScopeSite *site) {
+  Changes *pass = context;
+  pass->site = site;
+  check_place(pass, stmt->u.assign.target, scope, false);
 }
 
 void ms_own_changes(MsCheckProgram *program) {
@@ -125,8 +143,11 @@ void ms_own_changes(MsCheckProgram *program) {
     return;
   }
   for (uint32_t module = 0; module < program->modules.len; module++) {
+    if (module >= program->user_modules && !program->check_std) {
+      continue; /* a bundled module reports only when asked to */
+    }
     Changes pass = {.program = program, .module = module, .source = program->modules.ptr[module].source};
-    const MsScopeVisitor visitor = {.context = &pass, .expr = visit_expr};
+    const MsScopeVisitor visitor = {.context = &pass, .expr = visit_expr, .store = visit_store};
     ms_scope_walk_module(program->modules.ptr[module].tree, &visitor, program->names);
   }
 }

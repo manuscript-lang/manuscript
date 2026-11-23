@@ -123,6 +123,8 @@ typedef struct MsLoadOptions {
   bool tests;               /* add the project's test.ms, *_test.ms, bench.ms and *_bench.ms files */
   bool project_sources;     /* add every source file of a manifest's project too (`ms check`) */
   const MsOverlay *overlay; /* unsaved contents in place of disk, or NULL */
+  bool recover;             /* a module that does not parse keeps the declarations that do, its problems left in
+                               the graph's diagnostics: editor use */
   const MsSpan *extra_files; /* more standalone files loaded with the first (`ms test a.ms b.ms`); the source root widens to
                                 hold them all */
   size_t extra_count;

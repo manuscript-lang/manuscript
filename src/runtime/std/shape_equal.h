@@ -6,10 +6,10 @@
 
 #include "abi/shape.h"
 
-/* ms-sig: msstd_value_equals(shape: *const ShapeTable, a: *const u8, b: *const u8) -> bool @domain=value @leaf @pure */
+/* ms-sig: msstd_value_equals(shape: *const ShapeTable, a: *const u8, b: *const u8) -> bool @domain=value @end */
 uint8_t msstd_value_equals(const MsShapeTable *table, const void *a, const void *b);
 
-/* ms-sig: msstd_value_hash(shape: *const ShapeTable, value: *const u8) -> i64 @domain=value @leaf @pure */
+/* ms-sig: msstd_value_hash(shape: *const ShapeTable, value: *const u8) -> i64 @domain=value @end */
 int64_t msstd_value_hash(const MsShapeTable *table, const void *value);
 
 #endif

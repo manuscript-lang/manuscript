@@ -14,6 +14,20 @@
 #include "compiler/syntax/diag.h"
 #include "tooling/lint.h"
 
+MsSpan lsp_path_uri(const LspDocList *docs, MsArena *arena, MsSpan path) {
+  for (size_t i = 0; i < docs->len; i++) {
+    if (ms_span_equal(ms_string_span(&docs->ptr[i].path), path)) return ms_arena_copy(arena, ms_string_span(&docs->ptr[i].uri));
+  }
+  MsStrBuild uri = ms_strbuild_new();
+  lsp_file_uri(path, &uri);
+  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&uri));
+  ms_strbuild_free(&uri);
+  return copy;
+}
+
+/* Moves on whenever an open document changes, so cached analyses stop matching. */
+static uint64_t generation = 1;
+
 LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri) {
   for (size_t i = 0; i < docs->len; i++) {
     if (ms_span_equal(ms_string_span(&docs->ptr[i].uri), uri)) return &docs->ptr[i];
@@ -34,6 +48,7 @@ void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text) {
   doc->text = text_copy;
   doc->version = version;
   doc->dirty = true;
+  generation++;
 }
 
 void lsp_doc_remove(LspDocList *docs, MsSpan uri) {
@@ -46,6 +61,7 @@ void lsp_doc_remove(LspDocList *docs, MsSpan uri) {
     ms_string_release(&doc->published);
     memmove(doc, doc + 1, (docs->len - i - 1) * sizeof *doc);
     docs->len--;
+    generation++;
     return;
   }
 }
@@ -59,13 +75,50 @@ MsSpan lsp_absolute_file(MsArena *arena, MsSpan source_root, MsSpan file) {
   return result;
 }
 
+/* The latest analyses, one per entry file, valid while no open document changed (`generation`). */
+enum { CACHE_SLOTS = 8 };
+
+typedef struct CacheSlot {
+  LspAnalysis value;
+  MsString path;
+  uint64_t generation, used;
+  bool valid;
+} CacheSlot;
+
+static CacheSlot cache[CACHE_SLOTS];
+static uint64_t clock_tick;
+
+void lsp_analysis_invalidate(void) { generation++; }
+
 void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out) {
-  lsp_analyze_changed(docs, doc, NULL, 0, out);
+  CacheSlot *victim = &cache[0];
+  for (size_t i = 0; i < CACHE_SLOTS; i++) {
+    CacheSlot *slot = &cache[i];
+    if (slot->valid && slot->generation == generation && ms_string_equal(&slot->path, &doc->path)) {
+      slot->used = ++clock_tick;
+      *out = slot->value;
+      out->cached = true;
+      return;
+    }
+    if (!slot->valid || (victim->valid && slot->used < victim->used)) victim = slot;
+  }
+  if (victim->valid) {
+    lsp_analysis_release(&victim->value);
+    ms_string_release(&victim->path);
+  }
+  lsp_analyze_changed(docs, doc, NULL, 0, &victim->value);
+  victim->path = ms_string_from_span(ms_string_span(&doc->path));
+  victim->generation = generation;
+  victim->used = ++clock_tick;
+  victim->valid = true;
+  *out = victim->value;
+  out->cached = true;
 }
 
 void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
                          LspAnalysis *out) {
-  *out = (LspAnalysis){.arena = ms_arena_new()};
+  *out = (LspAnalysis){.arena = malloc(sizeof *out->arena)};
+  *out->arena = ms_arena_new();
   MsOverlayFile *files = malloc((docs->len + count + 1) * sizeof *files);
   size_t total = 0;
   for (size_t i = 0; i < docs->len; i++) {
@@ -82,16 +135,16 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
   }
   out->overlay = files;
   const MsOverlay overlay = {files, total};
-  const MsLoadOptions options = {.overlay = &overlay};
-  (void)ms_checked_input_load_with(&out->arena, &out->checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
+  const MsLoadOptions options = {.overlay = &overlay, .recover = true};
+  (void)ms_checked_input_load_with(out->arena, &out->checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
   if (!out->checked.checked) return;
   const MsCheckProgram *program = &out->checked.program;
   out->resolved = true;
-  out->index = ms_occurrence_index_with_types(&out->arena, &out->checked.program, &out->written);
-  out->paths = MS_ARENA_NEW_ARRAY(&out->arena, MsSpan, program->user_modules == 0 ? 1 : program->user_modules);
+  out->index = ms_occurrence_index_with_types(out->arena, &out->checked.program, &out->written);
+  out->paths = MS_ARENA_NEW_ARRAY(out->arena, MsSpan, program->user_modules == 0 ? 1 : program->user_modules);
   for (uint32_t m = 0; m < program->user_modules; m++) {
     const MsSpan name = ms_names_span(program->names, program->modules.ptr[m].file);
-    out->paths[m] = lsp_absolute_file(&out->arena, out->checked.graph.source_root, name);
+    out->paths[m] = lsp_absolute_file(out->arena, out->checked.graph.source_root, name);
     for (size_t g = 0; g < out->checked.graph.count; g++) {
       if (ms_span_equal(out->checked.graph.modules[g].name, name)) out->paths[m] = out->checked.graph.modules[g].path;
     }
@@ -122,8 +175,10 @@ bool lsp_rename_stays_checked(const LspDocList *docs, const LspDoc *doc, const M
 }
 
 void lsp_analysis_release(LspAnalysis *analysis) {
+  if (analysis->cached) return;
   ms_checked_input_free(&analysis->checked);
-  ms_arena_free(&analysis->arena);
+  ms_arena_free(analysis->arena);
+  free(analysis->arena);
   free(analysis->overlay);
 }
 
@@ -149,20 +204,20 @@ static MsString diagnostics_of(const LspDoc *doc, const LspDocList *docs) {
   const MsSpan source = ms_string_span(&doc->text);
   for (size_t i = 0; i < analysis.checked.findings.len; i++) {
     const Finding *finding = &analysis.checked.findings.ptr[i];
-    const MsSpan file = lsp_absolute_file(&analysis.arena, analysis.checked.graph.source_root, finding->file);
+    const MsSpan file = lsp_absolute_file(analysis.arena, analysis.checked.graph.source_root, finding->file);
     if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
     append_diagnostic(&out, &first, source, finding);
   }
   /* The advisories: the lint rules over the checked program, or the lexical ones alone when it did not load. */
   MsLintFindingList lint = {0};
   if (analysis.resolved) {
-    ms_lint_modules(&analysis.arena, &analysis.checked.program, &lint);
+    ms_lint_modules(analysis.arena, &analysis.checked.program, &lint);
   } else {
-    ms_lint_source(&analysis.arena, ms_string_span(&doc->path), source, &lint);
+    ms_lint_source(analysis.arena, ms_string_span(&doc->path), source, &lint);
   }
   for (size_t i = 0; i < lint.len; i++) {
     const MsLintFinding *item = &lint.ptr[i];
-    const MsSpan file = lsp_absolute_file(&analysis.arena, analysis.checked.graph.source_root, item->file);
+    const MsSpan file = lsp_absolute_file(analysis.arena, analysis.checked.graph.source_root, item->file);
     if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
     const LspRange range = lsp_diagnostic_range(source, item->pos.offset);
     if (!first) ms_strbuild_append_byte(&out, ',');

@@ -178,6 +178,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
      * as a block parameter, which would hide the owner from a later move. */
     fn->vars[local] = mir_b_declare_single(&fn->b, ty, MM_BORROW) + 1;
   }
+  if (fn->bind_scope != 0 && fresh && !stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
+    /* The statement's temporaries close where it ends; the name it binds outlives them, so the scope outside owns it. */
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+    fn_own(fn, fn->bind_scope - 1, value);
+  }
   mir_b_def_var(&fn->b, fn_local(fn, local, ty), value);
   return !fn->failed;
 }

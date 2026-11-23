@@ -54,18 +54,6 @@ static bool is_one_of(MsSpan command, const char *const *names, size_t count) {
   return false;
 }
 
-static bool is_value_option(MsSpan flag) {
-  static const char *const NAMES[] = {"-o", "--output", "--build-type", "--timeout", "--filter", "--test", "--bench",
-                                      "--match", "--exclude", "--repeat", "--shuffle", "--runs", "--seed", "--fuzz",
-                                      "--time", "--samples", "--iterations", "--baseline", "--fail-over", "--link"};
-  for (size_t i = 0; i < sizeof NAMES / sizeof NAMES[0]; i++) {
-    if (ms_span_is_text(flag, NAMES[i])) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool manifest_exists(void) {
   return ms_path_kind(ms_span_of_text("ms.toml")) == MS_PATH_FILE;
 }
@@ -79,7 +67,7 @@ static void default_target(int argc, char **argv, MsSpanList *out) {
       break;
     }
     if (arg.len > 0 && arg.ptr[0] == '-') {
-      i += is_value_option(arg) ? 1 : 0;
+      i += ms_invocation_skips_value(arg) ? 1 : 0;
     } else {
       first = (size_t)i;
     }

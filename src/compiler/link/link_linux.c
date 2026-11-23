@@ -26,6 +26,8 @@ static void push_common(LinkJob *job) {
   }
   if (options->musl) {
     link_job_push_text(job, "-static");
+    /* libunwind.a names dl and pthread as dependent libraries; musl has them inside libc.a. */
+    link_job_push_text(job, "--no-dependent-libraries");
     link_job_push_in(job, options->files, "crt1.o");
     link_job_push_in(job, options->files, "crti.o");
     return;

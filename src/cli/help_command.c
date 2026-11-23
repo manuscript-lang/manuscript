@@ -100,9 +100,7 @@ bool ms_help_requested(int argc, char **argv) {
     if (ms_span_is_text(arg, "-h") || ms_span_is_text(arg, "--help")) {
       return true;
     }
-    const bool takes_value = ms_invocation_takes_value(arg) || ms_span_is_text(arg, "--limit") ||
-                             ms_span_is_text(arg, "--explain") || ms_span_is_text(arg, "--effect");
-    i += takes_value;
+    i += ms_invocation_skips_value(arg);
   }
   return false;
 }

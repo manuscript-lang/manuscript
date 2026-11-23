@@ -31,6 +31,9 @@ typedef struct MsNetCore {
   atomic_uint handles;    /* the Manuscript handles alive; the last drop closes the socket */
   atomic_uint ends;       /* ends of the object still open (share / close_if_last) */
   atomic_bool closed;
+  atomic_bool stealable; /* a server lets another thread take this connection's ready idle read (net_conn.c) */
+  atomic_int steal_lock; /* a spin lock over `open_read` */
+  void *open_read;       /* the idle read in flight, with a reference of its own; set under steal_lock */
   MsString local; /* the addresses as text, set before the core is shared */
   MsString peer;
   char *path;               /* a Unix listener's file, removed when the core closes */
@@ -63,6 +66,13 @@ void ms_net_core_close(MsNetCore *core);
 void ms_net_core_name(MsNetCore *core);
 /* The text of a socket address: ip and port, bracketed for IPv6. */
 void ms_net_address_text(const struct sockaddr *address, MsString *out);
+
+/* Marks the connection as one whose idle read another thread may take over (see ms_net_core_steal_read). */
+void ms_net_core_set_stealable(MsNetCore *core, bool stealable);
+/* Takes the bytes of a finished read that its waiter has not collected yet, ending that wait: the waiter then gets
+ * MS_STATUS_CLOSED and must not touch the connection (the caller serves it). False when no such read exists, it has
+ * not finished, or it carries no bytes (an end of stream or an error stays with its waiter). Any thread. */
+bool ms_net_core_steal_read(MsNetCore *core, MsBytes *out);
 
 /* Handle natives shared by the three kinds. */
 /* Another handle on the same end (alias) and on a new end (share). */
