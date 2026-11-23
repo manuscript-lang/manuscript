@@ -816,7 +816,8 @@ fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
 // absent. The key is looked up once to read and once to store, `initial` is always
-// evaluated, and `change` runs once. Example: `counts.update(word, 0, fn n: n + 1)` counts occurrences.
+// evaluated, and `change` runs once. Example: `counts.update(word, 0, fn n: n + 1)`
+// counts occurrences.
 fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move key: T,
 	move initial: U,
