@@ -34,12 +34,12 @@ void msrt_fault_depth(void) {
 
 void msrt_fault_unwrap_none(void) {
   ms_fault_text(MS_FAULT_KIND_FAULT,
-                "called Optional.get() on none; check is_some first, or pass a default: get(default: ...)");
+                "called Optional.get() on none; check is_some first, or use get_or(default)");
 }
 
 void msrt_fault_result_get(void) {
   ms_fault_text(MS_FAULT_KIND_FAULT,
-                "called Result.get() on error; check is_ok first, or pass a default: get(default: ...)");
+                "called Result.get() on error; check is_ok first, or use get_or(default)");
 }
 
 void msrt_fault_result_err(void) {
