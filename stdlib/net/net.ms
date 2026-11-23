@@ -427,7 +427,7 @@ fn Network.listen_unix(path: String) Listener!:
 /*
 Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
 More than `options.max_records` addresses returns EOVERFLOW, `options.timeout` bounds the lookup, and a failed lookup returns EIO.
-System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
+System-resolver lookups run on the runtime's blocking threads (`UV_THREADPOOL_SIZE`, default 4), at most half of them at once, while other tasks keep running.
 */
 fn Network.lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:
 	return msstd_net_network_lookup(
@@ -619,7 +619,7 @@ export fn listen_unix(path: String) Listener!:
 /*
 Resolves a host name to its IPv4 and IPv6 address strings through the network's resolver.
 More than `options.max_records` addresses returns EOVERFLOW, `options.timeout` bounds the lookup, and a failed lookup returns EIO.
-System-resolver lookups run on the runtime's blocking threads (`MS_POOL_THREADS`, default 4), at most half of them at once, while other tasks keep running.
+System-resolver lookups run on the runtime's blocking threads (`UV_THREADPOOL_SIZE`, default 4), at most half of them at once, while other tasks keep running.
 */
 // ms: effect std.net.connect
 export fn lookup(name: String, options: DnsOptions = DnsOptions()) List[String]!:

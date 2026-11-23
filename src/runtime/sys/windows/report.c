@@ -6,7 +6,6 @@
 // NOLINTBEGIN(readability-identifier-naming): the names are Win32's
 MS_WINAPI uintptr_t GetStdHandle(uint32_t which);
 MS_WINAPI int WriteFile(uintptr_t file, const void *buffer, uint32_t count, uint32_t *written, void *overlapped);
-MS_WINAPI uint32_t GetCurrentProcessId(void);
 MS_WINAPI uintptr_t GetCurrentProcess(void);
 MS_WINAPI int TerminateProcess(uintptr_t process, uint32_t status);
 MS_WINAPI uint32_t GetEnvironmentVariableW(const uint16_t *name, uint16_t *buffer, uint32_t capacity);
@@ -41,7 +40,6 @@ static void write_all(uintptr_t handle, MsSpan bytes) {
 
 void ms_sys_stderr_write(MsSpan bytes) { write_all(GetStdHandle(STD_ERROR_HANDLE), bytes); }
 
-uint32_t ms_sys_process_id(void) { return GetCurrentProcessId(); }
 
 void ms_sys_fault_record_write(MsSpan bytes) {
   static const uint16_t name[] = {'M', 'S', '_', 'F', 'A', 'U', 'L', 'T', '_', 'R', 'E', 'C', 'O', 'R', 'D', 0};

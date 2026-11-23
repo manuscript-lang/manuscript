@@ -115,3 +115,17 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	absent := expect_error(open(missing, OpenMode.Read, OpenOptions(permissions: 384)))?
 	expect_equal(absent.kind, "ENOENT")?
 	expect_equal(absent.message, f"filesystem: file or directory not found: {missing}")?
+
+test "a handle keeps its own position across append writes, seeks and reads":
+	temporary := temporary("manuscript-position-")?
+	var handle = open(f"{temporary.path()}/log", OpenMode.AppendRead, OpenOptions(permissions: 384))?
+	handle.write("abc")?
+	expect_equal((handle.seek(0, Seek.Current)?), 3)?
+	handle.write("de")?
+	expect_equal((handle.seek(-1, Seek.End)?), 4)?
+	expect_equal((handle.read_file()?), "e".to_bytes())?
+	expect_equal((handle.seek(1, Seek.Start)?), 1)?
+	expect_equal((handle.read_file()?), "bcde".to_bytes())?
+	refused := expect_error(handle.seek(-9, Seek.Current))?
+	expect_equal(refused.kind, "EINVAL")?
+	handle.close()?

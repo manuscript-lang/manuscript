@@ -112,7 +112,7 @@ ms_library(ms_std_system runtime/std
     system.c process_env.c
   LINK ms_base ms_values uv)
 
-# @std/process natives that need the scheduler or the OS beyond libuv: ids, groups, umask, title, usage, signal watchers.
+# @std/process natives that need the scheduler or the OS beyond libuv: ids, groups, title, usage, signal watchers.
 ms_library(ms_std_process runtime/std
   SOURCES
     fail.c process.c signals.c command.c child.c run.c spawn.c
