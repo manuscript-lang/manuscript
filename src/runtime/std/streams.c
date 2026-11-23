@@ -8,6 +8,7 @@
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "runtime/std/streams.h"
+#include "runtime/std/fs_job.h"
 
 #include <uv.h>
 
@@ -21,6 +22,7 @@
 
 enum {
   READ_CHUNK = 64 * 1024, /* bytes a read asks the system for */
+  FILE_CHUNK_MAX = 64 * 1024 * 1024, /* a regular file is read in one piece up to this many bytes */
   AUTO_DRAIN = 64 * 1024, /* buffered bytes past which write drains on its own */
   FIRST_ENTRIES = 8,
   GENERATION_LIMIT = INT32_MAX, /* a slot whose generation ran out is never reused */
@@ -36,6 +38,8 @@ typedef struct Entry {
   size_t out_start;
   size_t out_cap;
   MsPromise reading; /* the read promise waiting on the poller, 0 when none */
+  size_t file_left;  /* a regular file: bytes the next reads may still find (its size less what was read), else 0 */
+  bool regular;      /* the descriptor is a regular file: always readable, so a read never polls */
   MsString error;    /* the message of a read failure or terminal write failure; empty when none */
 } Entry;
 
@@ -122,7 +126,7 @@ static Transfer transfer(const Entry *entry, uint8_t *read_into, const uint8_t *
 /* Whether a read would not block. A descriptor opened without NONBLOCK (the inherited standard input, whose file
  * description other processes share) is polled first, so a silent pipe parks the task instead of the thread. */
 static bool readable_now(const Entry *entry) {
-  return (entry->flags & MS_STREAMS_NONBLOCK) != 0 || ms_sys_fd_readable_now(entry->fd);
+  return entry->regular || (entry->flags & MS_STREAMS_NONBLOCK) != 0 || ms_sys_fd_readable_now(entry->fd);
 }
 
 typedef enum { STEP_DATA, STEP_END, STEP_BLOCKED, STEP_FAILED } StepKind;
@@ -134,9 +138,9 @@ typedef struct Step {
 
 /* A short read keeps its block when it fills at least half of it, else moves to an exact one, so a trickle of small
  * reads does not pin 64 KiB each. */
-static MsList chunk_of(uint8_t *block, size_t count) {
-  if (count >= READ_CHUNK / 2) {
-    return (MsList){.ptr = block, .len = count, .cap = READ_CHUNK};
+static MsList chunk_of(uint8_t *block, size_t count, size_t capacity) {
+  if (count >= capacity / 2) {
+    return (MsList){.ptr = block, .len = count, .cap = capacity};
   }
   uint8_t *small = ms_alloc(count);
   __builtin_memcpy(small, block, count);
@@ -149,11 +153,15 @@ static Step try_read(Entry *entry) {
   if (!readable_now(entry)) {
     return step;
   }
-  uint8_t *block = ms_alloc(READ_CHUNK);
-  const Transfer got = transfer(entry, block, NULL, READ_CHUNK);
+  /* A regular file is read in one piece (to a cap), so a program that wants all of it copies nothing and grows no buffer. */
+  const size_t capacity = entry->file_left > READ_CHUNK ? (entry->file_left < FILE_CHUNK_MAX ? entry->file_left : FILE_CHUNK_MAX)
+                                                        : READ_CHUNK;
+  uint8_t *block = ms_alloc(capacity);
+  const Transfer got = transfer(entry, block, NULL, capacity);
   if (got.kind == TRANSFER_DONE && got.count > 0) {
     step.kind = STEP_DATA;
-    step.data = chunk_of(block, got.count);
+    step.data = chunk_of(block, got.count, capacity);
+    entry->file_left = got.count < entry->file_left ? entry->file_left - got.count : 0;
     return step;
   }
   ms_free(block);
@@ -226,6 +234,13 @@ int64_t msrt_streams_open(int64_t fd, int64_t flags) {
   entry->flags = flags;
   entry_reset_out(entry);
   entry->reading = 0;
+  entry->regular = false;
+  entry->file_left = 0;
+  uv_stat_t stat;
+  if ((flags & MS_STREAMS_READS) != 0 && ms_fs_fstat((uv_file)fd, &stat) == 0 && (stat.st_mode & S_IFMT) == S_IFREG) {
+    entry->regular = true;
+    entry->file_left = (size_t)stat.st_size;
+  }
   entry_clear_error(entry);
   const int64_t id = (int64_t)entry->generation << 32 | (int64_t)(slot + 1);
   ms_spin_unlock(&table.lock);
