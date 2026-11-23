@@ -166,6 +166,24 @@ bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out) {
   return true;
 }
 
+/* `fn(comparator, ptr, ptr) -> int` for the runtime sort: loads the two element slots and calls the source comparator
+ * on them. `sort.cmp` is what `opt_inline_specialize_sort_thunks` and `opt_sortgen` recognise; a comparator the module
+ * knows is called directly there. MIR_NONE when the build fails. */
+static uint32_t sort_thunk(LowerFn *fn, MirTy elem, MirTy closure) {
+  const MirParam params[3] = {{closure, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  MirBuilder b;
+  mir_b_init(&b, fn->cx->module, mir_name(fn->cx->module, ms_span_of_text("sort.cmp")), params, 3, MIR_INT);
+  mir_b_func(&b)->sort = MSORT_GENERIC;
+  MirValue args[3];
+  mir_b_params(&b, args, 3);
+  const MirImm of_elem = {.tag = MI_TY, .a = elem};
+  const MirValue call[3] = {args[0], mir_b_emit(&b, MOP_Load, &args[1], 1, of_elem, elem),
+                            mir_b_emit(&b, MOP_Load, &args[2], 1, of_elem, elem)};
+  mir_b_ret(&b, mir_b_emit(&b, MOP_CallInd, call, 3, (MirImm){0}, MIR_INT));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
 /* The operands the runtime function `sig` wants for a call with the source operands `args`: the descriptors
  * its signature names are added after the collection they describe, and the trailing result parameter is the
  * call's result. False when the source operands do not fit the signature. */
@@ -184,6 +202,15 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       if (!fn_descriptor_argument(fn, kind, args, nargs, &out[used++])) {
         return false;
       }
+    } else if (kind == NS_CMP_FN && next < nargs && next > 0 && at + 1 < params) {
+      const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+      const uint32_t thunk = list->kind == MK_LIST ? sort_thunk(fn, list->elem, mir_b_ty(&fn->b, args[next])) : MIR_NONE;
+      if (thunk == MIR_NONE) {
+        return false;
+      }
+      out[used++] = fn_emit(fn, MOP_FuncAddr, NULL, 0, (MirImm){.tag = MI_FUNC, .a = thunk}, MIR_PTR);
+      out[used++] = args[next++];
+      at++; /* the environment parameter is the closure the thunk calls */
     } else if (kind == NS_HAS_RAW && next < nargs) {
       if (!fn_has_raw_pair(fn, args[next++], &out[used])) {
         return false;

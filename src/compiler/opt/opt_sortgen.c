@@ -353,6 +353,8 @@ static void sg_shadow_externs(MirModule *m, uint32_t sort_ext, uint32_t *shadow,
   def.role = MR_RAW_SLOTS;
   def.nparams = 2;
   def.leaf = true;
+  /* The copy holds the list's elements by address: the list must outlive every use of it (`lastuse`). */
+  def.fresh = false;
   const MirTy list = def.params[0].ty;
   MirParam moved = {list, MM_MOVE};
   /* The runtime releases the scratch buffer, so the call consumes the owned list value. */

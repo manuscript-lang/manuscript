@@ -313,10 +313,7 @@ Returns a new list ordered by `compare`; the receiver is unchanged. The sort is 
 A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
 Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
 */
-fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]:
-	var out = self.clone()
-	out.sort(compare)
-	return out
+fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]: ...
 
 // Returns a new list of the values for which `predicate` is true, in their original
 // order.
@@ -447,9 +444,7 @@ Float orders NaN above every other value.
 Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
 */
 fn List[T: Comparable & Clonable].sorted() List[T]:
-	var out = self.clone()
-	out.sort(fn a, b: a.compare(b))
-	return out
+	return self.sorted(fn a, b: a.compare(b))
 
 // Sorts the list in place, stably, in the same order as `sorted()`.
 // Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
