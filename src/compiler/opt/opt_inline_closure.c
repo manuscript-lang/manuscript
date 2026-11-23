@@ -353,6 +353,25 @@ static bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out) {
     params[f->ncaptures + j - 1] = entry->params.ptr[j];
   }
   opt_block_set_params(entry, params, (uint32_t)(entry->params.len - 1 + f->ncaptures));
+  /* The signature follows the entry block: the captures replace the environment parameter. */
+  MirParam *signature = MS_ARENA_NEW_ARRAY(&m->arena, MirParam, (size_t)f->nparams + f->ncaptures);
+  for (uint32_t k = 0; k < f->ncaptures; k++) {
+    signature[k] = (MirParam){f->captures[k], MM_BORROW};
+  }
+  for (uint32_t j = 1; j < f->nparams; j++) {
+    signature[f->ncaptures + j - 1] = f->params[j];
+  }
+  uint32_t *noalias = MS_ARENA_NEW_ARRAY(&m->arena, uint32_t, (size_t)f->nnoalias + 1);
+  uint32_t kept = 0;
+  for (uint32_t k = 0; k < f->nnoalias; k++) {
+    if (f->noalias[k] != 0) {
+      noalias[kept++] = f->noalias[k] - 1 + f->ncaptures;
+    }
+  }
+  out->noalias = noalias;
+  out->nnoalias = kept;
+  out->params = signature;
+  out->nparams = f->nparams - 1 + f->ncaptures;
   ms_arena_free(&arena);
   return true;
 }
