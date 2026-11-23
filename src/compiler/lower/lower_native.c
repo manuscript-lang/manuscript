@@ -642,6 +642,12 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
     wanted[0] = cell;
     return call_native(fn, name, wanted, count, ret, result_slot);
   }
+  /* So does a field of one: the native changes it where it lies, and the local's close stays registered meanwhile. */
+  MirValue field;
+  if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &field)) {
+    wanted[0] = field;
+    return call_native(fn, name, wanted, count, ret, result_slot);
+  }
   MirValue owned;
   MirValue record = MIR_NONE;
   const uint32_t taken = fn->native_moves; /* reading the receiver's place builds runtime calls of its own */
