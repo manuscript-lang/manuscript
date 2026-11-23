@@ -201,7 +201,9 @@ static bool written_before_value(const MsExpr *a, const MsExpr *b) {
 /* ---- calling a function value ---- */
 
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
-  const MirValue callee = ref != NULL ? fn_name_ref(fn, expr->u.call.callee, ref) : fn_expr(fn, expr->u.call.callee, LW_BORROW);
+  /* A function-valued local narrowed by `f != null` is read as its payload. */
+  const MirValue callee = ref != NULL ? fn_convert(fn, expr->u.call.callee, fn_name_ref(fn, expr->u.call.callee, ref))
+                                      : fn_expr(fn, expr->u.call.callee, LW_BORROW);
   if (callee == MIR_NONE) {
     return MIR_NONE;
   }
