@@ -20,6 +20,7 @@ void ms_own_check(MsCheckProgram *program) {
   ms_own_escapes(program);
   ms_own_uses(program); /* a parameter an escaping closure keeps is taken now: its callers' arguments move */
   ms_own_result_borrows(program);
+  ms_own_uses_report(program);
   ms_own_closers(program);
   ms_own_unused(program);
   ms_own_changes(program);
