@@ -80,10 +80,10 @@ test "a domain record is still a legal error value":
 		) | expect_false?
 	)
 
-fn read_failure(cause: ReadError) Void!ReadError:
+fn read_failure(move cause: ReadError) Void!ReadError:
 	return error(cause)
 
-fn general_read(cause: ReadError) Void!:
+fn general_read(move cause: ReadError) Void!:
 	failed := read_failure(cause)
 	if failed.is_error():
 		return error(

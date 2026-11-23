@@ -14,7 +14,7 @@ type Marker:
 fn move Marker.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
-fn failed(id: Int, log: String) Int!Marker:
+fn failed(id: Int, move log: String) Int!Marker:
 	return error(Marker(id, log))
 
 fn events(log: String) String:

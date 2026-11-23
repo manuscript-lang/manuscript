@@ -71,14 +71,14 @@ test "successful direct and computed transfers close each owner once":
 		computed_expected := if op == 2 or op == 3: "2,1," else: "1,2,"
 		expect_equal((events(other)?), computed_expected)?
 
-fn later_fault(log: String) Void:
+fn later_fault(move log: String) Void:
 	var items = [Door(1, log.clone())]
 	items.set(value: Door(2, log), index: panic("later operand"))
 
 fn bad_index() Int!:
 	return error(Error("index failed"))
 
-fn later_try(log: String) Void!:
+fn later_try(move log: String) Void!:
 	var items = [Door(1, log.clone())]
 	items.set(value: Door(2, log), index: bad_index()?)
 
@@ -109,7 +109,7 @@ test "failed old close preserves pending incoming owner":
 type Holder:
 	items: List[Door]
 
-fn field(log: String) Void:
+fn field(move log: String) Void:
 	var holder = Holder([Door(1, log.clone())])
 	holder.items.set(3, Door(2, log))
 
@@ -129,11 +129,11 @@ test "field and closure-slot receivers retain cleanup on fault":
 	expect_contains((expect_fault(fn: slot(other))?), "index")?
 	expect_equal((events(other)?), "2,1,")?
 
-fn optional(log: String, index: Int) Void:
+fn optional(move log: String,index: Int) Void:
 	var items: List[Door?] = [Door(1, log.clone())]
 	items.set(index, Door(2, log))
 
-fn computed_failed_new_close(log: String) Void:
+fn computed_failed_new_close(move log: String) Void:
 	_old := [Door(1, log.clone())].replace(0, Door(2, log, fail: true))
 
 test "implicit optional payload and outgoing replacement survive cleanup faults":
@@ -192,7 +192,7 @@ fn move Envelope.close() Void!:
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
 
-fn callback_drop(log: String) Void:
+fn callback_drop(move log: String) Void:
 	var items = [Envelope(1, log.clone(), captured(log.clone(), 3, true))]
 	items.set(0, Envelope(2, log, fn: 4))
 
@@ -233,14 +233,14 @@ test "old capture drop fault observes updated field indexed slot and computed re
 		expect_contains(message, "capture close panic")?
 		expect_equal((events(log)?), "1,3,2,")?
 
-fn owned_named(log: String, index: Int) Void:
+fn owned_named(move log: String,index: Int) Void:
 	var items = [Door(1, log.clone())]
 	next := Door(2, log)
 	items.insert(index, next)
 
 fn valid_later() Int!: return ok(0)
 
-fn succeeding_try(log: String) Void!:
+fn succeeding_try(move log: String) Void!:
 	var items = [Door(1, log.clone())]
 	items.set(value: Door(2, log), index: valid_later()?)
 
@@ -280,10 +280,10 @@ test "final bounds use receiver after later operand mutation":
 	expect_contains((expect_fault(fn: changed_length(log.clone()))?), "index")?
 	expect_equal((events(log)?), "1,2,")?
 
-fn optional_list(log: String) List[Door?]:
+fn optional_list(move log: String) List[Door?]:
 	return [Door(1, log)]
 
-fn computed_absent(log: String) Void:
+fn computed_absent(move log: String) Void:
 	optional_list(log).set(0, none)
 
 fn computed_arg_fault(log: String) Void:

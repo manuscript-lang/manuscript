@@ -25,12 +25,12 @@ fn list_at_scope_end(move label: String) Void:
 	markers := [Marker(label.clone()), Marker(label)]
 	void markers.length()
 
-fn captured_list(label: String) fn() Int:
+fn captured_list(move label: String) fn() Int:
 	markers := [Marker(label)]
 	size := markers.length()
 	return fn: markers.length() + size
 
-fn drop_captured_list(label: String) Void:
+fn drop_captured_list(move label: String) Void:
 	action := captured_list(label)
 	void action()
 
