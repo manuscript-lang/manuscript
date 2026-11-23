@@ -58,7 +58,7 @@ fn var HttpHeaders.append_bytes(name: String, value: Bytes) Void!:
 // Returns the first value as text, or none for an absent name. A value that is not
 // valid UTF-8 is skipped; read it with get_all_bytes.
 fn HttpHeaders.get(name: String) String?:
-	return self.get_all(name).first()
+	return self.get_all(name).first().clone()
 
 // Returns every value as an owned list, empty for an absent name.
 // A received value that is not valid UTF-8 is left out; read it with get_all_bytes.

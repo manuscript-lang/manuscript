@@ -394,7 +394,7 @@ fn fits(kind: FlagKind, choices: List[String], value: String) Bool:
 fn claim(var seen: List[String], key: String, label: String) Void!:
 	if seen.contains(key): return error(cli_invalid_schema(f"duplicate {label}"))
 
-	seen.append(key)
+	seen.append(key.clone())
 
 // Validates a node and everything below it; `inherited` holds ancestors' persistent
 // flags.
@@ -533,7 +533,7 @@ fn walk_from(
 	inherited: List[Flag],
 	given: Map[String, List[String]],
 ) Parsed!:
-	var values = given
+	var values = given.clone()
 	var words: List[String] = []
 	var literal = false
 	var index = start
@@ -614,7 +614,7 @@ fn walk_from(
 		fill(values, flag)?
 
 	fields := collect_fields(values, inherited.concat(node.flags), node.args)
-	return ok(Parsed.Run(Matches(values, path, fields)))
+	return ok(Parsed.Run(Matches(values, path.clone(), fields)))
 
 // Assigns positional words to the node's arguments.
 fn bind(

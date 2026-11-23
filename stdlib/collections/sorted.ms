@@ -96,7 +96,7 @@ fn SortedMap[K, V].get(key: K) V?:
 
 // Returns the value stored for an equal key, or `fallback` when absent.
 fn SortedMap[K, V].get_or(key: K, fallback: V) V:
-	return self.get(key).get_or(fallback)
+	return self.get(key).get_or(fallback.clone())
 
 // Inserts a key or replaces the value of an equal key, which keeps its original
 // key.

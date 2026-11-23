@@ -513,6 +513,6 @@ export fn form_part(
 	return Part(
 		headers: Headers(fields: fields),
 		name: name.clone(),
-		filename: filename,
+		filename: filename.clone(),
 		data: data,
 	)
