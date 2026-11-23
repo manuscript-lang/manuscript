@@ -109,6 +109,18 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     }
     return;
   }
+  if (stmt->kind == MS_S_FOR) {
+    /* An iterator hands each item to the loop, which owns it for the round. */
+    const MsRef *item = ms_facts_ref(pass->facts, stmt->id);
+    const MsTyTable *types = &pass->program->types;
+    const MsTy source = ms_facts_type(pass->facts, stmt->u.each.iter->id);
+    const bool collection = source == MS_TY_NONE || ms_ty_is(types, source, MS_BUILTIN_List) ||
+                            ms_ty_is(types, source, MS_BUILTIN_Set) || ms_ty_is(types, source, MS_BUILTIN_Map);
+    if (item != NULL && item->kind == MS_REF_LOCAL && !collection && ms_ty_kind(types, source) == MS_TY_TYPE) {
+      add_closer(pass, stmt->id, MS_REF_LOCAL, item->local, ms_facts_type(pass->facts, stmt->id));
+    }
+    return;
+  }
   if (stmt->kind != MS_S_BIND || stmt->u.bind.pattern->kind != MS_P_NAME) {
     return;
   }

@@ -28,6 +28,7 @@ typedef struct Uses {
   uint32_t ncand_places;
   MsBindingList moved; /* the locals a name moves in the callable being marked */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
+  uint32_t assigned; /* the local the statement being marked assigns, or UINT32_MAX: its old value dies with the assignment */
 } Uses;
 
 /* Whether `expr` is a local name or a field read of one. */
@@ -123,9 +124,37 @@ static bool moves_out_of_borrowed_result(const Uses *pass, const MsExpr *expr) {
   if (owner != NULL && owner->kind == MS_E_CALL) {
     return false;
   }
+  /* `cur = cur.get().next`: the assignment replaces the owner, so the field leaves it. */
+  const MsRef *owner_ref = owner != NULL && owner->kind == MS_E_NAME ? ms_facts_ref(pass->facts, owner->id) : NULL;
+  if (owner_ref != NULL && owner_ref->kind == MS_REF_LOCAL && owner_ref->local == pass->assigned) {
+    return false;
+  }
   ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE,
                   ms_string_from_span(ms_span_of_text("this field belongs to a borrowed call result, which keeps owning it; end it with `.clone()` to take a copy")));
   return true;
+}
+
+/* `cur = cur.get().next`: a field of a call on the local the statement assigns leaves that local, whose old value dies
+ * with the assignment, so the field moves. */
+static bool field_of_assigned_owner(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (expr->kind != MS_E_MEMBER || root->kind != MS_E_CALL || pass->assigned == UINT32_MAX) {
+    return false;
+  }
+  const MsCall *fact = ms_facts_call(pass->facts, root->id);
+  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
+    return false;
+  }
+  const MsExpr *owner = root->u.call.callee->kind == MS_E_MEMBER && fact->callee.kind == MS_REF_METHOD
+                            ? root->u.call.callee->u.member.left
+                            : (root->u.call.args.len != 0 ? root->u.call.args.ptr[0].value : NULL);
+  const MsRef *owner_ref = owner != NULL && owner->kind == MS_E_NAME ? ms_facts_ref(pass->facts, owner->id) : NULL;
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  return owner_ref != NULL && owner_ref->kind == MS_REF_LOCAL && owner_ref->local == pass->assigned && ty != MS_TY_NONE &&
+         ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
 }
 
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
@@ -148,6 +177,10 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     return;
   }
   if (moves_out_of_borrowed_result(pass, expr)) {
+    return;
+  }
+  if (field_of_assigned_owner(pass, expr)) {
+    pass->facts->uses[expr->id] = MS_USE_MOVE;
     return;
   }
   const bool temporary = expr->kind == MS_E_MEMBER && part_of_fresh_call(pass, expr);
@@ -329,7 +362,10 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
     mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
+    const MsRef *target = stmt->u.assign.member_target ? NULL : ms_facts_ref(pass->facts, stmt->id);
+    pass->assigned = target != NULL && target->kind == MS_REF_LOCAL ? target->local : UINT32_MAX;
     mark_move(pass, stmt->u.assign.value);
+    pass->assigned = UINT32_MAX;
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
              owns_place(pass, stmt->u.branch.cond) && hands_payload_on(pass, stmt)) {
@@ -436,6 +472,14 @@ static bool same_place(const Uses *pass, const MsExpr *a, const MsExpr *b) {
          same_place(pass, a->u.member.left, b->u.member.left);
 }
 
+/* A local or a parameter, as one number: a parameter's index follows the locals' range. */
+static uint32_t swap_key(const MsRef *ref) {
+  if (ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
+    return UINT32_MAX;
+  }
+  return ref->kind == MS_REF_PARAM ? ref->local | UINT32_C(0x40000000) : ref->local;
+}
+
 /* `old := a` borrows `a`; if the next thing the callable does with `a` is assign it, the binding must own the value,
  * or the assignment frees what the binding still reads. A read of `a` in between keeps the plain borrow. */
 static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
@@ -448,8 +492,8 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
     }
     const MsExpr *source_name = bound_local_source(pass, stmt->u.bind.value);
     const MsRef *source = source_name == NULL ? NULL : ms_facts_ref(pass->facts, source_name->id);
-    if (source != NULL && source->kind == MS_REF_LOCAL) {
-      ms_binding_list_push(&pass->cand_locals, source->local);
+    if (swap_key(source) != UINT32_MAX) {
+      ms_binding_list_push(&pass->cand_locals, swap_key(source));
       ms_binding_list_push(&pass->cand_nodes, source_name->id);
     }
     return;
@@ -467,8 +511,8 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
     return;
   }
   const MsRef *target = ms_facts_ref(pass->facts, stmt->id);
-  for (size_t index = 0; target != NULL && target->kind == MS_REF_LOCAL && index < pass->cand_locals.len; index++) {
-    if (pass->cand_locals.ptr[index] == target->local) {
+  for (size_t index = 0; swap_key(target) != UINT32_MAX && index < pass->cand_locals.len; index++) {
+    if (pass->cand_locals.ptr[index] == swap_key(target)) {
       ms_binding_list_push(&pass->swapped, pass->cand_nodes.ptr[index]);
       pass->cand_locals.ptr[index] = UINT32_MAX;
     }
@@ -483,8 +527,8 @@ static void note_swap_expr(void *ctx, const MsExpr *expr) {
     }
   }
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
-  for (size_t index = 0; ref != NULL && ref->kind == MS_REF_LOCAL && index < pass->cand_locals.len; index++) {
-    if (pass->cand_locals.ptr[index] == ref->local && pass->cand_nodes.ptr[index] != expr->id) {
+  for (size_t index = 0; swap_key(ref) != UINT32_MAX && index < pass->cand_locals.len; index++) {
+    if (pass->cand_locals.ptr[index] == swap_key(ref) && pass->cand_nodes.ptr[index] != expr->id) {
       pass->cand_locals.ptr[index] = UINT32_MAX; /* read again before any assignment */
     }
   }
@@ -626,7 +670,7 @@ static void run_uses(MsCheckProgram *program, bool report) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->modules.len; module++) {
     Uses pass = {.program = program, .module = module, .report = report, .classes = &classes, .facts = &program->modules.ptr[module].facts,
-                 .names = program->names};
+                 .names = program->names, .assigned = UINT32_MAX};
     if (pass.facts->uses == NULL) {
       continue;
     }

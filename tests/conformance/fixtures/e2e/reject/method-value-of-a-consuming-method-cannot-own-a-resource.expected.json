@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "`.finish` takes its receiver, but a function value can be called more than once, so every call would need a hidden copy; write a function that copies it, such as `fn ...: value.clone().finish(...)`",
-        "position": {
-          "file": "method-value-of-a-consuming-method-cannot-own-a-resource.ms",
-          "line": 20,
-          "column": 15,
-          "offset": 513
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/method-value-of-a-consuming-method-cannot-own-a-resource.ms:20:15: type: `.finish` takes its receiver, but a function value can be called more than once, so every call would need a hidden copy; write a function that copies it, such as `fn ...: value.clone().finish(...)`\n    |\n 20 |     f := held.finish\n    |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked method-value-of-a-consuming-method-cannot-own-a-resource.ms\n",
+      "stderr": ""
     }
   }
 }

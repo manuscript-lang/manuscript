@@ -271,14 +271,49 @@ MS_LIST_DEFINE(LambdaList, lambda_list, const MsExpr *)
 
 MS_LIST_DEFINE(CallBindList, call_bind_list, Bound)
 
+/* A loop body: what it declares dies with each round, so a promise made in it that captures one cannot borrow it. */
+typedef struct Loop {
+  MsBindingList declared;
+  LambdaList lambdas;
+} Loop;
+MS_LIST_DEFINE(LoopList, loop_list, Loop)
+
 typedef struct Pass {
+  LoopList loops;
   BoundList bound;
   CallBindList call_bound; /* `p := f(...)`: the call (in `lambda`) and the binding that holds its result */
   LambdaList lambdas;
 } Pass;
 
+static void loop_stmt(void *ctx, const MsStmt *stmt) {
+  Loop *loop = ctx;
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    ms_binding_list_push(&loop->declared, stmt->u.bind.pattern->id);
+  } else if (stmt->kind == MS_S_FOR) {
+    ms_binding_list_push(&loop->declared, stmt->id);
+  } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME) {
+    ms_binding_list_push(&loop->declared, stmt->u.branch.binding->id);
+  }
+}
+
+static void loop_expr(void *ctx, const MsExpr *expr) {
+  Loop *loop = ctx;
+  if (expr->kind == MS_E_LAMBDA) {
+    lambda_list_push(&loop->lambdas, expr);
+  }
+}
+
 static void scan_stmt(void *ctx, const MsStmt *stmt) {
   Pass *pass = ctx;
+  if (stmt->kind == MS_S_WHILE || stmt->kind == MS_S_FOR) {
+    Loop loop = {0};
+    const MsStmts body = stmt->kind == MS_S_WHILE ? stmt->u.loop.body : stmt->u.each.body;
+    ms_walk_block(&(MsVisitor){.ctx = &loop, .stmt = loop_stmt, .expr = loop_expr}, body);
+    if (stmt->kind == MS_S_FOR) {
+      ms_binding_list_push(&loop.declared, stmt->id); /* the loop variable is made for each round too */
+    }
+    loop_list_push(&pass->loops, loop);
+  }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value != NULL &&
       stmt->u.bind.value->kind == MS_E_LAMBDA) {
     bound_list_push(&pass->bound, (Bound){stmt->u.bind.value, stmt->u.bind.pattern->id});
@@ -294,6 +329,26 @@ static void scan_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_LAMBDA) {
     lambda_list_push(&pass->lambdas, expr);
   }
+}
+
+/* Whether a lambda made in a loop captures a binding the loop declares: it is gone when the next round starts. */
+static bool captures_loop_local(const MsFacts *facts, const Pass *pass, const MsExpr *lambda) {
+  bool found = false;
+  MsBindingList captures = ms_bind_captures(facts, lambda);
+  for (size_t at = 0; !found && at < pass->loops.len; at++) {
+    const Loop *loop = &pass->loops.ptr[at];
+    bool inside = false;
+    for (size_t index = 0; index < loop->lambdas.len; index++) {
+      inside = inside || loop->lambdas.ptr[index] == lambda;
+    }
+    for (size_t index = 0; inside && !found && index < captures.len; index++) {
+      for (size_t one = 0; one < loop->declared.len; one++) {
+        found = found || loop->declared.ptr[one] == captures.ptr[index];
+      }
+    }
+  }
+  ms_binding_list_free(&captures);
+  return found;
 }
 
 static MsNode bound_binding(const Pass *pass, const MsExpr *lambda) {
@@ -388,7 +443,7 @@ static void settle(Escapes *pass, uint32_t module, Pass *scan) {
       const MsExpr *lambda = scan->lambdas.ptr[at];
       const MsNode binding = bound_binding(scan, lambda);
       const Tie *tie = tie_of(state, lambda->id);
-      const bool escapes = tie != NULL ? result_escapes(state, facts, scan, tie->call)
+      const bool escapes = tie != NULL ? result_escapes(state, facts, scan, tie->call) || captures_loop_local(facts, scan, lambda)
                                        : !state->ok[lambda->id] && (binding == MS_NO_NODE || state->bad[binding]);
       const uint8_t use = escapes ? MS_USE_MOVE : MS_USE_BORROW;
       if (facts->uses[lambda->id] != use && !(escapes == false && facts->uses[lambda->id] == MS_USE_MOVE)) {
@@ -467,6 +522,11 @@ void ms_own_escapes(MsCheckProgram *program) {
     call_bind_list_free(&scans[module].call_bound);
     bound_list_free(&scans[module].bound);
     lambda_list_free(&scans[module].lambdas);
+    for (size_t at = 0; at < scans[module].loops.len; at++) {
+      ms_binding_list_free(&scans[module].loops.ptr[at].declared);
+      lambda_list_free(&scans[module].loops.ptr[at].lambdas);
+    }
+    loop_list_free(&scans[module].loops);
   }
   kept_map_free(&pass.kept);
   kept_map_free(&pass.held);

@@ -490,6 +490,11 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   fn->loops[fn->nloops++] = (LowerLoop){exit, head, fn->nopen};
   (void)fn_scope_begin(fn);
   MirValue item = MIR_NONE;
+  /* An item a resource closes at the end of its round, unless the body moves it on. */
+  const MsTy item_checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, stmt->id), fn->subst.vars,
+                                        fn->subst.args, fn->subst.count);
+  const bool closes = result_owned && answer->kind != MK_ALT && fn_closer_for(fn, ms_facts_closer(fn->facts, stmt->id), item_checked);
+  bool bound = false;
   if (result_owned && answer->kind == MK_ALT) { /* the item leaves the owned answer: the loop variable owns it */
     MirTy inner_ty = MIR_VOID;
     const MirValue inner = fn_take_payload(fn, result, &inner_ty);
@@ -501,7 +506,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   } else if (result_owned) { /* the item leaves the owned Optional: the loop variable owns it */
     MirTy elem = MIR_VOID;
     item = fn_take_payload(fn, result, &elem);
-    if (mir_needs_drop(fn->cx->module, elem)) {
+    if (closes) {
+      bound = fn_bind_closing(fn, binding->local, item_checked, item, false);
+    } else if (mir_needs_drop(fn->cx->module, elem)) {
       fn_own(fn, fn_scope(fn), item);
     }
   } else {
@@ -509,7 +516,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   }
   const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
-  mir_b_def_var(&fn->b, fn_local(fn, binding->local, opt->elem), item);
+  if (!bound) {
+    mir_b_def_var(&fn->b, fn_local(fn, binding->local, opt->elem), item);
+  }
   bool ok = fn_stmts(fn, stmt->u.each.body);
   if (!fn->terminated) {
     fn_scope_end(fn);
