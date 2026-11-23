@@ -199,12 +199,9 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       continue;
     }
     if (written == NULL) {
-      /* A parameter the call leaves out is none. */
-      if (mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT) {
-        (void)fn_fail(fn, "a call of a function value leaves out a required argument");
-        return MIR_NONE;
-      }
-      args[index + 1] = fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
+      /* A parameter the call leaves out is none; one of an interface operation's with a default is the zero value, as in a
+       * direct call of the operation (the checker records no default expression for an operation). */
+      args[index + 1] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
       continue;
     }
     if (mir_param_is_var(data->owned, index)) {
