@@ -22,6 +22,8 @@ typedef struct Uses {
   uint32_t moving; /* the parameters of the callable being marked that it owns, by index */
   MsBindingList cand_locals, cand_nodes; /* `x := y` binds of a local `y` that nothing has read or assigned since */
   MsBindingList swapped; /* the reads that bind a local assigned while the binding lives (`old := a; a = b`) */
+  const MsExpr *cand_places[16]; /* `x := a.f` binds of a field place that nothing has read or assigned since */
+  uint32_t ncand_places;
   MsBindingList moved; /* the locals a name moves in the callable being marked */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
 } Uses;
@@ -280,7 +282,7 @@ static const MsExpr *bound_local_source(const Uses *pass, const MsExpr *value) {
 }
 
 static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
-  const MsExpr *source = bound_local_source(pass, expr);
+  const MsExpr *source = expr->kind == MS_E_MEMBER ? expr : bound_local_source(pass, expr);
   for (size_t index = 0; source != NULL && index < pass->swapped.len; index++) {
     if (pass->swapped.ptr[index] == source->id) {
       return true;
@@ -295,7 +297,9 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.expr);
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME &&
              (stmt->u.bind.is_mutable || binds_assigned_local(pass, stmt->u.bind.value))) {
-    mark_move(pass, stmt->u.bind.is_mutable ? stmt->u.bind.value : bound_local_source(pass, stmt->u.bind.value));
+    mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value
+                    : stmt->u.bind.value->kind == MS_E_MEMBER ? stmt->u.bind.value
+                                                              : bound_local_source(pass, stmt->u.bind.value));
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
@@ -384,16 +388,44 @@ static void consume_scrutinees(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* Whether two expressions name the same local or the same field path of one. */
+static bool same_place(const Uses *pass, const MsExpr *a, const MsExpr *b) {
+  if (a->kind != b->kind) {
+    return false;
+  }
+  if (a->kind == MS_E_NAME) {
+    const MsRef *left = ms_facts_ref(pass->facts, a->id);
+    const MsRef *right = ms_facts_ref(pass->facts, b->id);
+    return left != NULL && right != NULL && left->kind == right->kind && left->local == right->local;
+  }
+  return a->kind == MS_E_MEMBER && ms_span_equal(ms_names_span(pass->names, a->u.member.name), ms_names_span(pass->names, b->u.member.name)) &&
+         same_place(pass, a->u.member.left, b->u.member.left);
+}
+
 /* `old := a` borrows `a`; if the next thing the callable does with `a` is assign it, the binding must own the value,
  * or the assignment frees what the binding still reads. A read of `a` in between keeps the plain borrow. */
 static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    if (stmt->u.bind.value->kind == MS_E_MEMBER && place_root(pass, stmt->u.bind.value) &&
+        pass->ncand_places < sizeof pass->cand_places / sizeof pass->cand_places[0]) {
+      pass->cand_places[pass->ncand_places++] = stmt->u.bind.value; /* `old := self.f; self.f = g` */
+      return;
+    }
     const MsExpr *source_name = bound_local_source(pass, stmt->u.bind.value);
     const MsRef *source = source_name == NULL ? NULL : ms_facts_ref(pass->facts, source_name->id);
     if (source != NULL && source->kind == MS_REF_LOCAL) {
       ms_binding_list_push(&pass->cand_locals, source->local);
       ms_binding_list_push(&pass->cand_nodes, source_name->id);
+    }
+    return;
+  }
+  if (stmt->kind == MS_S_ASSIGN && stmt->u.assign.member_target && !stmt->u.assign.has_compound) {
+    for (uint32_t at = 0; at < pass->ncand_places; at++) {
+      if (pass->cand_places[at] != NULL && same_place(pass, pass->cand_places[at], stmt->u.assign.target)) {
+        ms_binding_list_push(&pass->swapped, pass->cand_places[at]->id);
+        pass->cand_places[at] = NULL;
+      }
     }
     return;
   }
@@ -411,6 +443,11 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
 
 static void note_swap_expr(void *ctx, const MsExpr *expr) {
   Uses *pass = ctx;
+  for (uint32_t at = 0; expr->kind == MS_E_MEMBER && at < pass->ncand_places; at++) {
+    if (pass->cand_places[at] != NULL && pass->cand_places[at] != expr && same_place(pass, pass->cand_places[at], expr)) {
+      pass->cand_places[at] = NULL; /* read again before any assignment */
+    }
+  }
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
   for (size_t index = 0; ref != NULL && ref->kind == MS_REF_LOCAL && index < pass->cand_locals.len; index++) {
     if (pass->cand_locals.ptr[index] == ref->local && pass->cand_nodes.ptr[index] != expr->id) {
@@ -461,6 +498,7 @@ static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consum
   pass->cand_locals.len = 0;
   pass->cand_nodes.len = 0;
   pass->swapped.len = 0;
+  pass->ncand_places = 0;
   pass->moving = consuming ? 1u : 0u; /* the receiver of a consuming method is parameter 0 */
   for (uint32_t at = 0; at < params.len; at++) {
     const MsRef *ref = ms_facts_ref(pass->facts, params.ptr[at]->id);
