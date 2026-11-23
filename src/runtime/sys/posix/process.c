@@ -223,3 +223,5 @@ int ms_sys_process_exec(const char *file, char *const *argv, char *const *env) {
   (void)execve(file, argv, env);
   return last_error();
 }
+
+bool ms_sys_process_can_exec(void) { return true; }
