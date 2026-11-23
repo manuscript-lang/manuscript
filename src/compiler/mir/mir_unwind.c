@@ -12,7 +12,6 @@
 
 #include "compiler/mir/mir_unwind.h"
 
-#include <stdlib.h>
 
 #include "base/fatal.h"
 
@@ -245,7 +244,7 @@ static UwTable uw_pointer_params(MsArena *a, const MirModule *m) {
 static MirFunc uw_stand_in(MirModule *m, const MirFunc *f) { return mir_func_stand_in(m, f); }
 
 bool mir_unwind(MirModule *m) {
-  if (getenv("MS_DBG_NOUNWIND") != NULL || !mir_starts_tasks(m)) {
+  if (!mir_starts_tasks(m)) {
     return false;
   }
   UwCx cx = {.m = m, .nfuncs0 = (uint32_t)m->funcs.len};

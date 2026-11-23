@@ -3,8 +3,6 @@
 #include "driver/emit_command.h"
 
 #include <stdio.h>
-#include <stdlib.h>
-#include "compiler/mir/mir_unwind.h"
 
 #include "base/cstr.h"
 #include "base/file.h"
@@ -22,10 +20,9 @@ enum { STATUS_FAILED = 1 };
 static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, MsStrBuild *out, MsStrBuild *why) {
   MirModule module;
   mir_module_init(&module);
-  bool ok = getenv("MS_DBG_TESTS") ? ms_lower_tests(program, &module, why) : ms_lower_program(program, entry, &module, why);
-  const MirPipelineOptions pipeline = {.verify = getenv("MS_DBG_NOVERIFY") == NULL, .checks = true};
+  bool ok = ms_lower_program(program, entry, &module, why);
+  const MirPipelineOptions pipeline = {.verify = false, .checks = true};
   ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
-  if (ok && getenv("MS_DBG_UNWIND")) { (void)mir_unwind(&module); }
   ok = ok && (!optimize || mir_optimize(&module, false, why));
   if (ok) {
     mir_print_module(&module, out);

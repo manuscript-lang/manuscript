@@ -327,6 +327,11 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
   MirValue slot;
   MirTy slot_ty;
   if (closing_local(fn, base, &slot, &slot_ty)) {
+    if (mir_needs_drop(fn->cx->module, slot_ty)) {
+      /* The value is lent out: its owner now is whoever holds it, and the slot closes it again once `fn_put_place`
+       * refills it. A cancellation while it is out must not close the bytes the borrower is changing. */
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
+    }
     *out = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Take : MOP_Load, &slot, 1,
                       (MirImm){.tag = MI_TY, .a = slot_ty}, slot_ty);
     return true;
@@ -577,6 +582,10 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   MirTy slot_ty;
   if (closing_local(fn, place, &slot, &slot_ty)) {
     const MirValue stored[2] = {slot, value};
+    if (mir_needs_drop(fn->cx->module, slot_ty)) {
+      const MirImm refill = {.tag = MI_INT, .i = 2};
+      (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
+    }
     (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
     return !fn->failed;
   }

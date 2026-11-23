@@ -1,7 +1,6 @@
 /* unwind: the liveness walk that plans where registrations go. Port of `analyze` and the hole
  * helpers in unwind.rs. */
 #include "compiler/mir/mir_unwind.h"
-#include <stdlib.h>
 
 static bool uw_leaf_extern(const MirModule *m, uint32_t e) {
   return m->externs.ptr[e].noreturn || m->externs.ptr[e].leaf;
@@ -455,7 +454,7 @@ static void uw_an_edges(UwBlk *s) {
     if (!w->has[t->block]) {
       w->entry[t->block] = after;
       w->has[t->block] = true;
-    } else if (!getenv("MS_DBG_NOFIX")) {
+    } else {
       /* A block is entered with the values every edge into it carries: one an edge lacks is not defined on every
        * path, so registering it there would not dominate its uses. */
       uint32_t n = 0;
