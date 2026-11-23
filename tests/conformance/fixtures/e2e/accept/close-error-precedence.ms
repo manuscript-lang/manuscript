@@ -52,7 +52,7 @@ fn propagated(log: String) Int!:
 	_second := Failing(log.clone(), 2)
 	return ok(failure()?)
 
-fn borrowed(log: String, cause: Error) Int!:
+fn borrowed(log: String, move cause: Error) Int!:
 	_first := Failing(log.clone(), 1)
 	return error(cause)
 
