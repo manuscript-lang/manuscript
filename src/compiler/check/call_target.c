@@ -144,6 +144,32 @@ const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, u
              : NULL;
 }
 
+/* The parameter names of the interface operation a method value names: a native method keeps no source to read. */
+const MsParams *body_function_names(Body *body, const MsExpr *value, MsTy ty) {
+  if (value->kind == MS_E_APPLY) {
+    return body_function_names(body, value->u.apply.left, MS_TY_NONE);
+  }
+  if (value->kind != MS_E_MEMBER) {
+    return NULL;
+  }
+  const bool quiet = body->quiet;
+  body->quiet = true;
+  const MsTy receiver = body_expr(body, value->u.member.left, MS_TY_NONE);
+  body->quiet = quiet;
+  MsMethodMatchList found = {0};
+  const MsParams *names = NULL;
+  if (receiver != MS_TY_NONE) {
+    ms_check_find_method(body->program, receiver, value->u.member.name, &found);
+  }
+  if (found.len == 1 && (ty == MS_TY_NONE || found.ptr[0].ty == ty) && found.ptr[0].entry == NULL &&
+      found.ptr[0].operation != NULL) {
+    const MsMethod *declared = ms_check_operation_declaration(body->program, found.ptr[0].contract, found.ptr[0].operation);
+    names = declared == NULL ? NULL : &declared->func.params;
+  }
+  ms_method_match_list_free(&found);
+  return names;
+}
+
 MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
   const MsTyTable *types = &body->program->types;
   uint32_t module = 0;
@@ -173,6 +199,7 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
     body_set_ref(body, callee->id, target->ref); /* a call of a function value reads the local */
     target->sig = local->ty;
     target->ast = local->fn_params;
+    target->names = local->fn_names;
     target->ast_module = local->fn_module;
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }
@@ -202,6 +229,10 @@ static bool fits_arguments(const Body *body, const MsMethodMatch *match, size_t 
   for (size_t at = 0; at < total; at++) {
     const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
     const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
+    if (ast == NULL && match->operation != NULL) {
+      const MsMethod *declared = ms_check_operation_declaration(body->program, match->contract, match->operation);
+      ast = declared == NULL ? NULL : &declared->func.params;
+    }
     const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
                                                                        : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
     required += defaulted ? 0 : 1;

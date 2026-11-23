@@ -268,7 +268,11 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
     ty = negated_literal(body, expr, expected);
   } else {
     const bool signed_op = op == MS_U_NEG || op == MS_U_PLUS;
-    const MsTy hint = signed_op ? literal_hint(body, operand, expected) : MS_TY_NONE;
+    const MsTyTable *types = &body->program->types;
+    const MsTy wrapped = expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1
+                             ? ms_ty_args(types, expected)[0]
+                             : expected; /* a literal takes the sized type an optional wraps */
+    const MsTy hint = signed_op ? literal_hint(body, operand, wrapped) : MS_TY_NONE;
     const MsTy value = body_expr(body, operand, hint);
     if (op == MS_U_NOT) {
       body_check_not(body, expr, value);
@@ -315,10 +319,17 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
   const MsExpr *l = expr->u.bin.left;
   const MsExpr *r = expr->u.bin.right;
   const bool arithmetic = op >= MS_B_ADD;
+  if (expected != MS_TY_NONE && ms_ty_is(&body->program->types, expected, MS_BUILTIN_Optional) &&
+      ms_ty_arg_count(&body->program->types, expected) == 1) {
+    expected = ms_ty_args(&body->program->types, expected)[0]; /* literals take the sized type an optional wraps */
+  }
   const MsTy hint = arithmetic ? literal_hint(body, l, expected) : MS_TY_NONE;
   if (hint != MS_TY_NONE && literal_hint(body, r, expected) != MS_TY_NONE) {
     *left = body_expr(body, l, hint);
     *right = body_expr(body, r, hint);
+  } else if (literal_tree(body, l) != 0 && l->kind != MS_E_NUMBER && literal_tree(body, r) == 0) {
+    *right = body_expr(body, r, MS_TY_NONE); /* arithmetic over literals beside a typed operand takes its type */
+    *left = body_expr(body, l, literal_hint(body, l, *right));
   } else if (literal_tree(body, l) == 2 && literal_tree(body, r) != 2) {
     *right = body_expr(body, r, MS_TY_NONE);
     *left = body_expr(body, l, literal_hint(body, l, *right));

@@ -225,13 +225,34 @@ static MsTy hint_for(const Target *target, MsTy variable, const MsTy *hint) {
   return MS_TY_NONE;
 }
 
+/* Whether a function parameter's own parameter types still mention variables nothing has fixed. */
+static bool function_params_open(Body *body, const Target *target, MsTy param, const MsTy *bound) {
+  const MsTyTable *types = &body->program->types;
+  if (ms_ty_is(types, param, MS_BUILTIN_Optional) && ms_ty_arg_count(types, param) == 1) {
+    param = ms_ty_args(types, param)[0];
+  }
+  if (!is_function(types, param)) {
+    return false;
+  }
+  const MsTy known = expected_param(body, target, param, bound);
+  for (size_t at = 0; at < ms_ty_param_count(types, known); at++) {
+    if (mentions_vars(types, ms_ty_params(types, known)[at].ty, &target->vars)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound, const MsTy *hint) {
   const MsTyTable *types = &body->program->types;
   /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
-  for (size_t round = 0; round < 2 * call->u.call.args.len; round++) {
-    const size_t written = round % call->u.call.args.len; /* arguments bind variables in the order they are written */
+  bool typed[32] = {false};
+  const size_t nargs = call->u.call.args.len;
+  for (size_t round = 0; round < nargs * (nargs + 1); round++) {
+    const size_t written = round % nargs; /* arguments bind variables in the order they are written */
+    const size_t pass = round / nargs;    /* 0 types the other arguments; each later pass the function literals */
     size_t index = 0;
     while (index < matched->count && matched->slot[index] != (int32_t)written) {
       index++;
@@ -241,8 +262,14 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     const MsArg *arg = &call->u.call.args.ptr[matched->slot[index]];
-    if ((arg->value->kind == MS_E_LAMBDA) != (round >= call->u.call.args.len)) {
+    if ((arg->value->kind == MS_E_LAMBDA) != (pass >= 1) || (written < 32 && typed[written])) {
       continue;
+    }
+    if (pass >= 1 && pass < nargs && function_params_open(body, target, param, bound)) {
+      continue; /* a function literal whose parameters another function literal fixes waits for it */
+    }
+    if (written < 32) {
+      typed[written] = true;
     }
     MsStrBuild context = ms_strbuild_new();
     if (target->name.len != 0) {
@@ -646,8 +673,13 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     /* an argument that already disagreed with the expected result's type is the one error: the call has that type */
     if (target.constructor && expected != MS_TY_NONE && body->program->diagnostics.len > diagnostics_before &&
         result != MS_TY_NONE && ms_ty_is(&body->program->types, result, MS_BUILTIN_Result) &&
-        ms_ty_is(&body->program->types, expected, MS_BUILTIN_Result) && !ms_ty_has_variable(&body->program->types, expected)) {
-      result = expected;
+        !ms_ty_has_variable(&body->program->types, expected)) {
+      const MsTyTable *types = &body->program->types;
+      MsTy plain = expected;
+      if (ms_ty_is(types, plain, MS_BUILTIN_Optional) && ms_ty_arg_count(types, plain) == 1) {
+        plain = ms_ty_args(types, plain)[0];
+      }
+      result = ms_ty_is(types, plain, MS_BUILTIN_Result) ? plain : result;
     }
   } else if (target.sig != MS_TY_NONE && !ms_ty_is_invalid(&body->program->types, target.sig) &&
              ms_ty_kind(&body->program->types, target.sig) != MS_TY_FUNCTION) {

@@ -134,6 +134,7 @@ typedef struct UwEvent {
 typedef struct UwWalk {
   OwnerSet *entry;
   bool *has;
+  bool *done; /* the block has been walked, so its entry set is fixed */
   UwWindow **plans;
   uint32_t *nplans, *cplans;
   MirValue **at_fault;
@@ -141,7 +142,6 @@ typedef struct UwWalk {
   UwEvent **events;
   uint32_t *nevents, *cevents;
   bool *plain;
-  bool shrank; /* an entry set lost a value this pass: another pass settles the blocks it reaches */
 } UwWalk;
 
 /* What the walk reads about a function. */

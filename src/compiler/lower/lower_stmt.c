@@ -127,6 +127,15 @@ static bool is_empty_optional(const LowerFn *fn, MirValue value) {
   return op == MOP_OptNone;
 }
 
+/* The parameters of the method a binding's value is, whose defaults a call through the name may leave out (a lambda applies
+ * its own defaults in its body). */
+static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
+  const bool member = value->kind == MS_E_MEMBER || (value->kind == MS_E_APPLY && value->u.apply.left->kind == MS_E_MEMBER);
+  const MsRef *ref = member ? ms_facts_ref(fn->facts, value->id) : NULL;
+  const MsMethodEntry *entry = ref != NULL && ref->kind == MS_REF_METHOD ? fn_method_entry(fn->cx, ref->decl.module, ref->decl.node) : NULL;
+  return entry != NULL ? &entry->source->func.params : NULL;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -142,6 +151,31 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     return source != MIR_NONE &&
            bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
                       from_var ? &owner : NULL, stmt->u.bind.is_mutable);
+  }
+  if (stmt->u.bind.is_mutable && fn->closing != NULL) {
+    /* `var x = xs[i]` and `var x = m[k]` borrow the entry exclusively, unless it is a number: `x` names the entry, so what is
+     * changed through `x` changes the entry, whatever happens to the index or key afterwards. */
+    MsExpr *container = NULL;
+    MsExpr *key = NULL;
+    const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
+    const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
+    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && ms_expr_index(stmt->u.bind.value, &container, &key) &&
+        mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
+      MirValue address = MIR_NONE;
+      MirTy ty = MIR_VOID;
+      if (fn_place_address(fn, stmt->u.bind.value, &address, &ty)) {
+        fn->closing[ref->local] = address;
+        fn->closing_var[ref->local] = true;
+        fn->closing_types[ref->local] = ty;
+        if (fn->shared != NULL) {
+          fn->shared[ref->local] = LOWER_SHARED_BORROWED; /* the entry's owner holds it: a change here replaces it there */
+        }
+        return !fn->failed;
+      }
+      if (fn->failed) {
+        return false;
+      }
+    }
   }
   /* A name bound to another name borrows it unless the checker marked the read a move (the source is assigned while
    * the binding lives); anything else, and every `var`, is a new owner. */
@@ -161,8 +195,19 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     fn->hint = fn_type(fn, bound_ty);
   }
   fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
+  fn->has_last_receiver = false;
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   fn->moving_field = NULL;
+  const MsRef *bound_ref = value != MIR_NONE ? ms_facts_ref(fn->facts, pattern->id) : NULL;
+  const MsParams *bound_params = bound_ref != NULL ? bound_value_params(fn, stmt->u.bind.value) : NULL;
+  if (bound_params != NULL && fn->nbound_self < MS_COUNT_OF(fn->bound_self)) {
+    /* A lambda or method value keeps the defaults of its parameters; one that reads `self` reads the receiver it captured. */
+    fn->bound_self[fn->nbound_self].local = bound_ref->local;
+    fn->bound_self[fn->nbound_self].params = bound_params;
+    fn->bound_self[fn->nbound_self].vars = fn->has_last_receiver ? fn->last_vars : (LowerSubst){0};
+    fn->bound_self[fn->nbound_self++].receiver = fn->has_last_receiver ? fn->last_receiver : MIR_NONE;
+  }
+  fn->has_last_receiver = false;
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
     if (call_reads_temporary(fn->facts, stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
@@ -304,6 +349,14 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   }
   return fn_owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || closing_param(fn, place, &slot, &var) ||
          (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+}
+
+bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place) {
+  if (fn_place_changeable(fn, place)) {
+    return true;
+  }
+  const MsExpr *base = place != NULL && place->kind == MS_E_MEMBER ? place->u.member.left : NULL;
+  return base != NULL && base->kind == MS_E_UNARY && base->op == MS_U_TRY && fn_try_place_changeable(fn, base->u.bin.left);
 }
 
 bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
