@@ -426,6 +426,74 @@ static MirValue float_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, M
 }
 
 /* `left && right` and `left || right`: the right operand runs only when the left does not decide the result. */
+/* `x or d` over a nullable `x`: the payload when `x` holds one, else `d`, which runs only then. The result owns what it
+ * holds: a payload view is copied, a fresh `x` gives its payload up. */
+static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
+  const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  if (left == MIR_NONE || result_ty == MIR_VOID) {
+    return MIR_NONE;
+  }
+  const MirTy opt_ty = mir_b_ty(&fn->b, left);
+  const MirVar result = mir_b_declare_var(&fn->b, result_ty, MM_MOVE);
+  const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &left, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock some_block = mir_b_new_block(&fn->b);
+  const MirBlock null_block = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, present, some_block, NULL, 0, null_block, NULL, 0);
+  mir_b_seal_block(&fn->b, some_block);
+  mir_b_seal_block(&fn->b, null_block);
+  mir_b_switch_to(&fn->b, some_block);
+  const bool owns = fn_fresh_owner(fn, left);
+  MirTy payload_ty = MIR_VOID;
+  MirValue payload;
+  if (owns) {
+    payload = fn_take_payload(fn, left, &payload_ty);
+  } else {
+    payload_ty = mir_ty_data(fn->cx->module, opt_ty)->elem;
+    payload = mir_b_emit(&fn->b, MOP_OptGet, &left, 1, (MirImm){0}, payload_ty);
+    if (mir_needs_drop(fn->cx->module, payload_ty)) {
+      payload = fn_implicit_clone(fn, payload, true);
+      if (payload == MIR_NONE) {
+        return MIR_NONE;
+      }
+    }
+  }
+  if (mir_b_ty(&fn->b, payload) != result_ty) { /* the result is nullable too: `x or y` with `y: T?` */
+    payload = mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, result_ty);
+  }
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, payload))) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &payload, 1, (MirImm){0}, MIR_NONE);
+  }
+  mir_b_def_var(&fn->b, result, payload);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_switch_to(&fn->b, null_block);
+  (void)fn_scope_begin(fn);
+  const bool saved_temps = fn->temps;
+  fn->temps = saved_temps || fn_expr_has_temporary(fn, expr->u.bin.right);
+  MirValue other = fn_expr(fn, expr->u.bin.right, LW_MOVE);
+  fn->temps = saved_temps;
+  if (other == MIR_NONE) {
+    return MIR_NONE;
+  }
+  if (mir_b_ty(&fn->b, other) != result_ty) {
+    other = mir_b_emit(&fn->b, MOP_OptSome, &other, 1, (MirImm){0}, result_ty);
+  }
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, other))) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &other, 1, (MirImm){0}, MIR_NONE);
+  }
+  mir_b_def_var(&fn->b, result, other);
+  fn_scope_end(fn);
+  mir_b_br(&fn->b, join, NULL, 0);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  const MirValue joined = mir_b_use_var(&fn->b, result);
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, joined))) {
+    fn_own(fn, fn_scope(fn), joined);
+  }
+  return joined;
+}
+
 static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
   const bool is_and = expr->op == MS_B_AND;
   const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
@@ -691,6 +759,9 @@ MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue r
 }
 
 static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
+  if (expr->op == MS_B_OR && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.left->id), MS_BUILTIN_Optional)) {
+    return lower_or_null(fn, expr);
+  }
   if (expr->op == MS_B_AND || expr->op == MS_B_OR) {
     return lower_logical(fn, expr);
   }
