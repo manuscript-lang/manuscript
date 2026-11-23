@@ -169,7 +169,7 @@ static void start_stream(MsH2Conn *owner, const MsH2Event *event) {
   MsTaskStatus spawned = MS_TASK_OK;
   if (admitted) {
     add_stream(owner, stream);
-    stream->task = ms_task_spawn(stream_task, stream, MS_SPAWN_DETACHED, 0, &spawned);
+    stream->task = ms_task_spawn(stream_task, stream, MS_SPAWN_DETACHED | MS_SPAWN_FRONT, 0, &spawned);
   }
   if (admitted && stream->task != 0) {
     return;
