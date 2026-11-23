@@ -776,6 +776,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_String)) {
     operation = ms_span_of_text("split_view");
   }
+  fn_list_precheck_index(fn, owner, operation, argc, args);
   if (ms_span_is_text(operation, "set") && fn_list_set_closing(fn, place, slot, owner, argc, args, out)) {
     return true;
   }
