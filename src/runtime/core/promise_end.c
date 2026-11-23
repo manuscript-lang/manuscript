@@ -165,6 +165,19 @@ static void give_notice(MsPromise id, size_t row) {
   ms_cancel_fire(drain);
 }
 
+/* Whether the row holds a result nobody took. */
+static bool has_result(size_t row) {
+  return promise_table.hot.ptr[row].state == STATE_OK && promise_result_bytes(&promise_table.cold.ptr[row]) != NULL;
+}
+
+/* Whether the row finished and its work is gone, so there is nothing to end. */
+static bool row_settled(size_t row) {
+  const Hot *const hot = &promise_table.hot.ptr[row];
+  const Cold *const cold = &promise_table.cold.ptr[row];
+  return hot->state != STATE_PENDING && cold->closure == NULL && cold->cancel == 0 &&
+         (hot->flags & (FLAG_QUEUED | FLAG_DEFERRED | FLAG_REMOTE)) == 0;
+}
+
 bool ms_promise_end(MsPromise id) {
   if (promise_is_foreign(id)) {
     return ms_remote_end(id);
@@ -175,6 +188,9 @@ bool ms_promise_end(MsPromise id) {
   }
   Hot *hot = &promise_table.hot.ptr[found];
   Cold *const cold = &promise_table.cold.ptr[found];
+  if (row_settled((size_t)found)) {
+    return has_result((size_t)found);
+  }
   if (cold->cancel != 0) {
     ms_cancel_unregister(cold->cancel, id);
     cold->cancel = 0;
@@ -208,7 +224,7 @@ bool ms_promise_end(MsPromise id) {
     ms_shield_exit();
   }
   found = promise_row_of(id);
-  return found >= 0 && promise_table.hot.ptr[found].state == STATE_OK && promise_table.cold.ptr[found].result != NULL;
+  return found >= 0 && has_result((size_t)found);
 }
 
 void ms_promise_drop(MsPromise id) {
@@ -216,8 +232,11 @@ void ms_promise_drop(MsPromise id) {
     ms_remote_drop(id);
     return;
   }
-  (void)ms_promise_end(id);
-  const ptrdiff_t found = promise_row_of(id);
+  ptrdiff_t found = promise_row_of(id);
+  if (found >= 0 && !row_settled((size_t)found)) {
+    (void)ms_promise_end(id);
+    found = promise_row_of(id);
+  }
   if (found < 0) {
     return;
   }

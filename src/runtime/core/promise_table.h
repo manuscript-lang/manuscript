@@ -55,10 +55,14 @@ typedef struct Hot {
 
 /* Frames a start records: the runtime's and the standard library's own, then the program line that started the
  * work, which is the one a fault report shows. */
-enum { PROMISE_STARTED_FRAMES = 12 };
+enum { PROMISE_STARTED_FRAMES = 8 };
+/* Words of a result kept in the row: an Int, a Float, a String or a small Result needs no heap block. */
+enum { PROMISE_SMALL_WORDS = 3 };
 
 typedef struct Cold {
   uint8_t *result;            /* heap block holding an owned value of `desc`, or NULL */
+  uint64_t small[PROMISE_SMALL_WORDS]; /* the owned value itself when `small_result` (it fits: no block) */
+  bool small_result;
   const MsTypeDesc *desc;
   MsObj *closure;             /* the work while its task may still run (or the deferred work), else NULL */
   MsTaskHandle task;          /* the task running the work, else 0 */
@@ -150,6 +154,10 @@ void promise_timer_fire(uint64_t id, int64_t deadline);
 bool promise_fd_ready(uint64_t id, uint32_t bits);
 static inline void promise_release_started(Cold *cold) { cold->started_count = 0; }
 void promise_release_result(size_t row);
+/* The stored result's bytes, or NULL when the row holds none. */
+static inline uint8_t *promise_result_bytes(Cold *cold) {
+  return cold->small_result ? (uint8_t *)cold->small : cold->result;
+}
 bool promise_ended_without_value(uint8_t state);
 void promise_post_watches(size_t row);
 void promise_leave_fd(MsPromise id, size_t row);

@@ -583,13 +583,20 @@ MsTaskStatus ms_task_run_main(MsTaskEntry entry, void *arg, uint32_t flags, uint
   return status;
 }
 
+/* The task of `handle`; the running task, the usual asker, needs no table lookup. */
+static MsTask *task_of(MsTaskHandle handle) {
+  MsSched *const sched = ms_sched();
+  MsTask *const running = sched->current;
+  return running != NULL && running->handle == handle ? running : ms_task_lookup(sched, handle);
+}
+
 uint32_t ms_task_started_head(MsTaskHandle handle) {
-  const MsTask *const task = ms_task_lookup(ms_sched(), handle);
+  const MsTask *const task = task_of(handle);
   return task == NULL ? 0 : task->started_head;
 }
 
 uint32_t ms_task_started_swap(MsTaskHandle handle, uint32_t head) {
-  MsTask *const task = ms_task_lookup(ms_sched(), handle);
+  MsTask *const task = task_of(handle);
   if (task == NULL) {
     return 0;
   }

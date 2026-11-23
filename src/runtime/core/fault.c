@@ -65,6 +65,9 @@ static void detail_free(MsFaultDetail *detail) {
 }
 
 void ms_fault_text_free(MsFaultText *text) {
+  if (text->bytes == NULL && text->detail == NULL) {
+    return;
+  }
   ms_free(text->bytes);
   detail_free(text->detail);
   *text = (MsFaultText){0};

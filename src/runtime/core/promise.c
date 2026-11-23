@@ -44,11 +44,13 @@ static void capture_started(Cold *cold) {
 
 void promise_release_result(size_t row) {
   Cold *const cold = &promise_table.cold.ptr[row];
-  if (cold->result != NULL) {
-    ms_slot_drop_owned(cold->desc, cold->result);
+  uint8_t *const bytes = promise_result_bytes(cold);
+  if (bytes != NULL) {
+    ms_slot_drop_owned(cold->desc, bytes);
     ms_free(cold->result);
   }
   cold->result = NULL;
+  cold->small_result = false;
   cold->desc = NULL;
 }
 
@@ -132,6 +134,18 @@ static void drop_block(void *block, const MsTypeDesc *desc, int64_t pipe) {
   ms_free(block);
 }
 
+/* The row has its result: it finishes now, or once its work's task has ended. */
+static void settle(Hot *hot, Cold *cold, size_t row, bool failed) {
+  cold->retry = NULL;
+  if (cold->closure != NULL || (hot->flags & FLAG_REMOTE) != 0) {
+    /* The work's task is still ending: its owned resources close first. */
+    hot->flags |= (uint16_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
+    return;
+  }
+  hot->state = failed ? STATE_ERROR : STATE_OK;
+  promise_wake(row);
+}
+
 /* Completes `row` with `block` unless it already finished; `block` is taken either way. */
 static void complete(size_t row, void *block, const MsTypeDesc *desc, bool failed, int64_t pipe) {
   Hot *const hot = &promise_table.hot.ptr[row];
@@ -145,14 +159,25 @@ static void complete(size_t row, void *block, const MsTypeDesc *desc, bool faile
   cold->result = block;
   cold->desc = desc;
   cold->pipe = pipe;
-  cold->retry = NULL;
-  if (cold->closure != NULL || (hot->flags & FLAG_REMOTE) != 0) {
-    /* The work's task is still ending: its owned resources close first. */
-    hot->flags |= (uint16_t)(FLAG_HELD | (failed ? FLAG_HELD_ERROR : 0));
+  settle(hot, cold, row, failed);
+}
+
+/* Completes `row` with the `desc` value at `value`, which fits the row; the value is taken either way. */
+static void complete_small(size_t row, const uint8_t *value, const MsTypeDesc *desc, bool failed) {
+  Hot *const hot = &promise_table.hot.ptr[row];
+  Cold *const cold = &promise_table.cold.ptr[row];
+  if (hot->state != STATE_PENDING || (hot->flags & FLAG_HELD) != 0) {
+    uint64_t copy[PROMISE_SMALL_WORDS];
+    __builtin_memcpy(copy, value, desc->size);
+    ms_slot_drop_owned(desc, (uint8_t *)copy);
     return;
   }
-  hot->state = failed ? STATE_ERROR : STATE_OK;
-  promise_wake(row);
+  __builtin_memcpy(cold->small, value, desc->size);
+  cold->small_result = true;
+  cold->result = NULL;
+  cold->desc = desc;
+  cold->pipe = 0;
+  settle(hot, cold, row, failed);
 }
 
 /* Mails a result to the isolate that owns `id`; a stale id, or an owner that is gone, drops it. */
@@ -177,6 +202,10 @@ static void send_done(MsPromise id, void *block, const MsTypeDesc *desc, bool fa
 void ms_promise_put(MsPromise id, uint8_t *value, const MsTypeDesc *desc, bool failed) {
   const ptrdiff_t row = promise_row_of(id);
   const size_t size = desc->size;
+  if (row >= 0 && size <= sizeof promise_table.cold.ptr[row].small) {
+    complete_small((size_t)row, value, desc, failed);
+    return;
+  }
   uint8_t *const block = ms_alloc(size > 0 ? size : 1);
   __builtin_memcpy(block, value, size);
   if (row < 0) {
@@ -205,6 +234,11 @@ void ms_promise_io_done(MsPromise id) {
 }
 
 void ms_promise_io_done_int(MsPromise id, int64_t value) {
+  const ptrdiff_t row = promise_row_of(id);
+  if (row >= 0) {
+    complete_small((size_t)row, (const uint8_t *)&value, &ms_desc_int, false);
+    return;
+  }
   int64_t *const block = ms_alloc(sizeof value);
   *block = value;
   ms_promise_io_done_block(id, block, &ms_desc_int, 0);
@@ -217,13 +251,14 @@ bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t *out) {
     return ms_remote_take(id, desc, out);
   }
   const ptrdiff_t row = promise_row_of(id);
-  if (row < 0 || promise_table.cold.ptr[row].result == NULL) {
+  if (row < 0 || promise_result_bytes(&promise_table.cold.ptr[row]) == NULL) {
     return false;
   }
   Cold *const cold = &promise_table.cold.ptr[row];
-  __builtin_memcpy(out, cold->result, desc->size);
+  __builtin_memcpy(out, promise_result_bytes(cold), desc->size);
   ms_free(cold->result);
   cold->result = NULL;
+  cold->small_result = false;
   cold->desc = NULL;
   promise_table.hot.ptr[row].state = STATE_TAKEN;
   return true;

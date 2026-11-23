@@ -502,9 +502,10 @@ size_t ms_frames_capture(uintptr_t fp, uintptr_t anchor, MsStackWindow window, u
      * leaves the segment before `capacity` frames takes the general walk below. */
     size_t count = 0;
     uintptr_t at = fp;
-    while (at % sizeof(uintptr_t) == 0 && at >= window.low && at <= UINTPTR_MAX - 16 && at + 16 <= window.high) {
-      uintptr_t record[2] = {0};
-      read_words(at, record, MS_COUNT_OF(record));
+    const uintptr_t span = window.high - window.low;
+    while (at % sizeof(uintptr_t) == 0 && span >= 16 && at - window.low <= span - 16) {
+      // NOLINTNEXTLINE(performance-no-int-to-ptr): a frame record of the running stack, inside its segment
+      const uintptr_t *const record = (const uintptr_t *)at;
       if (record[1] == 0) {
         return count;
       }
