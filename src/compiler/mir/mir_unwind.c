@@ -255,6 +255,10 @@ bool mir_unwind(MirModule *m) {
                .params = &cleanup_param, .nparams = 1, .ret = MIR_VOID,
                .leaf = true, .role = MR_CLEANUP_DISCARD};
   cx.discard = mir_extern_intern(m, &discard);
+  const MirExtern cancel = {.name = mir_name(m, ms_span_of_text("msrt_cleanup_cancel")),
+               .params = &cleanup_param, .nparams = 1, .ret = MIR_VOID,
+               .leaf = true, .role = MR_CLEANUP_CANCEL};
+  cx.cancel = mir_extern_intern(m, &cancel);
   cx.safe = uw_slot_safe_params(&cx.pass, m);
   cx.owns = uw_slot_owned_params(&cx.pass, m, &cx.safe);
   cx.pointer = uw_pointer_params(&cx.pass, m);
