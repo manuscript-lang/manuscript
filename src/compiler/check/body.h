@@ -101,6 +101,8 @@ bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsT
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver);
 /* The type of a function named as a value: its omittable parameters stay omittable. */
 const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, uint32_t *module);
+/* Whether `actual` is `expected` except that it only reads parameters `expected` may change or take. */
+bool body_reads_where_var_expected(const MsTyTable *types, MsTy actual, MsTy expected);
 MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty);
 /* The declared parameters of the lambda, function or method `value` names, or NULL; `module` is where they were written. */
 const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, uint32_t *module);

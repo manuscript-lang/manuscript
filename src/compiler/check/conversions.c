@@ -28,7 +28,7 @@ static bool interface_assignable(MsCheckProgram *program, MsTy actual, MsTy expe
 
 /* Whether `actual` is `expected` except that it reads parameters `expected` may change or take: a plain
  * parameter stands where a `var` or `move` one is expected, never the other way round. */
-static bool reads_where_var_expected(const MsTyTable *types, MsTy actual, MsTy expected) {
+bool body_reads_where_var_expected(const MsTyTable *types, MsTy actual, MsTy expected) {
   if (ms_ty_kind(types, actual) != MS_TY_FUNCTION || ms_ty_kind(types, expected) != MS_TY_FUNCTION ||
       ms_ty_param_count(types, actual) != ms_ty_param_count(types, expected) ||
       ms_ty_result(types, actual) != ms_ty_result(types, expected)) {
@@ -72,7 +72,7 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected) {
              ms_ty_shape(&body->program->types, actual) == ms_ty_shape(&body->program->types, expected)) {
     /* The same function type, but one side lets a call leave parameters out: a function value crosses them as optionals. */
     record(body, expr, MS_CONV_FUNCTION_VALUE, actual, expected);
-  } else if (reads_where_var_expected(types, actual, expected)) {
+  } else if (body_reads_where_var_expected(types, actual, expected)) {
     record(body, expr, MS_CONV_FUNCTION_VALUE, actual, expected);
   }
 }
