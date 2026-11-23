@@ -497,6 +497,27 @@ size_t ms_frames_capture(uintptr_t fp, uintptr_t anchor, MsStackWindow window, u
   if (capacity == 0) {
     return 0;
   }
+  if (ms_sys_frame_pointer_chain() && window.high != 0) {
+    /* The frames of the running code inside its current stack segment: read the chain directly. A chain that
+     * leaves the segment before `capacity` frames takes the general walk below. */
+    size_t count = 0;
+    uintptr_t at = fp;
+    while (at % sizeof(uintptr_t) == 0 && at >= window.low && at <= UINTPTR_MAX - 16 && at + 16 <= window.high) {
+      uintptr_t record[2] = {0};
+      read_words(at, record, MS_COUNT_OF(record));
+      if (record[1] == 0) {
+        return count;
+      }
+      out[count++] = record[1];
+      if (count == capacity || record[0] == 0) {
+        return count;
+      }
+      if (record[0] <= at) {
+        break;
+      }
+      at = record[0];
+    }
+  }
   Capture capture = {.out = out, .capacity = capacity};
   ms_frames_visit(fp, anchor, window, capture_one, &capture);
   return capture.count;

@@ -137,21 +137,15 @@ uint32_t promise_park_on(MsPromise id, int64_t at_ns) {
   if (row < 0) {
     return 0;
   }
-  const bool remote = (promise_table.hot.ptr[row].flags & FLAG_REMOTE_WAKE) != 0;
-  const uint64_t token = ms_token_new(remote ? MS_TOKEN_REMOTE : 0);
-  if (token == 0) {
-    promise_fail("promise: out of wait tokens");
-  }
-  promise_table.hot.ptr[row].token = token;
-  uint64_t value = 0;
-  uint32_t result = 0;
-  const MsTokenStatus status = ms_token_park_at(token, at_ns, &value, &result);
+  /* The row names the parked task itself: no token is made for a wait on one promise. */
+  const uint64_t word = ms_task_wait_word();
+  promise_table.hot.ptr[row].token = word;
+  const uint32_t result = ms_task_park_word(at_ns, (promise_table.hot.ptr[row].flags & FLAG_REMOTE_WAKE) != 0);
   const ptrdiff_t after = promise_row_of(id);
-  if (after >= 0 && promise_table.hot.ptr[after].token == token) {
+  if (after >= 0 && promise_table.hot.ptr[after].token == word) {
     promise_table.hot.ptr[after].token = 0;
   }
-  (void)ms_token_free(token);
-  return status == MS_TOKEN_OK ? result : 0;
+  return result;
 }
 
 /* Ends the work of a pending promise: a promise with a drain switch is told first and cancelled only when its grace

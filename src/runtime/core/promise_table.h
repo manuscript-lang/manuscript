@@ -50,8 +50,12 @@ typedef struct Hot {
   uint8_t state;
   uint16_t flags;
   uint32_t generation;
-  uint64_t token; /* the token a waiter parks on, or 0 */
+  uint64_t token; /* the waiter's wait word (the parked task, or a token for a wait on several), or 0 */
 } Hot;
+
+/* Frames a start records: the runtime's and the standard library's own, then the program line that started the
+ * work, which is the one a fault report shows. */
+enum { PROMISE_STARTED_FRAMES = 12 };
 
 typedef struct Cold {
   uint8_t *result;            /* heap block holding an owned value of `desc`, or NULL */
@@ -71,12 +75,15 @@ typedef struct Cold {
   int64_t cancel;             /* the cancel switch the promise listens to, or 0 */
   int64_t drain;              /* the switch fired before the work is cancelled by its owner's end, or 0 */
   int64_t grace;              /* how long the work has after that notice (negative: no limit) */
+  uint64_t queue_sequence;    /* where the queued work sits in this isolate's queue (FLAG_QUEUED) */
   uint32_t next_started;      /* row + 1 of the creator's next older started promise, 0 ends the list */
   uint32_t prev_started;
   uint32_t runner;            /* the isolate that took the work (FLAG_REMOTE), once it said so */
   MsTaskHandle runner_task;   /* the task running it there, or 0 */
-  uintptr_t *started;         /* return addresses of the code that started the work, for a fault report, or NULL */
-  size_t started_count;
+  /* Return addresses of the code that started the work, nearest first, for a fault report. Kept in the row: a
+   * start allocates nothing for them and walks at most this many frames. */
+  uintptr_t started[PROMISE_STARTED_FRAMES];
+  uint32_t started_count;
 } Cold;
 
 /* Remote tokens to post when a promise finishes: (row, generation) entries of promises another isolate waits on. */
@@ -106,8 +113,31 @@ typedef struct MsClosure {
 extern _Thread_local Table promise_table; /* per-thread state, like the scheduler's */
 
 void promise_fail(const char *text);
-bool promise_is_foreign(MsPromise id);
-ptrdiff_t promise_row_of(MsPromise id);
+
+/* The isolate tag of this thread's ids. Read each time: a scheduler learns its isolate after its table may exist. */
+static inline uint64_t promise_own_isolate(void) { return (uint64_t)(ms_sched()->isolate & 0x3fu); }
+
+/* Whether `id` belongs to another isolate's table. */
+static inline bool promise_is_foreign(MsPromise id) { return ((uint64_t)id >> ISOLATE_SHIFT) != promise_own_isolate(); }
+
+/* The row of `id`, or -1 for a stale, closed or foreign id. */
+static inline ptrdiff_t promise_row_of(MsPromise id) {
+  const uint64_t low = (uint64_t)id & 0xffffffffu;
+  if (promise_is_foreign(id) || low == 0 || low > promise_table.hot.len) {
+    return -1;
+  }
+  const Hot *const hot = &promise_table.hot.ptr[low - 1];
+  if (hot->state == STATE_FREE || (uint64_t)hot->generation != (((uint64_t)id >> 32) & GENERATION_MASK)) {
+    return -1;
+  }
+  return (ptrdiff_t)low - 1;
+}
+
+static inline MsPromise promise_make_id(size_t row) {
+  return (MsPromise)(promise_own_isolate() << ISOLATE_SHIFT | (uint64_t)promise_table.hot.ptr[row].generation << 32 |
+                     (uint64_t)(row + 1));
+}
+
 size_t promise_row_or_fault(MsPromise id);
 void promise_wake(size_t row);
 bool promise_claim_queued(size_t row);
@@ -118,8 +148,7 @@ void promise_end_started(size_t base);
 bool promise_timer_live(uint64_t id, int64_t deadline);
 void promise_timer_fire(uint64_t id, int64_t deadline);
 bool promise_fd_ready(uint64_t id, uint32_t bits);
-MsPromise promise_make_id(size_t row);
-void promise_release_started(Cold *cold);
+static inline void promise_release_started(Cold *cold) { cold->started_count = 0; }
 void promise_release_result(size_t row);
 bool promise_ended_without_value(uint8_t state);
 void promise_post_watches(size_t row);

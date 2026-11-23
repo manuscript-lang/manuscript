@@ -58,7 +58,7 @@ typedef struct MsTask {
   uintptr_t sp;       /* saved stack pointer while switched out */
   MsTaskHandle handle;
   MsTaskHandle joiner; /* the task joining this one, or 0 */
-  uint64_t wait_token; /* the token this task is parked on, or 0 */
+  uint64_t wait_token; /* the token this task is parked on, its own wait word (ms_task_park_word), or 0 */
   uint8_t *stack;      /* start of the slot, guard included; NULL for the thread's own flow */
   size_t stack_length;
   MsTaskEntry entry;
@@ -80,6 +80,7 @@ typedef struct MsTask {
   uint8_t state;
   uint8_t outcome;
   uint8_t flags;
+  bool wait_remote; /* the park on its own wait word is ended by another thread's event */
   uintptr_t teb[MS_CTX_TEB_WORDS]; /* the TEB stack words while switched out (zeros off Windows) */
 } MsTask;
 
@@ -129,6 +130,7 @@ typedef struct MsSched {
   uint32_t isolate; /* registry index carried in token ids */
   _Atomic uint8_t stop_request; /* a stop aimed at this scheduler, 0 when none; set from any thread */
   _Atomic(MsTaskHdr *) published_hdr; /* the running task's header, for a stop raised from another thread */
+  bool starts_queued;           /* ms_sched_note_queued: the hooks' start_queued runs at the next switch */
   bool cancel_edges;            /* the program's modules branch on `unwinding` after a call that can park */
 
   MsSlotList slots;       /* the handle table */
@@ -155,6 +157,8 @@ typedef struct MsSched {
   MsNode waiter_free; /* head of the free node list */
   size_t fd_waiting;  /* tasks parked on a descriptor */
 
+  MsFdNotify notify[MS_FD_NOTIFY_KINDS]; /* by kind; NULL past the registered ones */
+
   MsStacks stacks;
   uint8_t *zombie_stack; /* the finished task's stack, released once its successor runs */
   size_t zombie_stack_length;
@@ -162,7 +166,7 @@ typedef struct MsSched {
 
   MsTokenList tokens;
   MsIndexList free_tokens;
-  size_t remote_tokens; /* live tokens still expecting a post from another thread */
+  size_t remote_tokens; /* live tokens, and parks on a wait word, still expecting a post from another thread */
   size_t peer_tokens;   /* those another isolate will post */
 
   bool timed_out; /* the last join found the task cancelled for running too long */

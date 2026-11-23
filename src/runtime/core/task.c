@@ -202,6 +202,12 @@ static void save_teb(MsTask *task) { ms_ctx_teb_stack(task->teb); }
 /* Gives timers, stop requests and descriptors their turn before the next switch, without paying for a clock
  * read or a system call when nothing needs one. */
 static void service(MsSched *sched) {
+  if (sched->starts_queued) {
+    sched->starts_queued = false;
+    if (sched->hooks.start_queued != NULL) {
+      sched->hooks.start_queued();
+    }
+  }
   if (ms_sched_stop_request() != 0) {
     (void)ms_park_cancel_all(sched);
   }

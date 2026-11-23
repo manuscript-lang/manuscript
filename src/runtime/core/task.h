@@ -39,6 +39,10 @@ typedef void (*MsTaskEntry)(void *);
 #define MS_WAIT_KEEP 32u
 /* Internal: marks a descriptor waiter that is a promise, not a task. */
 #define MS_WAIT_PROMISE 128u
+/* Internal: marks a descriptor waiter that is a notify function (ms_sched_fd_notify); its kind is in the bits at
+ * MS_WAIT_KIND_SHIFT. */
+#define MS_WAIT_NOTIFY 512u
+#define MS_WAIT_KIND_SHIFT 16
 
 /* ms_task_spawn flags. */
 #define MS_SPAWN_DETACHED 1u /* nobody joins; a fault in the task ends the process */
@@ -90,9 +94,14 @@ typedef struct MsSchedHooks {
    * isolate) as a task and answers true, or answers false with `*wait_ns` the longest it may block for that
    * work's sake (negative: no limit). May be NULL. */
   bool (*idle)(int64_t *wait_ns);
+  /* The idle path ended: the scheduler has something to run. May be NULL. */
+  void (*idle_over)(void);
   /* After the scheduler marked itself sleeping: whether work that idle would take has appeared since, so it must
    * not block. May be NULL. */
   bool (*pending)(void);
+  /* Work was queued that only this thread can start (ms_sched_note_queued): starts it as tasks. Runs before the next
+   * switch away from the running task, the first moment a task started at once could have run. May be NULL. */
+  void (*start_queued)(void);
   /* A service isolate (a worker) with no task and no timer waits for mail and work instead of being deadlocked. */
   bool service;
 } MsSchedHooks;
@@ -168,6 +177,20 @@ static inline int64_t ms_sched_deadline_after(int64_t timeout_ns) {
  * MS_POLL_FAILED. The hooks' fd_ready is called with the ready bits. */
 int ms_sched_fd_wait_begin(uint64_t id, int fd, uint32_t events);
 void ms_sched_fd_wait_end(uint64_t id, int fd);
+/* A descriptor waiter that is neither a task nor a promise: a function called on the scheduler's thread, inside its
+ * poll, with the ready bits (MS_WAIT_READ, WRITE, HUP). It must not park. True ends the wait, false keeps it. It
+ * costs one waiter node: no promise row, no allocation. */
+typedef bool (*MsFdNotify)(uint64_t id, uint32_t bits);
+enum { MS_FD_NOTIFY_KINDS = 8 };
+/* The kind number of `notify` on this thread's scheduler, registering it on first use; -1 when MS_FD_NOTIFY_KINDS
+ * functions are registered already. */
+int ms_sched_fd_notify_kind(MsFdNotify notify) MS_NONNULL;
+/* Waits for `fd` on behalf of (`kind`, `id`): MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or
+ * MS_POLL_FAILED. `events` are MS_WAIT_READ and MS_WAIT_WRITE, with any other bit (MS_WAIT_KEEP) passed on to the
+ * poller. */
+int ms_sched_fd_notify(int kind, uint64_t id, int fd, uint32_t events);
+/* Ends that wait if it is still registered. */
+void ms_sched_fd_notify_end(int kind, uint64_t id, int fd);
 /* Arms an entry for the timer_live and timer_fire hooks; wakes the scheduler's idle wait in time. */
 void ms_sched_arm(uint64_t id, int64_t at_ns);
 
@@ -261,6 +284,20 @@ void ms_task_restore_segment(uint32_t segment);
 void ms_task_segment_teb(uint32_t segment, uintptr_t out[3]);
 /* Copies the running task's recursion limit to the cell of the segment it is on. */
 void ms_task_publish_limit(void);
+
+/* Asks for the hooks' start_queued before this thread's next task switch. */
+void ms_sched_note_queued(void);
+
+/* ---- wait words ---- */
+
+/* A wait word names what a wake goes to: a token id, or the running task itself. ms_token_post takes either. */
+uint64_t ms_task_wait_word(void);
+/* Parks the running task until its own wait word is posted (0), `at_ns` passes (MS_WAIT_TIMEOUT; negative: never)
+ * or a cancel arrives (MS_WAIT_CANCELLED). No token is made: the word is the task. `remote` says another thread's
+ * event ends the park, so the scheduler waits instead of reporting a deadlock. A post while the task is not parked
+ * this way is dropped, and a post meant for an earlier park of the task ends a later one, so the caller rechecks
+ * what it waited for. */
+uint32_t ms_task_park_word(int64_t at_ns, bool remote);
 
 /* ---- tokens ---- */
 
