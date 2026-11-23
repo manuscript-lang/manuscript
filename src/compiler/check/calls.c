@@ -169,7 +169,7 @@ static bool report_ambiguous(Body *body, const MsExpr *callee, MsTy receiver, co
   for (size_t index = 0; index < found->len; index++) {
     fitting += fits_arguments(body, &found->ptr[index], nargs) ? 1 : 0;
   }
-  if (fitting < 2 || body->module >= body->program->user_modules || body->quiet) {
+  if (fitting < 2 || !body_reports(body) || body->quiet) {
     return fitting >= 2;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -380,6 +380,12 @@ static bool unapplied(const Body *body, MsTy ty) {
   return true;
 }
 
+/* Whether `expr` is the bare `none`, which takes its type from the parameter and so says nothing about type arguments. */
+static bool is_none_literal(const Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+}
+
 /* The parameter type with the variables bound so far substituted. */
 static MsTy expected_param(Body *body, const Target *target, MsTy param, const MsTy *bound) {
   size_t known = 0;
@@ -496,7 +502,7 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
       ms_ty_param_count(types, param) == ms_ty_param_count(types, actual)) {
     return false;
   }
-  if (body->module < body->program->user_modules && !body->quiet) {
+  if (body_reports(body) && !body->quiet) {
     const size_t have = ms_ty_param_count(types, actual);
     const size_t want = ms_ty_param_count(types, param);
     MsStrBuild text = ms_strbuild_new();
@@ -528,14 +534,18 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
                       MsTy *bound, const MsTy *hint) {
   const MsTyTable *types = &body->program->types;
   /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
-  for (size_t round = 0; round < 2 * matched->count; round++) {
-    const size_t index = round % matched->count;
-    if (matched->slot[index] < 0) {
+  for (size_t round = 0; round < 2 * call->u.call.args.len; round++) {
+    const size_t written = round % call->u.call.args.len; /* arguments bind variables in the order they are written */
+    size_t index = 0;
+    while (index < matched->count && matched->slot[index] != (int32_t)written) {
+      index++;
+    }
+    if (index == matched->count) {
       continue;
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     const MsArg *arg = &call->u.call.args.ptr[matched->slot[index]];
-    if ((arg->value->kind == MS_E_LAMBDA) != (round >= matched->count)) {
+    if ((arg->value->kind == MS_E_LAMBDA) != (round >= call->u.call.args.len)) {
       continue;
     }
     MsStrBuild context = ms_strbuild_new();
@@ -572,7 +582,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
-        !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
+        !is_none_literal(body, arg->value) && !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
   }
@@ -688,7 +698,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
   size_t found = 0;
   const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found) ||
                            ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
-  if (body->module >= body->program->user_modules || body->quiet ||
+  if (!body_reports(body) || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
       !only_callback_diagnostics(body->program, before) || holds_invalid(types, body->result, 6) ||
       holds_invalid(types, callee, 6)) {
@@ -721,12 +731,42 @@ static void report_uninferred(Body *body, const MsExpr *call, const Target *targ
   }
 }
 
+/* Arguments that imply different types for one variable: the one written later is the one that disagrees. */
+static void report_conflict(Body *body, const MsExpr *call, const Target *target, const MsInstance *instance,
+                            const MsTy *arg_tys, const Matched *matched, size_t before) {
+  const int32_t slot = matched->slot[instance->conflict];
+  if (!body_reports(body) || body->quiet || slot < 0) {
+    return;
+  }
+  const MsArg *arg = &call->u.call.args.ptr[slot];
+  const MsTy param = ms_ty_params(&body->program->types, target->sig)[instance->conflict].ty;
+  bool bare = false; /* a number for a bare variable waits for the other arguments, so it only mismatches */
+  for (size_t at = 0; at < target->vars.len; at++) {
+    bare = bare || target->vars.ptr[at] == param;
+  }
+  if (!(bare && arg->value->kind == MS_E_NUMBER)) {
+    ms_check_report(body->program, body->module, arg->pos, MS_CHECK_TYPE,
+                    ms_string_from_span(ms_string_span(&instance->message)));
+  }
+  for (size_t index = before; index < body->program->diagnostics.len; index++) { /* the argument already failed its type */
+    if (body->program->diagnostics.ptr[index].pos.offset == arg->value->pos.offset) {
+      return;
+    }
+  }
+  const MsTy wanted = ms_ty_subst(&body->program->types, param, target->vars.ptr, instance->args.ptr, target->vars.len);
+  MsStrBuild context = ms_strbuild_new();
+  argument_context(body, target, instance->conflict, &context);
+  body_check_assignable(body, arg->value, arg_tys[instance->conflict], wanted, ms_strbuild_span(&context));
+  ms_strbuild_free(&context);
+}
+
 static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const MsTy *arg_tys, const Matched *matched,
                         MsTy expected, size_t diagnostics_before) {
   MsInstance instance = {0};
   MsTy sig = target->sig;
   bool instantiated = true;
   MsTyList typed = {0};
+  const MsTy *written = arg_tys; /* the arguments' own types, before any is held back from inference */
   if (body->program->diagnostics.len > diagnostics_before && only_callback_diagnostics(body->program, diagnostics_before)) {
     /* a callback that could not be typed gives the call no evidence about its type arguments */
     for (size_t index = 0; index < matched->count; index++) {
@@ -734,16 +774,43 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
     }
     arg_tys = typed.ptr;
   }
+  if (target->vars.len != 0 && typed.len == 0) {
+    bool bare = false;
+    for (size_t index = 0; index < matched->count; index++) {
+      bare = bare || (matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value));
+    }
+    for (size_t index = 0; bare && index < matched->count; index++) {
+      const bool none = matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value);
+      ms_ty_list_push(&typed, none ? MS_TY_NONE : arg_tys[index]);
+    }
+    arg_tys = bare ? typed.ptr : arg_tys;
+  }
   if (target->vars.len != 0) {
     const MsSpan name = target->name;
+    size_t *order = MS_ARENA_NEW_ARRAY(&body->program->arena, size_t, matched->count + 1);
+    size_t ordered = 0;
+    for (int32_t slot = 0; ordered < matched->count && slot < (int32_t)call->u.call.args.len; slot++) {
+      for (size_t index = 0; index < matched->count; index++) {
+        if (matched->slot[index] == slot) {
+          order[ordered++] = index;
+        }
+      }
+    }
+    for (size_t index = 0; index < matched->count; index++) { /* omitted parameters follow */
+      if (matched->slot[index] < 0) {
+        order[ordered++] = index;
+      }
+    }
     if (ms_check_instantiate(body->program, target->sig, target->vars.ptr, target->vars.len, name,
-                             target->explicit_args.ptr, target->explicit_args.len, arg_tys, matched->count, expected,
-                             &instance)) {
+                             target->explicit_args.ptr, target->explicit_args.len, arg_tys, matched->count, order,
+                             expected, &instance)) {
       sig = instance.ty;
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
-      if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
+      if (instance.conflict != SIZE_MAX) {
+        report_conflict(body, call, target, &instance, arg_tys, matched, diagnostics_before);
+      } else if (uninferable(body, &instance, written, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
         /* the call's failure comes before the callbacks it could not type */
         MsCheckDiagList *list = &body->program->diagnostics;
@@ -800,7 +867,7 @@ static bool report_builtin_constructor(Body *body, const MsExpr *call) {
       return true;
     }
   }
-  if (body->module < body->program->user_modules && !body->quiet) {
+  if (body_reports(body) && !body->quiet) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "this type has no source constructor: ");
     ms_strbuild_append(&text, name);
@@ -823,7 +890,7 @@ static void report_not_callable(Body *body, const MsExpr *call, const Target *ta
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
   }
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();

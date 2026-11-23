@@ -61,7 +61,9 @@ static bool assignable(Body *body, MsTy actual, MsTy expected) {
   if ((left->open || right->open) && left->id == right->id && left->arg_count == right->arg_count) {
     return true;
   }
+  /* A value wraps once: a plain Int is not an Int??, though an Int? is. */
   if (ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1 &&
+      (!ms_ty_is(types, ms_ty_args(types, expected)[0], MS_BUILTIN_Optional) || ms_ty_is(types, actual, MS_BUILTIN_Optional)) &&
       assignable(body, actual, ms_ty_args(types, expected)[0])) {
     return true;
   }
@@ -291,9 +293,14 @@ static void attach_fix(Body *body, const MsExpr *expr, MsTy actual, MsTy expecte
 /* Whether `actual` is the type of a bare `none`: an Optional of its own unbound payload. */
 static bool is_none(const Body *body, MsTy actual) {
   const MsTyTable *types = &body->program->types;
-  return ms_ty_is(types, actual, MS_BUILTIN_Optional) && ms_ty_arg_count(types, actual) == 1 &&
-         ms_ty_kind(types, ms_ty_args(types, actual)[0]) == MS_TY_VARIABLE &&
-         ms_ty_row(types, actual)->open;
+  if (!ms_ty_is(types, actual, MS_BUILTIN_Optional) || ms_ty_arg_count(types, actual) != 1 ||
+      ms_ty_kind(types, ms_ty_args(types, actual)[0]) != MS_TY_VARIABLE || !ms_ty_row(types, actual)->open ||
+      ms_ty_row(types, actual)->def == 0) {
+    return false;
+  }
+  /* the Optional's own variable: a variable of an enclosing generic (`T?` inside `fn f[T]`) names a type */
+  const MsDef *def = ms_defs_get(&body->program->defs, ms_ty_row(types, actual)->def);
+  return def->variables.len == 1 && def->variables.ptr[0] == ms_ty_args(types, actual)[0];
 }
 
 bool body_is_none_type(const Body *body, MsTy ty) {
@@ -301,7 +308,7 @@ bool body_is_none_type(const Body *body, MsTy ty) {
 }
 
 void body_report_uninferred_none(Body *body, MsPos pos) {
-  if (body->quiet || body->module >= body->program->user_modules) {
+  if (body->quiet || !body_reports(body)) {
     return;
   }
   ms_check_report(body->program, body->module, pos, MS_CHECK_TYPE,
@@ -342,7 +349,7 @@ static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy ex
 }
 
 void body_check_assignable(Body *body, const MsExpr *expr, MsTy actual, MsTy expected, MsSpan context) {
-  if (body->quiet || body->module >= body->program->user_modules || expected == MS_TY_NONE || actual == MS_TY_NONE ||
+  if (body->quiet || !body_reports(body) || expected == MS_TY_NONE || actual == MS_TY_NONE ||
       assignable(body, actual, expected)) {
     return;
   }

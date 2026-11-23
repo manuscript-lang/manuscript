@@ -157,6 +157,7 @@ typedef struct MsFacts {
   MsTy *types;      /* 1. the type of each expression, pattern and parameter node, after inference */
   MsRef *refs;      /* 2. what each NAME, MEMBER and callee node resolves to */
   uint8_t *uses;    /* 6. MsUse of each use of a local */
+  uint8_t *last;    /* 6. a field read that moves: 1 when no later use of the name it reads from remains (own/moves.c) */
   MsCallList calls;             /* 3. sorted by node */
   MsConversionList conversions; /* 4. sorted by node */
   MsConstantList constants;     /* 5. sorted by node */

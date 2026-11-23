@@ -65,12 +65,36 @@ const MsOperation *ms_check_find_operation(const MsCheckProgram *program, MsTy c
   return NULL;
 }
 
+/* `Self` is the interface's own type, and may stand only as a whole parameter or result: the interface's name written
+ * inside another type (`Transport!`) names the interface itself, and an implementation spells it the same way. */
+static MsTy replace_self(MsTyTable *types, MsTy ty, MsTy own, MsTy implementor) {
+  if (ty == own) {
+    return implementor;
+  }
+  if (ms_ty_kind(types, ty) != MS_TY_FUNCTION) {
+    return ty;
+  }
+  const MsTyRow row = *ms_ty_row(types, ty);
+  MsTyParamList params = {0};
+  for (uint32_t index = 0; index < row.param_count; index++) {
+    MsTyParam param = types->params_pool.ptr[row.params_at + index];
+    param.ty = param.ty == own ? implementor : param.ty;
+    ms_ty_param_list_push(&params, param);
+  }
+  const MsTyDesc desc = {.name = row.name, .id = row.id, .kind = (MsTyKind)row.kind, .builtin = (MsBuiltin)row.builtin,
+                         .def = row.def, .params = params.ptr, .param_count = row.param_count,
+                         .result = row.result == own ? implementor : row.result};
+  const MsTy out = ms_ty_intern(types, &desc);
+  ms_ty_param_list_free(&params);
+  return out;
+}
+
 /* `ty` as an operation of `contract` sees it on `implementor`: `Self` is the implementor, the interface's type
  * arguments are bound. */
 static MsTy bind_contract(MsCheckProgram *program, MsTy contract, MsTy ty, MsTy implementor) {
   const MsDef *def = contract_def(program, contract);
   const MsTy own = program->symbols.ptr[def->symbol].ty;
-  const MsTy bound = ms_check_replace_type(&program->types, ty, own, implementor);
+  const MsTy bound = replace_self(&program->types, ty, own, implementor);
   if (def->variables.len != ms_ty_arg_count(&program->types, contract)) {
     return bound;
   }

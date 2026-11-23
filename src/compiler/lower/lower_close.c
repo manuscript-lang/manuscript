@@ -508,6 +508,15 @@ bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *tak
   return true;
 }
 
+/* Whether the local or parameter `ref` names has a closing slot: its scope owns the value, so a part may leave it. */
+bool fn_closing_owns(const LowerFn *fn, const MsRef *ref) {
+  if (fn->closing == NULL || ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
+    return false;
+  }
+  const uint32_t at = ref->kind == MS_REF_LOCAL ? ref->local : fn->nvars + ref->local;
+  return at < fn->nvars + LOWER_MAX_CLOSING_PARAMS && fn->closing[at] != MIR_NONE;
+}
+
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken) {
   const MsRef *ref = ms_facts_ref(fn->facts, name->id);
   return ref != NULL && ms_facts_use(fn->facts, name->id) == MS_USE_MOVE && fn_closing_take(fn, ref, view, taken);
