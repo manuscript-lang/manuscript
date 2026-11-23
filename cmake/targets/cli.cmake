@@ -26,6 +26,15 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
 
+# Fixtures that own resources, fault, recurse deeply or start threads leave nothing allocated at exit with the process-exit
+# frees kept (cmake/LeakCheck.cmake); a test that fails here found a leak, not a stale baseline.
+set(MS_LEAK_FIXTURES accept/bind-collection-resource-read-in-place accept/interface-box-freed-with-resource
+  stdlib/net-close-releases-socket
+  accept/call-depth.test accept/faulting-close-in-list-releases-buffer.test accept/pipe-flow.test
+  stdlib/promise-semantics.test)
+add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIXTURES=${CMAKE_SOURCE_DIR}/tests/conformance/fixtures/e2e
+  "-DNAMES=${MS_LEAK_FIXTURES}" -DWORK=${CMAKE_BINARY_DIR}/src/cli/leak -P ${CMAKE_SOURCE_DIR}/cmake/LeakCheck.cmake)
+
 # Every bundled standard-library body checks: `ms check` and `ms lint` check only the bodies a program reaches.
 file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void:\n    return\n")
 add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)

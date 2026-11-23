@@ -254,6 +254,39 @@ static size_t registry_take(void) {
   return index;
 }
 
+/* Frees the tables of retired pipes (rings, chunks without a live pipe, the free list) that a process keeps for reuse, at
+ * the end of one that balances its books; a live pipe keeps its chunk, so a leaked pipe is still counted. */
+void ms_pipe_release_all(void) {
+  bool kept_any = false;
+  for (size_t chunk = 0; chunk < registry.count / PIPE_CHUNK + 1 && chunk < PIPE_CHUNKS; chunk++) {
+    PipeCell *cells = atomic_load_explicit(&pipe_table[chunk], memory_order_acquire);
+    if (cells == NULL) {
+      continue;
+    }
+    bool live = false;
+    for (size_t i = 0; i < PIPE_CHUNK; i++) {
+      live = live || cells[i].live;
+    }
+    if (live) {
+      kept_any = true; /* a leaked pipe keeps its chunk, and its blocks stay counted */
+      continue;
+    }
+    for (size_t i = 0; i < PIPE_CHUNK; i++) {
+      ms_free(cells[i].queue.items);
+      ms_free(cells[i].front.items);
+      ms_free(cells[i].local.items);
+      ms_free(cells[i].flushes);
+    }
+    atomic_store_explicit(&pipe_table[chunk], NULL, memory_order_release);
+    ms_free(cells);
+  }
+  if (!kept_any) {
+    ms_free(registry.free_list);
+    registry.free_list = NULL;
+    registry.free_count = registry.free_cap = registry.count = 0;
+  }
+}
+
 /* ---- the reader's side ---- */
 
 static bool take_ready(PipeCell *cell, PipeItem *out) {

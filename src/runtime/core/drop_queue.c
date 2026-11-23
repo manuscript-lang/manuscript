@@ -56,6 +56,11 @@ void msrt_drop_leave(void) {
   state.draining = false;
 }
 
+void ms_drop_queue_release(void) {
+  ms_free(state.pending);
+  state = (DropState){0};
+}
+
 /* The three words a grown copy needs: the copy function, its source and its destination. */
 typedef void (*CopyFn)(const uint8_t *src, uint8_t *dst);
 

@@ -25,7 +25,7 @@ static uint32_t uws_ancestor(const UwStacks *s, uint32_t stack, uint32_t depth) 
 
 /* The tag of the entry that ends the prefix of `depth` entries (the first is at depth 1). */
 uint64_t uws_tag_at(const UwStacks *s, uint32_t stack, uint32_t depth) {
-  return s->nodes[uws_ancestor(s, stack, depth)].tag;
+  return s->nodes[uws_ancestor(s, stack, depth)].tag & ~UW_TAG_DEAD;
 }
 
 /* The longest prefix both stacks start with. */
@@ -39,9 +39,9 @@ static uint32_t uws_common(const UwStacks *s, uint32_t a, uint32_t b) {
   return a;
 }
 
-/* How to bring `stack` to the owners in `target`: the first entry whose owner died is discarded
- * with every newer one, and the owners above it that live, and the ones not yet held, are
- * registered again. */
+/* How to bring `stack` to the owners in `target`. The first entry whose owner died is discarded with every
+ * newer one, and the owners above it that live, and the ones not yet held, are registered again. When more
+ * owners live above that entry than died, the dead entries are cancelled instead and the live ones stay. */
 UwPlan uws_plan(UwStacks *s, uint32_t stack, const OwnerSet *target) {
   const UwNode *node = &s->nodes[stack];
   uint32_t *gone = NULL, *added = NULL, ngone = 0, nadded = 0;
@@ -55,17 +55,42 @@ UwPlan uws_plan(UwStacks *s, uint32_t stack, const OwnerSet *target) {
     }
   }
   if (plan.has_cut) {
-    uint32_t *grown = MS_ARENA_NEW_ARRAY(s->a, uint32_t, (size_t)nadded + uws_depth(s, stack) + 1);
-    __builtin_memcpy(grown, added, sizeof(uint32_t) * nadded);
-    added = grown;
-    while (uws_depth(s, plan.keep) > plan.cut) {
-      const UwNode *top = &s->nodes[plan.keep];
-      if (owner_contains(target, top->owner)) {
-        added[nadded++] = top->owner;
-      }
-      plan.keep = top->parent;
+    const uint32_t above = uws_depth(s, stack) - plan.cut;
+    uint32_t live = 0;
+    for (uint32_t at = stack; uws_depth(s, at) > plan.cut; at = s->nodes[at].parent) {
+      const UwNode *top = &s->nodes[at];
+      live += (top->tag & UW_TAG_DEAD) == 0 && owner_contains(target, top->owner);
     }
-    uw_sort_u32(added, nadded);
+    if (live > ngone) {
+      plan.has_cut = false;
+      plan.keep = uws_ancestor(s, stack, plan.cut);
+      plan.nrebuilt = above;
+      plan.rebuilt = MS_ARENA_NEW_ARRAY(s->a, uint32_t, (size_t)above + 1);
+      plan.rebuilt_tags = MS_ARENA_NEW_ARRAY(s->a, uint64_t, (size_t)above + 1);
+      plan.cancel = MS_ARENA_NEW_ARRAY(s->a, uint64_t, (size_t)ngone + 1);
+      uint32_t at = stack;
+      for (uint32_t i = above; i > 0; i--, at = s->nodes[at].parent) {
+        const UwNode *top = &s->nodes[at];
+        plan.rebuilt[i - 1] = top->owner;
+        plan.rebuilt_tags[i - 1] = top->tag;
+        if ((top->tag & UW_TAG_DEAD) == 0 && !owner_contains(target, top->owner)) {
+          plan.cancel[plan.ncancel++] = top->tag;
+          plan.rebuilt_tags[i - 1] |= UW_TAG_DEAD;
+        }
+      }
+    } else {
+      uint32_t *grown = MS_ARENA_NEW_ARRAY(s->a, uint32_t, (size_t)nadded + above + 1);
+      __builtin_memcpy(grown, added, sizeof(uint32_t) * nadded);
+      added = grown;
+      while (uws_depth(s, plan.keep) > plan.cut) {
+        const UwNode *top = &s->nodes[plan.keep];
+        if ((top->tag & UW_TAG_DEAD) == 0 && owner_contains(target, top->owner)) {
+          added[nadded++] = top->owner;
+        }
+        plan.keep = top->parent;
+      }
+      uw_sort_u32(added, nadded);
+    }
   }
   plan.added = added;
   plan.nadded = nadded;
@@ -145,11 +170,28 @@ uint32_t uws_extend(UwStacks *s, uint32_t stack, const uint32_t *owners, const u
     OwnerSet set = *target;
     if (i + 1 != n) {
       set = s->nodes[stack].owners;
-      owner_insert(s->a, &set, owners[i]);
+      if ((tags[i] & UW_TAG_DEAD) == 0) {
+        owner_insert(s->a, &set, owners[i]);
+      }
     }
     stack = uws_add(s, stack, owners[i], tags[i], &set);
   }
   return stack;
+}
+
+uint32_t uws_commit(UwStacks *s, const UwPlan *plan, const uint64_t *tags, const OwnerSet *target) {
+  const uint32_t n = plan->nrebuilt + plan->nadded;
+  uint32_t *owners = MS_ARENA_NEW_ARRAY(s->a, uint32_t, (size_t)n + 1);
+  uint64_t *all = MS_ARENA_NEW_ARRAY(s->a, uint64_t, (size_t)n + 1);
+  for (uint32_t i = 0; i < plan->nrebuilt; i++) {
+    owners[i] = plan->rebuilt[i];
+    all[i] = plan->rebuilt_tags[i];
+  }
+  for (uint32_t i = 0; i < plan->nadded; i++) {
+    owners[plan->nrebuilt + i] = plan->added[i];
+    all[plan->nrebuilt + i] = tags[i];
+  }
+  return uws_extend(s, plan->keep, owners, all, n, target);
 }
 
 /* ---- plan_flow ---- */
@@ -234,7 +276,7 @@ static void uw_flow_walk(UwFlowPass *p) {
       for (uint32_t i = 0; i < plan.nadded; i++) {
         tags[i] = (uint64_t)bi << 32 | seq++;
       }
-      stack = uws_extend(p->stacks, plan.keep, plan.added, tags, plan.nadded, target);
+      stack = uws_commit(p->stacks, &plan, tags, target);
     }
     p->left[bi] = uws_ancestor(p->stacks, stack, p->trim[bi]);
     p->full[bi] = stack;
@@ -307,6 +349,12 @@ bool uw_plan_flow(UwCx *cx, const MirFunc *f, const UwWalk *walk, UwStacks *stac
 
 /* ---- emitting registrations ---- */
 
+/* The instruction that makes the registration behind `handle` a no-op; newer ones stay. */
+static MirInst uw_cancel_inst(UwCx *cx, MirFunc *f, MirValue handle, MirLoc loc) {
+  const MirValue res = mir_new_value(f, MIR_VOID);
+  return mir_inst(MOP_CallRt, mir_imm_ext(cx->cancel), res, loc, mir_args_copy(cx->m, &handle, 1), 1);
+}
+
 /* The instruction that discards the registration behind `handle` and every newer one. */
 MirInst uw_discard_inst(UwCx *cx, MirFunc *f, MirValue handle, MirLoc loc) {
   const MirValue res = mir_new_value(f, MIR_VOID);
@@ -371,6 +419,11 @@ static void uw_flow_sync(UwRw *r, uint32_t *stack, const OwnerSet *target, MirLo
     (void)uh_get(r->handles, uws_tag_at(r->stacks, *stack, plan.cut + 1), &first);
     mir_inst_list_push(&r->out, uw_discard_inst(r->cx, r->f, (MirValue)first, loc));
   }
+  for (uint32_t i = 0; i < plan.ncancel; i++) {
+    uint64_t dead = 0;
+    (void)uh_get(r->handles, plan.cancel[i], &dead);
+    mir_inst_list_push(&r->out, uw_cancel_inst(r->cx, r->f, (MirValue)dead, loc));
+  }
   MirValue *handles = MS_ARENA_NEW_ARRAY(r->stacks->a, MirValue, plan.nadded + 1);
   uint64_t *tags = MS_ARENA_NEW_ARRAY(r->stacks->a, uint64_t, plan.nadded + 1);
   uw_push_each(r->cx, r->f, &r->out, plan.added, plan.nadded, loc, handles);
@@ -378,7 +431,7 @@ static void uw_flow_sync(UwRw *r, uint32_t *stack, const OwnerSet *target, MirLo
     tags[i] = (uint64_t)r->bi << 32 | r->seq++;
     (void)uh_put(r->stacks->a, r->handles, tags[i], handles[i]);
   }
-  *stack = uws_extend(r->stacks, plan.keep, plan.added, tags, plan.nadded, target);
+  *stack = uws_commit(r->stacks, &plan, tags, target);
 }
 
 /* Rewrites a block that carries registrations across its edges: it starts with the ones its
@@ -433,13 +486,16 @@ void uw_open_sync(UwCx *cx, MirFunc *f, UwStacks *stacks, uint32_t *at, MirInstL
     const MirValue first = (MirValue)uws_tag_at(stacks, *at, plan.cut + 1);
     mir_inst_list_push(out, uw_discard_inst(cx, f, first, loc));
   }
+  for (uint32_t i = 0; i < plan.ncancel; i++) {
+    mir_inst_list_push(out, uw_cancel_inst(cx, f, (MirValue)plan.cancel[i], loc));
+  }
   MirValue *handles = MS_ARENA_NEW_ARRAY(stacks->a, MirValue, plan.nadded + 1);
   uint64_t *tags = MS_ARENA_NEW_ARRAY(stacks->a, uint64_t, plan.nadded + 1);
   uw_push_each(cx, f, out, plan.added, plan.nadded, loc, handles);
   for (uint32_t i = 0; i < plan.nadded; i++) {
     tags[i] = handles[i];
   }
-  *at = uws_extend(stacks, plan.keep, plan.added, tags, plan.nadded, target);
+  *at = uws_commit(stacks, &plan, tags, target);
 }
 
 /* The instruction that discards every registration of the window, when any is open: the first

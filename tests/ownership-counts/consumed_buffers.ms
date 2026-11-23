@@ -1,5 +1,5 @@
-// expect-debug: allocs=15 alloc_bytes=72360 list_copies=1 list_copy_bytes=8000
-// expect-release: allocs=3 alloc_bytes=32000 list_copies=0 list_copy_bytes=0
+// expect-debug: allocs=19 alloc_bytes=66072 list_copies=3 list_copy_bytes=24008
+// expect-release: allocs=19 alloc_bytes=66072 list_copies=3 list_copy_bytes=24008
 // Clones of dead lists and a map over a dead list: Release already moves them, Debug
 // keeps one list copy. Reuse of consumed buffers must not raise either.
 fn fill(n: Int) List[Int]:

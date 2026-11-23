@@ -44,4 +44,8 @@ void msrt_pipe_close_writer(int64_t pipe);
 /* ms-sig: msrt_pipe_close_reader(pipe: i64) @domain=pipe */
 void msrt_pipe_close_reader(int64_t pipe);
 
+/* Frees the tables of retired pipes (cells' rings, chunks without a live pipe, the free list) that
+ * a process keeps for reuse, so only a live pipe's blocks count as leaked. */
+void ms_pipe_release_all(void);
+
 #endif

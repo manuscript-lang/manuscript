@@ -300,8 +300,9 @@ MS_NORETURN static void overflow_fault(const char *operation, const MsDecimal *l
                      operation, (int)ms_strbuild_length(&left_text),
                      (const char *)ms_strbuild_span(&left_text).ptr, (int)ms_strbuild_length(&right_text),
                      (const char *)ms_strbuild_span(&right_text).ptr);
-  ms_strbuild_append_byte(&message, 0); /* the fault takes a C string */
-  ms_fault_text(MS_FAULT_KIND_OVERFLOW, (const char *)ms_strbuild_span(&message).ptr);
+  ms_strbuild_free(&left_text);
+  ms_strbuild_free(&right_text);
+  ms_fault_built(MS_FAULT_KIND_OVERFLOW, &message);
 }
 
 /* ---- arithmetic ---- */

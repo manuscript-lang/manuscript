@@ -9,6 +9,8 @@
 
 /* Instruction count up to which an `Auto` callee is inlined. */
 #define OPT_INLINE_BASE_THRESHOLD 60u
+/* The same for a compact build (Debug): most of the module size LLVM then compiles comes from inlined copies. */
+#define OPT_INLINE_COMPACT_THRESHOLD 15u
 /* Cap on growth of one caller, as a multiple of its original size plus the slack. */
 #define OPT_INLINE_GROWTH_FACTOR 4u
 #define OPT_INLINE_GROWTH_SLACK 200u

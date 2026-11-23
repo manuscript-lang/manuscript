@@ -6,7 +6,7 @@
 #include "compiler/mir/mir.h"
 
 /* Optimises `module` in place with the one pipeline every build type runs. With `verify`, the module is verified
- * once at the end; when that fails, `error` receives what is wrong and the call returns false. */
-bool mir_optimize(MirModule *module, bool verify, MsStrBuild *error);
+ * once at the end; `compact` inlines only callees of at most 15 instructions, not 60 (Debug); when that fails, `error` receives what is wrong and the call returns false. */
+bool mir_optimize(MirModule *module, bool compact, bool verify, MsStrBuild *error);
 
 #endif
