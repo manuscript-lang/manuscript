@@ -847,8 +847,12 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     args[at] = values[at];
   }
   MirValue result = MIR_NONE;
-  const bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
-                            : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
+                      : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  if (!done && !changes && !body.failed) { /* a scalar's own conversion has no form of its own: the runtime function */
+    result = fn_native_default(&body, owner, operation, data->nargs + 1, args, reserved.ret);
+    done = result != MIR_NONE || reserved.ret == MIR_VOID;
+  }
   if (!done || body.failed) {
     (void)fn_fail(fn, "the operation `%.*s` cannot be used as a value yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;

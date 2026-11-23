@@ -277,6 +277,8 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
 /* The shape table of `ty`, with the hooks its types declare built first. */
 MirValue fn_shape(LowerFn *fn, MirTy ty);
 bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out);
+/* The runtime function of `operation` on `owner` called with `args`, or the value itself for a conversion to its own type. */
+MirValue fn_native_default(LowerFn *fn, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args, MirTy ret);
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 /* The runtime function a bodiless standard-library function `id` is, called with `arg_count` arguments. */
 MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const MirValue *args, MirTy ret);
