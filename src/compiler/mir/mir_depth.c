@@ -142,6 +142,44 @@ static void dp_grow_path(DpEmit *e, const DpRuntime *rt, uint32_t shim_id, const
   e->f->blocks.ptr[grow].term_loc = MIR_LOC_NONE;
 }
 
+/* Puts `depth.enter` first in `func`; false when it is already there. */
+static bool dp_insert_enter(MirFunc *func) {
+  MirBlockData *entry = &func->blocks.ptr[0];
+  if (entry->insts.len > 0 && entry->insts.ptr[0].op == MOP_DepthEnter) {
+    return false;
+  }
+  MirInstList out = {0};
+  mir_inst_list_push(&out, mir_inst(MOP_DepthEnter, mir_imm_none(), MIR_NONE, MIR_LOC_NONE, NULL, 0));
+  for (uint32_t i = 0; i < entry->insts.len; i++) {
+    mir_inst_list_push(&out, entry->insts.ptr[i]);
+  }
+  mir_inst_list_free(&entry->insts);
+  entry->insts = out;
+  return true;
+}
+
+/* Frames above this many bytes (by the bound below, before elaboration) get the stack check. */
+#define DP_LARGE_FRAME 8192
+
+/* A bound on the frame of `f` once compiled: its slots, and a word for every value, since the fast register
+ * allocator spills each value that lives across a block. The check leaves this much room below the limit, so a frame
+ * that does not fit grows a segment instead of running into the guard page. */
+static int64_t dp_frame_bound(MirModule *m, const MirFunc *f) {
+  MirLayouts lay;
+  mir_layouts_init(&lay, m);
+  int64_t bytes = 8 * (int64_t)f->values.len;
+  for (size_t block = 0; block < f->blocks.len; block++) {
+    const MirInstList *insts = &f->blocks.ptr[block].insts;
+    for (size_t index = 0; index < insts->len; index++) {
+      if (insts->ptr[index].op == MOP_Slot) {
+        bytes += (int64_t)mir_type_mem(&lay, insts->ptr[index].imm.a).size;
+      }
+    }
+  }
+  mir_layouts_free(&lay);
+  return bytes;
+}
+
 /* The check, then the grow path out of line. */
 static void dp_expand(MirModule *m, uint32_t fi, const DpRuntime *rt) {
   const DpCells cells = dp_cells(m, &m->funcs.ptr[fi]);
@@ -160,7 +198,7 @@ static void dp_expand(MirModule *m, uint32_t fi, const DpRuntime *rt) {
   mir_inst_list_free(&entry.insts);
   f->blocks.ptr[0].params = entry.params;
   DpEmit e = {.m = m, .f = f, .block = 0};
-  const MirValue low = dp_op(&e, MOP_StackLow, NULL, 0, mir_imm_none(), true, MIR_BOOL);
+  const MirValue low = dp_op(&e, MOP_StackNear, NULL, 0, mir_imm_int(dp_frame_bound(m, f)), true, MIR_BOOL);
   f->blocks.ptr[0].term = (MirTerm){.kind = MT_CONDBR, .value = low, .a = {.block = grow}, .b = {.block = cont}};
   f->blocks.ptr[0].term_loc = MIR_LOC_NONE;
   /* The rare path: the backends lay it out of line. */
@@ -183,7 +221,12 @@ bool mir_depth_lower(MirModule *m) {
   uint32_t ntodo = 0;
   uint32_t *todo = MS_ARENA_NEW_ARRAY(&m->arena, uint32_t, m->funcs.len ? m->funcs.len : 1);
   for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
-    const MirFunc *f = &m->funcs.ptr[fi];
+    MirFunc *f = &m->funcs.ptr[fi];
+    /* A function with a large frame checks too, recursive or not: the check of the recursive function above it leaves
+     * only the headroom, and a callee whose frame is larger would step over the guard page. */
+    if (f->blocks.len > 0 && !f->unwind_only && dp_frame_bound(m, f) > DP_LARGE_FRAME) {
+      (void)dp_insert_enter(f);
+    }
     if (f->blocks.len > 0 && f->blocks.ptr[0].insts.len > 0 && f->blocks.ptr[0].insts.ptr[0].op == MOP_DepthEnter) {
       todo[ntodo++] = fi;
     }
@@ -331,18 +374,7 @@ bool mir_depth_mark(MirModule *m) {
     if (func->blocks.len == 0 || func->unwind_only || !(g.recursive[f] || dp_calls_indirectly(func))) {
       continue;
     }
-    MirBlockData *entry = &func->blocks.ptr[0];
-    if (entry->insts.len > 0 && entry->insts.ptr[0].op == MOP_DepthEnter) {
-      continue;
-    }
-    MirInstList out = {0};
-    mir_inst_list_push(&out, mir_inst(MOP_DepthEnter, mir_imm_none(), MIR_NONE, MIR_LOC_NONE, NULL, 0));
-    for (uint32_t i = 0; i < entry->insts.len; i++) {
-      mir_inst_list_push(&out, entry->insts.ptr[i]);
-    }
-    mir_inst_list_free(&entry->insts);
-    entry->insts = out;
-    changed = true;
+    changed = dp_insert_enter(func) || changed;
   }
   return changed;
 }
