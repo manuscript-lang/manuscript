@@ -11,7 +11,7 @@ static void show(const Body *body, MsStrBuild *out, MsTy ty) {
 
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand) {
   const MsTyTable *types = &body->program->types;
-  if (body->module >= body->program->user_modules || body->quiet || operand == MS_TY_NONE) {
+  if (!body_reports(body) || body->quiet || operand == MS_TY_NONE) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -63,7 +63,7 @@ void body_check_try(Body *body, const MsExpr *expr, MsTy operand) {
 /* An expression statement discards its value: a `?` must leave Void, and a Result must not be dropped silently. */
 void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value) {
   const MsTyTable *types = &body->program->types;
-  if (body->module >= body->program->user_modules || body->quiet || value == MS_TY_NONE ||
+  if (!body_reports(body) || body->quiet || value == MS_TY_NONE ||
       ms_ty_is_invalid(types, value)) {
     return;
   }

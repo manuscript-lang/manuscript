@@ -114,6 +114,24 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
+  /* A default is written over the callee's type variables (`items: List[T?] = []`): this call's type arguments stand
+   * for them while it is lowered. */
+  const LowerSubst saved_subst = fn->subst;
+  MsTy *own_args = NULL;
+  const MsSymbol *owner = callee_id != 0 ? &fn->cx->program->symbols.ptr[callee_id] : NULL;
+  const MsTy *own_vars = owner != NULL ? fn->cx->program->symbol_vars.ptr + owner->var_at : NULL;
+  uint32_t own_count = owner != NULL ? owner->var_count : 0;
+  if (method != NULL && method->variables.len >= method->shared) { /* a method's own variables follow its receiver's */
+    own_vars = method->variables.ptr + method->shared;
+    own_count = (uint32_t)(method->variables.len - method->shared);
+  }
+  if (own_count != 0 && own_count == call->type_arg_count) {
+    own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, own_count);
+    for (uint32_t at = 0; at < own_count; at++) {
+      own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
+    }
+    fn->subst = (LowerSubst){own_vars, own_args, own_count};
+  }
   /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
    * would let the default's `var _resource` stand for a caller local with the same number. */
   const LowerFnLocals saved_locals = fn_locals_save(fn);
@@ -121,6 +139,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
   fn_locals_restore(fn, &saved_locals);
+  fn->subst = saved_subst;
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
@@ -153,10 +172,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
   MirValue record = MIR_NONE;
+  bool shared = false;
   if (is_place) {
     /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
     /* Another field of a variable an earlier argument already took: it is read from that record, which goes back once. */
-    bool shared = false;
     for (uint32_t at = 0; at < nearlier && !shared; at++) {
       if (earlier[at].record != MIR_NONE && earlier[at].place != NULL && fn_same_field_root(fn, earlier[at].place, place) &&
           fn_read_field(fn, place, earlier[at].record, &owned)) {
@@ -186,6 +205,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   }
   if (owned == MIR_NONE) {
     return MIR_NONE;
+  }
+  if (shared && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
+    /* The field leaves the record an earlier argument took; `fn_put_field_chain` fills it again. */
+    owned = mir_b_emit(&fn->b, MOP_MoveOut, &owned, 1, (MirImm){0}, mir_b_ty(&fn->b, owned));
   }
   const MirTy ty = mir_b_ty(&fn->b, owned);
   const MirImm of_type = {.tag = MI_TY, .a = ty};

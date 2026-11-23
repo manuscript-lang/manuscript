@@ -77,6 +77,12 @@ MsTy body_primitive(Body *body, MsBuiltin builtin);
 /* ---- exprs.c ---- */
 
 MsTy body_expr(Body *body, const MsExpr *expr, MsTy expected);
+
+/* Whether the body's module reports diagnostics: the program's own modules, and the bundled standard modules when
+ * the program asks for them to be checked too. */
+static inline bool body_reports(const Body *body) {
+  return body->module < body->program->user_modules || body->program->check_std;
+}
 /* The type of a standard prelude or imported function, constant or type, when `name` denotes one. */
 const MsSymbol *body_find_symbol(const Body *body, MsName name);
 

@@ -178,6 +178,11 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
               ms_ty_arg_count(types, wanted) == 1 && ms_ty_args(types, wanted)[0] == bound[at]) {
             bound[at] = wanted;
           }
+          /* An argument that implements the expected interface converts to it, so the expected type wins. */
+          if (variables[at] == pattern && bound[at] != MS_TY_NONE && ms_ty_kind(types, wanted) == MS_TY_CONTRACT &&
+              ms_ty_kind(types, bound[at]) != MS_TY_CONTRACT && ms_check_implements(program, bound[at], wanted)) {
+            bound[at] = wanted;
+          }
         }
         (void)unify_commit(types, pattern, wanted, variables, nvars, bound);
       }
