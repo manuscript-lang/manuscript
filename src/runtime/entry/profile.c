@@ -135,7 +135,6 @@ static MsString alloc_path;
 static uintptr_t *alloc_buffer;
 static uint64_t *alloc_sizes;
 static size_t alloc_samples;
-static size_t alloc_dropped;
 static uint32_t alloc_period;
 static _Atomic bool alloc_active;
 static _Thread_local bool main_thread;
@@ -150,7 +149,6 @@ static __attribute__((noinline)) void on_alloc(size_t size) {
   }
   alloc_tick = 0;
   if (alloc_samples >= MAX_SAMPLES) {
-    alloc_dropped++;
     return;
   }
   const uintptr_t frame = (uintptr_t)__builtin_frame_address(0);
