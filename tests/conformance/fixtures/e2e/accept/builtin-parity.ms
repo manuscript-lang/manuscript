@@ -315,10 +315,10 @@ test "string methods use Unicode scalars":
 	absent: Int? := none
 	"é🙂é".index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".last_index_of(value: "z") | expect_equal(absent)?
-	"é🙂é".slice(start: 2, end: 8).get() | expect_equal("🙂é")?
-	("é🙂é".slice(start: 1, end: 8).is_error()) | expect_true?
-	("é🙂é".slice(start: 2, end: 1).is_error()) | expect_true?
-	("é🙂é".slice(start: -99, end: 1).is_error()) | expect_true?
+	"é🙂é".slice(start: 2, end: 8) | expect_equal("🙂é")?
+	"é🙂é".slice(start: 1, end: 8) | expect_equal("🙂é")?
+	"é🙂é".slice(start: 2, end: 1) | expect_equal("")?
+	"é🙂é".slice(start: -99, end: 1) | expect_equal("")?
 	"é🙂".scalar_length() | expect_equal(2)?
 	"é🙂".scalar_values() | expect_equal([233, 128578])?
 	"\t hello \n".trim() | expect_equal("hello")?
