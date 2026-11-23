@@ -9,7 +9,7 @@ type Point:
 fn ident[T](x: T) T:
     return x
 
-fn pick[T](first: Bool, left: T, right: T) T:
+fn pick[T](first: Bool, move left: T, move right: T) T:
     chosen := if not first: right else: left
     return chosen
 
@@ -36,7 +36,7 @@ test "instances copy non-scalar arguments":
     expect_equal(same.x, 4)?
     expect_equal(point.x, 3)?
 
-    var alias = pick(first: true, left: point, right: Point(9)).clone()
+    var alias = pick(first: true, left: point.clone(), right: Point(9)).clone()
     alias.x = 5
     expect_equal(alias.x, 5)?
     expect_equal(point.x, 3)?
