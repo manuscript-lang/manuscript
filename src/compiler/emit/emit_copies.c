@@ -187,10 +187,23 @@ static bool parse_other(const Line *line, Copy *copy) {
 }
 
 static size_t line_end(const uint8_t *text, size_t at, size_t limit) {
-  while (at < limit && text[at] != '\n') {
-    at++;
+  const uint8_t *newline = __builtin_memchr(text + at, '\n', limit - at);
+  return newline == NULL ? limit : (size_t)(newline - text);
+}
+
+/* Whether the line is `  %name = <operation> ...` for an operation that starts with one of `o a f p i` (or, add, fadd,
+ * ptrtoint, phi, inttoptr): every line the pass reads or forwards does, and most lines (calls, loads, stores, compares)
+ * do not, so they are told apart by one byte. */
+static bool may_define(const Line *line) {
+  if (!has(line, line->at, "  %")) {
+    return false;
   }
-  return at;
+  const size_t at = name_end(line->text, line->at + 3, line->end);
+  if (!has(line, at, " = ") || at + 3 >= line->end) {
+    return false;
+  }
+  const uint8_t operation = line->text[at + 3];
+  return operation == 'o' || operation == 'a' || operation == 'f' || operation == 'p' || operation == 'i';
 }
 
 static size_t slot_of(const Table *table, const uint8_t *text, size_t at, size_t length) {
@@ -345,7 +358,7 @@ static void copy_line(MsStrBuild *out, const Table *table, const Line *line) {
 
 /* Whether the line is one that was forwarded. */
 static bool is_forwarded(const Table *table, const Line *line) {
-  if (!has(line, line->at, "  %")) {
+  if (!may_define(line)) {
     return false;
   }
   const size_t name = line->at + 3;
@@ -358,8 +371,9 @@ void emit_forward_copies(MsStrBuild *body) {
   const MsSpan span = ms_strbuild_span(body);
   const uint8_t *text = span.ptr;
   size_t lines = 1;
-  for (size_t at = 0; at < span.len; at++) {
-    lines += text[at] == '\n' ? 1 : 0;
+  for (const uint8_t *newline = __builtin_memchr(text, '\n', span.len); newline != NULL;
+       newline = __builtin_memchr(newline + 1, '\n', span.len - (size_t)(newline + 1 - text))) {
+    lines++;
   }
   Table table = {.copies = ms_alloc(lines * sizeof(Copy)), .mask = 1};
   while (table.mask < lines * 2) {
@@ -373,7 +387,7 @@ void emit_forward_copies(MsStrBuild *body) {
   for (size_t at = 0; at < span.len;) {
     const Line line = {text, at, line_end(text, at, span.len)};
     Copy copy;
-    if (parse_copy(&line, &copy) || parse_other(&line, &copy)) {
+    if (may_define(&line) && (parse_copy(&line, &copy) || parse_other(&line, &copy))) {
       insert(&table, text, &copy);
     }
     at = line.end + 1;

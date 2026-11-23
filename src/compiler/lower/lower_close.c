@@ -115,12 +115,31 @@ static void drop_owned(MirBuilder *b, const MirModule *module, MirValue value) {
   }
 }
 
+/* The resources a pending result holds close before the close that failed faults; their own errors are lost. */
+static void pending_close(Lower *cx, MirBuilder *b, MsTy checked, MirValue pending) {
+  const uint32_t close = lower_part_close(cx, checked);
+  if (close == MIR_NONE) {
+    drop_owned(b, cx->module, pending);
+    return;
+  }
+  drop_owned(b, cx->module, mir_b_call(b, close, &pending, 1));
+}
+
 /* `fn(move outcome [, move pending]) -> ret`: the function's result for a failed close, `outcome` being the
  * close's `Result`. A function returning a Result with the same error type returns that error (the pending result
  * wins when it already failed); any other function faults, since the close has nowhere to return its error. */
-static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
+static uint32_t add_exit(Lower *cx, MirTy ret, MsTy ret_checked, MirTy outcome_ty, bool pending) {
   MirModule *module = cx->module;
-  const MsName name = named(cx, pending ? "close.exit.pending" : "close.exit", ret, outcome_ty);
+  /* A pending result that holds a resource closes it before the fault, through the checked type: it is part of the name. */
+  const bool closes_pending = pending && ret_checked != MS_TY_NONE && ms_check_holds_resource(cx->program, ret_checked) &&
+                              lower_parts_supported(cx, ret_checked);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "%s.%u.%u", pending ? "close.exit.pending" : "close.exit", (unsigned)ret, (unsigned)outcome_ty);
+  if (closes_pending) {
+    ms_strbuild_printf(&text, ".t%u", (unsigned)ret_checked);
+  }
+  const MsName name = mir_name(module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
   const uint32_t found = mir_func_by_name(module, name);
   if (found != MIR_NONE) {
     return found;
@@ -151,7 +170,11 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
       drop_owned(&b, module, values[0]);
       mir_b_ret(&b, values[1]);
       mir_b_switch_to(&b, replace);
-      drop_owned(&b, module, values[1]);
+      if (closes_pending) {
+        pending_close(cx, &b, ret_checked, values[1]);
+      } else {
+        drop_owned(&b, module, values[1]);
+      }
     }
     if (keeps_pending) {
       drop_owned(&b, module, values[0]);
@@ -164,7 +187,11 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
     mir_b_ret(&b, convert(&b, module, values[0], (uint32_t)(from - module->alts.ptr), ret, (uint32_t)(to - module->alts.ptr)));
   } else {
     for (uint32_t at = 0; at < (pending ? 2u : 1u); at++) {
-      drop_owned(&b, module, values[at]);
+      if (at == 1 && closes_pending) {
+        pending_close(cx, &b, ret_checked, values[1]);
+      } else {
+        drop_owned(&b, module, values[at]);
+      }
     }
     const MirBlock block = b.cur;
     mir_b_fault(&b, MF_MESSAGE);
@@ -179,8 +206,8 @@ static bool ensure_exits(LowerFn *fn, MirTy outcome_ty) {
   if (fn->b.func.has_close_exit) {
     return true;
   }
-  const uint32_t plain = add_exit(fn->cx, fn->ret, outcome_ty, false);
-  const uint32_t pending = add_exit(fn->cx, fn->ret, outcome_ty, true);
+  const uint32_t plain = add_exit(fn->cx, fn->ret, fn->ret_checked, outcome_ty, false);
+  const uint32_t pending = add_exit(fn->cx, fn->ret, fn->ret_checked, outcome_ty, true);
   if (plain == MIR_NONE || pending == MIR_NONE) {
     return fn_fail(fn, "the close exit functions were not built");
   }
