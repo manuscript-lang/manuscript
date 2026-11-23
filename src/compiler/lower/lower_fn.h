@@ -108,6 +108,7 @@ typedef struct LowerFn {
   MirValue last_receiver; /* the receiver of the method value just lowered */
   bool has_last_receiver;
   MirTy ret;
+  MsTy ret_checked; /* the checked result type of a named function (MS_TY_NONE for a lambda): a pending result closes through it */
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   bool open_closes[LOWER_MAX_SCOPES]; /* whether the scope at that depth owns a slot that closes where it ends */
@@ -350,6 +351,8 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
 bool lists_in_place(LowerFn *fn, const MsExpr *expr);
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);
+bool fn_list_swap(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
                          const MirValue *args, MirValue *out);

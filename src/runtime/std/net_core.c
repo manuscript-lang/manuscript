@@ -47,6 +47,7 @@ void ms_net_core_unref(MsNetCore *core) {
 typedef struct CloseOp {
   MsNetOp op;
   MsNetCore *core; /* a reference, released by the operation */
+  bool wait;       /* the operation ends when libuv has closed the handle, not when it was asked to */
 } CloseOp;
 
 static void on_closed(uv_handle_t *handle) {
@@ -56,7 +57,12 @@ static void on_closed(uv_handle_t *handle) {
     (void)uv_fs_unlink(NULL, &request, core->path, NULL);
     uv_fs_req_cleanup(&request);
   }
+  MsNetOp *waiting = core->close_wait;
+  core->close_wait = NULL;
   ms_net_core_unref(core); /* the libuv handle's reference */
+  if (waiting != NULL) {
+    ms_net_op_done(waiting, 0); /* the descriptor is released: its port can be bound again */
+  }
 }
 
 #ifdef _WIN32
@@ -90,20 +96,45 @@ static void close_start(MsNetOp *op) {
     ms_net_conn_close_ops(core);
     ms_net_listen_close_ops(core);
     ms_net_dgram_close_ops(core);
+    const bool wait = ((CloseOp *)op)->wait;
+    if (wait) {
+      core->close_wait = op;
+    }
     uv_close(&core->h.handle, on_closed);
+    ms_net_core_unref(core);
+    if (!wait) {
+      ms_net_op_done(op, 0);
+    }
+    return;
   }
   ms_net_core_unref(core);
   ms_net_op_done(op, 0);
+}
+
+static CloseOp *close_op(MsNetCore *core, bool wait) {
+  CloseOp *op = ms_net_op_new(sizeof *op, close_start, NULL, NULL);
+  atomic_fetch_add(&core->references, 1);
+  op->core = core;
+  op->wait = wait;
+  return op;
 }
 
 void ms_net_core_close(MsNetCore *core) {
   if (atomic_exchange(&core->closed, true)) {
     return;
   }
-  CloseOp *op = ms_net_op_new(sizeof *op, close_start, NULL, NULL);
-  atomic_fetch_add(&core->references, 1);
-  op->core = core;
-  ms_net_post(&op->op);
+  ms_net_post(&close_op(core, false)->op);
+}
+
+/* An explicit close: it answers once libuv has closed the handle, so the socket's address is free to bind again. */
+static void core_close_released(MsNetCore *core) {
+  if (atomic_exchange(&core->closed, true)) {
+    return;
+  }
+  CloseOp *op = close_op(core, true);
+  if (ms_net_run(&op->op, -1) == MS_NET_WAIT_DONE) {
+    ms_net_op_free(&op->op);
+  }
 }
 
 /* ---- handles ---- */
@@ -162,12 +193,12 @@ MsObj *ms_net_handle_share(const MsObj *handle) {
   return ms_net_handle_new(core);
 }
 
-void ms_net_handle_close(const MsObj *handle) { ms_net_core_close(ms_net_handle_core(handle)); }
+void ms_net_handle_close(const MsObj *handle) { core_close_released(ms_net_handle_core(handle)); }
 
 void ms_net_handle_close_if_last(const MsObj *handle) {
   MsNetCore *core = ms_net_handle_core(handle);
   if (atomic_fetch_sub(&core->ends, 1) == 1) {
-    ms_net_core_close(core);
+    core_close_released(core);
   }
 }
 

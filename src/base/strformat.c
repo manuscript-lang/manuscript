@@ -76,7 +76,11 @@ void ms_strbuild_printf(MsStrBuild *builder, const char *format, ...) {
   va_start(args, format);
   while (*format != '\0') {
     if (*format != '%') {
-      ms_strbuild_append_byte(builder, (uint8_t)*format++);
+      const char *run = format;
+      while (*format != '\0' && *format != '%') {
+        format++;
+      }
+      ms_strbuild_append(builder, ms_span_of((const uint8_t *)run, (size_t)(format - run)));
       continue;
     }
     format++;

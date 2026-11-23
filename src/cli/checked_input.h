@@ -16,6 +16,7 @@ typedef enum MsInputTarget {
 } MsInputTarget;
 
 typedef struct MsCheckedInput {
+  const struct MsStdCache *std_cache; /* set before loading to reuse parsed standard modules; outlives this input */
   MsNames names;
   MsGraph graph;
   MsCheckProgram program;

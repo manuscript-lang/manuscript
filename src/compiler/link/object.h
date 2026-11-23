@@ -9,6 +9,7 @@
 typedef struct ObjectOptions {
   MsSpan opt;       /* the `opt` executable */
   MsSpan llc;       /* the `llc` executable */
+  MsSpan llvm;      /* the shared libLLVM to compile in this process; empty to run `opt` and `llc` instead */
   MsSpan directory; /* an existing directory for the intermediate files; they are removed afterwards */
   bool speed;       /* optimize: -O3, or -O2 with `debug`; otherwise the IR goes straight to the code generator at -O0 */
   bool debug;       /* with `speed`: a Debug build, which uses -O2 */

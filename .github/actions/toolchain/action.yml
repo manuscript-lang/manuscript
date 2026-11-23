@@ -23,6 +23,13 @@ runs:
         update: false
         install: >-
           ${{ runner.arch == 'ARM64' && 'mingw-w64-clang-aarch64-toolchain mingw-w64-clang-aarch64-cmake mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-ccache perl make' || 'mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-ccache perl make' }}
+    # The pinned shared LLVM library (toolchain/llvm-lib.lock): ms compiles programs through it in this process
+    # instead of running opt and llc.
+    - shell: bash
+      run: |
+        library="$(sh toolchain/fetch-llvm-lib.sh)"
+        if [ "$RUNNER_OS" = Windows ]; then library="$(cygpath -m "$library")"; fi
+        echo "MS_LLVM=$library" >> "$GITHUB_ENV"
     - uses: actions/cache/restore@v6
       with:
         path: .artifacts/ccache

@@ -580,7 +580,8 @@ static bool lower_body(Lower *cx, uint32_t index) {
                 .file = lower_file(cx, target->module),
                 .subst = {vars, instance.args, instance.nargs},
                 .decl_void = target->entry && ms_ty_is(&cx->program->types, ms_ty_result(&cx->program->types, target->ty), MS_BUILTIN_Void),
-                .ret = reserved->ret};
+                .ret = reserved->ret,
+                .ret_checked = ms_ty_subst(&cx->program->types, ms_ty_result(&cx->program->types, target->ty), vars, instance.args, instance.nargs)};
   mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
   fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
   (void)fn_scope_begin(&fn);

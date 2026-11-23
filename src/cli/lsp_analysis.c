@@ -9,6 +9,7 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "cli/checked_input.h"
+#include "compiler/check/std_cache.h"
 #include "cli/findings.h"
 #include "cli/lsp_internal.h"
 #include "compiler/syntax/diag.h"
@@ -170,10 +171,21 @@ void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out) {
   out->cached = true;
 }
 
+/* The bundled modules parsed once for the session: the editor checks after every keystroke, and parsing them was a fifth
+ * of each check. The server analyzes on one thread, and the cache is never written once built. */
+static const MsStdCache *lsp_std_cache(void) {
+  static MsStdCache *std;
+  if (std == NULL) {
+    std = ms_std_cache_new();
+  }
+  return std;
+}
+
 void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
                          LspAnalysis *out) {
   *out = (LspAnalysis){.arena = malloc(sizeof *out->arena)};
   *out->arena = ms_arena_new();
+  out->checked.std_cache = lsp_std_cache();
   MsOverlayFile *files = malloc((docs->len + count + 1) * sizeof *files);
   size_t total = 0;
   for (size_t i = 0; i < docs->len; i++) {
