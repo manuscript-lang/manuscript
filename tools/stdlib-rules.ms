@@ -19,7 +19,10 @@ banned_methods := ["next", "receive", "feed", "write_bytes"]
 type_words := ["type", "enum", "interface", "namespace"]
 
 fn text_of(path: String) String:
-	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("").replace(
+		"\r\n",
+		"\n",
+	)
 	return ""
 
 fn is_identifier(c: String) Bool:
@@ -407,6 +410,9 @@ export fn stdlib_issues(files: List[String]) List[String]:
 	var optional_found = List[String]()
 	var stream_found = List[String]()
 	var issues = List[String]()
+	if sources.length() == 0: issues.append(
+		f"no stdlib/*.ms file was found among {files.length()} listed files (first: `{files.first().get_or("")}`)"
+	)
 
 	for path in sources.keys():
 		text := sources[path].clone()

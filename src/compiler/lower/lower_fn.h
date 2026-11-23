@@ -72,6 +72,13 @@ typedef struct LowerWriteback {
 enum { LOWER_MAX_WRITEBACKS = 8 };
 enum { LOWER_MAX_VAR_PARAMS = 8, LOWER_MAX_CLOSING_PARAMS = 32 };
 
+/* The exit of a call whose default argument uses `?`: the error leaves the call as its result, not the caller (lower_call.c). */
+typedef struct DefaultExit {
+  MirBlock join; /* the block the call's result, or the failed Result, flows to */
+  uint32_t keep; /* the scopes open outside the call: the exit ends the ones the call opened */
+  MirTy ret;     /* the call's result type, the type of the failed Result */
+} DefaultExit;
+
 typedef struct LowerFn {
   Lower *cx;
   MirBuilder b;
@@ -96,6 +103,8 @@ typedef struct LowerFn {
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
+  const DefaultExit *call_exit;    /* the call being lowered, when its defaults can exit it */
+  const DefaultExit *default_exit; /* while such a default is lowered: where its `?` leaves to */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
   MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
   LowerSubst default_vars; /* ... and the method's type variables as the value was bound */
@@ -165,6 +174,7 @@ void fn_env_install(LowerFn *fn, const LowerOuterEnv *env);
 uint32_t fn_scope_begin(LowerFn *fn);
 /* Closes the innermost scope: its owners are dropped or closed where it ends. */
 void fn_scope_end(LowerFn *fn);
+void fn_scope_pop(LowerFn *fn);
 /* Emits the `scope.end` of every open scope from the innermost down to (not including) depth `keep`, without
  * popping them: the code after it leaves the function or the loop. */
 void fn_scope_unwind(LowerFn *fn, uint32_t keep);
@@ -255,6 +265,8 @@ const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
 bool lower_hidden_copies_allowed(void);
 /* The value of a parameter the call leaves to its default (lower_call.c). */
 MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected, const LowerOuterEnv *outer);
+/* Whether a default the call omits uses `?`, which leaves the call (lower_default.c). */
+bool fn_call_default_tries(const LowerFn *fn, const MsCall *call);
 
 /* The callee of a call, with explicit type arguments set aside: `value.method[T](args)` calls `value.method`. */
 static inline const MsExpr *fn_call_callee(const MsExpr *call) {
@@ -351,6 +363,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
 bool lists_in_place(LowerFn *fn, const MsExpr *expr);
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);
 bool fn_list_swap(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,

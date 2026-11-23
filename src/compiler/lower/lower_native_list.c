@@ -87,6 +87,53 @@ bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirVa
   return list_put(fn, place, slot, record, updated);
 }
 
+/* `list.pop()`: the last element moves out into a `some`, the length drops by one and the list goes back; an empty list
+ * goes back unchanged and the answer is `none`. */
+bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out) {
+  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
+  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
+  const MirTyData *result = mir_ty_data(fn->cx->module, ret);
+  if (list->kind != MK_LIST || result->kind != MK_OPT || result->elem != list->elem) {
+    return false;
+  }
+  if (slot == MIR_NONE) {
+    slot = list_element_slot(fn, place);
+  }
+  MirValue owned;
+  MirValue record;
+  if (!list_changeable(fn, place, slot) || !list_take(fn, place, slot, list_ty, &owned, &record)) {
+    return false;
+  }
+  const MirBlock some = mir_b_new_block(&fn->b), none = mir_b_new_block(&fn->b), join = mir_b_new_block(&fn->b);
+  const MirValue answer = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &owned, 1, (MirImm){0}, MIR_INT);
+  mir_b_br_if(&fn->b, mir_b_icmp(&fn->b, MCC_GT, length, mir_b_iconst(&fn->b, 0)), some, NULL, 0, none, NULL, 0);
+  mir_b_seal_block(&fn->b, some);
+  mir_b_seal_block(&fn->b, none);
+  mir_b_switch_to(&fn->b, some);
+  const MirValue at[2] = {owned, mir_b_binop(&fn->b, MOP_ISub, length, mir_b_iconst(&fn->b, 1))};
+  const MirValue item = mir_b_emit(&fn->b, MOP_ListTake, at, 2, (MirImm){0}, list->elem);
+  const MirValue shorter = mir_b_emit(&fn->b, MOP_ListDropLast, &owned, 1, (MirImm){.tag = MI_INT, .i = 1}, list_ty);
+  if (!list_put(fn, place, slot, record, shorter)) {
+    return false;
+  }
+  const MirValue found = mir_b_emit(&fn->b, MOP_OptSome, &item, 1, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &found, 1);
+  mir_b_switch_to(&fn->b, none);
+  if (!list_put(fn, place, slot, record, owned)) {
+    return false;
+  }
+  const MirValue missing = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &missing, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), answer);
+  }
+  *out = answer;
+  return true;
+}
+
 /* `index` counted from the end when negative, checked against `length`: out of range faults with `kind` (the runtime's
  * `List` fault kind of the operation) and the code after it runs only for an index inside the list. */
 static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int64_t kind) {

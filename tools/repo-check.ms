@@ -37,12 +37,18 @@ fn repository_files() List[String]:
 			"ls-files", "--cached", "--others", "--exclude-standard", "--deduplicate"
 		],
 	)
+
 	for line in listing.split("\n"):
-		if line != "": files.append(line.clone())
+		path := line.trim()
+		if path != "": files.append(path)
+
 	return files
 
 fn text_of(path: String) String:
-	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("").replace(
+		"\r\n",
+		"\n",
+	)
 	return ""
 
 // ---- formatting and nested matches ----

@@ -52,8 +52,8 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
     return ms_remote_wait(id, timeout_ns);
   }
   const size_t first = promise_row_or_fault(id);
-  int64_t deadline = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
-  deadline = earliest(deadline, earliest(promise_table.cold.ptr[first].limit, ms_task_defer_deadline()));
+  const int64_t asked = timeout_ns >= 0 ? ms_sched_now() + timeout_ns : NO_TIME;
+  int64_t deadline = earliest(asked, earliest(promise_table.cold.ptr[first].limit, ms_task_defer_deadline()));
   (void)promise_run_deferred(id, deadline, false);
   for (;;) {
     const ptrdiff_t row = promise_row_of(id);
@@ -78,6 +78,14 @@ int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns) {
       return done;
     }
     if (woke == MS_WAIT_TIMEOUT) {
+      /* The promise's own limit passed: stop it as the limit timer does and wait for its work to unwind, so a
+       * resource the work holds is closed when `wait` answers (a race between this wake and the timer left it open). */
+      const int64_t limit = promise_table.cold.ptr[after].limit;
+      if (limit != NO_TIME && limit <= ms_sched_now()) {
+        promise_timer_fire((uint64_t)id, limit);
+        deadline = asked;
+        continue;
+      }
       promise_request_cancel((size_t)after);
       return MS_PROMISE_TIMEOUT;
     }

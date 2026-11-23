@@ -2,6 +2,7 @@
 #include "compiler/own/taken.h"
 
 #include "compiler/check/properties.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/syntax/walk.h"
 
 typedef struct Scan {
@@ -15,14 +16,27 @@ static bool names_param(const Scan *scan, const MsExpr *expr) {
   return ref != NULL && ref->kind == MS_REF_PARAM && ref->local == scan->local;
 }
 
+static void scan_payload(void *ctx, const MsExpr *expr);
+
 static void scan_expr(void *ctx, const MsExpr *expr) {
   Scan *scan = ctx;
   scan->found |= names_param(scan, expr) && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE;
+  scan_payload(ctx, expr);
+}
+
+/* `param.get()` handed on (the call carries the move): the payload leaves the parameter. */
+static void scan_payload(void *ctx, const MsExpr *expr) {
+  Scan *scan = ctx;
+  if (expr->kind == MS_E_CALL && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE &&
+      expr->u.call.callee->kind == MS_E_MEMBER) {
+    scan->found |= names_param(scan, expr->u.call.callee->u.member.left);
+  }
 }
 
 /* A generic parameter a constructor stores (`ok(value)`) is handed on: its type may be a resource. */
 static void scan_stored(void *ctx, const MsExpr *expr) {
   Scan *scan = ctx;
+  scan_payload(ctx, expr);
   if (expr->kind != MS_E_CALL) {
     return;
   }
@@ -47,12 +61,15 @@ static uint32_t mask_of(MsCheckProgram *program, const MsFacts *facts, MsParams 
     const MsRef *ref = ms_facts_ref(facts, param->id);
     const MsTy ty = ms_facts_type(facts, param->id);
     if (param->moving || ref == NULL || ref->kind != MS_REF_PARAM || ty == MS_TY_NONE ||
-        (ms_ty_kind(&program->types, ty) != MS_TY_VARIABLE && !ms_check_holds_resource(program, ty))) {
+        (ms_ty_kind(&program->types, ty) != MS_TY_VARIABLE && !ms_ty_has_variable(&program->types, ty) &&
+         !ms_check_holds_resource(program, ty))) {
       continue;
     }
     Scan scan = {facts, ref->local, false};
     const bool generic = ms_ty_kind(&program->types, ty) == MS_TY_VARIABLE;
-    const MsVisitor visitor = {.ctx = &scan, .stmt = generic ? NULL : scan_stmt, .expr = generic ? scan_stored : scan_expr};
+    /* A container of a generic payload (`T?`) is judged as a generic parameter is: by what stores or extracts it. */
+    const bool open = generic || (ms_ty_has_variable(&program->types, ty) && !ms_check_holds_resource(program, ty));
+    const MsVisitor visitor = {.ctx = &scan, .stmt = open ? NULL : scan_stmt, .expr = open ? scan_stored : scan_expr};
     ms_walk_callable(&visitor, params, body);
     mask |= scan.found ? 1u << index : 0;
   }
