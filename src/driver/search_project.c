@@ -297,7 +297,9 @@ static MsSpan effects_of(MsArena *arena, const Candidate *c) {
 
 static MsSymbolMatch describe(MsArena *arena, const Candidate *c, MsSpan cwd) {
   const MsCheckProgram *program = &c->analysis->checked.program;
-  MsSymbolMatch match = {.name = c->entry->name, .kind = ms_span_of_text(c->kind), .rank = (size_t)c->rank, .project = true,
+  /* The name is copied: the checked program that owns `entry` is freed before the matches are printed. */
+  MsSymbolMatch match = {.name = ms_arena_copy(arena, c->entry->name), .kind = ms_span_of_text(c->kind),
+                         .rank = (size_t)c->rank, .project = true,
                          .definition = place(arena, c->path, c->line, c->column)};
   if (c->entry->ty != MS_TY_NONE && !ms_ty_is_invalid(&program->types, c->entry->ty)) {
     MsStrBuild text = ms_strbuild_new();
