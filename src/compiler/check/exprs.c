@@ -399,6 +399,9 @@ static MsTy expected_arg(const Body *body, MsTy expected, MsBuiltin builtin, siz
 
 static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy element = expected_arg(body, expected, MS_BUILTIN_List, 0);
+  if (element != MS_TY_NONE && body_has_foreign_variable(body, element)) {
+    element = MS_TY_NONE; /* an open slot of the enclosing call is filled by the entries, not imposed on them */
+  }
   bool unknown = false;
   for (uint32_t index = 0; index < expr->u.list.len; index++) {
     MsStrBuild context = ms_strbuild_new();
