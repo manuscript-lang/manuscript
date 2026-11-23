@@ -115,10 +115,15 @@ export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 	var none = 0
 	return measure(operations, fn var unused: body(), none)
 
-// Called by the entry that `ms bench` builds for a file with a `make_fixture`, with each block's body, which takes
-// the file's fixture; programs do not call it. The fixture is made, and `before_all` and `before_each` have run,
-// before the timing starts, and `after_each` and `after_all` run after it.
-export fn run_bench_fixture[F](body: fn(var F) Void!, operations: Int, var state: F) Void!:
+// Called by the entry that `ms bench` builds for a file with a `make_fixture`, with
+// each block's body, which takes the file's fixture; programs do not call it. The
+// fixture is made, and `before_all` and `before_each` have run, before the timing
+// starts, and `after_each` and `after_all` run after it.
+export fn run_bench_fixture[F](
+	body: fn(var F) Void!,
+	operations: Int,
+	var state: F
+) Void!:
 	return measure(operations, body, state)
 
 fn settings() Settings:
