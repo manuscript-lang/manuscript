@@ -1,5 +1,5 @@
 import (
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	Duration from "@std/time.ms",
 
 	msrt_cancel_fire,
@@ -239,10 +239,16 @@ export fn complete[U](id: Int, move result: U!) Void:
 // running it runs in the task that first waits on it, which saves the cost of a task
 // of its own. Use it for operations that do not block for long, such as reading a
 // file. The work follows the capture rules of `promise`.
-export fn promise_when_idle[U](entry: fn() U!) Promise[U]:
+export fn promise_when_idle[U](entry: fn() U!, site: String = caller_frame()) Promise[U]:
 	id := msrt_promise_new()
-	msrt_promise_start_idle(id, fn: complete(id, entry()))
+	msrt_promise_start_idle(id, fn: complete(id, entry()), site)
 	return Promise[U](id: id)
+
+// Returns where the call that omitted this argument is, as a fault report shows a
+// frame: `file:line in function`. Use it only as a parameter default, in a function
+// that is called directly; the compiler fills it in as a constant at each call.
+export fn caller_frame() String:
+	panic("caller_frame() is only valid as a parameter default")
 
 // Runs `entry` as a promise and returns the promise. The closure follows the capture
 // rules. A promise that is returned owns what `entry` captures and closes or drops it
@@ -251,20 +257,23 @@ export fn promise_when_idle[U](entry: fn() U!) Promise[U]:
 // while it lives; to give it a resource, move the resource into a helper that returns
 // the promise. A fault
 // inside ends only this promise, and `wait` reports it as `EIO`. `options.placement`
-// picks the thread.
+// picks the thread. `site` is the line a fault report gives after `task started by:`;
+// leave it out and it is the line of this call. A helper that starts a promise for its
+// caller takes `site: String = caller_frame()` itself and passes it on.
 export fn promise[U](
 	entry: fn() U!,
-	options: PromiseOptions = PromiseOptions()
+	options: PromiseOptions = PromiseOptions(),
+	site: String = caller_frame()
 ) Promise[U]:
 	id := msrt_promise_new()
 
 	match options.placement:
 		Placement.Any:
-			msrt_promise_start(id, fn: complete(id, entry()))
+			msrt_promise_start(id, fn: complete(id, entry()), site)
 		Placement.Spread:
-			msrt_promise_start_spread(id, fn: complete(id, entry()))
+			msrt_promise_start_spread(id, fn: complete(id, entry()), site)
 		Placement.Here:
-			msrt_promise_start_here(id, fn: complete(id, entry()))
+			msrt_promise_start_here(id, fn: complete(id, entry()), site)
 
 	limit(id, options)
 	return Promise[U](id: id)

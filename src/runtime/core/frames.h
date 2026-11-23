@@ -151,12 +151,8 @@ bool ms_frames_collector_add(uintptr_t return_address, void *collector);
 void ms_frames_visit(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameVisit visit, void *context);
 /* Walks from `fp` and collects the source frames into `list`, which must be zeroed. */
 void ms_frames_collect(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsFrameList *list) MS_NONNULL;
-/* Collects the source frames of previously captured return addresses into `list`, which must be zeroed. */
+/* Collects the source frames of the return addresses `addresses` into `list`, which must be zeroed. */
 void ms_frames_describe(const uintptr_t *addresses, size_t count, MsFrameList *list) MS_NONNULL;
-/* Writes the return addresses up the chain from `fp` into `out` (at most `capacity`); returns how many. Nothing
- * is allocated. */
-size_t ms_frames_capture(uintptr_t fp, uintptr_t anchor, MsStackWindow window, uintptr_t *out, size_t capacity)
-  MS_NONNULL_ARGS(4);
 
 /* ---- lookups (exposed for tests) ---- */
 
