@@ -14,6 +14,7 @@ static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
   for (uint32_t index = 0; index < params.len && index < symbol->var_count; index++) {
     MsTyVariable *variable =
         ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + index]);
+    variable->bounds.len = 0; /* the settling rounds resolve a variable's bounds again */
     for (uint32_t bound = 0; bound < params.ptr[index]->bounds.len; bound++) {
       const MsTy resolved = resolver_bound(resolver, params.ptr[index]->bounds.ptr[bound]);
       if (resolved != MS_TY_NONE) {
@@ -207,6 +208,20 @@ void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   ms_ty_list_free(&members);
 }
 
+static void resolve_all_bounds(Resolver *resolver, uint32_t module) {
+  MsCheckProgram *program = resolver->program;
+  for (MsSymbolId id = 1; id < program->symbols.len; id++) {
+    if (program->symbols.ptr[id].module != module) {
+      continue;
+    }
+    const size_t mark = resolver->names.len;
+    resolver_enter_symbol(resolver, &program->symbols.ptr[id]);
+    resolve_bounds(resolver, &program->symbols.ptr[id]);
+    ms_name_list_truncate(&resolver->names, mark);
+    ms_ty_list_truncate(&resolver->types, mark);
+  }
+}
+
 void ms_check_signatures(MsCheckProgram *program, uint32_t module) {
   Resolver resolver;
   resolver_init(&resolver, program, module);
@@ -215,16 +230,36 @@ void ms_check_signatures(MsCheckProgram *program, uint32_t module) {
       resolver_resolve_alias(&resolver, &program->symbols.ptr[id]);
     }
   }
-  for (MsSymbolId id = 1; id < program->symbols.len; id++) {
-    if (program->symbols.ptr[id].module != module) {
-      continue;
+  /* A default may name a type declared later, whose own default is not known yet: settle the defaults silently until
+   * they stop changing, then resolve once more with reports. */
+  const bool reporting = resolver.report;
+  const size_t pending_defaults = program->pending_defaults.len;
+  const size_t pending_bounds = program->pending_bounds.len;
+  resolver.report = false;
+  for (size_t round = 0; round < 8; round++) {
+    uint64_t before = 0;
+    uint64_t after = 0;
+    for (MsSymbolId id = 1; id < program->symbols.len; id++) {
+      const MsSymbol *symbol = &program->symbols.ptr[id];
+      for (uint32_t at = 0; symbol->module == module && at < symbol->var_count; at++) {
+        before = before * 31 + ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + at])->default_ty;
+      }
     }
-    const size_t mark = resolver.names.len;
-    resolver_enter_symbol(&resolver, &program->symbols.ptr[id]);
-    resolve_bounds(&resolver, &program->symbols.ptr[id]);
-    ms_name_list_truncate(&resolver.names, mark);
-    ms_ty_list_truncate(&resolver.types, mark);
+    resolve_all_bounds(&resolver, module);
+    for (MsSymbolId id = 1; id < program->symbols.len; id++) {
+      const MsSymbol *symbol = &program->symbols.ptr[id];
+      for (uint32_t at = 0; symbol->module == module && at < symbol->var_count; at++) {
+        after = after * 31 + ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + at])->default_ty;
+      }
+    }
+    if (before == after) {
+      break;
+    }
   }
+  resolver.report = reporting;
+  program->pending_defaults.len = pending_defaults; /* the settling rounds queue nothing to report */
+  program->pending_bounds.len = pending_bounds;
+  resolve_all_bounds(&resolver, module);
   for (MsSymbolId id = 1; id < program->symbols.len; id++) {
     if (program->symbols.ptr[id].module == module) {
       resolve_symbol(&resolver, &program->symbols.ptr[id]);

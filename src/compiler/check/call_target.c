@@ -14,6 +14,8 @@
 void body_target_free(Target *target) {
   ms_ty_list_free(&target->vars);
   ms_ty_list_free(&target->explicit_args);
+  ms_ty_list_free(&target->outer_vars);
+  ms_ty_list_free(&target->outer_args);
   ms_strbuild_free(&target->name_text);
 }
 
@@ -269,11 +271,20 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
                                          (match->entry->source->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->entry->variables.ptr + match->entry->shared,
                 match->entry->variables.len - match->entry->shared);
+      for (size_t at = 0; at < match->entry->shared && at < ms_ty_arg_count(&body->program->types, receiver); at++) {
+        ms_ty_list_push(&target->outer_vars, match->entry->variables.ptr[at]);
+        ms_ty_list_push(&target->outer_args, ms_ty_args(&body->program->types, receiver)[at]);
+      }
     } else if (match->operation != NULL) {
       const MsMethod *declared = ms_check_operation_declaration(body->program, match->contract, match->operation);
       target->receiver_flags = declared == NULL ? 0 : (uint8_t)((declared->mutating ? MS_PARAM_VAR : 0) |
                                                                 (declared->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->operation->variables.ptr, match->operation->variables.len);
+      const MsDef *home = match->contract != MS_TY_NONE ? body_def(body, match->contract) : NULL;
+      for (size_t at = 0; home != NULL && at < home->variables.len && at < ms_ty_arg_count(&body->program->types, match->contract); at++) {
+        ms_ty_list_push(&target->outer_vars, home->variables.ptr[at]);
+        ms_ty_list_push(&target->outer_args, ms_ty_args(&body->program->types, match->contract)[at]);
+      }
       if (declared != NULL) { /* the parameter names come from the declaration: shapes shared by operations carry one set */
         target->names = &declared->func.params;
       }
