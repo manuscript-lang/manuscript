@@ -444,6 +444,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   LowerFn fn = {.cx = cx,
                 .facts = &cx->program->modules.ptr[target->module].facts,
                 .func = target->func,
+                .keeps_scoped = stub.keeps_scoped,
                 .module_index = target->module,
                 .file = lower_file(cx, target->module),
                 .subst = {vars, instance.args, instance.nargs},

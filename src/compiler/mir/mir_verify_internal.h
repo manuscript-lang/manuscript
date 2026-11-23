@@ -2,6 +2,7 @@
 #ifndef MS_COMPILER_MIR_MIR_VERIFY_INTERNAL_H
 #define MS_COMPILER_MIR_MIR_VERIFY_INTERNAL_H
 
+#include "base/message.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_verify.h"
 
@@ -33,7 +34,8 @@ MvSet mvs_clone(MsArena *arena, const MvSet *s);
 bool mvs_equal(const MvSet *a, const MvSet *b);
 MsSpan mvs_difference_text(MsArena *arena, const MvSet *a, const MvSet *b);
 
-void mv_err(Mv *v, MirBlock block, const char *fmt, ...);
+void mv_err_(Mv *v, MirBlock block, const char *fmt, ...);
+#define mv_err(v, block, ...) mv_err_((v), (block), MS_FMT_ARGS(__VA_ARGS__))
 const char *mv_op_name(const MirInst *in);
 MirTy mv_ty(const Mv *v, MirValue x);
 bool mv_rc(const Mv *v, MirValue x);

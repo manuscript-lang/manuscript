@@ -70,7 +70,8 @@ void *parse_zalloc(MsArena *a, size_t n, size_t align);
 MsDiag *parse_diag(Parser *p, MsPos pos, MsSpan message);
 Checkpoint parse_checkpoint_take(const Parser *p);
 void parse_checkpoint_restore(Parser *p, const Checkpoint *c);
-MsSpan parse_fmt(Parser *p, const char *format, ...);
+MsSpan parse_fmt_(Parser *p, const char *format, ...);
+#define parse_fmt(p, ...) parse_fmt_((p), MS_FMT_ARGS(__VA_ARGS__))
 MsToken parse_peek(const Parser *p);
 MsTok parse_kind(const Parser *p);
 MsToken parse_ahead(const Parser *p, size_t n);

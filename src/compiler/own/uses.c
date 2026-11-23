@@ -367,6 +367,12 @@ static void collect_views(void *ctx, const MsStmt *stmt) {
       (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
     note_pattern_views(pass, stmt->u.bind.pattern);
   }
+  /* An `if` binding of an owned local that is read again views its payload: the local stays the owner. */
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
+      !stmt->u.branch.is_mutable && stmt->u.branch.cond->kind == MS_E_NAME && owns_place(pass, stmt->u.branch.cond) &&
+      !hands_payload_on(pass, stmt)) {
+    note_pattern_views(pass, stmt->u.branch.binding);
+  }
 }
 
 /* The first pass marks every local name BORROW; the second upgrades moving operands (a parent is visited before
