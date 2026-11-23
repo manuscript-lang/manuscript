@@ -4,5 +4,7 @@
 {"jsonrpc": "2.0", "id": 3, "method": "textDocument/references", "params": {"textDocument": {"uri": "$ROOT_URI/shapes.ms"}, "position": {"line": 4, "character": 4}, "context": {"includeDeclaration": true}}}
 {"jsonrpc": "2.0", "id": 4, "method": "workspace/symbol", "params": {"query": "doub"}}
 {"jsonrpc": "2.0", "id": 5, "method": "workspace/symbol", "params": {"query": "QUAD"}}
+{"jsonrpc": "2.0", "id": 7, "method": "textDocument/rename", "params": {"textDocument": {"uri": "$ROOT_URI/shapes.ms"}, "position": {"line": 1, "character": 11}, "newName": "twice"}}
+{"jsonrpc": "2.0", "id": 8, "method": "textDocument/rename", "params": {"textDocument": {"uri": "$ROOT_URI/shapes.ms"}, "position": {"line": 4, "character": 4}, "newName": "assist"}}
 {"jsonrpc": "2.0", "id": 6, "method": "shutdown"}
 {"jsonrpc": "2.0", "method": "exit"}

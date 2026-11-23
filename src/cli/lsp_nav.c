@@ -8,6 +8,7 @@
 #include "tooling/doc_comment.h"
 #include "base/file.h"
 #include "cli/lsp_workspace.h"
+#include "tooling/facts.h"
 #include "tooling/inspect.h"
 
 typedef struct Place {
@@ -323,6 +324,40 @@ static void refuse(MsStrBuild *error, const char *message) {
   ms_strbuild_append_text(error, message);
 }
 
+typedef struct RenameFile {
+  MsSpan path, uri, source;
+  EditList edits;
+} RenameFile;
+
+MS_LIST_DEFINE(RenameFileList, rename_file_list, RenameFile)
+
+typedef struct RenameEntry {
+  MsSpan path;
+} RenameEntry;
+
+MS_LIST_DEFINE(RenameEntryList, rename_entry_list, RenameEntry)
+
+static RenameFile *rename_file(RenameFileList *files, MsSpan path) {
+  for (size_t i = 0; i < files->len; i++) {
+    if (ms_span_equal(files->ptr[i].path, path)) return &files->ptr[i];
+  }
+  rename_file_list_push(files, (RenameFile){.path = path});
+  return &files->ptr[files->len - 1];
+}
+
+static void add_edit(RenameFile *file, const MsOccurrence *entry) {
+  for (size_t e = 0; e < file->edits.len; e++) {
+    if (file->edits.ptr[e].start == entry->offset) return;
+  }
+  edit_list_push(&file->edits, (Edit){entry->offset, entry->end});
+}
+
+static int compare_rename_file(const void *left, const void *right) {
+  const RenameFile *a = left, *b = right;
+  const int64_t order = ms_span_compare(a->uri, b->uri);
+  return order == 0 ? 0 : (order < 0 ? -1 : 1);
+}
+
 bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsSpan new_name, MsStrBuild *out,
                     MsStrBuild *error) {
   LspAnalysis analysis;
@@ -373,63 +408,82 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     ok = true;
     goto done;
   }
-  /* The files holding the identity, in path order, each with its edits from the last to the first. */
-  MsSpan *files = MS_ARENA_NEW_ARRAY(&analysis.arena, MsSpan, program->user_modules + 1);
-  uint32_t *modules = MS_ARENA_NEW_ARRAY(&analysis.arena, uint32_t, program->user_modules + 1);
-  size_t file_count = 0;
+  /* The files holding the identity: those of the document's graph, then the other files of the project that name it. */
+  RenameFileList files = {0};
   for (size_t i = 0; i < analysis.index.len; i++) {
     const MsOccurrence *entry = &analysis.index.ptr[i];
     if (!ms_span_equal(entry->key, selected->key)) continue;
-    bool known = false;
-    for (size_t f = 0; f < file_count; f++) known |= modules[f] == entry->module;
-    if (known) continue;
-    modules[file_count] = entry->module;
-    files[file_count++] = uri_of(&analysis, docs, analysis.paths[entry->module]);
-  }
-  for (size_t a = 1; a < file_count; a++) { /* insertion sort by URI */
-    for (size_t b = a; b > 0; b--) {
-      const MsSpan x = files[b - 1], y = files[b];
-      const size_t common = x.len < y.len ? x.len : y.len;
-      int order = 0;
-      for (size_t k = 0; k < common && order == 0; k++) order = x.ptr[k] == y.ptr[k] ? 0 : (x.ptr[k] < y.ptr[k] ? -1 : 1);
-      if (order == 0) order = x.len > y.len ? 1 : 0;
-      if (order <= 0) break;
-      const MsSpan swap_uri = files[b - 1];
-      files[b - 1] = files[b];
-      files[b] = swap_uri;
-      const uint32_t swap_module = modules[b - 1];
-      modules[b - 1] = modules[b];
-      modules[b] = swap_module;
+    RenameFile *file = rename_file(&files, analysis.paths[entry->module]);
+    if (file->source.ptr == NULL) {
+      file->source = source_of(&analysis, entry);
+      file->uri = uri_of(&analysis, docs, file->path);
     }
+    add_edit(file, entry);
   }
+  RenameEntryList entries = {0};
+  if (crosses_files(&analysis, selected)) {
+    MsSpanList paths = {0};
+    lsp_workspace_files(&analysis.arena, ms_string_span(&doc->path), &paths);
+    for (size_t i = 0; i < paths.len; i++) {
+      if (ms_span_equal(paths.ptr[i], ms_string_span(&doc->path))) continue;
+      MsBytes bytes = {0};
+      MsSpan text = {0};
+      for (size_t d = 0; d < docs->len; d++) {
+        if (ms_span_equal(ms_string_span(&docs->ptr[d].path), paths.ptr[i])) text = ms_string_span(&docs->ptr[d].text);
+      }
+      const bool on_disk = text.ptr == NULL && ms_file_read(paths.ptr[i], &bytes);
+      if (on_disk) text = ms_bytes_span(&bytes);
+      const bool mentions = text.ptr != NULL && lsp_text_mentions(text, selected->name);
+      if (on_disk) ms_bytes_free(&bytes);
+      if (!mentions) continue;
+      LspDoc entry_doc = {.path = ms_string_from_span(paths.ptr[i])};
+      LspAnalysis other;
+      lsp_analyze(docs, &entry_doc, &other);
+      bool affected = false;
+      for (size_t e = 0; other.resolved && e < other.index.len; e++) {
+        const MsOccurrence *candidate = &other.index.ptr[e];
+        if (!ms_span_equal(candidate->key, selected->key)) continue;
+        affected = true;
+        const MsSpan path = ms_arena_copy(&analysis.arena, other.paths[candidate->module]);
+        RenameFile *file = rename_file(&files, path);
+        if (file->source.ptr == NULL) {
+          file->source = ms_arena_copy(&analysis.arena, source_of(&other, candidate));
+          file->uri = uri_of(&analysis, docs, path);
+        }
+        add_edit(file, candidate);
+      }
+      if (affected) {
+        /* The file this scan checked on its own must check cleanly after the rename too. */
+        rename_entry_list_push(&entries, (RenameEntry){ms_arena_copy(&analysis.arena, ms_string_span(&entry_doc.path))});
+      }
+      lsp_analysis_release(&other);
+      ms_string_release(&entry_doc.path);
+    }
+    ms_span_list_free(&paths);
+  }
+  qsort(files.ptr, files.len, sizeof(RenameFile), compare_rename_file);
   /* Apply the edits to a copy of every file, so the result can be checked before it is proposed. */
-  MsOverlayFile *changed = MS_ARENA_NEW_ARRAY(&analysis.arena, MsOverlayFile, file_count + 1);
+  MsOverlayFile *changed = MS_ARENA_NEW_ARRAY(&analysis.arena, MsOverlayFile, files.len + 1);
   MsStrBuild body = ms_strbuild_new();
   ms_strbuild_append_text(&body, "{\"documentChanges\":[");
-  for (size_t f = 0; f < file_count; f++) {
-    const MsSpan source = program->modules.ptr[modules[f]].source;
+  for (size_t f = 0; f < files.len; f++) {
+    RenameFile *file = &files.ptr[f];
+    const MsSpan source = file->source;
     if (occurs(source, new_name)) {
       ms_strbuild_printf(error, "%.*s already occurs in %.*s; rename could capture another binding", (int)new_name.len,
-                         new_name.ptr, (int)analysis.paths[modules[f]].len, analysis.paths[modules[f]].ptr);
+                         new_name.ptr, (int)file->path.len, file->path.ptr);
       ms_strbuild_free(&body);
-      goto done;
+      goto release;
     }
-    EditList edits = {0};
-    for (size_t i = 0; i < analysis.index.len; i++) {
-      const MsOccurrence *entry = &analysis.index.ptr[i];
-      if (entry->module != modules[f] || !ms_span_equal(entry->key, selected->key)) continue;
-      bool repeated = false;
-      for (size_t e = 0; e < edits.len; e++) repeated |= edits.ptr[e].start == entry->offset;
-      if (!repeated) edit_list_push(&edits, (Edit){entry->offset, entry->end});
-    }
+    EditList edits = file->edits;
     qsort(edits.ptr, edits.len, sizeof(Edit), compare_edit_descending);
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append(&text, source);
     if (f > 0) ms_strbuild_append_byte(&body, ',');
     ms_strbuild_append_text(&body, "{\"textDocument\":{\"uri\":");
-    lsp_json_string(&body, files[f]);
+    lsp_json_string(&body, file->uri);
     ms_strbuild_append_text(&body, ",\"version\":");
-    const LspDoc *opened = lsp_doc_find(docs, files[f]);
+    const LspDoc *opened = lsp_doc_find(docs, file->uri);
     if (opened != NULL) ms_strbuild_printf(&body, "%lld", (long long)opened->version);
     else ms_strbuild_append_text(&body, "null");
     ms_strbuild_append_text(&body, "},\"edits\":[");
@@ -438,8 +492,7 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
         refuse(error, "source revision changed");
         ms_strbuild_free(&body);
         ms_strbuild_free(&text);
-        edit_list_free(&edits);
-        goto done;
+        goto release;
       }
       if (e > 0) ms_strbuild_append_byte(&body, ',');
       ms_strbuild_append_text(&body, "{\"range\":");
@@ -456,14 +509,22 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
       text = next;
     }
     ms_strbuild_append_text(&body, "]}");
-    changed[f] = (MsOverlayFile){analysis.paths[modules[f]], ms_arena_copy(&analysis.arena, ms_strbuild_span(&text))};
+    changed[f] = (MsOverlayFile){file->path, ms_arena_copy(&analysis.arena, ms_strbuild_span(&text))};
     ms_strbuild_free(&text);
-    edit_list_free(&edits);
   }
   ms_strbuild_append_text(&body, "]}");
-  ok = lsp_rename_stays_checked(docs, doc, changed, file_count, error);
+  ok = lsp_rename_stays_checked(docs, doc, changed, files.len, error);
+  for (size_t i = 0; ok && i < entries.len; i++) {
+    LspDoc entry_doc = {.path = ms_string_from_span(entries.ptr[i].path)};
+    ok = lsp_rename_stays_checked(docs, &entry_doc, changed, files.len, error);
+    ms_string_release(&entry_doc.path);
+  }
   if (ok) ms_strbuild_append(out, ms_strbuild_span(&body));
   ms_strbuild_free(&body);
+release:
+  for (size_t f = 0; f < files.len; f++) edit_list_free(&files.ptr[f].edits);
+  rename_file_list_free(&files);
+  rename_entry_list_free(&entries);
 done:
   lsp_analysis_release(&analysis);
   return ok;
