@@ -1,8 +1,7 @@
 // conform: tags=scope-cleanup,tier-core
 // conform: phase=check
-// A method value over a method that moves its receiver would move it on every call.
-// The variable and the result would both close the resource, so the value is rejected;
-// call the method, or write a closure.
+// A method value over a method that moves its receiver is accepted: the value is shared
+// like any function value, and the receiver is handed over when it is made.
 import Closeable, print from "@std/core.ms"
 
 type Marker:
