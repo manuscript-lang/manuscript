@@ -80,6 +80,8 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
 /* ms-sig: msrt_list_replace(v: *mut VecVal, d: ElemDesc, index: i64, e: *mut u8, out: *mut u8)
  * @domain=collection @leaf */
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out);
+/* ms-sig: msrt_list_remove_take(v: *mut VecVal, d: ElemDesc, index: i64, out: *mut VecVal) @domain=collection */
+void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList *taken);
 /* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @leaf */
 void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j);
 /* ms-sig: msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @domain=collection @leaf */
@@ -91,6 +93,10 @@ void msrt_list_reversed(const MsList *v, const MsTypeDesc *d, MsList *out);
 /* ms-sig: msrt_list_splice(v: *mut VecVal, d: ElemDesc, start: i64, count: i64, replacement: *mut VecVal)
  * @domain=collection @leaf */
 void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement);
+/* ms-sig: msrt_list_splice_take(v: *mut VecVal, d: ElemDesc, start: i64, count: i64, replacement: *mut VecVal,
+ * out: *mut VecVal) @domain=collection */
+void msrt_list_splice_take(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement,
+                           MsList *taken);
 /* ms-sig: msrt_list_fill(v: *mut VecVal, d: ElemDesc, value: *const u8, start: i64, end: i64)
  * @domain=collection @leaf */
 void msrt_list_fill(MsList *v, const MsTypeDesc *d, const uint8_t *value, int64_t start, int64_t end);
