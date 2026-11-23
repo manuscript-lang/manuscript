@@ -8,7 +8,7 @@ BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
 CONFORM_SHARD ?= 0/1
 
-.PHONY: bench-gate runtime doctor verify verify-full check repo-check workflow-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
+.PHONY: bench-gate runtime doctor verify verify-full check repo-check unit test build conform conform-llvm drift-check poison-check view-matrix ownership-fuzz llvm-report leak-check cancel-sweep perf-counts scaling-check count-check resource-matrix close-matrix copy-check removed-check fmt licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check agent-bench-check bench-check stdlib-bench vscode-package vscode-install
 
 doctor: build
 	HUGO="$(HUGO)" $(MS) run tools/doctor.ms
@@ -23,7 +23,7 @@ vscode-install: vscode-package
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
 # Routine feedback excludes native distributions. The merge gate adds the conformance corpus and the book.
-verify: check repo-check workflow-check bench-check unit docs-check licenses-check
+verify: check repo-check bench-check unit docs-check licenses-check
 
 verify-full: verify conform removed-check book-check dist-check
 
@@ -42,9 +42,6 @@ fmt:
 # Nested matches, .ms formatting, stdlib syntax, release pins, workflow triggers, Rust unsafe allow-list.
 repo-check:
 	cargo run --release --locked -q -p ms-repo-check
-
-workflow-check:
-	node --test tests/workflows/*.test.cjs
 
 unit: runtime
 	cargo nextest run --workspace

@@ -599,13 +599,21 @@ fn main() Int:
 
 	if recording:
 		version := oracle_version(ms.clone())
+		// A promise keeps what it captures, so each one gets its own copies.
+		stable_now := stable
+		only_missing_now := only_missing
+		prune_now := prune
 		var recorders = List[Promise[List[String]]]()
 		for worker in 0..jobs_count:
+			tool := ms.clone()
+			kind := build_type.clone()
+			mine := chunks[worker].clone()
+			release := version.clone()
 			recorders.append(
 				promise(
 					fn: ok(
 						record_chunk(
-							ms, build_type, chunks[worker], version, stable, only_missing, prune
+							tool, kind, mine, release, stable_now, only_missing_now, prune_now
 						)
 					)
 				)
@@ -627,7 +635,10 @@ fn main() Int:
 
 	var tasks = List[Promise[List[String]]]()
 	for worker in 0..jobs_count:
-		tasks.append(promise(fn: ok(sweep(ms, build_type, chunks[worker]))))
+		tool := ms.clone()
+		kind := build_type.clone()
+		mine := chunks[worker].clone()
+		tasks.append(promise(fn: ok(sweep(tool, kind, mine))))
 
 	var passed = 0
 	for task in tasks:

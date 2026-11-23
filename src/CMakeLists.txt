@@ -10,29 +10,21 @@ add_subdirectory(tooling)
 add_subdirectory(driver)
 add_subdirectory(lint)
 
-# `cmake --build <dir> --target conform-c`: the one progress number (plan rule 4).
-# MS_ORACLE_DIR holds the oracle `ms-conform` built from 660429d4, outside the repository.
-set(MS_ORACLE_DIR "$ENV{MS_ORACLE_DIR}" CACHE PATH "Directory with the oracle ms and ms-conform")
-set(MS_CONFORM_EXTRA "" CACHE STRING "Extra ms-conform selection, semicolon separated")
-add_custom_target(conform-c
-  COMMAND ${CMAKE_COMMAND}
-    "-DMS_CONFORM=${MS_ORACLE_DIR}/ms-conform${CMAKE_EXECUTABLE_SUFFIX}"
-    "-DMS_C=$<TARGET_FILE:ms-c>"
-    "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
-    "-DEXTRA=${MS_CONFORM_EXTRA}"
-    -P "${CMAKE_SOURCE_DIR}/cmake/ConformC.cmake"
+# `cmake --build <dir> --target conform`: the conformance corpus (parse, check, run, test) and the command
+# fixtures, replayed against the ms built here, one `passed/total` line each (cmake/Conform.cmake).
+# MS_CONFORM_ENFORCE=ON fails the target on any corpus difference; the command fixtures always must pass.
+option(MS_CONFORM_ENFORCE "Fail conform when a corpus phase has a difference" OFF)
+add_custom_target(conform
+  COMMAND ${CMAKE_COMMAND} "-DMS=$<TARGET_FILE:ms-c>" "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+    "-DENFORCE=${MS_CONFORM_ENFORCE}" -P "${CMAKE_SOURCE_DIR}/cmake/Conform.cmake"
   DEPENDS ms-c
   USES_TERMINAL
-  COMMENT "Running the conformance corpus against ms-c")
+  COMMENT "Replaying the conformance corpus and the command fixtures")
 
-# The command fixtures alone (tests/conformance/commands), for the platforms where the whole corpus is too slow.
+# The command fixtures alone (tests/conformance/commands).
 add_custom_target(conform-commands
-  COMMAND ${CMAKE_COMMAND}
-    "-DMS_CONFORM=${MS_ORACLE_DIR}/ms-conform${CMAKE_EXECUTABLE_SUFFIX}"
-    "-DMS_C=$<TARGET_FILE:ms-c>"
-    "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
-    -DONLY=commands
-    -P "${CMAKE_SOURCE_DIR}/cmake/ConformC.cmake"
+  COMMAND ${CMAKE_COMMAND} "-DMS=$<TARGET_FILE:ms-c>" "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}" -DONLY=commands
+    -P "${CMAKE_SOURCE_DIR}/cmake/Conform.cmake"
   DEPENDS ms-c
   USES_TERMINAL
-  COMMENT "Replaying the command fixtures against ms-c")
+  COMMENT "Replaying the command fixtures")
