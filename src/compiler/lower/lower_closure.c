@@ -49,18 +49,6 @@ static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
           !fn->closing_var[fn->nvars + capture->index]);
 }
 
-/* Whether the captured local or parameter lives in a slot the maker's scope owns, so an escaping closure takes it out. */
-static bool fn_capture_slot_owned(const LowerFn *fn, const LowerCapture *capture) {
-  if (fn->closing == NULL) {
-    return false;
-  }
-  if (capture->kind == MS_REF_LOCAL) {
-    return capture->index < fn->nvars && fn->closing_var[capture->index];
-  }
-  return capture->index < fn->b.func.nparams && capture->index < LOWER_MAX_CLOSING_PARAMS &&
-         fn->b.func.params[capture->index].mode == MM_MOVE && fn->closing_var[fn->nvars + capture->index];
-}
-
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
 static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed,
                            bool escapes, bool *borrows, MirCaptureCloser *closers, uint32_t *nclosers) {
@@ -92,19 +80,21 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       captures[index].elem = captures[index].ty;
     }
     if (mir_needs_drop(fn->cx->module, captures[index].ty)) {
+      MirValue slot_value = MIR_NONE;
       if (!escapes) {
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
       } else if (!fn_capture_moves(fn, &captures[index])) {
-        MirValue taken = MIR_NONE;
         MirVar owned_var = 0;
-        if (fn_capture_slot_owned(fn, &captures[index]) && fn_closing_take(fn, &ref, value, &taken)) {
-          value = taken; /* a resource or var in a slot gives its value to the closure */
+        if (fn_closing_take(fn, &ref, value, &slot_value)) {
+          value = slot_value; /* a resource or var in a slot gives its value to the closure */
         } else if (captures[index].kind == MS_REF_LOCAL && captures[index].use != NULL &&
                    fn_owned_local(fn, captures[index].use, &owned_var) && fn->b.vars.ptr[owned_var].mode == MM_MOVE) {
           fn_scope_var_released(fn, owned_var, true); /* an owning `var` the maker does not use again goes to the closure */
         } else {
           value = fn_implicit_clone(fn, value, false);
         }
+      } else if (fn_closing_take(fn, &ref, value, &slot_value)) {
+        value = slot_value; /* a resource its scope closes gives its value to the closure, on the paths that build it */
       }
     }
     out[index] = value;
