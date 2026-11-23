@@ -77,3 +77,15 @@ void ms_http_client_close(MsHttpClient *client) {
 bool ms_http_client_closed(const MsHttpClient *client) {
   return atomic_load(&((MsHttpClient *)(uintptr_t)client)->closed);
 }
+
+void ms_http_client_handle_add(MsHttpClient *client) {
+  atomic_fetch_add(&client->handles, 1);
+}
+
+int ms_http_client_handle_remove(MsHttpClient *client) {
+  return atomic_fetch_sub(&client->handles, 1) - 1;
+}
+
+int ms_http_client_handle_count(const MsHttpClient *client) {
+  return atomic_load(&((MsHttpClient *)(uintptr_t)client)->handles);
+}

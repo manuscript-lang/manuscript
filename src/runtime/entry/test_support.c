@@ -120,3 +120,9 @@ void msrt_test_capture_fault(int64_t id, MsString *out) {
   *out = length == 0 ? ms_string_empty() : ms_string_from_span(ms_span_of(bytes, length));
   ms_free(bytes);
 }
+
+static _Atomic int64_t bench_sink;
+
+void msrt_bench_keep(int64_t value) { atomic_store_explicit(&bench_sink, value, memory_order_relaxed); }
+
+int64_t msrt_bench_opaque(int64_t value) { return value; }

@@ -55,7 +55,7 @@ ms_library(ms_emit compiler/emit
   SOURCES
     emit_leaf.c emit_memory.c emit_scalar.c emit_call.c emit_checked.c emit_record.c emit_term.c emit_func.c emit.c
     emit_decl.c emit_entry.c emit_data.c emit_option.c emit_list.c emit_string.c emit_closure.c emit_iface.c
-    emit_task.c emit_debug.c emit_tables.c emit_hints.c
+    emit_task.c emit_debug.c emit_tables.c emit_hints.c emit_copies.c
   LINK ms_mir ms_base)
 
 # One linker per OS family.
@@ -85,7 +85,7 @@ ms_library(ms_check compiler/check
 ms_library(ms_own compiler/own
   SOURCES
     class.c own.c unused.c changes.c borrows.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c bind.c
-    live_expr.c live_set.c live_stmt.c places.c overlaps.c expr_text.c
+    live_expr.c live_set.c live_stmt.c places.c overlaps.c relays.c expr_text.c
   LINK ms_base ms_syntax ms_project ms_check ms_native_sigs)
 
 ms_library(ms_opt compiler/opt
@@ -101,7 +101,7 @@ ms_library(ms_opt compiler/opt
 
 ms_library(ms_lower compiler/lower
   SOURCES
-    lower_types.c lower_scope.c lower_func.c lower_expr.c lower_stmt.c lower_field.c lower_call.c lower_native.c
+    lower_types.c lower_scope.c lower_func.c lower_expr.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_native.c
     lower_native_list.c lower_object.c lower_extern.c lower_conv.c lower_for.c lower_close.c lower_parts.c
     lower_temp.c lower_text.c lower_match.c lower_list.c lower_iflet.c lower_closure.c lower_captures.c
     lower_funcval.c lower_default.c lower_glue.c lower_hooks.c lower_result.c lower_tests.c lower_entry.c

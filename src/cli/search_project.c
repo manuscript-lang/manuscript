@@ -1,6 +1,6 @@
 /* Owns search_project.h. The project in the working directory is the nearest ancestor `ms.toml` (a workspace root
- * stands for its members), else every `.ms` file below the working directory, each checked on its own. A project that
- * does not check yields nothing, as the language server indexes only what compiles. */
+ * stands for its members) and then every other `.ms` file below its directory, else every `.ms` file below the working
+ * directory, each checked on its own. A source with errors still lists its declarations; one that does not parse yields nothing. */
 #include "cli/search_project.h"
 
 #include <string.h>
@@ -49,8 +49,9 @@ static MsSpan shown_path(MsSpan path, MsSpan cwd) {
 static void analyze(MsArena *arena, MsSpan filename, Analyses *out) {
   Analysis *analysis = MS_ARENA_NEW_ARRAY(arena, Analysis, 1);
   *analysis = (Analysis){0};
-  const MsLoadOptions options = {.tests = true, .project_sources = true};
-  if (!ms_checked_input_load_with(arena, &analysis->checked, filename, MS_INPUT_ANALYSIS, &options)) {
+  const MsLoadOptions options = {.tests = true, .project_sources = true, .recover = true};
+  (void)ms_checked_input_load_with(arena, &analysis->checked, filename, MS_INPUT_ANALYSIS, &options);
+  if (!analysis->checked.checked) { /* a source with errors still lists what it declares */
     ms_checked_input_free(&analysis->checked);
     return;
   }
@@ -59,6 +60,21 @@ static void analyze(MsArena *arena, MsSpan filename, Analyses *out) {
   analyses_push(arena, out, analysis);
 }
 
+/* Whether an analysis already loaded the file as one of its modules. */
+static bool covered(const Analyses *analyses, MsSpan path) {
+  for (size_t i = 0; i < analyses->len; i++) {
+    const MsGraph *graph = &analyses->ptr[i]->checked.graph;
+    for (size_t m = 0; m < graph->count; m++) {
+      if (ms_span_equal(graph->modules[m].path, path)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* Every `.ms` file below `dir` that no analysis covers yet, each checked on its own: dot directories, `node_modules`
+ * and `vendor` are skipped. */
 static void analyze_tree(MsArena *arena, MsSpan dir, Analyses *out) {
   MsDirEntryList entries = {0};
   if (!ms_dir_list(dir, &entries)) {
@@ -71,8 +87,11 @@ static void analyze_tree(MsArena *arena, MsSpan dir, Analyses *out) {
     }
     const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
     if (entries.ptr[i].kind == MS_PATH_DIRECTORY) {
-      analyze_tree(arena, path, out);
-    } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms"))) {
+      if (!ms_span_is_text(name, "node_modules") && !ms_span_is_text(name, "vendor")) {
+        analyze_tree(arena, path, out);
+      }
+    } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms")) &&
+               !covered(out, path)) {
       analyze(arena, path, out);
     }
   }
@@ -108,9 +127,10 @@ static void analyze_project(MsArena *arena, MsSpan cwd, Analyses *out) {
     for (size_t i = 0; i < members.len; i++) {
       analyze(arena, members.ptr[i], out);
     }
-    return;
+  } else {
+    analyze(arena, manifest, out);
   }
-  analyze(arena, manifest, out);
+  analyze_tree(arena, root, out); /* files the project does not import are searched too */
 }
 
 /* ---- the matches ---- */

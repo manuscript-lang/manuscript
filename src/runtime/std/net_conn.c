@@ -344,13 +344,61 @@ static void read_abandon(MsNetOp *op) {
   }
 }
 
+static void steal_lock(MsNetCore *core) {
+  while (atomic_exchange_explicit(&core->steal_lock, 1, memory_order_acquire) != 0) {
+  }
+}
+
+static void steal_unlock(MsNetCore *core) { atomic_store_explicit(&core->steal_lock, 0, memory_order_release); }
+
+void ms_net_core_set_stealable(MsNetCore *core, bool stealable) { atomic_store(&core->stealable, stealable); }
+
+bool ms_net_core_steal_read(MsNetCore *core, MsBytes *out) {
+  steal_lock(core);
+  ReadOp *read = core->open_read;
+  const bool ready = read != NULL && atomic_load(&read->op.state) == MS_NET_OP_DONE && read->op.status == 0 &&
+                     read->length > 0;
+  if (ready) {
+    core->open_read = NULL; /* the registration's reference passes to us */
+  }
+  steal_unlock(core);
+  if (!ready) {
+    return false;
+  }
+  *out = ms_bytes_from_span(ms_span_of(read->data, read->length));
+  ms_net_op_free(&read->op);
+  return true;
+}
+
 uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err) {
   ReadOp *read = ms_net_op_new(sizeof *read, read_start, read_abandon, read_release);
   atomic_fetch_add(&core->references, 1);
   read->core = core;
   read->capacity = capacity;
   read->data = ms_alloc(capacity);
+  const bool registered = atomic_load(&core->stealable);
+  if (registered) {
+    atomic_fetch_add(&read->op.references, 1); /* the registration's */
+    steal_lock(core);
+    core->open_read = read;
+    steal_unlock(core);
+  }
   const MsNetWait wait = ms_net_run(&read->op, timeout_ns);
+  bool stolen = false;
+  if (registered) {
+    steal_lock(core);
+    stolen = core->open_read != read;
+    core->open_read = stolen ? core->open_read : NULL;
+    steal_unlock(core);
+    if (!stolen) {
+      ms_net_op_free(&read->op); /* the registration's reference */
+    }
+  }
+  if (stolen) {
+    ms_net_op_free(&read->op); /* ours: the thief holds the registration's and the bytes */
+    *err = ms_string_empty();
+    return MS_STATUS_CLOSED;
+  }
   const uint8_t status = ms_net_finish(wait, wait == MS_NET_WAIT_DONE ? read->op.status : 0, "read", err);
   if (wait != MS_NET_WAIT_DONE) {
     return status;

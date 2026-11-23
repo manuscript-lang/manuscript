@@ -41,6 +41,10 @@ bool mir_result_mode(const MirModule *module, const MirFunc *func, const MirInst
   return true;
 }
 
+bool mir_result_borrowed(const MirModule *module, const MirFunc *func, const MirInst *inst) {
+  return result_is_borrow(module, func, inst);
+}
+
 static bool mir_method_consumes(const MirModule *module, const MirInst *inst) {
   if (inst->op != MOP_CallMethod || inst->imm.tag != MI_METHOD || inst->imm.a >= module->ifaces.len) {
     return false;

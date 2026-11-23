@@ -221,6 +221,21 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   return own ? fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty) : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
 }
 
+bool fn_owns_result(LowerFn *fn, MirValue value) {
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value))) {
+    return fn_fresh_owner(fn, value);
+  }
+  for (uint32_t block = 0; block < fn->b.func.blocks.len; block++) {
+    const MirInstList *insts = &fn->b.func.blocks.ptr[block].insts;
+    for (size_t at = 0; at < insts->len; at++) {
+      if (insts->ptr[at].res == value) {
+        return !mir_result_borrowed(fn->cx->module, &fn->b.func, &insts->ptr[at]);
+      }
+    }
+  }
+  return true;
+}
+
 bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
   /* Walk back to the instruction that made `value`: a call that wrote its `var` receiver back, or took other

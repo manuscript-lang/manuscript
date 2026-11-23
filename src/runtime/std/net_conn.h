@@ -26,7 +26,7 @@ uint8_t msstd_net_listener_accept_raw(const MsObj *handle, uint8_t has_timeout, 
 void msstd_net_listener_address(const MsObj *handle, MsString *out);
 /* ms-sig: msstd_net_listener_close(handle l: *const ObjCell<ListenerH>) @domain=network */
 void msstd_net_listener_close(const MsObj *handle);
-/* ms-sig: msstd_net_listener_share(handle l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH> @handle @domain=network */
+/* ms-sig: msstd_net_listener_share(handle l: *const ObjCell<ListenerH>) -> *mut ObjCell<ListenerH> @domain=network @end */
 MsObj *msstd_net_listener_share(const MsObj *handle);
 
 /* Up to `capacity` bytes: MS_STATUS_NONE at the end of the stream. */
@@ -44,9 +44,9 @@ uint8_t msstd_net_connection_write_bytes(const MsObj *handle, const MsBytes *dat
 uint8_t msstd_net_connection_shutdown_write(const MsObj *handle, MsString *err);
 /* ms-sig: msstd_net_connection_close(handle c: *const ObjCell<ConnH>) @domain=network */
 void msstd_net_connection_close(const MsObj *handle);
-/* ms-sig: msstd_net_connection_share(handle c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH> @handle @domain=network */
+/* ms-sig: msstd_net_connection_share(handle c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH> @domain=network @end */
 MsObj *msstd_net_connection_share(const MsObj *handle);
-/* ms-sig: msstd_net_connection_alias(handle c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH> @handle @domain=network */
+/* ms-sig: msstd_net_connection_alias(handle c: *const ObjCell<ConnH>) -> *mut ObjCell<ConnH> @domain=network @end */
 MsObj *msstd_net_connection_alias(const MsObj *handle);
 /* ms-sig: msstd_net_connection_close_if_last(handle c: *const ObjCell<ConnH>) @domain=network */
 void msstd_net_connection_close_if_last(const MsObj *handle);

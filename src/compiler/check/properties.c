@@ -431,7 +431,7 @@ static bool clonable(MsCheckProgram *program, MsTy ty) {
   case MS_TY_CONTRACT:
     return !ms_ty_is(types, ty, MS_BUILTIN_Closeable);
   case MS_TY_FUNCTION:
-    return false;
+    return true; /* a function value never changes once made, so a copy shares it */
   case MS_TY_PRIMITIVE:
     return true;
   default:

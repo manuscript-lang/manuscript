@@ -8,7 +8,7 @@
 #include "compiler/check/std_exports.h"
 #include "compiler/check/bounds.h"
 #include "compiler/check/suggest.h"
-#include <string.h>
+#include "base/cstr.h"
 
 static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",
@@ -189,6 +189,28 @@ static void unknown_type_advice(const Resolver *resolver, MsSpan name, MsStrBuil
   ms_strbuild_free(&module_path);
 }
 
+/* Where a new import goes: the top of the module, or below a leading comment block (a header) set apart by a blank line. */
+static MsPos import_point(MsSpan source) {
+  MsPos at = {.offset = 0, .line = 1, .column = 1};
+  size_t offset = 0;
+  uint32_t line = 1;
+  while (offset + 1 < source.len && source.ptr[offset] == '/' && source.ptr[offset + 1] == '/') {
+    while (offset < source.len && source.ptr[offset] != '\n') {
+      offset++;
+    }
+    offset += offset < source.len ? 1 : 0;
+    line++;
+  }
+  if (line == 1 || offset >= source.len || source.ptr[offset] != '\n') {
+    return at;
+  }
+  while (offset < source.len && source.ptr[offset] == '\n') { /* the blank lines under the header */
+    offset++;
+    line++;
+  }
+  return (MsPos){.offset = (uint32_t)offset, .line = line, .column = 1};
+}
+
 static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   MsCheckProgram *program = resolver->program;
   MsStrBuild text = ms_strbuild_new();
@@ -199,7 +221,7 @@ static void report_unknown(const Resolver *resolver, const MsTypeRef *type) {
   unknown_type_advice(resolver, name, &text, &statement);
   ms_check_report(program, resolver->module, type->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
   if (ms_strbuild_length(&statement) != 0) {
-    const MsPos start = {.offset = 0, .line = 1, .column = 1};
+    const MsPos start = import_point(program->modules.ptr[resolver->module].source);
     ms_check_attach_fix(program, start, start, ms_strbuild_finish(&statement));
   } else {
     ms_strbuild_free(&statement);

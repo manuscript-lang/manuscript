@@ -3,6 +3,7 @@
 
 #include "compiler/check/methods.h"
 #include "compiler/own/bind.h"
+#include "compiler/own/expr_text.h"
 #include "compiler/own/class.h"
 #include "compiler/own/live.h"
 #include "compiler/own/result_borrows.h"
@@ -537,6 +538,16 @@ static void note_var(void *ctx, const MsStmt *stmt) {
   }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     ms_binding_list_push(&pass->vars, stmt->u.bind.pattern->id);
+  }
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
+      stmt->u.branch.is_mutable && !pass->instance && !mark_last_use(pass, stmt->u.branch.cond)) {
+    /* `if var x = name` moves `name` into `x` at its last use; anywhere else there is no entry in place to lend. */
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
+    ms_own_expr_text(&text, pass->program->names, stmt->u.branch.cond);
+    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an "
+                                   "independent mutable copy, or write the changed value back");
+    ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
       !stmt->u.branch.is_mutable) {

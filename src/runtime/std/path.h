@@ -10,14 +10,14 @@
 #include "base/desc.h"
 #include "base/string.h"
 
-/* ms-sig: msstd_path_host_windows() -> u8 @leaf */
+/* ms-sig: msstd_path_host_windows() -> u8 @end */
 uint8_t msstd_path_host_windows(void);
 /* ms-sig: msstd_path_compile_glob(windows: u8, pattern: *const StrVal, out: *mut *mut ObjCell<CompiledGlob>)
- * -> u8 @domain=path @leaf */
+ * -> u8 @domain=path @end */
 uint8_t msstd_path_compile_glob(uint8_t windows, const MsString *pattern, MsObj **out);
 /* ms-sig: msstd_path_glob_matches(handle glob: *const ObjCell<CompiledGlob>, value: *const StrVal, out: *mut
  * u8)
- * -> u8 @domain=path @leaf */
+ * -> u8 @domain=path @end */
 uint8_t msstd_path_glob_matches(const MsObj *glob, const MsString *value, uint8_t *out);
 
 #endif

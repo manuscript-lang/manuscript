@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "base/arena.h"
+#include "base/dir.h"
 #include "base/file.h"
 #include "base/list.h"
 #include "base/strbuild.h"
@@ -81,6 +82,9 @@ static int parse_arguments(int argc, char **argv, FmtOptions *options, TargetLis
     } else {
       target_list_push(targets, text);
     }
+  }
+  if (targets->len == 0 && ms_path_kind(ms_span_of_text("ms.toml")) == MS_PATH_FILE) {
+    target_list_push(targets, ms_span_of_text("ms.toml")); /* no target: the project in this directory */
   }
   if (targets->len == 0) {
     return usage_error("ms fmt: missing a target; pass .ms files, directories, or ms.toml");

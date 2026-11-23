@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "runtime/std/http_serve_abi.h"
+#include "runtime/std/net_core.h"
 
 #include "base/alloc.h"
 #include "runtime/std/fail.h"
@@ -237,6 +238,7 @@ void msstd_http_worker_adopt(const MsObj *object, int64_t raw) {
     return;
   }
   const MsWsTransport stream = ms_net_connection_transport(connection);
+  ms_net_core_set_stealable(ms_net_handle_core(connection), true); /* another thread may take it between requests */
   ms_serve_worker_adopt(worker->worker, &stream, false);
 }
 

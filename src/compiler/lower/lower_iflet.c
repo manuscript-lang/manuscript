@@ -68,6 +68,9 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   const MirTyData *data = mir_ty_data(module, mir_b_ty(&fn->b, value));
   MirValue payload = MIR_NONE;
   MirTy ty = MIR_VOID;
+  if (owns && !fn_owns_result(fn, value)) {
+    owns = false; /* a view of an element or field its owner keeps */
+  }
   if (owns) {
     payload = fn_take_payload(fn, value, &ty);
     const MsTy checked = ms_facts_type(fn->facts, pattern->id);

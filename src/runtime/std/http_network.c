@@ -38,7 +38,7 @@ static MsHttpPolicy policy_of(MsNetFilter *filter) {
 }
 
 /* A handle on `client` with the policy of `net`, and a second one the network closes with itself. */
-static uint8_t bind_client(const MsObj *net, MsHttpClient *client, MsObj **out) {
+static uint8_t bind_client(const MsObj *net, MsHttpClient *client, MsObj **out, MsObj **adopted) {
   MsNetFilter *filter = ms_net_network_filter(net);
   const MsHttpPolicy policy = policy_of(filter);
   MsObj *handle = ms_http_client_handle_with_policy(client, &policy);
@@ -51,6 +51,9 @@ static uint8_t bind_client(const MsObj *net, MsHttpClient *client, MsObj **out) 
     return MS_STATUS_CLOSED;
   }
   *out = handle;
+  if (adopted != NULL) {
+    *adopted = owned;
+  }
   return MS_STATUS_OK;
 }
 
@@ -95,7 +98,7 @@ uint8_t msstd_net_network_http_client(const MsObj *net, const MsHttpClientOption
   if (client == NULL) {
     return finish(MS_STATUS_FAILED, &text, err);
   }
-  const uint8_t status = bind_client(net, client, out);
+  const uint8_t status = bind_client(net, client, out, NULL);
   ms_http_client_release(client);
   return finish(status, &text, err);
 }
@@ -123,7 +126,8 @@ static uint8_t one_shot(const MsObj *net, const MsHttpRequest *request, MsClient
     return MS_STATUS_FAILED;
   }
   MsObj *handle = NULL;
-  uint8_t status = bind_client(net, client, &handle);
+  MsObj *adopted = NULL;
+  uint8_t status = bind_client(net, client, &handle, &adopted);
   ms_http_client_release(client);
   if (status != MS_STATUS_OK) {
     return status;
@@ -146,6 +150,7 @@ static uint8_t one_shot(const MsObj *net, const MsHttpRequest *request, MsClient
   }
   msstd_http_client_close(handle);
   handle->drop(handle);
+  ms_net_network_forget_client(net, adopted);
   return status;
 }
 

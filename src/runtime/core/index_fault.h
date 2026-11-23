@@ -5,11 +5,11 @@
 #include "base/safe.h"
 
 /* "index N out of range for length L; use get_or(index, default) to avoid the fault". */
-/* ms-sig: msrt_index_fault(index: i64, length: i64) -> ! @leaf */
+/* ms-sig: msrt_index_fault(index: i64, length: i64) -> ! @end */
 MS_NORETURN void msrt_index_fault(int64_t index, int64_t length);
 
 /* A bad index of a list mutator over `length` elements; `operation` names the mutator for the message. */
-/* ms-sig: msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! @leaf */
+/* ms-sig: msrt_list_index_fault(operation: i64, index: i64, len: i64) -> ! @end */
 MS_NORETURN void msrt_list_index_fault(int64_t operation, int64_t index, int64_t length);
 
 /* "<operation>: index must be between -L and L-1 (negative indexes count from the end), found N", or the

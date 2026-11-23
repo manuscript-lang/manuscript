@@ -37,24 +37,19 @@ foreach(layer compiler tooling cli lint)
   include(targets/${layer})
 endforeach()
 
-# `cmake --build <dir> --target conform-c` replays the whole conformance corpus against ms and prints the progress
-# numbers; `conform-commands` replays only the command fixtures (tests/conformance/commands), for the platforms where
-# the corpus is too slow. MS_ORACLE_DIR holds the oracle `ms-conform` built from 660429d4, outside the repository;
-# MS_CONFORM_EXTRA adds ms-conform selection arguments, semicolon separated.
-set(MS_ORACLE_DIR "$ENV{MS_ORACLE_DIR}" CACHE PATH "Directory with the oracle ms and ms-conform")
-set(MS_CONFORM_EXTRA "" CACHE STRING "Extra ms-conform selection, semicolon separated")
+# `cmake --build <dir> --target conform`: the conformance corpus (parse, check, run, test) and the command
+# fixtures, replayed against the ms built here, one `passed/total` line each (cmake/Conform.cmake).
+# MS_CONFORM_ENFORCE=ON fails the target on any corpus difference; the command fixtures always must pass.
+# `conform-commands` replays only the command fixtures (tests/conformance/commands).
+option(MS_CONFORM_ENFORCE "Fail conform when a corpus phase has a difference" OFF)
 function(ms_conform_target name only comment)
   add_custom_target(${name}
-    COMMAND ${CMAKE_COMMAND}
-      "-DMS_CONFORM=${MS_ORACLE_DIR}/ms-conform${CMAKE_EXECUTABLE_SUFFIX}"
-      "-DMS_C=$<TARGET_FILE:ms>"
-      "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
-      "-DEXTRA=${MS_CONFORM_EXTRA}"
-      "-DONLY=${only}"
-      -P "${CMAKE_SOURCE_DIR}/cmake/ConformC.cmake"
+    COMMAND ${CMAKE_COMMAND} "-DMS=$<TARGET_FILE:ms>" "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+      "-DENFORCE=${MS_CONFORM_ENFORCE}" "-DONLY=${only}" -P "${CMAKE_SOURCE_DIR}/cmake/Conform.cmake"
     DEPENDS ms
     USES_TERMINAL
     COMMENT "${comment}")
 endfunction()
-ms_conform_target(conform-c "" "Running the conformance corpus against ms")
-ms_conform_target(conform-commands commands "Replaying the command fixtures against ms")
+ms_conform_target(conform "" "Replaying the conformance corpus and the command fixtures")
+ms_conform_target(conform-commands commands "Replaying the command fixtures")
+

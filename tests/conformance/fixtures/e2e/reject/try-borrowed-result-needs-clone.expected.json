@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`value` is a borrow, so `?` cannot move its error out; write `value.clone()?` to relay a copy, or take it from an owner",
+        "position": {
+          "file": "try-borrowed-result-needs-clone.ms",
+          "line": 6,
+          "column": 13,
+          "offset": 288
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "the result of `pass(..)` is a borrow of its arguments, so `?` cannot move its error out; write `pass(..).clone()?` to relay a copy, or take it from an owner",
+        "position": {
+          "file": "try-borrowed-result-needs-clone.ms",
+          "line": 13,
+          "column": 13,
+          "offset": 434
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/try-borrowed-result-needs-clone.ms:6:13: type: `value` is a borrow, so `?` cannot move its error out; write `value.clone()?` to relay a copy, or take it from an owner\n   |\n 6 |     text := value?\n   |             ^\n<DIR>/try-borrowed-result-needs-clone.ms:13:13: type: the result of `pass(..)` is a borrow of its arguments, so `?` cannot move its error out; write `pass(..).clone()?` to relay a copy, or take it from an owner\n    |\n 13 |     text := pass(value)?\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

@@ -158,7 +158,7 @@ static void refuse(MsServeConn *conn, uint16_t status, const char *message, bool
 
 /* ---- one request ---- */
 
-typedef enum Next { NEXT_CLOSE, NEXT_AGAIN } Next;
+typedef enum Next { NEXT_CLOSE, NEXT_AGAIN, NEXT_MOVED } Next;
 
 /* The request head at the front of the input: reads until it is complete or refused. */
 static Next read_head(MsServeConn *conn, const MsServeLimits *limits, MsH1Request *head, int64_t *started) {
@@ -186,8 +186,15 @@ static Next read_head(MsServeConn *conn, const MsServeLimits *limits, MsH1Reques
       *started = ms_sched_deadline_after(limits->timeout_ns);
     }
     MsString err = ms_string_empty();
+    const bool waiting = input.len == 0;
+    if (waiting) {
+      ms_serve_idle_list(conn); /* another thread may take the connection while this one is held up */
+    }
     const uint8_t status = ms_serve_fill(conn, *started, &err);
     ms_string_release(&err);
+    if (waiting && ms_serve_idle_unlist(conn)) {
+      return NEXT_MOVED;
+    }
     if (status != MS_STATUS_OK) {
       if (status == MS_STATUS_TIMED_OUT && input.len > 0) {
         refuse(conn, 408, "request timeout", false);
@@ -310,7 +317,9 @@ static int run_handler(MsServeShared *shared, MsExchange *exchange, bool watchin
   request->exchange = exchange;
   ms_exchange_retain(exchange);
   MsTaskStatus spawned = MS_TASK_OK;
-  const MsTaskHandle task = ms_task_spawn(request_task, request, 0, 0, &spawned);
+  /* First in line: the request runs before the other ready connections are read, so a handler that computes
+   * leaves them unread, where another thread can take them. */
+  const MsTaskHandle task = ms_task_spawn(request_task, request, MS_SPAWN_FRONT, 0, &spawned);
   if (task == 0) {
     ms_exchange_release(exchange);
     ms_free(request);
@@ -385,7 +394,7 @@ static void unlink_conn(MsServeConn *conn) {
 
 /* The handshake of a secure listener, bounded so a client that never answers does not hold the task. */
 static Next handshake(MsServeConn *conn, const MsServeShared *shared) {
-  if (shared->secure == NULL) {
+  if (shared->secure == NULL || conn->resumed) {
     return NEXT_AGAIN;
   }
   const int64_t limit = shared->limits.timeout_ns < 0 ? HANDSHAKE_NS : shared->limits.timeout_ns;
@@ -418,9 +427,12 @@ static void connection_task(void *arg) {
   MsFaultText message = {0};
   (void)ms_guard_call(connection_loop, conn, &message);
   ms_fault_text_free(&message);
-  ms_serve_conn_close(conn);
+  const bool taken = ms_serve_idle_unlist(conn); /* also when the task was cancelled while it waited */
+  if (!taken) {
+    ms_serve_conn_close(conn);
+  }
   unlink_conn(conn);
-  if (conn->io.release != NULL) {
+  if (!taken && conn->io.release != NULL) {
     conn->io.release(conn->io.context);
   }
   ms_bytes_free(&conn->in);
@@ -432,14 +444,19 @@ static void connection_task(void *arg) {
 MsServeWorker *ms_serve_worker_new(MsServeShared *shared) {
   MsServeWorker *worker = ms_alloc_zeroed(sizeof *worker);
   worker->shared = ms_serve_shared_retain(shared);
+  worker->idle = ms_serve_idle_open(worker);
   return worker;
 }
 
-void ms_serve_worker_adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2) {
+static void adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2, MsBytes first) {
   MsServeConn *conn = ms_alloc_zeroed(sizeof *conn);
   conn->worker = worker;
   conn->io = *stream;
   conn->h2 = h2;
+  conn->resumed = first.len > 0;
+  if (first.len > 0) {
+    __builtin_memcpy(ms_list_extend(&conn->in, 1, first.len), first.ptr, first.len);
+  }
   conn->next = worker->conns;
   if (conn->next != NULL) {
     conn->next->prev = conn;
@@ -454,13 +471,27 @@ void ms_serve_worker_adopt(MsServeWorker *worker, const MsWsTransport *stream, b
     if (conn->io.release != NULL) {
       conn->io.release(conn->io.context);
     }
+    ms_bytes_free(&conn->in);
     ms_free(conn);
   }
 }
 
+void ms_serve_worker_adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2) {
+  adopt(worker, stream, h2, (MsBytes){0});
+}
+
+bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, MsBytes first) {
+  if (worker->closing) {
+    return false;
+  }
+  adopt(worker, stream, false, first);
+  ms_bytes_free(&first);
+  return true;
+}
+
 static void close_idle(MsServeWorker *worker) {
   for (MsServeConn *conn = worker->conns; conn != NULL; conn = conn->next) {
-    if (conn->idle) {
+    if (conn->idle && !ms_serve_idle_taken(conn)) {
       ms_serve_conn_close(conn);
     }
   }
@@ -477,10 +508,15 @@ void ms_serve_worker_close(MsServeWorker *worker) {
   }
   for (MsServeConn *conn = worker->conns; conn != NULL; conn = conn->next) {
     ms_task_cancel(conn->task);
-    ms_serve_conn_close(conn);
+    if (!ms_serve_idle_taken(conn)) {
+      ms_serve_conn_close(conn);
+    }
   }
   while (worker->count > 0) {
     ms_task_sleep(GRACE_POLL_NS);
+  }
+  if (worker->idle != NULL) {
+    ms_serve_idle_close(worker->idle);
   }
   ms_serve_shared_release(worker->shared);
   ms_free(worker);

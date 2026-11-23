@@ -54,7 +54,7 @@ bool fn_adapt_function_args(LowerFn *fn, uint32_t func, MirValue *args, uint32_t
     const MirTy have = mir_b_ty(&fn->b, args[at]);
     const MirTy want = callee->params[at].ty;
     if (have != want && mir_ty_data(fn->cx->module, have)->kind == MK_FN && mir_ty_data(fn->cx->module, want)->kind == MK_FN) {
-      args[at] = fn_adapt_function(fn, args[at], want);
+      args[at] = fn_adapt_function(fn, args[at], want, MS_TY_NONE);
       if (args[at] == MIR_NONE) {
         return false;
       }
@@ -65,7 +65,7 @@ bool fn_adapt_function_args(LowerFn *fn, uint32_t func, MirValue *args, uint32_t
 
 /* A function value used where its type differs only in which parameters may be left out: a closure holding a copy of
  * it that wraps a supplied argument in an optional, or reads one out. */
-MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
+MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_checked) {
   Lower *cx = fn->cx;
   const MirTy from_ty = mir_b_ty(&fn->b, value);
   const MirTyData *from = mir_ty_data(cx->module, from_ty);
@@ -81,13 +81,16 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = from_ty};
   const uint32_t slot = lower_closure_func(cx, to_ty, &capture, 1);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
-  MirBuilder b;
-  mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  LowerFn inner = {.cx = cx, .facts = fn->facts, .module_index = fn->module_index, .file = fn->file, .ret = reserved.ret};
+  mir_b_init(&inner.b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  inner.b.func.loc = (MirLoc){inner.file, 0, 0, 0};
+  (void)fn_scope_begin(&inner);
+  fn_init_closing(&inner);
   MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
-  mir_b_params(&b, values, reserved.nparams);
+  mir_b_params(&inner.b, values, reserved.nparams);
   MirValue *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
   const MirImm cap_imm = {.tag = MI_IDX, .a = 0};
-  args[0] = mir_b_emit(&b, MOP_ClosureCap, &values[0], 1, cap_imm, from_ty);
+  args[0] = mir_b_emit(&inner.b, MOP_ClosureCap, &values[0], 1, cap_imm, from_ty);
   MirValue dropped[16];
   uint32_t ndropped = 0;
   for (uint32_t at = 0; at < from->nargs; at++) {
@@ -101,28 +104,28 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
         /* The function wants an Optional of the argument: it moves in a copy, or looks at the argument as one. */
         const bool plain = !mir_needs_drop(cx->module, to->args[at]);
         if (takes && !plain && !gives) {
-          const MirValue copy = mir_b_emit(&b, MOP_Clone, &values[at + 1], 1, none, to->args[at]);
-          args[at + 1] = mir_b_emit(&b, MOP_OptSome, &copy, 1, none, from->args[at]);
+          const MirValue copy = mir_b_emit(&inner.b, MOP_Clone, &values[at + 1], 1, none, to->args[at]);
+          args[at + 1] = mir_b_emit(&inner.b, MOP_OptSome, &copy, 1, none, from->args[at]);
         } else if (plain || gives) {
-          args[at + 1] = mir_b_emit(&b, MOP_OptSome, &values[at + 1], 1, none, from->args[at]);
+          args[at + 1] = mir_b_emit(&inner.b, MOP_OptSome, &values[at + 1], 1, none, from->args[at]);
           if (!takes && !plain && ndropped < 16) {
             dropped[ndropped++] = args[at + 1];
           }
           continue;
         } else if (mir_ty_opt_boxed(cx->module, to->args[at])) {
-          const MirValue copy = mir_b_emit(&b, MOP_Clone, &values[at + 1], 1, none, to->args[at]);
-          args[at + 1] = mir_b_emit(&b, MOP_OptSome, &copy, 1, none, from->args[at]);
+          const MirValue copy = mir_b_emit(&inner.b, MOP_Clone, &values[at + 1], 1, none, to->args[at]);
+          args[at + 1] = mir_b_emit(&inner.b, MOP_OptSome, &copy, 1, none, from->args[at]);
           if (ndropped < 16) {
             dropped[ndropped++] = args[at + 1];
           }
         } else {
-          args[at + 1] = mir_b_emit(&b, MOP_OptView, &values[at + 1], 1, none, from->args[at]);
+          args[at + 1] = mir_b_emit(&inner.b, MOP_OptView, &values[at + 1], 1, none, from->args[at]);
         }
         continue;
       } else if (have->kind == MK_OPT && have->elem == from->args[at]) {
-        args[at + 1] = mir_b_emit(&b, MOP_OptGet, &values[at + 1], 1, none, from->args[at]);
+        args[at + 1] = mir_b_emit(&inner.b, MOP_OptGet, &values[at + 1], 1, none, from->args[at]);
         if (takes && mir_needs_drop(cx->module, from->args[at])) {
-          args[at + 1] = mir_b_emit(&b, MOP_Clone, &args[at + 1], 1, none, from->args[at]);
+          args[at + 1] = mir_b_emit(&inner.b, MOP_Clone, &args[at + 1], 1, none, from->args[at]);
         }
         if (gives && mir_needs_drop(cx->module, to->args[at]) && ndropped < 16) {
           dropped[ndropped++] = values[at + 1];
@@ -136,19 +139,26 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
     /* The wrapper takes the argument as the new type says and hands it on as the old one does: a value it owns that
      * the function only borrows is dropped after the call, and one the function moves but the wrapper borrows is
      * copied for it. */
-    if (gives && !takes && mir_needs_drop(cx->module, to->args[at]) && ndropped < 16) {
-      dropped[ndropped++] = values[at + 1];
+    if (gives && !takes && mir_needs_drop(cx->module, to->args[at])) {
+      const MsTyTable *types = &cx->program->types;
+      const MsTy param = to_checked != MS_TY_NONE && at < ms_ty_param_count(types, to_checked) ? ms_ty_params(types, to_checked)[at].ty : MS_TY_NONE;
+      if (param != MS_TY_NONE && fn_temp_closes(&inner, param)) {
+        (void)fn_pending_own(&inner, param, values[at + 1]); /* a resource closes after the call */
+      } else if (ndropped < 16) {
+        dropped[ndropped++] = values[at + 1];
+      }
     } else if (!gives && takes && mir_needs_drop(cx->module, from->args[at])) {
-      args[at + 1] = mir_b_emit(&b, MOP_Clone, &args[at + 1], 1, (MirImm){0}, from->args[at]);
+      args[at + 1] = mir_b_emit(&inner.b, MOP_Clone, &args[at + 1], 1, (MirImm){0}, from->args[at]);
     }
   }
-  const MirValue result = mir_b_emit(&b, MOP_CallInd, args, from->nargs + 1, (MirImm){0}, from->elem);
+  const MirValue result = mir_b_emit(&inner.b, MOP_CallInd, args, from->nargs + 1, (MirImm){0}, from->elem);
   for (uint32_t at = 0; at < ndropped; at++) {
-    (void)mir_b_emit(&b, MOP_Drop, &dropped[at], 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(&inner.b, MOP_Drop, &dropped[at], 1, (MirImm){0}, MIR_NONE);
   }
-  mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  fn_scope_unwind(&inner, 0);
+  mir_b_ret(&inner.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
   MirFunc built;
-  if (!mir_b_into_func(&b, &built)) {
+  if (inner.failed || !mir_b_into_func(&inner.b, &built)) {
     (void)fn_fail(fn, "a function value could not be adapted");
     return MIR_NONE;
   }

@@ -49,10 +49,11 @@ MirValue fn_index(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     (void)fn_fail(fn, "this bracket is not an index");
     return MIR_NONE;
   }
-  const MirValue list = fn_expr(fn, left, LW_BORROW);
-  if (list == MIR_NONE) {
+  const MirValue read = fn_expr(fn, left, LW_BORROW);
+  if (read == MIR_NONE) {
     return MIR_NONE;
   }
+  const MirValue list = fn_closing_indexed(fn, expr, read);
   const MirTy container = mir_b_ty(&fn->b, list);
   const MirTyData *data = mir_ty_data(fn->cx->module, container);
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
