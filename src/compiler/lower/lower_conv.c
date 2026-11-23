@@ -338,6 +338,9 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
+    if (mir_b_ty(&fn->b, value) == to) { /* a generic `T` wrapped as `T?` where T is itself nullable: `T??` is `T?` */
+      return value;
+    }
     const MsTy payload = ms_ty_args(&fn->cx->program->types, conversion->to)[0];
     if (payload != conversion->from) { /* an implementor of the interface the optional holds: seen as it first */
       const MsConversion inner = {conversion->node, MS_CONV_INTERFACE_VIEW, conversion->from, payload};
