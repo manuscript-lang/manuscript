@@ -45,12 +45,6 @@ int64_t msstd_time_duration_plus(int64_t left, int64_t right);
 int64_t msstd_time_duration_minus(int64_t left, int64_t right);
 /* ms-sig: msstd_time_duration_subtract(left: i64, other: i64) -> i64 @domain=time */
 int64_t msstd_time_duration_subtract(int64_t left, int64_t other);
-/* ms-sig: msstd_time_int_milliseconds(n: i64) -> i64 @domain=time */
-int64_t msstd_time_int_milliseconds(int64_t n);
-/* ms-sig: msstd_time_int_seconds(n: i64) -> i64 @domain=time */
-int64_t msstd_time_int_seconds(int64_t n);
-/* ms-sig: msstd_time_int_minutes(n: i64) -> i64 @domain=time */
-int64_t msstd_time_int_minutes(int64_t n);
 /* ms-sig: msstd_time_duration_multiply(value: i64, factor: i64) -> i64 @domain=time */
 int64_t msstd_time_duration_multiply(int64_t value, int64_t factor);
 /* ms-sig: msstd_time_duration_divide(value: i64, divisor: i64) -> i64 @domain=time */
