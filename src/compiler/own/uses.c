@@ -196,6 +196,12 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   case MS_E_CALL:
     visit_call(pass, expr);
     return;
+  case MS_E_MATCH:
+    /* An arm over a call's result owns what it binds, so an arm that yields it hands it on. */
+    for (uint32_t arm = 0; expr->u.match.scrutinee->kind == MS_E_CALL && arm < expr->u.match.arms.len; arm++) {
+      mark_move(pass, expr->u.match.arms.ptr[arm]->value);
+    }
+    return;
   case MS_E_NAME:
   case MS_E_NUMBER:
   case MS_E_BOOL:
@@ -208,7 +214,6 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   case MS_E_UNARY:
   case MS_E_BINARY:
   case MS_E_LAMBDA:
-  case MS_E_MATCH:
     return;
   }
 }

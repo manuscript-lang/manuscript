@@ -562,6 +562,55 @@ static bool update_map_entry(LowerFn *fn, const MsExpr *place, MirValue value, b
   return !fn->failed;
 }
 
+/* Whether `view` is the result of a call that borrows `owner` (`n := cur.get()` views the payload of `cur`). */
+static bool views_payload_of(const LowerFn *fn, MirValue view, MirValue owner) {
+  for (size_t block = 0; block < fn->b.func.blocks.len; block++) {
+    const MirInstList *insts = &fn->b.func.blocks.ptr[block].insts;
+    for (size_t at = 0; at < insts->len; at++) {
+      const MirInst *inst = &insts->ptr[at];
+      if (inst->res == view) {
+        MirMode mode = MM_MOVE;
+        return inst->nargs != 0 && inst->args[0] == owner && mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) &&
+               mode == MM_BORROW;
+      }
+    }
+  }
+  return false;
+}
+
+/* `cur = n.next` where `n` views the payload of the owning Optional `cur`: the old payload leaves `cur`, its field
+ * moves into the new value and the rest of it is released, so a walk along a list does not copy what is left of it.
+ * `value` is the new value, or MIR_NONE when the assignment is not that shape. */
+static MirValue take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var) {
+  const MsExpr *member = stmt->u.assign.value;
+  const MsRef *ref = member->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, member->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_FIELD || ms_facts_use(fn->facts, member->id) != MS_USE_MOVE || !var_owns(fn, var)) {
+    return MIR_NONE;
+  }
+  const MirValue old = mir_b_use_var(&fn->b, var);
+  const MirTyData *old_data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, old));
+  if (old_data->kind != MK_OPT || !mir_needs_drop(fn->cx->module, old_data->elem)) {
+    return MIR_NONE;
+  }
+  const MirValue view = fn_expr(fn, member->u.member.left, LW_BORROW);
+  if (view == MIR_NONE || !views_payload_of(fn, view, old)) {
+    return MIR_NONE;
+  }
+  const MirTy elem = old_data->elem;
+  const MirTyData *record = mir_ty_data(fn->cx->module, elem);
+  if (record->kind != MK_TYPE) {
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_FIELD, .a = record->id, .b = ref->index};
+  const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &old, 1, (MirImm){0}, elem);
+  const MirTy field_ty = fn_type(fn, ms_facts_type(fn->facts, member->id));
+  const MirValue field = mir_b_emit(&fn->b, MOP_TypeGet, &item, 1, imm, field_ty);
+  const MirValue taken = mir_b_emit(&fn->b, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+  const MirImm mask = {.tag = MI_TYPEMASK, .a = record->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
+  (void)mir_b_emit(&fn->b, MOP_TypeRelease, &item, 1, mask, MIR_NONE);
+  return taken;
+}
+
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
@@ -594,6 +643,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     return fn_fail(fn, "an assignment does not name a local");
   }
   fn->nmoved_names = 0;
+  const MirValue advanced = take_field_of_old(fn, stmt, var);
+  if (advanced != MIR_NONE) { /* the old value is gone: nothing is left to drop */
+    mir_b_def_var(&fn->b, var, advanced);
+    return !fn->failed;
+  }
   const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;
@@ -634,7 +688,18 @@ static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, none, MIR_NONE);
   }
   value = fn_result_wrap(fn, value);
+  /* `return x` over an owning `var` hands its value on: the unwind must not own it again. */
+  MirVar returned = 0;
+  const bool hands_on = stmt->u.expr != NULL && stmt->u.expr->kind == MS_E_NAME && value != MIR_NONE &&
+                        ms_facts_use(fn->facts, stmt->u.expr->id) == MS_USE_MOVE && fn_owned_local(fn, stmt->u.expr, &returned) &&
+                        mir_b_use_var(&fn->b, returned) == value;
+  if (hands_on) {
+    fn_scope_var_released(fn, returned, true);
+  }
   fn_scope_unwind(fn, 0);
+  if (hands_on) {
+    fn_scope_var_released(fn, returned, false);
+  }
   mir_b_ret(&fn->b, value == MIR_NONE ? fn_default_result(fn) : value);
   fn->terminated = true;
   return !fn->failed;

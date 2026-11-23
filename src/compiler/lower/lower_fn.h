@@ -15,6 +15,7 @@ typedef struct LowerOwnedVar {
   uint32_t scope;
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
+  bool released;  /* a return is handing the whole value on: the unwind it starts must not own it */
 } LowerOwnedVar;
 
 /* Where `break` and `continue` go, and how many scopes were open outside the loop. */
@@ -131,6 +132,7 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var);
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
 void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
+void fn_scope_var_released(LowerFn *fn, MirVar var, bool released);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
 bool fn_is_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
