@@ -445,7 +445,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
       const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
-      const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty);
+      const MsTyParam *param = &ms_ty_params(types, call->callee_ty)[at];
+      MirTy ty = fn_type(fn, param->ty);
+      if ((param->flags & MS_PARAM_LIFTED) != 0 && ty != MIR_VOID && mir_ty_data(fn->cx->module, ty)->kind != MK_OPT) {
+        ty = mir_ty_opt(fn->cx->module, ty); /* an omittable parameter is passed as an optional */
+      }
       out[index] = ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty);
     }
     if (out[index] == MIR_NONE) {
@@ -455,7 +459,12 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
   for (uint32_t at = 0; at < call->arg_count; at++) {
     if (pending[at] != MIR_NONE && held_across(call, native)) {
       held[at] = pending[at];
-      out[at] = fn_emit(fn, MOP_Load, &pending[at], 1, (MirImm){.tag = MI_TY, .a = mir_b_ty(&fn->b, out[at])}, mir_b_ty(&fn->b, out[at]));
+      const MirTy held_ty = mir_b_ty(&fn->b, out[at]);
+      const MsExpr *written = call->args[at].source == MS_ARG_WRITTEN ? fn_written_arg(expr, call->args[at].node.node) : NULL;
+      /* A moving parameter gets an owned value; the slot keeps the same bytes until the call returns, so a fault
+       * before the callee takes them still closes the resource. */
+      const bool moves = written != NULL && fn_arg_moves(fn, expr, call, at, written) && mir_needs_drop(fn->cx->module, held_ty);
+      out[at] = fn_emit(fn, moves ? MOP_Take : MOP_Load, &pending[at], 1, (MirImm){.tag = MI_TY, .a = held_ty}, held_ty);
     } else if (pending[at] != MIR_NONE) {
       out[at] = fn_pending_take(fn, pending[at], mir_b_ty(&fn->b, out[at]));
     }

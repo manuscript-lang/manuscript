@@ -140,9 +140,13 @@ static const char *mvt_icmp(const MvtCx *c) {
   }
   MirTy t = mvt_t(c, 0);
   bool equality = c->in->imm.a == MCC_EQ || c->in->imm.a == MCC_NE;
-  bool ok = t == mvt_t(c, 1) && (mvt_is_int(c, t) || (t == MIR_BOOL && equality));
+  /* A bool, a pointer or a value held by reference (an object handle, an interface value, a function value) is
+   * equal to itself: eq/ne compare identity. */
+  const MirTyKind kind = mvt_kind(c, t);
+  const bool identity = t == MIR_BOOL || kind == MK_PTR || kind == MK_OBJ || kind == MK_IFACE || kind == MK_FN;
+  bool ok = t == mvt_t(c, 1) && (mvt_is_int(c, t) || (identity && equality));
   return mvt_want(ok && mvt_res_is(c, MIR_BOOL),
-          "icmp compares two ints (or bools for eq/ne) and yields bool");
+          "icmp compares two ints (or bools and references for eq/ne) and yields bool");
 }
 
 static const char *mvt_fcmp(const MvtCx *c) {
