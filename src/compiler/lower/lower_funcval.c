@@ -48,13 +48,18 @@ MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem
 }
 
 /* The arguments of a call of `func`, each a function value brought to the parameter's function type. */
-bool fn_adapt_function_args(LowerFn *fn, uint32_t func, MirValue *args, uint32_t count) {
+bool fn_adapt_function_args(LowerFn *fn, uint32_t func, const MsCall *call, MirValue *args) {
   const MirFunc *callee = &fn->cx->module->funcs.ptr[func];
-  for (uint32_t at = 0; at < count && at < callee->nparams; at++) {
+  const MsTyTable *types = &fn->cx->program->types;
+  const size_t declared = call->callee_ty != MS_TY_NONE && ms_ty_kind(types, call->callee_ty) == MS_TY_FUNCTION
+                              ? ms_ty_param_count(types, call->callee_ty)
+                              : 0;
+  for (uint32_t at = 0; at < call->arg_count && at < callee->nparams; at++) {
     const MirTy have = mir_b_ty(&fn->b, args[at]);
     const MirTy want = callee->params[at].ty;
     if (have != want && mir_ty_data(fn->cx->module, have)->kind == MK_FN && mir_ty_data(fn->cx->module, want)->kind == MK_FN) {
-      args[at] = fn_adapt_function(fn, args[at], want, MS_TY_NONE);
+      const MsTy checked = at + declared >= call->arg_count ? ms_ty_params(types, call->callee_ty)[at + declared - call->arg_count].ty : MS_TY_NONE;
+      args[at] = fn_adapt_function(fn, args[at], want, checked);
       if (args[at] == MIR_NONE) {
         return false;
       }
@@ -139,12 +144,21 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_che
     /* The wrapper takes the argument as the new type says and hands it on as the old one does: a value it owns that
      * the function only borrows is dropped after the call, and one the function moves but the wrapper borrows is
      * copied for it. */
-    if (gives && !takes && mir_needs_drop(cx->module, to->args[at])) {
-      const MsTyTable *types = &cx->program->types;
-      const MsTy param = to_checked != MS_TY_NONE && at < ms_ty_param_count(types, to_checked) ? ms_ty_params(types, to_checked)[at].ty : MS_TY_NONE;
-      if (param != MS_TY_NONE && fn_temp_closes(&inner, param)) {
-        (void)fn_pending_own(&inner, param, values[at + 1]); /* a resource closes after the call */
-      } else if (ndropped < 16) {
+    const MsTy param = to_checked != MS_TY_NONE && at < ms_ty_param_count(&cx->program->types, to_checked)
+                           ? ms_ty_params(&cx->program->types, to_checked)[at].ty
+                           : MS_TY_NONE;
+    if (gives && !takes && param != MS_TY_NONE && fn_temp_closes(&inner, param)) {
+      /* A resource closes after the call: the wrapper's scope owns the parameter, and a closing slot holds it. */
+      if (mir_needs_drop(cx->module, to->args[at])) {
+        fn_own(&inner, fn_scope(&inner), values[at + 1]);
+      }
+      const MirValue kept = fn_pending_own(&inner, param, values[at + 1]);
+      if (kept != MIR_NONE) {
+        const MirTy view = mir_b_ty(&inner.b, values[at + 1]);
+        args[at + 1] = mir_b_emit(&inner.b, MOP_Load, &kept, 1, (MirImm){.tag = MI_TY, .a = view}, view);
+      }
+    } else if (gives && !takes && mir_needs_drop(cx->module, to->args[at])) {
+      if (ndropped < 16) {
         dropped[ndropped++] = values[at + 1];
       }
     } else if (!gives && takes && mir_needs_drop(cx->module, from->args[at])) {

@@ -206,6 +206,21 @@ static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
   return entry != NULL && entry->source->consuming;
 }
 
+/* Whether `written`, the receiver of the call, is a place a standard native changes: the native takes it out of its
+ * place itself, once, so reading it for the call must leave it there. */
+static bool native_takes_place(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MsExpr *written) {
+  if ((call->callee.kind != MS_REF_NATIVE && call->callee.kind != MS_REF_METHOD) || written == NULL ||
+      fn_call_callee(expr)->kind != MS_E_MEMBER || written != fn_call_callee(expr)->u.member.left) {
+    return false;
+  }
+  const MsTyTable *table = &fn->cx->program->types;
+  const MsTy receiver = ms_facts_type(fn->facts, written->id);
+  const bool standard = ms_ty_kind(table, receiver) == MS_TY_NATIVE || ms_builtin_name(ms_ty_builtin(table, receiver))[0] != 0;
+  return standard && fn_place_changeable(fn, written) &&
+         fn_native_changes_receiver(fn, receiver, ms_names_span(fn->cx->program->names, fn_call_callee(expr)->u.member.name),
+                                    fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+}
+
 /* Whether the call hands argument `index` (written as `written`) to its callee, rather than borrowing it. */
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
   const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
@@ -300,8 +315,18 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (wanted != saved_hint && mir_ty_data(fn->cx->module, wanted)->kind == MK_OPT) {
         fn->hint = mir_ty_data(fn->cx->module, wanted)->elem; /* a literal for an optional parameter is its payload */
       }
+      fn->placing_member = index == 0 && native_takes_place(fn, expr, call, written) ? written : NULL;
       out[index] = written != NULL ? fn_expr(fn, written, want) : MIR_NONE;
+      fn->placing_member = NULL;
       fn->hint = saved_hint;
+      if (fn->terminated && written != NULL && index + declared >= call->arg_count) {
+        /* The argument never returns (`f(panic("..."))`): the call is dead code, built over a value of the parameter's
+         * type that nothing reads. */
+        const MirTy param = fn_type(fn, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty);
+        if (param != MIR_VOID) {
+          out[index] = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, (MirImm){0}, param);
+        }
+      }
       if (wanted != saved_hint && out[index] != MIR_NONE && mir_ty_data(fn->cx->module, wanted)->kind == MK_OPT &&
           mir_b_ty(&fn->b, out[index]) == mir_ty_data(fn->cx->module, wanted)->elem) {
         out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, wanted);
@@ -815,7 +840,7 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
   if (func == MIR_NONE) {
     return MIR_NONE;
   }
-  if (!fn_adapt_function_args(fn, func, args, call->arg_count)) {
+  if (!fn_adapt_function_args(fn, func, call, args)) {
     return MIR_NONE;
   }
   const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);

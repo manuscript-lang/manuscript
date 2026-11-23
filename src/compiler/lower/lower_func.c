@@ -196,9 +196,36 @@ static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func,
 /* A native whose result is a type argument of one of its arguments (`List[T].get` answers a `T` of a `List[T]`): it can
  * only hand back a part of what it was given, so its result is a view. A native with any other result (a status, a
  * count) builds a new value. */
+/* Whether an argument of `call` that the result may be a part of is a value built in the call (`get_or(i, Tok(..))`):
+ * it dies with the statement, so the result is not something to lend on. */
+static bool built_source(const PlaceReturns *counts, const MsCall *call, const MsExpr *value) {
+  const MsTyTable *types = &counts->cx->program->types;
+  const MsTy result = ms_facts_type(counts->facts, value->id);
+  for (uint32_t index = 0; index < call->arg_count; index++) {
+    if (call->args[index].node.node == 0 ||
+        &counts->cx->program->modules.ptr[call->args[index].node.module].facts != counts->facts) {
+      continue;
+    }
+    const MsTy arg = ms_facts_type(counts->facts, call->args[index].node.node);
+    bool holds = arg == result && index > 0; /* a fallback of the result's own type may be what is handed back */
+    for (size_t at = 0; arg != MS_TY_NONE && at < ms_ty_arg_count(types, arg); at++) {
+      holds = holds || ms_ty_args(types, arg)[at] == result;
+    }
+    const MsExpr *written = holds ? fn_written_arg(value, call->args[index].node.node) : NULL;
+    if (written != NULL && written->kind != MS_E_NAME && written->kind != MS_E_MEMBER && written->kind != MS_E_INDEX &&
+        written->kind != MS_E_APPLY) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool native_returns_element(const PlaceReturns *counts, const MsCall *call, const MsExpr *value) {
   const MsTyTable *types = &counts->cx->program->types;
   const MsTy result = ms_facts_type(counts->facts, value->id);
+  if (built_source(counts, call, value)) {
+    return false;
+  }
   for (uint32_t index = 0; index < call->arg_count; index++) {
     if (call->args[index].node.node == 0) {
       continue;
@@ -242,7 +269,7 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   const MsTyTable *types = &counts->cx->program->types;
   const MsTy signature = ms_facts_type(&counts->cx->program->modules.ptr[call->callee.decl.module].facts, call->callee.decl.node);
   const MsTy result = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION ? ms_ty_result(types, signature) : MS_TY_NONE;
-  return returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
+  return !built_source(counts, call, value) && returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
 }
 
 static void count_place_returns(void *ctx, const MsStmt *stmt) {

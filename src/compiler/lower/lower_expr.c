@@ -355,7 +355,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   MirVar owner = 0;
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
                                         expr->u.member.left->kind == MS_E_CALL);
-  const bool moves = ((taking && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) || taken_at_last) &&
+  const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {

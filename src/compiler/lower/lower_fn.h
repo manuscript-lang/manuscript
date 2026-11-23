@@ -116,6 +116,7 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
+  const MsExpr *placing_member; /* the receiver a native takes out of its place itself: reading it leaves it there */
   const MsExpr *taking_member; /* the member read whose value the consumer takes (LW_MOVE) */
   const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
   const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
@@ -417,7 +418,7 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 /* `value` as a function value of type `to`, which differs from its own only in the parameters a call may leave out. */
-bool fn_adapt_function_args(LowerFn *fn, uint32_t func, MirValue *args, uint32_t count);
+bool fn_adapt_function_args(LowerFn *fn, uint32_t func, const MsCall *call, MirValue *args);
 MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_checked);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */

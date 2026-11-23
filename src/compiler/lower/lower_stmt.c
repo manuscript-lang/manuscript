@@ -742,6 +742,9 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
     cond = stmt->u.branch.binding != NULL && tested != MIR_NONE ? fn_iflet_test(fn, tested) : tested;
     entry = tested;
   }
+  if (fn->terminated) {
+    return !fn->failed; /* the condition never returns: no branch follows it */
+  }
   if (cond == MIR_NONE) {
     return false;
   }
