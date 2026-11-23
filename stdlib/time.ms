@@ -1,4 +1,5 @@
 import (
+	JsonValue from "@std/data/json.ms",
 	Promise, adopt from "@std/concurrency/promise.ms",
 	Data, panic from "@std/core.ms",
 	ReadStream, Source from "@std/io/io.ms",
@@ -34,6 +35,10 @@ export type Duration:
 	// The signed count of nanoseconds; `nanoseconds(n)` and the unit constructors build
 	// one.
 	nanos: Int
+
+// Writes the signed nanoseconds as a JSON integer.
+fn Duration.to_json() JsonValue:
+	return JsonValue.NumberValue(f"{self.nanos}")
 
 // Adds signed nanoseconds; a result outside Duration's representable range faults.
 fn Duration.add(other: Duration) Duration:
@@ -233,6 +238,10 @@ export type Timestamp:
 // Formats this timestamp in RFC 3339 form.
 fn Timestamp.to_string() String:
 	return msstd_time_timestamp_to_string(self)
+
+// Writes the RFC 3339 text as a JSON string.
+fn Timestamp.to_json() JsonValue:
+	return JsonValue.StringValue(self.to_string())
 
 // Returns the whole Unix seconds represented by this timestamp.
 fn Timestamp.unix_seconds() Int:
@@ -708,12 +717,22 @@ export fn ticker(period: Duration) ReadStream[Instant]:
 	return ReadStream[Instant](TickSource(period: period, due: due))
 
 // `n.milliseconds()`, `n.seconds()` and `n.minutes()` are the constructors above on the
-// receiver.
+// receiver. A count whose nanoseconds do not fit in Int faults and names the range.
+fn unit_count(operation: String, n: Int, scale: Int) Int:
+	low := (-9223372036854775807 - 1) / scale
+	high := 9223372036854775807 / scale
+
+	if n < low or n > high: panic(
+		f"{operation}: value must be between {low} and {high}, found {n}"
+	)
+
+	return n
+
 fn Int.milliseconds() Duration:
-	return milliseconds(self)
+	return milliseconds(unit_count("Int.milliseconds", self, 1000000))
 
 fn Int.seconds() Duration:
-	return seconds(self)
+	return seconds(unit_count("Int.seconds", self, 1000000000))
 
 fn Int.minutes() Duration:
-	return minutes(self)
+	return minutes(unit_count("Int.minutes", self, 60000000000))

@@ -556,8 +556,41 @@ static void note_var_borrow(Moves *pass, const MsStmt *stmt) {
   ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* `b := xs.get(i)` or `m.get(k)` of a resource: the collection keeps the element, so the binding would be a hidden copy.
+ * A workaround until such a binding borrows the element: delete this check and its reject fixture then (#6520). */
+static void note_read_bind(Moves *pass, const MsStmt *stmt) {
+  const MsExpr *value = stmt->u.bind.value;
+  if (pass->instance || value == NULL || value->kind != MS_E_CALL) {
+    return;
+  }
+  const MsNativeGet get = ms_own_native_get(pass->program, pass->facts, value);
+  const MsTy ty = ms_facts_type(pass->facts, value->id);
+  if ((get != MS_NATIVE_GET_LIST && get != MS_NATIVE_GET_MAP) || ty == MS_TY_NONE || !ms_check_holds_resource(pass->program, ty)) {
+    return;
+  }
+  const MsExpr *receiver = value->u.call.callee->u.member.left;
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "`");
+  ms_own_expr_text(&text, pass->program->names, value);
+  ms_strbuild_append_text(&text, "` reads an element that `");
+  ms_own_expr_text(&text, pass->program->names, receiver);
+  ms_strbuild_append_text(&text, "` keeps, and a binding would own it too; ");
+  if (get == MS_NATIVE_GET_MAP) {
+    ms_strbuild_append_text(&text, "use it in place with `if x := ");
+    ms_own_expr_text(&text, pass->program->names, value);
+    ms_strbuild_append_text(&text, ":`");
+  } else {
+    ms_strbuild_append_text(&text, "read it in place with an index, `xs[i]`");
+  }
+  ms_strbuild_append_text(&text, ", or bind `.clone()` of it");
+  ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 static void note_var(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME) {
+    note_read_bind(pass, stmt);
+  }
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     note_view(pass, stmt);
     if (fresh_value(stmt->u.bind.value) && !contains(&pass->borrowed, stmt->u.bind.pattern->id)) {
