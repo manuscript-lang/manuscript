@@ -4,6 +4,7 @@
  * generation is used up is retired instead of wrapping back to an id a stale holder might still have.
  */
 #include "runtime/core/scheduler.h"
+#include "runtime/core/stats.h"
 
 static MsToken *token_find(const MsSched *sched, uint64_t id) {
   const size_t index = (size_t)(id & 0xffffffffu);
@@ -88,7 +89,7 @@ MsTokenStatus ms_token_park_at(uint64_t id, int64_t at_ns, uint64_t *value, uint
   if (take_post(token, value)) {
     return MS_TOKEN_OK;
   }
-  if (ms_cancel_flag() != 0) {
+  if (ms_cancel_flag() != 0 || ms_stats_park()) {
     *result = MS_WAIT_CANCELLED;
     return MS_TOKEN_OK;
   }
@@ -142,7 +143,12 @@ void ms_token_post(uint64_t id, uint64_t value) {
 }
 
 MsTokenStatus ms_token_free(uint64_t id) {
-  MsSched *const sched = ms_sched();
+  /* A thread with no scheduler (the network loop dropping the last reference to an operation) owns no token: it must
+   * not create a scheduler of its own that nothing tears down. */
+  MsSched *const sched = ms_sched_if_any();
+  if (sched == NULL) {
+    return MS_TOKEN_OK;
+  }
   (void)ms_task_running();
   MsToken *const token = token_find(sched, id);
   if (token == NULL) {

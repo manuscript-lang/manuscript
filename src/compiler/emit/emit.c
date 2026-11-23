@@ -80,6 +80,7 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
   cx.export_all = options->export_all;
   cx.wide_leaves = options->wide_leaves;
   cx.wide_hide = options->wide_hide;
+  cx.poison_slots = options->poison_slots;
   EmitDebug debug;
   uint32_t total_scopes = 0;
   for (uint32_t index = 0; index < module->funcs.len; index++) {

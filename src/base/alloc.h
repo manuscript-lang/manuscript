@@ -36,6 +36,15 @@ int64_t ms_alloc_live_bytes(void);
  * main; the count excludes blocks made earlier. */
 void ms_alloc_track_live(void);
 
+#ifdef MS_STATS
+/* The counting runtime (cmake --preset stats): the blocks live now, every thread, and a reset of the calling thread's
+ * allocation counts (the program's main starts counting from zero). */
+int64_t ms_alloc_live_blocks(void);
+void ms_alloc_counts_reset(void);
+/* With MS_STATS_TRACE set: one line per live block with its allocation site (addresses to resolve with addr2line). */
+void ms_alloc_trace_report(void);
+#endif
+
 /* `size` bytes, uninitialised, aligned for any scalar. size 0 gives a valid block. */
 MS_NODISCARD MS_RETURNS_NONNULL void *ms_alloc(size_t size);
 

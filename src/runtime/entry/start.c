@@ -12,6 +12,8 @@
 #include "runtime/entry/profile.h"
 
 #include <stdatomic.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <uv.h>
 
@@ -21,7 +23,10 @@
 #include "runtime/core/cancel.h"
 #include "runtime/core/fault.h"
 #include "runtime/core/obj.h"
+#include "runtime/core/pipe.h"
+#include "runtime/core/watch.h"
 #include "runtime/core/promise.h"
+#include "runtime/core/stats.h"
 #include "runtime/core/task.h"
 #include "runtime/core/unwind.h"
 #include "runtime/core/worker.h"
@@ -29,6 +34,7 @@
 #include "runtime/io/stdout.h"
 #include "runtime/io/stop.h"
 #include "runtime/std/http_client_abi.h"
+#include "runtime/std/http_serve_internal.h"
 #include "runtime/sys/sys.h"
 
 enum {
@@ -64,6 +70,9 @@ static uint64_t environment_count(const char *name) {
 /* Whether `main` frees the plain memory it still owns when it returns. The process exits next, so this is off unless
  * MS_FREE_AT_EXIT asks for it (valgrind). */
 uint8_t msrt_exit_frees(void) {
+#ifdef MS_STATS
+  return 1; /* the counting runtime reports what is still live, so it frees what it owns first */
+#endif
   MsString value;
   if (!ms_env_get("MS_FREE_AT_EXIT", &value)) {
     return 0;
@@ -141,6 +150,9 @@ static void wake_reactor(void *argument) { ms_io_wake(argument); }
 
 static void main_task(void *argument) {
   (void)argument;
+#ifdef MS_STATS
+  ms_alloc_counts_reset(); /* the counts start when the program's main does, not with the runtime's own start-up */
+#endif
   const int64_t value = main_function();
   if (ms_cancel_flag() != 0) {
     ms_cancelled(); /* the main task's own boundary: nothing above it takes an exit */
@@ -240,6 +252,36 @@ MS_NODISCARD static bool open_scheduler(void) {
   return true;
 }
 
+#ifdef MS_STATS
+/* The counting runtime's report, on standard error after the scheduler is gone (the lines tools/leak-check.ms,
+ * cancel-sweep.ms and count-check.ms read). */
+static int64_t main_allocations, main_alloc_bytes; /* the runtime thread's counts, taken as it ends */
+
+static void report_stats(void) {
+  /* What the process keeps for its whole life is not a leak: the watcher and the tables of retired pipes and idle lists
+   * go first, so a count left over is the program's. */
+  ms_watch_stop();
+  ms_pipe_release_all();
+  ms_serve_idle_release_registry();
+  char line[512];
+  if (getenv("MS_PARK_COUNT") != NULL) {
+    (void)snprintf(line, sizeof line, "ms-rt parks: %llu\n", (unsigned long long)ms_stats_parks());
+    ms_sys_stderr_write(ms_span_of_text(line));
+  }
+  (void)snprintf(line, sizeof line, "ms-rt live blocks at exit: %lld\n", (long long)ms_alloc_live_blocks());
+  ms_sys_stderr_write(ms_span_of_text(line));
+  ms_alloc_trace_report();
+  uint64_t copies[4];
+  ms_stats_copies(copies);
+  (void)snprintf(line, sizeof line,
+                 "ms-rt counts: allocs=%lld alloc_bytes=%lld list_copies=%llu list_copy_bytes=%llu string_clones=%llu "
+                 "string_clone_bytes=%llu\n",
+                 (long long)main_allocations, (long long)main_alloc_bytes, (unsigned long long)copies[0],
+                 (unsigned long long)copies[1], (unsigned long long)copies[2], (unsigned long long)copies[3]);
+  ms_sys_stderr_write(ms_span_of_text(line));
+}
+#endif
+
 /* The runtime thread: runs main as the isolate's main task and ends the scheduler. */
 static void runtime_thread(void *argument) {
   (void)argument;
@@ -266,6 +308,9 @@ static void runtime_thread(void *argument) {
   ms_sched_teardown();
   ms_io_close(true);
   ms_stdout_release();
+#ifdef MS_STATS
+  ms_alloc_counts(&main_allocations, &main_alloc_bytes);
+#endif
 }
 
 int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *const *argv) {
@@ -289,6 +334,9 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
     ms_fault_fatal(MS_FAULT_KIND_FAULT, ms_span_of_text("cannot start the main thread"));
   }
   ms_sys_thread_join(thread);
+#ifdef MS_STATS
+  report_stats(); /* after the join: the thread's own record is freed by then */
+#endif
   ms_stdout_flush();
   ms_profile_finish();
   ms_process_run_exit_hooks();
