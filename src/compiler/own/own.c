@@ -13,6 +13,11 @@
 
 void ms_own_check(MsCheckProgram *program) {
   const bool checked_clean = program->diagnostics.len == 0; /* an unresolved name leaves its uses unknown */
+  if (checked_clean) {
+    for (size_t at = 0; at < program->ownership.len; at++) {
+      ms_check_diag_list_push(&program->diagnostics, program->ownership.ptr[at]);
+    }
+  }
   ms_own_uses(program);
   for (int round = 0; round < 4 && ms_own_taken(program); round++) { /* a taken parameter moves the caller's argument */
     ms_own_uses(program);

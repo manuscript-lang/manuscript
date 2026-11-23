@@ -49,6 +49,9 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
   if (symbol->kind == MS_SYMBOL_TYPE) {
     const MsDef *def = body_def(body, symbol->ty);
     const MsTyKind kind = ms_ty_kind(&body->program->types, symbol->ty);
+    if (def != NULL && kind == MS_TY_CONTRACT) {
+      target->nominal = symbol->ty; /* the call is reported: an interface is not constructed */
+    }
     if (def == NULL || (kind != MS_TY_TYPE && kind != MS_TY_NATIVE)) {
       return false;
     }
