@@ -146,7 +146,7 @@ uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, 
  * instantiated; MIR_NONE after reporting when a method is missing. */
 /* The MIR function of the method with a body that operation `name` resolves to on the concrete `receiver`, or
  * MIR_NONE when the receiver type has none (a builtin or derived operation). */
-uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name);
+uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs);
 /* The same for an operation named by text (`to_string`, `clone`). */
 uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation);
 /* The MIR function of the own `equals(other: Self) Bool` (MS_PROPERTY_EQUAL) or `hash() Int` (MS_PROPERTY_HASHABLE) that
