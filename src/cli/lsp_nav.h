@@ -1,0 +1,20 @@
+/* cli/lsp_nav.h: navigation over the occurrence index: definition, references, highlights and rename. Port of
+ * crates/ms-lsp/src/{nav,rename}.rs for the files of the document's own graph. Each writes its JSON result into `out`. */
+#ifndef MS_CLI_LSP_NAV_H
+#define MS_CLI_LSP_NAV_H
+
+#include "cli/lsp_analysis.h"
+#include "cli/lsp_internal.h"
+
+void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
+void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
+void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool include_declaration,
+                        MsStrBuild *out);
+void lsp_nav_highlight(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
+
+/* The prepare answer when `new_name` is empty, else the workspace edit. False with `*error` set when the rename is
+ * refused (static text). */
+bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsSpan new_name, MsStrBuild *out,
+                    MsStrBuild *error);
+
+#endif

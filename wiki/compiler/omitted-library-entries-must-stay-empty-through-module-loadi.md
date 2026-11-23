@@ -6,5 +6,5 @@ Verified: executable manifests require an entry; libraries omit the key, and an 
 
 
 Apply when: changing manifest modes, project discovery, editor overlays, or entry validation.
-Evidence: [manifest parsing](../../crates/ms-driver/src/project/manifest.rs), [library regressions](../../crates/ms-driver/tests/project_library.rs), [graph loading](../../crates/ms-driver/src/load.rs), [library contracts](../../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies).
+Evidence: [manifest parsing](../../crates/ms-cli/src/project/manifest.rs), [library regressions](../../crates/ms-cli/tests/project_library.rs), [graph loading](../../crates/ms-cli/src/load.rs), [library contracts](../../documentation/developer-tooling/builds/project-configuration.md#library-projects-and-copied-dependencies).
 Verify: an omitted entry checks unimported modules and executes their tests; an explicit bad entry still fails (`cargo nextest run -p ms-driver`).
