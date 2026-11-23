@@ -3,6 +3,7 @@
  * A name resolves in this order: `Self`, the declaration's type variables, the primitives, the module's own
  * types, its imports, then the prelude. A qualified name (`mod.Type`) is not resolved yet and is invalid
  * without a diagnostic. A name given type arguments becomes the nominal type applied to them. */
+#include "abi/prelude.h"
 #include "base/cstr.h"
 #include "compiler/check/resolve_internal.h"
 #include "compiler/check/std_exports.h"
@@ -10,9 +11,6 @@
 #include "compiler/check/suggest.h"
 #include "base/cstr.h"
 
-static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
-                                            "Optional", "Result", "Error", "List", "Map", "Set",
-                                            "ListEntry", "MapEntry"};
 static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms"};
 
 void resolver_init(Resolver *resolver, MsCheckProgram *program, uint32_t module) {
@@ -55,8 +53,8 @@ static bool find_variable(const Resolver *resolver, MsName name, MsTy *out) {
 /* The prelude type `name` names, or 0. */
 MsSymbolId resolver_prelude_symbol(const MsCheckProgram *program, MsName name) {
   const MsSpan text = ms_names_span(program->names, name);
-  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_TYPES); index++) {
-    if (!ms_span_is_text(text, PRELUDE_TYPES[index])) {
+  for (size_t index = 0; index < MS_PRELUDE_TYPE_COUNT; index++) {
+    if (!ms_span_is_text(text, MS_PRELUDE_TYPES[index])) {
       continue;
     }
     for (size_t at = 0; at < MS_COUNT_OF(PRELUDE_MODULES); at++) {
@@ -124,9 +122,9 @@ static void type_candidates(const Resolver *resolver, MsSpanList *out) {
   for (size_t index = 0; index < MS_COUNT_OF(PRIMITIVES); index++) {
     ms_span_list_push(out, ms_span_of_text(PRIMITIVES[index]));
   }
-  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_TYPES); index++) {
-    if (!ms_cstr_equal(PRELUDE_TYPES[index], "Optional")) {
-      ms_span_list_push(out, ms_span_of_text(PRELUDE_TYPES[index]));
+  for (size_t index = 0; index < MS_PRELUDE_TYPE_COUNT; index++) {
+    if (!ms_cstr_equal(MS_PRELUDE_TYPES[index], "Optional")) {
+      ms_span_list_push(out, ms_span_of_text(MS_PRELUDE_TYPES[index]));
     }
   }
   const MsModuleInfo *module = &program->modules.ptr[resolver->module];
