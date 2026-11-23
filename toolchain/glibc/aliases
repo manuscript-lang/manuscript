@@ -1,0 +1,13 @@
+# Data symbols that glibc defines as aliases of one object: `<alias> <primary>`, from its `weak_alias` lines
+# (misc/init-misc.c, time/tzset.c, csu/init-first.c, sysdeps/unix/sysv/linux/errlist.c). A program that
+# references `environ` is copy-relocated; libc keeps using `__environ`, so the stub must give both names
+# one address and the loader must see them as one object. generate.sh appends the primary to the alias's line.
+_environ __environ
+environ __environ
+daylight __daylight
+timezone __timezone
+tzname __tzname
+program_invocation_name __progname_full
+program_invocation_short_name __progname
+sys_errlist _sys_errlist
+sys_siglist _sys_siglist

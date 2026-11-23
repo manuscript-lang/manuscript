@@ -53,11 +53,11 @@ count-check: build
 	MS=$(MS) $(MS) run tools/count-check-selftest.ms
 
 dist: build
-	$(MS) run tools/package.ms
+	cmake --build --preset ci --target dist
 
 # Extracts the archive for this host and runs the packaged binary on the hello example.
-dist-check: dist
-	$(MS) run tools/dist-check.ms
+dist-check: build
+	cmake --build --preset ci --target dist-smoke
 
 # Use the locked editor dependencies; packaging runs the extension checks and bundle.
 vscode-package:

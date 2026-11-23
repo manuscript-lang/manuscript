@@ -3,7 +3,7 @@
 # libc stubs from. Each line is `<soname> <version> <symbol> <F|D> [<size>]`: the newest version of the
 # symbol that glibc `$version` exports, from the library that a program built against that release links.
 # Libraries are searched in the order below, so a symbol that libc and libpthread both export binds in
-# libc. Data symbols keep their size for copy relocations. The source is glibc's own ABI lists.
+# libc. Data symbols keep their size for copy relocations, and an alias of another data symbol (`aliases`) names it in a sixth field. The source is glibc's own ABI lists.
 set -eu
 version=2.28
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -30,5 +30,12 @@ for arch in x86_64 aarch64; do
             awk '{ print $3 }' "$work/lib" >> "$work/seen"
         done
     } > "$out.tmp"
+    mv "$out.tmp" "$out"
+    # Name the primary on the data line of each alias whose primary is in the same table.
+    awk -v file="$here/aliases" '
+        BEGIN { while ((getline line < file) > 0) if (line !~ /^#/ && split(line, p, " ") == 2) primary[p[1]] = p[2] }
+        NR == FNR { if ($4 == "D") defined[$3] = 1; next }
+        $4 == "D" && NF == 5 && ($3 in primary) && (primary[$3] in defined) { print $0 " " primary[$3]; next }
+        { print }' "$out" "$out" > "$out.tmp"
     mv "$out.tmp" "$out"
 done

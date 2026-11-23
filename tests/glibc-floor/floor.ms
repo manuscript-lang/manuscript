@@ -7,6 +7,7 @@ import (
 	stdout from "@std/io/io.ms",
 	exp, hypot, log, pow from "@std/math/math.ms",
 	lookup from "@std/net/net.ms",
+	environment from "@std/os/env.ms",
 	stat from "@std/os/fs.ms",
 	run from "@std/os/process.ms",
 	secure_int from "@std/random.ms",
@@ -22,7 +23,10 @@ fn main() Void:
 	child := run("true", []).wait().is_ok()
 	entropy := secure_int(0, max_exclusive: 10).is_ok()
 	hosts := lookup("localhost").is_ok()
+
+	// `environ`, `_environ` and `__environ` must be one object in the stubs (copy relocation).
+	env := environment().get().length() > 0
 	void sleep(nanoseconds(1000000)).wait()
 
 	math := pow(2.0, 10.0) + exp(0.0) + log(1.0) + hypot(3.0, 4.0)
-	stdout().write(f"{squared} {file} {child} {entropy} {hosts} {math}\n").get()
+	stdout().write(f"{squared} {file} {child} {entropy} {hosts} {env} {math}\n").get()

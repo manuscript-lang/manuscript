@@ -3,7 +3,7 @@
 
 #include "base/chars.h"
 
-enum { FIELD_COUNT = 5, FIELD_WITH_SIZE = 4 };
+enum { FIELD_COUNT = 6, FIELD_WITH_SIZE = 4, FIELD_ALIAS = 5 };
 
 /* Splits `line` into blank-separated fields; returns how many (at most FIELD_COUNT). */
 static size_t split_fields(MsSpan line, MsSpan fields[FIELD_COUNT]) {
@@ -44,6 +44,9 @@ static void parse_line(MsSpan line, GlibcExportList *out) {
   GlibcExport entry = {.soname = fields[0], .version = fields[1], .name = fields[2], .data = fields[3].ptr[0] == 'D'};
   if (entry.data && count > FIELD_WITH_SIZE) {
     entry.size = parse_hex(fields[FIELD_WITH_SIZE]);
+  }
+  if (entry.data && count > FIELD_ALIAS) {
+    entry.alias_of = fields[FIELD_ALIAS];
   }
   glibc_export_list_push(out, entry);
 }

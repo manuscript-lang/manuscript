@@ -1,7 +1,7 @@
 name: Release rehearsal
 
 # Rehearses a release without a tag and without publishing anything. It builds the six
-# archives through rust-dist.yml, serves them from a local web server, and runs the real
+# archives through dist.yml, serves them from a local web server, and runs the real
 # install scripts against them on every platform through MS_RELEASE_URL, then builds the
 # docs bundle the release workflow attaches. Run it by hand before cutting a release:
 #   gh workflow run release-rehearsal.yml --ref <branch>
@@ -15,7 +15,7 @@ permissions:
 jobs:
   dist:
     name: Archives
-    uses: ./.github/workflows/rust-dist.yml
+    uses: ./.github/workflows/dist.yml
 
   install:
     name: Install on ${{ matrix.os }}-${{ matrix.arch }}
@@ -41,7 +41,7 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/download-artifact@v8
         with:
-          name: manuscript-rust-${{ matrix.os }}-${{ matrix.arch }}
+          name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: release
       - name: Install from the archives and run a project
         env:
@@ -57,15 +57,15 @@ jobs:
           install_dir="$RUNNER_TEMP/ms-install"
 
           if [ "$OS" = windows ]; then
-            ms="$install_dir/ms.exe"
+            ms="$install_dir/bin/ms.exe"
             installer() { MS_INSTALL_DIR="$(cygpath -w "$install_dir")" pwsh -NoProfile -File website/static/install.ps1; }
           else
-            ms="$install_dir/ms"
+            ms="$install_dir/bin/ms"
             installer() { MS_INSTALL_DIR="$install_dir" sh website/static/install.sh; }
           fi
 
           # A checksum that does not match must stop the installer and leave no binary.
-          name="manuscript-rust-$OS-${{ matrix.arch }}"
+          name="manuscript-$OS-${{ matrix.arch }}"
           suffix=tar.gz; if [ "$OS" = windows ]; then suffix=zip; fi
           cp "release/$name.$suffix.sha256" "$RUNNER_TEMP/good.sha256"
           echo "0000000000000000000000000000000000000000000000000000000000000000  $name.$suffix" > "release/$name.$suffix.sha256"
@@ -123,10 +123,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-      - uses: ./.github/actions/rust-env
-        with:
-          os: linux
-          arch: amd64
+      - uses: ./.github/actions/toolchain
       - uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: '0.146.7'

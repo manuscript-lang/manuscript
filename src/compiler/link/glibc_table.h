@@ -10,6 +10,7 @@ typedef struct GlibcExport {
   MsSpan soname, version, name;
   bool data;     /* a data symbol, which needs zeroed storage of `size` bytes for copy relocations */
   uint64_t size;
+  MsSpan alias_of; /* empty, or the data symbol this one names the same object as (`environ` and `__environ`) */
 } GlibcExport;
 
 MS_LIST_DEFINE(GlibcExportList, glibc_export_list, GlibcExport)
