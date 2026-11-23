@@ -107,7 +107,7 @@ static void analyze_tree(MsArena *arena, MsSpan dir, Scan *scan) {
     }
     const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
     if (entries.ptr[i].kind == MS_PATH_DIRECTORY) {
-      if (!ms_span_is_text(name, "node_modules") && !ms_span_is_text(name, "vendor")) {
+      if (!ms_project_skips_name(name)) {
         analyze_tree(arena, path, scan);
       }
     } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms")) &&
@@ -330,8 +330,7 @@ static MsSpan effects_of(MsArena *arena, const Candidate *c) {
         ms_strbuild_append(&out, entity->permits.ptr[p]);
       }
     }
-    const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-    ms_strbuild_free(&out);
+    const MsSpan text = ms_message_take_builder(arena, &out);
     return text;
   }
   return (MsSpan){0};

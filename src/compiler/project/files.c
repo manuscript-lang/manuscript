@@ -4,6 +4,7 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "base/message.h"
 #include "compiler/project/manifest.h"
 #include "compiler/project/workspace.h"
 
@@ -33,7 +34,7 @@ static bool absolute_target(MsArena *arena, MsSpan target, MsSpan *absolute, MsP
   MsStrBuild cleaned = ms_strbuild_new();
   ms_path_clean(&cleaned, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
-  *absolute = ms_project_text(arena, &cleaned);
+  *absolute = ms_message_take_builder(arena, &cleaned);
   return true;
 }
 

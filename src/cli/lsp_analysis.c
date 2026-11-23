@@ -8,6 +8,7 @@
 #include "base/arena.h"
 #include "base/file.h"
 #include "base/path.h"
+#include "base/message.h"
 #include "cli/checked_input.h"
 #include "compiler/check/std_cache.h"
 #include "cli/findings.h"
@@ -21,8 +22,7 @@ MsSpan lsp_path_uri(const LspDocList *docs, MsArena *arena, MsSpan path) {
   }
   MsStrBuild uri = ms_strbuild_new();
   lsp_file_uri(path, &uri);
-  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&uri));
-  ms_strbuild_free(&uri);
+  const MsSpan copy = ms_message_take_builder(arena, &uri);
   return copy;
 }
 
@@ -123,8 +123,7 @@ MsSpan lsp_absolute_file(MsArena *arena, MsSpan source_root, MsSpan file) {
   if (ms_path_is_absolute(file) || source_root.len == 0) return file;
   MsStrBuild joined = ms_strbuild_new();
   ms_path_append_joined(&joined, source_root, file);
-  const MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&joined));
-  ms_strbuild_free(&joined);
+  const MsSpan result = ms_message_take_builder(arena, &joined);
   return result;
 }
 

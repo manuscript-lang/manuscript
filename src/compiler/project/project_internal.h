@@ -6,9 +6,6 @@
 #include "base/intern.h"
 #include "compiler/project/project.h"
 
-/* The text of `builder` copied into `arena`; the builder is freed. */
-MsSpan ms_project_text(MsArena *arena, MsStrBuild *builder);
-
 /* `text` in double quotes with the escapes of Rust's `{:?}`. */
 MsSpan ms_project_quote(MsArena *arena, MsSpan text);
 

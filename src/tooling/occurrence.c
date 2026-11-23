@@ -941,8 +941,7 @@ MsTypeHints ms_occurrence_type_hints(MsArena *arena, const MsCheckProgram *progr
     }
     MsStrBuild text = ms_strbuild_new();
     ms_ty_show(&text, program->names, &program->types, entry->ty);
-    const MsSpan ty = ms_arena_copy(arena, ms_strbuild_span(&text));
-    ms_strbuild_free(&text);
+    const MsSpan ty = ms_message_take_builder(arena, &text);
     ms_type_hints_push(arena, &hints,
                        (MsTypeHint){.file = ms_names_span(program->names, program->modules.ptr[entry->module].file), .ty = ty,
                                     .line = line, .col = utf16_length(source.ptr + line_start, entry->offset - line_start),

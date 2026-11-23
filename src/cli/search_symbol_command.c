@@ -43,8 +43,7 @@ static MsSpan one_spaced(MsArena *arena, MsSpan s) {
     }
     i = j;
   }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -66,8 +65,7 @@ static MsSpan fold(MsArena *arena, MsSpan s) {
     }
     ms_strbuild_append_byte(&out, c >= 'A' && c <= 'Z' ? (uint8_t)(c + 32) : c);
   }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 

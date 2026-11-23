@@ -2,6 +2,7 @@
 #include "tooling/facts.h"
 
 #include "base/sort.h"
+#include "base/message.h"
 #include "compiler/own/class.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
@@ -134,8 +135,7 @@ static MsSpan type_text(MsArena *arena, const MsCheckProgram *program, const MsT
     ms_strbuild_append_text(&text, ") ");
     ms_strbuild_append(&text, type_text(arena, program, ref->result));
   }
-  const MsSpan out = ms_arena_copy(arena, ms_strbuild_span(&text));
-  ms_strbuild_free(&text);
+  const MsSpan out = ms_message_take_builder(arena, &text);
   return out;
 }
 
@@ -165,8 +165,7 @@ static MsSpan join_fields(MsArena *arena, const MsSlots *slots) {
     ms_strbuild_append_text(&text, ": ");
     ms_strbuild_append(&text, slots->ptr[i].ty);
   }
-  const MsSpan out = ms_arena_copy(arena, ms_strbuild_span(&text));
-  ms_strbuild_free(&text);
+  const MsSpan out = ms_message_take_builder(arena, &text);
   return out;
 }
 
@@ -704,7 +703,6 @@ MsSpan ms_effects_joined(MsArena *arena, const MsSpans *effects) {
     ms_strbuild_append_text(&out, i == 0 ? "" : "+");
     ms_strbuild_append(&out, effects->ptr[i]);
   }
-  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan joined = ms_message_take_builder(arena, &out);
   return joined;
 }

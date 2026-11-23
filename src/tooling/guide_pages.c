@@ -49,8 +49,7 @@ static MsSpan one_spaced(MsArena *arena, MsSpan s) {
     }
     i = j;
   }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 

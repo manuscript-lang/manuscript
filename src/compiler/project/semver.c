@@ -213,8 +213,7 @@ static MsSpan requirement_error(MsArena *arena, MsSpan text, const char *why) {
   ms_strbuild_append(&message, ms_project_quote(arena, text));
   ms_strbuild_append_text(&message, " is not a version requirement: ");
   ms_strbuild_append_text(&message, why);
-  MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&message));
-  ms_strbuild_free(&message);
+  MsSpan copy = ms_message_take_builder(arena, &message);
   return copy;
 }
 

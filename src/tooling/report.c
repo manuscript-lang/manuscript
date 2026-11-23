@@ -2,6 +2,7 @@
 #include "tooling/report.h"
 
 #include "base/sha256.h"
+#include "base/message.h"
 #include "compiler/check/effects_directives.h"
 #include "compiler/syntax/diag_json.h"
 #include "tooling/review.h"
@@ -179,8 +180,7 @@ static MsSpan joined(MsArena *arena, const MsSpans *list, const char *sep) {
     ms_strbuild_append_text(&out, i == 0 ? "" : sep);
     ms_strbuild_append(&out, list->ptr[i]);
   }
-  const MsSpan span = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan span = ms_message_take_builder(arena, &out);
   return span;
 }
 

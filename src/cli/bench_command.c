@@ -112,8 +112,7 @@ static MsSpan describe_stats(MsArena *arena, const MsJson *stats) {
     ms_strbuild_append_text(&out, " string clones per op");
   }
   ms_strbuild_append_byte(&out, ')');
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 

@@ -8,6 +8,7 @@
 #include "base/path.h"
 #include "base/sort.h"
 #include "base/utf8.h"
+#include "base/message.h"
 #include "compiler/project/project_internal.h"
 
 typedef struct Scan {
@@ -24,7 +25,7 @@ static bool is_test_name(MsSpan name) {
          ms_span_is_text(name, "bench.ms") || ms_span_ends_with(name, ms_span_of_text("_bench.ms"));
 }
 
-static bool skipped_name(MsSpan name) {
+bool ms_project_skips_name(MsSpan name) {
   return (name.len > 0 && name.ptr[0] == '.') || ms_span_is_text(name, "vendor") ||
          ms_span_is_text(name, "node_modules");
 }
@@ -67,7 +68,7 @@ static bool enters(const Scan *scan, MsSpan scan_root, bool all, MsSpan path, Ms
     return false;
   }
   return ms_span_equal(path, scan_root) || ms_span_equal(path, scan->root) ||
-         !(skipped_name(name) || is_nested_project(scan->arena, path));
+         !(ms_project_skips_name(name) || is_nested_project(scan->arena, path));
 }
 
 static bool walk_entry(Scan *scan, MsSpan scan_root, bool all, MsSpan path, MsSpan name, bool is_dir);
@@ -86,7 +87,7 @@ static bool walk_children(Scan *scan, MsSpan scan_root, bool all, MsSpan path) {
     const MsSpan name = ms_string_span(&entry->name);
     MsStrBuild child = ms_strbuild_new();
     ms_path_append_joined(&child, path, name);
-    const MsSpan full = ms_project_text(scan->arena, &child);
+    const MsSpan full = ms_message_take_builder(scan->arena, &child);
     if (is_directory_link(full, entry->kind)) {
       continue;
     }
@@ -98,7 +99,7 @@ static bool walk_children(Scan *scan, MsSpan scan_root, bool all, MsSpan path) {
         ms_strbuild_append_text(&text, "discovered source path \"");
         ms_strbuild_append(&text, full);
         ms_strbuild_append_text(&text, "\" is not valid UTF-8; rename the file or directory using valid UTF-8");
-        ms_project_error_message(scan->error, ms_project_text(scan->arena, &text));
+        ms_project_error_message(scan->error, ms_message_take_builder(scan->arena, &text));
         ok = false;
       }
       continue;
