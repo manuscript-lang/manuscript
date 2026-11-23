@@ -442,6 +442,8 @@ typedef struct VarSlot {
   struct VarSlot *outer; /* `a?.b?.change()`: the slot of `a`'s payload, whose field `b` is this slot's home; it goes back after this one */
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
+/* A field of a closing local, as its address in the local's slot (lower_field.c). */
+bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr);
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 /* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */
