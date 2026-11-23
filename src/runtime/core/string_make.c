@@ -184,18 +184,19 @@ static bool any_within(const MsString *string, const MsSpan *parts, size_t count
 MsString msrt_string_append_parts(const MsString *a, const MsSpan *parts, size_t count) {
   const MsString first = *a;
   const size_t length = ms_string_length(&first);
-  size_t added = 0;
-  for (size_t index = 0; index < count; index++) {
-    added = msrt_string_total(added, parts[index].len);
-  }
   if (!msrt_string_owns(&first) || length == 0 || any_within(&first, parts, count)) {
-    MsSpan all[7] = {msrt_text(&first)};
+    MsSpan all[7]; /* not zeroed: the first `count + 1` entries are all written below */
+    all[0] = msrt_text(&first);
     for (size_t index = 0; index < count; index++) {
       all[index + 1] = parts[index];
     }
     const MsString result = msrt_string_join(all, count + 1);
     msrt_string_free(&first);
     return result;
+  }
+  size_t added = 0;
+  for (size_t index = 0; index < count; index++) {
+    added = msrt_string_total(added, parts[index].len);
   }
   if (added == 0) {
     return first;
