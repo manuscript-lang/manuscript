@@ -35,8 +35,9 @@ export fn stdlib_table(output: String) String!:
 	]
 
 	for c in cases:
-		s := c.stats.get_or(
-			Stats(
+		s := (
+			c.stats
+			or Stats(
 				operations: 0,
 				iterations: null,
 				samples: null,
@@ -51,8 +52,8 @@ export fn stdlib_table(output: String) String!:
 			left(labels.get_or(c.name, ""), width) + "  " + right(
 				s.median_ns.to_fixed(2),
 				12,
-			) + "  " + right(s.min_ns.get_or(0.0).to_fixed(2), 10) + "  " + right(
-				s.max_ns.get_or(0.0).to_fixed(2),
+			) + "  " + right((s.min_ns or 0.0).to_fixed(2), 10) + "  " + right(
+				(s.max_ns or 0.0).to_fixed(2),
 				10,
 			)
 		)

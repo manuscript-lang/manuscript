@@ -232,7 +232,7 @@ fn pax_size(data: Bytes) Int:
 
 	while pos < data.length():
 		space := data.index_of_byte(32, pos)
-		if space.is_none(): break
+		if space == null: break
 
 		var length = 0
 
@@ -247,7 +247,7 @@ fn pax_size(data: Bytes) Int:
 		end := pos + length - 1
 		eq := data.index_of_byte(61, space.get() + 1)
 
-		if eq.is_some() and eq.get() < end:
+		if (eq != null) and eq.get() < end:
 			key := data.slice(space.get() + 1, eq.get()).clone().get_or("".to_bytes())
 
 			if key == "size".to_bytes():
@@ -363,7 +363,7 @@ fn var TarEntries.admit(path: String, directory: Bool) Void!:
 
 	while true:
 		slash := dir.last_index_of("/")
-		if slash.is_none(): break
+		if slash == null: break
 
 		dir = dir.view(0, slash.get()).clone()
 		if self.files.contains(dir.clone()): return invalid

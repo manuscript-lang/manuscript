@@ -32,15 +32,15 @@ test "optional Result arguments supply constructor type context":
 
 test "optional failure payloads collapse nested absence":
 	absent: Int?? := null
-	absent.is_none() | expect_true?
+	(absent == null) | expect_true?
 
 	inner: Int? := null
 	present: Int?? := inner
-	present.is_none() | expect_true?
+	(present == null) | expect_true?
 
 	failure: Result[Int, String?] := error(null)
 	failure.is_error() | expect_true?
-	failure.err().is_none() | expect_true?
+	(failure.err() == null) | expect_true?
 
 test "named failures propagate without a reporting implementation":
 	cause := expect_error(relay(checked(3)))?
@@ -87,7 +87,9 @@ test "Result transforms preserve primitive errors and map to named cases":
 	chained := success.and_then(fn value: Result[String, String].ok(value.to_string()))
 	chained.get() | expect_equal("4")?
 
-	recovered := failure.clone().or_else(fn message: Result[Int, String].ok(message.length()))
+	recovered := failure.clone().or_else(
+		fn message: Result[Int, String].ok(message.length())
+	)
 	recovered.get() | expect_equal(7)?
 	failure.get_or_else(fn message: message.length()) | expect_equal(7)?
 

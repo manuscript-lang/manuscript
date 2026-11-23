@@ -16,7 +16,7 @@ test "wrap_error adds context and keeps the kind":
 
 test "join_errors reports each error and none for empty":
 	none_joined := join_errors([])
-	expect_true(none_joined.is_none())?
+	expect_true(none_joined == null)?
 
 	both := join_errors([Error("a"), Error("b")])
 
@@ -37,7 +37,7 @@ test "deadline expires and ticker paces":
 
 	while count < 3:
 		tick := ticks.next()?
-		expect_true(tick.is_some())?
+		expect_true(tick != null)?
 		count += 1
 
 	expect_true(monotonic().difference(start).to_milliseconds() >= 29)?

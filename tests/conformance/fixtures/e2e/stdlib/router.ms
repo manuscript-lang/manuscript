@@ -47,7 +47,7 @@ fn show(var exchange: HttpExchange, params: RouteParams) Void!:
 	return reply(exchange, text(200, f"{id}|{rest}"))
 
 fn body_of(response: HttpResponse) String:
-	return response.body.decode_utf8().get_or("")
+	return response.body.decode_utf8() or ""
 
 fn allow_of(response: HttpResponse) String:
 	values := response.headers.get_all("Allow")
@@ -236,9 +236,9 @@ fn small_reads(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read(1)?
 	second := exchange.read(2)?
 	end := exchange.read(1)?
-	a := first.get_or(Bytes([])).decode_utf8().get_or("")
-	b := second.get_or(Bytes([])).decode_utf8().get_or("")
-	return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+	a := (first or Bytes([])).decode_utf8() or ""
+	b := (second or Bytes([])).decode_utf8() or ""
+	return reply(exchange, text(200, f"{a}|{b}|{(end == null)}"))
 
 test "in-process reads retain the unread body after a bounded chunk":
 	var r = Router()
@@ -260,9 +260,9 @@ fn read_sizes(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read(limit)?
 	second := exchange.read(limit)?
 	end := exchange.read(limit)?
-	a := first.get_or(Bytes([])).length()
-	b := second.get_or(Bytes([])).length()
-	return reply(exchange, text(200, f"{a}|{b}|{end.is_none()}"))
+	a := (first or Bytes([])).length()
+	b := (second or Bytes([])).length()
+	return reply(exchange, text(200, f"{a}|{b}|{(end == null)}"))
 
 test "in-process reads cap default and explicit chunks at 65536 bytes":
 	var r = Router()
@@ -283,7 +283,7 @@ test "in-process reads cap default and explicit chunks at 65536 bytes":
 fn read_empty(var exchange: HttpExchange, params: RouteParams) Void!:
 	first := exchange.read()?
 	second := exchange.read()?
-	return reply(exchange, text(200, f"{first.is_none()}|{second.is_none()}"))
+	return reply(exchange, text(200, f"{(first == null)}|{(second == null)}"))
 
 test "in-process reads report EOF immediately for an empty body":
 	var r = Router()
@@ -327,7 +327,7 @@ test "the router serves over a socket":
 	expect_equal(response.metadata.status, 200)?
 
 	body := read_to_end(response.body)?
-	expect_equal(body.decode_utf8().get_or(""), "9|-")?
+	expect_equal(body.decode_utf8() or "", "9|-")?
 
 	missing := client.request(
 		HttpMethod.Delete,
@@ -441,7 +441,7 @@ fn Sink.write(move data: String) Void!:
 	return append_file(self.path, data).wait()
 
 fn Sink.write_bytes(move data: Bytes) Void!:
-	return self.write(data.decode_utf8().get_or(""))
+	return self.write(data.decode_utf8() or "")
 
 fn Sink.flush() Void!:
 	return ok()
@@ -454,7 +454,7 @@ fn move Sink.close() Void:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 

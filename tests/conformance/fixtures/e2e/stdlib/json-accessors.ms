@@ -19,7 +19,7 @@ fn string_of(value: JsonValue) String?:
 	return null
 
 fn has_map(value: JsonValue) Bool:
-	return value.as_map().is_some()
+	return value.as_map() != null
 
 fn tag(d: JsonValue, index: Int) String?:
 	if tags := d.get("user"):
@@ -35,15 +35,15 @@ test "JSON accessors read nested objects without copying subtrees":
 	expect_equal(user_field(d, "admin").and_then(fn n: n.as_bool()), true)?
 	expect_equal(user_field(d, "score").and_then(fn n: n.as_float()), 1.5)?
 	expect_equal(user_field(d, "age").and_then(fn n: n.as_float()), 36.0)?
-	expect_true(user_field(d, "missing").is_none())?
+	expect_true(user_field(d, "missing") == null)?
 
 test "JSON at indexes arrays from either end":
 	d := doc()
 	expect_equal(tag(d, 0), "a")?
 	expect_equal(tag(d, -1), "c")?
 	expect_equal(tag(d, -3), "a")?
-	expect_true(tag(d, 3).is_none())?
-	expect_true(tag(d, -4).is_none())?
+	expect_true(tag(d, 3) == null)?
+	expect_true(tag(d, -4) == null)?
 
 test "JSON borrowed list and map views match the tree":
 	d := doc()
@@ -55,29 +55,29 @@ test "JSON borrowed list and map views match the tree":
 		if members := user.as_map():
 			expect_equal(members.length(), 6)?
 
-	expect_true(d.as_map().is_some())?
+	expect_true(d.as_map() != null)?
 
 test "JSON accessors return none for the wrong type":
 	d := doc()
-	expect_true(d.get("missing").is_none())?
-	expect_true(d.get_index(0).is_none())?
-	expect_true(d.as_string().is_none())?
-	expect_true(d.as_list().is_none())?
-	expect_true(d.as_bool().is_none())?
-	expect_true(user_field(d, "name").and_then(fn n: n.as_int()).is_none())?
-	expect_true(user_field(d, "age").and_then(fn n: string_of(n)).is_none())?
-	expect_true(user_field(d, "age").and_then(fn n: n.as_bool()).is_none())?
-	expect_true(user_field(d, "name").and_then(fn n: n.as_float()).is_none())?
-	expect_true(user_field(d, "tags").map(fn n: has_map(n)).get_or(true) == false)?
+	expect_true(d.get("missing") == null)?
+	expect_true(d.get_index(0) == null)?
+	expect_true(d.as_string() == null)?
+	expect_true(d.as_list() == null)?
+	expect_true(d.as_bool() == null)?
+	expect_true(user_field(d, "name").and_then(fn n: n.as_int()) == null)?
+	expect_true(user_field(d, "age").and_then(fn n: string_of(n)) == null)?
+	expect_true(user_field(d, "age").and_then(fn n: n.as_bool()) == null)?
+	expect_true(user_field(d, "name").and_then(fn n: n.as_float()) == null)?
+	expect_true((user_field(d, "tags").map(fn n: has_map(n)) or (true)) == false)?
 
 test "JSON as_int rejects fractions exponents and overflow":
 	d := doc()
-	expect_true(user_field(d, "score").and_then(fn n: n.as_int()).is_none())?
-	expect_true(user_field(d, "big").and_then(fn n: n.as_int()).is_none())?
+	expect_true(user_field(d, "score").and_then(fn n: n.as_int()) == null)?
+	expect_true(user_field(d, "big").and_then(fn n: n.as_int()) == null)?
 	expect_equal(user_field(d, "big").and_then(fn n: n.as_float()), 1000.0)?
 
 	huge := parse("99999999999999999999")?
-	expect_true(huge.as_int().is_none())?
+	expect_true(huge.as_int() == null)?
 
 	neg := parse("-7")?
 	expect_equal(neg.as_int(), -7)?
@@ -88,7 +88,7 @@ test "JSON is_null distinguishes null from absent and other values":
 		expect_true(value.is_null())?
 	if user := d.get("user"):
 		expect_false(user.is_null())?
-	expect_true(d.get("missing").is_none())?
+	expect_true(d.get("missing") == null)?
 
 // `get_in` returns a clone of the member it reaches.
 fn user_name(d: JsonValue) String?:
@@ -101,6 +101,6 @@ test "JSON get_in reads a chain of members in place":
 	expect_equal(d.get_in(["user", "age"]).clone().and_then(fn n: n.as_int()), 36)?
 	if tags := d.get_in(["user", "tags"]):
 		if last := tags.get_index(-1): expect_equal(string_of(last), "c")?
-	expect_true(d.get_in(["user", "missing"]).is_none())?
-	expect_true(d.get_in(["user", "name", "first"]).is_none())?
-	expect_true(d.get_in([]).is_none())?
+	expect_true(d.get_in(["user", "missing"]) == null)?
+	expect_true(d.get_in(["user", "name", "first"]) == null)?
+	expect_true(d.get_in([]) == null)?

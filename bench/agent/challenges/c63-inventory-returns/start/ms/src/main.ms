@@ -57,7 +57,7 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 		if (
 			p.length() != 2
 			or not valid_sku(p[0])
-			or not number(p[1], 1, 100000).is_some()
+			or not (number(p[1], 1, 100000) != null)
 		): return f"error: bad item {token}"
 
 		items.append(Item(p[0].clone(), number(p[1], 1, 100000).get()))
@@ -67,7 +67,7 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 	for it in items:
 		if seen.contains(it.sku): return f"error: duplicate sku {it.sku}"
 
-		have := w.stock.get(it.sku).get_or(-1)
+		have := w.stock.get(it.sku) or (-1)
 		if have < 0: return f"error: unknown sku {it.sku}"
 		if it.qty > have: return f"error: insufficient stock for {it.sku} (have {have}, need {it.qty})"
 
@@ -107,9 +107,8 @@ fn run_command(var w: Warehouse, line: String) String:
 	t := line.split(" ")
 	name := t[0]
 	arity := (
-		{"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1}
-		.get(name)
-		.get_or(0)
+		{"stock": 3, "price": 3, "cancel": 2, "ship": 2, "report": 1}.get(name)
+		or 0
 	)
 	if arity == 0 and name != "order": return "error: unknown command"
 	if (if name == "order": t.length() < 3 else: t.length() != arity): return "error: usage"
@@ -118,7 +117,7 @@ fn run_command(var w: Warehouse, line: String) String:
 
 	if name == "stock":
 		if not valid_sku(t[1]): return "error: bad sku"
-		if not number(t[2], 1, 100000).is_some(): return "error: bad quantity"
+		if not (number(t[2], 1, 100000) != null): return "error: bad quantity"
 
 		now := w.stock.get_or(t[1], 0) + number(t[2], 1, 100000).get()
 		w.stock[t[1].clone()] = now
@@ -126,7 +125,7 @@ fn run_command(var w: Warehouse, line: String) String:
 		return f"ok {t[1]} stock={now}"
 
 	if name == "price":
-		if not number(t[2], 0, 10000000).is_some(): return "error: bad price"
+		if not (number(t[2], 0, 10000000) != null): return "error: bad price"
 		if not w.stock.contains(t[1]): return f"error: unknown sku {t[1]}"
 
 		w.price[t[1].clone()] = number(t[2], 0, 10000000).get()

@@ -45,7 +45,7 @@ test "conversions and collection queries are callable":
 	expect_equal(missing.ok_or_else(fn: Error("absent")).err().message, "absent")?
 
 	failed: Int!Error := error(Error("failed"))
-	(failed.to_optional().is_none()) | expect_true?
+	(failed.to_optional() == null) | expect_true?
 
 	entries: Map[String, Int] := {"b": 2, "a": 1}
 	expect_equal(entries.fold(0, fn acc, k, v: acc + v), 3)?
@@ -88,11 +88,10 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	var bound_cause = bound(cause: counter.clone()).err().clone()
 	bound_cause.calls = 5
 	counter.calls | expect_equal(1)?
-
 	missing.clone().ok_or_else(create).err().calls | expect_equal(10)?
 
 	failure: Counter!Pending := error(Pending([1, 2]))
-	(success_only(failure).is_none()) | expect_true?
+	(success_only(failure) == null) | expect_true?
 
 	success: Counter!Error := ok(counter.clone())
 	extract := fn: success.clone().to_optional()
@@ -104,13 +103,13 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	nested: Int?? := nested_none
 	converted := nested.ok_or(Error("absent"))
 	converted.is_error() | expect_true?
-	converted.to_optional().is_none() | expect_true?
+	(converted.to_optional() == null) | expect_true?
 
 	false_value: Bool? := false
 	false_value.ok_or(Error("absent")).to_optional().get() | expect_false?
 
 	unit_value: Void? := void
-	(unit_value.ok_or(Error("absent")).to_optional().is_some()) | expect_true?
+	(unit_value.ok_or(Error("absent")).to_optional() != null) | expect_true?
 
 	nested_inner: Int!Error := error(Error("nested"))
 	nested_result: Int!Error? := nested_inner
@@ -196,21 +195,19 @@ test "Map find returns fresh entry shells with copied payloads":
 	original.value = Counter(9)
 	(not (source.contains("b")) or source["b"].calls != 2) | expect_false?
 	expect_equal(source.find(fn k, v: true).get().key, "b")?
-	expect_true((source.find(fn k, v: false).is_none()))?
+	expect_true((source.find(fn k, v: false) == null))?
 
 	empty := Map[String, Counter]()
 	expect_false(
 		not (
-			empty
-			.find(
+			empty.find(
 				(
 					fn k,
 					v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 	empty_calls.is_empty() | expect_true?
@@ -348,15 +345,13 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	values.clear()
 	expect_false(
 		not (
-			values
-			.find(
+			values.find(
 				(
 					fn v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 
@@ -426,7 +421,7 @@ test "Set predicates short circuit over snapshots and keep empty identities":
 
 	complete := Set[Int]([2, 1])
 	expect_false(complete.any(fn v: false) or not (complete.all(fn v: true)))?
-	expect_true((complete.find(fn v: false).is_none()))?
+	expect_true((complete.find(fn v: false) == null))?
 	empty_calls.is_empty() | expect_true?
 
 test "nonmatching queries and all-true predicates visit the complete snapshot":
@@ -461,14 +456,12 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	expect_false(
 		(
 			not (
-				map
-				.find(
+				map.find(
 					fn k,
 					v:
 						map_visits.append(k.clone())
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or map_visits != ["b", "a", "c"]
 		)
@@ -503,13 +496,11 @@ test "nonmatching queries and all-true predicates visit the complete snapshot":
 	expect_false(
 		(
 			not (
-				set
-				.find(
+				set.find(
 					fn v:
 						set_visits.append(v)
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or set_visits != [2, 1, 3]
 		)
@@ -523,7 +514,6 @@ test "ok_or reports its explicit cause":
 	absent: Int? := null
 	direct: Int! := absent.ok_or(Error("missing"))
 	direct.err().message | expect_equal("missing")?
-
 	find_port(null).err().message | expect_equal("missing")?
 	find_port(8080).get() | expect_equal(8080)?
 

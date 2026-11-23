@@ -256,7 +256,7 @@ fn move Optional[T].and_then[U](transform: fn(move T) U?) U?:
 // Returns the payload; only when this is `null`, calls `create` once and returns its
 // value.
 fn move Optional[T].get_or_else(create: fn() T) T:
-	if self.is_none(): return create()
+	if self == null: return create()
 	return self.get()
 
 // Returns this value when present; otherwise calls `create` once and returns the
@@ -275,7 +275,7 @@ fn move Optional[T].ok_or[E](move cause: E) move T!E:
 // Returns `ok` with the payload; for `null`, calls `create` once and returns its
 // error.
 fn move Optional[T].ok_or_else[E](create: fn() E) T!E:
-	if self.is_none(): return error(create())
+	if self == null: return error(create())
 	return ok(self.get())
 
 // Holds either a successful value (`ok`) or an expected failure (`error`).

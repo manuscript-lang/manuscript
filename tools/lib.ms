@@ -79,7 +79,7 @@ export fn run_program_in(program: String, arguments: List[String], cwd: String?)
 // Runs `program` and returns its standard output; empty when it cannot run or fails.
 export fn capture(program: String, arguments: List[String]) String:
 	if out := run(program, arguments).wait():
-		if out.exit_code == 0: return out.stdout.decode_utf8().get_or("").clone()
+		if out.exit_code == 0: return (out.stdout.decode_utf8() or "").clone()
 	return ""
 
 // Whether `program` runs and exits zero with `arguments`.

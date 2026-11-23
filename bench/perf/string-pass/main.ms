@@ -75,7 +75,7 @@ fn main() Void:
 	t = monotonic()
 
 	at := utext.index_of("é99999")
-	before := if at.is_some(): utext.view(0, at.get_or(0)).scalar_length() else: -1
+	before := if at != null: utext.view(0, at or 0).scalar_length() else: -1
 	s = utext.scalar_length() + before + utext.count("é1")
 	report("utf8_len_index_count", t, s)
 	t = monotonic()
@@ -108,7 +108,7 @@ fn main() Void:
 	report("contains_short", t, s)
 	t = monotonic()
 	s = 0
-	for w in longs: s += w.index_of("module").get_or(0) + w.last_index_of("/").get_or(0)
+	for w in longs: s += (w.index_of("module") or 0) + (w.last_index_of("/") or 0)
 	report("index_of_small", t, s)
 	t = monotonic()
 	s = 0
@@ -163,7 +163,7 @@ fn main() Void:
 	// conversions
 	t = monotonic()
 	s = 0
-	for i in 0..n: s += i.to_string_radix(16).get_or("").length()
+	for i in 0..n: s += (i.to_string_radix(16) or "").length()
 	report("int_hex", t, s)
 	t = monotonic()
 	s = 0

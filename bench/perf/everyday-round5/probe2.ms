@@ -114,7 +114,7 @@ fn x_particles() Int:
 	var t = 0.0
 	for p in ps:
 		t += p.x + p.y
-	return t.truncate_to_int().get_or(0)
+	return t.truncate_to_int() or 0
 
 fn x_grid_stencil() Int:
 	n := 1000

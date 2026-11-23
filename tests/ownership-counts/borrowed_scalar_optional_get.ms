@@ -13,10 +13,10 @@ fn move Marker.close() Void!:
 
 fn inspect(value: Marker?) Void:
 	print(f"value {value.get().id}")
-	print(f"still present {value.is_some()}")
+	print(f"still present {(value != null)}")
 
 fn main() Void:
 	value: Marker? := Marker(5)
 	inspect(value)
 	print("after inspect")
-	print(f"original present {value.is_some()}")
+	print(f"original present {(value != null)}")

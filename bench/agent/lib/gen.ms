@@ -36,7 +36,7 @@ export fn build_oracle(id: String) String:
 	sources := bash("ls oracle/*.ref", dir(id), 10, "").out.trim().split("\n")
 
 	for source in sources:
-		name := source.split("/").last().get_or("")
+		name := source.split("/").last() or ""
 		copy(
 			f"{dir(id)}/{source}",
 			f"{tmp}/{name.slice(0, name.length() - 4)}",

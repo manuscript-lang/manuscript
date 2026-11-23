@@ -130,11 +130,11 @@ fn settings() Settings:
 	environment := environment().get_or(Map[String, String]())
 	var found = Settings(100 * 1000000, 10, 0)
 	if text := environment.get("MS_BENCH_TIME_MS"):
-		found.target_nanoseconds = max(text.parse_int().get_or(100), 1) * 1000000
+		found.target_nanoseconds = max(text.parse_int() or 100, 1) * 1000000
 	if text := environment.get("MS_BENCH_SAMPLES"):
-		found.samples = max(text.parse_int().get_or(10), 1)
+		found.samples = max(text.parse_int() or 10, 1)
 	if text := environment.get("MS_BENCH_ITERATIONS"):
-		found.iterations = max(text.parse_int().get_or(0), 0)
+		found.iterations = max(text.parse_int() or 0, 0)
 	return found
 
 // Internal: runs `body` `count` times and returns the elapsed nanoseconds. The first

@@ -135,7 +135,7 @@ test "interface values converted from borrowed values are views":
 			"cause 5: a heap allocated text that is long"
 		)?
 	)
-	maybe(c, false).is_some() | expect_equal(false)?
+	(maybe(c, false) != null) | expect_equal(false)?
 	(
 		either(h, true).message()
 		| expect_equal("cause 3: held heap text that is long enough")?

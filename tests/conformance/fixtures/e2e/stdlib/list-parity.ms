@@ -41,7 +41,7 @@ test "List pop removes and returns the last element":
 	expect_false((last != 3 or values != [1, 2]))?
 	values.pop()
 	values.pop()
-	expect_false(values.pop().is_some() or not (values.is_empty()))?
+	expect_false((values.pop() != null) or not (values.is_empty()))?
 
 type Box:
 	value: Int

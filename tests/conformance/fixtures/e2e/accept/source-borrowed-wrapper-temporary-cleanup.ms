@@ -16,12 +16,11 @@ fn move Resource.close() Void!:
 
 fn present(path: String, id: Int) Resource?: Resource(id, path.clone())
 
-fn observed(value: Resource?) Bool: value.is_some()
+fn observed(value: Resource?) Bool: value != null
 
 // Reads the payload in place: `map` would take the resource.
 fn mapped(value: Resource?) Int?:
 	if item := value: return item.id
-
 	return null
 
 fn generic_map[T, U](transform: fn(T) U, value: T?) U?: value.map(transform)
@@ -31,11 +30,11 @@ fn generic_then[T, U](transform: fn(T) U?, value: T?) U?: value.and_then(transfo
 fn identity[T](value: T) T: value
 
 fn checked(value: Resource?) Int!:
-	if value.is_some(): return error(Error("expected failure"))
+	if value != null: return error(Error("expected failure"))
 	return ok(0)
 
 fn broken(value: Resource?) Void:
-	if value.is_some():
+	if value != null:
 		_invalid := [1].get(3)
 
 fn log_text(path: String) String!:
@@ -81,7 +80,7 @@ test "borrowed wrapper temporaries close on expected errors and source faults":
 	expect_equal(log_text(path)?, "8,9,")?
 
 fn pick(first: Resource?, second: Resource?) Resource?:
-	if second.is_some(): return first
+	if second != null: return first
 	return first
 
 fn transferred_then_faulted(path: String) Void:
@@ -140,7 +139,7 @@ fn move ScalarResource.close() Void!: error(Error("scalar resource closed"))
 
 fn scalar_present() ScalarResource?: ScalarResource(1)
 
-fn scalar_observed(value: ScalarResource?) Bool: value.is_some()
+fn scalar_observed(value: ScalarResource?) Bool: value != null
 
 fn scalar_observer() Void:
 	_value := scalar_observed(scalar_present())
@@ -148,7 +147,7 @@ fn scalar_observer() Void:
 test "scalar wrapper payloads retain their source-call close obligation":
 	_fault := expect_fault(scalar_observer)?
 
-fn extra(other: Int, value: Resource?) Bool: value.is_some() and other == 1
+fn extra(other: Int, value: Resource?) Bool: (value != null) and other == 1
 
 fn number() Int!: ok(1)
 
@@ -207,12 +206,12 @@ fn later_try_fails(path: String) Void!:
 	_value := extra(value: present(path, 70), other: number_failure()?)
 
 fn pair_observed(first: Resource?, second: Resource?) Bool:
-	return first.is_some() and second.is_some()
+	return (first != null) and (second != null)
 
 fn bad_default() Int: [1].get(3)
 
 fn observes_with_default(value: Resource?, count: Int = bad_default()) Bool:
-	return value.is_some() and count > 0
+	return (value != null) and count > 0
 
 fn default_fault(path: String) Void:
 	_value := observes_with_default(present(path, 82))
@@ -246,7 +245,7 @@ fn move FaultyResource.close() Void!:
 
 fn faulty_present(path: String) FaultyResource?: FaultyResource(path.clone())
 
-fn faulty_observed(value: FaultyResource?) Bool: value.is_some()
+fn faulty_observed(value: FaultyResource?) Bool: value != null
 
 fn close_fault(path: String) Void:
 	_outer := Resource(99, path.clone())
@@ -261,15 +260,15 @@ test "a failed temporary close leaves older lexical cleanup registered":
 	expect_equal(log_text(path)?, "98,99,")?
 
 fn pair(first: Resource?, second: Resource?) Bool:
-	return first.is_some() or second.is_some()
+	return (first != null) or (second != null)
 
 fn with_default(value: Resource?, tail: Int = 1) Bool:
-	return value.is_some() or tail > 0
+	return (value != null) or tail > 0
 
 type Observer:
 	tag: Int
 
-fn Observer.sees(value: Resource?) Bool: value.is_some()
+fn Observer.sees(value: Resource?) Bool: value != null
 
 fn borrowed_conversion_calls(path: String) Void!:
 	named := Resource(120, path.clone())
@@ -313,10 +312,10 @@ test "borrowed optional transport copies leave fault cleanup with original owner
 fn optional_identity(value: Resource?) Resource?: value
 
 fn with_borrowed_default(value: Resource?, same: Resource? = value) Bool:
-	return value.is_some() or same.is_some()
+	return (value != null) or (same != null)
 
 fn with_faulting_default(value: Resource?, tail: Int = [1].get(3)) Bool:
-	return value.is_some() or tail > 0
+	return (value != null) or tail > 0
 
 fn retained_conversion(path: String) Void!:
 	named := Resource(130, path.clone())

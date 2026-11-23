@@ -10,14 +10,14 @@ export type Case:
 export fn cases(source: String, table: String) List[Case]!:
 	root := parse(source)?
 	var out: List[Case] = []
-	items := root.get(table).clone().get_or(JsonValue.Null).as_list().get_or([])
+	items := (root.get(table).clone() or JsonValue.Null).as_list() or []
 
 	for item in items:
 		var fields = Map[String, String]()
 		var flags = Map[String, Bool]()
 		var expected = Map[String, List[String]]()
 
-		for entry in item.as_map().get_or(Map[String, JsonValue]()).entries():
+		for entry in (item.as_map() or Map[String, JsonValue]()).entries():
 			if str := entry.value.as_string():
 				fields.add(entry.key.clone(), str.clone())
 			else if flag := entry.value.as_bool():
@@ -25,8 +25,8 @@ export fn cases(source: String, table: String) List[Case]!:
 			else if members := entry.value.as_map():
 				for member in members.entries():
 					var values: List[String] = []
-					for value in member.value.as_list().get_or([]):
-						values.append(value.as_string().get_or("").clone())
+					for value in (member.value.as_list() or []):
+						values.append((value.as_string() or "").clone())
 					expected.add(member.key.clone(), values)
 
 		out.append(Case(fields: fields, flags: flags, expected: expected))

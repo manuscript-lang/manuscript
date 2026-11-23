@@ -64,7 +64,7 @@ fn RouteParams.get(name: String) String?:
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
 // parameter.
 fn RouteParams.get_or(name: String, fallback: String) String:
-	return self.get(name).get_or(fallback)
+	return self.get(name) or fallback
 
 // One segment of a route pattern.
 export enum Segment:
@@ -395,7 +395,7 @@ fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
 			if (
 				serves(route.method, method)
 				and (
-					found.is_none()
+					found == null
 					or (fallback and route.method == method)
 				)
 			):
@@ -593,7 +593,7 @@ fn TestExchange.query() String:
 	return self.request.query.clone()
 
 fn var TestExchange.read(max_bytes: Int?) Bytes?!:
-	requested := max_bytes.get_or(65536)
+	requested := max_bytes or 65536
 	if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
 
 	max := if requested > 65536: 65536 else: requested
@@ -809,7 +809,7 @@ export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
 
 fn with_request_id(var exchange: HttpExchange, next: fn(var HttpExchange) Void!) Void!:
 	var request = exchange.headers()
-	var id = request.get("X-Request-Id").get_or("")
+	var id = request.get("X-Request-Id") or ""
 
 	if not usable_id(id):
 		id = new_id()?

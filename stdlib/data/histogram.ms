@@ -94,7 +94,7 @@ fn Histogram.mean() Float:
 fn Histogram.percentile(p: Float) Int?:
 	if not (p >= 0.0 and p <= 100.0) or self.total == 0: return null
 
-	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int().get_or(1)
+	var rank = ceil(p * self.total.to_float() / 100.0).truncate_to_int() or 1
 	if rank < 1: rank = 1
 
 	var seen = 0

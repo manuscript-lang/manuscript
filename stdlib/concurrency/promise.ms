@@ -196,7 +196,7 @@ fn outcome(id: Int, code: Int) Error:
 
 // Internal: applies `options` to the promise `id`.
 fn limit(id: Int, options: PromiseOptions) Void:
-	if options.timeout.is_some():
+	if options.timeout != null:
 		msrt_promise_limit(id, nanos(options.timeout))
 	if signal := options.cancel:
 		msrt_promise_on_cancel(id, signal.id)

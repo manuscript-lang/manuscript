@@ -27,7 +27,7 @@ fn order(move id: String, n: Int) Order:
 
 fn by_binding(orders: Map[String, Order], id: String) Int:
 	found := orders.get(id)
-	if found.is_none(): return 0
+	if found == null: return 0
 
 	o := found.get()
 	return o.items.length() + o.status.length()
@@ -37,7 +37,7 @@ fn by_if_let(orders: Map[String, Order], id: String) Int:
 	return 0
 
 fn by_chain(orders: Map[String, Order], id: String) Int:
-	if orders.get(id).is_none(): return 0
+	if orders.get(id) == null: return 0
 
 	o := orders[id]
 	return o.items.length() + o.status.length()
@@ -78,7 +78,7 @@ test "a lent entry of a local var map ends at its last use":
 	if c := m.get("c"):
 		expect_equal(c.items.first().get().sku, "c-0")?
 	m.remove("a")
-	expect_equal(m.get("a").is_none(), true)?
+	expect_equal(m.get("a") == null, true)?
 
 	o := m["b"]
 	expect_equal(o.items.last().get().qty, 3)?
@@ -97,8 +97,8 @@ test "first and last lend the element":
 	expect_equal(xs.last().get(), "four")?
 
 	empty := List[String]()
-	expect_equal(empty.first().is_none(), true)?
-	expect_equal(empty.last().is_none(), true)?
+	expect_equal(empty.first() == null, true)?
+	expect_equal(empty.last() == null, true)?
 	if none_here := empty.first():
 		expect_equal(none_here, "unreachable")?
 
@@ -144,7 +144,7 @@ test "if let over a borrowed optional lends its payload":
 		expect_equal(o.id, "a")?
 		expect_equal(o.items.length(), 2)?
 
-	expect_equal(maybe.is_some(), true)?
+	expect_equal(maybe != null, true)?
 
 	text: String? := "hello"
 	if t := text:

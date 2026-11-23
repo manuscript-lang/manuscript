@@ -64,7 +64,7 @@ fn solve(s: String) String:
 
 			names.append(t[1].clone())
 			bal[t[1].clone()] = 0
-			lim[t[1].clone()] = t[2].parse_int().get_or(0)
+			lim[t[1].clone()] = t[2].parse_int() or 0
 			ops[t[1].clone()] = 0
 			rej[t[1].clone()] = 0
 			out.append("ok")
@@ -101,7 +101,7 @@ fn solve(s: String) String:
 			out.append("error: same account")
 			continue
 
-		if not (digits(amount) and amount.parse_int().get_or(0) > 0):
+		if not (digits(amount) and (amount.parse_int() or 0) > 0):
 			rej[ids[0].clone()] = rej.get_or(ids[0], 0) + 1
 			out.append("error: invalid amount")
 			continue
@@ -115,7 +115,7 @@ fn solve(s: String) String:
 			out.append(f"error: account frozen {fz}")
 			continue
 
-		n := amount.parse_int().get_or(0)
+		n := amount.parse_int() or 0
 		var fee = 0
 		from := ids[0].clone()
 

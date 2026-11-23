@@ -28,11 +28,12 @@ test "a faulting handler releases the values its frames own":
 		send(client, "GET / HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")?
 
 		reply_bytes := recv(client, 3.seconds())?
-		head := reply_bytes.get_or(Bytes([])).decode_utf8().get_or("")
+		head := (reply_bytes or Bytes([])).decode_utf8() or ""
 		if not head.starts_with("HTTP/1.1 500"): return error(Error(head))
 
-	// Each leaked fault kept 1 MB, so 100 faults would grow the process by 100 MB; the allocator keeps some freed
-	// blocks resident (about 21 MB on Linux arm64), which is not growth.
+	// Each leaked fault kept 1 MB, so 100 faults would grow the process by 100 MB; the
+	// allocator keeps some freed blocks resident (about 21 MB on Linux arm64), which is
+	// not growth.
 	grown := (memory_usage() | expect_ok?).resident - before
 	if grown > 45000000: return error(Error(f"resident memory grew {grown} bytes"))
 
@@ -77,9 +78,9 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 	for i in 0..200:
 		void fetch(url).with(options: PromiseOptions(timeout: 0.milliseconds())).wait()
 
-	// A leak grows the heap in every round; the pool and rings that settle while a loaded
-	// runner cancels fetches move it by a few kilobytes in one round. So the check fails
-	// only when no round came back near where it started.
+	// A leak grows the heap in every round; the pool and rings that settle while a
+	// loaded runner cancels fetches move it by a few kilobytes in one round. So the
+	// check fails only when no round came back near where it started.
 	var least = 0
 
 	for round in 0..3:
@@ -98,7 +99,9 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 			least = grown
 
 	if least > 2000 * 64: return error(
-		Error(f"heap grew at least {least} bytes in every round of 2000 cancelled fetches")
+		Error(
+			f"heap grew at least {least} bytes in every round of 2000 cancelled fetches"
+		)
 	)
 
 test "a fetch cancelled while it waits for the response frees the cancellation error":

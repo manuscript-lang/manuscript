@@ -94,7 +94,7 @@ Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1
 */
 export fn permutations[T: Clonable](values: List[T], size: Int? = null) List[List[T]]:
 	n := values.length()
-	k := size.get_or(n)
+	k := size or n
 	if k == 0: return [[]]
 	if k < 0 or k > n: return []
 

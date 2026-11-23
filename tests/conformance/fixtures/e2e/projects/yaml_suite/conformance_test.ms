@@ -46,17 +46,13 @@ fn exists(tree: FileTree, path: String) Bool:
 
 // Whether the parser agrees with the suite on one case directory.
 fn passes(tree: FileTree, id: String) Bool:
-	text := tree.read(f"{id}/in.yaml", null).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	text := tree.read(f"{id}/in.yaml", null).get_or("".to_bytes()).decode_utf8() or ""
 	parsed := parse_all(text)
 	if exists(tree, f"{id}/error"): return parsed.is_error()
 	if parsed.is_error(): return false
 	if not exists(tree, f"{id}/in.json"): return true
 
-	json := tree.read(f"{id}/in.json", null).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	json := tree.read(f"{id}/in.json", null).get_or("".to_bytes()).decode_utf8() or ""
 	want := canon_json_stream(json)
 	if want.is_error(): return false
 
@@ -77,9 +73,10 @@ test "the official YAML suite agrees with the parser except for the listed cases
 		if not passes(tree, id): failing.append(id.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", null).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	listed := (
+		tree.read("expect-fail.txt", null).get_or("".to_bytes()).decode_utf8()
+		or ""
+	)
 	var expected: List[String] = []
 
 	for line in listed.split("\n"):

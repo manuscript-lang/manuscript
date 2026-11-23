@@ -124,17 +124,17 @@ export fn verify_token[T: Data = JsonValue](
 
 	header := decode_json[JsonValue](parts[0], check.max_bytes)?
 	if not header_algorithm_matches(
-		header.get("alg").clone().get_or(JsonValue.Null),
+		header.get("alg").clone() or JsonValue.Null,
 		check.algorithm,
 	): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
 	// No critical header extension is supported by this verifier.
-	if header.get("crit").is_some(): return error(
+	if header.get("crit") != null: return error(
 		Error("jwt: unsupported critical header", kind: "EBADMSG")
 	)
 
 	if encoded := header.get("b64"):
-		if not encoded.as_bool().get_or(false): return error(
+		if not (encoded.as_bool() or (false)): return error(
 			Error("jwt: unsupported payload encoding", kind: "EBADMSG")
 		)
 
@@ -180,9 +180,9 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
 	if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
 	text := raw.get_or("".to_bytes()).decode_utf8()
-	if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
+	if text == null: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-	value := parse[T](text.get_or(""))
+	value := parse[T](text or "")
 	if decoded := value: return ok(decoded)
 
 	return error(Error("jwt: malformed token", kind: "EBADMSG"))
@@ -268,15 +268,15 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 		)
 
 	if issuer := check.issuer:
-		actual := claims.get("iss").clone().get_or(JsonValue.Null).as_string()
-		if actual.is_none() or actual.get_or("") != issuer: return error(
+		actual := (claims.get("iss").clone() or JsonValue.Null).as_string()
+		if (actual == null) or (actual or "") != issuer: return error(
 			Error("jwt: wrong issuer", kind: "EBADMSG")
 		)
 
 	if aud := claims.get("aud"):
-		if aud.as_string().is_none():
+		if aud.as_string() == null:
 			if many := aud.as_list():
-				if many.any(fn item: item.as_string().is_none()): return error(
+				if many.any(fn item: item.as_string() == null): return error(
 					Error(
 						"jwt: aud must hold only strings",
 						kind: "EBADMSG",
@@ -291,10 +291,9 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 				)
 
 	if audience := check.audience:
-		if not includes_audience(
-			claims.get("aud").clone().get_or(JsonValue.Null),
-			audience,
-		): return error(Error("jwt: wrong audience", kind: "EBADMSG"))
+		if not includes_audience(claims.get("aud").clone() or JsonValue.Null, audience): return error(
+			Error("jwt: wrong audience", kind: "EBADMSG")
+		)
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is
 // malformed.
@@ -396,7 +395,7 @@ fn date_compare(text: String, boundary: String) Int:
 fn includes_audience(claim: JsonValue, audience: String) Bool:
 	if single := claim.as_string(): return single == audience
 	if many := claim.as_list():
-		return many.any(fn item: item.as_string().get_or("") == audience)
+		return many.any(fn item: (item.as_string() or "") == audience)
 
 	return false
 
@@ -446,7 +445,7 @@ fn raw_to_der(raw: Bytes) Bytes:
 		pad := raw.get(start).to_int() >= 128
 		if pad: size += 1
 		body.append(2)
-		body.append(size.to_uint8().get_or(0))
+		body.append(size.to_uint8() or 0)
 		if pad: body.append(0)
 		for place in start..((piece + 1) * half):
 			body.append(raw.get(place))
@@ -455,7 +454,7 @@ fn raw_to_der(raw: Bytes) Bytes:
 	var out = BytesBuilder()
 	out.append(48)
 	if inner.length() >= 128: out.append(129)
-	out.append(inner.length().to_uint8().get_or(0))
+	out.append(inner.length().to_uint8() or 0)
 	out.append_bytes(inner)
 	return out.build()
 

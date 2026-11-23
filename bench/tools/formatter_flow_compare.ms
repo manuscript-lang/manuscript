@@ -118,7 +118,7 @@ fn main() Int:
 	if parsed.is_error(): return fail(parsed.err().message)
 
 	opts := parsed.get_or(Map[String, String]())
-	samples := opts.get_or("samples", "10").parse_int().get_or(0)
+	samples := opts.get_or("samples", "10").parse_int() or 0
 	if samples < 5: return fail("--samples must be at least 5")
 
 	result := compare(

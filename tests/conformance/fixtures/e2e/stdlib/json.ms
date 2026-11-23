@@ -140,7 +140,13 @@ fn encoded[T: Data](item: T) String!:
 	return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
-	var request = Request(model: "m", stream: true, user: null, temperature: 0.5, tags: ["a", "b"])
+	var request = Request(
+		model: "m",
+		stream: true,
+		user: null,
+		temperature: 0.5,
+		tags: ["a", "b"],
+	)
 	expected := "{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]}"
 	expect_equal((encoded(request)?), expected)?
 	request.user = "u"
@@ -221,7 +227,6 @@ enum Tagged:
 test "JSON stringify omits none fields":
 	var handler = Handler("h", null, null)
 	expect_equal((encoded(handler)?), "{\"name\":\"h\"}")?
-
 	handler.retries = 3
 	expect_equal((encoded(handler)?), "{\"name\":\"h\",\"retries\":3}")?
 
@@ -236,10 +241,7 @@ test "JSON stringify encodes standard-library values":
 	ok: Int! := ok(5)
 	expect_equal((encoded(ok)?), "{\"ok\":{\"value\":5}}")?
 	expect_equal((encoded("EBADMSG")?), "\"EBADMSG\"")?
-	expect_equal(
-		(encoded(Tagged.Named("n", null))?),
-		"{\"Named\":{\"name\":\"n\"}}",
-	)?
+	expect_equal((encoded(Tagged.Named("n", null))?), "{\"Named\":{\"name\":\"n\"}}")?
 	expect_equal((encoded(Tagged.Plain)?), "\"Plain\"")?
 
 test "JSON stringify honors JsonEncode wherever the value appears":
@@ -249,7 +251,13 @@ test "JSON stringify honors JsonEncode wherever the value appears":
 	expect_equal((encoded(Money(7))?), "\"usd:7\"")?
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-	request := Request(model: "m", stream: true, user: null, temperature: 0.5, tags: ["a"])
+	request := Request(
+		model: "m",
+		stream: true,
+		user: null,
+		temperature: 0.5,
+		tags: ["a"],
+	)
 	pretty := stringify(request, StringifyOptions(indent: 2))?
 	expected := "{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n}"
 	expect_equal(pretty, expected)?
@@ -342,7 +350,7 @@ test "JSON parse decodes records by field name with defaults and optional fields
 	profile: Profile := parse[Profile](text)?
 	expect_equal(profile.name, "Ada")?
 	expect_equal(profile.age, 18)?
-	expect_false(profile.nickname.is_some())?
+	expect_false(profile.nickname != null)?
 	expect_false(profile.scores.length() != 2 or profile.scores.get(1) != 2.5)?
 
 	full := "{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]}"
@@ -392,7 +400,7 @@ test "JSON parse decodes alternatives and generic records":
 	expect_equal(scene.shapes.get(0), Shape.Rect(1, 2))?
 
 	wrapper: Wrapper[Int] := parse[Wrapper[Int]]("{\"first\":1}")?
-	expect_false((wrapper.first != 1 or wrapper.second.is_some() or wrapper.extra != 7))?
+	expect_false((wrapper.first != 1 or (wrapper.second != null) or wrapper.extra != 7))?
 
 	nested: Wrapper[Wrapper[String]] := parse[Wrapper[Wrapper[String]]](
 		"{\"first\":{\"first\":\"x\",\"extra\":1},\"second\":null}"
@@ -420,13 +428,11 @@ test "JSON parse decodes recursive types exact numbers and passthrough values":
 	expect_equal(stringify(price), price_text)?
 
 	raw := parse("{\"n\":1.50}")?
-	boxed: Wrapper[JsonValue] := parse[Wrapper[JsonValue]](
-		"{\"first\":{\"n\":1.50}}"
-	)?
+	boxed: Wrapper[JsonValue] := parse[Wrapper[JsonValue]]("{\"first\":{\"n\":1.50}}")?
 	expect_equal(boxed.first, raw)?
 
 	list: List[Int?] := parse[List[Int?]]("[1,null]")?
-	expect_false(list.get(1).is_some())?
+	expect_false(list.get(1) != null)?
 
 test "JSON parse inverts stringify and works in generic code":
 	profile := Profile("Ada", [0.5], 20, "a")

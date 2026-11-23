@@ -35,7 +35,7 @@ fn move Tokens.close() Void!:
 	return ok()
 
 fn events(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
 fn read_one(input: ReadStream[Token]) Void!:

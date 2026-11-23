@@ -21,7 +21,7 @@ enum Shape:
 	Tri(b: Int)
 
 fn got_line(var input: ReadStream[String]) Bool:
-	if line := input.next(): return line.is_some()
+	if line := input.next(): return line != null
 	return false
 
 fn say(text: String) Void:

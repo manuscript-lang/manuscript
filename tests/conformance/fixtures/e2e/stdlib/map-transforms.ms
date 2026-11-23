@@ -131,7 +131,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
 	values: Map[String, Int] := {"a": 0}
 	map := values.clone().map[Int?]
-	expect_true((map(fn k, v: null)["a"].is_none()))?
+	expect_true((map(fn k, v: null)["a"] == null))?
 
 	nested := values.map(fn k, v: Result[Int, Error].error(Error("nested")))
 	nested["a"].err().message | expect_equal("nested")?
@@ -274,29 +274,25 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	initial.is_empty() | expect_true?
 	expect_false(
 		not (
-			empty_map
-			.find_last(
+			empty_map.find_last(
 				(
 					fn k,
 					v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 	expect_false(
 		not (
-			empty_set
-			.find_last(
+			empty_set.find_last(
 				(
 					fn v:
 						empty_calls.append(1)
 						return false
 				)
-			)
-			.is_none()
+			) == null
 		)
 	)?
 
@@ -305,14 +301,12 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	expect_false(
 		(
 			not (
-				values
-				.find_last(
+				values.find_last(
 					fn k,
 					v:
 						seen_map.append(k.clone())
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or seen_map != ["c", "a", "b"]
 		)
@@ -323,13 +317,11 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	expect_false(
 		(
 			not (
-				members
-				.find_last(
+				members.find_last(
 					fn v:
 						seen_set.append(v)
 						return false
-				)
-				.is_none()
+				) == null
 			)
 			or seen_set != [3, 1, 2]
 		)

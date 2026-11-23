@@ -81,7 +81,7 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 	if not policy.jitter: return wait
 
 	share := float().get_or(1.0)
-	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get_or(0))
+	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int() or 0)
 
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
@@ -216,7 +216,7 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 		return ok(value.clone())
 
 	self.failures += 1
-	if self.failures >= self.threshold or self.opened.is_some():
+	if self.failures >= self.threshold or (self.opened != null):
 		self.opened = monotonic()
 	return error(CircuitError.Failed(result.err().clone()))
 

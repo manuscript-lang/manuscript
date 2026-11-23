@@ -9,7 +9,7 @@ type Total:
 	cents: Int
 
 fn main() Void:
-	data := read_all(stdin(), null).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8() or ""
 	var regions = Map[String, Total]()
 	var products = Map[String, Int]()
 	var quoted = 0
@@ -25,8 +25,8 @@ fn main() Void:
 
 		if col == 1: region = cell.clone()
 		else if col == 2: product = cell.clone()
-		else if col == 3: qty = cell.parse_int().get_or(0)
-		else if col == 4: price = cell.parse_int().get_or(0)
+		else if col == 3: qty = cell.parse_int() or 0
+		else if col == 4: price = cell.parse_int() or 0
 		else if col == 5:
 			cents := qty * price
 			old := regions.get_or(region, Total(0, 0))

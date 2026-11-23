@@ -71,10 +71,10 @@ type Process:
 	spawn_error: String
 
 fn text_of(data: Bytes) String:
-	return data.decode_utf8().get_or("").clone()
+	return (data.decode_utf8() or "").clone()
 
 fn string_member(value: JsonValue, key: String) String:
-	if found := value.get(key): return found.as_string().get_or("")
+	if found := value.get(key): return found.as_string() or ""
 	return ""
 
 fn parent_length(path: String) Int:
@@ -110,7 +110,7 @@ fn parse_meta(text: String) Meta:
 			break
 
 		rest := trimmed.slice("// conform:".length(), trimmed.length()).trim()
-		at := rest.index_of("=").get_or(-1)
+		at := rest.index_of("=") or (-1)
 		if at < 0: continue
 
 		key := rest.slice(0, at).trim()
@@ -120,14 +120,12 @@ fn parse_meta(text: String) Meta:
 			for tag in value.split(","):
 				if tag.trim() != "": meta.tags.append(tag.trim().clone())
 		else if key == "phase": meta.phase = value.clone()
-		else if key == "timeout": meta.timeout = value.parse_int().get_or(0)
+		else if key == "timeout": meta.timeout = value.parse_int() or 0
 		else if key == "entry": meta.entry = value.clone()
 		else if key == "deterministic": meta.deterministic = value == "true"
 		else if key == "args":
 			if document := parse(value).get_or(JsonValue.Null).as_list():
-				for item in document: meta.args.append(
-					item.as_string().get_or("").clone()
-				)
+				for item in document: meta.args.append((item.as_string() or "").clone())
 
 	return meta
 
@@ -278,7 +276,7 @@ fn invoke(
 		)
 
 	cause := result.err()
-	timed := cause.kind.get_or("") == "ETIMEDOUT"
+	timed := (cause.kind or "") == "ETIMEDOUT"
 	return Process(
 		code: if timed: 137 else: 127,
 		stdout: "",
@@ -312,13 +310,13 @@ fn mask_stdlib_lines(text: String) String:
 	var rest = text.clone()
 
 	while true:
-		at := rest.index_of("@std/").get_or(-1)
+		at := rest.index_of("@std/") or (-1)
 		if at < 0: break
 
 		out += rest.slice(0, at)
 
 		tail := rest.slice(at, rest.length())
-		dot := tail.index_of(".ms:").get_or(-1)
+		dot := tail.index_of(".ms:") or (-1)
 
 		if dot < 0:
 			out += tail
@@ -422,12 +420,12 @@ fn parse_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	report := read_report(checked, work)
 	var diagnostics = List[JsonValue]()
 	if listed := report.get("diagnostics"):
-		for item in listed.as_list().get_or([]):
+		for item in (listed.as_list() or []):
 			if string_member(item, "phase") == "parse": diagnostics.append(item.clone())
 
 	var fields = Map[String, JsonValue]()
 	fields.add("diagnostics", JsonValue.ArrayValue(diagnostics))
-	if report.get("unparsable_json").is_some(): fields.add("raw", report)
+	if report.get("unparsable_json") != null: fields.add("raw", report)
 
 	formatted := invoke(ms, fx, ["fmt", fx.entry.clone()], work, "".to_bytes())
 
@@ -472,7 +470,7 @@ fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	if listed := report.get("diagnostics"): fields.add("diagnostics", listed.clone())
 	else: fields.add("diagnostics", JsonValue.ArrayValue([]))
 
-	if report.get("unparsable_json").is_some(): fields.add("raw", report)
+	if report.get("unparsable_json") != null: fields.add("raw", report)
 
 	var text = Map[String, JsonValue]()
 	text.add("exit_code", number(text_code))
@@ -603,9 +601,9 @@ fn oracle_version(ms: String) String:
 // Why `observed` cannot be recorded, or "".
 fn unrecordable(observed: JsonValue) String:
 	for key in ["harness_error", "spawn_error", "timed_out", "unparsable_json"]:
-		if observed.get(key).is_some(): return f"observation has {key}"
+		if observed.get(key) != null: return f"observation has {key}"
 	if report := observed.get("report"):
-		if report.get("unparsable_json").is_some(): return "ms test did not print JSON"
+		if report.get("unparsable_json") != null: return "ms test did not print JSON"
 	return ""
 
 // Records each fixture of `chunk`: one `wrote`, `same`, `kept` or `REJECT <id>: <why>`
@@ -681,7 +679,7 @@ fn main() Int:
 			phase = words[at].clone()
 		else if words[at] == "--jobs":
 			at += 1
-			jobs = words[at].parse_int().get_or(8)
+			jobs = words[at].parse_int() or 8
 		else if words[at] == "--record": recording = true
 		else if words[at] == "--only-missing": only_missing = true
 		else if words[at] == "--no-stable-check": stable = false
@@ -700,9 +698,7 @@ fn main() Int:
 		Map[String, String]()
 	).get("CONFORM_BUILD_TYPE"): build_type = configured.clone()
 
-	show_diff := environment().get_or(
-		Map[String, String]()
-	).get("CONFORM_DIFF").is_some()
+	show_diff := environment().get_or(Map[String, String]()).get("CONFORM_DIFF") != null
 	var chosen = List[Fixture]()
 
 	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters):
@@ -759,13 +755,13 @@ fn main() Int:
 			for line in task.wait().get_or(List[String]()):
 				if line.starts_with("REJECT"):
 					print(line)
-					counts.add("rejected", counts.get("rejected").get_or(0) + 1)
-				else: counts.add(line.clone(), counts.get(line).get_or(0) + 1)
+					counts.add("rejected", (counts.get("rejected") or 0) + 1)
+				else: counts.add(line.clone(), (counts.get(line) or 0) + 1)
 
 		print(
-			f"{phase}: wrote {counts.get("wrote").get_or(0)}, same {counts.get("same").get_or(0)}, kept {counts.get("kept").get_or(0)}, rejected {counts.get("rejected").get_or(0)}"
+			f"{phase}: wrote {(counts.get("wrote") or 0)}, same {(counts.get("same") or 0)}, kept {(counts.get("kept") or 0)}, rejected {(counts.get("rejected") or 0)}"
 		)
-		if counts.get("rejected").get_or(0) > 0: return 1
+		if (counts.get("rejected") or 0) > 0: return 1
 
 		return 0
 

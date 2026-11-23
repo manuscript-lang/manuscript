@@ -9,14 +9,14 @@ type Node:
 
 fn var Node.insert(key: Int) Void:
 	if key < self.key:
-		if self.left.is_none():
+		if self.left == null:
 			self.left = Node(key, null, null)
 			return
 
 		self.left?.insert(key)
 		return
 
-	if self.right.is_none():
+	if self.right == null:
 		self.right = Node(key, null, null)
 		return
 
@@ -26,13 +26,13 @@ fn var Node.rename(delta: Int) Void:
 	self.key += delta
 
 fn count(node: Node?) Int:
-	if node.is_none(): return 0
+	if node == null: return 0
 
 	n := node.get()
 	return 1 + count(n.left) + count(n.right)
 
 fn keys(var out: List[Int], node: Node?) Void:
-	if node.is_none(): return
+	if node == null: return
 
 	n := node.get()
 	keys(out, n.left)
@@ -66,7 +66,7 @@ test "inserts through boxed optional fields":
 test "an absent optional field is left alone":
 	var root = Node(1, null, null)
 	root.rename_left(5)
-	expect_equal(root.left.is_none(), true)?
+	expect_equal(root.left == null, true)?
 	expect_equal(root.key, 1)?
 
 test "a change through a present field is kept":

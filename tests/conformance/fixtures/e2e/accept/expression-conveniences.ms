@@ -295,7 +295,7 @@ test "indexing preserves zero and nested optionals":
 	(numbers[0] != 0 or numbers.get_or(0, 99) != 0) | expect_false?
 
 	nested: List[Int?] := [null, 0]
-	(nested[0].is_some() or nested[1].get() != 0) | expect_false?
+	((nested[0] != null) or nested[1].get() != 0) | expect_false?
 
 fn observed_optional(var counter: Counter) Int?:
 	counter.count += 1

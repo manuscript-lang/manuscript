@@ -18,4 +18,4 @@ fn run() Void:
 	held := Marker(1)
 	f := held.finish
 	r := f(false)
-	print(f"{r.is_some()}")
+	print(f"{(r != null)}")

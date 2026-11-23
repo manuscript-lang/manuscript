@@ -258,17 +258,17 @@ export fn pow_int(base: Int, exponent: Int) Int?:
 	while left > 0:
 		if left % 2 == 1:
 			next_result := checked_multiply(result, factor)
-			if next_result.is_none(): return null
+			if next_result == null: return null
 
-			result = next_result.get_or(0)
+			result = next_result or 0
 
 		left /= 2
 
 		if left > 0:
 			next_factor := checked_multiply(factor, factor)
-			if next_factor.is_none(): return null
+			if next_factor == null: return null
 
-			factor = next_factor.get_or(0)
+			factor = next_factor or 0
 
 	return result
 

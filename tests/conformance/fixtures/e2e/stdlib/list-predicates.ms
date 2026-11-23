@@ -46,8 +46,8 @@ test "set and map any and all":
 
 test "max_by and min_by pick the first of ties and call key once per element":
 	empty: List[Person] := []
-	expect_true(empty.max_by(fn(p: Person) Int: p.age).is_none())?
-	expect_true(empty.min_by(fn(p: Person) Int: p.age).is_none())?
+	expect_true(empty.max_by(fn(p: Person) Int: p.age) == null)?
+	expect_true(empty.min_by(fn(p: Person) Int: p.age) == null)?
 
 	var calls = 0
 

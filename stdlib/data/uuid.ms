@@ -60,10 +60,10 @@ export fn uuid_v7() String!:
 			bit_and(
 				shift_right_unsigned(time, 8 * (5 - place)),
 				255,
-			).to_uint8().get_or(0)
+			).to_uint8() or 0
 		)
-	raw.append(shift_right_unsigned(sequence, 8).to_uint8().get_or(0))
-	raw.append(bit_and(sequence, 255).to_uint8().get_or(0))
+	raw.append(shift_right_unsigned(sequence, 8).to_uint8() or 0)
+	raw.append(bit_and(sequence, 255).to_uint8() or 0)
 	for place in 2..10:
 		raw.append(noise.get(place))
 	return ok(format_uuid(raw.build(), 7))
@@ -106,7 +106,7 @@ fn format_uuid(source: Bytes, version: Int) String:
 		var byte = source.get(place).to_int()
 		if place == 6: byte = bit_or(bit_and(byte, 15), version * 16)
 		if place == 8: byte = bit_or(bit_and(byte, 63), 128)
-		raw.append(byte.to_uint8().get_or(0))
+		raw.append(byte.to_uint8() or 0)
 
 	hex := hex_encode(raw.build())
 	return f"{hex.view(0, 8)}-{hex.view(8, 12)}-{hex.view(12, 16)}-{hex.view(16, 20)}-{hex.view(20, 32)}"

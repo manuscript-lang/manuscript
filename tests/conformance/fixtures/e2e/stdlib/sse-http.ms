@@ -38,6 +38,6 @@ test "HTTP response bodies decode as SSE and close with the reader":
     )
 
     expect_false(second.event != "message" or second.data != "second")?
-    expect_false((events.next()?).is_some())?
+    expect_false(((events.next()?) != null)?
     events.close()?
     expect_equal(status, 200)?

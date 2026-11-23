@@ -78,8 +78,8 @@ test "min and max return the first of equal elements and none when empty":
 	numbers := [3, 9, 2, 9, 2]
 	expect_equal(numbers.min(), 2)?
 	expect_equal(numbers.max(), 9)?
-	expect_true(List[Int]().min().is_none())?
-	expect_true(List[String]().max().is_none())?
+	expect_true(List[Int]().min() == null)?
+	expect_true(List[String]().max() == null)?
 	expect_equal(["pear", "apple", "fig"].min(), "apple")?
 	expect_equal([0.5, 2.5, -1.0].max(), 2.5)?
 

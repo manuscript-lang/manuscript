@@ -104,7 +104,7 @@ fn main() Int:
 	args := arguments()
 	if args.length() < 1: return 2
 
-	scale := if args.length() > 1: args[1].parse_int().get_or(1) else: 1
+	scale := if args.length() > 1: (args[1].parse_int() or 1) else: 1
 	dir := args[0].clone()
 	create_directory(dir, recursive: true).get()
 	save(dir, "access.log", logs(400000 * scale, 1))

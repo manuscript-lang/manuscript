@@ -44,7 +44,7 @@ test "core parity operations are callable":
 	missing: Int? := null
 	expect_equal(present.map(fn n: n + 1).get(), 3)?
 	expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")?
-	expect_equal(missing.or_else(fn: 4).get(), 4)?
+	expect_equal((missing or 4).get(), 4)?
 
 	values: Map[String, Int] := {"a": 1, "b": 2}
 	expect_false(values.is_empty() or values.get_or("absent", 8) != 8)?
@@ -107,7 +107,7 @@ test "Result preserves unconstrained payloads and success-only composition":
 	var changed = record.clone().map(fn value: value).get().clone()
 	changed.max_values = 7
 	expect_equal(changed.max_values.get(), 7)?
-	expect_false(limits.max_values.is_some())?
+	expect_false(limits.max_values != null)?
 
 	nested := success.clone().map(fn(n: Int) Int?: n)
 	expect_equal(nested.get().get(), 0)?
@@ -126,6 +126,7 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 
 	create := fn(cause: Counter) Int: 12
 	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")
+
 	// `get_or_else` takes its receiver, so a reusable value states the copy.
 	lazy := fn(fallback: fn(Counter) Int) Int: success.clone().get_or_else(fallback)
 	expect_false(lazy(unexpected) != 0)?
@@ -136,7 +137,6 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	extracted.calls = 3
 	expect_equal(failure.err().calls, 0)?
 	expect_equal(extracted.calls, 3)?
-
 	expect_equal(success.clone().map(fn n: n.to_string()).get(), "0")?
 	expect_equal(success.clone().and_then(fn n: ok(n.to_string())).get(), "0")?
 
@@ -147,7 +147,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	transform := fn(value: Counter) Counter:
 		return Counter(value.calls + 1)
 	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
-	expect_false(not (map_optional(unexpected, missing.clone()).is_none()))?
+	expect_false(not (map_optional(unexpected, missing.clone()) == null))?
 
 	mapped := present.clone().map(transform)
 	expect_equal(mapped.get().calls, 1)?
@@ -161,20 +161,21 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	expect_equal(chained.get().calls, 0)?
 
 	absent := present.clone().and_then(fn(unused: Counter) Int?: null)
-	expect_false(not (absent.is_none()))?
+	expect_false(not (absent == null))?
 
 	create := fn() Counter?: Counter(5)
 	unexpected_create := fn() Counter?: panic("fallback must stay lazy")
-	expect_equal(present.clone().or_else(unexpected_create).get().calls, 0)?
+	expect_equal((present.clone() or unexpected_create()).get().calls, 0)?
 
-	fallback := missing.clone().or_else(create)
+	fallback := missing.clone() or create()
 	expect_equal(fallback.get().calls, 5)?
 
 	nested := present.clone().map(fn(unused: Counter) Int?: null)
-	expect_true(nested.is_none())?
-
+	expect_true(nested == null)?
 	expect_equal(mapped.clone().map(fn value: value.calls.to_string()).get(), "1")?
-	expect_false(not (missing.clone().and_then[String](fn unused: "unexpected").is_none()))?
+	expect_false(
+		not (missing.clone().and_then[String](fn unused: "unexpected") == null)
+	)?
 
 test "Map filter copies ordered membership and get_or never inserts":
 	var counter = Counter(0)

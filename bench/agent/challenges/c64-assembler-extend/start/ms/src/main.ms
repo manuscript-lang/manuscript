@@ -270,7 +270,7 @@ type Asm:
 
 fn var Asm.define(name: String, sym: Sym) Void!:
 	if reg_index(name) >= 0: return error(Error(f"reserved name '{name}'"))
-	if self.syms.get(name).is_some(): return error(Error(f"duplicate symbol '{name}'"))
+	if self.syms.get(name) != null: return error(Error(f"duplicate symbol '{name}'"))
 
 	self.syms[name.clone()] = sym
 
@@ -889,7 +889,7 @@ fn parse_input(lines: List[String]) List[Int]:
 // ms: allow_effect std.console.read
 fn main() Void!:
 	bytes := read_all(stdin())?
-	text := bytes.decode_utf8().get_or("")
+	text := bytes.decode_utf8() or ""
 	all := text.lines()
 	var src = List[String]()
 	var inp_lines = List[String]()

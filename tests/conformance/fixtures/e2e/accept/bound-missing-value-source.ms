@@ -7,7 +7,7 @@ fn generic_convert[T: Clonable](cause: Error, value: T?) T!Error:
 	return convert(cause)
 
 fn ordinary(cause: Error? = null) Int!Error:
-	return ok(if cause.is_none(): 77 else: 88)
+	return ok(if cause == null: 77 else: 88)
 
 interface Convert:
 	fn convert(cause: Error? = null) Int!Error
@@ -16,7 +16,7 @@ type Source:
 	sentinel: Int
 
 fn Source.convert(cause: Error? = null) Int!Error:
-	return ok(if cause.is_none(): self.sentinel else: 88)
+	return ok(if cause == null: self.sentinel else: 88)
 
 // Exact expectations deliberately identify invocation lines, not binding lines.
 test "bound ok_or takes its cause at each call":
@@ -80,7 +80,7 @@ test "nested Optional errors remain intact":
 
 	nested := absent.ok_or[Int?]
 	inner_none: Int? := null
-	expect_true(nested(inner_none).err().is_none())?
+	expect_true(nested(inner_none).err() == null)?
 
 	inner_zero: Int? := 0
 	expect_equal(nested(inner_zero).err().get(), 0)?

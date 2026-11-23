@@ -18,7 +18,7 @@ fn c52_inputs() List[JsonValue]:
 	doc := parse(read_text(f"{root()}/challenges/c52-sql-engine/hidden/cases.json")).get_or(
 		JsonValue.Null
 	)
-	return doc.as_list().get_or([])
+	return doc.as_list() or []
 
 SETUP := "CREATE TABLE t (id INT PRIMARY KEY, n INT, s TEXT, g TEXT);\nINSERT INTO t VALUES (1, 5, 'apple', 'x'), (2, NULL, 'bee', 'x'), (3, 12, 'cat', 'y'), (4, 0, NULL, 'y'), (5, 7, 'dog', 'z');\n"
 
@@ -26,8 +26,8 @@ export fn gen_c66() Void:
 	var cs = Cases(build_oracle("c66-sql-case"))
 
 	for entry in c52_inputs():
-		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
-		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
+		name := (entry.get("name") or JsonValue.Null).as_string() or ""
+		stdin := (entry.get("stdin") or JsonValue.Null).as_string() or ""
 		add(cs, f"kept-{name}", stdin)
 
 	add(

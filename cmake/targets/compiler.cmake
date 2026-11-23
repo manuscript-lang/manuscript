@@ -78,7 +78,7 @@ ms_library(ms_check compiler/check
     exports.c symbol_text.c effects_directives.c effects_paths.c effects_reach.c builtins.c check.c declare.c
     imports.c resolve.c signatures.c methods.c implements.c properties.c bounds.c instantiate.c typevars.c types.c
     type_ops.c facts.c bodies.c exprs.c exprs_ops.c conversions.c calls.c call_target.c call_report.c match.c
-    mismatch.c native.c operands.c members.c drop_labels.c test_fixture.c recursion.c order.c exprs_mismatch.c
+    mismatch.c native.c operands.c nullable_methods.c members.c drop_labels.c test_fixture.c recursion.c order.c exprs_mismatch.c
     try_check.c opaque.c externs.c
   LINK ms_base ms_syntax ms_project)
 

@@ -39,6 +39,8 @@ typedef struct Matched {
 /* The callee of a call (call_target.c): resolves `callee` into `target`, false when it is not a function. */
 bool body_resolve_target(Body *body, const MsExpr *callee, MsTy expected, Target *target);
 void body_target_free(Target *target);
+/* A method of a nullable that `==`, `!=` and `or` replaced is reported with its rewrite as the fix. */
+void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *target);
 /* A constructor or case call of an opaque type outside its module is denied. */
 void body_deny_opaque_build(Body *body, const MsExpr *call, const Target *target);
 MsTy body_call_function_type(Body *body, const MsTyParamList *params, MsTy result);

@@ -30,8 +30,8 @@ fn parse(line: String) Entry?:
 	return Entry(
 		f[1].clone(),
 		f[3].clone(),
-		f[4].parse_int().get_or(0),
-		f[5].parse_int().get_or(0),
+		f[4].parse_int() or 0,
+		f[5].parse_int() or 0,
 		f[2].clone(),
 		f[0].clone(),
 	)
@@ -51,11 +51,11 @@ fn solve(s: String) String:
 
 		r := parse(line)
 
-		if r.is_none():
+		if r == null:
 			bad += 1
 			continue
 
-		e := r.get_or(Entry("", "", 0, 0, "", ""))
+		e := r or Entry("", "", 0, 0, "", "")
 		valid += 1
 		levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 
@@ -63,7 +63,7 @@ fn solve(s: String) String:
 		class := if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
 		classes[class] += 1
 		lats.append(e.latency)
-		if slow.is_none() or e.latency > slow.clone().get_or(e.clone()).latency: slow = e.clone()
+		if (slow == null) or e.latency > (slow.clone() or e.clone()).latency: slow = e.clone()
 		counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
 		totals[e.path.clone()] = totals.get_or(e.path, 0) + e.latency
 

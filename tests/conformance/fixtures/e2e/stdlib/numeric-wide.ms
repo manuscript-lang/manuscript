@@ -214,8 +214,8 @@ test "modular inverse distinguishes absence invalid modulus and the unit modulus
 			big_int_of_int(383)
 		) | expect_ok? | expect_some? | expect_equal(big_int_of_int(277))?
 	)
-	expect_true((big_int_of_int(6).inverse_mod(big_int_of_int(9))?).is_none())?
-	expect_true((big_int_of_int(0).inverse_mod(big_int_of_int(2))?).is_none())?
+	expect_true(((big_int_of_int(6).inverse_mod(big_int_of_int(9))?) == null)?
+	expect_true(((big_int_of_int(0).inverse_mod(big_int_of_int(2))?) == null)?
 	for number in [-5, 0, 5]:
 		(
 			big_int_of_int(number).inverse_mod(big_int_of_int(1))

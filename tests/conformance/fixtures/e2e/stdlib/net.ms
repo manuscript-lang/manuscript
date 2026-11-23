@@ -45,7 +45,7 @@ test "TCP loopback writes reads half close and EOF":
 	expect_equal((within(server.input, 2.seconds())?).get(), "hello".to_bytes())?
 	expect_equal(server.info.peer_address, client.info.local_address)?
 	client.output.end()?
-	expect_true((within(server.input, 2.seconds())?).is_none())?
+	expect_true(((within(server.input, 2.seconds())?) == null)?
 
 test "a read cancelled by its timeout leaves the stream closable":
 	listener := listen("127.0.0.1:0")?
@@ -86,11 +86,11 @@ test "closing the input leaves the output open and closing both ends the connect
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
 	client.output.end()?
-	expect_true((within(server.input, 2.seconds())?).is_none())?
+	expect_true(((within(server.input, 2.seconds())?) == null)?
 
 test "host names resolve whatever their case":
 	listener := listen("127.0.0.1:0")?
-	port := listener.address().split(":").last().clone().get_or("")
+	port := listener.address().split(":").last().clone() or ""
 	client := connect(f"LocalHost:{port}", timeout: 2.seconds()).wait()?
 	server := listener.accept(2.seconds()).wait()?
 	expect_equal(server.info.peer_address, client.info.local_address)?
@@ -177,7 +177,7 @@ test "a promise accepts on a listener it owns":
 fn accept_and_read(listener: Listener) Int:
 	var conn = listener.accept(2.seconds()).wait().get()
 	r := within(conn.input, 2.seconds())
-	if r.is_ok() and r.get().is_some(): return 1
+	if r.is_ok() and (r.get() != null): return 1
 
 	return 0
 

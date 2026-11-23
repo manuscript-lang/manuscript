@@ -438,10 +438,10 @@ fn var WatchSource.next() move FileEvent?!:
 		if event := self.pending.pop(): return ok(event)
 
 		next := msstd_fs_watch_next(self.watcher.native)?
-		if next.is_none(): return ok(null)
+		if next == null: return ok(null)
 
 		// An empty batch only means nothing changed yet; only null ends the stream.
-		var batch = next.get_or(List[FileEvent]())
+		var batch = next or List[FileEvent]()
 		batch.reverse()
 		self.pending = batch
 
@@ -1070,7 +1070,7 @@ export fn watch(
 	options: WatchOptions = WatchOptions(),
 ) ReadStream[FileEvent]!:
 	if interval := options.interval:
-		if options.max_events.is_some() or options.overflow.is_some(): return error(
+		if (options.max_events != null) or (options.overflow != null): return error(
 			invalid_input()
 		)
 		return ok(
@@ -1091,7 +1091,7 @@ export fn watch(
 				recursive,
 				options.max_entries,
 				options.max_events,
-				options.overflow.get_or("error"),
+				options.overflow or "error",
 			)?
 		)
 	)

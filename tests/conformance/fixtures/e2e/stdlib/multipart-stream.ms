@@ -143,7 +143,7 @@ test "padded multipart sections retain exact raw budget boundary":
 fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
 	var out = BytesBuilder()
 	out.append_bytes(data.slice(0, at).get_or("".to_bytes()))
-	out.append(value.to_uint8().get_or(0))
+	out.append(value.to_uint8() or 0)
 	out.append_bytes(data.slice(at + 1, data.length()).get_or("".to_bytes()))
 	return out.build()
 
@@ -223,7 +223,7 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 		else:
 			return fail(f"missing trailing part at chunk size {size}")
 
-		expect_equal((parts.next()?).is_none(), true)?
+		expect_equal(((parts.next()?) == null, true)?
 
 test "retrying an invalid fragmented multipart section retains the error":
 	body := "--XyZ\r\nnot-a-header\r\n\r\nvalue-value-value\r\n--XyZ".to_bytes()

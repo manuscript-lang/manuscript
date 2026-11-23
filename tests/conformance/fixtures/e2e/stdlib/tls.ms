@@ -294,9 +294,9 @@ fn count_until_eof(listener: Listener) Int:
 
 		chunk := recv(connection, 5.seconds())
 		if chunk.is_error(): return -2
-		if chunk.get().is_none(): break
+		if chunk.get() == null: break
 
-		total += chunk.get().get_or(Bytes([])).length()
+		total += (chunk.get() or Bytes([])).length()
 
 	void connection.close()
 	return total
@@ -332,7 +332,7 @@ fn starttls_server(listener: Listener, options: TlsOptions) Int:
 	var plain = listener.accept(3.seconds()).wait().get()
 	hello := recv(plain, 3.seconds())
 	if hello.is_error(): return 0
-	if hello.get().get_or(Bytes([])) != "STARTTLS".to_bytes(): return 0
+	if (hello.get() or Bytes([])) != "STARTTLS".to_bytes(): return 0
 	if send(plain, "OK").is_error(): return 0
 
 	upgraded := accept_tls(plain, options, 3.seconds())

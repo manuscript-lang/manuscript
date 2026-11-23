@@ -49,7 +49,7 @@ fn escaped(log: String) fn() Int:
 
 fn escaping(log: String) Void!:
 	status := escaped(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,")?
 	expect_equal(status(), 4)?
 	expect_equal(status(), 4)?
 
@@ -62,7 +62,7 @@ fn borrow(value: Marker) Void!:
 fn borrowed(log: String) Void!:
 	value := marker(5, log.clone())
 	borrow(value)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,4,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,")?
 	expect_equal(value.status(), 5)?
 
 test "nonmutating source default and generic method captures close their owners":
@@ -74,7 +74,7 @@ test "nonmutating source default and generic method captures close their owners"
 	generic(log.clone())?
 	escaping(log.clone())?
 	borrowed(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,4,5,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,5,")?
 
 fn shared_default(var value: Marker) Void!:
 	bump := value.bump
@@ -84,7 +84,7 @@ fn shared_default(var value: Marker) Void!:
 fn shared_owner(log: String) Void!:
 	var value = marker(7, log.clone())
 	shared_default(value)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "")?
 	expect_equal(value.status(), 10)?
 
 test "shared source default method captures do not close the borrowed receiver":
@@ -92,4 +92,4 @@ test "shared source default method captures do not close the borrowed receiver":
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	shared_owner(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "10,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "10,")?

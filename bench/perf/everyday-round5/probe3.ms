@@ -154,10 +154,7 @@ fn y_matmul() Int:
 
 		c.append(rc)
 
-	return (
-		c[17][33].truncate_to_int().get_or(0)
-		+ c[199][199].truncate_to_int().get_or(0)
-	)
+	return (c[17][33].truncate_to_int() or 0 + (c[199][199].truncate_to_int() or 0))
 
 fn y_sieve() Int:
 	n := 20000000
@@ -254,7 +251,7 @@ fn y_stats() Int:
 		)
 		t += sqrt(v)
 
-	return t.truncate_to_int().get_or(0)
+	return t.truncate_to_int() or 0
 
 fn run(name: String, f: fn() Int) Void:
 	t0 := monotonic().tick

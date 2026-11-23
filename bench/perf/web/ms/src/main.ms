@@ -134,5 +134,5 @@ fn main() Int:
 
 	var threads = 1
 	if args.length() == 3:
-		threads = args.get(2).parse_int().get_or(1)
+		threads = args.get(2).parse_int() or 1
 	return serve_here(args.get(0), args.get(1), max(threads, 1))

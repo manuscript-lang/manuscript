@@ -21,9 +21,9 @@ test "a generic parameter a path does not move is closed on that path":
 	write_file(log, "").wait()?
 
 	dropped := keep_or_drop(true, Marker(1, log.clone()))
-	expect_equal(dropped.is_none(), true)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,")?
+	expect_equal(dropped == null, true)?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,")?
 
 	kept := keep_or_drop(false, Marker(2, log.clone()))
-	expect_equal(kept.is_none(), false)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,")?
+	expect_equal(kept == null, false)?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,")?

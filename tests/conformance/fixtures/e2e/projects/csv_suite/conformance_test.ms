@@ -12,7 +12,7 @@ import (
 // must still fail, so the list only ever shrinks.
 
 fn read(tree: FileTree, path: String) String:
-	return tree.read(path, null).get_or("".to_bytes()).decode_utf8().get_or("")
+	return tree.read(path, null).get_or("".to_bytes()).decode_utf8() or ""
 
 // Whether the parser agrees with the suite on one case.
 fn passes(tree: FileTree, name: String) Bool:

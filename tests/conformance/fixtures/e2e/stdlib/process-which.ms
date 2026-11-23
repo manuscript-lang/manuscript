@@ -76,7 +76,7 @@ test "which preserves PATH order and rejects directories and nonexecutable files
 	mode_path := join([first, f"mode{suffix}"])
 	write_file(mode_path, "fixture", false).wait()?
 	chmod(mode_path, 384)?
-	expect_equal(which("mode").is_some(), windows)?
+	expect_equal(which("mode") != null, windows)?
 	chmod(mode_path, 493)?
 	expect_equal(which("mode"), mode_path)?
 

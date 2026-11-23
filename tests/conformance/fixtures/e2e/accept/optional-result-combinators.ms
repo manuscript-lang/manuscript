@@ -42,19 +42,19 @@ test "Optional get_or_else returns the payload and is lazy":
 	present: Int? := 0
 	missing: Int? := null
 	var counter = Counter(0)
-	expect_equal(present.get_or_else(unexpected_int), 0)?
-	expect_equal(missing.get_or_else(fn: tick(counter)), 7)?
+	expect_equal(present or unexpected_int(), 0)?
+	expect_equal(missing or tick(counter), 7)?
 	expect_equal(counter.calls, 1)?
 
 	flag: Bool? := false
-	expect_false(flag.get_or_else(fn: true))?
+	expect_false(flag or true)?
 
 test "Optional or_else keeps the wrapper and is lazy":
 	present: Int? := 0
 	missing: Int? := null
-	expect_equal(present.or_else(unexpected_optional), 0)?
-	expect_equal(missing.or_else(fn: 4), 4)?
-	expect_equal(missing.or_else(fn: null), null)?
+	expect_equal(present or unexpected_optional(), 0)?
+	expect_equal(missing or 4, 4)?
+	expect_equal(missing or null, null)?
 
 test "Result get_or_else returns the payload and receives the error":
 	success: Int!Error := ok(0)

@@ -45,7 +45,7 @@ bench "map.get_let" per 100000:
 
 	for k in keys:
 		found := m.get(k)
-		if found.is_some():
+		if found != null:
 			n += found.get().length()
 
 	n

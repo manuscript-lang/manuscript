@@ -66,8 +66,8 @@ export fn capture(
 		return Ran(
 			true,
 			out.exit_code,
-			out.stdout.decode_utf8().get_or(""),
-			out.stderr.decode_utf8().get_or(""),
+			out.stdout.decode_utf8() or "",
+			out.stderr.decode_utf8() or "",
 			out.max_resident_bytes,
 		)
 	return Ran(false, 125, "", f"cannot start {program}\n")
@@ -113,7 +113,7 @@ export fn file_sha256(path: String) String:
 
 // Reads a UTF-8 text file.
 export fn read_text(path: String) String:
-	return read_file(path).wait().get().decode_utf8().get_or("")
+	return read_file(path).wait().get().decode_utf8() or ""
 
 // Fails with `text`.
 export fn invalid[T](text: String) T!:
@@ -142,7 +142,7 @@ export fn grouped(value: Int) String:
 export fn fixed(value: Float, digits: Int) String:
 	text := value.to_fixed(digits)
 	parts := text.split(".")
-	whole := parts[0].parse_int().get_or(0)
+	whole := parts[0].parse_int() or 0
 	head := if text.starts_with("-") and whole == 0: "-0" else: grouped(whole)
 	if parts.length() == 1: return head
 
@@ -288,7 +288,7 @@ export fn platform() String:
 
 // All of standard input as text.
 export fn read_stdin() String:
-	return read_all(stdin(), null).get().decode_utf8().get_or("")
+	return read_all(stdin(), null).get().decode_utf8() or ""
 
 // Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
 export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:

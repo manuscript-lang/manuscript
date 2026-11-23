@@ -66,8 +66,8 @@ fn by_name(a: DirectoryEntry, b: DirectoryEntry) Int:
 	return a.name.compare(b.name)
 
 fn limited(move entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry]!:
-	if max_entries.is_some() and max_entries.get() < 0: return error(fs_invalid_input())
-	if max_entries.is_some() and entries.length() > max_entries.get(): return error(
+	if (max_entries != null) and max_entries.get() < 0: return error(fs_invalid_input())
+	if (max_entries != null) and entries.length() > max_entries.get(): return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -240,10 +240,10 @@ fn MemoryTree.read(path: String, max_bytes: Int?) Bytes!:
 	if self.directories.contains(inside): return error(fs_invalid_input())
 
 	found := self.files.get(inside)
-	if found.is_none(): return error(
+	if found == null: return error(
 		Error("filesystem: file or directory not found", kind: "ENOENT")
 	)
-	if max_bytes.is_some() and found.get().length() > max_bytes.get(): return error(
+	if (max_bytes != null) and found.get().length() > max_bytes.get(): return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -304,13 +304,13 @@ fn EmbeddedTree.read(path: String, max_bytes: Int?) Bytes!:
 	if self.directories.contains(inside): return error(fs_invalid_input())
 
 	found := self.indexes.get(inside)
-	if found.is_none(): return error(
+	if found == null: return error(
 		Error("filesystem: file or directory not found", kind: "ENOENT")
 	)
 
 	load := self.load
 	data := load(found.get())
-	if max_bytes.is_some() and data.length() > max_bytes.get(): return error(
+	if (max_bytes != null) and data.length() > max_bytes.get(): return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -388,7 +388,7 @@ export fn walk(
 		entry := WalkEntry(pending[top].path.clone(), pending[top].directory)
 		pending.remove(top)
 		found.append(WalkEntry(relative(entry.path, start), entry.directory))
-		if max_entries.is_some() and found.length() > max_entries.get(): return error(
+		if (max_entries != null) and found.length() > max_entries.get(): return error(
 			Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 		)
 

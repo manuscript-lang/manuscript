@@ -96,7 +96,7 @@ test "authentication failures use EAUTH":
 	failure := expect_error(
 		chacha20poly1305_open(key, nonce, sealed, "changed".to_bytes())
 	)?
-	expect_equal(failure.kind.clone().get_or(""), "EAUTH")?
+	expect_equal(failure.kind.clone() or "", "EAUTH")?
 
 test "chacha20 rejects data past the 32-bit block counter":
 	key := "01234567890123456789012345678901".to_bytes()

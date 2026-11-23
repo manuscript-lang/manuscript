@@ -36,7 +36,7 @@ fn result_then(move log: String) Void:
 	value: Int!Marker := error(Marker(6, log))
 	_kept := value.and_then(fn item: ok(item + 1))
 
-fn error_result(id: Int,move log: String) Int!Marker: error(Marker(id, log))
+fn error_result(id: Int, move log: String) Int!Marker: error(Marker(id, log))
 
 fn discarded_error(move log: String) Void:
 	_kept := error_result(7, log).to_optional()
@@ -67,12 +67,12 @@ test "preserved resource payloads transfer exactly once":
 	result_map(log.clone())
 	result_then(log.clone())
 	discarded_error(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,2,3,4,5,6,7,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,2,3,4,5,6,7,")?
 	transformed_success(log.clone())?
 	transformed_error(log.clone())?
 	transformed_then(log.clone())?
 	expect_equal(
-		read_file(log).wait().get().decode_utf8().get_or(""),
+		read_file(log).wait().get().decode_utf8() or "",
 		"1,2,3,4,5,6,7,8,9,10,11,12,13,",
 	)?
 
@@ -87,7 +87,7 @@ test "map takes a resource payload while reusable methods copy only retained dat
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	transform_once(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "20,21,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "20,21,")?
 
 	data: String!Int := ok("payload")
 	convert := fn: data.clone().to_optional()
@@ -102,7 +102,7 @@ test "empty and transformed branches do not manufacture retained payloads":
 
 	failed: Int!Int := error(3)
 	expect_equal(failed.map_error(fn cause: cause + 1).is_error(), true)?
-	expect_equal(failed.to_optional().is_none(), true)?
+	expect_equal(failed.to_optional() == null, true)?
 
 	success: Int!Int := ok(5)
 	expect_equal(success.map(fn item: item + 1).get(), 6)?
@@ -111,8 +111,8 @@ test "empty and transformed branches do not manufacture retained payloads":
 fn named_error(log: String) Void!:
 	value := error_result(31, log.clone())
 	absent := value.to_optional()
-	expect_equal(absent.is_none(), true)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "30,31,")?
+	expect_equal(absent == null, true)?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "30,31,")?
 
 test "discarded owned errors close, named ones too once to_optional moves them":
 	tmp := temporary("wrapper-errors-") | expect_ok?
@@ -120,10 +120,10 @@ test "discarded owned errors close, named ones too once to_optional moves them":
 	write_file(log, "").wait()?
 
 	absent := error_result(30, log.clone()).to_optional()
-	expect_equal(absent.is_none(), true)?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "30,")?
+	expect_equal(absent == null, true)?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "30,")?
 	named_error(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "30,31,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "30,31,")?
 
 fn specialized_optional[T](create: fn() Int, value: T?) T!Int:
 	return value.ok_or_else[Int](create)
@@ -142,7 +142,7 @@ test "specialized direct generic methods transfer instead of retaining reusable 
 	log := f"{tmp.path()}/log"
 	write_file(log, "").wait()?
 	specialized_transfers(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "61,60,")?
+	expect_equal(read_file(log).wait().get().decode_utf8() or "", "61,60,")?
 
 type Box:
 	items: List[Int]

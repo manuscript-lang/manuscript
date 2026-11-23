@@ -134,7 +134,7 @@ fn old_stem(module_path: String) String:
 	return path.replace("/", "-")
 
 fn last_part(path: String) String:
-	return path.split("/").last().get_or("").clone()
+	return (path.split("/").last() or "").clone()
 
 type Tree:
 	files: Map[String, String]
@@ -475,13 +475,13 @@ fn options_of(words: List[String]) Options!:
 	return ok(o)
 
 fn text_of(path: String) String!:
-	return ok(read_file(path).wait()?.decode_utf8().get_or("").clone())
+	return ok((read_file(path).wait()?.decode_utf8() or "").clone())
 
 fn generate(ms: String, o: Options) Void!:
 	ran := run(ms.clone(), ["doc"]).wait()?
 	if ran.exit_code != 0: return error(Error(f"{ms} doc failed"))
 
-	snapshot_text := ran.stdout.decode_utf8().get_or("").clone()
+	snapshot_text := (ran.stdout.decode_utf8() or "").clone()
 	snapshot := parse[Snapshot](snapshot_text.clone())?
 	modules := snapshot.modules.clone()
 	entries := inventory(modules.clone())

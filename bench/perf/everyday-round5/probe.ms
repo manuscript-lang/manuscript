@@ -203,7 +203,7 @@ fn g_stack() Int:
 		for i in 0..500000:
 			s.push(i)
 		for i in 0..500000:
-			t += s.pop().get_or(0)
+			t += s.pop() or 0
 
 	return t
 

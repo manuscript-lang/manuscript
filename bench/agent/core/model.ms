@@ -41,21 +41,15 @@ export type Challenge:
 	dir: String
 
 fn Challenge.spec() String: (
-	read_file(f"{self.dir}/spec.md")
-	.wait()
-	.get()
-	.decode_utf8()
-	.get_or("")
+	read_file(f"{self.dir}/spec.md").wait().get().decode_utf8()
+	or ""
 )
 
 // `which` is `examples` (visible to the agent) or `hidden`.
 fn Challenge.cases(which: String) List[Case]:
 	text := (
-		read_file(f"{self.dir}/{which}/cases.json")
-		.wait()
-		.get()
-		.decode_utf8()
-		.get_or("")
+		read_file(f"{self.dir}/{which}/cases.json").wait().get().decode_utf8()
+		or ""
 	)
 	return parse[List[Case]](text).get_or([])
 
@@ -83,19 +77,19 @@ export type Lang:
 
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String:
-	base := self.solution.split("/").last().get_or("")
+	base := self.solution.split("/").last() or ""
 	if at := base.last_index_of("."): return base.slice(at, base.length())
 
 	return ""
 
 // The file name of the reference solution, such as `main.ms.ref`.
-fn Lang.reference() String: f"{self.solution.split("/").last().get_or("")}.ref"
+fn Lang.reference() String: f"{(self.solution.split("/").last() or "")}.ref"
 
 fn text_of(file: String) String:
-	return read_file(file).wait().get().decode_utf8().get_or("")
+	return read_file(file).wait().get().decode_utf8() or ""
 
 fn field(doc: JsonValue, key: String) String:
-	if value := doc.get(key): return value.as_string().get_or("")
+	if value := doc.get(key): return value.as_string() or ""
 	return ""
 
 // Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty),
@@ -111,7 +105,7 @@ export fn load_challenges(ids: List[String]) List[Challenge]:
 		meta_text := read_file(f"{dir}/challenge.json").wait()
 		if not meta_text.is_ok(): continue
 
-		m := parse[Meta](meta_text.get().decode_utf8().get_or("")).get_or(
+		m := parse[Meta](meta_text.get().decode_utf8() or "").get_or(
 			Meta("", "", 0, 5, 0)
 		)
 		wanted := (
@@ -139,18 +133,18 @@ export fn load_languages(ids: List[String]) List[Lang]:
 	var out = List[Lang]()
 	var known = List[String]()
 
-	for entry in doc.as_map().get_or(Map[String, JsonValue]()).entries():
+	for entry in (doc.as_map() or Map[String, JsonValue]()).entries():
 		known.append(entry.key.clone())
 		if not ids.is_empty() and not ids.contains(entry.key): continue
 
 		d := entry.value
 		var context = List[String]()
 		if items := d.get("context"):
-			for item in items.as_list().get_or([]):
-				context.append(item.as_string().get_or(""))
+			for item in (items.as_list() or []):
+				context.append(item.as_string() or "")
 
 		var template = entry.key.clone()
-		if t := d.get("template"): template = t.as_string().get_or(entry.key)
+		if t := d.get("template"): template = t.as_string() or entry.key
 		out.append(
 			Lang(
 				entry.key.clone(),
@@ -180,12 +174,12 @@ export fn cost_from_tokens(
 	model: String,
 ) Float:
 	table := parse(text_of(f"{root()}/pricing.json")).get_or(JsonValue.Null)
-	var p = table.get("default").get_or(JsonValue.Null)
+	var p = table.get("default") or JsonValue.Null
 	if own := table.get(model): p = own.clone()
 
-	input := p.get("input").get_or(JsonValue.Null).as_float().get_or(0.0)
-	cached_input := p.get("cached_input").get_or(JsonValue.Null).as_float().get_or(0.0)
-	output := p.get("output").get_or(JsonValue.Null).as_float().get_or(0.0)
+	input := (p.get("input") or JsonValue.Null).as_float() or 0.0
+	cached_input := (p.get("cached_input") or JsonValue.Null).as_float() or 0.0
+	output := (p.get("output") or JsonValue.Null).as_float() or 0.0
 	return (
 		(
 			tokens_in.to_float() * input

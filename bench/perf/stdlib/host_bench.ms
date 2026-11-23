@@ -45,7 +45,7 @@ fn count_events(data: Bytes) Int:
 
 	while true:
 		if next := events.next():
-			if next.is_none(): break
+			if next == null: break
 
 			count += 1
 		else:

@@ -41,7 +41,7 @@ test "map literals and positional identifier arguments":
 	expect_equal(nested["b"]["c"], 1)?
 
 	optional: Map[String, Int?] := {"a": null, "b": 2}
-	expect_false(not optional["a"].is_none())?
+	expect_false(not (optional["a"] == null))?
 
 	key := "c"
 	value := 5
@@ -54,7 +54,7 @@ test "map literals and positional identifier arguments":
 
 	shared := {"x": values.clone()}
 	values.add("d", 6)
-	expect_false(shared["x"].get("d").is_some())?
+	expect_false(shared["x"].get("d") != null)?
 	expect_equal(values["d"], 6)?
 
 type Key:

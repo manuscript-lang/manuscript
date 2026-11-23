@@ -38,10 +38,8 @@ fn main() Void!:
 	env := environment()?
 
 	if directory := env.get("HTTP_TAIL_TLS"):
-		certificate := (read_file(f"{directory}/cert.pem").wait()?).decode_utf8().get_or(
-			""
-		)
-		key := (read_file(f"{directory}/key.pem").wait()?).decode_utf8().get_or("")
+		certificate := (read_file(f"{directory}/cert.pem").wait()?).decode_utf8() or ""
+		key := (read_file(f"{directory}/key.pem").wait()?).decode_utf8() or ""
 		options = HttpServerOptions(
 			tls: TlsOptions(
 				certificate_pem: certificate,

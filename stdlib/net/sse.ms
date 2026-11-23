@@ -68,8 +68,8 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 	chunk := value
 	total := chunk.length()
 	var start = 0
-	var lf = chunk.index_of_byte(10, 0).get_or(total)
-	var cr = chunk.index_of_byte(13, 0).get_or(total)
+	var lf = chunk.index_of_byte(10, 0) or total
+	var cr = chunk.index_of_byte(13, 0) or total
 
 	while start < total:
 		var end = lf
@@ -90,8 +90,8 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 				return error(failure)
 
 		start = end + 1
-		if lf < start: lf = chunk.index_of_byte(10, start).get_or(total)
-		if cr < start: cr = chunk.index_of_byte(13, start).get_or(total)
+		if lf < start: lf = chunk.index_of_byte(10, start) or total
+		if cr < start: cr = chunk.index_of_byte(13, start) or total
 
 	if start < total:
 		self.carriage = false
@@ -137,7 +137,7 @@ fn var Decoder.apply(line: String) Void:
 
 // Lines without a colon name a field with an empty value; other names are ignored.
 fn var Decoder.apply_other(line: String) Void:
-	if line.index_of(":").is_some(): return
+	if line.index_of(":") != null: return
 
 	if line == "data": self.data.append("")
 	else if line == "event": self.event_type = ""
@@ -155,7 +155,7 @@ fn var Decoder.reconnect(value: String) Void:
 	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return
 
 	milliseconds := value.parse_int()
-	if milliseconds.is_some(): self.retry_ms = milliseconds
+	if milliseconds != null: self.retry_ms = milliseconds
 
 /*
 Decodes a Server-Sent Events byte stream into events, in order.

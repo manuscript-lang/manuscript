@@ -37,7 +37,7 @@ fn leaking_tests(text: String) List[String]:
 	for line in text.split("\n"):
 		if line.starts_with("RUN "): current = line.slice(4, line.length())
 		else if line.starts_with("ms-rt live blocks at exit: "):
-			n := line.slice(27, line.length()).trim().parse_int().get_or(0)
+			n := line.slice(27, line.length()).trim().parse_int() or 0
 			if n != 0: leaks.append(f"{current}: {n}")
 
 	return leaks
@@ -52,7 +52,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
 	for f in files:
 		absolute := f"{root}/{f}"
-		source := read_file(absolute.clone()).wait().get().decode_utf8().get_or("")
+		source := read_file(absolute.clone()).wait().get().decode_utf8() or ""
 
 		if has_tests(source):
 			if out := run(
@@ -60,7 +60,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 				["test", absolute.clone()],
 				RunOptions(timeout: seconds(600)),
 			).wait():
-				found := leaking_tests(out.stderr.decode_utf8().get_or(""))
+				found := leaking_tests(out.stderr.decode_utf8() or "")
 				lines.append("swept")
 				if not found.is_empty(): lines.append(
 					f"leak: {absolute}\n  {found.join("\n  ")}"
@@ -73,7 +73,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 			["run", absolute.clone()],
 			RunOptions(timeout: seconds(60)),
 		).wait():
-			counts := live_blocks(out.stderr.decode_utf8().get_or(""))
+			counts := live_blocks(out.stderr.decode_utf8() or "")
 			if counts.is_empty(): continue
 
 			lines.append("swept")
@@ -98,9 +98,9 @@ fn main() Int:
 		]:
 			for f in glob(dir, GlobOptions(patterns: ["**/*.ms"])).get_or([]):
 				path := f"{dir}/{f.path}"
-				if read_file(path.clone()).wait().get().decode_utf8().get_or(
-					""
-				).contains("fn main"): files.append(path.clone())
+				if (read_file(path.clone()).wait().get().decode_utf8() or "").contains(
+					"fn main"
+				): files.append(path.clone())
 
 	if files.is_empty():
 		for f in glob(
@@ -108,7 +108,7 @@ fn main() Int:
 			GlobOptions(patterns: ["**/*.ms"]),
 		).get_or([]):
 			path := f"tests/conformance/fixtures/e2e/{f.path}"
-			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get_or("")): files.append(
+			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or ""): files.append(
 				path.clone()
 			)
 

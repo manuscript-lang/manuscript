@@ -69,7 +69,7 @@ test "verify returns the claims as a record or as a JSON document":
 	typed.iss | expect_equal("me")?
 
 	raw := (verify_token(token, secret) | expect_ok?)
-	raw.get("sub").clone().get_or(JsonValue.Null).as_string().get_or("") | expect_equal("42")?
+	((raw.get("sub").clone() or JsonValue.Null).as_string() or "") | expect_equal("42")?
 
 test "verify rejects a wrong key, a tampered body and a different algorithm":
 	secret := "secret".to_bytes()
@@ -176,7 +176,7 @@ test "verify enforces exp, nbf, iss and aud":
 	)
 
 	doc := (verify_token(stamp, secret, JwtCheck(at: 5)) | expect_ok?)
-	doc.get("exp").clone().get_or(JsonValue.Null).as_int().get_or(0) | expect_equal(1000)?
+	((doc.get("exp").clone() or JsonValue.Null).as_int() or 0) | expect_equal(1000)?
 
 type Timed:
 	nbf: Int
@@ -241,8 +241,7 @@ test "verify rejects registered claims of the wrong type":
 	wrong := Error("jwt: nbf must be a number", kind: "EBADMSG")
 	cases := [
 		"{\"nbf\":\"tomorrow\"}", "{\"nbf\":null}", "{\"exp\":\"never\"}",
-		"{\"exp\":[1]}", "{\"aud\":[123]}", "{\"aud\":[123,\"wanted\"]}",
-		"{\"aud\":7}"
+		"{\"exp\":[1]}", "{\"aud\":[123]}", "{\"aud\":[123,\"wanted\"]}", "{\"aud\":7}"
 	]
 
 	for text in cases:
@@ -318,7 +317,7 @@ test "verify accepts empty claim objects and nested values":
 	empty := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M"
 	nested := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuZXN0ZWQiOltdLCJhY3RpdmUiOnRydWV9.mgN1ikVmpILfLmGzXL3xy4bWgwTvpDt52bslkrtkIjM"
 	claims := (verify_token(empty, secret) | expect_ok?)
-	expect_true(claims.as_map().is_some())?
+	expect_true(claims.as_map() != null)?
 	claims.as_map().get().length() | expect_equal(0)?
 
 	rich := (verify_token(nested, secret) | expect_ok?)
@@ -384,10 +383,22 @@ test "sign returns InvalidKey for a key that does not fit":
 	result | expect_equal(error(Error("jwt: invalid key", kind: "EINVAL")))?
 
 test "sign names the claims when they cannot be encoded":
-	result := sign_token(JsonValue.ObjectValue({"n": JsonValue.NumberValue("not a number")}), "secret".to_bytes())
+	result := sign_token(
+		JsonValue.ObjectValue({"n": JsonValue.NumberValue("not a number")}),
+		"secret".to_bytes(),
+	)
 	if _ := result: return fail("accepted")
 
-	result | expect_equal(error(Error("jwt: claims cannot be encoded as JSON", kind: "EINVAL")))?
+	(
+		result | expect_equal(
+			error(
+				Error(
+					"jwt: claims cannot be encoded as JSON",
+					kind: "EINVAL",
+				)
+			)
+		)?
+	)
 
 // Independent HS256 signatures use key "secret" and payload {}. The comments
 // show the exact protected headers, including malformed extension requirements.
@@ -470,7 +481,7 @@ test "verify keeps unknown noncritical and default encoding headers":
 
 	for token in tokens:
 		claims := (verify_token(token, secret) | expect_ok?)
-		expect_true(claims.as_map().is_some())?
+		expect_true(claims.as_map() != null)?
 		claims.as_map().get().length() | expect_equal(0)?
 		(
 			(failure(verify_token(token, "other".to_bytes()))?)
@@ -532,7 +543,6 @@ fn expect_date_order(number: String, at: Int, order: Int) Void!:
 			(failure(verify_token(exp, secret, check))?)
 			| expect_equal(Error("jwt: token expired", kind: "EBADMSG"))?
 		)
-
 		void verify_token(nbf, secret, check)?
 	else:
 		void verify_token(exp, secret, check)?
@@ -590,6 +600,7 @@ test "numeric date leeway is exact across Int boundaries":
 	for number in ["9007199254740993", "9007199254740992.0000001"]:
 		exp := dated_token("exp", number)?
 		void verify_token(exp, secret, JwtCheck(at: 9007199254740993, leeway: 1))?
+
 		nbf := dated_token("nbf", number)?
 		void verify_token(nbf, secret, JwtCheck(at: 9007199254740992, leeway: 1))?
 
@@ -616,12 +627,14 @@ test "numeric date leeway is exact across Int boundaries":
 		secret,
 		JwtCheck(at: 9223372036854775807, leeway: -9223372036854775808),
 	)?
+
 	nbf_limit := dated_token("nbf", "-18446744073709551616")?
 	void verify_token(
 		nbf_limit,
 		secret,
 		JwtCheck(at: -9223372036854775808, leeway: -9223372036854775808),
 	)?
+
 	nbf_later := dated_token("nbf", "-18446744073709551615.9999999")?
 	(
 		(

@@ -87,7 +87,7 @@ fn encode_fields[F: Data](fields: F) String!:
 // child's text alone when either side is not an object. This runs once per child, never
 // per record.
 fn merge_context(child: String, parent: String?) String!:
-	base := parent.get_or("")
+	base := parent or ""
 	if base == "": return ok(child)
 
 	left := parse(base)
@@ -98,10 +98,10 @@ fn merge_context(child: String, parent: String?) String!:
 
 	members := left.get().as_map()
 	added := right.get().as_map()
-	if members.is_none() or added.is_none(): return ok(child)
+	if (members == null) or (added == null): return ok(child)
 
-	var merged = members.get_or(Map[String, JsonValue]()).clone()
-	for entry in added.get_or(Map[String, JsonValue]()).entries():
+	var merged = (members or Map[String, JsonValue]()).clone()
+	for entry in (added or Map[String, JsonValue]()).entries():
 		merged.add(entry.key, entry.value.clone())
 
 	text := stringify(JsonValue.ObjectValue(merged))

@@ -68,7 +68,7 @@ fn Zone.type_at(t: Int) ZoneAt:
 		stop += 1
 	return ZoneAt(
 		offset: be_i32(self.data, at),
-		abbreviation: self.data.decode_utf8_range(start, stop).get_or(""),
+		abbreviation: self.data.decode_utf8_range(start, stop) or "",
 	)
 
 // The footer rule's offset and abbreviation at `unix`.
@@ -246,12 +246,12 @@ fn var Scan.name() String:
 
 		finish := self.pos
 		if not self.eat(62): self.bad = true
-		return self.text.decode_utf8_range(start, finish).get_or("")
+		return self.text.decode_utf8_range(start, finish) or ""
 
 	while is_alpha(self.peek()):
 		self.pos += 1
 	if self.pos - start < 3: self.bad = true
-	return self.text.decode_utf8_range(start, self.pos).get_or("")
+	return self.text.decode_utf8_range(start, self.pos) or ""
 
 // `[+-]hh[:mm[:ss]]` in seconds, the sign as written.
 fn var Scan.clock() Int:
@@ -550,9 +550,10 @@ fn host_zone() Zone:
 
 	if spec.starts_with("windows:"):
 		iana := (
-			msstd_time_zone_data(f"windows/{spec.view(8, spec.length())}")
-			.decode_utf8()
-			.get_or("")
+			msstd_time_zone_data(
+				f"windows/{spec.view(8, spec.length())}"
+			).decode_utf8()
+			or ""
 		)
 		if zone := named(iana): return zone
 
