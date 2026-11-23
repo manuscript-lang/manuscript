@@ -70,3 +70,7 @@ if(WIN32)
 else()
   target_link_libraries(curl INTERFACE Threads::Threads)
 endif()
+if(APPLE)
+  # curl reads the system proxy settings (SCDynamicStoreCopyProxies) and releases CoreFoundation objects.
+  target_link_libraries(curl INTERFACE "-framework CoreFoundation" "-framework SystemConfiguration")
+endif()
