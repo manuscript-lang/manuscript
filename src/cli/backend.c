@@ -26,14 +26,24 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
 /* With `kept`, the fault tables are wanted: the table info is read before the functions are renamed, every
  * function is exported and every instruction carries its source place. */
 static bool emit_program(MirModule *module, const MirData *data, const MirGlue *glue, BackendProgram *kept,
-                         MsStrBuild *ir, MsStrBuild *why) {
+                         uint32_t wide_leaves, MsStrBuild *ir, MsStrBuild *why) {
   if (kept != NULL) {
     emit_table_info(&kept->arena, module, &kept->tables);
   }
   emit_name_symbols(module);
-  const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL};
+  const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
+                          .wide_leaves = wide_leaves};
   if (!emit_module(module, data, glue, &emit, ir, why)) {
     return false;
+  }
+  /* A size tier (`optnone`) sends the whole module through llc -O0, which gives every load its own stack slot: held
+   * values then cost frames instead of saving them, so the module is emitted again with registers. */
+  if (wide_leaves != 0 && ms_span_find(ms_strbuild_span(ir), ms_span_of_text(" optnone"), &(size_t){0})) {
+    ms_strbuild_clear(ir);
+    const EmitOptions plain = {.export_all = emit.export_all, .places = emit.places, .wide_leaves = 0};
+    if (!emit_module(module, data, glue, &plain, ir, why)) {
+      return false;
+    }
   }
   emit_entry_main(module, kept != NULL, ir);
   return true;
@@ -51,7 +61,7 @@ static void append_report_advice(MsStrBuild *why) {
 static bool compile_stages(MirModule *module, const BackendOptions *options, MirGlue *glue, MirData *data,
                            BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
   MsStrBuild detail = ms_strbuild_new();
-  bool ok = run_passes(module, options, glue, data, &detail) && emit_program(module, data, glue, kept, ir, &detail);
+  bool ok = run_passes(module, options, glue, data, &detail) && emit_program(module, data, glue, kept, options->wide_leaves, ir, &detail);
   if (!ok) {
     ms_strbuild_append_text(why, INTERNAL_PREFIX);
     ms_strbuild_append(why, ms_strbuild_span(&detail));

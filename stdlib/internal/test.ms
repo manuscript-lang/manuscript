@@ -28,8 +28,10 @@ export extern fn msrt_test_capture_fault(id: Int) move String
 // Appends `text` to the file at `path` (the test runner's results file), whole.
 export extern fn msrt_test_record(path: String, text: String) Void
 
-// Takes a bench's result through an opaque call, so the work that computed it is kept and not folded away.
+// Takes a bench's result through an opaque call, so the work that computed it is kept
+// and not folded away.
 export extern fn msrt_bench_keep(value: Int) Void
 
-// Returns `value` through an opaque call, so a bench's input is not a compile-time constant.
+// Returns `value` through an opaque call, so a bench's input is not a compile-time
+// constant.
 export extern fn msrt_bench_opaque(value: Int) Int

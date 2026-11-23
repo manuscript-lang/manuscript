@@ -517,6 +517,21 @@ static bool uw_owned_arg(const UwOwned *o, const MirFunc *caller, uint32_t ci, c
   return kp != MIR_NONE && o->used[ci] && mine[kp];
 }
 
+/* A slot a closure fills with a value it took out of one of its captures is covered by the closure object: its
+ * drop closes or drops the capture's bytes, so a callee the slot is lent to must not own it too. */
+static void uw_capture_slots(MsArena *tmp, const MirFunc *f, UwHash *entries) {
+  UwHash addrs = {0}, values = {0};
+  UW_INSTS(f, b, i, inst) {
+    if (inst->op == MOP_ClosureCapAddr && inst->res != MIR_NONE) {
+      (void)uh_put(tmp, &addrs, inst->res, 0);
+    } else if (inst->op == MOP_Take && inst->res != MIR_NONE && uh_has(&addrs, uw_arg(inst, 0))) {
+      (void)uh_put(tmp, &values, inst->res, 0);
+    } else if (inst->op == MOP_Put && inst->nargs > 1 && uh_has(&values, inst->args[1])) {
+      (void)uh_put(tmp, entries, inst->args[0], 0);
+    }
+  }
+}
+
 static bool uw_owned_caller(UwOwned *o, uint32_t ci) {
   const MirFunc *caller = &o->m->funcs.ptr[ci];
   if (caller->blocks.len == 0) {
@@ -536,6 +551,7 @@ static bool uw_owned_caller(UwOwned *o, uint32_t ci) {
       (void)uh_put(&tmp, &entries, refilled.key[i], 0);
     }
   }
+  uw_capture_slots(&tmp, caller, &entries);
   uint32_t *reached = MS_ARENA_NEW_ARRAY(&tmp, uint32_t, o->m->funcs.len + 1);
   bool *mine = MS_ARENA_NEW_ARRAY(&tmp, bool, caller->nparams + 1);
   bool changed = false;

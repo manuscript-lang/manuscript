@@ -113,36 +113,64 @@ static void emit_entry(EmitCx *cx) {
       continue;
     }
     MirValue value = cx->func->blocks.ptr[0].params.ptr[param].value;
+    if (emit_wide_held(cx, value)) {
+      continue; /* read from its address where used */
+    }
     char from[24];
     emit_register_name(from, sizeof from, "in", value);
     emit_leaves_at(cx, value, from, true);
   }
 }
 
+/* One block: its label, then its instructions. Each instruction is written first into a builder of its own, since the
+ * loads of the held values it reads come before it. */
 static bool emit_block(EmitCx *cx, uint32_t block, const uint32_t *last) {
   const MirBlockData *data = &cx->func->blocks.ptr[block];
+  MsStrBuild *module_out = cx->out;
   ms_strbuild_printf(cx->out, "b%u:\n", block);
+  emit_wide_start(cx, MIR_NONE);
   if (block == 0) {
     emit_entry(cx);
   } else {
     emit_phis(cx, block, last);
   }
+  MsStrBuild text = ms_strbuild_new();
+  MsStrBuild piece = ms_strbuild_new();
+  bool ok = true;
   uint32_t part = 0;
-  for (uint32_t index = 0; index < data->insts.len; index++) {
-    EmitSite site = {block, index, &part};
-    size_t from = ms_strbuild_length(cx->out);
-    if (!emit_instruction(cx, &data->insts.ptr[index], &site)) {
-      return false;
+  for (uint32_t index = 0; ok && index <= data->insts.len; index++) {
+    const bool last_one = index == data->insts.len;
+    const MirInst *inst = last_one ? NULL : &data->insts.ptr[index];
+    emit_wide_start(cx, last_one ? MIR_NONE : inst->res);
+    ms_strbuild_clear(&piece);
+    cx->out = &piece;
+    if (last_one) {
+      ok = emit_terminator(cx, &data->term, block);
+      if (ok) {
+        emit_edge_blocks(cx, &data->term, block);
+      }
+    } else {
+      EmitSite site = {block, index, &part};
+      ok = emit_instruction(cx, inst, &site);
+      if (ok) {
+        emit_wide_store(cx, inst->res);
+      }
     }
-    emit_debug_place(cx, from, data->insts.ptr[index].loc);
+    cx->out = &text;
+    const size_t from = ms_strbuild_length(&text);
+    if (ok) {
+      emit_wide_loads(cx);
+      ms_strbuild_append(&text, ms_strbuild_span(&piece));
+      emit_debug_place(cx, from, last_one ? data->term_loc : inst->loc);
+    }
   }
-  size_t from = ms_strbuild_length(cx->out);
-  if (!emit_terminator(cx, &data->term, block)) {
-    return false;
+  cx->out = module_out;
+  if (ok) {
+    ms_strbuild_append(module_out, ms_strbuild_span(&text));
   }
-  emit_edge_blocks(cx, &data->term, block);
-  emit_debug_place(cx, from, data->term_loc);
-  return true;
+  ms_strbuild_free(&text);
+  ms_strbuild_free(&piece);
+  return ok;
 }
 
 /* `define <result> @name(<hidden result pointer>, <leaves of each parameter>)`; returns after `nounwind`. */
@@ -252,7 +280,8 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   MsArena scratch = {0};
   cx->framed = mir_framed_closures(&scratch, cx->module, func);
   cx->borrowed = mir_framed_iface_borrows(&scratch, cx->module, func);
-  cx->pool = emit_slot_pool(&scratch, cx);
+  const bool *held = emit_wide_plan(cx, &scratch);
+  cx->pool = emit_slot_pool(&scratch, cx, held);
   uint32_t subprogram = cx->debug != NULL ? emit_debug_subprogram(cx, index) : 0;
   MsStrBuild *module_out = cx->out;
   MsStrBuild body = ms_strbuild_new();
@@ -274,5 +303,9 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->framed = NULL;
   cx->borrowed = NULL;
   cx->pool = NULL;
+  cx->cell_bytes = NULL;
+  cx->cell_escape = NULL;
+  cx->ncells = 0;
+  emit_wide_end(cx);
   return ok;
 }

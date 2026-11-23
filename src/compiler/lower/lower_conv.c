@@ -289,8 +289,9 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
     return iface;
   }
   const bool droppable = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
-  const bool shared = place ? (ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE || fn->returns_borrow) : !fn_fresh_owner(fn, value);
-  const bool views = shared && droppable; /* a literal or other borrowed value is viewed, never moved in */
+  const bool shared = place ? ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE : !fn_fresh_owner(fn, value);
+  /* A function that returns a borrow answers a view of the place it returns, even where the read is a move. */
+  const bool views = (shared && droppable) || (place && fn->returns_borrow); /* a literal or other borrowed value is viewed, never moved in */
   if (!views) {
     if (fn_fresh_owner(fn, value)) { /* the interface takes over what the scope owned */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
