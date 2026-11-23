@@ -321,7 +321,8 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   MirVar owner = 0;
-  const bool taken_at_last = taking && fn->facts->last != NULL && fn->facts->last[expr->id] != 0;
+  const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
+                                        expr->u.member.left->kind == MS_E_CALL);
   const bool moves = (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
@@ -820,7 +821,8 @@ static bool leaves_binding(const LowerFn *fn, const MsExpr *expr) {
 
 /* A field read at its record's last use, where the consumer takes ownership: it leaves the record. */
 static bool field_leaves(const LowerFn *fn, const MsExpr *expr) {
-  return expr->kind == MS_E_MEMBER && fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0;
+  return expr->kind == MS_E_MEMBER && ((fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0) ||
+                                       expr->u.member.left->kind == MS_E_CALL);
 }
 
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves

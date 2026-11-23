@@ -143,7 +143,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
   MsExpr *index_container = NULL;
   MsExpr *index_key = NULL;
-  bool borrow = !stmt->u.bind.is_mutable &&
+  /* A field of a call's result (`name := make().field`) leaves the temporary that dies with the statement. */
+  const bool of_temporary = kind == MS_E_MEMBER && stmt->u.bind.value->u.member.left->kind == MS_E_CALL;
+  bool borrow = !stmt->u.bind.is_mutable && !of_temporary &&
                 (kind == MS_E_NAME || kind == MS_E_MEMBER || ms_expr_index(stmt->u.bind.value, &index_container, &index_key)) &&
                 ms_facts_use(fn->facts, stmt->u.bind.value->id) != MS_USE_MOVE;
   const bool from_call = !stmt->u.bind.is_mutable && kind == MS_E_CALL;

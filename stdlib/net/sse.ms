@@ -103,7 +103,7 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 			self.failure = failure.clone()
 			return error(failure)
 
-	for event in events: out.append(event)
+	for event in events: out.append(event.clone())
 
 fn var Decoder.finish(var out: List[SseEvent]) Void!:
 	if failure := self.failure: return error(failure.clone())
@@ -148,7 +148,7 @@ fn var Decoder.apply_other(line: String) Void:
 fn var Decoder.identify(value: String) Void:
 	if value.to_bytes().contains("\u{0}".to_bytes()): return
 
-	self.last_id = value
+	self.last_id = value.clone()
 
 // Only ASCII digits form a retry time; overflow and signs are ignored.
 fn var Decoder.reconnect(value: String) Void:
