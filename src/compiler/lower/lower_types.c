@@ -150,7 +150,8 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     methods[index].params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);
     methods[index].nparams = (uint32_t)count;
     for (size_t p = 0; p < count; p++) {
-      methods[index].params[p] = lower_type(cx, &subst, params[p].ty);
+      /* A `var` parameter crosses as the address of the caller's slot, as in a function type and a body. */
+      methods[index].params[p] = (params[p].flags & MS_PARAM_VAR) != 0 && p < 32 ? MIR_PTR : lower_type(cx, &subst, params[p].ty);
       methods[index].owned |= (params[p].flags & MS_PARAM_MOVE) != 0 && p < 64 ? UINT64_C(1) << p : 0;
     }
     const MsMethod *declared = ms_check_operation_declaration(cx->program, ty, operation);

@@ -415,6 +415,12 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     }
     pass->depth++;
     ms_binding_list_free(&captures);
+    const MsTyParam *typed = ms_ty_params(&pass->program->types, ms_facts_type(pass->facts, expr->id));
+    for (uint32_t at = 0; at < expr->u.lambda.params.len; at++) {
+      if (typed != NULL && (typed[at].flags & MS_PARAM_MOVE) != 0) {
+        ms_binding_list_push(&pass->moving, expr->u.lambda.params.ptr[at]->id); /* the function type hands it over */
+      }
+    }
     return;
   }
   if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
@@ -471,8 +477,8 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
  * the record the binding puts back, so only names (not fields) of `var`s count. */
 static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var) {
   uint32_t binding = 0;
-  if (name->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->depth != 0 || pass->live == NULL ||
-      !ms_bind_of(pass->facts, name->id, &binding) || contains(&pass->borrowed, binding)) {
+  if (name->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->live == NULL ||
+      !ms_bind_of(pass->facts, name->id, &binding) || contains(&pass->outer, binding) || contains(&pass->borrowed, binding)) {
     return false;
   }
   const MsRef *ref = ms_facts_ref(pass->facts, name->id);

@@ -317,7 +317,7 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     return true;
   }
   if (fn_closing_param(fn, base, &slot, &var)) {
-    const MirTy ty = mir_b_ty(&fn->b, mir_b_use_var(&fn->b, var));
+    const MirTy ty = fn->b.vars.ptr[var].ty; /* the declared type: reading the variable would carry it through every loop */
     *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
     return true;
   }
@@ -363,7 +363,9 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
     }
   }
   if (!moved_out && mir_needs_drop(fn->cx->module, field_ty)) {
-    const MirValue old = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    /* The field's old value leaves the record before it is dropped or closed: `type.set` fills the hole. */
+    const MirValue view = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    const MirValue old = mir_b_emit(&fn->b, MOP_MoveOut, &view, 1, (MirImm){0}, field_ty);
     const MsTy checked = ms_facts_type(fn->facts, place->id);
     if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
       if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
@@ -388,10 +390,19 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
   if (at == MIR_NONE) {
     return false;
   }
-  const MirValue args[3] = {receiver, at, value};
+  const bool map = ms_ty_is(types, owner, MS_BUILTIN_Map);
+  /* A map stores its key as well: the key is the container's own copy, not the borrow the statement read. */
+  const MirValue stored_key = map && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, at)) ? fn_implicit_clone(fn, at, true) : at;
+  if (stored_key == MIR_NONE) {
+    return false;
+  }
+  const MirValue args[3] = {receiver, stored_key, value};
   MirValue out = MIR_NONE;
-  const MsSpan operation = ms_span_of_text(ms_ty_is(types, owner, MS_BUILTIN_Map) ? "add" : "set");
-  if (!fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out)) {
+  const MsSpan operation = ms_span_of_text(map ? "add" : "set");
+  fn->native_arg_moves = (map && stored_key != at ? 1u << 1 : 0u) | (1u << 2); /* the stored value (and key) are owned and held by no scope: the container takes them */
+  const bool done = fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out);
+  fn->native_arg_moves = 0;
+  if (!done) {
     return fn_fail(fn, "an element of this container cannot be assigned yet");
   }
   return !fn->failed;
@@ -650,6 +661,9 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
 /* What a function returns when it ends without a value: nothing, except the entry declared Void, which returns
  * the status 0. */
 MirValue fn_default_result(LowerFn *fn) {
+  if (mir_ty_data(fn->cx->module, fn->ret)->kind == MK_OPT) {
+    return mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret); /* an Optional function that returns nothing returns none */
+  }
   return fn->ret == MIR_INT && fn->b.func.ret == MIR_INT && fn->decl_void ? mir_b_iconst(&fn->b, 0) : MIR_NONE;
 }
 
@@ -752,10 +766,8 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
     return false;
   }
-  const bool writes_back = !probes && !owns && stmt->u.branch.is_mutable && stmt->u.branch.binding != NULL &&
-                           fn_iflet_writeback(fn, stmt, entry);
   bool ok = fn_stmts(fn, stmt->u.branch.body);
-  if (probes || writes_back) {
+  if (probes) {
     fn_probe_end(fn, !fn->terminated);
   }
   if (!fn->terminated) {
@@ -791,10 +803,13 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   const MirBlock done = mir_b_new_block(&fn->b);
   mir_b_br(&fn->b, head, NULL, 0);
   enter(fn, head);
+  /* What the condition makes (a constant list read, a copy) lives for one trip: it goes before the test branches. */
+  (void)fn_scope_begin(fn);
   const MirValue cond = fn_expr(fn, stmt->u.loop.cond, LW_BORROW);
   if (cond == MIR_NONE) {
     return false;
   }
+  fn_scope_end(fn);
   mir_b_br_if(&fn->b, cond, body, NULL, 0, done, NULL, 0);
   mir_b_seal_block(&fn->b, body);
   enter(fn, body);
