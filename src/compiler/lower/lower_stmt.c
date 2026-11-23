@@ -2,6 +2,7 @@
 #include "compiler/check/properties.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/own/closers.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/mir/mir_analysis.h"
 
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
@@ -51,6 +52,41 @@ static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
   const MsRef *ref = member ? ms_facts_ref(fn->facts, value->id) : NULL;
   const MsMethodEntry *entry = ref != NULL && ref->kind == MS_REF_METHOD ? fn_method_entry(fn->cx, ref->decl.module, ref->decl.node) : NULL;
   return entry != NULL ? &entry->source->func.params : NULL;
+}
+
+/* `b := m.get(k)` over a resource: an Optional that views the entry in place, `none` when the key is absent, so the
+ * binding borrows what the map keeps instead of copying it. MIR_NONE (nothing emitted) for any other call. */
+static MirValue map_get_view(LowerFn *fn, const MsExpr *call) {
+  if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP ||
+      !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
+    return MIR_NONE;
+  }
+  const MsExpr *receiver = call->u.call.callee->u.member.left;
+  const MirValue map = fn_expr(fn, receiver, LW_BORROW);
+  MirTy entry_ty = MIR_VOID;
+  const MirValue address = map == MIR_NONE ? MIR_NONE : fn_entry_address(fn, map, call->u.call.args.ptr[0].value, &entry_ty);
+  if (address == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTy opt_ty = fn_type(fn, ms_facts_type(fn->facts, call->id));
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, &address, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, opt_ty, MM_BORROW);
+  mir_b_br_if(&fn->b, absent, miss, NULL, 0, hit, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, hit);
+  const MirValue entry = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = entry_ty}, entry_ty);
+  const MirValue some = mir_b_emit(&fn->b, MOP_OptView, &entry, 1, (MirImm){0}, opt_ty);
+  mir_b_br(&fn->b, join, &some, 1);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, opt_ty);
+  mir_b_br(&fn->b, join, &none, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return result;
 }
 
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
@@ -118,7 +154,12 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   }
   fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
   fn->has_last_receiver = false;
-  MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  MirValue value = from_call ? map_get_view(fn, stmt->u.bind.value) : MIR_NONE;
+  if (value != MIR_NONE) {
+    borrow = true;
+  } else if (!fn->failed) {
+    value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  }
   fn->moving_field = NULL;
   const MsRef *bound_ref = value != MIR_NONE ? ms_facts_ref(fn->facts, pattern->id) : NULL;
   const MsParams *bound_params = bound_ref != NULL ? bound_value_params(fn, stmt->u.bind.value) : NULL;
