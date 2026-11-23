@@ -129,8 +129,7 @@ static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
   const bool member = value->kind == MS_E_MEMBER || (value->kind == MS_E_APPLY && value->u.apply.left->kind == MS_E_MEMBER);
   const MsRef *ref = member ? ms_facts_ref(fn->facts, value->id) : NULL;
   const MsMethodEntry *entry = ref != NULL && ref->kind == MS_REF_METHOD ? fn_method_entry(fn->cx, ref->decl.module, ref->decl.node) : NULL;
-  /* a generic method's defaults are written over its type variables, which a method value does not carry */
-  return entry != NULL && entry->variables.len == 0 ? &entry->source->func.params : NULL;
+  return entry != NULL ? &entry->source->func.params : NULL;
 }
 
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
@@ -201,6 +200,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     /* A lambda or method value keeps the defaults of its parameters; one that reads `self` reads the receiver it captured. */
     fn->bound_self[fn->nbound_self].local = bound_ref->local;
     fn->bound_self[fn->nbound_self].params = bound_params;
+    fn->bound_self[fn->nbound_self].vars = fn->has_last_receiver ? fn->last_vars : (LowerSubst){0};
     fn->bound_self[fn->nbound_self++].receiver = fn->has_last_receiver ? fn->last_receiver : MIR_NONE;
   }
   fn->has_last_receiver = false;
