@@ -3,7 +3,7 @@
 # libc stubs from. Each line is `<soname> <version> <symbol> <F|D> [<size>]`: the newest version of the
 # symbol that glibc `$version` exports, from the library that a program built against that release links.
 # Libraries are searched in the order below, so a symbol that libc and libpthread both export binds in
-# libc. Data symbols keep their size for copy relocations. The source is glibc's own ABI lists.
+# libc. Data symbols keep their size for copy relocations, and an alias of another data symbol (`aliases`) names it in a sixth field. The source is glibc's own ABI lists.
 set -eu
 version=2.28
 here=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -31,4 +31,5 @@ for arch in x86_64 aarch64; do
         done
     } > "$out.tmp"
     mv "$out.tmp" "$out"
+    sh "$here/apply-aliases.sh" "$here/aliases" "$out"
 done

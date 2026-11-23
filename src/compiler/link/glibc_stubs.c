@@ -54,7 +54,17 @@ static void append_definition(MsStrBuild *ir, const GlibcExport *entry) {
   if (entry->data) {
     ms_strbuild_append_text(ir, "@\"");
     ms_strbuild_append(ir, entry->name);
-    ms_strbuild_append_text(ir, "\" = global [");
+    ms_strbuild_append_text(ir, "\" = ");
+    /* An alias shares its primary's address, so a copy relocation of one name moves them all. */
+    if (entry->alias_of.len != 0) {
+      ms_strbuild_append_text(ir, "alias [");
+      ms_strbuild_append_u64(ir, entry->size == 0 ? 1 : entry->size);
+      ms_strbuild_append_text(ir, " x i8], ptr @\"");
+      ms_strbuild_append(ir, entry->alias_of);
+      ms_strbuild_append_text(ir, "\"\n");
+      return;
+    }
+    ms_strbuild_append_text(ir, "global [");
     ms_strbuild_append_u64(ir, entry->size == 0 ? 1 : entry->size);
     ms_strbuild_append_text(ir, " x i8] zeroinitializer, align 8\n");
     return;
