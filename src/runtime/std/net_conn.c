@@ -414,13 +414,11 @@ static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
   return count;
 }
 
+#ifndef _WIN32 /* only the edge read, which Windows does not have, asks */
 static bool would_block(void) {
-#ifdef _WIN32
-  return WSAGetLastError() == WSAEWOULDBLOCK;
-#else
   return errno == EAGAIN || errno == EWOULDBLOCK;
-#endif
 }
+#endif
 
 void ms_net_conn_wake_readers(MsNetCore *core) {
 #ifndef _WIN32
