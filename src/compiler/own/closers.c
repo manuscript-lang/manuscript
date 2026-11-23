@@ -83,8 +83,31 @@ static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t 
   ms_closer_list_push(&pass->facts->closers, closer);
 }
 
+/* The names a destructuring binds close like a plain binding of the same type, when the part is taken from the
+ * record or list the pattern reads; lowering decides which parts it takes. */
+static void add_pattern_closers(Closers *pass, const MsPattern *pattern) {
+  if (pattern->kind == MS_P_NAME) {
+    const MsRef *ref = ms_facts_ref(pass->facts, pattern->id);
+    if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      add_closer(pass, pattern->id, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, pattern->id));
+    }
+  } else if (pattern->kind == MS_P_LIST) {
+    for (uint32_t at = 0; at < pattern->u.list.len; at++) {
+      add_pattern_closers(pass, pattern->u.list.ptr[at]);
+    }
+  } else {
+    for (uint32_t at = 0; at < pattern->u.fields.len; at++) {
+      add_pattern_closers(pass, pattern->u.fields.ptr[at].pattern);
+    }
+  }
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME && !stmt->u.bind.is_mutable) {
+    add_pattern_closers(pass, stmt->u.bind.pattern);
+    return;
+  }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
       (!stmt->u.branch.is_mutable || stmt->u.branch.cond->kind == MS_E_CALL)) {
     /* `if r := value:` owns the payload it binds, and so does `if var r = call():`, whose result has no place to

@@ -654,7 +654,7 @@ void ms_http_response_close(MsHttpResponse *response) {
   const bool running = !response->done;
   ms_http_mutex_unlock(response->lock);
   if (running) {
-    ms_http_engine_cancel(response);
+    ms_http_engine_cancel_and_wait(response);
   }
   ms_http_response_unref(response);
 }

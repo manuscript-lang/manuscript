@@ -7,7 +7,8 @@ Verified (2026-11-23): a handler that computes holds its thread, and a connectio
 - A read that has not finished stays put; only finished reads move, so a take never loses bytes.
 - The request task is spawned `MS_SPAWN_FRONT`, so a request runs before the other ready connections are read. Without it the pair connection's request was already consumed when the long handler began, and nothing could be taken (the fixture failed one run in five).
 - `Placement.Spread` must place each promise on a different thread (`ms_workers_spread_pick`, with the task count each isolate reports). Before, all three workers ran on one thread and there was nothing to take it to.
-- Not taken yet: TLS and HTTP/2 connections (their session lives in the task or the secure transport); an empty take backs off two milliseconds.
+- A TLS connection is taken too: its session lives in the net core, which moves with the transport, and the claimed read already holds decrypted bytes; the new task skips the handshake (`conn->resumed`). Fixture `http-long-handler-does-not-hold-tls`.
+- Not taken yet: HTTP/2 connections (their reader, writer and stream tasks live on the held thread); an empty take backs off two milliseconds.
 
 Apply when: changing the HTTP connection loop, `ms_net_read`, the watcher hooks or spread placement.
 Evidence: [http_serve_steal.c](../../src/runtime/std/http_serve_steal.c), [net_conn.c](../../src/runtime/std/net_conn.c), [Rust-era design](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md).

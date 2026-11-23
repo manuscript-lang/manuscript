@@ -394,7 +394,7 @@ static void unlink_conn(MsServeConn *conn) {
 
 /* The handshake of a secure listener, bounded so a client that never answers does not hold the task. */
 static Next handshake(MsServeConn *conn, const MsServeShared *shared) {
-  if (shared->secure == NULL) {
+  if (shared->secure == NULL || conn->resumed) {
     return NEXT_AGAIN;
   }
   const int64_t limit = shared->limits.timeout_ns < 0 ? HANDSHAKE_NS : shared->limits.timeout_ns;
@@ -453,6 +453,7 @@ static void adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2, M
   conn->worker = worker;
   conn->io = *stream;
   conn->h2 = h2;
+  conn->resumed = first.len > 0;
   if (first.len > 0) {
     __builtin_memcpy(ms_list_extend(&conn->in, 1, first.len), first.ptr, first.len);
   }

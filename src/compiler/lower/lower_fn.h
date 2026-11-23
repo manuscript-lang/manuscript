@@ -250,6 +250,13 @@ void fn_init_closing(LowerFn *fn);
 uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
 /* A value an assignment replaced: the innermost scope closes it where it ends. */
 bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old);
+
+/* The scope no longer drops `value`: its new owner does. */
+void fn_disown(LowerFn *fn, MirValue value);
+
+/* Binds the names of `pattern` to the parts of `value` (lower_destructure.c). */
+bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned, const MirVar *owner,
+                   bool reassignable, bool part_owned, MsTy checked_record);
 bool fn_bind_closing_in(LowerFn *fn, uint32_t scope, uint32_t local, MsTy checked, MirValue value, bool is_var);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
