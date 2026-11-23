@@ -289,7 +289,7 @@ sum := total(numbers)
 
 ## Growing a tree
 
-A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node:`. A `T?` parameter defaults to `null`, so it comes after the required ones.
+A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node:`. A `T?` parameter has no default: write `= null` to make it omittable.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript

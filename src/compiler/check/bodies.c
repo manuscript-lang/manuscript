@@ -429,20 +429,25 @@ static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
   return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
 }
 
-/* Each required parameter or field that follows an optional one; a `T?` parameter or field defaults to null. */
-static void report_optionals_last(Body *body, MsParams params) {
+/* Each required parameter or field that follows an optional one. A field of type `T?` defaults to null, so it counts
+ * as optional; a parameter counts only with a written default, because a `T?` parameter may be given positionally
+ * (`ok_or(value, cause)`) and a call can still name the ones it leaves out. */
+static bool written_default(const MsParam *param, bool fields) {
+  return param->def != NULL && (fields || !param->implied_default);
+}
+
+static void report_optionals_last(Body *body, MsParams params, bool by_type) {
   uint32_t first = 0;
-  while (first < params.len && !body_param_omittable(body, params.ptr[first])) {
+  while (first < params.len && !written_default(params.ptr[first], by_type)) {
     first++;
   }
   if (first == params.len || !body_reports(body) || body->quiet) {
     return;
   }
   const MsParam *optional = params.ptr[first];
-  const bool by_type = optional->ty != NULL && optional->ty->kind == MS_TYPE_NAMED && optional->ty->args.len == 1 &&
-                       ms_span_is_text(ms_names_span(body->program->names, optional->ty->name), "Optional");
+  const bool typed = optional->implied_default;
   for (uint32_t index = first + 1; index < params.len; index++) {
-    if (body_param_omittable(body, params.ptr[index])) {
+    if (params.ptr[index]->def != NULL) {
       continue;
     }
     MsStrBuild text = ms_strbuild_new();
@@ -450,7 +455,7 @@ static void report_optionals_last(Body *body, MsParams params) {
     ms_strbuild_append(&text, ms_names_span(body->program->names, params.ptr[index]->name));
     ms_strbuild_append_text(&text, " follows optional ");
     ms_strbuild_append(&text, ms_names_span(body->program->names, optional->name));
-    ms_strbuild_append_text(&text, by_type ? " (a `T?` parameter or field defaults to null, so it counts as optional)" : "");
+    ms_strbuild_append_text(&text, typed ? " (a `T?` field defaults to null, so it counts as optional)" : "");
     ms_strbuild_append_text(&text, "; put optional parameters and fields last");
     ms_check_report(body->program, body->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
@@ -459,7 +464,7 @@ static void report_optionals_last(Body *body, MsParams params) {
 /* Declares the parameters in order and checks each default before its own parameter is in scope, so a default sees
  * the parameters before it and a function of the same name as its own parameter (`headers: H = headers()`). */
 static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t first) {
-  report_optionals_last(body, params);
+  report_optionals_last(body, params, false);
   const MsTyTable *types = &body->program->types;
   const size_t count = ms_ty_param_count(types, fn_ty);
   for (uint32_t index = 0; index < params.len; index++) {
@@ -622,7 +627,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     break;
   }
   case MS_D_TYPE:
-    report_optionals_last(body, decl->u.type.fields);
+    report_optionals_last(body, decl->u.type.fields, true);
     field_defaults(body, decl->u.type.fields, symbol_of(body->program, body->module, decl));
     break;
   case MS_D_ENUM:
