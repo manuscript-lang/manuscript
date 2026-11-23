@@ -111,6 +111,23 @@ static const MsParam *declared_default(const MsDecl *decl, const MsParams *metho
   return NULL;
 }
 
+/* The parameter of an interface operation, written in `module`, whose default expression is node `node`. */
+static const MsParam *interface_default(const Lower *cx, uint32_t module, MsNode node) {
+  for (MsSymbolId id = 1; id < cx->program->symbols.len; id++) {
+    const MsSymbol *symbol = &cx->program->symbols.ptr[id];
+    if (symbol->module != module || symbol->decl == NULL || symbol->decl->kind != MS_D_INTERFACE) {
+      continue;
+    }
+    for (uint32_t at = 0; at < symbol->decl->u.iface.methods.len; at++) {
+      const MsParam *found = declared_default(NULL, &symbol->decl->u.iface.methods.ptr[at]->func.params, 0, node);
+      if (found != NULL) {
+        return found;
+      }
+    }
+  }
+  return NULL;
+}
+
 /* Whether the default `expr`, written in module `module`, is the call `caller_site()` of `@std/test/test.ms`. */
 static bool is_caller_site(const LowerFn *fn, uint32_t module, const MsExpr *expr) {
   const Lower *cx = fn->cx;
@@ -183,6 +200,9 @@ static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallAr
   const MsDecl *callee_decl = callee_id != 0 ? fn->cx->program->symbols.ptr[callee_id].decl : NULL;
   const MsParam *param = declared_default(callee_decl, fn->default_params != NULL ? fn->default_params : method != NULL ? &method->source->func.params : NULL,
                                           call->callee.index, arg->node.node);
+  if (param == NULL) {
+    param = interface_default(fn->cx, arg->node.module, arg->node.node); /* the interface's own default */
+  }
   if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
     fn->facts = saved_facts;
     fn->file = saved_file;
