@@ -36,7 +36,7 @@ It adds `make conform` (the conformance corpus, which includes the former end-to
 
 ## Conformance
 
-`make conform` builds `ms` and replays the run, check, and test phases of `tests/conformance/` against it (`tools/conform-run.ms`), excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. `make conform` runs all four phases.
+`make conform` builds `ms` and replays the run, check, and test phases of `tests/conformance/` against it (`tools/conform-run.ms`), excluding fixtures tagged `aliasing`, and the parse phase for every fixture. Known differences are listed in `tests/conformance/expect-fail.txt`. `CONFORM_SHARD=i/n` splits the run. `make conform` runs all four phases and `tools/conform.ms lint`. `make conform-release` replays the run and test phases with the Release build (CI replays Debug); it runs nightly. `ms run tools/conform.ms -- <command>` has the other corpus commands (`list`, `stats`, `lint`, `retag`, `diff`, `fuzz-gen`, `fuzz`, `harvest`; see the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md)).
 
 See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
 

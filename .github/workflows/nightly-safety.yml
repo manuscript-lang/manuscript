@@ -2,6 +2,7 @@ name: Nightly safety
 
 # Slow safety checks that do not fit the pull request budget. They run on main only, once a night, and on demand.
 # A failure here is a real bug: file an issue and fix the cause, never skip the check.
+#   conform-release  replays the run and test phases with the Release build (CI replays Debug)
 #   cancel-sweep  cancels every e2e stdlib test at each park and fails when cancellation leaks heap blocks
 #   poison-check  runs the corpus under both backends with dead stack slots filled with a pattern
 #   ownership-fuzz  random move/borrow/closure programs, leak-counted, Debug vs Release
@@ -29,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        check: [cancel-sweep, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate]
+        check: [cancel-sweep, conform-release, poison-check, view-matrix, ownership-fuzz, stress-sched, bench-gate]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
