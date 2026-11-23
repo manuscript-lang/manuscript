@@ -11,9 +11,9 @@
 //   expected/   stdout, stderr, status, and tree/ (every file in the working directory
 //               after the run)
 // The working directory prints as <DIR>. MS names the ms under test (default
-// target/release/ms). Recording runs the ms named by MS, normally the frozen oracle.
-// Usage: ms run tools/command-fixtures.ms -- record|check [--only-missing] [name prefix
-// ...] Prints `commands: passed/total` for `check`.
+// .artifacts/build/ci/src/cli/ms). Recording runs the ms named by MS, normally the
+// frozen oracle. Usage: ms run tools/command-fixtures.ms -- record|check
+// [--only-missing] [name prefix ...] Prints `commands: passed/total` for `check`.
 import (
 	Bytes from "@std/bytes.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",

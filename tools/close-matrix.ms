@@ -9,7 +9,7 @@
 // `close` prints `closed-N` the first time only, and every made id must close as often
 // as it was made. A new construct that moves, drops or closes a value belongs in
 // constructs() below. MS names the ms that runs the programs (default
-// target/release/ms). Usage: ms run tools/close-matrix.ms [-- name-filter]
+// .artifacts/build/ci/src/cli/ms). Usage: ms run tools/close-matrix.ms [-- name-filter]
 import (
 	map_concurrent from "@std/concurrency/resilience.ms",
 	stdout from "@std/io/io.ms",

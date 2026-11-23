@@ -13,8 +13,8 @@
 // hits. A cancel that ends the process (status 143) prints no counts and is not swept,
 // but one killed by a signal is a hit. Arguments name the files to sweep (default:
 // tests/conformance/fixtures/e2e/stdlib). SWEEP_MAX_PARKS bounds the parks tried per
-// test (default 64); MS names the ms to run (default target/release/ms). Usage: ms run
-// tools/cancel-sweep.ms [-- files]
+// test (default 64); MS names the ms to run (default .artifacts/build/ci/src/cli/ms).
+// Usage: ms run tools/cancel-sweep.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",
 	stdout from "@std/io/io.ms",

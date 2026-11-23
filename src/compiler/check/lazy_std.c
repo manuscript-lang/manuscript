@@ -8,6 +8,7 @@
  * Lowering never runs on such a program (`program->lazy_std` is set only by the analysis commands). */
 #include "base/sort.h"
 #include "compiler/check/body.h"
+#include "compiler/check/dispatch_targets.h"
 #include "compiler/check/lazy_std.h"
 #include "compiler/syntax/walk.h"
 
@@ -59,13 +60,12 @@ typedef struct Reach {
 } Reach;
 
 /* Restores the deferred body of the function or method the reference names, and queues it. */
-static void reach_ref(Reach *reach, const MsRef *ref) {
-  if (ref == NULL || ref->kind == MS_REF_NONE || ref->decl.module < reach->program->user_modules ||
-      ref->decl.module >= reach->program->modules.len) {
+static void reach_node(Reach *reach, uint32_t module, uint32_t node) {
+  if (module < reach->program->user_modules || module >= reach->program->modules.len) {
     return;
   }
   const MsMethodKeyList *index = &reach->program->deferred_index;
-  const uint64_t key = node_key(ref->decl.module, ref->decl.node);
+  const uint64_t key = node_key(module, node);
   size_t low = 0;
   size_t high = index->len;
   while (low < high) {
@@ -90,6 +90,16 @@ static void reach_ref(Reach *reach, const MsRef *ref) {
   ms_deferred_body_list_push(reach->queue, *entry);
 }
 
+static void reach_ref(Reach *reach, const MsRef *ref) {
+  if (ref != NULL && ref->kind != MS_REF_NONE) {
+    reach_node(reach, ref->decl.module, ref->decl.node);
+  }
+}
+
+static void reach_target(void *ctx, uint32_t module, uint32_t node) {
+  reach_node(ctx, module, node);
+}
+
 static void reach_expr(void *ctx, const MsExpr *expr) {
   Reach *reach = ctx;
   const MsFacts *facts = &reach->program->modules.ptr[reach->module].facts;
@@ -101,7 +111,12 @@ static void reach_expr(void *ctx, const MsExpr *expr) {
     const MsCall *call = ms_facts_call(facts, expr->id);
     if (call != NULL) {
       reach_ref(reach, &call->callee);
+      ms_check_instantiation_targets(reach->program, call, reach_target, reach);
     }
+  }
+  const MsConversion *conversion = ms_facts_conversion(facts, expr->id);
+  if (conversion != NULL && conversion->kind == MS_CONV_INTERFACE_VIEW) {
+    ms_check_view_targets(reach->program, conversion, reach_target, reach);
   }
 }
 

@@ -9,7 +9,7 @@
 // dead slot into a wrong print on every build, not only on the build that happened to
 // reuse it. A combination the checker rejects is fine; anything it accepts must print
 // the expected text. A new view-returning operation belongs in OPERATIONS. MS names the
-// ms that runs the programs (default target/release/ms). Usage: ms run
+// ms that runs the programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
 // tools/view-matrix.ms [-- name-filter]
 import (
 	stdout from "@std/io/io.ms",

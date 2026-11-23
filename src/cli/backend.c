@@ -26,13 +26,13 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
 /* With `kept`, the fault tables are wanted: the table info is read before the functions are renamed, every
  * function is exported and every instruction carries its source place. */
 static bool emit_program(MirModule *module, const MirData *data, const MirGlue *glue, BackendProgram *kept,
-                         uint32_t wide_leaves, MsStrBuild *ir, MsStrBuild *why) {
+                         const BackendOptions *options, MsStrBuild *ir, MsStrBuild *why) {
   if (kept != NULL) {
     emit_table_info(&kept->arena, module, &kept->tables);
   }
   emit_name_symbols(module);
   const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
-                          .wide_leaves = wide_leaves};
+                          .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide};
   if (!emit_module(module, data, glue, &emit, ir, why)) {
     return false;
   }
@@ -52,7 +52,7 @@ static void append_report_advice(MsStrBuild *why) {
 static bool compile_stages(MirModule *module, const BackendOptions *options, MirGlue *glue, MirData *data,
                            BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
   MsStrBuild detail = ms_strbuild_new();
-  bool ok = run_passes(module, options, glue, data, &detail) && emit_program(module, data, glue, kept, options->wide_leaves, ir, &detail);
+  bool ok = run_passes(module, options, glue, data, &detail) && emit_program(module, data, glue, kept, options, ir, &detail);
   if (!ok) {
     ms_strbuild_append_text(why, INTERNAL_PREFIX);
     ms_strbuild_append(why, ms_strbuild_span(&detail));

@@ -1,7 +1,7 @@
 // The ownership-count gate must fail when its fixture fails, even when cleanup is
 // complete (`make count-check`, after the gate itself). It runs tools/count-check.ms on
 // the fixtures in tools/count-check-selftest. MS names the ms that runs the gate
-// (default target/release/ms). Usage: ms run tools/count-check-selftest.ms
+// (default .artifacts/build/ci/src/cli/ms). Usage: ms run tools/count-check-selftest.ms
 import (
 	stdout from "@std/io/io.ms",
 	working_directory from "@std/os/env.ms",

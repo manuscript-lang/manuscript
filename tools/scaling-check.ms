@@ -8,9 +8,9 @@
 // `ms check` and `ms emit`; the runtime half runs tests/scaling/containers.ms at 10k
 // and 100k and compares each phase's own timing. A ratio over the bound is measured
 // again (RETRIES times) and the lowest kept. An input that exceeds TIMEOUT seconds
-// fails. MS names the ms to measure (default target/release/ms); SCALING_BOUND and
-// SCALING_TIMEOUT override the limits. Usage: ms run tools/scaling-check.ms [--
-// shape...]
+// fails. MS names the ms to measure (default .artifacts/build/ci/src/cli/ms);
+// SCALING_BOUND and SCALING_TIMEOUT override the limits. Usage: ms run
+// tools/scaling-check.ms [-- shape...]
 import (
 	stdout from "@std/io/io.ms",
 	arguments, working_directory from "@std/os/env.ms",

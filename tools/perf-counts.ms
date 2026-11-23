@@ -5,8 +5,8 @@
 // runner. A count more than BOUND percent above the committed one fails (default 3); a
 // count that fell by more than BOUND percent is reported so the file can be refreshed.
 // `-- --update` rewrites the file with the measured counts. MS names the ms to measure
-// (default target/release/ms); PERF_COUNTS_BOUND overrides the bound. Needs valgrind on
-// the PATH. Usage: ms run tools/perf-counts.ms [-- --update]
+// (default .artifacts/build/ci/src/cli/ms); PERF_COUNTS_BOUND overrides the bound.
+// Needs valgrind on the PATH. Usage: ms run tools/perf-counts.ms [-- --update]
 import (
 	stdout from "@std/io/io.ms",
 	arguments, working_directory from "@std/os/env.ms",

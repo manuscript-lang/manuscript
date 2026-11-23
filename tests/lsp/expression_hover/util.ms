@@ -1,2 +1,2 @@
 export fn twice(value: Int) Int:
-    return value * 2
+	return value * 2

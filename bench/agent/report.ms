@@ -150,7 +150,7 @@ fn errors_table(runs: List[Run], lang: String) String:
 	all := mine.flat_map(
 		fn r: r.build_errors.map(
 			fn e: quoted.replace_all(
-				place.replace_all(e, "", null).get_or(e),
+				place.replace_all(e, "", null).get_or(e.clone()),
 				"'X'",
 				null,
 			).get_or(e)

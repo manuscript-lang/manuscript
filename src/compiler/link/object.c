@@ -34,13 +34,19 @@ static const char debug_pipeline[] = "-passes=function(sroa,early-cse,simplifycf
 /* `opt` over `input`, writing the bitcode to `bitcode`. */
 static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan bitcode, MsSpan log,
                      MsStrBuild *why) {
-  MsSpan argv[10];
+  MsSpan argv[14];
   size_t argc = 0;
   argv[argc++] = options->opt;
   if (!options->vectorize) {
     argv[argc++] = ms_span_of_text("-vectorize-loops=false");
     argv[argc++] = ms_span_of_text("-vectorize-slp=false");
   }
+  /* Dead-store elimination walks the memory defs of a block; on a function of thousands of statements, one block of
+   * tens of thousands of stores and calls, that was half of `opt`'s time (html: 6.9 s of 12.8 s) and removed one line
+   * of 239000 more than the limits do. */
+  argv[argc++] = ms_span_of_text("-dse-memoryssa-defs-per-block-limit=500");
+  argv[argc++] = ms_span_of_text("-dse-memoryssa-walklimit=20");
+  argv[argc++] = ms_span_of_text("-dse-memoryssa-scanlimit=50");
   if (options->verify) {
     argv[argc++] = ms_span_of_text("-verify-each");
   }
@@ -63,6 +69,11 @@ static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   if (options->debug && options->speed) {
     argv[argc++] = ms_span_of_text("-regalloc=basic");
     argv[argc++] = ms_span_of_text("-enable-misched=0");
+  }
+  /* A Debug build selects instructions with FastISel, which falls back to the DAG selector for what it cannot do. On the
+   * yaml and router fixtures that took `llc` from 7.6 s to 4.3 s and wrote a smaller object with the same frames. */
+  if (options->debug) {
+    argv[argc++] = ms_span_of_text("-fast-isel");
   }
   argv[argc++] = ms_span_of_text(filetype);
   argv[argc++] = ms_span_of_text("-relocation-model=pic");

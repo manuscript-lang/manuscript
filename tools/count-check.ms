@@ -8,8 +8,8 @@
 // output can satisfy the gate. The counts start when the program's `main` begins, so
 // the runtime's own start-up records are not in them. A change may not raise a count
 // without a stated reason; update the header in the same change. MS names the ms that
-// runs the programs (default target/release/ms). Usage: ms run tools/count-check.ms [--
-// files]
+// runs the programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
+// tools/count-check.ms [-- files]
 import (
 	stdout from "@std/io/io.ms",
 	arguments,
