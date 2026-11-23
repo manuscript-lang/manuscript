@@ -1,7 +1,7 @@
 HUGO ?= hugo
 VSCODE_CLI ?= code
 # The ms that runs the repository tools in tools/ (`make build` produces it).
-MS ?= $(CURDIR)/.artifacts/build/ci/src/driver/ms-c
+MS ?= $(CURDIR)/.artifacts/build/ci/src/cli/ms-c
 BENCHREPEATS ?= 5
 BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
