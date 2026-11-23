@@ -24,6 +24,7 @@ Perf benchmarks, profiling.
 - [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).
 - [Constant list tables iterated in a loop are built once](constant-list-tables-in-loops-are-built-once.md): `for d in [[1, 0], [-1, 0], ...]` inside a loop no longer allocates per pass (248 to 20 ms for 5M passes).
 - [A list built by one loop and read once by the next never exists](a-list-built-and-read-once-never-exists.md): the `fuse` MIR pass runs the reader's body at the builder's push (closures_20M 46 to 23 ms).
+- [Two arms that run the same operations are one block with selects](arms-that-run-the-same-operations-are-one-block-with-selects.md): the `twins` MIR pass turns data-dependent arms with checked stores into selects (merge sort 93 to 66 ms).
 - [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
 - [`for x in xs.filter(f)` walks `xs` in place](filtered-for-loops-walk-the-list-in-place.md): no filtered list or deep copies when the lambdas cannot fault (c13 392M to 350M instructions).
 - [`for e in list.entries()` walks the list in place](list-entries-loops-walk-the-list.md): no entry records when `e` is only read as `.index`/`.value` (28 to 3.2 ms on 2M elements).

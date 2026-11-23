@@ -408,7 +408,7 @@ static ArmScope arm_statements(Body *body, const MsArm *arm, MsTy scrutinee, Arm
 static MsTy arm_value(Body *body, const MsArm *arm, const ArmScope *kept, MsTy expected, const ArmState *state) {
   const size_t mark = body_scope_mark(body);
   for (size_t at = 0; at < kept->count; at++) {
-    ms_local_list_push(&body->locals, kept->locals[at]);
+    body_push_local(body, kept->locals[at]);
   }
   /* an arm whose value differs from the type the match has so far is a mismatch, reported at that value */
   const bool settled = expected != MS_TY_NONE && !state->discarded && !body_has_foreign_variable(body, expected);
