@@ -323,6 +323,10 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
       if (value == MIR_NONE) {
         return MIR_NONE;
       }
+      /* A view of a binding that keeps its value is shown as an optional, not owned by one. */
+      if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_fresh_owner(fn, value)) {
+        return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
+      }
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
     /* An optional wrapped around a value some binding still owns views it; a fresh value moves into the optional. */
