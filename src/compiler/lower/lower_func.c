@@ -100,6 +100,11 @@ static void instance_key(Lower *cx, const LowerTarget *target, const MsTy *args,
   ms_strbuild_append_u64(out, target->module);
   ms_strbuild_append_byte(out, '.');
   ms_strbuild_append_u64(out, target->node);
+  if (target->receiver != MS_TY_NONE) {
+    /* A method declared once on a union (`fn Ordered.min`) has an entry per member: each is an instance of its own. */
+    ms_strbuild_append_byte(out, '@');
+    ms_strbuild_append_u64(out, target->receiver);
+  }
   for (uint32_t index = 0; index < nargs; index++) {
     ms_strbuild_append_byte(out, index == 0 ? ':' : ',');
     ms_strbuild_append_u64(out, args[index]);
@@ -391,10 +396,10 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
     const MsNode site = receiver ? target->node : (declared == NULL ? 0 : declared->id);
     const MsCloser *closer = site == 0 ? NULL : ms_facts_closer(fn->facts, site);
     const MsTy checked = receiver ? target->receiver : (declared == NULL ? MS_TY_NONE : ms_facts_type(fn->facts, declared->id));
-    if (fn_closer_for(fn, closer, checked)) {
+    if (fn_param_closer_for(fn, closer, checked)) {
       /* A resource parameter is the body's to close: it lives in a slot its scope owns. */
       fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);
-      (void)fn_own_param(fn, index, checked, values[index], fn->param_vars[index]);
+      (void)fn_own_param(fn, index, checked, values[index], fn->param_vars[index], closer != NULL && (closer->flags & MS_CLOSER_FIELDS) != 0);
       continue;
     }
     fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, (MirMode)param_mode(params[index].flags));
@@ -506,10 +511,12 @@ void lower_release(Lower *cx) {
   ms_names_free(&cx->instance_keys);
   ms_names_free(&cx->vtable_keys);
   mir_idlist_free(&cx->vtables);
+  mir_idlist_free(&cx->hooked);
   lower_instance_list_free(&cx->instances);
   lower_lambda_list_free(&cx->lambdas);
   lower_default_list_free(&cx->defaults);
   lower_glue_list_free(&cx->glues);
+  lower_source_list_free(&cx->sources);
   mir_idlist_free(&cx->files);
 }
 

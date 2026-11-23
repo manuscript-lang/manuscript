@@ -4,7 +4,7 @@
 #include "base/alloc.h"
 #include "runtime/sys/sys.h"
 
-enum { RECORD_VERSION = 1, FLAG_TRUNCATED = 1, FLAG_HAS_SITE = 2 };
+enum { RECORD_VERSION = 2, FLAG_TRUNCATED = 1, FLAG_HAS_SITE = 2 };
 
 typedef struct Cursor {
   uint8_t *out;
@@ -64,8 +64,9 @@ size_t ms_fault_record_encode(const MsFaultRecord *record, uint8_t *out, size_t 
   const bool truncated = record->frames != NULL && record->frames->truncated;
   put_u8(&cursor, (uint8_t)((truncated ? FLAG_TRUNCATED : 0) | (record->has_site ? FLAG_HAS_SITE : 0)));
   put_string(&cursor, record->message);
-  put_u32(&cursor, wire_length(frame_total(record->frames, record->started)));
+  put_u32(&cursor, wire_length(frame_total(record->frames, NULL)));
   put_frames(&cursor, record->frames);
+  put_u32(&cursor, wire_length(frame_total(record->started, NULL)));
   put_frames(&cursor, record->started);
   put_u32(&cursor, wire_length(record->note_count));
   for (size_t i = 0; i < record->note_count; i++) {

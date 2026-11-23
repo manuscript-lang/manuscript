@@ -20,11 +20,11 @@ fn move Holder.close() Void!:
 	if self.breaks:
 		panic("close fault")
 
-fn hold_then_break(label: String) Void:
+fn hold_then_break(move label: String) Void:
 	holder := Holder(label, true)
 	void holder.breaks
 
-fn hold_fault_and_break(label: String) Void:
+fn hold_fault_and_break(move label: String) Void:
 	holder := Holder(label, true)
 	panic("body fault")
 
@@ -38,7 +38,7 @@ fn move Door.close() Void!:
 	void sleep(nanoseconds(1000)).wait()
 	if self.fail: panic("capture close panic")
 
-fn captured(label: String) fn() Int:
+fn captured(move label: String) fn() Int:
 	door := Door(label, true)
 	return fn: door.label.length()
 
@@ -46,15 +46,15 @@ type Envelope:
 	label: String
 	callback: fn() Int
 
-fn replace_old_capture(label: String) Void:
+fn replace_old_capture(move label: String) Void:
 	var items = [Envelope(label.clone(), captured(label.clone()))]
 	items.set(0, Envelope(label, fn: 4))
 
-fn drop_capture(label: String) Void:
+fn drop_capture(move label: String) Void:
 	action := captured(label)
 	void action()
 
-fn temporary_list(label: String) Void:
+fn temporary_list(move label: String) Void:
 	_old := [Door(label.clone(), false)].replace(0, Door(label, true))
 
 type Shelf:
@@ -64,7 +64,7 @@ enum Choice:
 	Held(door: Holder, note: String)
 	Empty
 
-fn shelf_close(label: String) Void:
+fn shelf_close(move label: String) Void:
 	shelf := Shelf(Holder(label, true))
 	void shelf.slot
 
@@ -72,7 +72,7 @@ fn choice_close(label: String) Void:
 	choice := Choice.Held(Holder(label.clone(), true), f"{label} and a note")
 	void choice
 
-fn optional_close_during_fault(label: String) Void:
+fn optional_close_during_fault(move label: String) Void:
 	var held: Holder? = Holder(label, true)
 	panic("body fault")
 

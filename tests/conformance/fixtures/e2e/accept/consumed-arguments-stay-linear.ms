@@ -9,11 +9,11 @@ type Node:
 	val: Int
 	kids: List[Node]
 
-fn wrap(n: Node, i: Int) Node:
+fn wrap(move n: Node, i: Int) Node:
 	return Node(i, [n])
 
 fn Node.up(i: Int) Node:
-	return Node(i, [self])
+	return Node(i, [self.clone()])
 
 test "a consumed function argument moves":
 	var nd = Node(0, List[Node]())

@@ -3,10 +3,70 @@
 
 #include "base/message.h"
 #include "base/utf8.h"
+#include "runtime/std/regex_engine.h"
 #include "compiler/syntax/diag_json.h"
+
+static MsRegex *compile_filter(MsArena *arena, const char *flag, MsSpan pattern, MsSpan *error) {
+  if (pattern.len == 0) {
+    return NULL;
+  }
+  MsStrBuild reason = ms_strbuild_new();
+  MsRegex *re = ms_re_compile(pattern, &reason);
+  if (re == NULL) {
+    /* `<reason> at column N`: the Rust CLI shows the pattern with a caret under the column. */
+    MsSpan text = ms_strbuild_span(&reason);
+    size_t column = 1;
+    size_t at = 0;
+    if (ms_span_find(text, ms_span_of_text(" at column "), &at)) {
+      for (size_t i = at + 11; i < text.len && text.ptr[i] >= '0' && text.ptr[i] <= '9'; i++) {
+        column = (i == at + 11 ? 0 : column * 10) + (size_t)(text.ptr[i] - '0');
+      }
+      text = ms_span_of(text.ptr, at);
+    }
+    MsStrBuild message = ms_strbuild_new();
+    ms_strbuild_append(&message, ms_message_format(arena, "invalid %s: regex parse error:\n    %S\n    ", flag, pattern));
+    for (size_t i = 1; i < column; i++) {
+      ms_strbuild_append_text(&message, " ");
+    }
+    ms_strbuild_append(&message, ms_message_format(arena, "^\nerror: %S; supply a valid regular expression", text));
+    *error = ms_arena_copy(arena, ms_strbuild_span(&message));
+    ms_strbuild_free(&message);
+  }
+  ms_strbuild_free(&reason);
+  return re;
+}
+
+bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilters *out, MsSpan *error) {
+  *out = (TestFilters){0};
+  out->matching = compile_filter(arena, "--match", options->matching, error);
+  if (options->matching.len > 0 && out->matching == NULL) {
+    return false;
+  }
+  out->exclude = compile_filter(arena, "--exclude", options->exclude, error);
+  if (options->exclude.len > 0 && out->exclude == NULL) {
+    test_filters_free(out);
+    return false;
+  }
+  return true;
+}
+
+void test_filters_free(TestFilters *filters) {
+  ms_re_free(filters->matching);
+  ms_re_free(filters->exclude);
+  *filters = (TestFilters){0};
+}
+
+static bool found_in(const MsRegex *re, MsSpan name) {
+  int64_t slots[2];
+  return ms_re_match(re, name, 0, slots) == MS_RE_MATCHED;
+}
 
 bool test_plan_select(MsArena *arena, const MsSpanList *names, const MsTestOptions *options, const char *noun,
                       TestPlan *plan, MsSpan *error) {
+  TestFilters filters = {0};
+  if (!test_filters_compile(arena, options, &filters, error)) {
+    return false;
+  }
   plan->selected = MS_ARENA_NEW_ARRAY(arena, size_t, names->len + 1);
   plan->count = 0;
   bool *found = MS_ARENA_NEW_ARRAY(arena, bool, options->names.len + 1);
@@ -19,10 +79,13 @@ bool test_plan_select(MsArena *arena, const MsSpanList *names, const MsTestOptio
       }
     }
     size_t at = 0;
-    if (exact && (options->filter.len == 0 || ms_span_find(names->ptr[i], options->filter, &at))) {
+    const bool kept = (filters.matching == NULL || found_in(filters.matching, names->ptr[i])) &&
+                      (filters.exclude == NULL || !found_in(filters.exclude, names->ptr[i]));
+    if (exact && kept && (options->filter.len == 0 || ms_span_find(names->ptr[i], options->filter, &at))) {
       plan->selected[plan->count++] = i;
     }
   }
+  test_filters_free(&filters);
   for (size_t n = 0; n < options->names.len; n++) {
     if (!found[n]) {
       *error = ms_message_format(arena, "unknown %s \"%S\"; use --list to find full module::name identities", noun,
@@ -94,6 +157,10 @@ static void write_case(MsStrBuild *out, size_t index, const DocumentCase *row) {
       ms_strbuild_printf(out, ",\n        \"line\": %lld,\n        \"column\": %lld,\n        \"offset\": 0\n      }",
                          (long long)line, (long long)column);
     }
+  }
+  if (row->fault.len > 0) {
+    ms_strbuild_append_text(out, ",\n      \"fault\": ");
+    ms_strbuild_append(out, row->fault);
   }
   if (row->stats != NULL) {
     ms_strbuild_append_text(out, ",\n      \"stats\": ");

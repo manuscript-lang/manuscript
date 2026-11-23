@@ -211,6 +211,7 @@ static void end_test(const TestRecords *r, size_t index, size_t file, const Ende
     outcome.kind = TEST_FAILED;
     outcome.message = e->why[file];
     outcome.output = r->faulted[file] ? r->fault_output[file] : (MsSpan){0};
+    outcome.fault = r->faulted[file] ? r->fault_object[file] : (MsSpan){0};
   }
   test_entry_list_push(results, (TestEntry){.index = index, .outcome = outcome});
 }

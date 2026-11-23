@@ -1,7 +1,7 @@
 /* compiler/lower/lower_call.c: calls to module functions (with their type arguments and default arguments)
  * and to runtime functions declared `extern fn`. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
@@ -114,7 +114,13 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
+  /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
+   * would let the default's `var _resource` stand for a caller local with the same number. */
+  const LowerFnLocals saved_locals = fn_locals_save(fn);
+  const uint32_t counted = fn->facts->local_counts != NULL ? fn->facts->local_counts[call->callee.decl.node] : 0;
+  fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  fn_locals_restore(fn, &saved_locals);
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;
@@ -128,12 +134,16 @@ bool fn_is_text_literal(const MsExpr *expr) {
 
 /* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
 /* Moves the value of `place` into a new slot and returns the slot's address. */
-MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier) {
   MirValue owned;
   if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
     return fn_try_var_slot(fn, place, out);
   }
   MirValue element;
+  if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
+    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    return element;
+  }
   if (fn_list_element_addr(fn, place, &element)) {
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE};
     return element;
@@ -145,12 +155,31 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MirValue record = MIR_NONE;
   if (is_place) {
     /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
-    if (!fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
+    /* Another field of a variable an earlier argument already took: it is read from that record, which goes back once. */
+    bool shared = false;
+    for (uint32_t at = 0; at < nearlier && !shared; at++) {
+      if (earlier[at].record != MIR_NONE && earlier[at].place != NULL && fn_same_field_root(fn, earlier[at].place, place) &&
+          fn_read_field(fn, place, earlier[at].record, &owned)) {
+        record = earlier[at].record;
+        shared = true;
+      }
+    }
+    if (!shared && !fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
       return MIR_NONE;
     }
   } else {
     /* A temporary: the callee changes it and what is left is dropped after the call. */
     owned = fn_expr(fn, place, LW_MOVE);
+    /* A resource: it waits in a closing slot the callee changes in place, and the slot closes what is left. */
+    const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, place->id), fn->subst.vars,
+                                     fn->subst.args, fn->subst.count);
+    if (owned != MIR_NONE && fn->temps && checked != MS_TY_NONE) {
+      const MirValue kept = fn_pending_own(fn, checked, owned);
+      if (kept != MIR_NONE) {
+        *out = (VarSlot){NULL, kept, mir_b_ty(&fn->b, owned), MIR_NONE, true, MIR_NONE, MIR_NONE};
+        return kept;
+      }
+    }
     if (owned != MIR_NONE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &owned, 1, (MirImm){0}, MIR_NONE);
     }
@@ -167,8 +196,26 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   return slot;
 }
 
+/* Stores slot `at`'s value into its place. A field's record carries the change on to the later fields of the same root. */
+static bool put_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at, MirValue value) {
+  if (slots[at].record == MIR_NONE) {
+    return fn_put_place(fn, slots[at].place, value);
+  }
+  const MirValue old = slots[at].record;
+  MirValue record = old;
+  if (!fn_put_field_chain(fn, slots[at].place, old, value, &record)) {
+    return false;
+  }
+  for (uint32_t later = at + 1; later < count; later++) {
+    if (slots[later].record == old) {
+      slots[later].record = record;
+    }
+  }
+  return true;
+}
+
 /* After the call: each slot's value goes back into the place it came from. */
-bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
+bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
     if (slots[at].in_place) {
       continue;
@@ -183,16 +230,14 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
         (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
         continue;
       }
-      if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, wrapped)
-                                         : fn_put_place(fn, slots[at].place, wrapped))) {
+      if (!put_back(fn, slots, count, at, wrapped)) {
         return false;
       }
     } else if (slots[at].place == NULL) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }
-    } else if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, updated)
-                                              : fn_put_place(fn, slots[at].place, updated))) {
+    } else if (!put_back(fn, slots, count, at, updated)) {
       return false;
     }
   }
@@ -226,11 +271,24 @@ static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, u
   return from.line != to.line ? from.line < to.line : from.column < to.column;
 }
 
+/* Whether the call builds a record or an alternative from its arguments. */
+static bool owning_constructor(const MsCall *call) {
+  return call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+}
+
+/* A runtime operation hands a fresh resource argument on only once it succeeds (a list's bad index faults first), so the
+ * argument stays in its closing slot across the call; `held` gets that slot. */
+static bool held_across(const MsCall *call, bool native) {
+  return native && (call->callee.kind == MS_REF_NATIVE || call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_FUNCTION);
+}
+
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
-                       uint32_t *nslots, bool receiver_var) {
+                       uint32_t *nslots, bool receiver_var, bool native, MirValue *held) {
   uint32_t order[LOWER_MAX_ARGS];
+  MirValue pending[LOWER_MAX_ARGS];
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
+    pending[at] = MIR_NONE;
   }
   for (uint32_t at = 0; at < call->arg_count; at++) {
     uint32_t place = at;
@@ -242,17 +300,20 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
   }
   /* A `var` argument is the variable itself, taken into its slot once every other argument has run: a call
    * among them that changes the variable is seen by the callee. */
-  for (uint32_t step = 0; step < 2 * call->arg_count; step++) {
+  for (uint32_t step = 0; step < 3 * call->arg_count; step++) {
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
-                         ((arg->flags & MS_PARAM_VAR) != 0 || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
-    if (by_slot != (step >= call->arg_count)) {
+                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
+    /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
+    const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
+    if (phase != step / call->arg_count) {
       continue;
     }
     if (by_slot) {
       const MsExpr *place = fn_written_arg(expr, arg->node.node);
-      out[index] = place != NULL ? fn_var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
+      out[index] = place != NULL ? fn_var_slot(fn, place, &slots[*nslots], slots, *nslots) : MIR_NONE;
+      (*nslots) += place != NULL ? 1 : 0;
     } else if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
@@ -280,6 +341,19 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
+      if (want == LW_MOVE && (owning_constructor(call) || (held_across(call, native) && index > 0)) && out[index] != MIR_NONE &&
+          written != NULL && written->kind == MS_E_CALL && (step + 1 < call->arg_count || held_across(call, native))) {
+        MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+                                   fn->subst.args, fn->subst.count);
+        const size_t params = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
+        if (params != 0 && index + params >= call->arg_count && fn_type(fn, checked) != mir_b_ty(&fn->b, out[index])) {
+          /* A value converted to the Optional the parameter takes closes as that Optional. */
+          checked = ms_ty_subst(&fn->cx->program->types,
+                                ms_ty_params(&fn->cx->program->types, call->callee_ty)[index + params - call->arg_count].ty,
+                                fn->subst.vars, fn->subst.args, fn->subst.count);
+        }
+        pending[index] = fn_pending_own(fn, checked, out[index]);
+      }
     } else if (arg->source == MS_ARG_DEFAULT) {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
@@ -298,6 +372,14 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     }
     if (out[index] == MIR_NONE) {
       return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);
+    }
+  }
+  for (uint32_t at = 0; at < call->arg_count; at++) {
+    if (pending[at] != MIR_NONE && held_across(call, native)) {
+      held[at] = pending[at];
+      out[at] = fn_emit(fn, MOP_Load, &pending[at], 1, (MirImm){.tag = MI_TY, .a = mir_b_ty(&fn->b, out[at])}, mir_b_ty(&fn->b, out[at]));
+    } else if (pending[at] != MIR_NONE) {
+      out[at] = fn_pending_take(fn, pending[at], mir_b_ty(&fn->b, out[at]));
     }
   }
   return true;
@@ -346,6 +428,18 @@ bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
     return false;
   }
   const MsMethodEntry *entry = fn_method_entry(cx, call->callee.decl.module, call->callee.decl.node);
+  if (entry != NULL && ms_ty_param_count(&cx->program->types, call->callee_ty) > 0) {
+    /* A method declared once on a type set has an entry per member: the one whose receiver is the call's. */
+    const MsTy receiver = ms_ty_subst(&cx->program->types, ms_ty_params(&cx->program->types, call->callee_ty)[0].ty,
+                                      fn->subst.vars, fn->subst.args, fn->subst.count);
+    for (size_t index = 0; index < cx->program->methods.len; index++) {
+      const MsMethodEntry *other = &cx->program->methods.ptr[index];
+      if (other->module == entry->module && other->source->id == entry->source->id && other->receiver == receiver) {
+        entry = other;
+        break;
+      }
+    }
+  }
   if (entry == NULL || entry->source->func.external) {
     return false;
   }
@@ -367,7 +461,13 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
   }
   const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
-  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name);
+  MsTy written[16] = {0};
+  const uint32_t nwritten = expr->u.call.args.len < 16 ? (uint32_t)expr->u.call.args.len : 16;
+  for (uint32_t at = 0; at < nwritten; at++) {
+    written[at] = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.call.args.ptr[at].value->id),
+                              fn->subst.vars, fn->subst.args, fn->subst.count);
+  }
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten);
   if (method != MIR_NONE) {
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
@@ -474,6 +574,10 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
     const MirImm blob = {.tag = MI_INT, .i = (int64_t)fn->cx->module->blobs.len - 1};
     const MirValue empty = mir_b_emit(&fn->b, MOP_BytesLit, NULL, 0, blob, MIR_BYTES);
     return fn_emit(fn, MOP_Clone, &empty, 1, (MirImm){0}, MIR_BYTES);
+  }
+  if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs == 1 && written != NULL && !empty_list) {
+    const MirValue values = fn_expr(fn, written, LW_BORROW);
+    return values == MIR_NONE ? MIR_NONE : fn_set_from_list(fn, values, ty);
   }
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
     return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
@@ -601,7 +705,7 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   return result;
 }
 
-static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
+static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   /* A callee that is a parameter, a local or a function-valued field, or any expression with no declaration behind it (`fs[i]()`), is a value. */
   const bool named = expr->u.call.callee->kind == MS_E_NAME;
@@ -621,7 +725,10 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
                       fn_callee_target(fn, call, &target);
   const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
-  if (!lower_args(fn, expr, call, args, source ? slots : NULL, &nslots, receiver_var)) {
+  /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
+  const bool dispatched = call->callee.kind == MS_REF_OPERATION && expr->u.call.callee->kind == MS_E_MEMBER &&
+                          mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, expr->u.call.callee->u.member.left->id)))->kind == MK_IFACE;
+  if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var, !source, held)) {
     return MIR_NONE;
   }
   const MirTy ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
@@ -630,7 +737,8 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     return construct(fn, expr, call, args, ret);
   }
   if (call->callee.kind == MS_REF_OPERATION) {
-    return call_operation(fn, expr, call, args, ret);
+    const MirValue answer = call_operation(fn, expr, call, args, ret);
+    return fn_var_slots_back(fn, slots, nslots) ? answer : MIR_NONE;
   }
   if (call->callee.kind == MS_REF_CASE) {
     return construct_case(fn, call, args, ret);
@@ -649,7 +757,9 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   uint32_t ntype_args = call->type_arg_count;
   if (target.variables != NULL) {
     /* A method's variables are the receiver form's and its own: bind them against the instantiated signature. */
-    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, call->callee_ty, target.variables,
+    /* The call's type is written in the caller's variables; the receiver below is already in its instance's types. */
+    const MsTy callee_ty = ms_ty_subst(&fn->cx->program->types, call->callee_ty, fn->subst.vars, fn->subst.args, fn->subst.count);
+    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, callee_ty, target.variables,
                                                   target.nvariables, bound)) {
       (void)fn_fail(fn, "a method's type arguments could not be found from its call");
       return MIR_NONE;
@@ -671,6 +781,20 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   const MirValue result = mir_b_call(&fn->b, func, args, call->arg_count);
   fn_own_result(fn, result);
   return fn_var_slots_back(fn, slots, nslots) ? result : MIR_NONE;
+}
+
+static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
+  MirValue held[LOWER_MAX_ARGS];
+  for (uint32_t at = 0; at < LOWER_MAX_ARGS; at++) {
+    held[at] = MIR_NONE;
+  }
+  const MirValue result = call_body(fn, expr, held);
+  for (uint32_t at = 0; at < LOWER_MAX_ARGS && !fn->terminated; at++) {
+    if (held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &held[at], 1, (MirImm){0}, MIR_NONE);
+    }
+  }
+  return result;
 }
 
 /* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */

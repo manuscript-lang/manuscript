@@ -64,7 +64,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 			stderr: Stdio.Inherit,
 		),
 	):
-		return status(child.wait().get_or(125))
+		return status(child.wait().clone().get_or(125))
 
 	note(f"cannot start {program}")
 	return 125

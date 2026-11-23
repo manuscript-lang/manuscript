@@ -15,7 +15,7 @@ fn move Marker.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 	if self.fail: return error(Error("cause close failed"))
 
-fn source(log: String) Marker?: Marker(1, log, false)
+fn source(move log: String) Marker?: Marker(1, log, false)
 
 fn discard(log: String) Void:
 	_kept := source(log.clone()).ok_or(Marker(2, log, true))
@@ -40,11 +40,11 @@ test "successful cause cleanup transfers the protected receiver exactly once":
 	normal_transfer(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "2,1,")?
 
-fn failing_callback(log: String) fn() Marker:
+fn failing_callback(move log: String) fn() Marker:
 	captured := Marker(2, log, true)
 	return fn: Marker(3, captured.log.clone(), false)
 
-fn discard_callback(log: String) Void:
+fn discard_callback(move log: String) Void:
 	_kept := source(log.clone()).ok_or_else(failing_callback(log))
 
 // Capture closer thunks discard returned close errors; this is a cleanup control, not a

@@ -1,6 +1,7 @@
 # Vendors and verifies the C libraries pinned in src/third_party/c-libs.lock (plan section 5).
 # Fetch:  cmake -DSOURCE_DIR=<repo> -DMODE=fetch  -P cmake/FetchCLibs.cmake   (needs git and network)
 # Verify: cmake -DSOURCE_DIR=<repo> -DMODE=verify -P cmake/FetchCLibs.cmake   (default; offline)
+# Fetch one library only: add -DONLY=<name>.
 # Each lock line is `<name> key=value ...` with version, tag, url, commit, paths (comma separated) and
 # sha256. The sha256 covers the vendored files: the SHA-256 of the sorted lines "<file sha256>  <path>"
 # of every file under the library directory, so any edit to vendored code fails the check.
@@ -15,9 +16,12 @@ endif()
 set(THIRD_PARTY "${SOURCE_DIR}/src/third_party")
 set(LOCK "${THIRD_PARTY}/c-libs.lock")
 
-# Sets <out> to the digest of every file under <dir>.
-function(ms_tree_digest dir out)
+# Sets <out> to the digest of every file under <dir> except the comma separated generated= files, which a
+# library's own configure step writes into its source tree.
+function(ms_tree_digest dir generated out)
   file(GLOB_RECURSE files RELATIVE "${dir}" "${dir}/*")
+  string(REPLACE "," ";" skip "${generated}")
+  list(REMOVE_ITEM files ${skip})
   list(SORT files)
   set(manifest "")
   foreach(file IN LISTS files)
@@ -86,7 +90,8 @@ function(ms_fetch_lib)
   file(REMOVE_RECURSE "${target}")
   string(REPLACE "," ";" paths "${lib_paths}")
   foreach(path IN LISTS paths)
-    file(COPY "${root}/${path}" DESTINATION "${target}")
+    get_filename_component(parent "${path}" DIRECTORY)
+    file(COPY "${root}/${path}" DESTINATION "${target}/${parent}")
   endforeach()
   file(REMOVE_RECURSE "${work}")
 endfunction()
@@ -98,11 +103,15 @@ foreach(line IN LISTS lines)
     continue()
   endif()
   unset(lib_tarball)
+  unset(lib_generated)
   ms_parse_lock_line("${line}" lib)
+  if(DEFINED ONLY AND NOT lib_name STREQUAL ONLY)
+    continue()
+  endif()
   if(MODE STREQUAL "fetch")
     ms_fetch_lib()
   endif()
-  ms_tree_digest("${THIRD_PARTY}/${lib_name}" actual)
+  ms_tree_digest("${THIRD_PARTY}/${lib_name}" "${lib_generated}" actual)
   if(NOT actual STREQUAL lib_sha256)
     message(SEND_ERROR "${lib_name}: vendored files hash to ${actual}, the lock has ${lib_sha256}")
     set(failed TRUE)

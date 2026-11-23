@@ -6,6 +6,8 @@
  * type is reported and not registered; the standard modules may extend built-in scalars and native types. */
 #include "compiler/check/methods.h"
 
+#include <string.h>
+
 #include "base/alloc.h"
 #include "compiler/check/resolve_internal.h"
 
@@ -99,8 +101,12 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
     const MsName id = ms_check_unique_id(program, "var");
     const MsTy variable = ms_ty_variable_new(&program->types, params.ptr[index]->name, id);
     ms_ty_list_push(&context->fresh, variable);
-    ms_name_list_push(&context->resolver.names, params.ptr[index]->name);
-    ms_ty_list_push(&context->resolver.types, variable);
+    /* The name is in scope only where the receiver writes it as a bare argument: `fn Box[Int].get() T` does not. */
+    const MsTypeRef *written = index < decl->u.impl.receiver->args.len ? decl->u.impl.receiver->args.ptr[index] : NULL;
+    if (written != NULL && written->name == params.ptr[index]->name && written->args.len == 0) {
+      ms_name_list_push(&context->resolver.names, params.ptr[index]->name);
+      ms_ty_list_push(&context->resolver.types, variable);
+    }
   }
   for (uint32_t index = 0; index < params.len; index++) {
     MsTyVariable *record = ms_ty_variable(&program->types, context->fresh.ptr[index]);
@@ -114,7 +120,9 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
     for (uint32_t written = 0; written < decl->u.impl.bounds.len; written++) {
       const MsTypeParam *param = decl->u.impl.bounds.ptr[written];
       for (uint32_t bound = 0; param->name == params.ptr[index]->name && bound < param->bounds.len; bound++) {
+        context->resolver.allow_type_set = true;
         ms_ty_list_push(&record->bounds, resolver_type(&context->resolver, param->bounds.ptr[bound]));
+        context->resolver.allow_type_set = false;
       }
     }
   }
@@ -228,7 +236,9 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
     const MsTypeParam *param = method->func.type_params.ptr[index];
     MsTyVariable *record = ms_ty_variable(&program->types, own->ptr[index]);
     for (uint32_t bound = 0; bound < param->bounds.len; bound++) {
+      context->resolver.allow_type_set = true;
       ms_ty_list_push(&record->bounds, resolver_type(&context->resolver, param->bounds.ptr[bound]));
+      context->resolver.allow_type_set = false;
     }
     if (param->def != NULL) {
       record->default_ty = resolver_type(&context->resolver, param->def);
@@ -277,7 +287,33 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
   }
 }
 
-/* `fn Ordered.min(...)` over a type set `type Ordered = Int | Float`: the method exists on every member. */
+/* The variable a type-set method's receiver is: `fn Ordered.min(...)` over `type Ordered = Int | Float | ...` reads
+ * as `fn[Self: Ordered] Self.min(...)`, so one body serves every member and lowering binds `Self` per call. It is
+ * bounded by the set and by each standard interface all the members implement. */
+static MsTy set_receiver(Context *context, MsTy set, const MsTyList *members) {
+  MsCheckProgram *program = context->program;
+  const MsTy self = ms_ty_variable_new(&program->types, ms_names_intern(program->names, ms_span_of_text("Self")),
+                                       ms_check_unique_id(program, "var"));
+  ms_ty_list_push(&context->fresh, self);
+  ms_ty_list_push(&context->open, self);
+  MsTyVariable *record = ms_ty_variable(&program->types, self);
+  ms_ty_list_push(&record->bounds, set);
+  static const char *const contracts[] = {"Comparable", "Equal", "Hashable", "Clonable", "Data"};
+  for (size_t index = 0; index < MS_COUNT_OF(contracts); index++) {
+    const MsSymbolId symbol =
+        resolver_prelude_symbol(program, ms_names_intern(program->names, ms_span_of_text(contracts[index])));
+    bool all = symbol != 0 && program->symbols.ptr[symbol].ty != MS_TY_NONE;
+    for (size_t at = 0; all && at < members->len; at++) {
+      all = ms_check_implements(program, members->ptr[at], program->symbols.ptr[symbol].ty);
+    }
+    if (all) {
+      ms_ty_list_push(&record->bounds, program->symbols.ptr[symbol].ty);
+    }
+  }
+  return self;
+}
+
+/* `fn Ordered.min(...)` over a type set: the method exists on every member. */
 static bool add_set_block(Context *context, const MsDecl *decl) {
   MsCheckProgram *program = context->program;
   const MsSymbolId *own = ms_scope_get(&program->modules.ptr[context->module].scope, decl->u.impl.receiver->name);
@@ -288,16 +324,26 @@ static bool add_set_block(Context *context, const MsDecl *decl) {
   if (alias->u.alias.type_params.len != 0 || alias->u.alias.targets.len < 2) {
     return false;
   }
+  ms_name_list_truncate(&context->resolver.names, 0);
+  ms_ty_list_truncate(&context->resolver.types, 0);
+  ms_ty_list_truncate(&context->fresh, 0);
+  ms_ty_list_truncate(&context->open, 0);
+  MsTyList members = {0};
   for (uint32_t index = 0; index < alias->u.alias.targets.len; index++) {
-    ms_name_list_truncate(&context->resolver.names, 0);
-    ms_ty_list_truncate(&context->resolver.types, 0);
-    ms_ty_list_truncate(&context->fresh, 0);
-    ms_ty_list_truncate(&context->open, 0);
+    context->resolver.allow_type_set = true;
     const MsTy member = resolver_type(&context->resolver, alias->u.alias.targets.ptr[index]);
+    context->resolver.allow_type_set = false;
     if (member != MS_TY_NONE) {
-      add_methods(context, decl, member);
+      ms_ty_list_push(&members, member);
     }
   }
+  context->resolver.allow_type_set = true;
+  const MsTy set = resolver_type(&context->resolver, decl->u.impl.receiver);
+  context->resolver.allow_type_set = false;
+  if (set != MS_TY_NONE && ms_ty_is(&program->types, set, MS_BUILTIN_TypeSet) && members.len != 0) {
+    add_methods(context, decl, set_receiver(context, set, &members));
+  }
+  ms_ty_list_free(&members);
   return true;
 }
 
@@ -317,6 +363,8 @@ static void add_block(Context *context, const MsDecl *decl) {
   ms_ty_list_truncate(&context->fresh, 0);
   ms_ty_list_truncate(&context->open, 0);
   MsTy receiver = MS_TY_NONE;
+  size_t receiver_start = 0;
+  size_t receiver_end = 0;
   if (primitive) {
     receiver = resolver_type(resolver, decl->u.impl.receiver);
   } else {
@@ -339,7 +387,9 @@ static void add_block(Context *context, const MsDecl *decl) {
     }
     ms_strbuild_free(&text);
     enter_form_variables(context, symbol, decl);
+    receiver_start = program->diagnostics.len;
     receiver = resolver_type(resolver, decl->u.impl.receiver);
+    receiver_end = program->diagnostics.len;
     for (size_t at = 0; at < context->fresh.len; at++) {
       if (mentions(&program->types, receiver, context->fresh.ptr[at])) {
         ms_ty_list_push(&context->open, context->fresh.ptr[at]);
@@ -350,6 +400,16 @@ static void add_block(Context *context, const MsDecl *decl) {
     return;
   }
   add_methods(context, decl, receiver);
+  /* The oracle reports the receiver's own diagnostics after those of the signatures. */
+  const size_t end = program->diagnostics.len;
+  if (receiver_end > receiver_start && end > receiver_end) {
+    MsCheckDiagList *list = &program->diagnostics;
+    const size_t count = receiver_end - receiver_start;
+    MsCheckDiag *held = MS_ARENA_NEW_ARRAY(&program->arena, MsCheckDiag, count);
+    memcpy(held, list->ptr + receiver_start, count * sizeof *held);
+    memmove(list->ptr + receiver_start, list->ptr + receiver_end, (end - receiver_end) * sizeof *held);
+    memcpy(list->ptr + (end - count), held, count * sizeof *held);
+  }
 }
 
 void ms_check_methods(MsCheckProgram *program, uint32_t module) {
@@ -410,7 +470,7 @@ bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsT
 }
 
 /* Whether each of `variables` holds an argument that meets the variable's bounds. */
-static bool bounds_satisfied(MsCheckProgram *program, const MsTy *variables, size_t count, const MsTy *bound) {
+bool ms_check_bounds_satisfied(MsCheckProgram *program, const MsTy *variables, size_t count, const MsTy *bound) {
   for (size_t index = 0; index < count; index++) {
     if (bound[index] == MS_TY_NONE) {
       return false;
@@ -470,7 +530,7 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     }
     const bool fits = ms_check_unify(&program->types, entry->receiver, receiver, entry->variables.ptr, entry->shared,
                                      bound.ptr) &&
-                      bounds_satisfied(program, entry->variables.ptr, entry->shared, bound.ptr);
+                      ms_check_bounds_satisfied(program, entry->variables.ptr, entry->shared, bound.ptr);
     if (fits) {
       ms_method_match_list_push(out, (MsMethodMatch){
           .ty = ms_ty_subst(&program->types, entry->ty, entry->variables.ptr, bound.ptr, entry->shared),

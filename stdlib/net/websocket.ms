@@ -51,7 +51,7 @@ fn var WebSocketSource.next() move WebSocketMessage?!:
 
 	if message := raw:
 		kind := if message.text: WebSocketKind.Text else: WebSocketKind.Binary
-		return ok(WebSocketMessage(message.data, kind))
+		return ok(WebSocketMessage(message.data.clone(), kind))
 
 	return ok(none)
 

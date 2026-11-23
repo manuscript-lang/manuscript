@@ -5,298 +5,10 @@
  * `closure.new`, and queues the body; the body is lowered after the maker (lower_lambda_bodies), with each capture
  * read once from the environment at its start. A lambda that changes a captured variable, or holds a lambda,
  * is not lowered yet. */
+#include "base/message.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/syntax/walk.h"
-
-/* ---- finding the captures ---- */
-
-typedef struct Scan {
-  const LowerFn *fn;
-  const MsExpr *root;
-  uint8_t *declared; /* by local id: bound inside the lambda */
-  uint32_t nvars;
-  const MsExpr **names;
-  const MsRef **refs; /* parallel to names: the ref a call fact holds for a callee, else NULL */
-  uint32_t nnames, cnames;
-  const MsExpr *inner[16]; /* lambdas written inside the root: their parameters are bound there */
-  uint32_t ninner;
-  const LowerCapture *captures;
-  uint32_t ncaptures;
-  bool *changed; /* parallel to captures: the lambda changes it */
-  bool nested;
-} Scan;
-
-static void declare(Scan *scan, uint32_t local) {
-  if (local < scan->nvars) {
-    scan->declared[local] = 1;
-  }
-}
-
-static void declare_pattern(Scan *scan, const MsPattern *pattern) {
-  const MsRef *ref = ms_facts_ref(scan->fn->facts, pattern->id);
-  if (pattern->kind == MS_P_NAME && ref != NULL && ref->kind == MS_REF_LOCAL) {
-    declare(scan, ref->local);
-  }
-  for (uint32_t index = 0; pattern->kind == MS_P_LIST && index < pattern->u.list.len; index++) {
-    declare_pattern(scan, pattern->u.list.ptr[index]);
-  }
-}
-
-/* Notes that the lambda changes the captured variable `ref` names (`name`, 0 for a statement's own target). */
-static void mark_changed(Scan *scan, const MsRef *ref, MsName name) {
-  for (uint32_t at = 0; ref != NULL && scan->changed != NULL && at < scan->ncaptures; at++) {
-    const LowerCapture *capture = &scan->captures[at];
-    scan->changed[at] = scan->changed[at] ||
-                        (capture->kind == ref->kind && capture->index == ref->local && (name == 0 || capture->name == name));
-  }
-}
-
-static void scan_stmt(void *ctx, const MsStmt *stmt) {
-  Scan *scan = ctx;
-  const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->id);
-  if (stmt->kind == MS_S_BIND) {
-    declare_pattern(scan, stmt->u.bind.pattern);
-  } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL) {
-    declare_pattern(scan, stmt->u.branch.binding);
-  } else if (stmt->kind == MS_S_FOR && ref != NULL) {
-    declare(scan, ref->local);
-  } else if (stmt->kind == MS_S_ASSIGN) {
-    const MsExpr *root = stmt->u.assign.target;
-    while (root != NULL && root->kind == MS_E_MEMBER) {
-      root = root->u.member.left;
-    }
-    MsExpr *left = NULL, *at = NULL;
-    while (root != NULL && ms_expr_index(root, &left, &at)) {
-      root = left;
-      while (root != NULL && root->kind == MS_E_MEMBER) {
-        root = root->u.member.left;
-      }
-    }
-    const MsRef *target = ms_facts_ref(scan->fn->facts, root != NULL && root->kind == MS_E_NAME ? root->id : stmt->id);
-    /* A target that is a bare name is kept in the statement's `name`, not as an expression. */
-    mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : (stmt->u.assign.member_target ? 0 : stmt->u.assign.name));
-  }
-}
-
-static void push_name(Scan *scan, const MsExpr *name, const MsRef *ref) {
-  if (ref == NULL) {
-    return;
-  }
-  if (scan->nnames == scan->cnames) {
-    scan->cnames = scan->cnames == 0 ? 16 : scan->cnames * 2;
-    const MsExpr **names = MS_ARENA_NEW_ARRAY(&scan->fn->cx->module->arena, const MsExpr *, scan->cnames);
-    const MsRef **refs = MS_ARENA_NEW_ARRAY(&scan->fn->cx->module->arena, const MsRef *, scan->cnames);
-    for (uint32_t index = 0; index < scan->nnames; index++) {
-      names[index] = scan->names[index];
-      refs[index] = scan->refs[index];
-    }
-    scan->names = names;
-    scan->refs = refs;
-  }
-  scan->names[scan->nnames] = name;
-  scan->refs[scan->nnames++] = ref;
-}
-
-static void scan_expr(void *ctx, const MsExpr *expr) {
-  Scan *scan = ctx;
-  if (expr->kind == MS_E_LAMBDA && expr != scan->root) {
-    if (scan->ninner == 16) {
-      scan->nested = true; /* too many to track */
-    } else {
-      scan->inner[scan->ninner++] = expr;
-    }
-  } else if (expr->kind == MS_E_MATCH) {
-    for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
-      const MsArm *arm = expr->u.match.arms.ptr[index];
-      const MsRef *ref = ms_facts_ref(scan->fn->facts, arm->id);
-      for (uint32_t at = 0; ref != NULL && at < arm->bindings.len; at++) {
-        declare(scan, ref->local + at);
-      }
-    }
-  } else if (expr->kind == MS_E_NAME) {
-    push_name(scan, expr, ms_facts_ref(scan->fn->facts, expr->id));
-  } else if (expr->kind == MS_E_CALL && expr->u.call.callee->kind == MS_E_NAME) {
-    const MsCall *call = fn_find_call(scan->fn->facts, expr->id);
-    if (call != NULL && (call->callee.kind == MS_REF_PARAM || call->callee.kind == MS_REF_LOCAL)) {
-      push_name(scan, expr->u.call.callee, &call->callee);
-    }
-  }
-}
-
-/* Whether the parameter reference `expr` names a parameter of the lambda itself. */
-static bool is_own_param(const LowerFn *fn, const MsExpr *lambda, const MsExpr *expr, const MsRef *ref) {
-  (void)fn;
-  const MsParams *params = (const MsParams *)&lambda->u.lambda.params;
-  return ref->local < params->len && params->ptr[ref->local]->name == expr->u.sym;
-}
-
-static bool have_capture(const LowerCapture *captures, uint32_t count, uint8_t kind, uint32_t index, MsName name) {
-  for (uint32_t at = 0; at < count; at++) {
-    if (captures[at].kind == kind && captures[at].index == index && captures[at].name == name) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out, uint32_t *count) {
-  Scan scan = {.fn = fn, .root = lambda, .nvars = fn->nvars};
-  scan.declared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
-  const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
-  for (size_t at = 0; at < lambda->u.lambda.params.len; at++) {
-    if (lambda->u.lambda.params.ptr[at]->def != NULL) { /* a default is evaluated in the closure */
-      ms_walk_expr(&visitor, lambda->u.lambda.params.ptr[at]->def);
-    }
-  }
-  ms_walk_block(&visitor, lambda->u.lambda.body);
-  if (scan.nested) {
-    return fn_fail(fn, "a lambda holds too many lambdas to lower");
-  }
-  LowerCapture *captures = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, LowerCapture, (size_t)scan.nnames + 1);
-  uint32_t used = 0;
-  for (uint32_t index = 0; index < scan.nnames; index++) {
-    const MsExpr *name = scan.names[index];
-    const MsRef *ref = scan.refs[index];
-    if ((ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL)) {
-      continue;
-    }
-    bool bound = ref->kind == MS_REF_PARAM ? is_own_param(fn, lambda, name, ref)
-                                            : (ref->local < fn->nvars && scan.declared[ref->local] != 0);
-    for (uint32_t at = 0; ref->kind == MS_REF_PARAM && !bound && at < scan.ninner; at++) {
-      bound = is_own_param(fn, scan.inner[at], name, ref);
-    }
-    if (bound) {
-      continue;
-    }
-    if (!have_capture(captures, used, (uint8_t)ref->kind, ref->local, name->u.sym)) {
-      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, name->u.sym, name, MIR_VOID, false, MIR_VOID};
-    }
-  }
-  *out = captures;
-  *count = used;
-  return true;
-}
-
-/* A call that hands a captured variable (or a part of it) on as a `var` argument changes it. */
-static void scan_var_args(void *ctx, const MsExpr *expr) {
-  Scan *scan = ctx;
-  if (expr->kind != MS_E_CALL) {
-    return;
-  }
-  const MsCall *call = fn_find_call(scan->fn->facts, expr->id);
-  for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
-    if ((call->args[index].flags & MS_PARAM_VAR) == 0 || call->args[index].source != MS_ARG_WRITTEN) {
-      continue;
-    }
-    const MsExpr *root = fn_written_arg(expr, call->args[index].node.node);
-    for (;;) {
-      MsExpr *left = NULL, *at = NULL;
-      if (root != NULL && root->kind == MS_E_MEMBER) {
-        root = root->u.member.left;
-      } else if (root != NULL && root->kind == MS_E_UNARY && root->op == MS_U_TRY) {
-        root = root->u.bin.left; /* `c?.bump()` changes the optional `c` holds */
-      } else if (root != NULL && ms_expr_index(root, &left, &at)) {
-        root = left;
-      } else {
-        break;
-      }
-    }
-    mark_changed(scan, root != NULL && root->kind == MS_E_NAME ? ms_facts_ref(scan->fn->facts, root->id) : NULL,
-                 root != NULL && root->kind == MS_E_NAME ? root->u.sym : 0);
-  }
-}
-
-/* Which of the captures the lambda changes (assigns, or hands on as a `var` argument): it shares their storage. */
-static bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCapture *captures, uint32_t count, bool *changed) {
-  Scan scan = {.fn = fn, .root = lambda, .nvars = fn->nvars};
-  scan.declared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
-  scan.captures = captures;
-  scan.ncaptures = count;
-  scan.changed = changed;
-  const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_var_args};
-  for (size_t at = 0; at < lambda->u.lambda.params.len; at++) {
-    if (lambda->u.lambda.params.ptr[at]->def != NULL) {
-      ms_walk_expr(&visitor, lambda->u.lambda.params.ptr[at]->def);
-    }
-  }
-  ms_walk_block(&visitor, lambda->u.lambda.body);
-  bool any = false;
-  for (uint32_t at = 0; at < count; at++) {
-    any = any || changed[at];
-  }
-  return any;
-}
-
-typedef struct SharedScan {
-  LowerFn *fn;
-  const MsExpr *callee; /* the callee of the call visited last: a method named there is called, not a value */
-  const MsExpr *applied; /* the type application visited last: it records the type of its member operand */
-} SharedScan;
-
-/* `local.method` used as a value where the method changes its receiver: the closure shares the local's slot. */
-static void find_shared_method(SharedScan *scan, const MsExpr *expr) {
-  LowerFn *fn = scan->fn;
-  const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
-  const MsExpr *left = expr->u.member.left;
-  const MsRef *place = left->kind == MS_E_NAME ? ms_facts_ref(fn->facts, left->id) : NULL;
-  if (ref == NULL || (ref->kind != MS_REF_METHOD && ref->kind != MS_REF_NATIVE) || place == NULL ||
-      place->kind != MS_REF_LOCAL || place->local >= fn->nvars) {
-    return;
-  }
-  const MsCall call = {.callee = *ref};
-  LowerTarget target;
-  bool changes = false;
-  if (ref->kind == MS_REF_METHOD && fn_callee_target(fn, &call, &target)) {
-    changes = (target.receiver_flags & MS_PARAM_VAR) != 0;
-  } else {
-    const MsExpr *typed = scan->applied != NULL && scan->applied->u.apply.left == expr ? scan->applied : expr;
-    const MirTy fn_ty = fn_type(fn, ms_facts_type(fn->facts, typed->id));
-    const MirTyData *data = mir_ty_data(fn->cx->module, fn_ty);
-    const MsTy owner = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, left->id), fn->subst.vars, fn->subst.args,
-                                   fn->subst.count);
-    changes = data->kind == MK_FN &&
-              fn_native_changes_receiver(fn, owner, ms_names_span(fn->cx->program->names, expr->u.member.name), data->elem);
-  }
-  if (changes) {
-    fn->shared[place->local] = LOWER_SHARED;
-  }
-}
-
-static void find_shared_expr(void *ctx, const MsExpr *expr) {
-  SharedScan *scan = ctx;
-  LowerFn *fn = scan->fn;
-  if (expr->kind == MS_E_CALL) {
-    scan->callee = expr->u.call.callee;
-  } else if (expr->kind == MS_E_APPLY && expr->u.apply.types.len != 0) {
-    scan->applied = expr;
-  } else if (expr->kind == MS_E_MEMBER && expr != scan->callee) {
-    find_shared_method(scan, expr);
-  }
-  LowerCapture *captures = NULL;
-  uint32_t count = 0;
-  if (expr->kind != MS_E_LAMBDA || fn->failed || !find_captures(fn, expr, &captures, &count) || count == 0) {
-    return;
-  }
-  bool *changed = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)count + 1);
-  if (!capture_changes(fn, expr, captures, count, changed)) {
-    return;
-  }
-  for (uint32_t at = 0; at < count; at++) {
-    if (changed[at] && captures[at].kind == MS_REF_LOCAL && captures[at].index < fn->nvars) {
-      fn->shared[captures[at].index] = LOWER_SHARED;
-    } else if (changed[at] && captures[at].kind == MS_REF_PARAM && captures[at].index < 32) {
-      fn->shared_params |= 1u << captures[at].index;
-    }
-  }
-}
-
-void fn_find_shared(LowerFn *fn, MsStmts body) {
-  fn->shared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
-  SharedScan scan = {fn, NULL, NULL};
-  const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr};
-  ms_walk_block(&visitor, body);
-}
 
 /* ---- making the closure ---- */
 
@@ -328,7 +40,7 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
   if (capture->kind == MS_REF_LOCAL) {
     /* A binding the maker's scope owns; a loop element or pattern binding is a view, a `var` re-owns. */
-    return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] != 0 &&
+    return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] == 1 &&
            (fn->closing == NULL || !fn->closing_var[capture->index]);
   }
   return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&
@@ -350,9 +62,9 @@ static bool fn_capture_slot_owned(const LowerFn *fn, const LowerCapture *capture
 
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
 static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed,
-                           bool escapes, bool *borrows) {
+                           bool escapes, bool *borrows, MirCaptureCloser *closers, uint32_t *nclosers) {
   for (uint32_t index = 0; index < count; index++) {
-    if (changed[index]) {
+    if (changed[index] && !escapes) {
       /* A variable the lambda changes stays in the maker's slot, which the closure borrows. */
       const uint32_t at = captures[index].kind == MS_REF_LOCAL ? captures[index].index : fn->nvars + captures[index].index;
       const bool in_range = captures[index].kind == MS_REF_LOCAL ? captures[index].index < fn->nvars
@@ -373,6 +85,11 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       return false;
     }
     captures[index].ty = mir_b_ty(&fn->b, value);
+    if (changed[index]) { /* an escaping closure keeps a variable it changes in its own environment */
+      captures[index].shared = true;
+      captures[index].cell = true;
+      captures[index].elem = captures[index].ty;
+    }
     if (mir_needs_drop(fn->cx->module, captures[index].ty)) {
       if (!escapes) {
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
@@ -386,6 +103,11 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       }
     }
     out[index] = value;
+    uint32_t silent = MIR_NONE;
+    if (escapes && captures[index].use != NULL && mir_needs_drop(fn->cx->module, captures[index].ty) &&
+        fn_capture_closer(fn, ms_facts_type(fn->facts, captures[index].use->id), captures[index].ty, &silent)) {
+      closers[(*nclosers)++] = (MirCaptureCloser){index, silent}; /* the closure closes what it owns when it is dropped */
+    }
   }
   return true;
 }
@@ -407,11 +129,19 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   const bool escapes = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE;
 
   bool borrows = false;
-  if (!capture_values(fn, captures, count, values, changed, escapes, &borrows)) {
+  MirCaptureCloser *closers = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirCaptureCloser, (size_t)count + 1);
+  uint32_t nclosers = 0;
+  if (!capture_values(fn, captures, count, values, changed, escapes, &borrows, closers, &nclosers)) {
     return MIR_NONE;
   }
   const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
+  fn->cx->module->funcs.ptr[func].capture_closers = closers;
+  fn->cx->module->funcs.ptr[func].ncapture_closers = nclosers;
   fn->cx->module->funcs.ptr[func].scoped = borrows;
+  /* A fault trace calls a lambda `<enclosing function>.closure`. */
+  const MsName enclosing = fn->b.func.display != MS_NAME_EMPTY ? fn->b.func.display : fn->b.func.name;
+  fn->cx->module->funcs.ptr[func].display = mir_name(
+      fn->cx->module, ms_message_format(&fn->cx->module->arena, "%S.closure", ms_names_span(&fn->cx->module->names, enclosing), (MsSpan){0}));
   LowerSubst subst = fn->subst;
   MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, subst.count * 2 + 1);
   for (size_t index = 0; index < subst.count; index++) {
@@ -434,7 +164,8 @@ static bool bind_captures(LowerFn *fn, const LowerLambda *lambda, MirValue env) 
   for (uint32_t index = 0; index < lambda->ncaptures; index++) {
     const LowerCapture *capture = &lambda->captures[index];
     const MirImm imm = {.tag = MI_IDX, .a = index};
-    const MirValue value = mir_b_emit(&fn->b, MOP_ClosureCap, &env, 1, imm, capture->ty);
+    const MirValue value = capture->cell ? mir_b_emit(&fn->b, MOP_ClosureCapAddr, &env, 1, imm, MIR_PTR)
+                                         : mir_b_emit(&fn->b, MOP_ClosureCap, &env, 1, imm, capture->ty);
     if (capture->shared && capture->kind == MS_REF_LOCAL && capture->index < fn->nvars) {
       fn->closing[capture->index] = value;
       fn->closing_var[capture->index] = true;
@@ -466,7 +197,7 @@ bool fn_lambda_name(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirValue 
   if (lambda == NULL || ref == NULL || ref->kind != MS_REF_PARAM) {
     return false;
   }
-  if (is_own_param(fn, lambda->expr, expr, ref)) {
+  if (is_own_param(fn, lambda->expr, expr->u.sym, ref)) {
     return false;
   }
   for (uint32_t index = 0; index < lambda->ncaptures; index++) {
@@ -551,7 +282,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
     const MirTy ty = mir_b_ty(&fn.b, values[at]);
     if (fn_closer_for(&fn, ms_facts_closer(fn.facts, written->id), checked)) {
       /* A resource parameter is the body's to close: it lives in a slot the body's scope owns. */
-      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1]);
+      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1], false);
     } else {
       mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
       if (mir_needs_drop(cx->module, ty)) {
@@ -586,6 +317,9 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.capture_closers = reserved.capture_closers;
+  built.ncapture_closers = reserved.ncapture_closers;
+  built.display = reserved.display;
   mir_func_release(slot);
   *slot = built;
   cx->lambdas.ptr[index].lowered = true;
@@ -673,6 +407,39 @@ static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee
   return slot;
 }
 
+/* A function the standard library declares without a body, used as a value: a closure whose body is the runtime call. */
+static uint32_t lower_native_closure(Lower *cx, MirTy fn_ty, MsSymbolId id) {
+  const MsSymbol *symbol = &cx->program->symbols.ptr[id];
+  const uint32_t slot = lower_closure_func(cx, fn_ty, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = {.cx = cx,
+                .facts = &cx->program->modules.ptr[symbol->module].facts,
+                .module_index = symbol->module,
+                .file = lower_file(cx, symbol->module),
+                .ret = reserved.ret};
+  mir_b_init(&fn.b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  fn.b.func.kind = MFK_CLOSURE;
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  mir_b_params(&fn.b, values, reserved.nparams);
+  const MirValue result = fn_builtin_named(&fn, id, reserved.nparams - 1, values + 1, reserved.ret);
+  if (result != MIR_NONE && fn_fresh_owner(&fn, result)) {
+    (void)mir_b_emit(&fn.b, MOP_ScopeDisown, (MirValue[]){result}, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  MirFunc built;
+  if (fn.failed || !mir_b_into_func(&fn.b, &built)) {
+    return MIR_NONE;
+  }
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+  return slot;
+}
+
 /* A module function used as a value: a closure with no captures whose body calls it. */
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   Lower *cx = fn->cx;
@@ -687,6 +454,15 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (data->kind != MK_FN || id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
     (void)fn_fail(fn, "this function cannot be used as a value yet");
     return MIR_NONE;
+  }
+  const MsSymbol *named = &cx->program->symbols.ptr[id];
+  if (named->decl != NULL && named->decl->kind == MS_D_FN && named->decl->u.fn.bodiless) {
+    const uint32_t native = lower_native_closure(cx, fn_ty, id);
+    if (native == MIR_NONE) {
+      (void)fn_fail(fn, "a function value could not be built");
+      return MIR_NONE;
+    }
+    return fn_emit(fn, MOP_ClosureNew, NULL, 0, (MirImm){.tag = MI_FUNC, .a = native}, fn_ty);
   }
   const LowerTarget target = lower_symbol_target(cx, id);
   MsTy bound[16] = {0};
@@ -718,7 +494,14 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
 
 /* The receiver a bound-method closure keeps: a dying temporary moves into the closure; a value some binding still owns
  * is a hidden copy. */
-static MirValue fn_closure_owns(LowerFn *fn, MirValue receiver) {
+static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue receiver, bool *borrowed) {
+  /* A read of a binding is never the dying temporary, though the value is the one the binding was made from: the
+   * closure borrows it. */
+  const bool place = written->kind == MS_E_NAME || written->kind == MS_E_MEMBER;
+  if (place) {
+    *borrowed = true;
+    return receiver;
+  }
   if (!fn_fresh_owner(fn, receiver)) {
     return fn_implicit_clone(fn, receiver, true);
   }
@@ -755,11 +538,13 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     return MIR_NONE;
   }
   const MirTy receiver_ty = changes ? slot_ty : mir_b_ty(&fn->b, receiver);
+  bool borrowed = false;
   if (!changes && mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_closure_owns(fn, receiver);
+    receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = changes ? MIR_PTR : receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  cx->module->funcs.ptr[slot].scoped = borrowed;
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   LowerFn body = {.cx = cx, .facts = fn->facts, .module_index = fn->module_index, .file = fn->file, .subst = fn->subst,
                   .ret = reserved.ret};
@@ -782,8 +567,12 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     args[at] = values[at];
   }
   MirValue result = MIR_NONE;
-  const bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
-                            : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
+                      : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  if (!done && !changes && !body.failed) { /* a scalar's own conversion has no form of its own: the runtime function */
+    result = fn_native_default(&body, owner, operation, data->nargs + 1, args, reserved.ret);
+    done = result != MIR_NONE || reserved.ret == MIR_VOID;
+  }
   if (!done || body.failed) {
     (void)fn_fail(fn, "the operation `%.*s` cannot be used as a value yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;
@@ -802,6 +591,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -823,11 +613,13 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
     (void)fn_fail(fn, "an operation of a bound type cannot be used as a value yet (at %u:%u)", expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
+  bool borrowed = false;
   if (mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_closure_owns(fn, receiver);
+    receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  cx->module->funcs.ptr[slot].scoped = borrowed;
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
@@ -851,6 +643,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -915,11 +708,13 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   }
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
   const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
+  bool borrowed = false;
   if (owns) {
-    receiver = fn_closure_owns(fn, receiver);
+    receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  cx->module->funcs.ptr[slot].scoped = borrowed;
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
@@ -934,7 +729,10 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   for (uint32_t at = 1; at < reserved.nparams; at++) {
     args[at] = values[at];
   }
-  const MirValue result = mir_b_call(&b, callee, args, reserved.nparams);
+  MirValue result = mir_b_call(&b, callee, args, reserved.nparams);
+  if (result != MIR_NONE && cx->module->funcs.ptr[callee].ret_borrowed && mir_needs_drop(cx->module, reserved.ret)) {
+    result = mir_b_emit(&b, MOP_Clone, &result, 1, (MirImm){0}, reserved.ret); /* the closure's result is its caller's to own */
+  }
   mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
   MirFunc built;
   if (!mir_b_into_func(&b, &built)) {
@@ -945,6 +743,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};

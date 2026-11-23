@@ -14,6 +14,9 @@
 /* Fills the `uses` column of each user module whose facts the checker produced. */
 void ms_own_uses(MsCheckProgram *program);
 
+/* Reports a field moved out of a borrowed call result, once the result masks exist; changes no marking. */
+void ms_own_uses_report(MsCheckProgram *program);
+
 /* Whether the callee is a method declared `move fn`, which takes its receiver. */
 bool ms_own_consuming_method(const MsCheckProgram *program, const MsRef *callee);
 

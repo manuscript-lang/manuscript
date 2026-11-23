@@ -17,10 +17,29 @@ static bool is_sized_float(const Body *body, MsTy ty) {
   return ms_builtin_is_float(builtin) && builtin != MS_BUILTIN_Float;
 }
 
-static bool is_numeric(const Body *body, MsTy ty) {
-  const MsBuiltin builtin = ms_ty_builtin(&body->program->types, ty);
+static bool is_numeric_builtin(MsBuiltin builtin) {
   return ms_builtin_is_int(builtin) || ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_BigInt ||
          builtin == MS_BUILTIN_Decimal;
+}
+
+/* A number type, or a type variable bounded by a set whose every member is one. */
+static bool is_numeric(const Body *body, MsTy ty) {
+  MsTyTable *types = &body->program->types;
+  if (ms_ty_kind(types, ty) == MS_TY_VARIABLE) {
+    const MsTyVariable *record = ms_ty_variable(types, ty);
+    for (size_t index = 0; record != NULL && index < record->bounds.len; index++) {
+      const MsTy bound = record->bounds.ptr[index];
+      bool all = ms_ty_is(types, bound, MS_BUILTIN_TypeSet) && ms_ty_arg_count(types, bound) != 0;
+      for (size_t at = 0; all && at < ms_ty_arg_count(types, bound); at++) {
+        all = is_numeric_builtin(ms_ty_builtin(types, ms_ty_args(types, bound)[at]));
+      }
+      if (all) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return is_numeric_builtin(ms_ty_builtin(types, ty));
 }
 
 static bool is_invalid(const Body *body, MsTy ty) {
@@ -79,8 +98,32 @@ static bool numeric_variable(Body *body, MsTy ty, bool integer) {
   return false;
 }
 
+/* A decimal literal needs the canonical `Decimal` import; once one diagnostic names `Decimal`, later literals stay
+ * quiet. */
+static void report_missing_decimal(Body *body, const MsExpr *expr) {
+  MsCheckProgram *program = body->program;
+  if (body->quiet || body->module >= program->user_modules) {
+    return;
+  }
+  for (size_t index = 0; index < program->diagnostics.len; index++) {
+    const MsCheckDiag *diag = &program->diagnostics.ptr[index];
+    const MsSpan message = ms_string_span(&diag->message);
+    if (diag->module == body->module && (ms_span_starts_with(message, ms_span_of_text("Decimal literal requires")) ||
+                                         ms_span_starts_with(message, ms_span_of_text("unknown type Decimal")) ||
+                                         ms_span_starts_with(message, ms_span_of_text("unknown binding Decimal")))) {
+      return;
+    }
+  }
+  ms_check_report(program, body->module, expr->pos, MS_CHECK_RESOLUTION,
+                  ms_string_from_span(ms_span_of_text("Decimal literal requires the canonical Decimal import; add: "
+                                                      "import Decimal from \"@std/math/decimal.ms\"")));
+  const MsPos start = {.offset = 0, .line = 1, .column = 1};
+  ms_check_attach_fix(program, start, start,
+                      ms_string_from_span(ms_span_of_text("import Decimal from \"@std/math/decimal.ms\"\n")));
+}
+
 /* The type of a number literal: a sized type from `expected` when the literal kind matches it. */
-static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
+static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool negated) {
   const MsTyTable *types = &body->program->types;
   if (expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1) {
     expected = ms_ty_args(types, expected)[0]; /* a literal takes the sized type an optional wraps */
@@ -88,14 +131,63 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected) {
   const NumberKind kind = number_kind(number_text(body, expr));
   if (kind == NUMBER_DECIMAL) {
     const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
-    return decimal != NULL ? decimal->ty : MS_TY_NONE;
+    if (decimal != NULL && decimal->module >= body->program->user_modules) {
+      return decimal->ty;
+    }
+    report_missing_decimal(body, expr);
+    return body_std_type(body, "Decimal", NULL, 0);
   }
   if (kind == NUMBER_FLOAT) {
+    body_check_float_literal(body, expr, is_sized_float(body, expected) ? expected : MS_TY_NONE);
     return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
                                                                                    : body_primitive(body, MS_BUILTIN_Float);
   }
-  return is_sized_int(body, expected) || numeric_variable(body, expected, true) ? expected
-                                                                                 : body_primitive(body, MS_BUILTIN_Int);
+  if (is_sized_int(body, expected)) {
+    body_check_literal_range(body, expr, negated, expected);
+    return expected;
+  }
+  if (!numeric_variable(body, expected, true)) {
+    body_check_int64_literal(body, expr, negated);
+    return body_primitive(body, MS_BUILTIN_Int);
+  }
+  return expected;
+}
+
+/* The decimal literals inside a constant's initializer, which the constants pass leaves unreported. */
+void body_report_decimal_literals(Body *body, const MsExpr *expr) {
+  if (expr == NULL) {
+    return;
+  }
+  switch ((MsExprKind)expr->kind) {
+  case MS_E_NUMBER:
+    if (number_kind(number_text(body, expr)) == NUMBER_DECIMAL) {
+      const MsSymbol *decimal = body_find_symbol(body, ms_names_intern(body->program->names, ms_span_of_text("Decimal")));
+      if (decimal == NULL || decimal->module < body->program->user_modules) {
+        report_missing_decimal(body, expr);
+      }
+    }
+    return;
+  case MS_E_LIST:
+    for (uint32_t index = 0; index < expr->u.list.len; index++) {
+      body_report_decimal_literals(body, expr->u.list.ptr[index]);
+    }
+    return;
+  case MS_E_MAP:
+    for (uint32_t index = 0; index < expr->u.map.len; index++) {
+      body_report_decimal_literals(body, expr->u.map.ptr[index].key);
+      body_report_decimal_literals(body, expr->u.map.ptr[index].value);
+    }
+    return;
+  case MS_E_UNARY:
+    body_report_decimal_literals(body, expr->u.bin.left);
+    return;
+  case MS_E_BINARY:
+    body_report_decimal_literals(body, expr->u.bin.left);
+    body_report_decimal_literals(body, expr->u.bin.right);
+    return;
+  default:
+    return;
+  }
 }
 
 /* ---- text ---- */
@@ -112,7 +204,7 @@ static MsTy text_type(Body *body, const MsExpr *expr) {
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy ty = MS_TY_NONE;
   switch ((MsExprKind)expr->kind) {
-    case MS_E_NUMBER: ty = number_type(body, expr, expected); break;
+    case MS_E_NUMBER: ty = number_type(body, expr, expected, false); break;
     case MS_E_BOOL: ty = body_primitive(body, MS_BUILTIN_Bool); break;
     case MS_E_VOID: ty = body_primitive(body, MS_BUILTIN_Void); break;
     case MS_E_TEXT: ty = text_type(body, expr); break;
@@ -156,7 +248,7 @@ static MsTy literal_hint(const Body *body, const MsExpr *expr, MsTy other) {
 /* `-` on a number literal: the literal takes its sized type from `expected` (-128 fits Int8). */
 static MsTy negated_literal(Body *body, const MsExpr *expr, MsTy expected) {
   const MsExpr *operand = expr->u.bin.left;
-  const MsTy ty = number_type(body, operand, expected);
+  const MsTy ty = number_type(body, operand, expected, true);
   body_set_type(body, operand->id, ty);
   return ty;
 }
@@ -186,6 +278,16 @@ MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected) {
       ty = try_type(body, value);
     } else if (is_numeric(body, value)) {
       ty = value;
+      const MsBuiltin builtin = ms_ty_builtin(&body->program->types, value);
+      if (op == MS_U_NEG && (builtin == MS_BUILTIN_UInt8 || builtin == MS_BUILTIN_UInt16 || builtin == MS_BUILTIN_UInt32 ||
+                             builtin == MS_BUILTIN_UInt64) &&
+          body->module < body->program->user_modules && !body->quiet) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "unary - is not defined for ");
+        ms_ty_show(&text, body->program->names, &body->program->types, value);
+        ms_strbuild_append_text(&text, "; subtract from zero with a wider signed type, e.g. 0 - x.to_int()");
+        ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
     }
   }
   body_set_type(body, expr->id, ty);
@@ -202,6 +304,10 @@ static bool is_comparison(MsBinaryOp op) {
   return op >= MS_B_EQ && op <= MS_B_GE;
 }
 
+static bool collection_literal(const MsExpr *expr) {
+  return expr->kind == MS_E_LIST || expr->kind == MS_E_MAP;
+}
+
 /* Types the two operands. Literals beside a sized number take its type; arithmetic over literals alone takes the
  * expected sized type. */
 static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *left, MsTy *right) {
@@ -216,12 +322,16 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
   } else if (literal_tree(body, l) == 2 && literal_tree(body, r) != 2) {
     *right = body_expr(body, r, MS_TY_NONE);
     *left = body_expr(body, l, literal_hint(body, l, *right));
+  } else if (collection_literal(l) && !collection_literal(r) && (op == MS_B_EQ || op == MS_B_NE)) {
+    *right = body_expr(body, r, MS_TY_NONE); /* a literal beside a typed collection takes its type */
+    *left = body_expr(body, l, *right);
   } else {
     *left = body_expr(body, l, MS_TY_NONE);
     const bool wraps = (op == MS_B_EQ || op == MS_B_NE) &&
                        ms_ty_is(&body->program->types, *left, MS_BUILTIN_Optional) &&
                        ms_ty_arg_count(&body->program->types, *left) == 1;
-    *right = body_expr(body, r, wraps ? *left : literal_hint(body, r, *left));
+    const bool shaped = (op == MS_B_EQ || op == MS_B_NE) && collection_literal(r);
+    *right = body_expr(body, r, wraps || shaped ? *left : literal_hint(body, r, *left));
   }
 }
 
@@ -246,12 +356,21 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
 static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy left, MsTy right) {
   const bool text = ms_ty_is(&body->program->types, left, MS_BUILTIN_String);
   if (left != right || !(is_numeric(body, left) || (text && op == MS_B_ADD))) {
-    if (left == right && !holds_invalid(&body->program->types, left, 6) && body->module < body->program->user_modules &&
-        !body->quiet) {
+    if (!holds_invalid(&body->program->types, left, 6) && !holds_invalid(&body->program->types, right, 6) &&
+        body->module < body->program->user_modules && !body->quiet) {
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("arithmetic requires numeric operands")));
     }
     return left == right ? left : MS_TY_NONE;
+  }
+  const MsBuiltin builtin = ms_ty_builtin(&body->program->types, left);
+  if (op == MS_B_REM && (ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_Decimal) && body->module < body->program->user_modules &&
+      !body->quiet) {
+    MsStrBuild message = ms_strbuild_new();
+    ms_strbuild_append_text(&message, "remainder requires integer operands, found ");
+    ms_ty_show(&message, body->program->names, &body->program->types, left);
+    ms_strbuild_append_text(&message, "; convert to Int or use math functions");
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&message));
   }
   return left;
 }

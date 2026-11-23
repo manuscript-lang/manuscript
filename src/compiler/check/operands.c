@@ -2,6 +2,10 @@
  * `or`, and integer arithmetic over literals that always faults (division by zero, overflow). */
 #include "compiler/check/body.h"
 
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
 typedef __int128 Wide;
 
 typedef struct Range {
@@ -163,6 +167,81 @@ static void append_wide(MsStrBuild *out, Wide value) {
 
 static const char *op_text(MsBinaryOp op) {
   return op == MS_B_ADD ? "+" : op == MS_B_SUB ? "-" : op == MS_B_MUL ? "*" : op == MS_B_DIV ? "/" : "%";
+}
+
+/* An integer literal written where a sized integer type is expected must fit it: `out.append(256)` for a UInt8. */
+void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty) {
+  Range range = {0};
+  Wide value = 0;
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  if (!reporting(body) || ms_ty_is(&body->program->types, ty, MS_BUILTIN_Int) || !int_range(body, ty, &range) ||
+      !literal_value(text, &value)) {
+    return;
+  }
+  const Wide signed_value = negated ? -value : value;
+  if (signed_value >= range.low && signed_value <= range.high) {
+    return;
+  }
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append_text(&out, negated ? "literal -" : "literal ");
+  ms_strbuild_append(&out, text);
+  ms_strbuild_append_text(&out, " is out of range for ");
+  show(body, &out, ty);
+  ms_strbuild_append_text(&out, "; use a value between ");
+  append_wide(&out, range.low);
+  ms_strbuild_append_text(&out, " and ");
+  append_wide(&out, range.high);
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE, ms_strbuild_finish(&out));
+}
+
+void body_check_int64_literal(Body *body, const MsExpr *number, bool negated) {
+  Wide value = 0;
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  if (!reporting(body) || (literal_value(text, &value) && (value <= (Wide)INT64_MAX || (negated && value == (Wide)INT64_MAX + 1)))) {
+    return;
+  }
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("Int literal is outside signed 64-bit range; use a value between "
+                                                      "-9223372036854775808 and 9223372036854775807, or BigInt")));
+}
+
+void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty) {
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  char buffer[128];
+  if (!reporting(body) || text.len == 0 || text.len >= sizeof buffer) {
+    return;
+  }
+  memcpy(buffer, text.ptr, text.len);
+  buffer[text.len] = '\0';
+  const bool narrow = ty != MS_TY_NONE && ms_ty_is(&body->program->types, ty, MS_BUILTIN_Float32);
+  const bool finite = narrow ? isfinite(strtof(buffer, NULL)) : isfinite(strtod(buffer, NULL));
+  if (finite) {
+    return;
+  }
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text(
+                      narrow ? "Float literal is outside finite binary32 range; use a smaller magnitude (about 3.4e38 at most)"
+                             : "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")));
+}
+
+void body_check_constant_index(Body *body, const MsExpr *expr, const MsExpr *list, const MsExpr *index) {
+  Range range = {0};
+  Wide value = 0;
+  if (!reporting(body) || list->kind != MS_E_LIST || !int_range(body, body_primitive(body, MS_BUILTIN_Int), &range) ||
+      !fold(body, index, range, &value)) {
+    return;
+  }
+  const Wide length = (Wide)list->u.list.len;
+  if (value < length && value >= -length) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "index ");
+  append_wide(&text, value);
+  ms_strbuild_append_text(&text, " is outside this list literal of ");
+  append_wide(&text, length);
+  ms_strbuild_append_text(&text, " element(s) and always faults");
+  report(body, expr, &text);
 }
 
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty) {

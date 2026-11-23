@@ -20,7 +20,7 @@ fn move Latch.close() Void!:
 		self.open = false
 		void append_file(self.log, f"{self.id},").wait()
 
-fn latch(log: String, id: Int) Latch:
+fn latch(move log: String, id: Int) Latch:
 	return Latch(log, id, true)
 
 fn closed(log: String) String:
@@ -35,26 +35,26 @@ enum Slot:
 	Full(inner: Latch)
 	Empty
 
-fn explicit_then_scope(log: String) Int!:
+fn explicit_then_scope(move log: String) Int!:
 	var one = latch(log, 1)
 	one.close()?
 	return ok(1)
 
-fn holder_part(log: String) Int:
+fn holder_part(move log: String) Int:
 	holder := Holder(latch(log, 2), 0)
 	return holder.tag
 
-fn optional_part(log: String) Int:
+fn optional_part(move log: String) Int:
 	maybe: Latch? := latch(log, 3)
 	if maybe.is_some(): return 1
 
 	return 0
 
-fn list_parts(log: String) Int:
+fn list_parts(move log: String) Int:
 	xs := [latch(log.clone(), 4), latch(log, 5)]
 	return xs.length()
 
-fn case_part(log: String) Int:
+fn case_part(move log: String) Int:
 	slot := Full(latch(log, 6))
 
 	n := match slot:
@@ -63,35 +63,35 @@ fn case_part(log: String) Int:
 
 	return n
 
-fn make_closure(log: String) fn() Int:
+fn make_closure(move log: String) fn() Int:
 	held := latch(log, 7)
 	return fn: held.id
 
-fn closure_capture(log: String) Int:
+fn closure_capture(move log: String) Int:
 	f := make_closure(log)
 	return f()
 
-fn map_values(log: String) Int:
+fn map_values(move log: String) Int:
 	var m = Map[String, Latch]()
 	m.add("a", latch(log, 8))
 	return m.length()
 
-fn fault_through_holder(log: String) Void:
+fn fault_through_holder(move log: String) Void:
 	holder := Holder(latch(log, 9), 0)
 	panic("holder fault")
 	void holder.tag
 
-fn fault_plain(log: String) Void:
+fn fault_plain(move log: String) Void:
 	one := latch(log, 10)
 	panic("plain fault")
 	void one.id
 
-fn destructured_record(log: String) Int:
+fn destructured_record(move log: String) Int:
 	holder := Holder(latch(log, 13), 3)
 	{inner: part, tag: n} := holder
 	return part.id + n
 
-fn destructured_list(log: String) Int:
+fn destructured_list(move log: String) Int:
 	xs := [latch(log.clone(), 14), latch(log, 15)]
 	[first, _] := xs
 	return first.id
@@ -104,26 +104,26 @@ type Maker:
 fn move Maker.close() Void!:
 	return ok()
 
-fn var Maker.make(log: String, id: Int) Latch:
+fn var Maker.make(move log: String, id: Int) Latch:
 	self.made += 1
 	return latch(log, id)
 
-fn var Maker.find(log: String, id: Int) Latch?:
+fn var Maker.find(move log: String, id: Int) Latch?:
 	self.made += 1
 	return latch(log, id)
 
-fn made_by_resource(log: String) Int:
+fn made_by_resource(move log: String) Int:
 	var maker = Maker(0)
 	var made = maker.make(log, 16)
 	return made.id + maker.made
 
-fn found_by_resource(log: String) Int:
+fn found_by_resource(move log: String) Int:
 	var maker = Maker(0)
 	if found := maker.find(log, 17): return found.id
 
 	return 0
 
-fn reassigned(log: String, swap: Bool) Int:
+fn reassigned(move log: String, swap: Bool) Int:
 	var one = latch(log.clone(), 11)
 	if swap:
 		one = latch(log, 12)

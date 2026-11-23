@@ -27,7 +27,7 @@ fn discarded(n: Int) Int!Error:
     return ok(7)
 
 fn code(r: Int!Error) Int:
-    return r.get_or(-1)
+    return r.clone().get_or(-1)
 
 fn nested(n: Int) Int!Error:
     return ok((parse(n)?) + (parse(n - 5)?))

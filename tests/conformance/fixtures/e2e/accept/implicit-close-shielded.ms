@@ -32,21 +32,21 @@ fn move Holder.close() Void!:
 fn closed(dir: String, name: String) Bool:
 	return read_file(f"{dir}/{name}").wait().is_ok()
 
-fn hold_and_wait(dir: String, id: Int, pause: Bool) Int:
+fn hold_and_wait(move dir: String,id: Int,pause: Bool) Int:
 	holder := Holder(dir, id, pause, false)
 	void sleep(nanoseconds(5000000000)).wait()
 	return holder.id
 
-fn hold_and_fault(dir: String, id: Int) Void:
+fn hold_and_fault(move dir: String, id: Int) Void:
 	holder := Holder(dir, id, false, false)
 	panic("body fault")
 	void holder.id
 
-fn hold_then_break(dir: String, id: Int) Void:
+fn hold_then_break(move dir: String, id: Int) Void:
 	holder := Holder(dir, id, false, true)
 	void holder.id
 
-fn hold_fault_and_break(dir: String, id: Int) Void:
+fn hold_fault_and_break(move dir: String,id: Int) Void:
 	holder := Holder(dir, id, false, true)
 	panic("body fault")
 	void holder.id
@@ -60,7 +60,7 @@ fn cancel_a_holder(dir: String, id: Int, pause: Bool) Void:
 // A statement that discards a popped resource closes it in place, shielded too. The
 // marker `started` says the body is running, so the cancel below lands during the close
 // and not before the body began.
-fn pop_and_discard(dir: String, id: Int) Int:
+fn pop_and_discard(move dir: String,id: Int) Int:
 	void write_file(f"{dir}/started", "started", true).wait()
 
 	var held = [Holder(dir, id, true, false)]
@@ -82,7 +82,7 @@ fn cancel_a_discard(dir: String, id: Int) Void:
 	stop.cancel()
 	void work.wait()
 
-fn faulting_holder(dir: String, id: Int) Void!:
+fn faulting_holder(move dir: String, id: Int) Void!:
 	hold_and_fault(dir, id)
 
 test "cancellation closes the binding":

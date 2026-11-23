@@ -32,6 +32,7 @@ typedef struct ListenOp {
   struct sockaddr_storage address;
   char *path;     /* the Unix socket's path, NULL for TCP */
   bool datagram;  /* a UDP socket: bound, not listening */
+  bool any_host;  /* the address is `::` standing for every interface (an empty host) */
   MsNetCore *core;
 } ListenOp;
 
@@ -65,6 +66,16 @@ static void on_connection(uv_stream_t *server, int status) {
   accept_ready(listener, client);
 }
 
+/* After `::` failed because the host has no IPv6: the same port on every IPv4 interface; false when it is not that case. */
+static bool retry_any_v4(ListenOp *listen, int code) {
+  if (!listen->any_host || (code != UV_EAFNOSUPPORT && code != UV_EPROTONOSUPPORT && code != UV_EADDRNOTAVAIL)) {
+    return false;
+  }
+  const uint16_t port = ntohs(((const struct sockaddr_in6 *)(const void *)&listen->address)->sin6_port);
+  listen->any_host = false;
+  return uv_ip4_addr("0.0.0.0", port, (struct sockaddr_in *)(void *)&listen->address) == 0;
+}
+
 static void datagram_bind(ListenOp *bind) {
   MsNetCore *core = ms_net_core_new(MS_NET_DATAGRAM, false);
   int code = uv_udp_init(ms_net_loop(), &core->h.udp);
@@ -76,6 +87,10 @@ static void datagram_bind(ListenOp *bind) {
   code = uv_udp_bind(&core->h.udp, (const struct sockaddr *)(const void *)&bind->address, 0);
   if (code != 0) {
     ms_net_core_discard(core);
+    if (retry_any_v4(bind, code)) {
+      datagram_bind(bind);
+      return;
+    }
     ms_net_op_done(&bind->op, code);
     return;
   }
@@ -105,6 +120,10 @@ static void listen_start(MsNetOp *op) {
   }
   if (code != 0) {
     ms_net_core_discard(core);
+    if (retry_any_v4(listen, code)) {
+      listen_start(op);
+      return;
+    }
     ms_net_op_done(op, code);
     return;
   }
@@ -146,14 +165,30 @@ bool ms_net_parse_literal(MsSpan address, struct sockaddr_storage *out) {
                                     : uv_ip4_addr(text, port, (struct sockaddr_in *)(void *)out)) == 0;
 }
 
+/* The socket address a listener or datagram socket binds. An empty host (":8080") is every interface: `::` with
+ * IPv4 mapped, which `retry_any_v4` replaces with `0.0.0.0` on a host without IPv6. */
+static bool parse_bind(MsSpan address, struct sockaddr_storage *out, bool *any_host) {
+  MsSpan host = {0};
+  MsSpan port_text = {0};
+  uint16_t port = 0;
+  *any_host = false;
+  if (!ms_split_host_port(address, &host, &port_text) || host.len != 0) {
+    return ms_net_parse_literal(address, out);
+  }
+  *any_host = true;
+  return ms_parse_port(port_text, &port) && uv_ip6_addr("::", port, (struct sockaddr_in6 *)(void *)out) == 0;
+}
+
 static uint8_t bind_run(MsSpan address, bool datagram, MsObj **out, MsString *err) {
   struct sockaddr_storage parsed;
   *err = ms_string_empty();
-  if (!ms_net_parse_literal(address, &parsed)) {
+  bool any_host = false;
+  if (!parse_bind(address, &parsed, &any_host)) {
     return MS_STATUS_INVALID_INPUT;
   }
   ListenOp *listen = ms_net_op_new(sizeof *listen, listen_start, NULL, listen_release);
   listen->address = parsed;
+  listen->any_host = any_host;
   listen->datagram = datagram;
   return listen_finish(listen, out, err);
 }

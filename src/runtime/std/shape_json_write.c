@@ -251,6 +251,24 @@ static int encode_alternative(Encode *state, const MsShape *shape, const uint8_t
   return WRITTEN;
 }
 
+/* The untyped JSON value is its own document: its case holds the value, a number as its token text. */
+static int encode_tree(Encode *state, const MsShape *shape, const uint8_t *base, int depth) {
+  const MsShapeMember *first = ms_shape_member(state->table, shape->first);
+  const MsShapeMember *which = ms_shape_active_case(state->table, shape, base);
+  const MsShapeMember *field = ms_shape_member(state->table, which->first);
+  const uint8_t *payload = base + field->offset;
+  switch (which - first) {
+  case 2:
+    msstd_json_w_number(state->writer, AT(MsString, payload));
+    return WRITTEN;
+  case 0:
+    msstd_json_w_null(state->writer);
+    return WRITTEN;
+  default: /* bool, string, array and object: the payload's own form */
+    return encode(state, field->shape, payload, depth + 1);
+  }
+}
+
 /* A BigInt or Decimal is its digits, written as a number. */
 static int encode_digits(Encode *state, uint32_t shape_index, const uint8_t *slot) {
   MsString digits = ms_string_empty();
@@ -268,7 +286,10 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   const uint8_t *value = ms_shape_resolve(shape, slot);
   const MsShapeHook *hook = ms_shape_hook(state->table, shape_index);
   if ((shape->flags & MS_SHAPE_JSON_FORM) != 0 && hook != NULL && hook->json_encode != NULL) {
-    return hook->json_encode(value, state->writer) == 0 ? WRITTEN : no_form(state);
+    return hook->json_encode(slot, state->writer) == 0 ? WRITTEN : no_form(state);
+  }
+  if ((shape->flags & MS_SHAPE_JSON_TREE) != 0 && shape->kind == MS_SHAPE_ALTERNATIVE) {
+    return encode_tree(state, shape, value, depth);
   }
   switch (shape->kind) {
   case MS_SHAPE_BOOL:
@@ -298,9 +319,25 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   case MS_SHAPE_BIGINT:
   case MS_SHAPE_DECIMAL:
     return encode_digits(state, shape_index, value);
-  default: /* VOID, OPAQUE, FUNCTION, OBJECT */
+  case MS_SHAPE_OBJECT: {
+    const MsObjectCodec *codec = ms_object_codec(ms_shape_text(state->table, shape->name));
+    if (codec == NULL) {
+      return no_form(state);
+    }
+    MsString text = ms_string_empty();
+    codec->text(*(MsObj *const *)(const void *)value, &text);
+    msstd_json_w_string(state->writer, &text);
+    ms_string_release(&text);
+    return WRITTEN;
+  }
+  default: /* VOID, OPAQUE, FUNCTION */
     return no_form(state);
   }
+}
+
+uint8_t msstd_json_w_value(void *writer, const MsShapeTable *table, const void *slot) {
+  Encode state = {.table = table, .writer = writer};
+  return encode(&state, table->image->root, slot, 0) == WRITTEN ? 0 : 1;
 }
 
 uint8_t msstd_json_stringify(const MsShapeTable *table, const void *value, uint8_t has_max_bytes,

@@ -14,7 +14,7 @@ type Tracked:
 fn move Tracked.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn track(log: String, id: Int) Tracked:
+fn track(move log: String, id: Int) Tracked:
 	return Tracked(log, id)
 
 fn closed(log: String) String:
@@ -42,49 +42,49 @@ type Wrapper:
 fn move Wrapper.close() Void!:
 	void append_file(self.log, "wrapper,").wait()
 
-fn holds_fields(log: String) Int:
+fn holds_fields(move log: String) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))
 	return p.first.id
 
-fn holds_list(log: String) Int:
+fn holds_list(move log: String) Int:
 	xs := [track(log.clone(), 1), track(log.clone(), 2), track(log, 3)]
 	return xs.length()
 
-fn holds_map(log: String) Int:
+fn holds_map(move log: String) Int:
 	var m = Map[String, Tracked]()
 	m.add("a", track(log.clone(), 1))
 	m.add("b", track(log, 2))
 	return m.length()
 
-fn holds_nested(log: String) Int:
+fn holds_nested(move log: String) Int:
 	n := Nested(
 		Pair(track(log.clone(), 1), track(log.clone(), 2)),
 		[track(log.clone(), 3), track(log, 4)],
 	)
 	return n.all.length()
 
-fn holds_optional(log: String, present: Bool) Int:
+fn holds_optional(move log: String, present: Bool) Int:
 	var _held: Tracked? = none
 	if present:
 		_held = track(log, 1)
 	return 0
 
-fn holds_alternative(log: String) Int:
+fn holds_alternative(move log: String) Int:
 	_both := Slot.Both(track(log.clone(), 1), track(log, 2))
 	_empty := Slot.Empty
 	return 0
 
-fn holds_wrapper(log: String) Int:
+fn holds_wrapper(move log: String) Int:
 	w := Wrapper(log.clone(), track(log, 1))
 	return w.inner.id
 
-fn returns_early(log: String, early: Bool) Int:
+fn returns_early(move log: String, early: Bool) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))
 	if early: return 1
 
 	return p.first.id
 
-fn moves_on(log: String) Pair:
+fn moves_on(move log: String) Pair:
 	p := Pair(track(log.clone(), 1), track(log, 2))
 	return p
 

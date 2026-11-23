@@ -15,6 +15,7 @@ typedef struct Resolver {
   MsCheckProgram *program;
   uint32_t module;
   bool report;
+  bool allow_type_set; /* a type set may be named: as a bound, as a member of another set, or as the receiver of its methods */
   MsNameList names; /* owned: type variable names in scope */
   MsTyList types;   /* owned: their types, in step with `names` */
   MsTy self;        /* the type `Self` denotes, or MS_TY_NONE */
@@ -27,6 +28,7 @@ void resolver_free(Resolver *resolver);
 void resolver_enter_symbol(Resolver *resolver, const MsSymbol *symbol);
 
 MsTy resolver_type(Resolver *resolver, const MsTypeRef *type);
+void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol);
 /* A written bound: an interface or a type set, else reported and MS_TY_NONE. */
 MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound);
 

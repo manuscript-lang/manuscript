@@ -50,6 +50,12 @@ static const MsDecl *decl_of(const MsCheckProgram *program, const MsDef *def) {
   return def != NULL ? program->symbols.ptr[def->symbol].decl : NULL;
 }
 
+static bool is_opaque(const MsCheckProgram *program, const MsDef *def);
+
+bool ms_check_def_opaque(const MsCheckProgram *program, const MsDef *def) {
+  return is_opaque(program, def);
+}
+
 static bool is_opaque(const MsCheckProgram *program, const MsDef *def) {
   const MsDecl *decl = decl_of(program, def);
   if (decl == NULL) {
@@ -451,6 +457,10 @@ static bool decided_by_method(MsCheckProgram *program, MsTy ty, MsProperty prope
     return has_own_method(program, ty, "equals", 1, MS_BUILTIN_Bool, true);
   }
   return has_own_method(program, ty, "hash", 0, MS_BUILTIN_Int, false);
+}
+
+bool ms_check_decided_by_method(MsCheckProgram *program, MsTy ty, MsProperty property) {
+  return decided_by_method(program, ty, property);
 }
 
 static bool compute(MsCheckProgram *program, MsTy ty, MsProperty property) {

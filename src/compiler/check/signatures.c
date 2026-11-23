@@ -33,6 +33,43 @@ static void resolve_enum(Resolver *resolver, MsDef *def, const MsDecl *decl) {
   }
 }
 
+/* Whether the written type `type` mentions `Self` anywhere, including inside arguments and function types. */
+static bool mentions_self(const MsCheckProgram *program, const MsTypeRef *type) {
+  if (type == NULL) {
+    return false;
+  }
+  if (ms_span_is_text(ms_names_span(program->names, type->name), "Self")) {
+    return true;
+  }
+  for (uint32_t at = 0; at < type->args.len; at++) {
+    if (mentions_self(program, type->args.ptr[at])) {
+      return true;
+    }
+  }
+  for (uint32_t at = 0; at < type->params.len; at++) {
+    if (mentions_self(program, type->params.ptr[at]->ty)) {
+      return true;
+    }
+  }
+  return mentions_self(program, type->result);
+}
+
+/* `Self` is limited to whole parameter and result types, the positions where a call can substitute the implementing type. */
+static bool self_misplaced(const MsCheckProgram *program, const MsFunc *func) {
+  for (uint32_t at = 0; at < func->params.len; at++) {
+    const MsTypeRef *type = func->params.ptr[at]->ty;
+    const bool whole = type != NULL && type->args.len == 0 && type->params.len == 0 &&
+                       ms_span_is_text(ms_names_span(program->names, type->name), "Self");
+    if (!whole && mentions_self(program, type)) {
+      return true;
+    }
+  }
+  const MsTypeRef *result = func->result;
+  const bool whole = result != NULL && result->args.len == 0 && result->params.len == 0 &&
+                     ms_span_is_text(ms_names_span(program->names, result->name), "Self");
+  return !whole && mentions_self(program, result);
+}
+
 static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl, MsTy self) {
   resolver->self = self;
   for (uint32_t index = 0; index < decl->u.iface.methods.len; index++) {
@@ -61,6 +98,10 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
       }
     }
     const MsTy ty = resolver_function(resolver, method->func.params, method->func.result);
+    if (!decl->synthetic && self_misplaced(resolver->program, &method->func)) {
+      ms_check_report(resolver->program, resolver->module, method->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("Self can only be a whole parameter or result type of an interface operation; write 'other: Self', not 'List[Self]'")));
+    }
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     ms_operation_list_push(&def->operations, (MsOperation){.name = method->func.name, .ty = ty,
@@ -98,25 +139,45 @@ static void resolve_symbol(Resolver *resolver, MsSymbol *symbol) {
 }
 
 /* An alias of a union is a type set: its members are the resolved targets. */
-static void resolve_alias(Resolver *resolver, MsSymbol *symbol) {
+void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   MsCheckProgram *program = resolver->program;
   const MsDecl *decl = symbol->decl;
+  if (symbol->alias_state == 2) {
+    return;
+  }
+  if (symbol->alias_state == 1) { /* reached again through its own target */
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "type alias ");
+    ms_strbuild_append(&text, ms_names_span(program->names, decl->u.alias.name));
+    ms_strbuild_append_text(&text, " refers to itself; an alias names another type, so break the cycle with a type or enum");
+    ms_check_report(program, resolver->module, decl->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+    return;
+  }
+  symbol->alias_state = 1;
   if (decl->u.alias.targets.len == 1) {
     /* A single target is another name for that type, over the alias's own variables. */
     const size_t mark = resolver->names.len;
     resolver_enter_symbol(resolver, symbol);
+    const bool allowed = resolver->allow_type_set;
+    resolver->allow_type_set = true;
     symbol->ty = resolver_type(resolver, decl->u.alias.targets.ptr[0]);
+    resolver->allow_type_set = allowed;
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
+    symbol->alias_state = 2;
     return;
   }
   MsTyList members = {0};
   for (uint32_t index = 0; index < decl->u.alias.targets.len; index++) {
+    const bool allowed = resolver->allow_type_set;
+    resolver->allow_type_set = true;
     ms_ty_list_push(&members, resolver_type(resolver, decl->u.alias.targets.ptr[index]));
+    resolver->allow_type_set = allowed;
   }
   const MsTyDesc desc = {.name = decl->u.alias.name, .id = decl->u.alias.name, .kind = MS_TY_CONTRACT,
                          .builtin = MS_BUILTIN_TypeSet, .args = members.ptr, .arg_count = (uint32_t)members.len};
   symbol->ty = ms_ty_intern(&program->types, &desc);
+  symbol->alias_state = 2;
   ms_ty_list_free(&members);
 }
 
@@ -125,7 +186,7 @@ void ms_check_signatures(MsCheckProgram *program, uint32_t module) {
   resolver_init(&resolver, program, module);
   for (MsSymbolId id = 1; id < program->symbols.len; id++) {
     if (program->symbols.ptr[id].module == module && program->symbols.ptr[id].decl->kind == MS_D_ALIAS) {
-      resolve_alias(&resolver, &program->symbols.ptr[id]);
+      resolver_resolve_alias(&resolver, &program->symbols.ptr[id]);
     }
   }
   for (MsSymbolId id = 1; id < program->symbols.len; id++) {

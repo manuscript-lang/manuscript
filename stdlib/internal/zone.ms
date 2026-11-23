@@ -280,7 +280,7 @@ fn parse_rule(text: Bytes) Footer:
 	)
 
 // A zone with no transition table.
-fn plain_zone(kind: Int, name: String, fixed: Int) Zone:
+fn plain_zone(kind: Int, move name: String, fixed: Int) Zone:
 	empty := no_rule()
 	return Zone(
 		kind: kind,
@@ -582,7 +582,7 @@ fn host_zone() Zone:
 export fn load(name: String) Zone!:
 	if name == "UTC" or name.is_empty(): return ok(plain_zone(0, "UTC", 0))
 	if name == "Local": return ok(host_zone())
-	if offset := fixed_offset(name): return ok(plain_zone(1, name, offset))
+	if offset := fixed_offset(name): return ok(plain_zone(1, name.clone(), offset))
 
 	return named(name)
 

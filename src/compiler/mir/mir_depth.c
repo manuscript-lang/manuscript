@@ -319,6 +319,12 @@ bool mir_depth_mark(MirModule *m) {
       dp_scc(&g, f);
     }
   }
+  /* The runtime calls a descriptor's equality and hash functions back, so a value that reaches itself recurses
+   * through them without a direct call between them. */
+  for (size_t k = 0; k < m->desc_glue.len; k++) {
+    g.recursive[m->desc_glue.ptr[k].eq] = true;
+    g.recursive[m->desc_glue.ptr[k].hash] = true;
+  }
   bool changed = false;
   for (uint32_t f = 0; f < count; f++) {
     MirFunc *func = &m->funcs.ptr[f];

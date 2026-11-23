@@ -483,11 +483,11 @@ fn text_of(data: Bytes, start: Int, end: Int) String:
 	return data.view(start, end).decode_utf8().get_or("")
 
 fn extension_in(windows: Bool, text: String) String:
-	if windows: return parse_in(true, text).extension
+	if windows: return parse_in(true, text).extension.clone()
 
 	trimmed := trim_end_slashes(text)
 	slash_at := trimmed.last_index_of("/")
-	base := if slash_at.is_none(): trimmed else: trimmed.view(
+	base := if slash_at.is_none(): trimmed.clone() else: trimmed.view(
 		slash_at.get_or(0) + 1,
 		trimmed.length(),
 	)
@@ -560,7 +560,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 			if not part.is_empty(): has_tail = true
 			start -= 1
 
-		anchor := if start == 0: base else: parts[start - 1]
+		anchor := if start == 0: base.clone() else: parts[start - 1].clone()
 
 		if not has_tail:
 			value = anchor.clone()
@@ -691,7 +691,7 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 	)
 
 	base := slash(windows, base_resolved.get_or(""))
-	target := slash(windows, target_resolved.get_or(""))
+	target := slash(windows, target_resolved.clone().get_or(""))
 	base_root := root_of(windows, base)
 	target_root := root_of(windows, target)
 	if not same_text(windows, base_root, target_root): return ok(
@@ -755,7 +755,7 @@ fn same_text(windows: Bool, left: String, right: String) Bool:
 // Builds a path from `parts`: `directory` (else `root`), then `base` (else `name` plus
 // `extension`), joined by the dialect's separator.
 fn format_in(windows: Bool, parts: PathParts) String:
-	directory := if parts.directory.is_empty(): parts.root else: parts.directory
+	directory := if parts.directory.is_empty(): parts.root.clone() else: parts.directory.clone()
 	var base = parts.base.clone()
 
 	if base.is_empty():
@@ -861,11 +861,11 @@ export fn with_extension(path: String, extension: String) String:
 
 	return format(
 		PathParts(
-			root: parts.root,
-			directory: parts.directory,
+			root: parts.root.clone(),
+			directory: parts.directory.clone(),
 			base: "",
 			extension: extension.clone(),
-			name: parts.name,
+			name: parts.name.clone(),
 		)
 	)
 

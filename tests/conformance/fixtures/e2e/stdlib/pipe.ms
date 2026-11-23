@@ -109,15 +109,18 @@ fn send_range(var out: WriteStream[Int], base: Int) Void!:
 		out.write(base + i)?
 	return out.flush()
 
+fn send_from(move out: WriteStream[Int], base: Int) Promise[Void]:
+	return promise(fn: send_range(out, base))
+
 test "several promises each move a writer of their own into a fan-in":
 	var p = pipe[Int](2)
 	var first = p.writer()
 	var second = p.writer()
 	var third = p.writer()
 	var input = p.reader()
-	a := promise(fn: ok(send_range(first, 0)?))
-	b := promise(fn: ok(send_range(second, 100)?))
-	c := promise(fn: ok(send_range(third, 200)?))
+	a := send_from(first, 0)
+	b := send_from(second, 100)
+	c := send_from(third, 200)
 	var seen = drain(input)?
 	seen.sort()
 	a.wait()?
@@ -147,6 +150,9 @@ fn send_many(var out: WriteStream[Int], from: Int, count: Int) Void!:
 		out.write(i)?
 	return out.flush()
 
+fn send_many_from(move out: WriteStream[Int], from: Int, count: Int) Promise[Void]:
+	return promise(fn: send_many(out, from, count))
+
 test "a reader takes queued values directly and still waits and ends in order":
 	var p = pipe[Int](8)
 	var first = p.writer()
@@ -154,8 +160,8 @@ test "a reader takes queued values directly and still waits and ends in order":
 	var input = p.reader()
 	p.close()?
 
-	a := promise(fn: send_many(first, 0, 5000))
-	b := promise(fn: send_many(second, 5000, 5000))
+	a := send_many_from(first, 0, 5000)
+	b := send_many_from(second, 5000, 5000)
 	var total = 0
 	var count = 0
 

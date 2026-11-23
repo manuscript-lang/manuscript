@@ -21,6 +21,7 @@ typedef struct MsLocal {
   MsRefKind kind; /* MS_REF_LOCAL or MS_REF_PARAM */
   uint32_t id;    /* the dense local id, or the parameter's index */
   bool is_var;
+  bool written_fn; /* declared with a written function type (`f: fn(Int) Int`): its parameters have no labels */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;
 
@@ -37,6 +38,7 @@ typedef struct Body {
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
   MsSpan source;  /* the module's text, for repairing edits; empty for a bundled module */
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
+  const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
@@ -127,6 +129,7 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected);
 /* ---- exprs_ops.c ---- */
 
 /* Literals (number, bool, void, text) and the unary and binary operators. */
+void body_report_decimal_literals(Body *body, const MsExpr *expr);
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
@@ -141,13 +144,26 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol);
 bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
 
 /* members.c: a member the receiver does not have. */
+bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, bool call);
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver);
+
+/* externs.c: the signature of a user `extern fn`. */
+void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty);
 
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
+void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty);
+/* An Int literal must fit a signed 64-bit integer (a negated one may reach the minimum): a larger one is a BigInt. */
+void body_check_int64_literal(Body *body, const MsExpr *number, bool negated);
+/* A float literal must be finite in its type: binary32 when `ty` is Float32, else binary64. */
+void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty);
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
+/* Reports `what` when `ty` is an opaque type declared in another module; true when it did. */
+bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what);
 void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);
+/* A constant index outside a list literal always faults. */
+void body_check_constant_index(Body *body, const MsExpr *expr, const MsExpr *list, const MsExpr *index);
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty);
 bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 

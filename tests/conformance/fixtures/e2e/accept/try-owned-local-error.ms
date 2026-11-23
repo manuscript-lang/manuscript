@@ -10,11 +10,11 @@ type Door:
 fn heap(label: String, n: Int) String:
 	return f"{label}-a-string-long-enough-to-live-on-the-heap-{n}-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-fn open(name: String, fail: Bool) Door!String:
+fn open(move name: String, fail: Bool) Door!String:
 	if fail: return error(heap("failed", 1))
 	return ok(Door(name))
 
-fn length_of(name: String, fail: Bool) Int!String:
+fn length_of(move name: String, fail: Bool) Int!String:
 	door := open(name, fail)
 	length := (door?).name.length()
 	return ok(length)

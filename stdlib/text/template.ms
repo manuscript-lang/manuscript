@@ -851,7 +851,7 @@ fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	var value = first.get_or(JsonValue.Null)
 
 	for k in 2..parts.length():
-		next := member(value, parts[k])
+		next := member(value, parts[k]).clone()
 		if next.is_none(): return none
 
 		value = next.get_or(JsonValue.Null)
@@ -904,7 +904,7 @@ fn bind_row(
 			frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
 			frame.add(second.clone(), item)
 	else:
-		value := collection.get(keys[i]).get_or(JsonValue.Null).clone()
+		value := collection.get(keys[i]).clone().get_or(JsonValue.Null).clone()
 
 		if second.is_empty():
 			var pair = Map[String, JsonValue]()

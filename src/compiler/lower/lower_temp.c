@@ -107,6 +107,7 @@ typedef struct TempScan {
   LowerFn *fn;
   uint32_t skip; /* open expressions whose parts run conditionally, or in another function */
   bool found;
+  bool receiver; /* a list literal changed in place holds resources */
 } TempScan;
 
 static bool conditional(const MsExpr *expr) {
@@ -122,6 +123,13 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
   MsTy member = MS_TY_NONE;
   scan->found |= expr->kind == MS_E_MEMBER && scan->skip == 0 && member_temp_type(scan->fn, expr, &member);
   const MsCall *call = expr->kind == MS_E_CALL && scan->skip == 0 ? fn_find_call(scan->fn->facts, expr->id) : NULL;
+  /* A list literal a method changes in place (`[Door(1)].append(Door(2))`) is a temporary that closes what it holds. */
+  const MsExpr *callee = call != NULL ? expr->u.call.callee : NULL;
+  if (callee != NULL && callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_LIST) {
+    const MsTy listed = ms_ty_subst(&scan->fn->cx->program->types, ms_facts_type(scan->fn->facts, callee->u.member.left->id),
+                                    scan->fn->subst.vars, scan->fn->subst.args, scan->fn->subst.count);
+    scan->receiver |= listed != MS_TY_NONE && fn_temp_closes(scan->fn, listed);
+  }
   for (uint32_t index = 0; call != NULL && !scan->found && index < call->arg_count; index++) {
     const MsExpr *written = call->args[index].source == MS_ARG_WRITTEN ? fn_written_arg(expr, call->args[index].node.node) : NULL;
     MsTy checked = MS_TY_NONE;
@@ -137,20 +145,30 @@ static void scan_leave(void *ctx, const MsExpr *expr) {
 }
 
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
-  const MsExpr *value = stmt->kind == MS_S_CALL ? stmt->u.expr : stmt->kind == MS_S_BIND ? stmt->u.bind.value : NULL;
+  const MsExpr *value = stmt->kind == MS_S_CALL || stmt->kind == MS_S_RETURN ? stmt->u.expr
+                        : stmt->kind == MS_S_BIND                                ? stmt->u.bind.value
+                                                                                 : NULL;
   if (value == NULL || fn->closing == NULL) {
     return false;
-  }
-  if (stmt->kind == MS_S_BIND) {
-    /* What the statement binds outlives it, so only a value with nothing to own can leave. */
-    const MsTy bound = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, stmt->u.bind.pattern->id),
-                                   fn->subst.vars, fn->subst.args, fn->subst.count);
-    if (bound == MS_TY_NONE || mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound)) {
-      return false;
-    }
   }
   TempScan scan = {.fn = fn};
   const MsVisitor visitor = {.ctx = &scan, .expr = scan_enter, .leave_expr = scan_leave};
   ms_walk_expr(&visitor, value);
-  return scan.found;
+  if (stmt->kind == MS_S_BIND || stmt->kind == MS_S_RETURN) {
+    /* What the statement binds or returns outlives it, so only a value with nothing to own can leave. */
+    const MsNode node = stmt->kind == MS_S_BIND ? stmt->u.bind.pattern->id : value->id;
+    const MsTy bound = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, node), fn->subst.vars,
+                                   fn->subst.args, fn->subst.count);
+    if (bound == MS_TY_NONE) {
+      return false;
+    }
+    /* A name that closes is made in the scope outside the statement's own (`bind_scope`). */
+    if (stmt->kind == MS_S_BIND && fn_temp_closes(fn, bound)) {
+      return scan.receiver;
+    }
+    if (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound)) {
+      return false;
+    }
+  }
+  return scan.found || scan.receiver;
 }

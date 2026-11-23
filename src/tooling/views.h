@@ -5,6 +5,7 @@
 #define MS_TOOLING_VIEWS_H
 
 #include "tooling/facts.h"
+#include "tooling/review.h"
 
 /* Bounds one view so a large project stays readable and the output size predictable. */
 enum { MS_NODE_CAP = 200 };
@@ -17,6 +18,10 @@ bool ms_build_view(MsArena *arena, const MsFactModel *model, MsSpan view, MsSpan
                    MsViewNode **out, MsSpan *error);
 
 /* The tree as an outline with fixed connectors, as a flowchart, and as the `--json` tree object. */
+/* Marks what a diff changed: a node that names a finding's entity gets `  <- <tier> #<rank>` (`  <- INTERNAL` for the
+ * internal tier), any other flow step on a touched line `  <- changed`. */
+void ms_view_mark_changes(MsArena *arena, MsViewNode *root, const MsFindings *findings, const MsTouchedList *touched);
+
 void ms_view_ascii(const MsViewNode *root, MsStrBuild *out);
 void ms_view_mermaid(const MsViewNode *root, MsStrBuild *out);
 /* The words a slot is passed as (`var`, `copy`, `move`, `borrow`) and a result is owned as. */

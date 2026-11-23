@@ -26,7 +26,7 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunks(parts: List[Bytes]) ReadStream[Bytes]:
+fn chunks(move parts: List[Bytes]) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(parts, 0, none))
 
 // Splits at every byte boundary, one boundary at a time, plus one byte per chunk.
@@ -43,7 +43,7 @@ fn splits(source: Bytes) List[List[Bytes]]:
 	return all
 
 // Reads every event, or the first error.
-fn decode(parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
+fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEvent]!:
 	var events = sse_events(chunks(parts), limits)
 	var out = List[SseEvent]()
 

@@ -39,6 +39,8 @@ MS_NODISCARD bool ms_check_property(MsCheckProgram *program, MsTy ty, MsProperty
 
 /* Whether `ty` is, or holds, a value that must be closed once. */
 MS_NODISCARD bool ms_check_closeable(MsCheckProgram *program, MsTy ty);
+/* Whether `ty` declares its own `equals(other: Self) Bool` (MS_PROPERTY_EQUAL) or `hash() Int` (MS_PROPERTY_HASHABLE). */
+MS_NODISCARD bool ms_check_decided_by_method(MsCheckProgram *program, MsTy ty, MsProperty property);
 
 /* Whether `ty` is, or holds anywhere in its arguments, fields or cases, a closeable value. */
 MS_NODISCARD bool ms_check_holds_resource(MsCheckProgram *program, MsTy ty);
@@ -66,5 +68,8 @@ MS_NODISCARD bool ms_check_data_blocker(MsCheckProgram *program, MsTy ty, MsStrB
 /* The diagnostic for a failed Data bound on `ty`. */
 void ms_check_data_message(const MsCheckProgram *program, MsTy ty, MsDataReason reason, MsTy part, MsSpan path,
                            MsStrBuild *out);
+
+/* Whether `def` is declared `opaque`. */
+bool ms_check_def_opaque(const MsCheckProgram *program, const MsDef *def);
 
 #endif

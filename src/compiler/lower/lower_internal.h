@@ -3,6 +3,7 @@
 #define MS_COMPILER_LOWER_LOWER_INTERNAL_H
 
 #include "compiler/lower/lower.h"
+#include "compiler/check/properties.h"
 #include "compiler/mir/mir_builder.h"
 
 MS_MAP_DEFINE(LowerTyMap, lower_ty_map, uint32_t, uint32_t, ms_hash_u32_key, ms_equal_u32_key)
@@ -55,6 +56,7 @@ typedef struct LowerCapture {
   MirTy ty;
   bool shared;  /* the lambda changes this local: it takes the address of the maker's slot, which holds a `elem` */
   MirTy elem;
+  bool cell;    /* with `shared`: an escaping closure keeps the variable itself, in its own environment */
 } LowerCapture;
 
 /* A lambda whose body is lowered after the function that makes it. */
@@ -93,6 +95,14 @@ typedef struct LowerGlue {
 
 MS_LIST_DEFINE(LowerGlueList, lower_glue_list, LowerGlue)
 
+/* The checker type a record or alternative MIR type was made from, for the methods it declares. */
+typedef struct LowerSource {
+  MirTy mir;
+  MsTy checked;
+} LowerSource;
+
+MS_LIST_DEFINE(LowerSourceList, lower_source_list, LowerSource)
+
 typedef struct Lower {
   MsCheckProgram *program;
   MirModule *module;
@@ -103,8 +113,10 @@ typedef struct Lower {
   LowerLambdaList lambdas;
   LowerDefaultList defaults;
   LowerGlueList glues;
+  LowerSourceList sources;
   MsNames vtable_keys;         /* receiver and interface type text -> dense id, the index into `vtables` */
   MirIdList vtables;           /* the MIR vtable of each key */
+  MirIdList hooked;            /* the record and alternative types whose shape hooks were looked for */
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
 } Lower;
 
@@ -135,9 +147,16 @@ uint32_t lower_instance(Lower *cx, const LowerTarget *target, const MsTy *args, 
  * instantiated; MIR_NONE after reporting when a method is missing. */
 /* The MIR function of the method with a body that operation `name` resolves to on the concrete `receiver`, or
  * MIR_NONE when the receiver type has none (a builtin or derived operation). */
-uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name);
+uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs);
 /* The same for an operation named by text (`to_string`, `clone`). */
 uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation);
+/* The MIR function of the own `equals(other: Self) Bool` (MS_PROPERTY_EQUAL) or `hash() Int` (MS_PROPERTY_HASHABLE) that
+ * the concrete `receiver` declares, or MIR_NONE when it declares none or takes its argument by move. */
+uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property);
+/* The checker type that MIR record or alternative type `ty` was made from, or MS_TY_NONE. */
+MsTy lower_source_type(const Lower *cx, MirTy ty);
+/* Builds the text and JSON hooks of the types a shape of `ty` describes that declare their own `to_string` or `to_json`. */
+void lower_shape_hooks(Lower *cx, MirTy ty);
 uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface);
 
 /* A closure of type `fn_ty` without captures whose body calls the MIR function `callee` (MIR_NONE on failure). */

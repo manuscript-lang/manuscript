@@ -28,6 +28,20 @@ bool target_positional(const Target *target, size_t index, const MsTyTable *type
   return value || (ms_ty_params(types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
 }
 
+/* Whether the callee is a local or parameter declared with a written function type, whose parameters carry no labels. */
+static bool written_fn_value(const Body *body, const Target *target) {
+  if (target->ref.kind != MS_REF_LOCAL && target->ref.kind != MS_REF_PARAM) {
+    return false;
+  }
+  for (size_t index = 0; index < body->locals.len; index++) {
+    const MsLocal *local = &body->locals.ptr[index];
+    if (local->site == target->ref.decl.node && local->kind == target->ref.kind) {
+      return local->written_fn;
+    }
+  }
+  return false;
+}
+
 static MsSpan param_name(const Body *body, const Target *target, size_t index) {
   return ms_names_span(body->program->names, target_param_name(body, target, index));
 }
@@ -39,7 +53,7 @@ static void append_param_type(Body *body, MsStrBuild *out, MsTy ty) {
   const MsSpan text = ms_strbuild_span(&shown);
   MsSpan rest = text;
   size_t at = 0;
-  while (ms_span_find(rest, ms_span_of_text("<invalid>"), &at)) {
+  while (ms_span_find(rest, ms_span_of_text("<invalid>"), &at) || ms_span_find(rest, ms_span_of_text("<unknown>"), &at)) {
     ms_strbuild_append(out, (MsSpan){rest.ptr, at});
     ms_strbuild_append_text(out, "_");
     rest = (MsSpan){rest.ptr + at + 9, rest.len - at - 9};
@@ -134,8 +148,12 @@ static bool omittable(const Body *body, const Target *target, const MsTyParam *p
                               : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
 }
 
-static void report_missing(Body *body, const Target *target, const MsExpr *call, size_t index) {
+static void report_missing(Body *body, const Target *target, const MsExpr *call, const Matched *matched, size_t index) {
   const MsTyParam *param = &ms_ty_params(&body->program->types, target->sig)[index];
+  /* the type as far as the other arguments fix it, a type argument nothing fixed yet written `_` */
+  const MsTy shown = matched->bound != NULL && target->vars.len != 0
+                         ? ms_ty_subst(&body->program->types, param->ty, target->vars.ptr, matched->bound, target->vars.len)
+                         : param->ty;
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "missing argument ");
   const bool positional = target_positional(target, index, &body->program->types);
@@ -145,7 +163,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
     ms_strbuild_append(&text, param_name(body, target, index));
   }
   ms_strbuild_append_text(&text, ": ");
-  append_param_type(body, &text, param->ty);
+  append_param_type(body, &text, shown);
   if (target->name.len != 0) {
     ms_strbuild_append_text(&text, " in call to ");
     ms_strbuild_append(&text, target->name);
@@ -156,7 +174,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
     ms_strbuild_append_text(&text, "; add '");
     ms_strbuild_append(&text, param_name(body, target, index));
     ms_strbuild_append_text(&text, ": <");
-    append_param_type(body, &text, param->ty);
+    append_param_type(body, &text, shown);
     ms_strbuild_append_text(&text, ">'");
   }
   report_text(body, call->pos, 0, &text);
@@ -182,11 +200,20 @@ void body_report_arguments(Body *body, const Target *target, const MsExpr *call,
     (void)body_expr(body, arg->value, MS_TY_NONE);
   }
   const MsTyTable *types = &body->program->types;
+  const bool written = written_fn_value(body, target);
   for (size_t index = 0; index < matched->count; index++) {
     const MsTyParam *param = &ms_ty_params(types, target->sig)[index];
     const MsTyKind kind = ms_ty_kind(types, param->ty);
-    if (report && matched->slot[index] < 0 && param->ty != MS_TY_NONE && kind != MS_TY_INVALID && !omittable(body, target, param, index)) {
-      report_missing(body, target, call, index);
+    /* a label that names the parameter counts as supplying it even when the label is rejected (function values) */
+    bool named = false;
+    for (uint32_t at = 0; !written && at < call->u.call.args.len; at++) {
+      named = call->u.call.args.ptr[at].has_name && call->u.call.args.ptr[at].name == target_param_name(body, target, index);
+      if (named) {
+        break;
+      }
+    }
+    if (report && !named && matched->slot[index] < 0 && param->ty != MS_TY_NONE && kind != MS_TY_INVALID && !omittable(body, target, param, index)) {
+      report_missing(body, target, call, matched, index);
     }
   }
 }

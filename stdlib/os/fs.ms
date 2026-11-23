@@ -451,7 +451,7 @@ fn var WatchSource.next() move FileEvent?!:
 fn move WatchSource.close() Void!:
 	msstd_fs_watch_close(self.watcher.native)
 
-fn watch_stream(watcher: RawWatcher) ReadStream[FileEvent]:
+fn watch_stream(move watcher: RawWatcher) ReadStream[FileEvent]:
 	return ReadStream[FileEvent](WatchSource(watcher, []))
 
 // The runtime handle behind a `TemporaryDirectory`.
@@ -997,7 +997,7 @@ fn finish_atomic(
 	if prepared.is_ok():
 		if permissions := mode: prepared = out.chmod(permissions)
 
-	synced := if prepared.is_error(): prepared else: out.sync()
+	synced := if prepared.is_error(): prepared.clone() else: out.sync()
 	closed := out.close()
 
 	if synced.is_error():
@@ -1024,9 +1024,9 @@ export fn move(source: String, destination: String) Void!:
 	if renamed.is_ok(): return renamed
 
 	cause := renamed.err()
-	if cause.kind == "EIO": return move_by_copy(source, destination, cause)
+	if cause.kind == "EIO": return move_by_copy(source, destination, cause.clone())
 
-	return error(cause)
+	return error(cause.clone())
 
 fn move_by_copy(source: String, destination: String, cause: Error) Void!:
 	info := stat(source, follow_links: false)

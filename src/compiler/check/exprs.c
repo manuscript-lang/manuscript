@@ -219,6 +219,45 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   return MS_TY_NONE;
 }
 
+/* `Type.name` or `Type.name(...)` where the type cannot have the case written: an interface, Optional, or a type with no
+ * cases (the call form says it has no static members). Reports and returns true; false leaves the name to the caller. */
+bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, bool call) {
+  const MsTyTable *types = &body->program->types;
+  const MsDef *def = body_def(body, owner);
+  const bool optional = ms_ty_is(types, owner, MS_BUILTIN_Optional);
+  const bool contract = ms_ty_kind(types, owner) == MS_TY_CONTRACT;
+  const bool bare = call && def != NULL && def->cases.len == 0 && !contract && !optional;
+  if (!optional && !contract && !bare) {
+    return false;
+  }
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return true;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  const MsSpan member = ms_names_span(body->program->names, name);
+  if (optional) {
+    ms_strbuild_append_text(&text, "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none");
+  } else if (contract) {
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, " is an interface, not an alternative; declare a concrete type with the methods ");
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, " lists, then construct that concrete type");
+  } else {
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, " has no cases or static members, so `");
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, ".");
+    ms_strbuild_append(&text, member);
+    ms_strbuild_append_text(&text, "(...)` does not exist; if ");
+    ms_strbuild_append(&text, member);
+    ms_strbuild_append_text(&text, " is a module function, import it and call ");
+    ms_strbuild_append(&text, member);
+    ms_strbuild_append_text(&text, "(...); if it is a method, call it on a value");
+  }
+  ms_check_report(body->program, body->module, pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  return true;
+}
+
 /* `Type.Case` or `Type.member` where the left side names a type; false when it does not. */
 /* `Type.name` where the type has no such case: an enum lists its cases, any other type has none to name. */
 static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
@@ -267,8 +306,21 @@ static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
   }
   body_set_ref(body, left->id, body_symbol_ref(body, symbol));
   body_set_type(body, left->id, owner);
+  if (body_report_type_member(body, expr->pos, owner, expr->u.member.name, false)) {
+    *ty = MS_TY_NONE;
+    return true;
+  }
   uint32_t index = 0;
-  if (body_case_of(body, owner, expr->u.member.name, &index) != NULL) {
+  const MsTyCase *kase = body_case_of(body, owner, expr->u.member.name, &index);
+  if (kase != NULL) {
+    if (kase->fields.len == 0) {
+      MsStrBuild what = ms_strbuild_new();
+      ms_strbuild_append_text(&what, "case ");
+      ms_strbuild_append(&what, ms_names_span(body->program->names, expr->u.member.name));
+      ms_strbuild_append_text(&what, " cannot be built here");
+      (void)body_opaque_denied(body, expr->pos, owner, ms_strbuild_span(&what));
+      ms_strbuild_free(&what);
+    }
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
     *ty = owner;
   } else {
@@ -287,6 +339,14 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy receiver = body_expr(body, expr->u.member.left, MS_TY_NONE);
   uint32_t index = 0;
   if (body_field(body, receiver, expr->u.member.name, &ty, &index)) {
+    if (ms_ty_kind(&body->program->types, receiver) == MS_TY_TYPE) {
+      MsStrBuild what = ms_strbuild_new();
+      ms_strbuild_append_text(&what, "field ");
+      ms_strbuild_append(&what, ms_names_span(body->program->names, expr->u.member.name));
+      ms_strbuild_append_text(&what, " is hidden");
+      (void)body_opaque_denied(body, expr->pos, receiver, ms_strbuild_span(&what));
+      ms_strbuild_free(&what);
+    }
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_FIELD, .index = index, .owner = receiver});
     return ty;
   }
@@ -410,8 +470,10 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   }
   const bool map = ms_ty_is(types, receiver, MS_BUILTIN_Map) && ms_ty_arg_count(types, receiver) == 2;
   const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List) && ms_ty_arg_count(types, receiver) == 1;
-  (void)body_expr(body, index, map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int));
+  const MsTy key = map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int);
+  (void)((list || map || ms_ty_is(types, receiver, MS_BUILTIN_Bytes)) ? body_expect(body, index, key, (MsSpan){0}) : body_expr(body, index, key));
   if (list) {
+    body_check_constant_index(body, expr, left, index);
     return ms_ty_args(types, receiver)[0];
   }
   if (map) {
@@ -489,14 +551,40 @@ static void report_uninferred_callback(Body *body, const MsParam *param) {
  * written result, the expected one, or the first returned value's type. */
 static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTyTable *types = &body->program->types;
-  const bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
+  bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
+  bool miscounted = false;
+  if (shaped && ms_ty_param_count(types, expected) != expr->u.lambda.params.len) {
+    if (body->module < body->program->user_modules && !body->quiet) {
+      const size_t want = ms_ty_param_count(types, expected);
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_printf(&text, "callback parameter count does not match its context; the context expects %zu parameter%s, "
+                                "found %zu, so write exactly the parameters its context declares",
+                         want, want == 1 ? "" : "s", (size_t)expr->u.lambda.params.len);
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    shaped = false; /* the count error explains why nothing can be inferred */
+    miscounted = true;
+  }
   MsTyParamList params = {0};
   const size_t mark = body_scope_mark(body);
   for (uint32_t index = 0; index < expr->u.lambda.params.len; index++) {
     const MsParam *param = expr->u.lambda.params.ptr[index];
+    for (uint32_t before = 0; !body->quiet && body->module < body->program->user_modules && before < index; before++) {
+      if (expr->u.lambda.params.ptr[before]->name == param->name) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "duplicate parameter or field ");
+        ms_strbuild_append(&text, ms_names_span(body->program->names, param->name));
+        ms_strbuild_append_text(&text, "; each name may appear once, so rename one");
+        ms_check_report(body->program, body->module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+        break;
+      }
+    }
     MsTy ty = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
     ty = ty == MS_TY_NONE && shaped && index < ms_ty_param_count(types, expected) ? ms_ty_params(types, expected)[index].ty : ty;
-    if (ty == MS_TY_NONE && param->ty == NULL) {
+    if (param->ty == NULL && ty != MS_TY_NONE && shaped && body_has_foreign_variable(body, ty)) {
+      ty = MS_TY_NONE; /* a context parameter no other argument has fixed yet is no context */
+    }
+    if (ty == MS_TY_NONE && param->ty == NULL && !miscounted) {
       report_uninferred_callback(body, param);
     }
     MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);

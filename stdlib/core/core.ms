@@ -216,9 +216,10 @@ fn Optional[T].get() T:
 
 // Returns the payload, or `default` when this is `none`. The default is always
 // evaluated; use `get_or_else` when it costs work.
-fn Optional[T].get_or(default: T?) T:
-	if self.is_some(): return self.get()
-	return default.get()
+fn move Optional[T].get_or(move default: T?) T:
+	if value := self: return value
+	if fallback := default: return fallback
+	panic("called Optional.get_or with a none default")
 
 // Transforms a present payload with `transform`; `none` stays `none`.
 fn move Optional[T].map[U](transform: fn(move T) U) U?:
@@ -248,9 +249,9 @@ fn move Optional[T].or_else(create: fn() T?) T?:
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used.
-fn Optional[T].ok_or[E](move cause: E) move T!E:
-	if self.is_none(): return error(cause)
-	return ok(self.get())
+fn move Optional[T].ok_or[E](move cause: E) move T!E:
+	if value := self: return ok(value)
+	return error(cause)
 
 // Returns `ok` with the payload; for `none`, calls `create` once and returns its
 // error.
@@ -292,9 +293,10 @@ fn Result[T, E].get() T:
 
 // Returns the successful payload, or `default` when this is an error. The default is
 // always evaluated; use `get_or_else` when it costs work.
-fn Result[T, E].get_or(default: T?) T:
-	if self.is_ok(): return self.get()
-	return default.get()
+fn move Result[T, E].get_or(move default: T?) T:
+	if value := self: return value
+	if fallback := default: return fallback
+	panic("called Result.get_or with a none default")
 
 // Returns the error payload; check `is_error()` first, because a successful result
 // raises a fault.
@@ -435,13 +437,14 @@ fn String.pad_end(target_length: Int, padding: String) String:
 fn padding_for(text: String, target_length: Int, padding: String) String:
 	missing := target_length - text.scalar_length()
 	if missing <= 0 or padding.is_empty(): return ""
+	// Repeating first makes an oversized request fault at the string limit instead of looping to it.
+	source := padding.repeat(missing / padding.scalar_length() + 1)
 	var filler = ""
 	var count = 0
-	while count < missing:
-		for scalar in padding.chars():
-			if count >= missing: break
-			filler += scalar
-			count += 1
+	for scalar in source.chars():
+		if count >= missing: break
+		filler += scalar
+		count += 1
 	return filler
 
 // Plain numbers and flags copy by value: their `clone` is the value itself.

@@ -53,6 +53,31 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
       }
     }
   }
+  /* The functions a shape table calls for a type's own text and JSON form. */
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    if (m->type_defs.ptr[t].text_fn1 != 0) {
+      il_push_root(stack, &n, m->type_defs.ptr[t].text_fn1 - 1);
+    }
+    if (m->type_defs.ptr[t].json_fn1 != 0) {
+      il_push_root(stack, &n, m->type_defs.ptr[t].json_fn1 - 1);
+    }
+  }
+  for (uint32_t a = 0; a < m->alts.len; a++) {
+    if (m->alts.ptr[a].text_fn1 != 0) {
+      il_push_root(stack, &n, m->alts.ptr[a].text_fn1 - 1);
+    }
+    if (m->alts.ptr[a].json_fn1 != 0) {
+      il_push_root(stack, &n, m->alts.ptr[a].json_fn1 - 1);
+    }
+  }
+  for (uint32_t o = 0; o < m->obj_hooks.len; o++) {
+    if (m->obj_hooks.ptr[o].text_fn1 != 0) {
+      il_push_root(stack, &n, m->obj_hooks.ptr[o].text_fn1 - 1);
+    }
+    if (m->obj_hooks.ptr[o].json_fn1 != 0) {
+      il_push_root(stack, &n, m->obj_hooks.ptr[o].json_fn1 - 1);
+    }
+  }
   const bool any = n > 0;
   while (n > 0) {
     const uint32_t i = stack[--n];
@@ -105,6 +130,21 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
       MirField *field = &m->type_defs.ptr[t].fields[f];
       field->default_fn1 = field->default_fn1 != 0 ? map[field->default_fn1 - 1] + 1 : 0;
     }
+  }
+  for (uint32_t t = 0; t < m->type_defs.len; t++) {
+    MirTypeDef *def = &m->type_defs.ptr[t];
+    def->text_fn1 = def->text_fn1 != 0 ? map[def->text_fn1 - 1] + 1 : 0;
+    def->json_fn1 = def->json_fn1 != 0 ? map[def->json_fn1 - 1] + 1 : 0;
+  }
+  for (uint32_t a = 0; a < m->alts.len; a++) {
+    MirAltDef *def = &m->alts.ptr[a];
+    def->text_fn1 = def->text_fn1 != 0 ? map[def->text_fn1 - 1] + 1 : 0;
+    def->json_fn1 = def->json_fn1 != 0 ? map[def->json_fn1 - 1] + 1 : 0;
+  }
+  for (uint32_t o = 0; o < m->obj_hooks.len; o++) {
+    MirObjHook *hook = &m->obj_hooks.ptr[o];
+    hook->text_fn1 = hook->text_fn1 != 0 ? map[hook->text_fn1 - 1] + 1 : 0;
+    hook->json_fn1 = hook->json_fn1 != 0 ? map[hook->json_fn1 - 1] + 1 : 0;
   }
   m->entry = m->entry == MIR_NONE ? MIR_NONE : map[m->entry];
   m->close = m->close == MIR_NONE ? MIR_NONE : map[m->close];

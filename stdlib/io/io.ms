@@ -492,7 +492,7 @@ fn move Through[A, B].close() Void!:
 // Returns a stream of `transform`'s output over `input`. Closing it closes `input`.
 export fn through[A, B](
 	move input: ReadStream[A],
-	transform: Transform[A, B],
+	move transform: Transform[A, B],
 ) ReadStream[B]:
 	return ReadStream[B](Through[A, B](input, transform, [], false))
 

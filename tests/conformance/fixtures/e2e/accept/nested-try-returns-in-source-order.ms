@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/nested-try-returns-in-source-order.ms
 import expect_true from "@std/test/test.ms"
 
-fn step(var log: List[String], name: String, n: Int) Int!Error:
+fn step(var log: List[String], move name: String, n: Int) Int!Error:
     log.append(value: name.clone())
     if n < 0:
         return error(cause: Error(name))

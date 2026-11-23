@@ -129,11 +129,11 @@ static void emit_list(Text *text, const MsShape *shape, const uint8_t *slot, int
 
 static void emit_bytes(Text *text, const uint8_t *slot) {
   const MsList *bytes = AT(MsList, slot);
-  ms_strbuild_append_text(&text->out, "Bytes([");
+  ms_strbuild_append_text(&text->out, text->repr ? "Bytes([" : "Bytes(");
   for (size_t at = 0; at < bytes->len; at++) {
     ms_strbuild_printf(&text->out, at > 0 ? ", %u" : "%u", (unsigned)AT(uint8_t, bytes->ptr)[at]);
   }
-  ms_strbuild_append_text(&text->out, "])");
+  ms_strbuild_append_text(&text->out, text->repr ? "])" : ")");
 }
 
 static void emit_map(Text *text, const MsShape *shape, const uint8_t *slot, int depth) {
@@ -269,7 +269,7 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
   const uint8_t *value = ms_shape_resolve(shape, slot);
   if ((shape->flags & MS_SHAPE_TEXT_FORM) != 0 && hook != NULL && hook->to_text != NULL) {
     MsString piece = ms_string_empty();
-    hook->to_text(value, &piece);
+    hook->to_text(slot, &piece);
     append_owned(text, &piece);
     return;
   }

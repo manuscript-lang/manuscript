@@ -175,7 +175,7 @@ fn cookie_handler(var exchange: HttpExchange) Void!:
 	else if exchange.path() == "/rfc850":
 		_added := fields.append(
 			"Set-Cookie",
-			"a=gone; Path=/; Expires=Thursday, 01-Jan-70 00:00:01 GMT",
+			"a=gone; Path=/; Expires=Thursday, 01-Jan-1970 00:00:01 GMT",
 		)?
 	else if exchange.path() == "/asctime":
 		_added := fields.append(

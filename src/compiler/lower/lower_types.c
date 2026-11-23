@@ -2,7 +2,7 @@
  * substitution of the instance being lowered, so MIR never sees a variable. */
 #include "compiler/lower/lower_internal.h"
 #include "compiler/check/methods.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 
 static MsTy apply_subst(Lower *cx, const LowerSubst *subst, MsTy ty) {
   if (subst == NULL || subst->count == 0 || !ms_ty_has_variable(&cx->program->types, ty)) {
@@ -89,6 +89,7 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
   const uint32_t id = mir_add_type(cx->module, mir_type_name(cx, ty));
   const MirTy result = mir_ty_type(cx->module, id);
   lower_ty_map_put(&cx->types, ty, result); /* a recursive field finds the type under construction */
+  lower_source_list_push(&cx->sources, (LowerSource){result, ty});
   MirField *fields = lower_fields(cx, ty, def, def->fields.ptr, def->fields.len);
   const MsDecl *decl = cx->program->symbols.ptr[def->symbol].decl;
   if (decl != NULL && decl->kind == MS_D_TYPE && decl->u.type.fields.len == def->fields.len) {
@@ -113,6 +114,7 @@ static MirTy lower_alt(Lower *cx, MsTy ty) {
   const uint32_t id = mir_add_alt(cx->module, mir_type_name(cx, ty));
   const MirTy result = mir_ty_alt(cx->module, id);
   lower_ty_map_put(&cx->types, ty, result);
+  lower_source_list_push(&cx->sources, (LowerSource){result, ty});
   MirCaseDef *cases = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirCaseDef, def->cases.len + 1);
   for (size_t index = 0; index < def->cases.len; index++) {
     const MsTyCase *source = &def->cases.ptr[index];
@@ -136,7 +138,7 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   const size_t nargs = ms_ty_arg_count(&cx->program->types, ty);
   const LowerSubst subst = {def->variables.ptr, ms_ty_args(&cx->program->types, ty),
                             def->variables.len < nargs ? def->variables.len : nargs};
-  MirMethodSig *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirMethodSig, def->operations.len + 1);
+  MirMethodSig *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirMethodSig, def->operations.len + 2);
   for (size_t index = 0; index < def->operations.len; index++) {
     const MsOperation *operation = &def->operations.ptr[index];
     const MsTy fn = operation->ty;
@@ -153,8 +155,13 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     methods[index].consumes = declared != NULL && declared->consuming;
     methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
   }
+  /* The last slot is the text of the payload (`to_string`, `f"{value}"`), which every interface has. */
+  const size_t text = def->operations.len;
+  methods[text].name = mir_name(cx->module, ms_span_of_text("to_string"));
+  methods[text].params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, 1);
+  methods[text].ret = MIR_STR;
   cx->module->ifaces.ptr[id].methods = methods;
-  cx->module->ifaces.ptr[id].nmethods = (uint32_t)def->operations.len;
+  cx->module->ifaces.ptr[id].nmethods = (uint32_t)text + 1;
   return result;
 }
 
@@ -206,8 +213,10 @@ static MirTy lower_native(Lower *cx, MsTy ty) {
   for (size_t index = 0; index < count; index++) {
     args[index] = lower_type(cx, NULL, ms_ty_args(table, ty)[index]);
   }
-  return mir_ty_obj(cx->module, mir_name(cx->module, ms_names_span(cx->program->names, ms_ty_row(table, ty)->name)),
-                    args, (uint32_t)count);
+  const MirTy object = mir_ty_obj(cx->module, mir_name(cx->module, ms_names_span(cx->program->names, ms_ty_row(table, ty)->name)),
+                                  args, (uint32_t)count);
+  lower_source_list_push(&cx->sources, (LowerSource){object, ty}); /* its own `to_string` and `to_json` are found from it */
+  return object;
 }
 
 static MirTy lower_standard(Lower *cx, MsTy ty, MsBuiltin builtin) {
@@ -262,4 +271,13 @@ MirTy lower_type(Lower *cx, const LowerSubst *subst, MsTy ty) {
   const MirTy result = lower_by_kind(cx, concrete);
   lower_ty_map_put(&cx->types, concrete, result);
   return result;
+}
+
+MsTy lower_source_type(const Lower *cx, MirTy ty) {
+  for (size_t index = 0; index < cx->sources.len; index++) {
+    if (cx->sources.ptr[index].mir == ty) {
+      return cx->sources.ptr[index].checked;
+    }
+  }
+  return MS_TY_NONE;
 }

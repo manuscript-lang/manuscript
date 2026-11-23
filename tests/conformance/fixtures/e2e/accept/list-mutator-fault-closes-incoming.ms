@@ -13,15 +13,15 @@ type Item:
 fn move Item.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
-fn set_out(log: String) Void:
+fn set_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.set(10, Item(2, log))
 
-fn insert_out(log: String) Void:
+fn insert_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	items.insert(10, Item(2, log))
 
-fn replace_out(log: String) Void:
+fn replace_out(move log: String) Void:
 	var items = [Item(1, log.clone())]
 	_old := items.replace(10, Item(2, log))
 
@@ -72,7 +72,7 @@ test "set with a negative named index closes the old entry then stores":
 	expect_equal(events(log)?, "2,")?
 	expect_equal(items.length(), 2)?
 
-fn remove_out(log: String) Void:
+fn remove_out(move log: String) Void:
 	var items = [Item(1, log)]
 	items.remove(10)
 

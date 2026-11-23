@@ -99,6 +99,16 @@ static bool block_ends_scope(const MirBlockData *block, int64_t scope) {
   return false;
 }
 
+static void ensure_idom(ElCx *cx, const MirBlock **idom) {
+  if (*idom != NULL) {
+    return;
+  }
+  MirBlock *order = NULL;
+  const uint32_t count = mir_rpo(cx->ma, cx->f, &order);
+  const MirPreds preds = mir_preds(cx->ma, cx->f);
+  *idom = mir_dominators(cx->ma, cx->f, order, count, &preds);
+}
+
 /* Whether the definition of `value` dominates every block that ends `scope`, so the scope can still hold it
  * there on every path. `*idom` is computed on first use. */
 static bool defined_before_every_end(ElCx *cx, const MirBlock **idom, MirValue value, int64_t scope) {
@@ -107,12 +117,7 @@ static bool defined_before_every_end(ElCx *cx, const MirBlock **idom, MirValue v
   if (def == MIR_NONE) {
     return true;
   }
-  if (*idom == NULL) {
-    MirBlock *order = NULL;
-    const uint32_t count = mir_rpo(cx->ma, func, &order);
-    const MirPreds preds = mir_preds(cx->ma, func);
-    *idom = mir_dominators(cx->ma, func, order, count, &preds);
-  }
+  ensure_idom(cx, idom);
   for (size_t b = 0; b < func->blocks.len; b++) {
     if (block_ends_scope(&func->blocks.ptr[b], scope) && !dominates(*idom, def, (MirBlock)b)) {
       return false;
@@ -144,7 +149,7 @@ static void tag_owner(ElCx *cx, const MirBlock **idom, const MirBits *disowned, 
 }
 
 /* Whether `value` is disowned in block `block` or in the blocks that lead to it without a join. */
-static bool disowned_before(const ElCx *cx, const MirPreds *preds, MirBits *seen, MirBlock block,
+static bool disowned_before(ElCx *cx, const MirBlock **idom, const MirPreds *preds, MirBits *seen, MirBlock block,
                             MirValue value) {
   const MirFunc *func = cx->f;
   __builtin_memset(seen->words, 0, sizeof(uint64_t) * (((size_t)seen->nbits + 63) / 64));
@@ -158,19 +163,30 @@ static bool disowned_before(const ElCx *cx, const MirPreds *preds, MirBits *seen
       }
     }
     if (mir_preds_count(preds, current) != 1) {
-      return false;
+      break;
     }
     current = mir_pred(preds, current, 0);
+  }
+  /* A join between the disown and `block` (the branches of a short-circuit condition) hides it from the walk: it still
+   * holds where the disowning block dominates `block`. */
+  for (size_t b = 0; b < func->blocks.len; b++) {
+    const MirInstList *insts = &func->blocks.ptr[b].insts;
+    for (size_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].op == MOP_ScopeDisown && insts->ptr[i].args[0] == value) {
+        ensure_idom(cx, idom);
+        return dominates(*idom, (MirBlock)b, block);
+      }
+    }
   }
   return false;
 }
 
 /* Tags the block parameter `param` fed by `arg` along an edge out of `block`; whether it was new. */
-static bool tag_param(ElCx *cx, const MirPreds *preds, MirBits *seen, MirBlock block, const MirBlockParam *param,
+static bool tag_param(ElCx *cx, const MirBlock **idom, const MirPreds *preds, MirBits *seen, MirBlock block, const MirBlockParam *param,
                       MirValue arg) {
   /* A disowned value left its scope: the parameter it feeds is the new owner's. The disown may sit in a
    * block this one follows without a join. */
-  if (param->mode != MM_MOVE || !el_tagged(cx, arg) || disowned_before(cx, preds, seen, block, arg)) {
+  if (param->mode != MM_MOVE || !el_tagged(cx, arg) || disowned_before(cx, idom, preds, seen, block, arg)) {
     return false;
   }
   const bool fresh = !el_tagged(cx, param->value);
@@ -183,7 +199,7 @@ static bool tag_param(ElCx *cx, const MirPreds *preds, MirBits *seen, MirBlock b
 }
 
 /* A value that flows through a moving block parameter keeps its scope. */
-static void tag_params(ElCx *cx) {
+static void tag_params(ElCx *cx, const MirBlock **idom) {
   const MirFunc *func = cx->f;
   const MirPreds preds = mir_preds(cx->ma, func);
   MirBits seen = mir_bits_new(cx->ma, (uint32_t)func->blocks.len);
@@ -195,7 +211,7 @@ static void tag_params(ElCx *cx) {
         const MirTarget *target = mir_term_target_const(term, t);
         const MirBlockData *dest = &func->blocks.ptr[target->block];
         for (size_t k = 0; k < target->nargs && k < dest->params.len; k++) {
-          changed = tag_param(cx, &preds, &seen, (MirBlock)b, &dest->params.ptr[k], target->args[k]) || changed;
+          changed = tag_param(cx, idom, &preds, &seen, (MirBlock)b, &dest->params.ptr[k], target->args[k]) || changed;
         }
       }
     }
@@ -227,5 +243,32 @@ void el_tags(ElCx *cx) {
       }
     }
   }
-  tag_params(cx);
+  tag_params(cx, &idom);
+}
+
+/* A `drop.if` on an exit path the owner's definition does not dominate (an exit before the binding, in a loop whose
+ * flag travels round the back edge) can never find the owner live: a live owner reaching a block it does not
+ * dominate would travel in a block parameter. The drop is removed so every use is dominated. */
+void el_prune_undominated_drops(ElCx *cx) {
+  const MirFunc *func = cx->f;
+  const MirBlock *idom = NULL;
+  for (size_t b = 0; b < func->blocks.len; b++) {
+    MirInstList *insts = &((MirBlockData *)(uintptr_t)&func->blocks.ptr[b])->insts;
+    size_t kept = 0;
+    for (size_t i = 0; i < insts->len; i++) {
+      const MirInst *inst = &insts->ptr[i];
+      bool drop = false;
+      if (inst->op == MOP_DropIf && inst->nargs == 2) {
+        const MirBlock def = defining_block(func, inst->args[1]);
+        if (def != MIR_NONE && def != (MirBlock)b) {
+          ensure_idom(cx, &idom);
+          drop = !dominates(idom, def, (MirBlock)b);
+        }
+      }
+      if (!drop) {
+        insts->ptr[kept++] = insts->ptr[i];
+      }
+    }
+    insts->len = kept;
+  }
 }

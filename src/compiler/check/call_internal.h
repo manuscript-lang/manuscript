@@ -17,6 +17,7 @@ typedef struct Target {
   MsTyList explicit_args; /* owned: written type arguments */
   size_t nargs;           /* the written argument count, to choose between methods of one name */
   bool constructor;       /* a type's or case's constructor, or the prelude's ok, error or some: inference failures use its wording */
+  MsTy nominal;           /* the type a constructor or case builds, else MS_TY_NONE */
   bool builtin;           /* a built-in type's constructor: its arguments are not matched to declared fields */
 } Target;
 
@@ -27,6 +28,7 @@ typedef struct Matched {
   int32_t *slot;    /* the argument written for each parameter, or -1 */
   uint8_t *state;   /* ArgState of each written argument */
   size_t count;
+  const MsTy *bound; /* the type arguments the arguments fixed so far, MS_TY_NONE for the rest; NULL when none */
 } Matched;
 
 /* The written name of a parameter: the declaration's, since function types do not keep names in their identity. */

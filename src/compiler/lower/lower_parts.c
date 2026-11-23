@@ -7,7 +7,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/own/closers.h"
 
-enum { MAX_PARTS = 32, OK_CASE = 0 };
+enum { MAX_PARTS = 32, OK_CASE = 0, ERROR_CASE = 1 };
 
 typedef struct Part {
   MirValue value;
@@ -53,13 +53,26 @@ static bool supported(MsCheckProgram *program, MsTy ty, MsTyList *seen) {
   }
   if (is_result(program, ty)) {
     const MsTy *args = ms_ty_args(&program->types, ty);
-    return !ms_check_holds_resource(program, args[1]) && supported(program, args[0], seen);
+    return supported(program, args[1], seen) && supported(program, args[0], seen);
   }
   if (is_map(program, ty)) {
     const MsTy *args = ms_ty_args(&program->types, ty);
     return !ms_check_holds_resource(program, args[0]) && supported(program, args[1], seen);
   }
   const MsDef *def = ms_check_def_of(program, ty);
+  if (def != NULL && ms_ty_kind(&program->types, ty) == MS_TY_ALTERNATIVE) {
+    for (size_t kase = 0; kase < def->cases.len; kase++) {
+      if (def->cases.ptr[kase].fields.len >= MAX_PARTS) {
+        return false;
+      }
+      for (size_t field = 0; field < def->cases.ptr[kase].fields.len; field++) {
+        if (!supported(program, ms_check_part_type(program, ty, def, def->cases.ptr[kase].fields.ptr[field].ty), seen)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
   if (def == NULL || ms_ty_kind(&program->types, ty) != MS_TY_TYPE || def->fields.len >= MAX_PARTS) {
     return false;
   }
@@ -89,6 +102,10 @@ static uint32_t part_close(Lower *cx, MsTy ty) {
     return lower_close_iface(cx, ty);
   }
   return ms_check_closeable(cx->program, ty) ? lower_named_method(cx, ty, "close") : helper_for(cx, ty);
+}
+
+uint32_t lower_part_close(Lower *cx, MsTy ty) {
+  return lower_parts_supported(cx, ty) || ms_check_closeable(cx->program, ty) ? part_close(cx, ty) : MIR_NONE;
 }
 
 static MirImm imm_field(uint32_t type, uint32_t index) {
@@ -138,6 +155,46 @@ static void emit_record(Lower *cx, MirBuilder *b, MirValue holder, MsTy ty, MirT
     drop_value(b, holder);
   }
   close_taken(b, parts, count);
+}
+
+/* A user alternative closes the fields of the case it holds, last declared first. */
+static void emit_alt(Lower *cx, MirBuilder *b, MirValue holder, MsTy ty) {
+  const MsDef *def = ms_check_def_of(cx->program, ty);
+  const uint32_t alt = mir_ty_data(cx->module, mir_b_ty(b, holder))->id;
+  const MirValue tag = mir_b_emit(b, MOP_AltTag, &holder, 1, (MirImm){0}, MIR_INT);
+  for (uint32_t kase = 0; kase < def->cases.len; kase++) {
+    const MirBlock yes = mir_b_new_block(b);
+    const MirBlock no = mir_b_new_block(b);
+    mir_b_br_if(b, mir_b_icmp(b, MCC_EQ, tag, mir_b_iconst(b, kase)), yes, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(b, yes);
+    mir_b_seal_block(b, no);
+    mir_b_switch_to(b, yes);
+    const MirCaseDef *mir_case = &cx->module->alts.ptr[alt].cases[kase];
+    Part parts[MAX_PARTS];
+    uint32_t count = 0, mask = 0;
+    for (size_t field = def->cases.ptr[kase].fields.len; field > 0; field--) {
+      const MsTy part = ms_check_part_type(cx->program, ty, def, def->cases.ptr[kase].fields.ptr[field - 1].ty);
+      const uint32_t close = part_close(cx, part);
+      if (close == MIR_NONE) {
+        continue;
+      }
+      const MirTy fty = mir_case->fields[field - 1].ty;
+      const bool owns = mir_needs_drop(cx->module, fty);
+      const MirImm imm = {.tag = MI_ALTFIELD, .a = alt, .b = kase, .c = (uint32_t)field - 1};
+      const MirValue value = mir_b_emit(b, owns ? MOP_AltTake : MOP_AltGet, &holder, 1, imm, fty);
+      mask |= owns ? 1u << (field - 1) : 0;
+      parts[count++] = (Part){value, close};
+    }
+    if (mask != 0) {
+      (void)mir_b_emit(b, MOP_AltRelease, &holder, 1, (MirImm){.tag = MI_ALTMASK, .a = alt, .b = kase, .c = mask}, MIR_NONE);
+    } else {
+      drop_value(b, holder);
+    }
+    close_taken(b, parts, count);
+    mir_b_switch_to(b, no);
+  }
+  drop_value(b, holder);
+  mir_b_ret(b, mir_b_unit(b));
 }
 
 static void emit_optional(Lower *cx, MirBuilder *b, MirValue holder, MsTy inner) {
@@ -191,10 +248,29 @@ static void emit_list(Lower *cx, MirBuilder *b, MirValue holder, MsTy elem) {
   mir_b_ret(b, mir_b_unit(b));
 }
 
-/* A Result closes its ok payload; an error holds no resource. */
-static void emit_result(Lower *cx, MirBuilder *b, MirValue holder, MsTy ok_ty) {
+/* Takes the payload of case `kase` out of the Result `holder` and closes it; ends the function. A case that holds no
+ * resource only drops the holder. */
+static void emit_result_case(Lower *cx, MirBuilder *b, MirValue holder, uint32_t alt, uint32_t kase, MsTy ty) {
+  if (!ms_check_holds_resource(cx->program, ty)) {
+    drop_value(b, holder);
+    mir_b_ret(b, mir_b_unit(b));
+    return;
+  }
+  const MirTy payload = cx->module->alts.ptr[alt].cases[kase].fields[0].ty;
+  const MirImm field = {.tag = MI_ALTFIELD, .a = alt, .b = kase, .c = 0};
+  const bool owns = mir_needs_drop(cx->module, payload);
+  const MirValue value = mir_b_emit(b, owns ? MOP_AltTake : MOP_AltGet, &holder, 1, field, payload);
+  if (owns) {
+    const MirImm taken = {.tag = MI_ALTMASK, .a = alt, .b = kase, .c = 1};
+    (void)mir_b_emit(b, MOP_AltRelease, &holder, 1, taken, MIR_NONE);
+  }
+  const Part part = {value, part_close(cx, ty)};
+  close_taken(b, &part, 1);
+}
+
+/* A Result closes the payload of the case it holds, when that payload holds a resource. */
+static void emit_result(Lower *cx, MirBuilder *b, MirValue holder, MsTy ok_ty, MsTy error_ty) {
   const uint32_t alt = mir_ty_data(cx->module, mir_b_ty(b, holder))->id;
-  const MirTy payload = cx->module->alts.ptr[alt].cases[OK_CASE].fields[0].ty;
   const MirValue tag = mir_b_emit(b, MOP_AltTag, &holder, 1, (MirImm){0}, MIR_INT);
   const MirBlock yes = mir_b_new_block(b);
   const MirBlock no = mir_b_new_block(b);
@@ -202,18 +278,9 @@ static void emit_result(Lower *cx, MirBuilder *b, MirValue holder, MsTy ok_ty) {
   mir_b_seal_block(b, yes);
   mir_b_seal_block(b, no);
   mir_b_switch_to(b, no);
-  drop_value(b, holder);
-  mir_b_ret(b, mir_b_unit(b));
+  emit_result_case(cx, b, holder, alt, ERROR_CASE, error_ty);
   mir_b_switch_to(b, yes);
-  const MirImm field = {.tag = MI_ALTFIELD, .a = alt, .b = OK_CASE, .c = 0};
-  const bool owns = mir_needs_drop(cx->module, payload);
-  const MirValue value = mir_b_emit(b, owns ? MOP_AltTake : MOP_AltGet, &holder, 1, field, payload);
-  if (owns) {
-    const MirImm taken = {.tag = MI_ALTMASK, .a = alt, .b = OK_CASE, .c = 1};
-    (void)mir_b_emit(b, MOP_AltRelease, &holder, 1, taken, MIR_NONE);
-  }
-  const Part part = {value, part_close(cx, ok_ty)};
-  close_taken(b, &part, 1);
+  emit_result_case(cx, b, holder, alt, OK_CASE, ok_ty);
 }
 
 static uint32_t map_extern(Lower *cx, const char *name, const MirParam *params, uint32_t count, MirTy ret) {
@@ -314,9 +381,11 @@ static uint32_t helper_for(Lower *cx, MsTy ty) {
   } else if (is_one_of(cx->program, ty, MS_BUILTIN_List)) {
     emit_list(cx, &b, holder, ms_ty_args(types, ty)[0]);
   } else if (is_result(cx->program, ty)) {
-    emit_result(cx, &b, holder, ms_ty_args(types, ty)[0]);
+    emit_result(cx, &b, holder, ms_ty_args(types, ty)[0], ms_ty_args(types, ty)[1]);
   } else if (is_map(cx->program, ty)) {
     emit_map(cx, &b, holder, ms_ty_args(types, ty)[1]);
+  } else if (ms_ty_kind(types, ty) == MS_TY_ALTERNATIVE) {
+    emit_alt(cx, &b, holder, ty);
   } else {
     emit_record(cx, &b, holder, ty, mt);
   }

@@ -327,7 +327,7 @@ fn make_part(section: Bytes) Part!:
 	headers := parse_headers(header_text.get_or(""))?
 	var part = Part(
 		headers: headers,
-		data: inner.slice(data_start, inner.length()).get_or("".to_bytes()).clone(),
+		data: inner.slice(data_start, inner.length()).clone().get_or("".to_bytes()),
 	)
 
 	if disposition := part.headers.get("Content-Disposition"):
@@ -497,7 +497,7 @@ export fn encode_multipart(parts: List[Part], boundary: String) Bytes:
 // Builds a form-data part for a field; pass `filename` to mark an upload.
 export fn form_part(
 	name: String,
-	data: Bytes,
+	move data: Bytes,
 	filename: String = "",
 	content_type: String = "",
 ) Part:
@@ -506,11 +506,11 @@ export fn form_part(
 
 	var fields = [HeaderField(name: "Content-Disposition", value: disposition)]
 	if not content_type.is_empty(): fields.append(
-		HeaderField(name: "Content-Type", value: content_type)
+		HeaderField(name: "Content-Type", value: content_type.clone())
 	)
 	return Part(
 		headers: Headers(fields: fields),
-		name: name,
+		name: name.clone(),
 		filename: filename,
 		data: data,
 	)

@@ -420,6 +420,7 @@ static void configure(MsHttpResponse *response, const HttpHop *hop) {
   __builtin_memcpy(url, hop->url.ptr, hop->url.len);
   curl_easy_setopt(easy, CURLOPT_URL, url);
   curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
+  curl_easy_setopt(easy, CURLOPT_PATH_AS_IS, 1L); /* the server decides what `..` and `%2F` in a path mean */
   curl_easy_setopt(easy, CURLOPT_PROXY, "");
   curl_easy_setopt(easy, CURLOPT_PROTOCOLS_STR, "http,https");
   curl_easy_setopt(easy, CURLOPT_HTTP_CONTENT_DECODING, 0L);
