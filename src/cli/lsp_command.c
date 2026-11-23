@@ -102,7 +102,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -181,7 +181,7 @@ static void handle_close(Session *session, const MsJson *params) {
 
 /* The textDocument requests that read one document at a position. Returns false for a method it does not serve. */
 static bool handle_document_request(Session *session, const MsJson *id, MsSpan method, const MsJson *params) {
-  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "semanticTokens/full", "prepareRename", "rename"};
+  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "semanticTokens/full", "prepareRename", "rename"};
   bool served = false;
   for (size_t i = 0; i < sizeof SERVED / sizeof SERVED[0]; i++) {
     MsStrBuild name = ms_strbuild_new();
@@ -197,7 +197,8 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   const MsSpan requested = ms_span_of(method.ptr + 13, method.len - 13);
   const bool outline = ms_span_is_text(requested, "documentSymbol") || ms_span_is_text(requested, "formatting") ||
                        ms_span_is_text(requested, "foldingRange") ||
-                       ms_span_is_text(requested, "semanticTokens/full");
+                       ms_span_is_text(requested, "semanticTokens/full") ||
+                       ms_span_is_text(requested, "inlayHint");
   if (uri == NULL || (!outline && !json_position(ms_json_member(params, "position"), &position))) {
     if (id != NULL) reply_error(id, ERROR_INVALID_PARAMS, "invalid parameters");
     return true;
@@ -226,6 +227,18 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
     lsp_nav_references(&session->docs, doc, position, include != NULL && ms_span_is_text(include->text, "true"), &result);
   } else if (ms_span_is_text(kind, "documentSymbol")) {
     lsp_document_symbols(&session->docs, doc, &result);
+  } else if (ms_span_is_text(kind, "typeDefinition")) {
+    lsp_nav_type_definition(&session->docs, doc, position, &result);
+  } else if (ms_span_is_text(kind, "inlayHint")) {
+    const MsJson *range = member_kind(params, "range", MS_JSON_OBJECT);
+    LspRange wanted = {{0, 0}, {(size_t)-1, (size_t)-1}};
+    if (range != NULL) {
+      LspPosition start, end;
+      if (json_position(ms_json_member(range, "start"), &start) && json_position(ms_json_member(range, "end"), &end)) {
+        wanted = (LspRange){start, end};
+      }
+    }
+    lsp_nav_inlay_hints(&session->docs, doc, wanted, &result);
   } else if (ms_span_is_text(kind, "semanticTokens/full")) {
     lsp_semantic_tokens(&session->docs, doc, &result);
   } else if (ms_span_is_text(kind, "foldingRange")) {

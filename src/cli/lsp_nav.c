@@ -427,3 +427,86 @@ done:
   lsp_analysis_release(&analysis);
   return ok;
 }
+
+void lsp_nav_type_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out) {
+  LspAnalysis analysis;
+  const MsOccurrence *selected;
+  if (select(docs, doc, position, &analysis, &selected) && selected->ty != MS_TY_NONE) {
+    const MsCheckProgram *program = &analysis.checked.program;
+    const MsTyRow *row = ms_ty_row(&program->types, selected->ty);
+    if (row->def != 0 && row->kind != MS_TY_VARIABLE) {
+      const MsSymbolId symbol = ms_defs_get(&program->defs, row->def)->symbol;
+      for (size_t i = 0; i < analysis.index.len; i++) {
+        const MsOccurrence *entry = &analysis.index.ptr[i];
+        if (!entry->declaration || entry->symbol != symbol) continue;
+        const Place place = place_of(&analysis, docs, entry);
+        ms_strbuild_append_byte(out, '[');
+        write_place(out, &place);
+        ms_strbuild_append_byte(out, ']');
+        lsp_analysis_release(&analysis);
+        return;
+      }
+    }
+  }
+  ms_strbuild_append_text(out, "null");
+  lsp_analysis_release(&analysis);
+}
+
+typedef struct Hint {
+  LspPosition at;
+  MsSpan label;
+} Hint;
+
+MS_LIST_DEFINE(HintList, hint_list, Hint)
+
+static int compare_hint(const void *left, const void *right) {
+  const Hint *a = left, *b = right;
+  if (a->at.line != b->at.line) return a->at.line < b->at.line ? -1 : 1;
+  return a->at.character == b->at.character ? 0 : (a->at.character < b->at.character ? -1 : 1);
+}
+
+/* Whether the text after a binding's name starts a plain binding (`:=` or `=`), which has no written type. */
+static bool binds_inferred(MsSpan source, size_t end) {
+  while (end < source.len && (source.ptr[end] == ' ' || source.ptr[end] == '\t')) end++;
+  if (end >= source.len) return false;
+  if (source.ptr[end] == ':') return end + 1 < source.len && source.ptr[end + 1] == '=';
+  return source.ptr[end] == '=' && !(end + 1 < source.len && source.ptr[end + 1] == '=');
+}
+
+void lsp_nav_inlay_hints(const LspDocList *docs, const LspDoc *doc, LspRange range, MsStrBuild *out) {
+  LspAnalysis analysis;
+  lsp_analyze(docs, doc, &analysis);
+  HintList hints = {0};
+  const MsCheckProgram *program = &analysis.checked.program;
+  for (size_t i = 0; analysis.resolved && i < analysis.index.len; i++) {
+    const MsOccurrence *entry = &analysis.index.ptr[i];
+    if (!entry->declaration || !ms_span_starts_with(entry->key, ms_span_of_text("binding:")) ||
+        ms_span_starts_with(entry->key, ms_span_of_text("binding:typeparam:")) ||
+        !ms_span_equal(analysis.paths[entry->module], ms_string_span(&doc->path))) {
+      continue;
+    }
+    const MsSpan source = source_of(&analysis, entry);
+    if (entry->ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, entry->ty) || !binds_inferred(source, entry->end)) continue;
+    const LspPosition at = lsp_position(source, entry->end);
+    const bool after_start = at.line > range.start.line || (at.line == range.start.line && at.character >= range.start.character);
+    const bool before_end = at.line < range.end.line || (at.line == range.end.line && at.character <= range.end.character);
+    if (!after_start || !before_end) continue;
+    MsStrBuild label = ms_strbuild_new();
+    ms_strbuild_append_text(&label, ": ");
+    ms_ty_show(&label, program->names, &program->types, entry->ty);
+    hint_list_push(&hints, (Hint){at, ms_arena_copy(&analysis.arena, ms_strbuild_span(&label))});
+    ms_strbuild_free(&label);
+  }
+  if (hints.len > 1) qsort(hints.ptr, hints.len, sizeof(Hint), compare_hint);
+  ms_strbuild_append_byte(out, '[');
+  for (size_t i = 0; i < hints.len; i++) {
+    if (i > 0) ms_strbuild_append_byte(out, ',');
+    ms_strbuild_printf(out, "{\"position\":{\"line\":%zu,\"character\":%zu},\"label\":", hints.ptr[i].at.line,
+                       hints.ptr[i].at.character);
+    lsp_json_string(out, hints.ptr[i].label);
+    ms_strbuild_append_text(out, ",\"kind\":1,\"paddingLeft\":false,\"paddingRight\":false}");
+  }
+  ms_strbuild_append_byte(out, ']');
+  hint_list_free(&hints);
+  lsp_analysis_release(&analysis);
+}
