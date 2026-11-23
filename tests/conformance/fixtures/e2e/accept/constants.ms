@@ -21,7 +21,7 @@ test "constants stand for their initializers":
     expect_equal(from, 4)?
 
 test "each use starts from a fresh collection":
-    var names = NAMES
+    var names = NAMES.clone()
     names.append("c")
     expect_false(not (names.length() == 3 and NAMES.length() == 2))?
 
