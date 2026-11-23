@@ -1,7 +1,6 @@
 import (
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	StringBuilder from "@std/string_builder.ms",
-	keep, measure from "@std/test/bench.ms",
 )
 
 fn json_doc(count: Int) String:
@@ -35,32 +34,25 @@ fn row_weight(tree: JsonValue, index: Int) Int:
 
 	return 0
 
-bench "json.parse":
+type BenchData:
+	doc: String
+	doc_2: String
+	tree: JsonValue
+
+fn make_fixture() BenchData:
 	doc := json_doc(5000)
+	doc_2 := json_doc(5000)
+	tree := parse(json_doc(5000)).get()
+	return BenchData(doc: doc, doc_2: doc_2, tree: tree)
 
-	fn work() Result[Void, Error]:
-		if parse(doc).is_ok(): return keep(1)
-		return keep(0)
+bench "json.parse" per 5000:
+	parse(fixture.doc).is_ok()
 
-	measure(5000, work)?
+bench "json.roundtrip" per 5000:
+	encoded_length(parse(fixture.doc_2).get())
 
-bench "json.roundtrip":
-	doc := json_doc(5000)
-
-	fn work() Result[Void, Error]:
-		if v := parse(doc): return keep(encoded_length(v))
-		return keep(0)
-
-	measure(5000, work)?
-
-bench "json.navigate":
-	doc := json_doc(5000)
-
-	if tree := parse(doc):
-		fn work() Result[Void, Error]:
-			var total = 0
-			for i in 0..100000:
-				total += row_weight(tree, i % 5000)
-			return keep(total)
-
-		measure(100000, work)?
+bench "json.navigate" per 100000:
+	var total = 0
+	for i in 0..100000:
+		total += row_weight(fixture.tree, i % 5000)
+	total

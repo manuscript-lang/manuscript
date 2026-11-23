@@ -38,24 +38,19 @@
           "index": 5,
           "name": "iotest-golden.ms::golden comparison passes and names the first differing line",
           "status": "passed"
-        },
-        {
-          "index": 6,
-          "name": "iotest-golden.ms::measure rejects fewer than one operation",
-          "status": "passed"
         }
       ],
       "summary": {
-        "available": 7,
-        "selected": 7,
-        "passed": 7,
+        "available": 6,
+        "selected": 6,
+        "passed": 6,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN iotest-golden.ms::a plain stream passes the reader check\nPASS iotest-golden.ms::a plain stream passes the reader check\nRUN iotest-golden.ms::a wrong expectation fails the reader check\nPASS iotest-golden.ms::a wrong expectation fails the reader check\nRUN iotest-golden.ms::one_byte returns single bytes\nPASS iotest-golden.ms::one_byte returns single bytes\nRUN iotest-golden.ms::fail_after delivers a prefix and then fails\nPASS iotest-golden.ms::fail_after delivers a prefix and then fails\nRUN iotest-golden.ms::fail_writer_after writes the prefix that fits and then fails\nPASS iotest-golden.ms::fail_writer_after writes the prefix that fits and then fails\nRUN iotest-golden.ms::golden comparison passes and names the first differing line\nPASS iotest-golden.ms::golden comparison passes and names the first differing line\nRUN iotest-golden.ms::measure rejects fewer than one operation\nPASS iotest-golden.ms::measure rejects fewer than one operation\n7 tests, 0 failed\n",
+      "stdout": "RUN iotest-golden.ms::a plain stream passes the reader check\nPASS iotest-golden.ms::a plain stream passes the reader check\nRUN iotest-golden.ms::a wrong expectation fails the reader check\nPASS iotest-golden.ms::a wrong expectation fails the reader check\nRUN iotest-golden.ms::one_byte returns single bytes\nPASS iotest-golden.ms::one_byte returns single bytes\nRUN iotest-golden.ms::fail_after delivers a prefix and then fails\nPASS iotest-golden.ms::fail_after delivers a prefix and then fails\nRUN iotest-golden.ms::fail_writer_after writes the prefix that fits and then fails\nPASS iotest-golden.ms::fail_writer_after writes the prefix that fits and then fails\nRUN iotest-golden.ms::golden comparison passes and names the first differing line\nPASS iotest-golden.ms::golden comparison passes and names the first differing line\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

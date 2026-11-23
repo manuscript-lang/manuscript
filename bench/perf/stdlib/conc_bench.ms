@@ -1,40 +1,28 @@
-import (
-	Promise, promise, wait_all from "@std/concurrency/promise.ms",
-	keep, measure from "@std/test/bench.ms",
-)
+import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 
-bench "promise.spawn_wait_all_1000":
-	fn work() Result[Void, Error]:
-		var running: List[Promise[Int]] = []
-		for i in 0..1000:
-			running.append(promise(fn: ok(i * 2)))
+bench "promise.spawn_wait_all_1000" per 1000:
+	var running: List[Promise[Int]] = []
+	for i in 0..1000:
+		running.append(promise(fn: ok(i * 2)))
 
-		r := wait_all(running).get_or([])
-		return keep(r.length())
+	r := wait_all(running).get_or([])
+	r.length()
 
-	measure(1000, work)?
+bench "promise.spawn_wait_each_1000" per 1000:
+	var n = 0
 
-bench "promise.spawn_wait_each_1000":
-	fn work() Result[Void, Error]:
-		var n = 0
+	for i in 0..1000:
+		p := promise(fn: ok(i * 2))
+		n += p.wait().get_or(0)
 
-		for i in 0..1000:
-			p := promise(fn: ok(i * 2))
-			n += p.wait().get_or(0)
+	n
 
-		return keep(n)
+bench "promise.spawn_then_wait_5000" per 5000:
+	var running: List[Promise[Int]] = []
+	for i in 0..5000:
+		running.append(promise(fn: ok(i)))
 
-	measure(1000, work)?
-
-bench "promise.spawn_then_wait_5000":
-	fn work() Result[Void, Error]:
-		var running: List[Promise[Int]] = []
-		for i in 0..5000:
-			running.append(promise(fn: ok(i)))
-
-		var n = 0
-		for v in wait_all(running).get_or([]):
-			n += v
-		return keep(n)
-
-	measure(5000, work)?
+	var n = 0
+	for v in wait_all(running).get_or([]):
+		n += v
+	n

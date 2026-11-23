@@ -4,6 +4,7 @@
 #ifndef MS_RUNTIME_ENTRY_TEST_SUPPORT_H
 #define MS_RUNTIME_ENTRY_TEST_SUPPORT_H
 
+#include "abi/shape.h"
 #include <stdbool.h>
 
 #include "base/map.h"
@@ -29,14 +30,9 @@ void msrt_test_capture_fault(int64_t id, MsString *out);
 /* ms-sig: msrt_test_failure(message: *const StrVal, details: *const MapVal) */
 void msrt_test_failure(const MsString *message, const MsMap *details);
 
-/* Takes a bench's result so the work that computed it cannot be removed or folded into a constant: the call is to a
- * function the compiler does not see into, and `value` is stored where it may be read. */
-/* ms-sig: msrt_bench_keep(value: i64) */
-void msrt_bench_keep(int64_t value);
-
-/* Returns `value`, through a function the compiler does not see into, so a bench's input is not known when it is
- * compiled and the work over it is not folded away. */
-/* ms-sig: msrt_bench_opaque(value: i64) -> i64 */
-int64_t msrt_bench_opaque(int64_t value);
+/* Takes a bench body's last value so the work that computed it cannot be removed: the call is to a function the
+ * compiler does not see into, and the value is read through its shape table's address. */
+/* ms-sig: msstd_bench_sink(shape: *const ShapeTable, value: *const u8) @domain=test @end */
+void msstd_bench_sink(const MsShapeTable *table, const void *value);
 
 #endif

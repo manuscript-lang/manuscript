@@ -121,8 +121,9 @@ void msrt_test_capture_fault(int64_t id, MsString *out) {
   ms_free(bytes);
 }
 
-static _Atomic int64_t bench_sink;
+static _Atomic uint8_t bench_sink;
 
-void msrt_bench_keep(int64_t value) { atomic_store_explicit(&bench_sink, value, memory_order_relaxed); }
-
-int64_t msrt_bench_opaque(int64_t value) { return value; }
+void msstd_bench_sink(const MsShapeTable *table, const void *value) {
+  (void)table;
+  atomic_store_explicit(&bench_sink, *(const volatile uint8_t *)value, memory_order_relaxed);
+}

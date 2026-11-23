@@ -8,10 +8,9 @@
 import (
 	stdout from "@std/io/io.ms",
 	max, min, sqrt from "@std/math/math.ms",
-	environment, set_environment from "@std/os/env.ms",
+	environment from "@std/os/env.ms",
 	cpu_usage from "@std/os/process.ms",
 	runtime_counts from "@std/os/system.ms",
-	msrt_bench_keep, msrt_bench_opaque from "@std/internal/test.ms",
 	fail from "@std/test/test.ms",
 	monotonic from "@std/time.ms",
 )
@@ -19,8 +18,8 @@ import (
 /*
 Measurement driver for `bench` blocks. `ms bench` runs each block in its own process. The block's body is one
 iteration; this module repeats it, times it and reports per-iteration statistics. The entry that `ms bench` builds
-calls `run_bench_block` with the block's body, so programs do not call it themselves. A body may instead time its
-own work with `measure`.
+calls `run_bench_block` with the block's body, so programs do not call it themselves.
+The whole body is timed, and its last value, when it has one, is kept so the work that computed it stays in the program.
 
 Settings come from environment variables that `ms bench` fills from its flags: `MS_BENCH_TIME_MS` (target time per
 sample, default 100), `MS_BENCH_SAMPLES` (default 10) and `MS_BENCH_ITERATIONS` (a fixed iteration count; 0
@@ -46,13 +45,8 @@ max_iterations := 100000000
 
 /*
 Runs `work` repeatedly and writes the statistics line, per operation, where each run performs `operations` operations (at least 1).
-A bench body that needs setup outside the timed region builds its data first and then calls `measure`:
-  bench "sorts":
-      data := [3, 1, 2]
-      measure(1, fn: keep(data.sorted().length()))?
-Everything the body does before `measure` runs once, untimed.
 */
-export fn measure(operations: Int, work: fn() Void!) Void!:
+fn measure[F](operations: Int, work: fn(var F) Void!, var state: F) Void!:
 	if operations < 1: return fail("measure: operations must be at least 1")
 
 	body := work
@@ -62,7 +56,7 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	if config.iterations == 0:
 		// Calibration doubles as the warmup.
 		while true:
-			elapsed := time_batch(body, count)?
+			elapsed := time_batch(body, state, count)?
 			if elapsed >= config.target_nanoseconds or count >= max_iterations: break
 
 			count = next_count(count, elapsed, config.target_nanoseconds)
@@ -71,7 +65,7 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	cpu_before := cpu_usage()?
 
 	for unused in 0..config.samples:
-		elapsed := time_batch(body, count)?
+		elapsed := time_batch(body, state, count)?
 		times.append(elapsed.to_float() / (count * operations).to_float())
 
 	cpu_after := cpu_usage()?
@@ -98,7 +92,7 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	// so the per-operation figures are exact and a change in them is a change in the
 	// work done.
 	before := runtime_counts()?
-	body()?
+	body(state)?
 
 	after := runtime_counts()?
 	ops := operations.to_float()
@@ -114,32 +108,18 @@ export fn measure(operations: Int, work: fn() Void!) Void!:
 	mir_ops := (after.operations - before.operations).to_float() / ops
 	line := f"MSBENCH \{\"iterations\":{count},\"operations\":{operations},\"samples\":{config.samples},\"min_ns\":{sorted[0]},\"median_ns\":{median},\"mean_ns\":{mean},\"max_ns\":{sorted[last]},\"stddev_ns\":{sqrt(variance)},\"cpu_ns\":{cpu_ns},\"allocations\":{allocations},\"allocated_bytes\":{allocated},\"list_copies\":{list_copies},\"list_copy_bytes\":{list_copied},\"string_clones\":{string_clones},\"string_clone_bytes\":{string_cloned},\"mir_ops\":{mir_ops}\}\n"
 	stdout().write(line).get()
-	set_environment(measured_flag, "1").get()
-
-// The environment variable that `measure` sets once a body has timed its own work.
-measured_flag := "MS_BENCH_MEASURED"
 
 // Called by the entry that `ms bench` builds, with each block's body; programs do not
-// call it. The body runs once first, as the warmup. A body that called `measure` has
-// already reported; any other body is one iteration to repeat and time.
+// call it. The body is one iteration to repeat and time.
 export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
-	body()?
+	var none = 0
+	return measure(operations, fn var unused: body(), none)
 
-	environment := environment().get_or(Map[String, String]())
-	if environment.get_or(measured_flag, "") == "1": return ok()
-
-	return measure(operations, body)
-
-// Consumes a bench's Int result so the work that computed it stays in the program: the value goes through a call
-// the compiler cannot see into, so it neither removes the work nor folds it to a constant. Write `keep(value)?`
-// in the body, and take the work's inputs from outside the body when it should not be computed at compile time.
-export fn keep(checksum: Int) Void!:
-	msrt_bench_keep(checksum)
-
-// Returns `value` unchanged through a call the compiler cannot see into. Pass a bench's constant inputs through it
-// (`n := opaque(1000)`) so the optimizer cannot evaluate the whole body at compile time; `keep` alone cannot stop that.
-export fn opaque(value: Int) Int:
-	return msrt_bench_opaque(value)
+// Called by the entry that `ms bench` builds for a file with a `make_fixture`, with each block's body, which takes
+// the file's fixture; programs do not call it. The fixture is made, and `before_all` and `before_each` have run,
+// before the timing starts, and `after_each` and `after_all` run after it.
+export fn run_bench_fixture[F](body: fn(var F) Void!, operations: Int, var state: F) Void!:
+	return measure(operations, body, state)
 
 fn settings() Settings:
 	environment := environment().get_or(Map[String, String]())
@@ -154,10 +134,10 @@ fn settings() Settings:
 
 // Internal: runs `body` `count` times and returns the elapsed nanoseconds. The first
 // failure stops the run and is returned.
-fn time_batch(body: fn() Void!, count: Int) Int!:
+fn time_batch[F](body: fn(var F) Void!, var state: F, count: Int) Int!:
 	started := monotonic()
 	for unused in 0..count:
-		body()?
+		body(state)?
 	return ok(monotonic().difference(started).to_nanoseconds())
 
 // Internal: returns the iteration count whose sample should take about `target`
