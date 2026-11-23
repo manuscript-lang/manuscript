@@ -57,12 +57,38 @@
           },
           "replacement": "import Bytes from \"@std/bytes.ms\"\n"
         }
+      },
+      {
+        "code": "MS2001",
+        "phase": "resolution",
+        "message": "unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"",
+        "position": {
+          "file": "testbytessplitrejectsinvalidcontracts-1.ms",
+          "line": 6,
+          "column": 25,
+          "offset": 245
+        },
+        "fix": {
+          "position": {
+            "file": "testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "end": {
+            "file": "testbytessplitrejectsinvalidcontracts-1.ms",
+            "line": 1,
+            "column": 1,
+            "offset": 0
+          },
+          "replacement": "import Bytes from \"@std/bytes.ms\"\n"
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testbytessplitrejectsinvalidcontracts-1.ms:4:16: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 4 | fn wrong(data: Bytes) List[Bytes]:\n   |                ^\n<DIR>/testbytessplitrejectsinvalidcontracts-1.ms:4:28: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 4 | fn wrong(data: Bytes) List[Bytes]:\n   |                            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testbytessplitrejectsinvalidcontracts-1.ms:4:16: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 4 | fn wrong(data: Bytes) List[Bytes]:\n   |                ^\n<DIR>/testbytessplitrejectsinvalidcontracts-1.ms:4:28: resolution: unknown type Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 4 | fn wrong(data: Bytes) List[Bytes]:\n   |                            ^\n<DIR>/testbytessplitrejectsinvalidcontracts-1.ms:6:25: resolution: unknown binding Bytes; add: import Bytes from \"@std/bytes.ms\"\n   |\n 6 |     return split(value: Bytes([]))\n   |                         ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
