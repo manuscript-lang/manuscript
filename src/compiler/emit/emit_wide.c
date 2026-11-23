@@ -186,7 +186,7 @@ void emit_wide_loads(EmitCx *cx) {
     return;
   }
   plan->loading = true;
-  cx->volatile_loads = true;
+  cx->volatile_loads = cx->wide_hide;
   for (uint32_t index = 0; index < plan->ntouched; index++) {
     const MirValue value = plan->touched[index];
     MsSpan leaves = emit_value_leaves(cx, value);

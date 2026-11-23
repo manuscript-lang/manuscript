@@ -12,6 +12,7 @@
 #include "base/strbuild.h"
 #include "compiler/project/project.h"
 #include "cli/checked_input.h"
+#include "compiler/check/std_cache.h"
 #include "tooling/doc_comment.h"
 #include "tooling/facts.h"
 #include "tooling/inspect.h"
@@ -23,7 +24,11 @@ typedef struct Analysis {
   MsInspection inspection;
 } Analysis;
 
+/* A match found while scanning. The checked program it came from is freed once its file is scanned: `name` and
+ * `root` are copies, and the analysis and entry are set again by `rebind` for the few matches described. */
 typedef struct Candidate {
+  MsSpan root; /* the file whose analysis found it */
+  MsSpan name;
   Analysis *analysis;
   const MsOccurrence *entry;
   MsSpan path; /* shown: relative to the working directory when below it */
@@ -34,7 +39,18 @@ typedef struct Candidate {
 } Candidate;
 
 MS_AVEC(Candidates, candidates, Candidate)
-MS_AVEC(Analyses, analyses, Analysis *)
+
+static uint64_t hash_span_key(const MsSpan *key) { return ms_hash_span(*key); }
+static bool equal_span_key(const MsSpan *a, const MsSpan *b) { return ms_span_equal(*a, *b); }
+MS_SET_DEFINE(PathSet, path_set, MsSpan, hash_span_key, equal_span_key)
+
+/* What the scan of the tree carries from file to file. */
+typedef struct Scan {
+  MsSpan query, cwd;
+  Candidates candidates;
+  PathSet covered; /* the files an analysis loaded as modules */
+  const MsStdCache *std; /* the bundled modules, parsed once for every file */
+} Scan;
 
 static bool path_below(MsSpan path, MsSpan dir) {
   return dir.len > 0 && path.len > dir.len + 1 && ms_span_starts_with(path, dir) && path.ptr[dir.len] == '/';
@@ -46,36 +62,40 @@ static MsSpan shown_path(MsSpan path, MsSpan cwd) {
 
 /* ---- the analyses ---- */
 
-static void analyze(MsArena *arena, MsSpan filename, Analyses *out) {
-  Analysis *analysis = MS_ARENA_NEW_ARRAY(arena, Analysis, 1);
+/* Loads `filename` into `analysis` (in `arena`); false when it has errors. */
+static bool load(MsArena *arena, const MsStdCache *std, MsSpan filename, Analysis *analysis) {
   *analysis = (Analysis){0};
+  analysis->checked.std_cache = std;
   const MsLoadOptions options = {.tests = true, .project_sources = true, .recover = true};
   (void)ms_checked_input_load_with(arena, &analysis->checked, filename, MS_INPUT_ANALYSIS, &options);
   if (!analysis->checked.checked) { /* a source with errors still lists what it declares */
     ms_checked_input_free(&analysis->checked);
-    return;
+    return false;
   }
   analysis->index = ms_occurrence_index(arena, &analysis->checked.program);
   ms_inspect_collect(arena, &analysis->checked.program, false, &analysis->inspection);
-  analyses_push(arena, out, analysis);
+  return true;
 }
 
-/* Whether an analysis already loaded the file as one of its modules. */
-static bool covered(const Analyses *analyses, MsSpan path) {
-  for (size_t i = 0; i < analyses->len; i++) {
-    const MsGraph *graph = &analyses->ptr[i]->checked.graph;
-    for (size_t m = 0; m < graph->count; m++) {
-      if (ms_span_equal(graph->modules[m].path, path)) {
-        return true;
-      }
+static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a);
+
+/* Scans one file's analysis for matches, then frees it: memory stays bounded by the matches, not the tree. */
+static void analyze(MsArena *arena, MsSpan filename, Scan *scan) {
+  MsArena scratch = ms_arena_new();
+  Analysis analysis;
+  if (load(&scratch, scan->std, filename, &analysis)) {
+    for (size_t m = 0; m < analysis.checked.graph.count; m++) {
+      path_set_add(&scan->covered, ms_arena_copy(arena, analysis.checked.graph.modules[m].path));
     }
+    collect(arena, scan, filename, &analysis);
+    ms_checked_input_free(&analysis.checked);
   }
-  return false;
+  ms_arena_free(&scratch);
 }
 
 /* Every `.ms` file below `dir` that no analysis covers yet, each checked on its own: dot directories, `node_modules`
  * and `vendor` are skipped. */
-static void analyze_tree(MsArena *arena, MsSpan dir, Analyses *out) {
+static void analyze_tree(MsArena *arena, MsSpan dir, Scan *scan) {
   MsDirEntryList entries = {0};
   if (!ms_dir_list(dir, &entries)) {
     return;
@@ -88,11 +108,11 @@ static void analyze_tree(MsArena *arena, MsSpan dir, Analyses *out) {
     const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
     if (entries.ptr[i].kind == MS_PATH_DIRECTORY) {
       if (!ms_span_is_text(name, "node_modules") && !ms_span_is_text(name, "vendor")) {
-        analyze_tree(arena, path, out);
+        analyze_tree(arena, path, scan);
       }
     } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms")) &&
-               !covered(out, path)) {
-      analyze(arena, path, out);
+               !path_set_contains(&scan->covered, path)) {
+      analyze(arena, path, scan);
     }
   }
   ms_dir_entries_free(&entries);
@@ -113,10 +133,10 @@ static MsSpan manifest_dir(MsArena *arena, MsSpan dir) {
   return (MsSpan){0};
 }
 
-static void analyze_project(MsArena *arena, MsSpan cwd, Analyses *out) {
+static void analyze_project(MsArena *arena, MsSpan cwd, Scan *scan) {
   const MsSpan root = manifest_dir(arena, cwd);
   if (root.len == 0) {
-    analyze_tree(arena, cwd, out);
+    analyze_tree(arena, cwd, scan);
     return;
   }
   const MsSpan manifest = ms_message_format(arena, "%S/ms.toml", root, (MsSpan){0});
@@ -125,12 +145,12 @@ static void analyze_project(MsArena *arena, MsSpan cwd, Analyses *out) {
   bool found = false;
   if (ms_project_workspace_members(arena, manifest, &members, &found, &error) && found) {
     for (size_t i = 0; i < members.len; i++) {
-      analyze(arena, members.ptr[i], out);
+      analyze(arena, members.ptr[i], scan);
     }
   } else {
-    analyze(arena, manifest, out);
+    analyze(arena, manifest, scan);
   }
-  analyze_tree(arena, root, out); /* files the project does not import are searched too */
+  analyze_tree(arena, root, scan); /* files the project does not import are searched too */
 }
 
 /* ---- the matches ---- */
@@ -175,21 +195,23 @@ static void classify(const MsCheckProgram *program, const MsOccurrence *entry, C
   }
 }
 
-static void collect(MsArena *arena, Analysis *a, MsSpan query, MsSpan cwd, Candidates *out) {
+static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a) {
   const MsCheckProgram *program = &a->checked.program;
   for (size_t i = 0; i < a->index.len; i++) {
     const MsOccurrence *entry = &a->index.ptr[i];
     if (!entry->declaration || (entry->symbol == 0 && !entry->method)) {
       continue;
     }
-    const int rank = ms_symbol_name_rank(arena, entry->name, query);
+    const int rank = ms_symbol_name_rank(arena, entry->name, scan->query);
     if (rank < 0) {
       continue;
     }
-    Candidate candidate = {.analysis = a, .entry = entry, .rank = rank, .path = module_path(a, entry->module, cwd)};
+    Candidate candidate = {.root = root, .name = ms_arena_copy(arena, entry->name), .entry = entry, .rank = rank,
+                           .path = ms_arena_copy(arena, module_path(a, entry->module, scan->cwd))};
     ms_source_position(program->modules.ptr[entry->module].source, entry->offset, &candidate.line, &candidate.column);
     classify(program, entry, &candidate);
-    candidates_push(arena, out, candidate);
+    candidate.entry = NULL;
+    candidates_push(arena, &scan->candidates, candidate);
   }
 }
 
@@ -200,7 +222,7 @@ static int64_t compare_candidate(uint8_t *env, const uint8_t *left, const uint8_
   if (a->rank != b->rank) {
     return a->rank - b->rank;
   }
-  const int64_t by_name = ms_span_compare(a->entry->name, b->entry->name);
+  const int64_t by_name = ms_span_compare(a->name, b->name);
   if (by_name != 0) {
     return by_name;
   }
@@ -219,7 +241,7 @@ static int64_t compare_candidate(uint8_t *env, const uint8_t *left, const uint8_
 
 static bool same_place(const Candidate *a, const Candidate *b) {
   return ms_span_equal(a->path, b->path) && a->line == b->line && a->column == b->column &&
-         ms_span_equal(a->entry->name, b->entry->name);
+         ms_span_equal(a->name, b->name);
 }
 
 static MsSpan place(MsArena *arena, MsSpan path, size_t line, size_t column) {
@@ -338,6 +360,24 @@ static MsSymbolMatch describe(MsArena *arena, const Candidate *c, MsSpan cwd) {
   return match;
 }
 
+/* Points `c` at its entry in a fresh analysis of its file. */
+static bool rebind(Candidate *c, Analysis *a, MsSpan cwd) {
+  for (size_t i = 0; i < a->index.len; i++) {
+    const MsOccurrence *entry = &a->index.ptr[i];
+    if (!entry->declaration || !ms_span_equal(entry->name, c->name)) {
+      continue;
+    }
+    size_t line, column;
+    ms_source_position(a->checked.program.modules.ptr[entry->module].source, entry->offset, &line, &column);
+    if (line == c->line && column == c->column && ms_span_equal(module_path(a, entry->module, cwd), c->path)) {
+      c->analysis = a;
+      c->entry = entry;
+      return true;
+    }
+  }
+  return false;
+}
+
 MsSymbolMatches ms_search_project(MsArena *arena, MsSpan query, size_t limit, size_t *total) {
   MsSymbolMatches matches = {0};
   *total = 0;
@@ -347,12 +387,11 @@ MsSymbolMatches ms_search_project(MsArena *arena, MsSpan query, size_t limit, si
   }
   const MsSpan cwd = ms_arena_copy(arena, ms_string_span(&current));
   ms_string_release(&current);
-  Analyses analyses = {0};
-  analyze_project(arena, cwd, &analyses);
-  Candidates candidates = {0};
-  for (size_t i = 0; i < analyses.len; i++) {
-    collect(arena, analyses.ptr[i], query, cwd, &candidates);
-  }
+  MsStdCache *std = ms_std_cache_new();
+  Scan scan = {.query = query, .cwd = cwd, .std = std};
+  analyze_project(arena, cwd, &scan);
+  Candidates candidates = scan.candidates;
+  path_set_free(&scan.covered);
   if (candidates.len > 1) {
     ms_sort((uint8_t *)candidates.ptr, candidates.len, sizeof(Candidate), compare_candidate, NULL);
   }
@@ -364,11 +403,19 @@ MsSymbolMatches ms_search_project(MsArena *arena, MsSpan query, size_t limit, si
     candidates.ptr[kept++] = candidates.ptr[i];
   }
   *total = kept;
+  /* Only the matches shown are described: each one's file is analysed again, one file at a time. */
   for (size_t i = 0; i < kept && i < limit; i++) {
-    ms_symbol_matches_push(arena, &matches, describe(arena, &candidates.ptr[i], cwd));
+    MsArena scratch = ms_arena_new();
+    Analysis analysis;
+    Candidate *c = &candidates.ptr[i];
+    if (load(&scratch, std, c->root, &analysis)) {
+      if (rebind(c, &analysis, cwd)) {
+        ms_symbol_matches_push(arena, &matches, describe(arena, c, cwd));
+      }
+      ms_checked_input_free(&analysis.checked);
+    }
+    ms_arena_free(&scratch);
   }
-  for (size_t i = 0; i < analyses.len; i++) {
-    ms_checked_input_free(&analyses.ptr[i]->checked);
-  }
+  ms_std_cache_free(std);
   return matches;
 }

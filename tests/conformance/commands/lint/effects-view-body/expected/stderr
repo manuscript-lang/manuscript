@@ -1,0 +1,5 @@
+<DIR>/main.ms:7:20: warning MSL116: `gather` reaches std.clock.read: gather -> lines -> Lines.next -> ReadStream.next -> read_bounded -> monotonic; permit it with `// ms: allow_effect std.clock.read`, move the call to the caller, or take a capability parameter
+   |
+ 7 |     return collect(lines(input, none), none)
+   |                    ^
+1 warning; warnings do not fail ms lint; pass --deny-warnings to fail on them

@@ -122,6 +122,7 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
   MirValue args[LOWER_THUNK_PARAMS] = {MIR_NONE};
   mir_b_params(&b, args, target.nparams);
   const MirImm ty = {.tag = MI_TY, .a = data_ty};
+  const MirValue block = args[0];
   if (!changes_receiver) { /* a `var` receiver is the slot itself: the method reads and writes it */
     const MirOp read = target.params[0].mode == MM_MOVE ? MOP_Take : MOP_Load;
     args[0] = mir_b_emit(&b, read, args, 1, ty, data_ty);
@@ -148,7 +149,11 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
     args[index] = mir_b_emit(&b, MOP_Load, &data, 1, (MirImm){.tag = MI_TY, .a = target.params[index].ty},
                              target.params[index].ty);
   }
-  mir_b_ret(&b, mir_b_call(&b, method, args, target.nparams));
+  const MirValue result = mir_b_call(&b, method, args, target.nparams);
+  if (!changes_receiver && target.params[0].mode == MM_MOVE) { /* the method consumed the payload: its block goes too */
+    (void)mir_b_emit(&b, MOP_Free, &block, 1, (MirImm){0}, MIR_NONE);
+  }
+  mir_b_ret(&b, result);
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
@@ -303,12 +308,7 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
     /* A resource temporary seen as an interface closes as itself where its statement ends; the interface only views it. */
     const bool held = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
     const MirValue owned = fn_own_temporary(fn, conversion->from, value);
-    const MirImm view = {.tag = MI_VTABLE, .a = vtable, .b = held ? 1u : 0u};
-    const MirValue iface = mir_b_emit(&fn->b, MOP_IfaceNew, &owned, 1, view, to);
-    if (held) {
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &iface, 1, (MirImm){0}, MIR_NONE);
-    }
-    return iface;
+    return held ? fn_emit(fn, MOP_IfaceBorrow, &owned, 1, imm, to) : mir_b_emit(&fn->b, MOP_IfaceNew, &owned, 1, imm, to);
   }
   const bool droppable = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
   const bool shared = place ? ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE : !fn_fresh_owner(fn, value);
@@ -320,7 +320,11 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
     }
     return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
   }
-  const MirImm kept = {.tag = MI_VTABLE, .a = vtable, .b = 1}; /* the operand stays with its binding */
+  /* The operand stays with its binding: the view lives in the frame, or in a box its scope frees without the payload. */
+  if (!fn->returns_borrow) {
+    return fn_emit(fn, MOP_IfaceBorrow, &value, 1, imm, to);
+  }
+  const MirImm kept = {.tag = MI_VTABLE, .a = vtable, .b = 1}; /* the view leaves with the borrow it is returned as */
   const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, kept, to);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, (MirImm){0}, MIR_NONE);
   return view;

@@ -63,7 +63,7 @@ fn solve(s: String) String:
 		class := if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
 		classes[class] += 1
 		lats.append(e.latency)
-		if slow.is_none() or e.latency > slow.get_or(e).latency: slow = e.clone()
+		if slow.is_none() or e.latency > slow.clone().get_or(e.clone()).latency: slow = e.clone()
 		counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
 		totals[e.path.clone()] = totals.get_or(e.path, 0) + e.latency
 

@@ -1,6 +1,7 @@
 /* compiler/check/effects_scan.c: the effects scan over a checked program (see effects_scan.h). */
 #include "compiler/check/effects_scan.h"
 
+#include "compiler/check/dispatch_targets.h"
 #include "compiler/check/effects_directives.h"
 #include "compiler/check/properties.h"
 #include "compiler/syntax/walk.h"
@@ -138,24 +139,18 @@ static void note_ref(Scan *scan, const MsRef *ref, MsPos pos) {
   }
 }
 
-/* A value seen as an interface hands out the methods of its type that the interface's operations name: each is an
- * edge of the holder, where the conversion is. */
-static void note_view(Scan *scan, const MsConversion *conversion, MsPos pos) {
-  const MsCheckProgram *program = scan->program;
-  const MsDef *contract = ms_check_def_of(program, conversion->to);
-  const MsDef *concrete = ms_check_def_of(program, conversion->from);
-  for (size_t index = 0; contract != NULL && concrete != NULL && index < contract->operations.len; index++) {
-    for (size_t at = 0; at < program->methods.len; at++) {
-      const MsMethodEntry *entry = &program->methods.ptr[at];
-      if (entry->name != contract->operations.ptr[index].name || entry->source == NULL ||
-          ms_check_def_of(program, entry->receiver) != concrete) {
-        continue;
-      }
-      const uint32_t *target = node_index_get(&scan->by_decl, decl_key(entry->module, entry->source->id));
-      if (target != NULL) {
-        edge_list_push(&scan->edges, (Edge){.node = scan->holder, .callee = scan->nodes.ptr[*target].id, .pos = pos});
-      }
-    }
+/* A method a view or instantiation runs is an edge of the holder, at the expression. */
+typedef struct Target {
+  Scan *scan;
+  MsPos pos;
+} Target;
+
+static void note_target(void *context, uint32_t module, uint32_t node) {
+  Target *target = context;
+  const uint32_t *found = node_index_get(&target->scan->by_decl, decl_key(module, node));
+  if (found != NULL) {
+    edge_list_push(&target->scan->edges,
+                   (Edge){.node = target->scan->holder, .callee = target->scan->nodes.ptr[*found].id, .pos = target->pos});
   }
 }
 
@@ -168,11 +163,14 @@ static void visit_expr(void *context, const MsExpr *expr) {
   if (expr->kind == MS_E_CALL) {
     const MsCall *call = ms_facts_call(facts, expr->id);
     note_ref(scan, call != NULL ? &call->callee : NULL, expr->pos);
+    if (call != NULL) {
+      ms_check_instantiation_targets(scan->program, call, note_target, &(Target){scan, expr->pos});
+    }
   }
   note_ref(scan, ms_facts_ref(facts, expr->id), expr->pos);
   const MsConversion *conversion = ms_facts_conversion(facts, expr->id);
   if (conversion != NULL && conversion->kind == MS_CONV_INTERFACE_VIEW) {
-    note_view(scan, conversion, expr->pos);
+    ms_check_view_targets(scan->program, conversion, note_target, &(Target){scan, expr->pos});
   }
 }
 

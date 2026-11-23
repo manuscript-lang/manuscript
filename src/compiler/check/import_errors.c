@@ -6,6 +6,7 @@
  * near-miss path, or the module that exports the name), a name the module lacks or keeps private, and a
  * namespace-style import. An import of a prelude declaration is redundant and carries an edit that removes it. */
 #include "compiler/check/import_fix.h"
+#include "compiler/check/std_cache.h"
 #include "compiler/check/program.h"
 #include "compiler/check/suggest.h"
 #include "compiler/syntax/parse.h"
@@ -66,15 +67,28 @@ static MsSpan module_stem(MsSpan name) {
 /* Whether the bundled module `module` (a name below `@std/`) exports a declaration called `name`. */
 static bool std_exports(MsCheckProgram *program, MsSpan module, MsName name) {
   MsStdSource source = {0};
-  MsModule tree = {0};
-  MsDiag diag = {0};
-  if (!ms_std_source_find(module, &source) ||
-      !ms_parse(&program->arena, program->names, source.text, &tree, &diag)) {
+  MsModule parsed = {0};
+  const MsModule *tree = NULL;
+  if (!ms_std_source_find(module, &source)) {
     return false;
   }
-  for (uint32_t index = 0; index < tree.ndecls; index++) {
+  if (program->std_cache != NULL) { /* the parsed bundled modules are shared: no parse per suggestion */
+    MsStrBuild file = ms_strbuild_new();
+    ms_strbuild_append_text(&file, "@std/");
+    ms_strbuild_append(&file, module);
+    tree = ms_std_cache_tree(program->std_cache, ms_names_intern(program->names, ms_strbuild_span(&file)));
+    ms_strbuild_free(&file);
+  }
+  MsDiag diag = {0};
+  if (tree == NULL) {
+    if (!ms_parse(&program->arena, program->names, source.text, &parsed, &diag)) {
+      return false;
+    }
+    tree = &parsed;
+  }
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
     MsName declared = 0;
-    if (tree.decls[index]->is_exported && ms_check_declared_name(tree.decls[index], &declared) &&
+    if (tree->decls[index]->is_exported && ms_check_declared_name(tree->decls[index], &declared) &&
         declared == name) {
       return true;
     }
