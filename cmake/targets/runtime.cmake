@@ -131,7 +131,7 @@ endif()
 # The WebSocket natives, over the connections of ms_std_sockets.
 ms_library(ms_std_ws runtime/std
   SOURCES
-    ws_abi.c ws_dial.c http_network.c http_serve_conn.c http_serve_exchange.c http_serve_h2.c
+    ws_abi.c ws_dial.c http_network.c http_serve_conn.c http_serve_steal.c http_serve_exchange.c http_serve_h2.c
     http_serve_h2_exchange.c http_serve_abi.c
   LINK ms_base ms_values ms_core ms_std_net ms_std_sockets)
 

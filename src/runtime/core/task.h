@@ -42,6 +42,7 @@ typedef void (*MsTaskEntry)(void *);
 
 /* ms_task_spawn flags. */
 #define MS_SPAWN_DETACHED 1u /* nobody joins; a fault in the task ends the process */
+#define MS_SPAWN_FRONT 4u    /* runs before the tasks already ready: the spawner is about to wait for it */
 #define MS_SPAWN_FATAL 2u    /* a fault ends the process as for a detached task, but the task can be joined */
 /* ms_task_spawn stack request: a region of its own, 256 MiB (an isolate's main task). */
 #define MS_TASK_ROOT_STACK ((size_t)256 << 20)

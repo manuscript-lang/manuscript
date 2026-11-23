@@ -24,10 +24,10 @@ uint8_t msstd_crypto_hkdf(int64_t alg, const MsBytes *secret, const MsBytes *sal
 /* ms-sig: msstd_crypto_constant_time_equal(left: *const VecVal, right: *const VecVal) -> u8
  * @domain=cryptography */
 uint8_t msstd_crypto_constant_time_equal(const MsBytes *left, const MsBytes *right);
-/* ms-sig: msstd_crypto_hasher_new(alg: i64) -> *mut ObjCell<Hasher> @handle @domain=cryptography */
+/* ms-sig: msstd_crypto_hasher_new(alg: i64) -> *mut ObjCell<Hasher> @domain=cryptography @end */
 void *msstd_crypto_hasher_new(int64_t alg);
-/* ms-sig: msstd_crypto_hmac_hasher_new(alg: i64, key: *const VecVal) -> *mut ObjCell<Hasher> @handle
- * @domain=cryptography */
+/* ms-sig: msstd_crypto_hmac_hasher_new(alg: i64, key: *const VecVal) -> *mut ObjCell<Hasher>
+ * @domain=cryptography @end */
 void *msstd_crypto_hmac_hasher_new(int64_t alg, const MsBytes *key);
 /* ms-sig: msstd_crypto_hasher_update(handle h: *mut ObjCell<Hasher>, data: *const VecVal)
  * @domain=cryptography */

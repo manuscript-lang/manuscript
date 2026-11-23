@@ -12,6 +12,7 @@
 #include "cli/json_value.h"
 #include "cli/lsp_actions.h"
 #include "cli/lsp_analysis.h"
+#include "cli/lsp_completion.h"
 #include "cli/lsp_internal.h"
 #include "cli/lsp_nav.h"
 #include "cli/lsp_semantic.h"
@@ -27,6 +28,7 @@ typedef struct Session {
   LspDocList docs;
   RootList roots;
   bool initialized, shutdown;
+  bool snippets; /* the client takes snippet text in completions */
 } Session;
 
 static void send(MsStrBuild *message) {
@@ -87,6 +89,12 @@ static bool json_position(const MsJson *value, LspPosition *position) {
 
 static void handle_initialize(Session *session, const MsJson *id, const MsJson *params) {
   session->initialized = true;
+  const MsJson *capabilities = member_kind(params, "capabilities", MS_JSON_OBJECT);
+  const MsJson *text_document = member_kind(capabilities, "textDocument", MS_JSON_OBJECT);
+  const MsJson *completion = member_kind(text_document, "completion", MS_JSON_OBJECT);
+  const MsJson *completion_item = member_kind(completion, "completionItem", MS_JSON_OBJECT);
+  const MsJson *snippet_support = member_kind(completion_item, "snippetSupport", MS_JSON_BOOL);
+  session->snippets = snippet_support != NULL && ms_span_is_text(snippet_support->text, "true");
   const MsJson *root = member_kind(params, "rootUri", MS_JSON_STRING);
   if (root != NULL && root->text.len > 0 && !lsp_uri_is_malformed_file(root->text)) {
     MsStrBuild path = ms_strbuild_new();
@@ -104,7 +112,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"codeActionProvider\":{\"codeActionKinds\":[\"source.fixAll.manuscript\",\"quickfix\",\"source.organizeImports\"]},\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\",\":\"],\"retriggerCharacters\":[\",\"]},\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"/\"]},\"codeActionProvider\":{\"codeActionKinds\":[\"source.fixAll.manuscript\",\"quickfix\",\"source.organizeImports\"]},\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\",\":\"],\"retriggerCharacters\":[\",\"]},\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -183,7 +191,7 @@ static void handle_close(Session *session, const MsJson *params) {
 
 /* The textDocument requests that read one document at a position. Returns false for a method it does not serve. */
 static bool handle_document_request(Session *session, const MsJson *id, MsSpan method, const MsJson *params) {
-  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "signatureHelp", "codeAction", "semanticTokens/full", "prepareRename", "rename"};
+  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "signatureHelp", "codeAction", "completion", "semanticTokens/full", "prepareRename", "rename"};
   bool served = false;
   for (size_t i = 0; i < sizeof SERVED / sizeof SERVED[0]; i++) {
     MsStrBuild name = ms_strbuild_new();
@@ -241,6 +249,8 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
       }
     }
     lsp_nav_inlay_hints(&session->docs, doc, wanted, &result);
+  } else if (ms_span_is_text(kind, "completion")) {
+    lsp_completion(&session->docs, doc, position, session->snippets, &result);
   } else if (ms_span_is_text(kind, "codeAction")) {
     LspRange wanted = {{0, 0}, {(size_t)-1, (size_t)-1}};
     const MsJson *range = member_kind(params, "range", MS_JSON_OBJECT);

@@ -58,6 +58,8 @@ typedef struct MsScopeVisitor {
   bool (*unknown)(void *context, const MsExpr *expr);
   /* An assignment whose target is a plain name (`stmt->u.assign.name`). */
   void (*assign)(void *context, const MsStmt *stmt, const MsBindingList *scope, const MsScopeSite *site);
+  /* An assignment to a field or an element (`stmt->u.assign.target`), after its target was walked; may be NULL. */
+  void (*store)(void *context, const MsStmt *stmt, const MsBindingList *scope, const MsScopeSite *site);
 } MsScopeVisitor;
 
 /* The binding of `name` in `scope`, or NULL. */

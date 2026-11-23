@@ -13,6 +13,7 @@
 /* The mail ops of this module (MsMail.a of a MS_MAIL_PROMISE message; promise.c uses the ones below 0x40). */
 #define MS_MAIL_ASK 0x40u   /* p = the Ask to run */
 #define MS_MAIL_WATCH 0x41u /* b = the promise, c = the remote token to post when it finishes */
+#define MS_MAIL_START 0x44u /* b = the promise, p = its closure: run it here as a task (a spread start) */
 
 /* An id of an isolate that is gone reads as closed. */
 bool ms_remote_done(MsPromise id);

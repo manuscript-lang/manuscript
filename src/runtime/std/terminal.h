@@ -39,7 +39,7 @@ int64_t msstd_terminal_size_rows(void);
 /* ms-sig: msstd_terminal_raw_mode(out: *mut *mut ObjCell<RawH>, err: ErrSlot) -> u8 @domain=terminal */
 uint8_t msstd_terminal_raw_mode(MsObj **out, MsString *err);
 /* Another handle on the same raw terminal; the last handle's drop closes it. */
-/* ms-sig: msstd_terminal_raw_terminal_share(handle h: *const ObjCell<RawH>) -> *mut ObjCell<RawH> @handle @domain=terminal */
+/* ms-sig: msstd_terminal_raw_terminal_share(handle h: *const ObjCell<RawH>) -> *mut ObjCell<RawH> @domain=terminal @end */
 MsObj *msstd_terminal_raw_terminal_share(const MsObj *handle);
 /* ms-sig: msstd_terminal_raw_terminal_close(handle h: *const ObjCell<RawH>) @domain=terminal */
 void msstd_terminal_raw_terminal_close(const MsObj *handle);
