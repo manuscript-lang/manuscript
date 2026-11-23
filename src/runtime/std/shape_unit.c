@@ -316,12 +316,6 @@ static void test_decode_containers(void) {
   free(m.image);
 }
 
-/* The unit test links no network natives, so no object has a codec. */
-const MsObjectCodec *ms_object_codec(const char *name) {
-  (void)name;
-  return NULL;
-}
-
 int main(void) {
   test_record();
   test_list_and_optional();

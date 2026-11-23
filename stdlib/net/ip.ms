@@ -1,5 +1,6 @@
 import (
 	Data from "@std/core.ms",
+	JsonValue from "@std/data/json.ms",
 
 	msstd_net_cidr_text,
 	msstd_net_contains_ip,
@@ -51,6 +52,10 @@ export extern type IpAddress
 fn IpAddress.to_string() String:
 	return msstd_net_ip_address_text(self)
 
+// Writes the canonical text as a JSON string.
+fn IpAddress.to_json() JsonValue:
+	return JsonValue.StringValue(self.to_string())
+
 // Returns the normalized address family.
 fn IpAddress.family() IpFamily:
 	if msstd_net_ip_address_family(self): return IPv6
@@ -63,6 +68,10 @@ export extern type Cidr
 // Returns the canonical text of the masked range, such as `10.0.0.0/8`.
 fn Cidr.to_string() String:
 	return msstd_net_cidr_text(self)
+
+// Writes the canonical text as a JSON string.
+fn Cidr.to_json() JsonValue:
+	return JsonValue.StringValue(self.to_string())
 
 // DNS record data returned by a typed lookup.
 export type DnsRecord:

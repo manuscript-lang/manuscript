@@ -232,6 +232,8 @@ static void collection_shape(ShapeBuild *build, MirTy ty, const MirTyData *data,
   shape->align = 8;
 }
 
+static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text, uint32_t *json);
+
 static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   const MirModule *module = build->module;
   const MirTyData *data = mir_ty_data(module, ty);
@@ -258,7 +260,9 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
     shape.value = data->nargs > 1 ? shape_of(build, data->args[1]) : MS_SHAPE_NONE;
   } else if (data->kind == MK_OBJ) {
     shape.kind = MS_SHAPE_OBJECT;
-    shape.name = add_mir_name(build, data->name);
+    uint32_t text = 0, json = 0;
+    hook_functions(build, index, &text, &json);
+    shape.flags |= (text != 0 ? MS_SHAPE_TEXT_FORM : 0) | (json != 0 ? MS_SHAPE_JSON_FORM : 0);
   }
   (void)layouts;
   build->shapes.ptr[index] = shape;
@@ -345,6 +349,13 @@ static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text
   } else if (data->kind == MK_ALT) {
     *text = build->module->alts.ptr[data->id].text_fn1;
     *json = build->module->alts.ptr[data->id].json_fn1;
+  } else if (data->kind == MK_OBJ) {
+    for (size_t at = 0; at < build->module->obj_hooks.len; at++) {
+      if (build->module->obj_hooks.ptr[at].ty == build->types.ptr[index]) {
+        *text = build->module->obj_hooks.ptr[at].text_fn1;
+        *json = build->module->obj_hooks.ptr[at].json_fn1;
+      }
+    }
   }
 }
 
