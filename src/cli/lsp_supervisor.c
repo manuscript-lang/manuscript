@@ -188,7 +188,8 @@ static void on_client(Supervisor *s, MsSpan frame) {
     if (method != NULL && ms_span_is_text(method->text, "initialize")) {
       ms_arena_free(&s->initialize_arena);
       s->initialize_arena = ms_arena_new();
-      s->initialize = ms_json_parse(&s->initialize_arena, frame);
+      /* numbers and words in the tree point into the text, so the text lives as long as the tree */
+      s->initialize = ms_json_parse(&s->initialize_arena, ms_arena_copy(&s->initialize_arena, frame));
     } else if (method != NULL && ms_span_is_text(method->text, "initialized")) {
       s->initialized = true;
     } else if (method != NULL && ms_span_is_text(method->text, "exit")) {

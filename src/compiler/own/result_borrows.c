@@ -243,7 +243,7 @@ static uint32_t moved_positions(const Pass *pass, MsParams params) {
   return mask;
 }
 
-static Reached reached_by(Pass *pass, MsParams params, MsStmts body) {
+static Reached reached_by(Pass *pass, MsParams params, MsStmts body, MsTy result) {
   pass->view_count = 0;
   pass->depth = 0;
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = view_stmt, .expr = view_expr}, params, body);
@@ -257,11 +257,18 @@ static Reached reached_by(Pass *pass, MsParams params, MsStmts body) {
     out.all = join(out.all, reaches[index]);
   }
   const uint32_t owned_params = moved_positions(pass, params);
-  for (uint32_t fresh = 0; out.known && fresh < returns.len && out.fresh == NULL; fresh++) {
+  /* An interface result is a view every path builds; a value converted on the way out (a type as its interface, a value as
+   * its Optional) is a new value, not a reference. */
+  const bool view_result = result != MS_TY_NONE && ms_ty_kind(&pass->program->types, result) == MS_TY_CONTRACT;
+  for (uint32_t fresh = 0; out.known && !view_result && fresh < returns.len && out.fresh == NULL; fresh++) {
     if (!reaches[fresh].owned || reaches[fresh].mask != 0) {
       continue;
     }
     for (uint32_t borrowed = 0; borrowed < returns.len; borrowed++) {
+      const MsTy shown = ms_facts_type(pass->facts, returns.values[borrowed]->id);
+      if (result != MS_TY_NONE && shown != result) {
+        continue;
+      }
       if ((reaches[borrowed].mask & ~owned_params) != 0 && (case_of(pass, returns.values[fresh]) & case_of(pass, returns.values[borrowed])) != 0) {
         out.fresh = returns.values[fresh];
         out.borrowed = returns.values[borrowed];
@@ -273,7 +280,7 @@ static Reached reached_by(Pass *pass, MsParams params, MsStmts body) {
 }
 
 static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
-  const Reached reached = reached_by(pass, params, body);
+  const Reached reached = reached_by(pass, params, body, MS_TY_NONE);
   if (!reached.known) {
     return 0;
   }
@@ -281,8 +288,19 @@ static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
 }
 
 /* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */
-static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body) {
-  const Reached reached = reached_by(pass, params, body);
+static MsTy written_type(const Pass *pass, uint32_t module, const MsTypeRef *ref) {
+  for (size_t index = 0; ref != NULL && index < pass->program->type_refs.len; index++) {
+    const MsTypeRefRecord *record = &pass->program->type_refs.ptr[index];
+    if (record->module == module && record->node == ref->id) {
+      return record->ty;
+    }
+  }
+  return MS_TY_NONE;
+}
+
+static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body, const MsTypeRef *result_ref) {
+  const MsTy result = written_type(pass, module, result_ref);
+  const Reached reached = reached_by(pass, params, body, result);
   if (!reached.known || reached.borrowed == NULL || reached.fresh == NULL) {
     return;
   }
@@ -310,13 +328,13 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       if (decl->kind == MS_D_FN) {
         pass.method = false;
         pass.self_node = decl->id;
-        report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body);
+        report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
-        report_mixed(&pass, module, method->id, method->func.params, method->func.body);
+        report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result);
       }
     }
   }
