@@ -309,7 +309,7 @@ _Noreturn void lsp_supervise(void) {
 #endif
   MsString log_setting;
   Supervisor s = {.events = lsp_input_create(), .log = ms_env_get("MS_LSP_LOG", &log_setting)};
-  ms_string_release(&log_setting);
+  if (s.log) ms_string_release(&log_setting);
   if (s.events == NULL || !lsp_input_attach(s.events, stdin, SOURCE_CLIENT, false) || !start_worker(&s)) {
     (void)fputs("ms-lsp: cannot start the worker\n", stderr);
     lsp_input_exit(1);
