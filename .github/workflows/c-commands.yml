@@ -75,3 +75,6 @@ jobs:
       - if: runner.os == 'Windows'
         shell: msys2 {0}
         run: cmake --build --preset debug --target conform-commands
+      - if: failure() && runner.os == 'Windows'
+        shell: msys2 {0}
+        run: cd tests/conformance/commands/test/fault/input && "$(find "$GITHUB_WORKSPACE/.artifacts/build/debug" -name ms-c.exe | head -1)" test g_test.ms --test g_test.ms::division

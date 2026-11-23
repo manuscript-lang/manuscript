@@ -421,6 +421,22 @@ bool ms_frames_collector_add(uintptr_t return_address, void *context) {
   return add_scoped_frames(collector, function, position);
 }
 
+
+/* PROBE */
+void ms_probe_line(const char *what, uintptr_t a, uintptr_t b) {
+  char text[128];
+  size_t n = 0;
+  for (const char *c = what; *c != 0 && n < 60; c++) text[n++] = *c;
+  text[n++] = ' ';
+  for (int k = 0; k < 2; k++) {
+    uintptr_t v = k == 0 ? a : b;
+    for (int shift = 60; shift >= 0; shift -= 4) text[n++] = "0123456789abcdef"[(v >> shift) & 15];
+    text[n++] = ' ';
+  }
+  text[n++] = '\n';
+  ms_sys_stderr_write(ms_span_of((const uint8_t *)text, n));
+}
+
 static bool is_source_address(uintptr_t pc, const void *tables) { return ms_frames_find_function(tables, pc) != NULL; }
 
 static bool is_native_address(uintptr_t pc, const void *unused) {
@@ -445,7 +461,10 @@ static void visit_native(uintptr_t anchor, MsFrameVisit visit, void *context) {
    * pointer. Each later register value comes from a record this walk located. */
   start.fp = 0;
   for (size_t step = 0; step < start.budget; step++) {
-    if (ms_frames_find_function(tables, pc) == NULL || !visit(pc, context)) {
+    const bool known = ms_frames_find_function(tables, pc) != NULL;
+    const bool more = known && visit(pc, context);
+    ms_probe_line(known ? (more ? "visit more" : "visit stop") : "visit unknown", pc, step);
+    if (!more) {
       return;
     }
     const uintptr_t at = ms_frames_scan_record(start.sp, start.fp, low, high, is_source_address, is_native_address,
@@ -473,6 +492,7 @@ void ms_frames_collect(uintptr_t fp, uintptr_t anchor, MsStackWindow window, MsF
   MsFrameCollector collector;
   ms_frames_collector_init(&collector, list, MS_FRAMES_WALK_MAX);
   ms_frames_visit(fp, anchor, window, ms_frames_collector_add, &collector);
+  ms_probe_line("collected count/trunc", list->count, list->truncated);
 }
 
 void ms_frames_describe(const uintptr_t *addresses, size_t count, MsFrameList *list) {

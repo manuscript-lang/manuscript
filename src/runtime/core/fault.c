@@ -210,6 +210,7 @@ static void drop_trailing_library_frames(MsFrameList *list) {
 
 /* The one place a fault starts. Not inlined: the frame walk starts at its frame, so what it adds to the stack is
  * the same on every path. */
+void ms_probe_line(const char *what, uintptr_t a, uintptr_t b);
 MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message, bool out_of_memory) {
   MsUnwind *const unwind = &ms_task_running()->unwind;
   if (unwind->flight != NULL) {
@@ -224,6 +225,7 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message
   ms_frames_collect((uintptr_t)__builtin_frame_address(0), (uintptr_t)raise_fault, window_of(unwind),
                     &flight.detail->frames);
   drop_trailing_library_frames(&flight.detail->frames);
+  ms_probe_line("after drop count", flight.detail->frames.count, 0);
   render_frames(&flight.text, &flight.detail->frames);
   /* A fault that leaves a guarded task abandons its frames, so drop cleanups release what they own; an
    * unguarded fault ends the process. */
