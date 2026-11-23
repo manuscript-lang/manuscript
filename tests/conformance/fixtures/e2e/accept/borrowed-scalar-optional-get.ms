@@ -122,12 +122,12 @@ test "named and inline scalar collection lends keep the same borrow":
 test "missing collection lends still report Optional get faults":
 	(
 		(expect_fault(fn: collection_missing(List[Marker]()))?)
-		| expect_contains("called Optional.get() on none")?
+		| expect_contains("called Optional.get() on null")?
 	)
 	(
 		(
 			expect_fault(fn: map_missing(Map[String, Marker]()))?
-		) | expect_contains("called Optional.get() on none")?
+		) | expect_contains("called Optional.get() on null")?
 	)
 
 test "generic inline collection reads lend to their callback":
@@ -171,7 +171,7 @@ test "a labeled map binding leaves its scalar owner alive":
 test "a missing labeled map lend still reports the Optional fault":
 	(
 		(expect_fault(fn: labeled_map_missing(make_map()))?)
-		| expect_contains("called Optional.get() on none")?
+		| expect_contains("called Optional.get() on null")?
 	)
 
 fn map_index(var events: List[Int]) Int:

@@ -1,9 +1,24 @@
 /* compiler/lower/lower_or.c: `x or d` over a nullable `x`. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* `x or d` over a nullable `x`: the payload when `x` holds one, else `d`, which runs only then. The result owns what it
  * holds: a payload view is copied, a fresh `x` gives its payload up. */
+/* Whether a call's result is a part of one of its arguments (`xs.first()`), which the caller's owner keeps. */
+static bool call_views_argument(const LowerFn *fn, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(fn->facts, call->id);
+  if (fact == NULL) {
+    return false;
+  }
+  for (uint32_t position = 0; position <= fact->arg_count; position++) {
+    if (ms_own_call_borrows(fn->cx->program, fact, position)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name:` does. */
@@ -17,6 +32,7 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   const MirTy opt_ty = mir_b_ty(&fn->b, left);
+  const bool fresh_left = fn_fresh_owner(fn, left) || (named->kind == MS_E_CALL && !call_views_argument(fn, named) && fn_owns_result(fn, left)); /* asked where `left` was made, before the branch */
   const MirVar result = mir_b_declare_var(&fn->b, result_ty, MM_MOVE);
   const MirValue present = mir_b_emit(&fn->b, MOP_OptIsSome, &left, 1, (MirImm){0}, MIR_BOOL);
   const MirBlock some_block = mir_b_new_block(&fn->b);
@@ -28,8 +44,8 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
   mir_b_switch_to(&fn->b, some_block);
   /* A temporary (`f()?`, a call) gives its payload up; a name or field gives it up only where it is moved. */
   const bool place = named->kind == MS_E_NAME || named->kind == MS_E_MEMBER || named->kind == MS_E_INDEX;
-  const bool owns = (fn_fresh_owner(fn, left) && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving) ||
-                    (!place && named->kind != MS_E_CALL && fn_fresh_owner(fn, left));
+  const bool owns = (fresh_left && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving) ||
+                    (!place && named->kind != MS_E_CALL && fresh_left);
   /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
   const bool view_only = !owns && fn->or_view == expr && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
                          ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
@@ -50,7 +66,7 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
   if (mir_b_ty(&fn->b, payload) != result_ty) { /* the result is nullable too: `x or y` with `y: T?` */
     payload = mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, result_ty);
   }
-  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, payload)) && !view_only) {
+  if ((mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, payload))) && !view_only) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &payload, 1, (MirImm){0}, MIR_NONE);
   }
   mir_b_def_var(&fn->b, result, payload);
@@ -67,7 +83,7 @@ MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr) {
     mir_b_seal_block(&fn->b, join);
     mir_b_switch_to(&fn->b, join);
     const MirValue only = mir_b_use_var(&fn->b, result);
-    if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, only)) && !view_only) {
+    if ((mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, only))) && !view_only) {
       fn_own(fn, fn_scope(fn), only);
     }
     return only;
