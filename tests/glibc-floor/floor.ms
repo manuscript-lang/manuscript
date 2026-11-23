@@ -23,6 +23,7 @@ fn main() Void:
 	child := run("true", []).wait().is_ok()
 	entropy := secure_int(0, max_exclusive: 10).is_ok()
 	hosts := lookup("localhost").is_ok()
+
 	// `environ`, `_environ` and `__environ` must be one object in the stubs (copy relocation).
 	env := environment().get().length() > 0
 	void sleep(nanoseconds(1000000)).wait()
