@@ -143,6 +143,9 @@ MsName lower_trace_name(Lower *cx, MsTy receiver, MsName declared_name) {
       break;
     }
   }
+  if (head.len > 0 && head.ptr[head.len - 1] == '?') { /* `T?` is the Optional type */
+    head = ms_span_of_text("Optional");
+  }
   MsStrBuild full = ms_strbuild_new();
   ms_strbuild_append(&full, head);
   ms_strbuild_append_byte(&full, '.');

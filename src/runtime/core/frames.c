@@ -357,13 +357,6 @@ static bool append_frame(MsFrameList *list, const MsFrame *frame) {
   return true;
 }
 
-/* Whether a frame belongs to the standard library, whose frames a report leaves out: the user's call into it
- * is the frame that matters (`@std/core.ms` and the like). */
-static bool is_standard_frame(const MsFrame *frame) {
-  return frame->file[0] == '@' && frame->file[1] == 's' && frame->file[2] == 't' && frame->file[3] == 'd' &&
-         frame->file[4] == '/';
-}
-
 /* Adds the frames of one return address: the inlined callees innermost first, then the physical function. */
 static bool add_scoped_frames(MsFrameCollector *collector, const MsFuncEntry *function, Position position) {
   const MsTables *const tables = collector->tables;
@@ -385,7 +378,7 @@ static bool add_scoped_frames(MsFrameCollector *collector, const MsFuncEntry *fu
     const MsFrame frame = {.file = checked_name(tables, file_offset),
                  .function = checked_name(tables, name_offset),
                  .line = line};
-    if (line != 0 && !is_standard_frame(&frame) && !append_frame(collector->list, &frame)) {
+    if (line != 0 && !append_frame(collector->list, &frame)) {
       return false;
     }
     if (inlined == NULL) {
