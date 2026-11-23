@@ -36,7 +36,7 @@ fn largest[T: Clonable](items: List[T], score: fn(T) Int) T?:
     var best_score = 0
     for item in items:
         value := score(item)
-        if best.is_none() or value > best_score:
+        if best == null or value > best_score:
             best_score = value
             best = item.clone()
     return best
@@ -45,7 +45,7 @@ fn main() Void:
     items: List[Priced] := [Book("Manuscript", 120), Subscription(6)]
     print(f"Cart: {total(items)} cents")
     top := largest([3, 9, 4], fn n: n)
-    print(f"Largest: {top.get_or(0)}")
+    print(f"Largest: {top or 0}")
 ```
 
 ```text

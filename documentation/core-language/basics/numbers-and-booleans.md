@@ -99,7 +99,7 @@ Unsigned types follow the same rules with a lower bound of zero:
 - `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`. Each returns an `Optional` unless every source value fits (`Int.to_uint8()` is `null` for -1 or 256, `UInt32.to_int32()` is `null` above 2147483647).
 - Other pairs, such as `UInt8.to_int16()`, are not declared. Go through `to_int()`: `UInt8.to_int().to_int16()`. `UInt8.to_int()` widens directly; `UInt64.to_int()` is `null` above 9223372036854775807.
 - `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values.
-- A `Float` reaches an unsigned type through a chain such as `truncate_to_int().get_or(0).to_uint8()`, because there is no `truncate_to_uintN()`.
+- A `Float` reaches an unsigned type through a chain such as `(truncate_to_int() or 0).to_uint8()`, because there is no `truncate_to_uintN()`.
 
 `abs()` and `sign()` are methods on every signed integer and float type, so no cast is needed. Unsigned values are never negative, so they have neither.
 

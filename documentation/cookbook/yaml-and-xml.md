@@ -22,7 +22,7 @@ fn number_text(value: YamlValue) String:
 
 fn port_of(doc: YamlValue) String:
     match doc:
-        ObjectValue(fields): return number_text(fields.get("port").get_or(Null))
+        ObjectValue(fields): return number_text(fields.get("port") or Null)
         _: return "not a mapping"
 
 fn main() Void!:
@@ -45,7 +45,7 @@ import parse from "@std/data/xml.ms"
 fn main() Void!:
     doc := parse("<feed><item id=\"1\">Hi &amp; bye</item><item id=\"2\">Bye</item></feed>")?
     for item in doc.find_all("item"):
-        print(f"{item.attribute("id").get_or("?")}: {item.text()}")
+        print(f"{item.attribute("id") or "?"}: {item.text()}")
 ```
 
 - A DOCTYPE is skipped and no entity it defines is expanded, so a hostile document cannot pull in files or grow without bound. `max_depth` bounds nesting.

@@ -302,12 +302,12 @@ type Branch:
 
 fn var Branch.insert(key: Int) Void:
     if key < self.key:
-        if self.left.is_none():
+        if self.left == null:
             self.left = Branch(key, null, null)
         else:
             self.left?.insert(key)
     else:
-        if self.right.is_none():
+        if self.right == null:
             self.right = Branch(key, null, null)
         else:
             self.right?.insert(key)

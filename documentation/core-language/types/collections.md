@@ -249,7 +249,7 @@ test "sorting and aggregates":
     scores.sort(fn a, b: b - a)
     if scores != [3, 2, 1]:
         return panic("check failed")
-    if scores.sum() != 6 or scores.max() != 3 or not List[Int]().min().is_none():
+    if scores.sum() != 6 or scores.max() != 3 or List[Int]().min() != null:
         return panic("check failed")
 ```
 

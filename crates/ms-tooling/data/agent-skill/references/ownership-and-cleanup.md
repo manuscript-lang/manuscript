@@ -65,12 +65,12 @@ type Node:
 
 fn var Node.insert(key: Int) Void:
 	if key < self.key:
-		if self.left.is_none():
+		if self.left == null:
 			self.left = Node(key, null, null)
 		else:
 			self.left?.insert(key)
 	else:
-		if self.right.is_none():
+		if self.right == null:
 			self.right = Node(key, null, null)
 		else:
 			self.right?.insert(key)

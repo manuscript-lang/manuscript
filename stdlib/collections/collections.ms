@@ -270,13 +270,13 @@ fn List[T: Clonable].drop(count: Int) move List[T]: ...
 // Copies the leading elements for which `predicate` holds, stopping at the first one
 // that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
 fn List[T: Clonable].take_while(predicate: fn(T) Bool) List[T]:
-	return self.take(self.find_index(fn x: not predicate(x)).get_or(self.length()))
+	return self.take(self.find_index(fn x: not predicate(x)) or self.length())
 
 // Copies the elements from the first one that fails `predicate` to the end, so it is
 // what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(fn x: x < 3)` is
 // `[5, 1]`.
 fn List[T: Clonable].drop_while(predicate: fn(T) Bool) List[T]:
-	return self.drop(self.find_index(fn x: not predicate(x)).get_or(self.length()))
+	return self.drop(self.find_index(fn x: not predicate(x)) or self.length())
 
 // Splits the list into consecutive chunks of `size` elements, as copies. The last
 // chunk may be shorter. An empty list, or a `size` of zero or less, gives an empty

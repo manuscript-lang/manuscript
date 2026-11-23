@@ -19,7 +19,7 @@ fn count_words(text: String) Int:
     return text.split(" ").length()
 
 fn main() Void:
-    repeats := arguments().get_or(0, "1000000").parse_int().get_or(1000000)
+    repeats := arguments().get_or(0, "1000000").parse_int() or 1000000
     var total = 0
     for index in 0..repeats:
         total += count_words("small programs are easy to review")

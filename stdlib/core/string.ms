@@ -374,7 +374,7 @@ fn title_scalar(c: String) String:
 	if greek_titlecase(code): return c.clone()
 
 	mapped := greek_titlecase_of(code)
-	if mapped > 0: return from_scalars([mapped]) or c.clone()
+	if mapped > 0: return from_scalars([mapped]).get_or(c.clone())
 
 	upper := c.upper()
 

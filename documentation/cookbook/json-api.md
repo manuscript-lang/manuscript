@@ -50,7 +50,7 @@ fn request(method: HttpMethod, path: String, body: String) HttpRequest:
     return HttpRequest(method: method, path: path, query: "", headers: headers(), body: body.to_bytes())
 
 fn body_of(response: HttpResponse) String:
-    return response.body.decode_utf8().get_or("")
+    return response.body.decode_utf8() or ""
 
 test "greet by name":
     response := api().call(request(HttpMethod.Get, "/hello/Ada", ""))?

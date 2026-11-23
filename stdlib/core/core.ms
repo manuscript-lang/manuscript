@@ -115,7 +115,7 @@ fn msstd_status_error(
 ) Error:
 	number := status.to_int()
 	kind := status_kind(number)
-	words := override_words(overrides, number).get_or(status_words(number))
+	words := override_words(overrides, number) or status_words(number)
 	return status_error_text(words, kind, domain, said)
 
 // The words `overrides` gives `number`, if any.

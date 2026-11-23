@@ -95,7 +95,7 @@ fn report(totals: Map[String, Int]) List[String]:
 
 fn main() Void:
 	lines := ["north,1250", "south,800", "north,2505", "bad line", "south,x"]
-	sales := lines | .map(parse_sale) | .filter(fn s: s.is_some()) | .map(fn s: s.get())
+	sales := lines | .map(parse_sale) | .filter(fn s: s != null) | .map(fn s: s.get())
 	skipped := lines.length() - sales.length()
 	print(report(totals_by_region(sales)).join("\n"))
 	print(f"skipped {skipped} lines")
@@ -213,7 +213,7 @@ fn var Parser.number() Expr!:
 	start := self.pos
 	while self.peek() >= "0" and self.peek() <= "9" and not self.peek().is_empty():
 		self.pos += 1
-	digits := self.chars.slice(start, self.pos).get_or([]).join("")
+	digits := self.chars.slice(start, self.pos) or [].join("")
 	value := digits.parse_int().ok_or(Error(f"expected a number at {start}", kind: "EINVAL"))?
 	return ok(Expr.Num(value))
 
@@ -342,7 +342,7 @@ fn var Shop.take(sku: String, qty: Int) String:
 fn run_command(var shop: Shop, line: String) String:
 	words := line.split(" ")
 	qty := words.get_or(2, "").parse_int()
-	if words.length() != 3 or qty.is_none():
+	if words.length() != 3 or qty == null:
 		return "error: usage: add|take <sku> <qty>"
 	match words[0]:
 		"add":
@@ -425,7 +425,7 @@ fn word_counts(text: List[String]) Map[String, Int]:
 fn main() Void!:
 	text := stdin() | lines | collect(null)?
 	counts := word_counts(text)
-	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3).get_or(null)
+	top := counts.entries().sorted(fn a, b: b.value.compare(a.value)).slice(0, 3) or null
 	for entry in top:
 		print(f"{entry.key} {entry.value}")
 ```

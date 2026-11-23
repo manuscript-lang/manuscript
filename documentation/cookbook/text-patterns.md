@@ -47,8 +47,8 @@ import encode_component, parse, parse_query from "@std/net/url.ms"
 
 fn main() Void!:
     link := parse("https://example.com:8443/search?q=a%20b&page=2#top")?
-    print(f"{link.host} {link.port.get_or(443)} {link.path} {link.fragment}")
-    for entry in parse_query(link.query.get_or(""), null)?:
+    print(f"{link.host} {link.port or 443} {link.path} {link.fragment}")
+    for entry in parse_query((link.query or ""), null)?:
         print(f"{entry.key}={entry.value}")
     print(encode_component("a b&c"))
 ```
