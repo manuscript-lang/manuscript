@@ -490,9 +490,34 @@ bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, 
   return true;
 }
 
+/* A close waits for the descriptor to be released, so other tasks run meanwhile and may end and free connections:
+ * each pass starts from the list head and never uses a connection after closing it. */
 static void close_idle(MsServeWorker *worker) {
-  for (MsServeConn *conn = worker->conns; conn != NULL; conn = conn->next) {
-    if (conn->idle && !ms_serve_idle_taken(conn)) {
+  for (;;) {
+    MsServeConn *conn = worker->conns;
+    while (conn != NULL && (conn->idle_swept || !conn->idle || ms_serve_idle_taken(conn))) {
+      conn = conn->next;
+    }
+    if (conn == NULL) {
+      return;
+    }
+    conn->idle_swept = true;
+    ms_serve_conn_close(conn);
+  }
+}
+
+static void cancel_all(MsServeWorker *worker) {
+  for (;;) {
+    MsServeConn *conn = worker->conns;
+    while (conn != NULL && conn->cancelled) {
+      conn = conn->next;
+    }
+    if (conn == NULL) {
+      return;
+    }
+    conn->cancelled = true;
+    ms_task_cancel(conn->task);
+    if (!ms_serve_idle_taken(conn)) {
       ms_serve_conn_close(conn);
     }
   }
@@ -507,12 +532,7 @@ void ms_serve_worker_close(MsServeWorker *worker) {
     close_idle(worker);
     ms_task_sleep(GRACE_POLL_NS);
   }
-  for (MsServeConn *conn = worker->conns; conn != NULL; conn = conn->next) {
-    ms_task_cancel(conn->task);
-    if (!ms_serve_idle_taken(conn)) {
-      ms_serve_conn_close(conn);
-    }
-  }
+  cancel_all(worker);
   while (worker->count > 0) {
     ms_task_sleep(GRACE_POLL_NS);
   }
