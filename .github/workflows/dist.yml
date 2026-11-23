@@ -65,7 +65,13 @@ jobs:
           root=$(ls -d "$PWD"/.artifacts/build/release/dist-smoke/unpacked/manuscript-*)
           mkdir -p /tmp/empty
           cd "$root/examples/hello"
-          gdb -batch -ex 'set detach-on-fork off' -ex 'set follow-fork-mode parent' -ex 'set exec-wrapper env -i PATH=/tmp/empty' -ex 'catch signal SIGSEGV' -ex run -ex 'info inferiors' -ex 'thread apply all bt 12' -ex 'info registers rip' -ex 'x/6i $rip' --args "$root/bin/ms" test test.ms 2>&1 | tail -80 || true
+          ( while :; do for d in /tmp/manuscript-test-*; do [ -f "$d/program" ] && cp -f "$d/program" /tmp/prog.copy 2>/dev/null; done; done ) &
+          copier=$!
+          env -i PATH=/tmp/empty "$root/bin/ms" test test.ms || true
+          sleep 1; kill $copier
+          ls -l /tmp/prog.copy
+          mkdir -p /tmp/res
+          env -i PATH=/tmp/empty MS_TEST_RESULTS=/tmp/res gdb -batch -ex run -ex bt -ex 'info sharedlibrary' -ex 'x/8i $rip' -ex 'info registers' /tmp/prog.copy 2>&1 | tail -70 || true
       # The shipped ms must run on glibc 2.28 (the floor of programs it builds, proposals/glibc-2-28-floor.md).
       - name: Check the glibc floor of ms
         if: matrix.os == 'linux'
