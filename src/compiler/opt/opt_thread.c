@@ -251,6 +251,19 @@ static bool copyable(Th *t, MirBlock j, MirBlock s, MirBlock other, const MirTar
     s == j || s == other || sb->term.kind == MT_SWITCH) {
     return false;
   }
+  /* An owned parameter stays live along the copied path under the predecessor's value, and the original
+   * path keeps the parameter: a block both reach, such as one that leaks into a panic, then sees two
+   * different owned values. */
+  for (uint32_t i = 0; i < jb->params.len; i++) {
+    if (jb->params.ptr[i].mode == MM_MOVE) {
+      return false;
+    }
+  }
+  for (uint32_t i = 0; i < sb->params.len; i++) {
+    if (sb->params.ptr[i].mode == MM_MOVE) {
+      return false;
+    }
+  }
   for (uint32_t i = 0; i < jb->insts.len; i++) {
     const MirInst *in = &jb->insts.ptr[i];
     MirMode mode;
