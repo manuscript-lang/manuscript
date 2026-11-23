@@ -190,9 +190,8 @@ static void append_count(MsStrBuild *text, size_t count) {
 }
 
 /* A function argument for a callback parameter that mentions the callee's variables, with another parameter count:
- * reported at the argument, and the result type still binds what it can. */
-static bool report_callback_arity(Body *body, const Target *target, const MsExpr *value, MsTy param, MsTy actual,
-                                  MsTy *bound) {
+ * reported at the argument; it binds nothing. */
+static bool report_callback_arity(Body *body, const Target *target, const MsExpr *value, MsTy param, MsTy actual) {
   const MsTyTable *types = &body->program->types;
   if (!is_function(types, param) || !is_function(types, actual) || !mentions_vars(types, param, &target->vars) ||
       ms_ty_param_count(types, param) == ms_ty_param_count(types, actual)) {
@@ -210,8 +209,6 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
     ms_strbuild_append_text(&text, ", or wrap it in a closure that supplies the rest");
     ms_check_report(body->program, body->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
-  (void)ms_check_unify(types, ms_ty_result(types, param), ms_ty_result(types, actual), target->vars.ptr,
-                       target->vars.len, bound);
   return true;
 }
 
@@ -358,7 +355,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
         !is_none_literal(body, arg->value) && !(is_function(types, arg_tys[index]) && unapplied(body, ms_ty_result(types, arg_tys[index]))) &&
-        !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
+        !report_callback_arity(body, target, arg->value, param, arg_tys[index])) {
       if (!ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound)) {
         (void)report_shape_mismatch(body, target, arg->value, param, arg_tys[index]);
       }
@@ -372,7 +369,11 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     if (mentions_vars(types, param, &target->vars)) {
       const MsExpr *value = call->u.call.args.ptr[matched->slot[index]].value;
-      const MsTy final = expected_param(body, target, param, bound);
+      MsTy known[16] = {0}; /* what the arguments bound, then what the expected result implies */
+      for (size_t at = 0; at < target->vars.len && at < 16; at++) {
+        known[at] = bound[at] != MS_TY_NONE ? bound[at] : hint[at];
+      }
+      const MsTy final = expected_param(body, target, param, known);
       if ((arg_tys[index] == MS_TY_NONE || body_has_foreign_variable(body, arg_tys[index])) && !mentions_vars(types, final, &target->vars)) {
         /* An argument typed while a variable was open (`Box(none)` beside `Box(value)`) is typed again at its final type. */
         const bool quiet = body->quiet;
