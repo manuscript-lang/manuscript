@@ -72,7 +72,7 @@ static int parse_arguments(int argc, char **argv, VerifyOptions *options) {
   return 0;
 }
 
-/* A directory names the ms.toml inside it. */
+/* A directory names the ms.toml inside it; empty when it has none. */
 static MsSpan resolve_target(MsArena *arena, const char *target) {
   const MsSpan path = ms_span_of_text(target);
   if (!ms_dir_exists(path)) {
@@ -82,7 +82,10 @@ static MsSpan resolve_target(MsArena *arena, const char *target) {
   ms_path_append_joined(&joined, path, ms_span_of_text("ms.toml"));
   const MsSpan named = ms_arena_copy(arena, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
-  return named;
+  MsBytes manifest = {0};
+  const bool present = ms_file_read(named, &manifest);
+  ms_bytes_free(&manifest);
+  return present ? named : (MsSpan){0};
 }
 
 static int64_t now_ns(void) {
@@ -282,6 +285,13 @@ int ms_verify_command(int argc, char **argv) {
   }
   MsArena arena = ms_arena_new();
   const MsSpan target = resolve_target(&arena, options.target);
+  if (target.len == 0) {
+    (void)fprintf(stderr,
+                  "ms verify: %s is a directory without an ms.toml; pass a .ms file or a project ms.toml, e.g. ms verify ms.toml\n",
+                  options.target);
+    ms_arena_free(&arena);
+    return STATUS_USAGE;
+  }
   const MsSpan input = target.len > 0 && target.ptr[0] == '-' ? ms_message_format(&arena, "./%S", target, (MsSpan){0}) : target;
   const MsString temp = ms_temp_dir();
   MsString directory = ms_string_empty();

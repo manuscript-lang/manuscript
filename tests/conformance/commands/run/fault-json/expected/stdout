@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "source_root": "<DIR>",
+  "exit_code": 134,
+  "stdout": "",
+  "stderr": "index 1 out of range for length 1; use get_or(index, default) to avoid the fault\n  at fault.ms:3 in main\n",
+  "fault": {
+    "kind": "index_out_of_range",
+    "message": "index 1 out of range for length 1; use get_or(index, default) to avoid the fault",
+    "position": {
+      "file": "fault.ms",
+      "line": 3
+    },
+    "trace": [
+      {
+        "function": "main",
+        "file": "fault.ms",
+        "line": 3
+      }
+    ],
+    "trace_truncated": false,
+    "cleanups_ran": true,
+    "cleanup_faults": [],
+    "exit_code": 134
+  },
+  "diagnostics": []
+}
