@@ -305,6 +305,8 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+/* `m.get(k)` over a resource as an Optional that views the entry; MIR_NONE (nothing emitted) for any other call. */
+MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call);
 /* Stores the owned `value` (held by no scope) into `place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
 
