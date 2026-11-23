@@ -26,6 +26,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
 
+# Every bundled standard-library body checks: `ms check` and `ms lint` check only the bodies a program reaches.
+file(WRITE ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms "fn main() Void:\n    return\n")
+add_test(NAME std_full COMMAND ms check ${CMAKE_BINARY_DIR}/src/cli/std-full/main.ms --std)
+
 # `ms add`, `ms install` and `ms remove` against a local git repository.
 add_test(NAME package_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/package
   -P ${CMAKE_SOURCE_DIR}/cmake/PackageRun.cmake)

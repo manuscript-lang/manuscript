@@ -1,6 +1,7 @@
 /* compiler/lower/lower_func.c: the lowering driver. Functions are lowered on demand from `main`: a use of a
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
+#include "base/fatal.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_layout.h"
 #include "compiler/own/moves.h"
@@ -358,6 +359,9 @@ static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, cons
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
 static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
+  if (target->func != NULL && target->func->deferred) {
+    ms_fatal(MS_FATAL_INVARIANT, "lowering reached a standard body the checker never checked");
+  }
   MsTy vars[16];
   if (nargs > 16 || (nargs > 0 && !decl_variables(cx, target, vars, nargs))) {
     (void)lower_fail(cx, "a function has too many type parameters");
@@ -626,6 +630,9 @@ bool lower_pending(Lower *cx) {
 }
 
 void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
+  if (program->lazy_std) {
+    ms_fatal(MS_FATAL_INVARIANT, "a program checked for analysis only was lowered");
+  }
   *cx = (Lower){.program = program, .module = module, .error = error};
   ms_names_init(&cx->instance_keys);
   ms_names_init(&cx->vtable_keys);
