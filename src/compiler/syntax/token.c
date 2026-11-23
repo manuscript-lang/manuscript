@@ -1,5 +1,6 @@
 /* Owns the token kind table: display texts, keyword lookup and contextual keywords. */
 #include "compiler/syntax/token.h"
+#include <string.h>
 
 static const char *const TOKEN_TEXT[] = {
 #define X(name, text) text,
@@ -13,48 +14,68 @@ const char *ms_tok_str(MsTok kind) {
 
 typedef struct Keyword {
   const char *word;
+  uint8_t len;
   uint8_t kind;
 } Keyword;
 
+#define KW(text, kind) {text, sizeof(text) - 1, kind}
+
 static const Keyword KEYWORDS[] = {
-    {"and", MS_T_And},
-    {"break", MS_T_Break},
-    {"continue", MS_T_Continue},
-    {"else", MS_T_Else},
-    {"enum", MS_T_Enum},
-    {"export", MS_T_Export},
-    {"extern", MS_T_Extern},
-    {"false", MS_T_False},
-    {"fixture", MS_T_Fixture},
-    {"fn", MS_T_Fn},
-    {"for", MS_T_For},
-    {"if", MS_T_If},
-    {"impl", MS_T_Impl},
-    {"import", MS_T_Import},
-    {"in", MS_T_In},
-    {"interface", MS_T_Interface},
-    {"match", MS_T_Match},
-    {"not", MS_T_Not},
-    {"or", MS_T_Or},
-    {"return", MS_T_Return},
-    {"self", MS_T_SelfKw},
-    {"test", MS_T_Test},
-    {"true", MS_T_True},
-    {"try", MS_T_Try},
-    {"type", MS_T_Type},
-    {"var", MS_T_Var},
-    {"void", MS_T_Void},
-    {"while", MS_T_While},
-    {"_", MS_T_Underscore},
+    KW("and", MS_T_And),
+    KW("break", MS_T_Break),
+    KW("continue", MS_T_Continue),
+    KW("else", MS_T_Else),
+    KW("enum", MS_T_Enum),
+    KW("export", MS_T_Export),
+    KW("extern", MS_T_Extern),
+    KW("false", MS_T_False),
+    KW("fixture", MS_T_Fixture),
+    KW("fn", MS_T_Fn),
+    KW("for", MS_T_For),
+    KW("if", MS_T_If),
+    KW("impl", MS_T_Impl),
+    KW("import", MS_T_Import),
+    KW("in", MS_T_In),
+    KW("interface", MS_T_Interface),
+    KW("match", MS_T_Match),
+    KW("not", MS_T_Not),
+    KW("or", MS_T_Or),
+    KW("return", MS_T_Return),
+    KW("self", MS_T_SelfKw),
+    KW("test", MS_T_Test),
+    KW("true", MS_T_True),
+    KW("try", MS_T_Try),
+    KW("type", MS_T_Type),
+    KW("var", MS_T_Var),
+    KW("void", MS_T_Void),
+    KW("while", MS_T_While),
+    KW("_", MS_T_Underscore),
 };
 
+/* KEYWORDS is sorted by text up to `_`, which comes last: a binary search on the first byte finds the few
+ * keywords that start like the word. */
 MsTok ms_tok_from_word(MsSpan word) {
   if (word.len > 9 || word.len == 0) {
     return MS_T_Name;
   }
-  for (size_t index = 0; index < MS_COUNT_OF(KEYWORDS); index++) {
-    if (ms_span_is_text(word, KEYWORDS[index].word)) {
-      return (MsTok)KEYWORDS[index].kind;
+  if (word.len == 1 && word.ptr[0] == '_') {
+    return MS_T_Underscore;
+  }
+  const uint8_t first = word.ptr[0];
+  size_t low = 0;
+  size_t high = MS_COUNT_OF(KEYWORDS) - 1; /* without `_` */
+  while (low < high) {
+    const size_t mid = low + (high - low) / 2;
+    if ((uint8_t)KEYWORDS[mid].word[0] < first) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  for (; low < MS_COUNT_OF(KEYWORDS) - 1 && (uint8_t)KEYWORDS[low].word[0] == first; low++) {
+    const Keyword *keyword = &KEYWORDS[low];
+    if (keyword->len == word.len && memcmp(keyword->word, word.ptr, word.len) == 0) {
+      return (MsTok)keyword->kind;
     }
   }
   return MS_T_Name;

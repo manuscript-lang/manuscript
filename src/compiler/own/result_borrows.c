@@ -462,12 +462,10 @@ static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *
   MsTy receiver = MS_TY_NONE;
   MsName name = 0;
   const MsFunc *func = ms_own_find_func(program, &call->callee);
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *at = &program->methods.ptr[index];
-    if (at->module == call->callee.decl.module && at->source->id == call->callee.decl.node) {
-      receiver = at->receiver;
-      name = at->name;
-    }
+  const MsMethodEntry *method = ms_check_method_at(program, call->callee.decl.module, call->callee.decl.node);
+  if (method != NULL) {
+    receiver = method->receiver;
+    name = method->name;
   }
   if (func != NULL && receiver == MS_TY_NONE && func->external) {
     return external_function_is_fresh(program, call, func);
@@ -521,11 +519,9 @@ bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, M
 }
 
 const MsFunc *ms_own_find_func(const MsCheckProgram *program, const MsRef *ref) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->module == ref->decl.module && entry->source->id == ref->decl.node) {
-      return &entry->source->func;
-    }
+  const MsMethodEntry *entry = ms_check_method_at(program, ref->decl.module, ref->decl.node);
+  if (entry != NULL) {
+    return &entry->source->func;
   }
   const MsModule *tree = program->modules.ptr[ref->decl.module].tree;
   for (uint32_t index = 0; index < tree->ndecls; index++) {

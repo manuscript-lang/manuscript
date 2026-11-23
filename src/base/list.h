@@ -75,6 +75,10 @@ MS_NODISCARD MS_NONNULL static inline bool ms_list_at(const MsList *list, size_t
     ms_list_reserve(prefix##_erased(list), sizeof(T), extra);                                                \
   }                                                                                                          \
   MS_UNUSED static inline void prefix##_push(Name *list, T value) {                                          \
+    if (list->len < list->cap) { /* room: the common case stores in place, with no call */                  \
+      list->ptr[list->len++] = value;                                                                        \
+      return;                                                                                                \
+    }                                                                                                        \
     ms_list_push(prefix##_erased(list), sizeof(T), &value);                                                  \
   }                                                                                                          \
   MS_UNUSED static inline T *prefix##_extend(Name *list, size_t count) {                                     \
