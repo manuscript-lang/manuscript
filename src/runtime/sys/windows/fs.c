@@ -97,3 +97,25 @@ int ms_sys_fs_redirect_null(int which) {
   (void)_close(null);
   return code;
 }
+
+/* NTFS and ReFS name components hold 255 UTF-16 units; libuv maps ERROR_FILENAME_EXCED_RANGE to UV_ENOENT. */
+enum { COMPONENT_LIMIT = 255 };
+
+int ms_sys_fs_refine_error(int code, const char *path, size_t length) {
+  if (code != UV_ENOENT) {
+    return code;
+  }
+  size_t units = 0;
+  for (size_t at = 0; at < length; at++) {
+    const unsigned char byte = (unsigned char)path[at];
+    if (byte == '/' || byte == '\\') {
+      units = 0;
+    } else if ((byte & 0xC0) != 0x80) { /* a lead byte starts a code point; a 4-byte one is two UTF-16 units */
+      units += byte >= 0xF0 ? 2 : 1;
+    }
+    if (units > COMPONENT_LIMIT) {
+      return UV_ENAMETOOLONG;
+    }
+  }
+  return code;
+}

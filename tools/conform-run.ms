@@ -9,7 +9,7 @@
 // comparing (`--only-missing` keeps recorded ones, `--no-stable-check` skips the second
 // observation, `--prune` deletes fixtures that cannot be recorded). MS names the ms
 // under test (default .artifacts/build/ci/src/cli/ms). CONFORM_DIFF=1 prints each
-// failure's expected and observed (first 600 characters). CONFORM_BUILD_TYPE picks the
+// failure's expected and observed (first 2500 characters). CONFORM_BUILD_TYPE picks the
 // build type of run and test (default Release). Fixtures tagged `aliasing` are left out
 // of check, run and test as the gate does (`--exclude-tag aliasing`). Usage: ms run
 // tools/conform-run.ms
@@ -59,12 +59,12 @@ fn sweep(
 
 	return lines
 
-// The first 600 characters of a value, for `CONFORM_DIFF=1` failure reports.
+// The first 2500 characters of a value, for `CONFORM_DIFF=1` failure reports.
 fn clipped(value: JsonValue) String:
 	text := stringify(value).get()
-	if text.length() <= 600: return text.clone()
+	if text.length() <= 2500: return text.clone()
 
-	return f"{text.slice(0, 600)}..."
+	return f"{text.slice(0, 2500)}..."
 
 // The text of `ms version`, stored in each expectation for provenance.
 fn oracle_version(ms: String) String:

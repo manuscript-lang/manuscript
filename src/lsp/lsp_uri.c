@@ -9,6 +9,22 @@ bool lsp_uri_is_standard_library(MsSpan uri) {
   return ms_span_starts_with(uri, ms_span_of_text("manuscript-stdlib:"));
 }
 
+bool lsp_uri_standard_module(MsSpan uri, MsSpan *name) {
+  const MsSpan scheme = ms_span_of_text("manuscript-stdlib:");
+  if (!ms_span_starts_with(uri, scheme)) return false;
+  size_t skip = scheme.len;
+  if (ms_span_starts_with(ms_span_of(uri.ptr + skip, uri.len - skip), ms_span_of_text("///"))) {
+    skip += 3;
+  } else if (ms_span_starts_with(ms_span_of(uri.ptr + skip, uri.len - skip), ms_span_of_text("/")) &&
+             !ms_span_starts_with(ms_span_of(uri.ptr + skip, uri.len - skip), ms_span_of_text("//"))) {
+    skip += 1;
+  } else {
+    return false;
+  }
+  *name = ms_span_of(uri.ptr + skip, uri.len - skip);
+  return true;
+}
+
 static int hex_value(uint8_t c) {
   if (c >= '0' && c <= '9') return c - '0';
   if (c >= 'a' && c <= 'f') return c - 'a' + 10;

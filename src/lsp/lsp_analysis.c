@@ -82,9 +82,9 @@ void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text) {
       ms_strbuild_append(&path, ms_string_span(&temp));
       ms_string_release(&temp);
       ms_strbuild_append_text(&path, "/" LSP_BUNDLED_PREFIX);
-      const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
-      if (ms_span_starts_with(uri, prefix)) {
-        for (size_t i = prefix.len; i < uri.len; i++) ms_strbuild_append_byte(&path, uri.ptr[i] == '/' ? '-' : uri.ptr[i]);
+      MsSpan name = {0};
+      if (lsp_uri_standard_module(uri, &name)) {
+        for (size_t i = 0; i < name.len; i++) ms_strbuild_append_byte(&path, name.ptr[i] == '/' ? '-' : name.ptr[i]);
       }
     } else {
       lsp_uri_filename(uri, &path);

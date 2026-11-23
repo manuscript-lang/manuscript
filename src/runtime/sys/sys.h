@@ -112,7 +112,7 @@ void ms_sys_wake_close(const int fds[2]);
 typedef void (*MsSysFaultFn)(uintptr_t address);
 /* Gives the calling thread an alternate signal stack and routes the process's memory-access faults (SIGSEGV,
  * SIGBUS) to on_fault, so a stack overflow can be reported by name; call it on each thread that may overflow.
- * Linux and macOS only: Windows reports false. */
+ * Windows installs one process-wide vectored exception handler instead. */
 MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
 
 /* sys/{posix,windows}/sampler.c: the profiler's clock. */
