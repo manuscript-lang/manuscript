@@ -107,7 +107,7 @@ typedef enum MsCheckPhase { MS_CHECK_RESOLUTION, MS_CHECK_TYPE } MsCheckPhase;
 /* Where in the oracle's order a diagnostic is found: imports, then the declaration passes, then each body. The
  * whole-module passes that look into bodies (names, mutation, returns) are SIDE; the body walk is WALK, whose
  * order is the oracle's. */
-typedef enum MsCheckStage { MS_STAGE_DECLARATIONS, MS_STAGE_IMPORTS, MS_STAGE_SIDE, MS_STAGE_WALK } MsCheckStage;
+typedef enum MsCheckStage { MS_STAGE_DECLARATIONS, MS_STAGE_IMPORTS, MS_STAGE_SIDE, MS_STAGE_WALK, MS_STAGE_FINAL } MsCheckStage;
 
 typedef struct MsCheckDiag {
   uint32_t module;
@@ -140,6 +140,7 @@ typedef struct MsCheckProgram {
   MsLocalRecordList bindings; /* every local, parameter and loop or match variable the bodies declared */
   MsTypeRefRecordList type_refs; /* every written type of the user's modules, as resolved */
   MsPendingBoundList pending_bounds;
+  MsCheckDiagList ownership; /* findings only the ownership pass reports, and only for a program that checked clean */
   MsCheckDiagList deferred; /* side-pass findings the body walk releases when it reaches their place */
   MsPendingDefaultList pending_defaults;
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */

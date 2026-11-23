@@ -385,7 +385,7 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
       ms_local_list_last(&body->locals)->rejected = true; /* a literal match has no payload to bind: the name stays unbound */
     }
   }
-  body_block(body, arm->body);
+  body_statements(body, arm->body); /* the arm's value reads the locals its statements declare */
   /* an arm whose value differs from the type the match has so far is a mismatch, reported at that value */
   const bool settled = expected != MS_TY_NONE && !state->discarded && !body_has_foreign_variable(body, expected);
   const MsTy value = arm->value == NULL ? MS_TY_NONE

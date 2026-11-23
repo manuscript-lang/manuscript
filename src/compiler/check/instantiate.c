@@ -149,6 +149,9 @@ static void missing_message(MsCheckProgram *program, MsSpan name, const MsTy *va
     }
     ms_strbuild_append(&list, variable);
   }
+  for (size_t index = 0; index < count; index++) { /* what was fixed, for a result that keeps it */
+    ms_ty_list_push(&out->args, bound[index]);
+  }
   MsStrBuild text = ms_strbuild_new();
   const char *noun = missing == 1 ? "argument" : "arguments";
   const char *each = missing == 1 ? "an explicit type for" : "explicit types for";

@@ -30,6 +30,7 @@ void ms_check_program_free(MsCheckProgram *program) {
   ms_type_ref_record_list_free(&program->type_refs);
   ms_pending_bound_list_free(&program->pending_bounds);
   ms_check_diag_list_free(&program->deferred);
+  ms_check_diag_list_free(&program->ownership);
   ms_pending_default_list_free(&program->pending_defaults);
   ms_methods_free(&program->methods);
   ms_property_memo_free(&program->properties);
