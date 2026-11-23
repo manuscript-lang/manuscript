@@ -49,26 +49,15 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
 
 /* `llc` over `input`, writing the object. */
 static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
-<<<<<<< HEAD
-                     bool size_tiered, const char *filetype, MsStrBuild *why) {
+                     const char *filetype, MsStrBuild *why) {
   MsSpan argv[14];
   size_t argc = 0;
   argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed && !size_tiered ? (options->debug ? "-O1" : "-O3") : "-O0");
-  if (options->debug && options->speed && !size_tiered) {
+  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O1" : "-O3") : "-O0");
+  if (options->debug && options->speed) {
     argv[argc++] = ms_span_of_text("-regalloc=basic");
     argv[argc++] = ms_span_of_text("-enable-misched=0");
   }
-  if (size_tiered) {
-    argv[argc++] = ms_span_of_text("-global-isel=0");
-  }
-=======
-                     const char *filetype, MsStrBuild *why) {
-  MsSpan argv[12];
-  size_t argc = 0;
-  argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O2" : "-O3") : "-O0");
->>>>>>> origin/main
   argv[argc++] = ms_span_of_text(filetype);
   argv[argc++] = ms_span_of_text("-relocation-model=pic");
   argv[argc++] = triple_flag;
