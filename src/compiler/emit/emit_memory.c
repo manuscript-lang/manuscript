@@ -151,18 +151,29 @@ void emit_zero_leaf(EmitCx *cx, MirValue dst, uint32_t index, MirLeaf leaf) {
   }
 }
 
+/* A whole list or bytes header moves between a slot and registers: tagged as header memory, which no scalar list
+ * element aliases, so a store of an element does not make the loop reload the header from its slot. */
+static const char *header_tbaa(const EmitCx *cx, MirValue value) {
+  const MirTyKind kind = (MirTyKind)mir_ty_data(cx->module, emit_value_type(cx, value))->kind;
+  return kind == MK_LIST || kind == MK_BYTES ? ", !tbaa !900004" : NULL;
+}
+
 /* `load`, `take`: the result's leaves from the pointer in the first operand. */
 static void emit_load(EmitCx *cx, const MirInst *inst) {
   char base[24];
   emit_pointer(cx, inst->args[0], base, sizeof base);
+  cx->tbaa = header_tbaa(cx, inst->res);
   emit_leaves_at(cx, inst->res, base, true);
+  cx->tbaa = NULL;
 }
 
 /* `store`, `put`: the second operand's leaves to the pointer in the first. */
 static void emit_store(EmitCx *cx, const MirInst *inst) {
   char base[24];
   emit_pointer(cx, inst->args[0], base, sizeof base);
+  cx->tbaa = header_tbaa(cx, inst->args[1]);
   emit_leaves_at(cx, inst->args[1], base, false);
+  cx->tbaa = NULL;
 }
 
 /* `ptr.field`: the address of a field of the inline record the operand points to. */

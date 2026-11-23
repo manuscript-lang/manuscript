@@ -190,6 +190,15 @@ static bool drops_resources(LowerFn *fn, const MsExpr *callee) {
   return fn_temp_closes(fn, elem);
 }
 
+/* A closure a call builds and the callee only borrows (`xs.ok_or_else(make())`): its captures close with the statement. */
+static bool closure_temp(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
+  if (written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) || callee_consumes(fn, call, index)) {
+    return false;
+  }
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, ty) == MS_TY_FUNCTION && mir_needs_drop(fn->cx->module, fn_type(fn, ty));
+}
+
 typedef struct TempScan {
   LowerFn *fn;
   uint32_t skip; /* open expressions whose parts run conditionally, or in another function */
@@ -222,7 +231,7 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
   for (uint32_t index = 0; call != NULL && !scan->found && index < call->arg_count; index++) {
     const MsExpr *written = call->args[index].source == MS_ARG_WRITTEN ? fn_written_arg(expr, call->args[index].node.node) : NULL;
     MsTy checked = MS_TY_NONE;
-    scan->found = written != NULL && temp_type(scan->fn, expr, index, written, &checked);
+    scan->found = written != NULL && (temp_type(scan->fn, expr, index, written, &checked) || closure_temp(scan->fn, expr, call, index, written));
   }
 }
 

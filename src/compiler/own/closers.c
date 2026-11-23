@@ -360,6 +360,12 @@ static bool names_param(const Closers *pass, const MsExpr *place) {
 }
 
 static void flag_taken_by(Closers *pass, const MsExpr *call) {
+  /* `value.get()` handed on takes the payload out of `value` at that call, which lowering does on the path that
+   * reaches it: the paths that do not still close `value`. */
+  if (ms_facts_use(pass->facts, call->id) == MS_USE_MOVE &&
+      ms_own_native_get(pass->program, pass->facts, call) == MS_NATIVE_GET_PAYLOAD) {
+    return;
+  }
   const MsTy result = ms_facts_type(pass->facts, call->id);
   if (result == MS_TY_NONE ||
       !(ms_ty_has_variable(&pass->program->types, result) || ms_check_holds_resource(pass->program, result))) {
