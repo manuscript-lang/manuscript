@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	panic from "@std/core.ms",
-	create_directory, create_symlink, temporary, write_file from "@std/os/fs.ms",
+	canonicalize, create_directory, create_symlink, temporary, write_file from "@std/os/fs.ms",
 	FileTree,
 	MemoryTree,
 	WalkEntry,
@@ -149,7 +149,8 @@ test "host tree follows links inside the root and refuses links that leave it":
 	)
 	invalid := Error("filesystem: invalid input", kind: "EINVAL")
 	if tree.read("out/s.txt", none).err() != invalid: return panic("outer file")
-	if tree.children("out", none).err() != invalid: return panic("outer directory")
+	probe := tree.children("out", none)
+	if probe.err() != invalid: return panic(f"outer directory: {probe.err()} real={canonicalize(f"{base.path()}/root/out")} root={canonicalize(f"{base.path()}/root")}")
 	if tree.read("missing", none).err() == invalid: return panic("missing is not escape")
 
 test "memory tree listing follows writes and removals":
