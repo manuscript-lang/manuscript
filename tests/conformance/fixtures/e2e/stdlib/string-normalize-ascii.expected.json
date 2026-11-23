@@ -3,51 +3,42 @@
   "phase": "test",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "report": {
+      "repeat": 1,
       "format": 1,
       "source_root": "<DIR>",
-      "tests": [],
+      "tests": [
+        {
+          "index": 0,
+          "name": "string-normalize-ascii.ms::ASCII normalization is identical under every form and byte budget",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "string-normalize-ascii.ms::normalization falls back for Unicode before and after long ASCII prefixes",
+          "status": "passed"
+        }
+      ],
       "summary": {
-        "available": 0,
-        "selected": 0,
-        "passed": 0,
+        "available": 2,
+        "selected": 2,
+        "passed": 2,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
-      "completed": false,
-      "exit_code": 1,
-      "reason": "compile_error",
-      "stdout": "",
-      "diagnostics": [
-        {
-          "code": "MS2001",
-          "phase": "resolution",
-          "message": "unknown or ambiguous member get on String; available: as_bytes, capitalize, chars, clamp, compare, concat, contains, contains_any, count, cut_prefix, cut_suffix, display_width, ends_with, equal_fold, fields, fields_by, find_char, index_any, index_of, is_empty, last_index_of, length, lines, lower, map_chars, max, min, normalize, pad_end, pad_start, parse_float, parse_int, repeat, replace, replace_each, replace_first, reverse, rsplit_once, scalar_at, scalar_length, ...",
-          "position": {
-            "file": "string-normalize-ascii.ms",
-            "line": 9,
-            "column": 67,
-            "offset": 341
-          }
-        }
-      ]
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN string-normalize-ascii.ms::ASCII normalization is identical under every form and byte budget\nPASS string-normalize-ascii.ms::ASCII normalization is identical under every form and byte budget\nRUN string-normalize-ascii.ms::normalization falls back for Unicode before and after long ASCII prefixes\nPASS string-normalize-ascii.ms::normalization falls back for Unicode before and after long ASCII prefixes\n2 tests, 0 failed\n",
+      "diagnostics": []
     },
     "shape": [
       "completed",
       "diagnostics",
-      "diagnostics[].code",
-      "diagnostics[].message",
-      "diagnostics[].phase",
-      "diagnostics[].position",
-      "diagnostics[].position.column",
-      "diagnostics[].position.file",
-      "diagnostics[].position.line",
-      "diagnostics[].position.offset",
       "exit_code",
       "format",
-      "reason",
+      "repeat",
       "source_root",
       "stdout",
       "summary",
@@ -58,7 +49,11 @@
       "summary.passed",
       "summary.selected",
       "summary.skipped",
-      "tests"
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
     ],
     "stderr": ""
   }

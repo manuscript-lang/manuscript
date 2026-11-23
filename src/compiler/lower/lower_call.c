@@ -476,7 +476,8 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
     written[at] = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.call.args.ptr[at].value->id),
                               fn->subst.vars, fn->subst.args, fn->subst.count);
   }
-  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten);
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten,
+                                              ms_ty_subst(&fn->cx->program->types, call->callee_ty, fn->subst.vars, fn->subst.args, fn->subst.count));
   if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == call->arg_count) { /* the operation's own arity */
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
@@ -700,7 +701,8 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
-  if (sig != NULL && sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, call->arg_count, &checked)) {
+  const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
+  if (op != NULL && fn_inline_scalar_op(fn, op, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   /* A plain enum handed to a number parameter of the signature is its case index. */

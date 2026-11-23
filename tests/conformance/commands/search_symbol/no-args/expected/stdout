@@ -72,14 +72,14 @@ websocket    NativeWebSocket +7
 env          arguments +7
 fs           CloneMode, CopyOptions +48
 path         Glob, PathOperations +21
-process      CommandOutput, Commands +27
+process      CommandOutput, Commands +26
 system       CpuInfo, Endianness +26
 tree         EmbeddedTree, FileTree +8
 random       SeededRandom, choice +9
 regex        Regex, RegexSpan, compile
 string       NormalizationForm +2
 string_builder StringBuilder
-bench        keep, measure +1
+bench        keep, measure, opaque +1
 boundary     finite_float_boundaries +2
 golden       expect_golden +1
 iotest       check_reader, fail_after +2

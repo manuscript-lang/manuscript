@@ -120,12 +120,17 @@ static void scan(MsSpan source, SemanticList *tokens) {
         kind = first >= 'a' && first <= 'z' ? LEX_KEYWORD : LEX_SKIP;
       }
       }
+      const bool zero_width = t->end.offset <= t->pos.offset;
+      const MsTok before = previous;
+      previous = (MsTok)t->kind;
+      /* Indent, Dedent and Eof take no source text and share their offset with the next token; qsort leaves
+       * equal keys in any order, and where one landed between `fn` and its receiver the receiver lost its kind. */
+      if (zero_width) continue;
       semantic_list_push(tokens, (SemanticToken){.kind = kind,
-                                                 .previous_fn = previous == MS_T_Fn,
-                                                 .previous_type = previous == MS_T_Type || previous == MS_T_Enum,
+                                                 .previous_fn = before == MS_T_Fn,
+                                                 .previous_type = before == MS_T_Type || before == MS_T_Enum,
                                                  .start = t->pos.offset,
                                                  .end = t->end.offset});
-      previous = (MsTok)t->kind;
     }
     /* The lexer drops comments, so the forgiving scanner supplies them. */
     LspTokenList scanned = {0};

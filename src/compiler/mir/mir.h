@@ -400,6 +400,7 @@ typedef struct MirVtable {
   uint32_t *methods; /* function ids, in the module arena */
   uint32_t nmethods;
   MirTy data_ty;
+  uint32_t close_drop; /* function id + 1 of the payload drop that closes a resource, or 0 for the type's plain drop */
 } MirVtable;
 
 MS_LIST_DEFINE(MirVtableList, mir_vtable_list, MirVtable)

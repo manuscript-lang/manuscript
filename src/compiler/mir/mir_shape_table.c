@@ -360,14 +360,49 @@ static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text
   }
 }
 
-/* The hook array: one entry per shape; the first word of a collection shape's is its descriptor, and a type with its
+static bool is_scalar_shape(const MsShape *shape) {
+  return shape->kind <= MS_SHAPE_BYTES;
+}
+
+static void want_child(const ShapeBuild *build, bool *wants, uint32_t child) {
+  if (child != MS_SHAPE_NONE && child < build->shapes.len && !is_scalar_shape(&build->shapes.ptr[child])) {
+    wants[child] = true;
+  }
+}
+
+/* Which shapes get a descriptor in the hook array: a collection shape, and every non-scalar shape a collection holds
+ * or a record or alternative has as a field, since a reader that fails midway drops what it built by descriptor. */
+static bool *descriptor_wants(ShapeBuild *build) {
+  bool *wants = MS_ARENA_NEW_ARRAY(&build->arena, bool, build->shapes.len + 1);
+  for (size_t index = 0; index < build->shapes.len; index++) {
+    wants[index] = false;
+  }
+  for (size_t index = 0; index < build->shapes.len; index++) {
+    const MsShape *shape = &build->shapes.ptr[index];
+    if (is_collection_shape(shape)) {
+      wants[index] = true;
+      want_child(build, wants, shape->elem);
+      if (shape->kind == MS_SHAPE_MAP) {
+        want_child(build, wants, shape->value);
+      }
+    } else if (shape->kind == MS_SHAPE_RECORD || shape->kind == MS_SHAPE_ALTERNATIVE) {
+      for (uint32_t at = 0; at < shape->count && shape->first + at < build->members.len; at++) {
+        want_child(build, wants, build->members.ptr[shape->first + at].shape);
+      }
+    }
+  }
+  return wants;
+}
+
+/* The hook array: one entry per shape; the first word of a shape that wants one is its descriptor, and a type with its
  * own text or JSON form names those functions. */
 static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
+  const bool *wants = descriptor_wants(build);
   uint32_t wanted = 0;
   for (size_t index = 0; index < build->shapes.len; index++) {
     uint32_t text, json;
     hook_functions(build, index, &text, &json);
-    wanted += (is_collection_shape(&build->shapes.ptr[index]) ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0);
+    wanted += (wants[index] ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0);
   }
   if (wanted == 0) {
     return MIR_NONE;
@@ -378,7 +413,7 @@ static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
   for (size_t index = 0; index < build->shapes.len; index++) {
     uint32_t text, json;
     hook_functions(build, index, &text, &json);
-    if (is_collection_shape(&build->shapes.ptr[index])) {
+    if (wants[index]) {
       sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)index * entry, mird_descriptor(cx, build->types.ptr[index])};
     }
     if (text != 0) {
@@ -452,8 +487,9 @@ void mird_visit_shape(DataCx *cx, const MirFunc *func, const MirInst *inst) {
 void mir_shape_desc_types(const MirModule *module, MirLayouts *layouts, MirTy ty, MirIdList *out) {
   ShapeBuild build = {.module = module, .layouts = layouts, .arena = ms_arena_new()};
   (void)shape_of(&build, ty);
+  const bool *wants = descriptor_wants(&build);
   for (size_t index = 0; index < build.shapes.len; index++) {
-    if (is_collection_shape(&build.shapes.ptr[index])) {
+    if (wants[index]) {
       mir_idlist_push(out, build.types.ptr[index]);
     }
   }

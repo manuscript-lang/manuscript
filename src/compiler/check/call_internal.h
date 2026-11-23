@@ -22,6 +22,8 @@ typedef struct Target {
   bool constructor;       /* a type's or case's constructor, or the prelude's ok, error or some: inference failures use its wording */
   MsTy nominal;           /* the type a constructor or case builds, else MS_TY_NONE */
   bool builtin;           /* a built-in type's constructor: its arguments are not matched to declared fields */
+  size_t calls_mark;      /* where the facts' calls stood then */
+  size_t journal;         /* where the body's journal of typed nodes stood when the call began */
 } Target;
 
 /* How a written argument was matched. */

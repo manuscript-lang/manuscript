@@ -77,10 +77,16 @@ static void walk_exprs(Walk *pass, const MsExpr *const *items, uint32_t count) {
 
 static void walk_lambda(Walk *pass, const MsExpr *expr) {
   const size_t mark = pass->scope.len;
+  const MsExpr *const outer = pass->site.lambda;
+  const size_t outer_scope = pass->site.lambda_scope;
+  pass->site.lambda = expr;
+  pass->site.lambda_scope = mark;
   pass->depth++;
   declare_params(pass, expr->u.lambda.params);
   walk_stmts(pass, expr->u.lambda.body);
   pass->depth--;
+  pass->site.lambda = outer;
+  pass->site.lambda_scope = outer_scope;
   ms_binding_list_truncate(&pass->scope, mark);
 }
 

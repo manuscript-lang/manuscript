@@ -3,7 +3,6 @@
 #include "runtime/sys/sys.h"
 
 extern char *getenv(const char *name);
-extern int getpid(void);
 extern int open(const char *path, int flags, ...);
 extern long write(int fd, const void *buffer, unsigned long count);
 extern int close(int fd);
@@ -30,8 +29,6 @@ static void write_all(int fd, MsSpan bytes) {
 }
 
 void ms_sys_stderr_write(MsSpan bytes) { write_all(STDERR_FD, bytes); }
-
-uint32_t ms_sys_process_id(void) { return (uint32_t)getpid(); }
 
 void ms_sys_fault_record_write(MsSpan bytes) {
   /* The environment is not changed after start-up, so reading it here is safe. */

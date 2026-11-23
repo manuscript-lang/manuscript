@@ -229,6 +229,9 @@ bool lower_parts_supported(Lower *cx, MsTy ty);
 uint32_t lower_part_close(Lower *cx, MsTy ty);
 /* The function `fn(move value)` that closes an interface value through its `close` operation. */
 uint32_t lower_close_iface(Lower *cx, MsTy ty);
+/* The function that drops the block of an owned interface value whose payload `receiver` is a resource: it closes the
+ * payload and frees the block. MIR_NONE when the type holds no resource. */
+uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty);
 /* Whether a temporary of the type `checked` closes where its statement ends, and its owner: the value goes into a
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
@@ -363,10 +366,11 @@ bool fn_object_binary(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right,
  * signature, and nothing was emitted. */
 /* The runtime's descriptor operand of kind `kind` (NS_ELEM_DESC...) for the collection among `args`. */
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
-/* A native declared `@op=<name>` (a bit operation on Ints) as its one MIR instruction. */
 /* `list.group_by(key)` expanded inline; false when the receiver is not a list or the result not a map of lists. */
 bool fn_list_group_by(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out);
-bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, uint32_t argc, MirValue *out);
+/* A native declared `@op=<name>` as the few MIR instructions it stands for (lower_scalar_ops.c); false, with nothing
+ * emitted, when the operands are not the types the operation takes. */
+bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out);
 bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *args, uint32_t nargs, MirTy ret,
                     MirValue *out);
 /* A call of a function the standard library declares without a body: the runtime function `msrt_<name>`. */

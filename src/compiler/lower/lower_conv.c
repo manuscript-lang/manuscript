@@ -32,7 +32,7 @@ static const MsMethodEntry *resolve_operation(Lower *cx, MsTy receiver, MsName n
 }
 
 /* Instantiates `entry` for `receiver`: its variables are bound by matching the receiver form. */
-static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy receiver, const MsTy *args, uint32_t nargs) {
+static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy receiver, const MsTy *args, uint32_t nargs, MsTy instantiated) {
   MsTy bound[16] = {0};
   const size_t count = entry->variables.len;
   if (count > 16 || !ms_check_unify(&cx->program->types, entry->receiver, receiver, entry->variables.ptr, count, bound)) {
@@ -45,6 +45,9 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
   for (uint32_t at = 0; at < nargs && at < nparams; at++) {
     (void)ms_check_unify(&cx->program->types, params[at].ty, args[at], entry->variables.ptr, count, bound);
   }
+  if (instantiated != MS_TY_NONE) { /* what the call's own type fixes (`read[B]() List[B]` called as `List[Int]`) */
+    (void)ms_check_unify(&cx->program->types, entry->ty, instantiated, entry->variables.ptr, count, bound);
+  }
   const LowerTarget target = {entry->module, entry->source->id, &entry->source->func, entry->name, entry->ty,
                               {NULL, 0}, entry->variables.ptr, (uint32_t)count, MS_TY_NONE, 0, false};
   LowerTarget with_receiver = target;
@@ -54,10 +57,10 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
   return lower_instance(cx, &with_receiver, bound, (uint32_t)count, NULL);
 }
 
-uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs) {
+uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs, MsTy instantiated) {
   const MsMethodEntry *entry = resolve_operation(cx, receiver, name);
   return entry != NULL && !entry->source->func.external && entry->source->func.body.len > 0
-             ? method_function(cx, entry, receiver, args, nargs)
+             ? method_function(cx, entry, receiver, args, nargs, instantiated)
              : MIR_NONE;
 }
 
@@ -66,7 +69,7 @@ uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
   if (!ms_names_find(cx->program->names, ms_span_of_text(operation), &name)) {
     return MIR_NONE;
   }
-  return lower_operation_method(cx, receiver, name, NULL, 0);
+  return lower_operation_method(cx, receiver, name, NULL, 0, MS_TY_NONE);
 }
 
 uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property) {
@@ -205,7 +208,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
   const MirTy iface_ty = lower_type(cx, subst, iface);
   /* Added before its methods are built: a method taking `Self` checks its argument against this vtable. */
   const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len + 1,
-                            lower_type(cx, subst, receiver)};
+                            lower_type(cx, subst, receiver), 0};
   const uint32_t own = mir_add_vtable(cx->module, &vtable);
   for (size_t index = 0; index <= def->operations.len; index++) { /* the last slot is the payload's text */
     const MsName operation = index < def->operations.len ? def->operations.ptr[index].name : text_name;
@@ -224,7 +227,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       }
       continue;
     }
-    methods[index] = entry != NULL ? method_function(cx, entry, receiver, NULL, 0) : MIR_NONE;
+    methods[index] = entry != NULL ? method_function(cx, entry, receiver, NULL, 0, MS_TY_NONE) : MIR_NONE;
     if (methods[index] != MIR_NONE) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append(&text, ms_names_span(&cx->module->names, cx->module->funcs.ptr[methods[index]].name));
@@ -237,6 +240,12 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
     if (methods[index] == MIR_NONE) {
       return MIR_NONE;
     }
+  }
+  /* An owned interface value whose payload is a resource closes it where it drops: the vtable's drop slot closes. */
+  const uint32_t closer = lower_vtable_close_drop(cx, receiver,
+                                                  lower_type(cx, subst, receiver));
+  if (closer != MIR_NONE) {
+    cx->module->vtables.ptr[own].close_drop = closer + 1;
   }
   return own;
 }
@@ -267,6 +276,18 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   const MirTy to = fn_type(fn, conversion->to);
   /* A view of a binding that keeps its value does not own it; a fresh value or a moved one is the interface's. */
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  if (!place && fn->temps && fn_temp_closes(fn, conversion->from) && fn_owns_result(fn, value) &&
+      fn_type(fn, conversion->from) == mir_b_ty(&fn->b, value)) {
+    /* A resource temporary seen as an interface closes as itself where its statement ends; the interface only views it. */
+    const bool held = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
+    const MirValue owned = fn_own_temporary(fn, conversion->from, value);
+    const MirImm view = {.tag = MI_VTABLE, .a = vtable, .b = held ? 1u : 0u};
+    const MirValue iface = mir_b_emit(&fn->b, MOP_IfaceNew, &owned, 1, view, to);
+    if (held) {
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &iface, 1, (MirImm){0}, MIR_NONE);
+    }
+    return iface;
+  }
   const bool droppable = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
   const bool shared = place ? ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE : !fn_fresh_owner(fn, value);
   const bool views = shared && droppable; /* a literal or other borrowed value is viewed, never moved in */

@@ -37,6 +37,8 @@ typedef struct MsScopeSite {
   bool in_constant;  /* inside the value of a module constant */
   bool in_constant_call; /* ... and inside a call or lambda there, which the constant rules reject as a whole */
   bool type_reading; /* the name is the value reading of a bracket entry that may be a type */
+  const MsExpr *lambda; /* the innermost lambda holding the node, or NULL */
+  size_t lambda_scope;  /* the bindings before this index of the scope are captured by that lambda */
 } MsScopeSite;
 
 typedef struct MsScopeVisitor {

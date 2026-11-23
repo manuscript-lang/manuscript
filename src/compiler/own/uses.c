@@ -302,10 +302,13 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
 
 /* Whether the scrutinee is a resource or a place the callable owns: a local, or a parameter it takes by `move`. */
 static bool owns_place(const Uses *pass, const MsExpr *cond) {
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_PARAM && !(ref->local < 32 && (pass->moving >> ref->local & 1u) != 0)) {
+    return false; /* a parameter the function does not take: the caller keeps what it holds, so the payload is read in place */
+  }
   if (ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, cond->id))) {
     return true;
   }
-  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
   return ref != NULL && (ref->kind == MS_REF_LOCAL || (ref->kind == MS_REF_PARAM && ref->local < 32 &&
                                                        (pass->moving >> ref->local & 1u) != 0));
 }
@@ -356,9 +359,9 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value
                     : stmt->u.bind.value->kind == MS_E_MEMBER ? stmt->u.bind.value
                                                               : bound_local_source(pass, stmt->u.bind.value));
-  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_TYPE && !stmt->u.bind.is_mutable &&
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_TYPE &&
              stmt->u.bind.value->kind == MS_E_NAME) {
-    mark_move(pass, stmt->u.bind.value); /* `{a: x, b: y} := record` hands the parts to the names */
+    mark_move(pass, stmt->u.bind.value); /* `{a: x, b: y} := record` hands the parts to the names, `var` or not */
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
     mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {

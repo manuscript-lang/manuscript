@@ -10,7 +10,8 @@ typedef struct ObjectOptions {
   MsSpan opt;       /* the `opt` executable */
   MsSpan llc;       /* the `llc` executable */
   MsSpan directory; /* an existing directory for the intermediate files; they are removed afterwards */
-  bool speed;       /* optimize (O3); otherwise the IR goes straight to the code generator at -O0 */
+  bool speed;       /* optimize: -O3, or -O2 with `debug`; otherwise the IR goes straight to the code generator at -O0 */
+  bool debug;       /* with `speed`: a Debug build, which uses -O2 */
   bool vectorize;   /* with `speed`: allow LLVM's loop and SLP vectorizers */
   bool verify;      /* check the IR after every pass */
   const MirModule *module;        /* with `tables`: the renamed module (emit_name_symbols) */

@@ -39,7 +39,20 @@ void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text) {
   LspDoc *doc = lsp_doc_find(docs, uri);
   if (doc == NULL) {
     MsStrBuild path = ms_strbuild_new();
-    lsp_uri_filename(uri, &path);
+    if (lsp_uri_is_standard_library(uri)) {
+      /* A bundled module is checked as a file of its own in the temporary directory, which exists on every host; its text
+       * comes from the overlay. */
+      MsString temp = ms_temp_dir();
+      ms_strbuild_append(&path, ms_string_span(&temp));
+      ms_string_release(&temp);
+      ms_strbuild_append_text(&path, "/" LSP_BUNDLED_PREFIX);
+      const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
+      if (ms_span_starts_with(uri, prefix)) {
+        for (size_t i = prefix.len; i < uri.len; i++) ms_strbuild_append_byte(&path, uri.ptr[i] == '/' ? '-' : uri.ptr[i]);
+      }
+    } else {
+      lsp_uri_filename(uri, &path);
+    }
     lsp_doc_list_push(docs, (LspDoc){.uri = ms_string_from_span(uri), .path = ms_strbuild_finish(&path)});
     doc = &docs->ptr[docs->len - 1];
   }

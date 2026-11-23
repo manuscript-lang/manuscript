@@ -50,6 +50,14 @@ static int64_t compare_constants(uint8_t *env, const uint8_t *a, const uint8_t *
 
 void ms_facts_finish(MsFacts *facts) {
   ms_sort((uint8_t *)(void *)facts->calls.ptr, facts->calls.len, sizeof(MsCall), compare_calls, NULL);
+  size_t kept = 0; /* a call recorded again (its expression read a second time) keeps its last record */
+  for (size_t at = 0; at < facts->calls.len; at++) {
+    if (at + 1 < facts->calls.len && facts->calls.ptr[at + 1].node == facts->calls.ptr[at].node) {
+      continue;
+    }
+    facts->calls.ptr[kept++] = facts->calls.ptr[at];
+  }
+  facts->calls.len = kept;
   ms_sort((uint8_t *)(void *)facts->conversions.ptr, facts->conversions.len, sizeof(MsConversion),
           compare_conversions, NULL);
   ms_sort((uint8_t *)(void *)facts->constants.ptr, facts->constants.len, sizeof(MsConstant), compare_constants,
