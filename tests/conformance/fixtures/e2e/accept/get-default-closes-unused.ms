@@ -35,11 +35,11 @@ fn named(log: String) Int:
 	door := held or spare
 	return door.id + 8
 
-test "an unused temporary default closes at once":
+test "an unused default is never built":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	expect_equal(present(log.clone()), 1)?
-	logged(log.clone()) | expect_equal("2,1,")?
+	logged(log.clone()) | expect_equal("1,")?
 
 test "a used default closes with its binding":
 	tmp := temporary("ms-log-") | expect_ok?
@@ -47,8 +47,8 @@ test "a used default closes with its binding":
 	expect_equal(absent(log.clone()), 3)?
 	logged(log.clone()) | expect_equal("3,")?
 
-test "a named default moves into get and closes with the call":
+test "a named default stays with its binding and closes with the call":
 	tmp := temporary("ms-log-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	expect_equal(named(log.clone()), 12)?
-	logged(log.clone()) | expect_equal("5,4,")?
+	logged(log.clone()) | expect_equal("4,5,")?

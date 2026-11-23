@@ -33,11 +33,13 @@ test "Optional presence and extraction preserve false and zero":
 	expect_equal(value_or(7, present), 0)?
 	expect_false(missing != null)?
 
-test "Optional fallbacks distinguish eager and lazy evaluation":
+test "the fallback of or runs only when the value is null":
 	present: Int? := 0
 	missing: Int? := null
 	var counter = Counter(0)
 	expect_equal(present or fallback(counter), 0)?
+	expect_equal(counter.calls, 0)?
+	expect_equal(missing or fallback(counter), 42)?
 	expect_equal(counter.calls, 1)?
 
 	create := fn() Int?: 42

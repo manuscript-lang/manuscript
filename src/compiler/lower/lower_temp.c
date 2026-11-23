@@ -117,6 +117,13 @@ static bool member_temp_type(LowerFn *fn, const MsExpr *member, MsTy *checked) {
   const MsExpr *base = member->u.member.left;
   MsTyTable *types = &fn->cx->program->types;
   const MsRef *ref = ms_facts_ref(fn->facts, member->id);
+  /* `(x or d).field`: the nullable `or` builds an owner of its own, which nothing else holds. */
+  const bool nullable_or = base->kind == MS_E_BINARY && base->op == MS_B_OR &&
+                           ms_ty_is(types, ms_facts_type(fn->facts, base->u.bin.left->id), MS_BUILTIN_Optional);
+  if (nullable_or && ref != NULL && ref->kind == MS_REF_FIELD) {
+    *checked = ms_ty_subst(types, ms_facts_type(fn->facts, base->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+    return true;
+  }
   if (base->kind != MS_E_CALL || ref == NULL || ref->kind != MS_REF_FIELD) {
     return false;
   }
