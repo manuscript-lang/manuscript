@@ -21,6 +21,7 @@ typedef struct MsLocal {
   MsRefKind kind; /* MS_REF_LOCAL or MS_REF_PARAM */
   uint32_t id;    /* the dense local id, or the parameter's index */
   bool is_var;
+  bool written_fn; /* declared with a written function type (`f: fn(Int) Int`): its parameters have no labels */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;
 
@@ -150,6 +151,8 @@ void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty);
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty);
+/* A float literal must be finite in its type: binary32 when `ty` is Float32, else binary64. */
+void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty);
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
 /* Reports `what` when `ty` is an opaque type declared in another module; true when it did. */
 bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what);

@@ -138,6 +138,9 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   }
   const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);
   bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable);
+  if (stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.ty != NULL && stmt->u.bind.ty->kind == MS_TYPE_FN) {
+    ms_local_list_last(&body->locals)->written_fn = true;
+  }
 }
 
 /* `x.field = ...` needs a field of a type value; a method, a case or an unknown member cannot be assigned. */
@@ -265,6 +268,7 @@ static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t fir
     const MsTy ty = index < count ? ms_ty_params(types, fn_ty)[index].ty : MS_TY_NONE;
     MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);
     local->id = first + index;
+    local->written_fn = param->ty != NULL && param->ty->kind == MS_TYPE_FN;
     body_set_type(body, param->id, ty);
     body_set_ref(body, param->id, body_local_ref(body, local));
   }

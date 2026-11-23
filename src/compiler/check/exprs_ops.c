@@ -138,6 +138,7 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
     return body_std_type(body, "Decimal", NULL, 0);
   }
   if (kind == NUMBER_FLOAT) {
+    body_check_float_literal(body, expr, is_sized_float(body, expected) ? expected : MS_TY_NONE);
     return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
                                                                                    : body_primitive(body, MS_BUILTIN_Float);
   }
