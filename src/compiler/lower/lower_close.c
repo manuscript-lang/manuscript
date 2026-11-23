@@ -199,18 +199,19 @@ void lower_close_check(MirBuilder *b, MirValue result) {
 /* ---- the binding ---- */
 
 /* A `var` slot that only drops serves a `var` that moves: the others keep their value in a variable. */
-static bool lowerable(uint16_t flags) {
+/* `in_slot`: the binding is a parameter, whose slot an assignment into it takes from and puts back into. */
+static bool lowerable(uint16_t flags, bool in_slot) {
   if ((flags & MS_CLOSER_DROP) != 0 && (flags & MS_CLOSER_MOVED) == 0) {
     return false;
   }
   const bool taken = (flags & MS_CLOSER_PARTS) != 0 && (flags & MS_CLOSER_TAKEN) != 0;
   /* A `var` slot changes in place through its slot; any other closer must not be changed. */
-  const bool changed = (flags & MS_CLOSER_MUTATED) != 0 && (flags & (MS_CLOSER_DROP | MS_CLOSER_VAR)) == 0;
+  const bool changed = !in_slot && (flags & MS_CLOSER_MUTATED) != 0 && (flags & (MS_CLOSER_DROP | MS_CLOSER_VAR)) == 0;
   return (flags & MS_CLOSER_CONSUMES) != 0 && !taken && !changed &&
          (flags & (MS_CLOSER_WRITES_BACK | MS_CLOSER_PARTIAL)) == 0;
 }
 
-bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+static bool closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked, bool in_slot) {
   if (closer == NULL || fn->closing == NULL) {
     return false;
   }
@@ -232,7 +233,15 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
   if ((flags & MS_CLOSER_DROP) != 0 && !mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
     return false;
   }
-  return lowerable(flags) && ((flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, ty));
+  return lowerable(flags, in_slot) && ((flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, ty));
+}
+
+bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+  return closer_for(fn, closer, checked, false);
+}
+
+bool fn_param_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
+  return closer_for(fn, closer, checked, true);
 }
 
 /* Puts `value` in a fresh slot owned by the innermost scope and returns the slot; `owns` says it needs a drop. */
@@ -374,7 +383,7 @@ bool fn_temp_closes(LowerFn *fn, MsTy checked) {
   if (fn->closing == NULL || !ms_own_closer_of(fn->cx->program, checked, &closer)) {
     return false;
   }
-  return lowerable(closer.flags) && ((closer.flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, checked));
+  return lowerable(closer.flags, false) && ((closer.flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, checked));
 }
 
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
