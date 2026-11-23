@@ -283,6 +283,7 @@ static void statement(Body *body, const MsStmt *stmt) {
     stmt_assign(body, stmt);
     break;
   case MS_S_CALL:
+    body->statement_match = stmt->u.expr;
     body_check_call_statement(body, stmt, body_expr(body, stmt->u.expr, MS_TY_NONE));
     break;
   case MS_S_RETURN:
