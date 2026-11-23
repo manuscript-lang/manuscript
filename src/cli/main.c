@@ -21,6 +21,7 @@
 #include "cli/fmt_command.h"
 #include "cli/help_command.h"
 #include "cli/init_command.h"
+#include "cli/lsp_command.h"
 #include "cli/package_commands.h"
 #include "cli/phases.h"
 #include "cli/profile_command.h"
@@ -83,6 +84,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "diagram")) return ms_diagram_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "lsp")) return ms_lsp_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "lint")) return ms_lint_command(argc - 2, argv + 2);
   ms_verify_set_program(argv[0]);
   if (ms_cstr_equal(argv[1], "verify")) return ms_verify_command(argc - 2, argv + 2);

@@ -12,6 +12,7 @@ ctest --preset debug
 ```
 
 Presets: `debug` (-O0), `ci` (-O2 with frame pointers; CI builds and replays the corpus with it, about 4x faster per `ms` process than `debug`), `release`, `sanitize`. Ninja on every platform; clang is the compiler.
+
 Build output goes to `.artifacts/build/<preset>`. Generated files never go into `src/`.
 
 ## Layers (an include crosses layers only downward)
