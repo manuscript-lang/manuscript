@@ -28,6 +28,19 @@ typedef struct MsMethodEntry {
 
 MS_LIST_DEFINE(MsMethodList, ms_method_list, MsMethodEntry)
 
+/* Method entries sorted by a key (stable, so declaration order within a key): the name, or the declaring node. */
+typedef struct MsMethodKey {
+  uint64_t key;
+  uint32_t entry;
+} MsMethodKey;
+
+MS_LIST_DEFINE(MsMethodKeyList, ms_method_key_list, MsMethodKey)
+
+typedef struct MsMethodIndex {
+  MsMethodKeyList by_name;
+  MsMethodKeyList by_decl;
+} MsMethodIndex;
+
 /* A method found for a receiver: an implemented method, or an operation of an interface. */
 typedef struct MsMethodMatch {
   MsTy ty;                      /* the signature with the receiver's arguments bound */
@@ -42,6 +55,8 @@ MS_LIST_DEFINE(MsMethodMatchList, ms_method_match_list, MsMethodMatch)
 /* Registers the methods `module` declares, reporting the faulty ones. Runs after ms_check_signatures. */
 void ms_check_methods(MsCheckProgram *program, uint32_t module);
 void ms_methods_free(MsMethodList *methods);
+/* The method whose declaration is node `node` of module `module`, or NULL. */
+const MsMethodEntry *ms_check_method_at(const MsCheckProgram *program, uint32_t module, uint32_t node);
 
 /* Appends the methods named `name` that apply to `receiver` to `out`: its own methods whose receiver form
  * matches, the operation of an interface-typed receiver, and the operations of a type variable's bounds. */
