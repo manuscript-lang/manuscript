@@ -266,10 +266,14 @@ static MsString export_message(const ImportView *view, uint32_t target) {
   return ms_strbuild_finish(&text);
 }
 
-bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol) {
-  const MsSpan file = ms_names_span(program->names, program->modules.ptr[symbol->module].file);
+bool ms_check_is_prelude_declaration(MsSpan file, MsSpan name) {
   const bool prelude_module = ms_span_is_text(file, "@std/core.ms") || ms_span_is_text(file, "@std/collections/collections.ms");
-  return prelude_module && is_prelude_name(ms_names_span(program->names, symbol->name));
+  return prelude_module && is_prelude_name(name);
+}
+
+bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol) {
+  return ms_check_is_prelude_declaration(ms_names_span(program->names, program->modules.ptr[symbol->module].file),
+                                         ms_names_span(program->names, symbol->name));
 }
 
 static MsPos name_end(const MsImport *import, MsSpan name) {
