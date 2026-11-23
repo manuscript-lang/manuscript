@@ -274,6 +274,17 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       }
       continue;
     }
+    if (written == NULL && facts && fact->args[index].source == MS_ARG_MISSING_VALUE) {
+      /* `ok_or` bound as a value keeps its cause optional: the call that leaves it out supplies the `Error` of its own line. */
+      args[index + 1] = fn_missing_value(fn, expr->pos);
+      if (args[index + 1] != MIR_NONE && mir_ty_data(fn->cx->module, param_ty)->kind == MK_OPT) {
+        args[index + 1] = fn_emit(fn, MOP_OptSome, &args[index + 1], 1, (MirImm){0}, param_ty);
+      }
+      if (args[index + 1] == MIR_NONE) {
+        return MIR_NONE;
+      }
+      continue;
+    }
     if (written == NULL) {
       /* A parameter the call leaves out is none; one of an interface operation's with a default is the zero value, as in a
        * direct call of the operation (the checker records no default expression for an operation). */

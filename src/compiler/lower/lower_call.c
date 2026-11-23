@@ -384,6 +384,15 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                                        fn->subst.count);
         pending[index] = fn_pending_own(fn, param, out[index]);
       }
+    } else if (arg->source == MS_ARG_MISSING_VALUE) {
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = ms_ty_param_count(types, call->callee_ty);
+      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      out[index] = fn_missing_value(fn, expr->pos);
+      if (out[index] != MIR_NONE && (ms_ty_params(types, call->callee_ty)[at].flags & MS_PARAM_LIFTED) != 0) {
+        const MirTy opt = mir_ty_opt(fn->cx->module, mir_b_ty(&fn->b, out[index])); /* an omittable parameter is passed as an optional */
+        out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, opt);
+      }
     } else {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
