@@ -2,7 +2,8 @@
 #include "compiler/check/effects_scan.h"
 
 #include "compiler/check/effects_directives.h"
-#include "compiler/check/scope_walk.h"
+#include "compiler/check/properties.h"
+#include "compiler/syntax/walk.h"
 
 typedef struct Edge {
   uint32_t node;
@@ -14,13 +15,23 @@ MS_LIST_DEFINE(EdgeList, edge_list, Edge)
 MS_LIST_DEFINE(NodeList, node_list, MsReachNode)
 MS_MAP_DEFINE(NodeIndex, node_index, uint64_t, uint32_t, ms_hash_u64_key, ms_equal_u64_key)
 
+typedef struct NodeSource {
+  uint32_t module;
+  const MsFunc *func; /* a function or method, or NULL for a type or constant declaration: `decl` is walked */
+  const MsDecl *decl;
+} NodeSource;
+
+MS_LIST_DEFINE(SourceList, source_list, NodeSource)
+
 typedef struct Scan {
   const MsCheckProgram *program;
   MsArena *arena;
   NodeList nodes;
-  NodeIndex by_decl; /* (module, decl node) -> node index */
+  SourceList sources; /* by node index: the function or method whose body the node scans */
+  NodeIndex by_decl;  /* (module, function or method node) -> node index */
   EdgeList edges;
   uint32_t module;
+  uint32_t holder;    /* the node whose body is walked */
 } Scan;
 
 static uint64_t decl_key(uint32_t module, uint32_t node) {
@@ -46,63 +57,136 @@ static MsEffectScope scope_of(Scan *scan, const MsDirectives *directives) {
   return scope;
 }
 
-static void add_node(Scan *scan, uint32_t module, const MsDecl *decl) {
+/* A callable of `module`: the function `decl`, or one method of the impl `decl` (`method` not NULL), whose display
+ * name is `Receiver.method`. */
+static void add_node(Scan *scan, uint32_t module, const MsDecl *decl, const MsMethod *method) {
   const MsModuleInfo *info = &scan->program->modules.ptr[module];
-  MsDirectives above = ms_directives_above(info->source, decl->pos.line);
+  const bool callable = decl->kind == MS_D_FN || method != NULL;
+  const MsFunc *func = !callable ? NULL : method != NULL ? &method->func : &decl->u.fn;
+  const MsPos at = method != NULL ? method->pos : decl->pos;
+  const uint32_t node_id = method != NULL ? method->id : decl->id;
+  MsDirectives above = ms_directives_above(info->source, at.line);
   MsDirectives header = ms_directives_header(info->source);
   MsSpan *declared = MS_ARENA_NEW_ARRAY(scan->arena, MsSpan, above.declared.len + 1);
   for (size_t index = 0; index < above.declared.len; index++) {
     declared[index] = above.declared.ptr[index];
   }
-  const MsSpan label = ms_names_span(scan->program->names, decl->u.fn.name);
-  MsReachNode node = {.id = callable_id(scan, module, decl->id),
+  MsName own_name = decl->kind == MS_D_TYPE ? decl->u.type.name : decl->kind == MS_D_CONST ? decl->u.konst.name : MS_NAME_EMPTY;
+  MsSpan label = ms_names_span(scan->program->names, func != NULL ? func->name : own_name);
+  if (method != NULL) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append(&text, ms_names_span(scan->program->names, decl->u.impl.receiver->name));
+    ms_strbuild_append_byte(&text, '.');
+    ms_strbuild_append(&text, label);
+    label = ms_arena_copy(scan->arena, ms_strbuild_span(&text));
+    ms_strbuild_free(&text);
+  }
+  MsReachNode node = {.id = callable_id(scan, module, node_id),
                       .file = info->file,
                       .label = label,
-                      .pos = decl->pos,
+                      .pos = at,
                       .project = module < scan->program->user_modules,
-                      .entry = module < scan->program->user_modules && ms_span_is_text(label, "main"),
+                      .entry = method == NULL && module < scan->program->user_modules && ms_span_is_text(label, "main"),
                       .declared = declared,
                       .declared_count = (uint32_t)above.declared.len,
                       .allow_fn = scope_of(scan, &above),
                       .allow_file = scope_of(scan, &header)};
-  node_index_put(&scan->by_decl, decl_key(module, decl->id), (uint32_t)scan->nodes.len);
+  node_index_put(&scan->by_decl, decl_key(module, node_id), (uint32_t)scan->nodes.len);
   node_list_push(&scan->nodes, node);
+  source_list_push(&scan->sources, (NodeSource){.module = module, .func = func, .decl = decl});
   ms_directives_free(&above);
   ms_directives_free(&header);
 }
 
+/* The functions come first, in program order: `ms inspect` finds a function's effects by its place among them. Then
+ * the methods, types and constants. */
 static void add_nodes(Scan *scan) {
-  for (uint32_t module = 0; module < scan->program->modules.len; module++) {
-    const MsModule *tree = scan->program->modules.ptr[module].tree;
-    for (uint32_t index = 0; index < tree->ndecls; index++) {
-      const MsDecl *decl = tree->decls[index];
-      if (decl->kind == MS_D_FN && !decl->u.fn.external) {
-        add_node(scan, module, decl);
+  for (uint32_t pass = 0; pass < 2; pass++) {
+    for (uint32_t module = 0; module < scan->program->modules.len; module++) {
+      const MsModule *tree = scan->program->modules.ptr[module].tree;
+      for (uint32_t index = 0; index < tree->ndecls; index++) {
+        const MsDecl *decl = tree->decls[index];
+        if (pass == 0) {
+          if (decl->kind == MS_D_FN && !decl->u.fn.external) {
+            add_node(scan, module, decl, NULL);
+          }
+          continue;
+        }
+        if (decl->kind == MS_D_TYPE || decl->kind == MS_D_CONST) {
+          add_node(scan, module, decl, NULL);
+        }
+        for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
+          if (!decl->u.impl.methods.ptr[at]->func.external) {
+            add_node(scan, module, decl, decl->u.impl.methods.ptr[at]);
+          }
+        }
       }
     }
   }
 }
 
-/* A function named by an expression of the walked body is an edge of the callable holding the body. */
-static void visit_expr(void *context, const MsExpr *expr, const MsBindingList *scope, const MsScopeSite *site) {
-  (void)scope;
-  Scan *scan = context;
-  const MsRef *ref = ms_facts_ref(&scan->program->modules.ptr[scan->module].facts, expr->id);
-  if (ref == NULL || ref->kind != MS_REF_FUNCTION || site->decl == NULL || site->decl->kind != MS_D_FN) {
+/* A callable named by an expression of the walked body is an edge of the callable holding the body: a function or
+ * a method, called or used as a value. A call's edge sits at the call, as its callee is visited after it. */
+static void note_ref(Scan *scan, const MsRef *ref, MsPos pos) {
+  if (ref == NULL || (ref->kind != MS_REF_FUNCTION && ref->kind != MS_REF_METHOD && ref->kind != MS_REF_TYPE &&
+                      ref->kind != MS_REF_CONSTANT)) {
     return;
   }
-  const uint32_t *holder = node_index_get(&scan->by_decl, decl_key(scan->module, site->decl->id));
   const uint32_t *target = node_index_get(&scan->by_decl, decl_key(ref->decl.module, ref->decl.node));
-  if (holder != NULL && target != NULL) {
-    edge_list_push(&scan->edges, (Edge){.node = *holder, .callee = scan->nodes.ptr[*target].id, .pos = expr->pos});
+  if (target != NULL) {
+    edge_list_push(&scan->edges, (Edge){.node = scan->holder, .callee = scan->nodes.ptr[*target].id, .pos = pos});
+  }
+}
+
+/* A value seen as an interface hands out the methods of its type that the interface's operations name: each is an
+ * edge of the holder, where the conversion is. */
+static void note_view(Scan *scan, const MsConversion *conversion, MsPos pos) {
+  const MsCheckProgram *program = scan->program;
+  const MsDef *contract = ms_check_def_of(program, conversion->to);
+  const MsDef *concrete = ms_check_def_of(program, conversion->from);
+  for (size_t index = 0; contract != NULL && concrete != NULL && index < contract->operations.len; index++) {
+    for (size_t at = 0; at < program->methods.len; at++) {
+      const MsMethodEntry *entry = &program->methods.ptr[at];
+      if (entry->name != contract->operations.ptr[index].name || entry->source == NULL ||
+          ms_check_def_of(program, entry->receiver) != concrete) {
+        continue;
+      }
+      const uint32_t *target = node_index_get(&scan->by_decl, decl_key(entry->module, entry->source->id));
+      if (target != NULL) {
+        edge_list_push(&scan->edges, (Edge){.node = scan->holder, .callee = scan->nodes.ptr[*target].id, .pos = pos});
+      }
+    }
+  }
+}
+
+static void visit_expr(void *context, const MsExpr *expr) {
+  Scan *scan = context;
+  const MsFacts *facts = &scan->program->modules.ptr[scan->module].facts;
+  if (expr->id >= facts->node_count) {
+    return;
+  }
+  if (expr->kind == MS_E_CALL) {
+    const MsCall *call = ms_facts_call(facts, expr->id);
+    note_ref(scan, call != NULL ? &call->callee : NULL, expr->pos);
+  }
+  note_ref(scan, ms_facts_ref(facts, expr->id), expr->pos);
+  const MsConversion *conversion = ms_facts_conversion(facts, expr->id);
+  if (conversion != NULL && conversion->kind == MS_CONV_INTERFACE_VIEW) {
+    note_view(scan, conversion, expr->pos);
   }
 }
 
 static void collect_edges(Scan *scan) {
-  for (uint32_t module = 0; module < scan->program->modules.len; module++) {
-    scan->module = module;
-    const MsScopeVisitor visitor = {.context = scan, .expr = visit_expr};
-    ms_scope_walk_module(scan->program->modules.ptr[module].tree, &visitor, scan->program->names);
+  const MsVisitor visitor = {.ctx = scan, .expr = visit_expr};
+  for (uint32_t node = 0; node < scan->nodes.len; node++) {
+    scan->holder = node;
+    scan->module = scan->sources.ptr[node].module;
+    const MsFunc *func = scan->sources.ptr[node].func;
+    if (func != NULL) {
+      ms_walk_callable(&visitor, func->params, func->body);
+    } else {
+      ms_walk_decl(&visitor, scan->sources.ptr[node].decl);
+    }
   }
 }
 
@@ -140,6 +224,7 @@ MsReach ms_check_effects(const MsCheckProgram *program, MsArena *arena) {
   attach_edges(&scan);
   const MsReach reach = ms_effects_resolve(scan.nodes.ptr, (uint32_t)scan.nodes.len, arena);
   node_list_free(&scan.nodes);
+  source_list_free(&scan.sources);
   node_index_free(&scan.by_decl);
   edge_list_free(&scan.edges);
   return reach;
