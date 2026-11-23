@@ -81,32 +81,12 @@ static MsSpan primitive_documentation(MsSpan id) {
 
 /* ---- the source files ---- */
 
-static bool decl_has_body(const MsDecl *decl) {
-  switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN: return decl->u.fn.body.len > 0 || decl->u.fn.external;
-  case MS_D_CONST:
-  case MS_D_ALIAS: return true;
-  case MS_D_TEST: return decl->u.test.body.len > 0;
-  case MS_D_IMPL:
-    for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
-      if (decl->u.impl.methods.ptr[i]->func.body.len > 0) {
-        return true;
-      }
-    }
-    return false;
-  case MS_D_TYPE:
-  case MS_D_ENUM:
-  case MS_D_INTERFACE: return false;
-  }
-  return false;
-}
-
 static void classify_file(StdFile *file) {
   bool native = false;
   bool body = false;
   for (uint32_t d = 0; d < file->tree.ndecls; d++) {
     const MsDecl *decl = file->tree.decls[d];
-    body = body || decl_has_body(decl);
+    body = body || ms_decl_has_body(decl);
     if (decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL) {
       for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
         native = native || decl->u.impl.methods.ptr[i]->func.body.len == 0;

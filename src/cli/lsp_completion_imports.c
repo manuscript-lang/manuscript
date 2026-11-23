@@ -236,13 +236,6 @@ static bool is_type_decl(const MsDecl *decl) {
   return decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM || decl->kind == MS_D_ALIAS || decl->kind == MS_D_INTERFACE;
 }
 
-static bool listed(const MsSpanList *names, MsSpan name) {
-  for (size_t i = 0; i < names->len; i++) {
-    if (ms_span_equal(names->ptr[i], name)) return true;
-  }
-  return false;
-}
-
 /* Offers the exports of the module `text` (named `path`, a bundled module when `bundled`) that match the word and are not
  * imported yet. `known` says the declaration names its module; `with_from` adds ` from "path"` to the inserted name. */
 static void add_exports(Completer *c, MsSpan text, MsSpan path, bool bundled, const MsSpanList *imported, bool known, bool with_from) {
@@ -257,7 +250,7 @@ static void add_exports(Completer *c, MsSpan text, MsSpan path, bool bundled, co
       const MsDecl *decl = module.decls[d];
       if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
       const MsSpan name = ms_names_span(&names, declared);
-      if ((bundled && ms_check_is_prelude_declaration(path, name)) || listed(imported, name) || !name_matches(name, c->prefix)) continue;
+      if ((bundled && ms_check_is_prelude_declaration(path, name)) || ms_span_list_contains(imported, name) || !name_matches(name, c->prefix)) continue;
       MsStrBuild insert = ms_strbuild_new();
       ms_strbuild_append(&insert, name);
       if (with_from) {

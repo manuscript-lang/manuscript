@@ -25,4 +25,14 @@
 
 MS_AVEC(MsSpans, ms_spans, MsSpan)
 
+/* Whether the list holds a span equal to `value`. */
+MS_UNUSED static inline bool ms_spans_contains(const MsSpans *list, MsSpan value) {
+  for (size_t i = 0; i < list->len; i++) {
+    if (ms_span_equal(list->ptr[i], value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 #endif

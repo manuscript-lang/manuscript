@@ -23,15 +23,6 @@ static size_t tier_rank(MsSpan tier) {
   return 0;
 }
 
-static bool contains(const MsSpans *list, MsSpan value) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], value)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 typedef struct Scorer {
   MsArena *arena;
   MsFinding finding;
@@ -71,7 +62,7 @@ static MsSpan join(MsArena *arena, const MsSpans *list, const char *sep) {
 static MsSpans added(MsArena *arena, const MsSpans *head, const MsSpans *base) {
   MsSpans out = {0};
   for (size_t i = 0; i < head->len; i++) {
-    if (!contains(base, head->ptr[i])) {
+    if (!ms_spans_contains(base, head->ptr[i])) {
       ms_spans_push(arena, &out, head->ptr[i]);
     }
   }
@@ -119,7 +110,7 @@ static void compare(Scorer *s, const MsFact *h, const MsFact *b) {
 
 static bool has_any(const MsSpans *have, const MsSpans *want) {
   for (size_t i = 0; i < want->len; i++) {
-    if (contains(have, want->ptr[i])) {
+    if (ms_spans_contains(have, want->ptr[i])) {
       return true;
     }
   }
@@ -137,7 +128,7 @@ static MsSpan effect_path(MsArena *arena, const MsFact *start, const MsSpans *ga
     const MsFact *next = NULL;
     for (size_t i = 0; i < current->calls.len && next == NULL; i++) {
       const MsFact *callee = ms_fact_find(head, current->calls.ptr[i]);
-      if (callee != NULL && !contains(&seen, current->calls.ptr[i]) && has_any(&callee->reach, gained)) {
+      if (callee != NULL && !ms_spans_contains(&seen, current->calls.ptr[i]) && has_any(&callee->reach, gained)) {
         next = callee;
       }
     }
@@ -206,7 +197,7 @@ static size_t reach_count(const MsFactModel *head, MsSpan key) {
   for (size_t next = 0; next < seen.len; next++) {
     for (size_t i = 0; i < head->entities.len; i++) {
       const MsFact *caller = &head->entities.ptr[i];
-      if (contains(&caller->calls, seen.ptr[next]) && !contains(&seen, caller->key)) {
+      if (ms_spans_contains(&caller->calls, seen.ptr[next]) && !ms_spans_contains(&seen, caller->key)) {
         ms_spans_push(&scratch, &seen, caller->key);
       }
     }
@@ -249,7 +240,7 @@ static MsSpans touched_keys(MsArena *arena, const MsFactModel *head, const MsTou
           best = f;
         }
       }
-      if (best != NULL && !contains(&result, best->key)) {
+      if (best != NULL && !ms_spans_contains(&result, best->key)) {
         ms_spans_push(arena, &result, best->key);
       }
     }
@@ -268,7 +259,7 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
     ms_spans_push(arena, &keys, head->entities.ptr[i].key);
   }
   for (size_t i = 0; i < base->entities.len; i++) {
-    if (!contains(&keys, base->entities.ptr[i].key)) {
+    if (!ms_spans_contains(&keys, base->entities.ptr[i].key)) {
       ms_spans_push(arena, &keys, base->entities.ptr[i].key);
     }
   }
@@ -280,14 +271,14 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
     const MsSpan key = keys.ptr[k];
     const MsFact *h = ms_fact_find(head, key);
     const MsFact *b = ms_fact_find(base, key);
-    if (b != NULL && contains(&input->added, b->file)) {
+    if (b != NULL && ms_spans_contains(&input->added, b->file)) {
       b = NULL;
     }
     MsFinding f = {0};
     const bool scored = classify(arena, key, h, b, input->base_checked, head, &f);
     bool has_callers = false;
     for (size_t i = 0; i < head->entities.len && !has_callers; i++) {
-      has_callers = contains(&head->entities.ptr[i].calls, key);
+      has_callers = ms_spans_contains(&head->entities.ptr[i].calls, key);
     }
     if (scored && has_callers) {
       ms_spans_push(arena, &scored_keys, key);
@@ -295,7 +286,7 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
       ms_spans_push(arena, &f.terms, text("exported +3"));
       f.score += 3;
     }
-    if (f.changes.len == 0 && contains(&touched, key)) {
+    if (f.changes.len == 0 && ms_spans_contains(&touched, key)) {
       ms_spans_push(arena, &f.changes, text("body changed"));
     }
     if (f.changes.len == 0) {
@@ -305,7 +296,7 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
   }
   for (size_t i = 0; i < findings.len; i++) {
     MsFinding *f = &findings.ptr[i];
-    if (!contains(&scored_keys, f->id)) {
+    if (!ms_spans_contains(&scored_keys, f->id)) {
       continue;
     }
     const size_t r = reach_count(head, f->id);

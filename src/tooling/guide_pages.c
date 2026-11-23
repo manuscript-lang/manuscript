@@ -1,5 +1,6 @@
 /* Owns the page and search half of guide.h: bounded standard-library pages and the fuzzy lookup behind `ms search_symbol`. */
 #include "base/message.h"
+#include "base/utf8.h"
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "tooling/guide.h"
@@ -26,28 +27,6 @@ static MsSpan trim(MsSpan s) {
     to--;
   }
   return sub(s, from, to);
-}
-
-static size_t rune_count(MsSpan s) {
-  size_t n = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    n += (s.ptr[i] & 0xC0) != 0x80 ? 1 : 0;
-  }
-  return n;
-}
-
-/* The byte length of the first `runes` characters of `s`. */
-static size_t rune_prefix(MsSpan s, size_t runes) {
-  size_t seen = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    if ((s.ptr[i] & 0xC0) != 0x80) {
-      if (seen == runes) {
-        return i;
-      }
-      seen++;
-    }
-  }
-  return s.len;
 }
 
 /* The words of `s` joined by one space. */
@@ -130,11 +109,11 @@ static MsSpan first_line(MsArena *arena, MsSpan doc, size_t limit) {
     if (line.len == 0) {
       continue;
     }
-    const size_t chars = rune_count(line);
+    const size_t chars = ms_utf8_count(line.ptr, line.len);
     if (chars <= limit) {
       return line;
     }
-    const MsSpan head = sub(line, 0, rune_prefix(line, limit - 1));
+    const MsSpan head = sub(line, 0, ms_utf8_offset_of(line.ptr, line.len, limit - 1));
     long cut = -1;
     for (size_t i = head.len; i > 0; i--) {
       if (head.ptr[i - 1] == ' ') {
@@ -147,7 +126,7 @@ static MsSpan first_line(MsArena *arena, MsSpan doc, size_t limit) {
     }
     size_t take = (size_t)cut < chars ? (size_t)cut : chars;
     MsStrBuild out = ms_strbuild_new();
-    ms_strbuild_append(&out, sub(line, 0, rune_prefix(line, take)));
+    ms_strbuild_append(&out, sub(line, 0, ms_utf8_offset_of(line.ptr, line.len, take)));
     ms_strbuild_append_text(&out, "\xE2\x80\xA6");
     return copy_of(arena, &out);
   }
@@ -161,9 +140,9 @@ static MsSpan one_line(MsArena *arena, MsSpan text, size_t limit) {
     joined = sub(joined, 0, joined.len - 1);
   }
   joined = trim(joined);
-  if (rune_count(joined) > limit) {
+  if (ms_utf8_count(joined.ptr, joined.len) > limit) {
     MsStrBuild out = ms_strbuild_new();
-    ms_strbuild_append(&out, sub(joined, 0, rune_prefix(joined, limit - 1)));
+    ms_strbuild_append(&out, sub(joined, 0, ms_utf8_offset_of(joined.ptr, joined.len, limit - 1)));
     ms_strbuild_append_text(&out, "\xE2\x80\xA6");
     return copy_of(arena, &out);
   }
@@ -176,11 +155,11 @@ static MsSpan cap_doc(MsArena *arena, MsSpan doc, size_t limit) {
   if (doc.len <= limit) {
     return doc;
   }
-  size_t chars = rune_count(doc);
+  size_t chars = ms_utf8_count(doc.ptr, doc.len);
   size_t bytes = doc.len;
   while (bytes > limit) {
     chars = chars > 20 ? chars - 20 : 0;
-    bytes = rune_prefix(doc, chars);
+    bytes = ms_utf8_offset_of(doc.ptr, doc.len, chars);
   }
   MsStrBuild out = ms_strbuild_new();
   ms_strbuild_append(&out, sub(doc, 0, bytes));
@@ -252,7 +231,7 @@ static MsSpan clip_text(MsArena *arena, MsSpan s, size_t limit) {
 
 static void pad_to(MsStrBuild *out, MsSpan text, size_t width) {
   ms_strbuild_append(out, text);
-  for (size_t n = rune_count(text); n < width; n++) {
+  for (size_t n = ms_utf8_count(text.ptr, text.len); n < width; n++) {
     ms_strbuild_append_byte(out, ' ');
   }
 }

@@ -12,4 +12,7 @@ typedef int64_t (*MsSortCompare)(uint8_t *env, const uint8_t *a, const uint8_t *
  * that is not a total order only gives a poor order; every element is kept exactly once. */
 void ms_sort(uint8_t *items, size_t count, size_t size, MsSortCompare compare, uint8_t *env);
 
+/* A comparator for elements that are MsSpan, in byte order. */
+int64_t ms_sort_compare_spans(uint8_t *env, const uint8_t *a, const uint8_t *b);
+
 #endif

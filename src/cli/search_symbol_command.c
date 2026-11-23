@@ -6,6 +6,7 @@
 
 #include "base/cstr.h"
 #include "base/message.h"
+#include "base/utf8.h"
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "cli/invocation_rules.h"
@@ -47,32 +48,11 @@ static MsSpan one_spaced(MsArena *arena, MsSpan s) {
   return text;
 }
 
-static size_t rune_prefix(MsSpan s, size_t runes) {
-  size_t seen = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    if ((s.ptr[i] & 0xC0) != 0x80) {
-      if (seen == runes) {
-        return i;
-      }
-      seen++;
-    }
-  }
-  return s.len;
-}
-
-static size_t rune_count(MsSpan s) {
-  size_t n = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    n += (s.ptr[i] & 0xC0) != 0x80 ? 1 : 0;
-  }
-  return n;
-}
-
 static MsSpan clip(MsArena *arena, MsSpan text, size_t limit) {
-  if (rune_count(text) <= limit) {
+  if (ms_utf8_count(text.ptr, text.len) <= limit) {
     return text;
   }
-  return ms_message_format(arena, "%S\xE2\x80\xA6", ms_span_of(text.ptr, rune_prefix(text, limit - 1)), (MsSpan){0});
+  return ms_message_format(arena, "%S\xE2\x80\xA6", ms_span_of(text.ptr, ms_utf8_offset_of(text.ptr, text.len, limit - 1)), (MsSpan){0});
 }
 
 /* ---- name_rank: how well a name matches a query ---- */

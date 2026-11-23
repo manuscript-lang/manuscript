@@ -80,7 +80,7 @@ const MsFact *ms_fact_find(const MsFactModel *model, MsSpan key);
 MsViewNode *ms_view_node(MsArena *arena, MsSpan label);
 MsViewNode *ms_view_node_text(MsArena *arena, const char *label);
 
-/* Byte order of two texts. */
-int ms_span_compare(MsSpan a, MsSpan b);
+/* The effects of an entity joined by `+`, or `none`. */
+MsSpan ms_effects_joined(MsArena *arena, const MsSpans *effects);
 
 #endif

@@ -86,15 +86,6 @@ static void scan_expr(void *context, const MsExpr *expr) {
   }
 }
 
-static bool listed(const MsBindingList *list, uint32_t binding) {
-  for (size_t index = 0; index < list->len; index++) {
-    if (list->ptr[index] == binding) {
-      return true;
-    }
-  }
-  return false;
-}
-
 MsBindingList ms_bind_captures(const MsFacts *facts, const MsExpr *lambda) {
   CaptureScan scan = {.facts = facts};
   const MsVisitor visitor = {.ctx = &scan, .stmt = scan_stmt, .expr = scan_expr};
@@ -102,8 +93,8 @@ MsBindingList ms_bind_captures(const MsFacts *facts, const MsExpr *lambda) {
   MsBindingList captures = {0};
   for (size_t index = 0; index < scan.used.len; index++) {
     const uint32_t binding = scan.used.ptr[index];
-    const bool inside = listed(&scan.seen, binding);
-    if (!inside && !listed(&captures, binding)) {
+    const bool inside = ms_binding_list_contains(&scan.seen, binding);
+    if (!inside && !ms_binding_list_contains(&captures, binding)) {
       ms_binding_list_push(&captures, binding);
     }
   }

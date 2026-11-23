@@ -93,3 +93,8 @@ void ms_sort(uint8_t *items, size_t count, size_t size, MsSortCompare compare, u
   merge_sort(items, scratch, count, size, &comparator);
   ms_free(scratch);
 }
+
+int64_t ms_sort_compare_spans(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  return ms_span_compare(*(const MsSpan *)(const void *)a, *(const MsSpan *)(const void *)b);
+}
