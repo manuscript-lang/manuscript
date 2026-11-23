@@ -142,6 +142,9 @@ static uint32_t native_thunk(Lower *cx, MsTy receiver, MsName operation, const M
                      (const char *)op.ptr);
     return MIR_NONE;
   }
+  if (sig->ret != MIR_VOID && result != MIR_NONE && fn_fresh_owner(&fn, result)) { /* the caller takes the result */
+    (void)mir_b_emit(&fn.b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+  }
   fn_scope_unwind(&fn, 0);
   mir_b_ret(&fn.b, result);
   uint32_t id = MIR_NONE;
@@ -153,10 +156,16 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
     receiver = ms_ty_subst(&cx->program->types, receiver, subst->vars, subst->args, subst->count);
   }
   const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(&cx->program->types, iface)->def);
-  uint32_t *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, def->operations.len + 1);
+  uint32_t *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, def->operations.len + 2);
+  MsName text_name = MS_NAME_EMPTY;
+  if (!ms_names_find(cx->program->names, ms_span_of_text("to_string"), &text_name)) {
+    (void)lower_fail(cx, "the text of an interface value needs `to_string`");
+    return MIR_NONE;
+  }
   const MirTy iface_ty = lower_type(cx, subst, iface);
-  for (size_t index = 0; index < def->operations.len; index++) {
-    const MsMethodEntry *entry = resolve_operation(cx, receiver, def->operations.ptr[index].name);
+  for (size_t index = 0; index <= def->operations.len; index++) { /* the last slot is the payload's text */
+    const MsName operation = index < def->operations.len ? def->operations.ptr[index].name : text_name;
+    const MsMethodEntry *entry = resolve_operation(cx, receiver, operation);
     if (entry == NULL || entry->source->func.external) { /* the runtime implements it: no body to call */
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append(&text, ms_names_span(&cx->module->names, name));
@@ -164,7 +173,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       const MsName thunk = mir_name(cx->module, ms_strbuild_span(&text));
       ms_strbuild_free(&text);
       const MirIfaceDef *shape = &cx->module->ifaces.ptr[mir_ty_data(cx->module, iface_ty)->id];
-      methods[index] = native_thunk(cx, receiver, def->operations.ptr[index].name, &shape->methods[index],
+      methods[index] = native_thunk(cx, receiver, operation, &shape->methods[index],
                                     lower_type(cx, subst, receiver), thunk);
       if (methods[index] == MIR_NONE) {
         return MIR_NONE;
@@ -184,7 +193,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       return MIR_NONE;
     }
   }
-  const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len,
+  const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len + 1,
                             lower_type(cx, subst, receiver)};
   return mir_add_vtable(cx->module, &vtable);
 }
