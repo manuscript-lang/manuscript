@@ -17,6 +17,8 @@
  * - `eq`: two strings of the same length up to sixteen bytes are compared like an affix; others call the runtime.
  * - `compare`: -1, 0 or 1; two inline strings from at most two word compares, a prefix of up to sixteen bytes byte
  *   by byte or eight at a time; a longer one calls the runtime.
+ * - `strbuilder_append`: text that fits the builder's spare room is copied in place (up to sixteen bytes with
+ *   overlapping moves, longer with `mem.copy`) and the length word grows; a full buffer calls the runtime.
  * - `scalar_at`, `scalar_step`: an offset inside the text decodes in place (the lead byte fixes the width, and a
  *   string is valid UTF-8 so every continuation byte is in bounds); an offset outside the text, or a continuation
  *   byte, calls the runtime for the default or the fault. `scalar_step` answers `scalar << 3 | width`. */
@@ -437,6 +439,42 @@ static void sf_compare(MirBuilder *b, uint32_t slow_ext) {
   sf_compare_bytes(&c, i);
 }
 
+/* ---- strbuilder_append ---- */
+
+enum { SF_LIST_LEN = 8, SF_LIST_CAP = 16, SF_SHORT_COPY = 16 };
+
+static void sf_strbuilder_append(MirBuilder *b, uint32_t slow_ext) {
+  MirValue ps[2];
+  mir_b_params(b, ps, 2);
+  const MirValue list = ps[0], text = ps[1];
+  const MirBlock fast = mir_b_new_block(b), slow = mir_b_new_block(b), copy = mir_b_new_block(b);
+  const MirBlock done = mir_b_new_block(b), small = mir_b_new_block(b), large = mir_b_new_block(b);
+  const SfBytes t = sf_bytes_of(b, sf_slot_of(b, text));
+  const MirValue len = ob_load(b, list, SF_LIST_LEN, MIR_INT);
+  const MirValue spare = mir_b_binop(b, MOP_ISub, ob_load(b, list, SF_LIST_CAP, MIR_INT), len);
+  ob_br_if(b, mir_b_icmp(b, MCC_GE, spare, t.len), fast, slow);
+  mir_b_switch_to(b, slow);
+  (void)mir_b_call_rt(b, slow_ext, ps, 2);
+  mir_b_ret(b, MIR_NONE);
+  mir_b_switch_to(b, fast);
+  ob_br_if(b, sf_const_cmp(b, MCC_EQ, t.len, 0), done, copy);
+  mir_b_switch_to(b, copy);
+  const MirValue dst = ob_past(b, ob_load(b, list, 0, MIR_PTR), len);
+  ob_br_if(b, sf_const_cmp(b, MCC_LE, t.len, SF_SHORT_COPY), small, large);
+  mir_b_switch_to(b, small);
+  opt_copy_short(b, t.data, dst, t.len);
+  mir_b_br(b, done, NULL, 0);
+  mir_b_switch_to(b, large);
+  const MirValue bytes[3] = {dst, t.data, t.len};
+  (void)mir_b_emit(b, MOP_MemCopy, bytes, 3, (MirImm){0}, MIR_NONE);
+  mir_b_br(b, done, NULL, 0);
+  mir_b_seal_block(b, done);
+  mir_b_switch_to(b, done);
+  const MirValue grown[2] = {ob_add(b, list, SF_LIST_LEN), mir_b_binop(b, MOP_IAdd, len, t.len)};
+  (void)mir_b_emit(b, MOP_Store, grown, 2, (MirImm){0}, MIR_NONE);
+  mir_b_ret(b, MIR_NONE);
+}
+
 /* ---- the pass ---- */
 
 typedef struct SfKind {
@@ -456,6 +494,7 @@ static const SfKind sf_kinds[] = {
   {MR_STRING_EQ, "string_equal", 2, {MIR_STR, MIR_STR}, MIR_BOOL, sf_equal},
   {MR_STRING_COMPARE, "string_compare", 2, {MIR_STR, MIR_STR}, MIR_INT, sf_compare},
   {MR_STRING_SCALAR_STEP, "scalar_step", 2, {MIR_STR, MIR_INT}, MIR_INT, sf_scalar_step},
+  {MR_STRBUILDER_APPEND, "strbuilder_append", 2, {MIR_PTR, MIR_STR}, MIR_VOID, sf_strbuilder_append},
   {MR_STRING_SCALAR_AT, "scalar_at", 4, {MIR_STR, MIR_INT, MIR_BOOL, MIR_INT}, MIR_INT, sf_scalar_at},
 };
 

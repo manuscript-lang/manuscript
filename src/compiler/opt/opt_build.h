@@ -31,6 +31,9 @@ static inline MirValue ob_and(MirBuilder *b, MirValue x, MirValue y) {
   return mir_b_binop(b, MOP_And, x, y);
 }
 
+/* Copies `n` (1 to 16) bytes from `src` to `dst` with overlapping fixed-width moves (opt_appendfast.c). */
+void opt_copy_short(MirBuilder *b, MirValue src, MirValue dst, MirValue n);
+
 /* Branches to `then` or `other`, both of whose predecessors are then emitted: both are sealed. */
 static inline void ob_br_if(MirBuilder *b, MirValue cond, MirBlock then, MirBlock other) {
   mir_b_br_if(b, cond, then, NULL, 0, other, NULL, 0);

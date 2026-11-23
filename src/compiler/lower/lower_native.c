@@ -291,7 +291,8 @@ static MirRole string_role(MsSpan name) {
   static const struct {
     const char *name;
     MirRole role;
-  } table[] = {{"msrt_string_eq", MR_STRING_EQ},
+  } table[] = {{"msrt_strbuilder_append", MR_STRBUILDER_APPEND},
+               {"msrt_string_eq", MR_STRING_EQ},
                {"msrt_string_compare", MR_STRING_COMPARE},
                {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
                {"msrt_string_ends_with", MR_STRING_ENDS_WITH}};
