@@ -39,6 +39,28 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
   return true;
 }
 
+#define INTERNAL_PREFIX "internal compiler error: "
+
+/* Says where to take a compiler bug. */
+static void append_report_advice(MsStrBuild *why) {
+  ms_strbuild_append_text(why, "\nThis is a bug in ms, not in your program. Please report it at "
+                               "https://github.com/manuscript-lang/manuscript/issues with the code that triggers it.\n");
+}
+
+/* Runs the stages after lowering into a scratch buffer so a failure there is labelled as a compiler bug. */
+static bool compile_stages(MirModule *module, const BackendOptions *options, MirGlue *glue, MirData *data,
+                           BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
+  MsStrBuild detail = ms_strbuild_new();
+  bool ok = run_passes(module, options, glue, data, &detail) && emit_program(module, data, glue, kept, ir, &detail);
+  if (!ok) {
+    ms_strbuild_append_text(why, INTERNAL_PREFIX);
+    ms_strbuild_append(why, ms_strbuild_span(&detail));
+    append_report_advice(why);
+  }
+  ms_strbuild_free(&detail);
+  return ok;
+}
+
 static bool compile(MsCheckProgram *program, uint32_t entry_module, const BackendOptions *options, MirModule *module,
                     BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
   MirGlue glue = {0};
@@ -49,8 +71,15 @@ static bool compile(MsCheckProgram *program, uint32_t entry_module, const Backen
   } else {
     ok = ms_lower_program(program, entry_module, module, why);
   }
-  ok = ok && run_passes(module, options, &glue, &data, why);
-  ok = ok && emit_program(module, &data, &glue, kept, ir, why);
+  if (!ok) {
+    /* A lowering failure is a program error, unless the lowerer labelled it internal. */
+    const MsSpan text = ms_strbuild_span(why);
+    size_t at = 0;
+    if (ms_span_find(text, ms_span_of_text(INTERNAL_PREFIX), &at)) {
+      append_report_advice(why);
+    }
+  }
+  ok = ok && compile_stages(module, options, &glue, &data, kept, ir, why);
   mir_data_free(&data);
   mir_glue_free(&glue);
   return ok;

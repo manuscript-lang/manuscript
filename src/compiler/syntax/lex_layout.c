@@ -323,7 +323,7 @@ static bool fail_unexpected_indent(Scanner *s, size_t leading, size_t expected) 
   const char *hint = continuation_hint(s);
   return lex_fail_format(s,
                          "unexpected indentation, %z spaces where %z are expected; the previous line must "
-                         "end with ':' to open a block (fn, if, else, for, while, match, type, impl "
+                         "end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface "
                          "headers), otherwise align this line with it%s",
                          leading, expected, hint);
 }

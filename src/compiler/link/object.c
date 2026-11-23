@@ -142,7 +142,7 @@ static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSp
 bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, MsStrBuild *why) {
   MsSpan triple = emit_host_triple();
   if (triple.len == 0) {
-    ms_strbuild_append_text(why, "the C build is not ported to this host");
+    ms_strbuild_append_text(why, "native builds are not supported on this host");
     return false;
   }
   MsStrBuild flag = ms_strbuild_new();
