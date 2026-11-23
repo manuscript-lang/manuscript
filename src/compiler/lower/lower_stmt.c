@@ -121,8 +121,14 @@ static bool is_empty_optional(const LowerFn *fn, MirValue value) {
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
-    const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
+    MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
     MirVar owner = 0;
+    MirValue taken = MIR_NONE;
+    if (source != MIR_NONE && !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_NAME &&
+        fn_closing_move(fn, stmt->u.bind.value, source, &taken)) {
+      /* A record destructured out of a closing slot hands its parts to the names: the slot gives the record up. */
+      return bind_parts(fn, pattern, taken, true, NULL, false);
+    }
     const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
     return source != MIR_NONE &&
            bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
