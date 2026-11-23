@@ -18,7 +18,8 @@ static MirRole string_role(MsSpan name) {
                {"msrt_string_compare", MR_STRING_COMPARE},
                {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
                {"msrt_string_ends_with", MR_STRING_ENDS_WITH},
-               {"msrt_string_slice", MR_STRING_SLICE}};
+               {"msrt_string_slice", MR_STRING_SLICE},
+               {"msrt_string_scalar_at", MR_STRING_SCALAR_AT}};
   for (size_t at = 0; at < sizeof table / sizeof table[0]; at++) {
     if (ms_span_is_text(name, table[at].name)) {
       return table[at].role;
@@ -39,13 +40,16 @@ static MirRole probe_role(const MirModule *module, MsSpan name, MirTy first) {
     return MR_NONE;
   }
   if (set) {
-    return data->nargs == 1 && data->args[0] == MIR_INT ? MR_SET_PROBE_INT : MR_NONE;
+    if (data->nargs != 1) {
+      return MR_NONE;
+    }
+    return data->args[0] == MIR_INT ? MR_SET_PROBE_INT : data->args[0] == MIR_STR ? MR_SET_PROBE_STR : MR_NONE;
   }
   const MirTy value = data->args[1];
   if (data->nargs != 2 || (value != MIR_INT && value != MIR_FLOAT)) {
     return MR_NONE;
   }
-  return data->args[0] == MIR_INT ? MR_MAP_PROBE_INT : MR_NONE;
+  return data->args[0] == MIR_INT ? MR_MAP_PROBE_INT : data->args[0] == MIR_STR ? MR_MAP_PROBE_STR : MR_NONE;
 }
 
 /* The role of runtime function `name` whose first operand has type `first`. */
