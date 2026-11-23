@@ -55,13 +55,17 @@ static bool ops_from_environment(void) {
   return set;
 }
 
-/* A value of more leaves than this lives in a stack cell in a Debug build, so recursion through a function with a big
- * record holds the record once, not once per register it spreads over. `MS_WIDE_LEAVES` sets another number (0: never). */
-#define DEFAULT_WIDE_LEAVES 4u
+/* A value of more leaves than this lives in a stack cell, so recursion through a function with a big record holds
+ * the record once, not once per register it spreads over, and a copy is one `memcpy` where a leaf bag is a load and a
+ * store per leaf (a 66-leaf record copied 125 times made 8000 stores in one yaml function, and LLVM spent 21 s on the
+ * module). A Debug build hides the cells from LLVM (volatile leaf loads) so frames stay small; an optimized build
+ * leaves them to `sroa` and `memcpyopt`. `MS_WIDE_LEAVES` sets another number (0: never). */
+#define DEBUG_WIDE_LEAVES 4u
+#define RELEASE_WIDE_LEAVES 16u
 
 static uint32_t wide_leaves(bool debug) {
   MsString value = ms_string_empty();
-  uint32_t number = debug ? DEFAULT_WIDE_LEAVES : 0;
+  uint32_t number = debug ? DEBUG_WIDE_LEAVES : RELEASE_WIDE_LEAVES;
   if (ms_env_get("MS_WIDE_LEAVES", &value) && ms_string_span(&value).len != 0) {
     const MsSpan text = ms_string_span(&value);
     number = 0;
@@ -112,7 +116,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   const BackendOptions backend = {.optimize = true, .verify = true,
                                   .tests = request->tests, .bench = request->bench,
                                   .count_ops = request->count_ops || ops_from_environment(),
-                                  .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG)};
+                                  .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
+                                  .wide_hide = request->build_type == MS_BUILD_DEBUG};
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
