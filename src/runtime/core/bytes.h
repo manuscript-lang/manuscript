@@ -49,6 +49,8 @@ void msrt_bytes_reversed(const MsList *b, MsList *out);
 void msrt_bytes_with_value(const MsList *b, int64_t index, int64_t value, MsList *out);
 /* ms-sig: msrt_bytes_concat(a: *const VecVal, b: *const VecVal, out: *mut VecVal) @domain=binary @end */
 void msrt_bytes_concat(const MsList *a, const MsList *b, MsList *out);
+/* ms-sig: msrt_bytes_concat_grow(a: *const VecVal, b: *const VecVal, out: *mut VecVal) @domain=binary @end */
+void msrt_bytes_concat_grow(MsList *a, const MsList *b, MsList *out);
 /* ms-sig: msrt_bytes_split(b: *const VecVal, sep: *const VecVal, out: *mut VecVal) @domain=binary @end */
 void msrt_bytes_split(const MsList *b, const MsList *sep, MsList *out);
 /* ms-sig: msrt_bytes_values(b: *const VecVal, out: *mut VecVal) @domain=binary @end */
