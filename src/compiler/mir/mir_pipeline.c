@@ -8,6 +8,7 @@
 #include "compiler/mir/mir_elab.h"
 #include "compiler/mir/mir_expand.h"
 #include "compiler/mir/mir_lower_ops.h"
+#include "compiler/mir/mir_shed.h"
 #include "compiler/mir/mir_unwind.h"
 #include "compiler/mir/mir_verify.h"
 
@@ -37,6 +38,10 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
   }
   /* Not an optimization: it keeps cancellation from leaking, so every profile runs it. */
   if (mir_unwind(module) && options->verify && !verified(module, "unwind", error)) {
+    return false;
+  }
+  /* A program that starts no task ends at its first fault, so entries that only free memory are not needed. */
+  if (mir_shed(module) && options->verify && !verified(module, "shed", error)) {
     return false;
   }
   /* The hybrid cancel exits run the cleanups unwind registered, so they go in after it. */
