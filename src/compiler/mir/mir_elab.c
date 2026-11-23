@@ -142,20 +142,6 @@ static void flag_params(ElCx *cx, MirFunc *func, const ElEm *em, const MirBlock 
 
 /* ---- one function ---- */
 
-/* The values a `scope.disown` names. */
-static MirHash disowned_values(ElCx *cx, const MirFunc *func) {
-  MirHash set = {0};
-  for (size_t b = 0; b < func->blocks.len; b++) {
-    const MirInstList *insts = &func->blocks.ptr[b].insts;
-    for (size_t i = 0; i < insts->len; i++) {
-      if (insts->ptr[i].op == MOP_ScopeDisown || insts->ptr[i].op == MOP_ScopeUnpin) {
-        (void)mh_put(cx->ma, &set, insts->ptr[i].args[0], 0);
-      }
-    }
-  }
-  return set;
-}
-
 /* The owning results a `scope.unpin` names. A pin only tags such a value for a close failure: unpinned, it is the
  * live value it was before, on this path as on one that never pinned it. */
 static void collect_unpin_live(ElCx *cx) {
@@ -180,8 +166,8 @@ static void collect_unpin_live(ElCx *cx) {
   }
 }
 
-/* The move state on entry to every block. A flagged owner that is disowned before the op consuming it needs
- * the moved state, so the exits after the move do not release it again. */
+/* The move state on entry to every block. A flagged owner stays tracked as moved after the op consuming it, so an
+ * exit on that path releases it through its flag (false there) instead of leaving the verifier an unreleased owner. */
 static bool block_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElState *entry, bool *has,
                          MirHash *flagged) {
   MirHash seen = {0};
@@ -203,12 +189,9 @@ static bool block_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElSta
     return false;
   }
   MirHash maybe = flagged_owners(cx, entry, has);
-  const MirHash disowned = disowned_values(cx, cx->f);
   const uint64_t *keys = mh_keys(cx->ma, &maybe);
   for (uint32_t i = 0; i < maybe.n; i++) {
-    if (mh_has(&disowned, keys[i])) {
-      (void)mh_put(cx->ma, &cx->disown_moves, keys[i], 0);
-    }
+    (void)mh_put(cx->ma, &cx->disown_moves, keys[i], 0);
   }
   if (cx->disown_moves.n > 0) {
     if (!el_analyze(cx, order, norder, entry, has)) {
