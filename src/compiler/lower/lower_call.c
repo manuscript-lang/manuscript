@@ -166,10 +166,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
   const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
   MirValue record = MIR_NONE;
+  bool shared = false;
   if (is_place) {
     /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
     /* Another field of a variable an earlier argument already took: it is read from that record, which goes back once. */
-    bool shared = false;
     for (uint32_t at = 0; at < nearlier && !shared; at++) {
       if (earlier[at].record != MIR_NONE && earlier[at].place != NULL && fn_same_field_root(fn, earlier[at].place, place) &&
           fn_read_field(fn, place, earlier[at].record, &owned)) {
@@ -199,6 +199,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   }
   if (owned == MIR_NONE) {
     return MIR_NONE;
+  }
+  if (shared && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
+    /* The field leaves the record an earlier argument took; `fn_put_field_chain` fills it again. */
+    owned = mir_b_emit(&fn->b, MOP_MoveOut, &owned, 1, (MirImm){0}, mir_b_ty(&fn->b, owned));
   }
   const MirTy ty = mir_b_ty(&fn->b, owned);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
