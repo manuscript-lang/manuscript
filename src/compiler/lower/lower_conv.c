@@ -373,9 +373,6 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
   if (conversion->kind == MS_CONV_NARROW) {
     /* A nullable local read where `v != null` holds: the payload of the same value, a view while the binding keeps it. */
     const MirTy payload = fn_type(fn, conversion->to);
-    if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
-      return value;
-    }
     const bool last_use = fn->read_moves && expr->kind == MS_E_NAME && fn->facts->last != NULL && fn->facts->last[expr->id] != 0;
     /* A parameter taken by borrow is the caller's: its payload is only viewed. */
     const MsRef *name_ref = expr->kind == MS_E_NAME ? ms_facts_ref(fn->facts, expr->id) : NULL;
@@ -384,7 +381,12 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
                                 fn->b.func.params[param_at].mode != MM_MOVE;
     if (!borrowed_param && (fn->narrow_take == expr || ((ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || last_use) && fn_fresh_owner(fn, value)))) {
       MirTy taken = payload;
-      const MirValue unboxed = fn_take_payload(fn, value, &taken);
+      MirValue unboxed = value;
+      if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
+        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+      } else {
+        unboxed = fn_take_payload(fn, value, &taken);
+      }
       MirVar owner = 0;
       if (expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
         /* The binding gave its payload up: it holds an empty optional, which the scope's end closes as nothing. */
@@ -395,7 +397,7 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
       }
       return unboxed;
     }
-    return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
+    return mir_b_ty(&fn->b, value) == payload ? value : mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to), conversion->to);

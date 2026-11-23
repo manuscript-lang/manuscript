@@ -244,7 +244,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
-  if ((stmt->u.bind.is_mutable || ((!borrow || fresh) && narrowed_local(fn, local, ty))) && mir_needs_drop(fn->cx->module, ty)) {
+  if ((stmt->u.bind.is_mutable || ((!borrow || fresh) && kind != MS_E_NAME && narrowed_local(fn, local, ty))) && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
       return fn_fail(fn, "a local binding is outside the function's locals");
     }
