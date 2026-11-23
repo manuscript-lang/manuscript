@@ -102,7 +102,9 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
       add_view(pass, ref->local, stmt->u.each.iter);
     }
   } else if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
-             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
+             (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER) &&
+             /* a field read the callable moves out (`old := self.f; self.f = g`) is owned by the name, not viewed */
+             !(stmt->u.bind.value->kind == MS_E_MEMBER && ms_facts_use(pass->facts, stmt->u.bind.value->id) == MS_USE_MOVE)) {
     const MsRef *ref = ms_facts_ref(pass->facts, stmt->u.bind.pattern->id);
     if (ref != NULL && ref->kind == MS_REF_LOCAL) {
       add_view(pass, ref->local, stmt->u.bind.value);

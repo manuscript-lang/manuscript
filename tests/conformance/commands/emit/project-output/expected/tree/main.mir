@@ -100,38 +100,19 @@ b2():
   %7: opt<int> = opt.none !2:12:19
   br b3(%7) !2:12:19
 b3(%8: move opt<int>):
-  %9: opt<int> = opt.none !2:13:5
-  %10: bool = opt.is_some %8 !2:13:5
-  %11: bool = opt.is_some %9 !2:13:5
-  %12: bool = icmp.eq %10, %11 !2:13:5
-  br_if %12, b4(), b5() !2:13:5
+  %9: bool = opt.is_some %8 !2:13:5
+  br_if %9, b4(), b5() !2:13:5
 b4():
-  br_if %10, b6(), b7() !2:13:5
+  %10: int = opt.get %8 !2:13:23
+  %11: Result[Int, Failure] = alt.new Result[Int, Failure].ok %10 !2:13:30
+  ret %11 !2:13:30
 b5():
-  %13: bool = bconst false !2:13:5
-  br b8(%13) !2:13:5
+  br b6() !2:13:30
 b6():
-  %14: int = opt.get %8 !2:13:5
-  %15: int = opt.get %9 !2:13:5
-  %16: bool = icmp.eq %14, %15 !2:13:5
-  br b8(%16) !2:13:5
-b7():
-  %17: bool = bconst true !2:13:5
-  br b8(%17) !2:13:5
-b8(%18: bool):
-  %19: bool = not %18 !2:13:5
-  br_if %19, b9(), b10() !2:13:5
-b9():
-  %20: int = opt.get %8 !2:13:23
-  %21: Result[Int, Failure] = alt.new Result[Int, Failure].ok %20 !2:13:30
-  ret %21 !2:13:30
-b10():
-  br b11() !2:13:30
-b11():
-  %22: str = call.rt @msrt_string_clone (%0) !2:15:35
-  %23: Failure = alt.new Failure.Bad %22 !2:15:26
-  %24: Result[Int, Failure] = alt.new Result[Int, Failure].error %23 !2:15:12
-  ret %24 !2:15:12
+  %12: str = call.rt @msrt_string_clone (%0) !2:15:35
+  %13: Failure = alt.new Failure.Bad %12 !2:15:26
+  %14: Result[Int, Failure] = alt.new Result[Int, Failure].error %13 !2:15:12
+  ret %14 !2:15:12
   name %0 "text" param 0
 }
 
@@ -148,36 +129,17 @@ b1():
 b2():
   br b3() !1:283:23
 b3():
-  %6: opt<int> = opt.none !1:284:5
-  %7: bool = opt.is_some %1 !1:284:5
-  %8: bool = opt.is_some %6 !1:284:5
-  %9: bool = icmp.eq %7, %8 !1:284:5
-  br_if %9, b4(), b5() !1:284:5
+  %6: bool = opt.is_some %1 !1:284:5
+  br_if %6, b4(), b5() !1:284:5
 b4():
-  br_if %7, b6(), b7() !1:284:5
-b5():
-  %10: bool = bconst false !1:284:5
-  br b8(%10) !1:284:5
-b6():
-  %11: int = opt.get %1 !1:284:5
-  %12: int = opt.get %6 !1:284:5
-  %13: bool = icmp.eq %11, %12 !1:284:5
-  br b8(%13) !1:284:5
-b7():
-  %14: bool = bconst true !1:284:5
-  br b8(%14) !1:284:5
-b8(%15: bool):
-  %16: bool = not %15 !1:284:5
-  br_if %16, b9(), b10() !1:284:5
-b9():
-  %17: int = opt.get %1 !1:284:25
+  %7: int = opt.get %1 !1:284:25
   drop %0
-  ret %17 !1:284:25
-b10():
-  br b11() !1:284:25
-b11():
-  %18: str = str "called Result.get_or with a none default" !1:286:5
-  %19: void = call.rt @msrt_panic (%18) !1:286:5
+  ret %7 !1:284:25
+b5():
+  br b6() !1:284:25
+b6():
+  %8: str = str "called Result.get_or with a none default" !1:286:5
+  %9: void = call.rt @msrt_panic (%8) !1:286:5
   unreachable !1:286:5
   name %0 "self" param 0
   name %1 "default" param 0

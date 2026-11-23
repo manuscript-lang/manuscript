@@ -95,7 +95,7 @@ static bool payload_hint(Body *body, MsTy receiver, MsSpan name, MsStrBuild *out
   ms_strbuild_append_text(out, ", which has ");
   ms_strbuild_append(out, name);
   ms_strbuild_append_text(out, ": unwrap it first with ");
-  ms_strbuild_append_text(out, optional ? "`if value := x:` or x.get_or(default)"
+  ms_strbuild_append_text(out, optional ? "`if x != null:` or `x or default`"
                                         : "`x?` inside a fn that returns Result, `if value := x:` or x.get_or(default)");
   return true;
 }

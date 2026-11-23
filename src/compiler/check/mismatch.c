@@ -90,7 +90,7 @@ static bool optional_use_hint(const Body *body, MsStrBuild *out, MsTy actual, Ms
     return false;
   }
   show(body, out, actual);
-  ms_strbuild_append_text(out, " may be absent; unwrap it first with 'if value := x', get_or(default), is_some() before get(), or match");
+  ms_strbuild_append_text(out, " may be absent; test it first with 'if x != null', or give a default with 'x or default'");
   return true;
 }
 

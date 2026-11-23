@@ -89,8 +89,8 @@ static bool optional_hint(const Body *body, MsStrBuild *text, MsTy actual, MsTy 
     return false;
   }
   append_type(body, text, actual);
-  ms_strbuild_append_text(text, " may be absent; unwrap it first with 'if value := x', get_or(default), "
-                                "is_some() before get(), or match");
+  ms_strbuild_append_text(text, " may be absent; test it first with 'if x != null', "
+                                "or give a default with 'x or default'");
   return true;
 }
 

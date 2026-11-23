@@ -201,6 +201,10 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
   if (value->kind == MS_E_MEMBER && ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, value->id))) {
     return;
   }
+  /* A field read the callable moves (`old := self.f; self.f = g`) leaves its record: the name owns it. */
+  if (value->kind == MS_E_MEMBER && ms_facts_use(pass->facts, value->id) == MS_USE_MOVE) {
+    return;
+  }
   borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
                                             .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
                                             .root = source.root, .place = source.place});
