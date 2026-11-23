@@ -529,7 +529,7 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
  * resource of plain memory with a `close`. */
 static bool fn_receiver_owned(LowerFn *fn, const MsExpr *written, MirTy ty) {
   uint32_t silent = MIR_NONE;
-  return mir_needs_drop(fn->cx->module, ty) || fn_capture_closer(fn, ms_facts_type(fn->facts, written->id), ty, &silent);
+  return mir_needs_drop(fn->cx->module, ty) || fn_capture_closer(fn, fn_read_type(fn, written), ty, &silent);
 }
 
 /* The receiver a bound-method closure keeps: a dying temporary moves into the closure; a value some binding still owns
@@ -557,7 +557,7 @@ static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue rec
     } else {
       return fn_implicit_clone(fn, receiver, true);
     }
-    if (fn_capture_closer(fn, ms_facts_type(fn->facts, written->id), mir_b_ty(&fn->b, receiver), &silent)) {
+    if (fn_capture_closer(fn, fn_read_type(fn, written), mir_b_ty(&fn->b, receiver), &silent)) {
       *closer = (MirCaptureCloser){0, silent};
       *nclosers = 1;
     }
@@ -572,7 +572,7 @@ static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue rec
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &receiver, 1, (MirImm){0}, MIR_NONE);
   }
   uint32_t silent = MIR_NONE;
-  if (fn_capture_closer(fn, ms_facts_type(fn->facts, written->id), mir_b_ty(&fn->b, receiver), &silent)) {
+  if (fn_capture_closer(fn, fn_read_type(fn, written), mir_b_ty(&fn->b, receiver), &silent)) {
     *closer = (MirCaptureCloser){0, silent}; /* the closure closes the resource it took when it is dropped */
     *nclosers = 1;
   }

@@ -701,7 +701,7 @@ static bool standard_form(LowerFn *fn, const MirValue *args, uint32_t count, Mir
  * else the standard form (text through the shape, a structural copy). */
 static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *call, const MirValue *args, MirTy ret) {
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
-  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
   const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, NULL, 0, MS_TY_NONE);
   /* A method of another arity or result type (`to_string(prefix)` beside the operation `to_string()`) is not the operation. */
@@ -940,7 +940,7 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   const bool via_bound = generic_receiver(fn, call);
   if (via_bound) {
     /* The instance knows the receiver: a standard type's operation is that type's own native. */
-    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);
     const MsTyTable *table = &fn->cx->program->types;
     if (ms_ty_kind(table, receiver) != MS_TY_NATIVE && ms_builtin_name(ms_ty_builtin(table, receiver))[0] == 0) {

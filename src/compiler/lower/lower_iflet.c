@@ -139,7 +139,7 @@ bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr
     return false;
   }
   const MsTyTable *types = &fn->cx->program->types;
-  const MsTy held = ms_facts_type(fn->facts, callee->u.member.left->id);
+  const MsTy held = fn_read_type(fn, callee->u.member.left);
   const MsTy result = ms_facts_type(fn->facts, cond->id);
   const MsTy key = ms_facts_type(fn->facts, cond->u.call.args.ptr[0].value->id);
   if (held == MS_TY_NONE || result == MS_TY_NONE || key == MS_TY_NONE || !ms_ty_is(types, result, MS_BUILTIN_Optional) ||

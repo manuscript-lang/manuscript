@@ -96,7 +96,7 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
                                ms_own_call_borrows(fn->cx->program, call, index))) {
     return false;
   }
-  *checked = ms_ty_subst(types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  *checked = ms_ty_subst(types, fn_read_type(fn, written), fn->subst.vars, fn->subst.args, fn->subst.count);
   const size_t declared = ms_ty_param_count(types, call->callee_ty);
   if (declared != 0 && index + declared >= call->arg_count) {
     const MsTy param = ms_ty_subst(types, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty,
@@ -239,7 +239,7 @@ static bool drops_resources(LowerFn *fn, const MsExpr *callee) {
       !ms_span_is_text(name, "clear") && !ms_span_is_text(name, "set")) {
     return false;
   }
-  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, callee->u.member.left->id), fn->subst.vars, fn->subst.args,
+  const MsTy owner = ms_ty_subst(types, fn_read_type(fn, callee->u.member.left), fn->subst.vars, fn->subst.args,
                                  fn->subst.count);
   if (owner == MS_TY_NONE) {
     return false;
@@ -258,7 +258,7 @@ static bool closure_temp(LowerFn *fn, const MsExpr *expr, const MsCall *call, ui
   if (written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) || callee_consumes(fn, call, index)) {
     return false;
   }
-  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, written), fn->subst.vars, fn->subst.args, fn->subst.count);
   return ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, ty) == MS_TY_FUNCTION && mir_needs_drop(fn->cx->module, fn_type(fn, ty));
 }
 

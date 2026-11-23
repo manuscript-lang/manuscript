@@ -431,6 +431,8 @@ MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const 
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
+/* The checked type of `expr` as it is read: a local narrowed by `v != null` reads as its payload type. */
+MsTy fn_read_type(const LowerFn *fn, const MsExpr *expr);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);

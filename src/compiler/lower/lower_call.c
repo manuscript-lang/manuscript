@@ -62,7 +62,7 @@ static bool native_takes_place(LowerFn *fn, const MsExpr *expr, const MsCall *ca
     return false;
   }
   const MsTyTable *table = &fn->cx->program->types;
-  const MsTy receiver = ms_facts_type(fn->facts, written->id);
+  const MsTy receiver = fn_read_type(fn, written);
   const bool standard = ms_ty_kind(table, receiver) == MS_TY_NATIVE || ms_builtin_name(ms_ty_builtin(table, receiver))[0] != 0;
   return standard && fn_place_changeable(fn, written) &&
          fn_native_changes_receiver(fn, receiver, ms_names_span(fn->cx->program->names, fn_call_callee(expr)->u.member.name),
@@ -190,7 +190,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
           written->kind == MS_E_LIST && out[index] != MIR_NONE && fn_fresh_owner(fn, out[index])) {
         /* The receiver closes after the arguments that follow it, so its slot is registered first: a fault in the call
          * closes the incoming operands before it. */
-        const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+        const MsTy checked = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, written), fn->subst.vars,
                                          fn->subst.args, fn->subst.count);
         receiver_slot = fn_pending_own(fn, checked, out[index]);
         if (receiver_slot != MIR_NONE) {
@@ -201,7 +201,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_MOVE && out[index] != MIR_NONE && written != NULL &&
           (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
           (step + 1 < call->arg_count || held_across(call, native))) {
-        MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+        MsTy checked = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, written), fn->subst.vars,
                                    fn->subst.args, fn->subst.count);
         const size_t params = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
         if (params != 0 && index + params >= call->arg_count && fn_type(fn, checked) != mir_b_ty(&fn->b, out[index])) {
@@ -352,12 +352,12 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
     (void)fn_fail(fn, "an interface operation needs an interface receiver");
     return MIR_NONE;
   }
-  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+  const MsTy receiver = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
   MsTy written[16] = {0};
   const uint32_t nwritten = expr->u.call.args.len < 16 ? (uint32_t)expr->u.call.args.len : 16;
   for (uint32_t at = 0; at < nwritten; at++) {
-    written[at] = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.call.args.ptr[at].value->id),
+    written[at] = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, expr->u.call.args.ptr[at].value),
                               fn->subst.vars, fn->subst.args, fn->subst.count);
   }
   const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten,
@@ -396,7 +396,7 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
 /* The operation is named by the member written; the checker's index does not say which one it is. */
 uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index) {
   if (callee->kind == MS_E_MEMBER) {
-    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+    const MsTy receiver = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);
     const MsTyRow *row = ms_ty_row(&fn->cx->program->types, receiver);
     const MsDef *def = row->def != 0 ? ms_defs_get(&fn->cx->program->defs, row->def) : NULL;
@@ -689,7 +689,7 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, CallBufs *bufs) {
   const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
   /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
   const bool dispatched = call->callee.kind == MS_REF_OPERATION && fn_call_callee(expr)->kind == MS_E_MEMBER &&
-                          mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, fn_call_callee(expr)->u.member.left->id)))->kind == MK_IFACE;
+                          mir_ty_data(fn->cx->module, fn_type(fn, fn_read_type(fn, fn_call_callee(expr)->u.member.left)))->kind == MK_IFACE;
   if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var, !source, held)) {
     return MIR_NONE;
   }
@@ -729,7 +729,7 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, CallBufs *bufs) {
     /* The receiver form binds the variables the signature does not mention (`List[T].join(separator)`). */
     const MsExpr *callee = fn_call_callee(expr);
     if (call->callee.kind == MS_REF_METHOD && target.receiver != MS_TY_NONE && callee->kind == MS_E_MEMBER) {
-      const MsTy actual = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
+      const MsTy actual = ms_ty_subst(&fn->cx->program->types, fn_read_type(fn, callee->u.member.left),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);
       (void)ms_check_unify(&fn->cx->program->types, target.receiver, actual, target.variables, target.nvariables, bound);
     }
