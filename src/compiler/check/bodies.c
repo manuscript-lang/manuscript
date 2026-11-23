@@ -286,7 +286,17 @@ static void stmt_if(Body *body, const MsStmt *stmt) {
                         : body_expect(body, stmt->u.branch.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("an if condition"));
   const size_t mark = body_scope_mark(body);
   if (stmt->u.branch.binding != NULL) {
-    bind_pattern(body, stmt->u.branch.binding, payload_type(body, cond), stmt->u.branch.is_mutable);
+    const MsTyTable *types = &body->program->types;
+    const bool wraps = cond != MS_TY_NONE && ((ms_ty_is(types, cond, MS_BUILTIN_Optional) && ms_ty_arg_count(types, cond) == 1) ||
+                                              (ms_ty_is(types, cond, MS_BUILTIN_Result) && ms_ty_arg_count(types, cond) == 2));
+    if (cond != MS_TY_NONE && !wraps && !holds_invalid(types, cond, 6) && body_reports(body) && !body->quiet) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "an if binding requires an Optional or Result, found ");
+      ms_ty_show(&text, body->program->names, types, cond);
+      ms_strbuild_append_text(&text, "; use 'if' for a Bool condition or 'match' for other alternatives");
+      ms_check_report(body->program, body->module, stmt->u.branch.cond->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    bind_pattern(body, stmt->u.branch.binding, wraps ? payload_type(body, cond) : MS_TY_NONE, stmt->u.branch.is_mutable);
   }
   body_block(body, stmt->u.branch.body);
   body_scope_reset(body, mark);

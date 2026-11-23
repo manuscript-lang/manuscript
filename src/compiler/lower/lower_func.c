@@ -287,8 +287,8 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   counts->returns++;
   if (counts->result != MS_TY_NONE && ms_facts_type(counts->facts, value->id) != counts->result) {
     const MsConversion *conversion = ms_facts_conversion(counts->facts, value->id);
-    if (conversion == NULL || conversion->kind != MS_CONV_OPTIONAL_WRAP) {
-      return; /* any other conversion builds a new owner; a wrapped place stays a view of it */
+    if (conversion == NULL || (conversion->kind != MS_CONV_OPTIONAL_WRAP && conversion->kind != MS_CONV_INTERFACE_VIEW)) {
+      return; /* any other conversion builds a new owner; a wrapped or interface-viewed place stays a view of it */
     }
   }
   if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */

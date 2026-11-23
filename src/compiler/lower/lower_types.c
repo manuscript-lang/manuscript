@@ -104,6 +104,7 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
       }
     }
   }
+  cx->module->type_defs.ptr[id].opaque = ms_check_def_opaque(cx->program, def);
   cx->module->type_defs.ptr[id].fields = fields;
   cx->module->type_defs.ptr[id].nfields = (uint32_t)def->fields.len;
   return result;
@@ -123,6 +124,7 @@ static MirTy lower_alt(Lower *cx, MsTy ty) {
     cases[index].nfields = (uint32_t)source->fields.len;
   }
   MirAltDef *alt = &cx->module->alts.ptr[id];
+  alt->opaque = ms_check_def_opaque(cx->program, def);
   alt->cases = cases;
   alt->ncases = (uint32_t)def->cases.len;
   const MsBuiltin builtin = ms_ty_builtin(&cx->program->types, ty);

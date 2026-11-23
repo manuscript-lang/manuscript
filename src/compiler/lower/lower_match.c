@@ -14,6 +14,7 @@ typedef struct Match {
   MirBlock join;
   bool joined; /* an arm falls through to the join */
   bool consumed; /* the scrutinee is a name the match moves: its arms own the payload they bind */
+  bool owned_resource; /* ... a scope-owned value holding a resource: only an arm that binds every field takes them */
 } Match;
 
 static bool is_literal(const MsExpr *path) {
@@ -167,7 +168,9 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
     bind_concrete(fn, match, arm);
   }
   if (named && arm->bindings.len > 0) {
-    if (match->consumed && !(match->kind == MK_OPT && kase != 1)) {
+    const bool takes_all = match->owned_resource && (match->kind == MK_OPT ||
+                           arm->bindings.len == fn->cx->module->alts.ptr[mir_ty_data(fn->cx->module, match->ty)->id].cases[kase].nfields);
+    if ((match->consumed || takes_all) && !(match->kind == MK_OPT && kase != 1)) {
       take_payload(fn, match, arm, kase);
     } else {
       bind_payload(fn, match, arm, kase);
@@ -297,6 +300,8 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
                     (subject->kind == MS_E_CALL && fn_fresh_owner(fn, match.scrutinee))) &&
                    (match.kind == MK_ALT || match.kind == MK_OPT) &&
                    (subject->kind == MS_E_CALL || !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id)));
+  match.owned_resource = !match.consumed && subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE &&
+                         (match.kind == MK_ALT || match.kind == MK_OPT);
   MirValue taken = MIR_NONE;
   if (subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
       fn_closing_move(fn, subject, match.scrutinee, &taken)) {
