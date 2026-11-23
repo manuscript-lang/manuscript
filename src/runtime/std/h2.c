@@ -262,6 +262,10 @@ void ms_h2_take_output(MsH2 *h2, MsBytes *out) {
   }
 }
 
+bool ms_h2_wants_write(const MsH2 *h2) {
+  return nghttp2_session_want_write(h2->session) != 0;
+}
+
 bool ms_h2_failed(const MsH2 *h2) {
   return h2->failed;
 }
