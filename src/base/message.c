@@ -33,7 +33,7 @@ static void append_conversion(MsStrBuild *builder, char conversion, va_list *arg
     ms_strbuild_append_text(builder, va_arg(*arguments, const char *));
     return;
   case 'S':
-    ms_strbuild_append(builder, va_arg(*arguments, MsSpan));
+    ms_strbuild_append(builder, *va_arg(*arguments, const MsSpan *));
     return;
   case 'z':
     ms_strbuild_append_u64(builder, va_arg(*arguments, size_t));
@@ -69,7 +69,7 @@ MsSpan ms_message_vformat(MsArena *arena, const char *format, va_list arguments)
   return message;
 }
 
-MsSpan ms_message_format(MsArena *arena, const char *format, ...) {
+MsSpan ms_message_format_(MsArena *arena, const char *format, ...) {
   va_list arguments;
   va_start(arguments, format);
   MsSpan message = ms_message_vformat(arena, format, arguments);
