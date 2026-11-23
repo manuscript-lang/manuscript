@@ -108,6 +108,7 @@ bool el_analyze(ElCx *cx, const MirBlock *order, uint32_t norder, ElState *entry
 
 /* The scope tags of a function (mir_elab_tags.c). */
 void el_tags(ElCx *cx);
+void el_prune_undominated_drops(ElCx *cx);
 void el_tags_free(ElCx *cx); /* frees the owner lists */
 
 /* Emits the function's cleanup. `flagged` owners carry drop flags. */

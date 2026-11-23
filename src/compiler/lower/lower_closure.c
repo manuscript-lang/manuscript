@@ -267,7 +267,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
     const MirTy ty = mir_b_ty(&fn.b, values[at]);
     if (fn_closer_for(&fn, ms_facts_closer(fn.facts, written->id), checked)) {
       /* A resource parameter is the body's to close: it lives in a slot the body's scope owns. */
-      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1]);
+      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1], false);
     } else {
       mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
       if (mir_needs_drop(cx->module, ty)) {
@@ -301,6 +301,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   built.scoped = reserved.scoped;
   built.display = reserved.display;
   mir_func_release(slot);
@@ -477,10 +478,15 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
 
 /* The receiver a bound-method closure keeps: a dying temporary moves into the closure; a value some binding still owns
  * is a hidden copy. */
-static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue receiver) {
-  /* A read of a binding is never the dying temporary, though the value is the one the binding was made from. */
+static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue receiver, bool *borrowed) {
+  /* A read of a binding is never the dying temporary, though the value is the one the binding was made from: the
+   * closure borrows it. */
   const bool place = written->kind == MS_E_NAME || written->kind == MS_E_MEMBER;
-  if (place || !fn_fresh_owner(fn, receiver)) {
+  if (place) {
+    *borrowed = true;
+    return receiver;
+  }
+  if (!fn_fresh_owner(fn, receiver)) {
     return fn_implicit_clone(fn, receiver, true);
   }
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &receiver, 1, (MirImm){0}, MIR_NONE);
@@ -516,11 +522,13 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     return MIR_NONE;
   }
   const MirTy receiver_ty = changes ? slot_ty : mir_b_ty(&fn->b, receiver);
+  bool borrowed = false;
   if (!changes && mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_closure_owns(fn, expr->u.member.left, receiver);
+    receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = changes ? MIR_PTR : receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  cx->module->funcs.ptr[slot].scoped = borrowed;
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   LowerFn body = {.cx = cx, .facts = fn->facts, .module_index = fn->module_index, .file = fn->file, .subst = fn->subst,
                   .ret = reserved.ret};
@@ -567,6 +575,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -588,11 +597,13 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
     (void)fn_fail(fn, "an operation of a bound type cannot be used as a value yet (at %u:%u)", expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
+  bool borrowed = false;
   if (mir_needs_drop(cx->module, receiver_ty)) {
-    receiver = fn_closure_owns(fn, expr->u.member.left, receiver);
+    receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  cx->module->funcs.ptr[slot].scoped = borrowed;
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
@@ -616,6 +627,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -680,11 +692,13 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   }
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
   const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
+  bool borrowed = false;
   if (owns) {
-    receiver = fn_closure_owns(fn, expr->u.member.left, receiver);
+    receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed);
   }
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = receiver_ty};
   const uint32_t slot = lower_closure_func(cx, fn_ty, &capture, 1);
+  cx->module->funcs.ptr[slot].scoped = borrowed;
   const MirFunc reserved = cx->module->funcs.ptr[slot];
   MirBuilder b;
   mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
@@ -710,6 +724,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   built.kind = MFK_CLOSURE;
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
+  built.scoped = reserved.scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
