@@ -156,6 +156,16 @@ static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSp
   return ok;
 }
 
+static LlvmBuffer buffer_of(const ObjectCode *code) {
+  return (LlvmBuffer){.data = code->data, .size = code->size, .handle = code->handle};
+}
+
+void link_discard(ObjectCode *code) {
+  LlvmBuffer buffer = buffer_of(code);
+  llvm_buffer_free(&buffer);
+  *code = (ObjectCode){0};
+}
+
 static bool write_object(MsSpan object, const LlvmBuffer *buffer, MsStrBuild *why) {
   return ms_file_write(object, ms_span_of((const uint8_t *)buffer->data, buffer->size)) ||
          (ms_strbuild_append_text(why, "cannot write the object"), false);
@@ -170,9 +180,11 @@ static bool inproc_generate(const ObjectOptions *options, MsSpan triple, MsSpan 
                            .codegen_level = options->speed ? (options->debug ? 1 : 3) : 0,
                            .fast_codegen = options->debug,
                            .assembly = options->tables != NULL};
-  const bool ok = llvm_compile(&settings, ir, &code->first, why);
+  LlvmBuffer first = {0};
+  const bool ok = llvm_compile(&settings, ir, &first, why);
+  *code = (ObjectCode){.data = first.data, .size = first.size, .handle = first.handle};
   if (ok && options->tables == NULL) {
-    return write_object(object, &code->first, why);
+    return write_object(object, &first, why);
   }
   return ok;
 }
@@ -183,7 +195,7 @@ static bool inproc_finish(const ObjectOptions *options, MsSpan triple, MsSpan ob
   MsStrBuild text = ms_strbuild_new();
   MsStrBuild wrapped = ms_strbuild_new();
   bool ok = link_asm_tables(&arena, options->module, options->tables,
-                            ms_span_of((const uint8_t *)code->first.data, code->first.size), options->unit,
+                            ms_span_of((const uint8_t *)code->data, code->size), options->unit,
                             options->units, &text, why);
   LlvmBuffer second = {0};
   if (ok) {
@@ -264,7 +276,7 @@ bool link_finish(const ObjectOptions *options, MsSpan object, ObjectCode *code, 
       ms_string_release(&triple_flag);
     }
   }
-  llvm_buffer_free(&code->first);
+  link_discard(code);
   return ok;
 }
 

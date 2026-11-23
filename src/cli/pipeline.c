@@ -228,7 +228,7 @@ static bool make_objects(const MsLinkRequest *request, const BackendProgram *pro
     run_phase(jobs, units, finish_unit);
   } else {
     for (uint32_t unit = 0; unit < units; unit++) {
-      llvm_buffer_free(&jobs[unit].code.first); /* the assembly of the modules that did generate */
+      link_discard(&jobs[unit].code); /* the assembly of the modules that did generate */
     }
   }
   bool ok = true;

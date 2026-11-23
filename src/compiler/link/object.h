@@ -5,7 +5,6 @@
 
 #include "base/strbuild.h"
 #include "compiler/emit/emit_tables.h"
-#include "compiler/link/llvm_inproc.h"
 
 typedef struct ObjectOptions {
   MsSpan opt;       /* the `opt` executable */
@@ -24,8 +23,13 @@ typedef struct ObjectOptions {
 /* What phase one of a module leaves for phase two: the assembly it generated (in-process; the child processes leave it
  * in a file). */
 typedef struct ObjectCode {
-  LlvmBuffer first;
+  const char *data;
+  size_t size;
+  void *handle;
 } ObjectCode;
+
+/* Releases what link_generate left in `code` (link_finish does it itself). */
+void link_discard(ObjectCode *code);
 
 /* Compiles `ir` to the object file `object`. On failure `why` gets the tool's name and its output. */
 MS_NODISCARD MS_NONNULL bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object,
