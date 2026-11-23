@@ -90,6 +90,8 @@ void el_remove(ElCx *cx, ElState *state, MirValue value);
 bool el_position_of(const ElState *state, MirValue value, uint32_t *position);
 /* The owners in definition order: `*count` of them, in the context's arena. */
 ElOwner *el_owners(ElCx *cx, const ElState *state, uint32_t *count);
+/* Orders two ElOwner by definition position, for ms_sort. */
+int64_t el_owner_by_position(uint8_t *env, const uint8_t *x, const uint8_t *y);
 /* The owners a join left uncertain, in definition order. */
 ElOwner *el_odd(ElCx *cx, const ElState *state, uint32_t *count);
 bool el_state_equal(const ElState *x, const ElState *y);

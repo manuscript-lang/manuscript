@@ -62,6 +62,8 @@ bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b);
 
 /* Runs one libuv call to its end: a synchronous request, cleaned up. Each returns 0 or a negative UV_* code. */
 int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out);
+/* The same for a path as bytes: UV_EINVAL for an empty path or one with a NUL. */
+int ms_fs_stat_bytes(MsSpan path, bool follow, uv_stat_t *out);
 int ms_fs_fstat(uv_file fd, uv_stat_t *out);
 int ms_fs_remove_one(const char *path);
 /* A directory with permissions 0700. */

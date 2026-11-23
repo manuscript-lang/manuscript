@@ -1,6 +1,8 @@
 /* Owns message construction: joins parts and numbers into arena text. */
 #include "base/message.h"
 
+#include "base/chars.h"
+
 MsSpan ms_message_from_builder(MsArena *arena, const MsStrBuild *builder) {
   return ms_arena_copy(arena, ms_strbuild_span(builder));
 }
@@ -21,6 +23,16 @@ MsSpan ms_message_number(MsArena *arena, uint64_t value) {
   MsSpan text = ms_message_from_builder(arena, &builder);
   ms_strbuild_free(&builder);
   return text;
+}
+
+MsSpan ms_message_lowered(MsArena *arena, MsSpan text) {
+  MsStrBuild out = ms_strbuild_new();
+  for (size_t i = 0; i < text.len; i++) {
+    ms_strbuild_append_byte(&out, ms_ascii_to_lower(text.ptr[i]));
+  }
+  MsSpan copy = ms_message_from_builder(arena, &out);
+  ms_strbuild_free(&out);
+  return copy;
 }
 
 MsSpan ms_message_byte(MsArena *arena, uint8_t byte) {

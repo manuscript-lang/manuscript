@@ -2,6 +2,7 @@
 #include "tooling/doc_comment.h"
 
 #include "base/message.h"
+#include "compiler/syntax/format.h"
 #include "base/strbuild.h"
 
 static bool is_blank_byte(uint8_t c) {
@@ -26,14 +27,6 @@ static MsSpan trim_end(MsSpan s) {
 
 static MsSpan trim(MsSpan s) {
   return trim_start(trim_end(s));
-}
-
-static size_t indent_columns(MsSpan line) {
-  size_t columns = 0;
-  for (size_t i = 0; i < line.len && (line.ptr[i] == ' ' || line.ptr[i] == '\t'); i++) {
-    columns += line.ptr[i] == '\t' ? 4 : 1;
-  }
-  return columns;
 }
 
 static MsSpan drop_prefix(MsSpan s, size_t n) {
@@ -135,7 +128,7 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
       break;
     }
     const MsSpan line = strip_cr(lines.nearest.ptr[used]);
-    if (indent != ANY_INDENT && indent_columns(line) != indent) {
+    if (indent != ANY_INDENT && ms_indent_columns(line) != indent) {
       break;
     }
     const MsSpan text = trim(line);
@@ -161,7 +154,7 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
           break;
         }
       }
-      if (!found || (indent != ANY_INDENT && indent_columns(lines.nearest.ptr[open]) != indent)) {
+      if (!found || (indent != ANY_INDENT && ms_indent_columns(lines.nearest.ptr[open]) != indent)) {
         break;
       }
       const size_t count = open - used + 1;
@@ -295,7 +288,7 @@ MsSpan ms_leading_comment(MsArena *arena, MsSpan source, size_t offset) {
   if (!lead && !receiver_method) {
     return ms_span_of_text("");
   }
-  const MsSpan above = comments_above(arena, source, line_start, indent_columns(own_line));
+  const MsSpan above = comments_above(arena, source, line_start, ms_indent_columns(own_line));
   if (above.len > 0) {
     return above;
   }

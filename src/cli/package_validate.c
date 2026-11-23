@@ -59,17 +59,6 @@ static MsSpan unportable_part(MsSpan path) {
   return (MsSpan){0};
 }
 
-static MsSpan lowered(MsArena *arena, MsSpan text) {
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < text.len; i++) {
-    const uint8_t b = text.ptr[i];
-    ms_strbuild_append_byte(&out, b >= 'A' && b <= 'Z' ? (uint8_t)(b + 32) : b);
-  }
-  const MsSpan copy = ms_message_from_builder(arena, &out);
-  ms_strbuild_free(&out);
-  return copy;
-}
-
 typedef struct Seen {
   MsSpan lower;
   MsSpan path;
@@ -101,7 +90,7 @@ static bool check_entry(MsArena *arena, MsSpan key, MsSpan entry, SeenList *seen
                                key, path, part);
     return false;
   }
-  const MsSpan lower = lowered(arena, path);
+  const MsSpan lower = ms_message_lowered(arena, path);
   for (size_t i = 0; i < seen->len; i++) {
     if (ms_span_equal(seen->ptr[i].lower, lower)) {
       *error = ms_message_format(arena,

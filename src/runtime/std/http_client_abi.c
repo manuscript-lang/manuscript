@@ -116,15 +116,6 @@ MsObj *msstd_http_client_share(const MsObj *c) {
   return ms_http_client_handle_with_policy(client_of(c)->client, &client_of(c)->policy);
 }
 
-/* Ends a native with the status of a call and the text it left. */
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
-}
-
 static MsObj *body_new(MsHttpResponse *response) {
   BodyCell *cell = ms_alloc_zeroed(sizeof *cell);
   cell->header.drop = body_drop;
@@ -163,7 +154,7 @@ uint8_t msstd_http_client_request_bytes(const MsObj *c, const MsString *method, 
   if (status == MS_STATUS_OK) {
     *out = body_new(response);
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 void msstd_http_body_close(const MsObj *b) {
@@ -186,7 +177,7 @@ uint8_t msstd_http_body_read(const MsObj *b, uint8_t has_max, int64_t max, MsByt
   size_t limit = BODY_CHUNK;
   if (has_max != 0 && max <= 0) {
     MsString none = ms_string_empty();
-    return finish(MS_STATUS_INVALID_INPUT, &none, err);
+    return ms_fail_finish_with(MS_STATUS_INVALID_INPUT, &none, err);
   }
   if (has_max != 0 && (uint64_t)max < limit) {
     limit = (size_t)max;
@@ -200,7 +191,7 @@ uint8_t msstd_http_body_read(const MsObj *b, uint8_t has_max, int64_t max, MsByt
       status = MS_STATUS_NONE;
     }
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 uint8_t msstd_http_body_read_all(const MsObj *b, MsBytes *out, MsString *err) {
@@ -217,5 +208,5 @@ uint8_t msstd_http_body_read_all(const MsObj *b, MsBytes *out, MsString *err) {
   if (status != MS_STATUS_OK) {
     ms_bytes_free(out);
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }

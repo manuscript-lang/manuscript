@@ -175,6 +175,9 @@ void fn_env_install(LowerFn *fn, const LowerOuterEnv *env);
 
 /* ---- scopes (lower_scope.c) ---- */
 
+/* A function in the first module's facts for the reserved MIR function `reserved`, with its outermost scope open: the
+ * start of a generated function (glue, hooks) that has no source of its own. */
+LowerFn fn_begin_reserved(Lower *cx, const MirFunc *reserved);
 /* Opens a scope inside the current one and returns its id. */
 uint32_t fn_scope_begin(LowerFn *fn);
 /* Closes the innermost scope: its owners are dropped or closed where it ends. */

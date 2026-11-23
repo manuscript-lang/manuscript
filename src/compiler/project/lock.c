@@ -18,17 +18,6 @@ static bool find_text(MsSpan text, const char *needle, size_t *at) {
   return ms_span_find(text, ms_span_of_text(needle), at);
 }
 
-static MsSpan lowercase(MsArena *arena, MsSpan text) {
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < text.len; i++) {
-    const uint8_t b = text.ptr[i];
-    ms_strbuild_append_byte(&out, b >= 'A' && b <= 'Z' ? (uint8_t)(b + 32) : b);
-  }
-  const MsSpan copy = ms_message_from_builder(arena, &out);
-  ms_strbuild_free(&out);
-  return copy;
-}
-
 MsSpan ms_lock_repo_key(MsArena *arena, MsSpan url) {
   size_t at = 0;
   bool local = false;
@@ -54,9 +43,9 @@ MsSpan ms_lock_repo_key(MsArena *arena, MsSpan url) {
     slash++;
   }
   if (slash == rest.len) {
-    return lowercase(arena, rest);
+    return ms_message_lowered(arena, rest);
   }
-  return ms_message_format(arena, "%S%S", lowercase(arena, ms_span_of(rest.ptr, slash)),
+  return ms_message_format(arena, "%S%S", ms_message_lowered(arena, ms_span_of(rest.ptr, slash)),
                            ms_span_of(rest.ptr + slash, rest.len - slash));
 }
 
