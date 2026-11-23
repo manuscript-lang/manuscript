@@ -441,9 +441,6 @@ fn Optional[T: Clonable].clone() move T?:
 		value: return value.clone()
 		none: return none
 
-fn Error.clone() move Error:
-	return Error(self.message.clone(), self.kind.clone(), self.details.clone())
-
 // A String is its own text.
 fn String.to_string() String:
 	return self.clone()
