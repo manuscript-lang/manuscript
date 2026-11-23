@@ -17,15 +17,15 @@
       ],
       "summary": {
         "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "selected": 1,
+        "passed": 1,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN json-recursive-record.ms::recursive record round trips through JSON\nPASS json-typed-roundtrip.ms::JSON payloadless cases are their names and round-trip\nRUN json-typed-roundtrip.ms::JSON rejects an unknown case name\nPASS json-typed-roundtrip.ms::JSON rejects an unknown case name\nRUN json-typed-roundtrip.ms::JSON writes and reads IpAddress and Cidr as strings\nPASS json-typed-roundtrip.ms::JSON writes and reads IpAddress and Cidr as strings\nRUN json-typed-roundtrip.ms::JSON rejects malformed IpAddress and Cidr text\nPASS json-typed-roundtrip.ms::JSON rejects malformed IpAddress and Cidr text\n4 tests, 0 failed\n",
+      "stdout": "RUN json-recursive-record.ms::recursive record round trips through JSON\nPASS json-recursive-record.ms::recursive record round trips through JSON\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
