@@ -271,7 +271,7 @@ build record hashes. Generic helpers: `msrt_slot_drop`, `msrt_slot_copy`,
 msrt_fault(msg: *const u8, len: usize) -> !          message bytes are copied
 msrt_fault_string(msg: *const StrVal) -> !
 msrt_fault_depth() -> !                              "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the recursion for a missing base case, or iterate instead"
-msrt_index_fault(index: i64, length: i64) -> !       "index I out of range for length N; pass a default: get(index:, default: ...)"
+msrt_index_fault(index: i64, length: i64) -> !       "index I out of range for length N; use get_or(index, default) to avoid the fault"
 msrt_fault_unwrap_none() -> !   msrt_fault_result_get() -> !   msrt_fault_result_err() -> !
 msrt_fault_int_overflow() -> !  msrt_fault_div_zero() -> !  msrt_fault_rem_zero() -> !  msrt_fault_div_overflow(a, b) -> !
 ```

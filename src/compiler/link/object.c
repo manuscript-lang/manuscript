@@ -52,6 +52,18 @@ static bool has_optnone(MsSpan ir) {
   return false;
 }
 
+/* Whether the module has a function in a cycle of direct calls. The fast register allocator of -O0 gives every value
+ * that lives across a block or a call a stack slot of its own, so such a function's frame is several times what
+ * the allocator of -O1 needs, and a deep recursion (a parser's nesting) runs out of stack long before it must. */
+static bool recursive_frames(const ObjectOptions *options) {
+  for (uint32_t at = 0; options->module != NULL && at < options->module->funcs.len; at++) {
+    if (options->module->funcs.ptr[at].recursive) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* `llc` over `input`, writing the object. A module with an `optnone` function (a size tier, #3928) goes through
  * the fast code generator: llc's -O3 two-address and register-allocation passes are superlinear in one
  * function's size even when it is optnone. AArch64's -O0 GlobalISel Localizer pass is too (#5540), so the
@@ -61,7 +73,7 @@ static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   MsSpan argv[12];
   size_t argc = 0;
   argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed && !size_tiered ? "-O3" : "-O0");
+  argv[argc++] = ms_span_of_text(options->speed && !size_tiered ? "-O3" : recursive_frames(options) ? "-O1" : "-O0");
   if (size_tiered) {
     argv[argc++] = ms_span_of_text("-global-isel=0");
   }

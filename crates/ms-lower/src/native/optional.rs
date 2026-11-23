@@ -75,7 +75,7 @@ impl<'a> FnLower<'a> {
         let head = self.b.str_lit("called Result.get() on error: ");
         let tail = self
             .b
-            .str_lit("; check is_ok first, or pass a default: get(default: ...)");
+            .str_lit("; check is_ok first, or use get_or(default)");
         let joined = self
             .call_runtime("msrt_string_concat", &[head, message], MTy::STR)
             .and_then(|text| self.call_runtime("msrt_string_concat", &[text, tail], MTy::STR));
