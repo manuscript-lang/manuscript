@@ -22,7 +22,8 @@ MS_LIST_DEFINE(LspDocList, lsp_doc_list, LspDoc)
 /* What the checker established about one open document and the files it imports. Initialise with lsp_analyze and end with
  * lsp_analysis_release; the open documents must not change in between. */
 typedef struct LspAnalysis {
-  MsArena arena;
+  MsArena *arena;      /* shared by every copy of a cached analysis */
+  bool cached;         /* the analysis belongs to the cache: releasing it keeps it */
   MsCheckedInput checked;
   MsOccurrences index; /* empty unless `resolved` */
   MsWrittenTypes written;
@@ -31,7 +32,8 @@ typedef struct LspAnalysis {
   bool resolved;       /* the program was checked, with or without diagnostics */
 } LspAnalysis;
 
-/* Checks `doc` as the entry of its own graph, with every open document's text in place of disk. */
+/* Checks `doc` as the entry of its own graph, with every open document's text in place of disk. The latest result is kept
+ * until an open document's text changes, so successive requests share one check. */
 void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out);
 /* The same with `count` files of `changed` taking the place of the open documents' text (or of disk). */
 void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
@@ -40,6 +42,8 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
 bool lsp_rename_stays_checked(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
                               MsStrBuild *error);
 void lsp_analysis_release(LspAnalysis *analysis);
+/* Forgets the cached analysis: a file changed on disk. Open documents' edits need no call; their versions key the cache. */
+void lsp_analysis_invalidate(void);
 
 /* The file `path` of a checked module's name as the editor spells it: absolute. */
 MsSpan lsp_absolute_file(MsArena *arena, MsSpan source_root, MsSpan file);

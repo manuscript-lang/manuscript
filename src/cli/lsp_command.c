@@ -385,6 +385,10 @@ static int handle_message(Session *session, MsSpan body) {
     } else if (id != NULL) {
       reply_result(id, ms_span_of_text("null"));
     }
+  } else if (ms_span_is_text(method->text, "workspace/didChangeWatchedFiles")) {
+    lsp_analysis_invalidate();
+    publish(session);
+    if (id != NULL) reply_result(id, ms_span_of_text("null"));
   } else if (ms_span_is_text(method->text, "textDocument/didClose")) {
     handle_close(session, params);
     if (id != NULL) reply_result(id, ms_span_of_text("null"));

@@ -127,7 +127,7 @@ static void add_callable(Completer *c, MsSpan name, int kind, MsTy ty, int prior
 
 static MsSpan symbol_documentation(Completer *c, const MsSymbol *symbol) {
   if (symbol->decl == NULL) return (MsSpan){0};
-  return ms_declaration_comment(&c->analysis->arena, c->program->modules.ptr[symbol->module].source, symbol->decl->pos.offset,
+  return ms_declaration_comment(c->analysis->arena, c->program->modules.ptr[symbol->module].source, symbol->decl->pos.offset,
                                 symbol->decl->pos.line);
 }
 

@@ -3,7 +3,13 @@
 
 #include <stdlib.h>
 
+#include "base/file.h"
+#include "base/message.h"
+#include "base/path.h"
 #include "cli/findings.h"
+#include "cli/lsp_workspace.h"
+#include "compiler/syntax/parse.h"
+#include "tooling/facts.h"
 #include "compiler/syntax/format.h"
 #include "tooling/lint.h"
 
@@ -61,7 +67,7 @@ static void append_diagnostic(MsStrBuild *out, LspRange range, MsSpan message, M
   ms_strbuild_append_byte(out, '}');
 }
 
-static void emit(Actions *actions, MsSpan title, const char *kind, MsSpan edits, MsSpan diagnostic) {
+static void emit_with(Actions *actions, MsSpan title, const char *kind, MsSpan edits, MsSpan diagnostic, bool preferred) {
   if (!wanted(actions, kind)) return;
   MsStrBuild *out = actions->out;
   if (!actions->first) ms_strbuild_append_byte(out, ',');
@@ -78,9 +84,13 @@ static void emit(Actions *actions, MsSpan title, const char *kind, MsSpan edits,
   if (diagnostic.len > 0) {
     ms_strbuild_append_text(out, ",\"diagnostics\":[");
     ms_strbuild_append(out, diagnostic);
-    ms_strbuild_append_text(out, "],\"isPreferred\":true");
+    ms_strbuild_append_text(out, preferred ? "],\"isPreferred\":true" : "],\"isPreferred\":false");
   }
   ms_strbuild_append_byte(out, '}');
+}
+
+static void emit(Actions *actions, MsSpan title, const char *kind, MsSpan edits, MsSpan diagnostic) {
+  emit_with(actions, title, kind, edits, diagnostic, true);
 }
 
 static void format_action(Actions *actions) {
@@ -106,7 +116,7 @@ static void checker_fixes(Actions *actions, LspAnalysis *analysis) {
   for (size_t i = 0; i < analysis->checked.findings.len; i++) {
     const Finding *finding = &analysis->checked.findings.ptr[i];
     if (finding->lint_code != NULL || !finding->diag.has_fix) continue;
-    const MsSpan file = lsp_absolute_file(&analysis->arena, analysis->checked.graph.source_root, finding->file);
+    const MsSpan file = lsp_absolute_file(analysis->arena, analysis->checked.graph.source_root, finding->file);
     if (!ms_span_equal(file, ms_string_span(&actions->doc->path))) continue;
     const MsDiag *diag = &finding->diag;
     const MsSpan code = ms_span_of_text(finding_code(finding));
@@ -173,11 +183,11 @@ static void lexical_fixes(Actions *actions, MsArena *arena) {
 
 static void unused_imports(Actions *actions, LspAnalysis *analysis) {
   MsLintFindingList lint = {0};
-  ms_lint_modules(&analysis->arena, &analysis->checked.program, &lint);
+  ms_lint_modules(analysis->arena, &analysis->checked.program, &lint);
   for (size_t i = 0; i < lint.len; i++) {
     const MsLintFinding *item = &lint.ptr[i];
     if (!item->has_fix || !ms_span_is_text(ms_span_of_text(item->code), "MSL102")) continue;
-    const MsSpan file = lsp_absolute_file(&analysis->arena, analysis->checked.graph.source_root, item->file);
+    const MsSpan file = lsp_absolute_file(analysis->arena, analysis->checked.graph.source_root, item->file);
     if (!ms_span_equal(file, ms_string_span(&actions->doc->path))) continue;
     const LspPosition at = lsp_position(actions->source, item->pos.offset);
     if (!eligible(actions, (LspRange){at, at})) continue;
@@ -210,6 +220,10 @@ static int compare_statement(const void *left, const void *right) {
     if (x.len != y.len) return x.len < y.len ? -1 : 1;
   }
   return 0;
+}
+
+static int compare_span(const void *left, const void *right) {
+  return (int)ms_span_compare(*(const MsSpan *)left, *(const MsSpan *)right);
 }
 
 static int compare_offset(const void *left, const void *right) {
@@ -337,6 +351,184 @@ static void organize_imports(Actions *actions, const MsModule *module) {
   free(starts);
 }
 
+/* ---- add an import ---- */
+
+/* Where `statement` goes: after the leading run of imports, else after a file header of comments ending in a blank line. */
+static void import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
+  size_t line_count = 0;
+  for (size_t i = 0; i < source.len; i++) line_count += source.ptr[i] == '\n';
+  if (source.len > 0 && source.ptr[source.len - 1] != '\n') line_count++;
+  size_t *starts = malloc((line_count + 1) * sizeof *starts);
+  size_t line = 0;
+  starts[0] = 0;
+  for (size_t i = 0; i < source.len && line < line_count; i++) {
+    if (source.ptr[i] == '\n') starts[++line] = i + 1;
+  }
+  starts[line_count] = source.len;
+  size_t *ends = module != NULL ? import_end_lines(source, module, line_count) : NULL;
+  bool crlf = false;
+  for (size_t i = 1; i < source.len; i++) crlf |= source.ptr[i] == '\n' && source.ptr[i - 1] == '\r';
+  const char *newline = crlf ? "\r\n" : "\n";
+  size_t index = 0;
+  bool have_last = false;
+  size_t last = 0;
+  while (index < line_count) {
+    const MsSpan trimmed = trim(ms_span_of(source.ptr + starts[index], starts[index + 1] - starts[index]));
+    if (ends != NULL && ends[index] != (size_t)-1 && ends[index] < line_count) {
+      last = ends[index];
+      have_last = true;
+      index = last + 1;
+    } else if (trimmed.len == 0 || ms_span_starts_with(trimmed, ms_span_of_text("//")) || ms_span_starts_with(trimmed, ms_span_of_text("/*"))) {
+      index++;
+    } else {
+      break;
+    }
+  }
+  if (have_last) {
+    *at = lsp_position(source, starts[last + 1]);
+    const bool missing = starts[last + 1] > starts[last] && source.ptr[starts[last + 1] - 1] != '\n';
+    if (missing) ms_strbuild_append_text(text, newline);
+  } else {
+    /* A file header: comment lines followed by a blank line. */
+    size_t offset = 0, comments = 0, header = 0;
+    for (size_t i = 0; i < line_count; i++) {
+      const MsSpan row = ms_span_of(source.ptr + starts[i], starts[i + 1] - starts[i]);
+      const MsSpan bare = trim(row);
+      size_t lead = 0;
+      while (lead < row.len && (row.ptr[lead] == ' ' || row.ptr[lead] == '\t')) lead++;
+      if (ms_span_starts_with(ms_span_of(row.ptr + lead, row.len - lead), ms_span_of_text("//"))) {
+        offset += row.len;
+        comments++;
+      } else if (comments > 0 && bare.len == 0) {
+        header = offset + row.len;
+        break;
+      } else {
+        break;
+      }
+    }
+    *at = lsp_position(source, header);
+  }
+  ms_strbuild_append(text, statement);
+  ms_strbuild_append_text(text, newline);
+  free(ends);
+  free(starts);
+}
+
+/* The name an `unknown binding NAME` or `unknown type NAME` diagnostic is about. */
+static bool unresolved_name(MsSpan message, MsSpan *name, bool *types_only) {
+  static const char *const PREFIXES[2] = {"unknown binding ", "unknown type "};
+  for (size_t i = 0; i < 2; i++) {
+    const MsSpan prefix = ms_span_of_text(PREFIXES[i]);
+    if (!ms_span_starts_with(message, prefix)) continue;
+    MsSpan rest = ms_span_of(message.ptr + prefix.len, message.len - prefix.len);
+    size_t stop = 0;
+    while (stop < rest.len && rest.ptr[stop] != ';') stop++;
+    rest = trim(ms_span_of(rest.ptr, stop));
+    if (rest.len == 0) return false;
+    for (size_t k = 0; k < rest.len; k++) {
+      const uint8_t b = rest.ptr[k];
+      if (!((b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_')) return false;
+    }
+    *name = rest;
+    *types_only = i == 1;
+    return true;
+  }
+  return false;
+}
+
+/* The import statements of the other project files that export `name`, as `import NAME from "./path.ms"`, sorted. */
+static void project_imports(Actions *actions, MsArena *arena, MsSpan name, bool types_only, MsSpanList *out) {
+  MsSpanList files = {0};
+  lsp_workspace_files(arena, ms_string_span(&actions->doc->path), &files);
+  MsStrBuild base = ms_strbuild_new();
+  ms_path_dir(ms_string_span(&actions->doc->path), &base);
+  for (size_t i = 0; i < files.len; i++) {
+    if (ms_span_equal(files.ptr[i], ms_string_span(&actions->doc->path))) continue;
+    MsBytes bytes = {0};
+    MsSpan text = {0};
+    for (size_t d = 0; d < actions->docs->len; d++) {
+      if (ms_span_equal(ms_string_span(&actions->docs->ptr[d].path), files.ptr[i])) text = ms_string_span(&actions->docs->ptr[d].text);
+    }
+    const bool on_disk = text.ptr == NULL && ms_file_read(files.ptr[i], &bytes);
+    if (on_disk) text = ms_bytes_span(&bytes);
+    if (text.ptr == NULL || !ms_span_find(text, name, &(size_t){0})) {
+      if (on_disk) ms_bytes_free(&bytes);
+      continue;
+    }
+    MsArena parse_arena = ms_arena_new();
+    MsNames names;
+    ms_names_init(&names);
+    MsModule module;
+    MsDiag diag;
+    bool exported = false;
+    if (ms_parse(&parse_arena, &names, text, &module, &diag)) {
+      for (uint32_t d = 0; d < module.ndecls && !exported; d++) {
+        MsName declared;
+        const MsDecl *decl = module.decls[d];
+        if (!decl->is_exported || !ms_check_declared_name(decl, &declared) || !ms_span_equal(ms_names_span(&names, declared), name)) continue;
+        exported = !types_only || decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM || decl->kind == MS_D_ALIAS || decl->kind == MS_D_INTERFACE;
+      }
+    }
+    ms_names_free(&names);
+    ms_arena_free(&parse_arena);
+    if (on_disk) ms_bytes_free(&bytes);
+    if (!exported) continue;
+    MsStrBuild relative = ms_strbuild_new();
+    if (ms_path_relative(&relative, ms_strbuild_span(&base), files.ptr[i])) {
+      const MsSpan path = ms_strbuild_span(&relative);
+      bool plain = path.len > 0;
+      for (size_t k = 0; k < path.len; k++) plain &= path.ptr[k] != '"' && path.ptr[k] != '\\';
+      if (plain) {
+        const bool up = ms_span_starts_with(path, ms_span_of_text("../"));
+        ms_span_list_push(out, ms_message_format(arena, up ? "import %S from \"%S\"" : "import %S from \"./%S\"", name, path));
+      }
+    }
+    ms_strbuild_free(&relative);
+  }
+  ms_strbuild_free(&base);
+  ms_span_list_free(&files);
+  if (out->len > 1) qsort(out->ptr, out->len, sizeof(MsSpan), compare_span);
+}
+
+/* A quick fix per way to import an unresolved name: a project file that exports it, then the standard library. */
+static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule *module) {
+  for (size_t i = 0; i < analysis->checked.findings.len; i++) {
+    const Finding *finding = &analysis->checked.findings.ptr[i];
+    if (finding->lint_code != NULL) continue;
+    const MsSpan file = lsp_absolute_file(analysis->arena, analysis->checked.graph.source_root, finding->file);
+    MsSpan name;
+    bool types_only;
+    if (!ms_span_equal(file, ms_string_span(&actions->doc->path)) || !unresolved_name(finding->diag.message, &name, &types_only)) continue;
+    const size_t start = finding->diag.pos.offset;
+    const LspRange shown = {lsp_position(actions->source, start), lsp_position(actions->source, start + name.len)};
+    if (!eligible(actions, shown)) continue;
+    MsSpanList statements = {0};
+    project_imports(actions, analysis->arena, name, types_only, &statements);
+    /* The checker's own fix names the standard module that exports it. */
+    if (finding->diag.has_fix && ms_span_starts_with(finding->diag.replacement, ms_span_of_text("import "))) {
+      MsSpan statement = trim(finding->diag.replacement);
+      ms_span_list_push(&statements, statement);
+    }
+    for (size_t k = 0; k < statements.len; k++) {
+      LspPosition at;
+      MsStrBuild text = ms_strbuild_new();
+      import_insertion(actions->source, module, statements.ptr[k], &at, &text);
+      MsStrBuild title = ms_strbuild_new(), edits = ms_strbuild_new(), diagnostic = ms_strbuild_new();
+      ms_strbuild_append_text(&title, "Add `");
+      ms_strbuild_append(&title, statements.ptr[k]);
+      ms_strbuild_append_byte(&title, '`');
+      append_edit(&edits, (LspRange){at, at}, ms_strbuild_span(&text));
+      append_diagnostic(&diagnostic, shown, finding->diag.message, ms_span_of_text(finding_code(finding)), "manuscript");
+      emit_with(actions, ms_strbuild_span(&title), "quickfix", ms_strbuild_span(&edits), ms_strbuild_span(&diagnostic), k == 0);
+      ms_strbuild_free(&title);
+      ms_strbuild_free(&edits);
+      ms_strbuild_free(&diagnostic);
+      ms_strbuild_free(&text);
+    }
+    ms_span_list_free(&statements);
+  }
+}
+
 void lsp_code_actions(const LspDocList *docs, const LspDoc *doc, LspRange requested, const MsSpan *only, size_t count,
                       MsStrBuild *out) {
   Actions actions = {docs, doc, ms_string_span(&doc->text), requested, only, count, out, true};
@@ -345,14 +537,15 @@ void lsp_code_actions(const LspDocList *docs, const LspDoc *doc, LspRange reques
   LspAnalysis analysis;
   lsp_analyze(docs, doc, &analysis);
   checker_fixes(&actions, &analysis);
-  lexical_fixes(&actions, &analysis.arena);
-  if (analysis.resolved) {
-    unused_imports(&actions, &analysis);
-    const MsCheckProgram *program = &analysis.checked.program;
-    for (uint32_t m = 0; m < program->user_modules; m++) {
-      if (ms_span_equal(analysis.paths[m], ms_string_span(&doc->path))) organize_imports(&actions, program->modules.ptr[m].tree);
-    }
+  const MsModule *tree = NULL;
+  const MsCheckProgram *program = &analysis.checked.program;
+  for (uint32_t m = 0; analysis.resolved && m < program->user_modules; m++) {
+    if (ms_span_equal(analysis.paths[m], ms_string_span(&doc->path))) tree = program->modules.ptr[m].tree;
   }
+  if (tree != NULL) add_imports(&actions, &analysis, tree);
+  lexical_fixes(&actions, analysis.arena);
+  if (analysis.resolved) unused_imports(&actions, &analysis);
+  if (tree != NULL) organize_imports(&actions, tree);
   lsp_analysis_release(&analysis);
   ms_strbuild_append_byte(out, ']');
 }
