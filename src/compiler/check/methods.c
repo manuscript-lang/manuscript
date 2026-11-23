@@ -57,6 +57,34 @@ static bool mentions(const MsTyTable *types, MsTy ty, MsTy variable) {
   return ms_ty_result(types, ty) != MS_TY_NONE && mentions(types, ms_ty_result(types, ty), variable);
 }
 
+/* Whether the module writes a type, enum or interface declaration named `name`. */
+static bool declared_here(const MsCheckProgram *program, uint32_t module, const MsDecl *impl, MsName name) {
+  (void)impl;
+  const MsModule *tree = program->modules.ptr[module].tree;
+  for (uint32_t index = 0; index < tree->ndecls; index++) {
+    const MsDecl *decl = tree->decls[index];
+    const bool named = (decl->kind == MS_D_TYPE && decl->u.type.name == name) ||
+                       (decl->kind == MS_D_ENUM && decl->u.enumeration.name == name) ||
+                       (decl->kind == MS_D_INTERFACE && decl->u.iface.name == name);
+    if (named) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Whether an earlier method block of this module already reported a receiver named `name` (true), else records it. */
+static bool receiver_reported(const MsCheckProgram *program, uint32_t module, const MsDecl *impl, MsName name) {
+  const MsModule *tree = program->modules.ptr[module].tree;
+  for (uint32_t index = 0; index < tree->ndecls && tree->decls[index] != impl; index++) {
+    const MsDecl *earlier = tree->decls[index];
+    if (earlier->kind == MS_D_IMPL && earlier->u.impl.contract == NULL && earlier->u.impl.receiver->name == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* The symbol that declares the type named by the receiver of `decl`, or 0 with the reason reported. The
  * standard modules may also name built-in types, which have no symbol: `*primitive` is then set. */
 static MsSymbolId receiver_symbol(Context *context, const MsDecl *decl, bool *primitive) {
@@ -73,6 +101,15 @@ static MsSymbolId receiver_symbol(Context *context, const MsDecl *decl, bool *pr
       *primitive = true;
       return 1; /* a stand-in: the caller reads `primitive` */
     }
+  }
+  if (id == 0 && declared_here(program, context->module, decl, receiver->name)) {
+    /* The module declares a type of that name, but it reuses a prelude name and is not entered: the methods of one
+     * receiver form merge into a block, and the block is reported once. */
+    if (!receiver_reported(program, context->module, decl, receiver->name)) {
+      ms_check_report(context->program, context->module, decl->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("implementation receiver must be nominal source data; declare methods on a type or enum you declare, such as 'fn Point.show() String:', not on built-in or function types")));
+    }
+    return 0;
   }
   if (id == 0 || program->symbols.ptr[id].kind != MS_SYMBOL_TYPE) {
     report(context, decl->pos, "inherent methods belong in the module that declares ", receiver->name,

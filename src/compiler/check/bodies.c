@@ -14,6 +14,7 @@
 void body_set_type(Body *body, MsNode node, MsTy ty) {
   if (node < body->facts->node_count) {
     body->facts->types[node] = ty;
+    ms_node_journal_push(&body->typed, node);
   }
 }
 
@@ -285,7 +286,17 @@ static void stmt_if(Body *body, const MsStmt *stmt) {
                         : body_expect(body, stmt->u.branch.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("an if condition"));
   const size_t mark = body_scope_mark(body);
   if (stmt->u.branch.binding != NULL) {
-    bind_pattern(body, stmt->u.branch.binding, payload_type(body, cond), stmt->u.branch.is_mutable);
+    const MsTyTable *types = &body->program->types;
+    const bool wraps = cond != MS_TY_NONE && ((ms_ty_is(types, cond, MS_BUILTIN_Optional) && ms_ty_arg_count(types, cond) == 1) ||
+                                              (ms_ty_is(types, cond, MS_BUILTIN_Result) && ms_ty_arg_count(types, cond) == 2));
+    if (cond != MS_TY_NONE && !wraps && !holds_invalid(types, cond, 6) && body_reports(body) && !body->quiet) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "an if binding requires an Optional or Result, found ");
+      ms_ty_show(&text, body->program->names, types, cond);
+      ms_strbuild_append_text(&text, "; use 'if' for a Bool condition or 'match' for other alternatives");
+      ms_check_report(body->program, body->module, stmt->u.branch.cond->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    bind_pattern(body, stmt->u.branch.binding, wraps ? payload_type(body, cond) : MS_TY_NONE, stmt->u.branch.is_mutable);
   }
   body_block(body, stmt->u.branch.body);
   body_scope_reset(body, mark);
@@ -313,6 +324,20 @@ static void stmt_for(Body *body, const MsStmt *stmt) {
   body_scope_reset(body, mark);
 }
 
+/* Whether `expr` is a call that left a type argument unknown. */
+static bool uninferred_call(const Body *body, const MsExpr *expr) {
+  const MsCall *call = NULL;
+  for (size_t at = body->facts->calls.len; expr != NULL && expr->kind == MS_E_CALL && call == NULL && at > 0; at--) {
+    call = body->facts->calls.ptr[at - 1].node == expr->id ? &body->facts->calls.ptr[at - 1] : NULL; /* not yet sorted */
+  }
+  for (uint32_t index = 0; call != NULL && index < call->type_arg_count; index++) {
+    if (holds_invalid(&body->program->types, call->type_args[index], 6)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void statement(Body *body, const MsStmt *stmt) {
   switch ((MsStmtKind)stmt->kind) {
   case MS_S_BIND:
@@ -332,8 +357,16 @@ static void statement(Body *body, const MsStmt *stmt) {
                                 ? body_expr(body, stmt->u.expr, body->hint)
                                 : body_expect(body, stmt->u.expr, body->result, ms_span_of_text("the return value"));
       /* a later return that is fully known settles the variables an earlier one left open */
-      const bool settles = body->returned != MS_TY_NONE && returned != MS_TY_NONE &&
-                           body_has_foreign_variable(body, body->returned) && !body_has_foreign_variable(body, returned);
+      const MsTyTable *types = &body->program->types;
+      const bool open_before = body->returned_expr != NULL &&
+                               (body->returned == MS_TY_NONE || body_has_foreign_variable(body, body->returned) ||
+                                holds_invalid(types, body->returned, 6));
+      const bool known_now = returned != MS_TY_NONE && !body_has_foreign_variable(body, returned) && !holds_invalid(types, returned, 6);
+      const bool settles = open_before && known_now;
+      if (settles && uninferred_call(body, body->returned_expr)) { /* the earlier return is read again with what the later one fixed */
+        (void)body_expr(body, body->returned_expr, returned);
+      }
+      body->returned_expr = body->returned == MS_TY_NONE || settles ? stmt->u.expr : body->returned_expr;
       body->returned = body->returned == MS_TY_NONE || settles ? returned : body->returned;
     }
     break;
@@ -615,6 +648,7 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol) {
   depth--;
   resolver_free(&inner.resolver);
   ms_local_list_free(&inner.locals);
+  ms_node_journal_free(&inner.typed);
   own->ty = ty;
   return ty;
 }
@@ -637,10 +671,12 @@ void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {
     ms_check_test_fixture(&body);
   }
   for (uint32_t index = 0; index < info->tree->ndecls; index++) {
+    body.typed.len = 0; /* a call settles only nodes of the declaration it is in */
     declaration(&body, info->tree->decls[index]);
     body_scope_reset(&body, 0);
   }
   ms_facts_finish(&info->facts);
   resolver_free(&body.resolver);
   ms_local_list_free(&body.locals);
+  ms_node_journal_free(&body.typed);
 }

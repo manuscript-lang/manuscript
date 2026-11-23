@@ -233,7 +233,7 @@ void mirlo_split_drop_ifs(MirModule *module, MirFunc *func) {
 /* ---- cleanups ---- */
 
 /* `msrt_cleanup_push(thunk, slot)`. The runtime keeps `slot` until the cleanup is discarded or run, which
- * another block may do, so the slot is not a one-block temporary (mir_confined_slots). */
+ * another block may do, so the slot is not a one-block temporary (mir_cell_conflicts). */
 static uint32_t cleanup_push_extern(LowerCx *cx) {
   const MirTy pair[2] = {MIR_PTR, MIR_PTR};
   const uint32_t push = mirlo_rt(cx, &cx->cleanup_push, "msrt_cleanup_push", pair, 2, MIR_INT);

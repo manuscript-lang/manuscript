@@ -354,7 +354,7 @@ static void organize_imports(Actions *actions, const MsModule *module) {
 /* ---- add an import ---- */
 
 /* Where `statement` goes: after the leading run of imports, else after a file header of comments ending in a blank line. */
-static void import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
+void lsp_import_insertion(MsSpan source, const MsModule *module, MsSpan statement, LspPosition *at, MsStrBuild *text) {
   size_t line_count = 0;
   for (size_t i = 0; i < source.len; i++) line_count += source.ptr[i] == '\n';
   if (source.len > 0 && source.ptr[source.len - 1] != '\n') line_count++;
@@ -436,6 +436,19 @@ static bool unresolved_name(MsSpan message, MsSpan *name, bool *types_only) {
   return false;
 }
 
+bool lsp_relative_import(MsArena *arena, MsSpan from_dir, MsSpan file, MsSpan *path) {
+  MsStrBuild relative = ms_strbuild_new();
+  bool ok = ms_path_relative(&relative, from_dir, file);
+  const MsSpan text = ms_strbuild_span(&relative);
+  for (size_t k = 0; ok && k < text.len; k++) ok = text.ptr[k] != '"' && text.ptr[k] != '\\';
+  ok = ok && text.len > 0;
+  if (ok) {
+    *path = ms_span_starts_with(text, ms_span_of_text("../")) ? ms_arena_copy(arena, text) : ms_message_format(arena, "./%S", text, (MsSpan){0});
+  }
+  ms_strbuild_free(&relative);
+  return ok;
+}
+
 /* The import statements of the other project files that export `name`, as `import NAME from "./path.ms"`, sorted. */
 static void project_imports(Actions *actions, MsArena *arena, MsSpan name, bool types_only, MsSpanList *out) {
   MsSpanList files = {0};
@@ -473,17 +486,10 @@ static void project_imports(Actions *actions, MsArena *arena, MsSpan name, bool 
     ms_arena_free(&parse_arena);
     if (on_disk) ms_bytes_free(&bytes);
     if (!exported) continue;
-    MsStrBuild relative = ms_strbuild_new();
-    if (ms_path_relative(&relative, ms_strbuild_span(&base), files.ptr[i])) {
-      const MsSpan path = ms_strbuild_span(&relative);
-      bool plain = path.len > 0;
-      for (size_t k = 0; k < path.len; k++) plain &= path.ptr[k] != '"' && path.ptr[k] != '\\';
-      if (plain) {
-        const bool up = ms_span_starts_with(path, ms_span_of_text("../"));
-        ms_span_list_push(out, ms_message_format(arena, up ? "import %S from \"%S\"" : "import %S from \"./%S\"", name, path));
-      }
+    MsSpan path;
+    if (lsp_relative_import(arena, ms_strbuild_span(&base), files.ptr[i], &path)) {
+      ms_span_list_push(out, ms_message_format(arena, "import %S from \"%S\"", name, path));
     }
-    ms_strbuild_free(&relative);
   }
   ms_strbuild_free(&base);
   ms_span_list_free(&files);
@@ -512,7 +518,7 @@ static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule 
     for (size_t k = 0; k < statements.len; k++) {
       LspPosition at;
       MsStrBuild text = ms_strbuild_new();
-      import_insertion(actions->source, module, statements.ptr[k], &at, &text);
+      lsp_import_insertion(actions->source, module, statements.ptr[k], &at, &text);
       MsStrBuild title = ms_strbuild_new(), edits = ms_strbuild_new(), diagnostic = ms_strbuild_new();
       ms_strbuild_append_text(&title, "Add `");
       ms_strbuild_append(&title, statements.ptr[k]);

@@ -1,0 +1,12 @@
+[Wiki](../index.md) › [Compiler and build](index.md)
+
+# F-strings and string joins are expanded in MIR, not passed to a runtime join
+
+Verified: `f"{a}{n}{b}"` and `a + b + c` lower to one join call of any length (`TEXT_MAX_PIECES` is 16; two strings and no Int stay `msrt_string_concat`). `mir_expand` writes the join out: each Int is formatted by `msrt_int_format` into a `MIR_BYTES` slot, the part lengths are added with `str.bytes`, `msrt_string_open(total, slot)` makes the string, and each part is copied with `str.data` and `mem.copy` (`llvm.memcpy`), moving a cursor with `ptr.add`. Chinmay's rule (2026-11-23): string handling that the compiler can see belongs in MIR, not behind opaque numbered entry points (`msrt_string_fmt2..6`, `append_fmt1..5`, `concat3..6` are gone).
+
+- An in-place append (`s = s + f"…"`, found by `opt_strfuse` when the first string dies at the call) is the role `MR_STRING_JOIN_GROW`: the string goes into a frame `{text, pending}`, `msrt_string_extend(frame, total)` grows an owned block that has the spare room or moves the text to a new block, and `msrt_string_close` frees the old block only after every copy. A part may be a view into the old text, so the old block must outlive the copies.
+- Faults keep their text: a result past 1 GiB faults `string: limit exceeded` inside `open` or `extend`.
+- The runtime keeps three small primitives: open, extend/close, int format. Add a new numbered entry point instead of a part count and this rule is broken.
+
+Apply when: changing string building, adding a part kind, or seeing `msrt_string_*` calls in an f-string's MIR (`ms emit file.ms`).
+Verify: `ms emit` shows `str.data`, `mem.copy` and one `msrt_string_open` per join; edge cases (empty parts, an inline result, a view into the grown string, 1 GiB) behave as before; `make conform` has no new failures. Evidence: [`mir_expand.c`](../../src/compiler/mir/mir_expand.c), [`opt_strfuse.c`](../../src/compiler/opt/opt_strfuse.c). Microbenchmark of `s += f"{i}={i * 3};"` plus 5M joins: about 320 to 440 ms before, 240 to 300 ms after.

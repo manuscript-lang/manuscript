@@ -129,3 +129,11 @@ bool mir_boxing_opt(MirBoxing *boxing, MirTy inner) {
   boxing->opts[inner] = boxed ? 2 : 1;
   return boxed;
 }
+
+bool mir_ty_opt_boxed(const MirModule *module, MirTy inner) {
+  MirBoxing boxing;
+  mir_boxing_init(&boxing, module);
+  const bool boxed = mir_boxing_opt(&boxing, inner);
+  mir_boxing_free(&boxing);
+  return boxed;
+}

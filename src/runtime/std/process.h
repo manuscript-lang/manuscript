@@ -48,8 +48,6 @@ uint8_t msstd_process_groups(MsList *out, MsString *err);
 uint8_t msstd_process_set_groups(const MsList *groups, MsString *err);
 /* ms-sig: msstd_process_initialize_groups(username: *const StrVal, gid: i64, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_initialize_groups(const MsString *username, int64_t gid, MsString *err);
-/* ms-sig: msstd_process_umask(mask: i64, out: *mut i64, err: ErrSlot) -> u8 @domain=process */
-uint8_t msstd_process_umask(int64_t mask, int64_t *out, MsString *err);
 /* ms-sig: msstd_process_set_identity(kind: *const StrVal, id: i64, err: ErrSlot) -> u8 @domain=process */
 uint8_t msstd_process_set_identity(const MsString *kind, int64_t id, MsString *err);
 /* ms-sig: msstd_process_title(out: *mut StrVal, err: ErrSlot) -> u8 @domain=process */

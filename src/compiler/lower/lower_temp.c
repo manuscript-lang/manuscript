@@ -11,12 +11,13 @@ typedef struct Consumed {
   const MsFacts *facts;
   uint32_t param;
   bool found;
+  bool moving; /* the parameter is `move`: a body that moves it owns it; a borrowed one is cloned where it is moved */
 } Consumed;
 
 static void note_consumed(void *ctx, const MsExpr *expr) {
   Consumed *state = ctx;
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(state->facts, expr->id) : NULL;
-  state->found |= ref != NULL && ref->kind == MS_REF_PARAM && ref->local == state->param &&
+  state->found |= state->moving && ref != NULL && ref->kind == MS_REF_PARAM && ref->local == state->param &&
                   ms_facts_use(state->facts, expr->id) == MS_USE_MOVE;
 }
 
@@ -39,7 +40,8 @@ static bool callee_consumes(LowerFn *fn, const MsCall *call, uint32_t index) {
   if (!fn_callee_target(fn, call, &target)) {
     return false;
   }
-  Consumed state = {&fn->cx->program->modules.ptr[target.module].facts, index, false};
+  Consumed state = {&fn->cx->program->modules.ptr[target.module].facts, index, false,
+                    index < target.func->params.len && target.func->params.ptr[index]->moving};
   const MsVisitor visitor = {.ctx = &state, .expr = note_consumed, .stmt = note_handed_on};
   ms_walk_block(&visitor, target.func->body);
   return state.found;
@@ -52,11 +54,14 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   MsTyTable *types = &fn->cx->program->types;
   if (call == NULL || written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) ||
-      callee_consumes(fn, call, index)) {
+      callee_consumes(fn, call, index) ||
+      ms_own_native_get(fn->cx->program, fn->facts, written) == MS_NATIVE_GET_MAP) { /* `m.get(k)` views the entry: its map closes it */
     return false;
   }
   const MsTy result = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (result == MS_TY_NONE || ms_check_holds_resource(fn->cx->program, result)) {
+  /* A result that holds a resource may be a part of the argument; one that borrows from another argument is not. */
+  if (result == MS_TY_NONE || (ms_check_holds_resource(fn->cx->program, result) &&
+                               ms_own_call_borrows(fn->cx->program, call, index))) {
     return false;
   }
   *checked = ms_ty_subst(types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
@@ -64,8 +69,11 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   if (declared != 0 && index + declared >= call->arg_count) {
     const MsTy param = ms_ty_subst(types, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty,
                                    fn->subst.vars, fn->subst.args, fn->subst.count);
-    if ((ms_ty_is(types, param, MS_BUILTIN_Optional) && !ms_ty_is(types, *checked, MS_BUILTIN_Optional)) ||
-        ms_ty_kind(types, param) == MS_TY_CONTRACT) {
+    /* A resource handed over as an interface closes as itself: `view_as_interface` owns it for the statement. */
+    const bool viewed = ms_ty_kind(types, param) == MS_TY_CONTRACT && ms_ty_kind(types, *checked) != MS_TY_CONTRACT &&
+                        fn_temp_closes(fn, *checked);
+    if (!viewed && ((ms_ty_is(types, param, MS_BUILTIN_Optional) && !ms_ty_is(types, *checked, MS_BUILTIN_Optional)) ||
+                    ms_ty_kind(types, param) == MS_TY_CONTRACT)) {
       *checked = param;
     }
   }
@@ -205,6 +213,25 @@ static bool call_answers_owner(LowerFn *fn, const MsExpr *value) {
          !ms_own_result_is_borrowed(fn->cx->program, call->callee.decl.module, call->callee.decl.node);
 }
 
+/* A case call (`ok(7)`) whose arguments own nothing: the value it builds cannot be a view of a temporary. */
+static bool builds_plain_case(LowerFn *fn, const MsExpr *value) {
+  const MsCall *call = value->kind == MS_E_CALL ? fn_find_call(fn->facts, value->id) : NULL;
+  if (call == NULL || call->callee.kind != MS_REF_CASE) {
+    return false;
+  }
+  for (uint32_t index = 0; index < call->arg_count; index++) {
+    const MsTy ty = call->args[index].node.node == 0 ? MS_TY_NONE
+                                                      : ms_facts_type(fn->facts, call->args[index].node.node);
+    const MsTy concrete = ty == MS_TY_NONE ? ty
+                                           : ms_ty_subst(&fn->cx->program->types, ty, fn->subst.vars, fn->subst.args,
+                                                         fn->subst.count);
+    if (concrete == MS_TY_NONE || mir_needs_drop(fn->cx->module, fn_type(fn, concrete))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *value = stmt->kind == MS_S_CALL || stmt->kind == MS_S_RETURN ? stmt->u.expr
                         : stmt->kind == MS_S_BIND                                ? stmt->u.bind.value
@@ -232,7 +259,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
     const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&
                        call_answers_owner(fn, value);
-    if (!outer && (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound))) {
+    if (!outer && !(stmt->kind == MS_S_RETURN && builds_plain_case(fn, value)) && (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound))) {
       return false;
     }
   }

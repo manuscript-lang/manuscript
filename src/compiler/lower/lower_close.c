@@ -108,6 +108,13 @@ static MirValue convert(MirBuilder *b, MirModule *module, MirValue outcome, uint
   return mir_b_emit(b, MOP_AltNew, &payload, 1, failed, ret);
 }
 
+/* Drops `value` when it owns anything: a scalar wrapper's `Result` has nothing to release. */
+static void drop_owned(MirBuilder *b, const MirModule *module, MirValue value) {
+  if (mir_needs_drop(module, mir_b_ty(b, value))) {
+    (void)mir_b_emit(b, MOP_Drop, &value, 1, (MirImm){0}, MIR_NONE);
+  }
+}
+
 /* `fn(move outcome [, move pending]) -> ret`: the function's result for a failed close, `outcome` being the
  * close's `Result`. A function returning a Result with the same error type returns that error (the pending result
  * wins when it already failed); any other function faults, since the close has nowhere to return its error. */
@@ -141,13 +148,13 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
       mir_b_seal_block(&b, keep);
       mir_b_seal_block(&b, replace);
       mir_b_switch_to(&b, keep);
-      (void)mir_b_emit(&b, MOP_Drop, &values[0], 1, none, MIR_NONE);
+      drop_owned(&b, module, values[0]);
       mir_b_ret(&b, values[1]);
       mir_b_switch_to(&b, replace);
-      (void)mir_b_emit(&b, MOP_Drop, &values[1], 1, none, MIR_NONE);
+      drop_owned(&b, module, values[1]);
     }
     if (keeps_pending) {
-      (void)mir_b_emit(&b, MOP_Drop, &values[0], 1, none, MIR_NONE);
+      drop_owned(&b, module, values[0]);
       const MirBlock block = b.cur;
       mir_b_fault(&b, MF_MESSAGE);
       b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
@@ -157,9 +164,7 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
     mir_b_ret(&b, convert(&b, module, values[0], (uint32_t)(from - module->alts.ptr), ret, (uint32_t)(to - module->alts.ptr)));
   } else {
     for (uint32_t at = 0; at < (pending ? 2u : 1u); at++) {
-      if (mir_needs_drop(module, params[at].ty)) {
-        (void)mir_b_emit(&b, MOP_Drop, &values[at], 1, none, MIR_NONE);
-      }
+      drop_owned(&b, module, values[at]);
     }
     const MirBlock block = b.cur;
     mir_b_fault(&b, MF_MESSAGE);
@@ -266,6 +271,12 @@ static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue valu
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, none, MIR_NONE);
   const MirImm own = {.tag = MI_SCOPE, .a = scope, .b = silent + 2};
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+  for (uint32_t depth = fn->nopen; depth > 0; depth--) {
+    if (fn->open[depth - 1] == scope) {
+      fn->open_closes[depth - 1] = true;
+      break;
+    }
+  }
   return slot;
 }
 
@@ -318,6 +329,39 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint3
     return false;
   }
   return true;
+}
+
+uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty) {
+  MsCloser closer;
+  if (!ms_own_closer_of(cx->program, receiver, &closer) || !lowerable(closer.flags, false) ||
+      ((closer.flags & MS_CLOSER_PARTS) != 0 && !lower_parts_supported(cx, receiver))) {
+    return MIR_NONE;
+  }
+  LowerFn fn = {.cx = cx, .facts = &cx->program->modules.ptr[0].facts, .module_index = 0, .file = lower_file(cx, 0), .ret = MIR_VOID};
+  uint32_t silent = MIR_NONE;
+  if (!prepare(&fn, receiver, data_ty, false, &silent)) {
+    return MIR_NONE;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "vtable.close.%u", (unsigned)data_ty);
+  const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const uint32_t found = mir_func_by_name(cx->module, name);
+  if (found != MIR_NONE) {
+    return found;
+  }
+  /* The vtable's payload drop of an owned interface value: close the resource the block holds, then free the block. */
+  MirBuilder b;
+  const MirParam param = {MIR_PTR, (uint8_t)MM_BORROW};
+  mir_b_init(&b, cx->module, name, &param, 1, MIR_VOID);
+  b.func.linkage = ML_INTERNAL;
+  MirValue block = MIR_NONE;
+  mir_b_params(&b, &block, 1);
+  (void)mir_b_call(&b, silent, &block, 1);
+  (void)mir_b_emit(&b, MOP_Free, &block, 1, (MirImm){0}, MIR_NONE);
+  mir_b_ret(&b, mir_b_unit(&b));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
 
 bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {

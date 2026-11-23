@@ -233,3 +233,40 @@ bool lower_glue_bodies(Lower *cx, bool *progressed) {
   }
   return true;
 }
+
+/* A record that declares the operator's operation (`Duration.add`) or its own `compare` is calculated or ordered by
+ * it: returns whether `op` was lowered that way, with the answer in `answer`. */
+bool fn_record_operator(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right, MirCc cc, MirValue *answer) {
+  const char *operation = op == MS_B_ADD ? "add" : op == MS_B_SUB ? "subtract" : op == MS_B_MUL ? "multiply"
+                          : op == MS_B_DIV ? "divide" : op == MS_B_REM ? "remainder" : NULL;
+  const MirTy operand = mir_b_ty(&fn->b, left);
+  if (mir_ty_data(fn->cx->module, operand)->kind != MK_TYPE) {
+    return false;
+  }
+  const MsTy checked = lower_source_type(fn->cx, operand);
+  if (checked == MS_TY_NONE) {
+    return false;
+  }
+  const MirFunc *funcs = fn->cx->module->funcs.ptr;
+  if (operation != NULL) {
+    const uint32_t method = lower_named_method(fn->cx, checked, operation);
+    if (method == MIR_NONE || funcs[method].nparams != 2 || funcs[method].params[1].ty != mir_b_ty(&fn->b, right)) {
+      return false;
+    }
+    const MirValue operands[2] = {left, right};
+    *answer = mir_b_call(&fn->b, method, operands, 2);
+    fn_own_result(fn, *answer);
+    return true;
+  }
+  if ((op != MS_B_LT && op != MS_B_GT && op != MS_B_LE && op != MS_B_GE) || operand != mir_b_ty(&fn->b, right)) {
+    return false;
+  }
+  const uint32_t method = lower_named_method(fn->cx, checked, "compare");
+  if (method == MIR_NONE || funcs[method].nparams != 2 || funcs[method].ret != MIR_INT) {
+    return false;
+  }
+  const MirValue operands[2] = {left, right};
+  const MirValue order = mir_b_call(&fn->b, method, operands, 2);
+  *answer = order == MIR_NONE ? order : mir_b_icmp(&fn->b, cc, order, mir_b_iconst(&fn->b, 0));
+  return true;
+}

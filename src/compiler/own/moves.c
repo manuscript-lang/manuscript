@@ -3,6 +3,7 @@
 
 #include "compiler/check/methods.h"
 #include "compiler/own/bind.h"
+#include "compiler/own/expr_text.h"
 #include "compiler/own/class.h"
 #include "compiler/own/live.h"
 #include "compiler/own/result_borrows.h"
@@ -283,7 +284,12 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
                             ms_bind_of(pass->facts, stmt->id, &assigned)
                         ? assigned
                         : UINT32_MAX;
-  if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL) {
+  uint32_t returned = 0;
+  /* Returning a plain parameter whole answers a view of it: the lowering gives the caller that borrowed result. */
+  const bool whole_param = pass->instance && stmt->kind == MS_S_RETURN && stmt->u.expr != NULL &&
+                           stmt->u.expr->kind == MS_E_NAME && ms_bind_of(pass->facts, stmt->u.expr->id, &returned) &&
+                           contains(&pass->plainparams, returned);
+  if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && !whole_param) {
     check_handed_on(pass, stmt->u.expr);
   }
 }
@@ -409,6 +415,12 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     }
     pass->depth++;
     ms_binding_list_free(&captures);
+    const MsTyParam *typed = ms_ty_params(&pass->program->types, ms_facts_type(pass->facts, expr->id));
+    for (uint32_t at = 0; at < expr->u.lambda.params.len; at++) {
+      if (typed != NULL && (typed[at].flags & MS_PARAM_MOVE) != 0) {
+        ms_binding_list_push(&pass->moving, expr->u.lambda.params.ptr[at]->id); /* the function type hands it over */
+      }
+    }
     return;
   }
   if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
@@ -465,8 +477,8 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
  * the record the binding puts back, so only names (not fields) of `var`s count. */
 static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var) {
   uint32_t binding = 0;
-  if (name->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->depth != 0 || pass->live == NULL ||
-      !ms_bind_of(pass->facts, name->id, &binding) || contains(&pass->borrowed, binding)) {
+  if (name->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->live == NULL ||
+      !ms_bind_of(pass->facts, name->id, &binding) || contains(&pass->outer, binding) || contains(&pass->borrowed, binding)) {
     return false;
   }
   const MsRef *ref = ms_facts_ref(pass->facts, name->id);
@@ -521,6 +533,35 @@ static bool fresh_value(const MsExpr *value) {
   return value->kind == MS_E_CALL || value->kind == MS_E_LIST || value->kind == MS_E_MAP;
 }
 
+/* `var x = o.inner`, where `o` is a parameter: the caller keeps `o.inner`, and a `var` is a value of its own, so the copy
+ * must be written. */
+static void note_var_borrow(Moves *pass, const MsStmt *stmt) {
+  const MsExpr *value = stmt->u.bind.value;
+  const MsExpr *root = value;
+  while (value != NULL && root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  uint32_t binding = 0;
+  const MsTy ty = value != NULL ? ms_facts_type(pass->facts, value->id) : MS_TY_NONE;
+  if (pass->instance || pass->depth != 0 || value == NULL || value->kind != MS_E_MEMBER || root->kind != MS_E_NAME ||
+      !ms_bind_of(pass->facts, root->id, &binding) ||
+      !(contains(&pass->varparams, binding) || contains(&pass->plainparams, binding)) || ty == MS_TY_NONE ||
+      ms_class_of(pass->classes, ty) == MS_CLASS_COPY || ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "`var ");
+  ms_strbuild_append(&text, ms_names_span(pass->program->names, stmt->u.bind.pattern->u.name));
+  ms_strbuild_append_text(&text, "` cannot take `");
+  ms_strbuild_append(&text, place_text(pass, value));
+  ms_strbuild_append_text(&text, "`: the caller keeps it, and a `var` is a value of its own; copy it with `");
+  ms_strbuild_append(&text, place_text(pass, value));
+  ms_strbuild_append_text(&text, ".clone()`, or change it in place through `");
+  ms_strbuild_append(&text, ms_names_span(pass->program->names, root->u.sym));
+  ms_strbuild_append_text(&text, "`");
+  ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 static void note_var(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
@@ -531,6 +572,17 @@ static void note_var(void *ctx, const MsStmt *stmt) {
   }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     ms_binding_list_push(&pass->vars, stmt->u.bind.pattern->id);
+    note_var_borrow(pass, stmt);
+  }
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
+      stmt->u.branch.is_mutable && !pass->instance && !mark_last_use(pass, stmt->u.branch.cond)) {
+    /* `if var x = name` moves `name` into `x` at its last use; anywhere else there is no entry in place to lend. */
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
+    ms_own_expr_text(&text, pass->program->names, stmt->u.branch.cond);
+    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an "
+                                   "independent mutable copy, or write the changed value back");
+    ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
       !stmt->u.branch.is_mutable) {
@@ -607,6 +659,7 @@ bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFun
   for (uint32_t index = 0; index < func->params.len; index++) {
     if (!func->params.ptr[index]->moving && !func->params.ptr[index]->is_mutable) {
       ms_binding_list_push(&pass.borrowed, func->params.ptr[index]->id);
+      ms_binding_list_push(&pass.plainparams, func->params.ptr[index]->id);
     }
   }
   ms_walk_callable(&(MsVisitor){.ctx = &pass, .stmt = note_var}, func->params, func->body);

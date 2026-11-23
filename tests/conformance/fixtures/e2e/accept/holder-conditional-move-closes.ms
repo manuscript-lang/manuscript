@@ -40,8 +40,8 @@ test "an optional resource reassigned after a conditional move closes the new va
 
 fn reassign(log: String) Void:
 	var held: Door? = Door(1, log.clone())
-	if var door = held:
-		door.id = 1
+	if door := held:
+		if door.id == 0: return
 	held = Door(2, log.clone())
 	if held.is_none(): return
 

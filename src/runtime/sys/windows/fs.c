@@ -36,21 +36,6 @@ int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_na
   return code;
 }
 
-int ms_sys_fs_seek(int fd, int64_t offset, int origin, int64_t *position) {
-  static const int whence[] = {SEEK_SET, SEEK_CUR, SEEK_END};
-  const int64_t moved = _lseeki64(fd, offset, whence[origin]);
-  if (moved < 0) {
-    return uv_translate_sys_error(errno);
-  }
-  *position = (int64_t)moved;
-  return 0;
-}
-
-int ms_sys_fs_dup(int fd) {
-  const int copy = _dup(fd);
-  return copy < 0 ? uv_translate_sys_error(errno) : copy;
-}
-
 int ms_sys_fs_try_lock(int fd, bool exclusive, bool *taken) {
   const HANDLE handle = (HANDLE)uv_get_osfhandle(fd);
   if (handle == INVALID_HANDLE_VALUE) {

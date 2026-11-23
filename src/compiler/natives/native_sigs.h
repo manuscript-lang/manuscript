@@ -40,7 +40,7 @@ typedef struct MsNativeSig {
   const char *method; /* `Type.operation` when the runtime name differs from `msrt_<type>_<operation>`, else NULL */
   const char *domain; /* what a failure names (`filesystem`), or NULL */
   bool status;        /* returns a u8 */
-  const char *inline_op; /* `@inline=` the operation lowering writes out as MIR instead of calling the native, else NULL */
+  const char *inline_op; /* `@inline=` the list or string operation lowering writes out in its own code instead of calling the native, else NULL */
   bool borrows;          /* `@borrows`: the result is a view into an argument, not a fresh owner */
   bool spawns;           /* `@spawns`: starts a task, so the unwind pass covers the program's frames */
 } MsNativeSig;
@@ -50,6 +50,18 @@ extern const unsigned ms_native_sig_count;
 
 /* The signature of the native called `name`, or NULL. */
 const MsNativeSig *ms_native_sig_find(MsSpan name);
+
+/* A native lowering writes out as MIR instead of calling it, from its `ms-op: <native> <operation>` comment; the
+ * operations are listed in lower_scalar_ops.c. The comment names no parameter types: lowering sees the operands. */
+typedef struct MsNativeOp {
+  const char *name;
+  const char *op;
+} MsNativeOp;
+
+extern const MsNativeOp ms_native_ops[];
+
+/* The operation of the native called `name`, or NULL. */
+const char *ms_native_op_find(MsSpan name);
 
 /* How the runtime represents an extern type, from its `ms-repr: <Type> <repr>` comment: `bytes_buffer` (a Bytes buffer)
  * or `inline<N>` (a plain value of N bytes it reads and writes by address). NULL for a type with no comment. */

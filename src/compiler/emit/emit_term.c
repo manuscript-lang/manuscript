@@ -12,7 +12,9 @@ static void emit_return(EmitCx *cx, MirValue value) {
     ms_strbuild_printf(cx->out, "  ret %s %%v%u\n", emit_value_register_type(cx, value), value);
     return;
   }
-  emit_leaves_at(cx, value, "%sret", false);
+  if (!emit_wide_return(cx, value)) {
+    emit_leaves_at(cx, value, "%sret", false);
+  }
   ms_strbuild_append_text(cx->out, "  ret void\n");
 }
 
@@ -60,8 +62,14 @@ bool emit_edge_repeats(const MirTerm *term, uint32_t index) {
   return false;
 }
 
-static void edge_label(MsStrBuild *out, const MirTerm *term, uint32_t from, uint32_t index) {
-  if (emit_edge_repeats(term, index)) {
+/* Whether edge `index` goes through a block of its own (`t<block>_<index>`): it repeats a target, or it copies held
+ * block parameters and must do so only when taken. */
+static bool edge_split(const EmitCx *cx, const MirTerm *term, uint32_t index) {
+  return emit_edge_repeats(term, index) || (term->kind != MT_BR && emit_wide_edge_copies(cx, term, index));
+}
+
+static void edge_label(const EmitCx *cx, MsStrBuild *out, const MirTerm *term, uint32_t from, uint32_t index) {
+  if (edge_split(cx, term, index)) {
     ms_strbuild_printf(out, "%%t%u_%u", from, index);
   } else {
     ms_strbuild_printf(out, "%%b%u", emit_edge(term, index)->block);
@@ -71,11 +79,11 @@ static void edge_label(MsStrBuild *out, const MirTerm *term, uint32_t from, uint
 static void emit_switch(EmitCx *cx, const MirTerm *term, uint32_t from) {
   MsStrBuild *out = cx->out;
   ms_strbuild_printf(out, "  switch i64 %%v%u, label ", term->value);
-  edge_label(out, term, from, term->ncases);
+  edge_label(cx, out, term, from, term->ncases);
   ms_strbuild_append_text(out, " [");
   for (uint32_t index = 0; index < term->ncases; index++) {
     ms_strbuild_printf(out, " i64 %lld, label ", (long long)term->cases[index].value);
-    edge_label(out, term, from, index);
+    edge_label(cx, out, term, from, index);
   }
   ms_strbuild_append_text(out, " ]\n");
 }
@@ -105,13 +113,16 @@ bool emit_terminator(EmitCx *cx, const MirTerm *term, uint32_t from) {
   MsStrBuild *out = cx->out;
   switch ((MirTermKind)term->kind) {
   case MT_BR:
+    if (emit_wide_edge_copies(cx, term, 0)) {
+      emit_wide_copy_edge(cx, term, 0);
+    }
     ms_strbuild_printf(out, "  br label %%b%u\n", term->a.block);
     return true;
   case MT_CONDBR:
     ms_strbuild_printf(out, "  br i1 %%v%u, label ", term->value);
-    edge_label(out, term, from, 0);
+    edge_label(cx, out, term, from, 0);
     ms_strbuild_append_text(out, ", label ");
-    edge_label(out, term, from, 1);
+    edge_label(cx, out, term, from, 1);
     ms_strbuild_append_byte(out, '\n');
     return true;
   case MT_SWITCH:
@@ -134,8 +145,12 @@ bool emit_terminator(EmitCx *cx, const MirTerm *term, uint32_t from) {
 /* The blocks that carry the repeated edges of `from`'s terminator. */
 void emit_edge_blocks(EmitCx *cx, const MirTerm *term, uint32_t from) {
   for (uint32_t index = 0; index < emit_edge_count(term); index++) {
-    if (emit_edge_repeats(term, index)) {
-      ms_strbuild_printf(cx->out, "t%u_%u:\n  br label %%b%u\n", from, index, emit_edge(term, index)->block);
+    if (edge_split(cx, term, index)) {
+      ms_strbuild_printf(cx->out, "t%u_%u:\n", from, index);
+      if (emit_wide_edge_copies(cx, term, index)) {
+        emit_wide_copy_edge(cx, term, index);
+      }
+      ms_strbuild_printf(cx->out, "  br label %%b%u\n", emit_edge(term, index)->block);
     }
   }
 }
@@ -160,7 +175,7 @@ static void phi_leaf(EmitCx *cx, uint32_t block, uint32_t index, uint32_t leaf, 
       ms_strbuild_printf(out, "%s[ ", first ? "" : ", ");
       emit_name(out, target->args[index], leaf);
       ms_strbuild_append_text(out, ", %");
-      if (emit_edge_repeats(term, edge)) {
+      if (edge_split(cx, term, edge)) {
         ms_strbuild_printf(out, "t%u_%u", source, edge);
       } else {
         emit_label(out, source, last[source]);
@@ -176,6 +191,9 @@ void emit_phis(EmitCx *cx, uint32_t block, const uint32_t *last) {
   const MirBlockData *data = &cx->func->blocks.ptr[block];
   for (uint32_t index = 0; index < data->params.len; index++) {
     MirValue param = data->params.ptr[index].value;
+    if (emit_wide_held(cx, param)) {
+      continue; /* a cell, written on each edge */
+    }
     uint32_t leaves = (uint32_t)emit_value_leaves(cx, param).len;
     for (uint32_t leaf = 0; leaf < leaves; leaf++) {
       phi_leaf(cx, block, index, leaf, last);

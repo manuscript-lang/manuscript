@@ -9,12 +9,13 @@
 typedef struct Returns {
   const MsExpr *values[16];
   uint32_t len;
+  uint32_t lambdas; /* open closures: what they return is theirs */
   bool overflow;
 } Returns;
 
 static void collect_return(void *ctx, const MsStmt *stmt) {
   Returns *returns = ctx;
-  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
+  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL || returns->lambdas != 0) {
     return;
   }
   if (returns->len == MS_COUNT_OF(returns->values)) {
@@ -22,6 +23,16 @@ static void collect_return(void *ctx, const MsStmt *stmt) {
     return;
   }
   returns->values[returns->len++] = stmt->u.expr;
+}
+
+static void enter_lambda(void *ctx, const MsExpr *expr) {
+  Returns *returns = ctx;
+  returns->lambdas += expr->kind == MS_E_LAMBDA ? 1u : 0u;
+}
+
+static void leave_lambda(void *ctx, const MsExpr *expr) {
+  Returns *returns = ctx;
+  returns->lambdas -= expr->kind == MS_E_LAMBDA ? 1u : 0u;
 }
 
 /* What a returned expression carries: the positions it borrows, or that it is something the callable owns. */
@@ -199,7 +210,9 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
   return expr->kind == MS_E_CALL ? classify_call(pass, expr) : OWNED;
 }
 
-/* What a callable's returns carry: the joined reach, the first value that borrows a parameter and the first that is new. */
+/* What a callable's returns carry: the joined reach, and the first pair of returns that hand out the same case of the
+ * result as a part of an argument and as a new value. A `Result` or an Optional keeps its cases apart, so
+ * `ok(part)` beside `error(new)` is not a mix. */
 typedef struct Reached {
   Reach all;
   const MsExpr *borrowed;
@@ -207,29 +220,67 @@ typedef struct Reached {
   bool known;
 } Reached;
 
-static Reached reached_by(Pass *pass, MsParams params, MsStmts body) {
+enum { CASE_OK = 1, CASE_ERROR = 2, CASE_ALL = 3 };
+
+static uint32_t case_of(const Pass *pass, const MsExpr *value) {
+  const MsExpr *callee = value->kind == MS_E_CALL ? value->u.call.callee : NULL;
+  if (callee == NULL || callee->kind != MS_E_NAME) {
+    return CASE_ALL;
+  }
+  const MsSpan name = ms_names_span(pass->program->names, callee->u.sym);
+  return ms_span_is_text(name, "ok") ? CASE_OK : ms_span_is_text(name, "error") ? CASE_ERROR : CASE_ALL;
+}
+
+/* The bit of every `move` parameter: what it holds is the callable's own, not a borrow. */
+static uint32_t moved_positions(const Pass *pass, MsParams params) {
+  uint32_t mask = 0;
+  for (uint32_t index = 0; index < params.len; index++) {
+    const uint32_t position = index + (pass->method ? 1u : 0u);
+    if (params.ptr[index]->moving && position < 31) {
+      mask |= UINT32_C(1) << position;
+    }
+  }
+  return mask;
+}
+
+static Reached reached_by(Pass *pass, MsParams params, MsStmts body, MsTy result) {
   pass->view_count = 0;
   pass->depth = 0;
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = view_stmt, .expr = view_expr}, params, body);
   Returns returns = {.len = 0};
-  const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return};
+  const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return, .expr = enter_lambda, .leave_expr = leave_lambda};
   ms_walk_block(&visitor, body);
   Reached out = {.all = NEUTRAL, .known = !returns.overflow && returns.len != 0};
+  Reach reaches[16];
   for (uint32_t index = 0; out.known && index < returns.len; index++) {
-    const Reach reach = classify(pass, returns.values[index]);
-    out.all = join(out.all, reach);
-    if (reach.mask != 0 && out.borrowed == NULL) {
-      out.borrowed = returns.values[index];
+    reaches[index] = classify(pass, returns.values[index]);
+    out.all = join(out.all, reaches[index]);
+  }
+  const uint32_t owned_params = moved_positions(pass, params);
+  /* An interface result is a view every path builds; a value converted on the way out (a type as its interface, a value as
+   * its Optional) is a new value, not a reference. */
+  const bool view_result = result != MS_TY_NONE && ms_ty_kind(&pass->program->types, result) == MS_TY_CONTRACT;
+  for (uint32_t fresh = 0; out.known && !view_result && fresh < returns.len && out.fresh == NULL; fresh++) {
+    if (!reaches[fresh].owned || reaches[fresh].mask != 0) {
+      continue;
     }
-    if (reach.owned && reach.mask == 0 && out.fresh == NULL) {
-      out.fresh = returns.values[index];
+    for (uint32_t borrowed = 0; borrowed < returns.len; borrowed++) {
+      const MsTy shown = ms_facts_type(pass->facts, returns.values[borrowed]->id);
+      if (result != MS_TY_NONE && shown != result) {
+        continue;
+      }
+      if ((reaches[borrowed].mask & ~owned_params) != 0 && (case_of(pass, returns.values[fresh]) & case_of(pass, returns.values[borrowed])) != 0) {
+        out.fresh = returns.values[fresh];
+        out.borrowed = returns.values[borrowed];
+        break;
+      }
     }
   }
   return out;
 }
 
 static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
-  const Reached reached = reached_by(pass, params, body);
+  const Reached reached = reached_by(pass, params, body, MS_TY_NONE);
   if (!reached.known) {
     return 0;
   }
@@ -237,8 +288,19 @@ static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
 }
 
 /* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */
-static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body) {
-  const Reached reached = reached_by(pass, params, body);
+static MsTy written_type(const Pass *pass, uint32_t module, const MsTypeRef *ref) {
+  for (size_t index = 0; ref != NULL && index < pass->program->type_refs.len; index++) {
+    const MsTypeRefRecord *record = &pass->program->type_refs.ptr[index];
+    if (record->module == module && record->node == ref->id) {
+      return record->ty;
+    }
+  }
+  return MS_TY_NONE;
+}
+
+static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body, const MsTypeRef *result_ref) {
+  const MsTy result = written_type(pass, module, result_ref);
+  const Reached reached = reached_by(pass, params, body, result);
   if (!reached.known || reached.borrowed == NULL || reached.fresh == NULL) {
     return;
   }
@@ -266,13 +328,13 @@ void ms_own_mixed_returns(MsCheckProgram *program) {
       if (decl->kind == MS_D_FN) {
         pass.method = false;
         pass.self_node = decl->id;
-        report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body);
+        report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body, decl->u.fn.result);
       }
       for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
         const MsMethod *method = decl->u.impl.methods.ptr[at];
         pass.method = true;
         pass.self_node = method->id;
-        report_mixed(&pass, module, method->id, method->func.params, method->func.body);
+        report_mixed(&pass, module, method->id, method->func.params, method->func.body, method->func.result);
       }
     }
   }

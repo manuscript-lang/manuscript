@@ -274,6 +274,8 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
   ms_obj_install_bounded_drop();
   ms_http_install_task_waiter();
   ms_frames_install(tables); /* without them a report simply has no source frames */
+  /* libuv keeps a private copy of the arguments, which set_title may overwrite in place: read them from the copy. */
+  argv = (const char *const *)uv_setup_args(argc, (char **)(uintptr_t)argv);
   ms_entry_set_arguments(argc, argv);
   main_function = main_fn;
   start_nanos = ms_sys_monotonic_ns();

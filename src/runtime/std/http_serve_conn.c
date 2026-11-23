@@ -448,11 +448,12 @@ MsServeWorker *ms_serve_worker_new(MsServeShared *shared) {
   return worker;
 }
 
-static void adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2, MsBytes first) {
+static void adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2, MsBytes first, MsH2 *session) {
   MsServeConn *conn = ms_alloc_zeroed(sizeof *conn);
   conn->worker = worker;
   conn->io = *stream;
-  conn->h2 = h2;
+  conn->h2 = h2 || session != NULL;
+  conn->session = session;
   conn->resumed = first.len > 0;
   if (first.len > 0) {
     __builtin_memcpy(ms_list_extend(&conn->in, 1, first.len), first.ptr, first.len);
@@ -477,14 +478,14 @@ static void adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2, M
 }
 
 void ms_serve_worker_adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2) {
-  adopt(worker, stream, h2, (MsBytes){0});
+  adopt(worker, stream, h2, (MsBytes){0}, NULL);
 }
 
-bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, MsBytes first) {
+bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, MsBytes first, MsH2 *session) {
   if (worker->closing) {
     return false;
   }
-  adopt(worker, stream, false, first);
+  adopt(worker, stream, false, first, session);
   ms_bytes_free(&first);
   return true;
 }

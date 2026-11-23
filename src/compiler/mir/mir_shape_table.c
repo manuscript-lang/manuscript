@@ -113,7 +113,7 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   MirLayouts *layouts = build->layouts;
   const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
   shape->kind = MS_SHAPE_RECORD;
-  shape->flags |= (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
+  shape->flags |= (def->opaque ? MS_SHAPE_NAME_ONLY : 0) | (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   uint32_t *kinds = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
@@ -178,7 +178,7 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   const bool boxed = mir_boxed_block_size(layouts, ty, &block_size);
   const uint32_t *offsets = alt_offsets(build, ty, boxed);
   shape->kind = MS_SHAPE_ALTERNATIVE;
-  shape->flags |= (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
+  shape->flags |= (def->opaque ? MS_SHAPE_NAME_ONLY : 0) | (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   if (mir_json_tree_shape(build->module, ty)) {
     shape->flags |= MS_SHAPE_JSON_TREE;
   }
@@ -234,6 +234,27 @@ static void collection_shape(ShapeBuild *build, MirTy ty, const MirTyData *data,
 
 static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text, uint32_t *json);
 
+/* A flagged Optional inside a flagged Optional shares the outer's flat leaves, so its payload sits at the outer's offsets and
+ * not at the ones its own layout would give: each level gets its own copy of the inner shape with the payload offset
+ * relative to where that level starts. `k` is the leaf the level's presence byte is. */
+static uint32_t nested_optional(ShapeBuild *build, MirTy opt, uint32_t shape, const uint32_t *offsets, uint32_t leaves,
+                                uint32_t k) {
+  if (k + 1 >= leaves) {
+    return shape;
+  }
+  MsShape copy = build->shapes.ptr[shape];
+  copy.extra = offsets[k + 1] - offsets[k];
+  const MirTy inner = mir_ty_data(build->module, opt)->elem;
+  const MirTyData *inner_data = mir_ty_data(build->module, inner);
+  if (inner_data->kind == MK_OPT && mir_opt_has_flag(build->layouts, inner)) {
+    copy.elem = nested_optional(build, inner, copy.elem, offsets, leaves, k + 1);
+  }
+  const uint32_t index = (uint32_t)build->shapes.len;
+  shape_list_push(&build->shapes, copy);
+  mir_tylist_push(&build->types, mir_ty_unscoped(opt)); /* shape_of finds the first shape of the type, not this copy */
+  return index;
+}
+
 static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   const MirModule *module = build->module;
   const MirTyData *data = mir_ty_data(module, ty);
@@ -250,6 +271,15 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   } else if (data->kind == MK_OPT) {
     optional_shape(build, ty, data, &shape);
     shape.elem = shape_of(build, data->elem);
+    const MirTyData *elem_data = mir_ty_data(module, data->elem);
+    if (mir_opt_has_flag(layouts, ty) && elem_data->kind == MK_OPT && mir_opt_has_flag(layouts, data->elem)) {
+      const MsSpan leaves = mir_leaves(layouts, ty);
+      uint32_t offsets[64] = {0};
+      if (leaves.len > 2 && leaves.len <= 64) {
+        (void)mir_mem_layout(leaves, offsets);
+        shape.elem = nested_optional(build, data->elem, shape.elem, offsets, (uint32_t)leaves.len, 1);
+      }
+    }
   } else if (data->kind == MK_TYPE) {
     record_shape(build, ty, data, &shape);
   } else if (data->kind == MK_ALT) {
@@ -360,14 +390,49 @@ static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text
   }
 }
 
-/* The hook array: one entry per shape; the first word of a collection shape's is its descriptor, and a type with its
+static bool is_scalar_shape(const MsShape *shape) {
+  return shape->kind <= MS_SHAPE_BYTES;
+}
+
+static void want_child(const ShapeBuild *build, bool *wants, uint32_t child) {
+  if (child != MS_SHAPE_NONE && child < build->shapes.len && !is_scalar_shape(&build->shapes.ptr[child])) {
+    wants[child] = true;
+  }
+}
+
+/* Which shapes get a descriptor in the hook array: a collection shape, and every non-scalar shape a collection holds
+ * or a record or alternative has as a field, since a reader that fails midway drops what it built by descriptor. */
+static bool *descriptor_wants(ShapeBuild *build) {
+  bool *wants = MS_ARENA_NEW_ARRAY(&build->arena, bool, build->shapes.len + 1);
+  for (size_t index = 0; index < build->shapes.len; index++) {
+    wants[index] = false;
+  }
+  for (size_t index = 0; index < build->shapes.len; index++) {
+    const MsShape *shape = &build->shapes.ptr[index];
+    if (is_collection_shape(shape)) {
+      wants[index] = true;
+      want_child(build, wants, shape->elem);
+      if (shape->kind == MS_SHAPE_MAP) {
+        want_child(build, wants, shape->value);
+      }
+    } else if (shape->kind == MS_SHAPE_RECORD || shape->kind == MS_SHAPE_ALTERNATIVE) {
+      for (uint32_t at = 0; at < shape->count && shape->first + at < build->members.len; at++) {
+        want_child(build, wants, build->members.ptr[shape->first + at].shape);
+      }
+    }
+  }
+  return wants;
+}
+
+/* The hook array: one entry per shape; the first word of a shape that wants one is its descriptor, and a type with its
  * own text or JSON form names those functions. */
 static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
+  const bool *wants = descriptor_wants(build);
   uint32_t wanted = 0;
   for (size_t index = 0; index < build->shapes.len; index++) {
     uint32_t text, json;
     hook_functions(build, index, &text, &json);
-    wanted += (is_collection_shape(&build->shapes.ptr[index]) ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0);
+    wanted += (wants[index] ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0);
   }
   if (wanted == 0) {
     return MIR_NONE;
@@ -378,7 +443,7 @@ static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
   for (size_t index = 0; index < build->shapes.len; index++) {
     uint32_t text, json;
     hook_functions(build, index, &text, &json);
-    if (is_collection_shape(&build->shapes.ptr[index])) {
+    if (wants[index]) {
       sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)index * entry, mird_descriptor(cx, build->types.ptr[index])};
     }
     if (text != 0) {
@@ -452,8 +517,9 @@ void mird_visit_shape(DataCx *cx, const MirFunc *func, const MirInst *inst) {
 void mir_shape_desc_types(const MirModule *module, MirLayouts *layouts, MirTy ty, MirIdList *out) {
   ShapeBuild build = {.module = module, .layouts = layouts, .arena = ms_arena_new()};
   (void)shape_of(&build, ty);
+  const bool *wants = descriptor_wants(&build);
   for (size_t index = 0; index < build.shapes.len; index++) {
-    if (is_collection_shape(&build.shapes.ptr[index])) {
+    if (wants[index]) {
       mir_idlist_push(out, build.types.ptr[index]);
     }
   }

@@ -1,0 +1,8 @@
+[project]
+name = "demo"
+source = "./src"
+entry = "./src/main.ms"
+
+[aliases]
+"@math" = "./src/math.ms"
+"@lib" = "./src/lib"

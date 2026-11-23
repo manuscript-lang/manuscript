@@ -62,10 +62,24 @@ bool *mir_framed_iface_borrows(MsArena *arena, const MirModule *module, const Mi
 /* The same for closure objects of closures that close nothing and that only drops and borrowing calls use. */
 bool *mir_framed_closures(MsArena *arena, const MirModule *module, const MirFunc *func);
 
-/* Per value of `func` (in `arena`): the block a stack `slot` is confined to, MIR_NONE for every other value.
- * A slot whose address is formed, offset, loaded and stored through and passed to calls inside one block,
- * and whose first access there writes it, holds nothing outside that block, so a backend may give its
- * storage to another block's temporary. NULL when `func` has no slot. */
-MirBlock *mir_confined_slots(MsArena *arena, const MirModule *module, const MirFunc *func);
+/* Whether a runtime call's result or the runtime may keep the address of an argument beyond the call. */
+bool mir_extern_pins_argument(const MirExtern *external);
+
+/* Which stack `slot`s of `func`, and which values flagged in `values` (NULL for none; values kept in a stack cell),
+ * may share storage. Each is an object, numbered from 0 in value order: `value[object]` is its value and
+ * `ordinal[value]` its number (MIR_NONE for a value that is not one). Row `o` of `conflict` (`words` words per row)
+ * has a bit for every object that is live where `o` is made or written, which `o` must not share storage with.
+ * A value kept in a cell is made where it is defined, and a block parameter where each predecessor ends. An object
+ * with `shareable` false (a slot whose address is stored, returned, passed to a block or kept by the runtime)
+ * keeps its place for the whole function. False when `func` has no object or is too large to analyse. */
+typedef struct MirCellMap {
+  uint32_t nobjects, words;
+  const uint32_t *value, *ordinal;
+  const uint64_t *conflict;
+  const bool *shareable;
+} MirCellMap;
+
+bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *func, const bool *values,
+                        MirCellMap *map);
 
 #endif

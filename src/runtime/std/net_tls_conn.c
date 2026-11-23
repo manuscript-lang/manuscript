@@ -247,7 +247,7 @@ uint8_t msstd_net_connection_start_tls(const MsObj *handle, const MsTlsOptions *
   const uint8_t status = upgrade(core, ctx, ms_string_span(&options->server_name), ms_net_timeout(has_timeout, timeout), err);
   ms_net_tls_ctx_release(ctx);
   if (status == MS_STATUS_OK) {
-    *out = ms_net_handle_alias(handle);
+    *out = ms_net_handle_upgraded(handle); /* `plain` is consumed */
   }
   return status;
 }
@@ -263,7 +263,7 @@ uint8_t msstd_net_connection_accept_tls(const MsObj *handle, const MsTlsOptions 
                                  ms_net_timeout(has_timeout, timeout), err);
   ms_net_tls_ctx_release(ctx);
   if (status == MS_STATUS_OK) {
-    *out = ms_net_handle_alias(handle);
+    *out = ms_net_handle_upgraded(handle); /* `plain` is consumed */
   }
   return status;
 }

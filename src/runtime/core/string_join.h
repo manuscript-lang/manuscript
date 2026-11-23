@@ -1,39 +1,26 @@
-/* runtime/core/string_join.h: the f-string natives (string_join.c). `msrt_string_fmtN` joins N parts;
- * `msrt_string_append_fmtN` joins them onto an owned `s`. Bit k of `mask` makes part k an Int, otherwise it
- * is the address of a string (for append, `s` is part 0 of the mask). */
+/* runtime/core/string_join.h: the small primitives an f-string is built from. Lowering writes out the join itself
+ * (mir_expand.c): it adds up the lengths of the parts, makes or grows the string once through these, and copies each
+ * part. */
 #ifndef MS_RUNTIME_CORE_STRING_JOIN_H
 #define MS_RUNTIME_CORE_STRING_JOIN_H
 
 #include "base/string.h"
 
-/* ms-sig: msrt_string_fmt2(mask: i64, a: usize, b: usize, out: *mut StrVal) @end */
-void msrt_string_fmt2(int64_t mask, size_t a, size_t b, MsString *out);
-/* ms-sig: msrt_string_fmt3(mask: i64, a: usize, b: usize, c: usize, out: *mut StrVal) @end */
-void msrt_string_fmt3(int64_t mask, size_t a, size_t b, size_t c, MsString *out);
-/* ms-sig: msrt_string_fmt4(mask: i64, a: usize, b: usize, c: usize, d: usize, out: *mut StrVal) @end */
-void msrt_string_fmt4(int64_t mask, size_t a, size_t b, size_t c, size_t d, MsString *out);
-/* ms-sig: msrt_string_fmt5(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, out: *mut StrVal)
- * @end */
-void msrt_string_fmt5(int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, MsString *out);
-/* ms-sig: msrt_string_fmt6(mask: i64, a: usize, b: usize, c: usize, d: usize, e: usize, f: usize, out: *mut
- * StrVal) @end */
-void msrt_string_fmt6(int64_t mask, size_t a, size_t b, size_t c, size_t d, size_t e, size_t f,
-                      MsString *out);
-/* ms-sig: msrt_string_append_fmt1(s: *const StrVal, mask: i64, a: usize, out: *mut StrVal) @end */
-void msrt_string_append_fmt1(const MsString *s, int64_t mask, size_t a, MsString *out);
-/* ms-sig: msrt_string_append_fmt2(s: *const StrVal, mask: i64, a: usize, b: usize, out: *mut StrVal)
- * @end */
-void msrt_string_append_fmt2(const MsString *s, int64_t mask, size_t a, size_t b, MsString *out);
-/* ms-sig: msrt_string_append_fmt3(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, out: *mut
- * StrVal) @end */
-void msrt_string_append_fmt3(const MsString *s, int64_t mask, size_t a, size_t b, size_t c, MsString *out);
-/* ms-sig: msrt_string_append_fmt4(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, d: usize, out:
- * *mut StrVal) @end */
-void msrt_string_append_fmt4(const MsString *s, int64_t mask, size_t a, size_t b, size_t c, size_t d,
-                             MsString *out);
-/* ms-sig: msrt_string_append_fmt5(s: *const StrVal, mask: i64, a: usize, b: usize, c: usize, d: usize, e:
- * usize, out: *mut StrVal) @end */
-void msrt_string_append_fmt5(const MsString *s, int64_t mask, size_t a, size_t b, size_t c, size_t d,
-                             size_t e, MsString *out);
+/* The frame an append works in: the string being grown and the block it moved out of, which stays allocated until
+ * `msrt_string_close` so a part that was a view into the old text can still be copied. */
+typedef struct MsJoinFrame {
+  MsString text;
+  uint8_t *pending;
+} MsJoinFrame;
+
+/* Makes `*out` a string of `total` bytes, inline when it fits, and returns the address of its bytes to fill. */
+uint8_t *msrt_string_open(size_t total, MsString *out);
+/* Grows the string in `frame->text` by `extra` bytes (in place when it owns room for them, else into a new block with
+ * spare room) and returns the address of the new bytes. */
+uint8_t *msrt_string_extend(MsJoinFrame *frame, size_t extra);
+/* Releases the block `msrt_string_extend` left behind. */
+void msrt_string_close(MsJoinFrame *frame);
+/* Writes `v` in decimal to `buffer` (at least 20 bytes) and returns its length. */
+size_t msrt_int_format(int64_t v, uint8_t *buffer);
 
 #endif

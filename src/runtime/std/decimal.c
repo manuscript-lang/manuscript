@@ -555,7 +555,7 @@ uint8_t msstd_decimal_truncate_to_int(const MsDecimal *a, int64_t *out) {
       return 1;
     }
     if (a->exponent > 19 ||
-        __builtin_mul_overflow(coefficient, (MsI128)ms_dec_power_of_ten((unsigned)a->exponent), &value)) {
+        !ms_i128_mul(coefficient, (MsI128)ms_dec_power_of_ten((unsigned)a->exponent), &value)) {
       return 0;
     }
   } else if (-a->exponent > 38) {

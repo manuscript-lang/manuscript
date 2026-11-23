@@ -355,7 +355,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   MirVar owner = 0;
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
                                         expr->u.member.left->kind == MS_E_CALL);
-  const bool moves = (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
+  const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
@@ -714,6 +714,10 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
       return expr->op == MS_B_NE ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
     }
   }
+  MirValue declared = MIR_NONE;
+  if (fn_record_operator(fn, (MsBinaryOp)expr->op, left, right, ops.cc, &declared)) {
+    return declared;
+  }
   return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
 
@@ -729,7 +733,10 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       return lower_member(fn, expr);
     case MS_E_MAP: return fn_map_literal(fn, expr);
     case MS_E_BINARY: return lower_binary(fn, expr);
-    case MS_E_CALL: return fn_call(fn, expr, want);
+    case MS_E_CALL: {
+      const MirValue view = want == LW_BORROW ? fn_map_get_view(fn, expr) : MIR_NONE;
+      return view != MIR_NONE ? view : fn_call(fn, expr, want);
+    }
     case MS_E_MATCH: return fn_match(fn, expr);
     case MS_E_LIST: return fn_list(fn, expr);
     case MS_E_INDEX:
@@ -841,8 +848,11 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
         mir_b_ty(&fn->b, temporary) != mir_b_ty(&fn->b, value)) {
       return MIR_NONE;
     }
+    /* The answer is the temporary itself: it is taken out first, then the temporary's owner steps aside. */
+    const MirValue answer = fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &temporary, 1, (MirImm){0}, MIR_NONE);
-    return value;
+    (void)mir_b_emit(&fn->b, MOP_Forget, &temporary, 1, (MirImm){0}, MIR_NONE);
+    return answer;
   }
   const MsExpr *receiver = fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
   const MsTyTable *types = &fn->cx->program->types;
@@ -955,7 +965,7 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     }
     return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  if (!borrowed_param && !borrowed_root && !in_var_record && !view_local && leaves_binding(fn, expr)) {
+  if (!borrowed_param && !borrowed_root && !in_var_record && !view_local && !var_param && leaves_binding(fn, expr)) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

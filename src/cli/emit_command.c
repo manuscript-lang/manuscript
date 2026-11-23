@@ -21,7 +21,7 @@ static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, Ms
   MirModule module;
   mir_module_init(&module);
   bool ok = ms_lower_program(program, entry, &module, why);
-  const MirPipelineOptions pipeline = {.verify = false, .checks = true};
+  const MirPipelineOptions pipeline = {.verify = true, .checks = true};
   ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
   ok = ok && (!optimize || mir_optimize(&module, false, why));
   if (ok) {

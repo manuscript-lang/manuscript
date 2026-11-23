@@ -180,7 +180,11 @@ void ms_check_fallthrough(MsCheckProgram *program, uint32_t module, const MsDecl
   if (decl->kind == MS_D_FN) {
     check_function(program, module, &decl->u.fn, decl->pos);
   }
-  const bool methods = decl->kind == MS_D_IMPL;
+  /* A block whose receiver names no type of the program was rejected whole: its methods are not checked. */
+  const MsSymbolId *receiver = decl->kind == MS_D_IMPL && decl->u.impl.receiver != NULL
+                                   ? ms_scope_get(&program->modules.ptr[module].scope, decl->u.impl.receiver->name)
+                                   : NULL;
+  const bool methods = decl->kind == MS_D_IMPL && (receiver != NULL || module >= program->user_modules);
   for (uint32_t index = 0; methods && index < decl->u.impl.methods.len; index++) {
     const MsMethod *method = decl->u.impl.methods.ptr[index];
     check_function(program, module, &method->func, method->pos);

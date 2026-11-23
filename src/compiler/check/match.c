@@ -359,7 +359,14 @@ static MsTy contract_arm_type(Body *body, const MsArm *arm, MsTy scrutinee) {
   return symbol != NULL && symbol->kind == MS_SYMBOL_TYPE ? symbol->ty : MS_TY_NONE;
 }
 
-static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expected, ArmState *state) {
+/* What an arm's statements declared, kept for its value: the oracle checks every arm's pattern and statements, then
+ * exhaustiveness, then each arm's value. */
+typedef struct ArmScope {
+  MsLocal *locals;
+  size_t count;
+} ArmScope;
+
+static ArmScope arm_statements(Body *body, const MsArm *arm, MsTy scrutinee, ArmState *state) {
   check_arm(body, state, arm);
   const size_t mark = body_scope_mark(body);
   uint32_t index = 0;
@@ -378,7 +385,9 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
     body_set_ref(body, arm->id, (MsRef){.kind = MS_REF_TYPE, .local = body->next_local, .owner = scrutinee});
     body_set_type(body, arm->id, concrete);
   }
-  for (uint32_t at = 0; at < arm->bindings.len; at++) {
+  /* a bare arm that names a case (`case:`) binds nothing: its name is the case's */
+  const uint32_t declared = arm->bare && kase != NULL ? 0 : arm->bindings.len;
+  for (uint32_t at = 0; at < declared; at++) {
     const MsTy ty = concrete != MS_TY_NONE ? concrete : kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
     (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id, arm->pos);
     if (state->literal && arm->bare) {
@@ -386,6 +395,21 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
     }
   }
   body_statements(body, arm->body); /* the arm's value reads the locals its statements declare */
+  ArmScope kept = {.count = body->locals.len - mark};
+  kept.locals = MS_ARENA_NEW_ARRAY(&body->program->arena, MsLocal, kept.count + 1);
+  for (size_t at = 0; at < kept.count; at++) {
+    kept.locals[at] = body->locals.ptr[mark + at];
+  }
+  body_scope_reset(body, mark);
+  return kept;
+}
+
+/* The type of an arm's value, read where its statements left their locals. */
+static MsTy arm_value(Body *body, const MsArm *arm, const ArmScope *kept, MsTy expected, const ArmState *state) {
+  const size_t mark = body_scope_mark(body);
+  for (size_t at = 0; at < kept->count; at++) {
+    ms_local_list_push(&body->locals, kept->locals[at]);
+  }
   /* an arm whose value differs from the type the match has so far is a mismatch, reported at that value */
   const bool settled = expected != MS_TY_NONE && !state->discarded && !body_has_foreign_variable(body, expected);
   const MsTy value = arm->value == NULL ? MS_TY_NONE
@@ -510,10 +534,10 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
   state.seen = MS_ARENA_NEW_ARRAY(&body->program->arena, MsName, expr->u.match.arms.len + 1);
   /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
   MsTy result = expected != MS_TY_NONE && body_has_foreign_variable(body, expected) ? MS_TY_NONE : expected;
+  ArmScope *kept = MS_ARENA_NEW_ARRAY(&body->program->arena, ArmScope, expr->u.match.arms.len + 1);
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
     state.index = index;
-    const MsTy value = arm_value(body, expr->u.match.arms.ptr[index], scrutinee, result == MS_TY_NONE ? expected : result, &state);
-    result = result == MS_TY_NONE ? value : result;
+    kept[index] = arm_statements(body, expr->u.match.arms.ptr[index], scrutinee, &state);
   }
   if (state.report && state.literal) {
     const MsName yes = ms_names_intern(body->program->names, ms_span_of_text("true"));
@@ -532,6 +556,26 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
                     ms_string_from_span(ms_span_of_text("contract match requires a final wildcard for other implementations; add a last '_' arm")));
   }
   check_exhaustive(body, expr, scrutinee);
+  bool *open = MS_ARENA_NEW_ARRAY(&body->program->arena, bool, expr->u.match.arms.len + 1);
+  bool any_open = false;
+  for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
+    const MsTy value = arm_value(body, expr->u.match.arms.ptr[index], &kept[index], result == MS_TY_NONE ? expected : result, &state);
+    const bool complete = value != MS_TY_NONE && !holds_invalid(types, value, 6) && !body_has_foreign_variable(body, value);
+    if (complete && any_open && (result == MS_TY_NONE || holds_invalid(types, result, 6))) {
+      /* a later arm completes what an earlier one left open (`none: []`, `value: [value]`): they are read again with it */
+      for (uint32_t before = 0; before < index; before++) {
+        if (open[before]) {
+          (void)arm_value(body, expr->u.match.arms.ptr[before], &kept[before], value, &state);
+        }
+      }
+      result = value;
+      any_open = false;
+      continue;
+    }
+    open[index] = expr->u.match.arms.ptr[index]->value != NULL && !complete;
+    any_open = any_open || open[index];
+    result = result == MS_TY_NONE ? value : result;
+  }
   body->quiet = outer_quiet;
   return result;
 }

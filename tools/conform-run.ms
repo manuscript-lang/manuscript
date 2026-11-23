@@ -263,25 +263,24 @@ fn invoke(
 		args,
 		RunOptions(cwd: work.clone(), timeout: seconds(limit), input: input),
 	).wait()
+	if out := result:
+		return Process(
+			code: out.exit_code,
+			stdout: text_of(out.stdout),
+			stderr: text_of(out.stderr),
+			timed_out: false,
+			spawn_error: "",
+		)
 
-	match result:
-		ok(out):
-			return Process(
-				code: out.exit_code,
-				stdout: text_of(out.stdout),
-				stderr: text_of(out.stderr),
-				timed_out: false,
-				spawn_error: "",
-			)
-		error(cause):
-			timed := cause.kind.get_or("") == "ETIMEDOUT"
-			return Process(
-				code: if timed: 137 else: 127,
-				stdout: "",
-				stderr: "",
-				timed_out: timed,
-				spawn_error: if timed: "" else: cause.message.clone(),
-			)
+	cause := result.err()
+	timed := cause.kind.get_or("") == "ETIMEDOUT"
+	return Process(
+		code: if timed: 137 else: 127,
+		stdout: "",
+		stderr: "",
+		timed_out: timed,
+		spawn_error: if timed: "" else: cause.message.clone(),
+	)
 
 // `text` with the work directory (as given and with forward slashes) as <DIR> and its
 // parent as <SCRATCH>, and the line number of a standard-library frame as <LINE>.
@@ -372,16 +371,13 @@ fn normalized(value: JsonValue, work: String) JsonValue:
 // A JSON report read from standard output and normalized, or a record of why it could
 // not be read.
 fn read_report(out: Process, work: String) JsonValue:
-	match parse(out.stdout):
-		ok(document): return normalized(document, work)
-		error(cause):
-			var broken = Map[String, JsonValue]()
-			broken.add("unparsable_json", JsonValue.StringValue(f"{cause.message}"))
-			broken.add(
-				"stdout",
-				JsonValue.StringValue(normalize_text(out.stdout, work)),
-			)
-			return JsonValue.ObjectValue(broken)
+	parsed := parse(out.stdout)
+	if document := parsed: return normalized(document, work)
+
+	var broken = Map[String, JsonValue]()
+	broken.add("unparsable_json", JsonValue.StringValue(f"{parsed.err().message}"))
+	broken.add("stdout", JsonValue.StringValue(normalize_text(out.stdout, work)))
+	return JsonValue.ObjectValue(broken)
 
 fn number(value: Int) JsonValue:
 	return JsonValue.NumberValue(f"{value}")
@@ -595,10 +591,9 @@ fn clipped(value: JsonValue) String:
 // The text of `ms version`, stored in each expectation for provenance.
 fn oracle_version(ms: String) String:
 	result := run(ms, ["version"], RunOptions(timeout: seconds(30))).wait()
+	if out := result: return text_of(out.stdout).trim().clone()
 
-	match result:
-		ok(out): return text_of(out.stdout).trim().clone()
-		error(_): return ""
+	return ""
 
 // Why `observed` cannot be recorded, or "".
 fn unrecordable(observed: JsonValue) String:

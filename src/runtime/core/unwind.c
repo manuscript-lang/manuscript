@@ -149,9 +149,16 @@ static void do_nothing(uint8_t *argument) { (void)argument; } // NOLINT(readabil
 
 void ms_cleanup_cancel(size_t handle) {
   MsTaskHdr *const hdr = &running()->hdr;
-  if (handle > 0 && handle <= hdr->cleanups.len) {
-    hdr->cleanups.ptr[handle - 1] = (MsCleanup){.function = do_nothing, .argument = NULL};
+  if (handle == 0 || handle > hdr->cleanups.len) {
+    return;
   }
+  if (handle == hdr->cleanups.len) {
+    /* The innermost entry leaves the stack: a loop that cancels and registers again each pass reuses one slot. */
+    hdr->cleanups.len--;
+    prune_retired(hdr);
+    return;
+  }
+  hdr->cleanups.ptr[handle - 1] = (MsCleanup){.function = do_nothing, .argument = NULL};
 }
 
 void ms_cleanup_remove(size_t handle) {

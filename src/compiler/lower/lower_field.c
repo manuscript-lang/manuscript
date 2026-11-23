@@ -79,12 +79,12 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
 /* Stores `field`, the changed value of the field `fn_take_field` took, back: the old ones share its storage, so they
  * are not dropped. */
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {
-  return fn_put_field_chain(fn, place, record, field, NULL);
+  return fn_put_field_chain(fn, place, record, field, NULL, true);
 }
 
 /* The same, and `*updated_record` is the root record with the field changed: a later field of the same root is put
- * into that, not into the record the first one replaced. */
-bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record) {
+ * into that, not into the record the first one replaced; only the last of them stores the record (`store`). */
+bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record, bool store) {
   const MsExpr *fields[FIELD_PATH_MAX];
   const MsExpr *root = NULL;
   uint32_t count = 0;
@@ -106,7 +106,7 @@ bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirVa
   if (updated_record != NULL) {
     *updated_record = updated;
   }
-  return fn_put_place(fn, root, updated);
+  return !store || fn_put_place(fn, root, updated);
 }
 
 /* The field `place` of the root record `record`, which an earlier field of the same root already took out of its variable. */

@@ -306,7 +306,9 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
     }
   }
   ok = ok && fn_stmts(&fn, lambda.expr->u.lambda.body) && !fn.failed;
-  if (!fn.terminated) {
+  if (!fn.terminated && !fn_end_is_reachable(&fn)) {
+    mir_b_unreachable(&fn.b); /* every path of the body ended in a loop or a call that does not return */
+  } else if (!fn.terminated) {
     fn_scope_unwind(&fn, 0);
     mir_b_ret(&fn.b, MIR_NONE);
   }

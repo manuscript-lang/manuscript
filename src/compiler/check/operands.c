@@ -1,5 +1,6 @@
 /* compiler/check/operands.c: operands that cannot work whatever their values: a non-Bool under `not`, `and` or
  * `or`, and integer arithmetic over literals that always faults (division by zero, overflow). */
+#include "base/wide.h"
 #include "compiler/check/body.h"
 
 #include <math.h>
@@ -78,24 +79,6 @@ static bool int_range(const Body *body, MsTy ty, Range *out) {
 }
 
 /* The value of an integer literal: decimal, `0x` or `0b`, with `_` separators. */
-// Signed 128-bit multiply with overflow detection through the unsigned builtin, which expands inline;
-// the signed builtin calls __muloti4, which glibc's libgcc does not provide.
-static bool wide_mul(Wide a, Wide b, Wide *out) {
-  const bool negative = (a < 0) != (b < 0);
-  const unsigned __int128 ua = a < 0 ? -(unsigned __int128)a : (unsigned __int128)a;
-  const unsigned __int128 ub = b < 0 ? -(unsigned __int128)b : (unsigned __int128)b;
-  unsigned __int128 product;
-  if (__builtin_mul_overflow(ua, ub, &product)) {
-    return false;
-  }
-  const unsigned __int128 limit = (unsigned __int128)1 << 127;
-  if (product > limit || (product == limit && !negative)) {
-    return false;
-  }
-  *out = negative ? (Wide)(0 - product) : (Wide)product;
-  return true;
-}
-
 static bool literal_value(MsSpan text, Wide *out) {
   unsigned base = 10;
   size_t at = 0;
@@ -110,7 +93,7 @@ static bool literal_value(MsSpan text, Wide *out) {
     if (c == '_') {
       continue;
     }
-    if (digit < 0 || (unsigned)digit >= base || !wide_mul(value, (Wide)base, &value) ||
+    if (digit < 0 || (unsigned)digit >= base || !ms_i128_mul(value, (Wide)base, &value) ||
         __builtin_add_overflow(value, (Wide)digit, &value)) {
       return false;
     }
@@ -123,7 +106,7 @@ static bool apply(MsBinaryOp op, Wide a, Wide b, Wide *out) {
   switch (op) {
     case MS_B_ADD: return !__builtin_add_overflow(a, b, out);
     case MS_B_SUB: return !__builtin_sub_overflow(a, b, out);
-    case MS_B_MUL: return wide_mul(a, b, out);
+    case MS_B_MUL: return ms_i128_mul(a, b, out);
     case MS_B_DIV: return b != 0 && (*out = a / b, true);
     case MS_B_REM: return b != 0 && (*out = a % b, true);
     default: return false;

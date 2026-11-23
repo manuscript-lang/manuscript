@@ -12,7 +12,10 @@ static uint32_t declaration_of(const MsCheckProgram *program, const MsCheckDiag 
       found = index + 1;
     }
   }
-  return found;
+  /* An unannotated constant takes its type from its value while the declarations are read: ahead of the bodies and of
+   * the annotated constants, which are checked against their annotation after them. */
+  const bool annotated_constant = found != 0 && tree->decls[found - 1]->kind == MS_D_CONST && tree->decls[found - 1]->u.konst.ty != NULL;
+  return annotated_constant ? found + tree->ndecls : found;
 }
 
 static bool in_body(const MsCheckDiag *diag) {

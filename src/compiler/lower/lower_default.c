@@ -1,9 +1,12 @@
-/* compiler/lower/lower_default.c: record field defaults. A field written `port: Int = 8080` has a function
+/* compiler/lower/lower_default.c: argument defaults of a call, and record field defaults. A field written `port: Int = 8080` has a function
  * `fn(out, record) Void` that builds the default in place at `out`; the shape table of the type names it, so a
  * parse that finds no member builds the default as a call of the type does. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/natives/native_sigs.h"
+#include "compiler/own/taken.h"
+#include "compiler/syntax/walk.h"
 
 uint32_t lower_field_default(Lower *cx, uint32_t module, const MsExpr *expr, MirTy ty, MirTy record, const LowerSubst *subst) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, 3);
@@ -86,4 +89,172 @@ bool lower_default_bodies(Lower *cx, bool *progressed) {
     }
   }
   return true;
+}
+
+/* The parameter or field of declaration `decl` whose default expression is node `node`. */
+static const MsParam *declared_default(const MsDecl *decl, const MsParams *method, uint32_t case_index, MsNode node) {
+  const MsParams *list = method;
+  if (method != NULL) {
+    /* a method's parameters are its own */
+  } else if (decl != NULL && decl->kind == MS_D_FN) {
+    list = &decl->u.fn.params;
+  } else if (decl != NULL && decl->kind == MS_D_TYPE) {
+    list = &decl->u.type.fields;
+  } else if (decl != NULL && decl->kind == MS_D_ENUM && case_index < decl->u.enumeration.cases.len) {
+    list = &decl->u.enumeration.cases.ptr[case_index]->fields;
+  }
+  for (uint32_t index = 0; list != NULL && index < list->len; index++) {
+    if (list->ptr[index]->def != NULL && list->ptr[index]->def->id == node) {
+      return list->ptr[index];
+    }
+  }
+  return NULL;
+}
+
+/* Whether the default `expr`, written in module `module`, is the call `caller_site()` of `@std/test/test.ms`. */
+static bool is_caller_site(const LowerFn *fn, uint32_t module, const MsExpr *expr) {
+  const Lower *cx = fn->cx;
+  if (expr->kind != MS_E_CALL) {
+    return false;
+  }
+  const MsCall *call = fn_find_call(&cx->program->modules.ptr[module].facts, expr->id);
+  if (call == NULL || call->arg_count != 0) {
+    return false;
+  }
+  const MsSymbol *symbol = &cx->program->symbols.ptr[fn_symbol_at(cx, call->callee.decl)];
+  const MsSpan file = ms_names_span(cx->program->names, cx->program->modules.ptr[symbol->module].file);
+  return ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "caller_site") &&
+         ms_span_ends_with(file, ms_span_of_text("test/test.ms"));
+}
+
+/* `caller_site()` as a default: the position (`file:line:col`) of the call that omitted the argument. */
+static MirValue caller_position(LowerFn *fn) {
+  const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
+  const MirLoc here = fn->stmt_loc.line != 0 ? fn->stmt_loc : fn->b.loc;
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, here.line, here.col);
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_strbuild_span(&text))};
+  ms_strbuild_free(&text);
+  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
+static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected);
+
+LowerOuterEnv fn_env_capture(const LowerFn *fn) {
+  return (LowerOuterEnv){fn->facts, fn->module_index, fn->file, fn->subst, fn_locals_save(fn), fn->default_call, fn->default_args,
+                         fn->default_params, fn->default_has_self};
+}
+
+void fn_env_install(LowerFn *fn, const LowerOuterEnv *env) {
+  fn->facts = env->facts;
+  fn->module_index = env->module_index;
+  fn->file = env->file;
+  fn->subst = env->subst;
+  fn_locals_restore(fn, &env->locals);
+  fn->default_call = env->default_call;
+  fn->default_args = env->default_args;
+  fn->default_params = env->default_params;
+  fn->default_has_self = env->default_has_self;
+}
+
+/* A default argument is written in the callee's module: its names and types come from that module's facts. */
+MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected, const LowerOuterEnv *outer) {
+  if (fn->nouter == LOWER_MAX_DEFAULT_DEPTH) {
+    (void)fn_fail(fn, "default arguments nest too deeply");
+    return MIR_NONE;
+  }
+  fn->outer[fn->nouter++] = *outer; /* what the caller's writebacks put their values back in */
+  const MirValue value = default_argument(fn, call, arg, expected);
+  fn->nouter--;
+  return value;
+}
+
+static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
+  const MsFacts *saved_facts = fn->facts;
+  const uint32_t saved_file = fn->file;
+  const uint32_t saved_module = fn->module_index;
+  fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
+  fn->file = lower_file(fn->cx, arg->node.module);
+  fn->module_index = arg->node.module;
+  const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
+                                    ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
+                                    : NULL;
+  const MsSymbolId callee_id = method != NULL ? 0 : fn_symbol_at(fn->cx, call->callee.decl);
+  const MsDecl *callee_decl = callee_id != 0 ? fn->cx->program->symbols.ptr[callee_id].decl : NULL;
+  const MsParam *param = declared_default(callee_decl, fn->default_params != NULL ? fn->default_params : method != NULL ? &method->source->func.params : NULL,
+                                          call->callee.index, arg->node.node);
+  if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
+    fn->facts = saved_facts;
+    fn->file = saved_file;
+    fn->module_index = saved_module;
+    return caller_position(fn);
+  }
+  const MirTy saved_hint = fn->hint;
+  fn->hint = expected;
+  /* A default is written over the callee's type variables (`items: List[T?] = []`): this call's type arguments stand
+   * for them while it is lowered. */
+  const LowerSubst saved_subst = fn->subst;
+  MsTy *own_args = NULL;
+  const MsSymbol *owner = callee_id != 0 ? &fn->cx->program->symbols.ptr[callee_id] : NULL;
+  const MsTy *own_vars = owner != NULL ? fn->cx->program->symbol_vars.ptr + owner->var_at : NULL;
+  uint32_t own_count = owner != NULL ? owner->var_count : 0;
+  if (method != NULL && method->variables.len >= method->shared) { /* a method's own variables follow its receiver's */
+    own_vars = method->variables.ptr + method->shared;
+    own_count = (uint32_t)(method->variables.len - method->shared);
+  }
+  if (fn->default_params != NULL && fn->default_vars.count != 0) {
+    fn->subst = fn->default_vars; /* a method value: the variables it was bound with */
+  } else if (own_count != 0 && own_count == call->type_arg_count) {
+    own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, own_count);
+    for (uint32_t at = 0; at < own_count; at++) {
+      own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
+    }
+    fn->subst = (LowerSubst){own_vars, own_args, own_count};
+  }
+  if (method != NULL && method->shared != 0 && call->arg_count > ms_ty_param_count(&fn->cx->program->types, call->callee_ty) &&
+      call->args[0].source == MS_ARG_WRITTEN && fn->default_params == NULL) {
+    /* A default over the receiver's type variables (`value: T = self.value.clone()`): the receiver's own type
+     * arguments stand for them. */
+    MsTyTable *types = &fn->cx->program->types;
+    const MsTy receiver = ms_ty_subst(types, ms_facts_type(saved_facts, call->args[0].node.node), saved_subst.vars,
+                                      saved_subst.args, saved_subst.count);
+    const size_t have = ms_ty_arg_count(types, receiver);
+    if (have >= method->shared) {
+      const size_t total = method->shared + fn->subst.count;
+      MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, total * 2 + 1);
+      for (size_t at = 0; at < method->shared; at++) {
+        vars[at] = method->variables.ptr[at];
+        vars[total + at] = ms_ty_args(types, receiver)[at];
+      }
+      for (size_t at = 0; at < fn->subst.count; at++) {
+        vars[method->shared + at] = fn->subst.vars[at];
+        vars[total + method->shared + at] = fn->subst.args[at];
+      }
+      fn->subst = (LowerSubst){vars, vars + total, total};
+    }
+  }
+  /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
+   * would let the default's `var _resource` stand for a caller local with the same number. */
+  const LowerFnLocals saved_locals = fn_locals_save(fn);
+  const uint32_t counted = fn->facts->local_counts != NULL && call->callee.kind != MS_REF_LOCAL ? fn->facts->local_counts[call->callee.decl.node] : 0;
+  fn_locals_fresh(fn, counted > 16 ? counted : 16);
+  const MsParams *outer_params = fn->default_params; /* a call inside the default is an ordinary call */
+  fn->default_params = NULL;
+  /* The default runs as the callee's, so a fault in it shows the callee's frame, called from this line. */
+  const MsName callee_name = method != NULL ? lower_trace_name(fn->cx, method->receiver, method->name)
+                             : owner != NULL ? lower_trace_name(fn->cx, MS_TY_NONE, owner->name) : MS_NAME_EMPTY;
+  const uint32_t outer_scope = fn->b.loc.scope;
+  if (callee_name != MS_NAME_EMPTY) {
+    (void)mir_b_open_scope(&fn->b, callee_name, fn->file, fn->b.loc.line);
+  }
+  const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  mir_b_close_scope(&fn->b, outer_scope);
+  fn->default_params = outer_params;
+  fn_locals_restore(fn, &saved_locals);
+  fn->subst = saved_subst;
+  fn->hint = saved_hint;
+  fn->facts = saved_facts;
+  fn->file = saved_file;
+  fn->module_index = saved_module;
+  return value;
 }

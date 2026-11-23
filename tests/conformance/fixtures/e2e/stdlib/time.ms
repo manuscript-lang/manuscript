@@ -7,10 +7,12 @@ import (
 	local_zone,
 	microseconds,
 	milliseconds,
+	minutes,
 	monotonic,
 	nanoseconds,
 	now,
 	parse_timestamp,
+	seconds,
 	sleep,
 	timestamp from "@std/time.ms",
 )
@@ -171,3 +173,9 @@ test "timestamp parsing rejects oversized fractions and suffixes":
 		"2024-02-29T12:30:45." + "0".repeat(1048576) + "Z",
 	]:
 		expect_equal(parse_timestamp(text), invalid)?
+
+test "Int unit constructors accept the widest count that fits":
+	expect_equal(153722867.minutes(), minutes(153722867))?
+	expect_equal(9223372036.seconds(), seconds(9223372036))?
+	expect_equal(9223372036854.milliseconds(), milliseconds(9223372036854))?
+	expect_equal((-9223372036).seconds(), seconds(-9223372036))?

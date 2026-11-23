@@ -34,7 +34,7 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
     argv[argc++] = ms_span_of_text("-verify-each");
   }
   argv[argc++] = triple_flag;
-  argv[argc++] = ms_span_of_text("-passes=default<O3>");
+  argv[argc++] = ms_span_of_text(options->debug ? "-passes=default<O2>" : "-passes=default<O3>");
   argv[argc++] = input;
   argv[argc++] = ms_span_of_text("-o");
   argv[argc++] = bitcode;
@@ -61,7 +61,7 @@ static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   MsSpan argv[12];
   size_t argc = 0;
   argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed && !size_tiered ? "-O3" : "-O0");
+  argv[argc++] = ms_span_of_text(options->speed && !size_tiered ? (options->debug ? "-O2" : "-O3") : "-O0");
   if (size_tiered) {
     argv[argc++] = ms_span_of_text("-global-isel=0");
   }

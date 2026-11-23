@@ -14,7 +14,6 @@ enum {
   NANOS_PER_MILLISECOND = 1000000,
   MONOTONIC_DOMAIN = 1, /* time.clock() */
 };
-#define NANOS_PER_MINUTE (INT64_C(60) * MS_NANOS_PER_SECOND)
 
 MS_NORETURN static void fault_with(const char *format, ...) MS_PRINTF(1, 2);
 
@@ -67,16 +66,6 @@ static int64_t checked_subtract(Operation op, int64_t left, int64_t right) {
   return difference;
 }
 
-static int64_t duration_of(const char *operation, int64_t n, int64_t scale) {
-  const int64_t low = INT64_MIN / scale;
-  const int64_t high = INT64_MAX / scale;
-  if (n < low || n > high) {
-    fault_with("%s: value must be between %" PRId64 " and %" PRId64 ", found %" PRId64, operation, low, high,
-               n);
-  }
-  return n * scale;
-}
-
 int64_t msstd_time_duration_add(int64_t left, int64_t other) {
   return checked_add((Operation){"Duration.add", "value", "other"}, left, other);
 }
@@ -91,18 +80,6 @@ int64_t msstd_time_duration_minus(int64_t left, int64_t right) {
 
 int64_t msstd_time_duration_subtract(int64_t left, int64_t other) {
   return checked_subtract((Operation){"Duration.subtract", "value", "other"}, left, other);
-}
-
-int64_t msstd_time_int_milliseconds(int64_t n) {
-  return duration_of("Int.milliseconds", n, NANOS_PER_MILLISECOND);
-}
-
-int64_t msstd_time_int_seconds(int64_t n) {
-  return duration_of("Int.seconds", n, MS_NANOS_PER_SECOND);
-}
-
-int64_t msstd_time_int_minutes(int64_t n) {
-  return duration_of("Int.minutes", n, NANOS_PER_MINUTE);
 }
 
 int64_t msstd_time_duration_multiply(int64_t value, int64_t factor) {

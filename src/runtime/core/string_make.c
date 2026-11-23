@@ -6,6 +6,7 @@
 #include "base/utf8.h"
 #include "runtime/core/fault.h"
 #include "runtime/core/string.h"
+#include "runtime/core/string_join.h"
 #include "runtime/core/string_support.h"
 
 /* ---- shared constructors ---- */
@@ -142,29 +143,6 @@ void msrt_string_concat(const MsString *a, const MsString *b, MsString *out) {
   }
 }
 
-void msrt_string_concat3(const MsString *a, const MsString *b, const MsString *c, MsString *out) {
-  const MsString *const parts[] = {a, b, c};
-  *out = join_strings(parts, MS_COUNT_OF(parts));
-}
-
-void msrt_string_concat4(const MsString *a, const MsString *b, const MsString *c, const MsString *d,
-                         MsString *out) {
-  const MsString *const parts[] = {a, b, c, d};
-  *out = join_strings(parts, MS_COUNT_OF(parts));
-}
-
-void msrt_string_concat5(const MsString *a, const MsString *b, const MsString *c, const MsString *d,
-                         const MsString *e, MsString *out) {
-  const MsString *const parts[] = {a, b, c, d, e};
-  *out = join_strings(parts, MS_COUNT_OF(parts));
-}
-
-void msrt_string_concat6(const MsString *a, const MsString *b, const MsString *c, const MsString *d,
-                         const MsString *e, const MsString *f, MsString *out) {
-  const MsString *const parts[] = {a, b, c, d, e, f};
-  *out = join_strings(parts, MS_COUNT_OF(parts));
-}
-
 /* ---- append in place ---- */
 
 /* An owned string records, in bits 31 to 60 of its second word, how many bytes its block holds past the text
@@ -238,6 +216,33 @@ MsString msrt_string_append_parts(const MsString *a, const MsSpan *parts, size_t
     cursor += parts[index].len;
   }
   return with_spare((MsString){.owned = block, .tagged = total}, spare);
+}
+
+/* `frame->text` grown by `extra` bytes, for an f-string that starts with a string it takes. An owned string with the
+ * room grows in place. Otherwise the text moves into a block with room to grow again, and the old block is kept
+ * (`pending`) until `msrt_string_close`: the parts that follow may be views into the old text. */
+uint8_t *msrt_string_extend(MsJoinFrame *frame, size_t extra) {
+  frame->pending = NULL;
+  const MsString first = frame->text;
+  const size_t length = ms_string_length(&first);
+  const size_t total = msrt_string_total(length, extra);
+  if (msrt_string_owns(&first) && length != 0 && recorded_spare(&first) >= extra) {
+    frame->text = with_spare((MsString){.owned = first.owned, .tagged = total}, recorded_spare(&first) - extra);
+    return first.owned + length;
+  }
+  uint8_t *block = NULL;
+  if (total > MS_STRING_INLINE_MAX) {
+    block = ms_alloc(total + total / 2);
+    frame->text = with_spare((MsString){.owned = block, .tagged = total}, total / 2);
+  } else {
+    block = msrt_string_open(total, &frame->text);
+  }
+  const MsSpan old = msrt_text(&first);
+  if (old.len != 0) {
+    __builtin_memcpy(block, old.ptr, old.len);
+  }
+  frame->pending = msrt_string_owns(&first) ? first.owned : NULL;
+  return block + length;
 }
 
 /* `a + b` where the caller gives `a` up. */

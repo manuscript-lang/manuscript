@@ -14,6 +14,7 @@ typedef struct Match {
   MirBlock join;
   bool joined; /* an arm falls through to the join */
   bool consumed; /* the scrutinee is a name the match moves: its arms own the payload they bind */
+  bool owned_resource; /* ... a scope-owned value holding a resource: only an arm that binds every field takes them */
 } Match;
 
 static bool is_literal(const MsExpr *path) {
@@ -115,6 +116,13 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   (void)mir_b_emit(&fn->b, MOP_AltRelease, &match->scrutinee, 1, taken, MIR_NONE);
 }
 
+/* A binding that only views the scrutinee's payload: handing it on copies it. */
+static void view_binding(LowerFn *fn, uint32_t local, MirTy ty) {
+  if (fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, ty)) {
+    fn->local_owns[local] = 2;
+  }
+}
+
 static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
   const MirModule *module = fn->cx->module;
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
@@ -123,6 +131,7 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
       const MirTy elem = mir_ty_data(module, match->ty)->elem;
       const MirValue item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
       mir_b_def_var(&fn->b, fn_local(fn, ref->local, elem), item);
+      view_binding(fn, ref->local, elem);
     }
     return;
   }
@@ -132,6 +141,7 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
     const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
     const MirValue field = mir_b_emit(&fn->b, MOP_AltGet, &match->scrutinee, 1, imm, def->fields[at].ty);
     mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
+    view_binding(fn, ref->local + at, def->fields[at].ty);
   }
 }
 
@@ -158,7 +168,9 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
     bind_concrete(fn, match, arm);
   }
   if (named && arm->bindings.len > 0) {
-    if (match->consumed && !(match->kind == MK_OPT && kase != 1)) {
+    const bool takes_all = match->owned_resource && (match->kind == MK_OPT ||
+                           arm->bindings.len == fn->cx->module->alts.ptr[mir_ty_data(fn->cx->module, match->ty)->id].cases[kase].nfields);
+    if ((match->consumed || takes_all) && !(match->kind == MK_OPT && kase != 1)) {
       take_payload(fn, match, arm, kase);
     } else {
       bind_payload(fn, match, arm, kase);
@@ -288,6 +300,8 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
                     (subject->kind == MS_E_CALL && fn_fresh_owner(fn, match.scrutinee))) &&
                    (match.kind == MK_ALT || match.kind == MK_OPT) &&
                    (subject->kind == MS_E_CALL || !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id)));
+  match.owned_resource = !match.consumed && subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE &&
+                         (match.kind == MK_ALT || match.kind == MK_OPT);
   MirValue taken = MIR_NONE;
   if (subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
       fn_closing_move(fn, subject, match.scrutinee, &taken)) {
