@@ -31,7 +31,9 @@ endif()
 set(MS_LEAK_FIXTURES accept/bind-collection-resource-read-in-place accept/interface-box-freed-with-resource
   stdlib/net-close-releases-socket
   accept/call-depth.test accept/faulting-close-in-list-releases-buffer.test accept/pipe-flow.test
-  stdlib/promise-semantics.test accept/interface-views.test
+  stdlib/promise-semantics.test accept/interface-views.test accept/recursive-types.test stdlib/tree.test
+  stdlib/collections.test stdlib/yaml-regressions.test accept/source-borrowed-wrapper-temporary-cleanup.test
+  accept/faulting-close-releases-parts.test stdlib/http-exchange-helpers.test
   stdlib/http-close-drains stdlib/http-fault-handler-frees-exchange-view stdlib/promise-closes-captured-pipe
   stdlib/cancelled-file-read-frees-buffer stdlib/cancelled-dns-query-frees-state
   stdlib/cancelled-serve-start-frees-handler)
