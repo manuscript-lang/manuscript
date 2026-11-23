@@ -49,7 +49,8 @@ MsHttpUrl *ms_http_url_parse(MsSpan text) {
   }
   CURLU *handle = curl_url();
   char *copy = terminated(text);
-  const CURLUcode set = curl_url_set(handle, CURLUPART_URL, copy, 0);
+  /* The path goes on the wire as written: the server decides what `..` and `%2F` mean. */
+  const CURLUcode set = curl_url_set(handle, CURLUPART_URL, copy, CURLU_PATH_AS_IS);
   ms_free(copy);
   if (set != CURLUE_OK) {
     curl_url_cleanup(handle);
