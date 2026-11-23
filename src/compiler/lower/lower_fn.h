@@ -108,6 +108,7 @@ typedef struct LowerFn {
   MirValue last_receiver; /* the receiver of the method value just lowered */
   bool has_last_receiver;
   MirTy ret;
+  MsTy ret_checked; /* the checked result type of a named function (MS_TY_NONE for a lambda): a pending result closes through it */
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   bool open_closes[LOWER_MAX_SCOPES]; /* whether the scope at that depth owns a slot that closes where it ends */
