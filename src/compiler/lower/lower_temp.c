@@ -167,13 +167,13 @@ MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, c
   return fn_own_temporary(fn, checked, value);
 }
 
-/* `xs.remove(i)`, `xs.splice(..)`, `m.add(k, v)`, `m.remove(k)`, `m.clear()` over resources: the natives drop what they
+/* `xs.remove(i)`, `xs.splice(..)`, `xs.set(i, v)`, `m.add(k, v)`, `m.remove(k)`, `m.clear()` over resources: the natives drop what they
  * take out of the collection, so the values come out and close where the statement ends. */
 static bool drops_resources(LowerFn *fn, const MsExpr *callee) {
   MsTyTable *types = &fn->cx->program->types;
   const MsSpan name = ms_names_span(fn->cx->program->names, callee->u.member.name);
   if (!ms_span_is_text(name, "remove") && !ms_span_is_text(name, "splice") && !ms_span_is_text(name, "add") &&
-      !ms_span_is_text(name, "clear")) {
+      !ms_span_is_text(name, "clear") && !ms_span_is_text(name, "set")) {
     return false;
   }
   const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, callee->u.member.left->id), fn->subst.vars, fn->subst.args,
