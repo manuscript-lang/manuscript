@@ -272,7 +272,7 @@ static uint32_t drop_thunk(Lower *cx, MirTy ty) {
 
 /* The silent close thunk for the type `checked` (in the function's terms), with its exits made. A type that is not
  * Closeable closes its parts. */
-static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
+static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint32_t *silent) {
   Lower *cx = fn->cx;
   const MsTy concrete = ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
   MsCloser plain;
@@ -280,7 +280,7 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
     *silent = drop_thunk(cx, ty);
     return *silent != MIR_NONE || fn_fail(fn, "the drop of a variable could not be lowered");
   }
-  const bool parts = !ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT;
+  const bool parts = fields_only || (!ms_check_closeable(cx->program, concrete) && ms_ty_kind(&cx->program->types, concrete) != MS_TY_CONTRACT);
   const bool iface = ms_ty_kind(&cx->program->types, concrete) == MS_TY_CONTRACT;
   const uint32_t method = iface ? lower_close_iface(cx, concrete)
                           : parts ? lower_close_parts(cx, concrete) : lower_named_method(cx, concrete, "close");
@@ -294,10 +294,10 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
   return true;
 }
 
-bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var) {
+bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
-  if (!prepare(fn, checked, ty, &silent)) {
+  if (!prepare(fn, checked, ty, fields_only, &silent)) {
     return false;
   }
   const MirValue slot = own_slot(fn, ty, value, silent);
@@ -319,6 +319,15 @@ void fn_init_closing(LowerFn *fn) {
   }
 }
 
+bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old) {
+  uint32_t silent = MIR_NONE;
+  if (!prepare(fn, checked, mir_b_ty(&fn->b, old), false, &silent)) {
+    return false;
+  }
+  (void)own_slot(fn, mir_b_ty(&fn->b, old), old, silent); /* closed where the scope ends */
+  return !fn->failed;
+}
+
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   if (fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !mir_needs_drop(fn->cx->module, ty)) {
@@ -333,7 +342,7 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
     return !fn->failed;
   }
   uint32_t silent = MIR_NONE;
-  if (!prepare(fn, checked, ty, &silent)) {
+  if (!prepare(fn, checked, ty, false, &silent)) {
     return false;
   }
   if (mir_needs_drop(fn->cx->module, ty)) {
@@ -361,7 +370,7 @@ bool fn_temp_closes(LowerFn *fn, MsTy checked) {
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
-  if (!prepare(fn, checked, ty, &silent)) {
+  if (!prepare(fn, checked, ty, false, &silent)) {
     return value;
   }
   if (mir_needs_drop(fn->cx->module, ty)) {
@@ -378,7 +387,7 @@ MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
   if (!fn_temp_closes(fn, checked) || fn_type(fn, checked) != ty ||
-      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) || !prepare(fn, checked, ty, &silent)) {
+      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) || !prepare(fn, checked, ty, false, &silent)) {
     return MIR_NONE;
   }
   if (mir_needs_drop(fn->cx->module, ty)) {
