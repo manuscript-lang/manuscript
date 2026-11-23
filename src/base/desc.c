@@ -329,9 +329,26 @@ void ms_list_clone_desc(const MsList *source, const MsTypeDesc *element, MsList 
   *out = copy;
 }
 
+/* Whether equal elements are equal bytes, so a list of them compares with one memcmp. */
+static bool elements_compare_as_bytes(const MsTypeDesc *element) {
+  switch ((MsKind)element->kind) {
+  case MS_KIND_INT:
+  case MS_KIND_BOOL:
+    return true;
+  case MS_KIND_POD:
+  case MS_KIND_CUSTOM:
+    return element->eq == NULL;
+  default:
+    return false;
+  }
+}
+
 bool ms_list_equal_desc(const MsList *a, const MsList *b, const MsTypeDesc *element) {
   if (a->len != b->len) {
     return false;
+  }
+  if (elements_compare_as_bytes(element)) {
+    return a->len == 0 || element->size == 0 || __builtin_memcmp(a->ptr, b->ptr, a->len * element->size) == 0;
   }
   for (size_t i = 0; i < a->len; i++) {
     if (!ms_slot_equal(element, ms_list_slot(a, element, i), ms_list_slot(b, element, i))) {
