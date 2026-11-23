@@ -113,7 +113,7 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
   MirLayouts *layouts = build->layouts;
   const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
   shape->kind = MS_SHAPE_RECORD;
-  shape->flags |= (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
+  shape->flags |= (def->opaque ? MS_SHAPE_NAME_ONLY : 0) | (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
   uint32_t *kinds = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
@@ -178,7 +178,7 @@ static void alternative_shape(ShapeBuild *build, MirTy ty, const MirTyData *data
   const bool boxed = mir_boxed_block_size(layouts, ty, &block_size);
   const uint32_t *offsets = alt_offsets(build, ty, boxed);
   shape->kind = MS_SHAPE_ALTERNATIVE;
-  shape->flags |= (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
+  shape->flags |= (def->opaque ? MS_SHAPE_NAME_ONLY : 0) | (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   if (mir_json_tree_shape(build->module, ty)) {
     shape->flags |= MS_SHAPE_JSON_TREE;
   }

@@ -273,6 +273,10 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
     append_owned(text, &piece);
     return;
   }
+  if ((shape->flags & MS_SHAPE_NAME_ONLY) != 0) {
+    ms_strbuild_append_text(&text->out, ms_shape_text(text->table, shape->name));
+    return;
+  }
   switch (shape->kind) {
   case MS_SHAPE_LIST:
     emit_list(text, shape, value, depth);
