@@ -151,6 +151,8 @@ void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty);
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty);
+/* An Int literal must fit a signed 64-bit integer (a negated one may reach the minimum): a larger one is a BigInt. */
+void body_check_int64_literal(Body *body, const MsExpr *number, bool negated);
 /* A float literal must be finite in its type: binary32 when `ty` is Float32, else binary64. */
 void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty);
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand);

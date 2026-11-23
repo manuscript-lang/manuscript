@@ -194,6 +194,17 @@ void body_check_literal_range(Body *body, const MsExpr *number, bool negated, Ms
   ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE, ms_strbuild_finish(&out));
 }
 
+void body_check_int64_literal(Body *body, const MsExpr *number, bool negated) {
+  Wide value = 0;
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  if (!reporting(body) || (literal_value(text, &value) && (value <= (Wide)INT64_MAX || (negated && value == (Wide)INT64_MAX + 1)))) {
+    return;
+  }
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("Int literal is outside signed 64-bit range; use a value between "
+                                                      "-9223372036854775808 and 9223372036854775807, or BigInt")));
+}
+
 void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty) {
   const MsSpan text = ms_names_span(body->program->names, number->u.sym);
   char buffer[128];
