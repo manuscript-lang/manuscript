@@ -361,28 +361,6 @@ static void fail_error(MsArena *arena, MsSpan filename, const MsProjectError *er
   fail_graph(arena, out, resolution(filename, start_position(), ms_project_explain(arena, error, (MsSpan){0})));
 }
 
-/* The absolute, cleaned spelling of `filename`. */
-static bool absolute_name(MsArena *arena, MsSpan filename, MsSpan *absolute, MsProjectError *error) {
-  MsStrBuild joined = ms_strbuild_new();
-  if (ms_path_is_absolute(filename)) {
-    ms_strbuild_append(&joined, filename);
-  } else {
-    MsString cwd = ms_string_empty();
-    if (!ms_dir_current(&cwd)) {
-      ms_strbuild_free(&joined);
-      ms_project_error_path(error, "getwd", ms_span_of_text("."), errno);
-      return false;
-    }
-    ms_path_append_joined(&joined, ms_string_span(&cwd), filename);
-    ms_string_release(&cwd);
-  }
-  MsStrBuild cleaned = ms_strbuild_new();
-  ms_path_clean(&cleaned, ms_strbuild_span(&joined));
-  ms_strbuild_free(&joined);
-  *absolute = ms_message_take_builder(arena, &cleaned);
-  return true;
-}
-
 static bool canonical_root(MsArena *arena, MsSpan absolute, MsSpan *root, MsProjectError *error) {
   MsString real = ms_string_empty();
   const MsSpan directory = ms_path_parent(absolute);
@@ -470,7 +448,7 @@ static void add_discovered(Loader *loader, MsSpan file) {
 static bool real_file(MsArena *arena, MsSpan file, MsSpan *real, MsProjectError *error) {
   MsSpan absolute = {0};
   MsSpan directory = {0};
-  if (!absolute_name(arena, file, &absolute, error) || !canonical_root(arena, absolute, &directory, error)) {
+  if (!ms_project_absolute_path(arena, file, &absolute, error) || !canonical_root(arena, absolute, &directory, error)) {
     return false;
   }
   MsStrBuild joined = ms_strbuild_new();
@@ -569,7 +547,7 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
   MsSpan root = {0};
   MsManifest manifest = {0};
   bool governed = false;
-  if (!absolute_name(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error) ||
+  if (!ms_project_absolute_path(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error) ||
       !read_governing_manifest(arena, absolute, root, &manifest, &governed, &error)) {
     out->source_root = manifest.root;
     fail_error(arena, filename, &error, out);

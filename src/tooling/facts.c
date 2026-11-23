@@ -275,14 +275,14 @@ static MsSpan fact_key(MsArena *arena, MsSpan file, MsSpan kind, MsSpan name) {
   return ms_message_format(arena, "%S#%S#%S", file, kind, name);
 }
 
-static MsSpan entity_key(const Builder *b, MsSpan id) {
+MsSpan ms_entity_key(const MsInspection *inspection, const MsSpan *keys, MsSpan id) {
   size_t low = 0;
-  size_t high = b->inspection->entities.len;
+  size_t high = inspection->entities.len;
   while (low < high) {
     const size_t mid = low + (high - low) / 2;
-    const int order = ms_span_compare(b->inspection->entities.ptr[mid].id, id);
+    const int order = ms_span_compare(inspection->entities.ptr[mid].id, id);
     if (order == 0) {
-      return b->keys[mid];
+      return keys[mid];
     }
     if (order < 0) {
       low = mid + 1;
@@ -320,12 +320,12 @@ static void add_entities(Builder *b) {
 static void add_edges(Builder *b) {
   for (size_t i = 0; i < b->inspection->calls.len; i++) {
     const MsCallSite *call = &b->inspection->calls.ptr[i];
-    const MsSpan owner_key = entity_key(b, call->owner);
+    const MsSpan owner_key = ms_entity_key(b->inspection, b->keys, call->owner);
     if (owner_key.len == 0) {
       continue;
     }
     MsFact *owner = fact_mut(b->model, owner_key);
-    const MsSpan target_key = entity_key(b, call->target);
+    const MsSpan target_key = ms_entity_key(b->inspection, b->keys, call->target);
     if (target_key.len > 0) {
       append_unique(b->arena, &owner->calls, target_key);
     } else {
@@ -694,15 +694,15 @@ MsFactModel ms_facts_collect(MsArena *arena, MsCheckProgram *program) {
   return model;
 }
 
-MsSpan ms_effects_joined(MsArena *arena, const MsSpans *effects) {
-  if (effects->len == 0) {
-    return ms_span_of_text("none");
-  }
+MsSpan ms_spans_joined(MsArena *arena, const MsSpans *list, const char *separator) {
   MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < effects->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : "+");
-    ms_strbuild_append(&out, effects->ptr[i]);
+  for (size_t i = 0; i < list->len; i++) {
+    ms_strbuild_append_text(&out, i == 0 ? "" : separator);
+    ms_strbuild_append(&out, list->ptr[i]);
   }
-  const MsSpan joined = ms_message_take_builder(arena, &out);
-  return joined;
+  return ms_message_take_builder(arena, &out);
+}
+
+MsSpan ms_effects_joined(MsArena *arena, const MsSpans *effects) {
+  return effects->len == 0 ? ms_span_of_text("none") : ms_spans_joined(arena, effects, "+");
 }
