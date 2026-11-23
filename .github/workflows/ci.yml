@@ -77,7 +77,7 @@ jobs:
       - if: ${{ always() && matrix.os == 'windows' }}
         run: |
           M=.artifacts/build/ci/src/cli/ms.exe
-          for f in thin fat watch; do echo "== $f"; "$M" run tests/probe/$f.ms 2>&1 | head -30; echo "exit=${PIPESTATUS[0]}"; done; true
+          for f in thin fat watch; do echo "== $f"; ( "$M" run tests/probe/$f.ms 2>&1 | head -30 ) || true; done; true
       - if: always()
         uses: ./.github/actions/save-caches
 
