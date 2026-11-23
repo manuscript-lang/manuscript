@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:55 TestDiagnosticsStateCauseAndFix
 fn pick[T](items: List[T], keep: fn(T) Bool) T?:
-    return none
+    return null
 
 fn f() Int:
     nums := [1, 2]

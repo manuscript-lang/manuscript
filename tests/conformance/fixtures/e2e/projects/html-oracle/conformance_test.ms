@@ -21,12 +21,12 @@ fn hx(text: String) String:
 fn unhex(token: String) String:
 	h := token.view(1, token.length()).clone()
 	if h == "": return ""
-	if bytes := hex_decode(h, none): return bytes.decode_utf8().get_or("")
+	if bytes := hex_decode(h, null): return bytes.decode_utf8().get_or("")
 
 	return ""
 
 fn limit(token: String) Int?:
-	if token == "-": return none
+	if token == "-": return null
 	return token.parse_int()
 
 fn dump(node: HtmlNode, var out: StringBuilder) Void:
@@ -59,7 +59,7 @@ fn render(result: HtmlNode!) String:
 	return "err InvalidInput"
 
 fn corpus() String!:
-	bytes := files().read("oracle.tsv", none)?
+	bytes := files().read("oracle.tsv", null)?
 	return ok(bytes.decode_utf8().get_or(""))
 
 test "parse matches the recorded Go html trees":

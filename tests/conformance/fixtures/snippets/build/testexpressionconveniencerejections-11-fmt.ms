@@ -4,4 +4,4 @@
 fn f(x: Int?) Int:
     return match x:
         n: n
-        none: return "missing"
+        null: return "missing"

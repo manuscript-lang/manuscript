@@ -40,7 +40,7 @@ fn unexpected_widen(cause: Error) Wrapped: panic("closure must not run")
 
 test "Optional get_or_else returns the payload and is lazy":
 	present: Int? := 0
-	missing: Int? := none
+	missing: Int? := null
 	var counter = Counter(0)
 	expect_equal(present.get_or_else(unexpected_int), 0)?
 	expect_equal(missing.get_or_else(fn: tick(counter)), 7)?
@@ -51,10 +51,10 @@ test "Optional get_or_else returns the payload and is lazy":
 
 test "Optional or_else keeps the wrapper and is lazy":
 	present: Int? := 0
-	missing: Int? := none
+	missing: Int? := null
 	expect_equal(present.or_else(unexpected_optional), 0)?
 	expect_equal(missing.or_else(fn: 4), 4)?
-	expect_equal(missing.or_else(fn: none), none)?
+	expect_equal(missing.or_else(fn: null), null)?
 
 test "Result get_or_else returns the payload and receives the error":
 	success: Int!Error := ok(0)

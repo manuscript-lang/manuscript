@@ -17,7 +17,7 @@ export fn emit(logger: Logger) Void!:
 	fields := Payload(
 		count: 9007199254740993,
 		ok: true,
-		nested: [none, false],
+		nested: [null, false],
 		service: "worker",
 		level: 0,
 		msg: "spoofed",

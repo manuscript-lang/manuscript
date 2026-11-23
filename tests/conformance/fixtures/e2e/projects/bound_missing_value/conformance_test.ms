@@ -6,7 +6,7 @@ import (
 )
 
 test "shared bound native thunks use each invocation file and line":
-	absent: Int? := none
+	absent: Int? := null
 	expect_equal(second(absent).err().message, "missing value at second.ms:4")?
 	expect_equal(first(absent).err().message, "missing value at first.ms:3")?
 	expect_equal(second(absent).err().message, "missing value at second.ms:4")?

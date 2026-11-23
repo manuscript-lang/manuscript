@@ -125,7 +125,7 @@ test "sign and integer predicates":
 	expect_true(is_safe_integer(9007199254740991.0))?
 	expect_false(is_safe_integer(9007199254740992.0))?
 	expect_equal(0.1.to_float32().get_or(0.0).to_float64() == 0.1, false)?
-	expect_equal(1e300.to_float32(), none)?
+	expect_equal(1e300.to_float32(), null)?
 
 test "numeric limits and constants match IEEE and JavaScript":
 	expect_true(infinity > max_float)?

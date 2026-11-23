@@ -131,7 +131,7 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
 	values: Map[String, Int] := {"a": 0}
 	map := values.clone().map[Int?]
-	expect_true((map(fn k, v: none)["a"].is_none()))?
+	expect_true((map(fn k, v: null)["a"].is_none()))?
 
 	nested := values.map(fn k, v: Result[Int, Error].error(Error("nested")))
 	nested["a"].err().message | expect_equal("nested")?

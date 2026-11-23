@@ -1,7 +1,7 @@
 // The standard-library rules of `make repo-check` (tools/repo-check.ms), read from the
 // declaration files in stdlib/ by their shape, not by a full parse:
 //   - option parameters: an exported function never requires a caller to write `Options()`, so a parameter
-//     named `options` or `limits` declares a default; a `T?` parameter defaults to `none` on its own
+//     named `options` or `limits` declares a default; a `T?` parameter defaults to `null` on its own
 //     (stdlib/internal is extern glue);
 //   - stream names: no exported type has a method named `next`, `receive`, `feed` or `write_bytes` outside the
 //     stream modules, because anything that yields values over time is a ReadStream or WriteStream;

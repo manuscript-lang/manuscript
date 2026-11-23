@@ -8,5 +8,5 @@ fn f() Int:
     match peek():
         x:
             return x
-        none:
+        null:
             return 0

@@ -27,20 +27,20 @@ fn early(log: String) Int:
 		d:
 			if d.id == 1: return 10
 			return 20
-		none:
+		null:
 			return 0
 
 fn late(log: String) Int:
 	n := match open(2, log.clone()):
 		d: d.id
-		none: 0
+		null: 0
 
 	return n
 
 fn hand_on(log: String) Door?:
 	match open(3, log.clone()):
 		d: return d
-		none: return none
+		null: return null
 
 test "a payload moved out of the arm is not closed by the match":
 	tmp := temporary("ms-log-") | expect_ok?

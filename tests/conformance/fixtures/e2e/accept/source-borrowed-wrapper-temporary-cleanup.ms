@@ -22,7 +22,7 @@ fn observed(value: Resource?) Bool: value.is_some()
 fn mapped(value: Resource?) Int?:
 	if item := value: return item.id
 
-	return none
+	return null
 
 fn generic_map[T, U](transform: fn(T) U, value: T?) U?: value.map(transform)
 
@@ -61,7 +61,7 @@ test "borrowed source helpers close intact owned wrapper temporaries once":
 	expect_equal(generic_map(fn item: item.id, present(path, 3)), 3)?
 	expect_equal(generic_then(fn(item: Resource) Int?: item.id, present(path, 4)), 4)?
 	expect_equal(present(path, 5).map(fn item: item.id), 5)?
-	expect_equal(observed(none), false)?
+	expect_equal(observed(null), false)?
 	expect_equal(log_text(path)?, "1,2,3,4,5,")?
 
 test "whole borrowed results transfer temporary ownership and named borrows do not close":

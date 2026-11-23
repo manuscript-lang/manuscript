@@ -64,7 +64,7 @@ fn slices(xs: List[Int]) List[Int]:
 fn run() Void!:
     r := parse("1")
     r.get()
-    unit().get_or(none)
+    unit().get_or(null)
     print(parse("2"))
     print(parse("3").get())
     return ok()

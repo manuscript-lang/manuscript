@@ -67,7 +67,7 @@ test "constructor arguments retain written order and capture snapshots":
             number:
                 value = 70
                 mark(log, "first;", number)
-            none: 0
+            null: 0
     )
 
     value = 90
@@ -106,7 +106,7 @@ test "match receiver side effects and callable body remain ordered":
         _value:
             mark(log, "chosen;", 0)
             Reader(fn() Int: 9)
-        none:
+        null:
             mark(log, "wrong;", 0)
             Reader(fn() Int: 0)
 

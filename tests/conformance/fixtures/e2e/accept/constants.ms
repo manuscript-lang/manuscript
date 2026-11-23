@@ -7,7 +7,7 @@ LIMIT := 10
 DOUBLE := LIMIT * 2
 NAMES: List[String] := ["a", "b"]
 GREETING := f"limit {LIMIT}"
-NOTHING: Int? := none
+NOTHING: Int? := null
 from := 4
 
 fn limit_plus(extra: Int) Int:

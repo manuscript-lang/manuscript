@@ -155,7 +155,7 @@ fn block(lines: List[String], key: String, indent: Int) List[String]?:
 
 		at += 1
 
-	if start < 0: return none
+	if start < 0: return null
 
 	var kept = List[String]()
 

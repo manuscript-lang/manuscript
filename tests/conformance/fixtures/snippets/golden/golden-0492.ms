@@ -2,5 +2,5 @@
 // conform: phase=check
 enum Optional[T]:
     T
-    none
+    null
 fn wrong(value: Int?) Result[Int, String]: value.ok_or("missing")

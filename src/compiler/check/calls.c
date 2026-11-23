@@ -80,7 +80,7 @@ static bool unapplied(const Body *body, MsTy ty) {
 /* Whether `expr` is the bare `none`, which takes its type from the parameter and so says nothing about type arguments. */
 static bool is_none_literal(const Body *body, const MsExpr *expr) {
   return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
 }
 
 /* The parameter type with the variables bound so far substituted. */

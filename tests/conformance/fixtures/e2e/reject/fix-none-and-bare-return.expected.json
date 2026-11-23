@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3",
+        "message": "null has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != null` is `x.is_some()`), or compare with the plain value, e.g. x == 3",
         "position": {
           "file": "fix-none-and-bare-return.ms",
           "line": 7,
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-none-and-bare-return.ms:7:15: type: none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != none` is `x.is_some()`), or compare with the plain value, e.g. x == 3\n   |\n 7 |     if find() != none:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-none-and-bare-return.ms:7:15: type: null has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != null` is `x.is_some()`), or compare with the plain value, e.g. x == 3\n   |\n 7 |     if find() != null:\n   |               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

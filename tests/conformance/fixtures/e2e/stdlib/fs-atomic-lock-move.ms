@@ -49,7 +49,7 @@ test "write_atomic replaces contents, keeps mode, and leaves no temporary file":
 	write_atomic(path, "two".to_bytes()).wait()?
 	expect_equal(text_of(path)?, "two")?
 
-	names := (list(root, none)?).map(fn e: e.name)
+	names := (list(root, null)?).map(fn e: e.name)
 	expect_equal(names.length(), 2)?
 
 test "write_atomic writes through a symbolic link and keeps the link":
@@ -62,7 +62,7 @@ test "write_atomic writes through a symbolic link and keeps the link":
 	expect_equal(read_symlink(f"{root}/link.txt")?, "real.txt")?
 	expect_equal(text_of(f"{root}/real.txt")?, "new")?
 	expect_equal(text_of(f"{root}/link.txt")?, "new")?
-	expect_equal((list(root, none)?).length(), 2)?
+	expect_equal((list(root, null)?).length(), 2)?
 
 test "write_atomic replaces a link that names nothing":
 	directory := temporary("manuscript-atomic-dangling-")?
@@ -125,5 +125,5 @@ test "write_atomic replaces a file whose name is near the name length limit":
 	write_atomic(path, "two").wait()?
 	expect_equal(text_of(path)?, "two")?
 
-	names := (list(root, none)?).map(fn e: e.name)
+	names := (list(root, null)?).map(fn e: e.name)
 	expect_equal(names.length(), 1)?

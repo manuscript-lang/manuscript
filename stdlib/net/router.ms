@@ -55,11 +55,11 @@ export type RouteParams:
 	// by `/`.
 	values: List[String]
 
-// Returns the text captured for `name`, or none when the pattern has no such
+// Returns the text captured for `name`, or null when the pattern has no such
 // parameter.
 fn RouteParams.get(name: String) String?:
 	if index := self.names.index_of(name): return self.values[index].clone()
-	return none
+	return null
 
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
 // parameter.
@@ -332,7 +332,7 @@ fn parse_pattern(pattern: String) List[Segment]!:
 
 	return ok(segments)
 
-// The segments of an absolute path; "/" has none.
+// The segments of an absolute path; "/" has null.
 fn split_path(path: String) List[String]:
 	if path == "/": return []
 	return path.view(1, path.length()).split("/").clone()
@@ -345,7 +345,7 @@ fn segment_of(part: String) Segment:
 
 fn segment_name(segment: Segment) String?:
 	match segment:
-		Literal(_): return none
+		Literal(_): return null
 		Param(name): return name.clone()
 		Rest(name): return name.clone()
 
@@ -377,10 +377,10 @@ type Lookup:
 // The lookup for a path that is not absolute (such as `*` or an empty path): no route
 // matches it.
 fn unrouted() Lookup:
-	return Lookup(params: RouteParams(names: [], values: []), allow: [], found: none)
+	return Lookup(params: RouteParams(names: [], values: []), allow: [], found: null)
 
 fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
-	var found: Int? = none
+	var found: Int? = null
 	var fallback = false
 	var params = RouteParams(names: [], values: [])
 	var allow: List[String] = []
@@ -427,10 +427,10 @@ fn capture(segments: List[Segment], parts: List[String]) List[String]?:
 			values.append(parts.drop(entry.index).join("/"))
 			return values
 
-		if entry.index >= parts.length(): return none
-		if not accepts(entry.value, parts[entry.index], values): return none
+		if entry.index >= parts.length(): return null
+		if not accepts(entry.value, parts[entry.index], values): return null
 
-	if parts.length() != segments.length(): return none
+	if parts.length() != segments.length(): return null
 
 	return values
 
@@ -603,17 +603,17 @@ fn var TestExchange.read(max_bytes: Int?) Bytes?!:
 	)
 
 	chunk := guard.items[0].unread.clone()
-	guard.items[0].unread = none
+	guard.items[0].unread = null
 
 	if bytes := chunk:
-		if bytes.length() == 0: return ok(none)
+		if bytes.length() == 0: return ok(null)
 
 		n := if max < bytes.length(): max else: bytes.length()
 		if n < bytes.length():
 			guard.items[0].unread = bytes.slice(n, bytes.length()).get()
 		return ok(bytes.slice(0, n).get())
 
-	return ok(none)
+	return ok(null)
 
 fn var TestExchange.send_headers(status: Int, headers: HttpHeaders) Void!:
 	if status < 200 or status > 599: return error(
@@ -703,7 +703,7 @@ type Tap:
 	request: HttpHeaders
 	state: Int?
 
-// The body bytes the exchange transmits: none for HEAD or a status that forbids a
+// The body bytes the exchange transmits: null for HEAD or a status that forbids a
 // body.
 fn Tap.sent_length(status: Int, length: Int) Int:
 	if self.inner.method() == HttpMethod.Head or not has_body(status): return 0
@@ -768,7 +768,7 @@ fn new_tap(
 	inner: HttpExchange,
 	extra: HttpHeaders,
 	request: HttpHeaders,
-	state: Int? = none,
+	state: Int? = null,
 ) Tap:
 	return Tap(inner: inner, extra: extra, request: request, state: state)
 

@@ -74,10 +74,10 @@ right: fn(x: Int) Int: x
 body: f := {}
 diag: there is no 'lambda'
 
-wrong: null
-right: none
+wrong: none
+right: null
 body: x: Int? := {}
-diag: no null
+diag: absence as null
 
 wrong: v := f()?
 right: v := f().get_or(0)

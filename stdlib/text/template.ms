@@ -711,7 +711,7 @@ fn Run.lookup(parts: List[String]) JsonValue?:
 
 		i -= 1
 
-	return none
+	return null
 
 fn Run.eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
 	match expr:
@@ -846,13 +846,13 @@ fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 // unused siblings.
 fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	first := member(root, parts[1])
-	if first.is_none(): return none
+	if first.is_none(): return null
 
 	var value = first.get_or(JsonValue.Null)
 
 	for k in 2..parts.length():
 		next := member(value, parts[k]).clone()
-		if next.is_none(): return none
+		if next.is_none(): return null
 
 		value = next.get_or(JsonValue.Null)
 
@@ -862,7 +862,7 @@ fn member(value: JsonValue, key: String) JsonValue?:
 	if found := value.get(key): return found
 	if index := key.parse_int(): return value.get_index(index).clone()
 
-	return none
+	return null
 
 fn loop_info(index: Int, length: Int) JsonValue:
 	var fields = Map[String, JsonValue]()
@@ -1007,18 +1007,18 @@ fn exact_number(text: String) ExactNumber?:
 	// Validate a JSON number while locating its coefficient and exponent. Raw
 	// NumberValue constructors need not have passed through the JSON parser.
 	chars := text.to_bytes()
-	if chars.is_empty(): return none
+	if chars.is_empty(): return null
 
 	negative := chars.get(0) == 45
 	var at = if negative: 1 else: 0
-	if at == chars.length(): return none
+	if at == chars.length(): return null
 
 	start := at
 
 	if chars.get(at) == 48:
 		at += 1
 	else:
-		if chars.get(at) < 49 or chars.get(at) > 57: return none
+		if chars.get(at) < 49 or chars.get(at) > 57: return null
 
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
 
@@ -1029,13 +1029,13 @@ fn exact_number(text: String) ExactNumber?:
 
 		fraction_start := at
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
-		if at == fraction_start: return none
+		if at == fraction_start: return null
 
 	coefficient_end := at
 	var exponent = "0"
 
 	if at < chars.length():
-		if chars.get(at) != 101 and chars.get(at) != 69: return none
+		if chars.get(at) != 101 and chars.get(at) != 69: return null
 
 		at += 1
 
@@ -1044,7 +1044,7 @@ fn exact_number(text: String) ExactNumber?:
 
 		digits_start := at
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
-		if at == digits_start or at != chars.length(): return none
+		if at == digits_start or at != chars.length(): return null
 
 		exponent = text.view(exponent_start, text.length()).clone()
 
@@ -1116,7 +1116,7 @@ fn coefficient_text(number: ExactNumber) String:
 fn exact_integer(text: String) Int?:
 	if integer := text.parse_int():
 		if text == f"{integer}" or text == "-0": return integer
-	return none
+	return null
 
 fn truthy(value: JsonValue) Bool:
 	if value.is_null(): return false
@@ -1142,7 +1142,7 @@ fn to_text(value: JsonValue) String:
 fn number_text(value: JsonValue) String?:
 	match value:
 		NumberValue(text): return text
-		_: return none
+		_: return null
 
 // 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are
 // never equal.

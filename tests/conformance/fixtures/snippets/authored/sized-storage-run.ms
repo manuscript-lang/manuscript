@@ -56,7 +56,7 @@ fn main() Void:
     void stdout().write(
         f"{kind(Num(v: 5, s: 2.5))} {kind(Word(t: "ab", k: 3))} {kind(End)}\n"
     )
-    opts: List[Int8?] := [3, none, -1]
+    opts: List[Int8?] := [3, null, -1]
     void stdout().write(f"{opts} {opts[0] == opts[2]}\n")
     ints: List[Int8] := [5, 3, -9, 1]
     void stdout().write(

@@ -97,7 +97,7 @@ test "streaming proxy uses the same byte-valued header type":
 		serve(
 			address: "127.0.0.1:0",
 			handler: echo_headers,
-			options: HttpServerOptions(tls: none),
+			options: HttpServerOptions(tls: null),
 		) | expect_ok?
 	)
 	response := (
@@ -133,7 +133,7 @@ test "string lookup leaves out values that are not UTF-8":
 	_invalid := fields.append_bytes("raw", Bytes(values: [255])) | expect_ok?
 	fields.get_all("RAW") | expect_equal(["first"])?
 	fields.get("RAW") | expect_equal("first")?
-	fields.get("missing") | expect_equal(none)?
+	fields.get("missing") | expect_equal(null)?
 	fields.get_all_bytes("RAW").get().length() | expect_equal(2)?
 
 	match fields.append("bad name", "value"):

@@ -10,7 +10,7 @@ test "add get replace remove":
     expect_equal(map.keys(), [1, 3, 5, 7, 9])?
     expect_equal(map.values(), ["v1", "v3", "v5", "v7", "v9"])?
     expect_equal(map.get(3), "v3")?
-    expect_equal(map.get(4), none)?
+    expect_equal(map.get(4), null)?
     map.add(3, "three")
     expect_equal(map.get(3), "three")?
     expect_equal(map.length(), 5)?
@@ -36,14 +36,14 @@ test "first last floor ceiling and pops":
     expect_equal(map.get(map.last().get()), 60)?
     expect_equal(map.floor(25).get().key, 20)?
     expect_equal(map.floor(20).get().key, 20)?
-    expect_equal(map.floor(5), none)?
+    expect_equal(map.floor(5), null)?
     expect_equal(map.ceiling(25).get().key, 30)?
-    expect_equal(map.ceiling(31), none)?
+    expect_equal(map.ceiling(31), null)?
     expect_equal(map.pop_first().get().key, 10)?
     expect_equal(map.pop_last().get().key, 30)?
     expect_equal(map.keys(), [20])?
     map.clear()
-    expect_equal(map.pop_first(), none)?
+    expect_equal(map.pop_first(), null)?
     expect_true(map.is_empty())?
 
 test "range is half open and spans chunks":
@@ -88,7 +88,7 @@ test "many random operations agree with Map":
     for key in 0..2000:
         expect_equal(sorted.contains(key), plain.contains(key))?
 
-        var expected: Int? = none
+        var expected: Int? = null
         for candidate in sorted.keys():
             if candidate <= key:
                 expected = candidate
@@ -97,7 +97,7 @@ test "many random operations agree with Map":
             got: Int? := found.key
             expect_equal(got, expected)?
         else:
-            expect_equal(expected, none)?
+            expect_equal(expected, null)?
 
 test "copies are independent":
     var a = SortedMap[Int, Int]()

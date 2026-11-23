@@ -31,7 +31,7 @@ fn through_local(n: Int) Int!Error:
 
 fn halve(n: Int) Int?:
     if n % 2 != 0:
-        return none
+        return null
 
     return (n / 2)
 
@@ -52,7 +52,7 @@ fn nothing(flag: Bool) Void!Error:
 
 fn nested(n: Int) Int??:
     if n == 0:
-        return none
+        return null
 
     return halve(n)
 

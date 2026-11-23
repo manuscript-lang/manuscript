@@ -229,7 +229,7 @@ fn optionals(n: Int) Int:
 	var i = 0
 
 	while i < n:
-		var o: Int? = none
+		var o: Int? = null
 		if i % 5 != 0:
 			o = i
 

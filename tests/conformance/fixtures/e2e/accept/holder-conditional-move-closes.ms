@@ -27,7 +27,7 @@ test "a list moved on one path closes on the path that keeps it":
 
 fn block(log: String, id: Int) Void:
 	doors := [Door(id, log.clone())]
-	var moved: List[Door]? = none
+	var moved: List[Door]? = null
 	if doors.is_empty():
 		moved = doors
 	if moved.is_some(): return

@@ -42,7 +42,7 @@ fn SortedMap[K, V].chunk_for(key: K) Int:
 	return low
 
 // Internal: returns the index of the first key in chunk `c` that is not below
-// `key`, or the chunk length when there is none.
+// `key`, or the chunk length when there is null.
 fn SortedMap[K, V].lower_bound(c: Int, key: K) Int:
 	var low = 0
 	var high = self.key_chunks[c].length()
@@ -80,9 +80,9 @@ fn SortedMap[K, V].contains(key: K) Bool:
 		and order(self.key_chunks[c].get(at), key) == 0
 	)
 
-// Returns the value stored for an equal key, or `none` when absent.
+// Returns the value stored for an equal key, or `null` when absent.
 fn SortedMap[K, V].get(key: K) V?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
 	c := self.chunk_for(key)
 	at := self.lower_bound(c, key)
@@ -92,7 +92,7 @@ fn SortedMap[K, V].get(key: K) V?:
 	):
 		return self.value_chunks[c].get(at).clone()
 
-	return none
+	return null
 
 // Returns the value stored for an equal key, or `fallback` when absent.
 fn SortedMap[K, V].get_or(key: K, fallback: V) V:
@@ -198,48 +198,48 @@ fn var SortedMap[K, V].clear() Void:
 	self.maxes = []
 	self.size = 0
 
-// Returns the smallest key, or `none` when empty. Look its value up with `get`.
+// Returns the smallest key, or `null` when empty. Look its value up with `get`.
 fn SortedMap[K, V].first() K?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 	return self.key_chunks[0].get(0)
 
-// Returns the largest key, or `none` when empty. Look its value up with `get`.
+// Returns the largest key, or `null` when empty. Look its value up with `get`.
 fn SortedMap[K, V].last() K?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
 	c := self.key_chunks.length() - 1
 	return self.key_chunks[c].get(self.key_chunks[c].length() - 1)
 
-// Removes the entry with the smallest key and moves it out, or returns `none` when
+// Removes the entry with the smallest key and moves it out, or returns `null` when
 // empty.
 fn var SortedMap[K, V].pop_first() move SortedEntry[K, V]?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 	return self.take_at(0, 0)
 
-// Removes the entry with the largest key and moves it out, or returns `none` when
+// Removes the entry with the largest key and moves it out, or returns `null` when
 // empty.
 fn var SortedMap[K, V].pop_last() move SortedEntry[K, V]?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
 	c := self.key_chunks.length() - 1
 	return self.take_at(c, self.key_chunks[c].length() - 1)
 
-// Returns the entry with the smallest key that is at least `key`, or `none`.
+// Returns the entry with the smallest key that is at least `key`, or `null`.
 fn SortedMap[K, V].ceiling(key: K) SortedEntry[K, V]?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
 	c := self.chunk_for(key)
 	at := self.lower_bound(c, key)
-	if at >= self.key_chunks[c].length(): return none
+	if at >= self.key_chunks[c].length(): return null
 
 	return SortedEntry(
 		self.key_chunks[c].get(at).clone(),
 		self.value_chunks[c].get(at).clone(),
 	)
 
-// Returns the entry with the largest key that is at most `key`, or `none`.
+// Returns the entry with the largest key that is at most `key`, or `null`.
 fn SortedMap[K, V].floor(key: K) SortedEntry[K, V]?:
-	if self.size == 0: return none
+	if self.size == 0: return null
 
 	var c = self.chunk_for(key)
 	var at = self.lower_bound(c, key)
@@ -253,7 +253,7 @@ fn SortedMap[K, V].floor(key: K) SortedEntry[K, V]?:
 		)
 
 	if at == 0:
-		if c == 0: return none
+		if c == 0: return null
 
 		c -= 1
 		at = self.key_chunks[c].length()
@@ -353,33 +353,33 @@ fn var SortedSet[T].remove(value: T) Void:
 fn var SortedSet[T].clear() Void:
 	self.members.clear()
 
-// Returns the smallest member, or `none` when empty.
+// Returns the smallest member, or `null` when empty.
 fn SortedSet[T].first() T?:
 	return self.members.first()
 
-// Returns the largest member, or `none` when empty.
+// Returns the largest member, or `null` when empty.
 fn SortedSet[T].last() T?:
 	return self.members.last()
 
-// Removes and returns the smallest member, or `none` when empty.
+// Removes and returns the smallest member, or `null` when empty.
 fn var SortedSet[T].pop_first() T?:
 	if entry := self.members.pop_first(): return entry.key
-	return none
+	return null
 
-// Removes and returns the largest member, or `none` when empty.
+// Removes and returns the largest member, or `null` when empty.
 fn var SortedSet[T].pop_last() T?:
 	if entry := self.members.pop_last(): return entry.key
-	return none
+	return null
 
-// Returns the smallest member that is at least `value`, or `none`.
+// Returns the smallest member that is at least `value`, or `null`.
 fn SortedSet[T].ceiling(value: T) T?:
 	if entry := self.members.ceiling(value): return entry.key.clone()
-	return none
+	return null
 
-// Returns the largest member that is at most `value`, or `none`.
+// Returns the largest member that is at most `value`, or `null`.
 fn SortedSet[T].floor(value: T) T?:
 	if entry := self.members.floor(value): return entry.key.clone()
-	return none
+	return null
 
 // Returns a new list of the members with `low` <= member < `high`, in ascending
 // order.

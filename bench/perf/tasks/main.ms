@@ -12,7 +12,7 @@ import (
 )
 
 fn status(label: String) Void:
-	text := read_file("/proc/self/status", none).wait().get().decode_utf8().get()
+	text := read_file("/proc/self/status", null).wait().get().decode_utf8().get()
 	for line in text.lines():
 		if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE"):
 			print(label + " " + line)
@@ -34,7 +34,7 @@ fn park_deep(a: Int) Int!:
 	return ok(sum)
 
 fn park_read(a: Int) Int!:
-	data := read_file("/proc/self/stat", none).wait()?
+	data := read_file("/proc/self/stat", null).wait()?
 	sleep(seconds(1000)).wait()?
 	return ok(data.length() + a)
 

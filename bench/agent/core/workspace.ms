@@ -159,9 +159,9 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 			total: cases.length(),
 			pass: false,
 			error: tail,
-			failed: none,
+			failed: null,
 			code_tokens: tokens,
-			llm_tokens: none,
+			llm_tokens: null,
 		)
 
 	var passed = 0
@@ -180,8 +180,8 @@ export fn grade(ch: Challenge, lang: Lang, ws: String) Grade:
 		passed: passed,
 		total: cases.length(),
 		pass: passed == cases.length(),
-		error: none,
+		error: null,
 		failed: failed.take(10),
 		code_tokens: tokens,
-		llm_tokens: none,
+		llm_tokens: null,
 	)

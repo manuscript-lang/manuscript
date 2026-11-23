@@ -9,7 +9,7 @@ Read and write text files and process standard input line by line. Each program 
 
 ## Read a UTF-8 text file
 
-Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
+Save as `read.ms`. `decode_utf8()` returns `null` for invalid UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
@@ -69,7 +69,7 @@ The program succeeds silently; `cat` shows the saved content. Use `replace: true
 
 ## Read standard input line by line
 
-Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` returns the next line, or `none` at end of input.
+Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` returns the next line, or `null` at end of input.
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript

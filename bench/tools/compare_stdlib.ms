@@ -38,13 +38,13 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 		stats := c.stats.get_or(
 			Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: 0.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		)
 		operations.add(c.name.clone(), stats.operations)
@@ -65,7 +65,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		raw.add(name.clone(), List[String]())
 		values.add(name.clone(), Map[String, List[Float]]())
 
-	var expected: Map[String, Int]? = none
+	var expected: Map[String, Int]? = null
 	var names = List[String]()
 
 	for i in 0..repeats:
@@ -112,7 +112,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 				[],
 			)
 		)
-		var ratio: Float? = none
+		var ratio: Float? = null
 		if before != 0.0: ratio = after / before
 
 		label := labels.get_or(name, name)

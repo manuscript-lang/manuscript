@@ -133,7 +133,7 @@ static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan na
   const bool result = ms_ty_is(types, receiver, MS_BUILTIN_Result);
   const char *fix = NULL;
   if (optional && (NAME_IN(name, "unwrap", "expect", "value", "unwrap_or") || NAME_IN(name, "unwrap_or_else", "or_default", "unwrap_or_default"))) {
-    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on none";
+    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on null";
   } else if (optional && NAME_IN(name, "map_or", "is_some_and", "flatten", "filter")) {
     fix = "use map, and_then, is_some, or `if value := x:`";
   } else if (result && (NAME_IN(name, "unwrap", "expect", "unwrap_or", "unwrap_or_else") || NAME_IN(name, "unwrap_or_default"))) {
@@ -149,7 +149,7 @@ static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan na
   if (!optional && !result && NAME_IN(name, "is_none", "is_some")) {
     ms_strbuild_append_text(out, "; a value of type ");
     show(body, out, receiver);
-    ms_strbuild_append_text(out, " is never none here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
+    ms_strbuild_append_text(out, " is never null here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
     return true;
   }
   return false;

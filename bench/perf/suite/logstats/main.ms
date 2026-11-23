@@ -4,7 +4,7 @@ import (
 )
 
 fn main() Void:
-	data := read_all(stdin(), none).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8().get_or("")
 	var rows = 0
 	var latency = 0
 	var classes = [0].repeated(4)

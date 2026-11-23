@@ -30,7 +30,7 @@ test "primitive storage retains generic record Optional and independent copies":
     values.set(0, 42)
     expect_equal(copy[0], 9223372036854775807)?
 
-    nested: List[Int?] := [7, none]
+    nested: List[Int?] := [7, null]
     expect_false(not (nested[0].get() == 7 and nested[1].is_none()))?
 
 test "Float Bool and String preserve mutation traversal and width":

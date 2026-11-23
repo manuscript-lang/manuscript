@@ -14,7 +14,7 @@ import (
 )
 
 // An immutable sequence of bytes, such as `"hello".to_bytes()`. Use `decode_utf8()` to
-// read text; invalid UTF-8 returns `none`. Indices and slice bounds count bytes from
+// read text; invalid UTF-8 returns `null`. Indices and slice bounds count bytes from
 // zero.
 // ms: data
 export extern type Bytes
@@ -65,16 +65,16 @@ fn Bytes.get_or(index: Int, default: UInt8?) UInt8:
 
 	match default:
 		value: return value
-		none: return self.get(index)
+		null: return self.get(index)
 
-// Returns the first matching byte offset or `none`; empty `value` matches at zero.
+// Returns the first matching byte offset or `null`; empty `value` matches at zero.
 fn Bytes.index_of(value: Bytes) Int?: ...
 
-// Returns the first offset at or after `start` holding the byte `value`, or `none`.
-// A `start` past length() gives `none`; a negative `start` counts as zero.
+// Returns the first offset at or after `start` holding the byte `value`, or `null`.
+// A `start` past length() gives `null`; a negative `start` counts as zero.
 fn Bytes.index_of_byte(value: UInt8, start: Int) Int?: ...
 
-// Returns the last matching byte offset or `none`; empty `value` matches at
+// Returns the last matching byte offset or `null`; empty `value` matches at
 // length().
 fn Bytes.last_index_of(value: Bytes) Int?: ...
 
@@ -104,7 +104,7 @@ fn Bytes.concat(other: Bytes) move Bytes: ...
 // Returns the number of bytes, not the number of Unicode characters.
 fn Bytes.length() Int: ...
 
-// Decodes valid UTF-8 as text, or returns `none` when the bytes are invalid.
+// Decodes valid UTF-8 as text, or returns `null` when the bytes are invalid.
 fn Bytes.decode_utf8() move String?: ...
 
 // Decodes [start, end) as `decode_utf8` does, without copying the range into a new

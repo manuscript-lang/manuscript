@@ -22,7 +22,7 @@ fn var Tokens.next() Token?!:
 	self.at += 1
 	if self.at <= 2: return ok(Token(self.log.clone(), self.at))
 
-	return ok(none)
+	return ok(null)
 
 fn move Tokens.close() Void!:
 	return ok()
@@ -35,7 +35,7 @@ fn var Forward[T].next() T!?:
 	if result.is_error(): return error(result.err().clone())
 	if item := result.get(): return ok(item)
 
-	return none
+	return null
 
 fn first_body(log: String) Void!:
 	for item in Forward[Token](Tokens(log.clone())):

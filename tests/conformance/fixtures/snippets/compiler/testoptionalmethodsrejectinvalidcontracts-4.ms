@@ -3,7 +3,7 @@
 // conform: origin=pkg/compiler/optional_test.go:71 TestOptionalMethodsRejectInvalidContracts
 enum Optional[T]:
     T
-    none
+    null
 
 fn wrong(value: Int?) Int:
     return value.get()

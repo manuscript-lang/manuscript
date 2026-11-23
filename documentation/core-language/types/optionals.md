@@ -5,7 +5,7 @@ weight = 4
 
 # Optional values
 
-Use `T?` when a value may be absent: an optional name, a failed lookup, or text that might not contain a number. It holds a `T` or `none`; a plain `T` becomes present wherever a `T?` is expected. `none` needs no import.
+Use `T?` when a value may be absent: an optional name, a failed lookup, or text that might not contain a number. It holds a `T` or `null`; a plain `T` becomes present wherever a `T?` is expected. `null` needs no import.
 
 Save as `greeting.ms` and run `ms run greeting.ms`:
 
@@ -28,15 +28,15 @@ Hello, guest!
 
 `T?` is the only spelling; `Optional[T]` is rejected. It applies to the type before it, so a function type needs parentheses: `fn(Int) Int?` returns an optional, `(fn(Int) Int)?` is an optional function.
 
-A parameter or field of type `T?` with no default is `none` when omitted, so `= none` is never written; a plain `T` passed for it wraps without `some`.
+A parameter or field of type `T?` with no default is `null` when omitted, so `= null` is never written; a plain `T` passed for it wraps without `some`.
 
-`T?` is an invariant enum. `none` takes its type from the expected type, so the type is written on the binding; a bare `x := 1` is an `Int`, not an `Int?`.
+`T?` is an invariant enum. `null` takes its type from the expected type, so the type is written on the binding; a bare `x := 1` is an `Int`, not an `Int?`.
 
-<!-- manuscript-example: {"mode":"error","contains":"cannot infer the type of none","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"cannot infer the type of null","given":[]} -->
 ```manuscript
-explicit: String? := none
+explicit: String? := null
 // Rejected: no type determines the absent payload.
-unknown := none
+unknown := null
 // Wrapped: an annotated binding expects an Optional.
 wrapped: String? := "Ada"
 ```
@@ -45,7 +45,7 @@ There is no implicit unwrapping or flattening: `Int??` differs from `Int?`. `Res
 
 ## Passing optional arguments
 
-An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `none`.
+An argument for a standard `T?` parameter may be a plain `T`; it is wrapped as the present case. An argument already `T?` passes unchanged, including `null`.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -72,7 +72,7 @@ Receiver methods:
 | --- | --- |
 | `is_some() Bool` | Whether the optional contains a value, including `false`, zero, or an empty string |
 | `is_none() Bool` | Whether the optional is absent |
-| `get() T` | Return the contained value; on `none`, [fault](../errors/faults.md) with `called Optional.get() on none` |
+| `get() T` | Return the contained value; on `null`, [fault](../errors/faults.md) with `called Optional.get() on null` |
 | `get_or(default: T?) T` | Return the contained value, or `default` when absent |
 | `map[U](transform: fn(move T) U) U?` | Consume the Optional and hand a present payload to `transform` once; preserve absence |
 | `and_then[U](transform: fn(move T) U?) U?` | Consume the Optional and return the callback's Optional when present; preserve absence |
@@ -95,7 +95,7 @@ fn display_name(create: fn() String, name: String?) String:
     return name.get_or_else(create)
 ```
 
-Prefer `if v := x` to test and unwrap in one step, rather than `is_some()` followed by `get()`. `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `none`; use `get_or(default)` or unwrap with `if v := x` instead.
+Prefer `if v := x` to test and unwrap in one step, rather than `is_some()` followed by `get()`. `ms lint` reports a `get()` with no default as advisory **MSL110**, because it faults on `null`; use `get_or(default)` or unwrap with `if v := x` instead.
 
 For a map lookup, write `m.get_or(key, fallback)` or `m[key]` (which faults when the key is absent) instead of `m.get(key).get_or(fallback)` or `m.get(key).get()`. `ms lint --fix` rewrites the first form.
 
@@ -135,13 +135,13 @@ fn display_name(name: String?) String:
     return "Anonymous"
 ```
 
-A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `none:`; `v:` binds the payload. `ms lint` reports a two-arm match as MSL108.
+A [match](../control-flow/pattern-matching.md) on an Optional writes the present arm as a bare lowercase name beside `null:`; `v:` binds the payload. `ms lint` reports a two-arm match as MSL108.
 
 Use [Result](../errors/results.md) when a failure needs an explanation.
 
 ## Unwrapping with `?`
 
-Postfix `?` gives the present value, or leaves the function when the value is absent. It is the same operator as [error propagation](../errors/propagation.md): on a `Result` it returns the error, on an Optional it returns `none`. The enclosing function must return an Optional (`U?`) or `Void`; a `Void` function simply returns. Inside an anonymous function `?` returns from that function.
+Postfix `?` gives the present value, or leaves the function when the value is absent. It is the same operator as [error propagation](../errors/propagation.md): on a `Result` it returns the error, on an Optional it returns `null`. The enclosing function must return an Optional (`U?`) or `Void`; a `Void` function simply returns. Inside an anonymous function `?` returns from that function.
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
@@ -155,7 +155,7 @@ fn city_length(user: User?) Int?:
     return user?.address?.city?.length()
 ```
 
-`user?.address` is `(user?).address`. If `user` is `none`, the function returns `none` at that point; nothing after it on the line runs, so `a?.f(args)` evaluates `args` only when `a` is present. There is no separate chaining operator.
+`user?.address` is `(user?).address`. If `user` is `null`, the function returns `null` at that point; nothing after it on the line runs, so `a?.f(args)` evaluates `args` only when `a` is present. There is no separate chaining operator.
 
 A function cannot mix the two kinds: `?` on a Result needs a Result return, and `?` on an Optional needs an Optional or `Void` return. Convert explicitly with `ok_or`, `if v := x:`, or `get_or(default)`.
 

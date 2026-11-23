@@ -63,7 +63,7 @@ test "ASCII85 decoded byte limits count expansions and partial groups exactly":
 	expect_equal(ascii85_decode("zz", 8)?, Bytes([0, 0, 0, 0, 0, 0, 0, 0]))?
 	for text in ["", "?", "uuuuu"]:
 		expect_equal(ascii85_decode(text, -1), invalid)?
-	expect_equal(ascii85_decode("!!", none)?, Bytes([0]))?
+	expect_equal(ascii85_decode("!!", null)?, Bytes([0]))?
 
 test "ASCII85 round trips byte views across every block boundary":
 	var out = BytesBuilder()

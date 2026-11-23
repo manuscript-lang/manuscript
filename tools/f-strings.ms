@@ -205,7 +205,7 @@ fn var Scan.code(stop_at_brace: Bool) String:
 fn convert(source: String) String?:
 	var scan = Scan(text: source.clone(), bytes: source.to_bytes(), at: 0, saw_f: false)
 	converted := scan.code(false)
-	if scan.saw_f: return none
+	if scan.saw_f: return null
 
 	return converted
 

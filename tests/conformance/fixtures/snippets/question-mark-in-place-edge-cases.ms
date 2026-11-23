@@ -25,7 +25,7 @@ fn bump_at(var xs: List[C?], i: Int) Int?:
     return xs[i]?.bump()
 
 fn elements() Void:
-    var xs: List[C?] = [C(1), none]
+    var xs: List[C?] = [C(1), null]
     show(bump_at(xs, 0))
     show(bump_at(xs, 1))
     show(bump_at(xs, 0))

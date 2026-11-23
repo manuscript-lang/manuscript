@@ -126,14 +126,14 @@ test "get_or reads through the entry":
 
 test "an entry whose optional is boxed is still read correctly":
 	var nodes = Map[String, Node]()
-	nodes.add("x", Node(name: "x", next: Node(name: "y", next: none)))
+	nodes.add("x", Node(name: "x", next: Node(name: "y", next: null)))
 
 	x := nodes.get("x")
 	expect_equal(x.get().next.get().name, "y")?
 	if n := nodes.get("x"):
 		expect_equal(n.name, "x")?
 
-	chain := [Node(name: "head", next: none)]
+	chain := [Node(name: "head", next: null)]
 	expect_equal(chain.first().get().name, "head")?
 
 test "if let over a borrowed optional lends its payload":

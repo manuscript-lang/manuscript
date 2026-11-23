@@ -69,13 +69,13 @@ test "huge exponents and non-finite constants are rejected, finite zero is not":
 		cases[0].stats.get_or(
 			Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: -1.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		).median_ns,
 		0.0,
@@ -102,7 +102,7 @@ test "reads operations and median per case":
 					bench("b", "passed", "1", "0"),
 				]
 			),
-			none,
+			null,
 		)
 	)?
 	expect_equal(sample.operations.get_or("m.ms::a", 0), 10)?
@@ -111,7 +111,7 @@ test "reads operations and median per case":
 
 test "qualified case identity":
 	before := document([bench("a", "passed", "10", "2")])
-	first := expect_ok(parse_sample(before, none))?
+	first := expect_ok(parse_sample(before, null))?
 	other := before.replace("m.ms::a", "other.ms::a")
 	_changed := expect_error(parse_sample(other, first.operations.clone()))?
 	both := expect_ok(
@@ -124,13 +124,13 @@ test "qualified case identity":
 					),
 				]
 			),
-			none,
+			null,
 		)
 	)?
 	expect_equal(both.operations.length(), 2)?
 
 test "changed cases or operation counts are rejected":
-	first := expect_ok(parse_sample(document([bench("a", "passed", "10", "2")]), none))?
+	first := expect_ok(parse_sample(document([bench("a", "passed", "10", "2")]), null))?
 	changes := [
 		document([bench("a", "passed", "11", "2")]),
 		document([bench("b", "passed", "10", "2")]),
@@ -157,14 +157,14 @@ test "failed, duplicate, empty or uncompiled runs are rejected":
 		j("<'benches':[],'diagnostics':[<'message':'does not compile'>]>"),
 	]
 	for text in texts:
-		_cause := expect_error(parse_sample(text, none))?
+		_cause := expect_error(parse_sample(text, null))?
 
 test "impossible measurements are rejected":
 	for text in [
 		document([bench("a", "passed", "0", "2")]),
 		document([bench("a", "passed", "10", "-1")]),
 	]:
-		_cause := expect_error(parse_sample(text, none))?
+		_cause := expect_error(parse_sample(text, null))?
 
 test "a failed producer yields no report":
 	failed := Ran(

@@ -40,10 +40,10 @@ fn number(s: String, lo: Int, hi: Int) Int?:
 		s.length() < 1
 		or s.length() > 7
 		or not s.scalar_values().all(fn c: (c >= 48 and c <= 57))
-	): return none
+	): return null
 
 	n := s.parse_int().get()
-	return if n >= lo and n <= hi: n else: none
+	return if n >= lo and n <= hi: n else: null
 
 fn place_order(var w: Warehouse, t: List[String]) String:
 	id := t[1]
@@ -151,7 +151,7 @@ fn run_command(var w: Warehouse, line: String) String:
 
 fn main() Void:
 	var w = Warehouse(Map[String, Int](), Map[String, Int](), Map[String, Order]())
-	if ls := stdin() | lines | collect(none):
+	if ls := stdin() | lines | collect(null):
 		for l in ls.filter(fn l: not l.replace(" ", "").is_empty()): print(
 			run_command(w, l)
 		)

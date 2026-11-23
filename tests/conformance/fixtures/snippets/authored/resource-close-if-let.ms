@@ -14,7 +14,7 @@ fn move Res.close() Void!:
     say(f"close {self.name}")
 
 fn maybe(name: String, present: Bool) Res?:
-    return if present: Res(name.clone()) else: none
+    return if present: Res(name.clone()) else: null
 
 fn make(name: String) Res!Error:
     return ok(Res(name.clone()))

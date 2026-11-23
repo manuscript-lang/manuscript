@@ -284,7 +284,7 @@ fn optional_list(move log: String) List[Door?]:
 	return [Door(1, log)]
 
 fn computed_absent(move log: String) Void:
-	optional_list(log).set(0, none)
+	optional_list(log).set(0, null)
 
 fn computed_arg_fault(move log: String) Void:
 	optional_list(log).append(panic("incoming failed"))

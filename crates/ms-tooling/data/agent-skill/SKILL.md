@@ -81,7 +81,7 @@ Four rules cover most compiler errors; an error that names one is that rule.
 
 1. **One owner.** `price.add(sku.clone(), 0)` then `stock.add(sku, n)`. "Moved here but used again" means clone at the store. While a binding borrows from `xs` (`it := xs.get(0, d)`, `for x in xs`), do not change `xs`.
 2. **`?` unwraps a Result or an Optional.** It leaves the function on error or absence: the function must return a matching Result, or an Optional/`Void` for an Optional. `s.parse_int()` is `Int?`: `s.parse_int().ok_or(Error("bad number"))?` in a `Result` function. A Result is never dropped; `_done := f(x)?` when its value is unused. `r?.abs()` unwraps then calls.
-3. **Names are exact.** Never translate: `xs.append(x)` not `push`, `contains` not `contains_key`, `pop` not `remove_last`, `is_error` not `is_err`, `x.length()` not `x.len`, `x.is_none()` not `x == none`. An Optional needs no wrapper: `return value`, never `some(value)` (absent is `none`).
+3. **Names are exact.** Never translate: `xs.append(x)` not `push`, `contains` not `contains_key`, `pop` not `remove_last`, `is_error` not `is_err`, `x.length()` not `x.len`, `x.is_none()` not `x == null`. An Optional needs no wrapper: `return value`, never `some(value)` (absent is `null`).
 4. **Shapes are fixed.** A body goes on indented lines after a `:` header. `for _i in xs` (a bare `_` is no name). Records, not tuples; `List[Int]`, not `List<Int>`; `not x`, not `!x`. Reserved words (`type`, `test`, `fn`, `var` ...) are never names.
 
 ## References by task

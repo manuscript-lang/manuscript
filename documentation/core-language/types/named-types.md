@@ -21,19 +21,19 @@ Field types are explicit and field names are unique. An empty type is `type Mark
 
 Supply each required field exactly once, by position or label; fields with defaults may be omitted. Missing, duplicate, and unknown fields are compile errors.
 
-Supplied expressions evaluate in written order, then omitted defaults evaluate in declaration order. Each is checked against its field type, so `none` and `[]` get their expected type.
+Supplied expressions evaluate in written order, then omitted defaults evaluate in declaration order. Each is checked against its field type, so `null` and `[]` get their expected type.
 
 <!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    email: String?","given":[]} -->
 ```manuscript
-customer := Customer(name: "Ada", email: none)
+customer := Customer(name: "Ada", email: null)
 name := customer.name
 ```
 
-Positional arguments follow declaration order, and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Customer("Ada", none)` equals `Customer(name: "Ada", email: none)`. To handle an optional field such as `email`, see [optional values](optionals.md).
+Positional arguments follow declaration order, and labels are optional under the [call rules](../functions/declarations-and-calls.md#argument-names): `Customer("Ada", null)` equals `Customer(name: "Ada", email: null)`. To handle an optional field such as `email`, see [optional values](optionals.md).
 
-<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name: String\n    email: String? = none","given":[]} -->
+<!-- manuscript-example: {"mode":"error","contains":"","context":"type Customer:\n    name: String\n    email: String? = null","given":[]} -->
 ```manuscript
-// An omitted optional field is none.
+// An omitted optional field is null.
 without_email := Customer(name: "Ada")
 // Rejected: changing a field requires a var binding.
 customer.name = "Grace"
@@ -50,9 +50,9 @@ type Options:
 options := Options(count: 5)  // total defaults to 6
 ```
 
-An optional field with no explicit default is `none` when omitted. A default may use earlier fields and module declarations, but not itself or later fields.
+An optional field with no explicit default is `null` when omitted. A default may use earlier fields and module declarations, but not itself or later fields.
 
-A default is evaluated on each construction, so a collection default is a fresh collection each time. Any supplied value, even `void`, `none`, or zero, skips the default. Generic arguments never come from defaults.
+A default is evaluated on each construction, so a collection default is a fresh collection each time. Any supplied value, even `void`, `null`, or zero, skips the default. Generic arguments never come from defaults.
 
 ## Mutation and cloning
 
@@ -223,10 +223,10 @@ type Node:
     next: Node?
 
 test "recursive links":
-    var node = Node(value: 1, next: none)
-    node.next = Node(value: 5, next: none)
+    var node = Node(value: 1, next: null)
+    node.next = Node(value: 5, next: null)
     var copy = node.clone()
-    copy.next = Node(value: 2, next: none)
+    copy.next = Node(value: 2, next: null)
     if node.next.get().value != 5 or copy.next.get().value != 2:
         panic("clones must be independent")
 ```
@@ -289,7 +289,7 @@ sum := total(numbers)
 
 ## Growing a tree
 
-A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node:`. A `T?` parameter defaults to `none`, so it comes after the required ones.
+A tree grows through a `fn var` method that calls itself on the child with `?.`, which does nothing while the child is absent. An `if var` on an `Optional` parameter or a move out of a field is rejected, so a mutating walk is written as a method. A function that only reads walks with `if n := node:`. A `T?` parameter defaults to `null`, so it comes after the required ones.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -303,12 +303,12 @@ type Branch:
 fn var Branch.insert(key: Int) Void:
     if key < self.key:
         if self.left.is_none():
-            self.left = Branch(key, none, none)
+            self.left = Branch(key, null, null)
         else:
             self.left?.insert(key)
     else:
         if self.right.is_none():
-            self.right = Branch(key, none, none)
+            self.right = Branch(key, null, null)
         else:
             self.right?.insert(key)
 
@@ -318,7 +318,7 @@ fn count(node: Branch?) Int:
     return 0
 
 test "a tree inserts through its children":
-    var root = Branch(50, none, none)
+    var root = Branch(50, null, null)
     for key in [30, 70, 20, 40]:
         root.insert(key)
     if count(root) != 5:

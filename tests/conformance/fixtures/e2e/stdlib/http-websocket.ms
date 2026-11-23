@@ -72,7 +72,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 		max_requests: 4,
 		timeout: 3.seconds(),
 		grace: 0.seconds(),
-		tls: none,
+		tls: null,
 	)
 	server := (
 		serve(
@@ -138,7 +138,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))?
 
 test "WebSocket negotiates a protocol and echoes a text frame":
-	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -192,7 +192,7 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	return ok(reply.decode_utf8().get_or("").split("\r\n").first().get_or(""))
 
 test "WebSocket client options bound messages and reject bad values":
-	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := serve(address: "127.0.0.1:0", handler: echo, options: options) | expect_ok?
 	url := f"ws://{server.address()}/ws"
 
@@ -213,7 +213,7 @@ test "WebSocket client options bound messages and reject bad values":
 	expect_equal(negative.err().kind, "EINVAL")?
 
 test "WebSocket upgrades need HTTP/1.1 and one key":
-	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -246,7 +246,7 @@ test "HTTP streaming handlers see the Host request header":
 		max_requests: 2,
 		timeout: 3.seconds(),
 		grace: 0.seconds(),
-		tls: none,
+		tls: null,
 	)
 	server := (
 		serve(
@@ -288,7 +288,7 @@ fn silent(var exchange: HttpExchange) Void!:
 				exchange,
 				allowed_origins: [],
 				subprotocols: [],
-				max_message_bytes: none,
+				max_message_bytes: null,
 			)
 		)?
 	)
@@ -328,7 +328,7 @@ fn direct(var exchange: HttpExchange) Void!:
 		exchange.upgrade(
 			allowed_origins: [],
 			subprotocols: [],
-			max_message_bytes: none,
+			max_message_bytes: null,
 		)
 	)?
 	message := (http_result(socket.input.next())?).get()

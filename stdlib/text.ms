@@ -20,13 +20,13 @@ print(quote("a\tb"))           // a double-quoted literal with the escape writte
 
 // Parses a boolean after trimming whitespace and ignoring case. `true`, `t`, `1`,
 // `yes` and `on` give true; `false`, `f`, `0`, `no` and `off` give false. Anything
-// else is `none`.
+// else is `null`.
 export fn parse_bool(text: String) Bool?:
 	word := text.trim().lower()
 	if ["true", "t", "1", "yes", "on"].contains(word): return true
 	if ["false", "f", "0", "no", "off"].contains(word): return false
 
-	return none
+	return null
 
 /*
 Quotes text as a double-quoted literal, using the escapes of Manuscript string literals.
@@ -154,9 +154,9 @@ type ScalarSource:
 	// Byte offset of the next scalar, always on a scalar boundary.
 	at: Int
 
-// The next scalar as a one-scalar String, or none at the end.
+// The next scalar as a one-scalar String, or null at the end.
 fn var ScalarSource.next() move String?!:
-	if self.at >= self.bytes.length(): return ok(none)
+	if self.at >= self.bytes.length(): return ok(null)
 
 	stop := self.at + scalar_width(self.bytes.get(self.at).to_int())
 	scalar := self.bytes.decode_utf8_range(self.at, stop)

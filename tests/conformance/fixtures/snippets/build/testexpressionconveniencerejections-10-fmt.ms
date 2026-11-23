@@ -4,4 +4,4 @@
 fn f(x: Int?) Void:
     y := match x:
         n: n
-        none: "missing"
+        null: "missing"

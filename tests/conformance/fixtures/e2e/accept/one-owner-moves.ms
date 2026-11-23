@@ -23,11 +23,11 @@ type Ring:
 	size: Int
 
 fn Ring.at(index: Int) Counter?:
-	if index < 0 or index >= self.size: return none
+	if index < 0 or index >= self.size: return null
 	return self.slots.get(index)
 
 fn maybe(n: Int) Counter?:
-	if n < 0: return none
+	if n < 0: return null
 	return counter(n)
 
 fn make(n: Int) Counter!:
@@ -60,7 +60,7 @@ test "get on a borrowed result lends the payload":
 	r.get().read() | expect_equal(7)?
 
 test "a native lend beside a none path still lends":
-	slots: List[Counter?] := [counter(8), none]
+	slots: List[Counter?] := [counter(8), null]
 	ring := Ring(slots: slots, size: 2)
 	if c := ring.at(0): c.read() | expect_equal(8)?
 	ring.at(1).is_none() | expect_true?

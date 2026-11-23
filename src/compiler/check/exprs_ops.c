@@ -402,10 +402,10 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
 
 static bool names_none(Body *body, const MsExpr *expr) {
   return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
 }
 
-/* `x == none` and `x != none`: `none` takes its type from a target, and an operand is none. The other operand is
+/* `x == null` and `x != null`: `null` takes its type from a target, and an operand is null. The other operand is
  * typed alone; it is reported unless it is itself wrong. */
 static MsTy none_comparison(Body *body, const MsExpr *expr) {
   const MsExpr *other = names_none(body, expr->u.bin.left) ? expr->u.bin.right : expr->u.bin.left;
@@ -414,8 +414,8 @@ static MsTy none_comparison(Body *body, const MsExpr *expr) {
     const bool optional = ms_ty_is(&body->program->types, ty, MS_BUILTIN_Optional);
     ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_span_of_text(
-                        "none has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != "
-                        "none` is `x.is_some()`), or compare with the plain value, e.g. x == 3")));
+                        "null has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != "
+                        "null` is `x.is_some()`), or compare with the plain value, e.g. x == 3")));
     MsSpan text = {0};
     const MsPos start = ms_expr_start(other);
     if (optional && other->end.offset > start.offset && ms_span_slice(body->source, start.offset, other->end.offset, &text)) {

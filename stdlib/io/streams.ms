@@ -35,7 +35,7 @@ type BytesSource:
 fn var BytesSource.next() move Bytes?!:
 	if self.chunk < 1:
 		return error(Error("I/O: chunk size must be positive", kind: "EINVAL"))
-	if self.at >= self.data.length(): return ok(none)
+	if self.at >= self.data.length(): return ok(null)
 
 	stop := (self.at + self.chunk).min(self.data.length())
 	piece := self.data.slice(self.at, stop)?

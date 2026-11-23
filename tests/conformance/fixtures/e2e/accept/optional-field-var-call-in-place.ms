@@ -10,14 +10,14 @@ type Node:
 fn var Node.insert(key: Int) Void:
 	if key < self.key:
 		if self.left.is_none():
-			self.left = Node(key, none, none)
+			self.left = Node(key, null, null)
 			return
 
 		self.left?.insert(key)
 		return
 
 	if self.right.is_none():
-		self.right = Node(key, none, none)
+		self.right = Node(key, null, null)
 		return
 
 	self.right?.insert(key)
@@ -54,7 +54,7 @@ fn var Tag.label_next(s: String) Void:
 	self.next?.append_label(s)
 
 test "inserts through boxed optional fields":
-	var root = Node(50, none, none)
+	var root = Node(50, null, null)
 	for k in [30, 70, 20, 40, 60, 80, 35, 45]:
 		root.insert(k)
 
@@ -64,19 +64,19 @@ test "inserts through boxed optional fields":
 	expect_equal(count(root), 9)?
 
 test "an absent optional field is left alone":
-	var root = Node(1, none, none)
+	var root = Node(1, null, null)
 	root.rename_left(5)
 	expect_equal(root.left.is_none(), true)?
 	expect_equal(root.key, 1)?
 
 test "a change through a present field is kept":
-	var root = Node(10, Node(5, none, none), none)
+	var root = Node(10, Node(5, null, null), null)
 	root.rename_left(100)
 	expect_equal(root.left.get().key, 105)?
 	expect_equal(root.key, 1010)?
 
 test "owned payload fields are updated in place":
-	var t = Tag("a", Tag("b", none))
+	var t = Tag("a", Tag("b", null))
 	t.label_next("!")
 	expect_equal(t.next.get().label, "b!")?
 	expect_equal(t.label, "a")?

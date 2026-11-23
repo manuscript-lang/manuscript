@@ -23,7 +23,7 @@ test "decimal arithmetic is exact and conversion truncates":
 	expect_equal(1.00d, 1d)?
 	expect_equal((-1.9d).truncate_to_int(), -1)?
 	expect_equal(2d.to_float(), 2.0)?
-	expect_equal(1e400d.to_float(), none)?
+	expect_equal(1e400d.to_float(), null)?
 	expect_equal(123.to_decimal(), 123d)?
 
 test "decimal integer conversions normalize boundary values":

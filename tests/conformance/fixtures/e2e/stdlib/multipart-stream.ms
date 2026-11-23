@@ -19,7 +19,7 @@ type Chunks:
 	at: Int
 
 fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(none)
+	if self.at >= self.data.length(): return ok(null)
 
 	var end = self.at + self.size
 	if end > self.data.length(): end = self.data.length()
@@ -34,7 +34,7 @@ fn move Chunks.close() Void!:
 fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
-fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = none) List[Part]!:
+fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = null) List[Part]!:
 	var parts = multipart_parts(chunked(body, size), "XyZ", max_part_bytes)
 	var out: List[Part] = []
 
@@ -210,7 +210,7 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 	)
 
 	for size in [1, 2, 5, 7, 64, 1024]:
-		var parts = multipart_parts(from_list(empty_chunks(body, size)), "XyZ", none)
+		var parts = multipart_parts(from_list(empty_chunks(body, size)), "XyZ", null)
 
 		if first := parts.next()?:
 			expect_equal(first.name, "binary")?
@@ -230,6 +230,6 @@ test "retrying an invalid fragmented multipart section retains the error":
 	var chunks = empty_chunks(body, 3)
 	chunks.append("".to_bytes())
 
-	var parts = multipart_parts(from_list(chunks), "XyZ", none)
+	var parts = multipart_parts(from_list(chunks), "XyZ", null)
 	expect_equal(parts.next().err().kind, "EBADMSG")?
 	expect_equal(parts.next().err().kind, "EBADMSG")?

@@ -97,7 +97,7 @@ test "list methods mutate explicit clones and remain typed":
 	alias := original.clone()
 	original.get(index: -1) | expect_equal(1)?
 
-	absent: Int? := none
+	absent: Int? := null
 	original.get_or(index: -9223372036854775808, default: -1) | expect_equal(-1)?
 	original.get_or(index: 9223372036854775807, default: -1) | expect_equal(-1)?
 	original.first() | expect_equal(3)?
@@ -303,7 +303,7 @@ test "string methods use Unicode scalars":
 	"é🙂é".view(start: -2, end: 8) | expect_equal("é")?
 	"é🙂é".scalar_at(offset: 2) | expect_equal(128578)?
 
-	_missing: String? := none
+	_missing: String? := null
 	"".scalar_at(offset: 0, default: 63) | expect_equal(63)?
 	"é".scalar_at(offset: -9223372036854775808, default: 63) | expect_equal(63)?
 	"é".scalar_at(offset: 1, default: 63) | expect_equal(63)?
@@ -312,7 +312,7 @@ test "string methods use Unicode scalars":
 	"é🙂é".last_index_of(value: "") | expect_equal(8)?
 	"é🙂é".index_of(value: "") | expect_equal(0)?
 
-	absent: Int? := none
+	absent: Int? := null
 	"é🙂é".index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".last_index_of(value: "z") | expect_equal(absent)?
 	"é🙂é".slice(start: 2, end: 8) | expect_equal("🙂é")?
@@ -345,7 +345,7 @@ test "bytes have analogous immutable operations":
 	data := Bytes([1, 2, 3, 2])
 	data.get(index: -1) | expect_equal(2)?
 
-	missing: Int? := none
+	missing: Int? := null
 	data.get_or(index: -9223372036854775808, default: 255) | expect_equal(255)?
 	(data.contains(value: Bytes([2, 3]))) | expect_true?
 	data.index_of(value: Bytes([2])) | expect_equal(1)?

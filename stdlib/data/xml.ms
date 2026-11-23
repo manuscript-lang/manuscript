@@ -66,15 +66,15 @@ fn XmlNode.tag() String:
 		XmlElement(name, _, _): return name.clone()
 		_: return ""
 
-// Returns the value of the attribute `name`, or none when it is absent or the node is
+// Returns the value of the attribute `name`, or null when it is absent or the node is
 // not an element.
 fn XmlNode.attribute(name: String) String?:
 	match self:
 		XmlElement(_, attributes, _):
 			for attribute in attributes:
 				if attribute.name == name: return attribute.value.clone()
-			return none
-		_: return none
+			return null
+		_: return null
 
 // Returns the child nodes of an element, or an empty list. The result is an owned
 // copy.
@@ -89,15 +89,15 @@ fn XmlNode.text() String:
 	collect_text(self, out)
 	return out.build()
 
-// Returns the first direct child element named `name`, or none. The result is an
+// Returns the first direct child element named `name`, or null. The result is an
 // owned copy.
 fn XmlNode.find(name: String) XmlNode?:
 	match self:
 		XmlElement(_, _, children):
 			for child in children:
 				if child.tag() == name: return child.clone()
-			return none
-		_: return none
+			return null
+		_: return null
 
 // Returns every direct child element named `name`, in order.
 fn XmlNode.find_all(name: String) List[XmlNode]:
@@ -756,13 +756,13 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 
 	return ok(out.build())
 
-// The value of a character reference's digits, or none for an empty run, a sign, or any
+// The value of a character reference's digits, or null for an empty run, a sign, or any
 // non-digit.
 fn digits(text: String, radix: Int) Int?:
-	if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return none
+	if text.is_empty() or text.starts_with("+") or text.starts_with("-"): return null
 
 	value := parse_int(text, radix)
-	if value.is_error(): return none
+	if value.is_error(): return null
 
 	return value.get_or(0)
 

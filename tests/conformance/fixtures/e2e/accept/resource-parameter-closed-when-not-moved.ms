@@ -9,7 +9,7 @@ fn move Handle.close() Void!:
 // The callee owns the handle only on the path that returns it; the other paths close it.
 fn keep(h: Handle, flag: Bool) Handle?:
 	if flag: return h
-	return none
+	return null
 
 fn id_or_zero(h: Handle, flag: Bool) Int:
 	if flag:

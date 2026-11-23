@@ -20,7 +20,7 @@ test "a generic Result lifts an owned payload into its optional field":
 	expect_equal(lifted([1, 2]).get().get(), [1, 2])?
 
 test "a generic Result keeps an optional payload as it is":
-	missing: Int? := none
+	missing: Int? := null
 	expect_false(passed(missing).get().is_some())?
 
 	present: Int? := 3

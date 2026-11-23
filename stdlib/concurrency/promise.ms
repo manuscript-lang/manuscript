@@ -123,12 +123,12 @@ export enum Placement:
 // is enforced whether or not anyone waits; when it passes, the work is cancelled and
 // `wait` reports `ETIMEDOUT`. A negative timeout means no time at all.
 export type PromiseOptions:
-	// How long the work may run, counted from construction; `none` means no limit.
-	timeout: Duration? = none
+	// How long the work may run, counted from construction; `null` means no limit.
+	timeout: Duration? = null
 	// When this signal's `Cancel` fires, the work is cancelled and `wait` reports
 	// `ECANCELED`. Applying a signal to an existing promise replaces its previous
-	// signal; none leaves it unchanged.
-	cancel: Signal? = none
+	// signal; null leaves it unchanged.
+	cancel: Signal? = null
 	// Which thread runs the work.
 	placement: Placement = Placement.Any
 
@@ -168,8 +168,8 @@ export opaque type Signal:
 fn Signal.cancelled() Bool:
 	return msrt_cancel_fired(self.id)
 
-// Internal: a limit in nanoseconds, or -1 for none. A negative duration means no time
-// at all, not "none".
+// Internal: a limit in nanoseconds, or -1 for null. A negative duration means no time
+// at all, not "null".
 fn nanos(limit: Duration?) Int:
 	if own := limit:
 		total := own.to_nanoseconds()

@@ -54,7 +54,7 @@ bench "regex find_all":
 		text += f"line {i} some filler text here\nfunc name{i}(a, b)\n"
 
 	re := compile("func\\s+\\w+\\(")?
-	(re.find_all(text, none)?).length()
+	(re.find_all(text, null)?).length()
 
 // JPEG and PNG encode and decode of one image (#4197).
 bench "image codecs":

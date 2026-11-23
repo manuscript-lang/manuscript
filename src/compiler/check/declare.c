@@ -247,7 +247,7 @@ static void report_prelude_reuse(MsCheckProgram *program, uint32_t module, const
 /* The prelude's constructor names: a module declaration cannot reuse one. */
 static bool is_prelude_constructor(const MsCheckProgram *program, MsName name) {
   const MsSpan text = ms_names_span(program->names, name);
-  return ms_span_is_text(text, "some") || ms_span_is_text(text, "none") || ms_span_is_text(text, "ok") ||
+  return ms_span_is_text(text, "some") || ms_span_is_text(text, "null") || ms_span_is_text(text, "ok") ||
          ms_span_is_text(text, "error");
 }
 

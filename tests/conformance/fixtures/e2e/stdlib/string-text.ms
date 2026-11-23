@@ -24,7 +24,7 @@ test "string text helpers":
 	"abc".trim_end_chars("cb") | expect_equal("a")?
 	"abc".contains_any("xyc") | expect_equal(true)?
 	"héllo".index_any("lo") | expect_equal(3)?
-	"abc".index_any("") | expect_equal(none)?
+	"abc".index_any("") | expect_equal(null)?
 	"ab".split_after("") | expect_equal(["a", "b"])?
 	"a,b,".split_after(",") | expect_equal(["a,", "b,"])?
 	"élan vital".capitalize() | expect_equal("Élan vital")?
@@ -103,7 +103,7 @@ test "char-set trims and find_char agree with a scalar walk across scan windows"
 				expect_equal(text.trim_end_chars("é"), text.view(0, expected_end))?
 				expect_equal(
 					text.find_char(fn c: c != "é"),
-					if expected_start == text.length(): none else: expected_start,
+					if expected_start == text.length(): null else: expected_start,
 				)?
 
 				if expected_start < expected_end:

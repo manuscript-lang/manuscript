@@ -19,7 +19,7 @@ test "hex preflight preserves byte lengths and error precedence":
 	expect_equal(hex_decode("a", 0), invalid)?
 	expect_equal(hex_decode("", 0), ok(Bytes([])))?
 	expect_equal(hex_decode("00fF", 2), ok(Bytes([0, 255])))?
-	expect_equal(hex_decode("00fF", none), ok(Bytes([0, 255])))?
+	expect_equal(hex_decode("00fF", null), ok(Bytes([0, 255])))?
 
 test "hex limits and round trips preserve actual nested byte views":
 	storage := Bytes([255, 254, 0, 15, 16, 127, 128, 253])

@@ -11,7 +11,7 @@ fn move Marker.close() Void!:
 	print("closed")
 
 fn Marker.finish(flag: Bool) Marker?:
-	if flag: return none
+	if flag: return null
 	return self
 
 fn run() Void:

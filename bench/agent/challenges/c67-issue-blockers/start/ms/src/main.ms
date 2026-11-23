@@ -11,11 +11,11 @@ type Comment:
 type Fields:
 	title: String
 	priority: Int = 1
-	assignee: String? = none
-	points: Int? = none
-	due: String? = none
+	assignee: String? = null
+	points: Int? = null
+	due: String? = null
 	labels: List[String] = []
-	reporter: String? = none
+	reporter: String? = null
 
 type Issue:
 	id: Int
@@ -76,8 +76,8 @@ type Parser:
 
 type QSpec:
 	filter: String
-	sort: String? = none
-	limit: Int? = none
+	sort: String? = null
+	limit: Int? = null
 
 type SortKey:
 	field: Int
@@ -303,18 +303,18 @@ fn apply_token(var f: Fields, tok: String) Void!:
 	if name == "assignee":
 		if value.trim() == "": return error(Error("empty assignee"))
 
-		f.assignee = if value == "none": none else: value
+		f.assignee = if value == "none": null else: value
 		return ok()
 
 	if name == "reporter":
 		if value.trim() == "": return error(Error("empty reporter"))
 
-		f.reporter = if value == "none": none else: value
+		f.reporter = if value == "none": null else: value
 		return ok()
 
 	if name == "points":
 		if value == "none":
-			f.points = none
+			f.points = null
 			return ok()
 
 		if not valid_int(value): return error(Error(f"bad points '{value}'"))
@@ -324,7 +324,7 @@ fn apply_token(var f: Fields, tok: String) Void!:
 
 	if name == "due":
 		if value == "none":
-			f.due = none
+			f.due = null
 			return ok()
 
 		if not valid_date(value): return error(Error(f"bad date '{value}'"))
@@ -405,8 +405,8 @@ fn split_query(text: String) QSpec!:
 	cs := text.chars()
 	n := cs.length()
 	var filter_end = n
-	var limit: Int? = none
-	var sort: String? = none
+	var limit: Int? = null
+	var sort: String? = null
 
 	// limit
 	var e = n
@@ -1249,7 +1249,7 @@ fn State.cmd_show(rest: String) String!:
 
 fn State.cmd_list(rest: String) String!:
 	spec := split_query(rest)?
-	return self.run_list(spec, none, none, false)
+	return self.run_list(spec, null, null, false)
 
 fn var State.cmd_log(rest: String) String!:
 	ws := rest.fields()
@@ -1792,7 +1792,7 @@ fn var State.exec(line: String) Void:
 // ms: allow_effect std.console.read
 // ms: allow_effect std.console.write
 fn main() Void!:
-	bytes := read_all(stdin(), none)?
+	bytes := read_all(stdin(), null)?
 	text := bytes.decode_utf8().get_or("")
 	lines := text.lines()
 	var st = State()

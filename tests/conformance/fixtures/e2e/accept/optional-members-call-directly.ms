@@ -6,7 +6,7 @@ fn fallback() Int: 9
 
 test "optional members":
 	present: Int? := 3
-	absent: Int? := none
+	absent: Int? := null
 	expect_true((present.is_some() and present.is_some()))?
 	expect_true((absent.is_none() and absent.is_none()))?
 	expect_true((present.get_or(default: 7) == 3))?

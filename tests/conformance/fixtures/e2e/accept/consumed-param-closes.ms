@@ -21,7 +21,7 @@ fn logged(path: String) String:
 
 fn keep_if(d: Door, keep: Bool) Door?:
 	if keep: return d
-	return none
+	return null
 
 test "a parameter the callee drops on some path is closed there":
 	tmp := temporary("ms-log-") | expect_ok?

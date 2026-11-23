@@ -208,7 +208,7 @@ export fn decode_words(text: String) String:
 		head.append(seg.view(0, seg.length() - 1))
 
 		literal := head.drain()
-		var decoded: String? = none
+		var decoded: String? = null
 		if index + 4 < fields.length() and fields[index + 4].starts_with("="):
 			decoded = decode_word(
 				fields[index + 1],
@@ -241,18 +241,18 @@ fn decode_word(charset: String, encoding: String, payload: String) String?:
 
 	if kind == "B":
 		decoded := base64_decode(payload)
-		if decoded.is_error(): return none
+		if decoded.is_error(): return null
 
 		bytes = decoded.get()
 	else if kind == "Q":
 		bytes = q_decode(payload)
 	else:
-		return none
+		return null
 
 	if set == "utf-8" or set == "us-ascii": return bytes.decode_utf8()
 	if set == "iso-8859-1" or set == "latin1": return latin1_decode(bytes)
 
-	return none
+	return null
 
 fn q_decode(payload: String) Bytes:
 	var out = BytesBuilder()

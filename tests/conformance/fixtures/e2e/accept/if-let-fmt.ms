@@ -26,10 +26,10 @@ test "if let unwraps a present optional":
         fail(message: "expected some")?
 
 test "if let takes else when absent and keeps falsy payloads":
-    (check(value: describe(none) == "Hello!", message: "none")?)
+    (check(value: describe(null) == "Hello!", message: "none")?)
     (check(value: describe("Ada") == "Hello, Ada", message: "some")?)
 
-    items: List[Int?] := [1, none, 0, 2]
+    items: List[Int?] := [1, null, 0, 2]
     (check(value: total(items) == 3, message: "total")?)
 
     empty: List[Int] := []

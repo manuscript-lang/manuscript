@@ -25,10 +25,10 @@ fn var OneByte.next() move Bytes?!:
 		fresh := self.input.next()?
 
 		if next := fresh: data = next.clone()
-		else: return ok(none)
+		else: return ok(null)
 
 	if data.length() <= 1:
-		self.held = none
+		self.held = null
 		return ok(data)
 
 	self.held = data.slice(1, data.length())?.clone()
@@ -40,7 +40,7 @@ fn move OneByte.close() Void!:
 // Returns `input` limited to one byte per read. This exposes code that assumes a read
 // fills its buffer.
 export fn one_byte(move input: ReadStream[Bytes]) ReadStream[Bytes]:
-	return ReadStream[Bytes](OneByte(input, none))
+	return ReadStream[Bytes](OneByte(input, null))
 
 type FailAfter:
 	input: ReadStream[Bytes]

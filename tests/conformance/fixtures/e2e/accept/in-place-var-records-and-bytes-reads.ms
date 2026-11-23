@@ -50,7 +50,7 @@ test "bytes reads index, wrap negative and use defaults":
 	expect_equal(b.get_or(9, 7).to_int(), 7)?
 	expect_equal(b.get_or(-9, 3).to_int(), 3)?
 	expect_equal(b.get_or(-5, 3).to_int(), 104)?
-	expect_equal(b.get_or(2, none), 108)?
+	expect_equal(b.get_or(2, null), 108)?
 
 test "var record methods change fields in place":
 	var c = Cursor("abcd".to_bytes(), 0, 3, "first", [], false)

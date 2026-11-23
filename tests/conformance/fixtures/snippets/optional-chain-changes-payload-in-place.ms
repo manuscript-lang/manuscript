@@ -29,7 +29,7 @@ fn main2() Void:
     b?.inc()
     b?.inc()
 
-    var n: Node? = Node(1, Node(5, none))
+    var n: Node? = Node(1, Node(5, null))
     n?.inc()
     n?.next?.inc()
     if l := xs:

@@ -12,7 +12,7 @@ type Marker:
 fn move Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
 fn keep_or_drop[T](drop: Bool, value: T?) T?:
-	if drop: return none
+	if drop: return null
 	return value.get()
 
 test "a generic parameter a path does not move is closed on that path":

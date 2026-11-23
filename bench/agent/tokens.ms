@@ -20,7 +20,7 @@ fn count_tokens(paths: List[String]) List[Int]?:
 	program := "import sys, tiktoken; e = tiktoken.get_encoding('o200k_base'); [print(len(e.encode(open(p, encoding='utf-8').read()))) for p in sys.argv[1:]]"
 	quoted := paths.map(fn p: f"'{p}'").join(" ")
 	ran := bash(f"python3 -c \"{program}\" {quoted}", ".", 600, "")
-	if ran.code != 0: return none
+	if ran.code != 0: return null
 
 	counts: List[Int] := ran.out.trim().split("\n").map(fn n: n.parse_int().get_or(0))
 	return counts

@@ -15,6 +15,6 @@ fn work(counter: Counter) List[Int]:
             number:
                 value = number
                 advance(counter)
-            none: 0
+            null: 0
         , value, counter.value, advance(counter)
     ]

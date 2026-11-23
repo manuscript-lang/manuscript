@@ -67,7 +67,7 @@ test "omitted and explicit defaults":
 	(identity(value: 9) != 9 or identity(value: 9, fallback: 4) != 4) | expect_false?
 	unit_value(void) | expect_equal(void)?
 	unit_value() | expect_equal(void)?
-	(optional(value: none).is_some() or optional() != 3) | expect_false?
+	(optional(value: null).is_some() or optional() != 3) | expect_false?
 	(
 		(
 			(

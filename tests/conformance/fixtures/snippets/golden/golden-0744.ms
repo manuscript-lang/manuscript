@@ -5,6 +5,6 @@ fn affine(n: Int) Result[Int, Cause]:
         return error(Cause(match n:
             value:
                 return ok(9223372036854775807)
-            none: "negative"
+            null: "negative"
         ))
     return ok(n + 1)

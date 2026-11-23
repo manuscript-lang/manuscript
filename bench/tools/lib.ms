@@ -60,7 +60,7 @@ export fn capture(
 	program: String,
 	arguments: List[String],
 	input: String = "",
-	cwd: String? = none,
+	cwd: String? = null,
 ) Ran:
 	if out := run(program, arguments, RunOptions(input: input.to_bytes(), cwd: cwd)).wait():
 		return Ran(
@@ -288,7 +288,7 @@ export fn platform() String:
 
 // All of standard input as text.
 export fn read_stdin() String:
-	return read_all(stdin(), none).get().decode_utf8().get_or("")
+	return read_all(stdin(), null).get().decode_utf8().get_or("")
 
 // Runs `ms bench` for the bench/perf/stdlib suite and returns its JSON document.
 export fn stdlib_bench(ms: String, samples: Int, filter: String) String!:

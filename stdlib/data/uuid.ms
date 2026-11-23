@@ -68,7 +68,7 @@ export fn uuid_v7() String!:
 		raw.append(noise.get(place))
 	return ok(format_uuid(raw.build(), 7))
 
-// Returns the version digit (1 through 8) of a UUID text, or none when `text` is not an
+// Returns the version digit (1 through 8) of a UUID text, or null when `text` is not an
 // RFC 9562 UUID (including malformed text). Case does not matter. Example:
 // `uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d")` is `5`.
 export fn uuid_version(text: String) Int?:
@@ -79,7 +79,7 @@ export fn uuid_version(text: String) Int?:
 		variant := shift_right_unsigned(bytes.get(8).to_int(), 6)
 		if variant == 2 and version >= 1 and version <= 8: return version
 
-	return none
+	return null
 
 // Parses the 16 bytes of a UUID text of any version.
 fn uuid_to_bytes(text: String) Bytes!:

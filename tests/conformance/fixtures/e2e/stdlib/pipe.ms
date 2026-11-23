@@ -83,7 +83,7 @@ test "a pipe has one reader; asking again gives a stream that has already ended"
 	var input = p.reader()
 	var again = p.reader()
 	out.write(7)?
-	expect_equal((again.next()?), none)?
+	expect_equal((again.next()?), null)?
 	expect_equal((input.next()?), 7)?
 
 test "a promise that owns a pipe writes to it through a writer of its own":

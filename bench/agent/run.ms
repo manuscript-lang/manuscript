@@ -73,7 +73,7 @@ fn split_ids(text: String) List[String]:
 fn llm_tokens(path: String) Int?:
 	program := "import sys, tiktoken; print(len(tiktoken.get_encoding('o200k_base').encode(open(sys.argv[1], errors='replace').read(), disallowed_special=())))"
 	ran := bash(f"python3 -c \"{program}\" \"{path}\"", ".", 60, "")
-	if ran.code != 0: return none
+	if ran.code != 0: return null
 
 	return ran.out.trim().parse_int()
 

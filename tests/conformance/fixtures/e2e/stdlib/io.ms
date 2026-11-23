@@ -11,7 +11,7 @@ import (
 )
 
 test "stream compositions preserve line endings and EOF":
-	found := collect(lines(memory("one\r\ntwo\nlast")), none)?
+	found := collect(lines(memory("one\r\ntwo\nlast")), null)?
 	expect_equal(found, ["one", "two", "last"])?
 
 	directory := temporary("manuscript-io-")?
@@ -26,7 +26,7 @@ test "streams enforce byte limits and preserve original errors":
 	expect_equal(read_all(memory("abc"), 2), limited)?
 
 	closed: Bytes! := error(Error("I/O: resource is closed", kind: "EBADF"))
-	expect_equal(read_all(closed_reader(), none), closed)?
+	expect_equal(read_all(closed_reader(), null), closed)?
 
 test "a reader keeps the shared file open after the handle closes":
 	directory := temporary("manuscript-closed-lines-")?

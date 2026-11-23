@@ -8,10 +8,10 @@ import (
 // one or two digits.
 fn cents(amt: String) Int?:
 	parts := amt.split(".")
-	if parts.length() > 2: return none
+	if parts.length() > 2: return null
 
 	whole := parts[0].clone()
-	if whole.is_empty() or not whole.chars().all(fn c: "0123456789".contains(c)): return none
+	if whole.is_empty() or not whole.chars().all(fn c: "0123456789".contains(c)): return null
 
 	var fraction = ""
 
@@ -21,7 +21,7 @@ fn cents(amt: String) Int?:
 			fraction.length() < 1
 			or fraction.length() > 2
 			or not fraction.chars().all(fn c: "0123456789".contains(c))
-		): return none
+		): return null
 
 	return (
 		whole.parse_int().get_or(0) * 100
@@ -38,24 +38,24 @@ fn parse_line(line: String) Row?:
 
 	if line.starts_with("\""):
 		end := line.slice(1, line.length()).index_of("\"").get_or(-1)
-		if end < 0: return none
+		if end < 0: return null
 
 		close := end + 1
-		if line.slice(close + 1, close + 2) != ",": return none
+		if line.slice(close + 1, close + 2) != ",": return null
 
 		cat = line.slice(1, close)
 		amt = line.slice(close + 2, line.length())
 	else:
 		parts := line.split(",")
-		if parts.length() != 2: return none
+		if parts.length() != 2: return null
 
 		cat = parts[0].clone()
 		amt = parts[1].clone()
 
-	if cat.contains("\"") or amt.contains(",") or cat.is_empty(): return none
+	if cat.contains("\"") or amt.contains(",") or cat.is_empty(): return null
 	if value := cents(amt): return Row(cat, value)
 
-	return none
+	return null
 
 fn solve(s: String) String:
 	var totals = Map[String, Int]()

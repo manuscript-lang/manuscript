@@ -56,8 +56,8 @@ test "uuid_v5 accepts an uppercase namespace and rejects malformed ones":
 test "uuid_version reads the version of valid text only":
 	uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d") | expect_equal(5)?
 	uuid_version("886313E1-3B8A-5372-9B90-0C9AEE199E5D") | expect_equal(5)?
-	uuid_version("886313e1-3b8a-5372-1b90-0c9aee199e5d") | expect_equal(none)?
-	uuid_version("not a uuid") | expect_equal(none)?
+	uuid_version("886313e1-3b8a-5372-1b90-0c9aee199e5d") | expect_equal(null)?
+	uuid_version("not a uuid") | expect_equal(null)?
 
 test "uuid_v7 is a version-7 uuid that sorts by creation time":
 	first := (uuid_v7() | expect_ok?)

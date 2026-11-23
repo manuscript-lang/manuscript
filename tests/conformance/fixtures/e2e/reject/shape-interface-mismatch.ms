@@ -7,7 +7,7 @@ type Counted:
 
 // `next` returns Int?, not Int?!, so Counted is not a Source[Int].
 fn var Counted.next() Int?:
-	return none
+	return null
 
 fn move Counted.close() Void!:
 	return ok()

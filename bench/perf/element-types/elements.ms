@@ -119,7 +119,7 @@ fn map_groups() Int:
 
 // 5. Optional[record]: return an optional record from a lookup, 10M times.
 fn find(xs: List[Event], i: Int) Event?:
-	if i % 4 == 0: return none
+	if i % 4 == 0: return null
 	return xs[i % xs.length()].clone()
 
 fn optional_records() Int:

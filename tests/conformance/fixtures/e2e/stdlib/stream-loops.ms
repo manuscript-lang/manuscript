@@ -19,7 +19,7 @@ fn var Counter.next() Int?!:
 		self.at += 1
 		return error(Error("boom", kind: "EIO"))
 
-	if self.at >= self.stop: return ok(none)
+	if self.at >= self.stop: return ok(null)
 
 	self.at += 1
 	return ok(self.at)
@@ -73,7 +73,7 @@ test "closing the stream inside its loop still closes the source once":
 	expect_equal(closes.receive()?, 2)?
 
 test "stages pull directly and keep their results":
-	doubled := collect(from_list([1, 2, 3]) | map(fn v: v * 2), none)?
+	doubled := collect(from_list([1, 2, 3]) | map(fn v: v * 2), null)?
 	expect_equal(doubled, [2, 4, 6])?
 
 	limited := collect(from_list([1, 2, 3]), 2)

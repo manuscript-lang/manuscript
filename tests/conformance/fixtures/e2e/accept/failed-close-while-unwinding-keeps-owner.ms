@@ -30,7 +30,7 @@ fn deque_then_fault(log: String) Void:
 	panic("body fault")
 
 fn list_then_fault(move log: String) Void:
-	var items: List[Item?] = [Item(1, log.clone(), true), none, Item(2, log.clone(), false)]
+	var items: List[Item?] = [Item(1, log.clone(), true), null, Item(2, log.clone(), false)]
 	panic("body fault")
 
 	void items.length()

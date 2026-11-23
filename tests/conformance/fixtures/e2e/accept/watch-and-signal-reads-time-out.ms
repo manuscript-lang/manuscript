@@ -22,6 +22,6 @@ test "a bounded read of an idle polling watcher times out":
 	expect_equal(stalled.err().kind, "ETIMEDOUT")?
 
 test "a bounded read of a signal stream with no signal times out":
-	var signals = watch_signals([2], none)?
+	var signals = watch_signals([2], null)?
 	stalled := signals.next(timeout: milliseconds(100))
 	expect_equal(stalled.err().kind, "ETIMEDOUT")?

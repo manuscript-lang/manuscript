@@ -22,7 +22,7 @@ For additional APIs, inspect `ms search_symbol` signatures/imports. Report compi
 
 ## Habits from other languages
 
-- Methods always take parentheses, even with no arguments: `xs.length()`, `name.length()`, `opt.is_none()`; `xs.length` is a method value, not an Int. Test absence with `x.is_none()` or `x.is_some()`, never `x == none`. Write `not x` (no `!x`), `f(x)?` (no `try`), `fn f() Result[Int, Error]:` (no `->`), `"\{ \}"` for literal braces in text, and `else:` only after an indented `if` block.
+- Methods always take parentheses, even with no arguments: `xs.length()`, `name.length()`, `opt.is_none()`; `xs.length` is a method value, not an Int. Test absence with `x.is_none()` or `x.is_some()`, never `x == null`. Write `not x` (no `!x`), `f(x)?` (no `try`), `fn f() Result[Int, Error]:` (no `->`), `"\{ \}"` for literal braces in text, and `else:` only after an indented `if` block.
 - Inside `{}` of an `f` string, write quotes plainly: `f"{xs.join(", ")}"`, never `\"`. `r?.abs()` unwraps the Result, then calls `abs()`; it needs a Result-returning function. In a `Void!` function a bare `return` means `return ok()`; other Result functions need `ok(value)` or `error(e)`.
 
 Each row is a shape agents wrote that fails; the right column compiles.
@@ -30,7 +30,7 @@ Each row is a shape agents wrote that fails; the right column compiles.
 | Not | Write |
 | --- | --- |
 | `!x`, `a ?? b`, `try f()`, `x or return y` | `not x`, `a.get_or(b)`, `f()?`, `if v := x:` then use `v` |
-| `x.len`, `x.length`, `x == none` | `x.length()`, `x.is_none()` |
+| `x.len`, `x.length`, `x == null` | `x.length()`, `x.is_none()` |
 | `(lo + hi) // 2` (the `//` starts a comment, so the `2` is silently dropped) | `(lo + hi) / 2`: Int `/` already truncates |
 | `ys := xs.sort()`, `print(xs.reverse())` (both return nothing and change `xs` in place) | `xs.sort()` as a statement, or `ys := xs.sorted()`, `xs.reversed()` |
 | `bytes.to_string()` (renders `Bytes(104, 105)`) | `bytes.decode_utf8().ok_or(Error("not UTF-8"))?` |
@@ -61,11 +61,11 @@ type Pair:
 
 fn parse_line(line: String) Pair?:
 	parts := line.split(" ")
-	if parts.length() != 2: return none
+	if parts.length() != 2: return null
 	n := parts.get_or(1, "").parse_int()
 	if count := n:
 		return Pair(name: parts.get_or(0, ""), count: count)
-	return none
+	return null
 
 fn bump(var seen: Set[String], word: String) Int:
 	seen.add(word)

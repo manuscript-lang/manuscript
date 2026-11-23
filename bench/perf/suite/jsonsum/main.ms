@@ -13,7 +13,7 @@ type Rec:
 	name: String
 
 fn main() Void:
-	data := read_all(stdin(), none).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8().get_or("")
 	recs := parse[List[Rec]](data).get()
 	var scores = Map[String, Int]()
 	var tags = Map[String, Int]()

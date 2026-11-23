@@ -5,15 +5,15 @@ import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 type Tok:
 	s: String
 
-// Returns its argument on one path and `none` on the other.
+// Returns its argument on one path and `null` on the other.
 fn keep(t: Tok, flag: Bool) Tok?:
 	if flag: return t
-	return none
+	return null
 
 fn first_long(t: Tok, n: Int) Tok?:
 	if t.s.length() > n:
 		return t
-	return none
+	return null
 
 test "a call over a temporary returns none when the callee does":
 	expect_true(keep(Tok("a"), false).is_none())?

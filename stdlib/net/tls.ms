@@ -15,7 +15,7 @@ export type CertificateInfo:
 	// `subject`.
 	issuer: String
 	// DNS subject alternative names in certificate order; empty when the certificate
-	// has none.
+	// has null.
 	dns_names: List[String]
 	// Start of the validity period as a UTC Timestamp.
 	not_before: Timestamp
@@ -36,7 +36,7 @@ export type TlsInfo:
 	// negotiated.
 	alpn: String
 	// The peer's presented certificates as DER bytes, leaf first; empty when the peer
-	// sent none.
+	// sent null.
 	peer_certificates: List[Bytes]
 	// True when the peer's certificate chain was verified against the configured roots;
 	// False when no peer chain was verified.

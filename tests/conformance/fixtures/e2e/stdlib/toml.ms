@@ -179,7 +179,7 @@ test "TOML optional limits include implicit tables and zero":
 		(
 			parse(
 				text: "a=1",
-				options: limits(bytes: 2, depth: none, values: none),
+				options: limits(bytes: 2, depth: null, values: null),
 			) != limited
 		)
 	)?
@@ -187,7 +187,7 @@ test "TOML optional limits include implicit tables and zero":
 		(
 			parse(
 				text: "a.b=1",
-				options: limits(bytes: none, depth: 2, values: none),
+				options: limits(bytes: null, depth: 2, values: null),
 			) != limited
 		)
 	)?
@@ -195,7 +195,7 @@ test "TOML optional limits include implicit tables and zero":
 		(
 			parse(
 				text: "a.b=1",
-				options: limits(bytes: none, depth: none, values: 2),
+				options: limits(bytes: null, depth: null, values: 2),
 			) != limited
 		)
 	)?
@@ -210,14 +210,14 @@ test "TOML optional limits include implicit tables and zero":
 	(
 		parse(
 			text: "",
-			options: limits(bytes: none, depth: none, values: 0),
+			options: limits(bytes: null, depth: null, values: 0),
 		) | expect_equal(limited)?
 	)
 	expect_false(
 		(
 			parse(
 				text: "",
-				options: limits(bytes: none, depth: -1, values: none),
+				options: limits(bytes: null, depth: -1, values: null),
 			) != invalid
 		)
 	)?
@@ -373,5 +373,5 @@ test "TOML parse without options stops deep nesting and none lifts it":
 	deep := "a = " + "[".repeat(20000) + "]".repeat(20000)
 	if parse(deep).is_ok(): return fail("nesting over the default depth was accepted")
 
-	lifted := parse(deep, TomlOptions(max_depth: none, max_values: none))
+	lifted := parse(deep, TomlOptions(max_depth: null, max_values: null))
 	expect_true(lifted.is_ok())?

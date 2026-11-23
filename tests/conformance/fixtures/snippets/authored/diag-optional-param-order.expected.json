@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "required key follows optional node (a `T?` parameter or field defaults to none, so it counts as optional); put optional parameters and fields last",
+        "message": "required key follows optional node (a `T?` parameter or field defaults to null, so it counts as optional); put optional parameters and fields last",
         "position": {
           "file": "diag-optional-param-order.ms",
           "line": 8,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-optional-param-order.ms:8:22: type: required key follows optional node (a `T?` parameter or field defaults to none, so it counts as optional); put optional parameters and fields last\n   |\n 8 | fn find(node: Node?, key: Int) Bool:\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-optional-param-order.ms:8:22: type: required key follows optional node (a `T?` parameter or field defaults to null, so it counts as optional); put optional parameters and fields last\n   |\n 8 | fn find(node: Node?, key: Int) Bool:\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

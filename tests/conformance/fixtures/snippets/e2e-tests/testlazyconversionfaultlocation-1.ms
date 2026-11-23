@@ -6,5 +6,5 @@ fn crash() Error:
     return Error((1 / "".length()).to_string())
 
 fn main() Void:
-    value: Int? := none
+    value: Int? := null
     _result := value.ok_or_else(crash)

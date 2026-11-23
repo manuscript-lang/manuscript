@@ -197,8 +197,8 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 				text: text,
 				options: limits(
 					bytes: text.length() - 1,
-					depth: none,
-					values: none,
+					depth: null,
+					values: null,
 				),
 			) != limited
 		)
@@ -207,7 +207,7 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 		(
 			parse(
 				text: text,
-				options: limits(bytes: none, depth: none, values: 1),
+				options: limits(bytes: null, depth: null, values: 1),
 			) != limited
 		)
 	)?
@@ -455,7 +455,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 		(
 			parse(
 				text: "é",
-				options: limits(bytes: 1, depth: none, values: none),
+				options: limits(bytes: 1, depth: null, values: null),
 			) != limited
 		)
 	)?
@@ -463,7 +463,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 		(
 			parse(
 				text: "[[[]]]",
-				options: limits(bytes: none, depth: 2, values: none),
+				options: limits(bytes: null, depth: 2, values: null),
 			) != limited
 		)
 	)?
@@ -471,7 +471,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 		(
 			parse(
 				text: "a:\n  b: 1",
-				options: limits(bytes: none, depth: 2, values: none),
+				options: limits(bytes: null, depth: 2, values: null),
 			) != limited
 		)
 	)?
@@ -479,7 +479,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 		(
 			parse(
 				text: "[1,2]",
-				options: limits(bytes: none, depth: none, values: 2),
+				options: limits(bytes: null, depth: null, values: 2),
 			) != limited
 		)
 	)?
@@ -487,7 +487,7 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 		(
 			parse(
 				text: "a: &a [1,2]\nb: *a",
-				options: limits(bytes: none, depth: none, values: 6),
+				options: limits(bytes: null, depth: null, values: 6),
 			) != limited
 		)
 	)?
@@ -502,14 +502,14 @@ test "YAML limits cover root nested nodes aliases and exact bytes":
 	(
 		parse(
 			text: "",
-			options: limits(bytes: none, depth: none, values: 0),
+			options: limits(bytes: null, depth: null, values: 0),
 		) | expect_equal(limited)?
 	)
 	expect_false(
 		(
 			parse(
 				text: "",
-				options: limits(bytes: none, depth: -1, values: none),
+				options: limits(bytes: null, depth: -1, values: null),
 			) != invalid
 		)
 	)?
@@ -765,7 +765,7 @@ test "YAML flow mapping keys without a colon map to null":
 		ok(_): return fail("duplicate null keys")
 		error(_): _ignored := void
 
-	limited := limits(bytes: none, depth: none, values: 2)
+	limited := limits(bytes: null, depth: null, values: 2)
 
 	match parse(text: "{a, b, c}", options: limited):
 		ok(_): return fail("null keys count against the value limit")
@@ -881,7 +881,7 @@ test "YAML parse without options stops alias bombs and deep nesting":
 	nested := parse(deep)
 	if nested.is_ok(): return fail("nesting over the default depth was accepted")
 
-	lifted := parse(deep, YamlOptions(max_depth: none, max_values: none))
+	lifted := parse(deep, YamlOptions(max_depth: null, max_values: null))
 	expect_true(lifted.is_ok())?
 
 test "YAML plain scalars and keys keep Unicode spaces":

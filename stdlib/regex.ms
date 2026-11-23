@@ -49,10 +49,10 @@ fn Regex.capture_named(text: String) Map[String, String]:
 
 	return named
 
-// Returns the UTF-8 byte range of the first match, or none when nothing matches.
+// Returns the UTF-8 byte range of the first match, or null when nothing matches.
 fn Regex.find_span(text: String) RegexSpan?:
 	if raw := msstd_regex_find_span(self, text): return RegexSpan(raw[0], raw[1])
-	return none
+	return null
 
 // Splits text around every match, always returning at least one piece. max_pieces
 // is a strict budget like find_all's.
@@ -73,14 +73,14 @@ fn Regex.find_all_spans(text: String, max_matches: Int?) List[RegexSpan]!:
 	return ok(out)
 
 /*
-Returns the byte ranges of the first match as [whole, group1, ...], or an outer `none` when nothing matches.
-A group that did not participate is an inner `none`; a participating empty group has start == end.
+Returns the byte ranges of the first match as [whole, group1, ...], or an outer `null` when nothing matches.
+A group that did not participate is an inner `null`; a participating empty group has start == end.
 `max_captures` bounds the slots, counting the whole match and unmatched groups. A negative budget returns `EINVAL`
 and exceeding it returns `EOVERFLOW`. The budget bounds the output, not input scanning or engine scratch space.
 */
 fn Regex.capture_spans(text: String, max_captures: Int?) List[RegexSpan?]?!:
 	raw := msstd_regex_capture_spans(self, text, max_captures)?
-	if raw.is_empty(): return ok(none)
+	if raw.is_empty(): return ok(null)
 
 	return ok(capture_slots(raw, 1, raw[0]))
 
@@ -129,7 +129,7 @@ fn capture_slots(raw: List[Int], start: Int, count: Int) List[RegexSpan?]:
 		at := start + index * 2
 
 		if raw[at] < 0:
-			out.append(none)
+			out.append(null)
 		else:
 			out.append(RegexSpan(raw[at], raw[at + 1]))
 

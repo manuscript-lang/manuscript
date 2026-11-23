@@ -8,6 +8,6 @@ fn required(value: Int) Int: return value
 fn call(x: Int?) Int:
     chosen := match x:
         n: optional
-        none: required
+        null: required
 
     return chosen()

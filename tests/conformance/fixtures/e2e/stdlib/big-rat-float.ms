@@ -167,4 +167,4 @@ test "to_float rounds once, onto the subnormal grid":
 	// Normal values and the boundary are unchanged.
 	expect_equal(rat_of_binary(big_int_of_int(1), -1022).to_float(), 2.2250738585072014e-308)?
 	expect_equal(rat_of_int(3).to_float(), 3.0)?
-	expect_equal(rat_of_binary(big_int_of_int(1), 1024).to_float(), none)?
+	expect_equal(rat_of_binary(big_int_of_int(1), 1024).to_float(), null)?

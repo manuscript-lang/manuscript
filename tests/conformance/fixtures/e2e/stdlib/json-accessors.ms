@@ -12,11 +12,11 @@ fn doc() JsonValue:
 fn user_field(d: JsonValue, key: String) JsonValue?:
 	if user := d.get("user"):
 		if field := user.get(key): return field.clone()
-	return none
+	return null
 
 fn string_of(value: JsonValue) String?:
 	if text := value.as_string(): return text.clone()
-	return none
+	return null
 
 fn has_map(value: JsonValue) Bool:
 	return value.as_map().is_some()
@@ -25,7 +25,7 @@ fn tag(d: JsonValue, index: Int) String?:
 	if tags := d.get("user"):
 		if list := tags.get("tags"):
 			if item := list.get_index(index): return string_of(item)
-	return none
+	return null
 
 test "JSON accessors read nested objects without copying subtrees":
 	d := doc()
@@ -93,7 +93,7 @@ test "JSON is_null distinguishes null from absent and other values":
 // `get_in` returns a clone of the member it reaches.
 fn user_name(d: JsonValue) String?:
 	if name := d.get_in(["user", "name"]): return name.as_string()
-	return none
+	return null
 
 test "JSON get_in reads a chain of members in place":
 	d := doc()

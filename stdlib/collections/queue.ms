@@ -1,11 +1,11 @@
 // A mutable first-in, first-out queue. Assigning it moves it; `.clone()` makes an
-// independent queue when its elements are Clonable. An omitted or `none` capacity
+// independent queue when its elements are Clonable. An omitted or `null` capacity
 // means the queue grows as needed and has no limit.
 export type Queue[T]:
-	// Maximum number of items. Omitted or `none` means unbounded; a capacity of zero
+	// Maximum number of items. Omitted or `null` means unbounded; a capacity of zero
 	// or below is always full.
 	capacity: Int?
-	// Pending values from `head`; `none` marks consumed slots. Internal state: use the
+	// Pending values from `head`; `null` marks consumed slots. Internal state: use the
 	// operations, not this field.
 	items: List[T?] = []
 	// Index in `items` of the oldest value. Internal state.
@@ -22,18 +22,18 @@ fn var Queue[T].enqueue(move value: T) Bool:
 	if self.head > 0 and self.head * 2 >= count:
 		var live: List[T?] = []
 		for index in self.head..count:
-			live.append(self.items.replace(index, none))
+			live.append(self.items.replace(index, null))
 		self.items = live
 		self.head = 0
 
 	self.items.append(value)
 	return true
 
-// Removes and returns the oldest value, or `none` when empty.
+// Removes and returns the oldest value, or `null` when empty.
 fn var Queue[T].dequeue() T?:
-	if self.head >= self.items.length(): return none
+	if self.head >= self.items.length(): return null
 
-	value := self.items.replace(self.head, none)
+	value := self.items.replace(self.head, null)
 	self.head += 1
 
 	if self.head == self.items.length():
@@ -42,12 +42,12 @@ fn var Queue[T].dequeue() T?:
 
 	return value
 
-// Returns the oldest value without removing it, or `none` when the queue is empty.
+// Returns the oldest value without removing it, or `null` when the queue is empty.
 fn Queue[T].peek() T?:
-	if self.head >= self.items.length(): return none
+	if self.head >= self.items.length(): return null
 	return self.items.get(self.head)
 
-// Reports whether `dequeue` and `peek` would return `none`.
+// Reports whether `dequeue` and `peek` would return `null`.
 fn Queue[T].is_empty() Bool:
 	return self.head >= self.items.length()
 
@@ -55,11 +55,11 @@ fn Queue[T].is_empty() Bool:
 fn Queue[T].length() Int:
 	return self.items.length() - self.head
 
-// Returns the value `index` places after the oldest, or `none` when out of range;
+// Returns the value `index` places after the oldest, or `null` when out of range;
 // negative indexes count from the newest, as `List.get` does.
 fn Queue[T].get(index: Int) T?:
 	at := if index < 0: index + self.length() else: index
-	if at < 0 or at >= self.length(): return none
+	if at < 0 or at >= self.length(): return null
 
 	return self.items.get(self.head + at)
 
@@ -81,7 +81,7 @@ export type HeapEntry[T]:
 // record that implements `Comparable`. Assigning a priority queue moves it; `.clone()`
 // makes an independent queue when its elements are Clonable.
 export type PriorityQueue[T: Comparable]:
-	// Maximum number of items. Omitted or `none` means unbounded; a capacity of zero
+	// Maximum number of items. Omitted or `null` means unbounded; a capacity of zero
 	// or below is always full.
 	capacity: Int?
 	// Binary heap of waiting values, each with its enqueue sequence number (the smaller
@@ -147,10 +147,10 @@ fn var PriorityQueue[T].enqueue(move value: T) Bool:
 	self.sift_up(self.heap.length() - 1, 0)
 	return true
 
-// Removes and returns the next value by priority, or `none` when empty.
+// Removes and returns the next value by priority, or `null` when empty.
 fn var PriorityQueue[T].dequeue() T?:
 	count := self.heap.length()
-	if count == 0: return none
+	if count == 0: return null
 
 	self.swap_entries(0, count - 1)
 
@@ -158,9 +158,9 @@ fn var PriorityQueue[T].dequeue() T?:
 	self.sift_down(0)
 	return top.map(fn entry: entry.value)
 
-// Returns the next value by priority without removing it, or `none` when empty.
+// Returns the next value by priority without removing it, or `null` when empty.
 fn PriorityQueue[T].peek() T?:
-	if self.heap.is_empty(): return none
+	if self.heap.is_empty(): return null
 	return self.heap[0].value
 
 // Reports whether the queue has no values to peek or dequeue.
@@ -171,11 +171,11 @@ fn PriorityQueue[T].is_empty() Bool:
 fn PriorityQueue[T].length() Int:
 	return self.heap.length()
 
-// Returns the value at `index` in heap order, or `none` when out of range; only index
+// Returns the value at `index` in heap order, or `null` when out of range; only index
 // 0 is known to be the next to dequeue. Negative indexes count from the end of the heap
 // array.
 fn PriorityQueue[T].get(index: Int) T?:
 	at := if index < 0: index + self.heap.length() else: index
-	if at < 0 or at >= self.heap.length(): return none
+	if at < 0 or at >= self.heap.length(): return null
 
 	return self.heap[at].value

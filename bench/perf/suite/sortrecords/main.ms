@@ -8,7 +8,7 @@ type Rec:
 	score: Int
 
 fn main() Void:
-	data := read_all(stdin(), none).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8().get_or("")
 	var recs = List[Rec]()
 
 	for line in data.split("\n"):

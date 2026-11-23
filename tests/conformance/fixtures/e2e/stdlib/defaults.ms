@@ -90,7 +90,7 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 	expect_equal((bound([["a", "b"]])?), "a,b\n")?
 
 	typed := forward(stringify)
-	expect_equal((typed([["a", "b"]], second, none)?), "a,b\n")?
+	expect_equal((typed([["a", "b"]], second, null)?), "a,b\n")?
 
 	limited: List[List[String]]! := error(
 		Error("CSV: limit exceeded", kind: "EOVERFLOW")

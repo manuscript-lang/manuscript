@@ -6,8 +6,8 @@ import Deque from "@std/collections/deque.ms"
 test "both ends push and pop":
     var d = Deque[Int]()
     expect_true(d.is_empty())?
-    expect_equal(d.pop_front(), none)?
-    expect_equal(d.pop_back(), none)?
+    expect_equal(d.pop_front(), null)?
+    expect_equal(d.pop_back(), null)?
     d.push_back(2)
     d.push_back(3)
     d.push_front(1)
@@ -26,9 +26,9 @@ test "indexed reads follow the front":
     d.push_front("a")
     expect_equal(d.get(0), "a")?
     expect_equal(d.get(3), "d")?
-    expect_equal(d.get(4), none)?
+    expect_equal(d.get(4), null)?
     expect_equal(d.get(-1), "d")?
-    expect_equal(d.get(-5), none)?
+    expect_equal(d.get(-5), null)?
 
 test "wraps around and grows past the first buffer":
     var d = Deque[Int]()
@@ -62,9 +62,9 @@ test "a copy is independent and clear empties":
 
 test "optional elements keep none distinct from absent":
     var d = Deque[Int?]()
-    d.push_back(none)
+    d.push_back(null)
     expect_equal(d.length(), 1)?
 
-    present_none: Int? := none
+    present_none: Int? := null
     expect_equal(d.pop_front(), present_none)?
-    expect_equal(d.pop_front(), none)?
+    expect_equal(d.pop_front(), null)?

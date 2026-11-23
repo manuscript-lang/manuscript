@@ -48,11 +48,11 @@ export enum TomlValue:
 	)
 
 // Limits for `parse` on input bytes, nesting depth and parsed values. A field set to
-// none adds no limit. The defaults, depth 10,000 and 1,000,000 values, guard against
+// null adds no limit. The defaults, depth 10,000 and 1,000,000 values, guard against
 // deeply nested or very large documents. A negative limit returns `EINVAL`.
 export type TomlOptions:
-	// Maximum UTF-8 input bytes before CRLF normalization; none adds no budget.
-	max_bytes: Int? = none
+	// Maximum UTF-8 input bytes before CRLF normalization; null adds no budget.
+	max_bytes: Int? = null
 	// Maximum value depth, including scalar leaves and implicit tables, with the root
 	// at one.
 	max_depth: Int? = 10000
@@ -492,7 +492,7 @@ fn simple_key(var reader: Reader) String?:
 	start := cursor(reader)
 	var end = start
 	while bare_key_byte(byte_at(reader.data, end)): end += 1
-	if end == start: return none
+	if end == start: return null
 
 	var after = end
 	var b = byte_at(reader.data, after)
@@ -501,7 +501,7 @@ fn simple_key(var reader: Reader) String?:
 		after += 1
 		b = byte_at(reader.data, after)
 
-	if b != EQUALS: return none
+	if b != EQUALS: return null
 
 	reader.pos = after + 1
 	return slice_text(reader, start, end)
@@ -1183,7 +1183,7 @@ fn datetimes_valid(value: TomlValue) Bool:
 // other values are written inline. A `value` that is not a `TableValue`, or that holds
 // a malformed date or time, returns `EINVAL`. Output longer than `max_bytes` returns
 // `EOVERFLOW`.
-export fn stringify(value: TomlValue, max_bytes: Int? = none) String!:
+export fn stringify(value: TomlValue, max_bytes: Int? = null) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 

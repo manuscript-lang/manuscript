@@ -89,7 +89,7 @@ fn read_text(path: String) String!:
 
 fn main() Void!:
     pem := read_text(arguments().get_or(0, "server.pem"))?
-    for certificate in parse_certificates(pem, none)?:
+    for certificate in parse_certificates(pem, null)?:
         left := certificate.not_after.difference(now())?
         print(f"{certificate.subject} expires {certificate.not_after}, in {left}")
 ```

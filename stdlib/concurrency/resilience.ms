@@ -60,7 +60,7 @@ Waiting uses `sleep`, so cancelling the task ends the wait. The operation always
 export fn retry[T, E: Clonable](
 	policy: RetryPolicy,
 	operation: fn(Int) T!E,
-	retryable: (fn(E) Bool)? = none
+	retryable: (fn(E) Bool)? = null
 ) T!E:
 	var attempt = 1
 
@@ -189,8 +189,8 @@ export type CircuitBreaker:
 	cooldown: Duration
 	// Internal state: the current run of failures.
 	failures: Int = 0
-	// Internal state: when the circuit opened, or `none` while closed.
-	opened: Instant? = none
+	// Internal state: when the circuit opened, or `null` while closed.
+	opened: Instant? = null
 
 // Reports whether the circuit is open and still cooling down, so a call fails at
 // once. It is false while the circuit is closed, and once the cooldown has passed,
@@ -212,7 +212,7 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 
 	if value := result:
 		self.failures = 0
-		self.opened = none
+		self.opened = null
 		return ok(value.clone())
 
 	self.failures += 1
@@ -289,8 +289,8 @@ for event in events:
 export type Throttle:
 	// The least time between two allowed actions.
 	interval: Duration
-	// Internal state: when the last action was allowed, or `none` before the first.
-	last: Instant? = none
+	// Internal state: when the last action was allowed, or `null` before the first.
+	last: Instant? = null
 
 // Reports whether an action may happen now, and if so counts it. It never waits.
 fn var Throttle.allow() Bool:

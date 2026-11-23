@@ -45,16 +45,16 @@ export fn repr[T](value: T) String:
 	return msstd_test_repr(value)
 
 // Runs `operation` once behind the fault trap and returns the fault message, or
-// `none` when it returns normally.
+// `null` when it returns normally.
 export fn catch_fault(operation: fn() Void) String?:
 	result := promise(
 		fn: ok(operation()),
 		options: PromiseOptions(placement: Placement.Here)
 	).wait()
-	if not result.is_error(): return none
+	if not result.is_error(): return null
 
 	cause := result.err()
-	if cause.kind != "EIO": return none
+	if cause.kind != "EIO": return null
 
 	return cause.details["report"].split("\n").get(0).clone()
 
@@ -129,12 +129,12 @@ export fn expect_contains(
 	if actual.contains(expected): return ok()
 	return error(failure(f"expected {repr(actual)} to contain {repr(expected)}", site))
 
-// Fails on `none`; otherwise returns the payload.
+// Fails on `null`; otherwise returns the payload.
 export fn expect_some[T](move actual: T?, site: String = caller_site()) T!:
 	if value := actual: return ok(value)
 	return error(failure("expected some, got none", site))
 
-// Fails when a value is present; passes on `none`.
+// Fails when a value is present; passes on `null`.
 export fn expect_none[T](actual: T?, site: String = caller_site()) Void!:
 	if value := actual: return error(failure(f"expected none, got {repr(value)}", site))
 

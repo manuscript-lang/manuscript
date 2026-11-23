@@ -126,7 +126,7 @@ export fn use_stats_runtime() Int:
 	if target != "": build = build.concat(["--target", target.clone()])
 
 	var code = run_program("cargo", build)
-	set_environment("CARGO_TARGET_DIR", none).get()
+	set_environment("CARGO_TARGET_DIR", null).get()
 	if code != 0: return code
 
 	code = run_program("cargo", ["xtask", "runtime"])

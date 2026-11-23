@@ -106,7 +106,7 @@ fn struct_list() Int:
 	return t + ys.length()
 
 fn make_tree(d: Int) Node?:
-	if d == 0: return Node(none, none)
+	if d == 0: return Node(null, null)
 	return Node(make_tree(d - 1), make_tree(d - 1))
 
 fn count(n: Node?) Int:

@@ -517,20 +517,20 @@ fn rule_seconds(rule: Rule, year: Int) Int:
 
 	return day * 86400 + rule.time
 
-// `[+-]hh:mm` as seconds east of UTC, or none.
+// `[+-]hh:mm` as seconds east of UTC, or null.
 fn fixed_offset(text: String) Int?:
 	data := text.view_bytes()
-	if data.length() != 6 or data.get(3).to_int() != 58: return none
+	if data.length() != 6 or data.get(3).to_int() != 58: return null
 
 	sign := data.get(0).to_int()
-	if sign != 43 and sign != 45: return none
+	if sign != 43 and sign != 45: return null
 
 	for i in [1, 2, 4, 5]:
-		if not is_digit(data.get(i).to_int()): return none
+		if not is_digit(data.get(i).to_int()): return null
 
 	hours := (data.get(1).to_int() - 48) * 10 + data.get(2).to_int() - 48
 	minutes := (data.get(4).to_int() - 48) * 10 + data.get(5).to_int() - 48
-	if hours > 23 or minutes > 59: return none
+	if hours > 23 or minutes > 59: return null
 
 	seconds := hours * 3600 + minutes * 60
 	return if sign == 45: -seconds else: seconds
@@ -586,7 +586,7 @@ export fn load(name: String) Zone!:
 
 	return named(name)
 
-// The IANA name of the host's zone, `UTC` when it has none.
+// The IANA name of the host's zone, `UTC` when it has null.
 export fn local_name() String:
 	name := host_zone().name
 	if name.is_empty(): return "UTC"

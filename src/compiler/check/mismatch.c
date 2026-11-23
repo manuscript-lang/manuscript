@@ -290,7 +290,7 @@ static void attach_fix(Body *body, const MsExpr *expr, MsTy actual, MsTy expecte
 
 /* ---- reporting ---- */
 
-/* Whether `actual` is the type of a bare `none`: an Optional of its own unbound payload. */
+/* Whether `actual` is the type of a bare `null`: an Optional of its own unbound payload. */
 static bool is_none(const Body *body, MsTy actual) {
   const MsTyTable *types = &body->program->types;
   if (!ms_ty_is(types, actual, MS_BUILTIN_Optional) || ms_ty_arg_count(types, actual) != 1 ||
@@ -312,8 +312,8 @@ void body_report_uninferred_none(Body *body, MsPos pos) {
     return;
   }
   ms_check_report(body->program, body->module, pos, MS_CHECK_TYPE,
-                  ms_string_from_span(ms_span_of_text("cannot infer the type of none; give it a target, e.g. `x: Int? := "
-                                                      "none`, or pass a value")));
+                  ms_string_from_span(ms_span_of_text("cannot infer the type of null; give it a target, e.g. `x: Int? := "
+                                                      "null`, or pass a value")));
 }
 
 static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy expected, MsSpan context) {
@@ -325,7 +325,7 @@ static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy ex
   ms_strbuild_append_text(&text, "expected ");
   show(body, &text, expected);
   if (is_none(body, actual)) {
-    ms_strbuild_append_text(&text, ", found none");
+    ms_strbuild_append_text(&text, ", found null");
   } else {
     ms_strbuild_append_text(&text, ", found ");
     show(body, &text, actual);
@@ -336,7 +336,7 @@ static void report_mismatch(Body *body, const MsExpr *expr, MsTy actual, MsTy ex
     ms_strbuild_append_text(&text, ")");
   }
   if (is_none(body, actual)) {
-    ms_strbuild_append_text(&text, "; none is absent, so it fits only an Optional position: declare the target ");
+    ms_strbuild_append_text(&text, "; null is absent, so it fits only an Optional position: declare the target ");
     show(body, &text, expected);
     ms_strbuild_append_text(&text, "? or give a value");
   } else {

@@ -19,4 +19,4 @@ export fn main() Int:
     return 0
 
 fn read_line(input: ReadStream[Bytes], max_bytes: Int) String?:
-    return none
+    return null

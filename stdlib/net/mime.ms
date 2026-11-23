@@ -42,12 +42,12 @@ export type Headers:
 	// Fields in the order they appeared; repeated names stay separate entries.
 	fields: List[HeaderField] = List[HeaderField]()
 
-// Returns the first value for `name`, ignoring case, or none.
+// Returns the first value for `name`, ignoring case, or null.
 fn Headers.get(name: String) String?:
 	wanted := name.lower()
 	for field in self.fields:
 		if field.name.lower() == wanted: return field.value.clone()
-	return none
+	return null
 
 // Returns every value for `name`, ignoring case, in order.
 fn Headers.get_all(name: String) List[String]:
@@ -113,19 +113,19 @@ TYPES := {
 }
 
 // Returns the media type for a file extension, with or without the leading dot and in
-// any case, or none when unknown. Text types include `charset=utf-8`, as in
+// any case, or null when unknown. Text types include `charset=utf-8`, as in
 // `text/html; charset=utf-8`.
 export fn media_type_for_extension(extension: String) String?:
 	key := extension.lower().cut_prefix(".").get_or(extension.lower())
 	return TYPES.get(key)
 
 // Returns the first extension, with its dot, registered for a media type (parameters
-// ignored), or none.
+// ignored), or null.
 export fn extension_for_media_type(media_type: String) String?:
 	wanted := media_type.split(";")[0].trim().lower()
 	for entry in TYPES.entries():
 		if entry.value.split(";")[0] == wanted: return f".{entry.key}"
-	return none
+	return null
 
 // Parses `type/subtype; name=value; name="quoted value"`. Names and the essence are
 // lower-cased. A missing slash, an empty part, a parameter without `=`, or an
@@ -201,7 +201,7 @@ fn split_params(text: String) List[String]:
 	pieces.append(current.drain())
 	return pieces
 
-// Returns the unquoted value, or none unless an unescaped quote closes it at the very
+// Returns the unquoted value, or null unless an unescaped quote closes it at the very
 // end.
 fn unquote(raw: String) String?:
 	if not raw.starts_with("\""): return raw.clone()
@@ -211,7 +211,7 @@ fn unquote(raw: String) String?:
 	var closed = false
 
 	for c in raw.view(1, raw.length()).chars():
-		if closed: return none
+		if closed: return null
 
 		if escaped:
 			out.append(c)
@@ -223,7 +223,7 @@ fn unquote(raw: String) String?:
 		else:
 			out.append(c)
 
-	if not closed: return none
+	if not closed: return null
 
 	return out.build()
 
@@ -277,13 +277,13 @@ export fn parse_headers(text: String) Headers!:
 
 	return ok(Headers(fields: fields))
 
-// Returns the boundary parameter of a `multipart/*` Content-Type value, or none.
+// Returns the boundary parameter of a `multipart/*` Content-Type value, or null.
 export fn multipart_boundary(content_type: String) String?:
 	parsed := parse_media_type(content_type)
-	if not parsed.is_ok(): return none
+	if not parsed.is_ok(): return null
 
 	media := parsed.get()
-	if not media.essence.starts_with("multipart/"): return none
+	if not media.essence.starts_with("multipart/"): return null
 
 	return media.params.get("boundary")
 

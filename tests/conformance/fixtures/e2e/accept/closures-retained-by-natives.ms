@@ -38,9 +38,9 @@ fn build(move r: fn(Int) Int) List[fn(Int) Int]:
 	return out
 
 test "closures kept by natives own their captures":
-	expect_equal(dflt("a", none)(), "ad")?
+	expect_equal(dflt("a", null)(), "ad")?
 
-	b := mk("hello" + "world", none)
+	b := mk("hello" + "world", null)
 	c := churn(100)
 	m := Map[Int, fn() String]()
 	l := mk2(m, "abc" + "def")

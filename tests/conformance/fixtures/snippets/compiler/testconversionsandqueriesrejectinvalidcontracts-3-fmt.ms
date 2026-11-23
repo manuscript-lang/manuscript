@@ -3,6 +3,6 @@
 // conform: origin=pkg/compiler/conversions_queries_test.go:21 TestConversionsAndQueriesRejectInvalidContracts
 enum Optional[T]:
     T
-    none
+    null
 
 fn wrong(value: Int?) Int!String: value.ok_or("missing")

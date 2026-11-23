@@ -18,7 +18,7 @@ fn loop_depth(n: Int, rounds: Int) Int:
 	return total
 
 fn status(label: String) Void:
-	text := read_file("/proc/self/status", none).wait().get().decode_utf8().get()
+	text := read_file("/proc/self/status", null).wait().get().decode_utf8().get()
 	for line in text.lines():
 		if line.contains("VmRSS") or line.contains("VmPTE"):
 			print(label + " " + line)

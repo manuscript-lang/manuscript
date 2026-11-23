@@ -34,7 +34,7 @@ fn main() Void:
     q := Pix(r: -5, g: 7, b: 127, w: -300, f: 2.5, n: -70000)
     void stdout().write(f"{p.r} {p.g} {p.b} {p.w} {p.f} {p.n} {p == q}\n")
     o: Int16? := -2
-    n: Int16? := none
+    n: Int16? := null
     void stdout().write(f"{o == n} {o == o}\n")
     var m = Map[Int8, Int16]()
     m.add(1, 100)

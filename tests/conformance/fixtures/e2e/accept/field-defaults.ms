@@ -44,7 +44,7 @@ test "record defaults and explicit overrides":
     ((changed.number != 0 or changed.values.get(0) != 0 or changed.callback() != 0)) | expect_false?
 
     calls: List[Int] := []
-    explicit := Explicit(calls: calls.clone(), nothing: void, option: none)
+    explicit := Explicit(calls: calls.clone(), nothing: void, option: null)
     calls.is_empty() | expect_true?
     (explicit.option.is_none()) | expect_true?
 

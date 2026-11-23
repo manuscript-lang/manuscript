@@ -7,7 +7,7 @@ import read_all from "@std/io/streams.ms"
 // later handle sees the rest, so the two reads together are the whole input in order.
 export fn main() Int:
     var first = stdin()
-    chunk := first.next().get_or(none)
+    chunk := first.next().get_or(null)
     if chunk.is_none():
         return 1
 

@@ -54,7 +54,7 @@ Fields move the same way: `out.append(user.name.clone())`, never `out.append(use
 
 A recursive type holds its child as `Node?`. An `Optional` payload cannot be mutably borrowed with `if var n = slot:` or `var n = slot.get()`, and a field cannot move out of its owner (`m.left = insert(m.left, k)` fails). Change a child in place with a `fn var` method and call it through the field with `?.`: the call does nothing when the child is absent. Walk with a plain function that borrows (`if n := node:`).
 
-A `T?` parameter defaults to `none`, so it must come after the required parameters: write `find(key: Int, node: Node?)`, not `find(node: Node?, key: Int)`.
+A `T?` parameter defaults to `null`, so it must come after the required parameters: write `find(key: Int, node: Node?)`, not `find(node: Node?, key: Int)`.
 
 <!-- complete: bst-insert.ms -->
 ```manuscript
@@ -66,12 +66,12 @@ type Node:
 fn var Node.insert(key: Int) Void:
 	if key < self.key:
 		if self.left.is_none():
-			self.left = Node(key, none, none)
+			self.left = Node(key, null, null)
 		else:
 			self.left?.insert(key)
 	else:
 		if self.right.is_none():
-			self.right = Node(key, none, none)
+			self.right = Node(key, null, null)
 		else:
 			self.right?.insert(key)
 
@@ -82,7 +82,7 @@ fn keys(var out: List[Int], node: Node?) Void:
 		keys(out, n.right)
 
 fn main() Int:
-	var root = Node(50, none, none)
+	var root = Node(50, null, null)
 	for k in [30, 70, 20, 40]:
 		root.insert(k)
 
@@ -93,4 +93,4 @@ fn main() Int:
 	return 1
 ```
 
-An empty tree is a `Node?` that is `none` (or an enum with an `Empty` case); give the owner a type with a `var root: Node?` and make its `insert` method create the first node.
+An empty tree is a `Node?` that is `null` (or an enum with an `Empty` case); give the owner a type with a `var root: Node?` and make its `insert` method create the first node.

@@ -6,21 +6,21 @@ fn generic_convert[T: Clonable](cause: Error, value: T?) T!Error:
 	convert := value.ok_or[Error]
 	return convert(cause)
 
-fn ordinary(cause: Error? = none) Int!Error:
+fn ordinary(cause: Error? = null) Int!Error:
 	return ok(if cause.is_none(): 77 else: 88)
 
 interface Convert:
-	fn convert(cause: Error? = none) Int!Error
+	fn convert(cause: Error? = null) Int!Error
 
 type Source:
 	sentinel: Int
 
-fn Source.convert(cause: Error? = none) Int!Error:
+fn Source.convert(cause: Error? = null) Int!Error:
 	return ok(if cause.is_none(): self.sentinel else: 88)
 
 // Exact expectations deliberately identify invocation lines, not binding lines.
 test "bound ok_or takes its cause at each call":
-	absent: Int? := none
+	absent: Int? := null
 	convert := absent.ok_or[Error]
 	first_result := convert(Error("first"))
 	second_result := convert(Error("second"))
@@ -28,7 +28,7 @@ test "bound ok_or takes its cause at each call":
 	expect_equal(second_result.err().message, "second")?
 
 test "immutable copies and captured native values keep their receiver":
-	absent: Int? := none
+	absent: Int? := null
 	convert := absent.ok_or[Error]
 	copied := convert
 	copied_result := copied(Error("copied"))
@@ -39,7 +39,7 @@ test "immutable copies and captured native values keep their receiver":
 	expect_equal(nested_result.err().message, "nested")?
 
 test "generic callers and direct calls supply their cause":
-	absent: Int? := none
+	absent: Int? := null
 	expect_equal(generic_convert(Error("generic"), absent).err().message, "generic")?
 
 	direct := absent.ok_or(Error("direct"))
@@ -58,7 +58,7 @@ test "ordinary callable and inherited defaults receive none":
 	implementation := Source(77)
 	inherited := implementation.convert
 	expect_equal(inherited().get(), 77)?
-	expect_equal(inherited(none).get(), 77)?
+	expect_equal(inherited(null).get(), 77)?
 
 test "required joins preserve native behavior":
 	zero: Int? := 0
@@ -73,13 +73,13 @@ test "required joins preserve native behavior":
 		expect_equal(conditional(Error("unused")).get(), 0)?
 
 test "nested Optional errors remain intact":
-	absent: Int? := none
+	absent: Int? := null
 	convert := absent.ok_or[Error]
 	supplied := absent.ok_or(Error("missing")).err()
 	expect_equal(convert(supplied.clone()).err().message, supplied.message)?
 
 	nested := absent.ok_or[Int?]
-	inner_none: Int? := none
+	inner_none: Int? := null
 	expect_true(nested(inner_none).err().is_none())?
 
 	inner_zero: Int? := 0

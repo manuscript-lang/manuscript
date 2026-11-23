@@ -12,7 +12,7 @@ type Counted:
 	log: String
 
 fn var Counted.next() Int?!:
-	return ok(none)
+	return ok(null)
 
 fn var Counted.write(move value: Int) Void!:
 	return ok()
@@ -49,7 +49,7 @@ type Failing:
 	unused: Int
 
 fn var Failing.next() Int?!:
-	return ok(none)
+	return ok(null)
 
 fn move Failing.close() Void!:
 	return error(Error("close failed", kind: "EIO"))

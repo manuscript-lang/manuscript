@@ -29,7 +29,7 @@ fn var Tokens.next() Token?!:
 	if self.at == self.fail_at: return error(Error("source failed", kind: "EIO"))
 	if self.at <= 2: return ok(Token(self.at, self.log.clone()))
 
-	return ok(none)
+	return ok(null)
 
 fn move Tokens.close() Void!:
 	return ok()
@@ -163,7 +163,7 @@ fn var PlainTokens.next() Token?:
 	self.at += 1
 	if self.at <= 2: return Token(self.at, self.log.clone())
 
-	return none
+	return null
 
 fn plain(log: String) Void!:
 	for token in PlainTokens(log.clone()):
@@ -181,7 +181,7 @@ type OptionalTokens:
 
 fn var OptionalTokens.next() Token??!:
 	self.at += 1
-	if self.at > 1: return ok(none)
+	if self.at > 1: return ok(null)
 
 	inner: Token? := Token(1, self.log.clone())
 	return ok(inner)
@@ -209,7 +209,7 @@ type ResultTokens:
 
 fn var ResultTokens.next() Result[Result[Token, Error]?, Error]:
 	self.at += 1
-	if self.at > 1: return ok(none)
+	if self.at > 1: return ok(null)
 
 	inner: Token! := ok(Token(1, self.log.clone()))
 	return ok(inner)

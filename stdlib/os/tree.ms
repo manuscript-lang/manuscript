@@ -376,7 +376,7 @@ number of entries found, returning `EOVERFLOW` rather than a partial list.
 export fn walk(
 	tree: FileTree,
 	root: String = "",
-	max_entries: Int? = none,
+	max_entries: Int? = null,
 ) List[WalkEntry]!:
 	start := clean(root)?
 	var found = List[WalkEntry]()
@@ -399,7 +399,7 @@ export fn walk(
 // Lists `directory` and pushes its children onto `pending` in reverse, so popping
 // yields them in name order.
 fn push_children(tree: FileTree, directory: String, var pending: List[WalkEntry]) Void!:
-	children := tree.children(directory, none)?
+	children := tree.children(directory, null)?
 	var i = children.length()
 
 	while i > 0:

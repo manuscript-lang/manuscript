@@ -54,7 +54,7 @@ test "modular square roots":
 	root := (big_int_of_int(10).mod_sqrt(p)?).get_or(big_int_of_int(-1))
 	expect_equal((root * root % p).to_int(), 10)?
 
-	absent: BigInt?! := ok(none)
+	absent: BigInt?! := ok(null)
 	expect_equal(big_int_of_int(5).mod_sqrt(p), absent)?
 	expect_equal((big_int_of_int(0).mod_sqrt(p)?).get_or(big_int_of_int(-1)).to_int(), 0)?
 

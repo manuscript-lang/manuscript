@@ -30,7 +30,7 @@ print(empty)
 print(also_empty)
 ```
 
-`reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list itself stays empty. A negative or `none` reserve preallocates nothing, and a count above 134217728 (2^27) is capped there; the list grows on demand past that point.
+`reserve: n` preallocates room for `n` items so appending up to that count does not regrow the list. The list itself stays empty. A negative or `null` reserve preallocates nothing, and a count above 134217728 (2^27) is capped there; the list grows on demand past that point.
 
 The literal `[1, 2, 3]` infers `List[Int]`; an empty literal needs an annotation or expected type. Every element must match the element type (there is no implicit numeric conversion), and elements evaluate left to right. See [collections as arguments](../functions/declarations-and-calls.md#collections-as-arguments).
 
@@ -68,7 +68,7 @@ unknown := []
 
 An expected type propagates into inner literals. Without one, elements must agree on one type.
 
-`none` needs context to fix its payload type, and neither `[none, 1]` nor `[none]` supplies it, so annotate the binding: `values: List[Int?] := [none, 1]`.
+`null` needs context to fix its payload type, and neither `[null, 1]` nor `[null]` supplies it, so annotate the binding: `values: List[Int?] := [null, 1]`.
 
 Collections can hold [recursive data](named-types.md#recursive-data) but get no automatic hashing.
 
@@ -113,9 +113,9 @@ List details:
 
 - `set(index:, value:)` and `remove(index:)` accept negative indexes and fault on invalid ones.
 - `replace(index:, value:)` stores `value` and returns the element that was there; `swap(i:, j:)` exchanges two elements. Both accept negative indexes and fault on invalid ones.
-- `replace` and `swap` move elements without copying them. They take an element out of a list of owned values (`items.replace(0, none)` on a `List[T?]`) or reorder it without `.clone()`.
+- `replace` and `swap` move elements without copying them. They take an element out of a list of owned values (`items.replace(0, null)` on a `List[T?]`) or reorder it without `.clone()`.
 - `insert(index:, value:)` places the value before `index`. Valid indexes run from `-length()` to `length()`, and `length()` appends.
-- `pop()` removes and returns the last element, or returns `none` when the list is empty.
+- `pop()` removes and returns the last element, or returns `null` when the list is empty.
 - `splice(start:, delete_count:, replacement:)` needs `0 <= start <= length()` and `delete_count <= length() - start`.
 - Invalid bounds fault; nothing is clamped.
 
@@ -213,11 +213,11 @@ Map `get`, `contains`, and `add` and Set `contains` and `add` are hash lookups (
 
 | Operation | Result |
 | --- | --- |
-| List `index_of(value:)`, `last_index_of(value:)` | First or last equal element's zero-based index, or `none`; these searches require `Equal` elements. |
-| List `find_index(predicate:)`, `find_last_index(predicate:)` | First or last matching index, or `none`. `find` and `find_last` return the matching value instead. |
+| List `index_of(value:)`, `last_index_of(value:)` | First or last equal element's zero-based index, or `null`; these searches require `Equal` elements. |
+| List `find_index(predicate:)`, `find_last_index(predicate:)` | First or last matching index, or `null`. `find` and `find_last` return the matching value instead. |
 | List `count(predicate:)` | Number of elements whose predicate returns true, calling it once per element in order. |
 | List `any(predicate:)`, `all(predicate:)` | Whether some or every element satisfies the predicate; stops at the first deciding element. Empty lists give `false` and `true`. |
-| List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `none` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
+| List `max_by(key:)`, `min_by(key:)` | The first element whose key (a `Comparable` value from `key(element)`) is greatest or least, or `null` when empty. Calls `key` once per element in order; ties keep the earlier element. Like `find`, the result is a copy of the element. |
 | List `distinct()` | A new list keeping the first of each group of equal elements in original order; requires `Equal` elements. |
 | List `keys()`, `entries()` | `keys()` returns a new list of indexes; `entries()` returns a new `List[ListEntry[T]]` whose entries have `index` and `value`. |
 | List `zip(other)` | A new list of `Pair[T, U]` values (`first` from the receiver, `second` from `other`), as long as the shorter list. |
@@ -236,7 +236,7 @@ List `sorted()` returns a new list in ascending natural order, and `sort()` orde
 - Without a `compare:` function the element type must be `Comparable` (Int, Float, String, the sized numerics, or a type with its own `compare`). Float orders NaN above every other value.
 - Pass `compare: fn a, b: ...` to order by anything else. A negative result puts the first argument first.
 - `sum()` adds Int, Float, or sized numeric elements with `+`. Int overflow faults, and an empty list sums to zero.
-- `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list: the first of equal elements, or `none` for an empty list.
+- `min()` and `max()` return a copy of the least or greatest element of a `Comparable` list: the first of equal elements, or `null` for an empty list.
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
@@ -301,7 +301,7 @@ fn increment_scores(scores: Map[String, Int]) Map[String, Int]:
 All of these borrow the receiver while callbacks run; mutating or clearing that receiver from a callback is rejected.
 
 - `fold` goes in insertion order; the step takes the accumulator, then the key/value or element, and returns the next accumulator of type `A`. An empty receiver returns the initial value. `fold_right` goes in reverse.
-- `find` stops at the first true predicate: a Set returns the element, a Map a fresh `MapEntry` (as in `entries()`; editing it does not update the Map). No match returns `none`. `find_last` searches from the end.
+- `find` stops at the first true predicate: a Set returns the element, a Map a fresh `MapEntry` (as in `entries()`; editing it does not update the Map). No match returns `null`. `find_last` searches from the end.
 - `any` stops at the first true predicate and `all` at the first false one. Empty receivers give false and true without calling the predicate.
 
 ## Building data

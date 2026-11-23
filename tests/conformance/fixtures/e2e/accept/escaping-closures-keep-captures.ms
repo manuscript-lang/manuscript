@@ -91,7 +91,7 @@ fn c8(move text: String) Int:
 	return maker(text)()()
 
 fn c9(text: String) (fn() Int)?:
-	var r: (fn() Int)? = none
+	var r: (fn() Int)? = null
 	for p in text.split(",").clone():
 		r = fn() Int: return p.length()
 	return r

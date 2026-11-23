@@ -127,7 +127,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 	for op in operations():
 		n := op.count.to_float()
 		m := best.get_or(f"{op.name} ms", 0.0) / n
-		var g: Float? = none
+		var g: Float? = null
 		if t := best.get(f"{op.name} go"): g = t / n
 
 		r := best.get_or(f"{op.name} rs", 0.0) / n

@@ -30,7 +30,7 @@ fn saved_variable(values: Map[String, String], name: String) String?:
 		key := if windows: entry.key.upper() else: entry.key.clone()
 		if key == name: return entry.value.clone()
 
-	return none
+	return null
 
 fn save_search_environment() SearchEnvironment!:
 	values := environment()?
@@ -70,8 +70,8 @@ test "which preserves PATH order and rejects directories and nonexecutable files
 	)?
 	set_environment("PATHEXT", ".EXE;.CMD")?
 	expect_equal(which("probe"), expected)?
-	expect_equal(which("missing-manuscript-program"), none)?
-	expect_equal(which(""), none)?
+	expect_equal(which("missing-manuscript-program"), null)?
+	expect_equal(which(""), null)?
 
 	mode_path := join([first, f"mode{suffix}"])
 	write_file(mode_path, "fixture", false).wait()?
@@ -98,7 +98,7 @@ test "which accepts suffixed names and explicit paths without searching PATH":
 	expect_equal(which(native), native)?
 
 	missing := join([directory.path(), "missing.EXE"])
-	expect_equal(which(missing), none)?
+	expect_equal(which(missing), null)?
 
 test "which honors PATHEXT defaults and skips empty PATH entries":
 	directory := temporary("manuscript-which-extensions-")?
@@ -116,16 +116,16 @@ test "which honors PATHEXT defaults and skips empty PATH entries":
 	set_environment(extension_key, ".RUN;.CMD")?
 	expect_equal(which("selected"), selected)?
 	expect_equal(which(join([root.clone(), "selected"])), selected)?
-	expect_equal(which("ignored"), none)?
+	expect_equal(which("ignored"), null)?
 
 	default_suffix := if windows: ".CMD" else: ""
 	default_path := join([root.clone(), f"default{default_suffix}"])
 	make_program(default_path)?
-	set_environment(extension_key, none)?
+	set_environment(extension_key, null)?
 	expect_equal(which("default"), default_path)?
 	change_directory(root)?
 	set_environment(path_key, "")?
-	expect_equal(which("default"), none)?
+	expect_equal(which("default"), null)?
 
 	relative := if windows: ".\\default.CMD" else: "./default"
 	expect_equal(which(relative), relative)?

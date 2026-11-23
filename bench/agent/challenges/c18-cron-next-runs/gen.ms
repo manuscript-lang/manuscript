@@ -77,8 +77,8 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			body = item.slice(0, slash.get_or(0))
 			step = item.slice(slash.get_or(0) + 1, item.length()).parse_int().get_or(0)
 			stepped = true
-			if step < 1: return none
-			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return none
+			if step < 1: return null
+			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return null
 
 		var a = 0
 		var b = 0
@@ -87,19 +87,19 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 			a = lo
 			b = hi
 		else if full_match(NUM2, body):
-			if stepped: return none
+			if stepped: return null
 
 			a = body.parse_int().get_or(0)
 			b = a
 		else:
-			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body): return none
+			if not full_match("[0-9]{1,2}-[0-9]{1,2}", body): return null
 
 			ends := body.split("-")
 			a = ends[0].parse_int().get_or(0)
 			b = ends[1].parse_int().get_or(0)
-			if a > b: return none
+			if a > b: return null
 
-		if a < lo or b > hi: return none
+		if a < lo or b > hi: return null
 
 		var v = a
 

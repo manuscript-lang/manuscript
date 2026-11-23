@@ -14,7 +14,7 @@ type Link:
 	next: Link?
 
 fn chain(n: Int) Link:
-	var head = Link(next: none, value: 0)
+	var head = Link(next: null, value: 0)
 	for i in 1..n:
 		head = Link(next: head, value: i)
 	return head

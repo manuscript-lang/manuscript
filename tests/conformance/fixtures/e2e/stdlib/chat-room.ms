@@ -88,7 +88,7 @@ test "a room owner pushes each line to every connected websocket":
 		options: HttpServerOptions(
 			timeout: 5.seconds(),
 			grace: 0.seconds(),
-			tls: none,
+			tls: null,
 		),
 	)?
 	client_options := WebSocketOptions(

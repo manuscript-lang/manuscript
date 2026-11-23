@@ -14,7 +14,7 @@ type Bag:
 	note: String?
 
 fn fill(n: Int) Bag!:
-	var bag = Bag(names: [], index: Map[String, List[Int]](), note: none)
+	var bag = Bag(names: [], index: Map[String, List[Int]](), note: null)
 
 	for i in 0..n:
 		name := f"name-{i}"

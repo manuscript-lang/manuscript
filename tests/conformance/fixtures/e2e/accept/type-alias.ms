@@ -24,4 +24,4 @@ test "an alias and its target are the same type":
 	expect_equal(rows.length(), 2)?
 	expect_equal(twice(fn x: x * 3, 2), 18)?
 	expect_equal(first(7), 7)?
-	expect_equal(first(none), -1)?
+	expect_equal(first(null), -1)?

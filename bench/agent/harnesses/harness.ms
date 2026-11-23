@@ -19,7 +19,7 @@ export type Usage:
 	tokens_out: Int = 0
 	turns: Int = 0
 	cost_usd: Float = 0.0
-	// `harness`, `estimated` or `none`.
+	// `harness`, `estimated` or `null`.
 	cost_source: String = "none"
 
 // What one agent run produced.

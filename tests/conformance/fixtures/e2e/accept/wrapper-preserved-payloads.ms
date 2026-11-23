@@ -96,7 +96,7 @@ test "map takes a resource payload while reusable methods copy only retained dat
 	expect_equal(data.get(), "payload")?
 
 test "empty and transformed branches do not manufacture retained payloads":
-	absent: Int? := none
+	absent: Int? := null
 	expect_equal(absent.ok_or("failure").is_error(), true)?
 	expect_equal(absent.ok_or_else(fn: "failure").is_error(), true)?
 

@@ -31,7 +31,7 @@ type Whole:
 	done: Bool
 
 fn var Whole.next() Bytes?!:
-	if self.done: return ok(none)
+	if self.done: return ok(null)
 
 	self.done = true
 	return ok(self.data.clone())

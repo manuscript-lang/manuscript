@@ -36,7 +36,7 @@ test "fail_after delivers a prefix and then fails":
 		4,
 		Error("I/O: service unavailable", kind: "EAGAIN"),
 	)
-	all := read_all(input, none)
+	all := read_all(input, null)
 	expect_true(all.is_error())?
 
 test "fail_writer_after writes the prefix that fits and then fails":
@@ -52,7 +52,7 @@ test "fail_writer_after writes the prefix that fits and then fails":
 	expect_true(out.write("cdef".to_bytes()).is_error())?
 	expect_true(out.write("g".to_bytes()).is_error())?
 	expect_ok(out.close())?
-	expect_equal(expect_ok(read_file(path, none).wait())?, "abc".to_bytes())?
+	expect_equal(expect_ok(read_file(path, null).wait())?, "abc".to_bytes())?
 
 test "golden comparison passes and names the first differing line":
 	dir := expect_ok(temporary("golden-"))?

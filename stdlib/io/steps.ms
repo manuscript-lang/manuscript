@@ -78,7 +78,7 @@ fn var Lines.next() move String?!:
 		if self.ended:
 			if self.pending_size > 0 or self.start < self.data.length():
 				return ok(self.take(self.data.length(), false)?)
-			return ok(none)
+			return ok(null)
 
 		// A trailing CR may belong to a split CRLF, so defer counting it until the
 		// next chunk or EOF.
@@ -112,7 +112,7 @@ fn move Lines.close() Void!:
 // `EOVERFLOW`, and a line that is not valid UTF-8 returns `EBADMSG`.
 export fn lines(
 	move input: ReadStream[Bytes],
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) ReadStream[String]:
 	return ReadStream[String](
 		Lines(input, "".to_bytes(), 0, false, [], 0, false, max_bytes)
@@ -126,7 +126,7 @@ fn var Mapped[T, U].next() move U?!:
 	item := self.input.next()?
 	if value := item: return ok(self.f(value))
 
-	return ok(none)
+	return ok(null)
 
 fn move Mapped[T, U].close() Void!:
 	return self.input.close()
@@ -147,7 +147,7 @@ fn var Filtered[T].next() move T?!:
 		if value := item:
 			if self.keep(value): return ok(value)
 		else:
-			return ok(none)
+			return ok(null)
 
 fn move Filtered[T].close() Void!:
 	return self.input.close()
@@ -163,7 +163,7 @@ type Taker[T]:
 	left: Int
 
 fn var Taker[T].next() move T?!:
-	if self.left <= 0: return ok(none)
+	if self.left <= 0: return ok(null)
 
 	item := self.input.next()?
 	self.left -= 1

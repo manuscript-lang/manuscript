@@ -168,7 +168,7 @@ fn trim_end_slashes(text: String) String:
 
 	data := text.to_bytes()
 	var end = data.length()
-	while end > 0 and data.get_or(end - 1, none).to_int() == 47: end -= 1
+	while end > 0 and data.get_or(end - 1, null).to_int() == 47: end -= 1
 	return text_of(data, 0, end)
 
 // Removes every leading slash.
@@ -179,7 +179,7 @@ fn trim_start_slashes(text: String) String:
 	data := text.to_bytes()
 	var start = 0
 	count := data.length()
-	while start < count and data.get_or(start, none).to_int() == 47: start += 1
+	while start < count and data.get_or(start, null).to_int() == 47: start += 1
 	return text_of(data, start, count)
 
 // The root of an already slash-normalized path: a Windows drive or UNC share, `/`, or
@@ -225,13 +225,13 @@ fn unc_root(text: String) String:
 	var start = 2
 
 	// A third leading separator makes the text a rooted path, not a UNC server.
-	if start < count and data.get_or(start, none).to_int() == 47: return ""
+	if start < count and data.get_or(start, null).to_int() == 47: return ""
 
 	server_end := data.index_of_byte(47, start).get_or(count)
 	if server_end == count: return ""
 
 	var share_start = server_end + 1
-	while share_start < count and data.get_or(share_start, none).to_int() == 47: share_start += 1
+	while share_start < count and data.get_or(share_start, null).to_int() == 47: share_start += 1
 	if share_start >= count: return ""
 
 	share_end := data.index_of_byte(47, share_start).get_or(count)
@@ -271,8 +271,8 @@ fn span_is_parent(data: Bytes, packed: Int) Bool:
 	start := span_start(packed)
 	return (
 		span_end(packed) - start == 2
-		and data.get_or(start, none).to_int() == 46
-		and data.get_or(start + 1, none).to_int() == 46
+		and data.get_or(start, null).to_int() == 46
+		and data.get_or(start + 1, null).to_int() == 46
 	)
 
 fn normalize_in(windows: Bool, raw: String) String:
@@ -292,19 +292,19 @@ fn normalize_in(windows: Bool, raw: String) String:
 // skip the span list and the rebuild.
 fn is_clean(data: Bytes) Bool:
 	count := data.length()
-	if count == 1: return data.get_or(0, none).to_int() == 47
+	if count == 1: return data.get_or(0, null).to_int() == 47
 
-	var start = if data.get_or(0, none).to_int() == 47: 1 else: 0
+	var start = if data.get_or(0, null).to_int() == 47: 1 else: 0
 
 	while start <= count:
 		end := data.index_of_byte(47, start).get_or(count)
 		size := end - start
 		if size == 0: return false
-		if size == 1 and data.get_or(start, none).to_int() == 46: return false
+		if size == 1 and data.get_or(start, null).to_int() == 46: return false
 		if (
 			size == 2
-			and data.get_or(start, none).to_int() == 46
-			and data.get_or(start + 1, none).to_int() == 46
+			and data.get_or(start, null).to_int() == 46
+			and data.get_or(start + 1, null).to_int() == 46
 		): return false
 
 		start = end + 1
@@ -339,7 +339,7 @@ fn normalize_core(windows: Bool, text: String) String:
 	while start <= count:
 		end := data.index_of_byte(47, start).get_or(count)
 		size := end - start
-		dot := size == 1 and data.get_or(start, none).to_int() == 46
+		dot := size == 1 and data.get_or(start, null).to_int() == 46
 
 		if size == 0 or dot:
 			start = end + 1
@@ -347,8 +347,8 @@ fn normalize_core(windows: Bool, text: String) String:
 
 		if (
 			size == 2
-			and data.get_or(start, none).to_int() == 46
-			and data.get_or(start + 1, none).to_int() == 46
+			and data.get_or(start, null).to_int() == 46
+			and data.get_or(start + 1, null).to_int() == 46
 		):
 			if (
 				not stack.is_empty()
@@ -412,7 +412,7 @@ fn normalize_core(windows: Bool, text: String) String:
 	return native(true, value)
 
 // The final extension of a basename that holds no slash: a leading dot alone and `..`
-// have none.
+// have null.
 fn extension_of_base(base: String) String:
 	dot := base.last_index_of(".")
 	if dot.is_none(): return ""
@@ -433,10 +433,10 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 	data := text.to_bytes()
 	source := original.to_bytes()
 	var end = data.length()
-	while end > 0 and data.get_or(end - 1, none).to_int() == 47: end -= 1
+	while end > 0 and data.get_or(end - 1, null).to_int() == 47: end -= 1
 
 	var root_core = root_len
-	while root_core > 0 and data.get_or(root_core - 1, none).to_int() == 47: root_core -= 1
+	while root_core > 0 and data.get_or(root_core - 1, null).to_int() == 47: root_core -= 1
 
 	var base_start = 0
 	var base_end = 0
@@ -444,7 +444,7 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 
 	if end > root_core:
 		var at = end - 1
-		while at >= 0 and data.get_or(at, none).to_int() != 47: at -= 1
+		while at >= 0 and data.get_or(at, null).to_int() != 47: at -= 1
 		base_end = end
 
 		if at >= 0:
@@ -461,12 +461,12 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 	// The extension starts at the last dot of the base, unless that dot is the base's
 	// first byte or the base is `..`.
 	var dot = base_end - 1
-	while dot >= base_start and data.get_or(dot, none).to_int() != 46: dot -= 1
+	while dot >= base_start and data.get_or(dot, null).to_int() != 46: dot -= 1
 
 	is_parent := (
 		base_end - base_start == 2
 		and dot == base_start + 1
-		and data.get_or(base_start, none).to_int() == 46
+		and data.get_or(base_start, null).to_int() == 46
 	)
 	extension_start := if dot < base_start or dot == base_start or is_parent: base_end else: dot
 	return PathParts(
@@ -504,13 +504,13 @@ fn lowercase_path(text: String) String:
 	if text.contains("Σ"): return text.replace("Σ", "σ").lower()
 	return text.lower()
 
-// Resolves `parts` against the absolute `base`; none when `base` is not absolute or any
+// Resolves `parts` against the absolute `base`; null when `base` is not absolute or any
 // text holds NUL.
 fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
-	if not is_absolute_in(windows, base) or base.contains("\u{0}"): return none
+	if not is_absolute_in(windows, base) or base.contains("\u{0}"): return null
 
 	for part in parts:
-		if part.contains("\u{0}"): return none
+		if part.contains("\u{0}"): return null
 
 	var value = ""
 
@@ -545,7 +545,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 
 			if absolute and not device.is_empty(): break
 
-		if not absolute: return none
+		if not absolute: return null
 
 		value = f"{device}/{tail}"
 	else:
@@ -810,7 +810,7 @@ export fn basename(path: String) String:
 export fn basename_without(path: String, suffix: String) String:
 	return basename_without_in(host_windows(), path, suffix)
 
-// Returns the directory portion of a path, or `.` when it has none.
+// Returns the directory portion of a path, or `.` when it has null.
 export fn dirname(path: String) String:
 	return dirname_in(host_windows(), path)
 
@@ -851,7 +851,7 @@ export fn format(parts: PathParts) String:
 export fn stem(path: String) String:
 	return parse(path).name
 
-// Replaces the final extension, or adds one when there is none, keeping the directory:
+// Replaces the final extension, or adds one when there is null, keeping the directory:
 // `with_extension("a/b.txt", "md")` is `"a/b.md"`. A leading dot in `extension` is
 // optional and an empty `extension` removes the current one. A path with no final
 // component, such as `"/"`, comes back unchanged.

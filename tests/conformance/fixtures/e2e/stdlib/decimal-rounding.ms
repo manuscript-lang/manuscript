@@ -17,7 +17,7 @@ test "decimal cents stay exact and fixed places retain zeros":
 	expect_equal(1d / 3d, 0.3333333333333333333333333333333333d)?
 
 test "decimal rounding modes include signed ties and coarse scales":
-	expect_equal((2.5d.round(0, none)?), 2d)?
+	expect_equal((2.5d.round(0, null)?), 2d)?
 	expect_equal((3.5d.round(0)?), 4d)?
 	expect_equal(((-2.5d).round(0)?), -2d)?
 	expect_equal(((-2.5d).round(0, RoundingMode.HalfAwayFromZero)?), -3d)?

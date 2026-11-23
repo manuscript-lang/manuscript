@@ -257,13 +257,13 @@ MS_NODISCARD bool parse_typ(Parser *p, MsTypeRef **out) {
   return true;
 }
 
-/* The default of a `T?` parameter or field written without one: `none`. */
+/* The default of a `T?` parameter or field written without one: `null`. */
 MsExpr *parse_implicit_none(Parser *p, const MsTypeRef *t) {
   if (t->kind != MS_TYPE_NAMED) {
     return NULL;
   }
   if (ms_span_is_text(ms_names_span(p->names, t->name), "Optional") && t->args.len == 1) {
-    return parse_mk_name(p, t->pos, parse_intern(p, "none"));
+    return parse_mk_name(p, t->pos, parse_intern(p, "null"));
   }
   return NULL;
 }

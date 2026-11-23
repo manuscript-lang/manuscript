@@ -28,7 +28,7 @@ type ListSource:
 	at: Int
 
 fn var ListSource.next() Int?!:
-	if self.at >= self.items.length(): return ok(none)
+	if self.at >= self.items.length(): return ok(null)
 
 	v := self.items[self.at]
 	self.at += 1
@@ -46,7 +46,7 @@ fn var MapSource.next() Int?!:
 	step := self.up.next()?
 	if v := step: return ok(self.f(v))
 
-	return ok(none)
+	return ok(null)
 
 fn move MapSource.close() Void!:
 	return self.up.close()
@@ -89,7 +89,7 @@ fn stdlib_map3(xs: List[Int]) Int!:
 	return ok(total)
 
 fn stdlib_collect(xs: List[Int]) Int!:
-	all := collect(from_list(xs) | map(fn x: x + 1), none)?
+	all := collect(from_list(xs) | map(fn x: x + 1), null)?
 	return ok(all.length())
 
 fn plain_filter(xs: List[Int]) Int:

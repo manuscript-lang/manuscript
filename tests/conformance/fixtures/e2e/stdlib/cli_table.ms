@@ -42,10 +42,10 @@ test "table renders empty tables and zero column rows":
 	empty := Table(columns: [Align.Left])
 	expect_equal(empty.render(), "")?
 
-	var none = Table(columns: [])
-	none.add([])?
-	none.add([])?
-	expect_equal(none.render(), "\n")?
+	var null = Table(columns: [])
+	null.add([])?
+	null.add([])?
+	expect_equal(null.render(), "\n")?
 
 test "table add rejects wrong cell counts and controls":
 	malformed: Void! := error(

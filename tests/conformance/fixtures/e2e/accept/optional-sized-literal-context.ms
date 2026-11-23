@@ -30,7 +30,7 @@ test "optional sized arithmetic keeps payload values":
 	reading.value = -(60 + 67)
 	expect_equal(reading.value.get().to_int(), -127)?
 
-	values: List[Int8?] := [1 + 2, none]
+	values: List[Int8?] := [1 + 2, null]
 	expect_equal(values[0].get().to_int(), 3)?
 	expect_none(values[1])?
 

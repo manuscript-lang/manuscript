@@ -185,7 +185,7 @@ test "file handles positional I/O stream adapters and closed errors":
 	(handle.stat() | expect_ok?).size | expect_equal(4)?
 
 	_sought := handle.seek(offset: 0, origin: Seek.Start) | expect_ok?
-	contents := read_all(input: handle.reader()?, max_bytes: none) | expect_ok?
+	contents := read_all(input: handle.reader()?, max_bytes: null) | expect_ok?
 	contents | expect_equal("aXYd".to_bytes())?
 	handle.close()?
 

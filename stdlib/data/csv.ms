@@ -14,10 +14,10 @@ export type CsvOptions:
 	// Row terminator when writing, either LF or CRLF; defaults to LF. Parsing accepts
 	// both.
 	line_ending: String = "\n"
-	// Maximum rows `parse` returns; none adds no row budget.
-	max_rows: Int? = none
-	// Maximum cells `parse` returns across all rows; none adds no cell budget.
-	max_cells: Int? = none
+	// Maximum rows `parse` returns; null adds no row budget.
+	max_rows: Int? = null
+	// Maximum cells `parse` returns across all rows; null adds no cell budget.
+	max_cells: Int? = null
 
 // A malformed-input error at the one-based line and character column of byte offset
 // `at`.
@@ -166,7 +166,7 @@ fn check_options(options: CsvOptions) Void!:
 	)
 
 // The input as bytes with a cursor. The cached offsets are the next quote, delimiter
-// and LF at or after the cursor, or total when there is none; they are searched again
+// and LF at or after the cursor, or total when there is null; they are searched again
 // only once passed.
 type Reader:
 	text: String
@@ -212,7 +212,7 @@ fn Reader.line_end_after(at: Int) Int:
 
 // Reads the next record, skipping empty lines, and hands each cell to `f` as (row,
 // column, cell): a view of the input where the cell is plain, an owned text where
-// quotes were unescaped. Returns the cell count, or none at end of input.
+// quotes were unescaped. Returns the cell count, or null at end of input.
 fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 	while true:
 		skipped := self.line_end_after(self.at)
@@ -220,7 +220,7 @@ fn var Reader.read_record(row: Int, f: fn(Int, Int, String) Void) Int?!:
 
 		self.at = skipped
 
-	if self.at >= self.total: return ok(none)
+	if self.at >= self.total: return ok(null)
 
 	var col = 0
 
@@ -348,7 +348,7 @@ type CsvRows:
 	max_record_bytes: Int?
 
 // Offset just past the last line end outside quotes in `data`, or 0 when the block
-// holds none.
+// holds null.
 fn var CsvRows.boundary(data: Bytes) Int:
 	total := data.length()
 	var pos = 0
@@ -454,7 +454,7 @@ record; exceeding it fails the read with `EOVERFLOW`. A malformed record fails t
 export fn csv_rows(
 	move input: ReadStream[Bytes],
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none,
+	max_record_bytes: Int? = null,
 ) ReadStream[List[String]]:
 	return through[Bytes, List[String]](
 		input,
@@ -478,7 +478,7 @@ export fn csv_rows(
 export fn stringify(
 	rows: List[List[String]],
 	options: CsvOptions = CsvOptions(),
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) String!:
 	limit := budget(max_bytes)
 	if limit < 0: return error(Error("CSV: invalid input", kind: "EINVAL"))

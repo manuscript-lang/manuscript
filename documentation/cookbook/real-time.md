@@ -35,7 +35,7 @@ fn main() Void!:
     server.close()?
 ```
 
-- `input.next()` returns `none` when the peer closes normally, so a loop over `socket.input` ends by itself.
+- `input.next()` returns `null` when the peer closes normally, so a loop over `socket.input` ends by itself.
 - `upgrade` checks the `Origin` header against `allowed_origins`, offers `subprotocols`, and bounds a message with `max_message_bytes`. Set the last one for any server that faces the internet.
 - Use `wss://` with the client's `WebSocketOptions(tls: ...)` for TLS: see [HTTPS and certificates](tls.md).
 

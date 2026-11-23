@@ -60,12 +60,12 @@ Suffixes apply left to right: `Int?!` is `Result[Int?, Error]` and `Int!?` is `O
 ```manuscript
 export type Error:
     message: String
-    kind: String? = none
+    kind: String? = null
     details: Map[String, String] = Map[String, String]()
 ```
 
 - `message` is the text to show a person.
-- `kind` is an optional short code a caller can branch on. It is `none` (the default) when no code fits. The standard library uses POSIX errno names such as `"ENOENT"` (not found), `"EEXIST"`, `"EACCES"`, `"EINVAL"` (invalid input), `"EBADMSG"` (malformed data), `"EOVERFLOW"` (limit exceeded), `"ERANGE"`, `"ENOTSUP"`, `"EBADF"` (closed), `"EIO"`, `"EAGAIN"`, `"EBUSY"`, `"ETIMEDOUT"`, and `"ECANCELED"`; the full list is in the `Error` declaration.
+- `kind` is an optional short code a caller can branch on. It is `null` (the default) when no code fits. The standard library uses POSIX errno names such as `"ENOENT"` (not found), `"EEXIST"`, `"EACCES"`, `"EINVAL"` (invalid input), `"EBADMSG"` (malformed data), `"EOVERFLOW"` (limit exceeded), `"ERANGE"`, `"ENOTSUP"`, `"EBADF"` (closed), `"EIO"`, `"EAGAIN"`, `"EBUSY"`, `"ETIMEDOUT"`, and `"ECANCELED"`; the full list is in the `Error` declaration.
   Your own code may use any string, preferably with its own prefix such as `"EQUOTA"`. A literal, or any string of at most 15 bytes, never allocates.
 - `details` holds extra named context as text, such as a path or a line number.
 
@@ -152,7 +152,7 @@ Callbacks run sequentially in the caller's context; faults and cancellation prop
 
 ## Converting success to an Optional
 
-`to_optional() T?` returns the original payload as a present optional, or `none` on error. It does not flatten the payload or turn faults or cancellation into absence.
+`to_optional() T?` returns the original payload as a present optional, or `null` on error. It does not flatten the payload or turn faults or cancellation into absence.
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript

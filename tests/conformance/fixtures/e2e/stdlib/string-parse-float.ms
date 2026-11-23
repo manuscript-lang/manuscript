@@ -23,7 +23,7 @@ test "parse_float returns none for invalid or out-of-range text":
 		"", " 1.0", "1.0 ", "1_0", "1.", ".5", "0x1p2", "nan", "inf", "abc", "1e999",
 		"+NaN"
 	]:
-		text.parse_float() | expect_equal(none)?
+		text.parse_float() | expect_equal(null)?
 
 test "parse_float agrees with math.parse_float":
 	for text in ["7", "-2.5e3", "1.", "oops", "1e999"]:

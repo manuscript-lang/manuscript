@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "customer := Customer(name: \"Ada\", email: none)\nname := customer.name\n"
+    "fmt": "customer := Customer(name: \"Ada\", email: null)\nname := customer.name\n"
   }
 }

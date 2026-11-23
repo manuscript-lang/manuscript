@@ -104,9 +104,9 @@ fn min_int(a: Int, b: Int) Int:
 fn seeds() List[Bytes]:
 	var out = List[Bytes]()
 	for v in vectors():
-		out.append(hex_decode(v.png, none).get())
+		out.append(hex_decode(v.png, null).get())
 	for v in jpeg_vectors():
-		out.append(hex_decode(v.jpeg, none).get())
+		out.append(hex_decode(v.jpeg, null).get())
 
 	var img = new_image(5, 4, ColorMode.Rgba).get()
 	img.set_pixel(1, 1, Rgba(9, 8, 7, 6))
@@ -165,7 +165,7 @@ test "hostile headers fail before allocating":
 	// PNG IHDR 2^31-1 square, valid CRC, no pixel data.
 	ihdr := hex_decode(
 		"89504e470d0a1a0a0000000d494844527fffffff7fffffff0806000000",
-		none,
+		null,
 	).get()
 	expect_error(
 		fix_png_crcs(ihdr.concat(Bytes([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))),
@@ -177,7 +177,7 @@ test "hostile headers fail before allocating":
 		"ffd8ffdb004300"
 		+ "01".repeat(64)
 		+ "ffc0000b08ffffffff0101110000ffc400150000010000000000000000000000000000000000ffda0008010100003f00ffd9",
-		none,
+		null,
 	).get()
 	result := decode_image(jpeg)
 	if result.is_ok(): fail("hostile JPEG decoded")?
@@ -185,7 +185,7 @@ test "hostile headers fail before allocating":
 	// BMP with a gigapixel header and no pixel data.
 	bmp := hex_decode(
 		"424d3600000000000000360000002800000000ca9a3b00ca9a3b0100180000000000000000000000000000000000000000000000",
-		none,
+		null,
 	).get()
 	bmp_result := decode_image(bmp)
 	if bmp_result.is_ok(): fail("hostile BMP decoded")?

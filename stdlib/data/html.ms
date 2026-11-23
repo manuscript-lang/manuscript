@@ -16,13 +16,13 @@ or option violation is. Use `escape` before putting text in markup and `unescape
 character references back.
 */
 
-// Limits for `parse` on input bytes, tree depth and node count. A field set to none
+// Limits for `parse` on input bytes, tree depth and node count. A field set to null
 // adds no limit. The defaults are a depth of 10,000 and 1,000,000 nodes, with no limit
 // on input bytes. A negative limit returns `EINVAL`, and input that exceeds a limit
 // returns `EOVERFLOW`.
 export type HtmlOptions:
-	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-	max_bytes: Int? = none
+	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
+	max_bytes: Int? = null
 	// Maximum normalized node depth; the document is depth zero and direct children
 	// depth one.
 	max_depth: Int? = 10000
@@ -274,7 +274,7 @@ type Parser:
 	ans: List[String] = []
 	// Open elements. For each entry, `oe_p` and `oe_stop` hold the index plus one of
 	// the nearest open `p` and of the nearest button-scope boundary at or below that
-	// entry (0 for none), so "is a `p` open in button scope" needs no stack walk.
+	// entry (0 for null), so "is a `p` open in button scope" needs no stack walk.
 	oe: List[Int] = []
 	oe_p: List[Int] = []
 	oe_stop: List[Int] = []
@@ -855,7 +855,7 @@ fn var Parser.read_tag_attr_val() Void:
 	else if quote == 39 or quote == 34:
 		self.pv_s = self.raw_end
 
-		var idx: Int? = none
+		var idx: Int? = null
 
 		if quote == 39:
 			idx = self.src.index_of_byte(39, self.raw_end)
@@ -1348,7 +1348,7 @@ fn var Parser.parse_generic_raw_text_element() Void:
 	self.im = IM_TEXT
 
 // Pops elements whose end tags are implied, stopping before an element with atom
-// `skip_atom` (-1 for none).
+// `skip_atom` (-1 for null).
 fn var Parser.generate_implied_end_tags(skip_atom: Int) Void:
 	var i = self.oe.length()
 
@@ -1439,7 +1439,7 @@ fn var Parser.append_doc_comment() Void:
 	n := self.alloc(K_COMMENT, 0, self.tok_data.clone())
 	self.append_child(1, n)
 
-// Copies the current token's attributes onto node `id`, which has none yet.
+// Copies the current token's attributes onto node `id`, which has null yet.
 fn var Parser.set_token_attributes(id: Int) Void:
 	self.attr_start[id] = self.akey.length()
 
@@ -4680,7 +4680,7 @@ fn is_end_ok_in_body(atom: Int) Bool:
 		115: return true
 		_: return false
 
-// In-body start-tag rule for an atom, as one of the `S_*` constants (0 for none).
+// In-body start-tag rule for an atom, as one of the `S_*` constants (0 for null).
 fn body_start_class(atom: Int) Int:
 	match atom:
 		115: return 1  // html
@@ -4792,7 +4792,7 @@ fn body_start_class(atom: Int) Int:
 		352: return 32  // tr
 		_: return 0
 
-// In-body end-tag rule for an atom, as one of the `E_*` constants (0 for none).
+// In-body end-tag rule for an atom, as one of the `E_*` constants (0 for null).
 fn body_end_class(atom: Int) Int:
 	match atom:
 		35: return 1  // body
@@ -4963,7 +4963,7 @@ fn svg_attribute(name: String) String:
 fn limit_error() Error:
 	return Error("HTML: limit exceeded", kind: "EOVERFLOW")
 
-// A limit as a count: none is unlimited and a negative limit is an `EINVAL` error.
+// A limit as a count: null is unlimited and a negative limit is an `EINVAL` error.
 fn budget(limit: Int?) Int!:
 	if limit.is_none(): return ok(9223372036854775807)
 

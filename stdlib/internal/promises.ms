@@ -59,7 +59,7 @@ export extern fn msrt_promise_wait_any(ids: List[Int], timeout_ns: Int) Int
 // A wait group watches promises of this thread and reports each as it finishes, so
 // waiting for many costs one step per promise instead of a rescan after every wake.
 // `add` answers false when the promise cannot join (it lives on another thread); `next`
-// waits for a finished promise and answers the tag it was added with, or -1 when none
+// waits for a finished promise and answers the tag it was added with, or -1 when null
 // is left.
 export extern fn msrt_group_new() Int
 
@@ -112,7 +112,7 @@ export extern fn msrt_pipe_write[T](pipe: Int, move value: T) Int
 // value at the end.
 export extern fn msrt_pipe_read(pipe: Int) Int
 
-// The next queued value without a promise; none when nothing is queued right now.
+// The next queued value without a promise; null when nothing is queued right now.
 export extern fn msrt_pipe_try[T](pipe: Int) move T?
 
 // 1 when a read would end with no value: every writer closed and nothing is queued.
@@ -168,7 +168,7 @@ export extern fn msrt_io_write_bytes_stdout(data: Bytes) Void
 
 export extern fn msrt_io_write_bytes_stderr(data: Bytes) Void
 
-// Bounds every wait of the running task until it is restored: none lasts past
+// Bounds every wait of the running task until it is restored: null lasts past
 // `timeout_ns` in all, and one that reaches it reports a timeout to its caller. A bound
 // already in force stays when it ends sooner. Returns the previous limit.
 export extern fn msrt_task_read_limit(timeout_ns: Int) Int

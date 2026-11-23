@@ -66,9 +66,9 @@ type Holder:
 fn nested(log: String) Void!:
 	var queue = Deque[Holder?]()
 	queue.push_back(Holder(Door(0, log.clone()), "first"))
-	queue.push_back(none)
+	queue.push_back(null)
 	queue.push_back(Holder(Door(1, log.clone()), "second"))
-	queue.push_back(none)
+	queue.push_back(null)
 	queue.pop_front()
 	queue.push_back(Holder(Door(2, log.clone()), "third"))
 	queue.push_back(Holder(Door(3, log.clone()), "fourth"))

@@ -47,7 +47,7 @@ test "or_else takes its receiver, so a caller that keeps a List Optional clones 
 
 test "or_else invokes a missing fallback once and skips a present fallback":
 	var fallback = Fallback(0)
-	missing: String? := none
+	missing: String? := null
 	recovered := missing.or_else(fn: fallback.create())
 	expect_equal(recovered.get(), "fallback 1")?
 
@@ -56,9 +56,9 @@ test "or_else invokes a missing fallback once and skips a present fallback":
 	expect_equal(fallback.calls, 1)?
 
 test "or_else permits a fallback that stays absent":
-	missing: String? := none
-	kept := missing.or_else(fn: none)
-	expect_equal(kept, none)?
+	missing: String? := null
+	kept := missing.or_else(fn: null)
+	expect_equal(kept, null)?
 
 test "a closure over or_else copies its captured Optional for each call":
 	held := text(7)

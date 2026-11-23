@@ -195,14 +195,14 @@ test "truncate_to_int is exact inside the Int range and none outside it":
 		result := x.truncate_to_int()
 
 		if not x.is_finite():
-			expect_equal(result, none)?
+			expect_equal(result, null)?
 		else:
 			exact := rat_of_float(x).get_or(rat_of_int(0)).truncate()
 
 			if value := exact.to_int():
 				expect_equal(result, value)?
 			else:
-				expect_equal(result, none)?
+				expect_equal(result, null)?
 
 test "fma and sqrt are correctly rounded":
 	for x in finite_float_boundaries():
@@ -483,8 +483,8 @@ test "BigInt shifts powers and bounds at the limits":
 	too_big := one.shift_left(16777217)
 	_e2 := expect_error(too_big)?
 	min := big_int_of_int(min_int)
-	expect_equal(min.negate().to_int(), none)?
-	expect_equal(min.abs().to_int(), none)?
+	expect_equal(min.negate().to_int(), null)?
+	expect_equal(min.abs().to_int(), null)?
 	expect_equal(min.to_int(), min_int)?
 
 test "extreme exponents do not wrap or hang":

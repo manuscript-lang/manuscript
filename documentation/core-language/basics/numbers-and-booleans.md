@@ -82,22 +82,22 @@ fn sized() Void:
 | --- | --- |
 | `Int` | `to_float() Float`; `to_decimal() Decimal` |
 | Any sized integer or `Int` | `to_float32()`, `to_float()`, `to_decimal()`; the integer conversions each type declares (see below) |
-| `Float` | `to_float32() Float32?` (none when a finite value exceeds the `Float32` range; rounding is silent), `truncate_to_int() Int?` |
+| `Float` | `to_float32() Float32?` (null when a finite value exceeds the `Float32` range; rounding is silent), `truncate_to_int() Int?` |
 | `Float32` | `to_float64()`, `to_float()`, `truncate_to_int() Int?` |
-| `Decimal`, `BigInt` | `to_float() Float?` (none beyond the `Float` range); `truncate_to_int() Int?` |
+| `Decimal`, `BigInt` | `to_float() Float?` (null beyond the `Float` range); `truncate_to_int() Int?` |
 | `String` to `Decimal` | `parse_decimal(text) Decimal!` from `@std/math/decimal.ms`: sign, digits, optional fraction and exponent, exact or an `EINVAL` error (`String.parse_int()` and `parse_float` cover `Int` and `Float`) |
 
-`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and an `Optional` of it otherwise (`Int32.to_int8()` is `none` for 70000).
+`to_intN()` returns the wider or equal type directly when every value fits (`Int8.to_int32()`) and an `Optional` of it otherwise (`Int32.to_int8()` is `null` for 70000).
 
-Conversions to a float round to the nearest value, ties to even. `Int` to `Decimal` is exact, and `Int` to `Float` rounds once to the nearest binary64. A conversion to a float returns `none` only when a finite value is beyond the target range (`1e300.to_float32()`, or `to_float()` on a huge `Decimal` or `BigInt`); rounding itself is silent.
+Conversions to a float round to the nearest value, ties to even. `Int` to `Decimal` is exact, and `Int` to `Float` rounds once to the nearest binary64. A conversion to a float returns `null` only when a finite value is beyond the target range (`1e300.to_float32()`, or `to_float()` on a huge `Decimal` or `BigInt`); rounding itself is silent.
 
-`truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `none` (`1e300.truncate_to_int()` is `none`; Float +2^63 fails, -2^63 converts).
+`truncate_to_int` drops the fraction toward zero; NaN, infinities, and out-of-range results yield `null` (`1e300.truncate_to_int()` is `null`; Float +2^63 fails, -2^63 converts).
 
 Unsigned types follow the same rules with a lower bound of zero:
 
 - `b: UInt8 := 200` is fine. `x: UInt8 := -1` and `256` are rejected, `a - b` faults when `b > a`, and unary `-` is a compile error.
-- `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`. Each returns an `Optional` unless every source value fits (`Int.to_uint8()` is `none` for -1 or 256, `UInt32.to_int32()` is `none` above 2147483647).
-- Other pairs, such as `UInt8.to_int16()`, are not declared. Go through `to_int()`: `UInt8.to_int().to_int16()`. `UInt8.to_int()` widens directly; `UInt64.to_int()` is `none` above 9223372036854775807.
+- `to_uintN()` exists where it is used: `Int` has all of them, `UInt64` has `to_uint8` and `to_uint32`, and `UInt16` has `to_uint8`. Each returns an `Optional` unless every source value fits (`Int.to_uint8()` is `null` for -1 or 256, `UInt32.to_int32()` is `null` above 2147483647).
+- Other pairs, such as `UInt8.to_int16()`, are not declared. Go through `to_int()`: `UInt8.to_int().to_int16()`. `UInt8.to_int()` widens directly; `UInt64.to_int()` is `null` above 9223372036854775807.
 - `UInt64` literals and results above that bound print, compare, sort and divide as unsigned values.
 - A `Float` reaches an unsigned type through a chain such as `truncate_to_int().get_or(0).to_uint8()`, because there is no `truncate_to_uintN()`.
 

@@ -8,7 +8,7 @@ type Counter:
 	end: Int
 
 fn var Counter.next() Int?:
-	if self.at >= self.end: return none
+	if self.at >= self.end: return null
 
 	self.at += 1
 	return self.at - 1
@@ -21,9 +21,9 @@ fn var Evens.next() Int?:
 		if v := self.inner.next():
 			if v % 2 == 0: return v
 		else:
-			return none
+			return null
 
-	return none
+	return null
 
 type Scaled:
 	inner: Iterator[Int]
@@ -31,7 +31,7 @@ type Scaled:
 
 fn var Scaled.next() Int?:
 	if v := self.inner.next(): return v * self.k
-	return none
+	return null
 
 type Rec:
 	id: Int
@@ -42,7 +42,7 @@ type RecIter:
 	at: Int
 
 fn var RecIter.next() Rec?:
-	if self.at >= self.items.length(): return none
+	if self.at >= self.items.length(): return null
 
 	self.at += 1
 	return self.items[self.at - 1].clone()

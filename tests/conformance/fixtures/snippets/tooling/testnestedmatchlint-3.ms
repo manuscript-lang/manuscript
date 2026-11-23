@@ -7,6 +7,6 @@ fn use(value: Int?) Int:
             callback := fn() Int:
                 return match value:
                     n: n
-                    none: 0
+                    null: 0
             callback()
-        none: 0
+        null: 0

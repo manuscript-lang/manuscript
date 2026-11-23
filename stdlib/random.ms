@@ -23,7 +23,7 @@ import (
 )
 
 // Returns a secure integer from the operating system's entropy, at least `min` and
-// below `max_exclusive`. When `max_exclusive` is `none`, the upper bound is the
+// below `max_exclusive`. When `max_exclusive` is `null`, the upper bound is the
 // largest Int. A `min` that is not below the bound returns `EINVAL`.
 // ms: effect std.random.read
 export fn secure_int(min: Int, max_exclusive: Int?) Int!:
@@ -89,7 +89,7 @@ export fn float() Float!:
 export fn shuffle[T](move values: List[T]) List[T]!:
 	return draw_shuffle(values)
 
-// Returns a uniformly chosen item, or none for an empty list.
+// Returns a uniformly chosen item, or null for an empty list.
 // ms: effect std.random.read
 export fn choice[T: Clonable](values: List[T]) T?!:
 	return draw_choice(values)
@@ -112,12 +112,12 @@ export fn sample[T: Clonable](values: List[T], count: Int) List[T]!:
 
 	return ok(out)
 
-// Returns an item chosen with probability proportional to its weight, or none for an
+// Returns an item chosen with probability proportional to its weight, or null for an
 // empty list. `weights` must match `values` in length, hold no negative or non-finite
 // weight, and not all be zero; otherwise this returns `EINVAL`.
 // ms: effect std.random.read
 export fn weighted_choice[T: Clonable](values: List[T], weights: List[Float]) T?!:
-	if values.is_empty() and weights.is_empty(): return ok(none)
+	if values.is_empty() and weights.is_empty(): return ok(null)
 
 	total := weight_total(values.length(), weights)
 	if total == 0.0: return error(Error("random: invalid input", kind: "EINVAL"))
@@ -233,7 +233,7 @@ fn var SeededRandom.int(min: Int, max_exclusive: Int) Int:
 		bits := shift_right_unsigned(self.next_bits(), 1)
 		rest := bits % span
 
-		// Redraw the few values past the last whole multiple of `span`, so none is
+		// Redraw the few values past the last whole multiple of `span`, so null is
 		// likelier.
 		if bits - rest <= max_int - (span - 1): return min + rest
 
@@ -255,9 +255,9 @@ fn var SeededRandom.shuffle[T](move values: List[T]) List[T]:
 
 	return out
 
-// Returns a uniformly chosen item, or none for an empty list.
+// Returns a uniformly chosen item, or null for an empty list.
 fn var SeededRandom.choice[T](values: List[T]) T?:
-	if values.is_empty(): return none
+	if values.is_empty(): return null
 	return values.get(self.int(0, values.length()))
 
 // Returns `count` items chosen uniformly without replacement, in random order, as
@@ -276,17 +276,17 @@ fn var SeededRandom.sample[T: Clonable](values: List[T], count: Int) List[T]:
 
 	return out
 
-// Returns an item chosen with probability proportional to its weight, or none for
+// Returns an item chosen with probability proportional to its weight, or null for
 // an empty list. `weights` must match `values` in length, hold no negative or
-// non-finite weight, and not all be zero; otherwise the result is none.
+// non-finite weight, and not all be zero; otherwise the result is null.
 fn var SeededRandom.weighted_choice[T: Clonable](
 	values: List[T],
 	weights: List[Float],
 ) T?:
-	if values.is_empty() and weights.is_empty(): return none
+	if values.is_empty() and weights.is_empty(): return null
 
 	total := weight_total(values.length(), weights)
-	if total == 0.0: return none
+	if total == 0.0: return null
 
 	point := self.float()
 	return values[weighted_position(weights, point, total)].clone()

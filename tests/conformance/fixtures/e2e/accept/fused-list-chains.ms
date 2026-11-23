@@ -26,8 +26,8 @@ test "chains that build a list":
 	)?
 
 test "empty and fully filtered inputs":
-	none: List[Int] := []
-	expect_equal(none.filter(fn x: x > 0).map(fn x: x + 1).sum(), 0)?
+	null: List[Int] := []
+	expect_equal(null.filter(fn x: x > 0).map(fn x: x + 1).sum(), 0)?
 	expect_equal([1, 2].filter(fn x: x > 5).map(fn x: x + 1), [])?
 	expect_equal([1, 2].filter(fn x: x > 5).sum(), 0)?
 
@@ -78,9 +78,9 @@ test "zipped numbers feed a chain without building the pairs":
 		1573,
 	)?
 
-	none: List[Int] := []
-	expect_equal(none.zip(b).map(fn p: p.first).sum(), 0)?
-	expect_equal(a.zip(none).map(fn p: p.first).sum(), 0)?
+	null: List[Int] := []
+	expect_equal(null.zip(b).map(fn p: p.first).sum(), 0)?
+	expect_equal(a.zip(null).map(fn p: p.first).sum(), 0)?
 	expect_equal(a.zip(b).map(fn p: p.first + p.second).map(square), [121, 484, 1089])?
 
 type Order:

@@ -52,7 +52,7 @@ fn looped(cause: Cause) Reportable:
 
 fn maybe(cause: Cause, b: Bool) Reportable?:
 	if b: return cause
-	return none
+	return null
 
 fn either(r: Holder, b: Bool) Reportable:
 	if b: return r.err

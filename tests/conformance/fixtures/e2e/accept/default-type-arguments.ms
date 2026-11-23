@@ -11,7 +11,7 @@ fn pick[T = Int](values: List[T]) Int:
     return values.length()
 
 fn make[T = String]() T?:
-    return none
+    return null
 
 fn pair[A, B = A](first: A, move second: B) Box[A, B]:
     return Box[A, B](first, second)

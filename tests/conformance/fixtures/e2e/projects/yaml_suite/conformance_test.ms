@@ -42,11 +42,11 @@ fn number(text: String) Float:
 	return 0.0
 
 fn exists(tree: FileTree, path: String) Bool:
-	return tree.read(path, none).is_ok()
+	return tree.read(path, null).is_ok()
 
 // Whether the parser agrees with the suite on one case directory.
 fn passes(tree: FileTree, id: String) Bool:
-	text := tree.read(f"{id}/in.yaml", none).get_or(
+	text := tree.read(f"{id}/in.yaml", null).get_or(
 		"".to_bytes()
 	).decode_utf8().get_or("")
 	parsed := parse_all(text)
@@ -54,7 +54,7 @@ fn passes(tree: FileTree, id: String) Bool:
 	if parsed.is_error(): return false
 	if not exists(tree, f"{id}/in.json"): return true
 
-	json := tree.read(f"{id}/in.json", none).get_or(
+	json := tree.read(f"{id}/in.json", null).get_or(
 		"".to_bytes()
 	).decode_utf8().get_or("")
 	want := canon_json_stream(json)
@@ -77,7 +77,7 @@ test "the official YAML suite agrees with the parser except for the listed cases
 		if not passes(tree, id): failing.append(id.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", none).get_or(
+	listed := tree.read("expect-fail.txt", null).get_or(
 		"".to_bytes()
 	).decode_utf8().get_or("")
 	var expected: List[String] = []

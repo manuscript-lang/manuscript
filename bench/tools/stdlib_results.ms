@@ -41,7 +41,7 @@ export fn read_cases(output: String) List[Bench]!:
 	parsed := parse[Document](output)
 	if parsed.is_error(): return invalid("invalid benchmark document")
 
-	doc := parsed.get_or(Document(List[Bench](), none))
+	doc := parsed.get_or(Document(List[Bench](), null))
 	diagnostics := doc.diagnostics.get_or([])
 	if not diagnostics.is_empty(): return invalid(
 		diagnostics.map(fn d: d.message.clone()).join("; ")
@@ -60,13 +60,13 @@ export fn read_cases(output: String) List[Bench]!:
 		stats := bench.stats.get_or(
 			Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: -1.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		)
 		if stats.operations <= 0: return invalid(f"invalid operations: {bench.name}")

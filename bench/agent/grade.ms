@@ -48,7 +48,7 @@ fn main() Void:
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
-	var tokens: Int? = none
+	var tokens: Int? = null
 	if suffix != "": tokens = count_workspace(app, suffix)
 
 	var first_ok = false
@@ -63,7 +63,7 @@ fn main() Void:
 		builds: builds.length(),
 		first_build_ok: first_ok,
 		checks: rows.count(fn r: (r.phase == "check")),
-		error: none,
+		error: null,
 	)
 	built := bash(build, app, 600, "")
 

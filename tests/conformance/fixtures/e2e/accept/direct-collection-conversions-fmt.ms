@@ -10,7 +10,7 @@ test "direct append preserves checked argument conversions":
     var values: List[Int?] = []
     values.append(7)
     append_generic(values, 8)
-    values.append(none)
+    values.append(null)
     expect_false(values.get(0).get() != 7 or values.get(1).get() != 8)?
     expect_false(not values.get(2).is_none())?
 
@@ -22,7 +22,7 @@ test "direct append preserves checked argument conversions":
     units.append(void)
     expect_false(units.get(0).is_none())?
 
-    inner: Int? := none
+    inner: Int? := null
     var nested: List[Int??] = []
     nested.append(inner)
     expect_false((nested.get(0).is_none() or not nested.get(0).get().is_none()))?
@@ -56,9 +56,9 @@ test "direct keyed calls preserve optional keys and values":
 
     var keys = Set[Int?]()
     keys.add(7)
-    keys.add(none)
+    keys.add(null)
     expect_false(
-        (not keys.contains(7) or not keys.contains(none) or keys.length() != 2)
+        (not keys.contains(7) or not keys.contains(null) or keys.length() != 2)
     )?
 
 test "direct calls capture receiver and arguments in written order":
@@ -71,7 +71,7 @@ test "direct calls capture receiver and arguments in written order":
                 value:
                     receiver = second.clone()
                     value
-                none: 0
+                null: 0
         ) + 0
     )
     expect_false(not first.is_empty() or not second.is_empty())?
@@ -85,7 +85,7 @@ test "direct calls capture receiver and arguments in written order":
                 value:
                     key = 2
                     value
-                none: 0
+                null: 0
         ) + 0
     )
     expect_false(

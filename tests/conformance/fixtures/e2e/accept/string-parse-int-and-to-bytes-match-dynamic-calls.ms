@@ -7,7 +7,7 @@ fn parsed(text: String) Int:
     match text.parse_int():
         v:
             return v
-        none:
+        null:
             return 0 - 1
 
 test "parse_int":

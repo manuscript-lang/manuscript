@@ -13,7 +13,7 @@ import (
 
 // Whether the parser agrees with the suite on one case file.
 fn passes(tree: FileTree, name: String) Bool:
-	bytes := tree.read(name, none).get_or("".to_bytes())
+	bytes := tree.read(name, null).get_or("".to_bytes())
 	text := bytes.decode_utf8()
 
 	// A String cannot hold invalid UTF-8, so such a file cannot be accepted.
@@ -35,7 +35,7 @@ test "JSONTestSuite agrees with the parser except for the listed cases":
 		if not passes(tree, name): failing.append(name.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", none).get_or(
+	listed := tree.read("expect-fail.txt", null).get_or(
 		"".to_bytes()
 	).decode_utf8().get_or("")
 	var expected: List[String] = []

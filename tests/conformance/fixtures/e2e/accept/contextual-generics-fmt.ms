@@ -7,7 +7,7 @@ fn fail[T](move message: String) T!Error: error(Error(message))
 
 fn fail_cause[T, E](cause: E) T!E: error(cause)
 
-fn absent[T]() T?: none
+fn absent[T]() T?: null
 
 fn identity[T](value: T) T: value
 
@@ -33,7 +33,7 @@ type Events:
 
 fn record[T](var events: Events, value: Int) T?:
     events.values.append(value)
-    return none
+    return null
 
 fn combine[T](var events: Events, first: T?, second: T?) T?:
     events.values.append(3)

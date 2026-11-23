@@ -125,13 +125,13 @@ fn stem_of(pat: String, w: String, nonempty: Bool) String?:
 		pre := bs(pat, 0, p)
 		suf := bs(pat, p + 1, pat.length())
 		need := pre.length() + suf.length() + (if nonempty: 1 else: 0)
-		if w.length() < need: return none
-		if not w.starts_with(pre): return none
-		if not w.ends_with(suf): return none
+		if w.length() < need: return null
+		if not w.starts_with(pre): return null
+		if not w.ends_with(suf): return null
 
 		return bs(w, pre.length(), w.length() - suf.length())
 
-	return none
+	return null
 
 fn subst_pct(s: String, stem: String) String:
 	if p := s.index_of("%"): return bs(s, 0, p) + stem + bs(s, p + 1, s.length())
@@ -629,7 +629,7 @@ fn Ctx.is_active() Bool:
 
 fn split_cond(s: String) List[String]?:
 	// s is "(A,B)" ; returns [A, B] or none
-	if not s.starts_with("(") or not s.ends_with(")"): return none
+	if not s.starts_with("(") or not s.ends_with(")"): return null
 
 	inner := bs(s, 1, s.length() - 1)
 	var parts = List[String]()
@@ -650,7 +650,7 @@ fn split_cond(s: String) List[String]?:
 			cur += c
 
 	parts.append(cur.clone())
-	if parts.length() != 2: return none
+	if parts.length() != 2: return null
 
 	return parts
 

@@ -7,7 +7,7 @@ import Bytes from "@std/bytes.ms"
 export type Error:
 	// Human-readable description of the failure.
 	message: String
-	// A short code for what went wrong, or `none` when no code fits. The kind itself
+	// A short code for what went wrong, or `null` when no code fits. The kind itself
 	// never allocates when it is a literal or at most 15 bytes. The standard library
 	// reports POSIX errno names (`EAUTH` is Manuscript's own), so
 	// `error.kind == "ENOENT"` means the same on every platform:
@@ -31,7 +31,7 @@ export type Error:
 	// - `EAUTH`: authentication failed
 	//
 	// Your own code uses its own prefix, such as `"EQUOTA"`.
-	kind: String? = none
+	kind: String? = null
 	// Extra facts about the failure, such as the path or operation, keyed by name.
 	details: Map[String, String] = Map[String, String]()
 
@@ -122,7 +122,7 @@ fn msstd_status_error(
 fn override_words(overrides: String, number: Int) String?:
 	for line in overrides.split("\n"):
 		if words := line.cut_prefix(f"{number} "): return words
-	return none
+	return null
 
 fn status_error_text(
 	words: String,
@@ -189,18 +189,18 @@ returns `ok()`.
 	move fn close() Void!
 
 /*
-A source of items that `for` walks: each `next` returns the following item, or `none` once exhausted.
-`for item in source:` calls `next` until `none`. A variable or field path advances in place and
+A source of items that `for` walks: each `next` returns the following item, or `null` once exhausted.
+`for item in source:` calls `next` until `null`. A variable or field path advances in place and
 keeps its final state, while any other expression is held by the loop alone.
-`next` should keep returning `none` after the end.
+`next` should keep returning `null` after the end.
 The item is a borrow: it stays valid, and the iterator stays unchanged, until the loop body ends. Clone it to keep it.
 */
 export interface Iterator[T]:
-	// Returns the next item, or none when no items remain. The item borrows from the
+	// Returns the next item, or null when no items remain. The item borrows from the
 	// iterator (an iterator over a container borrows from the container instead).
 	var fn next() T?
 
-// Represents a value that may be absent: a `T` or `none`; a plain `T` converts where a
+// Represents a value that may be absent: a `T` or `null`; a plain `T` converts where a
 // `T?` is expected.
 export enum Optional[T]:
 	// A present payload, retained by reference when T is mutable.
@@ -209,30 +209,30 @@ export enum Optional[T]:
 		value: T
 	)
 	// An absent value with no payload; no T needs to be constructed.
-	none
+	null
 
 // Reports whether a value is present.
 fn Optional[T].is_some() Bool:
 	match self:
-		none: return false
+		null: return false
 		value: return true
 
 // Reports whether this value is absent.
 fn Optional[T].is_none() Bool:
 	match self:
-		none: return true
+		null: return true
 		value: return false
 
-// Returns the payload; `none` raises a fault, so use it only when absence is a bug.
+// Returns the payload; `null` raises a fault, so use it only when absence is a bug.
 // Prefer `if value := optional:` or `get_or(default)`.
 fn Optional[T].get() T:
 	match self:
 		value: return value
-		none: panic(
+		null: panic(
 			"called Optional.get() on none; check is_some first, or use get_or(default)"
 		)
 
-// Returns the payload, or `default` when this is `none`. The default is always
+// Returns the payload, or `default` when this is `null`. The default is always
 // evaluated; use `get_or_else` when it costs work.
 fn move Optional[T].get_or(move default: T?) T:
 	if value := self: return value
@@ -240,20 +240,20 @@ fn move Optional[T].get_or(move default: T?) T:
 
 	panic("called Optional.get_or with a none default")
 
-// Transforms a present payload with `transform`; `none` stays `none`.
+// Transforms a present payload with `transform`; `null` stays `null`.
 fn move Optional[T].map[U](transform: fn(move T) U) U?:
 	match self:
 		value: return transform(value)
-		none: return none
+		null: return null
 
 // Calls `transform` only when a value is present and returns the Optional it
-// produces; `none` stays `none`.
+// produces; `null` stays `null`.
 fn move Optional[T].and_then[U](transform: fn(move T) U?) U?:
 	match self:
 		value: return transform(value)
-		none: return none
+		null: return null
 
-// Returns the payload; only when this is `none`, calls `create` once and returns its
+// Returns the payload; only when this is `null`, calls `create` once and returns its
 // value.
 fn move Optional[T].get_or_else(create: fn() T) T:
 	if self.is_none(): return create()
@@ -264,7 +264,7 @@ fn move Optional[T].get_or_else(create: fn() T) T:
 fn move Optional[T].or_else(create: fn() T?) T?:
 	match self:
 		value: return value
-		none: return create()
+		null: return create()
 
 // Returns `ok` with the payload, or `error` with `cause`, which is built before the
 // call whether or not it is used.
@@ -272,7 +272,7 @@ fn move Optional[T].ok_or[E](move cause: E) move T!E:
 	if value := self: return ok(value)
 	return error(cause)
 
-// Returns `ok` with the payload; for `none`, calls `create` once and returns its
+// Returns `ok` with the payload; for `null`, calls `create` once and returns its
 // error.
 fn move Optional[T].ok_or_else[E](create: fn() E) T!E:
 	if self.is_none(): return error(create())
@@ -360,11 +360,11 @@ fn move Result[T, E].and_then[U](transform: fn(move T) U!E) U!E:
 		ok(value): return transform(value)
 		error(cause): return error(cause)
 
-// Returns some with the original success payload, or none for an error.
+// Returns some with the original success payload, or null for an error.
 fn move Result[T, E].to_optional() T?:
 	match self:
 		ok(value): return value
-		error(_cause): return none
+		error(_cause): return null
 
 // A type that can be compared for equality. Built-in data keeps its value
 // semantics; an explicit implementation chooses what counts as the same value.
@@ -423,9 +423,9 @@ export fn wrap_error(context: String, cause: Error) Error:
 	return Error(context + ": " + cause.message, cause.kind, details)
 
 // Combines `errors` into one error whose message holds theirs, one per line, and whose
-// `count` detail is how many there were. Returns none when the list is empty.
+// `count` detail is how many there were. Returns null when the list is empty.
 export fn join_errors(errors: List[Error]) Error?:
-	if errors.is_empty(): return none
+	if errors.is_empty(): return null
 
 	var text = ""
 
@@ -434,13 +434,13 @@ export fn join_errors(errors: List[Error]) Error?:
 			text += "\n"
 		text += cause.message
 
-	return Error(text, none, {"count": errors.length().to_string()})
+	return Error(text, null, {"count": errors.length().to_string()})
 
-// An Optional copies its payload; `none` stays `none`.
+// An Optional copies its payload; `null` stays `null`.
 fn Optional[T: Clonable].clone() move T?:
 	match self:
 		value: return value.clone()
-		none: return none
+		null: return null
 
 // A String is its own text.
 fn String.to_string() String:

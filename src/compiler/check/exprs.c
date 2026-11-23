@@ -310,7 +310,7 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
   MsStrBuild text = ms_strbuild_new();
   const MsSpan member = ms_names_span(body->program->names, name);
   if (optional) {
-    ms_strbuild_append_text(&text, "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none");
+    ms_strbuild_append_text(&text, "Optional has no qualified cases; write null or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := null");
   } else if (contract) {
     ms_ty_show(&text, body->program->names, types, owner);
     ms_strbuild_append_text(&text, " is an interface, not an alternative; declare a concrete type with the methods ");
@@ -494,14 +494,14 @@ static MsTy expected_arg(const Body *body, MsTy expected, MsBuiltin builtin, siz
              : MS_TY_NONE;
 }
 
-/* A literal holding the bare `none` beside values of one type holds that type optionally: `[none, 0]` is `[Int?]`. */
+/* A literal holding the bare `null` beside values of one type holds that type optionally: `[null, 0]` is `[Int?]`. */
 static MsTy none_widened(Body *body, MsExpr *const *entries, size_t count) {
   bool has_none = false;
   const MsExpr *typed = NULL;
   for (size_t index = 0; index < count; index++) {
     const MsExpr *entry = entries[index];
     const bool none = entry->kind == MS_E_NAME && body_find_local(body, entry->u.sym) == NULL &&
-                      ms_span_is_text(ms_names_span(body->program->names, entry->u.sym), "none");
+                      ms_span_is_text(ms_names_span(body->program->names, entry->u.sym), "null");
     has_none = has_none || none;
     typed = typed == NULL && !none ? entry : typed;
   }

@@ -64,7 +64,7 @@ fn holds_nested(move log: String) Int:
 	return n.all.length()
 
 fn holds_optional(move log: String, present: Bool) Int:
-	var _held: Tracked? = none
+	var _held: Tracked? = null
 	if present:
 		_held = track(log, 1)
 	return 0

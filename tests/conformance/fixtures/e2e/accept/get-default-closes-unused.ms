@@ -25,7 +25,7 @@ fn present(log: String) Int:
 	return door.id
 
 fn absent(log: String) Int:
-	held: Door? := none
+	held: Door? := null
 	door := held.get_or(Door(3, log.clone()))
 	return door.id
 

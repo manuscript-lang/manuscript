@@ -38,13 +38,13 @@ export fn stdlib_table(output: String) String!:
 		s := c.stats.get_or(
 			Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: 0.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		)
 		rows.append(

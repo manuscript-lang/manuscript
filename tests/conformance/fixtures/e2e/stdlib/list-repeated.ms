@@ -19,5 +19,5 @@ test "repeated clones strings and nested lists independently":
 	expect_equal(nested, [[1, 9], [2, 3], [1], [2, 3]])?
 
 test "filled builds a list of copies":
-	expect_equal(filled(0, 4, none).get_or([]), [0, 0, 0, 0])?
-	expect_equal(filled("x", 3, none).get_or([]), ["x", "x", "x"])?
+	expect_equal(filled(0, 4, null).get_or([]), [0, 0, 0, 0])?
+	expect_equal(filled("x", 3, null).get_or([]), ["x", "x", "x"])?

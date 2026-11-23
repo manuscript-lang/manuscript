@@ -56,7 +56,7 @@ A negative `max_bytes` returns `EINVAL`; output exceeding it returns `EOVERFLOW`
 export fn base32_decode(
 	text: String,
 	options: Base32Options = Base32Options(),
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	return msstd_encoding_base32_decode(
 		text,
@@ -74,7 +74,7 @@ export fn base64_decode(
 	text: String,
 	url_safe: Bool = false,
 	padded: Bool = true,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	if not padded: return msstd_encoding_base64_decode_unpadded(
 		text,

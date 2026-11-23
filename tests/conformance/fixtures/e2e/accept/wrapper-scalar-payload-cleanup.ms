@@ -63,7 +63,7 @@ test "direct transforming callbacks close their owned scalar input":
 	(expect_fault(transformed_then)?) | expect_contains("resource could not be closed")?
 
 fn optional_or_else() Void:
-	_kept := present().or_else(fn: none)
+	_kept := present().or_else(fn: null)
 
 fn result_or_else() Void:
 	_kept := success().or_else(fn cause: error(cause))

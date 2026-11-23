@@ -63,7 +63,7 @@ test "archives reject traversal paths":
 test "ZIP unpack verifies a zero stored checksum":
 	forged := hex_decode(
 		"504b03041400000000000000210000000000050000000500000005000000662e74787468656c6c6f504b0102140314000000000000002100000000000500000005000000050000000000000000000000800100000000662e747874504b0506000000000100010033000000280000000000",
-		none,
+		null,
 	).get_or(Bytes([]))
 	failure := expect_error(unpack(forged, ArchiveFormat.Zip))?
 	expect_equal(failure.kind.clone().get_or(""), "EBADMSG")?

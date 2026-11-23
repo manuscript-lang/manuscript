@@ -10,7 +10,7 @@ type MemorySource:
 	offset: Int
 
 fn var MemorySource.next() Bytes?!:
-	if self.offset == self.data.length(): return ok(none)
+	if self.offset == self.data.length(): return ok(null)
 
 	var end = self.offset + 65536
 	if end > self.data.length():

@@ -47,7 +47,7 @@ test "logger writes typed escaped records and protects metadata":
 	directory := temporary("manuscript-log-")?
 	path := f"{directory.path()}/out.ndjson"
 	var logger = create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
-	fields := Payload(9007199254740993, ok: true, Items([none, 1]), 0, "fake", 0)
+	fields := Payload(9007199254740993, ok: true, Items([null, 1]), 0, "fake", 0)
 	logger.info("say \"hi\"\nnext", fields)?
 
 	expected := "{\"level\":30,\"msg\":\"say \\\"hi\\\"\\nnext\",\"data\":{\"count\":9007199254740993,\"ok\":true,\"nested\":{\"items\":[null,1]},\"level\":0,\"msg\":\"fake\",\"time\":0}}\n"
@@ -313,14 +313,14 @@ fn move Memory.close() Void:
 	return
 
 fn recorded(path: String) String:
-	return written(path).get_or(none).get_or("")
+	return written(path).get_or(null).get_or("")
 
 test "messages are escaped and fields keep their shape under data":
 	out_dir := temporary("manuscript-log-memory-")?
 	out := f"{out_dir.path()}/records"
 	logger := create(Memory(out.clone()), LoggerOptions(timestamp: false))?
 	logger.info("a<b>&\"\n\t\u{1}é")?
-	logger.info("m", Items([none, 1]))?
+	logger.info("m", Items([null, 1]))?
 	logger.info("m", "text")?
 	logger.info("m", JsonValue.Null)?
 	logger.info("m", JsonValue.ObjectValue(Map[String, JsonValue]()))?

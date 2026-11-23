@@ -15,7 +15,7 @@ type Chunks:
 	at: Int
 
 fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(none)
+	if self.at >= self.data.length(): return ok(null)
 
 	var end = self.at + self.size
 	if end > self.data.length(): end = self.data.length()
@@ -34,7 +34,7 @@ fn read_rows(
 	text: String,
 	size: Int,
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none,
+	max_record_bytes: Int? = null,
 ) List[List[String]]!:
 	return read_raw(text.to_bytes(), size, options, max_record_bytes)
 
@@ -42,7 +42,7 @@ fn read_raw(
 	data: Bytes,
 	size: Int,
 	options: CsvOptions = CsvOptions(),
-	max_record_bytes: Int? = none,
+	max_record_bytes: Int? = null,
 ) List[List[String]]!:
 	var rows = csv_rows(chunked(data, size), options, max_record_bytes)
 	var out: List[List[String]] = []
@@ -89,7 +89,7 @@ test "large fragmented records preserve rows and exact record budgets":
 		chunks.append("".to_bytes())
 
 	(
-		from_list(chunks) | csv_rows | collect(none)? | expect_equal(
+		from_list(chunks) | csv_rows | collect(null)? | expect_equal(
 			[["a", "é"], ["b", "c"], ["last", "row"]]
 		)?
 	)
@@ -116,7 +116,7 @@ test "empty CSV streams reject invalid options":
 			expect_equal(read_rows(text, 1, options.clone()), invalid)?
 
 		empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
-		expect_equal(empty_chunks | csv_rows(options.clone()) | collect(none), invalid)?
+		expect_equal(empty_chunks | csv_rows(options.clone()) | collect(null), invalid)?
 
 	no_rows: List[List[String]] := []
 	expect_equal(read_rows("", 1)?, no_rows)?
@@ -126,7 +126,7 @@ test "empty CSV streams reject invalid options":
 	)?
 
 	empty_chunks := from_list(["".to_bytes(), "".to_bytes()])
-	(empty_chunks | csv_rows | collect(none)? | expect_equal(no_rows)?)
+	(empty_chunks | csv_rows | collect(null)? | expect_equal(no_rows)?)
 
 test "an unterminated quote is InvalidData at the end":
 	outcome := read_rows("a,\"open\nmore", 4)

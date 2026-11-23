@@ -36,13 +36,13 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 	)
 	client := fetcher(FetcherOptions(tls: client_tls)) | expect_ok?
 	base := f"https://{server.address()}"
-	first := client.fetch(f"{base}/ok", FetchOptions(timeout: none)).wait() | expect_ok?
+	first := client.fetch(f"{base}/ok", FetchOptions(timeout: null)).wait() | expect_ok?
 	first.head.protocol | expect_equal("HTTP/2.0")?
 
 	// Each cancelled request used to stay open on the connection, so the peer's stream
 	// limit filled and later requests failed.
 	for i in 0..400:
-		void client.fetch(f"{base}/hang", FetchOptions(timeout: none)).with(
+		void client.fetch(f"{base}/hang", FetchOptions(timeout: null)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 
@@ -54,7 +54,7 @@ test "requests cancelled on a shared HTTP/2 connection release their streams":
 
 	before := (memory_usage() | expect_ok?).heap_used
 	for i in 0..1000:
-		void client.fetch(f"{base}/hang", FetchOptions(timeout: none)).with(
+		void client.fetch(f"{base}/hang", FetchOptions(timeout: null)).with(
 			options: PromiseOptions(timeout: 1.milliseconds())
 		).wait()
 

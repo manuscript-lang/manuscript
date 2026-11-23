@@ -36,7 +36,7 @@ fn plain(data: Bytes) Case:
 		text: "",
 		expected_text: "",
 		expected: ok(Bytes([])),
-		limit: none,
+		limit: null,
 		hex: false,
 		padded: false,
 		url: false,
@@ -69,7 +69,7 @@ fn prep_decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Case:
 	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.length() - 1))
 	if mode == 2: text = ("A".repeat(text.length() - 1)) + "!"
 
-	var limit: Int? = none
+	var limit: Int? = null
 	if mode == 3: limit = 0
 	if mode == 4: limit = -1
 	if mode == 5: limit = length
@@ -112,7 +112,7 @@ fn prep_decode85(
 	if bad == 1: text = "v" + text
 	if bad == 2: text += "v"
 
-	var limit: Int? = none
+	var limit: Int? = null
 	if bounded: limit = if under: length - 1 else: length
 
 	var expected: Bytes! = ok(data.clone())
@@ -137,7 +137,7 @@ fn prep_zero_budget() Case:
 fn prep_whitespace(bounded: Bool) Case:
 	var c = plain(Bytes([]))
 	c.text = " \t\r\n".repeat(16384)
-	c.limit = if bounded: 0 else: none
+	c.limit = if bounded: 0 else: null
 	c.weight = 1
 	return c
 

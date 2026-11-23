@@ -119,7 +119,7 @@ ms review ms.toml --diff change.patch --format markdown
 ms review ms.toml --diff change.patch --explain 1
 ```
 
-`ms review` prints where a reader should look. Every line is a fixed template filled with facts from the checked program, so equal inputs print equal bytes (no timestamps, absolute paths, or width dependence). An empty section prints `none`.
+`ms review` prints where a reader should look. Every line is a fixed template filled with facts from the checked program, so equal inputs print equal bytes (no timestamps, absolute paths, or width dependence). An empty section prints `null`.
 
 - Without `--diff`: the project map of public surface, entry points with effects, error types in signatures, resource scopes, and imports.
 - With `--diff`: compares the checked program before and after. Pass a unified diff from a file or stdin (`git diff --no-renames` or `diff -u`); `ms` does not run git. The working tree must be the diff's after state. A diff that does not match is rejected with status 2. Renames are unsupported.
@@ -275,7 +275,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL103 | warning | Unreachable statement |
 | MSL106 | error | Capitalized match payload name that creates a fresh binding instead of matching a case. Use a helper or rename. See [payload patterns](../core-language/control-flow/pattern-matching.md#payload-patterns) |
 | MSL107 | error | `match` nested inside another `match`, including inline callbacks. Use an early-exit binding, a trailing `?`, or a helper. See [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat) |
-| MSL108 | warning | `match` on an Optional with only `some` and `none` arms; use `if v := x` or an Optional method |
+| MSL108 | warning | `match` on an Optional with only `some` and `null` arms; use `if v := x` or an Optional method |
 | MSL109 | warning | `match` on a Result with only `ok` and `error` arms; use a trailing `?`, `if v := x` or a Result method |
 | MSL110 | warning | `Optional.get()` without a default, which faults when the value is absent; use `if v := x`, `get_or(default)`, or `get_or_else`. See [Optionals](../core-language/types/optionals.md) |
 | MSL111 | error | `while true` loop in a module that imports `@std/concurrency/promise.ms` whose body neither waits nor exits; other promises cannot run and cancellation or a timeout cannot stop it. See [loops](../core-language/control-flow/loops.md#cancellation) |
@@ -295,7 +295,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL126 | error | `x := e` directly followed by `return x`. Write `return e` |
 | MSL127 | error | `m[k.clone()] = m.get(k).get() - v`. Write `m[k] -= v` |
 | MSL128 | error | A final `return ok()` in a `Void!` function, or `return` in a `Void` one, after other statements. The end of the body already returns it; delete the line |
-| MSL129 | error | A statement `result.get_or(none)` on a `Void!`. Write `void result`. `ms lint --fix` rewrites it |
+| MSL129 | error | A statement `result.get_or(null)` on a `Void!`. Write `void result`. `ms lint --fix` rewrites it |
 | MSL130 | warning | A statement `result.get()` on a Result faults when the call fails. Write `call()?` where the function returns a Result (`main` can return `Void!`), or `void call()` to ignore the outcome |
 | MSL131 | warning | `print(call())` where the call returns a Result prints the wrapper (`ok(2)`), not the value. Write `call()?` in a function that returns a Result, or `if value := call():` |
 | MSL132 | warning | `xs.slice(a, b).get_or(fallback)` returns the fallback for any bad range, including an end past the length, with no error. Write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` first |

@@ -3,5 +3,5 @@
 fn f(x: Int?) Int:
     y := match x:
         n: n
-        none: 0
+        null: 0
     return n

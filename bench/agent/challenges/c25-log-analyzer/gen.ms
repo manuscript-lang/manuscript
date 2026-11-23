@@ -22,10 +22,10 @@ type Entry:
 
 fn parse(line: String) Entry?:
 	f := line.split(" ")
-	if f.length() != 6: return none
-	if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return none
-	if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])): return none
-	if not digits(f[5]) or f[5].length() > 9: return none
+	if f.length() != 6: return null
+	if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return null
+	if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])): return null
+	if not digits(f[5]) or f[5].length() > 9: return null
 
 	return Entry(
 		f[1].clone(),
@@ -41,7 +41,7 @@ fn solve(s: String) String:
 	var bad = 0
 	var classes = [0, 0, 0, 0, 0]
 	var lats = List[Int]()
-	var slow: Entry? = none
+	var slow: Entry? = null
 	var levels = Map[String, Int]()
 	var counts = Map[String, Int]()
 	var totals = Map[String, Int]()

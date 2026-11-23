@@ -7,7 +7,7 @@ fn lookup(m: Map[Int, String], key: Int) String:
     match m.get(key: key):
         v:
             return v.clone()
-        none:
+        null:
             return "missing"
 
 test "int map":

@@ -57,7 +57,7 @@ test "a directory is a stream source of entries and seek takes an origin":
 	entries := open_directory(root) | expect_ok?
 	all := (
 		ReadStream[DirectoryEntry](entries)
-		| collect(none)
+		| collect(null)
 		| expect_ok?
 	)
 	all.length() | expect_equal(2)?

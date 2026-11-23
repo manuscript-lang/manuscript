@@ -47,17 +47,17 @@ test "rotation preserves order across ring positions and signed boundaries":
 test "negative rotation keeps optional values and nested contents":
 	var q = Deque[List[Int]?]()
 	q.push_back([1, 2])
-	q.push_back(none)
+	q.push_back(null)
 	q.push_back([3])
 	q.rotate(-1)
 
 	last: List[Int]? := [3]
 	first: List[Int]? := [1, 2]
-	absent: List[Int]? := none
+	absent: List[Int]? := null
 	expect_equal(q.pop_front(), last)?
 	expect_equal(q.pop_front(), first)?
 	expect_equal(q.pop_front(), absent)?
-	expect_equal(q.pop_front(), none)?
+	expect_equal(q.pop_front(), null)?
 
 test "positive near-whole rotations preserve full and partial rings":
 	for size in [8191, 8192]:
@@ -79,13 +79,13 @@ test "positive near-whole rotations preserve full and partial rings":
 test "positive near-whole rotation preserves optional nested payloads":
 	var q = Deque[List[Int]?]()
 	q.push_back([1, 2])
-	q.push_back(none)
+	q.push_back(null)
 	q.push_back([3])
 	q.rotate(2)
 
 	last: List[Int]? := [3]
 	first: List[Int]? := [1, 2]
-	absent: List[Int]? := none
+	absent: List[Int]? := null
 	expect_equal(q.pop_front(), last)?
 	expect_equal(q.pop_front(), first)?
 	expect_equal(q.pop_front(), absent)?

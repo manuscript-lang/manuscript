@@ -34,7 +34,7 @@ fn main() Void!:
 ```
 
 - `matches` tests, `find_all` lists every match, `capture` returns `[whole, group1, ...]` by position, and `capture_all` does that for every match.
-- `replace_all(text, replacement, none)` writes the replacement literally: `$1` is not expanded. The last argument bounds the output size when the input is untrusted.
+- `replace_all(text, replacement, null)` writes the replacement literally: `$1` is not expanded. The last argument bounds the output size when the input is untrusted.
 - Matching is linear in the input, so a hostile pattern or text cannot hang the program.
 
 ## Take a URL apart
@@ -48,11 +48,11 @@ import encode_component, parse, parse_query from "@std/net/url.ms"
 fn main() Void!:
     link := parse("https://example.com:8443/search?q=a%20b&page=2#top")?
     print(f"{link.host} {link.port.get_or(443)} {link.path} {link.fragment}")
-    for entry in parse_query(link.query.get_or(""), none)?:
+    for entry in parse_query(link.query.get_or(""), null)?:
         print(f"{entry.key}={entry.value}")
     print(encode_component("a b&c"))
 ```
 
-- `port` is `none` when the URL names none, so `get_or` supplies the scheme's default.
+- `port` is `null` when the URL names none, so `get_or` supplies the scheme's default.
 - `resolve(base, reference)` turns a relative link into an absolute one, and `format` writes a `Url` back to text.
 - For the module API, run `ms search_symbol url`.

@@ -32,7 +32,7 @@ fn total(items: List[Priced]) Int:
     return sum
 
 fn largest[T: Clonable](items: List[T], score: fn(T) Int) T?:
-    var best: T? = none
+    var best: T? = null
     var best_score = 0
     for item in items:
         value := score(item)

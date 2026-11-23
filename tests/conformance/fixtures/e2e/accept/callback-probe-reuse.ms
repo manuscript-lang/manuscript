@@ -32,7 +32,7 @@ test "callback inference retains captures and contextual metadata":
 	expect_equal(callback.transform(3), 10)?
 	expect_equal(optional(value: 5, transform: fn item: item + offset), 12)?
 
-	missing := choose(first: fn: none, second: fn() Int?: 3)
+	missing := choose(first: fn: null, second: fn() Int?: 3)
 	expect_false(missing.is_some())?
 
 	failure := with_result(
@@ -50,7 +50,7 @@ test "callback inference retains captures and contextual metadata":
 	expect_false(failed.is_ok())?
 	expect_equal(failed.err().detail, 9)?
 
-fn absent[T]() T?: none
+fn absent[T]() T?: null
 
 fn from_callback[T](factory: fn() T) T: factory()
 

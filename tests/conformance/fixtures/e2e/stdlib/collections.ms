@@ -236,7 +236,7 @@ test "filled copies nested values independently through generic and function cal
 	expect_equal(source, [1])?
 
 	repeat := filled[List[Int]]
-	var via_function = repeat(source, 2, none)?
+	var via_function = repeat(source, 2, null)?
 	via_function[1].append(3)
 	expect_equal(via_function, [[1], [1, 3]])?
 	expect_equal(source, [1])?

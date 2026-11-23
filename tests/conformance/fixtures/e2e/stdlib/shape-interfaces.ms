@@ -10,7 +10,7 @@ type Counted:
 	log: String
 
 fn var Counted.next() Int?!:
-	return ok(none)
+	return ok(null)
 
 fn var Counted.write(move value: Int) Void!:
 	return ok()

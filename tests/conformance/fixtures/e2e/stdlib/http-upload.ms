@@ -45,7 +45,7 @@ fn var Chunks.next() Bytes?!:
                     message.clone(), kind: "EIO"
                 )
             )
-            none: return ok(none)
+            null: return ok(null)
 
     chunk := self.parts[self.at]
     self.at += 1

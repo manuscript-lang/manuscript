@@ -124,8 +124,8 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
 	expect_equal(base32_decode("MY======", max_bytes: 0), limited)?
 	expect_equal(base64_decode("Zg", max_bytes: 0, padded: false), limited)?
 	expect_equal(base64_decode("Zg", max_bytes: 1, padded: false)?, "f".to_bytes())?
-	expect_equal(base32_decode("MY======", max_bytes: none)?, "f".to_bytes())?
-	expect_equal(base64_decode("Zg", max_bytes: none, padded: false)?, "f".to_bytes())?
+	expect_equal(base32_decode("MY======", max_bytes: null)?, "f".to_bytes())?
+	expect_equal(base64_decode("Zg", max_bytes: null, padded: false)?, "f".to_bytes())?
 
 	for text in ["", "?", "MY======"]:
 		expect_equal(base32_decode(text, max_bytes: -1), invalid)?

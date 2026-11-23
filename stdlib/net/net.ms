@@ -88,9 +88,9 @@ export extern type NativeConnection
 type ConnectionSource:
 	native: NativeConnection
 
-// Waits for the next chunk; none at the end of the stream.
+// Waits for the next chunk; null at the end of the stream.
 fn var ConnectionSource.next() move Bytes?!:
-	return msstd_net_connection_read(self.native, none, none)
+	return msstd_net_connection_read(self.native, null, null)
 
 // Closes the socket when the output end is already closed.
 fn move ConnectionSource.close() Void!:
@@ -100,7 +100,7 @@ type ConnectionSink:
 	native: NativeConnection
 
 fn var ConnectionSink.write(move value: Bytes) Void!:
-	return msstd_net_connection_write_bytes(self.native, value, none)
+	return msstd_net_connection_write_bytes(self.native, value, null)
 
 fn var ConnectionSink.flush() Void!:
 	return ok()
@@ -118,7 +118,7 @@ export type ConnectionInfo:
 	local_address: String
 	// The remote end's address as `host:port` text, with IPv6 hosts in brackets.
 	peer_address: String
-	// The negotiated TLS version, cipher suite, protocol, and peer certificates; none
+	// The negotiated TLS version, cipher suite, protocol, and peer certificates; null
 	// when the connection is not TLS.
 	tls: TlsInfo?
 
@@ -134,7 +134,7 @@ A connected stream socket, optionally protected by TLS: `input` reads chunks unt
 the connection; the socket closes when both streams are closed, which is also what closing the `Connection` does.
 */
 export type Connection:
-	// Bytes from the peer; a read ends with none at the peer's end of stream.
+	// Bytes from the peer; a read ends with null at the peer's end of stream.
 	input: ReadStream[Bytes]
 	// Bytes to the peer. Closing it half-closes the connection.
 	output: WriteStream[Bytes]
@@ -152,11 +152,11 @@ fn move Connection.close() Void!:
 fn connection(move native: NativeConnection) Connection:
 	local := msstd_net_connection_local_address(native)
 	peer := msstd_net_connection_peer_address(native)
-	var tls: TlsInfo? = none
+	var tls: TlsInfo? = null
 
 	match msstd_net_connection_tls_info(native):
 		ok(found): tls = found
-		error(_): tls = none
+		error(_): tls = null
 
 	other := msstd_net_connection_share(native)
 	upgradable := msstd_net_connection_alias(native)
@@ -183,7 +183,7 @@ connection.
 export fn start_tls(
 	var plain: Connection,
 	options: TlsOptions = TlsOptions(),
-	timeout: Duration? = none,
+	timeout: Duration? = null,
 ) Connection!:
 	if options.server_name.is_empty():
 		return error(Error("network: invalid input", kind: "EINVAL"))
@@ -198,7 +198,7 @@ export fn start_tls(
 export fn accept_tls(
 	var plain: Connection,
 	options: TlsOptions = TlsOptions(),
-	timeout: Duration? = none,
+	timeout: Duration? = null,
 ) Connection!:
 	upgraded := msstd_net_connection_accept_tls(plain.native, options, timeout)?
 	return ok(connection(upgraded))
@@ -220,7 +220,7 @@ type DatagramSource:
 // Waits for one datagram, at most 65535 bytes; a larger one is an error of kind
 // `EOVERFLOW` and is discarded.
 fn var DatagramSource.next() move Datagram?!:
-	return ok(msstd_net_datagram_receive(self.native, none, none)?)
+	return ok(msstd_net_datagram_receive(self.native, null, null)?)
 
 fn move DatagramSource.close() Void!:
 	msstd_net_datagram_close_if_last(self.native)
@@ -231,7 +231,7 @@ type DatagramSink:
 // Sends `value.data` as one datagram to `value.address`, resolving a host name with
 // the network's resolver.
 fn var DatagramSink.write(move value: Datagram) Void!:
-	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, none)
+	return msstd_net_datagram_send_bytes(self.native, value.data, value.address, null)
 
 fn var DatagramSink.flush() Void!:
 	return ok()
@@ -283,7 +283,7 @@ fn move Listener.close() Void!:
 // timeout gives ETIMEDOUT and a closed listener gives EBADF from `wait`. On a TLS
 // listener the handshake completes before the connection is returned; a failed
 // handshake drops that connection and gives EIO.
-fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
+fn Listener.accept(timeout: Duration? = null) Promise[Connection]:
 	native := msstd_net_listener_share(self.native)
 	return promise(
 		fn: accepted(native, timeout),
@@ -294,7 +294,7 @@ fn Listener.accept(timeout: Duration? = none) Promise[Connection]:
 // returns its promise. A timeout gives ETIMEDOUT and a closed listener gives EBADF from
 // `wait`, as for `accept`. A TLS listener gives EINVAL: its handshake belongs to the
 // accepting thread.
-fn Listener.accept_pending(timeout: Duration? = none) Promise[PendingConnection]:
+fn Listener.accept_pending(timeout: Duration? = null) Promise[PendingConnection]:
 	native := msstd_net_listener_share(self.native)
 	return promise(
 		fn: accepted_pending(native, timeout),
@@ -371,8 +371,8 @@ fn Network.close() Void:
 // invalid options return EINVAL. `timeout` bounds the whole attempt.
 fn Network.connect(
 	address: String,
-	tls: TlsOptions? = none,
-	timeout: Duration? = none,
+	tls: TlsOptions? = null,
+	timeout: Duration? = null,
 ) Connection!:
 	if options := tls:
 		if options.server_name.is_empty():
@@ -393,7 +393,7 @@ fn Network.connect(
 // Connects to the Unix domain socket at `path`. Any restricted network returns
 // EACCES because Unix sockets bypass host and CIDR checks, and an empty path
 // returns EINVAL. `timeout` bounds the attempt.
-fn Network.connect_unix(path: String, timeout: Duration? = none) Connection!:
+fn Network.connect_unix(path: String, timeout: Duration? = null) Connection!:
 	return ok(connection(msstd_net_network_connect_unix(self.native, path, timeout)?))
 
 // Creates a reusable HTTP client with connection pooling that dials through this
@@ -415,7 +415,7 @@ fn Network.listen(address: String) Listener!:
 fn Network.listen_tls(
 	address: String,
 	options: TlsOptions,
-	timeout: Duration? = none,
+	timeout: Duration? = null,
 ) Listener!:
 	return msstd_net_network_listen_tls(self.native, address, options, timeout)
 
@@ -526,19 +526,19 @@ export type RequestOptions:
 	// The header fields to send with the request; empty by default. Transport headers
 	// such as `Host` and `Content-Length` are set by the request itself.
 	headers: HttpHeaders = headers()
-	// Largest accepted response body in bytes. A longer body returns EOVERFLOW; none
+	// Largest accepted response body in bytes. A longer body returns EOVERFLOW; null
 	// sets no limit.
-	max_bytes: Int? = none
-	// Time budget for the whole request; ETIMEDOUT when it elapses. none waits
+	max_bytes: Int? = null
+	// Time budget for the whole request; ETIMEDOUT when it elapses. null waits
 	// indefinitely.
-	timeout: Duration? = none
+	timeout: Duration? = null
 
 // Per-call settings of a DNS query: how many records to accept and a time budget.
 export type DnsOptions:
-	// More records than this returns EOVERFLOW; none sets no limit.
-	max_records: Int? = none
-	// Time budget for the query; ETIMEDOUT when it elapses. none waits indefinitely.
-	timeout: Duration? = none
+	// More records than this returns EOVERFLOW; null sets no limit.
+	max_records: Int? = null
+	// Time budget for the query; ETIMEDOUT when it elapses. null waits indefinitely.
+	timeout: Duration? = null
 
 // The network of the current host.
 fn host_network() Network:
@@ -563,8 +563,8 @@ export fn bind_datagram(address: String) DatagramSocket!:
 // ms: effect std.net.connect
 export fn connect(
 	address: String,
-	tls: TlsOptions? = none,
-	timeout: Duration? = none,
+	tls: TlsOptions? = null,
+	timeout: Duration? = null,
 ) Promise[Connection]:
 	owned_address := address.clone()
 	owned_tls := tls.clone()
@@ -577,7 +577,7 @@ export fn connect(
 // restricted network gives EACCES because Unix sockets bypass host and CIDR checks, and
 // an empty path gives EINVAL. `timeout` bounds the attempt.
 // ms: effect std.net.connect
-export fn connect_unix(path: String, timeout: Duration? = none) Promise[Connection]:
+export fn connect_unix(path: String, timeout: Duration? = null) Promise[Connection]:
 	owned_path := path.clone()
 	return promise(
 		fn: host_network().connect_unix(owned_path, timeout),
@@ -606,7 +606,7 @@ export fn listen(address: String) Listener!:
 export fn listen_tls(
 	address: String,
 	options: TlsOptions,
-	timeout: Duration? = none,
+	timeout: Duration? = null,
 ) Listener!:
 	return host_network().listen_tls(address, options, timeout)
 
@@ -673,7 +673,7 @@ export fn restrict(
 // worker per core (`options.cores`), each placed on the least loaded thread, and deals
 // each accepted connection to the next worker, which keeps it. HTTP/1.1, HTTP/2 and the
 // TLS handshake of `options.tls` run in the worker. `handler` is built once and only
-// read by every thread. `options.cores` limits the runtime to that many threads (none:
+// read by every thread. `options.cores` limits the runtime to that many threads (null:
 // every core).
 //
 // A handler is cancelled when its request times out or its client disconnects (an

@@ -55,21 +55,21 @@ export fn json_body[T: Data](value: T) FetchBody!:
 export type FetchOptions:
 	// The request method; defaults to Get. Extension tokens use the Custom case.
 	method: HttpMethod = HttpMethod.Get
-	// Extra request headers; none sends no extra fields. The caller's headers are never
+	// Extra request headers; null sends no extra fields. The caller's headers are never
 	// modified.
 	headers: HttpHeaders?
 	// The request body; defaults to Empty. A Text, Raw, or JSON body adds a
 	// `Content-Type` only when `headers` lacks one.
 	body: FetchBody = FetchBody.Empty
-	// Whole-exchange deadline; none waits without limit.
+	// Whole-exchange deadline; null waits without limit.
 	timeout: Duration? = seconds(30)
-	// Largest accepted response body in bytes; none sets no cap. Larger bodies return
+	// Largest accepted response body in bytes; null sets no cap. Larger bodies return
 	// `EOVERFLOW`.
 	max_response_bytes: Int? = 16777216
 
 // Settings fixed when a `Fetcher` is created.
 export type FetcherOptions:
-	// Most redirects followed per request; 0 returns the redirect itself and none sets
+	// Most redirects followed per request; 0 returns the redirect itself and null sets
 	// no cap.
 	max_redirects: Int? = 20
 	// Decode gzip responses, bounded by `max_response_bytes`.
@@ -144,7 +144,7 @@ fn Fetcher.fetch(
 	)
 
 // Sends the request and returns the response with its body as a stream. The default
-// `options.timeout` is a whole-exchange deadline, so set it to none for long streams.
+// `options.timeout` is a whole-exchange deadline, so set it to null for long streams.
 fn Fetcher.stream(
 	url: String,
 	options: FetchOptions = FetchOptions(),
@@ -223,11 +223,11 @@ fn outgoing(options: FetchOptions) Outgoing:
 	return Outgoing(headers: fields, body: data)
 
 // Creates a reusable fetcher on `net`, whose restrictions apply to every request and
-// redirect; none uses the host network.
+// redirect; null uses the host network.
 // ms: effect std.net.connect
 export fn fetcher(
 	options: FetcherOptions = FetcherOptions(),
-	net: Network? = none,
+	net: Network? = null,
 ) Fetcher!:
 	settings := HttpClientOptions(
 		max_redirects: options.max_redirects,

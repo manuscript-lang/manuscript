@@ -10,10 +10,10 @@ fn outcome_value(move outcome: Int!Error) Int:
     return outcome.get_or(-1)
 
 test "data constructor context":
-    _input := Input([none, "Ada"])
+    _input := Input([null, "Ada"])
     success: Int!Error := ok(3)
     failure: Int!Error := error(Error("unavailable"))
-    _absent: Int? := none
+    _absent: Int? := null
     _nested: List[List[Int]] := [[], [1]]
     expect_equal(outcome_value(success), 3)?
     expect_equal(outcome_value(failure), -1)?
@@ -28,8 +28,8 @@ fn select[T](first: T, second: T) T:
     return first
 
 test "nested constructor arguments receive inferred context":
-    request := Request(Box(none))
+    request := Request(Box(null))
     provided: Int? := 3
-    selected := select(Box(none), Box(provided))
+    selected := select(Box(null), Box(provided))
     expect_false(not selected.value.is_none())?
     expect_false(not request.box.value.is_none())?

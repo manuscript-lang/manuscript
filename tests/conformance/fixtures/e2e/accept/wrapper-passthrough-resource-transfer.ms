@@ -29,10 +29,10 @@ fn transfer_result_temporary(log: String) Void:
 
 fn transfer_optional_local(log: String) Void:
 	original := optional(3, log)
-	_kept := original.or_else(fn: none)
+	_kept := original.or_else(fn: null)
 
 fn transfer_optional_temporary(log: String) Void:
-	_kept := optional(4, log).or_else(fn: none)
+	_kept := optional(4, log).or_else(fn: null)
 
 test "native wrapper passthrough transfers resources without duplicating owners":
 	tmp := temporary("wrapper-passthrough-") | expect_ok?
@@ -61,7 +61,7 @@ test "or_else takes a Result holding a resource error and closes it once":
 
 fn optional_callback(fail: Bool) (fn() Marker?)!:
 	if fail: return error(Error("callback unavailable"))
-	return ok(fn: none)
+	return ok(fn: null)
 
 fn result_callback(fail: Bool) (fn(Error) Marker!Error)!:
 	if fail: return error(Error("callback unavailable"))

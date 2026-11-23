@@ -27,15 +27,15 @@ test "optional Result arguments supply constructor type context":
     optional_result(error("missing")) | expect_equal(-1)?
 
 test "optional failure payloads and nested absence retain their layers":
-    absent: Int?? := none
+    absent: Int?? := null
     absent.is_none() | expect_true?
 
-    inner: Int? := none
+    inner: Int? := null
     present: Int?? := inner
     present.is_some() | expect_true?
     present.get().is_none() | expect_true?
 
-    failure: Result[Int, String?] := error(none)
+    failure: Result[Int, String?] := error(null)
     failure.is_error() | expect_true?
     failure.err().is_none() | expect_true?
 
@@ -106,7 +106,7 @@ test "assertion failures can describe values without a reporting implementation"
 
 test "Optional adapters accept primitive errors and remain lazy":
     present: Int? := 4
-    missing: Int? := none
+    missing: Int? := null
     missing.ok_or("absent").err() | expect_equal("absent")?
     present.ok_or(9).get() | expect_equal(4)?
 

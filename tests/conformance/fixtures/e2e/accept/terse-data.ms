@@ -40,7 +40,7 @@ test "map literals and positional identifier arguments":
 	nested: Map[String, Map[String, Int]] := {"a": {}, "b": {"c": 1}}
 	expect_equal(nested["b"]["c"], 1)?
 
-	optional: Map[String, Int?] := {"a": none, "b": 2}
+	optional: Map[String, Int?] := {"a": null, "b": 2}
 	expect_false(not optional["a"].is_none())?
 
 	key := "c"

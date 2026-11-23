@@ -121,7 +121,7 @@ fn BigRat.round() BigInt:
 
 	return magnitude
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float
+// Converts to the nearest Float, or null when the magnitude is beyond the Float
 // range.
 fn BigRat.to_float() Float?:
 	parts := div_parts(self.num, self.den, 53)
@@ -176,9 +176,9 @@ export fn rat_of_big_int(value: BigInt) BigRat:
 
 // Returns the exact value of a Float as a fraction: 1/2 for 0.5, and
 // 3602879701896397/36028797018963968 for 0.1, which a Float stores inexactly. Returns
-// none for NaN and infinities.
+// null for NaN and infinities.
 export fn rat_of_float(value: Float) BigRat?:
-	if not value.is_finite(): return none
+	if not value.is_finite(): return null
 	if value == 0.0: return rat_of_int(0)
 
 	parts := frexp(value)
@@ -408,7 +408,7 @@ fn BigFloat.truncate() BigInt:
 
 	return magnitude
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float
+// Converts to the nearest Float, or null when the magnitude is beyond the Float
 // range.
 fn BigFloat.to_float() Float?:
 	return binary_to_float(binary_of(self), false)
@@ -442,10 +442,10 @@ export fn big_float_of_int(value: Int, precision: Int) BigFloat:
 	return big_float_of_big_int(big(value), precision)
 
 // Returns a Float rounded to `precision` bits (exact when precision is at least 53), or
-// none for NaN and infinities.
+// null for NaN and infinities.
 export fn big_float_of_float(value: Float, precision: Int) BigFloat?:
 	bits := checked(precision)
-	if not value.is_finite(): return none
+	if not value.is_finite(): return null
 	if value == 0.0: return big_float_of_int(0, bits)
 
 	parts := frexp(value)
@@ -504,7 +504,7 @@ fn big(value: Int) BigInt:
 
 fn parse_big(text: String) BigInt?:
 	if value := parse_big_int(text, 10): return value
-	return none
+	return null
 
 fn shl(value: BigInt, count: Int) BigInt:
 	if result := value.shift_left(count): return result
@@ -582,7 +582,7 @@ fn div_round(numerator: BigInt, denominator: BigInt, prec: Int) Binary:
 	parts := div_parts(numerator, denominator, prec)
 	return round_to(parts.value.mant, parts.value.exp, parts.sticky, prec)
 
-// Converts to the nearest Float, or none when the magnitude is beyond the Float range.
+// Converts to the nearest Float, or null when the magnitude is beyond the Float range.
 // Rounds once, onto the binary64 grid: 53 significant bits for a normal result, fewer
 // as the value falls into the subnormal range.
 // `sticky` says nonzero bits lie below `value`, which then must carry at least 55 bits.
@@ -616,7 +616,7 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 			result = -result
 		if result.is_finite(): return result
 
-	return none
+	return null
 
 // Reduces `numerator / denominator` for a nonzero denominator.
 fn reduced(numerator: BigInt, denominator: BigInt) BigRat:

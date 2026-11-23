@@ -43,14 +43,14 @@ The language has no implicit numeric conversion, optional unwrapping, result wra
 
 An expected type comes from an annotation, assignment target, return declaration, substituted parameter, field, or enum payload. It guides parenthesized expressions, list elements, constructor fields, and case payloads.
 
-It also supplies missing type arguments for a uniquely identified `none`, `ok`, or `error`. It never resolves an ambiguous case name or overrides a type that the expression already determines.
+It also supplies missing type arguments for a uniquely identified `null`, `ok`, or `error`. It never resolves an ambiguous case name or overrides a type that the expression already determines.
 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
 type Input:
     names: List[String?]
 
-input := Input([none, "Ada"])
+input := Input([null, "Ada"])
 nested: List[List[Int]] := [[], [1]]
 success: Result[Int, Error] := ok(1)
 failure: Result[Int, Error] := error(Error("unavailable"))
@@ -62,10 +62,10 @@ The checker rejects an expression whose type it cannot determine.
 
 | Expression without an annotation | What can be inferred |
 | --- | --- |
-| `none` or `[]` | Not enough information to determine the payload or element type. |
+| `null` or `[]` | Not enough information to determine the payload or element type. |
 | `ok(value: 1)` | The success is Int, but the error type is still unknown. |
 | `1` | Int; it wraps only where an `Int?` is expected. |
-| `[none, 1]` | Not enough information: a plain `1` does not make the list optional. Annotate `List[Int?]`. |
+| `[null, 1]` | Not enough information: a plain `1` does not make the list optional. Annotate `List[Int?]`. |
 
 A list whose independently typed elements disagree is rejected.
 

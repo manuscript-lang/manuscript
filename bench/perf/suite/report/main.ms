@@ -5,7 +5,7 @@ import (
 )
 
 fn main() Void:
-	data := read_all(stdin(), none).get().decode_utf8().get_or("")
+	data := read_all(stdin(), null).get().decode_utf8().get_or("")
 	var out = StringBuilder()
 	var total = 0
 

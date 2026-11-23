@@ -21,7 +21,7 @@ fn slots(spans: List[RegexSpan?]) List[List[Int]?]:
 		if present := span:
 			out.append([present.start, present.end])
 		else:
-			out.append(none)
+			out.append(null)
 
 	return out
 
@@ -65,7 +65,7 @@ test "capture spans distinguish no match absent groups and empty captures":
 		| expect_ok?
 		| expect_some?
 	)
-	expected: List[List[Int]?] := [[0, 0], none, [0, 0]]
+	expected: List[List[Int]?] := [[0, 0], null, [0, 0]]
 	first | slots | expect_equal(expected)?
 
 	absent := compile("(x)") | expect_ok?
@@ -95,12 +95,12 @@ test "capture rows clear absent groups and retain all group indices":
 	rows := re.capture_all_spans("é🙂é", 3, 9) | expect_ok?
 	rows.length() | expect_equal(3)?
 
-	left: List[List[Int]?] := [[0, 2], [0, 2], none]
-	right: List[List[Int]?] := [[2, 6], none, [2, 6]]
+	left: List[List[Int]?] := [[0, 2], [0, 2], null]
+	right: List[List[Int]?] := [[2, 6], null, [2, 6]]
 	rows[0] | slots | expect_equal(left)?
 	rows[1] | slots | expect_equal(right)?
 
-	last: List[List[Int]?] := [[6, 8], [6, 8], none]
+	last: List[List[Int]?] := [[6, 8], [6, 8], null]
 	rows[2] | slots | expect_equal(last)?
 
 	bytes := "é🙂é".to_bytes()
@@ -128,7 +128,7 @@ test "span budgets cover whole and unmatched capture slots":
 		re.capture_spans(
 			"ab",
 			3,
-		) | expect_ok? | expect_some? | slots | expect_equal([[0, 1], [0, 1], none])?
+		) | expect_ok? | expect_some? | slots | expect_equal([[0, 1], [0, 1], null])?
 	)
 	(
 		re.capture_spans("ab", 2) | expect_error? | expect_equal(
@@ -179,7 +179,7 @@ test "span budgets cover whole and unmatched capture slots":
 			re.capture_all_spans(
 				"",
 				cap,
-				none,
+				null,
 			) | expect_error? | expect_equal(
 				Error(
 					"regular expression: invalid input",
@@ -190,7 +190,7 @@ test "span budgets cover whole and unmatched capture slots":
 		(
 			re.capture_all_spans(
 				"",
-				none,
+				null,
 				cap,
 			) | expect_error? | expect_equal(
 				Error(
@@ -204,7 +204,7 @@ test "span methods support bound calls and preserve anchor context":
 	re := compile("(?m)(^a)|(b$)") | expect_ok?
 	find := re.find_all_spans
 	(
-		find("za b\na b", none) | expect_ok? | pairs | expect_equal(
+		find("za b\na b", null) | expect_ok? | pairs | expect_equal(
 			[[3, 4], [5, 6], [7, 8]]
 		)?
 	)
@@ -213,12 +213,12 @@ test "span methods support bound calls and preserve anchor context":
 	(
 		captures(
 			"za b\na b",
-			none,
-		) | expect_ok? | expect_some? | slots | expect_equal([[3, 4], none, [3, 4]])?
+			null,
+		) | expect_ok? | expect_some? | slots | expect_equal([[3, 4], null, [3, 4]])?
 	)
 
 	all := re.capture_all_spans
-	rows := all("za b\na b", none, none) | expect_ok?
+	rows := all("za b\na b", null, null) | expect_ok?
 	rows.length() | expect_equal(3)?
 
 test "span results remain bounded for dense matches":
@@ -232,7 +232,7 @@ test "span results remain bounded for dense matches":
 		)?
 	)
 	(
-		re.capture_all_spans(text, none, 3) | expect_error? | expect_equal(
+		re.capture_all_spans(text, null, 3) | expect_error? | expect_equal(
 			Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 		)?
 	)
@@ -240,5 +240,5 @@ test "span results remain bounded for dense matches":
 		re.capture_spans(
 			text,
 			3,
-		) | expect_ok? | expect_some? | slots | expect_equal([[0, 2], [0, 2], none])?
+		) | expect_ok? | expect_some? | slots | expect_equal([[0, 2], [0, 2], null])?
 	)

@@ -18,7 +18,7 @@ type Graph:
     nodes: List[Node]
 
 fn var Graph.add(label: String) Int:
-    self.nodes.append(Node(label: label, edges: [], parent: none))
+    self.nodes.append(Node(label: label, edges: [], parent: null))
     return self.nodes.length() - 1
 
 fn var Graph.link(a: Int, b: Int) Void:

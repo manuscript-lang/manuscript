@@ -57,8 +57,8 @@ test "nothing kept and an empty list":
 	for o in os.filter(fn o: o.status == "none"):
 		n += o.id
 
-	none: List[Order] := []
-	for o in none.filter(fn o: o.id > 0):
+	null: List[Order] := []
+	for o in null.filter(fn o: o.id > 0):
 		n += 100
 	expect_equal(n, 0)?
 

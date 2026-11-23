@@ -24,7 +24,7 @@ fn echo(var exchange: HttpExchange) Void!:
 		match socket.input.next()?:
 			message:
 				socket.output.write(message)?
-			none:
+			null:
 				return ok()
 
 		socket.close()?
@@ -51,7 +51,7 @@ fn exercise() Void!:
 		max_header_bytes: 65536,
 		timeout: 3.seconds(),
 		grace: 0.milliseconds(),
-		tls: none,
+		tls: null,
 	)
 	var server = serve(address: "127.0.0.1:0", handler: echo, options: server_options)?
 	client_options := HttpClientOptions(
@@ -79,7 +79,7 @@ fn exercise() Void!:
 	match part:
 		data:
 			expect_false(not (data.decode_utf8() == "hello from streaming Manuscript"))?
-		none:
+		null:
 			return fail(message: "Unexpected case")
 
 	response.close()?
@@ -106,7 +106,7 @@ fn exercise() Void!:
 		message:
 			expect_true(message.kind == WebSocketKind.Text)?
 			expect_equal(message.data.decode_utf8(), "echo me".to_bytes().decode_utf8())?
-		none:
+		null:
 			return fail(message: "Unexpected case")
 
 	server.close()?

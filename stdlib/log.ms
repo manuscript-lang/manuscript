@@ -185,11 +185,11 @@ export type Logger:
 	timestamp: Bool
 	// Internal state: the transport this logger writes to; each child owns a duplicate.
 	transport: Transport
-	// Internal state: the largest record in bytes including the newline; none is
+	// Internal state: the largest record in bytes including the newline; null is
 	// unlimited.
 	max_bytes: Int?
 	// Internal state: JSON text of the fields bound by `child`, written as `context`;
-	// none if unbound.
+	// null if unbound.
 	context: String?
 
 // Internal: writes one record at a level number. `data` is JSON text attached as
@@ -213,12 +213,12 @@ fn Logger.emit(level: Int, message: String, data: String?) Void!:
 Writes a record at the selected level. `fields` is any `Data` value `stringify` accepts.
 
 The value is written as is under the record's `data` key, so a record, map, list, or number
-keeps its shape. No fields, or `none`, write the message alone. A value that cannot be encoded,
+keeps its shape. No fields, or `null`, write the message alone. A value that cannot be encoded,
 such as a cyclic one, returns `EBADMSG`; encoding happens only when the level is enabled.
 The fields of `child` loggers are written under `context`. `Silent` is a threshold, not a
 record level, and returns `EINVAL`.
 */
-fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = none) Void!:
+fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = null) Void!:
 	if level == LogLevel.Silent: return error(
 		Error("logging: invalid input", kind: "EINVAL")
 	)
@@ -228,37 +228,37 @@ fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = non
 		text := encode_fields(value)?
 		return self.emit(level_value(level), message, text)
 
-	return self.emit(level_value(level), message, none)
+	return self.emit(level_value(level), message, null)
 
 // Logs at Trace, the most detailed level, when enabled. A filtered call returns ok
 // without encoding the fields or touching the transport. Fields are encoded as in
 // `log`.
-fn Logger.trace[F: Data = Void](message: String, fields: F? = none) Void!:
+fn Logger.trace[F: Data = Void](message: String, fields: F? = null) Void!:
 	return self.log(LogLevel.Trace, message, fields)
 
 // Logs at Debug when enabled, for development diagnostics. Fields are encoded as in
 // `log`.
-fn Logger.debug[F: Data = Void](message: String, fields: F? = none) Void!:
+fn Logger.debug[F: Data = Void](message: String, fields: F? = null) Void!:
 	return self.log(LogLevel.Debug, message, fields)
 
 // Logs at Info when enabled. Ordinary operational records. Fields are encoded as in
 // `log`.
-fn Logger.info[F: Data = Void](message: String, fields: F? = none) Void!:
+fn Logger.info[F: Data = Void](message: String, fields: F? = null) Void!:
 	return self.log(LogLevel.Info, message, fields)
 
 // Logs at Warn when enabled. Returns encoding, size-limit and transport errors
 // unchanged. Fields are encoded as in `log`.
-fn Logger.warn[F: Data = Void](message: String, fields: F? = none) Void!:
+fn Logger.warn[F: Data = Void](message: String, fields: F? = null) Void!:
 	return self.log(LogLevel.Warn, message, fields)
 
 // Logs at Error when enabled. This records a failure for diagnosis; it does not
 // raise a fault. Fields are encoded as in `log`.
-fn Logger.error[F: Data = Void](message: String, fields: F? = none) Void!:
+fn Logger.error[F: Data = Void](message: String, fields: F? = null) Void!:
 	return self.log(LogLevel.Error, message, fields)
 
 // Logs at Fatal when enabled. Logging does not stop the process; the caller must
 // do that. Fields are encoded as in `log`.
-fn Logger.fatal[F: Data = Void](message: String, fields: F? = none) Void!:
+fn Logger.fatal[F: Data = Void](message: String, fields: F? = null) Void!:
 	return self.log(LogLevel.Fatal, message, fields)
 
 /*
@@ -302,8 +302,8 @@ export type LoggerOptions:
 	level: LogLevel = LogLevel.Info
 	// True adds a timestamp to every record.
 	timestamp: Bool = true
-	// Maximum encoded bytes of one record; none adds no limit.
-	max_bytes: Int? = none
+	// Maximum encoded bytes of one record; null adds no limit.
+	max_bytes: Int? = null
 
 // Creates a logger that owns `transport`, with the level, timestamp and record-size
 // settings in `options`.
@@ -319,7 +319,7 @@ export fn create(
 			options.timestamp,
 			transport,
 			options.max_bytes,
-			none,
+			null,
 		)
 	)
 

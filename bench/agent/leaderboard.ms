@@ -115,7 +115,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 	var comp = CATEGORIES.map(fn _c: 0.0)
 	var out = CATEGORIES.map(fn _c: 0.0)
 	var prev_prompt = 0.0
-	var prev: JsonValue? = none
+	var prev: JsonValue? = null
 
 	for st in steps:
 		if text_at(st, "source") != "agent" or st.get("metrics").is_none(): continue
@@ -141,11 +141,11 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 	return out
 
 fn read_trial(dir: String) Trial?:
-	if not access(f"{dir}/result.json", 0).is_ok(): return none
+	if not access(f"{dir}/result.json", 0).is_ok(): return null
 
 	r := parse(must_read(f"{dir}/result.json")).get_or(JsonValue.Null)
 	task := r.get("task_name")
-	if task.is_none(): return none
+	if task.is_none(): return null
 
 	name := task.get_or(
 		JsonValue.Null
@@ -154,7 +154,7 @@ fn read_trial(dir: String) Trial?:
 	cid := name.slice(0, cut)
 	lang := name.slice(cut + 1, name.length())
 	meta_file := f"{root()}/challenges/{cid}/challenge.json"
-	if not access(meta_file, 0).is_ok(): return none
+	if not access(meta_file, 0).is_ok(): return null
 
 	meta := parse(must_read(meta_file)).get_or(JsonValue.Null)
 	ar := r.get("agent_result").get_or(JsonValue.Null)
@@ -288,11 +288,11 @@ type Agg:
 	code: Float?
 
 fn mean_of(values: List[Float]) Float?:
-	if values.is_empty(): return none
+	if values.is_empty(): return null
 	return values.sum() / values.length().to_float()
 
 fn mean_scaled_opt(values: List[Float], scale: Float) Float?:
-	if values.is_empty(): return none
+	if values.is_empty(): return null
 	return mean_scaled(values, scale)
 
 fn agg(rs: List[Trial]) Agg:
@@ -477,7 +477,7 @@ fn main() Int:
 	if args.length() >= 2 and args[0] == "collect": return collect(
 		args.slice(1, args.length()).get_or([])
 	)
-	if args.length() == 1 and args[0] == "render": return render(none)
+	if args.length() == 1 and args[0] == "render": return render(null)
 	if args.length() == 2 and args[0] == "render": return render(args[1].clone())
 
 	(

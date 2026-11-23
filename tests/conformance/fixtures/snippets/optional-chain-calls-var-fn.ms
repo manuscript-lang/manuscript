@@ -34,7 +34,7 @@ fn leave_when_absent(var c: C?) Void:
 
 fn main() Void:
     var c: C? = C(1, List[String]())
-    var none_c: C? = none
+    var none_c: C? = null
     show(c?.bump())
     show(c?.bump())
     c?.note("hi")
@@ -47,7 +47,7 @@ fn main() Void:
     show(tick(c))
     show(c?.get())
 
-    var hn = H(none)
+    var hn = H(null)
     show(tick(none_c))
     show(tick(hn.c))
     leave_when_absent(c)

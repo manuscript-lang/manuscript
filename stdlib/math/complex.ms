@@ -423,7 +423,7 @@ fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
 	return result
 
 // The special-value rows of C99 Annex G for inputs with an infinite or NaN part. Each
-// returns `none` when the general formula applies. Where the standard leaves a sign or
+// returns `null` when the general formula applies. Where the standard leaves a sign or
 // a zero unspecified, the result matches CPython's `cmath`.
 fn is_infinite_part(value: Float) Bool:
 	return not value.is_finite() and not value.is_nan()
@@ -436,21 +436,21 @@ fn exp_special(z: Complex) Complex?:
 	if z.re == -infinity and not z.im.is_finite(): return Complex(re: 0.0, im: 0.0)
 	if z.re == infinity and z.im.is_nan(): return Complex(re: infinity, im: z.im)
 
-	return none
+	return null
 
 fn sin_special(z: Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
 	if z.re.is_nan() and (z.im == 0.0 or is_infinite_part(z.im)):
 		return Complex(re: z.re, im: z.im)
 
-	return none
+	return null
 
 fn cos_special(z: Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.im, im: 0.0)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: 0.0)
 	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: infinity, im: z.re)
 
-	return none
+	return null
 
 fn tan_special(z: Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
@@ -459,21 +459,21 @@ fn tan_special(z: Complex) Complex?:
 	if not z.re.is_finite() and is_infinite_part(z.im):
 		return Complex(re: 0.0, im: copy_sign(1.0, z.im))
 
-	return none
+	return null
 
 fn sinh_special(z: Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
 	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: infinity, im: z.im)
 
-	return none
+	return null
 
 fn cosh_special(z: Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.im, im: 0.0)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: 0.0)
 	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: infinity, im: z.im)
 
-	return none
+	return null
 
 fn tanh_special(z: Complex) Complex?:
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
@@ -482,7 +482,7 @@ fn tanh_special(z: Complex) Complex?:
 	if is_infinite_part(z.re) and not z.im.is_finite():
 		return Complex(re: copy_sign(1.0, z.re), im: 0.0)
 
-	return none
+	return null
 
 fn asin_special(z: Complex) Complex?:
 	half_pi := 1.5707963267948966
@@ -502,7 +502,7 @@ fn asin_special(z: Complex) Complex?:
 	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: z.im, im: -infinity)
 	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: z.re, im: z.im)
 
-	return none
+	return null
 
 fn acos_special(z: Complex) Complex?:
 	half_pi := 1.5707963267948966
@@ -523,7 +523,7 @@ fn acos_special(z: Complex) Complex?:
 	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: z.im, im: infinity)
 	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: z.re, im: -z.im)
 
-	return none
+	return null
 
 fn atan_special(z: Complex) Complex?:
 	half_pi := 1.5707963267948966
@@ -542,7 +542,7 @@ fn atan_special(z: Complex) Complex?:
 	)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
 
-	return none
+	return null
 
 // Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic
 // value. An exact zero times such an infinity stays a signed zero, where plain `*`

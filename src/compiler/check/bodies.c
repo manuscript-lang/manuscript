@@ -406,7 +406,7 @@ static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
   return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
 }
 
-/* Each required parameter or field that follows an optional one; a `T?` parameter or field defaults to none. */
+/* Each required parameter or field that follows an optional one; a `T?` parameter or field defaults to null. */
 static void report_optionals_last(Body *body, MsParams params) {
   uint32_t first = 0;
   while (first < params.len && !body_param_omittable(body, params.ptr[first])) {
@@ -427,7 +427,7 @@ static void report_optionals_last(Body *body, MsParams params) {
     ms_strbuild_append(&text, ms_names_span(body->program->names, params.ptr[index]->name));
     ms_strbuild_append_text(&text, " follows optional ");
     ms_strbuild_append(&text, ms_names_span(body->program->names, optional->name));
-    ms_strbuild_append_text(&text, by_type ? " (a `T?` parameter or field defaults to none, so it counts as optional)" : "");
+    ms_strbuild_append_text(&text, by_type ? " (a `T?` parameter or field defaults to null, so it counts as optional)" : "");
     ms_strbuild_append_text(&text, "; put optional parameters and fields last");
     ms_check_report(body->program, body->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }

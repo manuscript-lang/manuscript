@@ -36,7 +36,7 @@ fn title(version: String) String:
 fn ops_of(name: String) Int?:
 	for op in ops():
 		if op.name == name: return op.count
-	return none
+	return null
 
 // One sample line: `<version> <operation> <count> <ns>` or
 // `<version> # sink <checksums>`.

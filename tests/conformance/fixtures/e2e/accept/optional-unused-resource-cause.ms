@@ -14,7 +14,7 @@ fn move Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
 fn present() Int?: 7
 
-fn absent() Int?: none
+fn absent() Int?: null
 
 fn marker(id: Int, log: String) Marker: Marker(id, log)
 

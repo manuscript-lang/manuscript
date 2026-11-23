@@ -14,7 +14,7 @@ test "arguments":
             i:
                 value = 9
                 i
-            none: 0
+            null: 0
     )
     expect_equal(result, 12)?
 

@@ -2,6 +2,6 @@
 // conform: phase=check
 enum Optional[T]:
     T
-    none
+    null
 fn wrong(value: Int?) Int:
     return value.get()

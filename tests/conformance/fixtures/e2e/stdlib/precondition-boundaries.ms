@@ -61,13 +61,13 @@ test "queue capacities retain omission none minimum maximum and full results":
     expect_false(not queue.enqueue(1) or queue.enqueue(2))?
     expect_false(queue.dequeue() != 1 or not queue.dequeue().is_none())?
 
-    var unbounded = Queue[Int](none)
+    var unbounded = Queue[Int](null)
     var large = Queue[Int](9223372036854775807)
     expect_false(not unbounded.enqueue(1) or not large.enqueue(1))?
 
     var priority = PriorityQueue[Int](1)
     expect_false(not priority.enqueue(1) or priority.enqueue(2))?
 
-    var unlimited = PriorityQueue[Int](none)
+    var unlimited = PriorityQueue[Int](null)
     var large_priority = PriorityQueue[Int](9223372036854775807)
     expect_false(not unlimited.enqueue(1) or not large_priority.enqueue(1))?

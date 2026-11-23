@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:17
 inferred := 1  // Int?
-explicit: String? := none
+explicit: String? := null
 // Rejected: no type determines the absent payload.
-unknown := none
+unknown := null
 // Rejected: bindings still require explicit wrapping.
 wrong: String? := "Ada"

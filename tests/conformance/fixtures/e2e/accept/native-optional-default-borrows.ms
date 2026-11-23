@@ -8,12 +8,12 @@ fn heap_text(seed: Int) String:
 	)
 
 fn missing_temporary(seed: Int) Int!:
-	absent: Int? := none
+	absent: Int? := null
 	convert := absent.ok_or[Error]
 	return convert(Error("missing value at " + heap_text(seed), kind: "ENOENT"))
 
 fn string_temporary(seed: Int) Int!String:
-	absent: Int? := none
+	absent: Int? := null
 	convert := absent.ok_or[String]
 	return convert(heap_text(seed))
 
@@ -23,12 +23,12 @@ fn fallback_temporary(seed: Int) String:
 	return get(0, heap_text(seed))
 
 interface Fallback:
-	fn choose(value: String? = none) String
+	fn choose(value: String? = null) String
 
 type Choice:
 	fallback: String
 
-fn Choice.choose(value: String? = none) String:
+fn Choice.choose(value: String? = null) String:
 	if present := value: return present.clone()
 	return self.fallback.clone()
 
@@ -41,7 +41,7 @@ test "bound ok_or results own heap-backed temporary causes":
 	expect_equal(churn.length(), 64)?
 
 test "bound ok_or leaves caller causes independent of its result":
-	absent: Int? := none
+	absent: Int? := null
 	convert := absent.ok_or[Error]
 	var cause = Error("missing value at " + heap_text(3), kind: "ENOENT")
 	result := convert(cause.clone())
@@ -76,4 +76,4 @@ test "bound interface adapters preserve heap-backed arguments and results":
 	expect_equal(selected, heap_text(10))?
 	expect_equal(argument, heap_text(11))?
 	expect_equal(choose(), heap_text(8))?
-	expect_equal(choose(none), heap_text(8))?
+	expect_equal(choose(null), heap_text(8))?

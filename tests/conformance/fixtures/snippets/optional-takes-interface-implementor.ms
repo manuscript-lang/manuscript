@@ -17,7 +17,7 @@ type Holder:
 fn pick(b: Bool) Shape?:
     if b: return Sq(3)
 
-    return none
+    return null
 
 fn take(x: Shape?) Int:
     if s := x: return s.area()
@@ -27,7 +27,7 @@ fn take(x: Shape?) Int:
 fn main() Void:
     h := Holder(Sq(4))
     t: Shape? := Sq(5)
-    var v: Shape? = none
+    var v: Shape? = null
     v = Sq(6)
     (
         stdout()

@@ -226,7 +226,7 @@ fn y_optional_ints() Int:
 	var xs: List[Int?] = []
 
 	for i in 0..2000000:
-		if i % 3 == 0: xs.append(none)
+		if i % 3 == 0: xs.append(null)
 		else: xs.append(i)
 
 	var t = 0

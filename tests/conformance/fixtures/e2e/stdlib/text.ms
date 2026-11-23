@@ -9,7 +9,7 @@ import (
 
 test "text conversions and quoting":
 	parse_bool("YES") | expect_equal(true)?
-	parse_bool("x") | expect_equal(none)?
+	parse_bool("x") | expect_equal(null)?
 	quote("a\"b\n") | expect_equal("\"a\\\"b\\n\"")?
 	quote_ascii("é🙂") | expect_equal("\"\\u{e9}\\u{1f642}\"")?
 	(

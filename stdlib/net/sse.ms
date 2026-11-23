@@ -13,20 +13,20 @@ export type SseEvent:
 	// Every `data:` line of the event joined with LF; a bare `data:` line gives an
 	// empty line.
 	data: String
-	// The last event ID in effect when the event was dispatched, or none if the stream
+	// The last event ID in effect when the event was dispatched, or null if the stream
 	// never set one.
 	id: String?
 	// The latest valid `retry:` reconnection time in milliseconds sent up to this
-	// event, or none if the stream sent none.
+	// event, or null if the stream sent null.
 	retry: Int?
 
 // Optional byte limits for one line and for one event. A supplied limit must be
 // positive.
 export type SseLimits:
-	// Largest line in bytes, excluding its line ending; none sets no limit.
+	// Largest line in bytes, excluding its line ending; null sets no limit.
 	max_line_bytes: Int?
 	// Largest total of all field lines in one event, excluding line endings and
-	// comments; none sets no limit.
+	// comments; null sets no limit.
 	max_event_bytes: Int?
 
 // Internal transform state behind `sse_events`.
@@ -53,7 +53,7 @@ type Decoder:
 	data: List[String]
 	// Internal: True after `finish`.
 	closed: Bool
-	// The latest valid `retry:` value in milliseconds, or none if the stream sent none.
+	// The latest valid `retry:` value in milliseconds, or null if the stream sent null.
 	retry_ms: Int?
 	// Internal: the last event ID, which persists across events.
 	last_id: String?
@@ -170,15 +170,15 @@ export fn sse_events(
 	move input: ReadStream[Bytes],
 	limits: SseLimits = SseLimits(),
 ) ReadStream[SseEvent]:
-	var failure: Error? = none
+	var failure: Error? = null
 	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
 		failure = Error("SSE invalid input", kind: "EINVAL")
 	return through[Bytes, SseEvent](
 		input,
 		Decoder(
 			limits: limits,
-			retry_ms: none,
-			last_id: none,
+			retry_ms: null,
+			last_id: null,
 			line: BytesBuilder(),
 			line_bytes: 0,
 			event_bytes: 0,

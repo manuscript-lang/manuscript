@@ -11,7 +11,7 @@ type Chunks:
 	at: Int = 0
 
 fn var Chunks.next() Bytes?!:
-	if self.at >= self.data.length(): return ok(none)
+	if self.at >= self.data.length(): return ok(null)
 
 	var end = self.at + self.size
 	if end > self.data.length(): end = self.data.length()

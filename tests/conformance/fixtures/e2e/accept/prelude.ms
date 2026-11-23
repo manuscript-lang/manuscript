@@ -16,7 +16,7 @@ fn propagated() Int!Failure:
 
 test "prelude cases and optional methods need no imports":
 	inferred: Int? := 3
-	absent: Int? := none
+	absent: Int? := null
 	qualified: Int? := 5
 	expect_false(inferred.is_none() or absent.is_some())?
 	expect_false(inferred.get() != 3 or qualified.get() != 5)?
@@ -35,7 +35,7 @@ test "try forwards an error of the same type unchanged":
 test "Error is a record with a message, a kind and details":
 	plain := Error("failed")
 	expect_equal(plain.message, "failed")?
-	expect_equal(plain.kind, none)?
+	expect_equal(plain.kind, null)?
 	expect_equal(plain.details.length(), 0)?
 
 	detailed := Error("no such file", kind: "ENOENT", details: {"path": "/tmp/x"})

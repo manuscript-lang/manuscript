@@ -8,7 +8,7 @@ type Counter:
 	end: Int
 
 fn var Counter.next() Int?:
-	if self.at >= self.end: return none
+	if self.at >= self.end: return null
 
 	self.at += 1
 	return self.at - 1
@@ -21,9 +21,9 @@ fn var Evens.next() Int?:
 		if v := self.inner.next():
 			if v % 2 == 0: return v
 		else:
-			return none
+			return null
 
-	return none
+	return null
 
 fn main() Void:
 	var t = 0

@@ -28,15 +28,15 @@ export type ArchiveEntry:
 	// are not supported.
 	directory: Bool
 
-// Limits applied while unpacking untrusted archive data. A field left as `none` sets
+// Limits applied while unpacking untrusted archive data. A field left as `null` sets
 // no limit.
 export type ArchiveOptions:
 	// Maximum unpacked entries, including directories.
-	max_entries: Int? = none
+	max_entries: Int? = null
 	// Maximum unpacked bytes for each entry; zero admits only empty data.
-	max_entry_bytes: Int? = none
+	max_entry_bytes: Int? = null
 	// Maximum unpacked file bytes summed across all entries.
-	max_bytes: Int? = none
+	max_bytes: Int? = null
 
 // A supported archive format.
 export enum ArchiveFormat:
@@ -53,7 +53,7 @@ fn archive_format_name(format: ArchiveFormat) String:
 export fn pack(
 	entries: List[ArchiveEntry],
 	format: ArchiveFormat,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	return msstd_archive_pack(entries, archive_format_name(format), max_bytes)
 
@@ -89,8 +89,8 @@ export type CompressOptions:
 	// Compression level 0 to 9, where 0 stores the data uncompressed and 6 is balanced.
 	// Other levels return `EINVAL`.
 	level: Int = 6
-	// Maximum encoded bytes; `none` sets no limit.
-	max_bytes: Int? = none
+	// Maximum encoded bytes; `null` sets no limit.
+	max_bytes: Int? = null
 
 // Compresses `data` as `format`. When `options.max_bytes` is supplied, it bounds the
 // encoded output.
@@ -111,7 +111,7 @@ export fn compress(
 export fn decompress(
 	data: Bytes,
 	format: CompressionFormat,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) Bytes!:
 	return msstd_compress_decompress(data, compression_format_name(format), max_bytes)
 
@@ -137,7 +137,7 @@ fn var Compressing.finish(var out: List[Bytes]) Void!:
 
 	if encoder := self.encoder:
 		out.append(msstd_compress_encoder_end(encoder))
-	self.encoder = none
+	self.encoder = null
 
 // Compresses a byte stream into `format`, chunk by chunk, holding only the codec's
 // window in memory. `level` defaults to 6 and must be 0 to 9; otherwise reads fail
@@ -148,7 +148,7 @@ export fn compressed(
 	level: Int = 6,
 ) ReadStream[Bytes]:
 	made := msstd_compress_encoder_new(compression_format_name(format), level)
-	var step = Compressing(encoder: none, failure: none)
+	var step = Compressing(encoder: null, failure: null)
 
 	if made.is_error():
 		step.failure = made.err()
@@ -175,7 +175,7 @@ fn var Decompressing.finish(var out: List[Bytes]) Void!:
 		plain := msstd_compress_decoder_end(decoder)?
 		if not plain.is_empty(): out.append(plain)
 
-	self.decoder = none
+	self.decoder = null
 
 // Decompresses a byte stream from `format`, chunk by chunk. Malformed or truncated
 // data, or bytes after the payload, fail the read with `EBADMSG`. `max_bytes` bounds
@@ -184,10 +184,10 @@ fn var Decompressing.finish(var out: List[Bytes]) Void!:
 export fn decompressed(
 	move input: ReadStream[Bytes],
 	format: CompressionFormat,
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) ReadStream[Bytes]:
 	made := msstd_compress_decoder_new(compression_format_name(format), max_bytes)
-	var step = Decompressing(decoder: none, failure: none)
+	var step = Decompressing(decoder: null, failure: null)
 
 	if made.is_error():
 		step.failure = made.err()

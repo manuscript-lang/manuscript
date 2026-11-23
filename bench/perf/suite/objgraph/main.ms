@@ -13,14 +13,14 @@ fn var Node.insert(key: Int) Void:
 
 	if key < self.key:
 		if self.left.is_none():
-			self.left = Node(key, none, none)
+			self.left = Node(key, null, null)
 			return
 
 		self.left?.insert(key)
 		return
 
 	if self.right.is_none():
-		self.right = Node(key, none, none)
+		self.right = Node(key, null, null)
 		return
 
 	self.right?.insert(key)
@@ -66,7 +66,7 @@ fn sum(l: Link?) Int:
 	return 0
 
 fn main() Void:
-	var root = Node(1000000000, none, none)
+	var root = Node(1000000000, null, null)
 	var x = 11
 
 	for i in 0..400000:
@@ -80,7 +80,7 @@ fn main() Void:
 		nodes += count(make(16))
 	print(f"trees {nodes}")
 
-	var head: Link? = none
+	var head: Link? = null
 	for i in 0..1000000:
 		head = Link(i, head)
 	print(f"list {sum(head)}")

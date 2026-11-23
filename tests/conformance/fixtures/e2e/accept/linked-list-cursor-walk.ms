@@ -7,7 +7,7 @@ type Node:
 	next: Node?
 
 fn build(count: Int) Node?:
-	var head: Node? = none
+	var head: Node? = null
 	var i = 1
 	while i <= count:
 		head = Node(value: i, next: head)

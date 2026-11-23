@@ -48,12 +48,12 @@ export enum YamlValue:
 	)
 
 // Limits for `parse` and `parse_all` on input bytes, nesting depth and parsed values.
-// A limit set to none adds no limit. The defaults, depth 10,000 and 1,000,000 values,
+// A limit set to null adds no limit. The defaults, depth 10,000 and 1,000,000 values,
 // guard against deep nesting and alias expansion. A negative limit returns `EINVAL`,
 // and a document that exceeds one returns `EOVERFLOW`.
 export type YamlOptions:
-	// Maximum UTF-8 input bytes before line-ending normalization; none adds no budget.
-	max_bytes: Int? = none
+	// Maximum UTF-8 input bytes before line-ending normalization; null adds no budget.
+	max_bytes: Int? = null
 	// Maximum value depth, including scalar leaves, with the root at one.
 	max_depth: Int? = 10000
 	// Maximum containers and leaves, excluding keys; aliases count at each checked
@@ -73,7 +73,7 @@ type Context:
     leading `?`, so its comment-free text, indentation and mapping colon need no
     character-by-character scan. `blank` marks lines of spaces only, `dash` marks simple
     lines that start a sequence entry, `ind` is the indentation, and `col` is the offset of
-    the mapping colon (-1 for none).
+    the mapping colon (-1 for null).
     */
 	simple: List[Bool]
 	blank: List[Bool]
@@ -529,7 +529,7 @@ fn key_text(value: YamlValue) String?:
 			if flag: return "true"
 			return "false"
 		Null: return "null"
-		_: return none
+		_: return null
 
 // Whether a tag makes a scalar a string whatever its spelling.
 fn string_tag(tag: String) Bool:
@@ -1850,7 +1850,7 @@ fn block_value(
 	depth: Int,
 	indentless: Bool,
 	column: Int,
-	block_base: Int? = none,
+	block_base: Int? = null,
 ) YamlValue!:
 	start_line := source_line(context, context.index - 1)
 	var origin = source_column(context, context.index - 1, column)
@@ -2861,7 +2861,7 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 
 // Writes a YAML value in block style with double-quoted strings. Output longer than
 // `max_bytes` returns `EOVERFLOW`, and a negative `max_bytes` returns `EINVAL`.
-export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
+export fn stringify(value: YamlValue, max_bytes: Int? = null) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
 

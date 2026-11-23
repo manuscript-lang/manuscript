@@ -9,7 +9,7 @@ type Point:
 
 fn halve(n: Int) Int?:
     if n % 2 != 0:
-        return none
+        return null
 
     return (n / 2)
 
@@ -17,7 +17,7 @@ fn describe(key: Point, m: Map[Point, String]) String:
     match m.get(key: key):
         v:
             return f"found {v}"
-        none:
+        null:
             return "missing"
 
 test "text interpolation":
@@ -44,13 +44,13 @@ test "map lookup":
     match m.get(key: 1):
         v:
             expect_true((v == 10))?
-        none:
+        null:
             return fail("expected value")
 
     match m.get(key: 2):
         v:
             return fail(f"unexpected {v}")
-        none:
+        null:
             void
 
     var points = Map[Point, String]()

@@ -44,7 +44,7 @@ test "optional native adapter handles supplied and absent payloads":
 	set := values.set
 	text: String? := f"next-{2}"
 	set(0, text.clone())
-	set(0, none)
+	set(0, null)
 	set(0, text.clone())
 	expect_equal(values[0], text)?
 	expect_equal(text.get(), "next-2")?

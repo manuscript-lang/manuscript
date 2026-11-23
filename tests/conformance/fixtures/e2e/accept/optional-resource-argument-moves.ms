@@ -29,7 +29,7 @@ fn log_text(path: String) String!:
 
 fn absent_cause(path: String) Bool:
 	cause := Marker(1, path.clone())
-	missing: Int? := none
+	missing: Int? := null
 	return missing.ok_or(cause).is_error()
 
 fn present_cause(path: String) Bool:
@@ -38,17 +38,17 @@ fn present_cause(path: String) Bool:
 	return found.ok_or(cause).is_ok()
 
 fn temporary_cause(path: String) Bool:
-	missing: Int? := none
+	missing: Int? := null
 	return missing.ok_or(Marker(3, path.clone())).is_error()
 
 fn heap_cause(path: String) Bool:
 	cause := Held(4, path.clone(), "heap-backed")
-	missing: Int? := none
+	missing: Int? := null
 	return missing.ok_or(cause).is_error()
 
 fn default_resource(path: String) Int:
 	fallback := Marker(5, path.clone())
-	missing: Marker? := none
+	missing: Marker? := null
 	return missing.get_or(fallback).id
 
 test "a resource passed to ok_or or get moves into the result and closes once":
