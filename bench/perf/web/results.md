@@ -20,6 +20,17 @@
 
 Where Manuscript is behind: file and DNS calls block the runtime thread, so `/io` and everything beside it wait on the disk, and `/health` slows beside many idle connections.
 
+## 2026-11-23 (live-byte accounting only where it is read)
+
+Revision: `4fc7255da7` plus this change, Release build of the C port; callgrind on the server (`ms/`, one worker) answering `/health` from the C load generator, instructions per request counted from `ms_http_target_parse` calls (startup included, about 100M).
+
+| Measure | Before | After |
+| --- | ---: | ---: |
+| Instructions per `/health` request | 27.7k | 24.9k |
+| `mi_usable_size` share of all instructions | 8.1% | 0% |
+
+`ms_alloc`, `ms_realloc` and `ms_free` each called `mi_usable_size` to keep the live-byte count that `process.memory_usage().heap_used` reads. The count now starts before `main` only in a program that links `process_memory.c` (the unit holding `msstd_process_memory_usage`), so a program that never asks pays nothing; one that does gets the same figure as before, minus blocks made before `main`. Throughput on one CPU is within the 15% run-to-run noise of this VM (median of 9 alternating runs 71k before and after the earlier allocation experiment); the server is at 12.5 µs per request, of which a thread handoff is about 1.2 µs and a heap accounting call pair was about 0.3 µs.
+
 ## History
 
 | Change | `/health` req/s | System calls per request | Idle system calls in 5 s |

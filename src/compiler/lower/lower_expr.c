@@ -841,7 +841,8 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   /* A name read for the last time dies with the call too: its payload leaves it. */
   const MsExpr *dying = payload && !whole && fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
   const MsRef *dying_ref = dying != NULL && dying->kind == MS_E_NAME ? ms_facts_ref(fn->facts, dying->id) : NULL;
-  const bool name_dies = dying_ref != NULL && dying_ref->kind == MS_REF_LOCAL && leaves_binding(fn, dying);
+  const bool name_dies = dying_ref != NULL && (dying_ref->kind == MS_REF_LOCAL || dying_ref->kind == MS_REF_PARAM) &&
+                         leaves_binding(fn, dying);
   if (!name_dies && !fn_fresh_owner(fn, last->args[position])) {
     return MIR_NONE;
   }

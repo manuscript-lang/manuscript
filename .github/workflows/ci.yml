@@ -52,6 +52,9 @@ jobs:
       - uses: ./.github/actions/toolchain
       - run: cmake --preset ci
       - run: cmake --build --preset ci
+      # The pinned shared LLVM library: ms compiles programs through it in this process instead of running opt and
+      # llc. The step exports MS_LLVM to the steps after it.
+      - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
       - run: cmake --build --preset ci --target lint
       # The distribution archive, unpacked on its own and used to build a program (the six-platform runs only).

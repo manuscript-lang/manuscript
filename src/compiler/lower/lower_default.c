@@ -202,13 +202,8 @@ MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *a
   return value;
 }
 
-static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
-  const MsFacts *saved_facts = fn->facts;
-  const uint32_t saved_file = fn->file;
-  const uint32_t saved_module = fn->module_index;
-  fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
-  fn->file = lower_file(fn->cx, arg->node.module);
-  fn->module_index = arg->node.module;
+/* The parameter whose default expression is `arg`'s node. */
+static const MsParam *default_param(const LowerFn *fn, const MsCall *call, const MsCallArg *arg) {
   const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
                                     ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
                                     : NULL;
@@ -222,6 +217,39 @@ static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallAr
   if (param == NULL) {
     param = function_default(fn->cx, arg->node.module, arg->node.node); /* a function value's default */
   }
+  return param;
+}
+
+static void find_try(void *ctx, const MsExpr *expr) {
+  if (expr->kind == MS_E_UNARY && expr->op == MS_U_TRY) {
+    *(bool *)ctx = true;
+  }
+}
+
+bool fn_call_default_tries(const LowerFn *fn, const MsCall *call) {
+  bool found = false;
+  const MsVisitor visitor = {.ctx = &found, .expr = find_try};
+  for (uint32_t at = 0; at < call->arg_count && !found; at++) {
+    const MsParam *param = call->args[at].source == MS_ARG_DEFAULT ? default_param(fn, call, &call->args[at]) : NULL;
+    if (param != NULL && param->def != NULL) {
+      ms_walk_expr(&visitor, param->def);
+    }
+  }
+  return found;
+}
+
+static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
+  const MsFacts *saved_facts = fn->facts;
+  const uint32_t saved_file = fn->file;
+  const uint32_t saved_module = fn->module_index;
+  fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
+  fn->file = lower_file(fn->cx, arg->node.module);
+  fn->module_index = arg->node.module;
+  const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
+                                    ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
+                                    : NULL;
+  const MsSymbolId callee_id = method != NULL ? 0 : fn_symbol_at(fn->cx, call->callee.decl);
+  const MsParam *param = default_param(fn, call, arg);
   if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
     fn->facts = saved_facts;
     fn->file = saved_file;

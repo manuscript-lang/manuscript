@@ -378,7 +378,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       fn->default_has_self = false;
       fn->default_call = call;
       fn->default_args = out;
+      const DefaultExit *saved_exit = fn->default_exit;
+      fn->default_exit = fn->call_exit != NULL ? fn->call_exit : saved_exit;
       out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty), &caller);
+      fn->default_exit = saved_exit;
       fn->default_call = NULL;
       fn->default_args = NULL;
       fn->default_has_self = outer_has_self;
@@ -913,14 +916,52 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     bufs.held[at] = MIR_NONE;
   }
   const uint32_t lent = fn->nwritebacks; /* the `var` arguments' slots, lent for this call only */
-  const MirValue result = call_body(fn, expr, &bufs);
+  /* A `?` in a default the call omits leaves the call, not the caller: the call is a scope of its own, and its failed
+   * Result and its result meet at a join. */
+  const bool exits = found != NULL && fn_call_default_tries(fn, found);
+  DefaultExit exit = {.keep = fn->nopen};
+  const DefaultExit *saved_call = fn->call_exit;
+  const DefaultExit *saved_default = fn->default_exit;
+  fn->call_exit = NULL;
+  MirValue joined = MIR_NONE;
+  if (exits) {
+    exit.ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+    exit.join = mir_b_new_block(&fn->b);
+    joined = mir_b_add_block_param(&fn->b, exit.join, exit.ret, MM_MOVE);
+    (void)fn_scope_begin(fn);
+    fn->call_exit = &exit;
+  }
+  MirValue result = call_body(fn, expr, &bufs);
+  fn->call_exit = saved_call;
+  fn->default_exit = saved_default;
   fn->nwritebacks = lent;
   for (uint32_t at = 0; at < count && !fn->terminated; at++) {
     if (bufs.held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &bufs.held[at], 1, (MirImm){0}, MIR_NONE);
     }
   }
-  return result;
+  if (!exits) {
+    return result;
+  }
+  if (result == MIR_NONE || fn->terminated || fn->failed) {
+    return MIR_NONE;
+  }
+  if (mir_b_ty(&fn->b, result) != exit.ret) {
+    (void)fn_fail(fn, "a call whose default uses `?` must return a Result");
+    return MIR_NONE;
+  }
+  if (mir_needs_drop(fn->cx->module, exit.ret)) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(fn, exit.keep);
+  mir_b_br(&fn->b, exit.join, &result, 1);
+  mir_b_seal_block(&fn->b, exit.join);
+  mir_b_switch_to(&fn->b, exit.join);
+  fn_scope_pop(fn);
+  if (mir_needs_drop(fn->cx->module, exit.ret)) {
+    fn_own(fn, fn_scope(fn), joined);
+  }
+  return joined;
 }
 
 /* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */

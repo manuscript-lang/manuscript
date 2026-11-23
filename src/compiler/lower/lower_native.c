@@ -292,6 +292,12 @@ static MirRole string_role(MsSpan name) {
     const char *name;
     MirRole role;
   } table[] = {{"msrt_strbuilder_append", MR_STRBUILDER_APPEND},
+               {"msrt_bytes_append", MR_BYTES_APPEND},
+               {"msrt_bytes_read_word", MR_BYTES_READ_WORD},
+               {"msrt_bytes_index_of_byte", MR_BYTES_INDEX_OF_BYTE},
+               {"msrt_string_parse_int", MR_STRING_PARSE_INT},
+               {"msrt_string_contains", MR_STRING_CONTAINS},
+               {"msrt_string_scalar_step", MR_STRING_SCALAR_STEP},
                {"msrt_string_eq", MR_STRING_EQ},
                {"msrt_string_compare", MR_STRING_COMPARE},
                {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
@@ -827,6 +833,10 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_append") && argc == 2 &&
       fn_list_append(fn, place, slot, args, out)) {
+    return true;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_pop") && argc == 1 &&
+      fn_list_pop(fn, place, slot, args, ret, out)) {
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
