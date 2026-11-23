@@ -492,7 +492,11 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
     fn->terminated = false;
     mir_b_seal_block(&fn->b, join);
     mir_b_switch_to(&fn->b, join);
-    return mir_b_use_var(&fn->b, result);
+    const MirValue only = mir_b_use_var(&fn->b, result);
+    if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, only))) {
+      fn_own(fn, fn_scope(fn), only);
+    }
+    return only;
   }
   if (other == MIR_NONE) {
     return MIR_NONE;
