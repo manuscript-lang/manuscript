@@ -6,6 +6,10 @@
 #include "runtime/core/scheduler.h"
 #include "runtime/core/stats.h"
 
+/* The bit that marks a wait word as a task, not a token: a token id carries its isolate (under 64) in the top 12 bits,
+ * so the top bit is never set in one. */
+#define WORD_TASK (UINT64_C(1) << 63)
+
 static MsToken *token_find(const MsSched *sched, uint64_t id) {
   const size_t index = (size_t)(id & 0xffffffffu);
   if (index == 0 || index > sched->tokens.len) {
@@ -18,6 +22,10 @@ static MsToken *token_find(const MsSched *sched, uint64_t id) {
 }
 
 bool ms_token_is_remote(const MsSched *sched, uint64_t id) {
+  if ((id & WORD_TASK) != 0) {
+    const MsTask *const task = ms_task_lookup(sched, id & ~WORD_TASK);
+    return task != NULL && task->wait_token == id && task->wait_remote;
+  }
   const MsToken *const token = token_find(sched, id);
   return token != NULL && token->remote;
 }
@@ -25,6 +33,14 @@ bool ms_token_is_remote(const MsSched *sched, uint64_t id) {
 /* Ends the token wait a task leaves when its park is abandoned or ends. */
 void ms_token_abandon(MsSched *sched, MsTask *task) {
   if (task->wait_token == 0) {
+    return;
+  }
+  if ((task->wait_token & WORD_TASK) != 0) {
+    if (task->wait_remote) {
+      task->wait_remote = false;
+      sched->remote_tokens--;
+    }
+    task->wait_token = 0;
     return;
   }
   MsToken *const token = token_find(sched, task->wait_token);
@@ -125,9 +141,42 @@ MsTokenStatus ms_token_park(uint64_t id, int64_t timeout_ns, uint64_t *value, ui
   return ms_token_park_at(id, ms_sched_deadline_after(timeout_ns), value, result);
 }
 
+uint64_t ms_task_wait_word(void) { return WORD_TASK | ms_task_running()->handle; }
+
+uint32_t ms_task_park_word(int64_t at_ns, bool remote) {
+  MsSched *const sched = ms_sched();
+  MsTask *const task = ms_task_running();
+  if (ms_cancel_flag() != 0 || ms_stats_park()) {
+    return MS_WAIT_CANCELLED;
+  }
+  const uint64_t word = WORD_TASK | task->handle;
+  /* A shielded cleanup is not cancelled, so a failure elsewhere does not end it either. */
+  const bool watched = task->watch != NULL && !ms_task_shielded(task) && sched->hooks.park_begin != NULL;
+  if (watched && sched->hooks.park_begin(word)) {
+    (void)sched->hooks.park_end();
+    return MS_WAIT_CANCELLED;
+  }
+  task->wait_token = word;
+  task->wait_remote = remote;
+  sched->remote_tokens += remote ? 1 : 0;
+  task->wait_events = 0;
+  ms_park_set_deadline(sched, task, at_ns);
+  task->state = MS_STATE_WAITING;
+  ms_task_switch_away(sched); /* the wake cleared wait_token and the remote count (ms_token_abandon) */
+  const uint32_t result = task->wait_result;
+  return watched && sched->hooks.park_end() ? MS_WAIT_CANCELLED : result;
+}
+
 void ms_token_post(uint64_t id, uint64_t value) {
   MsSched *const sched = ms_sched();
   (void)ms_task_running();
+  if ((id & WORD_TASK) != 0) {
+    MsTask *const parked = ms_task_lookup(sched, id & ~WORD_TASK);
+    if (parked != NULL && parked->state == MS_STATE_WAITING && parked->wait_token == id) {
+      ms_park_wake(sched, parked, 0);
+    }
+    return;
+  }
   MsToken *const token = token_find(sched, id);
   if (token == NULL || token->has_post) {
     return;
