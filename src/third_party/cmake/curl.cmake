@@ -15,6 +15,8 @@ set(CURL_C_FLAGS "${CMAKE_C_FLAGS}")
 string(APPEND CURL_C_FLAGS " -isystem ${OPENSSL_BUILD}/include")
 # zlib and nghttp2 do the same: zconf.h and nghttp2ver.h are generated into their build directories.
 string(APPEND CURL_C_FLAGS " -isystem ${CMAKE_CURRENT_BINARY_DIR}/zlib -isystem ${CMAKE_CURRENT_BINARY_DIR}/nghttp2/lib/includes")
+# nghttp2 is a static archive: without this its headers declare every symbol dllimport on Windows.
+string(APPEND CURL_C_FLAGS " -DNGHTTP2_STATICLIB")
 set(CURL_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
