@@ -89,7 +89,7 @@ const MsLocal *body_find_local(const Body *body, MsName name) {
 
 bool body_is_none_name(const Body *body, const MsExpr *expr) {
   return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
 }
 
 /* The type a loop variable takes from the iterated type: a list's element, a set's member, or what the

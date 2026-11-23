@@ -11,7 +11,7 @@ typedef struct Names {
 } Names;
 
 static bool always_known(MsSpan text) {
-  static const char *const SPECIAL[] = {"..", "_", "self", "fixture", "print", "__LINE__", "__FILE__"};
+  static const char *const SPECIAL[] = {"..", "_", "self", "fixture", "print", "ok_or", "__LINE__", "__FILE__"};
   for (size_t index = 0; index < MS_COUNT_OF(SPECIAL); index++) {
     if (ms_span_is_text(text, SPECIAL[index])) {
       return true;
