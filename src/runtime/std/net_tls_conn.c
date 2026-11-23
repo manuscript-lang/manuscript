@@ -2,6 +2,7 @@
  * it, connect with it and describe it (see net_tls.h for the session, net_conn.c for TLS reads and writes). */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include "runtime/std/fail.h"
 #include "runtime/std/net_tls_conn.h"
 
 #include <string.h>
@@ -234,16 +235,6 @@ static bool usable_name(const MsString *name) {
 
 /* ---- natives ---- */
 
-/* A cancel unwinds out of the handshake, the dial and the bind below and never returns, so what a native owns
- * across them (the context, a socket not yet handed over) is a cleanup entry until the native ends normally. */
-static void release_held_context(uint8_t *held) { ms_net_tls_ctx_release(*(MsNetTlsCtx **)(void *)held); }
-
-static void drop_held_object(uint8_t *held) {
-  MsObj *object = *(MsObj **)(void *)held;
-  object->drop(object);
-}
-
-
 uint8_t msstd_net_connection_start_tls(const MsObj *handle, const MsTlsOptions *options, uint8_t has_timeout,
                                        int64_t timeout, MsObj **out, MsString *err) {
   *err = ms_string_empty();
@@ -255,9 +246,7 @@ uint8_t msstd_net_connection_start_tls(const MsObj *handle, const MsTlsOptions *
     return MS_STATUS_INVALID_INPUT;
   }
   MsNetCore *core = ms_net_handle_core(handle);
-  const size_t held = ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
   const uint8_t status = upgrade(core, ctx, ms_string_span(&options->server_name), ms_net_timeout(has_timeout, timeout), err);
-  ms_cleanup_discard(held);
   ms_net_tls_ctx_release(ctx);
   if (status == MS_STATUS_OK) {
     *out = ms_net_handle_upgraded(handle); /* `plain` is consumed */
@@ -272,10 +261,8 @@ uint8_t msstd_net_connection_accept_tls(const MsObj *handle, const MsTlsOptions 
   if (ctx == NULL) {
     return MS_STATUS_INVALID_INPUT;
   }
-  const size_t held = ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
   const uint8_t status = upgrade(ms_net_handle_core(handle), ctx, ms_span_of(NULL, 0),
                                  ms_net_timeout(has_timeout, timeout), err);
-  ms_cleanup_discard(held);
   ms_net_tls_ctx_release(ctx);
   if (status == MS_STATUS_OK) {
     *out = ms_net_handle_upgraded(handle); /* `plain` is consumed */
@@ -318,20 +305,16 @@ uint8_t msstd_net_network_connect_tls_config(const MsObj *net, const MsString *a
   const int64_t limit = ms_net_timeout(has_timeout, timeout);
   const uint64_t started = uv_hrtime();
   MsObj *socket = NULL;
-  const size_t held = ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
   uint8_t status = msstd_net_network_connect(net, address, has_timeout, timeout, &socket, err);
   if (status == MS_STATUS_OK) {
-    const size_t holding_socket = ms_cleanup_push(drop_held_object, (uint8_t *)(void *)&socket);
     const int64_t left = limit < 0 ? -1 : limit - (int64_t)(uv_hrtime() - started);
     status = upgrade(ms_net_handle_core(socket), ctx, ms_string_span(&options->server_name), limit >= 0 && left <= 0 ? 0 : left, err);
-    ms_cleanup_discard(holding_socket);
     if (status == MS_STATUS_OK) {
       *out = socket;
     } else {
       socket->drop(socket);
     }
   }
-  ms_cleanup_discard(held);
   ms_net_tls_ctx_release(ctx);
   return status;
 }
@@ -346,9 +329,7 @@ uint8_t msstd_net_network_listen_tls(const MsObj *net, const MsString *address, 
     return MS_STATUS_INVALID_INPUT;
   }
   MsObj *listener = NULL;
-  const size_t held = ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
   const uint8_t status = msstd_net_network_listen(net, address, &listener, err);
-  ms_cleanup_discard(held);
   if (status == MS_STATUS_OK) {
     ms_net_handle_core(listener)->tls_ctx = ctx; /* the listener owns the reference */
     *out = listener;
@@ -357,3 +338,4 @@ uint8_t msstd_net_network_listen_tls(const MsObj *net, const MsString *address, 
   }
   return status;
 }
+

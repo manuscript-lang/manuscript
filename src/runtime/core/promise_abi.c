@@ -2,6 +2,7 @@
 #include "runtime/core/promise_abi.h"
 
 #include "runtime/core/cancel.h"
+#include "runtime/core/fault_abi.h"
 #include "runtime/core/group.h"
 #include "runtime/core/promise.h"
 
@@ -12,7 +13,16 @@ int64_t msrt_cancel_new(void) { return ms_cancel_new(); }
 
 void msrt_group_free(int64_t group) { ms_group_free(group); }
 int64_t msrt_group_new(void) { return ms_group_new(); }
-int64_t msrt_group_next(int64_t group) { return ms_group_next(group); }
+/* A wait's answer as the program sees it: a cancelled waiter ends the call here, where the runtime holds nothing. */
+static int64_t msrt_end_wait(int64_t answer) {
+  if (answer != MS_WAITER_CANCELLED) {
+    return answer;
+  }
+  ms_sched_cancel_return();
+  return -1;
+}
+
+int64_t msrt_group_next(int64_t group) { return msrt_end_wait(ms_group_next(group)); }
 int64_t msrt_group_poll(int64_t group) { return ms_group_poll(group); }
 
 int64_t msrt_group_join(int64_t group, const MsList *ids, int64_t from) {
@@ -62,8 +72,8 @@ void msrt_promise_start_idle(int64_t id, MsObj *work) { ms_promise_start_idle(id
 void msrt_promise_start_spread(int64_t id, MsObj *work) { ms_promise_start_spread(id, work); }
 
 uint8_t msrt_promise_take(int64_t id, const MsTypeDesc *d, uint8_t *out) { return ms_promise_take(id, d, out) ? 1 : 0; }
-int64_t msrt_promise_wait(int64_t id, int64_t timeout_ns) { return ms_promise_wait(id, timeout_ns); }
+int64_t msrt_promise_wait(int64_t id, int64_t timeout_ns) { return msrt_end_wait(ms_promise_wait(id, timeout_ns)); }
 
 int64_t msrt_promise_wait_any(const MsList *ids, int64_t timeout_ns) {
-  return ms_promise_wait_any((const MsPromise *)(const void *)ids->ptr, ids->len, timeout_ns);
+  return msrt_end_wait(ms_promise_wait_any((const MsPromise *)(const void *)ids->ptr, ids->len, timeout_ns));
 }

@@ -111,7 +111,7 @@ uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err) {
   *err = ms_string_empty();
   if (ms_fail_cancel_pending(fail)) {
     ms_fail_free(fail);
-    ms_cancelled(); /* the text is dropped first, while the cancel can still unwind */
+    return MS_STATUS_CANCELLED;
   }
   if (status == MS_STATUS_FAILED) {
     *err = fail->message;

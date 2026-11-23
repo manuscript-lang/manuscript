@@ -57,6 +57,13 @@ typedef struct Worker {
   MsServeWorker *worker;
 } Worker;
 
+/* An accepted connection on its way to a worker: the pending id, or 0 once a worker took it. A plain integer
+ * would be lost with the queue that holds it when the server stops; the object closes the socket when dropped. */
+typedef struct Accepted {
+  MsObj header;
+  int64_t raw;
+} Accepted;
+
 static void serving_drop(MsObj *object) {
   Serving *serving = (Serving *)(void *)object;
   msstd_net_listener_close(serving->listener);
@@ -77,6 +84,12 @@ static void worker_drop(MsObj *object) {
     ms_serve_worker_close(worker->worker);
   }
   ms_free(worker);
+}
+
+static void accepted_drop(MsObj *object) {
+  Accepted *accepted = (Accepted *)(void *)object;
+  msstd_net_pending_release(accepted->raw);
+  ms_free(accepted);
 }
 
 /* ---- options ---- */
@@ -155,15 +168,6 @@ static MsNetTlsCtx *server_context(const MsHttpServerOptionsWire *wire) {
 
 /* ---- the serving ---- */
 
-/* A cancel unwinds out of the bind below and never returns, so the handler and the TLS context, which this native
- * owns until the serving takes them, are cleanup entries for that wait. */
-static void drop_held_object(uint8_t *held) {
-  MsObj *object = *(MsObj **)(void *)held;
-  object->drop(object);
-}
-
-static void release_held_context(uint8_t *held) { ms_net_tls_ctx_release(*(MsNetTlsCtx **)(void *)held); }
-
 uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOptionsWire *wire, MsObj *handler,
                                MsObj **out, MsString *err) {
   *err = ms_string_empty();
@@ -176,10 +180,7 @@ uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOption
   }
   MsObj *listener = NULL;
   if (valid && (!wire->tls_present || ctx != NULL)) {
-    const size_t held = ms_cleanup_push(drop_held_object, (uint8_t *)(void *)&handler);
-    (void)ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
     status = ms_net_listen(ms_string_span(address), &listener, err);
-    ms_cleanup_discard(held);
   }
   if (status != MS_STATUS_OK) {
     handler->drop(handler);
@@ -212,8 +213,18 @@ void msstd_http_serving_address(const MsObj *object, MsString *out) {
   msstd_net_listener_address(((const Serving *)(const void *)object)->listener, out);
 }
 
-uint8_t msstd_http_serving_accept(const MsObj *object, int64_t *out, MsString *err) {
-  return msstd_net_listener_accept_raw(((const Serving *)(const void *)object)->listener, 0, 0, out, err);
+uint8_t msstd_http_serving_accept(const MsObj *object, MsObj **out, MsString *err) {
+  int64_t raw = 0;
+  const uint8_t status =
+      msstd_net_listener_accept_raw(((const Serving *)(const void *)object)->listener, 0, 0, &raw, err);
+  if (status != MS_STATUS_OK) {
+    return status;
+  }
+  Accepted *accepted = ms_alloc_zeroed(sizeof *accepted);
+  accepted->header.drop = accepted_drop;
+  accepted->raw = raw;
+  *out = &accepted->header;
+  return status;
 }
 
 void msstd_http_serving_release(const MsObj *object) {
@@ -229,14 +240,16 @@ uint8_t msstd_http_serving_worker(const MsObj *object, MsObj **out, MsString *er
   return MS_STATUS_OK;
 }
 
-void msstd_http_worker_adopt(const MsObj *object, int64_t raw) {
+void msstd_http_worker_adopt(const MsObj *object, const MsObj *pending) {
   Worker *worker = (Worker *)(void *)mutable_object(object);
+  Accepted *accepted = (Accepted *)(void *)mutable_object(pending);
   MsObj *connection = NULL;
   MsString err = ms_string_empty();
-  if (worker->worker == NULL || msstd_net_connection_adopt(raw, &connection, &err) != MS_STATUS_OK) {
+  if (worker->worker == NULL || msstd_net_connection_adopt(accepted->raw, &connection, &err) != MS_STATUS_OK) {
     ms_string_release(&err);
-    return;
+    return; /* the connection stays with `accepted`, which closes it */
   }
+  accepted->raw = 0;
   const MsWsTransport stream = ms_net_connection_transport(connection);
   ms_net_core_set_stealable(ms_net_handle_core(connection), true); /* another thread may take it between requests */
   ms_serve_worker_adopt(worker->worker, &stream, false);
