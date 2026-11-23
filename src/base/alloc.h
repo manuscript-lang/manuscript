@@ -23,6 +23,10 @@ void ms_alloc_install(const MsAllocator *allocator);
 /* The allocations the calling thread has made and the bytes they asked for (a resize counts as one more). */
 void ms_alloc_counts(int64_t *allocations, int64_t *bytes);
 
+/* The bytes of all live blocks of every thread (usable sizes, so a little over what was asked for); 0 under a
+ * test allocator. */
+int64_t ms_alloc_live_bytes(void);
+
 /* `size` bytes, uninitialised, aligned for any scalar. size 0 gives a valid block. */
 MS_NODISCARD MS_RETURNS_NONNULL void *ms_alloc(size_t size);
 
