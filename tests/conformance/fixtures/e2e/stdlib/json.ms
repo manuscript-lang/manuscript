@@ -192,7 +192,7 @@ test "JSON stringify repeats shared acyclic values and reads current field value
 
 type Handler:
 	name: String
-	retries: Int??
+	retries: Int?
 	note: String?
 
 type Money:
@@ -218,16 +218,11 @@ enum Tagged:
 	Named(name: String, alias: String?)
 	Plain
 
-test "JSON stringify omits none fields and keeps nested optionals":
+test "JSON stringify omits none fields":
 	var handler = Handler("h", none, none)
 	expect_equal((encoded(handler)?), "{\"name\":\"h\"}")?
 
-	inner_none: Int? := none
-	handler.retries = inner_none
-	expect_equal((encoded(handler)?), "{\"name\":\"h\",\"retries\":null}")?
-
-	inner_three: Int? := 3
-	handler.retries = inner_three
+	handler.retries = 3
 	expect_equal((encoded(handler)?), "{\"name\":\"h\",\"retries\":3}")?
 
 test "JSON stringify encodes standard-library values":

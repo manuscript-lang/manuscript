@@ -128,8 +128,17 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
   if (match->kind == MK_OPT) {
     if (arm->bindings.len > 0 && kase == 1) {
-      const MirTy elem = mir_ty_data(module, match->ty)->elem;
-      const MirValue item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
+      MirTy elem = mir_ty_data(module, match->ty)->elem;
+      MirValue item;
+      const MsTyTable *types = &fn->cx->program->types;
+      const bool whole = match->checked != MS_TY_NONE && ms_ty_arg_count(types, match->checked) == 1 &&
+                         fn_type(fn, ms_ty_args(types, match->checked)[0]) == match->ty;
+      if (whole) { /* `T?` of a nullable `T` is `T`: the value is its own payload */
+        elem = match->ty;
+        item = match->scrutinee;
+      } else {
+        item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
+      }
       mir_b_def_var(&fn->b, fn_local(fn, ref->local, elem), item);
       view_binding(fn, ref->local, elem);
     }

@@ -734,7 +734,8 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   }
   const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, fn->cx->program->symbols.ptr[id].name));
   if (fn_shape_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
-      fn_value_extern_call(fn, name, args, call->arg_count, ret, &checked) ||
+      fn_value_extern_call(fn, name, args, call->arg_count, ret,
+                           call->type_arg_count > 0 ? fn_type(fn, call->type_args[0]) : MIR_NONE, &checked) ||
       fn_signature_extern_call(fn, name, args, call->arg_count, ret, &checked)) {
     return checked;
   }
