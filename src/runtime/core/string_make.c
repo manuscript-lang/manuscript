@@ -250,6 +250,10 @@ uint8_t *msrt_string_extend(MsJoinFrame *frame, size_t extra) {
 
 /* `a + b` where the caller gives `a` up. */
 void msrt_string_append(const MsString *a, const MsString *b, MsString *out) {
+  if (!msrt_string_owns(a)) { /* nothing to grow or free: this is a concat */
+    msrt_string_concat(a, b, out);
+    return;
+  }
   const MsSpan added = msrt_text(b);
   *out = msrt_string_append_parts(a, &added, 1);
 }
