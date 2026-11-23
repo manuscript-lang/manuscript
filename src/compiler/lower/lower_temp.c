@@ -212,6 +212,25 @@ static bool call_answers_owner(LowerFn *fn, const MsExpr *value) {
          !ms_own_result_is_borrowed(fn->cx->program, call->callee.decl.module, call->callee.decl.node);
 }
 
+/* A case call (`ok(7)`) whose arguments own nothing: the value it builds cannot be a view of a temporary. */
+static bool builds_plain_case(LowerFn *fn, const MsExpr *value) {
+  const MsCall *call = value->kind == MS_E_CALL ? fn_find_call(fn->facts, value->id) : NULL;
+  if (call == NULL || call->callee.kind != MS_REF_CASE) {
+    return false;
+  }
+  for (uint32_t index = 0; index < call->arg_count; index++) {
+    const MsTy ty = call->args[index].node.node == 0 ? MS_TY_NONE
+                                                      : ms_facts_type(fn->facts, call->args[index].node.node);
+    const MsTy concrete = ty == MS_TY_NONE ? ty
+                                           : ms_ty_subst(&fn->cx->program->types, ty, fn->subst.vars, fn->subst.args,
+                                                         fn->subst.count);
+    if (concrete == MS_TY_NONE || mir_needs_drop(fn->cx->module, fn_type(fn, concrete))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *value = stmt->kind == MS_S_CALL || stmt->kind == MS_S_RETURN ? stmt->u.expr
                         : stmt->kind == MS_S_BIND                                ? stmt->u.bind.value
@@ -239,7 +258,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
     const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&
                        call_answers_owner(fn, value);
-    if (!outer && (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound))) {
+    if (!outer && !(stmt->kind == MS_S_RETURN && builds_plain_case(fn, value)) && (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound))) {
       return false;
     }
   }
