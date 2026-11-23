@@ -68,7 +68,7 @@ else()
 endif()
 ms_library(ms_link compiler/link
   SOURCES
-    link.c link_job.c object.c asm_scan.c asm_tables.c ${link_os}
+    link.c link_job.c object.c llvm_inproc.c asm_scan.c asm_tables.c ${link_os}
   LINK ms_emit ms_base)
 
 ms_library(ms_check compiler/check
