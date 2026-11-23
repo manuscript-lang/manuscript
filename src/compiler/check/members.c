@@ -332,7 +332,7 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
     return;
   }
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
-      (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name))) {
+      (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name, receiver))) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
