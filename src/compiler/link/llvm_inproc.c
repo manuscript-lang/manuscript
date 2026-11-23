@@ -134,6 +134,7 @@ bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsSt
                      : settings->fast_codegen     ? "-regalloc=basic"
                                                   : "-regalloc=greedy";
   options[count++] = settings->fast_codegen ? "-enable-misched=0" : "-enable-misched=1";
+  options[count++] = "-dse-memoryssa-walklimit=10"; /* the same limit as the process route, see object.c */
   api.LLVMParseCommandLineOptions(count, options, NULL);
   MsOsText triple = ms_os_text_new(settings->triple);
   char *triple_text = triple.ptr;
