@@ -1,12 +1,15 @@
 /* cli/lsp_nav.c: definition, references, highlights and rename over the occurrence index of one checked graph. */
 #include "cli/lsp_nav.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "compiler/syntax/lex.h"
 #include "tooling/doc_comment.h"
 #include "base/file.h"
+#include "base/path.h"
+#include "cli/lsp_nav_fallback.h"
 #include "cli/lsp_workspace.h"
 #include "tooling/facts.h"
 #include "tooling/inspect.h"
@@ -181,10 +184,49 @@ static void write_effects(MsStrBuild *out, const MsInspection *inspection, MsSpa
   }
 }
 
+/* Hover on a literal or operator, which the occurrence index does not hold. Appends the reply and returns true when one
+ * applies. */
+static bool hover_expression(const LspAnalysis *analysis, const LspDoc *doc, size_t offset, MsStrBuild *out) {
+  const MsCheckProgram *program = &analysis->checked.program;
+  for (uint32_t m = 0; m < program->user_modules; m++) {
+    if (!ms_span_equal(analysis->paths[m], ms_string_span(&doc->path))) continue;
+    LspHoverFallback found;
+    if (!lsp_hover_fallback(program->names, program->modules.ptr[m].tree, offset, &found)) return false;
+    const MsTy ty = ms_facts_type(&program->modules.ptr[m].facts, found.node);
+    if (ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, ty)) return false;
+    MsStrBuild shown = ms_strbuild_new();
+    ms_ty_show(&shown, program->names, &program->types, ty);
+    MsStrBuild value = ms_strbuild_new();
+    ms_strbuild_append_text(&value, "```manuscript\n");
+    ms_strbuild_append(&value, found.text);
+    ms_strbuild_append_text(&value, ": ");
+    ms_strbuild_append(&value, ms_strbuild_span(&shown));
+    ms_strbuild_append_text(&value, "\n```");
+    const MsSpan text = program->modules.ptr[m].source;
+    ms_strbuild_append_text(out, "{\"contents\":{\"kind\":\"markdown\",\"value\":");
+    lsp_json_string(out, ms_strbuild_span(&value));
+    ms_strbuild_append_text(out, "},\"range\":");
+    write_range(out, (LspRange){lsp_position(text, found.offset), lsp_position(text, found.end)});
+    ms_strbuild_append_byte(out, '}');
+    ms_strbuild_free(&shown);
+    ms_strbuild_free(&value);
+    return true;
+  }
+  return false;
+}
+
 void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out) {
   LspAnalysis analysis;
   const MsOccurrence *selected;
-  if (!select(docs, doc, position, &analysis, &selected)) goto none;
+  if (!select(docs, doc, position, &analysis, &selected)) {
+    size_t offset;
+    if (analysis.resolved && lsp_offset(ms_string_span(&doc->text), position, false, &offset) &&
+        hover_expression(&analysis, doc, offset, out)) {
+      lsp_analysis_release(&analysis);
+      return;
+    }
+    goto none;
+  }
   const MsCheckProgram *program = &analysis.checked.program;
   if (selected->ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, selected->ty)) goto none;
   MsStrBuild shown = ms_strbuild_new();
@@ -199,6 +241,15 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   StdDeclaration bundled;
   if (declaration == NULL && std_declaration(&analysis, selected, &bundled)) {
     const size_t line = lsp_position(bundled.source, bundled.at).line + 1;
+    if (ms_span_starts_with(ms_strbuild_span(&shown), ms_span_of_text("fn("))) {
+      MsInspection inspection = {0};
+      ms_inspect_collect(analysis.arena, program, true, &inspection);
+      MsStrBuild file = ms_strbuild_new();
+      ms_strbuild_append_text(&file, "@std/");
+      ms_strbuild_append(&file, bundled.file);
+      write_effects(&value, &inspection, ms_strbuild_span(&file), line, selected->name);
+      ms_strbuild_free(&file);
+    }
     const MsSpan docs_text = ms_declaration_comment(analysis.arena, bundled.source, bundled.at, (uint32_t)line);
     if (docs_text.len > 0) {
       ms_strbuild_append_text(&value, "\n\n");
@@ -235,6 +286,85 @@ none:
   lsp_analysis_release(&analysis);
 }
 
+/* The start of the file an `import ... from "path"` names, when the cursor is inside the path's quotes. */
+static bool import_path_definition(LspAnalysis *analysis, const LspDocList *docs, const LspDoc *doc, size_t cursor,
+                                   MsStrBuild *out) {
+  const MsCheckProgram *program = &analysis->checked.program;
+  const MsSpan text = ms_string_span(&doc->text);
+  for (uint32_t m = 0; m < program->user_modules; m++) {
+    if (!ms_span_equal(analysis->paths[m], ms_string_span(&doc->path))) continue;
+    const MsModule *tree = program->modules.ptr[m].tree;
+    for (uint32_t i = 0; i < tree->nimports; i++) {
+      size_t open = tree->imports[i].clause.offset;
+      while (open < text.len && text.ptr[open] != '"') open++;
+      size_t close = open + 1;
+      while (close < text.len && text.ptr[close] != '"') close++;
+      if (open >= text.len || close >= text.len || cursor <= open || cursor > close) continue;
+      const MsSpan written = ms_span_of(text.ptr + open + 1, close - open - 1);
+      if (ms_span_starts_with(written, ms_span_of_text("@std/"))) {
+        ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
+        ms_strbuild_append(out, ms_span_of(written.ptr + 5, written.len - 5));
+        ms_strbuild_append_text(out, "\",\"range\":");
+        write_range(out, (LspRange){{0, 0}, {0, 0}});
+        ms_strbuild_append_text(out, "}]");
+        return true;
+      }
+      MsStrBuild joined = ms_strbuild_new();
+      ms_path_join(ms_path_parent(ms_string_span(&doc->path)), ms_span_of(text.ptr + open + 1, close - open - 1), &joined);
+      MsStrBuild cleaned = ms_strbuild_new();
+      ms_path_clean(&cleaned, ms_strbuild_span(&joined));
+      bool found = false;
+      for (size_t g = 0; g < analysis->checked.graph.count && !found; g++) {
+        const MsSpan target = analysis->checked.graph.modules[g].path;
+        if (!ms_span_equal(target, ms_strbuild_span(&cleaned))) continue;
+        found = true;
+        ms_strbuild_append_text(out, "[{\"uri\":");
+        lsp_json_string(out, uri_of(analysis, docs, target));
+        ms_strbuild_append_text(out, ",\"range\":");
+        write_range(out, (LspRange){{0, 0}, {0, 0}});
+        ms_strbuild_append_text(out, "}]");
+      }
+      ms_strbuild_free(&joined);
+      ms_strbuild_free(&cleaned);
+      return found;
+    }
+  }
+  return false;
+}
+
+/* `self` has no occurrence of its own; the oracle sends it to the start of the name of the method it is written in. */
+static bool self_definition(LspAnalysis *analysis, const LspDocList *docs, const LspDoc *doc, size_t cursor, MsStrBuild *out) {
+  const MsSpan text = ms_string_span(&doc->text);
+  size_t start = cursor, end = cursor;
+  while (start > 0 && (isalnum(text.ptr[start - 1]) || text.ptr[start - 1] == '_')) start--;
+  while (end < text.len && (isalnum(text.ptr[end]) || text.ptr[end] == '_')) end++;
+  if (!ms_span_is_text(ms_span_of(text.ptr + start, end - start), "self")) return false;
+  const MsCheckProgram *program = &analysis->checked.program;
+  for (uint32_t m = 0; m < program->user_modules; m++) {
+    if (!ms_span_equal(analysis->paths[m], ms_string_span(&doc->path))) continue;
+    const MsModule *tree = program->modules.ptr[m].tree;
+    const MsMethod *enclosing = NULL;
+    for (uint32_t d = 0; d < tree->ndecls; d++) {
+      const MsDecl *decl = tree->decls[d];
+      if (decl->kind != MS_D_IMPL) continue;
+      for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
+        const MsMethod *method = decl->u.impl.methods.ptr[i];
+        if (method->pos.offset <= start && (enclosing == NULL || method->pos.offset > enclosing->pos.offset)) enclosing = method;
+      }
+    }
+    size_t at;
+    if (enclosing == NULL || !lsp_header(text, enclosing->pos.offset, ms_names_span(program->names, enclosing->func.name), &at)) return false;
+    const LspPosition place = lsp_position(text, at);
+    ms_strbuild_append_text(out, "[{\"uri\":");
+    lsp_json_string(out, uri_of(analysis, docs, ms_string_span(&doc->path)));
+    ms_strbuild_append_text(out, ",\"range\":");
+    write_range(out, (LspRange){place, place});
+    ms_strbuild_append_text(out, "}]");
+    return true;
+  }
+  return false;
+}
+
 void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out) {
   LspAnalysis analysis;
   const MsOccurrence *selected;
@@ -259,6 +389,12 @@ void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition p
       lsp_analysis_release(&analysis);
       return;
     }
+  }
+  size_t cursor;
+  if (analysis.resolved && lsp_offset(ms_string_span(&doc->text), position, false, &cursor) &&
+      (import_path_definition(&analysis, docs, doc, cursor, out) || self_definition(&analysis, docs, doc, cursor, out))) {
+    lsp_analysis_release(&analysis);
+    return;
   }
   ms_strbuild_append_text(out, "null");
   lsp_analysis_release(&analysis);
@@ -422,7 +558,7 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     goto done;
   }
   const MsCheckProgram *program = &analysis.checked.program;
-  if (ms_span_find(selected->key, ms_span_of_text(":@std/"), &(size_t){0})) {
+  if (ms_span_find(selected->key, ms_span_of_text(":@std/"), &(size_t){0}) || ms_span_starts_with(selected->key, ms_span_of_text("native:"))) {
     refuse(error, "standard-library declarations are read-only");
     goto done;
   }
@@ -599,6 +735,22 @@ void lsp_nav_type_definition(const LspDocList *docs, const LspDoc *doc, LspPosit
         ms_strbuild_append_byte(out, '[');
         write_place(out, &place);
         ms_strbuild_append_byte(out, ']');
+        lsp_analysis_release(&analysis);
+        return;
+      }
+      /* A type of the bundled library has no occurrence in the index: point into its module. */
+      const MsSymbol *declared = &program->symbols.ptr[symbol];
+      const MsSpan file = ms_names_span(program->names, program->modules.ptr[declared->module].file);
+      size_t at;
+      if (declared->module >= program->user_modules && declared->decl != NULL && ms_span_starts_with(file, ms_span_of_text("@std/")) &&
+          lsp_header(program->modules.ptr[declared->module].source, declared->decl->pos.offset, ms_names_span(program->names, declared->name), &at)) {
+        const MsSpan source = program->modules.ptr[declared->module].source;
+        const size_t name_length = ms_names_span(program->names, declared->name).len;
+        ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
+        ms_strbuild_append(out, ms_span_of(file.ptr + 5, file.len - 5));
+        ms_strbuild_append_text(out, "\",\"range\":");
+        write_range(out, (LspRange){lsp_position(source, at), lsp_position(source, at + name_length)});
+        ms_strbuild_append_text(out, "}]");
         lsp_analysis_release(&analysis);
         return;
       }

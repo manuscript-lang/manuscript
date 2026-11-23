@@ -219,6 +219,8 @@ bool lsp_format_document(const LspDoc *doc, MsStrBuild *out, MsStrBuild *error) 
   const MsSpan source = ms_string_span(&doc->text);
   const bool ok = ms_format(&arena, source, &formatted, &diag);
   if (!ok) {
+    ms_strbuild_append(error, ms_string_span(&doc->path));
+    ms_strbuild_printf(error, ":%u:%u: parse: ", diag.pos.line, diag.pos.column);
     ms_strbuild_append(error, diag.message);
   } else {
     ms_strbuild_append_text(out, "[{\"range\":");
