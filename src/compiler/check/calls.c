@@ -6,6 +6,8 @@
  * arguments come from ms_check_instantiate. The MsCall fact lists one argument per parameter, the receiver
  * first for a method: written, defaulted, or omitted. */
 #include "compiler/check/call_internal.h"
+
+#include <string.h>
 #include "compiler/check/instantiate.h"
 #include "compiler/check/methods.h"
 #include "compiler/syntax/parse.h"
@@ -616,6 +618,17 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
   }
 }
 
+/* Whether every diagnostic since `before` is an uninferred callback parameter, which the call's own failure explains. */
+static bool only_callback_diagnostics(const MsCheckProgram *program, size_t before) {
+  for (size_t index = before; index < program->diagnostics.len; index++) {
+    if (!ms_span_starts_with(ms_string_span(&program->diagnostics.ptr[index].message),
+                             ms_span_of_text("cannot infer callback parameter"))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
 static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, const Matched *matched,
                         size_t before, MsTy callee) {
@@ -627,9 +640,12 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
                            ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
   if (body->module >= body->program->user_modules || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
-      body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
+      !only_callback_diagnostics(body->program, before) || holds_invalid(types, body->result, 6) ||
       holds_invalid(types, callee, 6)) {
     return false;
+  }
+  if (body->program->diagnostics.len > before) {
+    return true; /* the callbacks that could not be typed explain every untyped argument */
   }
   for (size_t index = 0; index < count; index++) {
     if (matched->slot[index] >= 0 && holds_invalid(types, arg_tys[index], 6)) { /* an omitted argument has no type */
@@ -660,6 +676,14 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   MsInstance instance = {0};
   MsTy sig = target->sig;
   bool instantiated = true;
+  MsTyList typed = {0};
+  if (body->program->diagnostics.len > diagnostics_before && only_callback_diagnostics(body->program, diagnostics_before)) {
+    /* a callback that could not be typed gives the call no evidence about its type arguments */
+    for (size_t index = 0; index < matched->count; index++) {
+      ms_ty_list_push(&typed, holds_invalid(&body->program->types, arg_tys[index], 6) ? MS_TY_NONE : arg_tys[index]);
+    }
+    arg_tys = typed.ptr;
+  }
   if (target->vars.len != 0) {
     const MsSpan name = target->name;
     if (ms_check_instantiate(body->program, target->sig, target->vars.ptr, target->vars.len, name,
@@ -671,12 +695,21 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       instantiated = false;
       if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
+        /* the call's failure comes before the callbacks it could not type */
+        MsCheckDiagList *list = &body->program->diagnostics;
+        if (list->len > diagnostics_before + 1) {
+          const MsCheckDiag last = list->ptr[list->len - 1];
+          memmove(list->ptr + diagnostics_before + 1, list->ptr + diagnostics_before,
+                  (list->len - 1 - diagnostics_before) * sizeof last);
+          list->ptr[diagnostics_before] = last;
+        }
       }
     }
   }
   MsTy result = record_call(body, call, target, sig, &instance.args, matched);
   body_set_type(body, call->u.call.callee->id, sig);
   ms_instance_free(&instance);
+  ms_ty_list_free(&typed);
   return instantiated ? result : MS_TY_NONE;
 }
 
