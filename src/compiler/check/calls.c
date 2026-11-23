@@ -587,6 +587,40 @@ static void report_conflict(Body *body, const MsExpr *call, const Target *target
   ms_strbuild_free(&context);
 }
 
+/* The nodes typed while the callee's variables were open (a callback's first `return error(...)`) name them: now that
+ * the call has its type arguments, they take them. */
+static void settle_typed(Body *body, const Target *target, const MsTyList *args) {
+  const MsTyTable *types = &body->program->types;
+  MsTy from[16];
+  MsTy to[16];
+  size_t count = 0;
+  for (size_t at = 0; at < target->vars.len && at < args->len && at < 16; at++) {
+    if (args->ptr[at] != MS_TY_NONE && !holds_invalid(types, args->ptr[at], 6) &&
+        body_has_foreign_variable(body, target->vars.ptr[at])) { /* not the enclosing function's own variable */
+      from[count] = target->vars.ptr[at];
+      to[count++] = args->ptr[at];
+    }
+  }
+  for (size_t at = target->journal; count != 0 && at < body->typed.len; at++) {
+    const MsNode node = body->typed.ptr[at];
+    const MsTy ty = body->facts->types[node];
+    if (ty != MS_TY_NONE && ms_ty_has_variable(types, ty)) {
+      body->facts->types[node] = ms_ty_subst(&body->program->types, ty, from, to, count);
+    }
+  }
+  for (size_t at = target->calls_mark; count != 0 && at < body->facts->calls.len; at++) { /* and the calls inside it */
+    MsCall *call = &body->facts->calls.ptr[at];
+    call->callee_ty = ms_ty_subst(&body->program->types, call->callee_ty, from, to, count);
+    if (call->type_arg_count != 0) {
+      MsTy *fresh = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, call->type_arg_count);
+      for (uint32_t index = 0; index < call->type_arg_count; index++) {
+        fresh[index] = ms_ty_subst(&body->program->types, call->type_args[index], from, to, count);
+      }
+      call->type_args = fresh;
+    }
+  }
+}
+
 static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const MsTy *arg_tys, const Matched *matched,
                         MsTy expected, size_t diagnostics_before) {
   MsInstance instance = {0};
@@ -640,6 +674,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
         instance.ty = ms_ty_subst(&body->program->types, target->sig, target->vars.ptr, instance.args.ptr, instance.args.len);
       }
       sig = instance.ty;
+      settle_typed(body, target, &instance.args);
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
@@ -822,6 +857,8 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     match_args(body, &target, expr, &matched);
     MsTy hint[16] = {0};
     result_hint(body, &target, expected, hint);
+    target.journal = body->typed.len;
+    target.calls_mark = body->facts->calls.len;
     type_args(body, &target, expr, &matched, arg_tys, bound, hint);
     MsTy *shown = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, target.vars.len + 1);
     for (size_t index = 0; index < target.vars.len; index++) { /* the expected result fixes what the arguments left open */
