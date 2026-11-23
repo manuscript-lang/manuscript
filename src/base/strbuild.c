@@ -72,7 +72,7 @@ void ms_strbuild_append_utf8(MsStrBuild *builder, uint32_t scalar) {
 
 MsString ms_strbuild_finish(MsStrBuild *builder) {
   const MsString text = ms_string_from_span(ms_strbuild_span(builder));
-  ms_strbuild_clear(builder);
+  ms_strbuild_free(builder);
   return text;
 }
 

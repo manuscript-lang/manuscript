@@ -1,7 +1,7 @@
 /* base/strbuild.h: MsStrBuild, the one builder of text (diagnostics, IR dumps, JSON, paths).
  *
- * Ownership: the builder owns its buffer; ms_strbuild_finish moves the text out as an MsString and leaves
- * the builder empty and reusable, ms_strbuild_free drops it. The bytes are not NUL-terminated. */
+ * Ownership: the builder owns its buffer; ms_strbuild_finish moves the text out as an MsString, releases the
+ * buffer and leaves the builder empty (it regrows if appended to again); ms_strbuild_free drops an unfinished one. The bytes are not NUL-terminated. */
 #ifndef MS_BASE_STRBUILD_H
 #define MS_BASE_STRBUILD_H
 
@@ -43,7 +43,7 @@ static inline void ms_strbuild_clear(MsStrBuild *builder) {
   builder->bytes.len = 0;
 }
 
-/* Moves the text into a string and leaves the builder empty. */
+/* Moves the text into a string, frees the buffer and leaves the builder empty. */
 MsString ms_strbuild_finish(MsStrBuild *builder);
 
 void ms_strbuild_free(MsStrBuild *builder);
