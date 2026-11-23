@@ -258,6 +258,16 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
     return value;
   }
   const MsSpan text = ms_names_span(body->program->names, name);
+  if (ms_builtin_primitive(text) != MS_BUILTIN_NONE) { /* a primitive type's name alone builds nothing */
+    if (!body->quiet && body_reports(body)) {
+      MsStrBuild message = ms_strbuild_new();
+      ms_strbuild_append_text(&message, "type name requires a constructor call; write ");
+      ms_strbuild_append(&message, text);
+      ms_strbuild_append_text(&message, "(field: value, ...) to build a value");
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&message));
+    }
+    return MS_TY_NONE;
+  }
   if (ms_span_is_text(text, "__LINE__")) {
     return body_primitive(body, MS_BUILTIN_Int);
   }
@@ -542,8 +552,16 @@ static MsTy map_expr(Body *body, const MsExpr *expr, MsTy expected) {
     args[1] = none_widened(body, values, expr->u.map.len);
   }
   for (uint32_t index = 0; index < expr->u.map.len; index++) {
-    const MsTy key = body_expr(body, expr->u.map.ptr[index].key, args[0]);
-    const MsTy value = body_expr(body, expr->u.map.ptr[index].value, args[1]);
+    MsStrBuild context = ms_strbuild_new();
+    ms_strbuild_printf(&context, "entry %zu of the literal, whose entries share one type", (size_t)index * 2 + 1);
+    const MsTy key = args[0] == MS_TY_NONE ? body_expr(body, expr->u.map.ptr[index].key, args[0])
+                                           : body_expect(body, expr->u.map.ptr[index].key, args[0], ms_strbuild_span(&context));
+    ms_strbuild_free(&context);
+    context = ms_strbuild_new();
+    ms_strbuild_printf(&context, "entry %zu of the literal, whose entries share one type", (size_t)index * 2 + 2);
+    const MsTy value = args[1] == MS_TY_NONE ? body_expr(body, expr->u.map.ptr[index].value, args[1])
+                                             : body_expect(body, expr->u.map.ptr[index].value, args[1], ms_strbuild_span(&context));
+    ms_strbuild_free(&context);
     args[0] = args[0] == MS_TY_NONE ? key : args[0];
     args[1] = args[1] == MS_TY_NONE ? value : args[1];
   }
