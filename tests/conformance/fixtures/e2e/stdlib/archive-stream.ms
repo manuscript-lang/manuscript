@@ -391,7 +391,7 @@ test "gzip rejects reserved flags in whole and fragmented member headers":
 
 // "ok" with the entries' paths and sizes, or the error kind.
 fn outcome(entries: List[ArchiveEntry]!) String:
-	if entries.is_error(): return entries.err().kind.get_or("none")
+	if entries.is_error(): return entries.err().kind.clone().get_or("none")
 
 	var text = "ok"
 	for entry in entries.get():

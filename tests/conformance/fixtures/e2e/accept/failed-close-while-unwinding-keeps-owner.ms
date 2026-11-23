@@ -29,7 +29,7 @@ fn deque_then_fault(log: String) Void:
 	queue.push_back(Item(2, log.clone(), false))
 	panic("body fault")
 
-fn list_then_fault(log: String) Void:
+fn list_then_fault(move log: String) Void:
 	var items: List[Item?] = [Item(1, log.clone(), true), none, Item(2, log.clone(), false)]
 	panic("body fault")
 

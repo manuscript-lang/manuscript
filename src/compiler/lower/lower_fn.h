@@ -76,6 +76,9 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
+  const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
+  const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
+  uint32_t nmoved_fields;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
@@ -169,6 +172,8 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
 /* Whether lowering closes a binding with this closer (NULL for none), of checker type `checked`: a `move fn close`
  * that no use closes by hand, changes in place or splits. */
 bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
+/* As `fn_closer_for` for a parameter, whose slot an assignment into its fields takes from and puts back into. */
+bool fn_param_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
 /* The helper `fn(move holder)` that closes the resources a holder without a close of its own holds, or MIR_NONE
  * when some part cannot be closed this way; and whether it exists. */
 uint32_t lower_close_parts(Lower *cx, MsTy ty);
@@ -198,6 +203,8 @@ enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record cons
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);
 /* After the close of a part returned `result`: faults when it is an error, else drops it. */
 void lower_close_check(MirBuilder *b, MirValue result);
+/* The close thunk of a type an escaping closure owns as a capture, when it has anything to close. */
+bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 /* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
 void fn_init_closing(LowerFn *fn);

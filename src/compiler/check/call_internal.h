@@ -28,6 +28,7 @@ typedef struct Matched {
   int32_t *slot;    /* the argument written for each parameter, or -1 */
   uint8_t *state;   /* ArgState of each written argument */
   size_t count;
+  const MsTy *bound; /* the type arguments the arguments fixed so far, MS_TY_NONE for the rest; NULL when none */
 } Matched;
 
 /* The written name of a parameter: the declaration's, since function types do not keep names in their identity. */

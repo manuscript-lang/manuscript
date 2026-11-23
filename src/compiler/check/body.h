@@ -21,6 +21,7 @@ typedef struct MsLocal {
   MsRefKind kind; /* MS_REF_LOCAL or MS_REF_PARAM */
   uint32_t id;    /* the dense local id, or the parameter's index */
   bool is_var;
+  bool written_fn; /* declared with a written function type (`f: fn(Int) Int`): its parameters have no labels */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;
 
@@ -150,11 +151,17 @@ void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty);
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
 void body_check_literal_range(Body *body, const MsExpr *number, bool negated, MsTy ty);
+/* An Int literal must fit a signed 64-bit integer (a negated one may reach the minimum): a larger one is a BigInt. */
+void body_check_int64_literal(Body *body, const MsExpr *number, bool negated);
+/* A float literal must be finite in its type: binary32 when `ty` is Float32, else binary64. */
+void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty);
 void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
 /* Reports `what` when `ty` is an opaque type declared in another module; true when it did. */
 bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what);
 void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);
+/* A constant index outside a list literal always faults. */
+void body_check_constant_index(Body *body, const MsExpr *expr, const MsExpr *list, const MsExpr *index);
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty);
 bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 

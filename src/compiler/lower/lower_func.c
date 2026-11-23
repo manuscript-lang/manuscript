@@ -396,7 +396,7 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
     const MsNode site = receiver ? target->node : (declared == NULL ? 0 : declared->id);
     const MsCloser *closer = site == 0 ? NULL : ms_facts_closer(fn->facts, site);
     const MsTy checked = receiver ? target->receiver : (declared == NULL ? MS_TY_NONE : ms_facts_type(fn->facts, declared->id));
-    if (fn_closer_for(fn, closer, checked)) {
+    if (fn_param_closer_for(fn, closer, checked)) {
       /* A resource parameter is the body's to close: it lives in a slot its scope owns. */
       fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);
       (void)fn_own_param(fn, index, checked, values[index], fn->param_vars[index], closer != NULL && (closer->flags & MS_CLOSER_FIELDS) != 0);

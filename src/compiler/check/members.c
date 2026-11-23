@@ -323,7 +323,7 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   const MsTyVariable *variable =
       ms_ty_kind(types, receiver) == MS_TY_VARIABLE ? ms_ty_variable(&body->program->types, receiver) : NULL;
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
-      ms_check_standard_operation(body->program, member->u.member.name)) {
+      (ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name))) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();

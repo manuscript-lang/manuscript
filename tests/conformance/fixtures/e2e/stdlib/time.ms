@@ -115,7 +115,7 @@ test "format preserves Unicode literals and empty patterns across calendar edges
 	expect_equal((first.format("YYYY-MM-DD", "-23:59")?), "0000-12-31")?
 	expect_equal((last.format("YYYY-MM-DD", "+23:59")?), "10000-01-01")?
 
-	invalid: String! := error(Error("time: invalid input", kind: "EINVAL"))
+	invalid: String! := error(Error("time: unknown zone", kind: "EINVAL"))
 	expect_equal(moment.format("", "Nowhere/Land"), invalid)?
 
 	// Raw fields retain signed minimum-width formatting, without truncating wide
@@ -124,7 +124,7 @@ test "format preserves Unicode literals and empty patterns across calendar edges
 	expect_equal((raw.format("YYYY SSS", "UTC")?), "-001 -9223372036854")?
 
 test "calendar rejects unknown zones and impossible dates":
-	bad_zone: Timestamp! := error(Error("time: invalid input", kind: "EINVAL"))
+	bad_zone: Timestamp! := error(Error("time: unknown zone", kind: "EINVAL"))
 	expect_equal(from_calendar(2024, 1, 1, 0, 0, 0, 0, "Nowhere/Land"), bad_zone)?
 
 	bad_date: Timestamp! := error(Error("time: value out of range", kind: "ERANGE"))

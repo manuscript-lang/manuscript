@@ -138,6 +138,7 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
     return body_std_type(body, "Decimal", NULL, 0);
   }
   if (kind == NUMBER_FLOAT) {
+    body_check_float_literal(body, expr, is_sized_float(body, expected) ? expected : MS_TY_NONE);
     return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
                                                                                    : body_primitive(body, MS_BUILTIN_Float);
   }
@@ -145,7 +146,11 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
     body_check_literal_range(body, expr, negated, expected);
     return expected;
   }
-  return numeric_variable(body, expected, true) ? expected : body_primitive(body, MS_BUILTIN_Int);
+  if (!numeric_variable(body, expected, true)) {
+    body_check_int64_literal(body, expr, negated);
+    return body_primitive(body, MS_BUILTIN_Int);
+  }
+  return expected;
 }
 
 /* The decimal literals inside a constant's initializer, which the constants pass leaves unreported. */
@@ -351,12 +356,21 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
 static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy left, MsTy right) {
   const bool text = ms_ty_is(&body->program->types, left, MS_BUILTIN_String);
   if (left != right || !(is_numeric(body, left) || (text && op == MS_B_ADD))) {
-    if (left == right && !holds_invalid(&body->program->types, left, 6) && body->module < body->program->user_modules &&
-        !body->quiet) {
+    if (!holds_invalid(&body->program->types, left, 6) && !holds_invalid(&body->program->types, right, 6) &&
+        body->module < body->program->user_modules && !body->quiet) {
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("arithmetic requires numeric operands")));
     }
     return left == right ? left : MS_TY_NONE;
+  }
+  const MsBuiltin builtin = ms_ty_builtin(&body->program->types, left);
+  if (op == MS_B_REM && (ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_Decimal) && body->module < body->program->user_modules &&
+      !body->quiet) {
+    MsStrBuild message = ms_strbuild_new();
+    ms_strbuild_append_text(&message, "remainder requires integer operands, found ");
+    ms_ty_show(&message, body->program->names, &body->program->types, left);
+    ms_strbuild_append_text(&message, "; convert to Int or use math functions");
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&message));
   }
   return left;
 }

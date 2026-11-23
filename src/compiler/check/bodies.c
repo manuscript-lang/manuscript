@@ -6,8 +6,10 @@
  * expression, pattern and parameter node; the reference of each name, binding and loop variable; the number of
  * locals of each function. */
 #include "compiler/check/body.h"
+#include "compiler/check/call_internal.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/check/methods.h"
+#include "compiler/check/suggest.h"
 
 void body_set_type(Body *body, MsNode node, MsTy ty) {
   if (node < body->facts->node_count) {
@@ -94,33 +96,92 @@ static MsTy element_type(Body *body, MsTy iterable) {
   return element;
 }
 
-/* Declares the names of a binding pattern; `ty` is the type the whole pattern matches. */
-static void bind_pattern(Body *body, const MsPattern *pattern, MsTy ty, bool is_var) {
+static void report_pattern(Body *body, MsPos pos, const char *text) {
+  if (body->module < body->program->user_modules && !body->quiet) {
+    ms_check_report(body->program, body->module, pos, MS_CHECK_TYPE, ms_string_from_span(ms_span_of_text(text)));
+  }
+}
+
+static void bind_fields(Body *body, const MsPattern *pattern, MsTy ty, bool is_var);
+
+/* Declares the names of a binding pattern; `ty` is the type the whole pattern matches and `source` the written value
+ * when it is a literal whose shape is known. */
+static void bind_pattern_from(Body *body, const MsPattern *pattern, MsTy ty, bool is_var, const MsExpr *source) {
+  const MsTyTable *types = &body->program->types;
   body_set_type(body, pattern->id, ty);
   if (pattern->kind == MS_P_NAME) {
     const MsLocal *local = body_declare(body, pattern->u.name, ty, MS_REF_LOCAL, is_var, pattern->id, pattern->pos);
     body_set_ref(body, pattern->id, body_local_ref(body, local));
     return;
   }
+  const bool known = ty != MS_TY_NONE && !holds_invalid(&body->program->types, ty, 6);
   if (pattern->kind == MS_P_LIST) {
-    const MsTyTable *types = &body->program->types;
-    const MsTy element = ms_ty_is(types, ty, MS_BUILTIN_List) && ms_ty_arg_count(types, ty) == 1
-                             ? ms_ty_args(types, ty)[0]
-                             : MS_TY_NONE;
+    const bool list = ms_ty_is(types, ty, MS_BUILTIN_List) && ms_ty_arg_count(types, ty) == 1;
+    if (known && !list) {
+      report_pattern(body, pattern->pos, "positional binding requires a list; use [a, b] patterns only with List values");
+      return;
+    }
+    if (list && source != NULL && source->kind == MS_E_LIST && source->u.list.len != pattern->u.list.len) {
+      report_pattern(body, pattern->pos, "statically known list length does not match binding; bind exactly as many names "
+                                         "as the list has elements");
+    }
+    const MsTy element = list ? ms_ty_args(types, ty)[0] : MS_TY_NONE;
     for (uint32_t index = 0; index < pattern->u.list.len; index++) {
-      bind_pattern(body, pattern->u.list.ptr[index], element, is_var);
+      bind_pattern_from(body, pattern->u.list.ptr[index], element, is_var, NULL);
     }
     return;
   }
+  if (known && (ms_ty_kind(types, ty) != MS_TY_TYPE || ms_ty_builtin(types, ty) != MS_BUILTIN_NONE)) {
+    report_pattern(body, pattern->pos, "type binding requires a type; destructure only type values, or bind the whole value to one name");
+    return;
+  }
+  bind_fields(body, pattern, ty, is_var);
+}
+
+static void bind_fields(Body *body, const MsPattern *pattern, MsTy ty, bool is_var) {
+  static const char what[] = "its fields cannot be destructured here";
+  if (ty != MS_TY_NONE && body_opaque_denied(body, pattern->pos, ty, ms_span_of_text(what))) {
+    /* the opaque type keeps its fields private; the names below still bind */
+  }
+  const MsDef *def = ty == MS_TY_NONE ? NULL : body_def(body, ty);
   for (uint32_t index = 0; index < pattern->u.fields.len; index++) {
     const MsPatternField *field = &pattern->u.fields.ptr[index];
+    for (uint32_t before = 0; before < index; before++) {
+      if (pattern->u.fields.ptr[before].name == field->name) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "duplicate type field ");
+        ms_strbuild_append(&text, ms_names_span(body->program->names, field->name));
+        ms_strbuild_append_text(&text, "; bind each field once");
+        if (body->module < body->program->user_modules && !body->quiet) {
+          ms_check_report(body->program, body->module, field->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+        }
+        break;
+      }
+    }
     MsTy field_ty = MS_TY_NONE;
     uint32_t at = 0;
-    if (ty != MS_TY_NONE) {
-      (void)body_field(body, ty, field->name, &field_ty, &at);
+    const bool found = ty != MS_TY_NONE && body_field(body, ty, field->name, &field_ty, &at);
+    if (!found && def != NULL && ty != MS_TY_NONE && !holds_invalid(&body->program->types, ty, 6)) {
+      MsSpanList names = {0};
+      for (size_t each = 0; each < def->fields.len; each++) {
+        ms_span_list_push(&names, ms_names_span(body->program->names, def->fields.ptr[each].name));
+      }
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "unknown type field ");
+      ms_strbuild_append(&text, ms_names_span(body->program->names, field->name));
+      ms_strbuild_append_text(&text, "; fields: ");
+      ms_suggest_list(&text, &names, 12);
+      ms_span_list_free(&names);
+      if (body->module < body->program->user_modules && !body->quiet) {
+        ms_check_report(body->program, body->module, field->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
     }
-    bind_pattern(body, field->pattern, field_ty, is_var);
+    bind_pattern_from(body, field->pattern, found ? field_ty : MS_TY_NONE, is_var, NULL);
   }
+}
+
+static void bind_pattern(Body *body, const MsPattern *pattern, MsTy ty, bool is_var) {
+  bind_pattern_from(body, pattern, ty, is_var, NULL);
 }
 
 static void stmt_bind(Body *body, const MsStmt *stmt) {
@@ -137,7 +198,11 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
     body_report_uninferred_none(body, stmt->u.bind.value->pos); /* a binding with no type has no target for none */
   }
   const MsTy kept = stmt->u.bind.is_mutable ? value : body_lifted_function(body, stmt->u.bind.value, value);
-  bind_pattern(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable);
+  bind_pattern_from(body, stmt->u.bind.pattern, declared != MS_TY_NONE ? declared : kept, stmt->u.bind.is_mutable,
+                    stmt->u.bind.value);
+  if (stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.ty != NULL && stmt->u.bind.ty->kind == MS_TYPE_FN) {
+    ms_local_list_last(&body->locals)->written_fn = true;
+  }
 }
 
 /* `x.field = ...` needs a field of a type value; a method, a case or an unknown member cannot be assigned. */
@@ -191,6 +256,16 @@ static void stmt_if(Body *body, const MsStmt *stmt) {
 static void stmt_for(Body *body, const MsStmt *stmt) {
   const MsTy iterable = body_expr(body, stmt->u.each.iter, MS_TY_NONE);
   const MsTy element = element_type(body, iterable);
+  if (element == MS_TY_NONE && iterable != MS_TY_NONE && !holds_invalid(&body->program->types, iterable, 6) &&
+      ms_ty_kind(&body->program->types, iterable) != MS_TY_VARIABLE && body->module < body->program->user_modules &&
+      !body->quiet) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "for requires List, Set, Map, a ReadStream, or an Iterator, found ");
+    ms_ty_show(&text, body->program->names, &body->program->types, iterable);
+    ms_strbuild_append_text(&text, "; iterate a collection, e.g. a list literal [1, 2, 3], or implement ReadStream with "
+                                   "'var fn next() T?!' and 'var fn close() Void!', or Iterator with 'var fn next() T?'");
+    ms_check_report(body->program, body->module, stmt->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
   const size_t mark = body_scope_mark(body);
   const MsLocal *local = body_declare(body, stmt->u.each.name, element, MS_REF_LOCAL, false, stmt->id, stmt->pos);
   body_set_ref(body, stmt->id, body_local_ref(body, local));
@@ -251,9 +326,37 @@ static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
   return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
 }
 
+/* Each required parameter or field that follows an optional one; a `T?` parameter or field defaults to none. */
+static void report_optionals_last(Body *body, MsParams params) {
+  uint32_t first = 0;
+  while (first < params.len && !body_param_omittable(body, params.ptr[first])) {
+    first++;
+  }
+  if (first == params.len || body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  const MsParam *optional = params.ptr[first];
+  const bool by_type = optional->ty != NULL && optional->ty->kind == MS_TYPE_NAMED && optional->ty->args.len == 1 &&
+                       ms_span_is_text(ms_names_span(body->program->names, optional->ty->name), "Optional");
+  for (uint32_t index = first + 1; index < params.len; index++) {
+    if (body_param_omittable(body, params.ptr[index])) {
+      continue;
+    }
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "required ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, params.ptr[index]->name));
+    ms_strbuild_append_text(&text, " follows optional ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, optional->name));
+    ms_strbuild_append_text(&text, by_type ? " (a `T?` parameter or field defaults to none, so it counts as optional)" : "");
+    ms_strbuild_append_text(&text, "; put optional parameters and fields last");
+    ms_check_report(body->program, body->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+}
+
 /* Declares the parameters in order and checks each default before its own parameter is in scope, so a default sees
  * the parameters before it and a function of the same name as its own parameter (`headers: H = headers()`). */
 static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t first) {
+  report_optionals_last(body, params);
   const MsTyTable *types = &body->program->types;
   const size_t count = ms_ty_param_count(types, fn_ty);
   for (uint32_t index = 0; index < params.len; index++) {
@@ -265,6 +368,7 @@ static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t fir
     const MsTy ty = index < count ? ms_ty_params(types, fn_ty)[index].ty : MS_TY_NONE;
     MsLocal *local = body_declare(body, param->name, ty, MS_REF_PARAM, param->is_mutable, param->id, param->pos);
     local->id = first + index;
+    local->written_fn = param->ty != NULL && param->ty->kind == MS_TYPE_FN;
     body_set_type(body, param->id, ty);
     body_set_ref(body, param->id, body_local_ref(body, local));
   }
@@ -406,6 +510,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     break;
   }
   case MS_D_TYPE:
+    report_optionals_last(body, decl->u.type.fields);
     field_defaults(body, decl->u.type.fields, symbol_of(body->program, body->module, decl));
     break;
   case MS_D_ENUM:
@@ -413,8 +518,14 @@ static void declaration(Body *body, const MsDecl *decl) {
       field_defaults(body, decl->u.enumeration.cases.ptr[index]->fields, NULL);
     }
     break;
-  case MS_D_ALIAS:
   case MS_D_INTERFACE:
+    if (decl->u.iface.methods.len == 0 && body->module < body->program->user_modules && !body->quiet) {
+      ms_check_report(body->program, body->module, decl->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("an interface declares at least one operation; only the standard "
+                                                          "library declares a property without operations, like `Data`")));
+    }
+    break;
+  case MS_D_ALIAS:
     break;
   }
 }

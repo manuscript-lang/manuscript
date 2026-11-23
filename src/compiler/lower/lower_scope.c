@@ -185,6 +185,9 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value) {
       return true;
     }
     if (inst->res == value) {
+      if (inst->op == MOP_OptNone || inst->op == MOP_OptNoneOwned) {
+        return true; /* `none` holds nothing: whoever takes it owns an empty value, so no copy is made */
+      }
       MirMode mode = MM_BORROW;
       return mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) && mode == MM_MOVE;
     }

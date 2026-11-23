@@ -61,7 +61,7 @@ fn observe[T: Clonable](
 	visits.count | expect_equal(3)?
 	return ok(seen)
 
-fn remaining[T: Clonable](mode: String, items: List[T], fill: List[T]) List[T]:
+fn remaining[T: Clonable](mode: String,move items: List[T],move fill: List[T]) List[T]:
 	var out = items
 	if mode == "remove": out.remove(0)
 	if mode == "splice": out.splice(

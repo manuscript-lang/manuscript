@@ -429,6 +429,7 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   const bool list = ms_ty_is(types, receiver, MS_BUILTIN_List) && ms_ty_arg_count(types, receiver) == 1;
   (void)body_expr(body, index, map ? ms_ty_args(types, receiver)[0] : body_primitive(body, MS_BUILTIN_Int));
   if (list) {
+    body_check_constant_index(body, expr, left, index);
     return ms_ty_args(types, receiver)[0];
   }
   if (map) {
@@ -536,6 +537,9 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     }
     MsTy ty = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
     ty = ty == MS_TY_NONE && shaped && index < ms_ty_param_count(types, expected) ? ms_ty_params(types, expected)[index].ty : ty;
+    if (param->ty == NULL && ty != MS_TY_NONE && shaped && body_has_foreign_variable(body, ty)) {
+      ty = MS_TY_NONE; /* a context parameter no other argument has fixed yet is no context */
+    }
     if (ty == MS_TY_NONE && param->ty == NULL && !miscounted) {
       report_uninferred_callback(body, param);
     }
