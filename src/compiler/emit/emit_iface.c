@@ -53,6 +53,24 @@ static bool iface_new(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
   return true;
 }
 
+/* `iface.own`: a box of its own holding a bitwise copy of the payload `iface` points at (the payload's size is the
+ * word after the clone in its vtable), tagged box-only, so dropping the copy frees the box and leaves the payload to the
+ * value it was borrowed from. */
+static void iface_own(EmitCx *cx, const MirInst *inst) {
+  const MirTyData *data = mir_ty_data(cx->module, emit_value_type(cx, inst->args[0]));
+  char table[24];
+  untag(cx, inst->args[0], table, sizeof table);
+  const uint32_t n = cx->next++;
+  ms_strbuild_printf(cx->out, "  %%t%ua = add i64 %s, %u\n", n, table, 8 * (2 + cx->module->ifaces.ptr[data->id].nmethods));
+  ms_strbuild_printf(cx->out, "  %%p%u = inttoptr i64 %%t%ua to ptr\n  %%k%u = load i64, ptr %%p%u\n", n, n, n, n);
+  ms_strbuild_printf(cx->out, "  %%z%u = icmp eq i64 %%k%u, 0\n  %%m%u = select i1 %%z%u, i64 1, i64 %%k%u\n", n, n, n, n, n);
+  ms_strbuild_printf(cx->out, "  %%v%u = call i64 @msrt_alloc(i64 %%m%u)\n", inst->res, n);
+  ms_strbuild_printf(cx->out, "  %%d%u = inttoptr i64 %%v%u to ptr\n  %%s%u = inttoptr i64 %%v%u to ptr\n", n, inst->res, n,
+                     inst->args[0]);
+  ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %%d%u, ptr %%s%u, i64 %%k%u, i1 false)\n", n, n, n);
+  ms_strbuild_printf(cx->out, "  %%v%u.1 = add i64 %s, %u\n", inst->res, table, TAG_BOX);
+}
+
 /* `call.method`: the code word of the method's slot, called with the data address first. */
 static void call_method(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
   char table[24];
@@ -112,6 +130,9 @@ bool emit_iface_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *
   case MOP_IfaceNew:
   case MOP_IfaceBorrow:
     return iface_new(cx, inst, site);
+  case MOP_IfaceOwn:
+    iface_own(cx, inst);
+    return true;
   case MOP_CallMethod:
     call_method(cx, inst, site);
     return true;

@@ -389,6 +389,14 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
   func.display = lower_trace_name(cx, target->receiver, target->name);
   func.ret_borrowed = borrows_result(cx, target, ret, mir_params, count);
+  const MirTyData *ret_kind = mir_ty_data(cx->module, ret);
+  if (func.ret_borrowed && (ret_kind->kind == MK_IFACE ||
+                            (ret_kind->kind == MK_OPT && mir_ty_data(cx->module, ret_kind->elem)->kind == MK_IFACE))) {
+    /* An interface result that borrows is a view lender: it hands back an owned box (box-only, so dropping it frees the
+     * box and never the payload), and the caller drops it like any owned value (proposals/owned-interface-views.md). */
+    func.ret_borrowed = false;
+    func.ret_view = true;
+  }
   /* A function that takes a closure and keeps it (a promise's entry) holds what a closure into its maker's frame
    * borrows until the result is dropped. */
   const uint32_t taken = ms_own_taken_mask(cx->program, target->module, target->node);
@@ -592,6 +600,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   fn_find_shared(&fn, target->func->body);
   bind_params(&fn, target);
   fn.returns_borrow = cx->module->funcs.ptr[instance.func].ret_borrowed;
+  fn.returns_view = cx->module->funcs.ptr[instance.func].ret_view;
   const bool ok = fn_stmts(&fn, target->func->body) && !fn.failed;
   finish_body(&fn);
   MirFunc built;
@@ -602,6 +611,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   built.linkage = slot->linkage;
   built.keeps_scoped = slot->keeps_scoped;
   built.ret_borrowed = slot->ret_borrowed;
+  built.ret_view = slot->ret_view;
   built.display = slot->display;
   mir_func_release(slot);
   *slot = built;
