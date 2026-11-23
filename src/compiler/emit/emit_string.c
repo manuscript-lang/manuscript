@@ -82,20 +82,25 @@ static void string_byte(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
                      number, number, number, inst->res, number);
 }
 
-/* `str.data`: the address of the bytes. An inline string's bytes are its two words, written to a frame slot first. */
+/* `str.data`: the address of the bytes. An inline string's bytes are its two words, written to a frame slot first:
+ * a shared cell when the address is never kept, else a slot of its own. */
 static void string_data(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
   uint32_t number = cx->next++;
   MirValue text = inst->args[0];
-  uint32_t block = site->block;
-  uint32_t index = site->index;
+  char base[32];
+  if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
+    emit_register_name(base, sizeof base, "cell", cx->pool[inst->res]);
+  } else {
+    emit_text_name(base, sizeof base, "y", site->block, "_", site->index);
+  }
   ms_strbuild_printf(cx->out,
-                     "  store i64 %%v%u, ptr %%y%u_%u\n  %%o%ua = getelementptr i8, ptr %%y%u_%u, i64 8\n"
+                     "  store i64 %%v%u, ptr %s\n  %%o%ua = getelementptr i8, ptr %s, i64 8\n"
                      "  store i64 %%v%u.1, ptr %%o%ua\n",
-                     text, block, index, number, block, index, text, number);
+                     text, base, number, base, text, number);
   string_is_inline(cx, number, text);
   ms_strbuild_printf(cx->out,
-                     "  %%o%uy = ptrtoint ptr %%y%u_%u to i64\n  %%v%u = select i1 %%o%ui, i64 %%o%uy, i64 %%v%u\n",
-                     number, block, index, inst->res, number, number, text);
+                     "  %%o%uy = ptrtoint ptr %s to i64\n  %%v%u = select i1 %%o%ui, i64 %%o%uy, i64 %%v%u\n",
+                     number, base, inst->res, number, number, text);
 }
 
 /* `mem.copy`: `len` bytes from `src` to `dst`, which do not overlap. */

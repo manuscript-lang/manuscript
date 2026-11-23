@@ -3,6 +3,10 @@
  * piece of the block (emit_record_pieces). */
 #include "compiler/emit/emit_cx.h"
 
+#include "base/alloc.h"
+#include "base/fatal.h"
+#include "compiler/mir/mir_pass.h"
+
 static MirTy value_type(const EmitCx *cx, MirValue value) {
   return cx->func->values.ptr[value];
 }
@@ -50,8 +54,104 @@ static bool field_span(EmitCx *cx, MirTy type, uint32_t field, uint32_t *start, 
   return true;
 }
 
+/* The memory offsets of the leaves of `value`, from `mir_mem_layout`; free with ms_free. */
+static uint32_t *leaf_offsets(EmitCx *cx, MirValue value) {
+  MsSpan leaves = emit_value_leaves(cx, value);
+  size_t bytes = 0;
+  if (!ms_size_mul(leaves.len + 1, sizeof(uint32_t), &bytes)) {
+    ms_fatal(MS_FATAL_OVERFLOW, "leaf count");
+  }
+  uint32_t *offsets = ms_alloc_zeroed(bytes);
+  (void)mir_mem_layout(leaves, offsets);
+  return offsets;
+}
+
+/* Bytes of the leaves of `value` without the padding after the last (a copy of it must not reach the next field);
+ * `aligned` receives whether a copy at `at` keeps each leaf's natural alignment. */
+static uint32_t packed_bytes(EmitCx *cx, MirValue value, uint32_t at, bool *aligned) {
+  MsSpan leaves = emit_value_leaves(cx, value);
+  uint32_t *offsets = leaf_offsets(cx, value);
+  const MirMemLayout layout = mir_mem_layout(leaves, NULL);
+  *aligned = at % layout.align == 0;
+  const uint32_t bytes = leaves.len == 0 ? 0 : offsets[leaves.len - 1] + mir_leaf_size(leaves.ptr[leaves.len - 1]);
+  ms_free(offsets);
+  return bytes;
+}
+
+/* `type.new` of a held record: each field's leaves stored into the result's cell, a held field copied from its own,
+ * not loaded and copied one by one. */
+static bool held_record_new(EmitCx *cx, const MirInst *inst) {
+  if (!emit_wide_held(cx, inst->res)) {
+    return false;
+  }
+  MsSpan leaves = emit_value_leaves(cx, inst->res);
+  uint32_t *offsets = leaf_offsets(cx, inst->res);
+  uint32_t at = 0;
+  bool ok = true;
+  for (uint32_t arg = 0; ok && arg < inst->nargs; arg++) {
+    bool aligned = true;
+    char from[24];
+    if (emit_wide_address(cx, inst->args[arg], from, sizeof from)) {
+      (void)packed_bytes(cx, inst->args[arg], offsets[at], &aligned);
+      /* A field that shares the result's cell would be overwritten by the stores before it is copied. */
+      aligned = aligned && !emit_wide_same_cell(cx, inst->args[arg], inst->res);
+    }
+    ok = aligned;
+    at += (uint32_t)emit_value_leaves(cx, inst->args[arg]).len;
+  }
+  char cell[24];
+  if (!ok || !emit_wide_result(cx, inst->res, cell, sizeof cell)) {
+    ms_free(offsets);
+    return false;
+  }
+  at = 0;
+  for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+    const MirValue field = inst->args[arg];
+    const uint32_t count = (uint32_t)emit_value_leaves(cx, field).len;
+    char from[24];
+    if (count > 0 && emit_wide_address(cx, field, from, sizeof from)) {
+      bool aligned = true;
+      const uint32_t bytes = packed_bytes(cx, field, offsets[at], &aligned);
+      const uint32_t to = emit_address(cx, cell, offsets[at]);
+      ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %%a%u, ptr %s, i64 %u, i1 false)\n", to, from,
+                         bytes);
+      at += count;
+      continue;
+    }
+    for (uint32_t leaf = 0; leaf < count; leaf++, at++) {
+      emit_store_leaf(cx, leaves.ptr[at], field, leaf, emit_address(cx, cell, offsets[at]));
+    }
+  }
+  ms_free(offsets);
+  return true;
+}
+
+/* `type.set` of a held record: the record's cell copied whole into the result's, then the field's leaves stored. */
+static bool held_record_set(EmitCx *cx, const MirInst *inst, uint32_t start, uint32_t count) {
+  char from[24];
+  char to[24];
+  if (!emit_wide_address(cx, inst->args[0], from, sizeof from) || emit_wide_held(cx, inst->args[1]) ||
+      !emit_wide_result(cx, inst->res, to, sizeof to)) {
+    return false;
+  }
+  if (!emit_wide_same_cell(cx, inst->args[0], inst->res)) {
+    ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to, from,
+                       emit_slot_bytes(cx, value_type(cx, inst->res)));
+  }
+  MsSpan leaves = emit_value_leaves(cx, inst->res);
+  uint32_t *offsets = leaf_offsets(cx, inst->res);
+  for (uint32_t leaf = 0; leaf < count; leaf++) {
+    emit_store_leaf(cx, leaves.ptr[start + leaf], inst->args[1], leaf, emit_address(cx, to, offsets[start + leaf]));
+  }
+  ms_free(offsets);
+  return true;
+}
+
 /* `type.new`: the leaves of the fields in order. */
 static void record_new(EmitCx *cx, const MirInst *inst) {
+  if (held_record_new(cx, inst)) {
+    return;
+  }
   uint32_t at = 0;
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     uint32_t count = (uint32_t)emit_value_leaves(cx, inst->args[arg]).len;
@@ -81,6 +181,9 @@ static bool record_set(EmitCx *cx, const MirInst *inst) {
   uint32_t count = 0;
   if (!field_span(cx, value_type(cx, inst->args[0]), inst->imm.b, &start, &count)) {
     return false;
+  }
+  if (held_record_set(cx, inst, start, count)) {
+    return true;
   }
   for (uint32_t leaf = 0; leaf < total; leaf++) {
     if (leaf >= start && leaf < start + count) {
