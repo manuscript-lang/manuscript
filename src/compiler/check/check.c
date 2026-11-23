@@ -8,13 +8,16 @@
 #include "compiler/check/methods.h"
 #include "compiler/check/mutate.h"
 #include "compiler/check/lazy_std.h"
+#include "compiler/check/std_cache.h"
 #include "compiler/check/names.h"
 #include "compiler/check/returns.h"
 #include "compiler/check/shadow.h"
 #include "compiler/check/program.h"
 
-static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph, bool lazy_std, bool all_std) {
+static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph, bool lazy_std, bool all_std,
+                        const MsStdCache *cache) {
   ms_check_program_init(program, names);
+  program->std_cache = cache;
   program->all_std = all_std;
   program->lazy_std = lazy_std;
   for (size_t index = 0; index < graph->count; index++) {
@@ -88,13 +91,17 @@ static void check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *
 }
 
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
-  check_graph(program, names, graph, false, false);
+  check_graph(program, names, graph, false, false, NULL);
 }
 
 void ms_check_graph_analysis(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
-  check_graph(program, names, graph, true, false);
+  check_graph(program, names, graph, true, false, NULL);
 }
 
 void ms_check_graph_std(MsCheckProgram *program, MsNames *names, const MsGraph *graph) {
-  check_graph(program, names, graph, false, true);
+  check_graph(program, names, graph, false, true, NULL);
+}
+
+void ms_check_graph_cached(MsCheckProgram *program, MsNames *names, const MsGraph *graph, const MsStdCache *cache) {
+  check_graph(program, names, graph, false, false, cache);
 }
