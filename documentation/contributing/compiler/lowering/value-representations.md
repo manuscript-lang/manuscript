@@ -21,7 +21,7 @@ A machine value must keep the behavior its Manuscript type promises: `Int` arith
 
 ## Representation boundaries
 
-- Locals, captures, arguments, and results have their own machine representations ([design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md#value-representation-word-level-64-bit-targets)); recursive alternatives are boxed to make their layout finite. Exact layouts and symbols are in `crates/ms-rt/ABI.md`.
+- Locals, captures, arguments, and results have their own machine representations ([ABI notes](https://github.com/manuscript-lang/manuscript/blob/main/src/abi/README.md)); recursive alternatives are boxed to make their layout finite. Exact layouts and symbols are in `src/abi/README.md`.
 - Int division and remainder overflow, Float non-finite results, Decimal underflow and overflow, and checked truncation follow [runtime numeric outcomes](../../../core-language/basics/numbers-and-booleans.md#runtime-numeric-outcomes).
 - An implicit [interface conversion](../../../core-language/types/contracts.md#interface-conversion) creates an ordinary contract view; checked HIR records the selected conversion and ownership facts.
 - Check [recursive storage rules](../../../core-language/types/named-types.md#recursive-data) in the frontend, before lowering.

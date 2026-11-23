@@ -1,1 +1,0 @@
-error parse 2:12:26 "'||' is not an operator; write 'or' for logical or, and '|' only to start a pipe step"

@@ -1,4 +1,0 @@
-fn main() Int:
-    x := 1 /* c */
-    // c
-    return 0

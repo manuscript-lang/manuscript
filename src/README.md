@@ -1,7 +1,6 @@
 # C implementation
 
-All C code lives here; Rust stays in `crates/` (frozen at `660429d4`). The plan is
-`c-implementation/restart-plan-consolidated-2026-11-21.md`.
+All C code lives here. The earlier Rust implementation was deleted; its last commit is `660429d4`.
 
 ## Build
 
@@ -50,19 +49,19 @@ fixtures, with each failure above the counts. The command fixtures must all pass
 until the port is complete (`-DMS_CONFORM_ENFORCE=ON` fails the target on any difference). A PR that lowers a
 count is not merged.
 
-The frozen Rust `ms` from `660429d4` is only the oracle fixtures were recorded from: build it with the `Oracle`
-workflow when a fixture needs re-recording.
+Fixtures are recorded from the `ms` built here: `ms run tools/conform-run.ms -- --record <fixture id>`. The Rust
+`ms` they were first recorded from is in git history (`660429d4`) if a difference needs a second opinion.
 
 ## Command fixtures
 
 Commands the corpus does not cover (`lint`, `inspect`, `init`, ...) have fixtures under
 `tests/conformance/commands/<command>/<name>/`: `args`, optional `input/`, and `expected/`
-(`stdout`, `stderr`, `status`, `tree/`). Record from the oracle and replay with the Manuscript
-runner, one PR per command:
+(`stdout`, `stderr`, `status`, `tree/`). Record from the `ms` built here, review the diff, and replay with the
+Manuscript runner:
 
 ```sh
-MS=<oracle ms> <oracle ms> run tools/command-fixtures.ms -- record [--only-missing] [prefix]
-MS=<ms under test> <oracle ms> run tools/command-fixtures.ms -- check
+MS=<ms> <ms> run tools/command-fixtures.ms -- record [--only-missing] [prefix]
+MS=<ms> <ms> run tools/command-fixtures.ms -- check
 ```
 
 `check` prints `commands: passed/total`.

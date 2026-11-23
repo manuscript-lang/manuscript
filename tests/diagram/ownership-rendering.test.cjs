@@ -9,10 +9,10 @@ const {purePage, embeddedData} = require('./pure-page.cjs');
 const root = path.resolve(__dirname, '../..');
 const binary = process.env.MS_BIN
   ? path.resolve(root, process.env.MS_BIN)
-  : path.resolve(root, process.env.CARGO_TARGET_DIR || 'target', 'debug', process.platform === 'win32' ? 'ms.exe' : 'ms');
+  : path.resolve(root, '.artifacts/build/ci/src/cli', process.platform === 'win32' ? 'ms.exe' : 'ms');
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'ms-html-ownership-'));
 after(() => fs.rmSync(fixture, {recursive: true, force: true}));
-fs.copyFileSync(path.join(root, 'crates/ms-cli/tests/ownership_modes/main.ms'), path.join(fixture, 'main.ms'));
+fs.copyFileSync(path.join(root, 'tests/diagram/fixtures/ownership-modes.ms'), path.join(fixture, 'main.ms'));
 const run = args => execFileSync(binary, ['diagram', 'main.ms', ...args], {cwd: fixture, encoding: 'utf8'});
 const page = run(['--format', 'html']);
 const data = embeddedData(page);

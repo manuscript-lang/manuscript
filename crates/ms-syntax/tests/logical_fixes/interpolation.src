@@ -1,2 +1,0 @@
-fn compare(left: Bool, right: Bool) String:
-    return f"é {f"value: {EXPRESSION}"}"
