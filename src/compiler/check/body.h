@@ -144,6 +144,7 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol);
 bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
 
 /* members.c: a member the receiver does not have. */
+bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, bool call);
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver);
 
 /* externs.c: the signature of a user `extern fn`. */

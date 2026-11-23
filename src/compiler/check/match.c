@@ -41,6 +41,7 @@ static MsTy bare_payload(const Body *body, const MsArm *arm, MsTy scrutinee) {
 typedef struct ArmState {
   const MsExpr *match;
   MsTy scrutinee;
+  bool contract;     /* an interface scrutinee: arms name implementing types */
   bool literal;      /* an Int, String or Bool scrutinee: literal arms */
   bool report;       /* a user module that is not quiet */
   bool wildcard;
@@ -279,11 +280,65 @@ static void check_literal_arm(Body *body, ArmState *state, const MsArm *arm) {
   }
 }
 
+/* The diagnostics of one arm of a match on an interface value: each arm names a concrete type once, then `_`. */
+static void check_contract_arm(Body *body, ArmState *state, const MsArm *arm) {
+  MsCheckProgram *program = body->program;
+  MsTyTable *types = &program->types;
+  if (arm->path != NULL && arm->path->kind == MS_E_NAME &&
+      ms_span_is_text(ms_names_span(program->names, arm->path->u.sym), "_")) {
+    if (state->wildcard || state->index != state->match->u.match.arms.len - 1) {
+      arm_message(body, arm, MS_CHECK_TYPE, "wildcard must appear once and be last; keep a single '_' arm at the end");
+    }
+    state->wildcard = true;
+    return;
+  }
+  const MsExpr *path = arm->path;
+  const bool applied = path != NULL && path->kind == MS_E_APPLY && path->u.apply.left->kind == MS_E_NAME &&
+                       path->u.apply.types.len != 0;
+  const MsExpr *named = applied ? path->u.apply.left : path;
+  const MsSymbol *symbol = named != NULL && named->kind == MS_E_NAME && body_find_local(body, named->u.sym) == NULL
+                               ? body_find_symbol(body, named->u.sym)
+                               : NULL;
+  MsTy target = symbol != NULL && symbol->kind == MS_SYMBOL_TYPE ? symbol->ty : MS_TY_NONE;
+  const MsTyKind kind = target == MS_TY_NONE ? MS_TY_INVALID : ms_ty_kind(types, target);
+  if (kind == MS_TY_TYPE || kind == MS_TY_ALTERNATIVE) {
+    const MsDef *def = body_def(body, target);
+    if (def != NULL && def->variables.len > 0 && !applied) {
+      arm_message(body, arm, MS_CHECK_TYPE, "concrete type pattern requires explicit type arguments; write e.g. Box[Int]");
+    } else if (applied) {
+      MsTyList args = {0};
+      for (uint32_t index = 0; index < path->u.apply.types.len; index++) {
+        ms_ty_list_push(&args, resolver_type(&body->resolver, path->u.apply.types.ptr[index]));
+      }
+      target = resolver_apply(program, target, args.ptr, args.len);
+      ms_ty_list_free(&args);
+    }
+    if (!ms_check_implements(program, target, state->scrutinee)) {
+      MsStrBuild out = ms_strbuild_new();
+      ms_ty_show(&out, program->names, types, target);
+      ms_strbuild_append_text(&out, " does not implement ");
+      ms_ty_show(&out, program->names, types, state->scrutinee);
+      arm_report(body, arm, MS_CHECK_TYPE, out);
+    }
+    if (state_seen(state, (MsName)target) || state->wildcard) {
+      arm_message(body, arm, MS_CHECK_TYPE, "duplicate or unreachable concrete type pattern; match each type once and before '_'");
+    }
+    state_add(state, (MsName)target); /* types are keyed by their row, which fits a name's width */
+  } else {
+    arm_message(body, arm, MS_CHECK_TYPE, "contract pattern requires a concrete type or enum; name an implementing type like Circle, or use '_'");
+  }
+  if (arm->bare || arm->bindings.len != 1) {
+    arm_message(body, arm, MS_CHECK_TYPE, "concrete type pattern requires exactly one receiver binding; write 'Type(name):' or 'Type(_):'");
+  }
+}
+
 static void check_arm(Body *body, ArmState *state, const MsArm *arm) {
   if (!state->report) {
     return;
   }
-  if (state->literal) {
+  if (state->contract) {
+    check_contract_arm(body, state, arm);
+  } else if (state->literal) {
     check_literal_arm(body, state, arm);
   } else {
     check_alternative_arm(body, state, arm);
@@ -440,7 +495,8 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
                                                            ms_ty_is(types, scrutinee, MS_BUILTIN_Bool)),
                     .case_count = def == NULL ? 0 : (uint32_t)def->cases.len};
   state.discarded = body->statement_match == expr;
-  state.report = !body->quiet && body->module < body->program->user_modules && (state.literal || def != NULL);
+  state.contract = ms_ty_kind(types, scrutinee) == MS_TY_CONTRACT;
+  state.report = !body->quiet && body->module < body->program->user_modules && (state.literal || def != NULL || state.contract);
   state.seen = MS_ARENA_NEW_ARRAY(&body->program->arena, MsName, expr->u.match.arms.len + 1);
   /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
   MsTy result = expected != MS_TY_NONE && body_has_foreign_variable(body, expected) ? MS_TY_NONE : expected;
@@ -460,6 +516,10 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
       ms_strbuild_append_text(&text, "; add a final '_:' arm");
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     }
+  }
+  if (state.report && state.contract && !state.wildcard) {
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
+                    ms_string_from_span(ms_span_of_text("contract match requires a final wildcard for other implementations; add a last '_' arm")));
   }
   check_exhaustive(body, expr, scrutinee);
   return result;
