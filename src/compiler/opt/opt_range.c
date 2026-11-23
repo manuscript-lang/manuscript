@@ -16,6 +16,8 @@
  * headers the join widens to a large threshold and then the type bound after a few growing rounds,
  * and a few narrowing rounds recover precision. Conditional edges refine the compared values
  * (opt_range_refine.c); `idx < list.len l` is proved by a goal-directed search (opt_range_prove.c).
+ * An element access that has run proves its index below the length for every later access at the same index value
+ * of a list with the same length origin (`rg_access_before`): the first one checks, the rest do not.
  * An induction variable is bounded by the upper bound of the value it is guarded by, because the
  * guard refines the value that feeds the back edge. `list.len` results lie in `0..=2^47`.
  *
@@ -165,6 +167,32 @@ static void rg_init_squares(RgFa *fa) {
   }
 }
 
+static bool rg_is_element_access(MirOp op) {
+  switch (op) {
+  case MOP_ListGet: case MOP_ListGetNn: case MOP_ListGetU: case MOP_ListSet: case MOP_ListSetNn:
+  case MOP_ListSetU: case MOP_ListAddr: case MOP_ListAddrU:
+    return true;
+  default:
+    return false;
+  }
+}
+
+static void rg_init_accesses(RgFa *fa) {
+  fa->acc_head = RG_ZNEW(&fa->arena, uint32_t, fa->nv + 1);
+  __builtin_memset(fa->acc_head, 0xFF, ((size_t)fa->nv + 1) * sizeof(uint32_t));
+  for (uint32_t bi = 0; bi < fa->nb; bi++) {
+    for (uint32_t ii = 0; ii < fa->f->blocks.ptr[bi].insts.len; ii++) {
+      const MirInst *i = &fa->f->blocks.ptr[bi].insts.ptr[ii];
+      if (!rg_is_element_access((MirOp)i->op) || i->nargs < 2 || fa->lengths[i->args[0]] == MIR_NONE) {
+        continue;
+      }
+      const RgAccess access = {bi, ii, fa->acc_head[i->args[1]], fa->lengths[i->args[0]]};
+      fa->acc_head[i->args[1]] = fa->nacc;
+      OPT_PUSH(&fa->arena, fa->accesses, fa->nacc, fa->cacc, RgAccess, access);
+    }
+  }
+}
+
 static void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
   *fa = (RgFa){.m = m, .f = f, .nv = (uint32_t)f->values.len, .nb = (uint32_t)f->blocks.len};
   fa->lengths = rg_length_origins(&fa->arena, m, f);
@@ -192,6 +220,7 @@ static void rg_fa_init(RgFa *fa, const MirModule *m, const MirFunc *f) {
     }
   }
   rg_init_squares(fa);
+  rg_init_accesses(fa);
   fa->envs = RG_ZNEW(&fa->arena, RgEnv, fa->nb + 1);
   fa->widen = RG_ZNEW(&fa->arena, uint32_t, fa->nv + 1);
 }
