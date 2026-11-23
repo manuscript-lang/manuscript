@@ -1,7 +1,7 @@
 /* compiler/check/std_exports.h: which bundled standard module exports a name.
  *
- * Backs the "add: import NAME from MODULE" hint of an unknown name. Modules are searched in name order
- * (internal ones excluded), each parsed on demand, so call it only when a diagnostic is being written. */
+ * Backs the "add: import NAME from MODULE" hint of an unknown name. The first exporter in name order wins
+ * (internal ones excluded); the first call parses them all and indexes their exports for the process. */
 #ifndef MS_COMPILER_CHECK_STD_EXPORTS_H
 #define MS_COMPILER_CHECK_STD_EXPORTS_H
 
