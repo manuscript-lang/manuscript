@@ -442,7 +442,10 @@ static MirValue lower_logical(LowerFn *fn, const MsExpr *expr) {
   mir_b_br(&fn->b, join, &known, 1);
   mir_b_switch_to(&fn->b, rhs);
   (void)fn_scope_begin(fn);
+  const bool saved_temps = fn->temps;
+  fn->temps = saved_temps || fn_expr_has_temporary(fn, expr->u.bin.right); /* the operand's temporaries close with it */
   const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  fn->temps = saved_temps;
   fn_scope_end(fn);
   if (right == MIR_NONE) {
     return MIR_NONE;

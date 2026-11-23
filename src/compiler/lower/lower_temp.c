@@ -232,6 +232,16 @@ static bool builds_plain_case(LowerFn *fn, const MsExpr *value) {
   return true;
 }
 
+bool fn_expr_has_temporary(LowerFn *fn, const MsExpr *expr) {
+  if (fn->closing == NULL) {
+    return false;
+  }
+  TempScan scan = {.fn = fn};
+  const MsVisitor visitor = {.ctx = &scan, .expr = scan_enter, .leave_expr = scan_leave};
+  ms_walk_expr(&visitor, expr);
+  return scan.found || scan.receiver;
+}
+
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *value = stmt->kind == MS_S_CALL || stmt->kind == MS_S_RETURN ? stmt->u.expr
                         : stmt->kind == MS_S_BIND                                ? stmt->u.bind.value
@@ -254,7 +264,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     }
     /* A name that closes is made in the scope outside the statement's own (`bind_scope`). */
     if (stmt->kind == MS_S_BIND && fn_temp_closes(fn, bound)) {
-      return scan.receiver;
+      return scan.receiver || (!stmt->u.bind.is_mutable && scan.found && value->kind == MS_E_CALL);
     }
     /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
     const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&

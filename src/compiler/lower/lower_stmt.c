@@ -846,7 +846,10 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   enter(fn, head);
   /* What the condition makes (a constant list read, a copy) lives for one trip: it goes before the test branches. */
   (void)fn_scope_begin(fn);
+  const bool saved_temps = fn->temps;
+  fn->temps = saved_temps || fn_expr_has_temporary(fn, stmt->u.loop.cond); /* its temporaries close on each trip */
   const MirValue cond = fn_expr(fn, stmt->u.loop.cond, LW_BORROW);
+  fn->temps = saved_temps;
   if (cond == MIR_NONE) {
     return false;
   }
