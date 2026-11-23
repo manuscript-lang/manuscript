@@ -306,7 +306,9 @@ export fn stringify[T: Data](
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
 	if from >= keys.length(): return null
 	if from == keys.length() - 1: return value.get(keys[from])
-	if next := value.get(keys[from]): return member_path(next, keys, from + 1)
+
+	next := value.get(keys[from])
+	if next != null: return member_path(next, keys, from + 1)
 
 	return null
 
@@ -341,7 +343,9 @@ fn var JsonReading[T].fail(cause: Error) Void!:
 fn var JsonReading[T].complete() move T!:
 	bytes := self.pending.drain()
 	self.reset()
-	if text := bytes.decode_utf8(): return parse[T](text, self.options)
+
+	text := bytes.decode_utf8()
+	if text != null: return parse[T](text, self.options)
 
 	return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
@@ -409,17 +413,22 @@ fn var JsonReading[T].advance(byte: UInt8) move T?!:
 
 fn var JsonReading[T].step(move value: Bytes, var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
-	if failure := self.failure: return error(failure.clone())
+
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
 	for byte in value.values():
 		stepped := self.advance(byte)
 		if stepped.is_error(): return self.fail(stepped.err())
 
-		if found := stepped.get_or(null): out.append(found)
+		found := stepped.get_or(null)
+		if found != null: out.append(found)
 
 fn var JsonReading[T].finish(var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
-	if failure := self.failure: return error(failure.clone())
+
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
 	self.finished = true
 	if self.mode == 0: return ok()

@@ -202,7 +202,9 @@ fn space(var reader: Reader, multiline: Bool) Void:
 	reader.pos = pos
 
 fn within(value: Int, limit: Int?) Bool:
-	if maximum := limit: return value <= maximum
+	maximum := limit
+	if maximum != null: return value <= maximum
+
 	return true
 
 fn allocate(var reader: Reader) Void!:
@@ -391,8 +393,9 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 	)
 
 	existing := lookup(reader, parent, key).clone()
+	node := existing
 
-	if node := existing:
+	if node != null:
 		match node:
 			TableNode(value):
 				var state = flags(reader, value).clone()
@@ -416,7 +419,9 @@ fn child(var reader: Reader, parent: Int, key: String, dotted: Bool) Result[Int,
 						"dotted key extends a table array",
 					)
 				)
-				if last := reader.arrays[slot].last(): return ok(last)
+
+				last := reader.arrays[slot].last()
+				if last != null: return ok(last)
 
 				return error(invalid(reader, "table array is empty"))
 			_: return error(invalid(reader, "key is already a value"))
@@ -432,8 +437,9 @@ fn append_table(var reader: Reader, parent: Int, key: String, next: Int) Result[
 	Error,
 ]:
 	existing := lookup(reader, parent, key).clone()
+	node := existing
 
-	if node := existing:
+	if node != null:
 		match node:
 			TableArray(slot):
 				reader.arrays[slot].append(next)
@@ -508,7 +514,9 @@ fn simple_key(var reader: Reader) String?:
 
 // Reads `keys = value` into the table, where `depth` is the nesting depth of the table.
 fn key_value(var reader: Reader, table: Int, depth: Int) Void!:
-	if key := simple_key(reader):
+	key := simple_key(reader)
+
+	if key != null:
 		value := read_value(reader, depth + 1)?
 		return assign_one(reader: reader, parent: table, key: key, value: value)
 
@@ -919,8 +927,10 @@ fn control_pattern() Regex:
 // column. A limit in `options` that the document exceeds returns `EOVERFLOW`.
 export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
-		if value := limit:
+		value := limit
+		if value != null:
 			if value < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
+
 	if not within(text.length(), options.max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)
@@ -939,8 +949,9 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 		entries: [],
 		arrays: [],
 	)
+	span := control_pattern().find_span(normalized)
 
-	if span := control_pattern().find_span(normalized):
+	if span != null:
 		place := locate(reader.data, span.start)
 		reason := if reader.data.get(span.start) == 13: "bare carriage return" else: "invalid control character"
 		return error(toml_invalid(line: place[0], column: place[1], reason: reason))
@@ -1184,7 +1195,8 @@ fn datetimes_valid(value: TomlValue) Bool:
 // a malformed date or time, returns `EINVAL`. Output longer than `max_bytes` returns
 // `EOVERFLOW`.
 export fn stringify(value: TomlValue, max_bytes: Int? = null) String!:
-	if limit := max_bytes:
+	limit := max_bytes
+	if limit != null:
 		if limit < 0: return error(Error("invalid TOML input", kind: "EINVAL"))
 
 	root := match value:

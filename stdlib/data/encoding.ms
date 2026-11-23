@@ -86,7 +86,9 @@ export fn base64_decode(
 // The budget as a count: no budget is the largest `Int`, and a negative budget stays
 // negative.
 fn budget(max_bytes: Int?) Int:
-	if limit := max_bytes: return limit
+	limit := max_bytes
+	if limit != null: return limit
+
 	return 9223372036854775807
 
 // Encodes bytes as standard Base64 by default; set `url_safe: true` for URL-safe text

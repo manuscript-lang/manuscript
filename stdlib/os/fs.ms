@@ -327,7 +327,8 @@ fn FileHandle.lock(exclusive: Bool, timeout: Duration?) Bool!:
 	while true:
 		if self.try_lock(exclusive)?: return ok(true)
 
-		if limit := timeout:
+		limit := timeout
+		if limit != null:
 			if monotonic().difference(started).compare(limit) >= 0: return ok(false)
 		sleep(milliseconds(5)).wait()?
 
@@ -435,7 +436,8 @@ type WatchSource:
 // watcher that overflowed with policy `error` is `EOVERFLOW`.
 fn var WatchSource.next() move FileEvent?!:
 	while true:
-		if event := self.pending.pop(): return ok(event)
+		event := self.pending.pop()
+		if event != null: return ok(event)
 
 		next := msstd_fs_watch_next(self.watcher.native)?
 		if next == null: return ok(null)
@@ -617,7 +619,8 @@ export fn glob(
 // The native walk calls its filter with the fields of a `PathEntry`; this adapts the
 // caller's predicate.
 fn excluding(move exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool) Bool)?:
-	if keep := exclude:
+	keep := exclude
+	if keep != null:
 		return fn(path: String, name: String, directory: Bool, symlink: Bool) Bool:
 			return keep(
 				PathEntry(
@@ -629,6 +632,7 @@ fn excluding(move exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool
 					),
 				)
 			)
+
 	return null
 
 // The bits of the native copy's flags: recursive 1, replace 2, error on an existing
@@ -928,8 +932,11 @@ fn through_links(path: String) String:
 // name is cut to 32 characters.
 fn temporary_name(path: String, stamp: String) String:
 	var split = 0
-	if slash := path.last_index_of("/"): split = slash + 1
-	if slash := path.last_index_of("\\"):
+	slash := path.last_index_of("/")
+	if slash != null: split = slash + 1
+
+	slash := path.last_index_of("\\")
+	if slash != null:
 		if slash + 1 > split: split = slash + 1
 
 	directory := path.slice(0, split)
@@ -994,8 +1001,10 @@ fn finish_atomic(
 ) Void!:
 	var out = file
 	var prepared = out.write(data)
+
 	if prepared.is_ok():
-		if permissions := mode: prepared = out.chmod(permissions)
+		permissions := mode
+		if permissions != null: prepared = out.chmod(permissions)
 
 	synced := if prepared.is_error(): prepared.clone() else: out.sync()
 	closed := out.close()
@@ -1069,7 +1078,9 @@ export fn watch(
 	recursive: Bool = false,
 	options: WatchOptions = WatchOptions(),
 ) ReadStream[FileEvent]!:
-	if interval := options.interval:
+	interval := options.interval
+
+	if interval != null:
 		if (options.max_events != null) or (options.overflow != null): return error(
 			invalid_input()
 		)

@@ -32,8 +32,9 @@ fn wait_for(var output: ReadStream[Bytes], seen: String, needle: String) String!
 
 	while not text.contains(needle):
 		chunk := within(output, 20.seconds())?
+		bytes := chunk
 
-		if bytes := chunk:
+		if bytes != null:
 			text += bytes.decode_utf8() or ""
 		else:
 			break
@@ -45,10 +46,12 @@ fn worker_pid(var report: ReadStream[String]) Int!:
 	line := within(report, 20.seconds())?
 	text := line or ""
 	parts := text.split_once("worker ")
+	found := parts
 
-	if found := parts:
+	if found != null:
 		number := found.after.split_once(" started")
-		if rest := number: return parse_int(rest.before)
+		rest := number
+		if rest != null: return parse_int(rest.before)
 
 	return ok(0 - 1)
 

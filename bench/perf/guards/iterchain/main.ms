@@ -18,7 +18,9 @@ type Evens:
 
 fn var Evens.next() Int?:
 	while true:
-		if v := self.inner.next():
+		v := self.inner.next()
+
+		if v != null:
 			if v % 2 == 0: return v
 		else:
 			return null

@@ -129,11 +129,16 @@ export fn run_bench_fixture[F](
 fn settings() Settings:
 	environment := environment().get_or(Map[String, String]())
 	var found = Settings(100 * 1000000, 10, 0)
-	if text := environment.get("MS_BENCH_TIME_MS"):
+	text := environment.get("MS_BENCH_TIME_MS")
+	if text != null:
 		found.target_nanoseconds = max(text.parse_int() or 100, 1) * 1000000
-	if text := environment.get("MS_BENCH_SAMPLES"):
+
+	text := environment.get("MS_BENCH_SAMPLES")
+	if text != null:
 		found.samples = max(text.parse_int() or 10, 1)
-	if text := environment.get("MS_BENCH_ITERATIONS"):
+
+	text := environment.get("MS_BENCH_ITERATIONS")
+	if text != null:
 		found.iterations = max(text.parse_int() or 0, 0)
 	return found
 

@@ -329,8 +329,9 @@ fn make_part(section: Bytes) Part!:
 			"".to_bytes()
 		),
 	)
+	disposition := part.headers.get("Content-Disposition")
 
-	if disposition := part.headers.get("Content-Disposition"):
+	if disposition != null:
 		media := parse_media_type(
 			f"x/x{disposition.view(disposition.index_of(";") or disposition.length(), disposition.length())}"
 		)
@@ -405,7 +406,8 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 				if size > keep: self.buffer = self.buffer.slice(size - keep, size)?
 				break
 
-			if limit := self.max_part_bytes:
+			limit := self.max_part_bytes
+			if limit != null:
 				if (
 					self.pending_size + self.buffer.length() - self.delimiter.length() > limit
 				):
@@ -425,7 +427,8 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 		end := at
 
 		if self.in_part:
-			if limit := self.max_part_bytes:
+			limit := self.max_part_bytes
+			if limit != null:
 				if self.pending_size + end > limit: return error(
 					Error("MIME: limit exceeded", kind: "EOVERFLOW")
 				)

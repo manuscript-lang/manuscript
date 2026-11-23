@@ -19,8 +19,9 @@ test "join_errors reports each error and none for empty":
 	expect_true(none_joined == null)?
 
 	both := join_errors([Error("a"), Error("b")])
+	joined := both
 
-	if joined := both:
+	if joined != null:
 		expect_equal(joined.message, "a\nb")?
 		expect_equal(joined.details["count"], "2")?
 

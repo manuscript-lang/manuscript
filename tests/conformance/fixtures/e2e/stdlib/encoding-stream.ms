@@ -66,8 +66,9 @@ fn join_text(input: ReadStream[String]) String!:
 
 	while true:
 		next := source.next()?
+		text := next
 
-		if text := next:
+		if text != null:
 			out = out.concat(text)
 		else:
 			break
@@ -80,8 +81,9 @@ fn join_bytes(input: ReadStream[Bytes]) Bytes!:
 
 	while true:
 		next := source.next()?
+		data := next
 
-		if data := next:
+		if data != null:
 			out.append(data)
 		else:
 			break

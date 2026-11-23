@@ -19,7 +19,8 @@ fn var Chunks.next() Bytes?!:
 		self.index += 1
 		return ok(part)
 
-	if cause := self.failure: return error(cause.clone())
+	cause := self.failure
+	if cause != null: return error(cause.clone())
 
 	return ok(null)
 
@@ -49,8 +50,9 @@ fn decode(move parts: List[Bytes], limits: SseLimits = SseLimits()) List[SseEven
 
 	while true:
 		next := events.next()?
+		event := next
 
-		if event := next:
+		if event != null:
 			out.append(event)
 		else:
 			break

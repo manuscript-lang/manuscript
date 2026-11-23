@@ -32,7 +32,8 @@ export fn median_interval(values: List[Float]) List[Float]!:
 	return ok([sorted[rank - 1], sorted[n - rank]])
 
 fn finite_counter(text: String) Float!:
-	if value := text.parse_float():
+	value := text.parse_float()
+	if value != null:
 		if value.is_finite() and value >= 0.0: return ok(value)
 	return invalid("expected a finite nonnegative measurement")
 
@@ -57,7 +58,8 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 		if fields.length() != columns: return invalid("unexpected sample column count")
 
 		var round = -1
-		if parsed := fields[0].parse_int(): round = parsed
+		parsed := fields[0].parse_int()
+		if parsed != null: round = parsed
 		if round < 0: return invalid("invalid sample round")
 		if fields[1] != "before" and fields[1] != "after": return invalid(
 			"unknown sample label"
@@ -75,7 +77,9 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 			"measurement must be positive and finite"
 		)
 
-		if previous := hashes.get(fields[2]):
+		previous := hashes.get(fields[2])
+
+		if previous != null:
 			if previous != fields[5]: return invalid("input hash changed")
 		else:
 			hashes.add(fields[2].clone(), fields[5].clone())

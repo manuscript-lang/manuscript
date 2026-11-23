@@ -129,7 +129,8 @@ fn old_stem(module_path: String) String:
 	if path == "test/test": return "test"
 	if path == "test/bench": return "bench"
 
-	if cut := path.split_once("/"):
+	cut := path.split_once("/")
+	if cut != null:
 		if packages.contains(cut.before): return cut.after.replace("/", "-")
 	return path.replace("/", "-")
 

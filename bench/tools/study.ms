@@ -123,9 +123,10 @@ export fn before_median(summary: JsonValue, name: String, operation: String) Flo
 			or (op == null)
 			or ((op).as_string() or "") == operation
 		)
+
 		if c == name and same_op:
-			if v := row.get_in(["distributions", "before", "median_ns"]):
-				return ok(v.as_float() or 0.0)
+			v := row.get_in(["distributions", "before", "median_ns"])
+			if v != null: return ok(v.as_float() or 0.0)
 
 	return invalid(f"no summary row for {name}")
 

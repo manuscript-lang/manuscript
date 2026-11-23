@@ -52,7 +52,8 @@ fn main() Void:
 	if suffix != "": tokens = count_workspace(app, suffix)
 
 	var first_ok = false
-	if first := builds.first(): first_ok = first.ok
+	first := builds.first()
+	if first != null: first_ok = first.ok
 
 	var detail = Detail(
 		built: false,

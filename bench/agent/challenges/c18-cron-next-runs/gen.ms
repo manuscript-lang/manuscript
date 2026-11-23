@@ -161,7 +161,9 @@ fn solve(s: String) String:
 		var k = 0
 
 		for r in ranges():
-			if v := parse_field(t[2 + k], r.low, r.high):
+			v := parse_field(t[2 + k], r.low, r.high)
+
+			if v != null:
 				sets.append(v)
 			else:
 				bad = r.name.clone()

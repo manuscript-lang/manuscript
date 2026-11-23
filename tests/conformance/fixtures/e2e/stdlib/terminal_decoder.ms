@@ -21,8 +21,9 @@ fn merged(events: List[TerminalEvent]) List[TerminalEvent]:
 			Text(more):
 				if out.length() > 0:
 					last := out[out.length() - 1].clone()
+					joined := text_of(last)
 
-					if joined := text_of(last):
+					if joined != null:
 						out[out.length() - 1] = TerminalEvent.Text(
 							joined + more.clone()
 						)

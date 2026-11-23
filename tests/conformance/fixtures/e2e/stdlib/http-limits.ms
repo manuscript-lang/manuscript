@@ -41,7 +41,8 @@ test "serve timeout closes idle connections":
 	)
 	var silent = connect(server.address(), timeout: 2.seconds()).wait() | expect_ok?
 	closed := recv(silent, 3.seconds()) | expect_ok?
-	if _data := closed: return error(Error("silent connection was answered"))
+	_data := closed
+	if _data != null: return error(Error("silent connection was answered"))
 
 	silent.close()?
 
@@ -53,7 +54,8 @@ test "serve timeout closes idle connections":
 	if answered.is_empty(): return error(Error("no response"))
 
 	after := recv(reused, 3.seconds()) | expect_ok?
-	if _data := after: return error(Error("idle keep-alive connection stayed open"))
+	_data := after
+	if _data != null: return error(Error("idle keep-alive connection stayed open"))
 
 test "serve rejects a zero request timeout":
 	failure := expect_error(

@@ -258,7 +258,8 @@ fn MemoryTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 	)
 
 	var entries = List[DirectoryEntry]()
-	if names := self.kids.get(inside):
+	names := self.kids.get(inside)
+	if names != null:
 		for key in names.values():
 			entries.append(
 				DirectoryEntry(
@@ -325,7 +326,8 @@ fn EmbeddedTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 	)
 
 	var entries = List[DirectoryEntry]()
-	if names := self.kids.get(inside):
+	names := self.kids.get(inside)
+	if names != null:
 		for key in names:
 			entries.append(
 				DirectoryEntry(

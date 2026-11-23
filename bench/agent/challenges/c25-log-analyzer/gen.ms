@@ -77,7 +77,9 @@ fn solve(s: String) String:
 	out.append(
 		f"p95: {if lats.is_empty(): 0 else: sorted_lats[(95 * lats.length() + 99) / 100 - 1]}"
 	)
-	if e := slow: out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
+
+	e := slow
+	if e != null: out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
 	out.append("top:")
 
 	order := counts.keys().sorted(

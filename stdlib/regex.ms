@@ -51,7 +51,9 @@ fn Regex.capture_named(text: String) Map[String, String]:
 
 // Returns the UTF-8 byte range of the first match, or null when nothing matches.
 fn Regex.find_span(text: String) RegexSpan?:
-	if raw := msstd_regex_find_span(self, text): return RegexSpan(raw[0], raw[1])
+	raw := msstd_regex_find_span(self, text)
+	if raw != null: return RegexSpan(raw[0], raw[1])
+
 	return null
 
 // Splits text around every match, always returning at least one piece. max_pieces

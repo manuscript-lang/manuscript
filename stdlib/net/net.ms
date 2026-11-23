@@ -125,7 +125,9 @@ export type ConnectionInfo:
 // Returns the negotiated TLS version, cipher suite, protocol, and peer
 // certificates. A connection that is not TLS returns EINVAL.
 fn ConnectionInfo.tls_info() TlsInfo!:
-	if info := self.tls: return ok(info.clone())
+	info := self.tls
+	if info != null: return ok(info.clone())
+
 	return error(Error("network: invalid input", kind: "EINVAL"))
 
 /*
@@ -374,7 +376,9 @@ fn Network.connect(
 	tls: TlsOptions? = null,
 	timeout: Duration? = null,
 ) Connection!:
-	if options := tls:
+	options := tls
+
+	if options != null:
 		if options.server_name.is_empty():
 			return error(Error("network: invalid input", kind: "EINVAL"))
 		return ok(
@@ -688,13 +692,15 @@ export fn serve(
 	move handler: fn(var HttpExchange) Void!,
 	options: HttpServerOptions = HttpServerOptions()
 ) HttpServer!:
-	if cores := options.cores:
+	cores := options.cores
+	if cores != null:
 		if cores < 1: return error(Error("network: invalid input", kind: "EINVAL"))
 
 	serving := msstd_http_serving_new(address, options, native_handler(handler))?
 	bound := msstd_http_serving_address(serving)
 	listening := ServingHandle(serving: serving)
-	if cores := options.cores:
+	cores := options.cores
+	if cores != null:
 		msrt_runtime_set_threads(cores)
 
 	// The accept loop owns the listener; each worker owns a share of the options and
@@ -733,7 +739,9 @@ type Accepting:
 
 fn move Accepting.close() Void!:
 	while not self.deals.is_empty():
-		if deal := self.deals.pop():
+		deal := self.deals.pop()
+
+		if deal != null:
 			var closing = deal
 			void closing.close()
 
@@ -797,7 +805,9 @@ fn serve_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Void!:
 		item := input.receive()
 		if item.is_error(): break
 
-		if raw := item.get():
+		raw := item.get()
+
+		if raw != null:
 			msstd_http_worker_adopt(engine.worker, raw)
 		else:
 			break

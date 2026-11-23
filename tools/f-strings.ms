@@ -64,8 +64,9 @@ fn Scan.after_name_byte() Bool:
 // The index just after the next `needle` at or after the cursor, or the end of the
 // text.
 fn Scan.past(needle: String) Int:
-	if found := self.part(self.at, self.text.length()).index_of(needle):
-		return self.at + found + needle.length()
+	found := self.part(self.at, self.text.length()).index_of(needle)
+	if found != null: return self.at + found + needle.length()
+
 	return self.text.length()
 
 // Whether the literal body starting at the cursor holds an unescaped `{` before its

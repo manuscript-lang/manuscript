@@ -202,8 +202,11 @@ bench "list.any_early_exit" per 100000:
 
 bench "list.max_by" per 100:
 	var n = 0
+
 	for i in 0..100:
-		if best := fixture.small_points.max_by(fn(p: Point) Int: p.y): n += best.x
+		best := fixture.small_points.max_by(fn(p: Point) Int: p.y)
+		if best != null: n += best.x
+
 	n
 
 bench "list.max_by_loop" per 100:

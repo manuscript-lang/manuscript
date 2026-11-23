@@ -13,8 +13,9 @@ fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Int!:
 
 	while true:
 		next := parts.next()?
+		part := next
 
-		if part := next:
+		if part != null:
 			if part.data.length() != size: return error(Error("wrong multipart size"))
 
 			seen += 1

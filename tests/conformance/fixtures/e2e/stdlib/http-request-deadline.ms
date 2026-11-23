@@ -51,7 +51,9 @@ fn fetch(address: String, path: String) String:
 				text = f"{text}[read failed: {read.err().kind} {read.err().message}]"
 				break
 
-			if data := read.get():
+			data := read.get()
+
+			if data != null:
 				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
 

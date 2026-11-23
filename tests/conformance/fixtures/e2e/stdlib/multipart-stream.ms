@@ -40,8 +40,9 @@ fn read_parts(body: Bytes, size: Int, max_part_bytes: Int? = null) List[Part]!:
 
 	while true:
 		next := parts.next()?
+		part := next
 
-		if part := next:
+		if part != null:
 			out.append(part)
 		else:
 			break
@@ -211,14 +212,17 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 
 	for size in [1, 2, 5, 7, 64, 1024]:
 		var parts = multipart_parts(from_list(empty_chunks(body, size)), "XyZ", null)
+		first := parts.next()?
 
-		if first := parts.next()?:
+		if first != null:
 			expect_equal(first.name, "binary")?
 			expect_equal(first.data, data)?
 		else:
 			return fail(f"missing binary part at chunk size {size}")
 
-		if second := parts.next()?:
+		second := parts.next()?
+
+		if second != null:
 			expect_equal(second.data, "tail".to_bytes())?
 		else:
 			return fail(f"missing trailing part at chunk size {size}")

@@ -8,7 +8,8 @@ fn rep(text: String, count: Int) String:
 
 fn line(cmd: String, pat: String, subj: String = "", repl: String? = null) String:
 	var fields = [cmd, pat, subj]
-	if r := repl:
+	r := repl
+	if r != null:
 		fields.append(r)
 	return fields.join("\t") + "\n"
 

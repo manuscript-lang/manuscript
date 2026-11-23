@@ -65,9 +65,13 @@ fn HttpHeaders.get(name: String) String?:
 fn HttpHeaders.get_all(name: String) List[String]:
 	var out: List[String] = []
 	raw := msstd_http_headers_values(self, name)
-	if found := raw:
+	found := raw
+
+	if found != null:
 		for item in found:
-			if text := item.decode_utf8(): out.append(text)
+			text := item.decode_utf8()
+			if text != null: out.append(text)
+
 	return out
 
 // Returns the raw bytes of every value as an owned list, or null for an absent
@@ -557,7 +561,8 @@ fn response(move raw: RawResponse) StreamingResponse:
 // the server's options returns EOVERFLOW; `limit` also bounds it when given.
 export fn read_body(var exchange: HttpExchange, limit: Int? = null) Bytes!:
 	first := exchange.read()?
-	if head := first: return read_rest(exchange, head, limit)
+	head := first
+	if head != null: return read_rest(exchange, head, limit)
 
 	return ok("".to_bytes())
 
@@ -570,8 +575,9 @@ fn read_rest(var exchange: HttpExchange, move head: Bytes, limit: Int?) Bytes!:
 	)
 
 	second := exchange.read()?
+	next := second
 
-	if next := second:
+	if next != null:
 		total += next.length()
 		if over_limit(total, limit): return error(
 			Error("HTTP: limit exceeded", kind: "EOVERFLOW")
@@ -592,8 +598,9 @@ fn read_more(
 
 	while true:
 		chunk := exchange.read()?
+		bytes := chunk
 
-		if bytes := chunk:
+		if bytes != null:
 			size += bytes.length()
 			if over_limit(size, limit): return error(
 				Error("HTTP: limit exceeded", kind: "EOVERFLOW")
@@ -604,7 +611,9 @@ fn read_more(
 			return ok(join(parts))
 
 fn over_limit(total: Int, limit: Int?) Bool:
-	if max := limit: return total > max
+	max := limit
+	if max != null: return total > max
+
 	return false
 
 // Sends `response` whole: its status and headers, then its body.

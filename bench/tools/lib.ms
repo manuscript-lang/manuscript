@@ -36,7 +36,8 @@ export fn host() String:
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
 	all := environment().get_or(Map[String, String]())
-	if value := all.get(name): return value.clone()
+	value := all.get(name)
+	if value != null: return value.clone()
 
 	return fallback.clone()
 
@@ -150,7 +151,8 @@ export fn fixed(value: Float, digits: Int) String:
 
 // Parses a positive repeat count.
 export fn repeats(text: String) Int!:
-	if n := text.parse_int():
+	n := text.parse_int()
+	if n != null:
 		if n > 0: return ok(n)
 	return invalid("repeats must be a positive integer")
 

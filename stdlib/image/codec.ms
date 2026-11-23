@@ -47,7 +47,8 @@ export fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 	)
 
 	count := width * height
-	if limit := max_pixels:
+	limit := max_pixels
+	if limit != null:
 		if count > limit: return error(
 			too_big(f"{width}x{height} exceeds {limit} pixels")
 		)

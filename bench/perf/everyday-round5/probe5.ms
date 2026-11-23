@@ -18,7 +18,9 @@ type Evens:
 
 fn var Evens.next() Int?:
 	while true:
-		if v := self.inner.next():
+		v := self.inner.next()
+
+		if v != null:
 			if v % 2 == 0: return v
 		else:
 			return null
@@ -30,7 +32,9 @@ type Scaled:
 	k: Int
 
 fn var Scaled.next() Int?:
-	if v := self.inner.next(): return v * self.k
+	v := self.inner.next()
+	if v != null: return v * self.k
+
 	return null
 
 type Rec:

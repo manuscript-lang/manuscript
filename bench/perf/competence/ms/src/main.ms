@@ -233,7 +233,9 @@ fn optionals(n: Int) Int:
 		if i % 5 != 0:
 			o = i
 
-		if v := o:
+		v := o
+
+		if v != null:
 			total += v
 		else:
 			total += 1

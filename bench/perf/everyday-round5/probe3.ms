@@ -227,10 +227,13 @@ fn y_optional_ints() Int:
 		else: xs.append(i)
 
 	var t = 0
+
 	for r in 0..10:
 		for v in xs:
-			if x := v:
+			x := v
+			if x != null:
 				t += x
+
 	return t
 
 fn y_stats() Int:

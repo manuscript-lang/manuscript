@@ -290,9 +290,12 @@ fn e_optional_chain() Int:
 		m[e.index] = e.value
 
 	var t = 0
+
 	for i in 0..10000000:
-		if v := m.get(i % 1200):
+		v := m.get(i % 1200)
+		if v != null:
 			t += v
+
 	return t
 
 fn r_v3_math() Int:

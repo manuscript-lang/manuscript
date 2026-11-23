@@ -120,21 +120,26 @@ fn var Deque[T].rotate(by: Int) Void:
 		steps += self.size
 
 	while steps > 0:
-		if value := self.pop_front():
+		value := self.pop_front()
+		if value != null:
 			self.push_back(value)
 		steps -= 1
 
 	while steps < 0:
-		if value := self.pop_back():
+		value := self.pop_back()
+		if value != null:
 			self.push_front(value)
 		steps += 1
 
 // Returns a new list of copies of the values from front to back.
 fn Deque[T: Clonable].to_list() List[T]:
 	var out: List[T] = []
+
 	for index in 0..self.size:
-		if value := self.slots.get(self.slot_of(index)):
+		value := self.slots.get(self.slot_of(index))
+		if value != null:
 			out.append(value.clone())
+
 	return out
 
 // Returns the number of values in the deque.

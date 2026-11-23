@@ -131,12 +131,15 @@ export fn expect_contains(
 
 // Fails on `null`; otherwise returns the payload.
 export fn expect_some[T](move actual: T?, site: String = caller_site()) T!:
-	if value := actual: return ok(value)
+	value := actual
+	if value != null: return ok(value)
+
 	return error(failure("expected some, got none", site))
 
 // Fails when a value is present; passes on `null`.
 export fn expect_none[T](actual: T?, site: String = caller_site()) Void!:
-	if value := actual: return error(failure(f"expected none, got {repr(value)}", site))
+	value := actual
+	if value != null: return error(failure(f"expected none, got {repr(value)}", site))
 
 // Fails on an error, showing it; otherwise returns the `ok` payload.
 export fn expect_ok[T, E](move actual: T!E, site: String = caller_site()) T!:
@@ -155,7 +158,9 @@ export fn expect_error[T, E: Clonable](actual: T!E, site: String = caller_site()
 // Calls `operation` once and requires it to raise a programming fault; returns the
 // fault message. Fails if the operation returns normally. Cancellation propagates.
 export fn expect_fault(operation: fn() Void, site: String = caller_site()) String!:
-	if message := catch_fault(operation): return ok(message)
+	message := catch_fault(operation)
+	if message != null: return ok(message)
+
 	return error(
 		failure(
 			"expected a programming fault, operation returned normally",

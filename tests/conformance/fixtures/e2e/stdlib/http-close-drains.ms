@@ -57,7 +57,9 @@ export fn main() Int:
 
 			while true:
 				if chunk := within(conn.input, nanoseconds(5000000000)):
-					if data := chunk:
+					data := chunk
+
+					if data != null:
 						text = f"{text}{(data.decode_utf8() or "?")}"
 						continue
 

@@ -13,7 +13,8 @@ fn Pi.name() String: "pi"
 
 fn Pi.command(prompt: String, workspace: String, model: String?) List[String]:
 	var cmd = ["pi", "--mode", "json", "-p", prompt.clone()]
-	if m := model: cmd = cmd.concat(["--model", m.clone()])
+	m := model
+	if m != null: cmd = cmd.concat(["--model", m.clone()])
 	return cmd
 
 fn Pi.parse(transcript: String) Usage:
@@ -32,7 +33,9 @@ fn Pi.parse(transcript: String) Usage:
 		u.tokens_out += int_at(us, "output")
 		u.turns += 1
 
-		if total := (us.get("cost") or JsonValue.Null).get("total"):
+		total := (us.get("cost") or JsonValue.Null).get("total")
+
+		if total != null:
 			u.cost_usd += total.as_float() or 0.0
 			u.cost_source = "harness"
 

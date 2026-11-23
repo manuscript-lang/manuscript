@@ -156,7 +156,9 @@ fn tilde_key(n: Int) String:
 	names[21] = "f10"
 	names[23] = "f11"
 	names[24] = "f12"
-	if found := names.get(n): return found.clone()
+
+	found := names.get(n)
+	if found != null: return found.clone()
 
 	return ""
 
@@ -237,7 +239,8 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 		name := letter_key(last)
 		if not name.is_empty(): event = plain(name)
 
-	if found := event: return with_modifiers(found, modifier)
+	found := event
+	if found != null: return with_modifiers(found, modifier)
 
 	return null
 
@@ -284,7 +287,9 @@ fn csi_at(buf: List[String], at: Int) Parsed:
 		if c >= 64 and c <= 126:
 			params := concat_all(buf.slice(start, j).clone().get_or(List[String]()))
 			if c == 126 and params == "200": return parsed(4, j + 1 - at)
-			if event := csi_key(params, c): return decoded(event, j + 1 - at)
+
+			event := csi_key(params, c)
+			if event != null: return decoded(event, j + 1 - at)
 
 			return parsed(2, j + 1 - at)
 
@@ -448,7 +453,8 @@ fn var TerminalDecoder.decode(text: String) List[TerminalEvent]:
 			self.pasting = true
 			self.paste = List[String]()
 
-		if event := r.event: out.append(event.clone())
+		event := r.event
+		if event != null: out.append(event.clone())
 		i += r.used
 
 	if not run.is_empty(): out.append(TerminalEvent.Text(concat_all(run)))
@@ -471,7 +477,9 @@ fn read_size(handle: NativeRawTerminal) TerminalSize?:
 	)
 
 fn resized(now: TerminalSize, before: TerminalSize?) Bool:
-	if last := before: return last.columns != now.columns or last.rows != now.rows
+	last := before
+	if last != null: return last.columns != now.columns or last.rows != now.rows
+
 	return false
 
 // Reads text from a raw terminal's native handle and decodes it into events.
@@ -491,8 +499,9 @@ fn var TerminalEvents.next() move TerminalEvent?!:
 		// A resize wakes the read without input (SIGWINCH on Unix, a console record on
 		// Windows), so compare the size on every wake.
 		now := read_size(self.handle.native)
+		current := now
 
-		if current := now:
+		if current != null:
 			if resized(current, self.size):
 				self.size = current.clone()
 				return ok(TerminalEvent.Resize(current.columns, current.rows))

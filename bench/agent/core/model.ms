@@ -78,7 +78,8 @@ export type Lang:
 // The extension of the solution file, such as `.ms`.
 fn Lang.suffix() String:
 	base := self.solution.split("/").last() or ""
-	if at := base.last_index_of("."): return base.slice(at, base.length())
+	at := base.last_index_of(".")
+	if at != null: return base.slice(at, base.length())
 
 	return ""
 
@@ -89,7 +90,9 @@ fn text_of(file: String) String:
 	return read_file(file).wait().get().decode_utf8() or ""
 
 fn field(doc: JsonValue, key: String) String:
-	if value := doc.get(key): return value.as_string() or ""
+	value := doc.get(key)
+	if value != null: return value.as_string() or ""
+
 	return ""
 
 // Challenges whose id equals, or starts with, one of `ids` (all when `ids` is empty),
@@ -139,12 +142,14 @@ export fn load_languages(ids: List[String]) List[Lang]:
 
 		d := entry.value
 		var context = List[String]()
-		if items := d.get("context"):
+		items := d.get("context")
+		if items != null:
 			for item in (items.as_list() or []):
 				context.append(item.as_string() or "")
 
 		var template = entry.key.clone()
-		if t := d.get("template"): template = t.as_string() or entry.key
+		t := d.get("template")
+		if t != null: template = t.as_string() or entry.key
 		out.append(
 			Lang(
 				entry.key.clone(),
@@ -175,7 +180,8 @@ export fn cost_from_tokens(
 ) Float:
 	table := parse(text_of(f"{root()}/pricing.json")).get_or(JsonValue.Null)
 	var p = table.get("default") or JsonValue.Null
-	if own := table.get(model): p = own.clone()
+	own := table.get(model)
+	if own != null: p = own.clone()
 
 	input := (p.get("input") or JsonValue.Null).as_float() or 0.0
 	cached_input := (p.get("cached_input") or JsonValue.Null).as_float() or 0.0

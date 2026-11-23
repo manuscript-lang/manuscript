@@ -133,7 +133,8 @@ export fn verify_token[T: Data = JsonValue](
 		Error("jwt: unsupported critical header", kind: "EBADMSG")
 	)
 
-	if encoded := header.get("b64"):
+	encoded := header.get("b64")
+	if encoded != null:
 		if not (encoded.as_bool() or (false)): return error(
 			Error("jwt: unsupported payload encoding", kind: "EBADMSG")
 		)
@@ -195,7 +196,9 @@ fn hmac_hash(algorithm: JwtAlgorithm) HashAlgorithm?:
 		_: return null
 
 fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
-	if hash := hmac_hash(algorithm):
+	hash := hmac_hash(algorithm)
+
+	if hash != null:
 		mac := hash.hmac(key, data)
 		if bytes := mac: return ok(bytes)
 
@@ -224,7 +227,9 @@ fn verify_bytes(
 	data: Bytes,
 	signature: Bytes,
 ) Bool!:
-	if hash := hmac_hash(algorithm):
+	hash := hmac_hash(algorithm)
+
+	if hash != null:
 		mac := hash.hmac(key, data)
 		if bytes := mac: return ok(constant_time_equal(bytes, signature))
 
@@ -247,35 +252,46 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 		_: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
 
 	var moment = 0
+	given := check.at
 
-	if given := check.at:
+	if given != null:
 		moment = given
 	else:
 		moment = now().seconds
 
-	if exp := claims.get("exp"):
+	exp := claims.get("exp")
+
+	if exp != null:
 		limit := numeric_date(exp, "exp")?
 		boundary := (big_int_of_int(moment) - big_int_of_int(check.leeway)).to_string()
 		if date_compare(limit, boundary) <= 0: return error(
 			Error("jwt: token expired", kind: "EBADMSG")
 		)
 
-	if nbf := claims.get("nbf"):
+	nbf := claims.get("nbf")
+
+	if nbf != null:
 		start := numeric_date(nbf, "nbf")?
 		boundary := (big_int_of_int(moment) + big_int_of_int(check.leeway)).to_string()
 		if date_compare(start, boundary) > 0: return error(
 			Error("jwt: token not yet valid", kind: "EBADMSG")
 		)
 
-	if issuer := check.issuer:
+	issuer := check.issuer
+
+	if issuer != null:
 		actual := (claims.get("iss").clone() or JsonValue.Null).as_string()
 		if (actual == null) or (actual) != issuer: return error(
 			Error("jwt: wrong issuer", kind: "EBADMSG")
 		)
 
-	if aud := claims.get("aud"):
+	aud := claims.get("aud")
+
+	if aud != null:
 		if aud.as_string() == null:
-			if many := aud.as_list():
+			many := aud.as_list()
+
+			if many != null:
 				if many.any(fn item: item.as_string() == null): return error(
 					Error(
 						"jwt: aud must hold only strings",
@@ -290,7 +306,8 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 					)
 				)
 
-	if audience := check.audience:
+	audience := check.audience
+	if audience != null:
 		if not includes_audience(claims.get("aud").clone() or JsonValue.Null, audience): return error(
 			Error("jwt: wrong audience", kind: "EBADMSG")
 		)
@@ -393,9 +410,11 @@ fn date_compare(text: String, boundary: String) Int:
 	return if negative: -comparison else: comparison
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
-	if single := claim.as_string(): return single == audience
-	if many := claim.as_list():
-		return many.any(fn item: (item.as_string() or "") == audience)
+	single := claim.as_string()
+	if single != null: return single == audience
+
+	many := claim.as_list()
+	if many != null: return many.any(fn item: (item.as_string() or "") == audience)
 
 	return false
 

@@ -40,7 +40,8 @@ fn events(log: String) String:
 
 fn read_one(input: ReadStream[Token]) Void!:
 	var owned = input
-	if token := owned.next()?:
+	token := owned.next()?
+	if token != null:
 		use_token(token)?
 
 fn wait_one(input: ReadStream[Token]) Void!:
@@ -144,8 +145,9 @@ test "a source error relays through try after closing earlier items":
 
 fn direct_next(log: String) Void!:
 	var input = ReadStream[Token](Tokens(log.clone()))
+	item := input.next()?
 
-	if item := input.next()?:
+	if item != null:
 		token := item
 		use_token(token)?
 
@@ -269,7 +271,8 @@ fn resume_after_break(log: String) Void!:
 		use_token(token)?
 		break
 
-	if token := input.next()?:
+	token := input.next()?
+	if token != null:
 		use_token(token)?
 
 test "breaking returns the source so its next resource can be read":

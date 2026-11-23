@@ -20,7 +20,9 @@ fn first_kid(n: Node) Node?:
 
 fn descend(n: Node, d: Int) Int:
 	if d == 0: return n.key
-	if k := first_kid(n): return descend(k, d - 1)
+
+	k := first_kid(n)
+	if k != null: return descend(k, d - 1)
 
 	return 0
 

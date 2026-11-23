@@ -50,7 +50,9 @@ fn matched_value(n: Int) Int:
 	return checked(n).get_or(-1)
 
 fn closure_return(n: Int) Int!Error:
-	if y := halve(n): return ok(y)
+	y := halve(n)
+	if y != null: return ok(y)
+
 	return error(Error("odd"))
 
 fn sum_all(count: Int) Int!Error:
@@ -97,7 +99,9 @@ test "boxed consumers":
 	expect_equal(matched_value(-3), -1)?
 
 test "optional and payload kinds":
-	if h := halve(8):
+	h := halve(8)
+
+	if h != null:
 		expect_equal(h, 4)?
 	else:
 		return fail("halve none")
@@ -111,7 +115,9 @@ test "optional and payload kinds":
 	expect_equal(r, 1.5)?
 	nothing(true).get()
 
-	if inner := nested(4):
+	inner := nested(4)
+
+	if inner != null:
 		expect_equal(inner, 2)?
 	else:
 		return fail("nested none")

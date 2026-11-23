@@ -46,8 +46,9 @@ fn read_all(input: ReadStream[Bytes]) Bytes!:
 
 	while true:
 		next := source.next()?
+		data := next
 
-		if data := next:
+		if data != null:
 			out.append(data)
 		else:
 			break
@@ -85,8 +86,9 @@ test "decompressed streams preserve lines across decoder output batches":
 
 		while true:
 			next := rows.next()?
+			line := next
 
-			if line := next:
+			if line != null:
 				expect_equal(line, "archive line input")?
 				count += 1
 			else:
@@ -128,8 +130,9 @@ fn read_entries(
 
 	while true:
 		next := entries.next()?
+		entry := next
 
-		if entry := next:
+		if entry != null:
 			out.append(entry)
 		else:
 			break

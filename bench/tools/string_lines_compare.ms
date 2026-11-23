@@ -189,8 +189,9 @@ fn main() Int:
 	if pairs < 1: return fail("--pairs must be positive")
 
 	var expected = builtin_identities()
+	file := opts.get("identity-file")
 
-	if file := opts.get("identity-file"):
+	if file != null:
 		loaded := read_identities(file)
 		if loaded.is_error(): return fail(loaded.err().message)
 

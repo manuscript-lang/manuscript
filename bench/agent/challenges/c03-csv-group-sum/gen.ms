@@ -53,7 +53,9 @@ fn parse_line(line: String) Row?:
 		amt = parts[1].clone()
 
 	if cat.contains("\"") or amt.contains(",") or cat.is_empty(): return null
-	if value := cents(amt): return Row(cat, value)
+
+	value := cents(amt)
+	if value != null: return Row(cat, value)
 
 	return null
 
@@ -66,7 +68,9 @@ fn solve(s: String) String:
 		line := if raw.ends_with("\r"): raw.slice(0, raw.length() - 1) else: raw.clone()
 		if line.trim().is_empty(): continue
 
-		if row := parse_line(line):
+		row := parse_line(line)
+
+		if row != null:
 			if not totals.contains(row.category): order.append(row.category.clone())
 			totals[row.category.clone()] = totals.get_or(row.category, 0) + row.cents
 		else:

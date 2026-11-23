@@ -126,16 +126,21 @@ type Compressing:
 	failure: Error?
 
 fn var Compressing.step(move value: Bytes, var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if encoder := self.encoder:
+	encoder := self.encoder
+
+	if encoder != null:
 		packed := msstd_compress_encoder_push(encoder, value)
 		if not packed.is_empty(): out.append(packed)
 
 fn var Compressing.finish(var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if encoder := self.encoder:
+	encoder := self.encoder
+	if encoder != null:
 		out.append(msstd_compress_encoder_end(encoder))
 	self.encoder = null
 
@@ -162,16 +167,22 @@ type Decompressing:
 	failure: Error?
 
 fn var Decompressing.step(move value: Bytes, var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if decoder := self.decoder:
+	decoder := self.decoder
+
+	if decoder != null:
 		plain := msstd_compress_decoder_push(decoder, value)?
 		if not plain.is_empty(): out.append(plain)
 
 fn var Decompressing.finish(var out: List[Bytes]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
-	if decoder := self.decoder:
+	decoder := self.decoder
+
+	if decoder != null:
 		plain := msstd_compress_decoder_end(decoder)?
 		if not plain.is_empty(): out.append(plain)
 
@@ -290,9 +301,12 @@ type TarEntries:
 // `max_entry_bytes` or would take the archive past `max_bytes`.
 fn TarEntries.check_size(size: Int) Void!:
 	over: Void! := error(Error("archive: limit exceeded", kind: "EOVERFLOW"))
-	if most := self.options.max_entry_bytes:
+	most := self.options.max_entry_bytes
+	if most != null:
 		if size > most: return over
-	if most := self.options.max_bytes:
+
+	most := self.options.max_bytes
+	if most != null:
 		if self.total + size > most: return over
 
 // Internal: the byte length of the member at the start of the buffer, or 0 while its
@@ -401,11 +415,14 @@ fn var TarEntries.drain(var out: List[ArchiveEntry], ended: Bool) Void!:
 			self.total += entry.data.length()
 			out.append(entry)
 
-		if most := self.options.max_entries:
+		most := self.options.max_entries
+		if most != null:
 			if self.count > most: return error(
 				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)
-		if most := self.options.max_bytes:
+
+		most := self.options.max_bytes
+		if most != null:
 			if self.total > most: return error(
 				Error("archive: limit exceeded", kind: "EOVERFLOW")
 			)

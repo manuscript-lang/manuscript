@@ -22,9 +22,12 @@ import (
 // was printed.
 fn live_blocks(text: String) List[Int]:
 	var counts = List[Int]()
+
 	for line in text.split("\n"):
 		if line.starts_with("ms-rt live blocks at exit: "):
-			if n := line.slice(27, line.length()).trim().parse_int(): counts.append(n)
+			n := line.slice(27, line.length()).trim().parse_int()
+			if n != null: counts.append(n)
+
 	return counts
 
 // The tests of one `ms test` run that left live blocks, as "name: count" lines: each
@@ -120,7 +123,8 @@ fn main() Int:
 	// CPU (LEAK_JOBS overrides). Workers share the scratch directory, which is only the
 	// working directory of the child processes.
 	var jobs = system_info().cpu_count
-	if n := env("LEAK_JOBS", "").parse_int(): jobs = n
+	n := env("LEAK_JOBS", "").parse_int()
+	if n != null: jobs = n
 	if jobs < 1: jobs = 1
 
 	// A promise reads its captures until it is dropped, so the chunks outlive the loop

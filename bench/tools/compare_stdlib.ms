@@ -51,7 +51,8 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 		operations.add(c.name.clone(), stats.operations)
 		medians.add(c.name.clone(), stats.median_ns)
 
-	if want := expected:
+	want := expected
+	if want != null:
 		if want != operations: return invalid("cases or operation counts changed")
 	return ok(Sample(operations, medians))
 
@@ -126,7 +127,8 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		summary.add(label.clone(), jobject(entry))
 
 		var shown = "—"
-		if r := ratio: shown = r.to_fixed(3) + "x"
+		r := ratio
+		if r != null: shown = r.to_fixed(3) + "x"
 		table.append(
 			f"| {label} | {ops} | {before.to_precision(4)} | {after.to_precision(4)} | {shown} |"
 		)

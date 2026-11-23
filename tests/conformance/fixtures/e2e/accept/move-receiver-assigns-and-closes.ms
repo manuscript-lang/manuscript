@@ -1,6 +1,7 @@
 // conform: tags=scope-cleanup,records,tier-core
 // conform: phase=run
-// A `move` receiver that assigns a field and mutates another still closes the resources its fields hold.
+// A `move` receiver that assigns a field and mutates another still closes the resources
+// its fields hold.
 import stdout from "@std/io/io.ms"
 
 type Item:
@@ -16,9 +17,12 @@ type Holder:
 
 fn move Holder.close() Void!:
 	while not self.items.is_empty():
-		if x := self.items.pop():
+		x := self.items.pop()
+
+		if x != null:
 			var c = x
 			void c.close()
+
 	self.tag = 2
 
 export fn main() Int:

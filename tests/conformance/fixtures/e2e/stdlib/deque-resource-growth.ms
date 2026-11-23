@@ -79,8 +79,9 @@ fn nested(log: String) Void!:
 
 	while not queue.is_empty():
 		item := queue.pop_front()
+		holder := item
 
-		if holder := item:
+		if holder != null:
 			popped.append(holder.door.id)
 		else:
 			popped.append(-1)

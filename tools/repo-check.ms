@@ -173,8 +173,9 @@ fn trigger_error(text: String) String:
 	lines := text.split("\n")
 	on := block(lines, "on", 0) or []
 	unfiltered := "required checks must run on every pull request without path filters"
+	pull := block(on.clone(), "pull_request", 2)
 
-	if pull := block(on.clone(), "pull_request", 2):
+	if pull != null:
 		for line in pull:
 			if line.trim_start().starts_with("paths"): return unfiltered
 	else:

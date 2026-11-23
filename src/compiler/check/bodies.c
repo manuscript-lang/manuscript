@@ -296,6 +296,9 @@ static void stmt_if(Body *body, const MsStmt *stmt) {
       ms_strbuild_append_text(&text, "; use 'if' for a Bool condition or 'match' for other alternatives");
       ms_check_report(body->program, body->module, stmt->u.branch.cond->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
     }
+    if (cond != MS_TY_NONE && ms_ty_is(types, cond, MS_BUILTIN_Optional) && ms_ty_arg_count(types, cond) == 1) {
+      body_report_if_unwrap(body, stmt);
+    }
     bind_pattern(body, stmt->u.branch.binding, wraps ? payload_type(body, cond) : MS_TY_NONE, stmt->u.branch.is_mutable);
   }
   const size_t narrow = body_narrow_mark(body);

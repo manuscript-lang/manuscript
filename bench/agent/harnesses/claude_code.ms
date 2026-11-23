@@ -20,7 +20,8 @@ fn ClaudeCode.command(prompt: String, workspace: String, model: String?) List[St
 		"--dangerously-skip-permissions",
 		"--no-session-persistence",
 	]
-	if m := model: cmd = cmd.concat(["--model", m.clone()])
+	m := model
+	if m != null: cmd = cmd.concat(["--model", m.clone()])
 	return cmd
 
 fn ClaudeCode.parse(transcript: String) Usage:

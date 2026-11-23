@@ -112,8 +112,9 @@ fn lex(src: Bytes) List[Chunk]:
 				i += 1
 
 			text := sub(src, start, i)
+			v := text.parse_int()
 
-			if v := text.parse_int():
+			if v != null:
 				toks.append(Token(kind: 3, n: v))
 			else:
 				bad = true
@@ -733,7 +734,9 @@ type Table:
 	rows: List[List[Val]] = List[List[Val]]()
 
 fn get_table(db: Map[String, Table], name: String) Table!:
-	if t := db.get(name): return ok(t.clone())
+	t := db.get(name)
+	if t != null: return ok(t.clone())
+
 	return error(err(f"no such table: {name}"))
 
 // ---------- resolve ----------
@@ -1348,8 +1351,9 @@ fn exec_select(db: Map[String, Table], var st: Stmt) String!:
 
 			for r in rows:
 				key := rowkey(r, gb)
+				gi := index.get(key)
 
-				if gi := index.get(key):
+				if gi != null:
 					groups[gi].append(r.clone())
 				else:
 					index[key] = groups.length()

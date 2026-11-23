@@ -10,21 +10,33 @@ fn doc() JsonValue:
 	return parse(text).get()
 
 fn user_field(d: JsonValue, key: String) JsonValue?:
-	if user := d.get("user"):
-		if field := user.get(key): return field.clone()
+	user := d.get("user")
+
+	if user != null:
+		field := user.get(key)
+		if field != null: return field.clone()
+
 	return null
 
 fn string_of(value: JsonValue) String?:
-	if text := value.as_string(): return text.clone()
+	text := value.as_string()
+	if text != null: return text.clone()
+
 	return null
 
 fn has_map(value: JsonValue) Bool:
 	return value.as_map() != null
 
 fn tag(d: JsonValue, index: Int) String?:
-	if tags := d.get("user"):
-		if list := tags.get("tags"):
-			if item := list.get_index(index): return string_of(item)
+	tags := d.get("user")
+
+	if tags != null:
+		list := tags.get("tags")
+
+		if list != null:
+			item := list.get_index(index)
+			if item != null: return string_of(item)
+
 	return null
 
 test "JSON accessors read nested objects without copying subtrees":
@@ -47,12 +59,18 @@ test "JSON at indexes arrays from either end":
 
 test "JSON borrowed list and map views match the tree":
 	d := doc()
+	user := d.get("user")
 
-	if user := d.get("user"):
-		if tags := user.get("tags"):
-			if list := tags.as_list():
+	if user != null:
+		tags := user.get("tags")
+
+		if tags != null:
+			list := tags.as_list()
+			if list != null:
 				expect_equal(list.length(), 3)?
-		if members := user.as_map():
+
+		members := user.as_map()
+		if members != null:
 			expect_equal(members.length(), 6)?
 
 	expect_true(d.as_map() != null)?
@@ -84,23 +102,33 @@ test "JSON as_int rejects fractions exponents and overflow":
 
 test "JSON is_null distinguishes null from absent and other values":
 	d := doc()
-	if value := d.get("none"):
+	value := d.get("none")
+	if value != null:
 		expect_true(value.is_null())?
-	if user := d.get("user"):
+
+	user := d.get("user")
+	if user != null:
 		expect_false(user.is_null())?
 	expect_true(d.get("missing") == null)?
 
 // `get_in` returns a clone of the member it reaches.
 fn user_name(d: JsonValue) String?:
-	if name := d.get_in(["user", "name"]): return name.as_string()
+	name := d.get_in(["user", "name"])
+	if name != null: return name.as_string()
+
 	return null
 
 test "JSON get_in reads a chain of members in place":
 	d := doc()
 	expect_equal(user_name(d), "ada")?
 	expect_equal(d.get_in(["user", "age"]).clone().and_then(fn n: n.as_int()), 36)?
-	if tags := d.get_in(["user", "tags"]):
-		if last := tags.get_index(-1): expect_equal(string_of(last), "c")?
+
+	tags := d.get_in(["user", "tags"])
+
+	if tags != null:
+		last := tags.get_index(-1)
+		if last != null: expect_equal(string_of(last), "c")?
+
 	expect_true(d.get_in(["user", "missing"]) == null)?
 	expect_true(d.get_in(["user", "name", "first"]) == null)?
 	expect_true(d.get_in([]) == null)?

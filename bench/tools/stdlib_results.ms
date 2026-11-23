@@ -33,7 +33,9 @@ fn finite(value: Float) Bool:
 	return value >= 0.0 and value < 1.0e300
 
 fn valid_optional(value: Float?) Bool:
-	if v := value: return finite(v)
+	v := value
+	if v != null: return finite(v)
+
 	return true
 
 // The passed cases of one `ms bench --json` document, in order.

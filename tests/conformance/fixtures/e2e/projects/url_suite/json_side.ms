@@ -18,7 +18,9 @@ export fn cases(source: String, table: String) List[Case]!:
 		var expected = Map[String, List[String]]()
 
 		for entry in (item.as_map() or Map[String, JsonValue]()).entries():
-			if str := entry.value.as_string():
+			str := entry.value.as_string()
+
+			if str != null:
 				fields.add(entry.key.clone(), str.clone())
 			else if flag := entry.value.as_bool():
 				flags.add(entry.key.clone(), flag)

@@ -18,7 +18,8 @@ import (
 fn echo(var pending: PendingConnection) Void!:
 	var conn = pending.adopt()?
 	chunk := recv(conn, 2.seconds())?
-	if data := chunk:
+	data := chunk
+	if data != null:
 		conn.output.write(data)?
 	return conn.close()
 
@@ -43,7 +44,9 @@ fn ask(address: String, text: String) String!:
 
 	reply := recv(client, 2.seconds())?
 	void client.close()
-	if data := reply: return ok(data.decode_utf8() or "")
+
+	data := reply
+	if data != null: return ok(data.decode_utf8() or "")
 
 	return ok("")
 

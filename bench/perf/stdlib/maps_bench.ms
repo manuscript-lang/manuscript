@@ -57,9 +57,12 @@ bench "map.get_if_let" per 100000:
 		m.add(k.clone(), k.clone())
 
 	var n = 0
+
 	for k in keys:
-		if v := m.get(k):
+		v := m.get(k)
+		if v != null:
 			n += v.length()
+
 	n
 
 bench "map.get_chain" per 100000:

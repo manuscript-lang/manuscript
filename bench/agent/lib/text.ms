@@ -11,13 +11,16 @@ import (
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
 	all := environment().get_or(Map[String, String]())
-	if value := all.get(name): return value.clone()
+	value := all.get(name)
+	if value != null: return value.clone()
 
 	return fallback.clone()
 
 // The text of the file at `path`; empty when it cannot be read.
 export fn read_text(path: String) String:
-	if data := read_file(path).wait().to_optional(): return (data.decode_utf8() or "")
+	data := read_file(path).wait().to_optional()
+	if data != null: return (data.decode_utf8() or "")
+
 	return ""
 
 // The text of the file at `path`; a missing file stops the program.
@@ -71,7 +74,8 @@ export fn run_in(
 		RunOptions(input: input.to_bytes(), timeout: seconds(timeout_s)),
 	).wait()
 	elapsed := monotonic().difference(start).nanos.to_float() / 1000000000.0
-	if done := result.clone().to_optional():
+	done := result.clone().to_optional()
+	if done != null:
 		return Ran(
 			done.exit_code,
 			done.stdout.decode_utf8() or "",
@@ -108,7 +112,9 @@ export fn strip_spaces(text: String) String:
 // Whether the regular expression `pattern` matches all of `text`, as Python's
 // `re.fullmatch`.
 export fn full_match(pattern: String, text: String) Bool:
-	if re := compile(f"^(?:{pattern})$").to_optional(): return re.matches(text)
+	re := compile(f"^(?:{pattern})$").to_optional()
+	if re != null: return re.matches(text)
+
 	return false
 
 // `text.split()`: the words between runs of whitespace.

@@ -125,8 +125,9 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 		if text_at(st, "source") != "agent" or (st.get("metrics") == null): continue
 
 		prompt := metric(st, "prompt_tokens")
+		before := prev
 
-		if before := prev:
+		if before != null:
 			done := metric(before, "completion_tokens")
 			comp[5] += done
 
@@ -253,7 +254,9 @@ fn collect(dirs: List[String]) Int:
 			is_dir := stat(dir).to_optional().map(fn s: s.is_directory()) or (false)
 
 			if is_dir and leaf.split("__").length() == 2:
-				if t := read_trial(dir):
+				t := read_trial(dir)
+
+				if t != null:
 					rows = rows.filter(fn old: old.trial != t.trial)
 					rows.append(t)
 

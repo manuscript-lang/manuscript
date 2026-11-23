@@ -44,11 +44,15 @@ export fn mean(values: List[Float]) Float?:
 	// Exact accumulation preserves small cancellation residuals that scaling would
 	// discard.
 	var total = rat_of_int(0)
+
 	for value in values:
 		// A finite Float always converts, so this branch only skips what cannot occur.
-		if term := rat_of_float(value): total = total.add(term)
+		term := rat_of_float(value)
+		if term != null: total = total.add(term)
+
 	if average := total.divide(rat_of_int(values.length())):
-		if result := average.to_float(): return result
+		result := average.to_float()
+		if result != null: return result
 
 	// The exact average of finite inputs lies between their finite extrema, so this
 	// return is only reached for input the checks above already sent to `ordinary`.
@@ -135,12 +139,16 @@ fn centered_moments(values: List[Float]) Moments?:
 // Returns the sum of squared distances from the mean divided by `divisor`, or null for
 // an empty list.
 fn spread_variance(values: List[Float], divisor: Int) Float?:
-	if moments := centered_moments(values):
+	moments := centered_moments(values)
+
+	if moments != null:
 		result := moments.squares / divisor.to_float()
 		return ldexp(ldexp(result, moments.exponent), moments.exponent)
 
 	// Nonfinite input follows Float rules around the plain mean.
-	if center := mean(values):
+	center := mean(values)
+
+	if center != null:
 		var total = 0.0
 		for value in values:
 			total += (value - center) * (value - center)
@@ -161,15 +169,17 @@ export fn variance(values: List[Float]) Float?:
 
 // Returns the population standard deviation, or null for an empty list.
 export fn population_stdev(values: List[Float]) Float?:
-	if spread_squared := population_variance(values):
-		return deviation_from_variance(values, spread_squared, 0)
+	spread_squared := population_variance(values)
+	if spread_squared != null: return deviation_from_variance(values, spread_squared, 0)
+
 	return null
 
 // Returns the sample standard deviation, or null when the list has fewer than two
 // values. Example: `stdev([2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0])` is about `2.138`.
 export fn stdev(values: List[Float]) Float?:
-	if spread_squared := variance(values):
-		return deviation_from_variance(values, spread_squared, 1)
+	spread_squared := variance(values)
+	if spread_squared != null: return deviation_from_variance(values, spread_squared, 1)
+
 	return null
 
 // Preserve ordinary rounding; avoid requiring the squared result to fit for extreme
@@ -225,7 +235,9 @@ fn sample_deviation_overflows(values: List[Float]) Bool:
 	var squares = rat_of_int(0)
 
 	for value in values:
-		if term := rat_of_float(value):
+		term := rat_of_float(value)
+
+		if term != null:
 			total = total.add(term)
 			squares = squares.add(term.multiply(term))
 
@@ -233,8 +245,12 @@ fn sample_deviation_overflows(values: List[Float]) Bool:
 	numerator := squares.multiply(count).subtract(total.multiply(total))
 
 	// Round-to-nearest overflows at MAX + half its upward ulp, including the tie.
-	if maximum := rat_of_float(1.7976931348623157e308):
-		if half_ulp := rat_of_float(ldexp(1.0, 970)):
+	maximum := rat_of_float(1.7976931348623157e308)
+
+	if maximum != null:
+		half_ulp := rat_of_float(ldexp(1.0, 970))
+
+		if half_ulp != null:
 			midpoint := maximum.add(half_ulp)
 			bound := midpoint.multiply(
 				midpoint
@@ -446,7 +462,9 @@ Example: `correlation([1.0, 2.0, 3.0], [2.0, 4.0, 6.0])` is `1.0`.
 export fn correlation(xs: List[Float], ys: List[Float]) Float?:
 	// Correlation is unchanged by scaling each list, so power-of-two scaling keeps
 	// every square and product in range.
-	if s := spread(unit_scaled(xs), unit_scaled(ys)):
+	s := spread(unit_scaled(xs), unit_scaled(ys))
+
+	if s != null:
 		if s.xx == 0.0 or s.yy == 0.0: return null
 
 		// One square root of the product is correctly rounded, so perfectly linear data
@@ -481,7 +499,9 @@ Lists of different lengths return null.
 Example: `linear_regression([1.0, 2.0, 3.0], [3.0, 5.0, 7.0])` has slope `2.0` and intercept `1.0`.
 */
 export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
-	if s := spread(xs, ys):
+	s := spread(xs, ys)
+
+	if s != null:
 		if (
 			well_conditioned(s.mean_x, s.xx, xs.length(), false)
 			and well_conditioned(s.mean_y, s.yy, ys.length(), true)
@@ -489,8 +509,11 @@ export fn linear_regression(xs: List[Float], ys: List[Float]) Regression?:
 			slope := s.xy / s.xx
 			return Regression(slope: slope, intercept: s.mean_y - slope * s.mean_x)
 
-		if x_exponent := unit_exponent(xs):
-			if y_exponent := unit_exponent(ys):
+		x_exponent := unit_exponent(xs)
+
+		if x_exponent != null:
+			y_exponent := unit_exponent(ys)
+			if y_exponent != null:
 				return finite_regression(xs, ys, x_exponent, y_exponent)
 
 		// Nonfinite input follows Float rules around the plain means.

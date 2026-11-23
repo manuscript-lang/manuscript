@@ -35,7 +35,9 @@ test "an over-budget line fails the read after the lines before it":
 			failure = step.err()
 			break
 
-		if line := step.get():
+		line := step.get()
+
+		if line != null:
 			seen.append(line.clone())
 		else:
 			break

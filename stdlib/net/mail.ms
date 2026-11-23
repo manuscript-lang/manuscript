@@ -57,8 +57,9 @@ export fn parse_address(text: String) Address!:
 
 	var name = ""
 	var address = trimmed.clone()
+	open := trimmed.last_index_of("<")
 
-	if open := trimmed.last_index_of("<"):
+	if open != null:
 		if not trimmed.ends_with(">"): return error(
 			Error("mail: invalid address", kind: "EBADMSG")
 		)

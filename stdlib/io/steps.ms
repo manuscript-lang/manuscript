@@ -23,14 +23,17 @@ type Lines:
 // Internal: fails with `EOVERFLOW` when a line of `size` bytes is longer than the
 // limit.
 fn Lines.check(size: Int) Void!:
-	if limit := self.max_bytes:
+	limit := self.max_bytes
+	if limit != null:
 		if size > limit: return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
 // Internal: decodes the held bytes in `[start, stop)` as one line. Bytes that are not
 // UTF-8 fail with `EBADMSG` rather than becoming an empty line. The range is decoded
 // in place, without first copying the line into a `Bytes`.
 fn Lines.decode(start: Int, stop: Int) String!:
-	if text := self.data.decode_utf8_range(start, stop): return ok(text)
+	text := self.data.decode_utf8_range(start, stop)
+	if text != null: return ok(text)
+
 	return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
 // Internal: joins only a completed line. Incomplete chunks are copied once, not as a
@@ -57,13 +60,17 @@ fn var Lines.take(stop: Int, terminated: Bool) String!:
 	self.pending_size = 0
 	self.pending_cr = false
 	self.start = if terminated: stop + 1 else: stop
-	if text := all.decode_utf8_range(0, trimmed): return ok(text)
+
+	text := all.decode_utf8_range(0, trimmed)
+	if text != null: return ok(text)
 
 	return error(Error("I/O: line is not valid UTF-8", kind: "EBADMSG"))
 
 fn var Lines.next() move String?!:
 	while true:
-		if end := self.data.index_of_byte(10, self.start):
+		end := self.data.index_of_byte(10, self.start)
+
+		if end != null:
 			if self.pending_size > 0: return ok(self.take(end, true)?)
 
 			var stop = end
@@ -87,8 +94,9 @@ fn var Lines.next() move String?!:
 		self.check(self.pending_size + rest - if cr: 1 else: 0)?
 
 		chunk := self.input.next()?
+		more := chunk
 
-		if more := chunk:
+		if more != null:
 			if rest > 0:
 				self.pending.append(
 					self.data.slice(
@@ -124,7 +132,8 @@ type Mapped[T, U]:
 
 fn var Mapped[T, U].next() move U?!:
 	item := self.input.next()?
-	if value := item: return ok(self.f(value))
+	value := item
+	if value != null: return ok(self.f(value))
 
 	return ok(null)
 
@@ -143,8 +152,9 @@ type Filtered[T]:
 fn var Filtered[T].next() move T?!:
 	while true:
 		item := self.input.next()?
+		value := item
 
-		if value := item:
+		if value != null:
 			if self.keep(value): return ok(value)
 		else:
 			return ok(null)

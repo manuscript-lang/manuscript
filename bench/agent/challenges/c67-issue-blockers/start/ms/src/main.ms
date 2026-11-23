@@ -242,7 +242,9 @@ fn prio_rank(s: String) Int:
 fn opt_s(x: String?) String: x or "-"
 
 fn opt_i(x: Int?) String:
-	if v := x: return f"{v}"
+	v := x
+	if v != null: return f"{v}"
+
 	return "-"
 
 fn labels_s(l: List[String]) String:
@@ -818,7 +820,9 @@ fn cmp_op(op: Int, a: Int, b: Int) Bool:
 fn is_open(st: State, iss: Issue) Bool: not st.wf.finals[iss.state]
 
 fn opt_match(x: String?, op: Int, v: String) Bool:
-	if s := x:
+	s := x
+
+	if s != null:
 		if op == 6: return s.lower().contains(v)
 		return s.lower() == v
 
@@ -830,7 +834,9 @@ fn match_one(st: State, fc: Int, op: Int, v: String, iss: Issue) Bool:
 		return cmp_op(op, x, to_int(v))
 
 	if fc == 3:
-		if p := iss.f.points:
+		p := iss.f.points
+
+		if p != null:
 			if v == "none": return false
 			return cmp_op(op, p, to_int(v))
 
@@ -851,7 +857,9 @@ fn match_one(st: State, fc: Int, op: Int, v: String, iss: Issue) Bool:
 	if fc == 9: return cmp_op(op, iss.f.priority, prio_rank(v))
 
 	if fc == 10:
-		if d := iss.f.due:
+		d := iss.f.due
+
+		if d != null:
 			if v == "none": return false
 			if op == 0: return d == v
 			if op == 2: return d < v
@@ -878,7 +886,9 @@ fn match_one(st: State, fc: Int, op: Int, v: String, iss: Issue) Bool:
 		if v == "open": return is_open(st, iss)
 		if v == "final": return not is_open(st, iss)
 		if v == "unassigned": return iss.f.assignee == null
-		if d := iss.f.due: return is_open(st, iss) and d < st.today
+
+		d := iss.f.due
+		if d != null: return is_open(st, iss) and d < st.today
 
 		return false
 
@@ -916,8 +926,12 @@ fn eval_node(st: State, nodes: List[Node], i: Int, iss: Issue) Bool:
 	return if n.op == 1: not r else: r
 
 fn cmp_opt_int(a: Int?, b: Int?) Int:
-	if x := a:
-		if y := b: return cmp_int(x, y)
+	x := a
+
+	if x != null:
+		y := b
+		if y != null: return cmp_int(x, y)
+
 		return -1
 
 	if b != null: return 1
@@ -925,8 +939,12 @@ fn cmp_opt_int(a: Int?, b: Int?) Int:
 	return 0
 
 fn cmp_opt_str(a: String?, b: String?, ci: Bool) Int:
-	if x := a:
-		if y := b:
+	x := a
+
+	if x != null:
+		y := b
+
+		if y != null:
 			if ci: return x.lower().compare(y.lower())
 			return x.compare(y)
 
@@ -989,7 +1007,8 @@ fn State.run_list(
 	var count = 0
 
 	for i in idxs:
-		if l := limit:
+		l := limit
+		if l != null:
 			if count >= l: break
 		lines.append(issue_line(self, self.issues[i]))
 		count += 1
@@ -1376,7 +1395,8 @@ fn var State.cmd_view(rest: String) String!:
 		var nodes = List[Node]()
 		var refs = List[String]()
 		_root := parse_filter(self, spec.filter, nodes, refs)?
-		if s := spec.sort:
+		s := spec.sort
+		if s != null:
 			_keys := parse_sort(s)?
 		if refs.contains(name) and (self.views.get(name) != null):
 			return error(Error(f"view '{name}' would reference itself"))
@@ -1508,7 +1528,9 @@ fn State.cmd_report(rest: String) String!:
 			if is_open(self, iss):
 				open_n += 1
 				if iss.f.assignee == null: unass += 1
-				if d := iss.f.due:
+
+				d := iss.f.due
+				if d != null:
 					if d < self.today: overdue += 1
 				open_pts += (iss.f.points or 0)
 
@@ -1543,8 +1565,9 @@ fn State.cmd_report(rest: String) String!:
 			any_open = true
 
 			pts := iss.f.points or 0
+			a := iss.f.assignee
 
-			if a := iss.f.assignee:
+			if a != null:
 				key := a.lower()
 				gi := groups.find_index(fn g: g.key == key) or (-1)
 

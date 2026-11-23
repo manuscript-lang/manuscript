@@ -62,7 +62,8 @@ type Decoder:
 
 fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 	var events = List[SseEvent]()
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
 	chunk := value
@@ -106,7 +107,8 @@ fn var Decoder.step(move value: Bytes, var out: List[SseEvent]) Void!:
 	for event in events: out.append(event.clone())
 
 fn var Decoder.finish(var out: List[SseEvent]) Void!:
-	if failure := self.failure: return error(failure.clone())
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
 
 	self.closed = true
@@ -193,11 +195,15 @@ export fn sse_events(
 	)
 
 fn positive(limit: Int?) Bool:
-	if maximum := limit: return maximum > 0
+	maximum := limit
+	if maximum != null: return maximum > 0
+
 	return true
 
 fn exceeds(value: Int, limit: Int?) Bool:
-	if maximum := limit: return value > maximum
+	maximum := limit
+	if maximum != null: return value > maximum
+
 	return false
 
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any

@@ -42,8 +42,11 @@ fn total(counters: List[Counter], scale: Int = 1) Int:
 test "pop moves the element out of the list":
 	var counters = [counter(1), counter(2), counter(3)]
 	var seen: List[Int] = []
+
 	while not counters.is_empty():
-		if c := counters.pop(): seen.append(c.read())
+		c := counters.pop()
+		if c != null: seen.append(c.read())
+
 	seen | expect_equal([3, 2, 1])?
 	counters.length() | expect_equal(0)?
 
@@ -62,7 +65,8 @@ test "get on a borrowed result lends the payload":
 test "a native lend beside a none path still lends":
 	slots: List[Counter?] := [counter(8), null]
 	ring := Ring(slots: slots, size: 2)
-	if c := ring.at(0): c.read() | expect_equal(8)?
+	c := ring.at(0)
+	if c != null: c.read() | expect_equal(8)?
 	(ring.at(1) == null) | expect_true?
 	(ring.at(5) == null) | expect_true?
 

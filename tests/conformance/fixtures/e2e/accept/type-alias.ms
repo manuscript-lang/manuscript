@@ -13,7 +13,9 @@ fn twice(step: Handler, x: Int) Int:
 	return step(step(x))
 
 fn first(values: Maybe[Int]) Int:
-	if v := values: return v
+	v := values
+	if v != null: return v
+
 	return -1
 
 test "an alias and its target are the same type":

@@ -18,7 +18,9 @@ fn slots(spans: List[RegexSpan?]) List[List[Int]?]:
 	var out = List[List[Int]?](reserve: spans.length())
 
 	for span in spans:
-		if present := span:
+		present := span
+
+		if present != null:
 			out.append([present.start, present.end])
 		else:
 			out.append(null)

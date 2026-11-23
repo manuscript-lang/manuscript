@@ -56,7 +56,9 @@ fn count(program: String, out_file: String, own_path: Bool, shape: String) Int:
 
 	if out := run("valgrind", command, RunOptions(timeout: seconds(600))).wait():
 		for line in (out.stderr.decode_utf8() or "").split("\n"):
-			if at := line.index_of("Collected : "):
+			at := line.index_of("Collected : ")
+
+			if at != null:
 				digits := line.slice(at + 12, line.length()).trim()
 				return digits.parse_int() or (-1)
 

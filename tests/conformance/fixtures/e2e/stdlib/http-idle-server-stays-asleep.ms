@@ -31,7 +31,9 @@ fn warm(var conn: Connection) Bool!:
 
 	while not text.ends_with("done\n"):
 		if chunk := recv(conn, nanoseconds(10000000000)):
-			if data := chunk:
+			data := chunk
+
+			if data != null:
 				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
 

@@ -172,7 +172,9 @@ fn Signal.cancelled() Bool:
 // Internal: a limit in nanoseconds, or -1 for null. A negative duration means no time
 // at all, not "null".
 fn nanos(limit: Duration?) Int:
-	if own := limit:
+	own := limit
+
+	if own != null:
 		total := own.to_nanoseconds()
 		if total < 0: return 0
 
@@ -198,7 +200,9 @@ fn outcome(id: Int, code: Int) Error:
 fn limit(id: Int, options: PromiseOptions) Void:
 	if options.timeout != null:
 		msrt_promise_limit(id, nanos(options.timeout))
-	if signal := options.cancel:
+
+	signal := options.cancel
+	if signal != null:
 		msrt_promise_on_cancel(id, signal.id)
 
 // Applies `options` to a promise in place, for an owner that keeps the promise (such
@@ -213,13 +217,16 @@ export fn set_options[T](
 // Internal: the result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
 	taken := msrt_promise_take[Slot[V]](id)
-	if slot := taken: return ok(slot.value)
+	slot := taken
+	if slot != null: return ok(slot.value)
 
 	return error(outcome(id, 4))
 
 // Internal: the error in the slot of `id`, moved out.
 fn taken_error(id: Int) Error:
-	if cause := msrt_promise_take[Error](id): return cause
+	cause := msrt_promise_take[Error](id)
+	if cause != null: return cause
+
 	return outcome(id, 4)
 
 // Internal: the error of a `wait` whose runtime outcome `code` is not success: the
@@ -384,14 +391,19 @@ export fn wait_all[T](move promises: List[Promise[T]]) move List[T]!:
 					taken[at] = true
 
 	var reversed: List[T] = []
+
 	for at in 0..count:
-		if slot := slots.pop():
+		slot := slots.pop()
+		if slot != null:
 			reversed.append(slot?)
 
 	var results: List[T] = []
+
 	for at in 0..count:
-		if value := reversed.pop():
+		value := reversed.pop()
+		if value != null:
 			results.append(value)
+
 	return ok(results)
 
 // Waits for the first promise to finish and returns its result; the others are

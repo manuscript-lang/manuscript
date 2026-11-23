@@ -56,8 +56,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		seen.add(key.clone(), cases)
 
 		id := f"{name} {version}"
+		prior := best.get(id)
 
-		if prior := best.get(id):
+		if prior != null:
 			best.add(id.clone(), if (elapsed) < prior: (elapsed) else: prior)
 		else:
 			best.add(id.clone(), elapsed)

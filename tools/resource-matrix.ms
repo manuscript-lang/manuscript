@@ -298,7 +298,9 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
 	return false
 
 fn field(entry: JsonValue, key: String) String:
-	if value := entry.get(key): return (value.as_string() or "").clone()
+	value := entry.get(key)
+	if value != null: return (value.as_string() or "").clone()
+
 	return ""
 
 // Every `Type.operation` of the standard type whose declaration mentions a type
@@ -308,8 +310,9 @@ fn declared_operations(ms: String, name: String) List[String]!:
 	page := parse(ran.stdout.decode_utf8() or "")?
 	var found = List[String]()
 	names := type_parameters(name.clone())
+	all := page.get("matches")
 
-	if all := page.get("matches"):
+	if all != null:
 		for entry in (all.as_list() or []):
 			if field(entry, "kind") != "operation": continue
 			if not mentions_parameter(field(entry, "type"), names.clone()): continue

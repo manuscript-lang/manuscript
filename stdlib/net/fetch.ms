@@ -100,7 +100,9 @@ fn FetchResponse.ok() Bool:
 
 // Decodes the body as UTF-8.
 fn FetchResponse.text() String!:
-	if text := self.body.decode_utf8(): return ok(text)
+	text := self.body.decode_utf8()
+	if text != null: return ok(text)
+
 	return error(Error("fetch: body is not valid UTF-8", kind: "EBADMSG"))
 
 // Decodes the body as JSON into `T`, as in `response.json[User]()?`; use
@@ -190,17 +192,22 @@ type Outgoing:
 	body: Bytes
 
 fn limit_exceeded(total: Int, limit: Int?) Bool:
-	if max := limit: return total > max
+	max := limit
+	if max != null: return total > max
+
 	return false
 
 fn expired(started: Instant, timeout: Duration?) Bool:
-	if limit := timeout: return monotonic().difference(started).compare(limit) >= 0
+	limit := timeout
+	if limit != null: return monotonic().difference(started).compare(limit) >= 0
+
 	return false
 
 // Copies the caller's headers and adds a default `Content-Type` for the body.
 fn outgoing(options: FetchOptions) Outgoing:
 	var fields = headers()
-	if given := options.headers:
+	given := options.headers
+	if given != null:
 		fields = given.clone()
 
 	var kind = ""
@@ -235,8 +242,9 @@ export fn fetcher(
 		cookies: options.cookies,
 		tls: options.tls.clone(),
 	)
+	restricted := net
 
-	if restricted := net:
+	if restricted != null:
 		client := restricted.http_client(settings)?
 		return ok(Fetcher(client: client))
 

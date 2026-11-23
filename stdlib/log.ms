@@ -200,10 +200,16 @@ fn Logger.emit(level: Int, message: String, data: String?) Void!:
 
 	var line = f"\{\"level\":{level},\"msg\":{msg.get()}"
 	if self.timestamp: line = f"{line},\"time\":{now_ms()}"
-	if context := self.context: line = f"{line},\"context\":{context}"
-	if text := data: line = f"{line},\"data\":{text}"
+
+	context := self.context
+	if context != null: line = f"{line},\"context\":{context}"
+
+	text := data
+	if text != null: line = f"{line},\"data\":{text}"
 	line = f"{line}\}\n"
-	if max := self.max_bytes:
+
+	max := self.max_bytes
+	if max != null:
 		if line.length() > max: return error(
 			Error("logging: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -224,7 +230,9 @@ fn Logger.log[F: Data = Void](level: LogLevel, message: String, fields: F? = nul
 	)
 	if not self.enabled(level): return ok()
 
-	if value := fields:
+	value := fields
+
+	if value != null:
 		text := encode_fields(value)?
 		return self.emit(level_value(level), message, text)
 
@@ -311,7 +319,8 @@ export fn create(
 	move transport: Transport,
 	options: LoggerOptions = LoggerOptions(),
 ) Logger!:
-	if max := options.max_bytes:
+	max := options.max_bytes
+	if max != null:
 		if max < 0: return error(Error("logging: invalid input", kind: "EINVAL"))
 	return ok(
 		Logger(

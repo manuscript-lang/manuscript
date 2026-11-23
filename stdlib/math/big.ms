@@ -192,7 +192,9 @@ export fn rat_of_binary(mantissa: BigInt, exponent: Int) BigRat:
 	return reduced(mantissa.clone(), shl(big(1), -exponent))
 
 fn parse_digits(text: String) BigInt!:
-	if value := parse_big(text): return ok(value)
+	value := parse_big(text)
+	if value != null: return ok(value)
+
 	return error(Error("bigrat: invalid data", kind: "EBADMSG"))
 
 // Parses `a/b`, an integer, or a decimal with an optional exponent: `3/4`, `-12`,
@@ -610,7 +612,9 @@ fn binary_to_float(value: Binary, sticky: Bool) Float?:
 			if order > 0 or order == 0 and (sticky or odd):
 				kept += big_int_of_int(1)
 
-	if fraction := kept.to_float():
+	fraction := kept.to_float()
+
+	if fraction != null:
 		var result = ldexp(fraction, exponent)
 		if value.mant.sign() < 0:
 			result = -result

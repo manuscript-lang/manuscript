@@ -31,9 +31,12 @@ test "rotation preserves order across ring positions and signed boundaries":
 				var q = Deque[Int]()
 				for i in 0..size:
 					q.push_back(i)
+
 				for i in 0..advance:
-					if value := q.pop_front():
+					value := q.pop_front()
+					if value != null:
 						q.push_back(value)
+
 				q.rotate(count)
 				expect_equal(q.length(), size)?
 

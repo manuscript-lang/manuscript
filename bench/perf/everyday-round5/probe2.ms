@@ -245,9 +245,12 @@ fn x_find_first() Int:
 		xs.append(Item(i, i))
 
 	var t = 0
+
 	for i in 0..20000:
-		if f := xs.find(fn it: it.score == i % 1000):
+		f := xs.find(fn it: it.score == i % 1000)
+		if f != null:
 			t += f.id
+
 	return t
 
 fn run(name: String, f: fn() Int) Void:

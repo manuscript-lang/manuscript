@@ -73,9 +73,11 @@ test "a room owner pushes each line to every connected websocket":
 
 		while true:
 			message := input.next()?
+			m := message
 
-			if m := message:
-				if text := m.data.decode_utf8():
+			if m != null:
+				text := m.data.decode_utf8()
+				if text != null:
 					cmds.write(Command.Say(text))?
 			else:
 				break

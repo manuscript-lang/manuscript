@@ -48,8 +48,9 @@ type WebSocketSource:
 // `EBADMSG`; after any failure the connection is closed.
 fn var WebSocketSource.next() move WebSocketMessage?!:
 	raw := msstd_websocket_receive(self.native)?
+	message := raw
 
-	if message := raw:
+	if message != null:
 		kind := if message.text: WebSocketKind.Text else: WebSocketKind.Binary
 		return ok(WebSocketMessage(message.data.clone(), kind))
 

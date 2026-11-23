@@ -20,7 +20,8 @@ fn Codex.command(prompt: String, workspace: String, model: String?) List[String]
 		"-C",
 		workspace.clone(),
 	]
-	if m := model: cmd = cmd.concat(["-m", m.clone()])
+	m := model
+	if m != null: cmd = cmd.concat(["-m", m.clone()])
 	return cmd.concat([prompt.clone()])
 
 // Codex reports no cost; the runner estimates it from pricing.json.

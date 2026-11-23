@@ -68,7 +68,9 @@ fn bench_one(name: String, op: String, budget: Int, runs: Int) Void:
 	read := read_file(f"bench/perf/json/data/{name}.json").wait()
 
 	if bytes := read:
-		if text := bytes.decode_utf8():
+		text := bytes.decode_utf8()
+
+		if text != null:
 			bench_text(name, op, text, bytes.length(), budget, runs)
 		else:
 			say(f"{name}\tnot utf-8\n")

@@ -105,7 +105,8 @@ fn main() Int:
 
 	ms := tool_ms(root)
 	var jobs = system_info().cpu_count
-	if n := env("STRESS_JOBS", "").parse_int(): jobs = n
+	n := env("STRESS_JOBS", "").parse_int()
+	if n != null: jobs = n
 	if jobs < 1: jobs = 1
 
 	var chunks = List[List[String]]()

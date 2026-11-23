@@ -583,7 +583,9 @@ fn host_zone() Zone:
 export fn load(name: String) Zone!:
 	if name == "UTC" or name.is_empty(): return ok(plain_zone(0, "UTC", 0))
 	if name == "Local": return ok(host_zone())
-	if offset := fixed_offset(name): return ok(plain_zone(1, name.clone(), offset))
+
+	offset := fixed_offset(name)
+	if offset != null: return ok(plain_zone(1, name.clone(), offset))
 
 	return named(name)
 

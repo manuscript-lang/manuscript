@@ -128,18 +128,23 @@ fn Matches.list(name: String) List[String]:
 
 // Returns the text, or null for an optional argument or flag that was not supplied.
 fn Matches.string_or_none(name: String) String?:
-	if items := self.values.get(name):
+	items := self.values.get(name)
+	if items != null:
 		if not items.is_empty(): return items[0].clone()
 	return null
 
 // Returns an Int value, or null when absent.
 fn Matches.int_or_none(name: String) Int?:
-	if text := self.string_or_none(name): return text.parse_int()
+	text := self.string_or_none(name)
+	if text != null: return text.parse_int()
+
 	return null
 
 // Returns a Float value, or null when absent.
 fn Matches.float_or_none(name: String) Float?:
-	if text := self.string_or_none(name): return text.parse_float()
+	text := self.string_or_none(name)
+	if text != null: return text.parse_float()
+
 	return null
 
 /*
@@ -198,7 +203,9 @@ fn Command.execute(argv: List[String]) Int:
 // an `EINVAL` error.
 fn Command.run(matches: Matches) Int!:
 	if matches.path.length() > 0 and matches.path[0] == self.name:
-		if node := node_at(self, matches.path, 1): return node.exec(matches)
+		node := node_at(self, matches.path, 1)
+		if node != null: return node.exec(matches)
+
 	return error(cli_unknown_command(matches.path.join(" "), self.name.clone()))
 
 // Returns the help text for the command reached by following `path` from this node,
@@ -232,7 +239,9 @@ export enum Parsed:
 // The command reached by following `path` from `from` on, or null for an unknown word.
 fn node_at(node: Command, path: List[String], from: Int) Command?:
 	if from >= path.length(): return node
-	if next := node.child(path[from]): return node_at(next, path, from + 1)
+
+	next := node.child(path[from])
+	if next != null: return node_at(next, path, from + 1)
 
 	return null
 
@@ -247,7 +256,9 @@ fn help_at(
 	inherited: List[Flag],
 ) String!:
 	if from >= words.length(): return ok(render_help(node, names, inherited))
-	if next := node.child(words[from]):
+
+	next := node.child(words[from])
+	if next != null:
 		return help_at(
 			next,
 			words,
@@ -386,7 +397,9 @@ fn fits(kind: FlagKind, choices: List[String], value: String) Bool:
 		Bool: return value == "true" or value == "false"
 		Int: return value.parse_int() != null
 		Float:
-			if number := value.parse_float(): return number.is_finite()
+			number := value.parse_float()
+			if number != null: return number.is_finite()
+
 			return false
 		_: return true
 
@@ -424,7 +437,8 @@ fn check_schema(node: Command, inherited: List[Flag], path: List[String]) Void!:
 		claim(shorts, flag.short.clone(), f"short -{flag.short} in {where}")?
 
 	for flag in node.flags:
-		if text := flag.default:
+		text := flag.default
+		if text != null:
 			if not fits(flag.kind, flag.choices, text):
 				return error(
 					cli_invalid_schema(
@@ -564,8 +578,9 @@ fn walk_from(
 
 			if long and (flag == null) and key.starts_with("no-"):
 				positive := find_flag(flags, key.view(3, key.length()), true)
+				found := positive
 
-				if found := positive:
+				if found != null:
 					if is_bool(found.kind):
 						flag = positive
 						negated = true
@@ -576,12 +591,15 @@ fn walk_from(
 				if negated: values[chosen.name.clone()] = ["false"]
 				else:
 					var supplied = "true"
-					if at := cut: supplied = body.view(at + 1, body.length()).clone()
+					at := cut
+					if at != null: supplied = body.view(at + 1, body.length()).clone()
 					store(values, chosen, supplied)?
 
 				continue
 
-			if at := cut:
+			at := cut
+
+			if at != null:
 				store(values, chosen, body.view(at + 1, body.length()).clone())?
 				continue
 
@@ -592,7 +610,8 @@ fn walk_from(
 			continue
 
 		if words.is_empty():
-			if next := node.child(token):
+			next := node.child(token)
+			if next != null:
 				return walk_from(
 					next,
 					argv,
@@ -665,7 +684,9 @@ fn bind(
 fn fill(var values: Map[String, List[String]], flag: Flag) Void!:
 	if values.contains(flag.name): return ok()
 
-	if text := flag.default:
+	text := flag.default
+
+	if text != null:
 		values[flag.name.clone()] = [text.clone()]
 		return ok()
 
@@ -727,7 +748,8 @@ fn flag_section(title: String, flags: List[Flag]) String:
 		if not is_bool(flag.kind): label += f" <{value_hint(flag)}>"
 
 		var help = flag.help.clone()
-		if text := flag.default: help += f" (default {text})"
+		text := flag.default
+		if text != null: help += f" (default {text})"
 		if flag.required: help += " (required)"
 		help_row(table, [label, help])
 

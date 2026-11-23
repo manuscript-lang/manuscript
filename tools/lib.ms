@@ -42,7 +42,8 @@ export fn note(message: String) Void:
 // The value of environment variable `name`, or `fallback`.
 export fn env(name: String, fallback: String) String:
 	all := environment().get_or(Map[String, String]())
-	if value := all.get(name): return value.clone()
+	value := all.get(name)
+	if value != null: return value.clone()
 
 	return fallback.clone()
 

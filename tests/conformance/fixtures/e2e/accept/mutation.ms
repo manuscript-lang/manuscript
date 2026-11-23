@@ -145,7 +145,9 @@ test "collection clones keep independent lengths":
 	for value in values:
 		expect_equal(value.val, 1)?
 
-	if value := entries.get("child"):
+	value := entries.get("child")
+
+	if value != null:
 		expect_equal(value.val, 1)?
 	else:
 		return fail("cloning removed an original map entry")

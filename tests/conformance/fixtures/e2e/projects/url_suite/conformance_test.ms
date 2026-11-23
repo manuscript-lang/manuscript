@@ -29,7 +29,9 @@ fn flag(item: Case, key: String) Bool:
 	return item.flags.get_or(key, false)
 
 fn port_text(url: Url) String:
-	if port := url.port: return port.to_string()
+	port := url.port
+	if port != null: return port.to_string()
+
 	return ""
 
 // `parse` table: the URL parses to the expected parts and formats back to the expected text;
@@ -84,7 +86,9 @@ fn query_ok(item: Case) Bool:
 	var grouped = Map[String, List[String]]()
 
 	for entry in parsed.get_or([]):
-		if values := grouped.get(entry.key):
+		values := grouped.get(entry.key)
+
+		if values != null:
 			var more = values.clone()
 			more.append(entry.value.clone())
 			grouped.add(entry.key.clone(), more)

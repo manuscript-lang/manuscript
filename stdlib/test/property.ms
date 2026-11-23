@@ -302,11 +302,16 @@ export type Settings:
 export fn settings(runs: Int = 100) Settings:
 	var found = Settings(runs, 0, null)
 	environment := environment().get_or(Map[String, String]())
-	if text := environment.get("MS_TEST_RUNS"):
+	text := environment.get("MS_TEST_RUNS")
+	if text != null:
 		found.runs = text.parse_int() or runs
-	if text := environment.get("MS_TEST_SEED"):
+
+	text := environment.get("MS_TEST_SEED")
+	if text != null:
 		found.seed = text.parse_int()
-	if text := environment.get("MS_TEST_FUZZ_MS"):
+
+	text := environment.get("MS_TEST_FUZZ_MS")
+	if text != null:
 		found.fuzz_milliseconds = text.parse_int() or 0
 	return found
 
@@ -393,7 +398,9 @@ fn shrink[T](
 				candidate := best.take(start).concat(best.drop(start + size))
 				spent += 1
 
-				if used := attempt(gen, property, candidate, best):
+				used := attempt(gen, property, candidate, best)
+
+				if used != null:
 					best = used
 					progress = true
 
@@ -410,7 +417,9 @@ fn shrink[T](
 					candidate[index] = target
 					spent += 1
 
-					if used := attempt(gen, property, candidate, best):
+					used := attempt(gen, property, candidate, best)
+
+					if used != null:
 						best = used
 						progress = true
 
@@ -443,8 +452,9 @@ export fn check[T](
 		chosen = config.seed
 
 	var base = 0
+	given := chosen
 
-	if given := chosen:
+	if given != null:
 		base = given
 	else:
 		base = secure_int(0, max_int)?
@@ -484,7 +494,9 @@ export fn check[T](
 			continue
 
 		executed += 1
-		if message := outcome.failure:
+
+		message := outcome.failure
+		if message != null:
 			return report(
 				name,
 				gen,

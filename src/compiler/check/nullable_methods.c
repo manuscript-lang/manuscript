@@ -209,7 +209,7 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   if (kind == REMOVED_NONE) {
     return;
   }
-  const char *write = kind == REMOVED_UNWRAP ? "if v := x:` and use `v" : kind == REMOVED_OK_OR ? "ok_or(x, cause)" : kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
+  const char *write = kind == REMOVED_UNWRAP ? "if x != null:` and use `x" : kind == REMOVED_OK_OR ? "ok_or(x, cause)" : kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "a nullable has no method `");
   ms_strbuild_append(&text, name);
@@ -281,4 +281,42 @@ void body_redundant_or(Body *body, const MsExpr *expr) {
     ms_strbuild_append(&fix, written);
     ms_check_attach_fix(body->program, ms_expr_start(expr), expr->end, ms_strbuild_finish(&fix));
   }
+}
+
+/* `if v := x:` over an Optional: the binding is written as a declaration and a `v != null` test, which narrows `v`. */
+void body_report_if_unwrap(Body *body, const MsStmt *stmt) {
+  const MsPattern *binding = stmt->u.branch.binding;
+  if (!body_reports(body) || body->quiet || stmt->u.branch.is_mutable) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "an Optional is tested with `!= null`, not unwrapped by `if v := x`; "
+                                 "write `v := x` and then `if v != null:`");
+  ms_check_report(body->program, body->module, stmt->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  const MsExpr *cond = stmt->u.branch.cond;
+  MsSpan written = {0};
+  if (binding->kind != MS_P_NAME || stmt->pos.offset >= binding->pos.offset || cond->end.offset <= binding->pos.offset ||
+      !ms_span_slice(body->source, binding->pos.offset, cond->end.offset, &written)) {
+    return;
+  }
+  size_t line = stmt->pos.offset;
+  while (line > 0 && body->source.ptr[line - 1] != '\n') {
+    line--;
+  }
+  for (size_t at = line; at < stmt->pos.offset; at++) {
+    if (!blank(body->source.ptr[at])) {
+      return; /* `else if`: no mechanical rewrite */
+    }
+  }
+  MsStrBuild fix = ms_strbuild_new();
+  ms_strbuild_append(&fix, written);
+  ms_strbuild_append_text(&fix, "\n");
+  MsSpan indent = {0};
+  if (ms_span_slice(body->source, line, stmt->pos.offset, &indent)) {
+    ms_strbuild_append(&fix, indent);
+  }
+  ms_strbuild_append_text(&fix, "if ");
+  ms_strbuild_append(&fix, ms_names_span(body->program->names, binding->u.name));
+  ms_strbuild_append_text(&fix, " != null");
+  ms_check_attach_fix(body->program, stmt->pos, cond->end, ms_strbuild_finish(&fix));
 }

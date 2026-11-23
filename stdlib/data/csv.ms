@@ -143,7 +143,9 @@ export fn each_cell(
 // The budget as a count: no budget is the largest `Int`, and a negative budget stays
 // negative.
 fn budget(limit: Int?) Int:
-	if value := limit: return value
+	value := limit
+	if value != null: return value
+
 	return 9223372036854775807
 
 // Delimiter: one ASCII scalar other than quote, CR, LF or NUL. Line ending: LF or CRLF.
@@ -385,7 +387,8 @@ fn var CsvRows.boundary(data: Bytes) Int:
 	return cut
 
 fn CsvRows.check_size(size: Int) Void!:
-	if limit := self.max_record_bytes:
+	limit := self.max_record_bytes
+	if limit != null:
 		if size > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
 fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:

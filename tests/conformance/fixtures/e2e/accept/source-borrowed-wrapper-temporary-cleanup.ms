@@ -20,7 +20,9 @@ fn observed(value: Resource?) Bool: value != null
 
 // Reads the payload in place: `map` would take the resource.
 fn mapped(value: Resource?) Int?:
-	if item := value: return item.id
+	item := value
+	if item != null: return item.id
+
 	return null
 
 fn generic_map[T, U](transform: fn(T) U, value: T?) U?: value.map(transform)

@@ -119,7 +119,8 @@ fn made_by_resource(move log: String) Int:
 
 fn found_by_resource(move log: String) Int:
 	var maker = Maker(0)
-	if found := maker.find(log, 17): return found.id
+	found := maker.find(log, 17)
+	if found != null: return found.id
 
 	return 0
 

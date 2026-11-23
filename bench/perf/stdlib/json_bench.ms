@@ -22,14 +22,24 @@ fn encoded_length(value: JsonValue) Int:
 
 // Reads three nested fields of one row in place, without copying any subtree.
 fn row_weight(tree: JsonValue, index: Int) Int:
-	if row := tree.get_index(index):
+	row := tree.get_index(index)
+
+	if row != null:
 		var weight = 0
-		if id := row.get("id"):
+		id := row.get("id")
+		if id != null:
 			weight += id.as_int() or 0
-		if tags := row.get("tags"):
-			if last := tags.get_index(-1):
-				if tag := last.as_string():
+
+		tags := row.get("tags")
+
+		if tags != null:
+			last := tags.get_index(-1)
+
+			if last != null:
+				tag := last.as_string()
+				if tag != null:
 					weight += tag.length()
+
 		return weight
 
 	return 0

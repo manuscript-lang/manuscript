@@ -9,7 +9,9 @@ test "index_of_byte agrees with a scan across the inline window and the runtime"
 	var at = 0
 
 	while true:
-		if i := b.index_of_byte(44, at):
+		i := b.index_of_byte(44, at)
+
+		if i != null:
 			found.append(i)
 			at = i + 1
 		else: break

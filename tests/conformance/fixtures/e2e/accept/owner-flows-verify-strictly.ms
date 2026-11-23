@@ -39,7 +39,8 @@ fn parsed(lines: List[String]) List[String]:
 
 	for line in lines:
 		r := identity(ok(line.clone()))
-		if event := r.to_optional(): out.append(event)
+		event := r.to_optional()
+		if event != null: out.append(event)
 
 	return out
 

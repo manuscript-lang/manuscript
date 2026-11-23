@@ -49,8 +49,9 @@ fn read_raw(
 
 	while true:
 		next := rows.next()?
+		row := next
 
-		if row := next:
+		if row != null:
 			out.append(row)
 		else:
 			break

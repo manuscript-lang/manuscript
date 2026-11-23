@@ -13,8 +13,9 @@ fn echo(var exchange: HttpExchange) Void!:
 
 	while true:
 		message := socket.input.next()?
+		m := message
 
-		if m := message:
+		if m != null:
 			socket.output.write(m)?
 		else:
 			break

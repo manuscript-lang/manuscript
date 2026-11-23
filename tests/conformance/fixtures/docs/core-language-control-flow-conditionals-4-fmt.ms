@@ -2,7 +2,9 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/control-flow/conditionals.md:51
 fn greeting(name: String?) String:
-    if value := name:
-        return "Hello, " + value
-    else:
-        return "Hello!"
+	value := name
+
+	if value != null:
+		return "Hello, " + value
+	else:
+		return "Hello!"

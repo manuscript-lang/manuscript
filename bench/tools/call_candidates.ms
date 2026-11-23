@@ -99,7 +99,9 @@ fn measure(
 					f"check failed: {file}: {ran.stderr}"
 				)
 
-				if previous := expected.get(file):
+				previous := expected.get(file)
+
+				if previous != null:
 					if previous != ran.stdout: return invalid(
 						f"checker output changed: {file}"
 					)

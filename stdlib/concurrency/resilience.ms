@@ -69,7 +69,8 @@ export fn retry[T, E: Clonable](
 		if attempt >= policy.attempts: return result
 
 		if result.is_error():
-			if accepts := retryable:
+			accepts := retryable
+			if accepts != null:
 				if not accepts(result.err()): return result
 			void sleep(jittered(policy, attempt)).wait()
 			attempt += 1
@@ -196,8 +197,9 @@ export type CircuitBreaker:
 // once. It is false while the circuit is closed, and once the cooldown has passed,
 // which lets the trial call through.
 fn CircuitBreaker.is_open() Bool:
-	if since := self.opened:
-		return monotonic().difference(since).compare(self.cooldown) < 0
+	since := self.opened
+	if since != null: return monotonic().difference(since).compare(self.cooldown) < 0
+
 	return false
 
 // Runs `operation` unless the circuit is open, and records the outcome. An open
@@ -254,7 +256,9 @@ export fn map_concurrent[T, U](items: List[T], limit: Int, work: fn(T) U) List[U
 
 	while index > 0:
 		index -= 1
-		if value := parts[index % stripes].pop():
+
+		value := parts[index % stripes].pop()
+		if value != null:
 			results.append(value)
 
 	results.reverse()
@@ -295,7 +299,8 @@ export type Throttle:
 // Reports whether an action may happen now, and if so counts it. It never waits.
 fn var Throttle.allow() Bool:
 	now := monotonic()
-	if previous := self.last:
+	previous := self.last
+	if previous != null:
 		if now.difference(previous).compare(self.interval) < 0: return false
 	self.last = now
 	return true
@@ -303,7 +308,9 @@ fn var Throttle.allow() Bool:
 // Waits until an action may happen, then counts it. Cancelling the task ends the
 // wait.
 fn var Throttle.wait() Void:
-	if previous := self.last:
+	previous := self.last
+
+	if previous != null:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:
 			void sleep(remaining).wait()

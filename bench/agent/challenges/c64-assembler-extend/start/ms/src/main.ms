@@ -282,8 +282,9 @@ fn var Asm.sym_value(name: String) Int!:
 	var state = 0
 	var value = 0
 	var text = ""
+	s := self.syms.get(name)
 
-	if s := self.syms.get(name):
+	if s != null:
 		found = true
 		is_equ = s.is_equ
 		state = s.state
@@ -974,7 +975,8 @@ fn main() Void!:
 		chars.append(from_scalars([k])?)
 
 	var start = 0
-	if m := asm.syms.get("main"):
+	m := asm.syms.get("main")
+	if m != null:
 		if m.text_sec and not m.is_equ: start = m.value
 
 	var vm = Vm(

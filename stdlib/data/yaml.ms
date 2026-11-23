@@ -143,7 +143,9 @@ fn blank_trim(text: String) String:
 	return blank_trim_end(blank_trim_start(text))
 
 fn within(value: Int, limit: Int?) Bool:
-	if maximum := limit: return value <= maximum
+	maximum := limit
+	if maximum != null: return value <= maximum
+
 	return true
 
 // Number of containers and leaves in a value, excluding keys.
@@ -506,18 +508,23 @@ fn tag_token(var flow: Flow) String!:
 	// `!!name` and `!handle!name` expand through the declared prefixes.
 	if name.starts_with("!"):
 		var prefix = "tag:yaml.org,2002:"
-		if declared := handles.get("!!"): prefix = declared.clone()
+		declared := handles.get("!!")
+		if declared != null: prefix = declared.clone()
 		return ok(f"{prefix}{name.slice(1, name.length())}")
 
-	if bang := name.index_of("!"):
+	bang := name.index_of("!")
+
+	if bang != null:
 		handle := f"!{name.slice(0, bang + 1)}"
-		if prefix := handles.get(handle):
-			return ok(f"{prefix}{name.slice(bang + 1, name.length())}")
+		prefix := handles.get(handle)
+		if prefix != null: return ok(f"{prefix}{name.slice(bang + 1, name.length())}")
 
 		return error(flow_invalid(flow, "undeclared tag handle"))
 
 	if name != "":
-		if prefix := handles.get("!"): return ok(f"{prefix}{name}")
+		prefix := handles.get("!")
+		if prefix != null: return ok(f"{prefix}{name}")
+
 	return ok(f"!{name}")
 
 // The mapping key a scalar node stands for: its text. A collection cannot be a key.
@@ -670,9 +677,12 @@ fn flow_leaf(var flow: Flow, c: Int, key: Bool, pair: Bool = false) YamlValue!:
 		advance(flow)
 
 		name := anchor_name(flow)?
-		if size := flow.context.sizes.get(name):
+		size := flow.context.sizes.get(name)
+		if size != null:
 			charge(flow.context, size)?
-		if value := flow.context.anchors.get(name): return ok(value.clone())
+
+		value := flow.context.anchors.get(name)
+		if value != null: return ok(value.clone())
 
 		return error(flow_invalid(flow, "unknown or recursive alias"))
 
@@ -2580,8 +2590,10 @@ fn validate(var context: Context, value: YamlValue, depth: Int) Void!:
 
 fn open_stream(text: String, options: YamlOptions) Context!:
 	for limit in [options.max_bytes, options.max_depth, options.max_values]:
-		if value := limit:
+		value := limit
+		if value != null:
 			if value < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
+
 	if not within(text.length(), options.max_bytes): return error(
 		Error("YAML limit exceeded", kind: "EOVERFLOW")
 	)
@@ -2862,7 +2874,8 @@ fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
 // Writes a YAML value in block style with double-quoted strings. Output longer than
 // `max_bytes` returns `EOVERFLOW`, and a negative `max_bytes` returns `EINVAL`.
 export fn stringify(value: YamlValue, max_bytes: Int? = null) String!:
-	if limit := max_bytes:
+	limit := max_bytes
+	if limit != null:
 		if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
 
 	var out = StringBuilder()

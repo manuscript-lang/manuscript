@@ -428,8 +428,9 @@ fn image_of(move raster: Raster) Image:
 // larger images with EOVERFLOW before any allocation.
 export fn decode_image(data: Bytes, max_pixels: Int? = null) Image!:
 	format := detect_image_format(data)
+	f := format
 
-	if f := format:
+	if f != null:
 		match f:
 			Jpeg: return decode_jpeg(data, max_pixels).map(image_of)
 			Png: return decode_png(data, max_pixels).map(image_of)

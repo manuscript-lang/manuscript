@@ -167,10 +167,14 @@ fn ini_value(value: String) String:
 	// value; the comment may itself contain or end with the quote, so this precedes the
 	// whole-suffix rule.
 	if quoted:
-		if closing := trimmed.view(1, trimmed.length()).index_of(quote):
+		closing := trimmed.view(1, trimmed.length()).index_of(quote)
+
+		if closing != null:
 			tail := trimmed.view(closing + 2, trimmed.length())
+
 			for marker in [" #", " ;"]:
-				if at := tail.index_of(marker):
+				at := tail.index_of(marker)
+				if at != null:
 					if tail.view(0, at).trim().is_empty(): return trimmed.view(
 						1,
 						closing + 1,
@@ -180,9 +184,12 @@ fn ini_value(value: String) String:
 		return trimmed.view(1, trimmed.length() - 1).clone()
 
 	var cut = value.length()
+
 	for marker in [" #", " ;"]:
-		if at := value.index_of(marker):
+		at := value.index_of(marker)
+		if at != null:
 			cut = cut.min(at)
+
 	return value.view(0, cut).trim().clone()
 
 // Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in

@@ -45,6 +45,7 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
 bool body_present_get(Body *body, const MsExpr *call, MsTy *result);
 /* `l or d` where `l` is a plain value never falls back; the fix keeps `l`. */
 void body_redundant_or(Body *body, const MsExpr *expr);
+void body_report_if_unwrap(Body *body, const MsStmt *stmt);
 /* A constructor or case call of an opaque type outside its module is denied. */
 void body_deny_opaque_build(Body *body, const MsExpr *call, const Target *target);
 MsTy body_call_function_type(Body *body, const MsTyParamList *params, MsTy result);

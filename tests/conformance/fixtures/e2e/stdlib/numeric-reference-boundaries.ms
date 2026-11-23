@@ -86,7 +86,8 @@ test "wrapping arithmetic matches exact arithmetic reduced mod 2^64":
 			expect_equal(big_int_of_int(wrapping_multiply(a, b)), product)?
 
 fn big_of_word(word: UInt64) BigInt:
-	if small := word.to_int(): return big_int_of_int(small)
+	small := word.to_int()
+	if small != null: return big_int_of_int(small)
 
 	low := (word - 9223372036854775808).to_int() or 0
 	return big_int_of_int(low) + big_int_of_int(max_int) + big_int_of_int(1)
@@ -168,9 +169,12 @@ test "next_after moves by exactly one representable step":
 		exact := rat_of_float(x) or rat_of_int(0)
 		exact_up := rat_of_float(up)
 		exact_down := rat_of_float(down)
-		if u := exact_up:
+		u := exact_up
+		if u != null:
 			expect_equal(u.compare(exact), 1)?
-		if d := exact_down:
+
+		d := exact_down
+		if d != null:
 			expect_equal(d.compare(exact), -1)?
 
 test "to_fixed matches the exact decimal expansion":
@@ -198,8 +202,9 @@ test "truncate_to_int is exact inside the Int range and none outside it":
 			expect_equal(result, null)?
 		else:
 			exact := (rat_of_float(x) or rat_of_int(0)).truncate()
+			value := exact.to_int()
 
-			if value := exact.to_int():
+			if value != null:
 				expect_equal(result, value)?
 			else:
 				expect_equal(result, null)?
@@ -207,7 +212,9 @@ test "truncate_to_int is exact inside the Int range and none outside it":
 test "fma and sqrt are correctly rounded":
 	for x in finite_float_boundaries():
 		if x >= 0.0:
-			if reference := big_float_of_float(x, 200):
+			reference := big_float_of_float(x, 200)
+
+			if reference != null:
 				if root := reference.sqrt():
 					rounded := big_float_of_rat(root.to_rat(), 53).to_float()
 					expect_equal(sqrt(x), rounded or 0.0)?
@@ -218,7 +225,8 @@ test "fma and sqrt are correctly rounded":
 				exact := (rat_of_float(a) or rat_of_int(0)).multiply(
 					rat_of_float(b) or rat_of_int(0)
 				).add(rat_of_float(c) or rat_of_int(0))
-				if nearest := exact.to_float():
+				nearest := exact.to_float()
+				if nearest != null:
 					expect_true(same_float(fma(a, b, c), nearest) or nearest == 0.0)?
 
 fn word_boundaries() List[UInt64]:
@@ -404,8 +412,9 @@ test "parse_float rounds like the exact rational at the range edges":
 	for text in cases:
 		exact := parse_rat(text)?
 		parsed := text.parse_float()
+		nearest := exact.to_float()
 
-		if nearest := exact.to_float():
+		if nearest != null:
 			expect_true(
 				same_float(
 					parsed or 1.5,
@@ -426,8 +435,10 @@ test "BigRat and BigFloat arithmetic is exact or correctly rounded on Float boun
 				expect_equal((a.divide(b)?).multiply(b), a)?
 
 			sum := x + y
+
 			if sum.is_finite():
-				if nearest := a.add(b).to_float():
+				nearest := a.add(b).to_float()
+				if nearest != null:
 					expect_true(
 						same_float(
 							sum,
@@ -436,8 +447,10 @@ test "BigRat and BigFloat arithmetic is exact or correctly rounded on Float boun
 					)?
 
 			product := x * y
+
 			if product.is_finite():
-				if nearest := a.multiply(b).to_float():
+				nearest := a.multiply(b).to_float()
+				if nearest != null:
 					expect_true(
 						same_float(
 							product,

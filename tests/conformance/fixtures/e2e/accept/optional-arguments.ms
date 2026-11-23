@@ -20,7 +20,9 @@ fn success(value: Int!Error?) Int:
 	return value.get().get_or(-1)
 
 fn context[T](fallback: T, value: T?) T:
-	if inner := value: return inner
+	inner := value
+	if inner != null: return inner
+
 	return fallback
 
 type Notice:

@@ -18,13 +18,15 @@ type OneByte:
 
 fn var OneByte.next() move Bytes?!:
 	var data = "".to_bytes()
+	held := self.held
 
-	if held := self.held:
+	if held != null:
 		data = held.clone()
 	else:
 		fresh := self.input.next()?
+		next := fresh
 
-		if next := fresh: data = next.clone()
+		if next != null: data = next.clone()
 		else: return ok(null)
 
 	if data.length() <= 1:
@@ -51,8 +53,9 @@ fn var FailAfter.next() move Bytes?!:
 	if self.remaining <= 0: return error(self.cause.clone())
 
 	chunk := self.input.next()?
+	data := chunk
 
-	if data := chunk:
+	if data != null:
 		if data.length() > self.remaining:
 			head := data.slice(0, self.remaining)?
 			self.remaining = 0
@@ -134,7 +137,9 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 		chunk := again.next()
 		if chunk.is_error(): return fail("check_reader: a read failed")
 
-		if piece := chunk.get(): total += piece.length()
+		piece := chunk.get()
+
+		if piece != null: total += piece.length()
 		else: break
 
 	after_end := again.next()

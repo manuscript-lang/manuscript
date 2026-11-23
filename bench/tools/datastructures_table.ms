@@ -45,7 +45,9 @@ fn ratio(num: Float?, den: Float?) String:
 	return ((num) / (den)).to_fixed(2)
 
 fn cell(value: Float?) String:
-	if v := value: return right(v.to_fixed(1), 9)
+	v := value
+	if v != null: return right(v.to_fixed(1), 9)
+
 	return right("-", 9)
 
 export fn summarize(lines: List[String], repeats: Int) String!:
@@ -99,8 +101,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 		key := f"{name} {version}"
 		now := (ns).to_float()
+		prior := best.get(key)
 
-		if prior := best.get(key):
+		if prior != null:
 			best.add(key.clone(), if now < prior: now else: prior)
 		else:
 			best.add(key.clone(), now)
@@ -123,7 +126,8 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		n := op.count.to_float()
 		m := best.get_or(f"{op.name} ms", 0.0) / n
 		var g: Float? = null
-		if t := best.get(f"{op.name} go"): g = t / n
+		t := best.get(f"{op.name} go")
+		if t != null: g = t / n
 
 		r := best.get_or(f"{op.name} rs", 0.0) / n
 		rows.append(

@@ -13,7 +13,9 @@ fn fallback(var counter: Counter) Int:
 	return 42
 
 fn value_or[T](fallback: T, value: T?) T:
-	if inner := value: return inner
+	inner := value
+	if inner != null: return inner
+
 	return fallback
 
 fn increment(value: Int) Int: value + 1

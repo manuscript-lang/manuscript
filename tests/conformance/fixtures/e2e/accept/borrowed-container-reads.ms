@@ -33,7 +33,9 @@ fn by_binding(orders: Map[String, Order], id: String) Int:
 	return o.items.length() + o.status.length()
 
 fn by_if_let(orders: Map[String, Order], id: String) Int:
-	if o := orders.get(id): return o.items.length() + o.status.length()
+	o := orders.get(id)
+	if o != null: return o.items.length() + o.status.length()
+
 	return 0
 
 fn by_chain(orders: Map[String, Order], id: String) Int:
@@ -47,7 +49,9 @@ fn returned(orders: Map[String, Order], id: String) Order?:
 	return found.clone()
 
 fn take_optional(o: Order?) Int:
-	if v := o: return v.items.length()
+	v := o
+	if v != null: return v.items.length()
+
 	return -1
 
 fn build() Map[String, Order]:
@@ -75,7 +79,9 @@ test "a lent entry of a local var map ends at its last use":
 	a := m.get("a")
 	expect_equal(a.get().id, "a")?
 	m.add("c", order("c", 1))
-	if c := m.get("c"):
+
+	c := m.get("c")
+	if c != null:
 		expect_equal(c.items.first().get().sku, "c-0")?
 	m.remove("a")
 	expect_equal(m.get("a") == null, true)?
@@ -91,7 +97,9 @@ test "first and last lend the element":
 	last := xs.last()
 	expect_equal(first.get(), "one")?
 	expect_equal(last.get(), "three")?
-	if f := xs.first():
+
+	f := xs.first()
+	if f != null:
 		expect_equal(f.length(), 3)?
 	xs.append("four")
 	expect_equal(xs.last().get(), "four")?
@@ -99,13 +107,17 @@ test "first and last lend the element":
 	empty := List[String]()
 	expect_equal(empty.first() == null, true)?
 	expect_equal(empty.last() == null, true)?
-	if none_here := empty.first():
+
+	none_here := empty.first()
+	if none_here != null:
 		expect_equal(none_here, "unreachable")?
 
 test "a temporary container lives as long as its lent entry":
 	o := build().get("b")
 	expect_equal(o.get().items.length(), 3)?
-	if item := order("t", 2).items.last():
+
+	item := order("t", 2).items.last()
+	if item != null:
 		expect_equal(item.sku, "t-1")?
 
 test "get_or reads through the entry":
@@ -130,7 +142,9 @@ test "an entry whose optional is boxed is still read correctly":
 
 	x := nodes.get("x")
 	expect_equal(x.get().next.get().name, "y")?
-	if n := nodes.get("x"):
+
+	n := nodes.get("x")
+	if n != null:
 		expect_equal(n.name, "x")?
 
 	chain := [Node(name: "head", next: null)]
@@ -139,21 +153,24 @@ test "an entry whose optional is boxed is still read correctly":
 test "if let over a borrowed optional lends its payload":
 	orders := build()
 	maybe := orders.get("a")
+	o := maybe
 
-	if o := maybe:
+	if o != null:
 		expect_equal(o.id, "a")?
 		expect_equal(o.items.length(), 2)?
 
 	expect_equal(maybe != null, true)?
 
 	text: String? := "hello"
-	if t := text:
+	t := text
+	if t != null:
 		expect_equal(t.length(), 5)?
 	expect_equal(text.get(), "hello")?
 
 test "an entry read from a temporary map is an owned copy":
 	var kept = Map[String, Order]()
-	if o := build().get("b"):
+	o := build().get("b")
+	if o != null:
 		kept.add("b", o)
 	expect_equal(kept.get("b").get().id, "b")?
 	expect_equal(kept.get("b").get().items.length(), 3)?

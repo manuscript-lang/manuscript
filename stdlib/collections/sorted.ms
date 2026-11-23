@@ -363,22 +363,30 @@ fn SortedSet[T].last() T?:
 
 // Removes and returns the smallest member, or `null` when empty.
 fn var SortedSet[T].pop_first() T?:
-	if entry := self.members.pop_first(): return entry.key
+	entry := self.members.pop_first()
+	if entry != null: return entry.key
+
 	return null
 
 // Removes and returns the largest member, or `null` when empty.
 fn var SortedSet[T].pop_last() T?:
-	if entry := self.members.pop_last(): return entry.key
+	entry := self.members.pop_last()
+	if entry != null: return entry.key
+
 	return null
 
 // Returns the smallest member that is at least `value`, or `null`.
 fn SortedSet[T].ceiling(value: T) T?:
-	if entry := self.members.ceiling(value): return entry.key.clone()
+	entry := self.members.ceiling(value)
+	if entry != null: return entry.key.clone()
+
 	return null
 
 // Returns the largest member that is at most `value`, or `null`.
 fn SortedSet[T].floor(value: T) T?:
-	if entry := self.members.floor(value): return entry.key.clone()
+	entry := self.members.floor(value)
+	if entry != null: return entry.key.clone()
+
 	return null
 
 // Returns a new list of the members with `low` <= member < `high`, in ascending

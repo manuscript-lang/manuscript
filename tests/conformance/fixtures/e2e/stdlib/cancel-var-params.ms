@@ -37,7 +37,9 @@ fn merge(var a: Bag, var b: Bag) Bag!:
 
 	for key in b.index.keys():
 		tick()?
-		if v := b.index.get(key):
+
+		v := b.index.get(key)
+		if v != null:
 			a.index[key.clone()] = v.clone()
 
 	a.note = "merged"

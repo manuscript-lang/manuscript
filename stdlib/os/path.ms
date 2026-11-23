@@ -584,7 +584,9 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 
 	if windows:
 		if normalized != native(true, root_in(true, normalized)):
-			if stripped := normalized.cut_suffix("\\"): normalized = stripped.clone()
+			stripped := normalized.cut_suffix("\\")
+			if stripped != null: normalized = stripped.clone()
+
 		return normalized
 
 	// POSIX: a trailing separator survives only on the root itself.
@@ -596,7 +598,9 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 	return normalized
 
 fn resolve_in(windows: Bool, base: String, parts: List[String]) String!:
-	if value := resolve_inner(windows, base, parts): return ok(value)
+	value := resolve_inner(windows, base, parts)
+	if value != null: return ok(value)
+
 	return error(invalid_input())
 
 fn basename_in(windows: Bool, raw: String) String:
@@ -619,14 +623,16 @@ fn basename_inner(windows: Bool, raw: String, suffix: String, strip: Bool) Strin
 		text = text.view(2, text.length()).clone()
 
 	var base = trim_end_slashes(text)
-	if at := base.last_index_of("/"): base = base.view(at + 1, base.length()).clone()
+	at := base.last_index_of("/")
+	if at != null: base = base.view(at + 1, base.length()).clone()
 
 	if strip and not suffix.is_empty() and suffix.length() <= raw.length():
 		if raw == suffix: return ""
 		if base.is_empty(): return raw.view(prefix, raw.length()).clone()
 
 		if suffix != base:
-			if stripped := base.cut_suffix(suffix): base = stripped.clone()
+			stripped := base.cut_suffix(suffix)
+			if stripped != null: base = stripped.clone()
 
 	return base
 

@@ -74,7 +74,9 @@ fn text_of(data: Bytes) String:
 	return (data.decode_utf8() or "").clone()
 
 fn string_member(value: JsonValue, key: String) String:
-	if found := value.get(key): return found.as_string() or ""
+	found := value.get(key)
+	if found != null: return found.as_string() or ""
+
 	return ""
 
 fn parent_length(path: String) Int:
@@ -124,7 +126,8 @@ fn parse_meta(text: String) Meta:
 		else if key == "entry": meta.entry = value.clone()
 		else if key == "deterministic": meta.deterministic = value == "true"
 		else if key == "args":
-			if document := parse(value).get_or(JsonValue.Null).as_list():
+			document := parse(value).get_or(JsonValue.Null).as_list()
+			if document != null:
 				for item in document: meta.args.append((item.as_string() or "").clone())
 
 	return meta
@@ -188,7 +191,8 @@ fn fixtures(root: String, phase: String, filters: List[String]) List[Fixture]:
 
 		sidecar := if is_dir: f"{path}/expected.json" else: f"{root}/{id}.expected.json"
 		var expected = JsonValue.Null
-		if recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected"):
+		recorded := parse(read_text(sidecar)).get_or(JsonValue.Null).get("expected")
+		if recorded != null:
 			expected = recorded.clone()
 
 		if meta.entry == "":
@@ -419,7 +423,8 @@ fn parse_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	)
 	report := read_report(checked, work)
 	var diagnostics = List[JsonValue]()
-	if listed := report.get("diagnostics"):
+	listed := report.get("diagnostics")
+	if listed != null:
 		for item in (listed.as_list() or []):
 			if string_member(item, "phase") == "parse": diagnostics.append(item.clone())
 
@@ -453,8 +458,9 @@ fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	var text_code = json_run.code
 	var stdout = ""
 	var stderr = ""
+	text := report.get("text")
 
-	if text := report.get("text"):
+	if text != null:
 		stdout = string_member(text, "stdout")
 		stderr = string_member(text, "stderr")
 	else:
@@ -465,9 +471,13 @@ fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
 
 	var fields = Map[String, JsonValue]()
 	process_fields(fields, json_run)
-	if format := report.get("format"): fields.add("format", format.clone())
 
-	if listed := report.get("diagnostics"): fields.add("diagnostics", listed.clone())
+	format := report.get("format")
+	if format != null: fields.add("format", format.clone())
+
+	listed := report.get("diagnostics")
+
+	if listed != null: fields.add("diagnostics", listed.clone())
 	else: fields.add("diagnostics", JsonValue.ArrayValue([]))
 
 	if report.get("unparsable_json") != null: fields.add("raw", report)
@@ -602,7 +612,9 @@ fn oracle_version(ms: String) String:
 fn unrecordable(observed: JsonValue) String:
 	for key in ["harness_error", "spawn_error", "timed_out", "unparsable_json"]:
 		if observed.get(key) != null: return f"observation has {key}"
-	if report := observed.get("report"):
+
+	report := observed.get("report")
+	if report != null:
 		if report.get("unparsable_json") != null: return "ms test did not print JSON"
 	return ""
 
@@ -694,9 +706,8 @@ fn main() Int:
 
 	ms := tool_ms(root.clone())
 	var build_type = "Release"
-	if configured := environment().get_or(
-		Map[String, String]()
-	).get("CONFORM_BUILD_TYPE"): build_type = configured.clone()
+	configured := environment().get_or(Map[String, String]()).get("CONFORM_BUILD_TYPE")
+	if configured != null: build_type = configured.clone()
 
 	show_diff := environment().get_or(Map[String, String]()).get("CONFORM_DIFF") != null
 	var chosen = List[Fixture]()

@@ -75,7 +75,9 @@ export type ReadStream[T]:
 // afterwards.
 fn var ReadStream[T].next(timeout: Duration? = null) move T?!:
 	if self.closed: return ok(null)
-	if bound := timeout: return read_bounded(self.source, bound)
+
+	bound := timeout
+	if bound != null: return read_bounded(self.source, bound)
 
 	return self.source.next()
 
@@ -185,7 +187,9 @@ fn var DescriptorSource.next() move Bytes?!:
 
 	chunk := msrt_promise_take[Bytes](p)
 	msrt_promise_drop(p)
-	if data := chunk: return ok(data)
+
+	data := chunk
+	if data != null: return ok(data)
 
 	message := msrt_streams_error(self.id)
 	if not message.is_empty(): return error(Error(message, kind: "EIO"))
@@ -341,11 +345,13 @@ export fn stderr_bytes() WriteStream[Bytes]:
 // has closed.
 fn pipe_next[T](id: Int) T?!:
 	// Fast path: a queued value or the end needs no promise.
-	if queued := msrt_pipe_try[T](id): return ok(queued)
+	queued := msrt_pipe_try[T](id)
+	if queued != null: return ok(queued)
 	if msrt_pipe_ended(id) == 1: return ok(null)
 
 	if msrt_pipe_brief_wait(id) == 1:
-		if queued := msrt_pipe_try[T](id): return ok(queued)
+		queued := msrt_pipe_try[T](id)
+		if queued != null: return ok(queued)
 
 	p := msrt_pipe_read(id)
 	code := msrt_promise_wait(p, -1)
@@ -464,13 +470,15 @@ type Through[A, B]:
 
 fn var Through[A, B].next() move B?!:
 	while true:
-		if item := self.out.pop(): return ok(item)
+		item := self.out.pop()
+		if item != null: return ok(item)
 		if self.finished: return ok(null)
 
 		step := self.input.next()?
 		var wrote: Void! = ok()
+		value := step
 
-		if value := step:
+		if value != null:
 			wrote = self.transform.step(value, self.out)
 		else:
 			self.finished = true

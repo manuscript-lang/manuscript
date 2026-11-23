@@ -67,7 +67,9 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
 
 	for item in source:
 		items.append(item)
-		if limit := max_items:
+
+		limit := max_items
+		if limit != null:
 			if items.length() > limit:
 				return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 
@@ -82,7 +84,9 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 	for chunk in source:
 		all.append_bytes(chunk)
 		total += chunk.length()
-		if limit := max_bytes:
+
+		limit := max_bytes
+		if limit != null:
 			if total > limit:
 				return error(Error("I/O: limit exceeded", kind: "EOVERFLOW"))
 

@@ -200,11 +200,13 @@ fn main() Int:
 	change_directory(scratch.path()).get()
 
 	var jobs = system_info().cpu_count
-	if n := env("LEAK_JOBS", "").parse_int(): jobs = n
+	n := env("LEAK_JOBS", "").parse_int()
+	if n != null: jobs = n
 	if jobs < 1: jobs = 1
 
 	var most = 64
-	if n := env("SWEEP_MAX_PARKS", "").parse_int(): most = n
+	n := env("SWEEP_MAX_PARKS", "").parse_int()
+	if n != null: most = n
 
 	var chunks = List[List[String]]()
 

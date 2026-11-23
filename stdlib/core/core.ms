@@ -121,7 +121,9 @@ fn msstd_status_error(
 // The words `overrides` gives `number`, if any.
 fn override_words(overrides: String, number: Int) String?:
 	for line in overrides.split("\n"):
-		if words := line.cut_prefix(f"{number} "): return words
+		words := line.cut_prefix(f"{number} ")
+		if words != null: return words
+
 	return null
 
 fn status_error_text(

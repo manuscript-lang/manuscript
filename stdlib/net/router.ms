@@ -36,7 +36,9 @@ type Held[T]:
 fn move Held[T].close() Void!:
 	if self.held:
 		self.held = false
-		if value := self.items.pop():
+
+		value := self.items.pop()
+		if value != null:
 			put_slot(self.slot, value)
 
 // Owns a slot: the scope that holds it releases the slot however the scope ends.
@@ -58,7 +60,9 @@ export type RouteParams:
 // Returns the text captured for `name`, or null when the pattern has no such
 // parameter.
 fn RouteParams.get(name: String) String?:
-	if index := self.names.index_of(name): return self.values[index].clone()
+	index := self.names.index_of(name)
+	if index != null: return self.values[index].clone()
+
 	return null
 
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
@@ -327,7 +331,8 @@ fn parse_pattern(pattern: String) List[Segment]!:
 		if not valid_segment(segment, names, last):
 			return error(invalid_pattern(pattern))
 
-		if name := segment_name(segment): names.append(name)
+		name := segment_name(segment)
+		if name != null: names.append(name)
 		segments.append(segment)
 
 	return ok(segments)
@@ -388,8 +393,9 @@ fn lookup(routes: List[Route], method: String, parts: List[String]) Lookup:
 
 	while index < routes.length():
 		route := routes[index]
+		captured := capture(route.segments, parts)
 
-		if captured := capture(route.segments, parts):
+		if captured != null:
 			allow.append(route.method.clone())
 
 			if (
@@ -415,7 +421,9 @@ fn names_of(segments: List[Segment]) List[String]:
 	return segments.flat_map(fn segment: name_list(segment))
 
 fn name_list(segment: Segment) List[String]:
-	if name := segment_name(segment): return [name]
+	name := segment_name(segment)
+	if name != null: return [name]
+
 	return []
 
 // The captured values when `parts` match `segments`.
@@ -529,8 +537,9 @@ fn finish(
 ) Void!:
 	method := target.method
 	found := target.found
+	index := found.found
 
-	if index := found.found:
+	if index != null:
 		route := routes[index]
 		return chain_groups(
 			groups,
@@ -605,7 +614,9 @@ fn var TestExchange.read(max_bytes: Int?) Bytes?!:
 	chunk := guard.items[0].unread.clone()
 	guard.items[0].unread = null
 
-	if bytes := chunk:
+	bytes := chunk
+
+	if bytes != null:
 		if bytes.length() == 0: return ok(null)
 
 		n := if max < bytes.length(): max else: bytes.length()
@@ -711,7 +722,9 @@ fn Tap.sent_length(status: Int, length: Int) Int:
 
 // The status the response headers went out with, or 200 before any are sent.
 fn Tap.status_so_far() Int:
-	if state := self.state:
+	state := self.state
+
+	if state != null:
 		seen := snapshot(state).status
 		if seen != 0: return seen
 
@@ -779,7 +792,9 @@ export fn with_request_headers(var exchange: HttpExchange, request: HttpHeaders)
 	exchange = new_tap(exchange, headers(), request)
 
 fn counted(status: Int, bytes: Int, slot: Int?) Void:
-	if state := slot:
+	state := slot
+
+	if state != null:
 		var guard = hold[TapState](state)
 		if status != 0: guard.items[0].status = status
 		guard.items[0].bytes += bytes

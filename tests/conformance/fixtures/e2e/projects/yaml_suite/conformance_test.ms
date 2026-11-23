@@ -33,7 +33,8 @@ fn canon(value: YamlValue) String:
 
 // The value of a YAML core-schema number spelling.
 fn number(text: String) Float:
-	if f := text.parse_float(): return f
+	f := text.parse_float()
+	if f != null: return f
 
 	digits := text.slice(2, text.length())
 	if text.starts_with("0x"): return parse_int(digits, 16).get_or(0).to_float()
