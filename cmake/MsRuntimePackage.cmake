@@ -66,7 +66,7 @@ function(ms_package_runtime executable runtime)
   endif()
   # The `--static` runtime is the same archives built by the inner musl build, at the same place under its tree.
   set(musl_joined "")
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND MS_BUILD_MUSL)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(musl_paths "")
     foreach(archive IN LISTS archives)
       if(archive STREQUAL "ms_glibc_compat")
@@ -99,7 +99,7 @@ endfunction()
 
 # The inner build that compiles the runtime against musl (MS_LIBC=musl), for `ms build --static`.
 function(ms_add_musl_runtime)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT MS_BUILD_MUSL OR MS_LIBC STREQUAL "musl")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MS_LIBC STREQUAL "musl")
     return()
   endif()
   include(ExternalProject)
