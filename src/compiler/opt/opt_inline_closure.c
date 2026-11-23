@@ -310,7 +310,7 @@ static void ic_subst_term(void *ctx, MirValue *v) {
 
 /* A copy of closure code `f` as a plain function taking the captures before the arguments, or
  * false when the environment is used in any way besides `closure.cap`. */
-static bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out) {
+bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out) {
   if (!ic_closure_usable(f)) {
     return false;
   }
