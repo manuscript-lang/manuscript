@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-// `.clone()` of a record that holds a function value is rejected in the ownership pass: a
-// function value owns its captures and has one owner.
+// `.clone()` of a record that holds a function value is accepted: a function value never
+// changes once made, so the copy shares it.
 type Handler:
 	run: fn(Int) Int
 

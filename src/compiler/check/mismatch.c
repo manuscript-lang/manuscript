@@ -358,7 +358,14 @@ void body_check_assignable(Body *body, const MsExpr *expr, MsTy actual, MsTy exp
 
 MsTy body_expect(Body *body, const MsExpr *expr, MsTy expected, MsSpan context) {
   const MsTy actual = body_expr(body, expr, expected);
-  if (expr->kind != MS_E_LAMBDA) {
+  /* A function literal is read against its context; only a closed function type with its own result disagrees here. */
+  const MsTyTable *types = &body->program->types;
+  const bool closed = expr->kind == MS_E_LAMBDA && expected != MS_TY_NONE && actual != MS_TY_NONE &&
+                      ms_ty_kind(types, expected) == MS_TY_FUNCTION && ms_ty_kind(types, actual) == MS_TY_FUNCTION &&
+                      ms_ty_param_count(types, expected) == ms_ty_param_count(types, actual) &&
+                      !ms_ty_has_variable(types, expected) && !ms_ty_has_variable(types, actual) &&
+                      expr->u.lambda.result != NULL;
+  if (expr->kind != MS_E_LAMBDA || closed) {
     body_check_assignable(body, expr, actual, expected, context);
   }
   return actual;

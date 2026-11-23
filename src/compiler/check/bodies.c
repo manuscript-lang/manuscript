@@ -104,6 +104,27 @@ static void report_pattern(Body *body, MsPos pos, const char *text) {
 
 static void bind_fields(Body *body, const MsPattern *pattern, MsTy ty, bool is_var);
 
+/* The names of a pattern that does not fit its value stay unbound: reading one is an unknown binding. */
+static void reject_pattern(Body *body, const MsPattern *pattern) {
+  switch ((MsPatternKind)pattern->kind) {
+  case MS_P_NAME: {
+    (void)body_declare(body, pattern->u.name, MS_TY_NONE, MS_REF_LOCAL, false, pattern->id, pattern->pos);
+    ms_local_list_last(&body->locals)->rejected = true;
+    break;
+  }
+  case MS_P_LIST:
+    for (uint32_t index = 0; index < pattern->u.list.len; index++) {
+      reject_pattern(body, pattern->u.list.ptr[index]);
+    }
+    break;
+  case MS_P_TYPE:
+    for (uint32_t index = 0; index < pattern->u.fields.len; index++) {
+      reject_pattern(body, pattern->u.fields.ptr[index].pattern);
+    }
+    break;
+  }
+}
+
 /* Declares the names of a binding pattern; `ty` is the type the whole pattern matches and `source` the written value
  * when it is a literal whose shape is known. */
 static void bind_pattern_from(Body *body, const MsPattern *pattern, MsTy ty, bool is_var, const MsExpr *source) {
@@ -119,6 +140,7 @@ static void bind_pattern_from(Body *body, const MsPattern *pattern, MsTy ty, boo
     const bool list = ms_ty_is(types, ty, MS_BUILTIN_List) && ms_ty_arg_count(types, ty) == 1;
     if (known && !list) {
       report_pattern(body, pattern->pos, "positional binding requires a list; use [a, b] patterns only with List values");
+      reject_pattern(body, pattern);
       return;
     }
     if (list && source != NULL && source->kind == MS_E_LIST && source->u.list.len != pattern->u.list.len) {
@@ -133,6 +155,7 @@ static void bind_pattern_from(Body *body, const MsPattern *pattern, MsTy ty, boo
   }
   if (known && (ms_ty_kind(types, ty) != MS_TY_TYPE || ms_ty_builtin(types, ty) != MS_BUILTIN_NONE)) {
     report_pattern(body, pattern->pos, "type binding requires a type; destructure only type values, or bind the whole value to one name");
+    reject_pattern(body, pattern);
     return;
   }
   bind_fields(body, pattern, ty, is_var);
@@ -517,8 +540,11 @@ static void declaration(Body *body, const MsDecl *decl) {
     const MsTy declared = decl->u.konst.ty != NULL ? resolver_type(&body->resolver, decl->u.konst.ty) : MS_TY_NONE;
     body->resolver.report = body_reports(body);
     body->quiet = true; /* the initializer is reported by the constants pass */
-    (void)body_expr(body, decl->u.konst.value, declared);
+    const MsTy value = body_expr(body, decl->u.konst.value, declared);
     body->quiet = false;
+    if (declared != MS_TY_NONE && value != MS_TY_NONE && !rejected_value(body, decl->u.konst.value)) {
+      body_check_assignable(body, decl->u.konst.value, value, declared, (MsSpan){0});
+    }
     body_report_decimal_literals(body, decl->u.konst.value);
     break;
   }
