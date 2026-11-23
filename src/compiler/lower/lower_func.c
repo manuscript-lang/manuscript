@@ -162,7 +162,7 @@ static MirMode param_mode(uint8_t flags) {
   return (flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : MM_BORROW;
 }
 
-enum { LOWER_MAX_PARAMS = 32 };
+enum { LOWER_MAX_PARAMS = 33 }; /* the checker allows 32 declared parameters; a method's receiver is one more */
 
 /* The parameters of a target as MIR sees them: a method's receiver, then the signature's parameters. */
 static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyParam *out) {
