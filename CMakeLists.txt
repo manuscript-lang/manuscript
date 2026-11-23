@@ -17,6 +17,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch6
   set(MS_ATOMIC_FLAGS -mno-outline-atomics)
   string(APPEND CMAKE_C_FLAGS " -mno-outline-atomics")
 endif()
+# Generated code keeps a frame pointer and the fault walk follows the chain of saved ones, so the runtime keeps it in
+# every preset: a Release archive without it ends a trace at the first runtime frame.
+if(NOT MSVC)
+  string(APPEND CMAKE_C_FLAGS " -fno-omit-frame-pointer")
+endif()
 # The counting runtime (live blocks, parks, copies) for the leak, cancel and count gates: `cmake --preset stats`.
 option(MS_STATS "Compile the runtime's counters in" OFF)
 if(MS_STATS)
