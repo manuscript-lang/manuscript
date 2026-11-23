@@ -15,7 +15,7 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
   if (!mir_pipeline_prepare(module, &pipeline, why)) {
     return false;
   }
-  if ((options->optimize && !mir_optimize(module, options->verify, why)) ||
+  if ((options->optimize && !mir_optimize(module, false, why)) ||
       !mir_pipeline_finish(module, &pipeline, glue, why)) {
     return false;
   }

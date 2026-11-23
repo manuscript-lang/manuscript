@@ -449,7 +449,9 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
     }
   }
   if (!moved_out && mir_needs_drop(fn->cx->module, field_ty)) {
-    const MirValue old = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    /* The field's old value leaves the record before it is dropped or closed: `type.set` fills the hole. */
+    const MirValue view = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    const MirValue old = mir_b_emit(&fn->b, MOP_MoveOut, &view, 1, (MirImm){0}, field_ty);
     const MsTy checked = ms_facts_type(fn->facts, place->id);
     if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
       if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */

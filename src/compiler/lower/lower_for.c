@@ -475,6 +475,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     mir_b_seal_block(&fn->b, inner);
     mir_b_seal_block(&fn->b, failed);
     enter(fn, failed); /* a failed read leaves the loop with its error, as `?` would */
+    if (result_owned) { /* the error leaves the answer; the scope drops what is left of it */
+      fn_own(fn, fn_scope(fn), result);
+    }
     if (!fn_return_error(fn, result)) {
       return false;
     }
