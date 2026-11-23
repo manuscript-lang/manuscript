@@ -263,6 +263,39 @@ uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t modul
   return facts->result_borrows != NULL && node < facts->node_count ? facts->result_borrows[node] : 0;
 }
 
+/* Whether an argument is flat data: a scalar, a String or Bytes holds no part another value could share. */
+static bool flat_argument(const MsCheckProgram *program, MsTy ty) {
+  const MsTyTable *types = &program->types;
+  return ty != MS_TY_NONE && (ms_ty_is(types, ty, MS_BUILTIN_String) || ms_ty_is(types, ty, MS_BUILTIN_Bytes) ||
+                              ms_ty_is(types, ty, MS_BUILTIN_Int) || ms_ty_is(types, ty, MS_BUILTIN_Bool) ||
+                              ms_ty_is(types, ty, MS_BUILTIN_Float));
+}
+
+/* A free function the runtime provides (`msstd_fs_create_directory`): its result is fresh when its signature
+ * does not say `@borrows` and every argument is flat. */
+static bool external_function_is_fresh(const MsCheckProgram *program, const MsCall *call, const MsFunc *func) {
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(program->names, func->name));
+  /* A result that holds only plain data (`Void!`, `Int`) cannot hold a part of an argument. */
+  const MsTyTable *types = &program->types;
+  MsTy result = ms_ty_result(types, call->callee_ty);
+  if (result != MS_TY_NONE && ms_ty_is(types, result, MS_BUILTIN_Result) && ms_ty_arg_count(types, result) == 2) {
+    result = ms_ty_args(types, result)[0];
+  }
+  if (sig != NULL && !sig->borrows && result != MS_TY_NONE &&
+      (ms_ty_is(types, result, MS_BUILTIN_Void) || ms_ty_is(types, result, MS_BUILTIN_Int) ||
+       ms_ty_is(types, result, MS_BUILTIN_Bool) || ms_ty_is(types, result, MS_BUILTIN_Float))) {
+    return true;
+  }
+  for (uint32_t index = 0; sig != NULL && index < call->arg_count; index++) {
+    const MsCallArg *arg = &call->args[index];
+    const bool known = arg->node.node != 0 && arg->node.module < program->modules.len;
+    if (!known || !flat_argument(program, ms_facts_type(&program->modules.ptr[arg->node.module].facts, arg->node.node))) {
+      return false;
+    }
+  }
+  return sig != NULL && !sig->borrows;
+}
+
 /* Whether the runtime native behind a bodiless declaration says its result is a fresh owner (no `@borrows`): a copy,
  * not a view into an argument. False when the table does not know the native. */
 static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *call) {
@@ -275,6 +308,9 @@ static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *
       receiver = at->receiver;
       name = at->name;
     }
+  }
+  if (func != NULL && receiver == MS_TY_NONE && func->external) {
+    return external_function_is_fresh(program, call, func);
   }
   if (func != NULL && receiver == MS_TY_NONE) { /* an operation of an interface: the receiver is the first argument */
     const MsCallArg *first = call->arg_count > 0 ? &call->args[0] : NULL;
@@ -310,7 +346,10 @@ static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *
 
 bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
   const MsRefKind kind = call->callee.kind;
-  if (kind == MS_REF_NATIVE || kind == MS_REF_OPERATION) {
+  if (kind == MS_REF_OPERATION) {
+    return false; /* an interface operation answers the clone its implementation writes */
+  }
+  if (kind == MS_REF_NATIVE) {
     return !native_result_is_fresh(program, call);
   }
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
