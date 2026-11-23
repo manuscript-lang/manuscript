@@ -128,9 +128,7 @@ uint32_t mir_field_offset(MirLayouts *layouts, uint32_t type_id, uint32_t field)
     if (index == field) {
       start = (uint32_t)all.len;
     }
-    mir_layout_append(layouts, &all,
-                      mir_type_field_boxed(layouts, def->fields[index].ty) ? mir_layout_one_word()
-                                                                           : mir_leaves(layouts, def->fields[index].ty));
+    mir_layout_append(layouts, &all, mir_leaves(layouts, def->fields[index].ty));
   }
   uint32_t offset = 0;
   if (start < all.len) {
