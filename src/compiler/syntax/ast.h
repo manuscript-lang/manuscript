@@ -67,6 +67,7 @@ struct MsParam {
   MsName name;
   MsTypeRef *ty; /* NULL only for lambda parameters with inferred types */
   MsExpr *def;   /* default value or NULL */
+  bool implied_default; /* `def` is the `null` a `T?` parameter or field gets without a written default */
   bool is_mutable;
   bool moving;
 };
