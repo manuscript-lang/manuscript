@@ -208,6 +208,9 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
       (written == MS_E_LAMBDA || written == MS_E_MEMBER || written == MS_E_APPLY)) {
     MsLocal *bound = ms_local_list_last(&body->locals);
     bound->fn_params = body_function_params(body, stmt->u.bind.value, value, &bound->fn_module);
+    bound->fn_names = bound->fn_params == NULL && value != MS_TY_NONE && ms_ty_kind(&body->program->types, value) == MS_TY_FUNCTION
+                          ? body_function_names(body, stmt->u.bind.value, written == MS_E_APPLY ? MS_TY_NONE : value)
+                          : NULL;
   }
 }
 
@@ -298,7 +301,10 @@ static void statement(Body *body, const MsStmt *stmt) {
       const MsTy returned = body->result == MS_TY_NONE && body->hint != MS_TY_NONE
                                 ? body_expr(body, stmt->u.expr, body->hint)
                                 : body_expect(body, stmt->u.expr, body->result, ms_span_of_text("the return value"));
-      body->returned = body->returned == MS_TY_NONE ? returned : body->returned;
+      /* a later return that is fully known settles the variables an earlier one left open */
+      const bool settles = body->returned != MS_TY_NONE && returned != MS_TY_NONE &&
+                           body_has_foreign_variable(body, body->returned) && !body_has_foreign_variable(body, returned);
+      body->returned = body->returned == MS_TY_NONE || settles ? returned : body->returned;
     }
     break;
   case MS_S_IF:
