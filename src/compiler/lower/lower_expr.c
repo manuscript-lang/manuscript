@@ -993,5 +993,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     }
   }
   const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
+  if (expr->kind == MS_E_CALL) {
+    fn_unwind_site(fn, value);
+  }
   return fn_convert(fn, expr, value);
 }

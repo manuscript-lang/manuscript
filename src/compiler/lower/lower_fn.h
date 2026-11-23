@@ -365,6 +365,8 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+/* After a call: test the unwinding byte and leave through the scope exit when it is set (lower_unwind.c). */
+void fn_unwind_site(LowerFn *fn, MirValue result);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
 bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);

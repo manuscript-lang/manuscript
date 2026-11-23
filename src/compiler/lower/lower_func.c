@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "base/fatal.h"
+#include "base/env.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_layout.h"
 #include "compiler/own/moves.h"
@@ -652,7 +653,10 @@ void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuil
   if (program->lazy_std) {
     ms_fatal(MS_FATAL_INVARIANT, "a program checked for analysis only was lowered");
   }
-  *cx = (Lower){.program = program, .module = module, .error = error};
+  *cx = (Lower){.program = program, .module = module, .error = error, .unwinding = MIR_NONE};
+  MsString exits = ms_string_empty();
+  cx->unwind_exits = ms_env_get("MS_UNWIND_EXITS", &exits) && ms_string_span(&exits).len != 0;
+  ms_string_release(&exits);
   ms_names_init(&cx->instance_keys);
   ms_names_init(&cx->vtable_keys);
   (void)ms_names_intern(&cx->vtable_keys, ms_span_of_text(""));
