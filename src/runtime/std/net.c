@@ -1,9 +1,9 @@
 /* runtime/std/net.c: IpAddress and Cidr objects and the network diagnostic texts. */
-#include <string.h>
 #include "runtime/std/shape_json.h"
 #include "runtime/std/net.h"
 
 #include "base/alloc.h"
+#include "base/cstr.h"
 #include "runtime/std/net_ip.h"
 
 typedef struct IpCell {
@@ -152,7 +152,7 @@ static const MsObjectCodec OBJECT_CODECS[] = {
 
 const MsObjectCodec *ms_object_codec(const char *name) {
   for (size_t index = 0; index < sizeof OBJECT_CODECS / sizeof OBJECT_CODECS[0]; index++) {
-    if (strcmp(OBJECT_CODECS[index].name, name) == 0) {
+    if (ms_cstr_equal(OBJECT_CODECS[index].name, name)) {
       return &OBJECT_CODECS[index];
     }
   }

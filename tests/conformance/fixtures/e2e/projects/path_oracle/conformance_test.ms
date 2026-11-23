@@ -37,7 +37,7 @@ fn parts_of(token: String) PathParts:
 	)
 
 fn parts_text(parts: PathParts) String:
-	return [parts.root, parts.directory, parts.base, parts.extension, parts.name].map(
+	return [parts.root.clone(), parts.directory.clone(), parts.base.clone(), parts.extension.clone(), parts.name.clone()].map(
 		fn item: hex(item)
 	).join(" ")
 

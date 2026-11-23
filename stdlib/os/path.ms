@@ -483,7 +483,7 @@ fn text_of(data: Bytes, start: Int, end: Int) String:
 	return data.view(start, end).decode_utf8().get_or("")
 
 fn extension_in(windows: Bool, text: String) String:
-	if windows: return parse_in(true, text).extension
+	if windows: return parse_in(true, text).extension.clone()
 
 	trimmed := trim_end_slashes(text)
 	slash_at := trimmed.last_index_of("/")
