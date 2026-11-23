@@ -305,3 +305,17 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value) {
   }
   return false;
 }
+
+LowerFn fn_begin_reserved(Lower *cx, const MirFunc *reserved) {
+  LowerFn fn = {.cx = cx,
+                .facts = &cx->program->modules.ptr[0].facts,
+                .module_index = 0,
+                .file = lower_file(cx, 0),
+                .ret = reserved->ret};
+  mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  fn.nvars = 16;
+  fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  return fn;
+}

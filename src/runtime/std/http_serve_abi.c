@@ -11,15 +11,6 @@
 #include "runtime/std/net_tls_conn.h"
 #include "runtime/std/ws_abi.h"
 
-/* Ends a native: a pending stop request cancels the task instead of returning. */
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
-}
-
 /* ---- the program's handler ---- */
 
 /* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Void!` takes the address
@@ -286,14 +277,14 @@ uint8_t msstd_http_exchange_read(const MsObj *object, uint8_t has_max, int64_t m
   *err = ms_string_empty();
   MsString text = ms_string_empty();
   const uint8_t status = ms_exchange_read(exchange_of(object), has_max != 0, max, out, &text);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 uint8_t msstd_http_exchange_send_headers(const MsObj *object, int64_t status, const MsObj *headers,
                                          MsString *err) {
   *err = ms_string_empty();
   MsString text = ms_string_empty();
-  return finish(ms_exchange_send_headers(exchange_of(object), status, ms_headers_of(headers)), &text, err);
+  return ms_fail_finish_with(ms_exchange_send_headers(exchange_of(object), status, ms_headers_of(headers)), &text, err);
 }
 
 uint8_t msstd_http_exchange_send(const MsObj *object, int64_t status, const MsObj *headers,
@@ -302,19 +293,19 @@ uint8_t msstd_http_exchange_send(const MsObj *object, int64_t status, const MsOb
   MsString text = ms_string_empty();
   const uint8_t result =
       ms_exchange_send(exchange_of(object), status, ms_headers_of(headers), ms_bytes_span(body), &text);
-  return finish(result, &text, err);
+  return ms_fail_finish_with(result, &text, err);
 }
 
 uint8_t msstd_http_exchange_write(const MsObj *object, const MsString *data, MsString *err) {
   *err = ms_string_empty();
   MsString text = ms_string_empty();
-  return finish(ms_exchange_write(exchange_of(object), ms_string_span(data), &text), &text, err);
+  return ms_fail_finish_with(ms_exchange_write(exchange_of(object), ms_string_span(data), &text), &text, err);
 }
 
 uint8_t msstd_http_exchange_write_bytes(const MsObj *object, const MsBytes *data, MsString *err) {
   *err = ms_string_empty();
   MsString text = ms_string_empty();
-  return finish(ms_exchange_write(exchange_of(object), ms_bytes_span(data), &text), &text, err);
+  return ms_fail_finish_with(ms_exchange_write(exchange_of(object), ms_bytes_span(data), &text), &text, err);
 }
 
 /* The spans of a list of strings; free with ms_free. */
@@ -342,5 +333,5 @@ uint8_t msstd_http_exchange_upgrade(const MsObj *object, const MsList *origins, 
     *out = ms_ws_handle_new(session);
     ms_ws_session_release(session);
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }

@@ -33,6 +33,8 @@ void ms_fail_uv_text(MsFail *fail, int code, const char *operation, MsSpan name)
  * dropped first. A success is returned as it is, with `err` empty. */
 uint8_t ms_fail_finish(MsFail *fail, MsString *err);
 uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err);
+/* Ends a native with a call's `status` and the text it left, which moves into the failure. */
+uint8_t ms_fail_finish_with(uint8_t status, MsString *text, MsString *err);
 
 /* Whether a stop request is pending for the running task; never true on a pool thread, where a job runs to its end. */
 bool ms_fail_cancel_requested(void);

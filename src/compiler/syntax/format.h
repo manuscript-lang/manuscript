@@ -10,4 +10,7 @@
  * `arena`, and the function returns false. */
 bool ms_format(MsArena *arena, MsSpan source, MsStrBuild *out, MsDiag *diag);
 
+/* The columns of leading whitespace in `line`, a tab counting four. */
+size_t ms_indent_columns(MsSpan line);
+
 #endif

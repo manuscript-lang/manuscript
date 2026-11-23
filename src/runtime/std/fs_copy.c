@@ -74,19 +74,8 @@ static bool os_path(Copier *copier, MsSpan path, MsOsText *out) {
   return true;
 }
 
-static int stat_bytes(MsSpan path, bool follow, uv_stat_t *out) {
-  size_t at = 0;
-  if (path.len == 0 || ms_span_find(path, ms_span_of((const uint8_t *)"\0", 1), &at)) {
-    return UV_EINVAL;
-  }
-  MsOsText text = ms_os_text_new(path);
-  const int code = ms_fs_stat_path(text.ptr, follow, out);
-  ms_os_text_free(&text);
-  return code;
-}
-
 static bool stat_at(Copier *copier, MsSpan path, bool follow, const char *operation, uv_stat_t *out) {
-  const int code = stat_bytes(path, follow, out);
+  const int code = ms_fs_stat_bytes(path, follow, out);
   return code == 0 || fail_at(copier, code, operation, path);
 }
 
@@ -153,7 +142,7 @@ static bool canonical_by_parent(Copier *copier, MsSpan path, MsStrBuild *out) {
 /* The canonical source, where a link that is not followed is its parent's canonical path and its own name. */
 static bool source_canonical(Copier *copier, MsSpan source, MsStrBuild *out) {
   uv_stat_t info;
-  const bool is_link = !has_flag(copier, FLAG_DEREFERENCE) && stat_bytes(source, false, &info) == 0 && ms_fs_is_link(&info);
+  const bool is_link = !has_flag(copier, FLAG_DEREFERENCE) && ms_fs_stat_bytes(source, false, &info) == 0 && ms_fs_is_link(&info);
   return is_link ? canonical_by_parent(copier, source, out) : canonical_of(copier, source, out);
 }
 
@@ -163,7 +152,7 @@ typedef enum Climb { CLIMB_FOUND, CLIMB_UP, CLIMB_FAILED } Climb;
 static Climb climb_once(Copier *copier, MsStrBuild *ancestor, MsStrBuild *suffix) {
   const MsSpan current = ms_strbuild_span(ancestor);
   uv_stat_t info;
-  const int code = stat_bytes(current, false, &info);
+  const int code = ms_fs_stat_bytes(current, false, &info);
   if (code == 0) {
     return CLIMB_FOUND;
   }
@@ -569,7 +558,7 @@ static bool filter_accepts(Copier *copier, MsSpan source, MsSpan destination) {
 
 /* What is at the destination: false in `*present` when nothing is. */
 static bool destination_state(Copier *copier, MsSpan destination, uv_stat_t *previous, bool *present) {
-  const int code = stat_bytes(destination, false, previous);
+  const int code = ms_fs_stat_bytes(destination, false, previous);
   *present = code == 0;
   return code == 0 || code == UV_ENOENT || fail_at(copier, code, "lstat", destination);
 }

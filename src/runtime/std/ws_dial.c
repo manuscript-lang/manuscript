@@ -277,14 +277,6 @@ static uint8_t handshake(const Dial *dial, MsObj *conn, const MsHttpUrl *url, co
   return status;
 }
 
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
-}
-
 static bool subprotocols_valid(const MsList *list, MsSpan **spans) {
   const MsString *items = (const MsString *)(const void *)list->ptr;
   *spans = ms_alloc_zeroed((list->len + 1) * sizeof **spans);
@@ -349,5 +341,5 @@ uint8_t msstd_net_network_web_socket(const MsObj *net, const MsString *address, 
   }
   ms_free(offered);
   ms_string_release(&http);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }

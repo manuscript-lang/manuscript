@@ -21,6 +21,17 @@ int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out) {
   return code;
 }
 
+int ms_fs_stat_bytes(MsSpan path, bool follow, uv_stat_t *out) {
+  size_t at = 0;
+  if (path.len == 0 || ms_span_find(path, ms_span_of((const uint8_t *)"\0", 1), &at)) {
+    return UV_EINVAL;
+  }
+  MsOsText text = ms_os_text_new(path);
+  const int code = ms_fs_stat_path(text.ptr, follow, out);
+  ms_os_text_free(&text);
+  return code;
+}
+
 bool ms_fs_is_link(const uv_stat_t *stat) { return (stat->st_mode & 0170000u) == 0120000u; }
 bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b) { return a->st_dev == b->st_dev && a->st_ino == b->st_ino; }
 

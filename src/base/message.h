@@ -21,6 +21,9 @@ MsSpan ms_message_byte(MsArena *arena, uint8_t byte);
 /* The text of the builder, copied into the arena. */
 MsSpan ms_message_from_builder(MsArena *arena, const MsStrBuild *builder);
 
+/* `text` with its ASCII capitals lowered, copied into the arena. */
+MsSpan ms_message_lowered(MsArena *arena, MsSpan text);
+
 /* The text of `format` with each conversion replaced by its argument, copied into the arena. Conversions:
  * %s a C string, %S an MsSpan, %z a size_t, %u an unsigned int, %c a char, %% a percent sign.
  *

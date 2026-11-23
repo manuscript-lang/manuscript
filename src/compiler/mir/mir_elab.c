@@ -87,14 +87,6 @@ static void add_flag_param(ElCx *cx, MirFunc *func, uint32_t block, ElFparams *o
   mir_idlist_push(&out->param, param);
 }
 
-static int64_t owner_by_position(uint8_t *env, const uint8_t *x, const uint8_t *y) {
-  (void)env;
-  ElOwner a, b;
-  __builtin_memcpy(&a, x, sizeof a);
-  __builtin_memcpy(&b, y, sizeof b);
-  return (int64_t)a.pos - (int64_t)b.pos;
-}
-
 /* The owners of `candidates` live on entry to `block`, in definition order. */
 static uint32_t live_candidates(ElCx *cx, const ElState *entry, const uint64_t *candidates, uint32_t count,
                                 ElOwner *live) {
@@ -107,7 +99,7 @@ static uint32_t live_candidates(ElCx *cx, const ElState *entry, const uint64_t *
   }
   (void)cx;
   if (found > 1) {
-    ms_sort((uint8_t *)live, found, sizeof *live, owner_by_position, NULL);
+    ms_sort((uint8_t *)live, found, sizeof *live, el_owner_by_position, NULL);
   }
   return found;
 }

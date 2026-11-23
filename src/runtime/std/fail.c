@@ -103,3 +103,11 @@ uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err) {
 }
 
 uint8_t ms_fail_finish(MsFail *fail, MsString *err) { return ms_fail_finish_at(fail, ms_span_of(NULL, 0), err); }
+
+uint8_t ms_fail_finish_with(uint8_t status, MsString *text, MsString *err) {
+  MsFail fail = ms_fail_new();
+  fail.status = status;
+  fail.message = *text;
+  *text = ms_string_empty();
+  return ms_fail_finish(&fail, err);
+}

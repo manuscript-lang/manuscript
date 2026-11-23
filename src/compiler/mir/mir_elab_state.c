@@ -103,7 +103,8 @@ ElOwner *el_owners(ElCx *cx, const ElState *state, uint32_t *count) {
   return out;
 }
 
-static int64_t by_position(uint8_t *env, const uint8_t *x, const uint8_t *y) {
+/* Orders owners by definition position, for ms_sort. */
+int64_t el_owner_by_position(uint8_t *env, const uint8_t *x, const uint8_t *y) {
   (void)env;
   ElOwner a, b;
   __builtin_memcpy(&a, x, sizeof a);
@@ -123,7 +124,7 @@ ElOwner *el_odd(ElCx *cx, const ElState *state, uint32_t *count) {
     }
   }
   if (kept > 1) {
-    ms_sort((uint8_t *)out, kept, sizeof *out, by_position, NULL);
+    ms_sort((uint8_t *)out, kept, sizeof *out, el_owner_by_position, NULL);
   }
   *count = kept;
   return out;

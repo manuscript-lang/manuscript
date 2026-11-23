@@ -80,15 +80,6 @@ MsWsSession *ms_ws_connection_session(MsObj *connection, MsWsConfig *config, MsS
 
 /* ---- the natives ---- */
 
-/* Ends a native: a pending stop request cancels the task instead of returning. */
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
-}
-
 void msstd_websocket_close(const MsObj *s) {
   ms_ws_session_close(session_of(s));
 }
@@ -110,19 +101,19 @@ void msstd_websocket_subprotocol(const MsObj *s, MsString *out) {
 uint8_t msstd_websocket_ping(const MsObj *s, const MsString *data, MsString *err) {
   MsString text = ms_string_empty();
   const uint8_t status = ms_ws_session_ping(session_of(s), ms_string_span(data), &text);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 uint8_t msstd_websocket_ping_bytes(const MsObj *s, const MsBytes *data, MsString *err) {
   MsString text = ms_string_empty();
   const uint8_t status = ms_ws_session_ping(session_of(s), ms_bytes_span(data), &text);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 uint8_t msstd_websocket_send_bytes(const MsObj *s, const MsBytes *data, uint8_t text, MsString *err) {
   MsString failure = ms_string_empty();
   const uint8_t status = ms_ws_session_send(session_of(s), ms_bytes_span(data), text != 0, -1, &failure);
-  return finish(status, &failure, err);
+  return ms_fail_finish_with(status, &failure, err);
 }
 
 uint8_t msstd_websocket_receive(const MsObj *s, MsWebSocketMessage *out, MsString *err) {
@@ -130,5 +121,5 @@ uint8_t msstd_websocket_receive(const MsObj *s, MsWebSocketMessage *out, MsStrin
   MsString text = ms_string_empty();
   const uint8_t status = ms_ws_session_receive(session_of(s), -1, &message, &text);
   *out = (MsWebSocketMessage){.data = message.data, .text = message.text};
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
