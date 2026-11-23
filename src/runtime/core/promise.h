@@ -22,6 +22,7 @@
 #include "base/desc.h"
 #include "base/list.h"
 #include "base/safe.h"
+#include "base/string.h"
 #include "runtime/core/task.h"
 
 typedef int64_t MsPromise;
@@ -118,15 +119,15 @@ int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_
 /* ---- work ---- */
 
 /* Runs `closure` (a function value, owned by the promise) as a task of this thread. Starting twice faults. */
-void ms_promise_start(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+void ms_promise_start(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
 /* Starts the work as a task of this thread, never queued for another isolate (I/O work whose handles are thread-bound). */
-void ms_promise_start_here(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+void ms_promise_start_here(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
 /* Like start_here for work no task owns (the idle pool's requests): the promise is on no task's list of started work. */
 void ms_promise_start_detached(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 /* Like start, but on the least loaded isolate (with one isolate, here). */
-void ms_promise_start_spread(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+void ms_promise_start_spread(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
 /* Like start, but with no other task running the work waits for its waiter (runs on the waiter's stack). */
-void ms_promise_start_idle(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
+void ms_promise_start_idle(MsPromise id, MsObj *closure, const MsString *site) MS_NONNULL_ARGS(2);
 /* The work is not run until a waiter asks for it. */
 void ms_promise_defer(MsPromise id, MsObj *closure) MS_NONNULL_ARGS(2);
 

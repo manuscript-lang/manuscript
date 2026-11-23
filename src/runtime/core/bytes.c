@@ -196,7 +196,8 @@ void msrt_bytes_concat(const MsBytes *a, const MsBytes *b, MsBytes *out) {
  * block can move. */
 void msrt_bytes_concat_grow(MsBytes *a, const MsBytes *b, MsBytes *out) {
   if (b->len == 0) {
-    *out = *a;
+    /* A view does not own its block: the result must be a copy, as it is for a non-empty `b`. */
+    *out = (a->cap != 0 || a->len == 0) ? *a : ms_bytes_from_span(ms_bytes_span(a));
     return;
   }
   size_t total = 0;

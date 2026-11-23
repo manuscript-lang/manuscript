@@ -129,8 +129,9 @@ bool emit_rt_scalar_option(EmitCx *cx, MirTy type);
 bool emit_extern_is_c(const EmitCx *cx, const MirExtern *def);
 /* `typedesc`, `str`, `global.get`, `global.set`: the operations that name static data. */
 bool emit_data_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
-/* One definition per data symbol, preceded by a declaration of each runtime symbol it names. */
-void emit_define_data(EmitCx *cx);
+/* One definition per data symbol (`define`), or a declaration of it where another module defines it, preceded by a
+ * declaration of each runtime symbol it names. */
+void emit_define_data(EmitCx *cx, bool define);
 /* A call of the code at register `callee` (NULL: the MIR function `inst` names), `lead` first when given. */
 void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const char *callee, const char *lead);
 /* Writes `%q<n> = getelementptr i8, ptr <base>, i64 offset` and names it in `out`. */

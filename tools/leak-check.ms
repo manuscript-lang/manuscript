@@ -61,7 +61,10 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 			if out := run(
 				ms.clone(),
 				["test", absolute.clone()],
-				RunOptions(timeout: seconds(600)),
+				RunOptions(
+					timeout: seconds(600),
+					env: {"MS_UNDER_TEST": ms.clone()},
+				),
 			).wait():
 				found := leaking_tests(out.stderr.decode_utf8() or "")
 				lines.append("swept")

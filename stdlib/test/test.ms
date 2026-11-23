@@ -1,5 +1,5 @@
 import (
-	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
+	Placement, PromiseOptions, caller_frame, promise from "@std/concurrency/promise.ms",
 	panic from "@std/core.ms",
 
 	msstd_test_repr from "@std/internal/test.ms",
@@ -46,10 +46,11 @@ export fn repr[T](value: T) String:
 
 // Runs `operation` once behind the fault trap and returns the fault message, or
 // `null` when it returns normally.
-export fn catch_fault(operation: fn() Void) String?:
+export fn catch_fault(operation: fn() Void, site: String = caller_frame()) String?:
 	result := promise(
 		fn: ok(operation()),
-		options: PromiseOptions(placement: Placement.Here)
+		options: PromiseOptions(placement: Placement.Here),
+		site: site
 	).wait()
 	if not result.is_error(): return null
 

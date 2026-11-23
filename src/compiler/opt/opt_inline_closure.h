@@ -81,5 +81,8 @@ IcKnown ic_known_closures(MsArena *arena, const MirModule *m, const MirFunc *f);
 IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f);
 bool ic_delete_unused(MirModule *m, uint32_t fi);
 bool ic_closure_usable(const MirFunc *f);
+/* A copy of closure code `f` as a plain function taking the captures before the arguments; false when the
+ * environment is used in any way besides `closure.cap`. */
+bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out);
 
 #endif

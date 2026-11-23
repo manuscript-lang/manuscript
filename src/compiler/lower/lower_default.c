@@ -144,28 +144,48 @@ static const MsParam *interface_default(const Lower *cx, uint32_t module, MsNode
   return NULL;
 }
 
-/* Whether the default `expr`, written in module `module`, is the call `caller_site()` of `@std/test/test.ms`. */
-static bool is_caller_site(const LowerFn *fn, uint32_t module, const MsExpr *expr) {
+/* The defaults lowering fills in from the call that omitted the argument. */
+typedef enum CallerDefault {
+  CALLER_NONE,
+  CALLER_SITE,  /* `caller_site()` of `@std/test/test.ms`: `file:line:col` */
+  CALLER_FRAME, /* `caller_frame()` of `@std/concurrency/promise.ms`: `file:line in function`, as a fault report shows a frame */
+} CallerDefault;
+
+/* Which caller default the expression `expr`, written in module `module`, is. */
+static CallerDefault caller_default(const LowerFn *fn, uint32_t module, const MsExpr *expr) {
   const Lower *cx = fn->cx;
   if (expr->kind != MS_E_CALL) {
-    return false;
+    return CALLER_NONE;
   }
   const MsCall *call = fn_find_call(&cx->program->modules.ptr[module].facts, expr->id);
   if (call == NULL || call->arg_count != 0) {
-    return false;
+    return CALLER_NONE;
   }
   const MsSymbol *symbol = &cx->program->symbols.ptr[fn_symbol_at(cx, call->callee.decl)];
   const MsSpan file = ms_names_span(cx->program->names, cx->program->modules.ptr[symbol->module].file);
-  return ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "caller_site") &&
-         ms_span_ends_with(file, ms_span_of_text("test/test.ms"));
+  const MsSpan name = ms_names_span(cx->program->names, symbol->name);
+  if (ms_span_is_text(name, "caller_site") && ms_span_ends_with(file, ms_span_of_text("test/test.ms"))) {
+    return CALLER_SITE;
+  }
+  if (ms_span_is_text(name, "caller_frame") && ms_span_ends_with(file, ms_span_of_text("concurrency/promise.ms"))) {
+    return CALLER_FRAME;
+  }
+  return CALLER_NONE;
 }
 
-/* `caller_site()` as a default: the position (`file:line:col`) of the call that omitted the argument. */
-static MirValue caller_position(LowerFn *fn) {
+/* A caller default: the position of the call that omitted the argument, in the form `kind` names. */
+static MirValue caller_position(LowerFn *fn, CallerDefault kind) {
   const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
   const MirLoc here = fn->stmt_loc.line != 0 ? fn->stmt_loc : fn->b.loc;
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, here.line, here.col);
+  if (kind == CALLER_FRAME) {
+    const MsName shown = fn->b.func.display != MS_NAME_EMPTY ? fn->b.func.display : fn->b.func.name;
+    const MsSpan function = ms_names_span(&fn->cx->module->names, shown);
+    ms_strbuild_printf(&text, "%.*s:%u in %.*s", (int)file.len, (const char *)file.ptr, here.line, (int)function.len,
+                       (const char *)function.ptr);
+  } else {
+    ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, here.line, here.col);
+  }
   const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_strbuild_span(&text))};
   ms_strbuild_free(&text);
   return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
@@ -247,11 +267,12 @@ static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallAr
                                     : NULL;
   const MsSymbolId callee_id = method != NULL ? 0 : fn_symbol_at(fn->cx, call->callee.decl);
   const MsParam *param = default_param(fn, call, arg);
-  if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
+  const CallerDefault caller = param != NULL ? caller_default(fn, arg->node.module, param->def) : CALLER_NONE;
+  if (caller != CALLER_NONE) {
     fn->facts = saved_facts;
     fn->file = saved_file;
     fn->module_index = saved_module;
-    return caller_position(fn);
+    return caller_position(fn, caller);
   }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
