@@ -101,11 +101,8 @@ int ms_sys_fs_unlock(int fd) {
 }
 
 bool ms_sys_fs_waitable(int fd) {
-  struct stat info;
-  if (fstat(fd, &info) != 0) {
-    return false;
-  }
-  return !S_ISREG(info.st_mode) && !S_ISDIR(info.st_mode);
+  const uv_handle_type type = uv_guess_handle(fd);
+  return type != UV_FILE && type != UV_UNKNOWN_HANDLE;
 }
 
 int ms_sys_fs_clone_file(int output, int input) {
