@@ -1,0 +1,5 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"$ROOT_URI","capabilities":{}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"// Points.\ntype Point:\n\tx: Int\n\ty: Int\n\nenum Shade:\n\tDark\n\nfn Point.sum() Int:\n\treturn self.x + self.y\n\nfn scale(p: Point, by: Int) Int:\n\treturn p.sum() * by\n\nfn main() Void:\n\tp := Point(x: 1, y: 2)\n\tprint(f\"{scale(p, 3)}\")\n\ts := Shade.Dark\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"}}}
+{"jsonrpc":"2.0","id":3,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

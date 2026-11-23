@@ -1,6 +1,8 @@
 /* Owns calls: the stack slots a call needs, and the calls of MIR functions and runtime functions. */
 #include "compiler/emit/emit_cx.h"
 #include "compiler/mir/mir_analysis.h"
+#include "base/alloc.h"
+#include "compiler/mir/mir_pass.h"
 
 
 static MirTy value_type(const EmitCx *cx, MirValue value) {
@@ -125,17 +127,57 @@ static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t
   }
 }
 
+const uint32_t *emit_slot_pool(MsArena *arena, const EmitCx *cx) {
+  const MirFunc *func = cx->func;
+  const MirBlock *confined = mir_confined_slots(arena, cx->module, func);
+  if (confined == NULL) {
+    return NULL;
+  }
+  uint32_t *pool = MS_ARENA_NEW_ARRAY(arena, uint32_t, func->values.len + 1);
+  uint32_t *rank = MS_ARENA_NEW_ARRAY(arena, uint32_t, func->blocks.len + 1);
+  for (size_t value = 0; value <= func->values.len; value++) {
+    pool[value] = UINT32_MAX;
+  }
+  for (size_t block = 0; block <= func->blocks.len; block++) {
+    rank[block] = 0;
+  }
+  bool any = false;
+  for (uint32_t block = 0; block < func->blocks.len; block++) {
+    const MirInstList *insts = &func->blocks.ptr[block].insts;
+    for (uint32_t index = 0; index < insts->len; index++) {
+      const MirInst *inst = &insts->ptr[index];
+      /* Zeroed where the slot is made, so it must be made in the block that uses it. */
+      if (inst->op == MOP_Slot && confined[inst->res] == block) {
+        pool[inst->res] = rank[block]++;
+        any = true;
+      }
+    }
+  }
+  return any ? pool : NULL;
+}
+
 void emit_frame_slots(EmitCx *cx) {
   const MirFunc *func = cx->func;
   uint32_t shared_x[SHARED_ARGS] = {0};
   uint32_t shared_p[SHARED_ARGS] = {0};
   uint32_t result_area = 0;
+  uint32_t *cells = NULL; /* bytes of each shared cell */
+  uint32_t ncells = 0;
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
     for (uint32_t index = 0; index < data->insts.len; index++) {
       const MirInst *inst = &data->insts.ptr[index];
       switch ((MirOp)inst->op) {
       case MOP_Slot:
+        if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
+          const uint32_t cell = cx->pool[inst->res];
+          while (ncells <= cell) {
+            cells = ms_realloc(cells, (ncells + 1) * sizeof(uint32_t));
+            cells[ncells++] = 0;
+          }
+          note_result_area(&cells[cell], emit_slot_bytes(cx, inst->imm.a));
+          break;
+        }
         /* Zeroed, so padding bytes compare equal when a descriptor compares a slot as bytes. */
         ms_strbuild_printf(cx->out,
                            "  %%s%u = alloca [%u x i8], align 8\n"
@@ -172,6 +214,10 @@ void emit_frame_slots(EmitCx *cx) {
       }
     }
   }
+  for (uint32_t cell = 0; cell < ncells; cell++) {
+    ms_strbuild_printf(cx->out, "  %%cell%u = alloca [%u x i8], align 8\n", cell, cells[cell]);
+  }
+  ms_free(cells);
   if (result_area != 0) {
     ms_strbuild_printf(cx->out, "  %%R = alloca [%u x i8], align 8\n", result_area);
   }

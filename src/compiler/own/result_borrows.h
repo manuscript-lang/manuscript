@@ -22,6 +22,10 @@
 /* Recomputes the masks of every module. */
 void ms_own_result_borrows(MsCheckProgram *program);
 
+/* Reports each user callable that returns a part of its arguments on one path and a new value on another, and makes
+ * its callers see an owner. */
+void ms_own_mixed_returns(MsCheckProgram *program);
+
 /* The mask of the function or method declared by `node` of `module`. */
 uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t module, MsNode node);
 
@@ -31,6 +35,12 @@ bool ms_own_result_is_borrowed(const MsCheckProgram *program, uint32_t module, M
 /* Whether a call's result borrows from its argument at `position` (receiver first for a method). A callee the
  * runtime provides borrows from every argument that owns memory. */
 bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint32_t position);
+
+/* A runtime read that returns a part of its receiver in place: `xs.get(i)` of a list, `m.get(k)` of a map, `o.get()` of an
+ * optional or result. */
+typedef enum MsNativeGet { MS_NATIVE_GET_NONE, MS_NATIVE_GET_LIST, MS_NATIVE_GET_MAP, MS_NATIVE_GET_PAYLOAD } MsNativeGet;
+
+MsNativeGet ms_own_native_get(const MsCheckProgram *program, const MsFacts *facts, const MsExpr *call);
 
 /* The function or method a callee ref declares, or NULL when no declaration is found. */
 const MsFunc *ms_own_find_func(const MsCheckProgram *program, const MsRef *ref);

@@ -30,6 +30,7 @@ typedef struct EmitCx {
   uint32_t next;           /* counter for generated register names */
   const char *why;         /* the reason an instruction cannot be written; static text */
   const bool *framed;      /* per value: a closure object kept in the frame; NULL when none */
+  const uint32_t *pool;    /* per value: the shared cell a one-block `slot` lives in, UINT32_MAX for any other value; NULL when none */
   const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame; NULL when none */
   const char *tbaa;        /* `, !tbaa !N` for the list element access being written, or NULL */
   EmitDebug *debug;        /* source places for the fault tables, or NULL */
@@ -134,6 +135,9 @@ uint32_t emit_record_pieces(const MirModule *module, const MirFunc *func, const 
 void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, const char *fault,
                    const MirValue *args, uint32_t arg_count);
 void emit_frame_slots(EmitCx *cx);
+/* Gives each slot confined to its own block the cell of its rank among that block's confined slots, so blocks share
+ * storage; per value, UINT32_MAX for the rest. NULL when no slot is confined. */
+const uint32_t *emit_slot_pool(MsArena *arena, const EmitCx *cx);
 
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */
 typedef struct EmitIf {

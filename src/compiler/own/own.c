@@ -7,6 +7,7 @@
 #include "compiler/own/escapes.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/moves.h"
+#include "compiler/own/overlaps.h"
 #include "compiler/own/taken.h"
 #include "compiler/own/unused.h"
 #include "compiler/own/uses.h"
@@ -25,12 +26,18 @@ void ms_own_check(MsCheckProgram *program) {
   ms_own_escapes(program);
   ms_own_uses(program); /* a parameter an escaping closure keeps is taken now: its callers' arguments move */
   ms_own_result_borrows(program);
+  if (checked_clean) {
+    ms_own_mixed_returns(program);
+  }
   ms_own_uses_report(program);
   ms_own_closers(program);
   ms_own_changes(program);
   ms_own_borrows(program);
   if (checked_clean) {
     ms_own_moves(program);
+    if (program->diagnostics.len == 0) {
+      ms_own_overlaps(program);
+    }
   }
   ms_own_unused(program); /* a clean program only: any other diagnostic leaves unread bindings unreported */
 }

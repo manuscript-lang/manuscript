@@ -17,6 +17,15 @@
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
     },
     {
+      "name": "ci",
+      "inherits": "base",
+      "description": "Optimised with frame pointers: the ms that CI replays the corpus with is about 4x faster than -O0 and still reports fault frames.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS": "-fno-omit-frame-pointer"
+      }
+    },
+    {
       "name": "release",
       "inherits": "base",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
@@ -32,11 +41,13 @@
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "debug" },
+    { "name": "ci", "configurePreset": "ci" },
     { "name": "release", "configurePreset": "release" },
     { "name": "sanitize", "configurePreset": "sanitize" }
   ],
   "testPresets": [
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
+    { "name": "ci", "configurePreset": "ci", "output": { "outputOnFailure": true } },
     { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
     { "name": "sanitize", "configurePreset": "sanitize", "output": { "outputOnFailure": true } }
   ]

@@ -46,6 +46,7 @@ typedef struct Body {
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
+  const MsExpr *borrowing_probe; /* the `place[key]?` an `if var name = ...` binds: the one probe that may be written */
   MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
 

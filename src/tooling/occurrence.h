@@ -24,8 +24,19 @@ typedef struct MsOccurrence {
 
 MS_AVEC(MsOccurrences, ms_occurrences, MsOccurrence)
 
+/* One written type of a user module: where its name starts and what it resolved to, `Int` and type variables included. */
+typedef struct MsWrittenType {
+  uint32_t module, offset;
+  MsTy ty;
+  bool named; /* a named type, not a function type */
+} MsWrittenType;
+
+MS_AVEC(MsWrittenTypes, ms_written_types, MsWrittenType)
+
 /* The index of the user's modules, sorted by file name, offset and key, one entry per (file, offset, key). */
 MsOccurrences ms_occurrence_index(MsArena *arena, MsCheckProgram *program);
+/* The same, and every written type of the user's modules whose type resolved, in `written` when it is not NULL. */
+MsOccurrences ms_occurrence_index_with_types(MsArena *arena, MsCheckProgram *program, MsWrittenTypes *written);
 
 /* The checked type of one identifier, for the html map: a zero-based line and a UTF-16 column. */
 typedef struct MsTypeHint {

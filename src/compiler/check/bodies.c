@@ -144,7 +144,7 @@ static void bind_pattern_from(Body *body, const MsPattern *pattern, MsTy ty, boo
   const bool known = ty != MS_TY_NONE && !holds_invalid(&body->program->types, ty, 6);
   if (pattern->kind == MS_P_LIST) {
     const bool list = ms_ty_is(types, ty, MS_BUILTIN_List) && ms_ty_arg_count(types, ty) == 1;
-    if (known && !list) {
+    if (!list) {
       report_pattern(body, pattern->pos, "positional binding requires a list; use [a, b] patterns only with List values");
       reject_pattern(body, pattern);
       return;
@@ -279,6 +279,7 @@ static MsTy payload_type(const Body *body, MsTy tested) {
 }
 
 static void stmt_if(Body *body, const MsStmt *stmt) {
+  body->borrowing_probe = stmt->u.branch.binding != NULL && stmt->u.branch.is_mutable ? stmt->u.branch.cond : NULL;
   const MsTy cond = stmt->u.branch.binding != NULL
                         ? body_expr(body, stmt->u.branch.cond, MS_TY_NONE)
                         : body_expect(body, stmt->u.branch.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("an if condition"));
