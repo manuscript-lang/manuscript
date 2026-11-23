@@ -1,10 +1,11 @@
 /* Connections: dialing, reading, writing and shutting down a TCP or Unix stream on the network loop (net_core.h). */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
-#ifndef _WIN32
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <unistd.h>
 #endif
 
@@ -377,14 +378,12 @@ bool ms_net_core_steal_read(MsNetCore *core, MsBytes *out) {
 }
 
 /* With one scheduler thread the loop thread's wait overlaps the thread's own work and wins (one CPU: 82k against 66k
- * requests a second); with several it is the ceiling. With no read posted, the bytes already in the socket are read on the calling thread, which keeps the loop thread
- * (the one thread every connection shares) out of the common case of a busy connection. Returns the byte count, 0 for
- * the end of the stream, or -1 to use the loop (nothing yet, an error to report there, or a case the loop owns). */
+ * requests a second); with several it is the ceiling. So with no read posted, the bytes already in the socket are
+ * read on the calling thread, which keeps the loop thread (the one thread every connection shares) out of the common
+ * case of a busy connection. Returns the byte count, 0 for the end of the stream, or -1 to use the loop (nothing yet,
+ * an error to report there, or a case the loop owns). libuv's sockets are non-blocking on every platform, and on
+ * Windows its reads are zero-length overlapped ones that take no bytes, so a read here cannot lose any. */
 static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
-#ifdef _WIN32
-  (void)core, (void)capacity, (void)out;
-  return -1;
-#else
   static _Thread_local uint8_t scratch[READ_DEFAULT];
   if (core->kind != MS_NET_CONNECTION || core->is_pipe || core->tls != NULL || capacity == 0 ||
       atomic_load(&core->reads_posted) != 0 || ms_isolate_count() < 2) {
@@ -393,18 +392,22 @@ static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
   atomic_fetch_add(&core->direct, 1);
   ssize_t count = -1;
   uv_os_fd_t fd;
-  if (!atomic_load(&core->closed) && atomic_load(&core->reads_posted) == 0 &&
+  if (!atomic_load(&core->closed) && !atomic_load(&core->broken) && atomic_load(&core->reads_posted) == 0 &&
       uv_fileno((const uv_handle_t *)&core->h.stream, &fd) == 0) {
-    count = read(fd, scratch, capacity < sizeof scratch ? capacity : sizeof scratch);
+    const size_t length = capacity < sizeof scratch ? capacity : sizeof scratch;
+#ifdef _WIN32
+    count = recv((SOCKET)fd, (char *)scratch, (int)length, 0);
+#else
+    count = read(fd, scratch, length);
+#endif
     if (count > 0) {
       *out = ms_bytes_from_span(ms_span_of(scratch, (size_t)count));
     } else if (count < 0) {
-      count = -1; /* EAGAIN: wait on the loop; any other error is reported there */
+      count = -1; /* would block: wait on the loop; any other error is reported there */
     }
   }
   atomic_fetch_sub(&core->direct, 1);
   return count;
-#endif
 }
 
 uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err) {

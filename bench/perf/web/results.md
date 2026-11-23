@@ -399,7 +399,7 @@ Manuscript is about 0.55–0.6x of C at every size and level with hyper at two C
 
 ## 2026-11-23, plain TCP reads on the calling thread
 
-After #6665 writes went straight to the socket, but every read still went through the one network loop thread (`uv_read_start`, epoll, wake the waiter). `ms_net_read` now reads on the calling thread first when no read is posted on the connection, the stream is plain TCP and the program has two or more scheduler threads (a connection that has no bytes yet waits on the loop as before; a count of posted reads and the `direct` fence keep the loop's stash, end flag and close ordering intact). Windows keeps the loop read; the direct read is POSIX only.
+After #6665 writes went straight to the socket, but every read still went through the one network loop thread (`uv_read_start`, epoll, wake the waiter). `ms_net_read` now reads on the calling thread first when no read is posted on the connection, the stream is plain TCP and the program has two or more scheduler threads (a connection that has no bytes yet waits on the loop as before; a count of posted reads and the `direct` fence keep the loop's stash, end flag and close ordering intact). On Windows the same path uses a non-blocking `recv` (libuv's Windows TCP reads are zero-length overlapped ones that take no bytes); it has not been run on Windows yet, which needs the Windows CI dispatched on the branch. A write the loop abandoned (`broken`) now makes the direct read decline.
 
 `/health`, C port, release build, 128 keep-alive connections, 4 s, three runs each on the shared 4-CPU VM (±15%), server CPUs (load CPUs), req/s in thousands, median of three with the range:
 
