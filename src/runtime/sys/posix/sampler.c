@@ -11,7 +11,11 @@
 #include <stdatomic.h>
 #include <sys/resource.h>
 #include <sys/time.h>
+#ifdef __APPLE__
+#include <sys/ucontext.h> /* <ucontext.h> there demands _XOPEN_SOURCE, which hides the thread-state accessors */
+#else
 #include <ucontext.h>
+#endif
 
 #include "runtime/sys/sys.h"
 
