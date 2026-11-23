@@ -256,8 +256,9 @@ static void find_shared_method(SharedScan *scan, const MsExpr *expr) {
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   const MsExpr *left = expr->u.member.left;
   const MsRef *place = left->kind == MS_E_NAME ? ms_facts_ref(fn->facts, left->id) : NULL;
-  if (ref == NULL || (ref->kind != MS_REF_METHOD && ref->kind != MS_REF_NATIVE) || place == NULL ||
-      place->kind != MS_REF_LOCAL || place->local >= fn->nvars) {
+  const bool local = place != NULL && place->kind == MS_REF_LOCAL && place->local < fn->nvars;
+  const bool param = place != NULL && place->kind == MS_REF_PARAM && place->local < 32;
+  if (ref == NULL || (ref->kind != MS_REF_METHOD && ref->kind != MS_REF_NATIVE) || (!local && !param)) {
     return;
   }
   const MsCall call = {.callee = *ref};
@@ -274,8 +275,10 @@ static void find_shared_method(SharedScan *scan, const MsExpr *expr) {
     changes = data->kind == MK_FN &&
               fn_native_changes_receiver(fn, owner, ms_names_span(fn->cx->program->names, expr->u.member.name), data->elem);
   }
-  if (changes) {
+  if (changes && local) {
     fn->shared[place->local] = LOWER_SHARED;
+  } else if (changes) {
+    fn->shared_params |= 1u << place->local; /* a `var` parameter stays in the caller's slot, which the closure borrows */
   }
 }
 

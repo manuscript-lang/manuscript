@@ -1,88 +1,79 @@
 import (
 	Bytes from "@std/bytes.ms",
-	LoggerOptions, create, file_transport from "@std/log.ms",
-	list, read_file, stat, temporary, write_file from "@std/os/fs.ms",
-	keep, measure from "@std/test/bench.ms",
+	Logger, LoggerOptions, create, file_transport from "@std/log.ms",
+	list, read_file, remove, stat, temporary_directory, write_file from "@std/os/fs.ms",
 )
 
 fn block() Bytes:
 	return "0123456789abcdef".repeat(4096).to_bytes()
 
-// Writes the 200 files that the read, stat, and list cases use.
-fn populate(root: String) Void:
+// The directory holds the 200 files that the read, stat, and list cases use; `scratch`
+// is a second directory that the write case overwrites into.
+type BenchData:
+	root: String
+	scratch: String
+	data: Bytes
+	logger: Logger
+	scratch_files: List[String]
+	files: List[String]
+
+fn make_fixture() BenchData:
+	root := temporary_directory("ms-bench-").get()
+	scratch := temporary_directory("ms-bench-").get()
 	data := block()
+	var files: List[String] = []
+	var scratch_files: List[String] = []
+
 	for i in 0..200:
-		_written := write_file(f"{root}/f{i}.bin", data, replace: true).wait()
+		path := f"{root}/f{i}.bin"
+		write_file(path, data, replace: true).wait().get()
+		files.append(path)
+		scratch_files.append(f"{scratch}/f{i}.bin")
 
-bench "fs.write_file_64k":
-	data := block()
+	return BenchData(
+		logger: create(
+			file_transport(f"{root}/log.txt").get(),
+			LoggerOptions(timestamp: false),
+		).get(),
+		root: root,
+		scratch: scratch,
+		data: data,
+		scratch_files: scratch_files,
+		files: files,
+	)
 
-	if var dir = temporary("ms-bench-"):
-		root := dir.path()
+fn var BenchData.after_all() Void!:
+	remove(self.root, recursive: true)?
+	remove(self.scratch, recursive: true)?
 
-		fn work() Result[Void, Error]:
-			var n = 0
-			for i in 0..200:
-				if write_file(f"{root}/f{i}.bin", data, replace: true).wait().is_ok():
-					n += 1
-			return keep(n)
+bench "fs.write_file_64k" per 200:
+	var n = 0
+	for path in fixture.scratch_files:
+		if write_file(path, fixture.data, replace: true).wait().is_ok():
+			n += 1
+	n
 
-		measure(200, work)?
-		void dir.close()
+bench "fs.read_file_64k" per 200:
+	var n = 0
+	for path in fixture.files:
+		if b := read_file(path).wait():
+			n += b.length()
+	n
 
-bench "fs.read_file_64k":
-	if var dir = temporary("ms-bench-"):
-		root := dir.path()
-		populate(root)
-
-		fn work() Result[Void, Error]:
-			var n = 0
-			for i in 0..200:
-				if b := read_file(f"{root}/f{i}.bin").wait():
-					n += b.length()
-			return keep(n)
-
-		measure(200, work)?
-		void dir.close()
-
-bench "fs.stat":
-	if var dir = temporary("ms-bench-"):
-		root := dir.path()
-		populate(root)
-
-		fn work() Result[Void, Error]:
-			var n = 0
-			for i in 0..200:
-				if stat(f"{root}/f{i}.bin", follow_links: true).is_ok():
-					n += 1
-			return keep(n)
-
-		measure(200, work)?
-		void dir.close()
+bench "fs.stat" per 200:
+	var n = 0
+	for path in fixture.files:
+		if stat(path, follow_links: true).is_ok():
+			n += 1
+	n
 
 bench "fs.list_200":
-	if var dir = temporary("ms-bench-"):
-		root := dir.path()
-		populate(root)
+	entries := list(fixture.root)?
+	entries.length()
 
-		fn work() Result[Void, Error]:
-			if entries := list(root): return keep(entries.length())
-			return keep(0)
-
-		measure(1, work)?
-		void dir.close()
-
-bench "log.info":
-	if var dir = temporary("ms-bench-"):
-		if transport := file_transport(f"{dir.path()}/log.txt"):
-			if logger := create(transport, LoggerOptions(timestamp: false)):
-				fn work() Result[Void, Error]:
-					var n = 0
-					for i in 0..20000:
-						if logger.info(f"request {i} handled").is_ok():
-							n += 1
-					return keep(n)
-
-				measure(20000, work)?
-
-		void dir.close()
+bench "log.info" per 20000:
+	var n = 0
+	for i in 0..20000:
+		if fixture.logger.info(f"request {i} handled").is_ok():
+			n += 1
+	n

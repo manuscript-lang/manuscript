@@ -12,20 +12,26 @@ int64_t msrt_int_compare(int64_t a, int64_t b);
 /* ms-op: msrt_uint_compare icompare */
 int64_t msrt_uint_compare(int64_t a, int64_t b);
 /* ms-sig: msrt_uint_to_float(v: i64) -> f64 @domain=number */
+/* ms-op: msrt_uint_to_float uint_to_float */
 double msrt_uint_to_float(int64_t v);
 /* ms-sig: msrt_uint_to_float32(v: i64) -> f64 @domain=number */
+/* ms-op: msrt_uint_to_float32 uint_to_float */
 double msrt_uint_to_float32(int64_t v);
 /* ms-op: msrt_float_is_nan fis_nan */
 uint8_t msrt_float_is_nan(double x);
 /* ms-op: msrt_float_is_finite fis_finite */
 uint8_t msrt_float_is_finite(double x);
 /* ms-sig: msrt_float_from_bits(bits: i64) -> f64 @domain=number @end */
+/* ms-op: msrt_float_from_bits bits_float */
 double msrt_float_from_bits(int64_t bits);
 /* ms-sig: msrt_float_to_bits(value: f64) -> i64 @domain=number @end */
+/* ms-op: msrt_float_to_bits float_bits */
 int64_t msrt_float_to_bits(double value);
 /* ms-sig: msrt_float32_from_bits(bits: i64) -> f64 @domain=number @end */
+/* ms-op: msrt_float32_from_bits float32_bits_float */
 double msrt_float32_from_bits(int64_t bits);
 /* ms-sig: msrt_float32_to_bits(value: f64) -> i64 @domain=number @end */
+/* ms-op: msrt_float32_to_bits float32_bits */
 int64_t msrt_float32_to_bits(double value);
 /* ms-sig: msrt_float_truncate_to_int(v: f64, out: *mut i64) -> u8 @domain=number @end */
 /* ms-op: msrt_float_truncate_to_int ftruncate_int */

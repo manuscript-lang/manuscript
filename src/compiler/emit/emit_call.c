@@ -257,13 +257,8 @@ void emit_frame_slots(EmitCx *cx) {
         if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
           break; /* in a shared cell */
         }
-        /* Zeroed, so padding bytes compare equal when a descriptor compares a slot as bytes. */
-        ms_strbuild_printf(cx->out,
-                           "  %%s%u = alloca [%u x i8], align 8\n"
-                           "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 0, i64 %u, i1 false)\n"
-                           "  %%v%u = ptrtoint ptr %%s%u to i64\n",
-                           inst->res, emit_slot_bytes(cx, inst->imm.a), inst->res, emit_slot_bytes(cx, inst->imm.a),
-                           inst->res, inst->res);
+        /* Zeroed where the instruction is, after the stack check: a frame this big may already reach the guard page. */
+        ms_strbuild_printf(cx->out, "  %%s%u = alloca [%u x i8], align 8\n", inst->res, emit_slot_bytes(cx, inst->imm.a));
         break;
       case MOP_Call:
       case MOP_CallInd:
@@ -526,7 +521,11 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
   emit_symbol(cx->out, ms_names_span(&cx->module->names, def->name));
   ms_strbuild_append_byte(cx->out, '(');
   ms_strbuild_append(cx->out, ms_strbuild_span(&args));
-  ms_strbuild_append_text(cx->out, ")\n");
+  /* A call that ends its block in `unreachable` is a fault, and each fault keeps its own location: LLVM would
+   * merge two such blocks that differ only in the line, and the trace would name the first. */
+  const MirBlockData *home = &cx->func->blocks.ptr[block];
+  const bool ends_block = index + 1 == home->insts.len && home->term.kind == MT_UNREACHABLE;
+  ms_strbuild_append_text(cx->out, ends_block ? ") nomerge\n" : ")\n");
   if (narrow) {
     widen_rt_result(cx, inst->res, kind);
   }

@@ -1,178 +1,199 @@
 import (
-	compile from "@std/regex.ms",
-	keep, measure from "@std/test/bench.ms",
+	Regex, compile from "@std/regex.ms",
 	expect_equal from "@std/test/test.ms",
 )
 
-fn rows_bench(count: Int, grouped: Bool) Result[Void, Error]:
-	pattern := if grouped: "(word)([0-9]+)" else: "word[0-9]+"
-	re := compile(pattern)?
-	text := "word123 ".repeat(count)
-	expected := if grouped: ["word123", "word", "123"] else: ["word123"]
-	width := if grouped: 14 else: 7
+fn rows_run(
+	re: Regex,
+	text: String,
+	expected: List[String],
+	count: Int,
+	width: Int,
+) Int!:
+	rows := re.capture_all(text)?
+	expect_equal(rows.length(), count)?
 
-	fn work() Result[Void, Error]:
-		rows := re.capture_all(text)?
-		expect_equal(rows.length(), count)?
+	var checksum = 0
 
-		var checksum = 0
+	for row in rows:
+		expect_equal(row, expected)?
+		for group in row:
+			checksum += group.length()
 
-		for row in rows:
-			expect_equal(row, expected)?
-			for group in row:
-				checksum += group.length()
+	expect_equal(checksum, count * width)?
+	return ok(checksum)
 
-		expect_equal(checksum, count * width)?
-		return keep(checksum)
+fn first_run(re: Regex, text: String, expected: List[String]) Int!:
+	out := re.capture(text)
+	expect_equal(out, expected)?
+	return ok(out.length())
 
-	return measure(1, work)
+fn names_run(re: Regex, text: String, expected: Map[String, String]) Int!:
+	out := re.capture_named(text)
+	expect_equal(out, expected)?
+	return ok(out.length())
 
-bench "regex.cardinality.whole.0":
-	rows_bench(0, false)?
+fn id_map(present: Bool) Map[String, String]:
+	var expected = Map[String, String]()
+	if present: expected.add("id", "123")
+	return expected
 
-bench "regex.cardinality.whole.1":
-	rows_bench(1, false)?
+fn last_map(present: Bool) Map[String, String]:
+	var expected = Map[String, String]()
+	if present: expected.add("last", "x")
+	return expected
 
-bench "regex.cardinality.whole.128":
-	rows_bench(128, false)?
+type BenchData:
+	re: Regex
+	text: String
+	expected: List[List[String]]
+	re_8: Regex
+	re_9: Regex
+	text_9: String
+	re_13: Regex
+	text_13: String
+	expected_13: List[String]
+	plain_re: Regex
+	grouped_re: Regex
+	whole_expected: List[String]
+	grouped_expected: List[String]
+	none_expected: List[String]
+	text_0: String
+	text_1: String
+	text_128: String
+	text_2000: String
+	text_1000g: String
+	named_re: Regex
+	anon_re: Regex
+	late_re: Regex
+	long_miss: String
+	id_hit: Map[String, String]
+	no_names: Map[String, String]
+	late_hit: Map[String, String]
 
-bench "regex.cardinality.whole.2000":
-	rows_bench(2000, false)?
-
-bench "regex.cardinality.grouped.1":
-	rows_bench(1, true)?
-
-bench "regex.cardinality.grouped.2000":
-	rows_bench(2000, true)?
-
-bench "regex.cardinality.whole.long":
-	re := compile("a+")?
+fn make_fixture() BenchData:
+	re := compile("a+").get()
 	text := "a".repeat(65536)
 	expected := [[text.clone()]]
+	re_8 := compile("a*").get()
+	re_9 := compile("word[0-9]+").get()
+	text_9 := "word123 ".repeat(2000)
+	re_13 := compile("a+").get()
+	text_13 := "a".repeat(65536)
+	expected_13 := [text_13.clone()]
+	plain_re := compile("word[0-9]+").get()
+	grouped_re := compile("(word)([0-9]+)").get()
+	whole_expected := ["word123"]
+	grouped_expected := ["word123", "word", "123"]
+	none_expected: List[String] := []
+	text_0 := "word123 ".repeat(0)
+	text_1 := "word123 ".repeat(1)
+	text_128 := "word123 ".repeat(128)
+	text_2000 := "word123 ".repeat(2000)
+	text_1000g := "word123"
+	named_re := compile("word(?P<id>[0-9]+)").get()
+	anon_re := compile("(word)([0-9]+)").get()
+	late_re := compile(("(a?)".repeat(128)) + "(?P<last>x)").get()
+	long_miss := "z".repeat(65536)
+	id_hit := id_map(true)
+	no_names := id_map(false)
+	late_hit := last_map(true)
+	return BenchData(
+		re: re,
+		text: text,
+		expected: expected,
+		re_8: re_8,
+		re_9: re_9,
+		text_9: text_9,
+		re_13: re_13,
+		text_13: text_13,
+		expected_13: expected_13,
+		plain_re: plain_re,
+		grouped_re: grouped_re,
+		whole_expected: whole_expected,
+		grouped_expected: grouped_expected,
+		none_expected: none_expected,
+		text_0: text_0,
+		text_1: text_1,
+		text_128: text_128,
+		text_2000: text_2000,
+		text_1000g: text_1000g,
+		named_re: named_re,
+		anon_re: anon_re,
+		late_re: late_re,
+		long_miss: long_miss,
+		id_hit: id_hit,
+		no_names: no_names,
+		late_hit: late_hit,
+	)
 
-	fn work() Result[Void, Error]:
-		rows := re.capture_all(text, 1)?
-		expect_equal(rows, expected)?
-		return keep(rows[0][0].length())
+bench "regex.cardinality.whole.0":
+	rows_run(fixture.plain_re, fixture.text_0, fixture.whole_expected, 0, 7)?
 
-	measure(1, work)?
+bench "regex.cardinality.whole.1":
+	rows_run(fixture.plain_re, fixture.text_1, fixture.whole_expected, 1, 7)?
+
+bench "regex.cardinality.whole.128":
+	rows_run(fixture.plain_re, fixture.text_128, fixture.whole_expected, 128, 7)?
+
+bench "regex.cardinality.whole.2000":
+	rows_run(fixture.plain_re, fixture.text_2000, fixture.whole_expected, 2000, 7)?
+
+bench "regex.cardinality.grouped.1":
+	rows_run(fixture.grouped_re, fixture.text_1, fixture.grouped_expected, 1, 14)?
+
+bench "regex.cardinality.grouped.2000":
+	rows_run(fixture.grouped_re, fixture.text_2000, fixture.grouped_expected, 2000, 14)?
+
+bench "regex.cardinality.whole.long":
+	rows := fixture.re.capture_all(fixture.text, 1)?
+	expect_equal(rows, fixture.expected)?
+	rows[0][0].length()
 
 bench "regex.cardinality.whole.empty_matches":
-	re := compile("a*")?
-
-	fn work() Result[Void, Error]:
-		rows := re.capture_all("a🙂🙂a", 3)?
-		expect_equal(rows, [["a"], [""], ["a"]])?
-		return keep(rows.length())
-
-	measure(1, work)?
+	rows := fixture.re_8.capture_all("a🙂🙂a", 3)?
+	expect_equal(rows, [["a"], [""], ["a"]])?
+	rows.length()
 
 bench "regex.cardinality.whole.over_limit":
-	re := compile("word[0-9]+")?
-	text := "word123 ".repeat(2000)
-
-	fn work() Result[Void, Error]:
-		out := re.capture_all(text, 1)
-		expected: Result[List[List[String]], Error] := error(
-			Error("regular expression: limit exceeded", kind: "EOVERFLOW")
-		)
-		expect_equal(out, expected)?
-		return keep(if out.is_error(): 1 else: 0)
-
-	measure(1, work)?
-
-fn first_bench(grouped: Bool, found: Bool) Result[Void, Error]:
-	re := compile(if grouped: "(word)([0-9]+)" else: "word[0-9]+")?
-	text := if found: "word123" else: "none"
-	hit := if grouped: ["word123", "word", "123"] else: ["word123"]
-	expected := if found: hit else: []
-
-	fn work() Result[Void, Error]:
-		out := re.capture(text)
-		expect_equal(out, expected)?
-		return keep(out.length())
-
-	return measure(1, work)
+	out := fixture.re_9.capture_all(fixture.text_9, 1)
+	expected: Result[List[List[String]], Error] := error(
+		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
+	)
+	expect_equal(out, expected)?
+	out.is_error()
 
 bench "regex.cardinality.first.whole.hit":
-	first_bench(false, true)?
+	first_run(fixture.plain_re, fixture.text_1000g, fixture.whole_expected)?
 
 bench "regex.cardinality.first.whole.miss":
-	first_bench(false, false)?
+	first_run(fixture.plain_re, "none", fixture.none_expected)?
 
 bench "regex.cardinality.first.grouped.hit":
-	first_bench(true, true)?
+	first_run(fixture.grouped_re, fixture.text_1000g, fixture.grouped_expected)?
 
 bench "regex.cardinality.first.whole.long":
-	re := compile("a+")?
-	text := "a".repeat(65536)
-	expected := [text.clone()]
-
-	fn work() Result[Void, Error]:
-		out := re.capture(text)
-		expect_equal(out, expected)?
-		return keep(out[0].length())
-
-	measure(1, work)?
-
-fn names_bench(named: Bool, long_miss: Bool) Result[Void, Error]:
-	re := compile(if named: "word(?P<id>[0-9]+)" else: "word[0-9]+")?
-	text := if long_miss: ("z".repeat(65536)) else: "word123"
-	var expected = Map[String, String]()
-	if named and not long_miss:
-		expected.add("id", "123")
-
-	fn work() Result[Void, Error]:
-		out := re.capture_named(text)
-		expect_equal(out, expected)?
-		return keep(out.length())
-
-	return measure(1, work)
+	out := fixture.re_13.capture(fixture.text_13)
+	expect_equal(out, fixture.expected_13)?
+	out[0].length()
 
 bench "regex.cardinality.named.whole.hit":
-	names_bench(false, false)?
+	names_run(fixture.plain_re, fixture.text_1000g, fixture.no_names)?
 
 bench "regex.cardinality.named.whole.long_miss":
-	names_bench(false, true)?
+	names_run(fixture.plain_re, fixture.long_miss, fixture.no_names)?
 
 bench "regex.cardinality.named.named.hit":
-	names_bench(true, false)?
-
-fn anonymous_names_bench(long_miss: Bool) Result[Void, Error]:
-	re := compile("(word)([0-9]+)")?
-	text := if long_miss: ("z".repeat(65536)) else: "word123"
-	expected := Map[String, String]()
-
-	fn work() Result[Void, Error]:
-		out := re.capture_named(text)
-		expect_equal(out, expected)?
-		return keep(out.length())
-
-	return measure(1, work)
+	names_run(fixture.named_re, fixture.text_1000g, fixture.id_hit)?
 
 bench "regex.cardinality.named.anonymous.hit":
-	anonymous_names_bench(false)?
+	names_run(fixture.anon_re, fixture.text_1000g, fixture.no_names)?
 
 bench "regex.cardinality.named.anonymous.long_miss":
-	anonymous_names_bench(true)?
-
-fn late_names_bench(found: Bool) Result[Void, Error]:
-	prefix := "(a?)".repeat(128)
-	re := compile(prefix + "(?P<last>x)")?
-	text := if found: "x" else: "z"
-	var expected = Map[String, String]()
-	if found:
-		expected.add("last", "x")
-
-	fn work() Result[Void, Error]:
-		out := re.capture_named(text)
-		expect_equal(out, expected)?
-		return keep(out.length())
-
-	return measure(1, work)
+	names_run(fixture.anon_re, fixture.long_miss, fixture.no_names)?
 
 bench "regex.cardinality.named.late.hit":
-	late_names_bench(true)?
+	names_run(fixture.late_re, "x", fixture.late_hit)?
 
 bench "regex.cardinality.named.late.miss":
-	late_names_bench(false)?
+	names_run(fixture.late_re, "z", fixture.no_names)?

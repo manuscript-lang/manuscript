@@ -178,6 +178,50 @@ static bool int_to_float(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy
   return true;
 }
 
+/* `UInt64.to_float` and `to_float32`: the bits are read as unsigned. */
+static bool uint_to_float(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
+  if (argc != 1 || mir_b_ty(&fn->b, args[0]) != MIR_UINT64 || !is_float(ret)) {
+    return false;
+  }
+  *out = emit1(fn, MOP_U2F, args[0], ret);
+  return true;
+}
+
+/* `Float.to_bits`, `Float32.to_bits`. */
+static bool float_bits_of(LowerFn *fn, int64_t width, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
+  if (argc != 1 || !is_float(mir_b_ty(&fn->b, args[0])) || ret != MIR_INT) {
+    return false;
+  }
+  *out = mir_b_emit(&fn->b, MOP_FBits, args, 1, (MirImm){.tag = MI_INT, .i = width}, MIR_INT);
+  return true;
+}
+
+static bool float_to_bits(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
+  return float_bits_of(fn, 64, args, argc, ret, out);
+}
+
+static bool float32_to_bits(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
+  return float_bits_of(fn, 32, args, argc, ret, out);
+}
+
+/* `Float.from_bits`, `Float32.from_bits`. */
+static bool float_from_bits_of(LowerFn *fn, int64_t width, const MirValue *args, uint32_t argc, MirTy ret,
+                               MirValue *out) {
+  if (argc != 1 || mir_b_ty(&fn->b, args[0]) != MIR_INT || !is_float(ret)) {
+    return false;
+  }
+  *out = mir_b_emit(&fn->b, MOP_BitsF, args, 1, (MirImm){.tag = MI_INT, .i = width}, ret);
+  return true;
+}
+
+static bool float_from_bits(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
+  return float_from_bits_of(fn, 64, args, argc, ret, out);
+}
+
+static bool float32_from_bits(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
+  return float_from_bits_of(fn, 32, args, argc, ret, out);
+}
+
 /* `Float32.to_float`: every binary32 value is a double. */
 static bool float_widen(LowerFn *fn, const MirValue *args, uint32_t argc, MirTy ret, MirValue *out) {
   if (argc != 1 || mir_b_ty(&fn->b, args[0]) != MIR_FLOAT32 || ret != MIR_FLOAT) {
@@ -242,7 +286,12 @@ bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, ui
              {"widen", int_widen},
              {"narrow", int_narrow},
              {"to_float", int_to_float},
-             {"float_widen", float_widen}};
+             {"float_widen", float_widen},
+             {"uint_to_float", uint_to_float},
+             {"float_bits", float_to_bits},
+             {"bits_float", float_from_bits},
+             {"float32_bits", float32_to_bits},
+             {"float32_bits_float", float32_from_bits}};
   const MsSpan op = ms_span_of_text(name);
   for (size_t at = 0; at < MS_COUNT_OF(bits); at++) {
     if (ms_span_is_text(op, bits[at].name)) {

@@ -43,9 +43,18 @@ void ms_alloc_counts(int64_t *allocations, int64_t *bytes) {
   *bytes = counted_bytes;
 }
 
+static MsAllocObserver observer = NULL;
+
+void ms_alloc_observe(MsAllocObserver function) {
+  observer = function;
+}
+
 static void count(size_t size) {
   counted_allocations++;
   counted_bytes += (int64_t)size;
+  if (observer != NULL) {
+    observer(size);
+  }
 }
 
 /* The live bytes: the usable size of every mimalloc block handed out less those freed. The sum is striped over

@@ -7,7 +7,6 @@ import (
 	OpenMode, OpenOptions, open, read_file, temporary, write_file from "@std/os/fs.ms",
 	join from "@std/os/path.ms",
 	expect_golden, expect_golden_bytes from "@std/test/golden.ms",
-	measure from "@std/test/bench.ms",
 	check_reader, fail_after, fail_writer_after, one_byte from "@std/test/iotest.ms",
 	expect_contains,
 	expect_equal,
@@ -70,7 +69,3 @@ test "golden comparison passes and names the first differing line":
 
 	bytes := expect_error(expect_golden_bytes(path, "a\nb\nd".to_bytes()))?
 	expect_contains(bytes.message, "byte 4")?
-
-test "measure rejects fewer than one operation":
-	cause := expect_error(measure(0, fn: ok()))?
-	expect_contains(cause.message, "at least 1")?

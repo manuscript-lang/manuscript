@@ -46,6 +46,7 @@ typedef struct Body {
   const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
+  const MsStmt *bench_last; /* the last statement of the bench being checked: its value is the bench's result, kept by the harness */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
   MsNodeJournal typed; /* owned: the nodes typed so far in this function, so a call can settle what its arguments left open */
   const MsExpr *borrowing_probe; /* the `place[key]?` an `if var name = ...` binds: the one probe that may be written */

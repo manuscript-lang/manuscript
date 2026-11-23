@@ -52,7 +52,7 @@ typedef struct LowerOuterEnv {
   LowerSubst subst;
   LowerFnLocals locals;
   const MsCall *default_call;
-  const MirValue *default_args;
+  MirValue *default_args;
   const MsParams *default_params;
   bool default_has_self;
 } LowerOuterEnv;
@@ -97,7 +97,7 @@ typedef struct LowerFn {
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
-  const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
+  MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
   LowerSubst default_vars; /* ... and the method's type variables as the value was bound */
   const MsParams *default_params; /* a call of a lambda or method value: the parameters whose defaults it leaves out */
   bool default_has_self; /* a call of a method value: `default_self` is the receiver a default reads as `self` (the call's arguments omit it) */
@@ -138,6 +138,7 @@ typedef struct LowerFn {
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
   bool temps; /* a statement scope is open for the temporaries its calls borrow */
+  const MsStmt *sink_stmt; /* a bench body's last statement: when it is a call, its value goes to the bench sink */
   uint32_t bind_scope; /* with `temps` on a bind: the scope the name it binds belongs to, plus one; zero when none */
   uint32_t nloops;
   LowerLoop loops[LOWER_MAX_LOOPS]; /* the loops open now, outermost first */
@@ -307,6 +308,8 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+MirValue fn_missing_value(LowerFn *fn, MsPos at);
+bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);
 /* `m.get(k)` over a resource as an Optional that views the entry; MIR_NONE (nothing emitted) for any other call. */
 MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call);
 /* Stores the owned `value` (held by no scope) into `place`. */
@@ -315,6 +318,7 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
 /* ---- statements, expressions and calls ---- */
 
 bool fn_stmts(LowerFn *fn, MsStmts stmts);
+void fn_bench_sink(LowerFn *fn, MirValue value);
 MirValue fn_default_result(LowerFn *fn);
 /* The 64 bits of a number literal's spelling (decimal, 0x, 0b, 0o; `_` ignored); false when it has more. */
 bool fn_number_bits(MsSpan text, uint64_t *out);

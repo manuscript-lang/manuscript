@@ -1,38 +1,38 @@
-import (
-	parse, stringify from "@std/data/csv.ms",
-	keep, measure from "@std/test/bench.ms",
-)
+import parse, stringify from "@std/data/csv.ms"
 
-bench "csv.stringify":
+type BenchData:
+	rows: List[List[String]]
+	rows_2: List[List[String]]
+	csv_text: String
+	value: String
+	text: String
+
+fn make_fixture() BenchData:
 	var rows: List[List[String]] = []
 	for i in 0..5000:
 		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
-	fn work() Result[Void, Error]:
-		if s := stringify(rows): return keep(s.length())
-		return keep(0)
-
-	measure(5000, work)?
-
-bench "csv.parse":
-	var rows: List[List[String]] = []
+	var rows_2: List[List[String]] = []
 	for i in 0..5000:
-		rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
+		rows_2.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 
-	csv_text := stringify(rows).get_or("")
-
-	fn work() Result[Void, Error]:
-		if r := parse(csv_text): return keep(r.length())
-		return keep(0)
-
-	measure(5000, work)?
-
-bench "csv.parse escaped quote field":
+	csv_text := stringify(rows_2).get_or("")
 	value := "a\"".repeat(8000)
 	text := f"\"{value.replace("\"", "\"\"")}\"\n"
+	return BenchData(
+		rows: rows,
+		rows_2: rows_2,
+		csv_text: csv_text,
+		value: value,
+		text: text,
+	)
 
-	fn work() Void!:
-		rows := parse(text)?
-		return keep(rows[0][0].length())
+bench "csv.stringify" per 5000:
+	stringify(fixture.rows).get_or("").length()
 
-	measure(1, work)?
+bench "csv.parse" per 5000:
+	parse(fixture.csv_text).get_or([]).length()
+
+bench "csv.parse escaped quote field":
+	rows := parse(fixture.text)?
+	rows[0][0].length()

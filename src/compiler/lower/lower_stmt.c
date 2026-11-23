@@ -245,7 +245,7 @@ bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out) {
     *out = fn->vars[ref->local] - 1;
     return true;
   }
-  if (ref->kind != MS_REF_PARAM || fn->default_call != NULL) { /* a default's parameters are the callee's, not this function's */
+  if (ref->kind != MS_REF_PARAM || fn->default_call != NULL || fn->param_vars == NULL) { /* a default's parameters are the callee's, a field default's are the record's: not this function's */
     return false;
   }
   if (fn->lambda != NULL) { /* a captured parameter is a variable of the closure body */
@@ -340,6 +340,11 @@ bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
 /* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
  * back by `fn_put_place`), a member or element path's value is copied. */
 bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
+  uint32_t position;
+  if (fn_default_param_place(fn, base, &position)) {
+    *out = fn->default_args[position]; /* the value the call passes: the default changes it and `fn_put_place` hands the change back */
+    return true;
+  }
   MirVar var;
   if (fn_owned_local(fn, base, &var)) {
     *out = mir_b_use_var(&fn->b, var);
@@ -451,6 +456,11 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
 
 /* Stores the owned `value` (held by no scope) into `place`, the place of an earlier `fn_take_place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
+  uint32_t position;
+  if (fn_default_param_place(fn, place, &position)) {
+    fn->default_args[position] = value;
+    return true;
+  }
   MirVar var;
   if (place->kind == MS_E_MEMBER) {
     return set_member(fn, place, value);
@@ -891,6 +901,9 @@ static bool lower_call_stmt(LowerFn *fn, const MsStmt *stmt) {
   const MirValue value = fn_expr(fn, expr, LW_BORROW);
   if (value == MIR_NONE) {
     return !fn->failed;
+  }
+  if (stmt == fn->sink_stmt && mir_b_ty(&fn->b, value) != MIR_VOID) {
+    fn_bench_sink(fn, value);
   }
   const MsTy checked = discarded_type(fn, expr);
   const bool owned = fn_fresh_owner(fn, value) ||

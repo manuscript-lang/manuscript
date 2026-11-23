@@ -1,6 +1,5 @@
 /* Owns the lexer entry points: input checks, the line loop and the exported token arrays. */
 #include <stdlib.h>
-#include <string.h>
 #include "base/fatal.h"
 #include "base/sort.h"
 
@@ -170,8 +169,8 @@ static void sort_ranges(RangeList *ranges) {
 }
 
 static bool has_crlf(MsSpan source) {
-  for (const uint8_t *at = memchr(source.ptr, '\r', source.len); at != NULL;
-       at = memchr(at + 1, '\r', (size_t)(source.ptr + source.len - (at + 1)))) {
+  for (const uint8_t *at = __builtin_memchr(source.ptr, '\r', source.len); at != NULL;
+       at = __builtin_memchr(at + 1, '\r', (size_t)(source.ptr + source.len - (at + 1)))) {
     if (at + 1 < source.ptr + source.len && at[1] == '\n') {
       return true;
     }
