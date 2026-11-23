@@ -158,7 +158,7 @@ static bool indented(AsmScan *scan, MsSpan line) {
   /* llc writes DWARF `.loc` for every target of ours, mingw's included; `.cv_loc` appears only for CodeView. */
   if (is_directive(text, ".loc")) {
     place_loc(scan, text, 4, 3);
-    return false;
+    return true;
   }
   if (is_directive(text, ".cv_loc")) {
     place_loc(scan, text, 7, 4);
