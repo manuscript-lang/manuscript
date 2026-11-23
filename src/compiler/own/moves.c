@@ -284,7 +284,12 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
                             ms_bind_of(pass->facts, stmt->id, &assigned)
                         ? assigned
                         : UINT32_MAX;
-  if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL) {
+  uint32_t returned = 0;
+  /* Returning a plain parameter whole answers a view of it: the lowering gives the caller that borrowed result. */
+  const bool whole_param = pass->instance && stmt->kind == MS_S_RETURN && stmt->u.expr != NULL &&
+                           stmt->u.expr->kind == MS_E_NAME && ms_bind_of(pass->facts, stmt->u.expr->id, &returned) &&
+                           contains(&pass->plainparams, returned);
+  if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && !whole_param) {
     check_handed_on(pass, stmt->u.expr);
   }
 }
@@ -648,6 +653,7 @@ bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFun
   for (uint32_t index = 0; index < func->params.len; index++) {
     if (!func->params.ptr[index]->moving && !func->params.ptr[index]->is_mutable) {
       ms_binding_list_push(&pass.borrowed, func->params.ptr[index]->id);
+      ms_binding_list_push(&pass.plainparams, func->params.ptr[index]->id);
     }
   }
   ms_walk_callable(&(MsVisitor){.ctx = &pass, .stmt = note_var}, func->params, func->body);
