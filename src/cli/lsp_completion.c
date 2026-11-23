@@ -11,6 +11,7 @@
 #include "base/path.h"
 #include "cli/lsp_workspace.h"
 #include "compiler/check/program.h"
+#include "compiler/project/manifest.h"
 #include "compiler/project/project.h"
 #include "compiler/syntax/parse.h"
 #include "tooling/facts.h"
@@ -547,7 +548,48 @@ static int compare_entry(const void *left, const void *right) {
   return (int)ms_span_compare(ms_string_span(&((const MsDirEntry *)left)->name), ms_string_span(&((const MsDirEntry *)right)->name));
 }
 
-/* The module paths that start with `prefix`: bundled modules and, after `./` or `../`, the entries of that directory. */
+/* The names an import in `doc` may start with (`@alias`, `@dependency`) and the directory each reaches. */
+static bool project_names(MsArena *arena, const LspDoc *doc, MsManifest *manifest) {
+  MsStrBuild base = ms_strbuild_new();
+  ms_path_dir(ms_string_span(&doc->path), &base);
+  const MsSpan root = lsp_project_root(arena, ms_arena_copy(arena, ms_strbuild_span(&base)));
+  ms_strbuild_free(&base);
+  const MsSpan file = ms_message_format(arena, "%S/ms.toml", root, (MsSpan){0});
+  MsProjectError error;
+  return ms_path_kind(file) == MS_PATH_FILE && ms_manifest_read(arena, file, manifest, &error);
+}
+
+static bool name_target(const MsManifest *manifest, MsSpan name, MsSpan *target) {
+  return ms_manifest_find(&manifest->aliases, name, target) || ms_manifest_find(&manifest->deps, name, target);
+}
+
+/* The `.ms` files and directories of `directory` whose path, written after `directory_prefix`, starts with `prefix`. The
+ * directory must lie inside `root`. */
+static void list_directory(Completer *c, MsArena *arena, MsSpan directory, MsSpan root, MsSpan directory_prefix, MsSpan prefix) {
+  MsStrBuild cleaned = ms_strbuild_new(), inside = ms_strbuild_new();
+  ms_path_clean(&cleaned, directory);
+  MsDirEntryList entries = {0};
+  if (ms_path_relative(&inside, root, ms_strbuild_span(&cleaned)) && !ms_path_escapes(ms_strbuild_span(&inside)) &&
+      ms_dir_list(ms_strbuild_span(&cleaned), &entries)) {
+    if (entries.len > 1) qsort(entries.ptr, entries.len, sizeof(MsDirEntry), compare_entry);
+    for (size_t i = 0; i < entries.len; i++) {
+      const MsSpan name = ms_string_span(&entries.ptr[i].name);
+      const MsSpan full = ms_message_format(arena, "%S%S", directory_prefix, name);
+      MsStrBuild entry_path = ms_strbuild_new();
+      ms_path_join(ms_strbuild_span(&cleaned), name, &entry_path);
+      const bool is_directory = entries.ptr[i].kind == MS_PATH_DIRECTORY ||
+                                (entries.ptr[i].kind == MS_PATH_SYMLINK && ms_dir_exists(ms_strbuild_span(&entry_path)));
+      ms_strbuild_free(&entry_path);
+      if (ms_span_starts_with(full, prefix) && (is_directory || ms_span_ends_with(name, ms_span_of_text(".ms")))) add_path(c, full, is_directory);
+    }
+  }
+  ms_dir_entries_free(&entries);
+  ms_strbuild_free(&cleaned);
+  ms_strbuild_free(&inside);
+}
+
+/* The module paths that start with `prefix`: bundled modules, the project's `@` names and, after `./`, `../` or an `@` name's
+ * slash, the entries of that directory. */
 static void path_items(Completer *c, const LspDoc *doc, MsSpan prefix) {
   size_t count = 0;
   const MsStdSource *sources = ms_std_sources(&count);
@@ -560,37 +602,46 @@ static void path_items(Completer *c, const LspDoc *doc, MsSpan prefix) {
     if (ms_span_starts_with(ms_strbuild_span(&path), prefix)) add_path(c, ms_strbuild_span(&path), false);
   }
   ms_strbuild_free(&path);
-  const bool relative = ms_span_starts_with(prefix, ms_span_of_text("./")) || ms_span_starts_with(prefix, ms_span_of_text("../"));
-  size_t slash = prefix.len;
-  while (slash > 0 && prefix.ptr[slash - 1] != '/') slash--;
-  if (!relative || slash == 0) return;
-  const MsSpan directory_prefix = ms_span_of(prefix.ptr, slash);
   MsArena arena = ms_arena_new();
-  MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new(), cleaned = ms_strbuild_new(), inside = ms_strbuild_new();
-  ms_path_dir(ms_string_span(&doc->path), &base);
-  ms_path_join(ms_strbuild_span(&base), directory_prefix, &joined);
-  ms_path_clean(&cleaned, ms_strbuild_span(&joined));
-  const MsSpan root = lsp_project_root(&arena, ms_strbuild_span(&base));
-  MsDirEntryList entries = {0};
-  if (ms_path_relative(&inside, root, ms_strbuild_span(&cleaned)) && !ms_path_escapes(ms_strbuild_span(&inside)) &&
-      ms_dir_list(ms_strbuild_span(&cleaned), &entries)) {
-    if (entries.len > 1) qsort(entries.ptr, entries.len, sizeof(MsDirEntry), compare_entry);
-    for (size_t i = 0; i < entries.len; i++) {
-      const MsSpan name = ms_string_span(&entries.ptr[i].name);
-      const MsSpan full = ms_message_format(&arena, "%S%S", directory_prefix, name);
-      MsStrBuild entry_path = ms_strbuild_new();
-      ms_path_join(ms_strbuild_span(&cleaned), name, &entry_path);
-      const bool directory = entries.ptr[i].kind == MS_PATH_DIRECTORY ||
-                             (entries.ptr[i].kind == MS_PATH_SYMLINK && ms_dir_exists(ms_strbuild_span(&entry_path)));
-      ms_strbuild_free(&entry_path);
-      if (ms_span_starts_with(full, prefix) && (directory || ms_span_ends_with(name, ms_span_of_text(".ms")))) add_path(c, full, directory);
+  MsManifest manifest = {0};
+  const bool has_manifest = project_names(&arena, doc, &manifest);
+  if (has_manifest) {
+    const ManifestNameList *lists[2] = {&manifest.aliases, &manifest.deps};
+    for (size_t l = 0; l < 2; l++) {
+      for (size_t i = 0; i < lists[l]->len; i++) {
+        const MsManifestName *entry = &lists[l]->ptr[i];
+        if (ms_span_starts_with(entry->name, prefix)) add_path(c, entry->name, ms_dir_exists(entry->target));
+      }
     }
   }
-  ms_dir_entries_free(&entries);
-  ms_strbuild_free(&base);
-  ms_strbuild_free(&joined);
-  ms_strbuild_free(&cleaned);
-  ms_strbuild_free(&inside);
+  size_t slash = prefix.len;
+  while (slash > 0 && prefix.ptr[slash - 1] != '/') slash--;
+  const MsSpan directory_prefix = ms_span_of(prefix.ptr, slash);
+  const bool relative = ms_span_starts_with(prefix, ms_span_of_text("./")) || ms_span_starts_with(prefix, ms_span_of_text("../"));
+  const bool aliased = ms_span_starts_with(prefix, ms_span_of_text("@")) && !ms_span_starts_with(prefix, ms_span_of_text("@std/"));
+  if (slash > 0 && relative) {
+    MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new();
+    ms_path_dir(ms_string_span(&doc->path), &base);
+    ms_path_join(ms_strbuild_span(&base), directory_prefix, &joined);
+    const MsSpan root = lsp_project_root(&arena, ms_arena_copy(&arena, ms_strbuild_span(&base)));
+    list_directory(c, &arena, ms_strbuild_span(&joined), root, directory_prefix, prefix);
+    ms_strbuild_free(&base);
+    ms_strbuild_free(&joined);
+  } else if (slash > 0 && aliased && has_manifest) {
+    /* `@lib/sub/` lists the directory of `@lib` below `sub/`. */
+    const MsSpan trimmed = ms_span_of(prefix.ptr, slash - 1);
+    size_t cut = 0;
+    while (cut < trimmed.len && trimmed.ptr[cut] != '/') cut++;
+    const MsSpan alias = ms_span_of(trimmed.ptr, cut);
+    const MsSpan remainder = cut < trimmed.len ? ms_span_of(trimmed.ptr + cut + 1, trimmed.len - cut - 1) : (MsSpan){0};
+    MsSpan target;
+    if (name_target(&manifest, alias, &target) && ms_dir_exists(target)) {
+      MsStrBuild joined = ms_strbuild_new();
+      ms_path_join(target, remainder, &joined);
+      list_directory(c, &arena, ms_strbuild_span(&joined), target, directory_prefix, prefix);
+      ms_strbuild_free(&joined);
+    }
+  }
   ms_arena_free(&arena);
 }
 
@@ -664,23 +715,35 @@ static bool import_items(Completer *c, const LspDoc *doc, const LspDocList *docs
     if (ms_span_starts_with(path, ms_span_of_text("@std/"))) {
       MsStdSource source;
       if (ms_std_source_find(ms_span_of(path.ptr + 5, path.len - 5), &source)) add_exports(c, source.text, path, true, &imported, true, false);
-    } else if (ms_span_starts_with(path, ms_span_of_text("."))) {
+    } else if (ms_span_starts_with(path, ms_span_of_text(".")) || ms_span_starts_with(path, ms_span_of_text("@"))) {
+      MsArena arena = ms_arena_new();
       MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new(), file = ms_strbuild_new();
-      ms_path_dir(ms_string_span(&doc->path), &base);
-      ms_path_join(ms_strbuild_span(&base), path, &joined);
+      bool resolved = true;
+      if (path.ptr[0] == '.') {
+        ms_path_dir(ms_string_span(&doc->path), &base);
+        ms_path_join(ms_strbuild_span(&base), path, &joined);
+      } else {
+        MsManifest manifest = {0};
+        size_t cut = 0;
+        while (cut < path.len && path.ptr[cut] != '/') cut++;
+        MsSpan target;
+        resolved = project_names(&arena, doc, &manifest) && name_target(&manifest, ms_span_of(path.ptr, cut), &target);
+        if (resolved) ms_path_join(target, cut < path.len ? ms_span_of(path.ptr + cut + 1, path.len - cut - 1) : (MsSpan){0}, &joined);
+      }
       ms_path_clean(&file, ms_strbuild_span(&joined));
       MsBytes bytes = {0};
       MsSpan text = {0};
-      for (size_t i = 0; i < docs->len; i++) {
+      for (size_t i = 0; resolved && i < docs->len; i++) {
         if (ms_span_equal(ms_string_span(&docs->ptr[i].path), ms_strbuild_span(&file))) text = ms_string_span(&docs->ptr[i].text);
       }
-      const bool on_disk = text.ptr == NULL && ms_file_read(ms_strbuild_span(&file), &bytes);
+      const bool on_disk = resolved && text.ptr == NULL && ms_file_read(ms_strbuild_span(&file), &bytes);
       if (on_disk) text = ms_bytes_span(&bytes);
       if (text.ptr != NULL) add_exports(c, text, path, false, &imported, true, false);
       if (on_disk) ms_bytes_free(&bytes);
       ms_strbuild_free(&base);
       ms_strbuild_free(&joined);
       ms_strbuild_free(&file);
+      ms_arena_free(&arena);
     }
   } else {
     size_t count = 0;
