@@ -23,3 +23,7 @@ add_test(NAME driver_profile_folded COMMAND profile_folded_unit)
 # `ms profile` end to end: a program that burns CPU is built, run under the sampler and turned into a bundle.
 add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_CURRENT_BINARY_DIR}/profile
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/ProfileRun.cmake)
+
+# `ms bench` end to end: a real bench block is built and run, and the report's shape is checked.
+add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms-c> -DWORK=${CMAKE_CURRENT_BINARY_DIR}/bench
+  -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
