@@ -15,6 +15,9 @@ typedef struct LowerOwnedVar {
   uint32_t scope;
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
+  MsTy checked;   /* the record's checked type once a field moved, so the scope end can close the fields left */
+  MirVar mask;    /* the fields handed on along the path taken, as a bit mask; a record's variable only */
+  bool has_mask;
   bool released;  /* a return is handing the whole value on: the unwind it starts must not own it */
   MirValue pinned; /* the value an inner scope's end owns for it while a close failure may leave the function, else MIR_NONE */
 } LowerOwnedVar;
@@ -186,7 +189,13 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var);
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
-void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field, MsTy checked);
+/* Settles what the record `value` (of checked type `record`) still holds, last field first: a resource field closes,
+ * and a field that only owns memory drops when it is one of `maybe` (the fields handed on along some path, whose
+ * `flag` bit says whether this path did). `taken` fields are gone already. Returns `taken` with the fields handled
+ * added, which the record's release then skips. */
+uint32_t fn_close_left_fields(LowerFn *fn, MirValue value, MsTy record, uint32_t taken, const MirVar *owner, uint32_t maybe,
+                              MirValue flag);
 void fn_scope_var_released(LowerFn *fn, MirVar var, bool released);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
 bool fn_is_list(LowerFn *fn, const MsExpr *expr);
