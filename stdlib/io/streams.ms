@@ -93,10 +93,8 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 		// A stream that ends after one chunk (a file read in one piece) hands that
 		// chunk back uncopied.
 		held := first
-
-		if held != null:
-			all.append_bytes(held)
-			first = null
+		first = null
+		if held != null: all.append_bytes(held)
 
 		if total == chunk.length():
 			first = chunk

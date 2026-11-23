@@ -9,6 +9,7 @@
 #include <string.h>
 #include "compiler/check/instantiate.h"
 #include "compiler/check/methods.h"
+#include "compiler/check/suggest.h"
 #include "compiler/syntax/parse.h"
 
 void body_target_free(Target *target) {
@@ -87,10 +88,32 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
   return true;
 }
 
+/* `Shape.Circel(1)`: the enum has cases and none of that name. */
+static void report_unknown_case(Body *body, const MsExpr *callee, MsName name, MsTy owner) {
+  const MsDef *def = body_def(body, owner);
+  if (def == NULL || def->cases.len == 0 || !body_reports(body) || body->quiet) {
+    return;
+  }
+  MsSpanList names = {0};
+  for (size_t index = 0; index < def->cases.len; index++) {
+    ms_span_list_push(&names, ms_names_span(body->program->names, def->cases.ptr[index].name));
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "unknown alternative case ");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, name));
+  ms_strbuild_append_text(&text, " of ");
+  ms_ty_show(&text, body->program->names, &body->program->types, owner);
+  ms_strbuild_append_text(&text, "; cases: ");
+  ms_suggest_list(&text, &names, 12);
+  ms_check_report(body->program, body->module, callee->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  ms_span_list_free(&names);
+}
+
 static bool case_target(Body *body, const MsExpr *callee, MsName name, MsTy owner, Target *target) {
   uint32_t index = 0;
   const MsTyCase *kase = body_case_of(body, owner, name, &index);
   if (kase == NULL) {
+    report_unknown_case(body, callee, name, owner);
     return false;
   }
   target->ref = (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner};
