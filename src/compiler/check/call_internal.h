@@ -16,6 +16,8 @@ typedef struct Target {
   MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
   MsSpan name;
   MsTyList explicit_args; /* owned: written type arguments */
+  MsTyList outer_vars;    /* owned: a method's receiver variables, which its type defaults may name */
+  MsTyList outer_args;    /* owned: the receiver's type arguments for outer_vars */
   size_t nargs;           /* the written argument count, to choose between methods of one name */
   bool constructor;       /* a type's or case's constructor, or the prelude's ok, error or some: inference failures use its wording */
   MsTy nominal;           /* the type a constructor or case builds, else MS_TY_NONE */

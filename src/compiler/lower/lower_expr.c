@@ -165,8 +165,7 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
 /* The position, among the call's arguments, of the callee parameter `ref` a default argument names: the checker numbers a
  * method's parameters after its receiver, as the call's arguments are. */
 static uint32_t default_position(const LowerFn *fn, const MsRef *ref) {
-  (void)fn;
-  return ref->local;
+  return fn->default_has_self && ref->local > 0 ? ref->local - 1 : ref->local;
 }
 
 bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot) {
@@ -186,6 +185,9 @@ bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot)
  * parameter is read from the slot the callee changes it in. */
 static MirValue default_param(LowerFn *fn, const MsRef *ref) {
   const MsCall *call = fn->default_call;
+  if (fn->default_has_self && ref->local == 0) {
+    return fn->default_self; /* `self` in the default of a method called through a method value */
+  }
   const uint32_t at = default_position(fn, ref);
   if (at >= call->arg_count) {
     (void)fn_fail(fn, "a default argument reads a parameter that has no value yet");
@@ -198,7 +200,7 @@ static MirValue default_param(LowerFn *fn, const MsRef *ref) {
   }
   if ((call->args[at].flags & MS_PARAM_VAR) != 0) {
     const MsTyTable *types = &fn->cx->program->types;
-    const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[ref->local].ty);
+    const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[default_position(fn, ref)].ty);
     return mir_b_emit(&fn->b, MOP_Load, &value, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
   }
   return value;
