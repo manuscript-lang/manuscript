@@ -3,7 +3,8 @@
  * server can take it: a connection task that waits for the first byte of a request lists itself; the watcher
  * (core/watch.h) finds a thread that stopped turning, and a resting thread of the same server takes the listed
  * connections whose read has finished, and serves them in tasks of its own. A task never moves; the task that waited
- * ends without closing the socket. Plain connections only. */
+ * ends without closing the socket. A TLS connection moves with its session: the take claims the bytes the net layer
+ * already decrypted, and the new task skips the handshake. */
 #include <stdatomic.h>
 
 #include "base/alloc.h"
@@ -208,7 +209,7 @@ static void install(void) {
 
 MsServeIdle *ms_serve_idle_open(MsServeWorker *worker) {
   const uint32_t isolate = ms_isolate_self();
-  if (worker->shared->secure != NULL || isolate >= MS_MAX_ISOLATES) {
+  if (isolate >= MS_MAX_ISOLATES) {
     return NULL;
   }
   install();

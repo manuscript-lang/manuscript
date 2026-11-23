@@ -24,6 +24,7 @@ struct MsServeConn {
   MsTaskHandle task;
   size_t listed_at;  /* its place in the idle list while it waits for a request (http_serve_steal.c) */
   bool listed;
+  bool resumed;      /* taken from another thread's connection: its handshake is done */
   bool taken;        /* another thread took the connection: its task ends without closing it */
 };
 
