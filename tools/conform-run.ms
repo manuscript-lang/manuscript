@@ -261,7 +261,12 @@ fn invoke(
 	result := run(
 		ms.clone(),
 		args,
-		RunOptions(cwd: work.clone(), timeout: seconds(limit), input: input),
+		RunOptions(
+			cwd: work.clone(),
+			timeout: seconds(limit),
+			input: input,
+			env: {"MS_UNDER_TEST": ms.clone()},
+		),
 	).wait()
 
 	match result:
