@@ -159,6 +159,7 @@ typedef struct MsCheckProgram {
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
   bool check_std; /* the bundled standard modules report their diagnostics too */
+  const struct MsStdCache *std_cache; /* parsed bundled modules to reuse, or NULL: names then layer over its names */
   bool all_std;   /* load every bundled standard module, not only the imported ones (`ms check --std`) */
   bool lazy_std;  /* standard bodies are checked only once reached (lazy_std.c): the program is analyzed, never lowered */
   MsDeferredBodyList deferred_bodies;
@@ -248,6 +249,8 @@ void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
  * outlive `program`. Passes are added as they land; a program is accepted only when `program->diagnostics`
  * is empty. */
 void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
+/* The same reusing `cache`'s parsed standard modules; `names` must be layered over the cache's names. */
+void ms_check_graph_cached(MsCheckProgram *program, MsNames *names, const MsGraph *graph, const struct MsStdCache *cache);
 /* The same for a program that is only analyzed (check, lint, the language server): the bodies of bundled standard
  * functions nothing in it reaches are not checked. Its facts must not be lowered. */
 void ms_check_graph_analysis(MsCheckProgram *program, MsNames *names, const MsGraph *graph);
