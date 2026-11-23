@@ -71,15 +71,15 @@ b4():
 
 fn @print[String](%0: str, %1: str) -> void !1:0:0 {
 b0:
-  %2: ptr = shape str !1:147:32
-  %3: ptr = slot str !1:147:32
-  store %3, %0 !1:147:32
-  %4: str = call.rt @msstd_value_to_string (%2, %3) !1:147:32
-  %5: str = call.rt @msrt_string_concat (%4, %1) !1:147:32
-  %6: void = call.rt @msrt_io_write_stdout (%5) !1:147:5
+  %2: ptr = shape str !1:163:32
+  %3: ptr = slot str !1:163:32
+  store %3, %0 !1:163:32
+  %4: str = call.rt @msstd_value_to_string (%2, %3) !1:163:32
+  %5: str = call.rt @msrt_string_concat (%4, %1) !1:163:32
+  %6: void = call.rt @msrt_io_write_stdout (%5) !1:163:5
   drop %5
   drop %4
-  ret !1:147:5
+  ret !1:163:5
 }
 
 fn @read_number(%0: str) -> Result[Int, Failure] !2:0:0 {
@@ -114,29 +114,29 @@ b6():
 
 fn @get_or[Int,Failure](%0: move Result[Int, Failure], %1: move opt<int>) -> int !1:0:0 {
 b0:
-  %2: int = alt.tag %0 !1:297:5
-  %3: int = iconst 0 !1:297:5
-  %4: bool = icmp.eq %2, %3 !1:297:5
-  br_if %4, b1(), b2() !1:297:5
+  %2: int = alt.tag %0 !1:318:5
+  %3: int = iconst 0 !1:318:5
+  %4: bool = icmp.eq %2, %3 !1:318:5
+  br_if %4, b1(), b2() !1:318:5
 b1():
-  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:297:5
-  alt.release Result[Int, Failure].ok.value %0 !1:297:5
-  ret %5 !1:297:23
+  %5: int = alt.take Result[Int, Failure].ok.value %0 !1:318:5
+  alt.release Result[Int, Failure].ok.value %0 !1:318:5
+  ret %5 !1:318:23
 b2():
-  br b3() !1:297:23
+  br b3() !1:318:23
 b3():
-  %6: bool = opt.is_some %1 !1:298:5
-  br_if %6, b4(), b5() !1:298:5
+  %6: bool = opt.is_some %1 !1:319:5
+  br_if %6, b4(), b5() !1:319:5
 b4():
-  %7: int = opt.unbox %1 !1:298:5
+  %7: int = opt.unbox %1 !1:319:5
   drop %0
-  ret %7 !1:298:29
+  ret %7 !1:319:29
 b5():
-  br b6() !1:298:29
+  br b6() !1:319:29
 b6():
-  %8: str = str "called Result.get_or with a none default" !1:299:5
-  %9: void = call.rt @msrt_panic (%8) !1:299:5
-  unreachable !1:299:5
+  %8: str = str "called Result.get_or with a none default" !1:321:5
+  %9: void = call.rt @msrt_panic (%8) !1:321:5
+  unreachable !1:321:5
 }
 
 fn @area(%0: Shape) -> int !2:0:0 {

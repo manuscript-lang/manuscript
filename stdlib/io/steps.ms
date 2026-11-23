@@ -90,7 +90,12 @@ fn var Lines.next() move String?!:
 
 		if more := chunk:
 			if rest > 0:
-				self.pending.append(self.data.slice(self.start, self.data.length())?.clone())
+				self.pending.append(
+					self.data.slice(
+						self.start,
+						self.data.length(),
+					)?.clone()
+				)
 				self.pending_size += rest
 				self.pending_cr = cr
 
