@@ -246,7 +246,8 @@ fn default_timeout(phase: String) Int:
 	if phase == "check": return 60
 	if phase == "run": return 120
 
-	return 180
+	// The slowest test fixture takes about 15 s (many-tasks); twice that is a hang.
+	return 30
 
 fn invoke(
 	ms: String,
