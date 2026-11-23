@@ -174,7 +174,45 @@ static bool take_authority(MsSpan *rest, MsSpan *host, bool *has_host, const cha
   return true;
 }
 
+/* Whether decoding and cleaning `raw` would return it unchanged: rooted, no escape, no empty, "." or ".." segment.
+ * Almost every request path is, and one scan then replaces the decoder, the segment stack and two builders. */
+static bool is_plain_clean(MsSpan raw) {
+  if (raw.len == 0 || raw.ptr[0] != '/') {
+    return false;
+  }
+  size_t start = 1; /* the first byte of the current segment */
+  for (size_t i = 1; i <= raw.len; i++) {
+    if (i < raw.len && raw.ptr[i] == '%') {
+      return false;
+    }
+    if (i < raw.len && raw.ptr[i] != '/') {
+      continue;
+    }
+    const size_t length = i - start;
+    const bool last = i == raw.len;
+    if (length == 0 && !(last && i > 1)) { /* "//" in the path; the trailing slash of "/a/" is the one empty segment kept */
+      return i == 1 && last; /* "/" alone */
+    }
+    if (length == 1 && raw.ptr[start] == '.') {
+      return false;
+    }
+    if (length == 2 && raw.ptr[start] == '.' && raw.ptr[start + 1] == '.') {
+      return false;
+    }
+    start = i + 1;
+  }
+  return true;
+}
+
 static bool finish_path(MsSpan raw_path, MsString *path, const char **reason) {
+  if (is_plain_clean(raw_path)) {
+    if (!ms_utf8_is_valid(raw_path.ptr, raw_path.len)) {
+      *reason = "invalid UTF-8 URL";
+      return false;
+    }
+    *path = ms_string_from_span(raw_path);
+    return true;
+  }
   MsString decoded = ms_string_empty();
   if (!ms_http_unescape(raw_path, &decoded)) {
     *reason = "Bad Request";

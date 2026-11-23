@@ -85,10 +85,9 @@ bool ms_serve_body_allowed(int64_t status) {
 }
 
 static void date_line(MsStrBuild *out) {
-  MsStrBuild value = ms_strbuild_new();
-  ms_h1_http_date(&value, ms_clock_realtime().seconds);
-  ms_h1_header_line(out, ms_span_of_text("Date"), ms_strbuild_span(&value));
-  ms_strbuild_free(&value);
+  ms_strbuild_append_text(out, "Date: ");
+  ms_h1_http_date(out, ms_clock_realtime().seconds);
+  ms_strbuild_append_text(out, "\r\n");
 }
 
 void ms_serve_date_line(MsStrBuild *out) {
@@ -436,6 +435,7 @@ static void connection_task(void *arg) {
     conn->io.release(conn->io.context);
   }
   ms_bytes_free(&conn->in);
+  ms_strbuild_free(&conn->head);
   ms_free(conn);
 }
 
@@ -473,6 +473,7 @@ static void adopt(MsServeWorker *worker, const MsWsTransport *stream, bool h2, M
       conn->io.release(conn->io.context);
     }
     ms_bytes_free(&conn->in);
+    ms_strbuild_free(&conn->head);
     ms_free(conn);
   }
 }
