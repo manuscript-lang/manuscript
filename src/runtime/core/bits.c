@@ -10,7 +10,7 @@ static unsigned shift_count(const char *operation, int64_t count) {
     ms_strbuild_append_text(&message, operation);
     ms_strbuild_append_text(&message, ": count must be between 0 and 63, found ");
     ms_strbuild_append_i64(&message, count);
-    ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
   }
   return (unsigned)count;
 }

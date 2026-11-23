@@ -27,7 +27,7 @@ void url_parts_clone(const UrlParts *source, UrlParts *out) {
 /* Splits at the first `sep`: `before` is everything when there is none. */
 static bool cut(MsSpan text, uint8_t sep, MsSpan *before, MsSpan *after) {
   size_t at = 0;
-  if (!url_find_first(text, sep, &at)) {
+  if (!ms_span_find_byte(text, sep, &at)) {
     *before = text;
     *after = ms_span_of(NULL, 0);
     return false;
@@ -199,7 +199,7 @@ static bool parse_hierarchy(MsSpan rest, UrlParts *url) {
     MsSpan authority = tail(rest, 2);
     rest = ms_span_of(NULL, 0);
     size_t slash = 0;
-    if (url_find_first(authority, '/', &slash)) {
+    if (ms_span_find_byte(authority, '/', &slash)) {
       rest = tail(authority, slash);
       authority = ms_span_of(authority.ptr, slash);
     }
@@ -247,7 +247,7 @@ static bool parse_inner(MsSpan raw, UrlParts *url) {
     MsSpan segment;
     MsSpan after;
     (void)cut(rest, '/', &segment, &after);
-    if (url_has_byte(segment, ':')) {
+    if (ms_span_has_byte(segment, ':')) {
       return false;
     }
   }

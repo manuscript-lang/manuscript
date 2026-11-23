@@ -6,20 +6,6 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_json_tree.h"
 
-static LowerFn begin(Lower *cx, const MirFunc *reserved) {
-  LowerFn fn = {.cx = cx,
-                .facts = &cx->program->modules.ptr[0].facts,
-                .module_index = 0,
-                .file = lower_file(cx, 0),
-                .ret = reserved->ret};
-  mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
-  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
-  (void)fn_scope_begin(&fn);
-  fn.nvars = 16;
-  fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  return fn;
-}
-
 /* A hook function taking two addresses: the slot that holds the value, and the text or writer it fills. */
 static uint32_t reserve(Lower *cx, const char *what, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, 3);
@@ -58,7 +44,7 @@ static MirValue receiver(LowerFn *fn, MirValue address, MirTy ty) {
 static uint32_t text_hook(Lower *cx, MirTy ty, uint32_t method) {
   const uint32_t slot = reserve(cx, "shape.text", MIR_VOID);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
-  LowerFn fn = begin(cx, &reserved);
+  LowerFn fn = fn_begin_reserved(cx, &reserved);
   MirValue args[2];
   mir_b_params(&fn.b, args, 2);
   MirValue self = receiver(&fn, args[0], ty);
@@ -73,7 +59,7 @@ static uint32_t text_hook(Lower *cx, MirTy ty, uint32_t method) {
 static uint32_t json_hook(Lower *cx, MirTy ty, MirTy tree_ty, uint32_t method) {
   const uint32_t slot = reserve(cx, "shape.json", MIR_UINT8);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
-  LowerFn fn = begin(cx, &reserved);
+  LowerFn fn = fn_begin_reserved(cx, &reserved);
   MirValue args[2];
   mir_b_params(&fn.b, args, 2);
   MirValue self = receiver(&fn, args[0], ty);

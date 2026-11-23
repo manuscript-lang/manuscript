@@ -76,72 +76,7 @@ fn var List[T].reverse() Void: ...
 // Sorts the list in place, stably, in the order `compare` defines, as `sorted` does.
 // Comparable elements also have `sort()` without a comparator. Example:
 // `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
-fn var List[T].sort(compare: fn(T, T) Int) Void:
-	// A stable bottom-up merge sort of an index order (so no element is copied), then
-	// the order is applied in place by swapping along its cycles.
-	size := self.length()
-	if size < 2: return
-
-	var order = List[Int](reserve: size)
-	var merged = List[Int](reserve: size)
-
-	for i in 0..size:
-		order.append(i)
-		merged.append(0)
-
-	var width = 1
-
-	while width < size:
-		var low = 0
-
-		while low < size:
-			middle := if low + width < size: low + width else: size
-			high := if low + 2 * width < size: low + 2 * width else: size
-			var left = low
-			var right = middle
-			var out = low
-
-			while left < middle and right < high:
-				if compare(self[order[right]], self[order[left]]) < 0:
-					merged.set(out, order[right])
-					right += 1
-				else:
-					merged.set(out, order[left])
-					left += 1
-
-				out += 1
-
-			while left < middle:
-				merged.set(out, order[left])
-				left += 1
-				out += 1
-
-			while right < high:
-				merged.set(out, order[right])
-				right += 1
-				out += 1
-
-			low += 2 * width
-
-		for i in 0..size:
-			order.set(i, merged[i])
-		width *= 2
-
-	var placed = List[Bool](reserve: size)
-	for i in 0..size:
-		placed.append(false)
-
-	for start in 0..size:
-		if placed[start]: continue
-
-		var at = start
-
-		while order[at] != start:
-			self.swap(at, order[at])
-			placed.set(at, true)
-			at = order[at]
-
-		placed.set(at, true)
+fn var List[T].sort(compare: fn(T, T) Int) Void: ...
 
 // Returns the zero-based index of the first element for which `predicate` is true,
 // or `none`.
@@ -313,16 +248,14 @@ Returns a new list ordered by `compare`; the receiver is unchanged. The sort is 
 A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
 Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
 */
-fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]:
-	var out = self.clone()
-	out.sort(compare)
-	return out
+fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]: ...
 
 // Returns a new list of the values for which `predicate` is true, in their original
 // order.
 fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]:
-	var out = self.clone()
-	out.retain(predicate)
+	var out = List[T]()
+	for item in self:
+		if predicate(item): out.append(item.clone())
 	return out
 
 // Returns a copy of the first element for which `predicate` is true, or `none`.
@@ -432,14 +365,14 @@ Strings join as they are and numbers as decimal text. A record or alternative jo
 Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
 */
 fn List[T].join(separator: String) String:
-	var out = StringBuilder()
+	var out = ""
 
 	for i in 0..self.length():
 		if i > 0:
-			out.append(separator)
-		out.append(f"{self[i]}")
+			out += separator
+		out += f"{self[i]}"
 
-	return out.build()
+	return out
 
 /*
 Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
@@ -447,9 +380,7 @@ Float orders NaN above every other value.
 Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
 */
 fn List[T: Comparable & Clonable].sorted() List[T]:
-	var out = self.clone()
-	out.sort(fn a, b: a.compare(b))
-	return out
+	return self.sorted(fn a, b: a.compare(b))
 
 // Sorts the list in place, stably, in the same order as `sorted()`.
 // Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.
@@ -805,16 +736,14 @@ fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
-// absent. The key is looked up once to read and once to store, `initial` is always
-// evaluated, and `change` runs once. Example: `counts.update(word, 0, fn n: n + 1)`
+// absent. The key is probed once, `initial` is always evaluated, and `change` runs
+// once and must not use this map. Example: `counts.update(word, 0, fn n: n + 1)`
 // counts occurrences.
 fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move key: T,
 	move initial: U,
 	change: fn(U) U
-) Void:
-	next := change(self.get_or(key, initial))
-	self.add(key, next)
+) Void: ...
 
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.
@@ -1091,7 +1020,6 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Void:
 
 import (
 	panic from "@std/core.ms",
-	StringBuilder from "@std/string_builder.ms",
 
 	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
 )

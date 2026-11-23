@@ -11,7 +11,7 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	read_file, write_file from "@std/os/fs.ms",
 
-	capture, file_sha256, note, run_program, tool_ms from "./lib.ms",
+	capture, env, file_sha256, note, run_program, tool_ms from "./lib.ms",
 	stdlib_issues from "./stdlib-rules.ms",
 )
 
@@ -32,7 +32,7 @@ fn skipped(path: String) Bool:
 fn repository_files() List[String]:
 	var files = List[String]()
 	listing := capture(
-		"git",
+		env("GIT", "git"),
 		[
 			"ls-files", "--cached", "--others", "--exclude-standard", "--deduplicate"
 		],
@@ -280,6 +280,13 @@ fn inventory_text(files: List[String]) String:
 
 fn licenses(check: Bool) Int:
 	files := repository_files()
+
+	if files.is_empty():
+		note(
+			"git listed no files; run from the repository root with git on PATH, or name it in GIT"
+		)
+		return 1
+
 	wanted := inventory_text(files)
 
 	if check:
@@ -302,6 +309,13 @@ fn main() Int:
 	root := working_directory().get()
 	ms := tool_ms(root)
 	files := repository_files()
+
+	if files.is_empty():
+		note(
+			"git listed no files; run from the repository root with git on PATH, or name it in GIT"
+		)
+		return 1
+
 	var failing = 0
 	failing += run_in_batches(
 		ms.clone(),

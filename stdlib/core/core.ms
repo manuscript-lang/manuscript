@@ -26,6 +26,12 @@ export type Error:
 	// - `EIO`: a task, process or peer ended abnormally
 	// - `EAGAIN`: service unavailable
 	// - `EBUSY`: resource busy
+	// - `ENAMETOOLONG`: a file name or path is too long
+	// - `ELOOP`: too many symbolic links
+	// - `ENOSPC`: no space left on the device
+	// - `EROFS`: the file system is read-only
+	// - `EXDEV`: the paths are on different devices
+	// - `EMFILE`: too many open files
 	// - `ETIMEDOUT`: a deadline expired
 	// - `ECANCELED`: cancelled
 	// - `EAUTH`: authentication failed
@@ -56,8 +62,14 @@ export type Error:
 // ms: status 13 ETIMEDOUT operation timed out
 // ms: status 14 EOVERFLOW output limit exceeded
 // ms: status 15 ENOTTY not a terminal
-// ms: status 17 EBUSY terminal is busy
+// ms: status 17 EBUSY resource is busy
 // ms: status 18 EAUTH authentication failed
+// ms: status 19 ENAMETOOLONG file name too long
+// ms: status 20 ELOOP too many symbolic links
+// ms: status 21 ENOSPC no space left on device
+// ms: status 22 EROFS read-only file system
+// ms: status 23 EXDEV cross-device link
+// ms: status 24 EMFILE too many open files
 
 // The kind of the `Error` a runtime status stands for (see the rows above).
 fn status_kind(status: Int) String:
@@ -77,6 +89,12 @@ fn status_kind(status: Int) String:
 	if status == 14: return "EOVERFLOW"
 	if status == 15: return "ENOTTY"
 	if status == 17: return "EBUSY"
+	if status == 19: return "ENAMETOOLONG"
+	if status == 20: return "ELOOP"
+	if status == 21: return "ENOSPC"
+	if status == 22: return "EROFS"
+	if status == 23: return "EXDEV"
+	if status == 24: return "EMFILE"
 
 	return "EAUTH"
 
@@ -97,7 +115,13 @@ fn status_words(status: Int) String:
 	if status == 13: return "operation timed out"
 	if status == 14: return "output limit exceeded"
 	if status == 15: return "not a terminal"
-	if status == 17: return "terminal is busy"
+	if status == 17: return "resource is busy"
+	if status == 19: return "file name too long"
+	if status == 20: return "too many symbolic links"
+	if status == 21: return "no space left on device"
+	if status == 22: return "read-only file system"
+	if status == 23: return "cross-device link"
+	if status == 24: return "too many open files"
 
 	return "authentication failed"
 
@@ -462,6 +486,12 @@ fn padding_for(text: String, target_length: Int, padding: String) String:
 	// Repeating first makes an oversized request fault at the string limit instead of
 	// looping to it.
 	source := padding.repeat(missing / padding.scalar_length() + 1)
+
+	// ASCII padding: a byte is a scalar, so the filler is one copy of the first bytes.
+	if padding.length() == padding.scalar_length():
+		filler := source.view(0, missing).clone()
+		return filler
+
 	var filler = ""
 	var count = 0
 

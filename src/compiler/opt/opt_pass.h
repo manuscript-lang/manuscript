@@ -7,11 +7,17 @@
 bool opt_bytetake(MirModule *m);  /* a result of a dying value reuses its storage */
 bool opt_strfuse(MirModule *m);   /* `s = s + piece` grows `s` in place */
 bool opt_loopslot(MirModule *m);  /* a loop-carried owned value lives in one slot */
-bool opt_fieldview(MirModule *m); /* a `var` record stays in its parameter pointer instead of a chain of cells */
+bool opt_fuse(MirModule *m);      /* a loop that builds a temporary list runs inside the loop that reads it */
 bool opt_optparam(MirModule *m);  /* an optional scalar block parameter becomes flag and value */
 bool opt_optparam_func(MirModule *m, MirFunc *f);
 bool opt_ifconv(MirModule *m);    /* small pure diamonds become `select` */
 bool opt_ifconv_func(MirModule *m, MirFunc *f);
+bool opt_twins(MirModule *m);     /* blocks that run the same operations merge, selecting what differs */
+bool opt_twins_func(MirModule *m, MirFunc *f);
+bool opt_thread(MirModule *m);    /* a predecessor that knows a join's branch gets its own copy of the join and the chosen successor */
+bool opt_thread_func(MirModule *m, MirFunc *f);
+bool opt_thread(MirModule *m);    /* a predecessor that knows a join's branch gets its own copy of the join and the chosen successor */
+bool opt_thread_func(MirModule *m, MirFunc *f);
 bool opt_reserve(MirModule *m);   /* a list filled by a counted loop is allocated at its final size */
 bool opt_copyelim(MirModule *m);  /* deep copies that only feed reads are removed */
 bool opt_copyelim_func(MirModule *m, MirFunc *f);

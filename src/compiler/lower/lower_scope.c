@@ -4,6 +4,29 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
+/* Doubles `*items` (arena memory, so the old block is simply left) until it holds one more element than `used`. */
+void *fn_grow(LowerFn *fn, void *items, uint32_t *cap, uint32_t used, size_t size) {
+  const uint32_t need = used + 1;
+  if (need <= *cap) {
+    return items;
+  }
+  uint32_t next = *cap == 0 ? 16 : *cap * 2;
+  while (next < need) {
+    next *= 2;
+  }
+  void *fresh = ms_arena_alloc_zeroed(&fn->cx->module->arena, size * next, 16);
+  if (used > 0) {
+    __builtin_memcpy(fresh, items, size * used);
+  }
+  *cap = next;
+  return fresh;
+}
+
+void fn_loop_push(LowerFn *fn, MirBlock break_to, MirBlock continue_to) {
+  fn->loops = fn_grow(fn, fn->loops, &fn->loops_cap, fn->nloops, sizeof(LowerLoop));
+  fn->loops[fn->nloops++] = (LowerLoop){break_to, continue_to, fn->nopen};
+}
+
 uint32_t fn_scope(const LowerFn *fn) {
   return fn->open[fn->nopen - 1];
 }
@@ -14,16 +37,16 @@ uint32_t fn_scope_begin(LowerFn *fn) {
   const uint32_t parent_plus_one = fn->nopen > 0 ? fn->open[fn->nopen - 1] + 1 : 0;
   const MirImm imm = {.tag = MI_SCOPE, .a = id, .b = parent_plus_one};
   (void)mir_b_emit(&fn->b, MOP_ScopeBegin, NULL, 0, imm, MIR_NONE);
-  if (fn->nopen == LOWER_MAX_SCOPES) {
-    (void)fn_fail(fn, "scopes nest too deeply");
-    return id;
-  }
+  uint32_t closes_cap = fn->open_cap; /* both arrays grow together, from the same capacity */
+  fn->open = fn_grow(fn, fn->open, &closes_cap, fn->nopen, sizeof(uint32_t));
+  fn->open_closes = fn_grow(fn, fn->open_closes, &fn->open_cap, fn->nopen, sizeof(bool));
   fn->open_closes[fn->nopen] = false;
   fn->open[fn->nopen++] = id;
   return id;
 }
 
-/* The scope owns what its `var` locals hold now, which only the end of the scope can know. */
+/* The scope owns what its `var` locals hold now, which only the end of the scope can know; a record that handed a field
+ * on is settled by `settle_moved_vars` once the scope's other owners are done. */
 static void own_vars(LowerFn *fn, uint32_t scope) {
   for (uint32_t at = fn->nowned_vars; at > 0; at--) {
     if (fn->owned_vars[at - 1].scope != scope) {
@@ -33,44 +56,87 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
       continue; /* handed on, or already owned by the end of an inner scope */
     }
     const MirValue value = mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var);
-    const uint32_t moved = fn->owned_vars[at - 1].moved;
-    if (moved == 0) {
+    if (fn->owned_vars[at - 1].moved == 0 && !fn->owned_vars[at - 1].leaves) {
       fn_own(fn, scope, value);
+    } else {
+      fn_disown(fn, value); /* an exit before the move owned it: the settle after the scope ends takes over */
+    }
+  }
+}
+
+/* A record that handed a field on closes the resources it still holds, last field first, and releases the rest. It does
+ * so after the scope's other owners ended: the record is declared before what it handed its field to. */
+static void settle_moved_vars(LowerFn *fn, uint32_t scope) {
+  for (uint32_t at = fn->nowned_vars; at > 0; at--) {
+    const LowerOwnedVar *entry = &fn->owned_vars[at - 1];
+    if (entry->scope != scope || entry->released || entry->pinned != MIR_NONE || (entry->moved == 0 && !entry->leaves)) {
       continue;
     }
-    /* A record that handed a field on releases the fields it still holds. */
-    const MirImm mask = {.tag = MI_TYPEMASK, .a = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->id, .b = moved};
+    const MirValue value = mir_b_use_var(&fn->b, entry->var);
+    uint32_t handled = entry->moved;
+    if (entry->has_mask && entry->checked != MS_TY_NONE) {
+      const LowerPartMoves parts = {.partial = entry->partial, .bits = entry->nbits,
+                                    .flag = entry->has_nmask ? mir_b_use_var(&fn->b, entry->nmask) : MIR_NONE, .inner = entry->inner};
+      handled |= fn_close_left_fields(fn, value, entry->checked, 0, NULL, entry->moved, mir_b_use_var(&fn->b, entry->mask),
+                                      entry->partial != 0 ? &parts : NULL);
+    }
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->id, .b = handled};
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, mask, MIR_NONE);
   }
 }
 
-bool fn_scope_own_var(LowerFn *fn, MirVar var) {
-  if (fn->nowned_vars == LOWER_MAX_OWNED_VARS) {
-    uint32_t kept = 0; /* entries of scopes that ended on a path that returned are stale */
-    for (uint32_t at = 0; at < fn->nowned_vars; at++) {
-      for (uint32_t depth = 0; depth < fn->nopen; depth++) {
-        if (fn->open[depth] == fn->owned_vars[at].scope) {
-          fn->owned_vars[kept++] = fn->owned_vars[at];
-          break;
-        }
+bool fn_scope_own_var(LowerFn *fn, MirVar var, MsTy leaves) {
+  fn->owned_vars = fn_grow(fn, fn->owned_vars, &fn->owned_vars_cap, fn->nowned_vars, sizeof(LowerOwnedVar));
+  LowerOwnedVar *entry = &fn->owned_vars[fn->nowned_vars++];
+  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .var = var, .checked = leaves, .leaves = leaves != MS_TY_NONE, .pinned = MIR_NONE};
+  if (mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->kind == MK_TYPE) {
+    entry->mask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
+    entry->has_mask = true;
+    mir_b_def_var(&fn->b, entry->mask, mir_b_iconst(&fn->b, 0));
+    const MirTypeDef *def = &fn->cx->module->type_defs.ptr[mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->id];
+    for (uint32_t at = 0; at < def->nfields && at < 8; at++) { /* a record field may hand a part of its own on */
+      if (mir_ty_data(fn->cx->module, def->fields[at].ty)->kind == MK_TYPE && mir_needs_drop(fn->cx->module, def->fields[at].ty)) {
+        entry->nmask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
+        entry->has_nmask = true;
+        mir_b_def_var(&fn->b, entry->nmask, mir_b_iconst(&fn->b, 0));
+        break;
       }
     }
-    fn->nowned_vars = kept;
-    if (kept == LOWER_MAX_OWNED_VARS) {
-      return fn_fail(fn, "too many mutable variables are open at once");
-    }
   }
-  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0, false, MIR_NONE};
   return true;
 }
 
-void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field) {
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field, MsTy checked) {
   for (uint32_t at = fn->nowned_vars; at > 0 && field < 32; at--) {
     if (fn->owned_vars[at - 1].var == var) {
       fn->owned_vars[at - 1].moved |= UINT32_C(1) << field;
+      fn->owned_vars[at - 1].checked = checked;
+      if (fn->owned_vars[at - 1].has_mask) { /* the path taken records the move: another path may keep the field */
+        const MirVar mask = fn->owned_vars[at - 1].mask;
+        const MirValue bit = mir_b_iconst(&fn->b, (int64_t)(UINT64_C(1) << field));
+        mir_b_def_var(&fn->b, mask, mir_b_binop(&fn->b, MOP_Or, mir_b_use_var(&fn->b, mask), bit));
+      }
       return;
     }
   }
+}
+
+bool fn_scope_var_moved_part(LowerFn *fn, MirVar var, uint32_t field, uint32_t part, MsTy checked, MsTy field_type) {
+  for (uint32_t at = fn->nowned_vars; at > 0 && field < 8 && part < 8; at--) {
+    LowerOwnedVar *entry = &fn->owned_vars[at - 1];
+    if (entry->var != var || !entry->has_nmask) {
+      continue;
+    }
+    entry->moved |= UINT32_C(1) << field;
+    entry->partial |= UINT32_C(1) << field;
+    entry->nbits |= UINT64_C(1) << (field * 8 + part);
+    entry->checked = checked;
+    entry->inner[field] = field_type;
+    const MirValue bit = mir_b_iconst(&fn->b, (int64_t)(UINT64_C(1) << (field * 8 + part)));
+    mir_b_def_var(&fn->b, entry->nmask, mir_b_binop(&fn->b, MOP_Or, mir_b_use_var(&fn->b, entry->nmask), bit));
+    return true;
+  }
+  return false;
 }
 
 void fn_scope_var_released(LowerFn *fn, MirVar var, bool released) {
@@ -114,6 +180,7 @@ static void emit_end(LowerFn *fn, uint32_t scope, uint32_t keep) {
   }
   const MirImm imm = {.tag = MI_SCOPE, .a = scope, .b = 0};
   (void)mir_b_emit(&fn->b, MOP_ScopeEnd, NULL, 0, imm, MIR_NONE);
+  settle_moved_vars(fn, scope);
   for (uint32_t at = 0; at < fn->nowned_vars; at++) {
     LowerOwnedVar *entry = &fn->owned_vars[at];
     if (entry->pinned != MIR_NONE && scope_depth(fn, entry->scope) < keep) {
@@ -275,4 +342,18 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value) {
     }
   }
   return false;
+}
+
+LowerFn fn_begin_reserved(Lower *cx, const MirFunc *reserved) {
+  LowerFn fn = {.cx = cx,
+                .facts = &cx->program->modules.ptr[0].facts,
+                .module_index = 0,
+                .file = lower_file(cx, 0),
+                .ret = reserved->ret};
+  mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  fn.nvars = 16;
+  fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  return fn;
 }

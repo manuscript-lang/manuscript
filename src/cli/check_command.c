@@ -19,10 +19,10 @@
 #include "compiler/syntax/diag_json.h"
 #include "cli/check_fix.h"
 #include "cli/check_selection.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/display.h"
-#include "cli/findings.h"
-#include "cli/snippet.h"
+#include "tooling/findings.h"
+#include "tooling/snippet.h"
 #include "cli/watch.h"
 #include "tooling/lint.h"
 
@@ -63,9 +63,14 @@ static int refuse(const char *message, int status) {
 }
 
 static int parse_arguments(int argc, char **argv, CheckOptions *options) {
+  bool options_done = false; /* after `--`, every argument is an input, even one that starts with '-' */
   for (int index = 0; index < argc; index++) {
     const char *argument = argv[index];
-    if (is_option(argument, "--json")) {
+    if (!options_done && is_option(argument, "--")) {
+      options_done = true;
+    } else if (options_done && argument[0] != '\0') {
+      target_list_push(&options->targets, ms_span_of_text(argument));
+    } else if (is_option(argument, "--json")) {
       options->json = true;
     } else if (is_option(argument, "--with-text")) {
       options->with_text = true;
@@ -91,8 +96,8 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       }
       options->deny_warnings = true;
     } else if (argument[0] == '-') {
-      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help %s' for its options\n", argument, options->name,
-                    options->name);
+      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put -- before a file name that starts with '-')\n",
+                    argument, options->name, options->name);
       return STATUS_USAGE;
     } else if (argument[0] == '\0') {
       (void)fprintf(stderr, "ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml\n", options->name);
@@ -368,13 +373,18 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
       ms_strbuild_append_text(err, i == 0 ? "" : ", ");
       ms_strbuild_append(err, targets[i]);
     }
+    if (count == 1) {
+      MsArena scratch = ms_arena_new();
+      ms_strbuild_append(err, ms_project_nested_hint(&scratch, targets[0]));
+      ms_arena_free(&scratch);
+    }
     ms_strbuild_append_byte(err, '\n');
   }
   finding_terminal_text(err, analysis->root, &analysis->findings, options->deny_warnings);
   if (options->json) {
     write_document(document, &analysis->findings, options, out, err);
   }
-  return finding_fails(&analysis->findings, options->deny_warnings) ? STATUS_FAILED : 0;
+  return analysis->no_inputs || finding_fails(&analysis->findings, options->deny_warnings) ? STATUS_FAILED : 0;
 }
 
 static void free_analysis(Analysis *analysis) {
@@ -467,6 +477,31 @@ static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList
   return result;
 }
 
+/* A workspace root without a [project] stands for its members, as for fmt and test. */
+static int expand_workspaces(MsArena *arena, CheckOptions *options) {
+  TargetList expanded = {0};
+  for (size_t i = 0; i < options->targets.len; i++) {
+    MsSpanList members = {0};
+    MsProjectError error = {0};
+    bool root = false;
+    if (!ms_project_workspace_members(arena, options->targets.ptr[i], &members, &root, &error)) {
+      (void)fprintf(stderr, "ms %s: %s\n", options->name, (const char *)ms_project_error_text(arena, &error).ptr);
+      target_list_free(&expanded);
+      return STATUS_FAILED;
+    }
+    if (!root) {
+      target_list_push(&expanded, options->targets.ptr[i]);
+    }
+    for (size_t m = 0; root && m < members.len; m++) {
+      target_list_push(&expanded, members.ptr[m]);
+    }
+    ms_span_list_free(&members);
+  }
+  target_list_free(&options->targets);
+  options->targets = expanded;
+  return 0;
+}
+
 static int run_command(const char *name, bool lint, int argc, char **argv) {
   CheckOptions options = {.name = name, .lint = lint};
   const int status = parse_arguments(argc, argv, &options);
@@ -477,6 +512,11 @@ static int run_command(const char *name, bool lint, int argc, char **argv) {
   MsArena arena = ms_arena_new();
   int result = 0;
   MsSpanList watched = {0};
+  if (expand_workspaces(&arena, &options) != 0) {
+    target_list_free(&options.targets);
+    ms_arena_free(&arena);
+    return STATUS_FAILED;
+  }
   if (options.each) {
     result = check_each(&arena, &options);
   }

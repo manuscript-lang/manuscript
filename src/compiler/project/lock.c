@@ -18,17 +18,6 @@ static bool find_text(MsSpan text, const char *needle, size_t *at) {
   return ms_span_find(text, ms_span_of_text(needle), at);
 }
 
-static MsSpan lowercase(MsArena *arena, MsSpan text) {
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < text.len; i++) {
-    const uint8_t b = text.ptr[i];
-    ms_strbuild_append_byte(&out, b >= 'A' && b <= 'Z' ? (uint8_t)(b + 32) : b);
-  }
-  const MsSpan copy = ms_message_from_builder(arena, &out);
-  ms_strbuild_free(&out);
-  return copy;
-}
-
 MsSpan ms_lock_repo_key(MsArena *arena, MsSpan url) {
   size_t at = 0;
   bool local = false;
@@ -54,9 +43,9 @@ MsSpan ms_lock_repo_key(MsArena *arena, MsSpan url) {
     slash++;
   }
   if (slash == rest.len) {
-    return lowercase(arena, rest);
+    return ms_message_lowered(arena, rest);
   }
-  return ms_message_format(arena, "%S%S", lowercase(arena, ms_span_of(rest.ptr, slash)),
+  return ms_message_format(arena, "%S%S", ms_message_lowered(arena, ms_span_of(rest.ptr, slash)),
                            ms_span_of(rest.ptr + slash, rest.len - slash));
 }
 
@@ -345,19 +334,6 @@ MsSpan ms_lock_index_path(MsArena *arena, MsSpan cache, MsSpan hash) {
 
 /* ---- the index ---- */
 
-static int64_t compare_paths(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  const MsSpan x = *(const MsSpan *)(const void *)a;
-  const MsSpan y = *(const MsSpan *)(const void *)b;
-  const size_t common = x.len < y.len ? x.len : y.len;
-  for (size_t i = 0; i < common; i++) {
-    if (x.ptr[i] != y.ptr[i]) {
-      return x.ptr[i] < y.ptr[i] ? -1 : 1;
-    }
-  }
-  return x.len == y.len ? 0 : (x.len < y.len ? -1 : 1);
-}
-
 typedef struct Collect {
   MsArena *arena;
   MsList files; /* of MsSpan, the `/` paths below the package root */
@@ -410,7 +386,7 @@ bool ms_lock_index_tree(MsArena *arena, MsSpan directory, MsSpan *index, MsSpan 
     return false;
   }
   MsSpan *files = (MsSpan *)(void *)c.files.ptr;
-  ms_sort((uint8_t *)files, c.files.len, sizeof(MsSpan), compare_paths, NULL);
+  ms_sort((uint8_t *)files, c.files.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   MsStrBuild text = ms_strbuild_new();
   size_t total = 0;
   bool ok = true;

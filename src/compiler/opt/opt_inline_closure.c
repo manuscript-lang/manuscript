@@ -353,6 +353,25 @@ static bool ic_closure_body(MirModule *m, const MirFunc *f, MirFunc *out) {
     params[f->ncaptures + j - 1] = entry->params.ptr[j];
   }
   opt_block_set_params(entry, params, (uint32_t)(entry->params.len - 1 + f->ncaptures));
+  /* The signature follows the entry block: the captures replace the environment parameter. */
+  MirParam *signature = MS_ARENA_NEW_ARRAY(&m->arena, MirParam, (size_t)f->nparams + f->ncaptures);
+  for (uint32_t k = 0; k < f->ncaptures; k++) {
+    signature[k] = (MirParam){f->captures[k], MM_BORROW};
+  }
+  for (uint32_t j = 1; j < f->nparams; j++) {
+    signature[f->ncaptures + j - 1] = f->params[j];
+  }
+  uint32_t *noalias = MS_ARENA_NEW_ARRAY(&m->arena, uint32_t, (size_t)f->nnoalias + 1);
+  uint32_t kept = 0;
+  for (uint32_t k = 0; k < f->nnoalias; k++) {
+    if (f->noalias[k] != 0) {
+      noalias[kept++] = f->noalias[k] - 1 + f->ncaptures;
+    }
+  }
+  out->noalias = noalias;
+  out->nnoalias = kept;
+  out->params = signature;
+  out->nparams = f->nparams - 1 + f->ncaptures;
   ms_arena_free(&arena);
   return true;
 }
@@ -467,8 +486,7 @@ static void ic_work_push(IcInline *w, uint32_t bi) {
 
 /* The closures of `f` as `known` sees them: every alias of a root, and every read of a constant
  * closure field. */
-static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const MirFunc *f,
-                  const IcFields *fields) {
+IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f) {
   const IcKnown roots = ic_known_closures(arena, m, f);
   IcKnown known = ic_known_new(arena, (uint32_t)f->values.len);
   const MirValue *alias = ic_aliases(arena, f, &roots);
@@ -477,6 +495,12 @@ static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const Mi
       ic_known_set(&known, v, roots.code[alias[v]], roots.caps[alias[v]], roots.ncaps[alias[v]]);
     }
   }
+  return known;
+}
+
+static IcKnown ic_known_with_fields(MsArena *arena, const MirModule *m, const MirFunc *f,
+                  const IcFields *fields) {
+  IcKnown known = ic_known_aliased(arena, m, f);
   for (uint32_t b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       const MirInst *in = &f->blocks.ptr[b].insts.ptr[i];
@@ -505,7 +529,10 @@ static bool ic_inline_call(IcInline *w, const IcKnown *known, uint32_t bi, uint3
   const uint32_t gi = known->code[callee_value];
   const MirFunc *callee = &m->funcs.ptr[gi];
   const uint32_t size = mir_inst_count(callee);
-  if (gi == w->fi || callee->inline_hint == MINL_NEVER || size > OPT_INLINE_BASE_THRESHOLD ||
+  /* A closure too big to inline here still becomes a direct call of a plain copy of its code, which the backend
+   * can inline: an indirect call hides it from every optimiser. */
+  const bool big = size > OPT_INLINE_BASE_THRESHOLD;
+  if (gi == w->fi || callee->inline_hint == MINL_NEVER || size > OPT_INLINE_SPECIALIZE_MAX_SIZE ||
     opt_inline_cancel_mismatch(f, callee) || w->grown + size > w->budget) {
     return false;
   }
@@ -524,6 +551,12 @@ static bool ic_inline_call(IcInline *w, const IcKnown *known, uint32_t bi, uint3
   call->imm = (MirImm){.tag = MI_FUNC, .a = gi};
   call->args = args;
   call->nargs = ncaps + call->nargs - 1;
+  if (big) {
+    body.kind = MFK_NORMAL;
+    const uint32_t plain = mir_add_func(m, &body);
+    m->funcs.ptr[w->fi].blocks.ptr[bi].insts.ptr[ii].imm.a = plain;
+    return true;
+  }
   const bool ret_own = mir_needs_drop(m, body.ret);
   ic_work_push(w, opt_inline_at(m, f, bi, ii, &body, ret_own));
   return true;

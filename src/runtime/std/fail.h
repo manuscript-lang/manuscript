@@ -31,8 +31,13 @@ void ms_fail_uv_text(MsFail *fail, int code, const char *operation, MsSpan name)
 /* Ends a native: returns the failure's status and fills `err`. A status other than MS_STATUS_FAILED stores `detail`
  * (the path of the operation, or nothing). A pending stop request is delivered by cancelling the task: the text is
  * dropped first. A success is returned as it is, with `err` empty. */
+/* Whether ms_fail_finish would deliver a stop request instead of returning: it never returns, so a caller frees what it
+ * owns before it, never after. */
+bool ms_fail_cancel_pending(const MsFail *fail);
 uint8_t ms_fail_finish(MsFail *fail, MsString *err);
 uint8_t ms_fail_finish_at(MsFail *fail, MsSpan detail, MsString *err);
+/* Ends a native with a call's `status` and the text it left, which moves into the failure. */
+uint8_t ms_fail_finish_with(uint8_t status, MsString *text, MsString *err);
 
 /* Whether a stop request is pending for the running task; never true on a pool thread, where a job runs to its end. */
 bool ms_fail_cancel_requested(void);

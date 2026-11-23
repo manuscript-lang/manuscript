@@ -4,15 +4,6 @@
 #include "compiler/check/effects_directives.h"
 #include "compiler/check/effects_graph.h"
 
-static int64_t compare_spans(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  MsSpan left = {0};
-  MsSpan right = {0};
-  __builtin_memcpy(&left, a, sizeof left);
-  __builtin_memcpy(&right, b, sizeof right);
-  return ms_span_order(left, right);
-}
-
 /* The distinct declared effect names of all nodes, sorted. */
 static uint32_t collect_names(const MsReachNode *nodes, uint32_t count, MsArena *arena, const MsSpan **names) {
   size_t total = 0;
@@ -26,10 +17,10 @@ static uint32_t collect_names(const MsReachNode *nodes, uint32_t count, MsArena 
       all[filled++] = nodes[index].declared[at];
     }
   }
-  ms_sort((uint8_t *)all, filled, sizeof(MsSpan), compare_spans, NULL);
+  ms_sort((uint8_t *)all, filled, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   size_t distinct = 0;
   for (size_t index = 0; index < filled; index++) {
-    if (distinct == 0 || ms_span_order(all[distinct - 1], all[index]) != 0) {
+    if (distinct == 0 || ms_span_compare(all[distinct - 1], all[index]) != 0) {
       all[distinct++] = all[index];
     }
   }
@@ -42,7 +33,7 @@ static uint32_t slot_of(const MsReachGraph *graph, MsSpan name) {
   uint32_t high = graph->name_count;
   while (low < high) {
     const uint32_t middle = low + (high - low) / 2;
-    const int64_t order = ms_span_order(graph->names[middle], name);
+    const int64_t order = ms_span_compare(graph->names[middle], name);
     if (order == 0) {
       return middle;
     }

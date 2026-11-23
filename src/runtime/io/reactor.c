@@ -15,6 +15,7 @@
 
 #include "base/alloc.h"
 #include "base/list.h"
+#include "runtime/io/edge.h"
 #include "runtime/io/reactor_internal.h"
 #include "runtime/io/refused.h"
 #include "runtime/sys/sys.h"
@@ -55,6 +56,8 @@ struct MsIoReactor {
   MsIoCompletionSink sink; /* receives completions in ms_io_wait, or NULL */
   bool woken;            /* a wake-up was consumed since the wait began */
   void *platform;        /* owned by the platform file, NULL when it keeps none */
+  MsEdge *edge;          /* edge-triggered registrations, opened with the first */
+  uint32_t edge_turns;   /* passes that took edges since the loop last ran */
 };
 
 _Static_assert(sizeof(MsIoWatch) == sizeof(int), "MsIoWatch crosses the ABI as an int");
@@ -188,6 +191,9 @@ static void on_poll(uv_poll_t *handle, int status, int events) {
 
 static void reactor_destroy(MsIoReactor *reactor) {
   ms_io_platform_close(reactor);
+  if (reactor->edge != NULL) {
+    ms_edge_close(reactor->edge);
+  }
   for (size_t index = 0; index < reactor->rows.len; index++) {
     if (reactor->rows.ptr[index] != NULL) {
       row_discard(reactor, reactor->rows.ptr[index]);
@@ -351,10 +357,43 @@ static MsIoWatch watch_refused(MsIoReactor *reactor, int fd, uint32_t events) {
   return MS_IO_WATCH_ARMED;
 }
 
+/* An edge wait: the interest is recorded and the next edge of the registration reports it. */
+static MsIoWatch watch_edge(MsIoReactor *reactor, int fd, uint32_t events) {
+  const uint32_t bits = events & (MS_IO_BIT_READ | MS_IO_BIT_WRITE);
+  if (reactor->edge == NULL || !ms_edge_arm(reactor->edge, fd, bits != 0 ? bits : MS_IO_BIT_READ, reactor->ring)) {
+    return MS_IO_WATCH_FAILED;
+  }
+  return MS_IO_WATCH_ARMED;
+}
+
+bool ms_io_edge_supported(void) { return ms_edge_supported() && thread_reactor != NULL; }
+
+bool ms_io_edge_reset(int fd, uint64_t cookie, uint32_t bits) {
+  MsIoReactor *reactor = thread_reactor;
+  if (reactor == NULL || fd < 0 || !ms_edge_supported()) {
+    return false;
+  }
+  if (reactor->edge == NULL) {
+    reactor->edge = ms_edge_open(&reactor->loop, reactor->ring);
+    if (reactor->edge == NULL) {
+      return false;
+    }
+  }
+  return ms_edge_reset(reactor->edge, fd, cookie, bits);
+}
+
+bool ms_io_edge_ready(int fd, uint32_t bits) {
+  MsIoReactor *reactor = thread_reactor;
+  return reactor != NULL && reactor->edge != NULL && ms_edge_ready(reactor->edge, fd, bits);
+}
+
 MsIoWatch ms_io_watch(int fd, uint32_t events) {
   MsIoReactor *reactor = thread_reactor;
   if (reactor == NULL || fd < 0) {
     return MS_IO_WATCH_FAILED;
+  }
+  if ((events & MS_IO_BIT_EDGE) != 0) {
+    return watch_edge(reactor, fd, events);
   }
   table_reserve(reactor, fd);
   if (ms_io_platform_owns(reactor, (uintptr_t)fd)) {
@@ -385,6 +424,9 @@ MsIoWatch ms_io_watch(int fd, uint32_t events) {
 
 void ms_io_unwatch(int fd) {
   MsIoReactor *reactor = thread_reactor;
+  if (reactor != NULL && reactor->edge != NULL) {
+    ms_edge_disarm(reactor->edge, fd);
+  }
   MsIoRow *row = reactor == NULL ? NULL : row_find(reactor, fd);
   if (row == NULL) {
     return;
@@ -398,6 +440,9 @@ void ms_io_unwatch(int fd) {
 
 void ms_io_forget(int fd) {
   MsIoReactor *reactor = thread_reactor;
+  if (reactor != NULL && reactor->edge != NULL) {
+    ms_edge_forget(reactor->edge, fd);
+  }
   MsIoRow *row = reactor == NULL ? NULL : row_find(reactor, fd);
   if (row != NULL) {
     row_discard(reactor, row);
@@ -458,6 +503,12 @@ bool ms_io_wait(int64_t timeout_ns, MsIoReady *out, size_t capacity, size_t *cou
   }
   reactor->woken = false;
   ms_io_platform_flush(reactor);
+  if (reactor->edge != NULL && ms_edge_drain(reactor->edge, reactor->ring) > 0 && (++reactor->edge_turns & 7) != 0) {
+    /* Edges are in: the loop's own events (timers, completions, wake-ups) wait for at most seven such passes. */
+    *count = drain_events(reactor, out, capacity);
+    deliver_completions(reactor);
+    return true;
+  }
   if (timeout_ns == 0 || ms_io_ring_length(reactor->ring) > 0 || ms_io_ring_length(reactor->completions) > 0) {
     (void)uv_run(&reactor->loop, UV_RUN_NOWAIT); /* events left from an earlier wait are ready now */
   } else if (timeout_ns > 0) {

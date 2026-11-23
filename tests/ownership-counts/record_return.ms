@@ -1,5 +1,5 @@
-// expect-debug: allocs=17 alloc_bytes=4268
-// expect-release: allocs=17 alloc_bytes=4268
+// expect-debug: allocs=16 alloc_bytes=4220
+// expect-release: allocs=16 alloc_bytes=4220
 // Records built and returned through wrappers: Release already constructs them directly
 // in the caller (the floor is the name and list per record), so return-slot
 // construction has no measured gain. Debug pays list growth the reserve pass removes.

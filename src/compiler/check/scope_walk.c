@@ -1,6 +1,8 @@
 /* compiler/check/scope_walk.c: the scope-keeping syntax walk (see scope_walk.h). */
 #include "compiler/check/scope_walk.h"
 
+#include "base/alloc.h"
+
 typedef struct Walk {
   const MsScopeVisitor *visitor;
   MsBindingList scope; /* innermost last */
@@ -27,13 +29,40 @@ static void declare(Walk *pass, MsName name, MsPos decl, bool mutable_, MsBindin
   }
 }
 
-const MsBinding *ms_scope_lookup(const MsBindingList *scope, MsName name) {
-  for (size_t index = scope->len; index > 0; index--) {
-    if (scope->ptr[index - 1].name == name) {
-      return &scope->ptr[index - 1];
+void ms_binding_list_push(MsBindingList *list, MsBinding binding) {
+  if (binding.name >= list->nlatest) {
+    size_t grown = list->nlatest == 0 ? 64 : list->nlatest;
+    while (grown <= binding.name) {
+      grown *= 2;
     }
+    list->latest = ms_realloc(list->latest, grown * sizeof *list->latest);
+    __builtin_memset(list->latest + list->nlatest, 0, (grown - list->nlatest) * sizeof *list->latest);
+    list->nlatest = grown;
   }
-  return NULL;
+  binding.shadowed = list->latest[binding.name];
+  MsList *erased = (MsList *)(void *)list;
+  ms_list_push(erased, sizeof binding, &binding);
+  list->latest[binding.name] = (uint32_t)list->len;
+}
+
+void ms_binding_list_truncate(MsBindingList *list, size_t len) {
+  while (list->len > len) {
+    const MsBinding *top = &list->ptr[--list->len];
+    list->latest[top->name] = top->shadowed;
+  }
+}
+
+void ms_binding_list_free(MsBindingList *list) {
+  ms_list_free((MsList *)(void *)list);
+  ms_free(list->latest);
+  *list = (MsBindingList){0};
+}
+
+const MsBinding *ms_scope_lookup(const MsBindingList *scope, MsName name) {
+  if (name >= scope->nlatest || scope->latest[name] == 0) {
+    return NULL;
+  }
+  return &scope->ptr[scope->latest[name] - 1];
 }
 
 static void declare_pattern(Walk *pass, const MsPattern *pattern, bool mutable_, MsBindingOrigin origin) {

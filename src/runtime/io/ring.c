@@ -27,6 +27,8 @@ void ms_io_ring_free(MsIoRing *ring) { ms_free(ring); }
 
 uint32_t ms_io_ring_length(const MsIoRing *ring) { return ring->tail - ring->head; }
 
+uint32_t ms_io_ring_capacity(const MsIoRing *ring) { return ring->mask + 1; }
+
 uint32_t ms_io_ring_dropped(const MsIoRing *ring) { return ring->dropped; }
 
 bool ms_io_ring_push(MsIoRing *ring, MsIoEvent event) {

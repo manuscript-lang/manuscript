@@ -157,7 +157,8 @@ typedef struct UwFacts {
 } UwFacts;
 
 bool uw_exits_at(const UwCx *cx, const MirInst *inst);
-uint32_t uw_hole_step(uint32_t open, MirOp op, const MirInst *next);
+UwHash uw_call_defs(MsArena *a, const MirFunc *f);
+uint32_t uw_hole_step(uint32_t open, const MirInst *inst, const MirInst *next, const UwHash *calls);
 uint32_t *uw_hole_states(UwCx *cx, const MirFunc *f);
 UwWalk uw_analyze(const UwFacts *facts);
 bool *uw_plain_blocks(UwCx *cx, const MirFunc *f, const uint32_t *holes);

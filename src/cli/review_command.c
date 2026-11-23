@@ -1,4 +1,5 @@
 /* cli/review_command.c: `ms review`. Port of `review` in crates/ms-cli/src/engine/tooling.rs. */
+#include "cli/files.h"
 #include "cli/review_command.h"
 
 #include <stdio.h>
@@ -8,24 +9,12 @@
 #include "base/path.h"
 #include "tooling/diff.h"
 #include "tooling/review.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/invocation.h"
 #include "tooling/facts.h"
 #include "tooling/report.h"
 
 enum { STATUS_FAILED = 1 };
-
-static int write_output(MsSpan output, MsSpan text) {
-  if (output.len == 0) {
-    (void)fwrite(text.ptr, 1, text.len, stdout);
-    return 0;
-  }
-  if (!ms_file_write(output, text)) {
-    (void)fprintf(stderr, "cannot write %.*s\n", (int)output.len, (const char *)output.ptr);
-    return STATUS_FAILED;
-  }
-  return 0;
-}
 
 static bool path_exists(MsSpan path) {
   return ms_file_is_regular(path) || ms_dir_exists(path);
@@ -34,16 +23,14 @@ static bool path_exists(MsSpan path) {
 static MsSpan path_dir(MsArena *arena, MsSpan path) {
   MsStrBuild out = ms_strbuild_new();
   ms_path_dir(path, &out);
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
 static MsSpan path_join(MsArena *arena, MsSpan left, MsSpan right) {
   MsStrBuild out = ms_strbuild_new();
   ms_path_join(left, right, &out);
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -124,8 +111,7 @@ static bool review_input(MsArena *arena, const MsDiffFiles *files, MsSpan root, 
     const MsSpan absolute = locate_diff_path(arena, root, name, deleted);
     MsStrBuild rel = ms_strbuild_new();
     const bool related = ms_path_relative(&rel, root, absolute);
-    const MsSpan relative = ms_arena_copy(arena, ms_strbuild_span(&rel));
-    ms_strbuild_free(&rel);
+    const MsSpan relative = ms_message_take_builder(arena, &rel);
     if (!related || ms_path_escapes(relative)) {
       continue;
     }
@@ -217,7 +203,7 @@ static int review(MsArena *arena, MsCheckedInput *checked, const MsInvocation *i
   if (invocation->diff.len == 0) {
     const MsReport report = ms_project_report(arena, &head, options);
     ms_report_render(arena, &report, format, &text);
-    status = write_output(invocation->output, ms_strbuild_span(&text));
+    status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
     ms_strbuild_free(&text);
     return status;
   }
@@ -232,7 +218,7 @@ static int review(MsArena *arena, MsCheckedInput *checked, const MsInvocation *i
     const bool ok = json ? ms_review_explain_json(arena, &findings, &head, invocation->explain, &text, &error)
                          : ms_review_explain(arena, &findings, &head, invocation->explain, &text, &error);
     if (ok) {
-      status = write_output(invocation->output, ms_strbuild_span(&text));
+      status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
     } else {
       (void)fprintf(stderr, "ms review: %.*s\n", (int)error.len, (const char *)error.ptr);
       status = 2;
@@ -240,7 +226,7 @@ static int review(MsArena *arena, MsCheckedInput *checked, const MsInvocation *i
   } else if (status == 0) {
     const MsReport report = ms_diff_report(arena, &base_facts, &head, &input, options);
     ms_report_render(arena, &report, format, &text);
-    status = write_output(invocation->output, ms_strbuild_span(&text));
+    status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
   }
   ms_strbuild_free(&text);
   ms_checked_input_free(&base);

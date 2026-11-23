@@ -4,6 +4,8 @@
 
 Checking, lowering, MIR, Cranelift, build, fault sites.
 
+- [Name lookups in a function are indexed, not scanned](name-lookups-in-a-function-are-indexed-not-scanned.md): per-name scope index; a 32k-line function checks in 0.47 s instead of 3.8 s.
+- [Debug suffixes hid lines from the copy-forwarding pass](debug-suffixes-hid-lines-from-the-copy-forwarding-pass.md): `emit_copies` matched nothing in builds with debug info; fixed, `string_append_50k` instructions halved.
 - [Fallible native calls share one error builder](fallible-native-calls-share-one-error-builder.md): the status-to-`Error` chain was inlined at every call site (web server MIR 12,070 to 6,414 lines, binary 3.96 to 3.65 MB).
 - [Callback adapters do not change generic type identity](callback-adapters-do-not-change-generic-type-identity.md): reader conversion applies at a callable value boundary; implementation overlap and receiver matching preserve nested callback modes.
 
@@ -35,6 +37,7 @@ Checking, lowering, MIR, Cranelift, build, fault sites.
 - [Structural property bits are not worth a whole-program pass](structural-property-bits-are-not-worth-a-whole-program-pass.md): a typical check makes about 270 property queries, and answers depended on per-file impl visibility.
 - [Unwind leaves slot values to an active scope close](unwind-leaves-slot-values-to-an-active-scope-close.md): a value taken from a scope-closed slot must not get its own unwind drop, which would free the receiver before the slot's close runs.
 - [A list updated in place in a loop is registered once](a-list-updated-in-place-in-a-loop-is-registered-once.md): a task loop that set list elements pushed and discarded a cleanup every iteration, 1.5x slower than the same loop called directly.
+- [A program without tasks needs no memory-only cleanup entries](a-program-without-tasks-needs-no-memory-only-cleanup-entries.md): `close.drop` entries kept every pushed list header in memory; `mir_shed` removes them when no task can outlive a fault.
 - [Debug frames are allocas plus one spill per cross-block value](debug-frames-are-allocas-plus-one-spill-per-cross-block-value.md): -O0 never reuses spill slots, so the emitter shares call result areas, argument copies and one-block slots itself; cross-block values are the remaining cost.
 - [There are no function-size tiers in the emitter](there-are-no-function-size-tiers-in-the-emitter.md): huge functions compile at the module level; use pass timings, not a size switch; handle slot sharing rule.
 - [Unwind cost grows with the values live to scope end](unwind-cost-grows-with-values-live-to-scope-end.md): in task programs a long Debug function registered cleanups for every live value at every fault point, so code and frame grew with the square of its length and overflowed a 512 KiB task slot.

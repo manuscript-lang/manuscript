@@ -21,6 +21,16 @@ typedef uint32_t MsName;
 MS_LIST_DEFINE(MsSpanList, ms_span_list, MsSpan)
 MS_LIST_DEFINE(MsHashList, ms_hash_list, uint64_t)
 
+/* Whether the list holds a span equal to `value`. */
+static inline bool ms_span_list_contains(const MsSpanList *list, MsSpan value) {
+  for (size_t i = 0; i < list->len; i++) {
+    if (ms_span_equal(list->ptr[i], value)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 typedef struct MsNames {
   const struct MsNames *base; /* a frozen table whose ids come first, or NULL: see ms_names_init_over */
   uint32_t base_len;          /* the base's id count; this table's own ids start here */

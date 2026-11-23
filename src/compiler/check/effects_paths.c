@@ -2,23 +2,13 @@
 #include "base/sort.h"
 #include "compiler/check/effects_graph.h"
 
-int64_t ms_span_order(MsSpan a, MsSpan b) {
-  const size_t shared = a.len < b.len ? a.len : b.len;
-  for (size_t index = 0; index < shared; index++) {
-    if (a.ptr[index] != b.ptr[index]) {
-      return (int64_t)a.ptr[index] - (int64_t)b.ptr[index];
-    }
-  }
-  return a.len < b.len ? -1 : (a.len > b.len ? 1 : 0);
-}
-
 static int64_t compare_by_label(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   const MsReachGraph *graph = (const MsReachGraph *)(void *)env;
   uint32_t left = 0;
   uint32_t right = 0;
   __builtin_memcpy(&left, a, sizeof left);
   __builtin_memcpy(&right, b, sizeof right);
-  return ms_span_order(graph->nodes[left].label, graph->nodes[right].label);
+  return ms_span_compare(graph->nodes[left].label, graph->nodes[right].label);
 }
 
 /* Scratch for one search: who reached each node, and the queue. */

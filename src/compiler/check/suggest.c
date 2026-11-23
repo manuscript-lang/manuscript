@@ -3,16 +3,6 @@
 
 #include "base/sort.h"
 
-int ms_suggest_compare(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  for (size_t index = 0; index < common; index++) {
-    if (a.ptr[index] != b.ptr[index]) {
-      return a.ptr[index] < b.ptr[index] ? -1 : 1;
-    }
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 static uint8_t lower(uint8_t byte) {
   return byte >= 'A' && byte <= 'Z' ? (uint8_t)(byte + ('a' - 'A')) : byte;
 }
@@ -76,7 +66,7 @@ bool ms_suggest_closest(MsSpan name, const MsSpanList *candidates, MsSpan *best)
     }
     const bool smaller = distance < best_distance || (distance == best_distance && !unrelated && best_unrelated);
     const bool equal = distance == best_distance && unrelated == best_unrelated;
-    if (!found || smaller || (equal && ms_suggest_compare(candidate, *best) < 0)) {
+    if (!found || smaller || (equal && ms_span_compare(candidate, *best) < 0)) {
       *best = candidate;
       found = true;
       best_distance = distance;
@@ -97,11 +87,6 @@ bool ms_suggest_did_you_mean(MsStrBuild *out, MsSpan name, const MsSpanList *can
   return true;
 }
 
-static int64_t compare_spans(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  return ms_suggest_compare(*(const MsSpan *)(const void *)a, *(const MsSpan *)(const void *)b);
-}
-
 void ms_suggest_list(MsStrBuild *out, const MsSpanList *names, size_t limit) {
   MsSpanList sorted = {0};
   for (size_t index = 0; index < names->len; index++) {
@@ -109,7 +94,7 @@ void ms_suggest_list(MsStrBuild *out, const MsSpanList *names, size_t limit) {
       ms_span_list_push(&sorted, names->ptr[index]);
     }
   }
-  ms_sort((uint8_t *)(void *)sorted.ptr, sorted.len, sizeof(MsSpan), compare_spans, NULL);
+  ms_sort((uint8_t *)(void *)sorted.ptr, sorted.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   size_t written = 0;
   bool more = false;
   for (size_t index = 0; index < sorted.len; index++) {

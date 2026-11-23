@@ -1,0 +1,15 @@
+Usage: ms emit <file.ms|ms.toml> [--opt] [--ir] [-o output] [--json]
+
+Emit the lowered intermediate code of the program as text.
+
+Options:
+  --opt                Run the optimization passes first, so the output is what the back end receives
+  --ir                 Print the LLVM IR of the back end instead of the intermediate code (with --opt, optimized)
+  -o, --output <path>  Write output to a file (default: stdout)
+  --json               On failure, emit versioned JSON diagnostics instead of terminal messages
+  -h, --help  Show this help without executing the command
+
+Examples:
+  ms emit main.ms
+  ms emit ms.toml -o main.mir
+  ms emit main.ms --opt --ir

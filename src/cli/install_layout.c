@@ -8,9 +8,15 @@
 #ifdef _WIN32
 enum { LIST_SEPARATOR = ';' };
 #define TOOL_SUFFIX ".exe"
+#define LLVM_LIBRARY "bin/LLVM-C.dll"
 #else
 enum { LIST_SEPARATOR = ':' };
 #define TOOL_SUFFIX ""
+#ifdef __APPLE__
+#define LLVM_LIBRARY "lib/libLLVM.dylib"
+#else
+#define LLVM_LIBRARY "lib/libLLVM.so"
+#endif
 #endif
 
 bool ms_install_root(MsStrBuild *root) {
@@ -42,6 +48,10 @@ void ms_install_tool(MsSpan root, const char *name, MsStrBuild *out) {
   ms_strbuild_append_text(&file, TOOL_SUFFIX);
   ms_path_append_joined(out, root, ms_strbuild_span(&file));
   ms_strbuild_free(&file);
+}
+
+void ms_install_llvm(MsSpan root, MsStrBuild *out) {
+  ms_path_append_joined(out, root, ms_span_of_text(LLVM_LIBRARY));
 }
 
 bool ms_install_runtime(MsSpan root, bool static_libc, MsStrBuild *out) {

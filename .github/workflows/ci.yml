@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.platforms == 'linux' || github.ref != 'refs/heads/main') && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel","shell":"bash"},{"os":"darwin","arch":"arm64","runner":"macos-15","shell":"bash"},{"os":"windows","arch":"amd64","runner":"windows-2025","shell":"msys2 {0}"},{"os":"windows","arch":"arm64","runner":"windows-11-arm","shell":"msys2 {0}"}]') }}
+        include: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.platforms == 'linux' || (github.event_name != 'workflow_dispatch' && github.ref != 'refs/heads/main')) && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel","shell":"bash"},{"os":"darwin","arch":"arm64","runner":"macos-15","shell":"bash"},{"os":"windows","arch":"amd64","runner":"windows-2025","shell":"msys2 {0}"},{"os":"windows","arch":"arm64","runner":"windows-11-arm","shell":"msys2 {0}"}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
@@ -56,19 +56,22 @@ jobs:
       # llc. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
-      - run: cmake --build --preset ci --target lint
+      # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target lint
       # The distribution archive, unpacked on its own and used to build a program (the six-platform runs only).
-      - if: env.PR != 'true'
+      - if: ${{ !cancelled() && env.PR != 'true' }}
         run: cmake --build --preset ci --target dist-smoke
-      - if: env.PR != 'true'
+      - if: ${{ !cancelled() && env.PR != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: .artifacts/build/ci/dist/manuscript-*
           retention-days: 7
-      - run: cmake --build --preset ci --target repo-check
-      - run: cmake --build --preset ci --target docs-check
-      # Each check reports on its own: a lint violation does not hide the corpus counts.
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target repo-check
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target docs-check
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target conform
       - if: always()

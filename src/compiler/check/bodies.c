@@ -6,6 +6,7 @@
  * expression, pattern and parameter node; the reference of each name, binding and loop variable; the number of
  * locals of each function. */
 #include "compiler/check/body.h"
+#include "base/alloc.h"
 #include "compiler/check/call_internal.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/check/methods.h"
@@ -33,7 +34,32 @@ size_t body_scope_mark(const Body *body) {
 }
 
 void body_scope_reset(Body *body, size_t mark) {
-  ms_local_list_truncate(&body->locals, mark);
+  while (body->locals.len > mark) {
+    const MsLocal *top = &body->locals.ptr[--body->locals.len];
+    body->local_latest[top->name] = top->shadowed;
+  }
+}
+
+void body_push_local(Body *body, MsLocal local) {
+  if (local.name >= body->nlocal_latest) {
+    size_t grown = body->nlocal_latest == 0 ? 64 : body->nlocal_latest;
+    while (grown <= local.name) {
+      grown *= 2;
+    }
+    body->local_latest = ms_realloc(body->local_latest, grown * sizeof *body->local_latest);
+    __builtin_memset(body->local_latest + body->nlocal_latest, 0, (grown - body->nlocal_latest) * sizeof *body->local_latest);
+    body->nlocal_latest = grown;
+  }
+  local.shadowed = body->local_latest[local.name];
+  ms_local_list_push(&body->locals, local);
+  body->local_latest[local.name] = (uint32_t)body->locals.len;
+}
+
+void body_free_locals(Body *body) {
+  ms_local_list_free(&body->locals);
+  ms_free(body->local_latest);
+  body->local_latest = NULL;
+  body->nlocal_latest = 0;
 }
 
 MsRef body_local_ref(const Body *body, const MsLocal *local) {
@@ -44,23 +70,26 @@ MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_
   ms_local_record_list_push(&body->program->bindings, (MsLocalRecord){.module = body->module, .name = name, .ty = ty, .pos = pos});
   MsLocal local = {.name = name, .ty = ty, .kind = kind, .is_var = is_var, .site = site};
   local.id = kind == MS_REF_LOCAL ? body->next_local++ : 0;
-  ms_local_list_push(&body->locals, local);
+  body_push_local(body, local);
   return ms_local_list_last(&body->locals);
 }
 
 const MsLocal *body_find_any_local(const Body *body, MsName name) {
-  for (size_t index = body->locals.len; index > 0; index--) {
-    if (body->locals.ptr[index - 1].name == name) {
-      return &body->locals.ptr[index - 1];
-    }
+  if (name >= body->nlocal_latest || body->local_latest[name] == 0) {
+    return NULL;
   }
-  return NULL;
+  return &body->locals.ptr[body->local_latest[name] - 1];
 }
 
 /* A rejected name binds nothing: a call or type of that name still finds the function or type. */
 const MsLocal *body_find_local(const Body *body, MsName name) {
   const MsLocal *local = body_find_any_local(body, name);
   return local != NULL && local->rejected ? NULL : local;
+}
+
+bool body_is_none_name(const Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
 }
 
 /* The type a loop variable takes from the iterated type: a list's element, a set's member, or what the
@@ -650,7 +679,7 @@ MsTy body_constant_type(const Body *body, const MsSymbol *symbol) {
   ty = ty != MS_TY_NONE ? ty : body_expr(&inner, decl->u.konst.value, MS_TY_NONE);
   depth--;
   resolver_free(&inner.resolver);
-  ms_local_list_free(&inner.locals);
+  body_free_locals(&inner);
   ms_node_journal_free(&inner.typed);
   own->ty = ty;
   return ty;
@@ -680,7 +709,7 @@ void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {
   }
   ms_facts_finish(&info->facts);
   resolver_free(&body.resolver);
-  ms_local_list_free(&body.locals);
+  body_free_locals(&body);
   ms_node_journal_free(&body.typed);
 }
 
@@ -698,6 +727,6 @@ void ms_check_deferred_body(MsCheckProgram *program, uint32_t module, const MsDe
   body_scope_reset(&body, 0);
   ms_facts_finish(&info->facts);
   resolver_free(&body.resolver);
-  ms_local_list_free(&body.locals);
+  body_free_locals(&body);
   ms_node_journal_free(&body.typed);
 }

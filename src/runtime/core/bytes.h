@@ -49,6 +49,8 @@ void msrt_bytes_reversed(const MsList *b, MsList *out);
 void msrt_bytes_with_value(const MsList *b, int64_t index, int64_t value, MsList *out);
 /* ms-sig: msrt_bytes_concat(a: *const VecVal, b: *const VecVal, out: *mut VecVal) @domain=binary @end */
 void msrt_bytes_concat(const MsList *a, const MsList *b, MsList *out);
+/* ms-sig: msrt_bytes_concat_grow(a: *const VecVal, b: *const VecVal, out: *mut VecVal) @domain=binary @end */
+void msrt_bytes_concat_grow(MsList *a, const MsList *b, MsList *out);
 /* ms-sig: msrt_bytes_split(b: *const VecVal, sep: *const VecVal, out: *mut VecVal) @domain=binary @end */
 void msrt_bytes_split(const MsList *b, const MsList *sep, MsList *out);
 /* ms-sig: msrt_bytes_values(b: *const VecVal, out: *mut VecVal) @domain=binary @end */
@@ -81,28 +83,10 @@ uint8_t msrt_bytes_decode_utf8_take(MsList *b, MsString *out);
  * @domain=binary @end */
 uint8_t msrt_bytes_decode_utf8_range(const MsList *b, int64_t start, int64_t end, MsString *out);
 
-/* The string builder: a Bytes buffer that strings are appended to (src/runtime/core/bytes_text.c). */
-/* ms-sig: msrt_strbuilder_append(b: *mut VecVal, s: *const StrVal) @domain=collection
- * @method=StringBuilder.append */
-void msrt_strbuilder_append(MsList *b, const MsString *s);
-/* ms-sig: msrt_strbuilder_append_slow(b: *mut VecVal, s: *const StrVal) @domain=collection @end */
-void msrt_strbuilder_append_slow(MsList *b, const MsString *s);
-/* ms-sig: msrt_strbuilder_append_int(b: *mut VecVal, n: i64) @domain=collection @end */
-void msrt_strbuilder_append_int(MsList *b, int64_t n);
-/* Builds the string and consumes the builder. */
-/* ms-sig: msrt_strbuilder_freeze(b: *mut VecVal, out: *mut StrVal) @domain=collection
- * @method=StringBuilder.build */
-void msrt_strbuilder_freeze(MsList *b, MsString *out);
-
 /* The bytes of a BytesBuilder moved out: `build` consumes the builder, `drain` leaves it empty. */
 /* ms-sig: msrt_bytesbuilder_build(b: *mut VecVal, out: *mut VecVal) @domain=binary @method=BytesBuilder.build */
 void msrt_bytesbuilder_build(MsList *b, MsList *out);
 /* ms-sig: msrt_bytesbuilder_drain(b: *mut VecVal, out: *mut VecVal) @domain=binary @method=BytesBuilder.drain */
 void msrt_bytesbuilder_drain(MsList *b, MsList *out);
-
-/* The builder's text moved out, leaving it empty. */
-/* ms-sig: msrt_strbuilder_drain(b: *mut VecVal, out: *mut StrVal) @domain=collection
- * @method=StringBuilder.drain */
-void msrt_strbuilder_drain(MsList *b, MsString *out);
 
 #endif

@@ -1,5 +1,6 @@
 /* syntax/format_text.c: line, tab and literal-text helpers of the formatter, and one formatting pass. */
 #include "base/sort.h"
+#include "compiler/syntax/format.h"
 #include "compiler/syntax/format_internal.h"
 #include "compiler/syntax/walk.h"
 
@@ -42,7 +43,7 @@ MsSpan fmt_join_lines(Fmt *f, const MsSpan *lines, size_t count) {
 }
 
 /* The columns of leading whitespace in `line`, a tab counting four. */
-static size_t fmt_indent_columns(MsSpan line) {
+size_t ms_indent_columns(MsSpan line) {
   size_t columns = 0;
   for (size_t i = 0; i < line.len && (line.ptr[i] == ' ' || line.ptr[i] == '\t'); i++) {
     columns += line.ptr[i] == '\t' ? 4 : 1;
@@ -281,7 +282,7 @@ static MsSpan fmt_unmask_spans(Fmt *f, MsSpan source, MsSpan formatted, MsSpan m
     const MsSpan so_far = fmt_tail(&result, 0);
     const size_t last_break = fmt_rfind_byte(so_far, '\n');
     const size_t result_line_start = last_break == FMT_NONE ? 0 : last_break + 1;
-    const size_t after = fmt_indent_columns(fmt_slice(so_far, result_line_start, so_far.len));
+    const size_t after = ms_indent_columns(fmt_slice(so_far, result_line_start, so_far.len));
     fmt_put(&result, fmt_shift_lines(f, text, before, after));
     copied = at + placeholder.len;
   }

@@ -1,6 +1,7 @@
 /* Owns `ms bench` (bench_command.h): reads the arguments, checks the input with its bench files, selects and plans the
  * bench blocks, builds the executable and runs each bench in its own process. Port of the bench half of
  * crates/ms-cli/src/engine/testing.rs. */
+#include "cli/files.h"
 #include "cli/bench_command.h"
 
 #include <stdio.h>
@@ -11,10 +12,10 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "base/process.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/fault_record.h"
 #include "cli/invocation.h"
-#include "cli/json_value.h"
+#include "tooling/json_value.h"
 #include "cli/pipeline.h"
 #include "cli/test_document.h"
 #include "cli/test_options.h"
@@ -111,8 +112,7 @@ static MsSpan describe_stats(MsArena *arena, const MsJson *stats) {
     ms_strbuild_append_text(&out, " string clones per op");
   }
   ms_strbuild_append_byte(&out, ')');
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -132,16 +132,6 @@ static const MsJson *measurement(MsArena *arena, MsSpan printed) {
     at = end + 1;
   }
   return found.len == 0 ? NULL : ms_json_parse(arena, found);
-}
-
-static MsSpan read_text(MsArena *arena, MsSpan path) {
-  MsBytes bytes = {0};
-  MsSpan text = {0};
-  if (ms_file_read(path, &bytes)) {
-    text = ms_arena_copy(arena, ms_bytes_span(&bytes));
-  }
-  ms_bytes_free(&bytes);
-  return text;
 }
 
 static MsSpan trim_end(MsSpan text) {
@@ -229,7 +219,7 @@ static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const 
   (void)fflush(stdout);
   Outcome outcome = {0};
   const bool started = ms_process_run(&spec, &status, &why);
-  const MsSpan text = trim_end(read_text(arena, errors));
+  const MsSpan text = trim_end(ms_cli_read_text(arena, errors));
   if (!started) {
     outcome.message = ms_arena_copy(arena, ms_strbuild_span(&why));
   } else if (limit.expired) {
@@ -239,7 +229,7 @@ static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const 
     if (text.len > 0) {
       test_print(stderr, ms_message_format(arena, "%S\n", text));
     }
-    const MsSpan written = read_text(arena, results);
+    const MsSpan written = ms_cli_read_text(arena, results);
     outcome.stats = measurement(arena, written);
     outcome.measured = outcome.stats != NULL;
     if (!outcome.measured) {
@@ -268,28 +258,36 @@ static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const 
   return outcome;
 }
 
-/* Compares the work counters of every measured bench with the `--baseline` result and reports each one that rose by
- * more than `--fail-over` percent. `*regressed` says whether any did; false when the baseline cannot be read. */
-static bool check_baseline(MsArena *arena, const MsTestOptions *options, const DocumentCase *cases, size_t count,
-                           bool *regressed) {
-  const MsSpan path = options->baseline;
+/* The `benches` array of the `--baseline` result at `path`, or NULL with the reason on stderr. */
+static const MsJson *read_baseline(MsArena *arena, MsSpan path) {
   MsBytes bytes = {0};
   if (!ms_file_read(path, &bytes)) {
     test_print(stderr, ms_message_format(arena, "cannot read --baseline %S; check that the file exists and can be read\n", path,
                                          (MsSpan){0}));
-    return false;
+    return NULL;
   }
   const MsJson *baseline = ms_json_parse(arena, ms_arena_copy(arena, ms_bytes_span(&bytes)));
   ms_bytes_free(&bytes);
   if (baseline == NULL) {
     test_print(stderr, ms_message_format(arena, "--baseline %S is not the JSON that `ms bench --json` writes\n", path,
                                          (MsSpan){0}));
-    return false;
+    return NULL;
   }
   const MsJson *earlier = ms_json_member(baseline, "benches");
   if (earlier == NULL || earlier->kind != MS_JSON_ARRAY) {
     test_print(stderr, ms_message_format(arena, "--baseline %S has no benches; save `ms bench --json` output\n", path,
                                          (MsSpan){0}));
+    return NULL;
+  }
+  return earlier;
+}
+
+/* Compares the work counters of every measured bench with the `--baseline` result and reports each one that rose by
+ * more than `--fail-over` percent. `*regressed` says whether any did; false when the baseline cannot be read. */
+static bool check_baseline(MsArena *arena, const MsTestOptions *options, const DocumentCase *cases, size_t count,
+                           bool *regressed) {
+  const MsJson *earlier = read_baseline(arena, options->baseline);
+  if (earlier == NULL) {
     return false;
   }
   const double bound = options->fail_over;
@@ -334,31 +332,6 @@ static bool check_baseline(MsArena *arena, const MsTestOptions *options, const D
     }
   }
   return true;
-}
-
-static MsSpan working_directory(MsArena *arena, const MsCheckedInput *checked, MsSpan filename) {
-  MsSpan directory = checked->graph.project_root.len > 0 ? checked->graph.project_root : ms_path_parent(filename);
-  if (directory.len == 0) {
-    directory = ms_span_of_text(".");
-  }
-  return ms_arena_copy(arena, directory);
-}
-
-/* The absolute directory of the project, or of the file for a lone file. */
-static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan input) {
-  const MsSpan directory = working_directory(arena, checked, input);
-  if (ms_path_is_absolute(directory)) {
-    return directory;
-  }
-  MsString current = ms_string_empty();
-  if (!ms_dir_current(&current)) {
-    return directory;
-  }
-  const bool here = directory.len == 1 && directory.ptr[0] == '.';
-  const MsSpan absolute = here ? ms_arena_copy(arena, ms_string_span(&current))
-                               : ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
-  ms_string_release(&current);
-  return absolute;
 }
 
 typedef struct Run {
@@ -471,7 +444,7 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   if (!ms_checked_input_load(arena, &checked, input, MS_INPUT_TESTS)) {
     int status = 0;
     if (test_capturing()) {
-      TestDocument document = {.bench = true, .source_root = source_root(arena, &checked, input), .exit_code = STATUS_FAILED,
+      TestDocument document = {.bench = true, .source_root = ms_checked_input_source_root(arena, &checked, input), .exit_code = STATUS_FAILED,
                                .reason = ms_span_of_text("compile_error"),
                                .diagnostics = ms_checked_input_diagnostics_json(arena, &checked)};
       test_document_finish(&document);
@@ -494,7 +467,7 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   }
   MsSpanList names = {0};
   ms_checked_input_test_names(arena, &checked, true, &names);
-  const MsSpan root = source_root(arena, &checked, input);
+  const MsSpan root = ms_checked_input_source_root(arena, &checked, input);
   TestPlan plan = {0};
   MsSpan selection_error = {0};
   int status = STATUS_FAILED;
@@ -540,7 +513,7 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
       status = 0;
     } else {
       Run run = {.arena = arena, .checked = &checked, .invocation = invocation, .names = &names, .plan = &plan,
-                 .document = &document, .working = working_directory(arena, &checked, input)};
+                 .document = &document, .working = ms_checked_input_working_directory(arena, &checked, input)};
       if (plan.count == 0 || build_and_run(&run, &options, input, &status)) {
         if (plan.count == 0) {
           test_print(stdout, ms_span_of_text("no bench blocks found: add bench blocks to bench.ms or *_bench.ms files in "
@@ -567,18 +540,6 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   return status;
 }
 
-/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
-static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
-  TestFilters filters = {0};
-  MsSpan error = {0};
-  const bool valid = test_filters_compile(arena, options, &filters, &error);
-  test_filters_free(&filters);
-  if (!valid) {
-    test_print(stderr, ms_message_format(arena, "%S\n", error));
-  }
-  return valid;
-}
-
 int ms_bench_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -586,8 +547,10 @@ int ms_bench_command(int argc, char **argv) {
   MsTestOptions options;
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
-  if (status == 0 && !selection_valid(&arena, &options)) {
+  if (status == 0 && !test_selection_valid(&arena, &options)) {
     status = STATUS_USAGE;
+  } else if (status == 0 && options.baseline.len > 0 && read_baseline(&arena, options.baseline) == NULL) {
+    status = STATUS_USAGE; /* before the build and the run, which can take minutes */
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
     status = bench_input(&arena, &invocation);

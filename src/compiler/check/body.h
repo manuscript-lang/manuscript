@@ -27,6 +27,7 @@ typedef struct MsLocal {
   bool rejected;            /* named by a pattern the checker rejected: reading it reports an unknown binding */
   const MsParams *fn_names; /* the parameter names of a native method it was bound to, which has no source */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
+  uint32_t shadowed; /* set by the body: the position + 1 of the earlier local of this name, 0 for none */
 } MsLocal;
 
 MS_LIST_DEFINE(MsLocalList, ms_local_list, MsLocal)
@@ -38,6 +39,8 @@ typedef struct Body {
   MsFacts *facts;
   Resolver resolver;  /* the type variables and `Self` in scope */
   MsLocalList locals; /* owned */
+  uint32_t *local_latest; /* owned: per name, the position + 1 of its innermost local, 0 for none */
+  size_t nlocal_latest;
   uint32_t next_local;
   MsTy result;  /* the enclosing function's result type; MS_TY_NONE inside no function */
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
@@ -70,6 +73,8 @@ void body_block(Body *body, MsStmts stmts); /* a nested scope */
 void body_statements(Body *body, MsStmts stmts); /* in the current scope: the locals stay visible to what follows */
 size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
+void body_push_local(Body *body, MsLocal local); /* a local into scope, found by name without a scan */
+void body_free_locals(Body *body);
 /* Declares a local or parameter in the current scope. */
 /* Declares a local; `pos` is where it is written, kept in the program's binding table for `ms inspect`. */
 MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_var, MsNode site, MsPos pos);
@@ -77,6 +82,8 @@ MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_
 /* The reference a use of `local` records. */
 MsRef body_local_ref(const Body *body, const MsLocal *local);
 const MsLocal *body_find_local(const Body *body, MsName name);
+/* Whether `expr` is the bare name `none` and no local of that name shadows it. */
+bool body_is_none_name(const Body *body, const MsExpr *expr);
 /* The innermost local of that name, including one a rejected pattern named. */
 const MsLocal *body_find_any_local(const Body *body, MsName name);
 

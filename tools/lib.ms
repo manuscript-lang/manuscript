@@ -7,7 +7,7 @@ import (
 	environment, set_environment, working_directory from "@std/os/env.ms",
 	canonicalize, read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
-	Os, os from "@std/os/system.ms",
+	Os, os, system_info from "@std/os/system.ms",
 )
 
 // `linux`, `macos` or `windows`.
@@ -28,11 +28,11 @@ export fn dist_os() String:
 	if host() == "macos": return "darwin"
 	return host()
 
-// The distribution architecture name: `amd64` or `arm64`.
+// The distribution architecture name: `amd64` or `arm64`. The runtime reports the
+// architecture ms was built for; `uname -m` in an MSYS2 shell on Windows arm64 runs as
+// an emulated x86-64 process and says `x86_64`.
 export fn dist_arch() String:
-	machine := capture("uname", ["-m"]).trim()
-	if machine == "aarch64" or machine == "arm64" or machine == "ARM64": return "arm64"
-
+	if system_info().architecture == "arm64": return "arm64"
 	return "amd64"
 
 // Prints `message` and a newline to standard error.

@@ -32,6 +32,7 @@ import (
 	temporary,
 	write_file from "@std/os/fs.ms",
 	CommandOutput, RunOptions, run from "@std/os/process.ms",
+	system_info from "@std/os/system.ms",
 	seconds from "@std/time.ms",
 
 	tool_ms from "./lib.ms",
@@ -664,7 +665,13 @@ fn record_chunk(
 fn main() Int:
 	root := working_directory().get()
 	var phase = "parse"
-	var jobs = 8
+
+	// One fixture per processor, at most 8: every fixture builds with clang-sized
+	// tools, so more jobs than processors stretch each one's wall time past its timeout
+	// on a loaded 4-core runner.
+	var jobs = system_info().cpu_count
+	if jobs > 8: jobs = 8
+
 	var recording = false
 	var only_missing = false
 	var stable = true
@@ -681,7 +688,7 @@ fn main() Int:
 			phase = words[at].clone()
 		else if words[at] == "--jobs":
 			at += 1
-			jobs = words[at].parse_int().get_or(8)
+			jobs = words[at].parse_int().get_or(jobs)
 		else if words[at] == "--record": recording = true
 		else if words[at] == "--only-missing": only_missing = true
 		else if words[at] == "--no-stable-check": stable = false

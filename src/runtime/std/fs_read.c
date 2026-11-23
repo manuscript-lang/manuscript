@@ -145,7 +145,7 @@ void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat
 
 /* Opens `path` for a pool job and says when it is not a regular file, which the caller then runs on the runtime
  * thread, where a wait can be cancelled. */
-static bool open_regular(MsFsJob *job, int flags, uv_file *fd) {
+static bool open_regular(MsFsJob *job, int flags, uv_file *fd, uv_stat_t *stat) {
   MsOsText path;
   if (!ms_fs_open_path(job, job->path, &path)) {
     return false;
@@ -161,8 +161,7 @@ static bool open_regular(MsFsJob *job, int flags, uv_file *fd) {
     return false;
   }
   *fd = opened;
-  uv_stat_t stat;
-  if (ms_fs_fstat(*fd, &stat) == 0 && ms_fs_is_regular(&stat)) {
+  if (ms_fs_fstat(*fd, stat) == 0 && ms_fs_is_regular(stat)) {
     return true;
   }
   (void)close_file(*fd);
@@ -173,10 +172,11 @@ static bool open_regular(MsFsJob *job, int flags, uv_file *fd) {
 static void read_whole_job(void *data) {
   MsFsJob *job = data;
   uv_file fd = -1;
-  if (!open_regular(job, UV_FS_O_RDONLY, &fd)) {
+  uv_stat_t stat;
+  if (!open_regular(job, UV_FS_O_RDONLY, &fd, &stat)) {
     return;
   }
-  ms_fs_read_limited(fd, job->number, false, NULL, NULL, &job->data, &job->fail);
+  ms_fs_read_limited(fd, job->number, false, &stat, NULL, &job->data, &job->fail);
   (void)close_file(fd);
 }
 
@@ -220,8 +220,7 @@ uint8_t msstd_fs_read_file(const MsString *path, uint8_t has_max, int64_t max, M
     *out = job.data;
     job.data = (MsBytes){0};
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -260,7 +259,8 @@ static void close_after_write(uv_file fd, MsSpan path, MsFail *fail) {
 static void write_whole_job(void *data) {
   MsFsJob *job = data;
   uv_file fd = -1;
-  if (!open_regular(job, UV_FS_O_WRONLY | UV_FS_O_CREAT | (int)job->number, &fd)) {
+  uv_stat_t stat;
+  if (!open_regular(job, UV_FS_O_WRONLY | UV_FS_O_CREAT | (int)job->number, &fd, &stat)) {
     return;
   }
   write_all(fd, job->other, job->path, false, &job->fail);
@@ -294,8 +294,7 @@ static uint8_t write_with(const MsString *path, const MsBytes *data, int flags, 
   } else {
     write_whole_here(&job);
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 

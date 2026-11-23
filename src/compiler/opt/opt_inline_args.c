@@ -120,7 +120,7 @@ static bool ic_pick_arg(const MirModule *m, const IcKnown *known, const MirInst 
     }
     const MirFunc *code = &m->funcs.ptr[known->code[call->args[i]]];
     if (callee->params[i].mode == MM_BORROW && code->inline_hint != MINL_NEVER &&
-      mir_inst_count(code) <= OPT_INLINE_BASE_THRESHOLD && ic_closure_usable(code)) {
+      mir_inst_count(code) <= OPT_INLINE_SPECIALIZE_MAX_SIZE && ic_closure_usable(code)) {
       *index = i;
       return true;
     }
@@ -185,7 +185,7 @@ static void ic_redirect(MirModule *m, MirInst *call, uint32_t spec, uint32_t i, 
 static bool ic_specialize_in(IcSpecialize *s, uint32_t fi) {
   MirModule *m = s->m;
   MsArena arena = ms_arena_new();
-  const IcKnown known = ic_known_closures(&arena, m, &m->funcs.ptr[fi]);
+  const IcKnown known = ic_known_aliased(&arena, m, &m->funcs.ptr[fi]);
   bool changed = false;
   for (uint32_t bi = 0; known.count > 0 && bi < m->funcs.ptr[fi].blocks.len; bi++) {
     for (uint32_t ii = 0; ii < m->funcs.ptr[fi].blocks.ptr[bi].insts.len; ii++) {

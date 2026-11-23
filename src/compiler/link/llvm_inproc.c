@@ -16,6 +16,7 @@ typedef void *Ref;
   X(void, LLVMContextDispose, (Ref))                                                                                 \
   X(Ref, LLVMCreateMemoryBufferWithMemoryRangeCopy, (const char *, size_t, const char *))                            \
   X(int, LLVMParseIRInContext, (Ref, Ref, Ref *, char **))                                                           \
+  X(unsigned, LLVMGetNamedMetadataNumOperands, (Ref, const char *))                                                  \
   X(void, LLVMDisposeModule, (Ref))                                                                                  \
   X(void, LLVMDisposeMessage, (char *))                                                                              \
   X(int, LLVMGetTargetFromTriple, (const char *, Ref *, char **))                                                    \
@@ -122,6 +123,13 @@ static bool message_failure(char *message, const char *what, MsStrBuild *why) {
   return false;
 }
 
+bool llvm_usable(MsSpan path) {
+  MsStrBuild why = ms_strbuild_new();
+  const bool usable = load(path, &why);
+  ms_strbuild_free(&why);
+  return usable;
+}
+
 bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why) {
   if (!load(settings->library, why)) {
     return false;
@@ -153,6 +161,13 @@ bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsSt
     if (api.LLVMParseIRInContext(context, buffer, &module, &message)) {
       ok = message_failure(message, "cannot parse the IR", why);
     }
+  }
+  /* LLVM strips the debug info of a module whose metadata is invalid, without a word; the fault tables then lose their
+   * lines. A module that names a compile unit must still have it after the parse. */
+  size_t unit_at = 0;
+  if (ok && ms_span_find(ir, ms_span_of_text("!llvm.dbg.cu"), &unit_at) &&
+      api.LLVMGetNamedMetadataNumOperands(module, "llvm.dbg.cu") == 0) {
+    ok = message_failure(NULL, "the IR's debug info is invalid and LLVM dropped it (run opt on the IR to see why)", why);
   }
   if (ok) {
     machine = api.LLVMCreateTargetMachine(target, triple_text, TARGET_CPU, "", settings->codegen_level,

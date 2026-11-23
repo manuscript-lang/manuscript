@@ -1,4 +1,5 @@
 /* Owns the snapshot half of guide.h: reads the bundled standard sources and documents each importable module. */
+#include "abi/prelude.h"
 #include "tooling/guide.h"
 
 #include "base/message.h"
@@ -45,11 +46,6 @@ typedef struct Guide {
   Symbols symbols;
 } Guide;
 
-static const char *const PRIMITIVES[] = {"Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8",
-                                         "UInt16", "UInt32", "UInt64", "Float32", "Float64", "String", "Void", "Never"};
-static const char *const PRELUDE_NAMES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable", "Optional", "Result",
-                                            "Error", "List", "Map", "Set", "ListEntry", "MapEntry"};
-
 static MsSpan primitive_documentation(MsSpan id) {
   static const struct {
     const char *name, *doc;
@@ -81,32 +77,12 @@ static MsSpan primitive_documentation(MsSpan id) {
 
 /* ---- the source files ---- */
 
-static bool decl_has_body(const MsDecl *decl) {
-  switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN: return decl->u.fn.body.len > 0 || decl->u.fn.external;
-  case MS_D_CONST:
-  case MS_D_ALIAS: return true;
-  case MS_D_TEST: return decl->u.test.body.len > 0;
-  case MS_D_IMPL:
-    for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
-      if (decl->u.impl.methods.ptr[i]->func.body.len > 0) {
-        return true;
-      }
-    }
-    return false;
-  case MS_D_TYPE:
-  case MS_D_ENUM:
-  case MS_D_INTERFACE: return false;
-  }
-  return false;
-}
-
 static void classify_file(StdFile *file) {
   bool native = false;
   bool body = false;
   for (uint32_t d = 0; d < file->tree.ndecls; d++) {
     const MsDecl *decl = file->tree.decls[d];
-    body = body || decl_has_body(decl);
+    body = body || ms_decl_has_body(decl);
     if (decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL) {
       for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
         native = native || decl->u.impl.methods.ptr[i]->func.body.len == 0;
@@ -412,8 +388,8 @@ static Symbol *resolve_receiver(const Guide *g, const StdFile *file, MsSpan name
   if (primitive != NULL) {
     return primitive;
   }
-  for (size_t i = 0; i < sizeof PRELUDE_NAMES / sizeof PRELUDE_NAMES[0]; i++) {
-    if (ms_span_is_text(name, PRELUDE_NAMES[i])) {
+  for (size_t i = 0; i < MS_PRELUDE_TYPE_COUNT; i++) {
+    if (ms_span_is_text(name, MS_PRELUDE_TYPES[i])) {
       for (size_t f = 0; f < g->nfiles; f++) {
         Symbol *found = find_symbol(g, &g->files[f], name, true);
         if (found != NULL && found->decl->is_exported) {
@@ -426,9 +402,9 @@ static Symbol *resolve_receiver(const Guide *g, const StdFile *file, MsSpan name
 }
 
 static void collect_symbols(Guide *g) {
-  for (size_t p = 0; p < sizeof PRIMITIVES / sizeof PRIMITIVES[0]; p++) {
+  for (size_t p = 0; p < MS_PRIMITIVE_TYPE_COUNT; p++) {
     Symbol *s = MS_ARENA_NEW(g->arena, Symbol);
-    s->name = ms_span_of_text(PRIMITIVES[p]);
+    s->name = ms_span_of_text(MS_PRIMITIVE_TYPES[p]);
     symbols_push(g->arena, &g->symbols, s);
   }
   for (size_t f = 0; f < g->nfiles; f++) {
@@ -879,14 +855,14 @@ void ms_guide_build(MsArena *arena, MsNames *names, MsGuide *out) {
   }
   MsApiModule *prelude = &modules[count];
   prelude->path = ms_span_of_text("prelude");
-  for (size_t p = 0; p < sizeof PRIMITIVES / sizeof PRIMITIVES[0]; p++) {
-    Symbol *s = find_symbol(&g, NULL, ms_span_of_text(PRIMITIVES[p]), true);
+  for (size_t p = 0; p < MS_PRIMITIVE_TYPE_COUNT; p++) {
+    Symbol *s = find_symbol(&g, NULL, ms_span_of_text(MS_PRIMITIVE_TYPES[p]), true);
     document_symbol(&g, s);
     ms_api_decls_push(arena, &prelude->decls, s->api);
   }
-  for (size_t p = 0; p < sizeof PRELUDE_NAMES / sizeof PRELUDE_NAMES[0]; p++) {
+  for (size_t p = 0; p < MS_PRELUDE_TYPE_COUNT; p++) {
     for (size_t f = 0; f < g.nfiles; f++) {
-      Symbol *s = find_symbol(&g, &g.files[f], ms_span_of_text(PRELUDE_NAMES[p]), true);
+      Symbol *s = find_symbol(&g, &g.files[f], ms_span_of_text(MS_PRELUDE_TYPES[p]), true);
       if (s != NULL && exported(s)) {
         document_symbol(&g, s);
         ms_api_decls_push(arena, &prelude->decls, s->api);

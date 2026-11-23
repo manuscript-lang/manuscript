@@ -5,40 +5,28 @@
 #include "runtime/std/net_core.h"
 
 #include "base/alloc.h"
+#include "runtime/core/unwind.h"
 #include "runtime/std/fail.h"
 #include "runtime/std/http_serve_internal.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_tls_conn.h"
 #include "runtime/std/ws_abi.h"
 
-/* Ends a native: a pending stop request cancels the task instead of returning. */
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
-}
-
 /* ---- the program's handler ---- */
 
-/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Void!` takes the address
- * of its result first (a result of more than one leaf goes through memory), then the closure, then the
- * handle, which the handler now owns and drops. The result's first word is the tag: 0 for ok. */
+/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Int` takes the closure,
+ * then the handle, which the handler now owns and drops, and answers 0 when the request was handled and 1 when
+ * the program's handler failed. The handler's own result, and the Error in it, is released inside the closure. */
 typedef struct HandlerClosure {
   MsObj header;
-  void (*code)(uint64_t *result, void *closure, int64_t exchange);
+  int64_t (*code)(void *closure, int64_t exchange);
 } HandlerClosure;
 _Static_assert(offsetof(HandlerClosure, code) == 16, "the compiler puts a closure's code after its header");
 
-enum { RESULT_WORDS = 16 }; /* room for the Error record of the error case */
-
 static MsHandlerEnd call_handler(void *context, MsExchange *exchange) {
   HandlerClosure *closure = context;
-  uint64_t result[RESULT_WORDS] = {0};
   MsObj *handle = ms_exchange_handle(exchange);
-  closure->code(result, closure, (int64_t)(intptr_t)handle);
-  return result[0] == 0 ? MS_HANDLER_OK : MS_HANDLER_ERROR;
+  return closure->code(closure, (int64_t)(intptr_t)handle) == 0 ? MS_HANDLER_OK : MS_HANDLER_ERROR;
 }
 
 static void drop_handler(void *context) {
@@ -167,6 +155,15 @@ static MsNetTlsCtx *server_context(const MsHttpServerOptionsWire *wire) {
 
 /* ---- the serving ---- */
 
+/* A cancel unwinds out of the bind below and never returns, so the handler and the TLS context, which this native
+ * owns until the serving takes them, are cleanup entries for that wait. */
+static void drop_held_object(uint8_t *held) {
+  MsObj *object = *(MsObj **)(void *)held;
+  object->drop(object);
+}
+
+static void release_held_context(uint8_t *held) { ms_net_tls_ctx_release(*(MsNetTlsCtx **)(void *)held); }
+
 uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOptionsWire *wire, MsObj *handler,
                                MsObj **out, MsString *err) {
   *err = ms_string_empty();
@@ -179,7 +176,10 @@ uint8_t msstd_http_serving_new(const MsString *address, const MsHttpServerOption
   }
   MsObj *listener = NULL;
   if (valid && (!wire->tls_present || ctx != NULL)) {
+    const size_t held = ms_cleanup_push(drop_held_object, (uint8_t *)(void *)&handler);
+    (void)ms_cleanup_push(release_held_context, (uint8_t *)(void *)&ctx);
     status = ms_net_listen(ms_string_span(address), &listener, err);
+    ms_cleanup_discard(held);
   }
   if (status != MS_STATUS_OK) {
     handler->drop(handler);
@@ -286,14 +286,14 @@ uint8_t msstd_http_exchange_read(const MsObj *object, uint8_t has_max, int64_t m
   *err = ms_string_empty();
   MsString text = ms_string_empty();
   const uint8_t status = ms_exchange_read(exchange_of(object), has_max != 0, max, out, &text);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 uint8_t msstd_http_exchange_send_headers(const MsObj *object, int64_t status, const MsObj *headers,
                                          MsString *err) {
   *err = ms_string_empty();
   MsString text = ms_string_empty();
-  return finish(ms_exchange_send_headers(exchange_of(object), status, ms_headers_of(headers)), &text, err);
+  return ms_fail_finish_with(ms_exchange_send_headers(exchange_of(object), status, ms_headers_of(headers)), &text, err);
 }
 
 uint8_t msstd_http_exchange_send(const MsObj *object, int64_t status, const MsObj *headers,
@@ -302,19 +302,19 @@ uint8_t msstd_http_exchange_send(const MsObj *object, int64_t status, const MsOb
   MsString text = ms_string_empty();
   const uint8_t result =
       ms_exchange_send(exchange_of(object), status, ms_headers_of(headers), ms_bytes_span(body), &text);
-  return finish(result, &text, err);
+  return ms_fail_finish_with(result, &text, err);
 }
 
 uint8_t msstd_http_exchange_write(const MsObj *object, const MsString *data, MsString *err) {
   *err = ms_string_empty();
   MsString text = ms_string_empty();
-  return finish(ms_exchange_write(exchange_of(object), ms_string_span(data), &text), &text, err);
+  return ms_fail_finish_with(ms_exchange_write(exchange_of(object), ms_string_span(data), &text), &text, err);
 }
 
 uint8_t msstd_http_exchange_write_bytes(const MsObj *object, const MsBytes *data, MsString *err) {
   *err = ms_string_empty();
   MsString text = ms_string_empty();
-  return finish(ms_exchange_write(exchange_of(object), ms_bytes_span(data), &text), &text, err);
+  return ms_fail_finish_with(ms_exchange_write(exchange_of(object), ms_bytes_span(data), &text), &text, err);
 }
 
 /* The spans of a list of strings; free with ms_free. */
@@ -342,5 +342,5 @@ uint8_t msstd_http_exchange_upgrade(const MsObj *object, const MsList *origins, 
     *out = ms_ws_handle_new(session);
     ms_ws_session_release(session);
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }

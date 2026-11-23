@@ -3,7 +3,7 @@
 ## Summary
 
 - Problem: every LLVM build spawns `opt` and `llc` (twice with fault tables), each re-reading its input, and an LLVM crash is a bare child-process failure.
-- Change: with `MS_LLVM` naming a pinned shared LLVM library, `ms` loads it through `base/dylib` and runs the optimizer and code generator through its C API. Without it, the process route runs unchanged. `lld` stays a child process.
+- Change: with `MS_LLVM` naming a pinned shared LLVM library, `ms` loads it through `base/dylib` and runs the optimizer and code generator through its C API. An installed `ms` loads the library shipped in `lib/ms/lib` by default; `MS_LLVM=none` or a library that does not load keeps the `opt`/`llc` process route. `lld` stays a child process.
 - Decision requested: merge the loader and the pin; benefit is small, so the review question is whether that is worth the code.
 
 ## Status
@@ -19,7 +19,7 @@ Proposal, 2026-11-23, after the Debug pipeline change (#6542). Owner direction (
 
 - `src/base/dylib.[ch]`: `ms_dylib_open` (absolute paths only, never searched), `ms_dylib_symbol`, `ms_dylib_close`, over libuv.
 - `src/compiler/link/llvm_inproc.[ch]`: resolves the C API once, parses IR, runs `LLVMRunPasses`, emits an object or assembly into memory. Process-global `cl::opts` are restated on every call. `LLVMInstallFatalErrorHandler` reports an LLVM fatal error as an `ms` internal compiler error with the fault exit status.
-- `MS_LLVM` names the library file; empty keeps the `opt`/`llc` route. `toolchain/llvm-lib.lock` pins the llvm-bundle tag and SHA-256 per platform, `tools/fetch-llvm-lib.ms` fetches it, and the CI toolchain action exports `MS_LLVM`.
+- `MS_LLVM` names the library file (a library that fails to load is an error), `none` selects the `opt`/`llc` route, and unset uses the installed library when it loads, else that route. `toolchain/llvm-lib.lock` pins the llvm-bundle tag and SHA-256 per platform, `tools/fetch-llvm-lib.ms` fetches it, and the CI toolchain action exports `MS_LLVM`.
 - Pipelines match the process route: Debug `function(sroa,...)` with `-O1`, basic register allocator; Release `default<O3>`.
 
 ## Evidence
@@ -45,5 +45,5 @@ Proposal, 2026-11-23, after the Debug pipeline change (#6542). Owner direction (
 
 ## Open questions
 
-- Installed layout: `ms` should find `libLLVM` beside its files like `opt` and `llc` (`ms_install_tool`); not done here, `MS_LLVM` is the only route.
+- Installed layout: the dist ships `lib/ms/lib/libLLVM.*` (`bin/LLVM-C.dll` on Windows) and `llc` (the glibc stubs), not `opt`. Compile time per platform (bench-llvm-route, 7 runs): Linux and macOS about 1.0x, Windows 1.0 to 1.7x; the default is chosen for the saved disk round trip and LLVM faults reported as `ms` errors, not speed.
 - macOS library validation and the Windows `LLVM-C.dll` exports are checked by the platform CI runs on this PR, not assumed.

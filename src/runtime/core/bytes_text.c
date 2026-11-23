@@ -48,7 +48,7 @@ uint8_t msrt_bytes_decode_utf8_range(const MsBytes *b, int64_t start, int64_t en
     ms_strbuild_append_i64(&message, end);
     ms_strbuild_append_text(&message, " are outside 0..");
     ms_strbuild_append_i64(&message, (int64_t)b->len);
-    ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
   }
   const MsSpan part = ms_span_of(b->ptr + start, (size_t)(end - start));
   if (!ms_utf8_is_valid(part.ptr, part.len)) {
@@ -56,61 +56,6 @@ uint8_t msrt_bytes_decode_utf8_range(const MsBytes *b, int64_t start, int64_t en
   }
   *out = msrt_string_make(part);
   return 1;
-}
-
-/* ---- the string builder ---- */
-
-/* Appends a string past the builder's spare room: grows, then copies. */
-void msrt_strbuilder_append_slow(MsBytes *b, const MsString *s) {
-  const MsSpan text = msrt_text(s);
-  if (text.len != 0) {
-    __builtin_memcpy(ms_list_extend(b, 1, text.len), text.ptr, text.len);
-  }
-}
-
-/* Appends a string to a builder. Text that fits the spare room is copied here; a full buffer takes the slow
- * path. */
-void msrt_strbuilder_append(MsBytes *b, const MsString *s) {
-  const MsSpan text = msrt_text(s);
-  if (b->cap - b->len < text.len) {
-    msrt_strbuilder_append_slow(b, s);
-    return;
-  }
-  uint8_t *const destination = b->ptr + b->len;
-  b->len += text.len;
-  if (text.len == 1) {
-    *destination = text.ptr[0];
-  } else if (text.len != 0) {
-    __builtin_memcpy(destination, text.ptr, text.len);
-  }
-}
-
-/* Appends the decimal text of `n`: the bytes of appending `n.to_string()` without the temporary string. */
-void msrt_strbuilder_append_int(MsBytes *b, int64_t n) {
-  uint8_t digits[MS_FMT_INTEGER_CAPACITY];
-  const size_t length = ms_fmt_i64_fixed(n, digits);
-  __builtin_memcpy(ms_list_extend(b, 1, length), digits, length);
-}
-
-/* Builds the string and moves the builder: its buffer is freed or becomes the string. */
-void msrt_strbuilder_freeze(MsBytes *b, MsString *out) {
-  if (b->len > MS_STRING_INLINE_MAX && b->len < MSRT_STRING_LIMIT && b->cap != 0) {
-    uint8_t *data = b->ptr;
-    if (b->cap > b->len + (b->len >> 2) + 1) { /* trim a buffer that is mostly spare */
-      data = ms_realloc(data, b->len);
-    }
-    *out = msrt_string_from_block(data, b->len);
-    *b = (MsBytes){0};
-    return;
-  }
-  *out = msrt_string_make(ms_bytes_span(b));
-  ms_bytes_free(b);
-}
-
-/* `StringBuilder.drain()`: the text so far, leaving the builder empty and usable. */
-void msrt_strbuilder_drain(MsBytes *b, MsString *out) {
-  msrt_strbuilder_freeze(b, out);
-  *b = (MsBytes){0};
 }
 
 /* `BytesBuilder.build()` and `drain()`: the buffer moves into the result, leaving the builder empty. */

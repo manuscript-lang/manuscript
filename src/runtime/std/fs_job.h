@@ -33,6 +33,11 @@ typedef struct MsFsJob {
 
 MsFsJob ms_fs_job(const MsString *path);
 void ms_fs_job_free(MsFsJob *job);
+/* Ends a native: frees the job, then returns its status with `err` filled (ms_fail_finish_at). A stop request is
+ * delivered by unwinding, which never returns, so the job is freed first; the caller must not touch it afterwards. */
+uint8_t ms_fs_job_finish(MsFsJob *job, MsSpan detail, MsString *err);
+/* The same for an operation on two paths: a status that names them reports `a -> b`. */
+uint8_t ms_fs_job_finish_pair(MsFsJob *job, MsString *err);
 
 /* Runs `run(job)` on the blocking pool (inline on a pool thread). The wait is shielded, so `job` may live on the
  * caller's stack; a stop request takes effect once the job is done and is reported as a failure of the job. */
@@ -62,6 +67,8 @@ bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b);
 
 /* Runs one libuv call to its end: a synchronous request, cleaned up. Each returns 0 or a negative UV_* code. */
 int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out);
+/* The same for a path as bytes: UV_EINVAL for an empty path or one with a NUL. */
+int ms_fs_stat_bytes(MsSpan path, bool follow, uv_stat_t *out);
 int ms_fs_fstat(uv_file fd, uv_stat_t *out);
 int ms_fs_remove_one(const char *path);
 /* A directory with permissions 0700. */

@@ -34,6 +34,12 @@ typedef struct MsNetCore {
   atomic_uint generation; /* bumped when an upgrade (TLS) consumes the handles made before it */
   atomic_bool stealable; /* a server lets another thread take this connection's ready idle read (net_conn.c) */
   atomic_int steal_lock; /* a spin lock over `open_read` */
+  atomic_uint writing;   /* write operations posted and not yet freed: a write goes straight to the socket only when none is */
+  atomic_uint reads_posted; /* read operations posted and not yet freed: a read goes straight to the socket only when none is */
+  atomic_uint edge_waiting; /* tasks parked on the poller of their thread for this socket's bytes (net_conn.c) */
+  uint64_t id;           /* names this connection to its thread's poller, which registers descriptor numbers that get reused */
+  bool drained;          /* the reading task's last read took everything the socket held, so the next one waits for an edge first */
+  atomic_uint direct;    /* threads inside a direct socket call; the loop closes the handle only when none is (net_conn.c) */
   void *open_read;       /* the idle read in flight, with a reference of its own; set under steal_lock */
   MsString local; /* the addresses as text, set before the core is shared */
   MsString peer;
@@ -41,7 +47,7 @@ typedef struct MsNetCore {
   uint8_t *stash;           /* loop thread: bytes read ahead of a reader that gave up */
   size_t stash_length;
   bool eof;                 /* loop thread: the peer ended its side */
-  bool broken;              /* loop thread: a write was abandoned, so the stream is torn */
+  atomic_bool broken;       /* a write was abandoned, so the stream is torn (set on the loop thread, read by direct reads) */
   void *reading;            /* loop thread: the read or receive in progress */
   void *accepting;          /* loop thread: accept operations waiting, oldest first */
   struct MsNetOp *close_wait; /* loop thread: the explicit close that waits for libuv to release the descriptor */
@@ -72,6 +78,10 @@ void ms_net_core_close(MsNetCore *core);
 void ms_net_core_name(MsNetCore *core);
 /* The text of a socket address: ip and port, bracketed for IPv6. */
 void ms_net_address_text(const struct sockaddr *address, MsString *out);
+
+/* Ends the waits of tasks parked on the poller for this connection's bytes, so a close does not wait for them (any
+ * thread; they wake with the end of the stream). */
+void ms_net_conn_wake_readers(MsNetCore *core);
 
 /* Marks the connection as one whose idle read another thread may take over (see ms_net_core_steal_read). */
 void ms_net_core_set_stealable(MsNetCore *core, bool stealable);

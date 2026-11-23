@@ -290,7 +290,7 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
                          .params = mir_params,
                          .nparams = count,
                          .ret = ret,
-                         .role = (uint8_t)(sig != NULL && sig->spawns ? MR_SPAWNS_TASK : MR_NONE)};
+                         .role = (uint8_t)(sig != NULL && sig->spawns ? MR_SPAWNS_TASK : sig != NULL && sig->keeps ? MR_KEEPS_SLOT : MR_NONE)};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -480,7 +480,7 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
     return values == MIR_NONE ? MIR_NONE : fn_set_from_list(fn, values, ty);
   }
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION) {
-    return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+    return fn_empty_map(fn, ty);
   }
   if (data->kind != MK_TYPE) {
     (void)fn_fail(fn, "a value of this type cannot be built by its name yet (MIR kind %d, %u arguments, first source %d)", (int)data->kind, call->arg_count, call->arg_count > 0 ? (int)call->args[0].source : -1);

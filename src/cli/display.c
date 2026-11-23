@@ -2,14 +2,8 @@
 #include "cli/display.h"
 
 #include "base/file.h"
+#include "base/message.h"
 #include "base/path.h"
-
-/* The text of `builder` copied into `arena`; the builder is freed. */
-static MsSpan arena_text(MsArena *arena, MsStrBuild *builder) {
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(builder));
-  ms_strbuild_free(builder);
-  return text;
-}
 
 /* The canonical absolute spelling of `path`, or false. */
 bool ms_display_physical(MsArena *arena, MsSpan path, MsSpan *out) {
@@ -56,9 +50,9 @@ MsSpan ms_display_of(MsArena *arena, MsSpan path) {
     ms_strbuild_append_text(&dotted, "./");
     ms_strbuild_append(&dotted, ms_strbuild_span(&relative));
     ms_strbuild_free(&relative);
-    return arena_text(arena, &dotted);
+    return ms_message_take_builder(arena, &dotted);
   }
-  return arena_text(arena, &relative);
+  return ms_message_take_builder(arena, &relative);
 }
 
 MsSpan ms_display_path_message(MsArena *arena, const MsProjectError *error, MsSpan shown) {
@@ -69,7 +63,7 @@ MsSpan ms_display_path_message(MsArena *arena, const MsProjectError *error, MsSp
     ms_strbuild_append_text(&text, "file not found: ");
     ms_strbuild_append(&text, shown);
     ms_strbuild_append_text(&text, "; check the path and run from the directory that contains it");
-    return arena_text(arena, &text);
+    return ms_message_take_builder(arena, &text);
   }
   ms_strbuild_free(&text);
   return ms_project_error_text(arena, &named);

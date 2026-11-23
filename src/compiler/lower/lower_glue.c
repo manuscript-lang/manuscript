@@ -58,20 +58,6 @@ static bool ensure(Lower *cx, MirTy ty) {
   return true;
 }
 
-static LowerFn begin(Lower *cx, const MirFunc *reserved) {
-  LowerFn fn = {.cx = cx,
-                .facts = &cx->program->modules.ptr[0].facts,
-                .module_index = 0,
-                .file = lower_file(cx, 0),
-                .ret = reserved->ret};
-  mir_b_init(&fn.b, cx->module, reserved->name, reserved->params, reserved->nparams, reserved->ret);
-  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
-  (void)fn_scope_begin(&fn);
-  fn.nvars = 16;
-  fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
-  return fn;
-}
-
 static bool finish(Lower *cx, LowerFn *fn, uint32_t slot, MirValue result) {
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, result);
@@ -179,7 +165,7 @@ static MirValue hash_alt(LowerFn *fn, MirValue value, MirTy ty) {
 static bool lower_glue(Lower *cx, uint32_t index) {
   const LowerGlue glue = cx->glues.ptr[index];
   const MirFunc eq_reserved = cx->module->funcs.ptr[glue.eq];
-  LowerFn eq = begin(cx, &eq_reserved);
+  LowerFn eq = fn_begin_reserved(cx, &eq_reserved);
   MirValue args[2];
   mir_b_params(&eq.b, args, 2);
   const MsTy checked = lower_source_type(cx, glue.ty);
@@ -193,7 +179,7 @@ static bool lower_glue(Lower *cx, uint32_t index) {
     return false;
   }
   const MirFunc hash_reserved = cx->module->funcs.ptr[glue.hash];
-  LowerFn hash = begin(cx, &hash_reserved);
+  LowerFn hash = fn_begin_reserved(cx, &hash_reserved);
   MirValue slot[1];
   mir_b_params(&hash.b, slot, 1);
   const MirValue value = load_at(&hash, slot[0], glue.ty);

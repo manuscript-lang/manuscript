@@ -74,21 +74,12 @@ static void append_definition(MsStrBuild *ir, const GlibcExport *entry) {
   ms_strbuild_append_text(ir, "\"() {\n  ret void\n}\n");
 }
 
-static bool has_span(const MsSpanList *items, MsSpan value) {
-  for (size_t index = 0; index < items->len; index++) {
-    if (ms_span_equal(items->ptr[index], value)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /* The version script: one node per version of the library, each naming its symbols. */
 static void append_script(MsStrBuild *script, const GlibcExportList *all, MsSpan soname) {
   MsSpanList versions = {0};
   for (size_t index = 0; index < all->len; index++) {
     const GlibcExport *entry = &all->ptr[index];
-    if (has_soname(entry, soname) && !has_span(&versions, entry->version)) {
+    if (has_soname(entry, soname) && !ms_span_list_contains(&versions, entry->version)) {
       ms_span_list_push(&versions, entry->version);
     }
   }

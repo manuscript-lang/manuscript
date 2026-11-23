@@ -117,15 +117,15 @@ MsSpan mir_cc_name(MirCc cc) {
 }
 
 static const char *const role_names[] = {
-    [MR_BORROWS_ARGUMENT] = "borrows_argument", [MR_STRBUILDER_APPEND] = "strbuilder_append",
-    [MR_STRBUILDER_APPEND_INT] = "strbuilder_append_int", [MR_STRING_CONCAT] = "string_concat",
+    [MR_BORROWS_ARGUMENT] = "borrows_argument", [MR_STRING_CONCAT] = "string_concat",
     [MR_STRING_JOIN] = "string_join", [MR_STRING_JOIN_GROW] = "string_join_grow", [MR_STRING_APPEND] = "string_append",
     [MR_INT_TO_STRING] = "int_to_string", [MR_LIST_SORTED] = "list_sorted", [MR_RAW_SLOTS] = "raw_slots",
     [MR_RAW_FREE] = "raw_free", [MR_LIST_SORT_INTS] = "list_sort_ints",
     [MR_LIST_SORTED_BY_DIFFERENCE] = "list_sorted_by_difference", [MR_LIST_NEW] = "list_new",
     [MR_MAP_NEW] = "map_new", [MR_BYTES_VALUES] = "bytes_values", [MR_STRING_EQ] = "string_eq",
     [MR_CLEANUP_DISCARD] = "cleanup_discard", [MR_CLEANUP_CANCEL] = "cleanup_cancel", [MR_BYTES_APPEND] = "bytes_append",
-    [MR_VIEW_RESULT] = "view_result", [MR_TAKES_DYING] = "takes_dying", [MR_SPAWNS_TASK] = "spawns_task",
+    [MR_BYTES_CONCAT] = "bytes_concat", [MR_BYTES_CONCAT_GROW] = "bytes_concat_grow",
+    [MR_VIEW_RESULT] = "view_result", [MR_TAKES_DYING] = "takes_dying", [MR_SPAWNS_TASK] = "spawns_task", [MR_KEEPS_SLOT] = "keeps_slot",
     [MR_SHIELD_ENTER] = "shield_enter", [MR_SHIELD_EXIT] = "shield_exit", [MR_UNWINDING] = "unwinding",
     [MR_MAP_PROBE_INT] = "map_probe_int", [MR_MAP_PROBE_STR] = "map_probe_str",
     [MR_SET_PROBE_INT] = "set_probe_int", [MR_SET_PROBE_STR] = "set_probe_str", [MR_STRING_SLICE] = "string_slice",
@@ -133,7 +133,8 @@ static const char *const role_names[] = {
     [MR_STRING_PARSE_INT] = "string_parse_int", [MR_STRING_CONTAINS] = "string_contains",
     [MR_STRING_STARTS_WITH] = "string_starts_with", [MR_STRING_ENDS_WITH] = "string_ends_with",
     [MR_STRING_COMPARE] = "string_compare", [MR_STRING_SCALAR_STEP] = "string_scalar_step",
-    [MR_STRING_SCALAR_AT] = "string_scalar_at"};
+    [MR_STRING_SCALAR_AT] = "string_scalar_at",
+    [MR_STRING_SCALAR_TEXT] = "string_scalar_text"};
 
 MsSpan mir_role_name(MirRole role) {
   const char *name = (size_t)role < MS_COUNT_OF(role_names) ? role_names[role] : NULL;

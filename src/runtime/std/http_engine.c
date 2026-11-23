@@ -7,9 +7,11 @@
 #include <uv.h>
 
 #include "base/alloc.h"
+#include "runtime/core/release.h"
+#include "runtime/std/http_client_abi.h"
 #include "runtime/std/http_client_internal.h"
 
-typedef enum CmdKind { CMD_START, CMD_RESUME, CMD_CANCEL, CMD_CLOSE_CLIENT, CMD_FREE_CLIENT } CmdKind;
+typedef enum CmdKind { CMD_START, CMD_RESUME, CMD_CANCEL, CMD_CLOSE_CLIENT, CMD_FREE_CLIENT, CMD_STOP } CmdKind;
 
 typedef struct Cmd {
   CmdKind kind;
@@ -234,6 +236,10 @@ static void run(Cmd *cmd) {
   case CMD_FREE_CLIENT:
     do_free_client(cmd->client);
     break;
+  case CMD_STOP:
+    uv_close((uv_handle_t *)&engine.async, NULL);
+    uv_stop(&engine.loop);
+    break;
   }
 }
 
@@ -293,7 +299,11 @@ static void engine_main(void *unused) {
   (void)uv_run(&engine.loop, UV_RUN_DEFAULT);
 }
 
+static bool engine_started;
+
 static void engine_init(void) {
+  engine_started = true;
+  ms_release_at_exit(ms_http_engine_release_all);
   (void)uv_mutex_init(&engine.lock);
   (void)uv_loop_init(&engine.loop);
   (void)uv_async_init(&engine.loop, &engine.async, on_async);
@@ -365,4 +375,16 @@ void ms_http_engine_free_client(MsHttpClient *client) {
   submit(CMD_FREE_CLIENT, NULL, client, &done);
   uv_sem_wait(&done);
   uv_sem_destroy(&done);
+}
+
+void ms_http_engine_release_all(void) {
+  if (!engine_started) {
+    return;
+  }
+  engine_started = false;
+  submit(CMD_STOP, NULL, NULL, NULL);
+  (void)uv_thread_join(&engine.thread);
+  (void)uv_run(&engine.loop, UV_RUN_NOWAIT); /* the closed handle's callback */
+  (void)uv_loop_close(&engine.loop);
+  uv_mutex_destroy(&engine.lock);
 }

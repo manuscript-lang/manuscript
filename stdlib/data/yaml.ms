@@ -13,7 +13,6 @@ import (
 	quote_text from "@std/data/quote.ms",
 	parse_int from "@std/math/math.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 // A YAML value represented as null, boolean, number text, string, array, or object.
@@ -301,60 +300,58 @@ fn quoted(var flow: Flow) String!:
 
 	// Append through a builder: per-character concatenation is quadratic on long
 	// strings.
-	var result = StringBuilder()
-	var whitespace = StringBuilder()
+	var result = ""
+	var whitespace = ""
 
 	while true:
 		c := advance(flow)
 		if c == "": return error(flow_invalid(flow, "unterminated string"))
 
 		if c == quote:
-			result.append(whitespace.build())
-			whitespace = StringBuilder()
+			result += whitespace
+			whitespace = ""
 
 			if quote == "'" and peek(flow) == "'":
 				advance(flow)
-				result.append("'")
+				result += "'"
 				continue
 
-			return ok(result.build())
+			return ok(result)
 
 		if c == "\n":
-			whitespace = StringBuilder()
-			result.append(folded_break(flow, escaped: false))
+			whitespace = ""
+			result += folded_break(flow, escaped: false)
 			continue
 
 		if c == " " or c == "\t":
-			whitespace.append(c)
+			whitespace += c
 			continue
 
-		result.append(whitespace.build())
-		whitespace = StringBuilder()
+		result += whitespace
+		whitespace = ""
 
 		if c != "\\" or quote == "'":
-			result.append(c)
+			result += c
 			continue
 
 		escaped := advance(flow)
 
 		if escaped == "\n":
-			result.append(folded_break(flow, escaped: true))
-		else if escaped == "0": result.append("\u{0}")
-		else if escaped == "a": result.append("\u{7}")
-		else if escaped == "b": result.append("\u{8}")
-		else if escaped == "t" or escaped == "\t": result.append("\t")
-		else if escaped == "n": result.append("\n")
-		else if escaped == "v": result.append("\u{b}")
-		else if escaped == "f": result.append("\u{c}")
-		else if escaped == "r": result.append("\r")
-		else if escaped == "e": result.append("\u{1b}")
-		else if (escaped == " " or escaped == "\"" or escaped == "/" or escaped == "\\"): result.append(
-			escaped
-		)
-		else if escaped == "N": result.append("\u{85}")
-		else if escaped == "_": result.append("\u{a0}")
-		else if escaped == "L": result.append("\u{2028}")
-		else if escaped == "P": result.append("\u{2029}")
+			result += folded_break(flow, escaped: true)
+		else if escaped == "0": result += "\u{0}"
+		else if escaped == "a": result += "\u{7}"
+		else if escaped == "b": result += "\u{8}"
+		else if escaped == "t" or escaped == "\t": result += "\t"
+		else if escaped == "n": result += "\n"
+		else if escaped == "v": result += "\u{b}"
+		else if escaped == "f": result += "\u{c}"
+		else if escaped == "r": result += "\r"
+		else if escaped == "e": result += "\u{1b}"
+		else if (escaped == " " or escaped == "\"" or escaped == "/" or escaped == "\\"): result += escaped
+		else if escaped == "N": result += "\u{85}"
+		else if escaped == "_": result += "\u{a0}"
+		else if escaped == "L": result += "\u{2028}"
+		else if escaped == "P": result += "\u{2029}"
 		else if (escaped == "x" or escaped == "u" or escaped == "U"):
 			var count = 2
 			if escaped == "u": count = 4
@@ -377,7 +374,7 @@ fn quoted(var flow: Flow) String!:
 			)
 
 			if text := from_scalars([parsed.get()]):
-				result.append(text)
+				result += text
 			else:
 				return error(flow_invalid(flow, "invalid Unicode scalar"))
 		else:
@@ -581,7 +578,7 @@ fn merge(
 fn fold_plain(text: String) String:
 	if not text.contains("\n"): return text.clone()
 
-	var result = StringBuilder()
+	var result = ""
 	var blanks = 0
 	var first = true
 
@@ -592,23 +589,23 @@ fn fold_plain(text: String) String:
 			blanks += 1
 			continue
 
-		if first: result.append(trimmed)
+		if first: result += trimmed
 		else if blanks == 0:
-			result.append(" ")
-			result.append(trimmed)
+			result += " "
+			result += trimmed
 		else:
 			var remaining = blanks
 
 			while remaining > 0:
-				result.append("\n")
+				result += "\n"
 				remaining -= 1
 
-			result.append(trimmed)
+			result += trimmed
 
 		blanks = 0
 		first = false
 
-	return result.build()
+	return result
 
 // Whether the character following a colon ends a plain scalar in this context.
 fn separates_colon(next: Int, delimited: Bool) Bool:
@@ -1727,14 +1724,14 @@ fn block_string(
 		parts.append(line.slice(content_indent, line.length()).clone())
 		context.index += 1
 
-	var builder = StringBuilder()
+	var builder = ""
 	var index = 0
 	var content = false
 
 	while index < parts.length():
 		part := parts[index]
 		if part != "": content = true
-		builder.append(part)
+		builder += part
 
 		var separator = "\n"
 
@@ -1762,10 +1759,10 @@ fn block_string(
 			and not context.final_break
 			and blank_trim(part) != ""
 		): separator = ""
-		builder.append(separator)
+		builder += separator
 		index += 1
 
-	var result = builder.build()
+	var result = builder
 
 	if mode != "+":
 		final_break := result.ends_with("\n")
@@ -1799,8 +1796,8 @@ fn may_continue(context: Context, base: Int) Bool:
 // A plain scalar's text with the more-indented lines that continue it, joined by the
 // folding rules. The caller has checked that a continuation is possible.
 fn plain_continuation(var context: Context, remainder: String, base: Int) String!:
-	var joined = StringBuilder()
-	joined.append(remainder)
+	var joined = ""
+	joined += remainder
 
 	scan_start := context.index
 	var probe = scan_start
@@ -1833,13 +1830,13 @@ fn plain_continuation(var context: Context, remainder: String, base: Int) String
 				separator = separator.concat("\n")
 				blanks -= 1
 
-		joined.append(separator)
-		joined.append(blank_trim(next))
+		joined += separator
+		joined += blank_trim(next)
 		probe += 1
 		context.index = probe
 		if (not context.simple[probe - 1] and boundary(line, colon: false) >= 0): break
 
-	return ok(joined.build())
+	return ok(joined)
 
 // Standalone plain scalars may continue at their header column, but block scalars
 // measure content from their containing collection (column zero at the document root).
@@ -2823,38 +2820,35 @@ fn is_block(value: YamlValue) Bool:
 		ObjectValue(values): return not values.is_empty()
 		_: return false
 
-fn emit_block(var out: StringBuilder, value: YamlValue, indent: String) Result[
-	Void,
-	Error,
-]:
+fn emit_block(var out: String, value: YamlValue, indent: String) Result[Void, Error]:
 	match value:
 		ArrayValue(values):
 			for item in values:
-				out.append(indent)
+				out += indent
 
 				if is_block(item):
-					out.append("-\n")
+					out += "-\n"
 					emit_block(out, item, indent.concat("  "))?
 				else:
 					text := scalar_text(item.clone())?
-					out.append("- ")
-					out.append(text)
-					out.append("\n")
+					out += "- "
+					out += text
+					out += "\n"
 
 			return ok()
 		ObjectValue(values):
 			for entry in values.entries():
-				out.append(indent)
-				out.append(format_key(entry.key.clone()))
+				out += indent
+				out += format_key(entry.key.clone())
 
 				if is_block(entry.value):
-					out.append(":\n")
+					out += ":\n"
 					emit_block(out, entry.value, indent.concat("  "))?
 				else:
 					text := scalar_text(entry.value.clone())?
-					out.append(": ")
-					out.append(text)
-					out.append("\n")
+					out += ": "
+					out += text
+					out += "\n"
 
 			return ok()
 		_: return ok()
@@ -2865,14 +2859,14 @@ export fn stringify(value: YamlValue, max_bytes: Int? = none) String!:
 	if limit := max_bytes:
 		if limit < 0: return error(Error("invalid YAML input", kind: "EINVAL"))
 
-	var out = StringBuilder()
+	var out = ""
 
 	if is_block(value.clone()): emit_block(out, value, "")?
 	else:
 		text := scalar_text(value.clone())?
-		out.append(text.concat("\n"))
+		out += text.concat("\n")
 
-	text := out.build()
+	text := out
 	if not within(text.length(), max_bytes): return error(
 		Error("YAML limit exceeded", kind: "EOVERFLOW")
 	)

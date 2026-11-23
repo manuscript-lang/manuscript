@@ -101,6 +101,10 @@ static void check_source(Lint *lint, const char *path, FILE *file) {
     line_number++;
     lint_text_chomp(line);
     check_include(lint, path, line_number, line);
+    if (!in_block_comment_line(line) && !lint_text_equal(path, "src/cli/pipeline.h") && lint_text_contains(line, "/program\"")) {
+      lint_report(lint, path, line_number, "temp-program",
+                  "name a temporary program with MS_TEMP_PROGRAM (program.exe on Windows), not a literal");
+    }
     if (exempt || in_block_comment_line(line)) continue;
     WordContext context = {lint, path, line_number};
     lint_scan_words(line, on_word, &context);

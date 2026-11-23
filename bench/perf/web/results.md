@@ -59,6 +59,22 @@ On one CPU Manuscript serves about 62% of hyper's rate, and the gap grows with C
 
 The remaining top self costs per request are list growth (1.1k), `memcpy` (0.8k), allocation (0.7k), the task switch (0.6k), llhttp (0.6k), and `exchange.headers()` copying the received headers (0.5k, in the frozen stdlib wrapper).
 
+## 2026-11-24 (the server uses every thread it was given; writes leave the loop thread)
+
+Two findings from per-thread CPU time (`/proc/<pid>/task/*/stat`) with the server on 2 CPUs:
+- With `cores: 2` both worker promises of `serve` ran on the main thread. A thread started by an earlier wake had not registered when `ms_workers_spread_pick` scored the isolates, so the second pick saw one thread and chose it again; the second thread stayed idle. The pick now waits for every started thread to register.
+- The single network loop thread was 98% busy at 108k requests a second: a send on loopback costs about 7 µs because the peer's receive work runs inside the `write`, and every send ran there. A write on a plain TCP connection now goes straight to the socket from the calling thread (`uv_try_write`) when no write operation is queued and more than one scheduler thread runs; otherwise, and for what the kernel does not take, it uses the loop as before. The loop thread waits for threads inside such a call before it closes the handle.
+
+`multicpu.sh`-style rows, `/health`, `loadc` with 128 connections on the other CPUs, two runs each (req/s):
+
+| Server CPUs | Before | Placement fix and direct write | hyper (same VM, earlier run) |
+| --- | ---: | ---: | ---: |
+| 1 | 66k, 78k | 71k, 76k | 120k |
+| 2 | 114k, 118k | 100k, 104k | 218k to 233k |
+| 4, load shared | 89k, 101k | 141k, 162k | 245k to 261k |
+
+With one scheduler thread the direct write is slower (70k against 54k at one CPU: the loop thread's send overlaps the thread's other work), so it is off there. At two CPUs both threads now work but the loop thread still carries every read and the epoll, so the gain waits on moving reads off it.
+
 ## History
 
 | Change | `/health` req/s | System calls per request | Idle system calls in 5 s |
@@ -380,3 +396,32 @@ The Go load generator saturates near 185k req/s, so the earlier two-CPU comparis
 | `/user/42`, 4 (shared with load) | 245–251 | 363–397 | 245–261 |
 
 Manuscript is about 0.55–0.6x of C at every size and level with hyper at two CPUs; at one CPU it is about 0.85x of hyper. The four-CPU row shares CPUs with the load generator, so it shows the ratio, not scaling. A three-CPU row (one load CPU) was limited by the generator and is not reported.
+
+## 2026-11-23, plain TCP reads on the calling thread
+
+After #6665 writes went straight to the socket, but every read still went through the one network loop thread (`uv_read_start`, epoll, wake the waiter). `ms_net_read` now reads on the calling thread first when no read is posted on the connection, the stream is plain TCP and the program has two or more scheduler threads (a connection that has no bytes yet waits on the loop as before; a count of posted reads and the `direct` fence keep the loop's stash, end flag and close ordering intact). On Windows the same path uses a non-blocking `recv` (libuv's Windows TCP reads are zero-length overlapped ones that take no bytes); it has not been run on Windows yet, which needs the Windows CI dispatched on the branch. A write the loop abandoned (`broken`) now makes the direct read decline.
+
+`/health`, C port, release build, 128 keep-alive connections, 4 s, three runs each on the shared 4-CPU VM (±15%), server CPUs (load CPUs), req/s in thousands, median of three with the range:
+
+| Server CPUs | Before (#6665) | After |
+| --- | ---: | ---: |
+| 1 (3) | 72 (54–74) | 74 (67–83) |
+| 2 (2) | 73 (53–86) | 156 (152–173) |
+| 4 (shared with load) | 95 (53–99) | 228 (206–235) |
+
+The two-CPU row had regressed in #6665 (two worker threads plus the loop thread on two CPUs); with the loop out of the read path it doubles. One CPU is unchanged because a single scheduler thread keeps the loop path (without the gate: 58 against 62 on the same runs). hyper at the same sizes is 120, 218–233 and 245–261 (2026-11-22 run).
+
+## 2026-11-23, request path: connection-owned buffers, task records reused, edge-triggered reads
+
+Per request the Manuscript server did 24.2k instructions, 27.5 allocations and 1.2 context switches (the loop thread did the reads and writes). Changes (proposal `web-request-path.md`): the response head, staging arrays and date line are built in per-connection buffers; plain request paths skip the decoder; the content-type sniff and authority check switch on the first byte; finished task records are kept (up to 64 per scheduler) with their cleanup buffers; and, at one scheduler thread, plain TCP connections register once with a per-thread edge-triggered epoll set (`io/edge.c`) and read and write on the owner thread (reset, try the syscall, wait for the next edge only after `EAGAIN` or a short read), so the loop thread is off the data path.
+
+`/health`, callgrind over `bench/perf/web/ms` at one scheduler thread, about 70k requests (instructions include the loop thread):
+
+| | Before (main 642ba74c) | After |
+| --- | ---: | ---: |
+| Instructions per request | 24.4k | 14.3k |
+| Allocations per request | 27.5 | 15 |
+| Context switches per request | 1.2 | 0 |
+| Syscalls per request | 2.4 (+0.3 poll/futex) | about 2.0 |
+
+Throughput on the shared 4-CPU VM (±25% run to run, so not a result): 1 CPU medians 61k before, 54k–72k after; 2 CPUs 167k–218k before, 170k–202k after (two scheduler threads keep the loop path). Kernel time per request depends on the request rate, so the instruction count is the measure; at 14.3k instructions the server is still 2.1x hyper's 6.7k. Not done: the 4.4k instructions of the per-request peer-hangup watcher task (a promise-based replacement cost more than the task, 14.9k, and was dropped; the tasks thread plans a lighter fd waiter), the multi-thread edge path, kqueue and Windows.

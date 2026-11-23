@@ -2,7 +2,6 @@
 // conform: phase=run
 // A joined text evaluates its pieces left to right, and a `?` that returns early drops
 // the pieces already built once and runs none of the later ones.
-import StringBuilder from "@std/string_builder.ms"
 
 fn note(s: String, n: Int) String:
 	print(f"eval {s}")
@@ -17,11 +16,11 @@ fn build(n: Int) String!:
 	return ok(s)
 
 fn fill(n: Int) String!:
-	var out = StringBuilder()
-	out.append("start;")
-	out.append(f"[{note("a", 1)}|{fails(n)?}|{note("b", 2)}|{n}]")
-	out.append(note("c", 3) + "-" + note("d", 4))
-	return ok(out.build())
+	var out = ""
+	out += "start;"
+	out += f"[{note("a", 1)}|{fails(n)?}|{note("b", 2)}|{n}]"
+	out += note("c", 3) + "-" + note("d", 4)
+	return ok(out)
 
 fn main() Int:
 	print(f"{note("x", 1)}-{note("y", 2)}" + "-" + note("z", 3))

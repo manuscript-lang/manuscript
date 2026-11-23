@@ -12,6 +12,7 @@ size_t lint_text_length(const char *text);
 bool lint_text_equal(const char *left, const char *right);
 bool lint_text_starts_with(const char *text, const char *prefix);
 bool lint_text_ends_with(const char *text, const char *suffix);
+bool lint_text_contains(const char *text, const char *needle);
 /* Removes a trailing newline and carriage return in place. */
 void lint_text_chomp(char *line);
 bool lint_is_identifier_char(char value);

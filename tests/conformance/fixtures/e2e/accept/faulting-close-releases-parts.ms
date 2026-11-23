@@ -116,3 +116,10 @@ test "a faulting optional close during a pending fault releases the payload":
 			)
 		)
 	)?
+
+fn remove_out_of_range(move label: String) Void:
+	var items = [Envelope(label, fn: 1)]
+	items.remove(5)
+
+test "an index fault of an in-place list edit releases the list":
+	expect_true(faults(fn: remove_out_of_range("a remove label that needs a heap block")))?

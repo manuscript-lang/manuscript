@@ -1,7 +1,6 @@
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 // The canonical texts of the JSON values in a stream of whitespace-separated values:
@@ -15,7 +14,7 @@ export fn canon_json_stream(text: String) List[String]!:
 // The top-level values of a JSON stream, found by tracking depth and strings.
 fn split_values(text: String) List[String]:
 	var values: List[String] = []
-	var current = StringBuilder()
+	var current = ""
 	var depth = 0
 	var in_string = false
 	var escaped = false
@@ -26,7 +25,7 @@ fn split_values(text: String) List[String]:
 		spacing := code == 32 or code == 9 or code == 10 or code == 13
 
 		if in_string:
-			current.append(ch)
+			current += ch
 
 			if escaped: escaped = false
 			else if code == 92: escaped = true
@@ -34,22 +33,22 @@ fn split_values(text: String) List[String]:
 				in_string = false
 
 				if depth == 0:
-					values.append(current.build())
-					current = StringBuilder()
+					values.append(current)
+					current = ""
 					started = false
 
 			continue
 
 		if depth == 0 and spacing:
 			if started:
-				values.append(current.build())
-				current = StringBuilder()
+				values.append(current)
+				current = ""
 				started = false
 
 			continue
 
 		started = true
-		current.append(ch)
+		current += ch
 
 		if code == 34: in_string = true
 		else if code == 91 or code == 123: depth += 1
@@ -57,11 +56,11 @@ fn split_values(text: String) List[String]:
 			depth -= 1
 
 			if depth == 0:
-				values.append(current.build())
-				current = StringBuilder()
+				values.append(current)
+				current = ""
 				started = false
 
-	if started: values.append(current.build())
+	if started: values.append(current)
 	return values
 
 fn canon(value: JsonValue) String:

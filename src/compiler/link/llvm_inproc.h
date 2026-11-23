@@ -27,6 +27,9 @@ typedef struct LlvmBuffer {
 /* Loads the library (once) and compiles `ir`. On failure `why` holds the message. */
 MS_NODISCARD MS_NONNULL bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why);
 
+/* Whether the library at `path` loads and has the C API ms uses; the library stays loaded for llvm_compile. */
+MS_NODISCARD bool llvm_usable(MsSpan path);
+
 void llvm_buffer_free(LlvmBuffer *buffer);
 
 #endif

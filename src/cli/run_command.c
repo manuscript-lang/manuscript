@@ -1,5 +1,6 @@
 /* Owns `ms run` (run_command.h): builds a temporary executable and runs it, with the program's own standard streams
  * or, with --json, captured into one document. Port of crates/ms-cli/src/engine/run.rs. Not yet ported: --watch. */
+#include "cli/files.h"
 #include "cli/run_command.h"
 
 #include <stdio.h>
@@ -10,7 +11,7 @@
 #include "base/path.h"
 #include "base/process.h"
 #include "compiler/syntax/diag_json.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/fault_record.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
@@ -75,20 +76,10 @@ static int report_error(const RunContext *context, const char *phase, MsSpan mes
   return STATUS_FAILED;
 }
 
-static MsSpan read_text(MsArena *arena, MsSpan path) {
-  MsBytes bytes = {0};
-  MsSpan text = {0};
-  if (ms_file_read(path, &bytes)) {
-    text = ms_arena_copy(arena, ms_bytes_span(&bytes));
-  }
-  ms_bytes_free(&bytes);
-  return text;
-}
-
 /* Appends `,\n  "fault": {...}` for the record at `path`, moving the object from the six-space nesting of
  * fault_record_json to two; nothing when the process left no record. */
 static void append_fault(MsStrBuild *out, MsArena *arena, MsSpan path) {
-  const MsSpan json = fault_record_json(arena, read_text(arena, path));
+  const MsSpan json = fault_record_json(arena, ms_cli_read_text(arena, path));
   if (json.len == 0) {
     return;
   }
@@ -129,7 +120,7 @@ static int execute(const RunContext *context, MsSpan executable, MsSpan director
     status = report_error(context, "execution", ms_arena_copy(context->arena, ms_strbuild_span(&why)));
   } else if (invocation->json) {
     MsStrBuild out = ms_strbuild_new();
-    begin_document(&out, context, status, read_text(context->arena, out_path), read_text(context->arena, err_path));
+    begin_document(&out, context, status, ms_cli_read_text(context->arena, out_path), ms_cli_read_text(context->arena, err_path));
     append_fault(&out, context->arena, record_path);
     ms_strbuild_append_text(&out, ",\n  \"diagnostics\": []\n}\n");
     print_span(stdout, ms_strbuild_span(&out));

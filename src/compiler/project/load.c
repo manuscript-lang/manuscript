@@ -6,6 +6,7 @@
 #include "base/file.h"
 #include "base/path.h"
 #include "base/utf8.h"
+#include "base/message.h"
 #include "compiler/project/manifest.h"
 #include "compiler/project/package.h"
 #include "compiler/project/project_internal.h"
@@ -65,14 +66,14 @@ static MsSpan logical_name(Loader *loader, MsSpan canonical) {
     return canonical;
   }
   if (package == NULL) {
-    return ms_project_text(loader->arena, &relative);
+    return ms_message_take_builder(loader->arena, &relative);
   }
   MsStrBuild named = ms_strbuild_new();
   ms_strbuild_append(&named, package->key);
   ms_strbuild_append_byte(&named, '/');
   ms_strbuild_append(&named, ms_strbuild_span(&relative));
   ms_strbuild_free(&relative);
-  return ms_project_text(loader->arena, &named);
+  return ms_message_take_builder(loader->arena, &named);
 }
 
 static Failure cycle_failure(Loader *loader, size_t first, MsSpan canonical) {
@@ -85,7 +86,7 @@ static Failure cycle_failure(Loader *loader, size_t first, MsSpan canonical) {
   ms_strbuild_append(&text, logical_name(loader, canonical));
   ms_strbuild_append_text(&text, "; modules cannot import each other in a loop, so move the shared "
                                  "declarations into a third module that both import");
-  return failure_text(FAIL_CYCLE, ms_project_text(loader->arena, &text));
+  return failure_text(FAIL_CYCLE, ms_message_take_builder(loader->arena, &text));
 }
 
 static bool find_span(const MsSpanList *list, MsSpan item, size_t *at) {
@@ -220,7 +221,7 @@ static bool load_missing(Loader *loader, MsSpan importer, const MsImport *item, 
   MsStrBuild cleaned = ms_strbuild_new();
   ms_path_clean(&cleaned, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
-  const MsSpan canonical = ms_project_text(loader->arena, &cleaned);
+  const MsSpan canonical = ms_message_take_builder(loader->arena, &cleaned);
   size_t at = 0;
   if (find_span(&loader->loaded, canonical, &at)) {
     *index = (int32_t)at;
@@ -360,28 +361,6 @@ static void fail_error(MsArena *arena, MsSpan filename, const MsProjectError *er
   fail_graph(arena, out, resolution(filename, start_position(), ms_project_explain(arena, error, (MsSpan){0})));
 }
 
-/* The absolute, cleaned spelling of `filename`. */
-static bool absolute_name(MsArena *arena, MsSpan filename, MsSpan *absolute, MsProjectError *error) {
-  MsStrBuild joined = ms_strbuild_new();
-  if (ms_path_is_absolute(filename)) {
-    ms_strbuild_append(&joined, filename);
-  } else {
-    MsString cwd = ms_string_empty();
-    if (!ms_dir_current(&cwd)) {
-      ms_strbuild_free(&joined);
-      ms_project_error_path(error, "getwd", ms_span_of_text("."), errno);
-      return false;
-    }
-    ms_path_append_joined(&joined, ms_string_span(&cwd), filename);
-    ms_string_release(&cwd);
-  }
-  MsStrBuild cleaned = ms_strbuild_new();
-  ms_path_clean(&cleaned, ms_strbuild_span(&joined));
-  ms_strbuild_free(&joined);
-  *absolute = ms_project_text(arena, &cleaned);
-  return true;
-}
-
 static bool canonical_root(MsArena *arena, MsSpan absolute, MsSpan *root, MsProjectError *error) {
   MsString real = ms_string_empty();
   const MsSpan directory = ms_path_parent(absolute);
@@ -400,7 +379,7 @@ static bool enclosing_manifest(MsArena *arena, MsSpan directory, MsSpan *manifes
     MsStrBuild candidate = ms_strbuild_new();
     ms_path_append_joined(&candidate, current, ms_span_of_text("ms.toml"));
     if (ms_file_is_regular(ms_strbuild_span(&candidate))) {
-      *manifest = ms_project_text(arena, &candidate);
+      *manifest = ms_message_take_builder(arena, &candidate);
       return true;
     }
     ms_strbuild_free(&candidate);
@@ -443,7 +422,7 @@ static void describe_packages(MsArena *arena, const MsManifest *manifest, MsGrap
     MsStrBuild prefix = ms_strbuild_new();
     ms_strbuild_append(&prefix, package->key);
     ms_strbuild_append_byte(&prefix, '/');
-    out->packages[i] = (MsGraphPackage){.prefix = ms_project_text(arena, &prefix), .spec = package->spec,
+    out->packages[i] = (MsGraphPackage){.prefix = ms_message_take_builder(arena, &prefix), .spec = package->spec,
                                         .effects = package->manifest->effects,
                                         .effect_count = package->manifest->neffects, .member = package->member};
   }
@@ -469,12 +448,12 @@ static void add_discovered(Loader *loader, MsSpan file) {
 static bool real_file(MsArena *arena, MsSpan file, MsSpan *real, MsProjectError *error) {
   MsSpan absolute = {0};
   MsSpan directory = {0};
-  if (!absolute_name(arena, file, &absolute, error) || !canonical_root(arena, absolute, &directory, error)) {
+  if (!ms_project_absolute_path(arena, file, &absolute, error) || !canonical_root(arena, absolute, &directory, error)) {
     return false;
   }
   MsStrBuild joined = ms_strbuild_new();
   ms_path_append_joined(&joined, directory, ms_path_file_name(absolute));
-  *real = ms_project_text(arena, &joined);
+  *real = ms_message_take_builder(arena, &joined);
   return true;
 }
 
@@ -568,7 +547,7 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
   MsSpan root = {0};
   MsManifest manifest = {0};
   bool governed = false;
-  if (!absolute_name(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error) ||
+  if (!ms_project_absolute_path(arena, filename, &absolute, &error) || !canonical_root(arena, absolute, &root, &error) ||
       !read_governing_manifest(arena, absolute, root, &manifest, &governed, &error)) {
     out->source_root = manifest.root;
     fail_error(arena, filename, &error, out);

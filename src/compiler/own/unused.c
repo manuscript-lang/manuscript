@@ -9,14 +9,16 @@ typedef struct Candidate {
   MsPos pos;
   int64_t reads;
   bool fed; /* read only to compute its own next value */
+  uint32_t open_feed; /* plus one: the innermost assignment to it whose value is still being walked, else zero */
 } Candidate;
 
 MS_LIST_DEFINE(CandidateList, candidate_list, Candidate)
 MS_MAP_DEFINE(OffsetMap, offset_map, uint32_t, uint32_t, ms_hash_u32_key, ms_equal_u32_key)
 
-/* The source range of an assignment to a binding: reads of it inside only feed it. */
+/* An assignment to a binding, up to the end of its value: reads of the binding inside only feed it. */
 typedef struct Feed {
-  uint32_t candidate, start, end;
+  uint32_t end;
+  uint32_t below; /* plus one: the assignment to the same binding this one is nested in, else zero */
 } Feed;
 
 MS_LIST_DEFINE(FeedList, feed_list, Feed)
@@ -71,12 +73,14 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
   if (candidate == NULL) {
     return;
   }
-  for (size_t at = 0; at < pass->feeds.len; at++) {
-    const Feed *feed = &pass->feeds.ptr[at];
-    if (feed->candidate == index && expr->pos.offset >= feed->start && expr->pos.offset < feed->end) {
-      candidate->fed = true;
-      return;
-    }
+  /* The walk reads names in source order, so an assignment that ended before this read can never hold a later one:
+   * drop those, and what is left encloses the read. This keeps a read O(1) however many assignments precede it. */
+  while (candidate->open_feed != 0 && pass->feeds.ptr[candidate->open_feed - 1].end <= expr->pos.offset) {
+    candidate->open_feed = pass->feeds.ptr[candidate->open_feed - 1].below;
+  }
+  if (candidate->open_feed != 0) {
+    candidate->fed = true;
+    return;
   }
   candidate->reads++;
 }
@@ -86,8 +90,11 @@ static void assign_name(void *context, const MsStmt *stmt, const MsBindingList *
   Unused *pass = context;
   const MsBinding *binding = ms_scope_lookup(scope, stmt->u.assign.name);
   uint32_t index = 0;
-  if (binding != NULL && candidate_of(pass, binding, &index) != NULL) {
-    feed_list_push(&pass->feeds, (Feed){.candidate = index, .start = stmt->pos.offset, .end = stmt->u.assign.value->end.offset});
+  Candidate *candidate = binding == NULL ? NULL : candidate_of(pass, binding, &index);
+  if (candidate != NULL) {
+    feed_list_push(&pass->feeds, (Feed){.end = stmt->u.assign.value->end.offset,
+                                        .below = candidate->open_feed});
+    candidate->open_feed = (uint32_t)pass->feeds.len;
   }
 }
 

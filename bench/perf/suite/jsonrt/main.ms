@@ -1,28 +1,23 @@
 // JSON round trip on a generic document: build text, parse into a value tree, walk it,
 // stringify it back.
-import (
-	JsonValue, parse, stringify from "@std/data/json.ms",
-	StringBuilder from "@std/string_builder.ms",
-)
+import JsonValue, parse, stringify from "@std/data/json.ms"
 
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
 // Keys are in sorted order so every language writes members the same way.
 fn make_text(n: Int) String:
-	var sb = StringBuilder()
+	var sb = ""
 	var x = 1
-	sb.append("[")
+	sb += "["
 
 	for i in 0..n:
 		x = lcg(x)
-		if i > 0: sb.append(",")
-		sb.append(
-			f"\{\"id\":{i},\"name\":\"item-{x % 1000}\",\"score\":{x / 7 % 10000},\"tags\":[\"t{x % 7}\",\"t{x % 11}\"],\"nested\":\{\"a\":{x % 5},\"b\":[{x % 3},{x % 13}]\}\}"
-		)
+		if i > 0: sb += ","
+		sb += f"\{\"id\":{i},\"name\":\"item-{x % 1000}\",\"score\":{x / 7 % 10000},\"tags\":[\"t{x % 7}\",\"t{x % 11}\"],\"nested\":\{\"a\":{x % 5},\"b\":[{x % 3},{x % 13}]\}\}"
 
-	sb.append("]")
-	return sb.build()
+	sb += "]"
+	return sb
 
 fn walk(v: JsonValue) Int:
 	match v:

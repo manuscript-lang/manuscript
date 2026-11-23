@@ -21,6 +21,17 @@ int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out) {
   return code;
 }
 
+int ms_fs_stat_bytes(MsSpan path, bool follow, uv_stat_t *out) {
+  size_t at = 0;
+  if (path.len == 0 || ms_span_find(path, ms_span_of((const uint8_t *)"\0", 1), &at)) {
+    return UV_EINVAL;
+  }
+  MsOsText text = ms_os_text_new(path);
+  const int code = ms_fs_stat_path(text.ptr, follow, out);
+  ms_os_text_free(&text);
+  return code;
+}
+
 bool ms_fs_is_link(const uv_stat_t *stat) { return (stat->st_mode & 0170000u) == 0120000u; }
 bool ms_fs_same_file(const uv_stat_t *a, const uv_stat_t *b) { return a->st_dev == b->st_dev && a->st_ino == b->st_ino; }
 
@@ -137,8 +148,7 @@ uint8_t msstd_fs_stat(const MsString *path, uint8_t follow, MsFsInfo *out, MsStr
     ms_fs_info_fill(out, &job.stat);
     out->name = ms_string_from_span(ms_strbuild_span(&job.text));
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -166,8 +176,7 @@ uint8_t msstd_fs_exists(const MsString *path, uint8_t follow, int64_t *out, MsSt
   if (!ms_fail_failed(&job.fail)) {
     *out = job.found ? 1 : 0;
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -200,8 +209,7 @@ uint8_t msstd_fs_stat_filesystem(const MsString *path, MsFsFilesystem *out, MsSt
     out->files = (int64_t)job.filesystem.f_files;
     out->files_free = (int64_t)job.filesystem.f_ffree;
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -306,8 +314,6 @@ uint8_t msstd_fs_list(const MsString *path, uint8_t has_limit, int64_t limit, Ms
     *out = job.entries;
     job.entries = (MsList){0};
   }
-  const uint8_t status = ms_fail_finish_at(&job.base.fail, job.base.path, err);
   entries_free(&job.entries);
-  ms_fs_job_free(&job.base);
-  return status;
+  return ms_fs_job_finish(&job.base, job.base.path, err);
 }

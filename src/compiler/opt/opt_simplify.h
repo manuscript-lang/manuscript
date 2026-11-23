@@ -10,6 +10,9 @@ bool opt_simplify_roundtrips(MirFunc *f);
 bool opt_simplify_shields(MirModule *m, MirFunc *f);
 bool opt_simplify_put_takes(MirFunc *f);
 
+/* opt_simplify_dead.c. */
+bool opt_simplify_dead_owned(MirModule *m, MirFunc *f);
+
 /* opt_simplify_fold.c. */
 bool opt_simplify_fold(MirModule *m, MirFunc *f);
 bool opt_simplify_phis_func(MirModule *m, MirFunc *f);

@@ -6,7 +6,6 @@ import (
 	SortedMap from "@std/collections/sorted.ms",
 	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
-	StringBuilder from "@std/string_builder.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 
@@ -104,11 +103,11 @@ fn string_build(n: Int) Int:
 	for i in 0..n:
 		s += "ab"
 
-	var b = StringBuilder()
+	var b = ""
 	for i in 0..n:
-		b.append("ab")
+		b += "ab"
 	report("string_build", t)
-	return s.length() + b.build().length()
+	return s.length() + b.length()
 
 fn string_scan(n: Int) Int:
 	t := monotonic()

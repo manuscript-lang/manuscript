@@ -10,22 +10,13 @@ typedef struct Edge {
 
 MS_LIST_DEFINE(EdgeList, edge_list, Edge)
 
-static int64_t compare_text(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 static int64_t compare_edge(uint8_t *env, const uint8_t *left, const uint8_t *right) {
   (void)env;
   const Edge *a = (const Edge *)(const void *)left;
   const Edge *b = (const Edge *)(const void *)right;
-  int64_t order = compare_text(a->owner, b->owner);
-  order = order != 0 ? order : compare_text(a->label, b->label);
-  return order != 0 ? order : compare_text(a->kind, b->kind);
+  int64_t order = ms_span_compare(a->owner, b->owner);
+  order = order != 0 ? order : ms_span_compare(a->label, b->label);
+  return order != 0 ? order : ms_span_compare(a->kind, b->kind);
 }
 
 /* The entity with `id`, or NULL; entities are sorted by id. */
@@ -34,7 +25,7 @@ static const MsEntity *find_entity(const MsInspection *inspection, MsSpan id) {
   size_t high = inspection->entities.len;
   while (low < high) {
     const size_t mid = low + (high - low) / 2;
-    const int64_t order = compare_text(inspection->entities.ptr[mid].id, id);
+    const int64_t order = ms_span_compare(inspection->entities.ptr[mid].id, id);
     if (order == 0) {
       return &inspection->entities.ptr[mid];
     }
@@ -68,10 +59,10 @@ void ms_diagram_ascii(const MsInspection *inspection, MsArena *arena, MsStrBuild
     ms_strbuild_append_text(out, " [");
     ms_strbuild_append(out, entity->kind);
     ms_strbuild_append_text(out, "]\n");
-    while (next < edges.len && compare_text(edges.ptr[next].owner, entity->id) < 0) {
+    while (next < edges.len && ms_span_compare(edges.ptr[next].owner, entity->id) < 0) {
       next++; /* an owner that is not an entity prints nothing */
     }
-    while (next < edges.len && compare_text(edges.ptr[next].owner, entity->id) == 0) {
+    while (next < edges.len && ms_span_compare(edges.ptr[next].owner, entity->id) == 0) {
       size_t count = 1;
       while (next + count < edges.len && compare_edge(NULL, (const uint8_t *)&edges.ptr[next],
                                                       (const uint8_t *)&edges.ptr[next + count]) == 0) {

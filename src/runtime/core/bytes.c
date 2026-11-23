@@ -27,7 +27,7 @@ static void check_byte(const char *what, int64_t value) {
   ms_strbuild_append_text(&message, what);
   ms_strbuild_append_text(&message, ": value must be between 0 and 255, found ");
   ms_strbuild_append_i64(&message, value);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 void msrt_bytes_drop(MsBytes *b) {
@@ -137,7 +137,7 @@ static MS_NORETURN void view_bounds_fault(int64_t start, int64_t end, size_t len
   ms_strbuild_append_i64(&message, end);
   ms_strbuild_append_text(&message, " are outside a length of ");
   ms_strbuild_append_i64(&message, (int64_t)length);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 /* `view(start, end)`: borrows `[start, end)` of the receiver's storage (a view, `cap == 0`, never freed). */
@@ -189,6 +189,32 @@ void msrt_bytes_concat(const MsBytes *a, const MsBytes *b, MsBytes *out) {
     __builtin_memcpy(buffer + a->len, b->ptr, b->len);
   }
   *out = (MsBytes){.ptr = buffer, .len = total, .cap = total};
+}
+
+/* `a.concat(b)` where the caller gives `a` up: appends `b` to `a`'s block, which grows in place when `a` owns one.
+ * A view or empty `a` is copied into a new block first. A `b` that points into `a`'s block is copied before the
+ * block can move. */
+void msrt_bytes_concat_grow(MsBytes *a, const MsBytes *b, MsBytes *out) {
+  if (b->len == 0) {
+    *out = *a;
+    return;
+  }
+  size_t total = 0;
+  if (!ms_size_add(a->len, b->len, &total)) {
+    bytes_overflow_fault();
+  }
+  const bool inside = a->cap != 0 && b->ptr >= a->ptr && b->ptr < a->ptr + a->cap;
+  MsBytes held = {0};
+  const MsBytes *piece = b;
+  if (inside) {
+    held = ms_bytes_from_span(ms_bytes_span(b));
+    piece = &held;
+  }
+  __builtin_memcpy(ms_list_extend_grow(a, 1, piece->len), piece->ptr, piece->len);
+  if (inside) {
+    ms_bytes_free(&held);
+  }
+  *out = *a;
 }
 
 /* Pushes a fresh copy of `part` onto `parts`, a list of Bytes. */

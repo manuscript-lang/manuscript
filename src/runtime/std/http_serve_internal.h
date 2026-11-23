@@ -3,6 +3,7 @@
 #ifndef MS_RUNTIME_STD_HTTP_SERVE_INTERNAL_H
 #define MS_RUNTIME_STD_HTTP_SERVE_INTERNAL_H
 
+#include "base/strbuild.h"
 #include "runtime/std/h2.h"
 #include "runtime/std/http_serve.h"
 
@@ -21,6 +22,7 @@ struct MsServeConn {
   bool idle; /* between requests: closing it loses nothing */
   bool eof;
   bool h2;
+  MsStrBuild head; /* the response head and first body bytes of the exchange in flight; its capacity lasts the connection */
   MsTaskHandle task;
   size_t listed_at;  /* its place in the idle list while it waits for a request (http_serve_steal.c) */
   bool listed;
@@ -117,10 +119,8 @@ bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, 
 MsServeIdle *ms_serve_idle_open(MsServeWorker *worker);
 /* Unregisters and releases the list; takers that still hold it find no worker. */
 void ms_serve_idle_close(MsServeIdle *idle);
-#ifdef MS_STATS
-/* The counting runtime: frees the registry table once no list is open. */
+/* Frees the registry table once no list is open (a process that balances its books at exit). */
 void ms_serve_idle_release_registry(void);
-#endif
 /* The connection waits for the first byte of a request: another thread may take it. */
 void ms_serve_idle_list(MsServeConn *conn);
 /* The wait ended. Whether another thread took the connection meanwhile (then it is theirs and this task ends

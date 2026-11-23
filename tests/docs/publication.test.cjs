@@ -125,13 +125,6 @@ test('rendered API signatures match source pages without synthetic contracts', (
   }
 });
 
-test('legacy method fragments remain beside the public method headings', () => {
-  const page = fs.readFileSync(path.join(book, 'standard-library/reference/concurrency/promise/index.html'), 'utf8');
-  for (const [legacy, current] of [['promisepromisemethodstwait', 'promisewait'], ['cancelcancelmethodscancel', 'cancelcancel'], ['signalsignalmethodscancelled', 'signalcancelled']]) {
-    assert.ok(new RegExp(`<span id=["']?${legacy}["']?[^>]*></span>\\s*<h3 id=["']?${current}`).test(page), `${legacy} must target ${current}`);
-  }
-});
-
 test('Promise and stream guides teach separate topics', () => {
   const read = topic => fs.readFileSync(path.join(book, 'core-language/concurrency', topic, 'index.html'), 'utf8');
   const promises = read('promises');

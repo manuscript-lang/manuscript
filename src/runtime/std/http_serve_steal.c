@@ -10,6 +10,7 @@
 
 #include "base/alloc.h"
 #include "runtime/core/isolate.h"
+#include "runtime/core/release.h"
 #include "runtime/core/watch.h"
 #include "runtime/std/http_serve_internal.h"
 
@@ -226,6 +227,7 @@ MsServeIdle *ms_serve_idle_open(MsServeWorker *worker) {
   idle->shared = worker->shared;
   idle->isolate = isolate;
   idle->worker = worker;
+  ms_release_at_exit(ms_serve_idle_release_registry);
   registry_lock();
   if (registry.count == registry.capacity) {
     registry.capacity = registry.capacity == 0 ? 8 : registry.capacity * 2;
@@ -236,7 +238,6 @@ MsServeIdle *ms_serve_idle_open(MsServeWorker *worker) {
   return idle;
 }
 
-#ifdef MS_STATS
 void ms_serve_idle_release_registry(void) {
   registry_lock();
   if (registry.count == 0) {
@@ -246,7 +247,6 @@ void ms_serve_idle_release_registry(void) {
   }
   registry_unlock();
 }
-#endif
 
 void ms_serve_idle_close(MsServeIdle *idle) {
   registry_lock();

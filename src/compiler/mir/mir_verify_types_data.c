@@ -340,6 +340,12 @@ static const char *mvt_iface_view(const MvtCx *c) {
           "iface.view takes an interface value and yields the same type");
 }
 
+static const char *mvt_iface_own(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  return mvt_want(mvt_is_iface(c, mvt_t(c, 0)) && mvt_res_is(c, mvt_t(c, 0)),
+          "iface.own takes an interface value and yields the same type");
+}
+
 static const char *mvt_iface_is(const MvtCx *c) {
   MVT_TRY(mvt_arity(c, 1));
   if (c->in->imm.tag != MI_VTABLE) {
@@ -386,6 +392,6 @@ const MvtRule mvt_rules_data[MOP_COUNT] = {
   [MOP_StrAsciiLen] = mvt_str_ascii_len, [MOP_StrEqLit] = mvt_str_eq_lit, [MOP_StrBytes] = mvt_str_bytes,
   [MOP_BytesPush] = mvt_bytes_push, [MOP_ClosureNew] = mvt_closure_new, [MOP_ClosureCap] = mvt_closure_cap,
   [MOP_ClosureCapAddr] = mvt_closure_cap_addr, [MOP_IfaceNew] = mvt_iface_wrap,
-  [MOP_IfaceBorrow] = mvt_iface_wrap, [MOP_IfaceView] = mvt_iface_view, [MOP_IfaceIs] = mvt_iface_is,
+  [MOP_IfaceBorrow] = mvt_iface_wrap, [MOP_IfaceView] = mvt_iface_view, [MOP_IfaceOwn] = mvt_iface_own, [MOP_IfaceIs] = mvt_iface_is,
   [MOP_IfaceTag] = mvt_iface_tag, [MOP_IfaceDestroy] = mvt_iface_destroy, [MOP_IfaceData] = mvt_iface_data,
 };

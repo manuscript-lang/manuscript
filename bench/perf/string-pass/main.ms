@@ -1,7 +1,4 @@
-import (
-	StringBuilder from "@std/string_builder.ms",
-	Instant, monotonic from "@std/time.ms",
-)
+import Instant, monotonic from "@std/time.ms"
 
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
@@ -138,15 +135,15 @@ fn main() Void:
 	report("interp_strings", t, s)
 	t = monotonic()
 
-	var sb = StringBuilder()
+	var sb = ""
 
 	for i in 0..n:
-		sb.append(words[i])
-		sb.append(",")
-		sb.append(i.to_string())
-		sb.append("\n")
+		sb += words[i]
+		sb += ","
+		sb += i.to_string()
+		sb += "\n"
 
-	report("builder_mixed", t, sb.build().length())
+	report("builder_mixed", t, sb.length())
 	t = monotonic()
 
 	var acc = ""

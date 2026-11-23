@@ -12,14 +12,14 @@ ms_library(ms_sys runtime/sys
 
 ms_library(ms_io runtime/io
   SOURCES
-    ring.c reactor.c refused.c pool.c stdout.c stop.c ${MS_OS_DIR}/platform.c
+    ring.c edge.c reactor.c refused.c pool.c stdout.c stop.c ${MS_OS_DIR}/platform.c
   LINK ms_abi ms_base ms_sys uv)
 
 ms_library(ms_core runtime/core
   SOURCES
     alloc.c stats.c context.c stack.c timers.c queue.c frames.c record.c isolate.c watch.c unwind.c fault.c sched.c
     segment.c park.c token.c task.c eq.c fault_kept.c fault_abi.c task_abi.c obj.c promise.c promise_end.c
-    promise_wait.c promise_abi.c promise_remote.c group.c pipe.c cancel.c worker.c drop_queue.c
+    promise_wait.c promise_abi.c promise_remote.c group.c pipe.c cancel.c worker.c drop_queue.c release.c
   LINK ms_sys ms_base mimalloc)
 
 # Value natives of the runtime core: strings, bytes, lists, maps, numbers and text formatting.
@@ -104,7 +104,7 @@ ms_library(ms_std_path runtime/std
 ms_library(ms_std_bignum runtime/std
   SOURCES
     bignum.c bignum_ntt.c bignum_text.c bigint.c decimal.c decimal_text.c
-  LINK ms_base ms_values openssl_crypto m)
+  LINK ms_base ms_values ms_std_text openssl_crypto m)
 
 # @std/os/system and the process environment: host names, users, CPUs, memory, priorities and network interfaces, one libuv call each (no event loop).
 ms_library(ms_std_system runtime/std
@@ -170,6 +170,10 @@ else()
 endif()
 ms_executable(shape_unit runtime/std SOURCES shape_unit.c LINK ${shape_libs} m)
 add_test(NAME std_shape COMMAND shape_unit)
+
+# The public suffix list is in the binary and libcurl uses it (cookies for `co.uk` are refused).
+ms_executable(http_psl_unit runtime/std SOURCES http_psl_unit.c LINK curl psl_static zlib nghttp2 openssl_ssl openssl_crypto)
+add_test(NAME std_psl COMMAND http_psl_unit)
 
 # Everything a program links, in one name.
 add_library(ms_runtime INTERFACE)

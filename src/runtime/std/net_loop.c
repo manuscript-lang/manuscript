@@ -4,6 +4,7 @@
 #include "runtime/std/net_loop.h"
 
 #include "base/alloc.h"
+#include "runtime/core/release.h"
 #include "runtime/core/task.h"
 
 static struct {
@@ -80,7 +81,11 @@ static void run_loop(void *argument) {
   (void)uv_run(&net.loop, UV_RUN_DEFAULT);
 }
 
+static atomic_bool loop_started;
+
 static void start_loop(void) {
+  atomic_store(&loop_started, true);
+  ms_release_at_exit(ms_net_release_all);
   (void)uv_loop_init(&net.loop);
   (void)uv_mutex_init(&net.lock);
   (void)uv_async_init(&net.loop, &net.wake, drain);
@@ -141,3 +146,23 @@ MsNetWait ms_net_run(MsNetOp *op, int64_t timeout_ns) {
 }
 
 int64_t ms_net_timeout(uint8_t has_timeout, int64_t timeout) { return has_timeout != 0 && timeout >= 0 ? timeout : -1; }
+
+/* On the loop thread: the last operation. It ends this thread's scheduler (made when an operation freed a token) and
+ * the loop, so the thread can be joined. */
+static void shutdown_start(MsNetOp *op) {
+  ms_net_op_done(op, 0);
+  ms_sched_teardown();
+  uv_close((uv_handle_t *)&net.wake, NULL);
+  uv_stop(&net.loop);
+}
+
+void ms_net_release_all(void) {
+  if (!atomic_exchange(&loop_started, false)) {
+    return;
+  }
+  ms_net_post(ms_net_op_new(sizeof(MsNetOp), shutdown_start, NULL, NULL));
+  (void)uv_thread_join(&net.thread);
+  (void)uv_run(&net.loop, UV_RUN_NOWAIT); /* the closed handle's callback */
+  (void)uv_loop_close(&net.loop);
+  uv_mutex_destroy(&net.lock);
+}

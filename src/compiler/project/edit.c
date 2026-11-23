@@ -4,6 +4,7 @@
 #include "compiler/project/edit.h"
 
 #include "base/strbuild.h"
+#include "base/message.h"
 #include "compiler/project/manifest_internal.h"
 
 /* The text with LF line endings, split into lines. */
@@ -49,8 +50,7 @@ static MsSpan normalized(MsArena *arena, MsSpan text, bool *crlf) {
     }
     ms_strbuild_append_byte(&out, text.ptr[i]);
   }
-  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan copy = ms_message_take_builder(arena, &out);
   return copy;
 }
 
@@ -82,8 +82,7 @@ static MsSpan restored(MsArena *arena, const MsStrBuild *edited, bool crlf) {
     }
     ms_strbuild_append_byte(&out, text.ptr[i]);
   }
-  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan copy = ms_message_take_builder(arena, &out);
   return copy;
 }
 
@@ -222,8 +221,7 @@ static MsSpan entry_text(MsArena *arena, MsSpan name, MsSpan value) {
   ms_strbuild_append_text(&line, " = ");
   ms_strbuild_append(&line, value);
   ms_strbuild_append_byte(&line, '\n');
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&line));
-  ms_strbuild_free(&line);
+  const MsSpan text = ms_message_take_builder(arena, &line);
   return text;
 }
 
@@ -238,8 +236,7 @@ static MsSpan error_text(MsArena *arena, const char *format, MsSpan name) {
     }
     ms_strbuild_append_byte(&text, (uint8_t)*at++);
   }
-  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&text));
-  ms_strbuild_free(&text);
+  const MsSpan copy = ms_message_take_builder(arena, &text);
   return copy;
 }
 
@@ -281,8 +278,7 @@ static MsSpan dependency_value(MsArena *arena, const MsDependencyEdit *dependenc
   ms_strbuild_printf(&value, ", %s = ", kind_key(dependency->kind));
   append_quoted(&value, dependency->pin);
   ms_strbuild_append_text(&value, " }");
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&value));
-  ms_strbuild_free(&value);
+  const MsSpan text = ms_message_take_builder(arena, &value);
   return text;
 }
 

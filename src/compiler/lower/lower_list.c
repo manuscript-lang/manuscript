@@ -94,7 +94,7 @@ MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty) {
   const MirTy elem_ty = list->elem;
   const MirImm set_imm = {.tag = MI_TY, .a = ty};
   const MirImm elem_imm = {.tag = MI_TY, .a = elem_ty};
-  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
+  const MirValue empty = fn_empty_map(fn, ty);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirValue set_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, set_imm, MIR_PTR);
   const MirValue created[2] = {set_slot, empty};
@@ -143,7 +143,7 @@ bool fn_list_group_by(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *ou
   const MirImm map_imm = {.tag = MI_TY, .a = ret};
   const MirImm key_imm = {.tag = MI_TY, .a = key_ty};
   const MirImm group_imm = {.tag = MI_TY, .a = group_ty};
-  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ret);
+  const MirValue empty = fn_empty_map(fn, ret);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirValue map_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, map_imm, MIR_PTR);
   const MirValue created[2] = {map_slot, empty};
@@ -232,7 +232,7 @@ bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue 
   const MirImm map_imm = {.tag = MI_TY, .a = ret};
   const MirImm key_imm = {.tag = MI_TY, .a = key_ty};
   const MirImm value_imm = {.tag = MI_TY, .a = value_ty};
-  const MirValue empty = fn_runtime_call(fn, mir_name(module, ms_span_of_text("msrt_map_new")), NULL, 0, ret);
+  const MirValue empty = fn_empty_map(fn, ret);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
   const MirValue map_slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, map_imm, MIR_PTR);
   const MirValue created[2] = {map_slot, empty};
@@ -273,4 +273,38 @@ bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue 
   mir_b_switch_to(&fn->b, exit);
   *out = fn_emit(fn, MOP_Take, &map_slot, 1, map_imm, ret);
   return true;
+}
+
+MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
+  MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (fn->hint != MIR_VOID && (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2)) {
+    ty = fn->hint; /* the checker left the literal's type open: the parameter it fills gives it */
+    data = mir_ty_data(fn->cx->module, ty);
+  }
+  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
+    (void)fn_fail(fn, "a map literal is not typed as a map");
+    return MIR_NONE;
+  }
+  const MirValue empty = fn_empty_map(fn, ty);
+  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
+  const MirImm of_map = {.tag = MI_TY, .a = ty};
+  const MirValue map = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_map, MIR_PTR);
+  const MirValue created[2] = {map, empty};
+  (void)mir_b_emit(&fn->b, MOP_Put, created, 2, (MirImm){0}, MIR_NONE);
+  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
+  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
+  const MsName add = mir_name(fn->cx->module, ms_span_of_text("msrt_map_add"));
+  for (uint32_t at = 0; at < expr->u.map.len; at++) {
+    const MirValue key = fn_operand_slot(fn, expr->u.map.ptr[at].key, false);
+    const MirValue value = key == MIR_NONE ? MIR_NONE : fn_operand_slot(fn, expr->u.map.ptr[at].value, false);
+    if (value == MIR_NONE) {
+      return MIR_NONE;
+    }
+    const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
+    const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
+    const MirValue operands[5] = {map, key_desc, value_desc, key, value};
+    (void)fn_runtime_call(fn, add, operands, 5, MIR_VOID);
+  }
+  return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
 }

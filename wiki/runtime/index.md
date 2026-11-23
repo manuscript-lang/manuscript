@@ -4,6 +4,7 @@
 
 Cancellation, cleanup, resources, networking, promises, test helpers.
 
+- [The process entry names no optional module](the-process-entry-names-no-optional-module.md): hello world linked curl, TLS and BigInt (14.4 MB); modules register their own release and hooks on first use (2.9 MB).
 - [Timed waits are a deadline with a meaning or an event, never a poll](timed-waits-are-deadlines-with-a-meaning-or-an-event.md): a repo-check guard counts sleeps and timed waits per file; done and still-polling lists with the event to use.
 - [The stealing watcher looks on a clock, by decision](the-stealing-watcher-looks-on-a-clock-by-decision.md): why kernel timers lost (numbers), what the watcher costs idle and busy, what would reopen it.
 - [The terminal keeps Rust to raw mode, text reads and writes; decoding lives in Manuscript](the-terminal-is-one-rust-core-with-per-os-backends-and-manuscript-escape-sequences.md): decoder, resize, escape sequences in `cli/terminal.ms`; the module sits in an import cycle, so no string or collections imports.

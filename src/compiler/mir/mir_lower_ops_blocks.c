@@ -2,6 +2,8 @@
  * string literal compares, block copies, record field sets, conditional drops, cleanups and fault messages. */
 #include "compiler/mir/mir_lower_ops_internal.h"
 
+#include "base/alloc.h"
+
 /* Appends an instruction with a fresh result of `ty` (none when MIR_NONE) to `out`. */
 static MirValue add(LowerCx *cx, MirFunc *func, MirInstList *out, MirOp op, const MirValue *args, uint32_t count,
                     MirImm imm, MirTy ty, MirLoc loc) {
@@ -86,6 +88,55 @@ void mirlo_str_eq_lits(LowerCx *cx, MirFunc *func) {
     } else {
       mir_inst_list_free(&out);
     }
+  }
+}
+
+/* ---- string drops ---- */
+
+/* A string owns heap memory only when its tag is zero, and most strings built by a program are inline or
+ * borrowed, so `drop s` becomes `drop.if owns s`: the runtime is called only for the strings that need it. The
+ * tag word is read through one slot made in the entry block, which the back end keeps in registers. */
+void mirlo_str_drops(LowerCx *cx, MirFunc *func) {
+  MirValue slot = MIR_NONE;
+  for (size_t bi = 0; bi < func->blocks.len; bi++) {
+    MirInstList out = {0};
+    bool changed = false;
+    for (size_t ii = 0; ii < func->blocks.ptr[bi].insts.len; ii++) {
+      const MirInst held = func->blocks.ptr[bi].insts.ptr[ii];
+      if (held.op != MOP_Drop || mir_value_ty(func, held.args[0]) != MIR_STR) {
+        mir_inst_list_push(&out, held);
+        continue;
+      }
+      changed = true;
+      if (slot == MIR_NONE) {
+        slot = mir_new_value(func, MIR_PTR);
+      }
+      const MirValue value = held.args[0];
+      const MirValue stored[2] = {slot, value};
+      (void)add(cx, func, &out, MOP_Store, stored, 2, mir_imm_none(), MIR_NONE, held.loc);
+      const MirValue eight = add(cx, func, &out, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 8}, MIR_INT, held.loc);
+      const MirValue pair[2] = {slot, eight};
+      const MirValue tag_at = add(cx, func, &out, MOP_PtrAdd, pair, 2, mir_imm_none(), MIR_PTR, held.loc);
+      const MirValue word = add(cx, func, &out, MOP_Load, &tag_at, 1, (MirImm){.tag = MI_TY, .a = MIR_INT}, MIR_INT, held.loc);
+      const MirValue shift = add(cx, func, &out, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 62}, MIR_INT, held.loc);
+      const MirValue shifted_args[2] = {word, shift};
+      const MirValue tag = add(cx, func, &out, MOP_Ushr, shifted_args, 2, mir_imm_none(), MIR_INT, held.loc);
+      const MirValue zero = add(cx, func, &out, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_INT, held.loc);
+      const MirValue compared[2] = {tag, zero};
+      const MirValue owns = add(cx, func, &out, MOP_ICmp, compared, 2, mir_imm_cc(MCC_EQ), MIR_BOOL, held.loc);
+      const MirValue conditional[2] = {owns, value};
+      (void)add(cx, func, &out, MOP_DropIf, conditional, 2, mir_imm_none(), MIR_NONE, held.loc);
+    }
+    if (changed) {
+      mir_block_set_insts(&func->blocks.ptr[bi], &out);
+    } else {
+      mir_inst_list_free(&out);
+    }
+  }
+  if (slot != MIR_NONE) {
+    const MirInst made = mir_inst(MOP_Slot, (MirImm){.tag = MI_TY, .a = MIR_STR}, slot, func->loc,
+                                  mir_args_copy(cx->module, NULL, 0), 0);
+    mir_block_insert(&func->blocks.ptr[0], mir_entry_insert_at(func), &made);
   }
 }
 
@@ -242,11 +293,28 @@ static uint32_t cleanup_push_extern(LowerCx *cx) {
   return push;
 }
 
-/* `cleanup.push v` becomes a spill of `v` to a frame slot and `msrt_cleanup_push(thunk, slot)`. */
-static void lower_cleanup_push(LowerCx *cx, MirFunc *func, MirInstList *out, const MirInst *held) {
-  const MirTy ty = mir_value_ty(func, held->args[0]);
-  const MirValue slot = add(cx, func, out, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR, held->loc);
-  const MirValue stored[2] = {slot, held->args[0]};
+/* The slots `cleanup.push` spills owners to: one `slot` per owner value at the top of the entry block, whichever
+ * block pushes it. An owner is registered once at a time, so the pushes of one value never overlap and share the
+ * slot; a slot per push gave a loop of fault-capable calls over a 520-byte record 37 frame slots of that size
+ * (yaml `flow_value`). */
+typedef struct EntrySlots {
+  MirValue *of; /* by owner value: its slot, or MIR_NONE */
+  uint32_t n;
+  MirInstList insts; /* the `slot` instructions */
+} EntrySlots;
+
+/* `cleanup.push v` becomes a spill of `v` to the owner's slot and `msrt_cleanup_push(thunk, slot)`. */
+static void lower_cleanup_push(LowerCx *cx, MirFunc *func, MirInstList *out, const MirInst *held, EntrySlots *slots) {
+  const MirValue owner = held->args[0];
+  MirValue slot = owner < slots->n ? slots->of[owner] : MIR_NONE;
+  if (slot == MIR_NONE) {
+    const MirImm type = {.tag = MI_TY, .a = mir_value_ty(func, owner)};
+    slot = add(cx, func, &slots->insts, MOP_Slot, NULL, 0, type, MIR_PTR, held->loc);
+    if (owner < slots->n) {
+      slots->of[owner] = slot;
+    }
+  }
+  const MirValue stored[2] = {slot, owner};
   (void)add(cx, func, out, MOP_Store, stored, 2, mir_imm_none(), MIR_NONE, held->loc);
   const MirImm thunk = {.tag = MI_FUNC, .a = cx->thunks.ptr[held->imm.a]};
   const MirValue addr = add(cx, func, out, MOP_FuncAddr, NULL, 0, thunk, MIR_PTR, held->loc);
@@ -255,8 +323,33 @@ static void lower_cleanup_push(LowerCx *cx, MirFunc *func, MirInstList *out, con
                                    mir_args_copy(cx->module, pushed, 2), 2));
 }
 
+/* Puts the entry slots after the recursion check, which stays first in its block. */
+static void place_entry_slots(MirFunc *func, const EntrySlots *slots) {
+  if (slots->insts.len == 0) {
+    return;
+  }
+  MirBlockData *entry = &func->blocks.ptr[0];
+  MirInstList out = {0};
+  size_t at = 0;
+  if (entry->insts.len > 0 && entry->insts.ptr[0].op == MOP_DepthEnter) {
+    mir_inst_list_push(&out, entry->insts.ptr[at++]);
+  }
+  for (size_t i = 0; i < slots->insts.len; i++) {
+    mir_inst_list_push(&out, slots->insts.ptr[i]);
+  }
+  for (; at < entry->insts.len; at++) {
+    mir_inst_list_push(&out, entry->insts.ptr[at]);
+  }
+  mir_block_set_insts(entry, &out);
+}
+
 /* `cleanup.run h` becomes `msrt_cleanup_run(h)`; `cleanup.push` is expanded. */
 void mirlo_expand_cleanups(LowerCx *cx, MirFunc *func) {
+  EntrySlots slots = {.n = (uint32_t)func->values.len};
+  slots.of = ms_realloc(NULL, ((size_t)slots.n + 1) * sizeof(MirValue));
+  for (uint32_t i = 0; i < slots.n; i++) {
+    slots.of[i] = MIR_NONE;
+  }
   for (size_t bi = 0; bi < func->blocks.len; bi++) {
     MirInstList out = {0};
     bool changed = false;
@@ -269,7 +362,7 @@ void mirlo_expand_cleanups(LowerCx *cx, MirFunc *func) {
       }
       changed = changed || held.op == MOP_CleanupPush;
       if (held.op == MOP_CleanupPush) {
-        lower_cleanup_push(cx, func, &out, &held);
+        lower_cleanup_push(cx, func, &out, &held, &slots);
       } else {
         mir_inst_list_push(&out, held);
       }
@@ -280,6 +373,9 @@ void mirlo_expand_cleanups(LowerCx *cx, MirFunc *func) {
       mir_inst_list_free(&out);
     }
   }
+  place_entry_slots(func, &slots);
+  mir_inst_list_free(&slots.insts);
+  ms_free(slots.of);
 }
 
 /* ---- fault messages ---- */

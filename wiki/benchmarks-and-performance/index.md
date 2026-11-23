@@ -5,6 +5,8 @@
 Perf benchmarks, profiling.
 
 - [Binary search moves one select per step, and a captured comparator still gets the generated sort](binary-search-and-captured-comparators-must-not-branch-or-call.md): `binary_search` 270 to 31 ms per 2M searches (Rust 90); sorts by a capturing comparator 148 to 35 ms.
+- [A lone task runs file calls in place](a-lone-task-runs-file-calls-in-place.md): `treegrep` over 2000 small files 100 to 40 ms; the pool hand-off cost about 50 us per read.
+- [Eager arena commit made a program's first large allocations slow](eager-arena-commit-made-the-first-large-allocations-slow.md): a first run of a map block took 1.8 ms and the second 0.22 ms; `map_put_get_8k` 92 to 33 ns per op (Rust 33).
 - [A bound on `n - 1` also bounds `n`](a-bound-on-n-minus-one-also-bounds-n.md): range analysis narrows the operand of a checked constant add or subtract; a stencil's index wraps vanish (Cranelift 1,949M to 1,412M instructions, C 438M).
 - [`ms run` builds Debug: time `ms build` binaries](ms-run-builds-debug-so-time-ms-build.md): an HTML parse read 2,000 ms under `ms run` and 150 ms built.
 - [A lone file read runs where it is waited on](a-lone-file-read-runs-where-it-is-waited-on.md): `read_file` defers to its waiter when nothing else runs and opens with one `fstat` (3.7 to 2.2 us per small read; Rust 1.8).
@@ -21,6 +23,9 @@ Perf benchmarks, profiling.
 
 - [`var` record parameters stay in the caller's slot](var-record-parameters-stay-in-the-callers-slot.md): wide-record methods no longer move every field out and back per call; `Bytes` reads inline (`Lines.next` 147 to 75 instructions per line).
 - [Constant list tables iterated in a loop are built once](constant-list-tables-in-loops-are-built-once.md): `for d in [[1, 0], [-1, 0], ...]` inside a loop no longer allocates per pass (248 to 20 ms for 5M passes).
+- [A list built by one loop and read once by the next never exists](a-list-built-and-read-once-never-exists.md): the `fuse` MIR pass runs the reader's body at the builder's push (closures_20M 46 to 23 ms).
+- [Two arms that run the same operations are one block with selects](arms-that-run-the-same-operations-are-one-block-with-selects.md): the `twins` MIR pass turns data-dependent arms with checked stores into selects (merge sort 93 to 66 ms).
+- [A predecessor that knows a join's branch skips the join](a-predecessor-that-knows-a-join-branch-skips-the-join.md): the late `thread` pass copies a pure join and the chosen successor into the predecessor, so a Result built on each arm and tested after the join folds away.
 - [`map`/`filter` chains over numbers run as one loop](map-filter-chains-over-numbers-run-as-one-loop.md): filter/map/sum over reading lambdas build only the final result (163 to 78 ms on 2M elements).
 - [`for x in xs.filter(f)` walks `xs` in place](filtered-for-loops-walk-the-list-in-place.md): no filtered list or deep copies when the lambdas cannot fault (c13 392M to 350M instructions).
 - [`for e in list.entries()` walks the list in place](list-entries-loops-walk-the-list.md): no entry records when `e` is only read as `.index`/`.value` (28 to 3.2 ms on 2M elements).

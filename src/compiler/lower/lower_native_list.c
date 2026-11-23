@@ -5,11 +5,7 @@
 #include "compiler/mir/mir_analysis.h"
 
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
-  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
-  const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
-  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, mir_b_iconst(&fn->b, 0));
-  const MirValue at = mir_b_select(&fn->b, negative, from_end, index);
-  const MirValue args[2] = {list, at};
+  const MirValue args[2] = {list, index}; /* the op counts a negative index from the end */
   return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
 }
 
@@ -49,11 +45,15 @@ static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue r
   return true;
 }
 
-/* The address of the list that `place` names when it is an element of a list lying in a variable, field or element
- * (`rows[i].append(x)`), else MIR_NONE. */
+/* The address of the list that `place` names when it is a field of a record that lies in its cell (`context.rows.append(x)`)
+ * or an element of a list lying in a variable, field or element (`rows[i].append(x)`), else MIR_NONE. */
 static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
   MsExpr *container = NULL;
   MsExpr *key = NULL;
+  MirValue field = MIR_NONE;
+  if (place != NULL && place->kind == MS_E_MEMBER && fn_field_address(fn, place, &field)) {
+    return field;
+  }
   if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
     return MIR_NONE;
   }
@@ -287,4 +287,52 @@ bool fn_native_closing_take(LowerFn *fn, const MsExpr *place, MirValue slot, MsT
   }
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
   return true;
+}
+
+/* `fn(comparator, ptr, ptr) -> int` for the runtime sort: loads the two element slots and calls the source comparator
+ * on them. `sort.cmp` is what `opt_inline_specialize_sort_thunks` and `opt_sortgen` recognise; a comparator the module
+ * knows is called directly there. MIR_NONE when the build fails. */
+uint32_t fn_sort_thunk(LowerFn *fn, MirTy elem, MirTy closure) {
+  const MirParam params[3] = {{closure, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  MirBuilder b;
+  mir_b_init(&b, fn->cx->module, mir_name(fn->cx->module, ms_span_of_text("sort.cmp")), params, 3, MIR_INT);
+  mir_b_func(&b)->sort = MSORT_GENERIC;
+  MirValue args[3];
+  mir_b_params(&b, args, 3);
+  const MirImm of_elem = {.tag = MI_TY, .a = elem};
+  const MirValue call[3] = {args[0], mir_b_emit(&b, MOP_Load, &args[1], 1, of_elem, elem),
+                            mir_b_emit(&b, MOP_Load, &args[2], 1, of_elem, elem)};
+  mir_b_ret(&b, mir_b_emit(&b, MOP_CallInd, call, 3, (MirImm){0}, MIR_INT));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
+/* `fn(change, ptr) -> void` for the runtime `Map.update`: reads the value in the slot, calls the source `change` on it,
+ * and puts the result in its place (dropping the old value first). `change` runs while the slot still holds the old
+ * value, so a fault in it leaves the map whole. Marked like a sort comparator thunk so a known `change` is called
+ * directly. MIR_NONE when the build fails. */
+uint32_t fn_update_thunk(LowerFn *fn, MirTy value, MirTy closure) {
+  const MirParam params[2] = {{closure, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  MirBuilder b;
+  mir_b_init(&b, fn->cx->module, mir_name(fn->cx->module, ms_span_of_text("sort.cmp.update")), params, 2, MIR_VOID);
+  mir_b_func(&b)->sort = MSORT_GENERIC;
+  MirValue args[2];
+  mir_b_params(&b, args, 2);
+  const MirImm of_value = {.tag = MI_TY, .a = value};
+  const MirValue old = mir_b_emit(&b, MOP_Load, &args[1], 1, of_value, value);
+  const MirValue call[2] = {args[0], old};
+  const MirValue next = mir_b_emit(&b, MOP_CallInd, call, 2, (MirImm){0}, value);
+  const bool owns = mir_needs_drop(fn->cx->module, value);
+  if (owns) { /* the old value is released where it lies: it is borrowed here, not owned */
+    MirParam drop_params[2] = {{MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+    const MirExtern drop = {.name = mir_name(fn->cx->module, ms_span_of_text("msrt_slot_drop")), .params = drop_params,
+                            .nparams = 2, .ret = MIR_VOID};
+    const MirValue release[2] = {mir_b_emit(&b, MOP_TypeDesc, NULL, 0, of_value, MIR_PTR), args[1]};
+    (void)mir_b_call_rt(&b, mir_extern_intern(fn->cx->module, &drop), release, 2);
+  }
+  const MirValue stored[2] = {args[1], next};
+  (void)mir_b_emit(&b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  mir_b_ret(&b, mir_b_emit(&b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }

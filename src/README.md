@@ -23,6 +23,7 @@ Build output goes to `.artifacts/build/<preset>`. Generated files never go into 
 | `abi/` | L1 | Layouts, symbol names, fault kinds. Read by compiler and runtime. |
 | `runtime/` | L1 | `sys`, `core`, `io`, `net`, `std`. |
 | `compiler/` | L2 to L4 | `syntax project check own lower mir opt emit link`. Depends on `base` and `abi` only. |
+| `lsp/` | L5 | The language server behind `ms lsp`. |
 | `cli/` | L5 | The thin `ms` entry point. |
 | `lint/` | L0 | `ms_lint`. |
 | `third_party/` | L1 | Vendored libraries and `c-libs.lock`. |
