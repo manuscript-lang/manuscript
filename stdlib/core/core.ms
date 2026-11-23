@@ -274,7 +274,7 @@ fn move Optional[T].ok_or[E](move cause: E) move T!E:
 
 // Returns `ok` with the payload; for `none`, calls `create` once and returns its
 // error.
-fn Optional[T].ok_or_else[E](create: fn() E) T!E:
+fn move Optional[T].ok_or_else[E](create: fn() E) T!E:
 	if self.is_none(): return error(create())
 	return ok(self.get())
 
