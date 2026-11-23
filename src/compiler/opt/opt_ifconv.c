@@ -249,6 +249,18 @@ static void convert_diamond(MirModule *m, MirFunc *f, MirBlock head, MirBlock j,
   term->b = (MirTarget){0, NULL, 0};
 }
 
+static uint32_t arm_len(const MirFunc *f, const IfArm *arm) {
+  return arm->block == MIR_NONE ? 0u : (uint32_t)f->blocks.ptr[arm->block].insts.len;
+}
+
+static uint32_t arm_checks(const MirFunc *f, const IfArm *arm) {
+  uint32_t n = 0;
+  for (uint32_t i = 0; i < arm_len(f, arm); i++) {
+    n += is_checked_add_sub(&f->blocks.ptr[arm->block].insts.ptr[i]) ? 1u : 0u;
+  }
+  return n;
+}
+
 /* Tries join `j` for the branch at the end of `a`; converts it when both arms fit. */
 static bool try_join(MirModule *m, MirFunc *f, MirBlock a, MirBlock j, uint32_t *edges,
           const MirBits *positive) {
@@ -261,6 +273,12 @@ static bool try_join(MirModule *m, MirFunc *f, MirBlock a, MirBlock j, uint32_t 
   }
   if (jt != j || je != j || (ta.block == MIR_NONE && ea.block == MIR_NONE) ||
     join_only_branches_on_flag(f, j)) {
+    return false;
+  }
+  /* A branch around one arm usually guards a rare case that predicts well, so predicated checks (a flag, a
+   * select and a guard, executed every time) cost more than they save. A choice between two computed arms
+   * is the data-dependent one. */
+  if ((arm_checks(f, &ta) > 0 || arm_checks(f, &ea) > 0) && (arm_len(f, &ta) == 0 || arm_len(f, &ea) == 0)) {
     return false;
   }
   const uint32_t nparams = (uint32_t)f->blocks.ptr[j].params.len;

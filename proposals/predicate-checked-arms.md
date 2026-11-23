@@ -33,4 +33,6 @@ A stable quicksort written in Manuscript (swaps only, ping-pong partition) took 
 
 ## Measurement
 
-Instruction counts (`tools/perf-counts.ms`, base against this change): `guard-strcmp` +12.2% (an `n += 1` / `n += 2` diamond with a period-7 condition, already well predicted; wall time unchanged within noise), `guard-image` +1.4%, `guard-findshort` -2.3%, every other count within 0.1%. The nightly `perf-counts` job may report `guard-strcmp` over its 3% bound; the committed file is not refreshed here (counts from this machine differ from it everywhere, so the refresh belongs to the nightly environment). The cost is the flag and guard that buy the removal of a mispredicting branch on random data (sort partition 98 to 80 ms at 1M records).
+Predicating every checked arm raised `guard-strcmp` by 12.2% instructions: its `n += 2` sat in a branch around one arm, well predicted, so the flag, select and guard were pure cost. Static cost cannot separate that from the sort partition (both arms compute); what does differ is shape. A branch around one arm usually guards a rare case; a choice between two computed arms is the data-dependent one. Predicated checks therefore apply only when both arms hold instructions; a triangle keeps its branch.
+
+Instruction counts (`tools/perf-counts.ms`, base against this change): `guard-image` +1.2% (inside the 3% bound), every other count within 0.05%, `guard-strcmp` unchanged. Sort partition at 1M records: 98 to about 88 ms.
