@@ -1,0 +1,8 @@
+flowchart TD
+    n69b2fb32b1511bc1["src/main.ms::main"]
+    n80724f59eef9a762["@std/core.ms::print"]
+    n69b2fb32b1511bc1 -->|function| n80724f59eef9a762
+    n0d3e1f78cb815c96["@std/os/env.ms::arguments"]
+    n69b2fb32b1511bc1 -->|function| n0d3e1f78cb815c96
+    n6704bd30a5cd8a0c["List[String].length"]
+    n69b2fb32b1511bc1 -->|operation| n6704bd30a5cd8a0c

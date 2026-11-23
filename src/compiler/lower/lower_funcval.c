@@ -48,7 +48,7 @@ MirValue fn_unlift(LowerFn *fn, MirValue opt, const MsExpr *fallback, MirTy elem
 
 /* A function value used where its type differs only in which parameters may be left out: a closure holding a copy of
  * it that wraps a supplied argument in an optional, or reads one out. */
-MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
+MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_checked) {
   Lower *cx = fn->cx;
   const MirTy from_ty = mir_b_ty(&fn->b, value);
   const MirTyData *from = mir_ty_data(cx->module, from_ty);
@@ -64,33 +64,46 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
   const LowerCapture capture = {.kind = MS_REF_LOCAL, .ty = from_ty};
   const uint32_t slot = lower_closure_func(cx, to_ty, &capture, 1);
   const MirFunc reserved = cx->module->funcs.ptr[slot];
-  MirBuilder b;
-  mir_b_init(&b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  LowerFn inner = {.cx = cx, .facts = fn->facts, .module_index = fn->module_index, .file = fn->file, .ret = reserved.ret};
+  mir_b_init(&inner.b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  inner.b.func.loc = (MirLoc){inner.file, 0, 0, 0};
+  (void)fn_scope_begin(&inner);
+  fn_init_closing(&inner);
   MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
-  mir_b_params(&b, values, reserved.nparams);
+  mir_b_params(&inner.b, values, reserved.nparams);
   MirValue *args = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
   const MirImm cap_imm = {.tag = MI_IDX, .a = 0};
-  args[0] = mir_b_emit(&b, MOP_ClosureCap, &values[0], 1, cap_imm, from_ty);
+  args[0] = mir_b_emit(&inner.b, MOP_ClosureCap, &values[0], 1, cap_imm, from_ty);
+  const MsTyTable *types = &cx->program->types;
   for (uint32_t at = 0; at < from->nargs; at++) {
     args[at + 1] = values[at + 1];
+    if (mir_owns(to->owned, at) && !mir_owns(from->owned, at) && from->args[at] == to->args[at] && to_checked != MS_TY_NONE &&
+        at < ms_ty_param_count(types, to_checked)) {
+      /* The wrapper's caller hands a resource over to a function that only borrows it: it closes after the call. */
+      const MsTy param = ms_ty_params(types, to_checked)[at].ty;
+      if (fn_temp_closes(&inner, param)) {
+        (void)fn_pending_own(&inner, param, values[at + 1]);
+      }
+    }
     if (from->args[at] == to->args[at]) {
       continue;
     }
     const MirTyData *want = mir_ty_data(cx->module, from->args[at]);
     const MirTyData *have = mir_ty_data(cx->module, to->args[at]);
     if (want->kind == MK_OPT && want->elem == to->args[at]) {
-      args[at + 1] = mir_b_emit(&b, MOP_OptSome, &values[at + 1], 1, (MirImm){0}, from->args[at]);
+      args[at + 1] = mir_b_emit(&inner.b, MOP_OptSome, &values[at + 1], 1, (MirImm){0}, from->args[at]);
     } else if (have->kind == MK_OPT && have->elem == from->args[at]) {
-      args[at + 1] = mir_b_emit(&b, MOP_OptGet, &values[at + 1], 1, (MirImm){0}, from->args[at]);
+      args[at + 1] = mir_b_emit(&inner.b, MOP_OptGet, &values[at + 1], 1, (MirImm){0}, from->args[at]);
     } else {
       (void)fn_fail(fn, "a function value of another shape cannot be adapted");
       return MIR_NONE;
     }
   }
-  const MirValue result = mir_b_emit(&b, MOP_CallInd, args, from->nargs + 1, (MirImm){0}, from->elem);
-  mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  const MirValue result = mir_b_emit(&inner.b, MOP_CallInd, args, from->nargs + 1, (MirImm){0}, from->elem);
+  fn_scope_unwind(&inner, 0);
+  mir_b_ret(&inner.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
   MirFunc built;
-  if (!mir_b_into_func(&b, &built)) {
+  if (inner.failed || !mir_b_into_func(&inner.b, &built)) {
     (void)fn_fail(fn, "a function value could not be adapted");
     return MIR_NONE;
   }

@@ -12,7 +12,10 @@ static uint32_t declaration_of(const MsCheckProgram *program, const MsCheckDiag 
       found = index + 1;
     }
   }
-  return found;
+  /* An unannotated constant takes its type from its value while the declarations are read: ahead of the bodies and of
+   * the annotated constants, which are checked against their annotation after them. */
+  const bool annotated_constant = found != 0 && tree->decls[found - 1]->kind == MS_D_CONST && tree->decls[found - 1]->u.konst.ty != NULL;
+  return annotated_constant ? found + tree->ndecls : found;
 }
 
 static bool in_body(const MsCheckDiag *diag) {
@@ -97,4 +100,20 @@ void ms_check_order_diagnostics(MsCheckProgram *program) {
     }
     start = end;
   }
+  /* A finding made twice at one place (a signature resolved by two passes) is one finding. */
+  size_t kept = 0;
+  for (size_t index = 0; index < total; index++) {
+    bool again = false;
+    for (size_t before = 0; before < kept && !again; before++) {
+      const MsCheckDiag *a = &all[before];
+      const MsCheckDiag *b = &all[index];
+      again = a->module == b->module && a->pos.offset == b->pos.offset && a->phase == b->phase &&
+              ms_span_equal(ms_string_span(&a->message), ms_string_span(&b->message));
+    }
+    if (again) {
+      continue;
+    }
+    all[kept++] = all[index];
+  }
+  program->diagnostics.len = kept;
 }

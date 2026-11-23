@@ -64,8 +64,11 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   if (declared != 0 && index + declared >= call->arg_count) {
     const MsTy param = ms_ty_subst(types, ms_ty_params(types, call->callee_ty)[index + declared - call->arg_count].ty,
                                    fn->subst.vars, fn->subst.args, fn->subst.count);
-    if ((ms_ty_is(types, param, MS_BUILTIN_Optional) && !ms_ty_is(types, *checked, MS_BUILTIN_Optional)) ||
-        ms_ty_kind(types, param) == MS_TY_CONTRACT) {
+    /* A resource handed over as an interface closes as itself: `view_as_interface` owns it for the statement. */
+    const bool viewed = ms_ty_kind(types, param) == MS_TY_CONTRACT && ms_ty_kind(types, *checked) != MS_TY_CONTRACT &&
+                        fn_temp_closes(fn, *checked);
+    if (!viewed && ((ms_ty_is(types, param, MS_BUILTIN_Optional) && !ms_ty_is(types, *checked, MS_BUILTIN_Optional)) ||
+                    ms_ty_kind(types, param) == MS_TY_CONTRACT)) {
       *checked = param;
     }
   }

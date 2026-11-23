@@ -20,7 +20,7 @@ fn relay(result: Row!Bad, var visits: List[Int]) Row!Bad:
 	return result
 
 fn tail(result: Row!Bad, var visits: List[Int]) String!Bad:
-	row := relay(result, visits)?
+	row := relay(result, visits).clone()?
 	return ok(row.name.clone())
 
 fn make(n: Int) Row:

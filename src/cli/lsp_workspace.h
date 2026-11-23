@@ -11,6 +11,9 @@
  * absolute and sorted; names that start with a dot are not entered. */
 void lsp_workspace_files(MsArena *arena, MsSpan file, MsSpanList *out);
 
+/* The nearest ancestor directory of `dir` that holds `ms.toml`, or `dir` itself. */
+MsSpan lsp_project_root(MsArena *arena, MsSpan dir);
+
 /* Writes the declarations whose name contains `query` (ignoring case), across the open documents' projects and `roots`. */
 void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t root_count, MsSpan query, MsStrBuild *out);
 

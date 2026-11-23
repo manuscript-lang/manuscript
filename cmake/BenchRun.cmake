@@ -3,12 +3,12 @@
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
-file(WRITE "${WORK}/sum_bench.ms" "import keep, measure from \"@std/test/bench.ms\"
+file(WRITE "${WORK}/sum_bench.ms" "import keep, measure, opaque from \"@std/test/bench.ms\"
 
 bench \"sum_to_1000\":
     fn work() Result[Void, Error]:
         var total = 0
-        for i in 0..1000:
+        for i in 0..opaque(1000):
             total += i
         return keep(total)
 
@@ -45,6 +45,12 @@ endif()
 expect_contains("${out}" "sum_to_1000" "json")
 expect_contains("${out}" "\"stats\"" "json")
 expect_contains("${out}" "\"median_ns\"" "json")
+# The work has to be timed: a body over constants must not be folded away by the optimizer (keep is a barrier).
+string(REGEX MATCH "\"median_ns\": *([0-9.eE+-]+)" unused "${out}")
+set(median "${CMAKE_MATCH_1}")
+if(median STREQUAL "" OR median MATCHES "^0(\\.0*)?$")
+  message(FATAL_ERROR "the bench reported a median of '${median}' ns: its work was optimized away\n${out}")
+endif()
 
 execute_process(COMMAND "${MS_C}" bench sum_bench.ms --list WORKING_DIRECTORY "${WORK}"
   RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)

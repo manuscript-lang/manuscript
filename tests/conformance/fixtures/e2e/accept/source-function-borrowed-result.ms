@@ -10,7 +10,7 @@ fn apply(f: fn(String) String, s: String) String:
 
 test "borrowed string callback":
 	s := "hello"
-	out := apply(identity, s)
+	out := apply(fn text: identity(text).clone(), s)
 	expect_equal(out, "hello")?
 
 fn generic[T](value: T) T:
@@ -20,9 +20,9 @@ fn pick(items: List[String]) String:
 	return items[0]
 
 test "generic and list-field callback results outlive arguments":
-	generic_string: fn(String) String := generic[String]
+	generic_string: fn(String) String := fn text: generic[String](text).clone()
 	first := generic_string(f"dynamic-{42}")
-	picker := pick
+	picker: fn(List[String]) String := fn items: pick(items).clone()
 	second := picker([f"dynamic-{17}"])
 	expect_equal(first, "dynamic-42")?
 	expect_equal(second, "dynamic-17")?
@@ -31,8 +31,8 @@ fn default_identity(value: String, _tag: Int = 0) String:
 	return value
 
 test "defaulted source callback preserves borrowed strings":
-	f := default_identity
-	first := f(f"default-{1}")
+	f: fn(String, Int) String := fn text, tag: default_identity(text, tag).clone()
+	first := f(f"default-{1}", 0)
 	second := f(f"explicit-{2}", 3)
 	expect_equal(first, "default-1")?
 	expect_equal(second, "explicit-2")?
@@ -41,7 +41,7 @@ fn list_identity(items: List[String]) List[String]:
 	return items
 
 test "borrowed list callback returns independent data":
-	f := list_identity
+	f: fn(List[String]) List[String] := fn items: list_identity(items).clone()
 	first := f([f"a-{1}", f"b-{2}"])
 	second := f([f"c-{3}"])
 	expect_equal(first, ["a-1", "b-2"])?

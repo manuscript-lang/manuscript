@@ -1,0 +1,8 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "fn main() Void:\n\tprint(\"hi\")\n\titems := [1, 2]\n\tprint(items.length)\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 1, "character": 2}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 1, "character": 2}}}
+{"jsonrpc": "2.0", "id": 4, "method": "manuscript/standardLibrarySource", "params": {"textDocument": {"uri": "manuscript-stdlib:///nothing.ms"}}}
+{"jsonrpc": "2.0", "id": 5, "method": "manuscript/standardLibrarySource", "params": {"textDocument": {"uri": "file:///x.ms"}}}
+{"jsonrpc": "2.0", "id": 6, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}

@@ -9,12 +9,13 @@
 typedef struct Returns {
   const MsExpr *values[16];
   uint32_t len;
+  uint32_t lambdas; /* open closures: what they return is theirs */
   bool overflow;
 } Returns;
 
 static void collect_return(void *ctx, const MsStmt *stmt) {
   Returns *returns = ctx;
-  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL) {
+  if (stmt->kind != MS_S_RETURN || stmt->u.expr == NULL || returns->lambdas != 0) {
     return;
   }
   if (returns->len == MS_COUNT_OF(returns->values)) {
@@ -22,6 +23,16 @@ static void collect_return(void *ctx, const MsStmt *stmt) {
     return;
   }
   returns->values[returns->len++] = stmt->u.expr;
+}
+
+static void enter_lambda(void *ctx, const MsExpr *expr) {
+  Returns *returns = ctx;
+  returns->lambdas += expr->kind == MS_E_LAMBDA ? 1u : 0u;
+}
+
+static void leave_lambda(void *ctx, const MsExpr *expr) {
+  Returns *returns = ctx;
+  returns->lambdas -= expr->kind == MS_E_LAMBDA ? 1u : 0u;
 }
 
 /* What a returned expression carries: the positions it borrows, or that it is something the callable owns. */
@@ -199,7 +210,9 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
   return expr->kind == MS_E_CALL ? classify_call(pass, expr) : OWNED;
 }
 
-/* What a callable's returns carry: the joined reach, the first value that borrows a parameter and the first that is new. */
+/* What a callable's returns carry: the joined reach, and the first pair of returns that hand out the same case of the
+ * result as a part of an argument and as a new value. A `Result` or an Optional keeps its cases apart, so
+ * `ok(part)` beside `error(new)` is not a mix. */
 typedef struct Reached {
   Reach all;
   const MsExpr *borrowed;
@@ -207,22 +220,53 @@ typedef struct Reached {
   bool known;
 } Reached;
 
+enum { CASE_OK = 1, CASE_ERROR = 2, CASE_ALL = 3 };
+
+static uint32_t case_of(const Pass *pass, const MsExpr *value) {
+  const MsExpr *callee = value->kind == MS_E_CALL ? value->u.call.callee : NULL;
+  if (callee == NULL || callee->kind != MS_E_NAME) {
+    return CASE_ALL;
+  }
+  const MsSpan name = ms_names_span(pass->program->names, callee->u.sym);
+  return ms_span_is_text(name, "ok") ? CASE_OK : ms_span_is_text(name, "error") ? CASE_ERROR : CASE_ALL;
+}
+
+/* The bit of every `move` parameter: what it holds is the callable's own, not a borrow. */
+static uint32_t moved_positions(const Pass *pass, MsParams params) {
+  uint32_t mask = 0;
+  for (uint32_t index = 0; index < params.len; index++) {
+    const uint32_t position = index + (pass->method ? 1u : 0u);
+    if (params.ptr[index]->moving && position < 31) {
+      mask |= UINT32_C(1) << position;
+    }
+  }
+  return mask;
+}
+
 static Reached reached_by(Pass *pass, MsParams params, MsStmts body) {
   pass->view_count = 0;
   pass->depth = 0;
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = view_stmt, .expr = view_expr}, params, body);
   Returns returns = {.len = 0};
-  const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return};
+  const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return, .expr = enter_lambda, .leave_expr = leave_lambda};
   ms_walk_block(&visitor, body);
   Reached out = {.all = NEUTRAL, .known = !returns.overflow && returns.len != 0};
+  Reach reaches[16];
   for (uint32_t index = 0; out.known && index < returns.len; index++) {
-    const Reach reach = classify(pass, returns.values[index]);
-    out.all = join(out.all, reach);
-    if (reach.mask != 0 && out.borrowed == NULL) {
-      out.borrowed = returns.values[index];
+    reaches[index] = classify(pass, returns.values[index]);
+    out.all = join(out.all, reaches[index]);
+  }
+  const uint32_t owned_params = moved_positions(pass, params);
+  for (uint32_t fresh = 0; out.known && fresh < returns.len && out.fresh == NULL; fresh++) {
+    if (!reaches[fresh].owned || reaches[fresh].mask != 0) {
+      continue;
     }
-    if (reach.owned && reach.mask == 0 && out.fresh == NULL) {
-      out.fresh = returns.values[index];
+    for (uint32_t borrowed = 0; borrowed < returns.len; borrowed++) {
+      if ((reaches[borrowed].mask & ~owned_params) != 0 && (case_of(pass, returns.values[fresh]) & case_of(pass, returns.values[borrowed])) != 0) {
+        out.fresh = returns.values[fresh];
+        out.borrowed = returns.values[borrowed];
+        break;
+      }
     }
   }
   return out;

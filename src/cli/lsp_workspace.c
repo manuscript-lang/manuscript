@@ -45,7 +45,7 @@ static int compare_path(const void *left, const void *right) {
 }
 
 /* The nearest ancestor directory of `dir` that holds `ms.toml`, or `dir` itself. */
-static MsSpan project_root(MsArena *arena, MsSpan dir) {
+MsSpan lsp_project_root(MsArena *arena, MsSpan dir) {
   MsSpan at = dir;
   while (at.len > 0) {
     if (ms_path_kind(ms_message_format(arena, "%S/ms.toml", at, (MsSpan){0})) == MS_PATH_FILE) return at;
@@ -62,7 +62,7 @@ void lsp_workspace_files(MsArena *arena, MsSpan file, MsSpanList *out) {
   const MsSpan start = ms_arena_copy(arena, ms_strbuild_span(&dir));
   ms_strbuild_free(&dir);
   const size_t first = out->len;
-  walk(arena, project_root(arena, start), out);
+  walk(arena, lsp_project_root(arena, start), out);
   if (out->len - first > 1) qsort(out->ptr + first, out->len - first, sizeof(MsSpan), compare_path);
 }
 

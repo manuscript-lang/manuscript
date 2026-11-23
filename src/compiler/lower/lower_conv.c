@@ -266,6 +266,18 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   const MirTy to = fn_type(fn, conversion->to);
   /* A view of a binding that keeps its value does not own it; a fresh value or a moved one is the interface's. */
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
+  if (!place && fn->temps && fn_temp_closes(fn, conversion->from) && fn_owns_result(fn, value) &&
+      fn_type(fn, conversion->from) == mir_b_ty(&fn->b, value)) {
+    /* A resource temporary seen as an interface closes as itself where its statement ends; the interface only views it. */
+    const bool held = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
+    const MirValue owned = fn_own_temporary(fn, conversion->from, value);
+    const MirImm view = {.tag = MI_VTABLE, .a = vtable, .b = held ? 1u : 0u};
+    const MirValue iface = mir_b_emit(&fn->b, MOP_IfaceNew, &owned, 1, view, to);
+    if (held) {
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &iface, 1, (MirImm){0}, MIR_NONE);
+    }
+    return iface;
+  }
   const bool droppable = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
   const bool shared = place ? ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE : !fn_fresh_owner(fn, value);
   const bool views = shared && droppable; /* a literal or other borrowed value is viewed, never moved in */
@@ -312,7 +324,7 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
-    return fn_adapt_function(fn, value, fn_type(fn, conversion->to));
+    return fn_adapt_function(fn, value, fn_type(fn, conversion->to), conversion->to);
   }
   (void)fn_fail(fn, "this conversion (kind %d) is not lowered yet", (int)conversion->kind);
   return MIR_NONE;

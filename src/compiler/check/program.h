@@ -207,6 +207,8 @@ void ms_check_finite_functions(MsCheckProgram *program);
 void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
+/* Whether `name` declared in the bundled module `file` (`@std/core.ms`) is a prelude name. */
+bool ms_check_is_prelude_declaration(MsSpan file, MsSpan name);
 /* Whether `symbol` is a prelude declaration, which every module sees under its own name. */
 bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol);
 

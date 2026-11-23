@@ -272,7 +272,7 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     const MsSpan text = program->modules.ptr[entry->module].source;
     size_t line = 1;
     for (size_t at = 0; at < entry->offset; at++) line += text.ptr[at] == '\n';
-    const MsSpan comment = ms_declaration_comment(&analysis->arena, text, entry->offset, (uint32_t)line);
+    const MsSpan comment = ms_declaration_comment(analysis->arena, text, entry->offset, (uint32_t)line);
     if (comment.len > 0) {
       ms_strbuild_append_text(out, "{\"kind\":\"markdown\",\"value\":");
       lsp_json_string(out, comment);
