@@ -82,7 +82,7 @@ jobs:
         run: |
           cd tests/conformance/commands/diagram/overview/input
           ms=$(find "$GITHUB_WORKSPACE/.artifacts/build/debug" -name ms-c.exe | head -1)
-          "$ms" diagram --view overview > /tmp/out.txt 2> /tmp/err.txt || true
+          "$ms" diagram ms.toml --view overview > /tmp/out.txt 2> /tmp/err.txt || true
           cat /tmp/err.txt | head -20
           for off in $(grep -o 'probe-frame 0x[0-9a-f]*' /tmp/err.txt | cut -d' ' -f2); do
             llvm-symbolizer --obj="$ms" --relative-address "$off" | head -2
