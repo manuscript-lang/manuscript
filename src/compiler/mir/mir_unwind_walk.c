@@ -1,6 +1,7 @@
 /* unwind: the liveness walk that plans where registrations go. Port of `analyze` and the hole
  * helpers in unwind.rs. */
 #include "compiler/mir/mir_unwind.h"
+#include <stdlib.h>
 
 static bool uw_leaf_extern(const MirModule *m, uint32_t e) {
   return m->externs.ptr[e].noreturn || m->externs.ptr[e].leaf;
@@ -454,6 +455,16 @@ static void uw_an_edges(UwBlk *s) {
     if (!w->has[t->block]) {
       w->entry[t->block] = after;
       w->has[t->block] = true;
+    } else if (!getenv("MS_DBG_NOFIX")) {
+      /* A block is entered with the values every edge into it carries: one an edge lacks is not defined on every
+       * path, so registering it there would not dominate its uses. */
+      uint32_t n = 0;
+      const uint32_t *held = owner_to_vec(a, &w->entry[t->block], &n);
+      for (uint32_t i = 0; i < n; i++) {
+        if (!owner_contains(&after, held[i]) && owner_remove(a, &w->entry[t->block], held[i])) {
+          w->shrank = true;
+        }
+      }
     }
   }
 }
@@ -503,18 +514,34 @@ UwWalk uw_analyze(const UwFacts *fa) {
   const UwHash defs = uw_field_defs(a, f);
   MirBlock *order = NULL;
   const uint32_t norder = mir_rpo(a, f, &order);
-  for (uint32_t oi = 0; oi < norder; oi++) {
-    UwBlk s = {.fa = fa, .w = &w, .bi = order[oi], .blk = &f->blocks.ptr[order[oi]], .defs = &defs};
-    if (!uw_an_start(&s)) {
-      continue;
+  /* Entry sets only shrink as edges are met, so the walk repeats until none does (a loop's back edge can take a value
+   * from the header after the header was walked); each pass plans afresh. */
+  for (uint32_t pass = 0; pass <= n + 1; pass++) {
+    w.shrank = false;
+    __builtin_memset(w.plans, 0, sizeof(UwWindow *) * n);
+    __builtin_memset(w.nplans, 0, sizeof(uint32_t) * n);
+    __builtin_memset(w.cplans, 0, sizeof(uint32_t) * n);
+    __builtin_memset(w.at_fault, 0, sizeof(MirValue *) * n);
+    __builtin_memset(w.nat_fault, 0, sizeof(uint32_t) * n);
+    __builtin_memset(w.events, 0, sizeof(UwEvent *) * n);
+    __builtin_memset(w.nevents, 0, sizeof(uint32_t) * n);
+    __builtin_memset(w.cevents, 0, sizeof(uint32_t) * n);
+    for (uint32_t oi = 0; oi < norder; oi++) {
+      UwBlk s = {.fa = fa, .w = &w, .bi = order[oi], .blk = &f->blocks.ptr[order[oi]], .defs = &defs};
+      if (!uw_an_start(&s)) {
+        continue;
+      }
+      s.open = fa->holes[s.bi];
+      s.holed = uh_clone(a, &hole_in[s.bi].named);
+      s.unnamed = hole_in[s.bi].unnamed;
+      for (uint32_t k = 0; k < s.blk->insts.len; k++) {
+        uw_an_inst(&s, k);
+      }
+      uw_an_edges(&s);
     }
-    s.open = fa->holes[s.bi];
-    s.holed = uh_clone(a, &hole_in[s.bi].named);
-    s.unnamed = hole_in[s.bi].unnamed;
-    for (uint32_t k = 0; k < s.blk->insts.len; k++) {
-      uw_an_inst(&s, k);
+    if (!w.shrank) {
+      break;
     }
-    uw_an_edges(&s);
   }
   return w;
 }

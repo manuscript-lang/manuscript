@@ -141,6 +141,7 @@ typedef struct UwWalk {
   UwEvent **events;
   uint32_t *nevents, *cevents;
   bool *plain;
+  bool shrank; /* an entry set lost a value this pass: another pass settles the blocks it reaches */
 } UwWalk;
 
 /* What the walk reads about a function. */
