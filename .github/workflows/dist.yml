@@ -65,6 +65,7 @@ jobs:
           root=$(ls -d "$PWD"/.artifacts/build/release/dist-smoke/unpacked/manuscript-*)
           mkdir -p /tmp/empty
           cd "$root/examples/hello"
+          dnf install -y gdb
           set +e
           ( while :; do for d in /tmp/manuscript-test-*; do if [ -f "$d/program" ]; then cp -f "$d/program" /tmp/prog.copy 2>/dev/null; fi; done; done ) &
           copier=$!
