@@ -700,9 +700,10 @@ fn scalar(reader: Reader, text: String, at: Int) Node!:
 				)
 
 			fraction := parts.first().clone().get_or("").split(".")
-			if fraction.length() > 2 or not decimal_part(fraction.first().clone().get_or("")): return error(
-				invalid_at(reader, at, "invalid float")
-			)
+			if (
+				fraction.length() > 2
+				or not decimal_part(fraction.first().clone().get_or(""))
+			): return error(invalid_at(reader, at, "invalid float"))
 			if fraction.length() == 2 and not decimal_digits(fraction[1]): return error(
 				invalid_at(reader, at, "invalid fraction")
 			)
