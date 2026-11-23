@@ -316,6 +316,9 @@ static bool for_body(LowerFn *fn, const MsStmt *stmt, const ForSource *src, MirV
       if (!src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
         fn->local_owns[local] = 2; /* an element of a list the loop only borrows: moving it out copies it */
       }
+      if (src->cursor && fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, src->elem)) {
+        fn->local_owns[local] = 1; /* an element the loop took out of a list it owns: the body owns it */
+      }
       mir_b_def_var(&fn->b, fn_local(fn, local, src->elem), item);
     }
   }
