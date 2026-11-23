@@ -309,7 +309,7 @@ static uint32_t drop_thunk(Lower *cx, MirTy ty) {
 
 /* The silent close thunk for the type `checked` (in the function's terms), with its exits made. A type that is not
  * Closeable closes its parts. */
-static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint32_t *silent) {
+static bool prepare_method(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint32_t *silent, uint32_t *method_out) {
   Lower *cx = fn->cx;
   const MsTy concrete = ms_ty_subst(&cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
   MsCloser plain;
@@ -324,11 +324,61 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint3
   if (method == MIR_NONE || !close_thunks(cx, method, ty, silent)) {
     return fn_fail(fn, "the close of a resource binding could not be lowered");
   }
+  if (method_out != NULL) {
+    *method_out = method;
+  }
   const MirAltDef *def = NULL;
   if (result_def(cx->module, cx->module->funcs.ptr[method].ret, &def) && !ensure_exits(fn, cx->module->funcs.ptr[method].ret)) {
     return false;
   }
   return true;
+}
+
+static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint32_t *silent) {
+  return prepare_method(fn, checked, ty, fields_only, silent, NULL);
+}
+
+/* `fn(slot)`: closes the value the slot holds; a close that returns an error faults. A pending constructor field or
+ * temporary has no caller to take the error. */
+static uint32_t fault_thunk(Lower *cx, uint32_t method, MirTy ty) {
+  MirModule *module = cx->module;
+  const MsName name = named(cx, "close.fault", method, 0);
+  const uint32_t found = mir_func_by_name(module, name);
+  if (found != MIR_NONE) {
+    return found;
+  }
+  const MirTy method_ret = module->funcs.ptr[method].ret;
+  const MirAltDef *def = NULL;
+  MirBuilder b;
+  const MirParam param = {MIR_PTR, (uint8_t)MM_BORROW};
+  mir_b_init(&b, module, name, &param, 1, MIR_VOID);
+  b.func.linkage = ML_INTERNAL;
+  MirValue slot = MIR_NONE;
+  mir_b_params(&b, &slot, 1);
+  const MirValue value = take_from(&b, slot, ty, mir_needs_drop(module, ty));
+  const MirValue closed = mir_b_call(&b, method, &value, 1);
+  if (closed != MIR_NONE && result_def(module, method_ret, &def)) {
+    const MirImm none = {0};
+    const MirValue tag = mir_b_emit(&b, MOP_AltTag, &closed, 1, none, MIR_INT);
+    const MirValue failed = mir_b_icmp(&b, MCC_EQ, tag, mir_b_iconst(&b, ERR_CASE));
+    const MirBlock bad = mir_b_new_block(&b);
+    const MirBlock good = mir_b_new_block(&b);
+    mir_b_br_if(&b, failed, bad, NULL, 0, good, NULL, 0);
+    mir_b_seal_block(&b, bad);
+    mir_b_seal_block(&b, good);
+    mir_b_switch_to(&b, bad);
+    (void)mir_b_emit(&b, MOP_Drop, &closed, 1, none, MIR_NONE);
+    const MirBlock block = b.cur;
+    mir_b_fault(&b, MF_MESSAGE);
+    b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
+    mir_b_switch_to(&b, good);
+  }
+  if (closed != MIR_NONE && mir_needs_drop(module, method_ret)) {
+    (void)mir_b_emit(&b, MOP_Drop, &closed, 1, (MirImm){0}, MIR_NONE);
+  }
+  mir_b_ret(&b, mir_b_unit(&b));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
 
 uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty) {
@@ -470,9 +520,17 @@ MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value) {
 MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;
+  uint32_t method = MIR_NONE;
   if (!fn_temp_closes(fn, checked) || fn_type(fn, checked) != ty ||
-      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) || !prepare(fn, checked, ty, false, &silent)) {
+      (mir_needs_drop(fn->cx->module, ty) && !fn_fresh_owner(fn, value)) ||
+      !prepare_method(fn, checked, ty, false, &silent, &method)) {
     return MIR_NONE;
+  }
+  if (fn->cx->module->funcs.ptr[silent].has_slot_result) {
+    silent = fault_thunk(fn->cx, method, ty);
+    if (silent == MIR_NONE) {
+      return MIR_NONE;
+    }
   }
   if (mir_needs_drop(fn->cx->module, ty)) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);

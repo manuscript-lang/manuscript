@@ -182,7 +182,7 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
 /* A result that is a place of a parameter, or a call whose own result is such a place: the callee can hand back
  * the reference itself. */
 typedef struct PlaceReturns {
-  const Lower *cx;
+  Lower *cx;
   const MsFacts *facts;
   const MsFunc *func; /* the function whose returns are counted */
   MsTy result; /* the declared result type, or MS_TY_NONE when unknown */
@@ -191,7 +191,7 @@ typedef struct PlaceReturns {
   uint32_t places;
 } PlaceReturns;
 
-static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
+static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
 
 /* A native whose result is a type argument of one of its arguments (`List[T].get` answers a `T` of a `List[T]`): it can
  * only hand back a part of what it was given, so its result is a view. A native with any other result (a status, a
@@ -290,6 +290,14 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
     if (conversion == NULL || (conversion->kind != MS_CONV_OPTIONAL_WRAP && conversion->kind != MS_CONV_INTERFACE_VIEW)) {
       return; /* any other conversion builds a new owner; a wrapped or interface-viewed place stays a view of it */
     }
+    if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
+      /* Only a value that lives in memory can be viewed in place; a flat one is copied into the interface's block. */
+      const LowerSubst none = {0};
+      if (ms_ty_has_variable(&counts->cx->program->types, conversion->from) ||
+          !mir_needs_drop(counts->cx->module, lower_type(counts->cx, &none, conversion->from))) {
+        return;
+      }
+    }
   }
   if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
     const MsRef *ref = ms_facts_ref(counts->facts, value->id);
@@ -301,7 +309,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   }
 }
 
-static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
+static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
   PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, func, result, depth, 0, 0};
   const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
   ms_walk_block(&visitor, func->body);
@@ -331,7 +339,7 @@ static bool body_closes(const Lower *cx, const LowerTarget *target) {
   return closes.found;
 }
 
-static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
   const MirTyData *ret_data = mir_ty_data(cx->module, ret);
   if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
     return false; /* a boxed Optional owns the heap block that holds its payload: a view of a part cannot be one */

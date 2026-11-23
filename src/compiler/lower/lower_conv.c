@@ -289,7 +289,7 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
     return iface;
   }
   const bool droppable = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
-  const bool shared = place ? ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE : !fn_fresh_owner(fn, value);
+  const bool shared = place ? (ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE || fn->returns_borrow) : !fn_fresh_owner(fn, value);
   const bool views = shared && droppable; /* a literal or other borrowed value is viewed, never moved in */
   if (!views) {
     if (fn_fresh_owner(fn, value)) { /* the interface takes over what the scope owned */
@@ -321,6 +321,10 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
       value = view_as_interface(fn, expr, &inner, value);
       if (value == MIR_NONE) {
         return MIR_NONE;
+      }
+      /* A view of a binding that keeps its value is shown as an optional, not owned by one. */
+      if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_fresh_owner(fn, value)) {
+        return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
       }
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
