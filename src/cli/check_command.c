@@ -467,6 +467,31 @@ static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList
   return result;
 }
 
+/* A workspace root without a [project] stands for its members, as for fmt and test. */
+static int expand_workspaces(MsArena *arena, CheckOptions *options) {
+  TargetList expanded = {0};
+  for (size_t i = 0; i < options->targets.len; i++) {
+    MsSpanList members = {0};
+    MsProjectError error = {0};
+    bool root = false;
+    if (!ms_project_workspace_members(arena, options->targets.ptr[i], &members, &root, &error)) {
+      (void)fprintf(stderr, "ms %s: %s\n", options->name, (const char *)ms_project_error_text(arena, &error).ptr);
+      target_list_free(&expanded);
+      return STATUS_FAILED;
+    }
+    if (!root) {
+      target_list_push(&expanded, options->targets.ptr[i]);
+    }
+    for (size_t m = 0; root && m < members.len; m++) {
+      target_list_push(&expanded, members.ptr[m]);
+    }
+    ms_span_list_free(&members);
+  }
+  target_list_free(&options->targets);
+  options->targets = expanded;
+  return 0;
+}
+
 static int run_command(const char *name, bool lint, int argc, char **argv) {
   CheckOptions options = {.name = name, .lint = lint};
   const int status = parse_arguments(argc, argv, &options);
@@ -477,6 +502,11 @@ static int run_command(const char *name, bool lint, int argc, char **argv) {
   MsArena arena = ms_arena_new();
   int result = 0;
   MsSpanList watched = {0};
+  if (expand_workspaces(&arena, &options) != 0) {
+    target_list_free(&options.targets);
+    ms_arena_free(&arena);
+    return STATUS_FAILED;
+  }
   if (options.each) {
     result = check_each(&arena, &options);
   }
