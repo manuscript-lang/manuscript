@@ -312,7 +312,8 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret),
-                         .role = (uint8_t)(views ? MR_VIEW_RESULT : string_role(text))};
+                         .role = (uint8_t)(views ? MR_VIEW_RESULT
+                                           : sig != NULL && sig->spawns ? MR_SPAWNS_TASK : string_role(text))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -390,6 +391,20 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
   return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
 }
 
+/* Ends the current block with the fault of a missing map key: `key` is the slot holding the key of type `key_ty`. */
+static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
+  const MirImm of_key = {.tag = MI_TY, .a = key_ty};
+  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, of_key, key_ty);
+  const MirValue text = fn_value_repr(fn, missing, key_ty);
+  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
+                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
+                                         MIR_STR);
+  const MirValue parts[2] = {prefix_lit, text};
+  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
+  mir_b_unreachable(&fn->b);
+}
+
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
@@ -411,15 +426,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_seal_block(&fn->b, hit);
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
-  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, key_ty, data->args[0]);
-  const MirValue text = fn_value_repr(fn, missing, data->args[0]);
-  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
-                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
-                                         MIR_STR);
-  const MirValue parts[2] = {prefix_lit, text};
-  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
-  mir_b_unreachable(&fn->b);
+  fault_missing_key(fn, key, data->args[0]);
   mir_b_switch_to(&fn->b, hit);
   return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
@@ -497,7 +504,7 @@ bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
 
 /* `place?` where `place` can be changed: the method changes the optional's payload in place. */
 static bool is_try_place(LowerFn *fn, const MsExpr *place) {
-  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left);
+  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_try_place_changeable(fn, place->u.bin.left);
 }
 
 /* `xs[i]` of a list held in place: whether `place` is one, and then `*addr` is the element's address (MIR_NONE
@@ -518,6 +525,60 @@ bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
     const MirValue operands[2] = {list, at};
     *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
   }
+  return true;
+}
+
+/* The address of the element or entry `place` (`xs[i]`, `m[k]`, `m[a][b]`) names, found once: a list index out of range or a
+ * missing map key faults as a read does. A map in an element is reached through the address of its element, so the entry
+ * lies where the owner holds it. `*ty` is the element's type. False when `place` is not such an index of a changeable place. */
+bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (!ms_expr_index(place, &container, &key) || !fn_place_changeable(fn, container)) {
+    return false;
+  }
+  MirValue holder = MIR_NONE;
+  MsExpr *outer = NULL;
+  MsExpr *outer_key = NULL;
+  if (ms_expr_index(container, &outer, &outer_key)) {
+    MirValue held = MIR_NONE;
+    MirTy held_ty = MIR_VOID;
+    if (!fn_place_address(fn, container, &held, &held_ty)) {
+      return false;
+    }
+    holder = mir_b_emit(&fn->b, MOP_Load, &held, 1, (MirImm){.tag = MI_TY, .a = held_ty}, held_ty);
+  } else {
+    holder = fn_expr(fn, container, LW_BORROW);
+  }
+  if (holder == MIR_NONE) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder));
+  if (data->kind == MK_LIST) {
+    const MirValue at = fn_expr(fn, key, LW_BORROW);
+    if (at == MIR_NONE) {
+      return false;
+    }
+    const MirValue operands[2] = {holder, at};
+    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+    *ty = data->elem;
+    return true;
+  }
+  const MirValue address = fn_entry_address(fn, holder, key, ty);
+  if (address == MIR_NONE) {
+    return false;
+  }
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, &address, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, absent, miss, NULL, 0, hit, NULL, 0);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue key_slot = operand_slot(fn, key, true); /* the key again, for the fault text only */
+  fault_missing_key(fn, key_slot, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder))->args[0]);
+  mir_b_switch_to(&fn->b, hit);
+  *addr = address;
   return true;
 }
 
@@ -647,7 +708,8 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
   const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
   const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, NULL, 0);
-  if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].ret == ret) { /* a method of another result type is not the operation */
+  /* A method of another arity or result type (`to_string(prefix)` beside the operation `to_string()`) is not the operation. */
+  if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].ret == ret && fn->cx->module->funcs.ptr[method].nparams == call->arg_count) {
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
     return result;
@@ -838,7 +900,7 @@ static bool is_universal_operation(const LowerFn *fn, MsTy receiver, MsSpan oper
 }
 
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsExpr *callee = expr->u.call.callee;
+  const MsExpr *callee = fn_call_callee(expr);
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
     (void)fn_fail(fn, "a standard operation is called through a receiver");
     return MIR_NONE;

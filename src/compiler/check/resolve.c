@@ -217,10 +217,10 @@ MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t
 }
 
 /* Appends the defaults of the type parameters `args` leaves out: `Pair[Int]` of `Pair[A, B = A]` is `Pair[Int, Int]`. */
-static void fill_defaults(MsCheckProgram *program, MsTy base, MsTyList *args) {
+static void fill_defaults(MsCheckProgram *program, MsTy base, MsTyList *args, bool bare) {
   const uint32_t at = ms_ty_row(&program->types, base)->def;
   const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
-  for (size_t index = args->len; def != NULL && args->len != 0 && index < def->variables.len; index++) {
+  for (size_t index = args->len; def != NULL && (args->len != 0 || bare) && index < def->variables.len; index++) {
     const MsTyVariable *record = ms_ty_variable(&program->types, def->variables.ptr[index]);
     if (record == NULL || record->default_ty == MS_TY_NONE) {
       return;
@@ -311,7 +311,7 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
     const MsTyVariable *record = ms_ty_variable(&program->types, def->variables.ptr[index]);
     required = record != NULL && record->default_ty == MS_TY_NONE ? index + 1 : required;
   }
-  fill_defaults(resolver->program, base, &args);
+  fill_defaults(resolver->program, base, &args, arity != 0 && required == 0); /* a bare name of a fully defaulted type */
   if (resolver->report && args.len != arity) {
     report_arity(resolver, type, base, type->args.len, arity, required);
   }

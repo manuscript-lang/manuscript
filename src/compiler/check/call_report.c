@@ -39,7 +39,7 @@ static bool written_fn_value(const Body *body, const Target *target) {
 
 bool target_positional(const Body *body, const Target *target, size_t index) {
   /* A lambda or method value keeps its parameters' names (the local's `ast`); any other function value has none. */
-  const bool value = target->ast == NULL && (target->ref.kind == MS_REF_LOCAL || target->ref.kind == MS_REF_PARAM ||
+  const bool value = target->ast == NULL && target->names == NULL && (target->ref.kind == MS_REF_LOCAL || target->ref.kind == MS_REF_PARAM ||
                                              target->ref.kind == MS_REF_NONE);
   return value || (ms_ty_params(&body->program->types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
 }

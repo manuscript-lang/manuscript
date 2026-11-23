@@ -24,6 +24,7 @@ typedef struct MsLocal {
   bool written_fn; /* declared with a written function type (`f: fn(Int) Int`): its parameters have no labels */
   const MsParams *fn_params; /* the parameters of the lambda or method it was bound to: their names and defaults */
   uint32_t fn_module;       /* the module that declares fn_params */
+  const MsParams *fn_names; /* the parameter names of a native method it was bound to, which has no source */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
 } MsLocal;
 
@@ -100,10 +101,12 @@ bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsT
 /* The reference a found method or operation gives its call: a native when the compiler or runtime provides it. */
 MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver);
 /* The type of a function named as a value: its omittable parameters stay omittable. */
+const MsParams *body_function_names(Body *body, const MsExpr *value, MsTy ty);
 const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, uint32_t *module);
+/* Whether `actual` is `expected` except that it only reads parameters `expected` may change or take. */
+bool body_reads_where_var_expected(const MsTyTable *types, MsTy actual, MsTy expected);
 MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty);
 /* The declared parameters of the lambda, function or method `value` names, or NULL; `module` is where they were written. */
-const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, uint32_t *module);
 MsRef body_symbol_ref(const Body *body, const MsSymbol *symbol);
 /* A prelude type (`List`, `Map`, `Optional`, ...) applied to `count` arguments. */
 MsTy body_std_type(Body *body, const char *name, const MsTy *args, size_t count);

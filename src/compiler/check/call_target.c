@@ -14,6 +14,8 @@
 void body_target_free(Target *target) {
   ms_ty_list_free(&target->vars);
   ms_ty_list_free(&target->explicit_args);
+  ms_ty_list_free(&target->outer_vars);
+  ms_ty_list_free(&target->outer_args);
   ms_strbuild_free(&target->name_text);
 }
 
@@ -142,6 +144,32 @@ const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, u
              : NULL;
 }
 
+/* The parameter names of the interface operation a method value names: a native method keeps no source to read. */
+const MsParams *body_function_names(Body *body, const MsExpr *value, MsTy ty) {
+  if (value->kind == MS_E_APPLY) {
+    return body_function_names(body, value->u.apply.left, MS_TY_NONE);
+  }
+  if (value->kind != MS_E_MEMBER) {
+    return NULL;
+  }
+  const bool quiet = body->quiet;
+  body->quiet = true;
+  const MsTy receiver = body_expr(body, value->u.member.left, MS_TY_NONE);
+  body->quiet = quiet;
+  MsMethodMatchList found = {0};
+  const MsParams *names = NULL;
+  if (receiver != MS_TY_NONE) {
+    ms_check_find_method(body->program, receiver, value->u.member.name, &found);
+  }
+  if (found.len == 1 && (ty == MS_TY_NONE || found.ptr[0].ty == ty) && found.ptr[0].entry == NULL &&
+      found.ptr[0].operation != NULL) {
+    const MsMethod *declared = ms_check_operation_declaration(body->program, found.ptr[0].contract, found.ptr[0].operation);
+    names = declared == NULL ? NULL : &declared->func.params;
+  }
+  ms_method_match_list_free(&found);
+  return names;
+}
+
 MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
   const MsTyTable *types = &body->program->types;
   uint32_t module = 0;
@@ -171,10 +199,19 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
     body_set_ref(body, callee->id, target->ref); /* a call of a function value reads the local */
     target->sig = local->ty;
     target->ast = local->fn_params;
+    target->names = local->fn_names;
     target->ast_module = local->fn_module;
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }
   const MsSymbol *symbol = body_find_symbol(body, callee->u.sym);
+  if (symbol == NULL && body->resolver.self != MS_TY_NONE &&
+      ms_span_is_text(ms_names_span(body->program->names, callee->u.sym), "Self")) {
+    /* `Self(...)` in a method builds the receiver's own type */
+    const MsDef *home = body_def(body, body->resolver.self);
+    symbol = home != NULL && ms_ty_kind(&body->program->types, body->resolver.self) == MS_TY_TYPE
+                 ? &body->program->symbols.ptr[home->symbol]
+                 : NULL;
+  }
   if (symbol != NULL) {
     body_set_ref(body, callee->id, body_symbol_ref(body, symbol));
     return symbol_target(body, symbol, target);
@@ -261,11 +298,20 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
                                          (match->entry->source->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->entry->variables.ptr + match->entry->shared,
                 match->entry->variables.len - match->entry->shared);
+      for (size_t at = 0; at < match->entry->shared && at < ms_ty_arg_count(&body->program->types, receiver); at++) {
+        ms_ty_list_push(&target->outer_vars, match->entry->variables.ptr[at]);
+        ms_ty_list_push(&target->outer_args, ms_ty_args(&body->program->types, receiver)[at]);
+      }
     } else if (match->operation != NULL) {
       const MsMethod *declared = ms_check_operation_declaration(body->program, match->contract, match->operation);
       target->receiver_flags = declared == NULL ? 0 : (uint8_t)((declared->mutating ? MS_PARAM_VAR : 0) |
                                                                 (declared->consuming ? MS_PARAM_MOVE : 0));
       copy_vars(target, match->operation->variables.ptr, match->operation->variables.len);
+      const MsDef *home = match->contract != MS_TY_NONE ? body_def(body, match->contract) : NULL;
+      for (size_t at = 0; home != NULL && at < home->variables.len && at < ms_ty_arg_count(&body->program->types, match->contract); at++) {
+        ms_ty_list_push(&target->outer_vars, home->variables.ptr[at]);
+        ms_ty_list_push(&target->outer_args, ms_ty_args(&body->program->types, match->contract)[at]);
+      }
       if (declared != NULL) { /* the parameter names come from the declaration: shapes shared by operations carry one set */
         target->names = &declared->func.params;
       }
