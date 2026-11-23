@@ -42,6 +42,21 @@ Callgrind on the release server (one worker, `/health` from `loadc`, 16 connecti
 | Content-type sniff skips the HTML and XML probes unless the first non-space byte is `<`, and tests each signature's first byte before the masked compare | 22.25k |
 | Byte builders start at 32 bytes, not 4 (allocations per request 42.4 to 39.5) | 21.95k |
 
+A further step: received header fields are canonicalised into a stack buffer and the token test is a table, not a builder push and a substring search per byte, and the copy `exchange.headers()` makes reserves its lists: 21.95k to 21.62k (the `Host`-only load of `loadc`).
+
+Throughput on this 4-CPU VM, `multicpu.sh`, 4 s rows, two rounds (req/s, rounds side by side), server on N CPUs and the load generator on the others:
+
+| Path, CPUs | Manuscript | C | hyper |
+| --- | ---: | ---: | ---: |
+| `/health`, 1 | 73k, 83k | 175k, 180k | 120k, 121k |
+| `/health`, 2 | 108k, 112k | 394k, 478k | 233k, 218k |
+| `/health`, 4 shared | 108k, 104k | 406k, 401k | 261k, 245k |
+| `/user/42`, 1 | 73k, 74k | 186k, 195k | 125k, 123k |
+| `/user/42`, 2 | 109k, 98k | 393k, 382k | 219k, 225k |
+| `/user/42`, 4 shared | 115k, 110k | 437k, 413k | 262k, 264k |
+
+On one CPU Manuscript serves about 62% of hyper's rate, and the gap grows with CPUs (about 45% at two and four): 22k instructions a request explains the one-CPU gap, but the second CPU adds only 1.4x where hyper adds 1.9x, which points at the handoff between the libuv loop thread and the scheduler threads, not at the request path.
+
 The remaining top self costs per request are list growth (1.1k), `memcpy` (0.8k), allocation (0.7k), the task switch (0.6k), llhttp (0.6k), and `exchange.headers()` copying the received headers (0.5k, in the frozen stdlib wrapper).
 
 ## History

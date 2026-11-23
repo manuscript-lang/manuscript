@@ -2,6 +2,8 @@
  * groups, which is right for the tens of fields a head may carry (a head is bounded by the server limit). */
 #include "runtime/std/http_headers.h"
 
+#include <stdatomic.h>
+
 #include "base/alloc.h"
 #include "base/utf8.h"
 
@@ -15,11 +17,21 @@ struct MsHeaders {
   MsList groups; /* MsHeaderGroup elements */
 };
 
+/* RFC 9110 token bytes as a table built once: lookups run on every received field name. */
 static bool is_token_byte(uint8_t b) {
-  if ((b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')) {
-    return true;
+  static const char EXTRA[] = "!#$%&'*+-.^_`|~";
+  static _Atomic bool ready;
+  static bool table[256];
+  if (!atomic_load_explicit(&ready, memory_order_acquire)) {
+    bool local[256] = {false};
+    for (unsigned c = '0'; c <= '9'; c++) local[c] = true;
+    for (unsigned c = 'a'; c <= 'z'; c++) local[c] = true;
+    for (unsigned c = 'A'; c <= 'Z'; c++) local[c] = true;
+    for (size_t i = 0; i + 1 < sizeof EXTRA; i++) local[(uint8_t)EXTRA[i]] = true;
+    __builtin_memcpy(table, local, sizeof table); /* every thread writes the same bytes */
+    atomic_store_explicit(&ready, true, memory_order_release);
   }
-  return b != 0 && ms_span_find(ms_span_of_text("!#$%&'*+-.^_`|~"), ms_span_of(&b, 1), &(size_t){0});
+  return table[b];
 }
 
 bool ms_header_valid_name(MsSpan name) {
@@ -41,7 +53,8 @@ bool ms_header_valid_value(MsSpan value) {
   return ms_utf8_is_valid(value.ptr, value.len);
 }
 
-void ms_header_canonical(MsSpan name, MsStrBuild *out) {
+/* Writes the canonical spelling of `name` (the same length) to `out`. */
+static void canonical_into(MsSpan name, uint8_t *out) {
   const bool token = ms_header_valid_name(name);
   bool upper = true;
   for (size_t i = 0; i < name.len; i++) {
@@ -52,8 +65,16 @@ void ms_header_canonical(MsSpan name, MsStrBuild *out) {
       b = (uint8_t)(upper && is_lower ? b - 32 : !upper && is_upper ? b + 32 : b);
       upper = name.ptr[i] == '-';
     }
-    ms_strbuild_append_byte(out, b);
+    out[i] = b;
   }
+}
+
+void ms_header_canonical(MsSpan name, MsStrBuild *out) {
+  if (name.len == 0) {
+    return;
+  }
+  uint8_t *at = ms_list_extend(&out->bytes, 1, name.len);
+  canonical_into(name, at);
 }
 
 static uint8_t fold(uint8_t b) {
@@ -70,6 +91,13 @@ static int fold_compare(MsSpan a, MsSpan b) {
     }
   }
   return a.len == b.len ? 0 : a.len < b.len ? -1 : 1;
+}
+
+/* Bytewise order, as ms_string_compare gives. */
+static int span_compare(MsSpan a, MsSpan b) {
+  const size_t n = a.len < b.len ? a.len : b.len;
+  const int d = n == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, n);
+  return d != 0 ? d : (a.len == b.len ? 0 : a.len < b.len ? -1 : 1);
 }
 
 static MsHeaderGroup *group_at(const MsHeaders *headers, size_t index) {
@@ -144,9 +172,11 @@ static MsHeaderGroup *new_group(MsHeaders *headers, MsSpan name) {
 
 MsHeaders *ms_headers_copy(const MsHeaders *headers) {
   MsHeaders *copy = ms_headers_new();
+  ms_list_reserve(&copy->groups, sizeof(MsHeaderGroup), headers->groups.len);
   for (size_t g = 0; g < headers->groups.len; g++) {
     const MsHeaderGroup *group = group_at(headers, g);
     MsHeaderGroup *into = new_group(copy, ms_string_span(&group->name));
+    ms_list_reserve(&into->values, sizeof(MsBytes), group->values.len);
     for (size_t v = 0; v < group->values.len; v++) {
       const MsBytes *value = (const MsBytes *)(const void *)group->values.ptr + v;
       push_value(into, ms_bytes_span(value));
@@ -269,22 +299,25 @@ static MsHeaderGroup *insert_group(MsHeaders *headers, size_t at, MsSpan name) {
 
 MsHeaders *ms_headers_from_received(const MsHeaderField *fields, size_t count) {
   MsHeaders *headers = ms_headers_new();
+  ms_list_reserve(&headers->groups, sizeof(MsHeaderGroup), count);
   for (size_t i = 0; i < count; i++) {
-    MsStrBuild name = ms_strbuild_new();
-    ms_header_canonical(fields[i].name, &name);
-    const MsString text = ms_strbuild_finish(&name);
-    ms_strbuild_free(&name);
-    MsHeaderGroup *group = find_group(headers, ms_string_span(&text));
+    uint8_t stack[128];
+    const size_t length = fields[i].name.len;
+    uint8_t *spelled = length <= sizeof stack ? stack : ms_alloc(length);
+    canonical_into(fields[i].name, spelled);
+    const MsSpan text = ms_span_of(spelled, length);
+    MsHeaderGroup *group = find_group(headers, text);
     if (group == NULL) {
       size_t at = 0;
-      while (at < headers->groups.len && ms_string_compare(&group_at(headers, at)->name, &text) <= 0) {
+      while (at < headers->groups.len && span_compare(ms_string_span(&group_at(headers, at)->name), text) <= 0) {
         at++;
       }
-      group = insert_group(headers, at, ms_string_span(&text));
+      group = insert_group(headers, at, text);
     }
     push_value(group, fields[i].value);
-    MsString owned = text;
-    ms_string_release(&owned);
+    if (spelled != stack) {
+      ms_free(spelled);
+    }
   }
   return headers;
 }
