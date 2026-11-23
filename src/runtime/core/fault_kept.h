@@ -13,5 +13,7 @@ void ms_test_keep_fault(uint64_t capture, const MsFaultText *text);
 void ms_test_drop_fault(uint64_t capture);
 /* Hands the caller the encoded record of the last fault under `capture` (NULL and 0 when none); the caller frees it. */
 void ms_test_take_fault(uint64_t capture, uint8_t **bytes, size_t *length);
+/* Frees every record and the table at the process's end. */
+void ms_test_release_faults(void);
 
 #endif

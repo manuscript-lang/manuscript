@@ -176,13 +176,15 @@ MS_NORETURN static void finish(MsUnwind *unwind, MsFaultFlight *flight) {
 /* ---- raising ---- */
 
 /* A fault raised by a cleanup while `flight` is being reported. */
-MS_NORETURN static void fault_in_cleanup(MsUnwind *unwind, MsFaultKind kind, MsSpan message, bool out_of_memory) {
+MS_NORETURN static void fault_in_cleanup(MsUnwind *unwind, MsFaultKind kind, MsSpan message, bool out_of_memory,
+                                         void *owned) {
   MsFaultFlight *const flight = unwind->flight;
   if (flight->detail == NULL || (out_of_memory && flight->out_of_memory)) {
     ms_fault_fatal(kind, message);
   }
   flight->out_of_memory = flight->out_of_memory || out_of_memory;
   add_note(flight->detail, message);
+  ms_free(owned);
   ms_cleanup_run_pending();
   finish(unwind, flight);
 }
@@ -210,10 +212,11 @@ static void drop_trailing_library_frames(MsFrameList *list) {
 
 /* The one place a fault starts. Not inlined: the frame walk starts at its frame, so what it adds to the stack is
  * the same on every path. */
-MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message, bool out_of_memory) {
+MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message, bool out_of_memory,
+                                                void *owned) {
   MsUnwind *const unwind = &ms_task_running()->unwind;
   if (unwind->flight != NULL) {
-    fault_in_cleanup(unwind, kind, message, out_of_memory);
+    fault_in_cleanup(unwind, kind, message, out_of_memory, owned);
   }
   MsFaultFlight flight = {.out_of_memory = out_of_memory, .text = ms_strbuild_new()};
   unwind->flight = &flight;
@@ -221,6 +224,7 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message
   flight.detail->kind = kind;
   flight.detail->message_length = message.len;
   ms_strbuild_append(&flight.text, message);
+  ms_free(owned); /* the message is copied: a fault never returns, so its builder is released here */
   ms_frames_collect((uintptr_t)__builtin_frame_address(0), (uintptr_t)raise_fault, window_of(unwind),
                     &flight.detail->frames);
   drop_trailing_library_frames(&flight.detail->frames);
@@ -232,7 +236,11 @@ MS_NORETURN MS_NOINLINE static void raise_fault(MsFaultKind kind, MsSpan message
   finish(unwind, &flight);
 }
 
-void ms_fault(MsFaultKind kind, MsSpan message) { raise_fault(kind, message, false); }
+void ms_fault(MsFaultKind kind, MsSpan message) { raise_fault(kind, message, false, NULL); }
+
+void ms_fault_built(MsFaultKind kind, MsStrBuild *message) {
+  raise_fault(kind, ms_strbuild_span(message), false, message->bytes.ptr);
+}
 
 void ms_fault_text(MsFaultKind kind, const char *message) { ms_fault(kind, ms_span_of_text(message)); }
 
@@ -265,12 +273,12 @@ void ms_fault_out_of_memory(size_t bytes) {
   length += put_decimal(message + length, shown);
   __builtin_memcpy(message + length, after, sizeof after - 1);
   length += sizeof after - 1;
-  raise_fault(MS_FAULT_KIND_OUT_OF_MEMORY, ms_span_of(message, length), true);
+  raise_fault(MS_FAULT_KIND_OUT_OF_MEMORY, ms_span_of(message, length), true, NULL);
 }
 
 /* base reports its unrecoverable conditions as Manuscript faults. */
 static void raise_base_fatal(MsFatalKind kind, MsSpan message) {
-  raise_fault(ms_fault_kind_of_fatal(kind), message, kind == MS_FATAL_OUT_OF_MEMORY);
+  raise_fault(ms_fault_kind_of_fatal(kind), message, kind == MS_FATAL_OUT_OF_MEMORY, NULL);
 }
 
 void ms_fault_install_base_hook(void) { ms_fatal_install(raise_base_fatal); }

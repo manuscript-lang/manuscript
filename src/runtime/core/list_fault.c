@@ -52,7 +52,7 @@ MS_NORETURN void msrt_splice_fault(const char *what, int64_t found, size_t high)
   ms_strbuild_append_i64(&message, (int64_t)high);
   ms_strbuild_append_text(&message, ", found ");
   ms_strbuild_append_i64(&message, found);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 MS_NORETURN void msrt_bounds_fault(const char *operation, size_t length, int64_t start, int64_t end) {
@@ -64,7 +64,7 @@ MS_NORETURN void msrt_bounds_fault(const char *operation, size_t length, int64_t
   ms_strbuild_append_i64(&message, start);
   ms_strbuild_append_text(&message, " and end ");
   ms_strbuild_append_i64(&message, end);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 void msrt_check_bounds(const char *operation, size_t length, int64_t start, int64_t end) {
@@ -79,7 +79,7 @@ MS_NORETURN void msrt_copy_target_fault(size_t length, int64_t target) {
   ms_strbuild_append_i64(&message, (int64_t)length);
   ms_strbuild_append_text(&message, ", found ");
   ms_strbuild_append_i64(&message, target);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 MsString msrt_list_slice_error(int64_t start, int64_t end, size_t length) {
@@ -103,5 +103,5 @@ MS_NORETURN void msrt_fault_destructure(int64_t names, int64_t elements) {
   ms_strbuild_append_text(&message, " names but the list has ");
   ms_strbuild_append_i64(&message, elements);
   ms_strbuild_append_text(&message, " elements");
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }

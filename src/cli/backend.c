@@ -32,7 +32,8 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
   }
   emit_name_symbols(module);
   const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
-                          .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide};
+                          .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide,
+                          .poison_slots = options->poison_slots};
   if (!emit_module(module, data, glue, &emit, ir, why)) {
     return false;
   }

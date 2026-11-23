@@ -77,6 +77,16 @@ static uint32_t wide_leaves(bool debug) {
   return number;
 }
 
+/* `MS_POISON_SLOTS` (any non-empty value): a stack cell is filled with 0xDD where its occupant is last read, so a view
+ * that outlives its slot reads garbage in every build instead of what the optimizer reuses the cell for. It changes
+ * the generated code, so use it to find such bugs, not to ship. */
+static bool poison_from_environment(void) {
+  MsString value = ms_string_empty();
+  const bool on = ms_env_get("MS_POISON_SLOTS", &value) && ms_string_span(&value).len != 0;
+  ms_string_release(&value);
+  return on;
+}
+
 /* The `MS_RUNTIME` archives followed by the request's own files. */
 static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *inputs) {
   size_t count = 0;
@@ -117,7 +127,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
                                   .tests = request->tests, .bench = request->bench,
                                   .count_ops = request->count_ops || ops_from_environment(),
                                   .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
-                                  .wide_hide = request->build_type == MS_BUILD_DEBUG};
+                                  .wide_hide = request->build_type == MS_BUILD_DEBUG,
+                                  .poison_slots = poison_from_environment()};
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));

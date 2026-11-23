@@ -14,4 +14,7 @@ void msrt_drop_leave(void);
 /* ms-sig: msrt_slot_copy_grown(copy: *const u8, src: *const u8, dst: *mut u8) */
 void msrt_slot_copy_grown(void (*copy)(const uint8_t *src, uint8_t *dst), const uint8_t *src, uint8_t *dst);
 
+/* Frees this thread's worklist when its scheduler ends. */
+void ms_drop_queue_release(void);
+
 #endif

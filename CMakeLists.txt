@@ -17,6 +17,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "aarch6
   set(MS_ATOMIC_FLAGS -mno-outline-atomics)
   string(APPEND CMAKE_C_FLAGS " -mno-outline-atomics")
 endif()
+# The counting runtime (live blocks, parks, copies) for the leak, cancel and count gates: `cmake --preset stats`.
+option(MS_STATS "Compile the runtime's counters in" OFF)
+if(MS_STATS)
+  add_compile_definitions(MS_STATS=1)
+endif()
 set(MS_MUSL_BUILD_DIR "${CMAKE_BINARY_DIR}/musl")
 
 find_program(MS_CCACHE ccache)

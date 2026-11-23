@@ -2,6 +2,7 @@
  * clones, concatenation, append, repeat and reverse. The result rules are in string_support.h. */
 #include "abi/status.h"
 #include "base/alloc.h"
+#include "runtime/core/stats.h"
 #include "base/chars.h"
 #include "base/utf8.h"
 #include "runtime/core/fault.h"
@@ -82,6 +83,7 @@ void msrt_string_empty(MsString *out) {
 }
 
 void msrt_string_clone(const MsString *s, MsString *out) {
+  ms_stats_copy(1, ms_string_span(s).len);
   *out = cloned(s);
 }
 

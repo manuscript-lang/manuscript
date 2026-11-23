@@ -77,3 +77,12 @@ void ms_test_take_fault(uint64_t capture, uint8_t **bytes, size_t *length) {
   }
   ms_spin_unlock(&kept.lock);
 }
+
+void ms_test_release_faults(void) {
+  ms_spin_lock(&kept.lock);
+  for (size_t at = 0; at < kept.list.len; at++) {
+    ms_free(kept.list.ptr[at].bytes);
+  }
+  kept_list_free(&kept.list);
+  ms_spin_unlock(&kept.lock);
+}

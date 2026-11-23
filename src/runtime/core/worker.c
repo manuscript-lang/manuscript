@@ -6,6 +6,7 @@
 #include "base/alloc.h"
 #include "runtime/core/isolate.h"
 #include "runtime/core/scheduler.h"
+#include "runtime/core/stats.h"
 #include "runtime/sys/sys.h"
 
 enum { WORKER_STACK = 0, SPREAD_WEIGHT = 1024 }; /* a spread start outweighs any number of tasks */
@@ -55,10 +56,12 @@ static void root_entry(void *argument) {
   uint64_t value = 0;
   uint32_t result = 0;
   for (;;) {
+    ms_stats_park_internal(true); /* no program awaits this park */
     const MsTokenStatus status = token != 0 ? ms_token_park(token, -1, &value, &result) : MS_TOKEN_NO_SUCH_TOKEN;
     if (status != MS_TOKEN_OK || result == MS_WAIT_CANCELLED) {
       break;
     }
+    ms_stats_park_internal(false);
     /* woken by nothing: wait again */
   }
 }
