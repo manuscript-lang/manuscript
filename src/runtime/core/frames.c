@@ -423,6 +423,7 @@ bool ms_frames_collector_add(uintptr_t return_address, void *context) {
 
 
 /* PROBE */
+void ms_probe_line(const char *what, uintptr_t a, uintptr_t b);
 void ms_probe_line(const char *what, uintptr_t a, uintptr_t b) {
   char text[128];
   size_t n = 0;
