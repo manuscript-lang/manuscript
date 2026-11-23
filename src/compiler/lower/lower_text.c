@@ -106,7 +106,13 @@ static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *f
   return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, MIR_STR);
 }
 
+/* An interface value is written by its payload's type: the vtable carries a text slot after the declared methods. */
 MirValue fn_value_text(LowerFn *fn, MirValue value, MirTy ty) {
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  if (data->kind == MK_IFACE) {
+    const MirImm method = {.tag = MI_METHOD, .a = data->id, .b = fn->cx->module->ifaces.ptr[data->id].nmethods - 1};
+    return fn_emit(fn, MOP_CallMethod, &value, 1, method, MIR_STR);
+  }
   return value_shown(fn, value, ty, "msstd_value_text");
 }
 
@@ -166,6 +172,10 @@ MirValue fn_text(LowerFn *fn, const MsExpr *expr) {
 MirValue fn_value_operation(LowerFn *fn, MsSpan operation, const MirValue *args, uint32_t nargs, MirTy ret) {
   if (nargs == 0 || nargs > 4) {
     return MIR_NONE;
+  }
+  const MirTy receiver = mir_b_ty(&fn->b, args[0]);
+  if (nargs == 1 && ms_span_is_text(operation, "to_string") && mir_ty_data(fn->cx->module, receiver)->kind == MK_IFACE) {
+    return fn_value_text(fn, args[0], receiver);
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "msstd_value_");

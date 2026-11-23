@@ -319,7 +319,18 @@ static int encode(Encode *state, uint32_t shape_index, const uint8_t *slot, int 
   case MS_SHAPE_BIGINT:
   case MS_SHAPE_DECIMAL:
     return encode_digits(state, shape_index, value);
-  default: /* VOID, OPAQUE, FUNCTION, OBJECT */
+  case MS_SHAPE_OBJECT: {
+    const MsObjectCodec *codec = ms_object_codec(ms_shape_text(state->table, shape->name));
+    if (codec == NULL) {
+      return no_form(state);
+    }
+    MsString text = ms_string_empty();
+    codec->text(*(MsObj *const *)(const void *)value, &text);
+    msstd_json_w_string(state->writer, &text);
+    ms_string_release(&text);
+    return WRITTEN;
+  }
+  default: /* VOID, OPAQUE, FUNCTION */
     return no_form(state);
   }
 }

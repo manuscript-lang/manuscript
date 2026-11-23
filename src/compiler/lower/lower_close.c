@@ -200,7 +200,7 @@ void lower_close_check(MirBuilder *b, MirValue result) {
 
 /* A `var` slot that only drops serves a `var` that moves: the others keep their value in a variable. */
 static bool lowerable(uint16_t flags) {
-  if ((flags & MS_CLOSER_DROP) != 0 && ((flags & MS_CLOSER_MOVED) == 0 || (flags & MS_CLOSER_RECEIVER) != 0)) {
+  if ((flags & MS_CLOSER_DROP) != 0 && (flags & MS_CLOSER_MOVED) == 0) {
     return false;
   }
   const bool taken = (flags & MS_CLOSER_PARTS) != 0 && (flags & MS_CLOSER_TAKEN) != 0;

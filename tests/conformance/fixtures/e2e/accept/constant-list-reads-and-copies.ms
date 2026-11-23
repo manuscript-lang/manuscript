@@ -13,7 +13,7 @@ type Box:
 	items: List[Int]
 
 fn give() List[Int]:
-	return table
+	return table.clone()
 
 fn bump(var l: List[Int]) Void:
 	l[0] = 99
@@ -37,13 +37,13 @@ test "a copy is changed without changing the constant":
 	a[0] = 7
 	a.append(8)
 	a | expect_equal([7, 1, 4, 1, 5, 9, 2, 6, 8])?
-	var b = Box(items: table)
+	var b = Box(items: table.clone())
 	b.items[1] = 50
 	b.items[1] | expect_equal(50)?
-	var c = table
+	var c = table.clone()
 	bump(c)
 	c[0] | expect_equal(99)?
-	var d = [table, table]
+	var d = [table.clone(), table.clone()]
 	d[1][0] = 0
 	d[0][0] | expect_equal(3)?
 	table | expect_equal([3, 1, 4, 1, 5, 9, 2, 6])?

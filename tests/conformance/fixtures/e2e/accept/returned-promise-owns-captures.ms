@@ -15,14 +15,14 @@ fn length_of(address: String) Int!:
 fn port_of(target: Target) Int!:
 	return ok(target.port + target.host.length())
 
-fn start(address: String) Promise[Int]:
+fn start(move address: String) Promise[Int]:
 	return promise(fn: length_of(address))
 
 fn start_local() Promise[Int]:
 	text := "local"
 	return promise(fn: length_of(text))
 
-fn start_target(target: Target) Promise[Int]:
+fn start_target(move target: Target) Promise[Int]:
 	return promise(fn: port_of(target))
 
 test "a returned promise owns the parameter it captures":

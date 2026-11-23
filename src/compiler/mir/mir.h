@@ -322,6 +322,15 @@ typedef struct MirAltDef {
 
 MS_LIST_DEFINE(MirAltDefList, mir_alt_def_list, MirAltDef)
 
+/* The own text and JSON form of a native object type (an IP address): its shape names these functions like a record's. */
+typedef struct MirObjHook {
+  MirTy ty;
+  uint32_t text_fn1;
+  uint32_t json_fn1;
+} MirObjHook;
+
+MS_LIST_DEFINE(MirObjHookList, mir_obj_hook_list, MirObjHook)
+
 typedef struct MirMethodSig {
   MsName name;
   MirTy *params; /* in the module arena */
@@ -404,6 +413,7 @@ typedef struct MirModule {
   MirTyTable types;
   MirTypeDefList type_defs;
   MirAltDefList alts;
+  MirObjHookList obj_hooks;
   MirIfaceDefList ifaces;
   MirVtableList vtables;
   MirDescGlueList desc_glue;

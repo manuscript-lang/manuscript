@@ -299,6 +299,10 @@ static bool is_comparison(MsBinaryOp op) {
   return op >= MS_B_EQ && op <= MS_B_GE;
 }
 
+static bool collection_literal(const MsExpr *expr) {
+  return expr->kind == MS_E_LIST || expr->kind == MS_E_MAP;
+}
+
 /* Types the two operands. Literals beside a sized number take its type; arithmetic over literals alone takes the
  * expected sized type. */
 static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *left, MsTy *right) {
@@ -313,12 +317,16 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
   } else if (literal_tree(body, l) == 2 && literal_tree(body, r) != 2) {
     *right = body_expr(body, r, MS_TY_NONE);
     *left = body_expr(body, l, literal_hint(body, l, *right));
+  } else if (collection_literal(l) && !collection_literal(r) && (op == MS_B_EQ || op == MS_B_NE)) {
+    *right = body_expr(body, r, MS_TY_NONE); /* a literal beside a typed collection takes its type */
+    *left = body_expr(body, l, *right);
   } else {
     *left = body_expr(body, l, MS_TY_NONE);
     const bool wraps = (op == MS_B_EQ || op == MS_B_NE) &&
                        ms_ty_is(&body->program->types, *left, MS_BUILTIN_Optional) &&
                        ms_ty_arg_count(&body->program->types, *left) == 1;
-    *right = body_expr(body, r, wraps ? *left : literal_hint(body, r, *left));
+    const bool shaped = (op == MS_B_EQ || op == MS_B_NE) && collection_literal(r);
+    *right = body_expr(body, r, wraps || shaped ? *left : literal_hint(body, r, *left));
   }
 }
 

@@ -89,15 +89,6 @@ static uint32_t json_hook(Lower *cx, MirTy ty, MirTy tree_ty, uint32_t method) {
   return finish(cx, &fn, slot, status);
 }
 
-static MirTy json_value_type(const Lower *cx) {
-  for (uint32_t id = 0; id < cx->module->alts.len; id++) {
-    if (cx->module->alts.ptr[id].std == MSTD_JSON_VALUE) {
-      return mir_ty_alt(cx->module, id);
-    }
-  }
-  return MIR_NONE;
-}
-
 /* A method of `ty` the hook can call: one borrowed receiver, answering `ret`. */
 static uint32_t own_method(Lower *cx, MirTy ty, const char *name, MirTy ret) {
   const MsTy checked = lower_source_type(cx, ty);
@@ -112,6 +103,23 @@ static uint32_t own_method(Lower *cx, MirTy ty, const char *name, MirTy ret) {
   return func->nparams == 1 && func->ret == ret && func->params[0].mode != MM_MOVE ? method : MIR_NONE;
 }
 
+/* The `to_json` of `ty` when it answers the untyped JSON value; `tree` is that value's type. */
+static uint32_t own_json_method(Lower *cx, MirTy ty, MirTy *tree) {
+  const MsTy checked = lower_source_type(cx, ty);
+  const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(cx, checked, "to_json");
+  if (method == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirFunc *func = &cx->module->funcs.ptr[method];
+  const MirTyData *ret = mir_ty_data(cx->module, func->ret);
+  if (func->nparams != 1 || func->params[0].mode == MM_MOVE || ret->kind != MK_ALT ||
+      cx->module->alts.ptr[ret->id].std != MSTD_JSON_VALUE) {
+    return MIR_NONE;
+  }
+  *tree = func->ret;
+  return method;
+}
+
 static bool visited(Lower *cx, MirTy ty) {
   for (size_t index = 0; index < cx->hooked.len; index++) {
     if (cx->hooked.ptr[index] == ty) {
@@ -123,6 +131,22 @@ static bool visited(Lower *cx, MirTy ty) {
 }
 
 static void walk(Lower *cx, MirTy ty);
+
+/* A native object type that declares its own `to_string` or `to_json` shows and encodes through them. */
+static void object_hooks(Lower *cx, MirTy ty) {
+  if (mir_ty_data(cx->module, ty)->obj_class != MIR_OBJ_HANDLE || visited(cx, ty)) {
+    return;
+  }
+  MirTy tree = MIR_NONE;
+  const uint32_t text = own_method(cx, ty, "to_string", MIR_STR);
+  const uint32_t json = own_json_method(cx, ty, &tree);
+  if (text == MIR_NONE && json == MIR_NONE) {
+    return;
+  }
+  const uint32_t text_fn = text != MIR_NONE ? text_hook(cx, ty, text) : MIR_NONE;
+  const uint32_t json_fn = json != MIR_NONE ? json_hook(cx, ty, tree, json) : MIR_NONE;
+  mir_obj_hook_list_push(&cx->module->obj_hooks, (MirObjHook){ty, text_fn != MIR_NONE ? text_fn + 1 : 0, json_fn != MIR_NONE ? json_fn + 1 : 0});
+}
 
 static void walk_fields(Lower *cx, const MirField *fields, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
@@ -141,6 +165,7 @@ static void walk(Lower *cx, MirTy ty) {
     for (uint32_t at = 0; at < nargs; at++) {
       walk(cx, mir_ty_data(cx->module, ty)->args[at]);
     }
+    object_hooks(cx, ty);
     return;
   }
   if ((data->kind != MK_TYPE && data->kind != MK_ALT) || visited(cx, ty)) {
@@ -148,9 +173,9 @@ static void walk(Lower *cx, MirTy ty) {
   }
   const bool record = data->kind == MK_TYPE;
   const uint32_t id = data->id;
-  const MirTy tree = json_value_type(cx);
+  MirTy tree = MIR_NONE;
   const uint32_t text = own_method(cx, ty, "to_string", MIR_STR);
-  const uint32_t json = tree != MIR_NONE ? own_method(cx, ty, "to_json", tree) : MIR_NONE;
+  const uint32_t json = own_json_method(cx, ty, &tree);
   const uint32_t text_fn = text != MIR_NONE ? text_hook(cx, ty, text) : MIR_NONE;
   const uint32_t json_fn = json != MIR_NONE ? json_hook(cx, ty, tree, json) : MIR_NONE;
   if (record) {
