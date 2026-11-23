@@ -10,7 +10,7 @@ Vendored C libraries, pinned in `c-libs.lock` (version, tarball URL and checksum
 | zlib | 1.4 | Compression for the std and net layers. Built with its own `CMakeLists.txt`; target `zlib`. |
 | libuv | 1.53.0 | Event loop, one per thread, for the io and net layers. Built by its own CMakeLists.txt (static only); CMake target `uv` aliases `uv_a`. |
 | nghttp2 | 1.71.0 | HTTP/2 framing for the net layer. Built with its own `CMakeLists.txt` (`ENABLE_LIB_ONLY`, static); target `nghttp2`. The tree carries the `.in` files and stub `CMakeLists.txt` its top-level configure reads. |
-| curl | 8.23.0 | Client library for the net layer (`lib` and `include`). CMake target `curl`, static, libcurl only: HTTP and HTTP/2, zlib, threaded resolver, TLS through OpenSSL on Unix. |
+| curl | 8.23.0 | Client library for the net layer. Built with its own `CMakeLists.txt` as an ExternalProject after OpenSSL (its configure step links against it); static libcurl only: HTTP and HTTP/2, zlib, threaded resolver, TLS through OpenSSL. CMake target `curl` (`cmake/curl.cmake`). |
 | OpenSSL | 3.5.4 | TLS and crypto for the net layer. The whole source minus `test` and `demos`; the build uses its own Configure (perl). CMake targets `openssl_ssl` and `openssl_crypto` (`cmake/openssl.cmake`, built out of tree). |
 
 Check offline: `cmake -DSOURCE_DIR=. -P cmake/FetchCLibs.cmake` (also the `third_party_lock` ctest).
