@@ -324,8 +324,12 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
   }
-  if (moves && expr->u.member.left->kind == MS_E_CALL && fn_fresh_owner(fn, base)) {
-    /* The field leaves a temporary that dies with the statement: the rest of the record is released with it. */
+  const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME && fn->facts->last != NULL &&
+                          fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base) &&
+                          fn_closing_owns(fn, ms_facts_ref(fn->facts, expr->u.member.left->id));
+  if (moves && (expr->u.member.left->kind == MS_E_CALL || last_field) && fn_fresh_owner(fn, base)) {
+    /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
+     * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
     const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
     const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
@@ -865,6 +869,9 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
       fn->moved_names[fn->nmoved_names++] = value;
     }
     return value;
+  }
+  if (expr->kind == MS_E_MEMBER && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value)) {
+    return value; /* the field was taken out of its record: nothing to copy */
   }
   return fn_implicit_clone(fn, value, true);
 }

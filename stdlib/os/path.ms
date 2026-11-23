@@ -532,7 +532,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 			if part.is_empty(): continue
 
 			root := root_of(true, part)
-			part_device := root.cut_suffix("/").get_or(root)
+			part_device := root.cut_suffix("/").get_or(root.clone())
 
 			if not part_device.is_empty():
 				if not device.is_empty() and not equal_fold(device, part_device): continue

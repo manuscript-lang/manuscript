@@ -30,6 +30,12 @@ typedef struct Moves {
   MsBindingList borrowed; /* binding sites of names bound to a view of another value */
   MsBindingList outer;  /* what the lambdas around the current expression capture: only borrowed inside them */
   uint32_t depth;       /* lambdas open around the current expression */
+  bool instance;        /* checking one instance of a generic body: only a type variable that became a resource is reported */
+  const MsTy *subst_vars, *subst_args;
+  uint32_t nsubst;
+  bool found;
+  MsPos at;
+  MsName who;
   uint32_t marks[16];   /* `outer.len` before each open lambda's captures */
 } Moves;
 
@@ -79,7 +85,15 @@ static void report(const Moves *pass, const MsExpr *expr, MsNode next) {
 }
 
 /* A plain parameter is the caller's: handing it on needs `move` on the parameter, or `.clone()` to give a copy. */
-static void report_borrowed(const Moves *pass, const MsExpr *expr) {
+static void report_borrowed(Moves *pass, const MsExpr *expr) {
+  if (pass->instance) {
+    if (!pass->found) {
+      pass->found = true;
+      pass->at = expr->pos;
+      pass->who = expr->u.sym;
+    }
+    return;
+  }
   const MsSpan name = ms_names_span(pass->program->names, expr->u.sym);
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "`");
@@ -241,8 +255,11 @@ static void leave_expr(void *ctx, const MsExpr *expr) {
 static void check_handed_on(Moves *pass, const MsExpr *value) {
   uint32_t binding = 0;
   const MsTy ty = ms_facts_type(pass->facts, value->id);
+  const MsTy concrete = pass->instance && ty != MS_TY_NONE && ms_ty_has_variable(&pass->program->types, ty)
+                            ? ms_ty_subst(&pass->program->types, ty, pass->subst_vars, pass->subst_args, pass->nsubst)
+                            : (pass->instance ? MS_TY_NONE : ty);
   if (pass->depth == 0 && value->kind == MS_E_NAME && ms_bind_of(pass->facts, value->id, &binding) &&
-      contains(&pass->borrowed, binding) && ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
+      contains(&pass->borrowed, binding) && concrete != MS_TY_NONE && ms_check_holds_resource(pass->program, concrete)) {
     report_borrowed(pass, value);
   }
 }
@@ -254,9 +271,27 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
 }
 
+/* A field moved out of a name at that name's last use leaves nothing of the name to read afterwards. */
+static void note_last_field(Moves *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  uint32_t binding = 0;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (root->kind != MS_E_NAME || !ms_bind_of(pass->facts, root->id, &binding) || expr->id >= pass->facts->node_count) {
+    return;
+  }
+  const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(root->id, binding));
+  pass->facts->last[expr->id] = use != NULL && use->last && pass->depth == 0;
+}
+
 static void visit_expr(void *ctx, const MsExpr *expr) {
   Moves *pass = ctx;
   uint32_t binding = 0;
+  if (!pass->instance && expr->kind == MS_E_MEMBER && ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE &&
+      pass->facts->last != NULL) {
+    note_last_field(pass, expr);
+  }
   const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
   for (uint32_t index = 0; call != NULL && index < call->arg_count; index++) {
     if (call->args[index].source != MS_ARG_WRITTEN || (!call->constructor && (call->args[index].flags & MS_PARAM_MOVE) == 0)) {
@@ -267,6 +302,17 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
         check_handed_on(pass, expr->u.call.args.ptr[at].value);
       }
     }
+  }
+  if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
+      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && contains(&pass->borrowed, binding)) {
+    /* The payloads of a borrowed value are borrowed too. */
+    for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
+      const MsArm *one = expr->u.match.arms.ptr[arm];
+      ms_binding_list_push(&pass->borrowed, one->id);
+    }
+  }
+  if (pass->instance) {
+    return; /* an instance only reports a view or borrowed parameter that became a resource and moved on */
   }
   if (expr->kind == MS_E_LAMBDA) {
     if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
@@ -281,14 +327,6 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     ms_binding_list_free(&captures);
     return;
   }
-  if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
-      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && contains(&pass->borrowed, binding)) {
-    /* The payloads of a borrowed value are borrowed too. */
-    for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
-      const MsArm *one = expr->u.match.arms.ptr[arm];
-      ms_binding_list_push(&pass->borrowed, one->id);
-    }
-  }
   if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || contains(&pass->reads, expr->id) ||
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;
@@ -301,12 +339,35 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
 
 }
 
+/* A call `x.get()` whose receiver is an owned resource at its last use consumes it: what the call returns is taken
+ * out of the receiver rather than copied. The lowering reads the mark on the receiver name. */
+static bool last_use_receiver(Moves *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  const MsExpr *receiver = callee->kind == MS_E_MEMBER ? callee->u.member.left : NULL;
+  uint32_t binding = 0;
+  if (receiver == NULL || receiver->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->depth != 0 ||
+      pass->live == NULL || !ms_bind_of(pass->facts, receiver->id, &binding) || contains(&pass->borrowed, binding) ||
+      !ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, receiver->id))) {
+    return false;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, receiver->id);
+  const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(receiver->id, binding));
+  if (ref == NULL || use == NULL || !use->last || (ref->kind == MS_REF_PARAM && !contains(&pass->moving, binding))) {
+    return false;
+  }
+  pass->facts->last[receiver->id] = 1;
+  return true;
+}
+
 /* A name bound to a call result that borrows (`secure := outcome.get()`) holds a view, not an owner. */
 static void note_view(Moves *pass, const MsStmt *stmt) {
   const MsExpr *value = stmt->u.bind.value;
   const MsCall *call = value != NULL && value->kind == MS_E_CALL ? ms_facts_call(pass->facts, value->id) : NULL;
   for (uint32_t position = 0; call != NULL && position < call->arg_count; position++) {
     if (ms_own_call_borrows(pass->program, call, position)) {
+      if (position == 0 && last_use_receiver(pass, value)) {
+        return; /* the receiver dies here, so the result is taken out of it and owns what it holds */
+      }
       ms_binding_list_push(&pass->borrowed, stmt->u.bind.pattern->id);
       return;
     }
@@ -336,9 +397,9 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
       ms_binding_list_push(&pass->moving, params.ptr[index]->id);
     }
   }
-  ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = note_var}, params, body);
   MsLiveness live = ms_live_compute(pass->facts, pass->program->names, arena, body);
   pass->live = &live;
+  ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = note_var}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = note_spot}, params, body);
   ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = visit_expr, .stmt = visit_stmt, .leave_expr = leave_expr}, params, body);
   spot_list_clear(&pass->spots);
@@ -374,10 +435,37 @@ static void check_decl(Moves *pass, MsArena *arena, const MsDecl *decl) {
   }
 }
 
+bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFunc *func, const MsTy *vars,
+                           const MsTy *args, uint32_t count, MsPos *at, MsName *who) {
+  MsArena arena = ms_arena_new();
+  MsClassifier classes = ms_class_new(program);
+  Moves pass = {.program = program, .module = module, .facts = &program->modules.ptr[module].facts, .classes = &classes,
+                .arena = &arena, .instance = true, .subst_vars = vars, .subst_args = args, .nsubst = count};
+  for (uint32_t index = 0; index < func->params.len; index++) {
+    if (!func->params.ptr[index]->moving && !func->params.ptr[index]->is_mutable) {
+      ms_binding_list_push(&pass.borrowed, func->params.ptr[index]->id);
+    }
+  }
+  ms_walk_callable(&(MsVisitor){.ctx = &pass, .stmt = note_var}, func->params, func->body);
+  ms_walk_callable(&(MsVisitor){.ctx = &pass, .expr = visit_expr, .stmt = visit_stmt, .leave_expr = leave_expr}, func->params,
+                   func->body);
+  *at = pass.at;
+  *who = pass.who;
+  ms_binding_list_free(&pass.borrowed);
+  ms_binding_list_free(&pass.reads);
+  ms_binding_list_free(&pass.moving);
+  ms_binding_list_free(&pass.outer);
+  ms_binding_list_free(&pass.vars);
+  spot_list_free(&pass.spots);
+  ms_class_free(&classes);
+  ms_arena_free(&arena);
+  return pass.found;
+}
+
 void ms_own_moves(MsCheckProgram *program) {
   MsArena arena = ms_arena_new();
   MsClassifier classes = ms_class_new(program);
-  for (uint32_t module = 0; module < program->user_modules; module++) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
     Moves pass = {.program = program, .module = module, .facts = &program->modules.ptr[module].facts,
                   .classes = &classes, .arena = &arena};
     const MsModule *tree = program->modules.ptr[module].tree;

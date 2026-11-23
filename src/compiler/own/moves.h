@@ -9,4 +9,10 @@
 
 void ms_own_moves(MsCheckProgram *program);
 
+/* One instance of a generic body, its type variables `vars` bound to `args`: whether a plain parameter, or a view of one,
+ * whose type is a type variable that became a resource is handed on (returned, a constructor argument, a `move`
+ * argument). The copy that needs would fault; `at` and `who` name the use. */
+bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFunc *func, const MsTy *vars,
+                           const MsTy *args, uint32_t count, MsPos *at, MsName *who);
+
 #endif
