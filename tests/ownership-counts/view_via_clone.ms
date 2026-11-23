@@ -1,5 +1,5 @@
-// expect-debug: allocs=62 alloc_bytes=3550
-// expect-release: allocs=62 alloc_bytes=3550
+// expect-debug: allocs=62 alloc_bytes=3566
+// expect-release: allocs=62 alloc_bytes=3566
 // Trimming through a function that returns an owned clone; `trim` itself now returns an
 // owned value, so view_owned_result.ms matches this count.
 type Line:

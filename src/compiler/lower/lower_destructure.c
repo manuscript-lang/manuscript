@@ -105,7 +105,7 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
       }
       taken |= found < 32 ? UINT32_C(1) << found : 0;
       if (owner != NULL) { /* a `var` record keeps what is left and releases it where its scope ends */
-        fn_scope_var_moved(fn, *owner, found);
+        fn_scope_var_moved(fn, *owner, found, checked_record);
       }
     }
     if (!fn_bind_parts(fn, field->pattern, part, false, NULL, reassignable, takes, MS_TY_NONE)) {
@@ -113,30 +113,65 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
     }
   }
   /* A resource the pattern leaves out is taken from the record too, and closes at the statement. */
-  const MsDef *record = owned && checked_record != MS_TY_NONE ? ms_check_def_of(fn->cx->program, checked_record) : NULL;
-  for (uint32_t at = 0; record != NULL && at < def->nfields && at < record->fields.len && at < 32; at++) {
-    const uint32_t index = def->nfields - 1 - at; /* the last field closes first */
-    const MsTy left = ms_check_part_type(fn->cx->program, checked_record, record, record->fields.ptr[index].ty);
-    if ((taken & (UINT32_C(1) << index)) != 0 || !fn_temp_closes(fn, left) || lower_part_close(fn->cx, left) == MIR_NONE) {
-      continue;
-    }
-    MirValue part = mir_b_emit(&fn->b, MOP_TypeGet, &value, 1, (MirImm){.tag = MI_FIELD, .a = data->id, .b = index},
-                               def->fields[index].ty);
-    if (mir_needs_drop(module, def->fields[index].ty)) {
-      part = fn_emit(fn, MOP_MoveOut, &part, 1, (MirImm){0}, def->fields[index].ty);
-    }
-    taken |= UINT32_C(1) << index;
-    if (owner != NULL) {
-      fn_scope_var_moved(fn, *owner, index);
-    }
-    const uint32_t close = lower_part_close(fn->cx, left);
-    if (close == MIR_NONE) {
-      return fn_fail(fn, "a resource part the pattern leaves out has no close");
-    }
-    lower_close_check(&fn->b, mir_b_call(&fn->b, close, &part, 1));
+  if (owned && checked_record != MS_TY_NONE) {
+    taken = fn_close_left_fields(fn, value, checked_record, taken, owner, 0, MIR_NONE);
   }
   if (taken != 0 && owner == NULL) {
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, (MirImm){.tag = MI_TYPEMASK, .a = data->id, .b = taken}, MIR_NONE);
   }
   return true;
+}
+
+/* Closes the field `index` of `value`, or drops it when it only owns memory. */
+static void settle_field(LowerFn *fn, MirValue value, uint32_t type_id, uint32_t index, MsTy left, MirTy ty, bool closes) {
+  MirValue part = mir_b_emit(&fn->b, MOP_TypeGet, &value, 1, (MirImm){.tag = MI_FIELD, .a = type_id, .b = index}, ty);
+  const bool drops = mir_needs_drop(fn->cx->module, ty);
+  if (drops) {
+    part = fn_emit(fn, MOP_MoveOut, &part, 1, (MirImm){0}, ty);
+  }
+  if (closes) {
+    lower_close_check(&fn->b, mir_b_call(&fn->b, lower_part_close(fn->cx, left), &part, 1));
+  } else if (drops) {
+    (void)mir_b_emit(&fn->b, MOP_Drop, &part, 1, (MirImm){0}, MIR_NONE);
+  }
+}
+
+uint32_t fn_close_left_fields(LowerFn *fn, MirValue value, MsTy record, uint32_t taken, const MirVar *owner, uint32_t maybe,
+                              MirValue flag) {
+  const MirModule *module = fn->cx->module;
+  const MirTyData *data = mir_ty_data(module, mir_b_ty(&fn->b, value));
+  record = record != MS_TY_NONE ? ms_ty_subst(&fn->cx->program->types, record, fn->subst.vars, fn->subst.args, fn->subst.count) : record;
+  const MsDef *def = data->kind == MK_TYPE && record != MS_TY_NONE ? ms_check_def_of(fn->cx->program, record) : NULL;
+  const MirTypeDef *fields = def != NULL ? &module->type_defs.ptr[data->id] : NULL;
+  for (uint32_t at = 0; def != NULL && at < fields->nfields && at < def->fields.len && at < 32; at++) {
+    const uint32_t index = fields->nfields - 1 - at; /* the last field closes first */
+    const uint32_t bit = UINT32_C(1) << index;
+    const MsTy left = ms_check_part_type(fn->cx->program, record, def, def->fields.ptr[index].ty);
+    const MirTy ty = fields->fields[index].ty;
+    const bool conditional = (maybe & bit) != 0;
+    const bool closes = fn_temp_closes(fn, left) && lower_part_close(fn->cx, left) != MIR_NONE;
+    if ((taken & bit) != 0 || (!closes && !(conditional && mir_needs_drop(module, ty)))) {
+      continue;
+    }
+    if (conditional) {
+      const MirValue kept = mir_b_icmp(&fn->b, MCC_EQ, mir_b_binop(&fn->b, MOP_And, flag, mir_b_iconst(&fn->b, (int64_t)bit)),
+                                       mir_b_iconst(&fn->b, 0));
+      const MirBlock hold = mir_b_new_block(&fn->b);
+      const MirBlock join = mir_b_new_block(&fn->b);
+      mir_b_br_if(&fn->b, kept, hold, NULL, 0, join, NULL, 0);
+      mir_b_seal_block(&fn->b, hold);
+      mir_b_switch_to(&fn->b, hold);
+      settle_field(fn, value, data->id, index, left, ty, closes);
+      mir_b_br(&fn->b, join, NULL, 0);
+      mir_b_seal_block(&fn->b, join);
+      mir_b_switch_to(&fn->b, join);
+    } else {
+      settle_field(fn, value, data->id, index, left, ty, closes);
+    }
+    taken |= bit;
+    if (owner != NULL) {
+      fn_scope_var_moved(fn, *owner, index, record);
+    }
+  }
+  return taken;
 }

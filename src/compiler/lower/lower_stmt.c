@@ -105,8 +105,12 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
      * instead of copying them: a resource part has no copy. */
     const bool gives_up = fn_fresh_owner(fn, source) ||
                           (stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(fn->facts, stmt->u.bind.value->id) == MS_USE_MOVE);
+    /* A record of resources that holds nothing to drop is still given up when it is a temporary: its parts close here. */
+    const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
+    const bool temporary = source != MIR_NONE && kind != MS_E_NAME && kind != MS_E_MEMBER && kind != MS_E_INDEX &&
+                           fn_temp_closes(fn, ms_facts_type(fn->facts, stmt->u.bind.value->id)) && fn_owns_result(fn, source);
     return source != MIR_NONE &&
-           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source)),
+           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source) || temporary),
                       from_var ? &owner : NULL, stmt->u.bind.is_mutable, false,
                       ms_facts_type(fn->facts, stmt->u.bind.value->id));
   }
