@@ -41,7 +41,7 @@ fn merge(var a: Bag, var b: Bag) Bag!:
 			a.index[key.clone()] = v.clone()
 
 	a.note = "merged"
-	return ok(a)
+	return ok(a.clone())
 
 test "owned values moved across parks by value and by var":
 	var left = fill(3)?
