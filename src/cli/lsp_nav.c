@@ -120,6 +120,41 @@ static const MsOccurrence *declaration_of(const LspAnalysis *analysis, const MsO
   return NULL;
 }
 
+/* A bundled declaration `selected` names (`symbol:@std/core.ms:<offset>` or `method:...`): the module's source and where the
+ * declared name starts. The index lists only the user's modules, so these have no declaration occurrence. */
+typedef struct StdDeclaration {
+  MsSpan file, source; /* the module below `@std/`, and its text */
+  size_t at;           /* the byte offset of the declared name */
+} StdDeclaration;
+
+static bool std_declaration(const LspAnalysis *analysis, const MsOccurrence *selected, StdDeclaration *out) {
+  const MsSpan key = selected->key;
+  size_t skip;
+  if (ms_span_starts_with(key, ms_span_of_text("symbol:@std/"))) skip = 12;
+  else if (ms_span_starts_with(key, ms_span_of_text("method:@std/"))) skip = 12;
+  else return false;
+  size_t colon = key.len;
+  while (colon > skip && key.ptr[colon - 1] != ':') colon--;
+  if (colon <= skip || colon == key.len) return false;
+  size_t offset = 0;
+  for (size_t i = colon; i < key.len; i++) {
+    if (key.ptr[i] < '0' || key.ptr[i] > '9') return false;
+    offset = offset * 10 + (size_t)(key.ptr[i] - '0');
+  }
+  const MsSpan file = ms_span_of(key.ptr + skip, colon - 1 - skip);
+  const MsCheckProgram *program = &analysis->checked.program;
+  for (size_t i = program->user_modules; i < program->modules.len; i++) {
+    const MsSpan name = ms_names_span(program->names, program->modules.ptr[i].file);
+    if (!ms_span_starts_with(name, ms_span_of_text("@std/")) || !ms_span_equal(ms_span_of(name.ptr + 5, name.len - 5), file)) continue;
+    const MsSpan source = program->modules.ptr[i].source;
+    size_t at;
+    if (!lsp_header(source, offset, selected->name, &at)) return false;
+    *out = (StdDeclaration){file, source, at};
+    return true;
+  }
+  return false;
+}
+
 /* The effects hover shows for a function declared at `line` (1-based) of `module`: what it reaches, what it permits. */
 static void write_effects(MsStrBuild *out, const MsInspection *inspection, MsSpan file, size_t line, MsSpan name) {
   for (size_t i = 0; i < inspection->entities.len; i++) {
@@ -161,6 +196,15 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   ms_strbuild_append(&value, ms_strbuild_span(&shown));
   ms_strbuild_append_text(&value, "\n```");
   const MsOccurrence *declaration = declaration_of(&analysis, selected);
+  StdDeclaration bundled;
+  if (declaration == NULL && std_declaration(&analysis, selected, &bundled)) {
+    const size_t line = lsp_position(bundled.source, bundled.at).line + 1;
+    const MsSpan docs_text = ms_declaration_comment(&analysis.arena, bundled.source, bundled.at, (uint32_t)line);
+    if (docs_text.len > 0) {
+      ms_strbuild_append_text(&value, "\n\n");
+      ms_strbuild_append(&value, docs_text);
+    }
+  }
   if (declaration != NULL) {
     const MsSpan source = source_of(&analysis, declaration);
     const size_t line = lsp_position(source, declaration->offset).line + 1;
@@ -202,6 +246,16 @@ void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition p
       ms_strbuild_append_byte(out, '[');
       write_place(out, &place);
       ms_strbuild_append_byte(out, ']');
+      lsp_analysis_release(&analysis);
+      return;
+    }
+    StdDeclaration bundled;
+    if (std_declaration(&analysis, selected, &bundled)) {
+      ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
+      ms_strbuild_append(out, bundled.file);
+      ms_strbuild_append_text(out, "\",\"range\":");
+      write_range(out, (LspRange){lsp_position(bundled.source, bundled.at), lsp_position(bundled.source, bundled.at + selected->name.len)});
+      ms_strbuild_append_text(out, "}]");
       lsp_analysis_release(&analysis);
       return;
     }

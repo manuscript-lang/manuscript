@@ -311,6 +311,27 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   return true;
 }
 
+/* The source of a bundled module by its `manuscript-stdlib:` URI. */
+static void handle_standard_library_source(const MsJson *id, const MsJson *params) {
+  const MsJson *document = member_kind(params, "textDocument", MS_JSON_OBJECT);
+  const MsJson *uri = member_kind(document, "uri", MS_JSON_STRING);
+  const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
+  if (uri == NULL || !ms_span_starts_with(uri->text, prefix) || ms_span_find(uri->text, ms_span_of_text("?"), &(size_t){0}) ||
+      ms_span_find(uri->text, ms_span_of_text("#"), &(size_t){0})) {
+    reply_error(id, ERROR_INVALID_PARAMS, "invalid standard-library URI");
+    return;
+  }
+  MsStdSource source;
+  if (!ms_std_source_find(ms_span_of(uri->text.ptr + prefix.len, uri->text.len - prefix.len), &source)) {
+    reply_error(id, ERROR_INVALID_PARAMS, "unknown standard-library module");
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  lsp_json_string(&text, source.text);
+  reply_result(id, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+}
+
 /* One message. Returns -1 to continue, or the process status when the session ends. */
 static int handle_message(Session *session, MsSpan body) {
   MsArena arena = ms_arena_new();
@@ -367,6 +388,8 @@ static int handle_message(Session *session, MsSpan body) {
   } else if (ms_span_is_text(method->text, "textDocument/didClose")) {
     handle_close(session, params);
     if (id != NULL) reply_result(id, ms_span_of_text("null"));
+  } else if (ms_span_is_text(method->text, "manuscript/standardLibrarySource")) {
+    if (id != NULL) handle_standard_library_source(id, params);
   } else if (ms_span_is_text(method->text, "workspace/symbol")) {
     if (id != NULL) {
       const MsJson *query = member_kind(params, "query", MS_JSON_STRING);
