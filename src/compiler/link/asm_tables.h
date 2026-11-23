@@ -14,8 +14,10 @@
 AsmFormat asm_host_format(void);
 
 /* Rewrites `assembly` into `out` and appends the tables. `module` is renamed (emit_name_symbols) and `info`
- * was made before that. A function LLVM removed is left out of the tables. */
+ * was made before that. A function LLVM removed, or one that is not in this assembly, is left out of the tables.
+ * A program of several modules (`units` above 1) gives each its own tables, named by `unit`, and module 0 also
+ * defines `ms_tables` as the set of them (MsTableSet in the runtime's frames.h). */
 bool link_asm_tables(MsArena *arena, const MirModule *module, const EmitTableInfo *info, MsSpan assembly,
-                     MsStrBuild *out, MsStrBuild *why);
+                     uint32_t unit, uint32_t units, MsStrBuild *out, MsStrBuild *why);
 
 #endif

@@ -63,6 +63,8 @@ struct SortedTables {
   MsFuncEntry *funcs;
   MsLineEntry *lines;
   uint32_t *scopes;
+  uint8_t *strings;            /* a joined set: the parts' strings, back to back */
+  MsScopeEntry *scope_entries; /* a joined set: the parts' scopes, back to back */
 };
 
 /* Bytes of `count` elements of `size`; a table whose size overflows is corrupt. */
@@ -84,6 +86,8 @@ static SortedTables *sorted_copy(const MsTables *tables) {
   copy->funcs = ms_alloc(array_bytes(tables->func_count, sizeof(MsFuncEntry)));
   copy->lines = ms_alloc(array_bytes(tables->line_count, sizeof(MsLineEntry)));
   copy->scopes = ms_alloc(array_bytes(tables->line_count, sizeof(uint32_t)));
+  copy->strings = NULL;
+  copy->scope_entries = NULL;
   for (size_t i = 0; i < tables->func_count; i++) {
     keys[i] = (SortKey){.address = tables->funcs[i].address, .index = (uint32_t)i};
   }
@@ -108,9 +112,76 @@ static SortedTables *sorted_copy(const MsTables *tables) {
   return copy;
 }
 
+/* One block from the parts of a set: their arrays side by side, each part's offsets into its own strings and ids of
+ * its own scopes moved past those of the parts before it, then put in address order. */
+static SortedTables *joined_copy(const MsTableSet *set) {
+  size_t funcs = 0, lines = 0, scopes = 0, strings = 0;
+  for (uint32_t part = 0; part < set->count; part++) {
+    funcs += set->parts[part]->func_count;
+    lines += set->parts[part]->line_count;
+    scopes += set->parts[part]->scope_count;
+    strings += set->parts[part]->strings_len;
+  }
+  MsFuncEntry *const all_funcs = ms_alloc(array_bytes(funcs + 1, sizeof(MsFuncEntry)));
+  MsLineEntry *const all_lines = ms_alloc(array_bytes(lines + 1, sizeof(MsLineEntry)));
+  uint32_t *const all_line_scopes = ms_alloc(array_bytes(lines + 1, sizeof(uint32_t)));
+  MsScopeEntry *const all_scopes = ms_alloc(array_bytes(scopes + 1, sizeof(MsScopeEntry)));
+  uint8_t *const all_strings = ms_alloc(strings + 1);
+  size_t next_func = 0, next_line = 0, next_scope = 0, next_string = 0;
+  for (uint32_t part = 0; part < set->count; part++) {
+    const MsTables *const from = set->parts[part];
+    const uint32_t base = (uint32_t)next_string;
+    const uint32_t scope_base = (uint32_t)next_scope;
+    if (from->strings_len != 0) {
+      __builtin_memcpy(all_strings + next_string, from->strings, from->strings_len);
+    }
+    for (size_t i = 0; i < from->func_count; i++) {
+      MsFuncEntry entry = from->funcs[i];
+      entry.name_offset += base;
+      entry.file_offset = entry.file_offset == UINT32_MAX ? UINT32_MAX : entry.file_offset + base;
+      all_funcs[next_func++] = entry;
+    }
+    const bool scoped = from->abi_version >= MS_TABLES_WITH_SCOPES && from->line_scopes != NULL;
+    for (size_t i = 0; i < from->line_count; i++) {
+      MsLineEntry entry = from->lines[i];
+      entry.file_offset = entry.file_offset == UINT32_MAX ? UINT32_MAX : entry.file_offset + base;
+      const uint32_t scope = scoped ? from->line_scopes[i] : 0;
+      all_lines[next_line] = entry;
+      all_line_scopes[next_line++] = scope == 0 ? 0 : scope + scope_base;
+    }
+    for (size_t i = 0; i < from->scope_count && scoped; i++) {
+      MsScopeEntry entry = from->scopes[i];
+      entry.name_offset += base;
+      entry.file_offset = entry.file_offset == UINT32_MAX ? UINT32_MAX : entry.file_offset + base;
+      entry.parent = entry.parent == 0 ? 0 : entry.parent + scope_base;
+      all_scopes[next_scope++] = entry;
+    }
+    next_string += from->strings_len;
+  }
+  const MsTables joined = {.abi_version = MS_TABLES_WITH_SCOPES,
+                           .funcs = all_funcs,
+                           .func_count = funcs,
+                           .lines = all_lines,
+                           .line_count = lines,
+                           .strings = all_strings,
+                           .strings_len = strings,
+                           .line_scopes = all_line_scopes,
+                           .scopes = all_scopes,
+                           .scope_count = next_scope};
+  SortedTables *const copy = sorted_copy(&joined);
+  ms_free(all_funcs);
+  ms_free(all_lines);
+  ms_free(all_line_scopes);
+  copy->strings = all_strings;
+  copy->scope_entries = all_scopes;
+  return copy;
+}
+
 void ms_frames_release(void) {
   atomic_store_explicit(&installed_tables, NULL, memory_order_release);
   if (owned_copy != NULL) {
+    ms_free(owned_copy->strings);
+    ms_free(owned_copy->scope_entries);
     ms_free(owned_copy->funcs);
     ms_free(owned_copy->lines);
     ms_free(owned_copy->scopes);
@@ -121,7 +192,9 @@ void ms_frames_release(void) {
 
 void ms_frames_install(const MsTables *tables) {
   SortedTables *copy = NULL;
-  if (tables != NULL && tables->funcs != NULL && !funcs_sorted(tables)) {
+  if (tables != NULL && tables->abi_version == MS_TABLES_SET) {
+    copy = joined_copy((const MsTableSet *)tables);
+  } else if (tables != NULL && tables->funcs != NULL && !funcs_sorted(tables)) {
     copy = sorted_copy(tables);
   }
   ms_frames_release();
