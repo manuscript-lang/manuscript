@@ -80,6 +80,7 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
+  const MsExpr *taking_member; /* the member read whose value the consumer takes (LW_MOVE) */
   const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
   const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
   uint32_t nmoved_fields;
@@ -226,7 +227,6 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue valu
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only);
 /* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
-bool fn_closing_owns(const LowerFn *fn, const MsRef *ref);
 bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken);
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);
 

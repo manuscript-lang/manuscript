@@ -282,7 +282,7 @@ export interface HttpExchange:
 	// Returns the next chunk of the request body, at most `max_bytes` and never more
 	// than 65536, or none at the end of the body. Reading past `max_body_bytes` returns
 	// an `Error` of kind `EOVERFLOW`, and a non-positive `max_bytes` returns EINVAL.
-	var fn read(max_bytes: Int?) Bytes?!
+	var fn read(max_bytes: Int?) move Bytes?!
 	// Sends a whole response: the status line, `headers`, and `body` with its length
 	// known, so the response carries `Content-Length` rather than chunked framing.
 	// Requests with HEAD and statuses without a body get the head alone. The rules of
@@ -342,7 +342,7 @@ fn ServerExchange.protocol() String:
 fn ServerExchange.query() String:
 	return msstd_http_exchange_query(self.native)
 
-fn var ServerExchange.read(max_bytes: Int?) Bytes?!:
+fn var ServerExchange.read(max_bytes: Int?) move Bytes?!:
 	return msstd_http_exchange_read(self.native, max_bytes)
 
 fn var ServerExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:

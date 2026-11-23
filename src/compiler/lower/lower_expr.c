@@ -295,6 +295,7 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
 
 /* `value.field`: a field of a record, read from the value in place. */
 static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
+  const bool taking = fn->taking_member == expr;
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   if (ref != NULL && ref->kind == MS_REF_CASE) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
@@ -320,13 +321,14 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
   const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
   MirVar owner = 0;
-  const bool moves = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
+  const bool taken_at_last = taking && fn->facts->last != NULL && fn->facts->last[expr->id] != 0;
+  const bool moves = (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
+                     mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
   }
   const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME && fn->facts->last != NULL &&
-                          fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base) &&
-                          fn_closing_owns(fn, ms_facts_ref(fn->facts, expr->u.member.left->id));
+                          fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base);
   if (moves && (expr->u.member.left->kind == MS_E_CALL || last_field) && fn_fresh_owner(fn, base)) {
     /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
      * released with it. */
@@ -686,7 +688,9 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_VOID: return mir_b_unit(&fn->b);
     case MS_E_TEXT: return lower_text(fn, expr);
     case MS_E_NAME: return lower_name(fn, expr);
-    case MS_E_MEMBER: return lower_member(fn, expr);
+    case MS_E_MEMBER:
+      fn->taking_member = want == LW_MOVE ? expr : NULL;
+      return lower_member(fn, expr);
     case MS_E_MAP: return fn_map_literal(fn, expr);
     case MS_E_BINARY: return lower_binary(fn, expr);
     case MS_E_CALL: return fn_call(fn, expr, want);
@@ -808,6 +812,17 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   return fn_take_payload(fn, temporary, &ty);
 }
 
+/* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read (own/moves.c). */
+static bool leaves_binding(const LowerFn *fn, const MsExpr *expr) {
+  return ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
+         (expr->kind == MS_E_NAME && fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0);
+}
+
+/* A field read at its record's last use, where the consumer takes ownership: it leaves the record. */
+static bool field_leaves(const LowerFn *fn, const MsExpr *expr) {
+  return expr->kind == MS_E_MEMBER && fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0;
+}
+
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
@@ -816,7 +831,8 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     /* A literal is static, so what owns it holds a copy. */
     return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && fn_closing_move(fn, expr, value, &taken)) {
+  if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && leaves_binding(fn, expr) &&
+      fn_closing_take(fn, ms_facts_ref(fn->facts, expr->id), value, &taken)) {
     return taken;
   }
   if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_borrowed_view(fn, value) &&
@@ -867,13 +883,14 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     fn->moved_fields[fn->nmoved_fields++] = expr;
     return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  if (!borrowed_param && !in_var_record && !view_local && leaves_binding(fn, expr)) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }
     return value;
   }
-  if (expr->kind == MS_E_MEMBER && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value)) {
+  if (expr->kind == MS_E_MEMBER && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || field_leaves(fn, expr)) &&
+      fn_fresh_owner(fn, value)) {
     return value; /* the field was taken out of its record: nothing to copy */
   }
   return fn_implicit_clone(fn, value, true);
