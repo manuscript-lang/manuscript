@@ -13,6 +13,7 @@
 #include "cli/lsp_analysis.h"
 #include "cli/lsp_internal.h"
 #include "cli/lsp_nav.h"
+#include "cli/lsp_symbols.h"
 
 enum { ERROR_PARSE = -32700, ERROR_INVALID_REQUEST = -32600, ERROR_NOT_FOUND = -32601, ERROR_INVALID_PARAMS = -32602,
        ERROR_NOT_INITIALIZED = -32002 };
@@ -100,7 +101,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"foldingRangeProvider\":true,\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -179,7 +180,7 @@ static void handle_close(Session *session, const MsJson *params) {
 
 /* The textDocument requests that read one document at a position. Returns false for a method it does not serve. */
 static bool handle_document_request(Session *session, const MsJson *id, MsSpan method, const MsJson *params) {
-  static const char *const SERVED[] = {"definition", "references", "documentHighlight", "prepareRename", "rename"};
+  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "prepareRename", "rename"};
   bool served = false;
   for (size_t i = 0; i < sizeof SERVED / sizeof SERVED[0]; i++) {
     MsStrBuild name = ms_strbuild_new();
@@ -191,8 +192,11 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   if (!served) return false;
   const MsJson *document = member_kind(params, "textDocument", MS_JSON_OBJECT);
   const MsJson *uri = member_kind(document, "uri", MS_JSON_STRING);
-  LspPosition position;
-  if (uri == NULL || !json_position(ms_json_member(params, "position"), &position)) {
+  LspPosition position = {0};
+  const MsSpan requested = ms_span_of(method.ptr + 13, method.len - 13);
+  const bool outline = ms_span_is_text(requested, "documentSymbol") || ms_span_is_text(requested, "formatting") ||
+                       ms_span_is_text(requested, "foldingRange");
+  if (uri == NULL || (!outline && !json_position(ms_json_member(params, "position"), &position))) {
     if (id != NULL) reply_error(id, ERROR_INVALID_PARAMS, "invalid parameters");
     return true;
   }
@@ -201,7 +205,7 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   const MsSpan kind = ms_span_of(method.ptr + 13, method.len - 13);
   MsStrBuild result = ms_strbuild_new();
   if (doc == NULL || lsp_uri_is_standard_library(uri->text)) {
-    const bool list = !ms_span_is_text(kind, "definition") && !ms_span_is_text(kind, "prepareRename") && !ms_span_is_text(kind, "rename");
+    const bool list = ms_span_is_text(kind, "documentSymbol");
     if (ms_span_is_text(kind, "prepareRename") || ms_span_is_text(kind, "rename")) {
       reply_error(id, ERROR_INVALID_PARAMS, "select a name that refers to a source declaration");
     } else {
@@ -210,12 +214,28 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
     ms_strbuild_free(&result);
     return true;
   }
-  if (ms_span_is_text(kind, "definition")) {
+  if (ms_span_is_text(kind, "hover")) {
+    lsp_nav_hover(&session->docs, doc, position, &result);
+  } else if (ms_span_is_text(kind, "definition")) {
     lsp_nav_definition(&session->docs, doc, position, &result);
   } else if (ms_span_is_text(kind, "references")) {
     const MsJson *context = member_kind(params, "context", MS_JSON_OBJECT);
     const MsJson *include = member_kind(context, "includeDeclaration", MS_JSON_BOOL);
     lsp_nav_references(&session->docs, doc, position, include != NULL && ms_span_is_text(include->text, "true"), &result);
+  } else if (ms_span_is_text(kind, "documentSymbol")) {
+    lsp_document_symbols(&session->docs, doc, &result);
+  } else if (ms_span_is_text(kind, "foldingRange")) {
+    lsp_folding_ranges(doc, &result);
+  } else if (ms_span_is_text(kind, "formatting")) {
+    MsStrBuild error = ms_strbuild_new();
+    if (!lsp_format_document(doc, &result, &error)) {
+      ms_strbuild_append_byte(&error, 0);
+      reply_error(id, ERROR_INVALID_PARAMS, (const char *)ms_strbuild_span(&error).ptr);
+      ms_strbuild_free(&error);
+      ms_strbuild_free(&result);
+      return true;
+    }
+    ms_strbuild_free(&error);
   } else if (ms_span_is_text(kind, "documentHighlight")) {
     lsp_nav_highlight(&session->docs, doc, position, &result);
   } else {

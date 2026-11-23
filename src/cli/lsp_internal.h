@@ -50,4 +50,11 @@ bool lsp_offset(MsSpan source, LspPosition position, bool clamp, size_t *offset)
 /* The range of the token containing `offset`, or an empty range at it. */
 LspRange lsp_diagnostic_range(MsSpan source, size_t offset);
 
+/* The byte offset of `name` as a token on the line after `offset` (a newline exactly at `offset` is skipped): where a
+ * header's declared name is, whatever precedes it. */
+bool lsp_header(MsSpan source, size_t offset, MsSpan name, size_t *at);
+
+/* Whether the last token of `line` that is not a comment is `:`, which opens an indented suite. */
+bool lsp_line_opens_suite(MsSpan line);
+
 #endif

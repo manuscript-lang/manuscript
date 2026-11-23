@@ -160,3 +160,39 @@ LspRange lsp_diagnostic_range(MsSpan source, size_t offset) {
   token_list_free(&tokens);
   return range;
 }
+
+bool lsp_header(MsSpan source, size_t offset, MsSpan name, size_t *at) {
+  if (offset > source.len || name.len == 0) return false;
+  size_t start = offset;
+  if (starts(source, start, "\r\n")) start += 2;
+  else if (starts(source, start, "\n")) start += 1;
+  size_t end = start;
+  while (end < source.len && source.ptr[end] != '\n') end++;
+  const MsSpan line = ms_span_of(source.ptr + start, end - start);
+  TokenList tokens = {0};
+  scan_tokens(line, &tokens);
+  bool found = false;
+  for (size_t i = 0; i < tokens.len && !found; i++) {
+    const Token *token = &tokens.ptr[i];
+    if (token->kind == TOKEN_NAME && ms_span_equal(ms_span_of(line.ptr + token->start, token->end - token->start), name)) {
+      *at = start + token->start;
+      found = true;
+    }
+  }
+  token_list_free(&tokens);
+  return found;
+}
+
+bool lsp_line_opens_suite(MsSpan line) {
+  TokenList tokens = {0};
+  scan_tokens(line, &tokens);
+  bool opens = false;
+  for (size_t i = tokens.len; i > 0; i--) {
+    const Token *token = &tokens.ptr[i - 1];
+    if (token->kind == TOKEN_COMMENT) continue;
+    opens = token->kind == TOKEN_CHAR && line.ptr[token->start] == ':';
+    break;
+  }
+  token_list_free(&tokens);
+  return opens;
+}
