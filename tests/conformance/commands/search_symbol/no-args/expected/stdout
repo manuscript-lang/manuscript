@@ -59,7 +59,7 @@ decimal      Decimal, RoundingMode +1
 math         BigInt, BinaryFloatParts +98
 statistics   BinCounts, Regression +12
 fetch        FetchBody, FetchOptions +6
-http         ClientResponse, HttpClient +26
+http         ClientResponse, HttpClient +27
 ip           Cidr, DnsKind, DnsRecord +5
 mail         Address, Message +4
 mime         HeaderField, Headers +12

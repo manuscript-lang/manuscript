@@ -72,6 +72,11 @@ void msrt_unwinding_pause(void);
 void msrt_unwinding_resume(void);
 /* ms-sig: msrt_unwinding() -> u8 @domain=unwind @end */
 uint8_t msrt_unwinding(void);
+/* Where compiled code receives a native's failing `status`: ends the call as cancelled (ms_sched_cancel_return) when
+ * the status is MS_STATUS_CANCELLED or the task has a stop pending, so a layer that turned the cancel into another
+ * failure does not hide it. Otherwise it does nothing. */
+/* ms-sig: msrt_native_failed(status: u8) @domain=unwind @end */
+void msrt_native_failed(uint8_t status);
 /* ms-sig: msrt_cancelled() -> ! */
 MS_NORETURN void msrt_cancelled(void);
 /* ms-sig: msrt_isolate_hdr() -> *mut Hdr */

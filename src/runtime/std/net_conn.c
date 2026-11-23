@@ -511,7 +511,7 @@ static bool read_edge(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBy
   }
   atomic_fetch_sub(&core->direct, 1);
   if (ended != MS_NET_WAIT_DONE) {
-    *result = ms_net_finish(ended, 0, "read", err); /* a cancel unwinds here, after the fence is released */
+    *result = ms_net_finish(ended, 0, "read", err);
   }
   return handled;
 #endif

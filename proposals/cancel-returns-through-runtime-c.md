@@ -9,7 +9,7 @@
 ## Status
 
 - Direction (Chinmay, 2026-11-23): structural fixes for leaks, not one patch per leak.
-- Stage 1 (core waits, the lint rule) ships with this proposal. Stage 2 (the status, net, TLS, HTTP, files, terminal) follows.
+- Both stages ship with this proposal.
 
 ## Problem
 
@@ -32,12 +32,12 @@ The frozen Rust runtime had the rule this proposal restores ([natives end a canc
 
 1. **A cancelled wait is a status.** `abi/status.h` gains `MS_STATUS_CANCELLED`. `ms_net_finish` and `ms_fail_finish_at` return it instead of jumping; so do the pool waits in `fs_job.c` and the terminal reads. Core waits answer `MS_WAITER_CANCELLED` (`promise.h`), since their answers are promise outcomes and indexes, not statuses.
 2. **Every frame returns.** A caller treats the status as it treats `MS_STATUS_TIMED_OUT` or `MS_STATUS_CLOSED`: free, close, return it. No new path is written; the error path already exists and already runs in tests.
-3. **One place ends the call.** Compiled code receives every `T!` native's failing status in `msstd_status_error` (`stdlib/core/core.ms`), which lowering already calls for every such extern. It ends the task there (`msrt_cancelled`), holding nothing of the runtime's. The few entries that wait and return no status (`msrt_promise_wait`, `msrt_group_next`, `msrt_pipe_try`) call `ms_sched_cancel_return()` themselves.
+3. **One place ends the call.** Compiled code receives every `T!` native's failing status in `msstd_status_error` (`stdlib/core/core.ms`), which lowering already calls for every such extern. It calls `msrt_native_failed(status)`, which ends the call when the status is cancelled or the task has a stop pending, so a layer that rewrote the status cannot hide the cancel. The few entries that wait and return no status (`msrt_promise_wait`, `msrt_group_next`, `msrt_pipe_try`) call `ms_sched_cancel_return()` themselves.
 4. **C tasks see it too.** The server's connection loop and writer get the status from their read or write and return; their guard sees an ordinary return. A handler closure they call is compiled code under its own guard, as now.
 5. **Lint.** Under the directories listed in `NO_UNWIND` (`src/lint/rules.c`), `ms_cancelled()` is allowed only in `unwind.c`, `fault_abi.c` and `start.c`, and `ms_sched_cancel_return()` only inside a function named `msrt_*` or `msstd_*`. Stage 1 lists `runtime/core` and `runtime/entry`; stage 2 adds the rest of `runtime`.
 6. **Registrations go away.** Once a directory is under the rule, its `ms_cleanup_push` calls that exist only for cancel are deleted (most of the 19 in `runtime/std`; each is checked when its file is converted). Those that guard a call into compiled code, which can still fault, stay.
 
-When the back end turns cancel edges on, `ms_sched_cancel_return()` and the status path already deliver by returning, so nothing here changes.
+The back end is moving faults and cancels to ordinary returns (compiled code tests the `unwinding` byte after a call). This design is that contract on the runtime side: natives free and return a status, and the only thing that ends a call is `ms_sched_cancel_return()`, which sets the byte once edges are on. No runtime C then depends on the jump, the guard or the cleanup stack for a cancel.
 
 ## Stages
 
@@ -47,6 +47,7 @@ When the back end turns cancel edges on, `ms_sched_cancel_return()` and the stat
 ## Alternatives considered
 
 - **Do nothing, keep registering.** Works site by site. The table above is the cost: four rounds of leaks, each found late.
+- **A native entry wrapper (`ms_native_return` around an inner function per waiting native).** Built first by the runtime thread for 18 network natives. It needs every entry to remember the wrapper and doubles each native; the single receiving place needs neither.
 - **A per-task list of owned blocks, freed at teardown.** One call at each allocation instead of two around each wait. Still a remembered call per site, and it duplicates the cleanup stack the task header already has.
 - **A scope helper (`ms_scoped`).** Harder to misuse than push and discard, same exposure: a site that does not use it leaks.
 - **Free everything a task allocated when it ends.** Values move between tasks through pipes and promise results, so the allocator cannot know the owner.

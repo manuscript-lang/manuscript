@@ -284,7 +284,7 @@ void ms_net_core_discard(MsNetCore *core) {
 uint8_t ms_net_finish(MsNetWait wait, int status, const char *operation, MsString *err) {
   *err = ms_string_empty();
   if (wait == MS_NET_WAIT_CANCELLED) {
-    ms_cancelled();
+    return MS_STATUS_CANCELLED;
   }
   if (wait == MS_NET_WAIT_TIMED_OUT) {
     return MS_STATUS_TIMED_OUT;

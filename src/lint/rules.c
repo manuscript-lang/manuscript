@@ -40,7 +40,7 @@ typedef struct WordContext {
 
 /* Directories whose C returns a cancelled answer to its caller and never jumps over it, so nothing a frame holds
  * is skipped. Only a program entry (msrt_*, msstd_*) ends a cancelled call. */
-static const char *const NO_UNWIND[] = {"src/runtime/core/", "src/runtime/entry/"};
+static const char *const NO_UNWIND[] = {"src/runtime/"};
 static const char *const UNWIND_HOME[] = {"src/runtime/core/unwind.c", "src/runtime/core/fault_abi.c",
                                           "src/runtime/entry/start.c"};
 

@@ -146,7 +146,7 @@ static uint8_t wait_status(MsTerminal *terminal, const ReadWait *wait) {
 
 uint8_t ms_terminal_read(MsTerminal *terminal, bool quick) {
   if (ms_fail_cancel_requested()) {
-    ms_cancelled();
+    return MS_STATUS_CANCELLED;
   }
   if (atomic_load(&terminal->closed)) {
     return MS_STATUS_CLOSED;
@@ -164,12 +164,9 @@ uint8_t ms_terminal_read(MsTerminal *terminal, bool quick) {
     if (outcome == MS_POOL_TIMED_OUT) {
       return MS_STATUS_TIMED_OUT;
     }
-    ms_cancelled();
+    return MS_STATUS_CANCELLED;
   }
   const uint8_t status = wait_status(terminal, wait);
   read_release(wait);
-  if (ms_fail_cancel_requested()) {
-    ms_cancelled();
-  }
-  return status;
+  return ms_fail_cancel_requested() ? (uint8_t)MS_STATUS_CANCELLED : status;
 }
