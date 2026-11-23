@@ -1658,13 +1658,13 @@ fn parse_workflow(block: List[String]) Wf!:
 				finals.append(reg(states, name))
 		else if line.contains("->"):
 			pos := line.index_of("->").get_or(0)
-			src := (line.slice(0, pos)?).trim()
+			src := line.slice(0, pos).trim()
 			if not valid_state_name(src): return error(
 				Error(f"workflow: bad state name '{src}'")
 			)
 
 			si := reg(states, src)
-			rest := line.slice(pos + 2, line.length())?
+			rest := line.slice(pos + 2, line.length())
 
 			for entry in rest.split(","):
 				ws := entry.fields()
