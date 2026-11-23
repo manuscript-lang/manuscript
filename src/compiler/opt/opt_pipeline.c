@@ -17,6 +17,7 @@ static bool function_round(MirModule *m, MirFunc *f) {
   changed |= opt_copyelim_func(m, f);
   changed |= opt_range_func(m, f);
   changed |= opt_ifconv_func(m, f);
+  changed |= opt_twins_func(m, f);
   return changed;
 }
 
