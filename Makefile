@@ -1,7 +1,7 @@
 HUGO ?= hugo
 VSCODE_CLI ?= code
 # The ms that runs the repository tools in tools/ (`make build` produces it).
-MS ?= $(CURDIR)/.artifacts/build/ci/src/cli/ms-c
+MS ?= $(CURDIR)/.artifacts/build/ci/src/cli/ms
 BENCHREPEATS ?= 5
 BENCHFILTER ?=
 BOOK_CHECK_DIR ?= /tmp/manuscript-book-validation
@@ -11,7 +11,7 @@ TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts re
 
 .PHONY: build conform verify verify-full repo-check licenses licenses-check docs docs-check docs-coverage book book-check dist dist-check bench-check stdlib-bench poison-check ownership-fuzz count-check vscode-package vscode-install $(TOOLS)
 
-# Configures and builds the `ci` preset (src/README.md); `ms-c` lands in $(MS).
+# Configures and builds the `ci` preset (src/README.md); `ms` lands in $(MS).
 build:
 	cmake --preset ci
 	cmake --build --preset ci

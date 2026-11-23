@@ -418,10 +418,31 @@ static void note_if_var(Borrows *pass, const MsStmt *stmt) {
   ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* Whether `call` is a native that lends a collection of its receiver (`m.keys()`, `text.split(..)`): a function that
+ * returns it would hand out something that only borrows. */
+static bool lends_collection(const Borrows *pass, const MsExpr *call) {
+  const MsCall *fact = ms_facts_call(pass->facts, call->id);
+  const MsExpr *callee = call->u.call.callee;
+  if (fact == NULL || callee->kind != MS_E_MEMBER || fact->callee.kind == MS_REF_METHOD || fact->callee.kind == MS_REF_FUNCTION) {
+    return false;
+  }
+  const MsSpan name = ms_names_span(pass->program->names, callee->u.member.name);
+  return ms_span_is_text(name, "keys") || ms_span_is_text(name, "values") || ms_span_is_text(name, "slice") ||
+         ms_span_is_text(name, "split") || ms_span_is_text(name, "lines") || ms_span_is_text(name, "chars");
+}
+
 static void note_return(Borrows *pass, const MsStmt *stmt) {
+  if (pass->lambdas != 0 || stmt->u.expr == NULL) {
+    return;
+  }
   MsStrBuild text = ms_strbuild_new();
-  if (pass->lambdas == 0 && stmt->u.expr != NULL && describe_returned(pass, stmt->u.expr, &text)) {
+  if (describe_returned(pass, stmt->u.expr, &text)) {
     keep_list_push(&pass->keeps, (Keep){.kept = stmt->u.expr, .returned = true});
+  } else {
+    const MsExpr *call = kept_call(stmt->u.expr);
+    if (call != NULL && lends_collection(pass, call)) {
+      note_keep(pass, stmt->u.expr);
+    }
   }
   ms_strbuild_free(&text);
 }
@@ -560,7 +581,7 @@ static void report_keep(Borrows *pass, const Keep *keep) {
     }
     return;
   }
-  if (ms_own_native_get(pass->program, pass->facts, keep->kept) != MS_NATIVE_GET_NONE) {
+  if (!lends_collection(pass, keep->source.call) && ms_own_native_get(pass->program, pass->facts, keep->kept) != MS_NATIVE_GET_NONE) {
     report_kept_read(pass, keep->kept);
     return;
   }

@@ -10,6 +10,7 @@ typedef struct Builder {
   MsArena *arena;
   MsCheckProgram *program;
   MsOccurrences out;
+  MsWrittenTypes *written_out; /* every resolved written type, when the caller asked */
   /* Per user module, indexed by node id. */
   MsSymbolId **symbol_at;               /* the symbol a declaration node declares */
   const MsMethodEntry ***method_at;     /* the method a method node declares */

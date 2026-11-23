@@ -1,0 +1,6 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"$ROOT_URI","capabilities":{}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/main.ms","languageId":"manuscript","version":1,"text":"fn double(value: Int) Int:\n\treturn value * 2\n\nfn main() Void:\n\ttotal := double(4)\n\tprint(total +\n\nfn later() Void:\n\tprint(double(1))\n"}}}
+{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":8,"character":8}}}
+{"jsonrpc":"2.0","id":3,"method":"textDocument/references","params":{"textDocument":{"uri":"$ROOT_URI/main.ms"},"position":{"line":0,"character":4},"context":{"includeDeclaration":true}}}
+{"jsonrpc":"2.0","id":4,"method":"shutdown"}
+{"jsonrpc":"2.0","method":"exit"}

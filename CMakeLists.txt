@@ -44,11 +44,12 @@ endforeach()
 option(MS_CONFORM_ENFORCE "Fail conform when a corpus phase has a difference" OFF)
 function(ms_conform_target name only comment)
   add_custom_target(${name}
-    COMMAND ${CMAKE_COMMAND} "-DMS=$<TARGET_FILE:ms-c>" "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
+    COMMAND ${CMAKE_COMMAND} "-DMS=$<TARGET_FILE:ms>" "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
       "-DENFORCE=${MS_CONFORM_ENFORCE}" "-DONLY=${only}" -P "${CMAKE_SOURCE_DIR}/cmake/Conform.cmake"
-    DEPENDS ms-c
+    DEPENDS ms
     USES_TERMINAL
     COMMENT "${comment}")
 endfunction()
 ms_conform_target(conform "" "Replaying the conformance corpus and the command fixtures")
 ms_conform_target(conform-commands commands "Replaying the command fixtures")
+

@@ -1,4 +1,4 @@
-/* Driver: the `ms-c` entry point.
+/* Driver: the `ms` entry point.
  *
  * For every command it walks all phases and names each one that is not implemented, so a
  * run shows exactly what is missing. Exit status 70 means "not implemented". */
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
   size_t missing = 0;
   for (size_t index = 0; index < count; index++) {
     if (phases[index].run()) continue;
-    (void)fprintf(stderr, "ms-c: not implemented: phase %s (%s), needed by `%s`\n",
+    (void)fprintf(stderr, "ms: not implemented: phase %s (%s), needed by `%s`\n",
                   phases[index].name, phases[index].layer, argv[1]);
     missing++;
   }

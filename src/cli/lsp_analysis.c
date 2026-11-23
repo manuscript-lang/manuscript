@@ -82,12 +82,12 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
   }
   out->overlay = files;
   const MsOverlay overlay = {files, total};
-  const MsLoadOptions options = {.overlay = &overlay};
+  const MsLoadOptions options = {.overlay = &overlay, .recover = true};
   (void)ms_checked_input_load_with(&out->arena, &out->checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
   if (!out->checked.checked) return;
   const MsCheckProgram *program = &out->checked.program;
   out->resolved = true;
-  out->index = ms_occurrence_index(&out->arena, &out->checked.program);
+  out->index = ms_occurrence_index_with_types(&out->arena, &out->checked.program, &out->written);
   out->paths = MS_ARENA_NEW_ARRAY(&out->arena, MsSpan, program->user_modules == 0 ? 1 : program->user_modules);
   for (uint32_t m = 0; m < program->user_modules; m++) {
     const MsSpan name = ms_names_span(program->names, program->modules.ptr[m].file);
