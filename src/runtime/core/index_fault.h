@@ -4,7 +4,7 @@
 
 #include "base/safe.h"
 
-/* "index N out of range for length L; pass a default: get(index:, default: ...)". */
+/* "index N out of range for length L; use get_or(index, default) to avoid the fault". */
 /* ms-sig: msrt_index_fault(index: i64, length: i64) -> ! @leaf */
 MS_NORETURN void msrt_index_fault(int64_t index, int64_t length);
 

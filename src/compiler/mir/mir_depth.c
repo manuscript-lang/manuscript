@@ -328,6 +328,7 @@ bool mir_depth_mark(MirModule *m) {
   bool changed = false;
   for (uint32_t f = 0; f < count; f++) {
     MirFunc *func = &m->funcs.ptr[f];
+    func->recursive = func->recursive || g.recursive[f];
     if (func->blocks.len == 0 || func->unwind_only || !(g.recursive[f] || dp_calls_indirectly(func))) {
       continue;
     }
