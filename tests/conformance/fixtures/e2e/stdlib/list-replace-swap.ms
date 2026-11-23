@@ -1,6 +1,6 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import expect_equal, expect_fault from "@std/test/test.ms"
 
 type Entry:
 	name: String
@@ -72,3 +72,10 @@ test "swap exchanges plain records and optional scalars in line":
 	slots.swap(0, 1)
 	slots.swap(2, 2)
 	expect_equal(slots, [none, 1, 3])?
+
+test "swap faults on an index outside the list and leaves the list unchanged":
+	var numbers = [1, 2, 3]
+	void expect_fault(fn: numbers.swap(0, 3))?
+	void expect_fault(fn: numbers.swap(-4, 1))?
+	void expect_fault(fn: numbers.swap(5, 0))?
+	expect_equal(numbers, [1, 2, 3])?

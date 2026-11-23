@@ -291,7 +291,8 @@ static MirRole string_role(MsSpan name) {
   static const struct {
     const char *name;
     MirRole role;
-  } table[] = {{"msrt_string_eq", MR_STRING_EQ},
+  } table[] = {{"msrt_strbuilder_append", MR_STRBUILDER_APPEND},
+               {"msrt_string_eq", MR_STRING_EQ},
                {"msrt_string_compare", MR_STRING_COMPARE},
                {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
                {"msrt_string_ends_with", MR_STRING_ENDS_WITH}};
@@ -818,6 +819,10 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_set") && argc == 3 &&
       fn_list_set(fn, place, slot, args, out)) {
+    return true;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_swap") && argc == 3 &&
+      fn_list_swap(fn, place, slot, args, out)) {
     return true;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_append") && argc == 2 &&

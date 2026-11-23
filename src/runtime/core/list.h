@@ -82,7 +82,7 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out);
 /* ms-sig: msrt_list_remove_take(v: *mut VecVal, d: ElemDesc, index: i64, out: *mut VecVal) @domain=collection */
 void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList *taken);
-/* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @end */
+/* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @inline=list_swap @end */
 void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j);
 /* ms-sig: msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @domain=collection @end */
 void msrt_list_remove(MsList *v, const MsTypeDesc *d, int64_t index);

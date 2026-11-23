@@ -1,5 +1,6 @@
 /* Owns checked_input.h. */
 #include "cli/checked_input.h"
+#include "compiler/check/std_cache.h"
 
 #include <stdio.h>
 
@@ -111,7 +112,11 @@ bool ms_checked_input_load(MsArena *arena, MsCheckedInput *checked, MsSpan filen
 
 bool ms_checked_input_load_with(MsArena *arena, MsCheckedInput *checked, MsSpan filename, MsInputTarget target,
                                 const MsLoadOptions *extra) {
-  ms_names_init(&checked->names);
+  if (checked->std_cache != NULL) {
+    ms_names_init_over(&checked->names, ms_std_cache_names(checked->std_cache));
+  } else {
+    ms_names_init(&checked->names);
+  }
   MsLoadOptions load = *extra;
   load.tests = target == MS_INPUT_TESTS;
   ms_project_load(arena, &checked->names, filename, &load, &checked->graph);
@@ -124,7 +129,7 @@ bool ms_checked_input_load_with(MsArena *arena, MsCheckedInput *checked, MsSpan 
   if (checked->findings.len > 0 && !(extra->recover && graph->count > 0)) {
     return false;
   }
-  ms_check_graph(&checked->program, &checked->names, graph);
+  ms_check_graph_cached(&checked->program, &checked->names, graph, checked->std_cache);
   ms_own_check(&checked->program);
   checked->checked = true;
   finding_add_check(&checked->program, &checked->names, &checked->findings);
