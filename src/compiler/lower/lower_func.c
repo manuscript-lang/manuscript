@@ -282,8 +282,29 @@ static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func,
 
 /* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a
  * parameter, and each return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
+typedef struct BodyCloses {
+  const MsFacts *facts;
+  bool found;
+} BodyCloses;
+
+static void note_body_closes(void *ctx, const MsStmt *stmt) {
+  BodyCloses *closes = ctx;
+  if (stmt->kind == MS_S_BIND && ms_facts_closer(closes->facts, stmt->u.bind.pattern->id) != NULL) {
+    closes->found = true;
+  }
+}
+
+/* A body that closes resources can replace its result with the close error, a new value: it never hands back a part
+ * of a parameter. */
+static bool body_closes(const Lower *cx, const LowerTarget *target) {
+  BodyCloses closes = {&cx->program->modules.ptr[target->module].facts, false};
+  const MsVisitor visitor = {.ctx = &closes, .stmt = note_body_closes};
+  ms_walk_block(&visitor, target->func->body);
+  return closes.found;
+}
+
 static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
-  if (target->entry || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
+  if (target->entry || body_closes(cx, target) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;
   }

@@ -16,6 +16,7 @@ typedef struct LowerOwnedVar {
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
   bool released;  /* a return is handing the whole value on: the unwind it starts must not own it */
+  MirValue pinned; /* the value an inner scope's end owns for it while a close failure may leave the function, else MIR_NONE */
 } LowerOwnedVar;
 
 /* Where `break` and `continue` go, and how many scopes were open outside the loop. */
@@ -41,6 +42,7 @@ typedef struct LowerWriteback {
   MirVar owner;   /* with `rewrap`: the variable holding the Optional that the binding changes */
   MirTy owner_ty; /* with `rewrap`: its type */
   bool rewrap;    /* store back by making the Optional again, not by writing to `address` */
+  const MsExpr *place; /* with `rewrap`: the place the Optional was taken from, which the Optional goes back to */
 } LowerWriteback;
 
 enum { LOWER_MAX_WRITEBACKS = 8 };
@@ -84,6 +86,7 @@ typedef struct LowerFn {
   MirTy ret;
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
+  bool open_closes[LOWER_MAX_SCOPES]; /* whether the scope at that depth owns a slot that closes where it ends */
   uint32_t nopen;
   LowerOwnedVar owned_vars[LOWER_MAX_OWNED_VARS];
   uint32_t nowned_vars;
@@ -383,6 +386,7 @@ uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures
 uint32_t fn_operation_index(LowerFn *fn, const MsExpr *callee, uint32_t index);
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *callee);
 /* `value` as a function value of type `to`, which differs from its own only in the parameters a call may leave out. */
+bool fn_adapt_function_args(LowerFn *fn, uint32_t func, MirValue *args, uint32_t count);
 MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty);
 
 /* A `var` argument: the place's value moved into a slot whose address is passed, and put back after the call. */
@@ -428,6 +432,8 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *call, MirValue value)
 bool fn_probe_parts(const LowerFn *fn, const MsStmt *stmt, MsExpr **left, MsExpr **index);
 bool fn_probe_begin(LowerFn *fn, const MsStmt *stmt, MirValue *cond, MirValue *address, MirTy *ty);
 bool fn_iflet_writeback(LowerFn *fn, const MsStmt *stmt, MirValue entry);
+bool fn_iflet_lends(LowerFn *fn, const MsStmt *stmt);
+bool fn_iflet_lend_bind(LowerFn *fn, const MsStmt *stmt, MirValue entry);
 bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty);
 void fn_probe_end(LowerFn *fn, bool falls_out);
 void fn_writebacks_put(LowerFn *fn, uint32_t keep);

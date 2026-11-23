@@ -188,11 +188,45 @@ bool fn_iflet_writeback(LowerFn *fn, const MsStmt *stmt, MirValue entry) {
   }
   const MirVar var = fn_local(fn, ref->local, data->elem);
   fn->writebacks[fn->nwritebacks++] = (LowerWriteback){var, MIR_NONE, data->elem, fn->nopen, owner,
-                                                       mir_b_ty(&fn->b, entry), true};
+                                                       mir_b_ty(&fn->b, entry), true, NULL};
   return true;
 }
 
+/* `if var name = owner:` over an Optional that lives in a closing slot: the Optional is
+ * lent out of its place for the body, the binding owns the payload, and the Optional is made again and put back
+ * wherever the body is left. */
+bool fn_iflet_lends(LowerFn *fn, const MsStmt *stmt) {
+  const MsExpr *cond = stmt->u.branch.cond;
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(fn->facts, cond->id) : NULL;
+  if (!stmt->u.branch.is_mutable || stmt->u.branch.binding == NULL || stmt->u.branch.binding->kind != MS_P_NAME || ref == NULL ||
+      fn_closing_at(fn, ref, cond->u.sym) == UINT32_MAX) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, cond->id)));
+  return data->kind == MK_OPT;
+}
+
+/* The then branch of a lent `if var`: the payload leaves the Optional into the binding. */
+bool fn_iflet_lend_bind(LowerFn *fn, const MsStmt *stmt, MirValue entry) {
+  const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.branch.binding->id);
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, entry));
+  if (ref == NULL || ref->kind != MS_REF_LOCAL || fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
+    return fn_fail(fn, "`if var` entries nest too deeply");
+  }
+  const MirValue payload = mir_b_emit(&fn->b, MOP_OptUnbox, &entry, 1, (MirImm){0}, data->elem);
+  const MirVar var = fn_local(fn, ref->local, data->elem);
+  mir_b_def_var(&fn->b, var, payload);
+  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.var = var, .ty = data->elem, .depth = fn->nopen, .owner_ty = mir_b_ty(&fn->b, entry),
+                                                       .rewrap = true, .place = stmt->u.branch.cond};
+  return !fn->failed;
+}
+
 static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
+  if (back->place != NULL) {
+    const MirValue payload = mir_b_use_var(&fn->b, back->var);
+    (void)fn_put_place(fn, back->place, mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, back->owner_ty));
+    return;
+  }
   if (back->rewrap) {
     const MirValue payload = mir_b_use_var(&fn->b, back->var);
     mir_b_def_var(&fn->b, back->owner, mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, back->owner_ty));

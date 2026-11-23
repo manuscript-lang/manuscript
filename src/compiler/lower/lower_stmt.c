@@ -798,6 +798,7 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   MsExpr *probe_key = NULL;
   const bool probes = fn_probe_parts(fn, stmt, &probe_left, &probe_key);
   bool owns = !probes && stmt->u.branch.binding != NULL && fn_iflet_owns(fn, stmt);
+  const bool lends = !probes && !owns && fn_iflet_lends(fn, stmt);
   const bool from_call = stmt->u.branch.cond->kind == MS_E_CALL;
   MirValue entry = MIR_NONE;
   MirTy entry_ty = MIR_VOID;
@@ -806,6 +807,11 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
     if (!fn_probe_begin(fn, stmt, &cond, &entry, &entry_ty)) {
       return false;
     }
+  } else if (lends) {
+    if (!fn_take_place(fn, stmt->u.branch.cond, &entry)) {
+      return false;
+    }
+    cond = fn_iflet_test(fn, entry);
   } else {
     MirValue tested = fn_expr(fn, stmt->u.branch.cond, owns && !from_call ? LW_MOVE : LW_BORROW);
     if (owns && from_call && tested != MIR_NONE && fn_is_borrowed_view(fn, tested)) {
@@ -837,11 +843,15 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   if (probes && !fn_probe_bind(fn, stmt, entry, entry_ty)) {
     return false;
   }
-  if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
+  if (lends) {
+    if (!fn_iflet_lend_bind(fn, stmt, entry)) {
+      return false;
+    }
+  } else if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
     return false;
   }
-  const bool writes_back = !probes && !owns && stmt->u.branch.is_mutable && stmt->u.branch.binding != NULL &&
-                           fn_iflet_writeback(fn, stmt, entry);
+  const bool writes_back = lends || (!probes && !owns && stmt->u.branch.is_mutable && stmt->u.branch.binding != NULL &&
+                                     fn_iflet_writeback(fn, stmt, entry));
   bool ok = fn_stmts(fn, stmt->u.branch.body);
   if (probes || writes_back) {
     fn_probe_end(fn, !fn->terminated);
@@ -856,6 +866,9 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
     mir_b_br(&fn->b, join, NULL, 0);
   }
   enter(fn, otherwise);
+  if (lends) {
+    ok = fn_put_place(fn, stmt->u.branch.cond, entry) && ok; /* nothing was taken: the Optional goes back as it was */
+  }
   ok = lower_block(fn, stmt->u.branch.else_body) && ok;
   const bool else_ended = fn->terminated;
   if (!else_ended) {

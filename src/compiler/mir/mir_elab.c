@@ -274,7 +274,7 @@ static void declare_runtime(MirModule *module, ElCx *shared) {
   const MirTy one = MIR_INT;
   shared->discard = mir_extern_get(module, ms_span_of_text("msrt_cleanup_discard"), &one, 1, MIR_VOID, true,
                                    MR_CLEANUP_DISCARD);
-  shared->cancel = mir_extern_get(module, ms_span_of_text("msrt_cleanup_cancel"), &one, 1, MIR_VOID, true, MR_NONE);
+  shared->cancel = mir_extern_get(module, ms_span_of_text("msrt_cleanup_cancel"), &one, 1, MIR_VOID, true, MR_CLEANUP_CANCEL);
   shared->shield_enter = mir_extern_get(module, ms_span_of_text("msrt_shield_enter"), NULL, 0, MIR_VOID, true,
                                         MR_SHIELD_ENTER);
   shared->shield_exit = mir_extern_get(module, ms_span_of_text("msrt_shield_exit"), NULL, 0, MIR_VOID, true,

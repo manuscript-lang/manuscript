@@ -279,7 +279,7 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
   }
   (void)fn_runtime_call(fn, name, wanted, count, MIR_VOID);
   const MirImm of_type = {.tag = MI_TY, .a = ret};
-  return fn_emit(fn, MOP_Load, &slot, 1, of_type, ret);
+  return fn_emit(fn, mir_needs_drop(fn->cx->module, ret) ? MOP_Take : MOP_Load, &slot, 1, of_type, ret);
 }
 
 /* The runtime function `name` taking the types of `args` and returning `ret`. */

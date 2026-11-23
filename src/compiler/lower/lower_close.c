@@ -266,6 +266,12 @@ static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue valu
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, none, MIR_NONE);
   const MirImm own = {.tag = MI_SCOPE, .a = scope, .b = silent + 2};
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
+  for (uint32_t depth = fn->nopen; depth > 0; depth--) {
+    if (fn->open[depth - 1] == scope) {
+      fn->open_closes[depth - 1] = true;
+      break;
+    }
+  }
   return slot;
 }
 
