@@ -179,7 +179,8 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
                       fn->closing != NULL;
   if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
-    return fn_bind_closing(fn, local, ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
+    return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
+                              ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
   if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
@@ -889,13 +890,34 @@ static bool lower_jump(LowerFn *fn, bool is_break) {
   return !fn->failed;
 }
 
+/* An expression statement discards its value; a fresh resource that value holds closes with the scope. */
+static MsTy discarded_type(LowerFn *fn, const MsExpr *expr) {
+  return ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args,
+                     fn->subst.count);
+}
+
+static bool lower_call_stmt(LowerFn *fn, const MsStmt *stmt) {
+  const MsExpr *expr = stmt->u.expr;
+  const MirValue value = fn_expr(fn, expr, LW_BORROW);
+  if (value == MIR_NONE) {
+    return !fn->failed;
+  }
+  const MsTy checked = discarded_type(fn, expr);
+  const bool owned = fn_fresh_owner(fn, value) ||
+                     (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_is_borrowed_view(fn, value));
+  if (expr->kind == MS_E_CALL && checked != MS_TY_NONE && owned && fn_temp_closes(fn, checked)) {
+    fn_own_temporary(fn, checked, value);
+  }
+  return !fn->failed;
+}
+
 static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
   fn->stmt_loc = fn_loc(fn, stmt->pos);
   mir_b_set_loc(&fn->b, fn->stmt_loc);
   switch ((MsStmtKind)stmt->kind) {
     case MS_S_BIND: return lower_bind(fn, stmt);
     case MS_S_ASSIGN: return lower_assign(fn, stmt);
-    case MS_S_CALL: return fn_expr(fn, stmt->u.expr, LW_BORROW) != MIR_NONE || !fn->failed;
+    case MS_S_CALL: return lower_call_stmt(fn, stmt);
     case MS_S_RETURN: return lower_return(fn, stmt);
     case MS_S_BREAK: return lower_jump(fn, true);
     case MS_S_CONTINUE: return lower_jump(fn, false);
@@ -908,13 +930,17 @@ static bool lower_stmt(LowerFn *fn, const MsStmt *stmt) {
 
 /* A statement whose calls borrow temporary resources lowers in a scope of its own: they close where it ends. */
 static bool lower_scoped(LowerFn *fn, const MsStmt *stmt) {
-  if (fn->temps || !fn_stmt_has_temporary(fn, stmt)) {
+  const bool discards = stmt->kind == MS_S_CALL && stmt->u.expr->kind == MS_E_CALL && fn->closing != NULL &&
+                        discarded_type(fn, stmt->u.expr) != MS_TY_NONE && fn_temp_closes(fn, discarded_type(fn, stmt->u.expr));
+  if (fn->temps || !(discards || fn_stmt_has_temporary(fn, stmt))) {
     return lower_stmt(fn, stmt);
   }
+  fn->bind_scope = stmt->kind == MS_S_BIND ? fn_scope(fn) + 1 : 0;
   (void)fn_scope_begin(fn);
   fn->temps = true;
   const bool ok = lower_stmt(fn, stmt);
   fn->temps = false;
+  fn->bind_scope = 0;
   if (!fn->terminated) {
     fn_scope_end(fn);
   } else {

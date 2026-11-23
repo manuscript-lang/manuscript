@@ -9,6 +9,8 @@
 static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
   MsCheckProgram *program = resolver->program;
   const MsTypeParams params = ms_check_decl_type_params(symbol->decl);
+  const size_t scope = resolver->names.len - (params.len < symbol->var_count ? params.len : symbol->var_count);
+  bool defaulted = false;
   for (uint32_t index = 0; index < params.len && index < symbol->var_count; index++) {
     MsTyVariable *variable =
         ms_ty_variable(&program->types, program->symbol_vars.ptr[symbol->var_at + index]);
@@ -18,8 +20,32 @@ static void resolve_bounds(Resolver *resolver, const MsSymbol *symbol) {
         ms_ty_list_push(&variable->bounds, resolved);
       }
     }
-    if (params.ptr[index]->def != NULL) {
-      variable->default_ty = resolver_type(resolver, params.ptr[index]->def);
+    if (params.ptr[index]->def == NULL) {
+      if (defaulted && resolver->report) {
+        MsStrBuild text = ms_strbuild_new();
+        const MsSpan name = ms_names_span(program->names, params.ptr[index]->name);
+        ms_strbuild_append_text(&text, "type parameter ");
+        ms_strbuild_append(&text, name);
+        ms_strbuild_append_text(&text, " needs a default because an earlier parameter has one; give ");
+        ms_strbuild_append(&text, name);
+        ms_strbuild_append_text(&text, " a default or move it before the defaulted parameters");
+        ms_check_report(program, resolver->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+      continue;
+    }
+    defaulted = true;
+    /* a default sees the receiver's variables and the parameters before it, not itself or those after */
+    const size_t names = resolver->names.len;
+    const size_t types = resolver->types.len;
+    resolver->names.len = scope + index;
+    resolver->types.len = scope + index;
+    variable->default_ty = resolver_type(resolver, params.ptr[index]->def);
+    resolver->names.len = names;
+    resolver->types.len = types;
+    if (resolver->report && variable->default_ty != MS_TY_NONE) {
+      ms_pending_default_list_push(&program->pending_defaults, (MsPendingDefault){
+          .module = resolver->module, .pos = params.ptr[index]->def->pos, .variable = variable->default_ty,
+          .owner = program->symbol_vars.ptr[symbol->var_at + index]});
     }
   }
 }

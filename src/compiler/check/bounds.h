@@ -14,7 +14,8 @@ MS_NODISCARD bool ms_check_bounds_hold(MsCheckProgram *program, MsTy variable, M
 
 /* The same, reading the bounds with each `vars[i]` replaced by `args[i]` (`count` entries). */
 MS_NODISCARD bool ms_check_bounds_hold_with(MsCheckProgram *program, MsTy variable, MsTy arg, const MsTy *vars,
-                                            const MsTy *args, size_t count, MsString *why);
+                                            const MsTy *args, size_t count, const char *alternative,
+                                            MsString *why);
 
 /* Appends why `ty` does not satisfy `bound`, ending with `alternative` (what to do instead). */
 void ms_check_unsatisfied_message(MsCheckProgram *program, MsTy ty, MsTy bound, const char *alternative,

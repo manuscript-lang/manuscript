@@ -57,7 +57,10 @@ static void check_assign(void *context, const MsStmt *stmt, const MsBindingList 
     return;
   }
   const MsSymbolId *id = ms_scope_get(&pass->program->modules.ptr[pass->module].scope, name);
-  if (id != NULL) {
+  if (id == NULL) {
+    id = ms_scope_get(&pass->program->modules.ptr[pass->module].imports, name);
+  }
+  if (id != NULL && *id != 0) {
     report_not_a_binding(pass, stmt, &pass->program->symbols.ptr[*id]);
   }
 }

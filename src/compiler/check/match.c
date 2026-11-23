@@ -402,15 +402,17 @@ static bool unmatchable(const Body *body, MsTy ty) {
          !ms_ty_is(types, ty, MS_BUILTIN_Bool);
 }
 
-static void check_scrutinee(Body *body, const MsExpr *expr, MsTy ty) {
+/* Reports a scrutinee no match can take; true when it did, and the arms are then left unreported. */
+static bool check_scrutinee(Body *body, const MsExpr *expr, MsTy ty) {
   if (body->quiet || body->module >= body->program->user_modules || !unmatchable(body, ty)) {
-    return;
+    return false;
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "match requires an alternative, contract view, Int, String or Bool, found ");
   ms_ty_show(&text, body->program->names, &body->program->types, ty);
   ms_strbuild_append_text(&text, "; match on a type with cases, or use if/else");
   ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  return true;
 }
 
 /* A match over a user enum that names none of the cases it misses and has no `_` arm: the cases it misses, the
@@ -482,7 +484,8 @@ static void check_exhaustive(Body *body, const MsExpr *expr, MsTy scrutinee) {
 
 MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy scrutinee = body_expr(body, expr->u.match.scrutinee, MS_TY_NONE);
-  check_scrutinee(body, expr, scrutinee);
+  const bool outer_quiet = body->quiet;
+  body->quiet = check_scrutinee(body, expr, scrutinee) || outer_quiet;
   const MsTyTable *types = &body->program->types;
   const bool alternative = ms_ty_kind(types, scrutinee) == MS_TY_ALTERNATIVE;
   if (alternative) {
@@ -522,5 +525,6 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
                     ms_string_from_span(ms_span_of_text("contract match requires a final wildcard for other implementations; add a last '_' arm")));
   }
   check_exhaustive(body, expr, scrutinee);
+  body->quiet = outer_quiet;
   return result;
 }

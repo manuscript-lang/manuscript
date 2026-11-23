@@ -837,8 +837,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A parameter taken by borrow is never the callee's to give away. */
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   const uint32_t param_at = ref != NULL ? ref->local + (fn->lambda != NULL ? 1u : 0u) : 0; /* a closure's first parameter is its environment */
+  MirVar param_var = 0;
+  /* A `var` parameter the body owns while it runs (it is refilled before the caller sees it) may hand its value on. */
   const bool borrowed_param = ref != NULL && ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
-                              fn->b.func.params[param_at].mode != MM_MOVE;
+                              fn->b.func.params[param_at].mode != MM_MOVE &&
+                              !(expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &param_var));
   /* A field of a `var` binding stays in the record the binding puts back whole, so reading it as a move would free it
    * twice; it is copied. */
   MirVar root_var;

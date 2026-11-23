@@ -17,7 +17,7 @@ test "an immutable binding of a part of a temporary owns a copy":
 	expect_equal(n.length(), 1)?
 
 test "a var binding of a part of a temporary owns a copy":
-	var s = nested()[0][0]
+	var s = nested()[0][0].clone()
 	s = s + "!"
 	expect_equal(s, "tmp!")?
 
@@ -26,8 +26,8 @@ test "a part two levels into a temporary record":
 	expect_equal(t, "yy")?
 
 test "a list literal and append own copies of nested elements of a temporary":
-	a := [nested()[0][0], nested()[0][1]]
+	a := [nested()[0][0].clone(), nested()[0][1].clone()]
 	expect_equal(a.length(), 2)?
 	var b: List[String] = []
-	b.append(nested()[0][1])
+	b.append(nested()[0][1].clone())
 	expect_equal(b[0], "b")?
