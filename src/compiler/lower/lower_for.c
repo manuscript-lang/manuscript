@@ -498,10 +498,13 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     if (mir_needs_drop(fn->cx->module, elem)) {
       fn_own(fn, fn_scope(fn), item);
     }
-  } else {
-    if (result_owned) {
-      fn_own(fn, fn_scope(fn), result);
+  } else if (result_owned) { /* the item leaves the owned Optional: the loop variable owns it */
+    MirTy elem = MIR_VOID;
+    item = fn_take_payload(fn, result, &elem);
+    if (mir_needs_drop(fn->cx->module, elem)) {
+      fn_own(fn, fn_scope(fn), item);
     }
+  } else {
     const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
     item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   }
