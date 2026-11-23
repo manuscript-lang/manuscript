@@ -72,6 +72,13 @@ typedef struct LowerFn {
   MirVar *param_vars; /* by parameter index */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
   const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
+  const MsParams *default_params; /* a call of a lambda or method value: the parameters whose defaults it leaves out */
+  bool default_has_self; /* a call of a method value: `default_self` is the receiver a default reads as `self` (the call's arguments omit it) */
+  MirValue default_self;
+  struct { uint32_t local; MirValue receiver; const MsParams *params; } bound_self[8]; /* locals bound to a lambda or method value: its parameters, and the receiver it captured (MIR_NONE: none) */
+  uint32_t nbound_self;
+  MirValue last_receiver; /* the receiver of the method value just lowered */
+  bool has_last_receiver;
   MirTy ret;
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
@@ -201,6 +208,8 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+/* The value of a parameter the call leaves to its default (lower_call.c). */
+MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected);
 
 /* The callee of a call, with explicit type arguments set aside: `value.method[T](args)` calls `value.method`. */
 static inline const MsExpr *fn_call_callee(const MsExpr *call) {
