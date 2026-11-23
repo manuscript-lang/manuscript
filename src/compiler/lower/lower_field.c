@@ -104,8 +104,10 @@ static bool word_leaves(const MirModule *module, MirTy ty, uint32_t depth) {
  * offsets than the field's own cell has. A single leaf, or a field after whole words only, is the same either way. */
 static bool field_cell_exact(const MirModule *module, uint32_t record, uint32_t field) {
   const MirTypeDef *def = &module->type_defs.ptr[record];
-  if (mir_is_scalar(module, def->fields[field].ty)) {
-    return true;
+  const MirTyData *own = mir_ty_data(module, def->fields[field].ty);
+  if (mir_is_scalar(module, def->fields[field].ty) || own->kind == MK_LIST || own->kind == MK_PTR ||
+      (own->kind == MK_OBJ && own->obj_class == MIR_OBJ_HANDLE)) {
+    return true; /* one leaf */
   }
   for (uint32_t index = 0; index < field; index++) {
     if (!word_leaves(module, def->fields[index].ty, 4)) {
