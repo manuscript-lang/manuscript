@@ -107,7 +107,7 @@ fn test_names(ms: String, file: String) List[String]:
 		["test", file.clone(), "--list"],
 		RunOptions(timeout: seconds(120)),
 	).wait():
-		for line in out.stdout.decode_utf8() or "".split("\n"):
+		for line in (out.stdout.decode_utf8() or "").split("\n"):
 			if line.contains("::"): names.append(line.clone())
 	return names
 
