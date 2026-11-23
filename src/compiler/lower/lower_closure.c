@@ -267,7 +267,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
     const MirTy ty = mir_b_ty(&fn.b, values[at]);
     if (fn_closer_for(&fn, ms_facts_closer(fn.facts, written->id), checked)) {
       /* A resource parameter is the body's to close: it lives in a slot the body's scope owns. */
-      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1]);
+      (void)fn_own_param(&fn, at - 1, checked, values[at], fn.param_vars[at - 1], false);
     } else {
       mir_b_def_var(&fn.b, fn.param_vars[at - 1], values[at]);
       if (mir_needs_drop(cx->module, ty)) {
