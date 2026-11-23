@@ -1,5 +1,6 @@
 /* cli/lsp_completion.c: completion. The word under the cursor is replaced by a marker name and the document is checked, so the
  * scope walk shows the bindings in scope at the marker and the checked type of what a member is taken from. */
+#include "abi/prelude.h"
 #include "cli/lsp_completion.h"
 
 #include "cli/lsp_completion_internal.h"
@@ -335,14 +336,15 @@ static void keyword_items(Completer *c) {
     static const char *const VALUES[] = {"true", "false", "void", "fn", "not"};
     for (size_t i = 0; i < sizeof VALUES / sizeof VALUES[0]; i++) add_text(c, VALUES[i], 14, MS_TY_NONE, 5, VALUES[i]);
   } else {
-    static const char *const TYPES[] = {"Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32",
-                                        "UInt64", "Float32", "Float64", "String", "Void", "Never", "Equal", "Stringable",
-                                        "Comparable", "Hashable", "Clonable", "Optional", "Result", "Error", "List", "Map",
-                                        "Set", "ListEntry", "MapEntry"};
-    for (size_t i = 0; i < sizeof TYPES / sizeof TYPES[0]; i++) {
-      bool shadowed = false;
-      for (size_t b = 0; b < c->scope.len; b++) shadowed |= ms_span_is_text(ms_names_span(c->program->names, c->scope.ptr[b].name), TYPES[i]);
-      if (!shadowed) add_text(c, TYPES[i], 7, MS_TY_NONE, 3, TYPES[i]);
+    const char *const *lists[] = {MS_PRIMITIVE_TYPES, MS_PRELUDE_TYPES};
+    const size_t counts[] = {MS_PRIMITIVE_TYPE_COUNT, MS_PRELUDE_TYPE_COUNT};
+    for (size_t l = 0; l < 2; l++) {
+      for (size_t i = 0; i < counts[l]; i++) {
+        const char *const type = lists[l][i];
+        bool shadowed = false;
+        for (size_t b = 0; b < c->scope.len; b++) shadowed |= ms_span_is_text(ms_names_span(c->program->names, c->scope.ptr[b].name), type);
+        if (!shadowed) add_text(c, type, 7, MS_TY_NONE, 3, type);
+      }
     }
   }
 }
