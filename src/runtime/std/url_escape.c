@@ -71,21 +71,6 @@ bool url_should_escape(uint8_t c, UrlEnc mode) {
   return true;
 }
 
-bool url_has_byte(MsSpan text, uint8_t byte) {
-  size_t at = 0;
-  return url_find_first(text, byte, &at);
-}
-
-bool url_find_first(MsSpan text, uint8_t byte, size_t *at) {
-  for (size_t i = 0; i < text.len; i++) {
-    if (text.ptr[i] == byte) {
-      *at = i;
-      return true;
-    }
-  }
-  return false;
-}
-
 bool url_find_last(MsSpan text, uint8_t byte, size_t *at) {
   for (size_t i = text.len; i > 0; i--) {
     if (text.ptr[i - 1] == byte) {

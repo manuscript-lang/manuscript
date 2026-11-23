@@ -238,15 +238,6 @@ static const MsCallArg *arg_for(const MsCall *call, const MsExpr *value) {
   return NULL;
 }
 
-static bool is_constructor(const Uses *pass, const MsExpr *call) {
-  const MsExpr *callee = call->u.call.callee;
-  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
-    callee = callee->u.apply.left;
-  }
-  const MsRef *ref = ms_facts_ref(pass->facts, callee->id);
-  return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
-}
-
 /* Whether the callee is a method declared `move fn`, which takes its receiver. */
 bool ms_own_consuming_method(const MsCheckProgram *program, const MsRef *callee) {
   if (callee->kind != MS_REF_METHOD) {
@@ -266,7 +257,7 @@ static void visit_call(Uses *pass, const MsExpr *call) {
     return;
   }
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
-  const bool constructor = is_constructor(pass, call);
+  const bool constructor = ms_bind_is_constructor(pass->facts, call);
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value);

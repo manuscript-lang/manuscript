@@ -64,7 +64,7 @@ static void go_lower(MsSpan text, MsStrBuild *out) {
 /* Lowercases a hostname but keeps an IPv6 zone identifier (after the first `%`), which is case-sensitive. */
 static void go_lower_host(MsSpan host, MsStrBuild *out) {
   size_t percent = host.len;
-  (void)url_find_first(host, '%', &percent);
+  (void)ms_span_find_byte(host, '%', &percent);
   go_lower(ms_span_of(host.ptr, percent), out);
   url_append(out, ms_span_of(host.ptr + percent, host.len - percent));
 }
@@ -143,7 +143,7 @@ static uint8_t components(const UrlParts *parts, MsUrl *out) {
   const bool bracketed = parts->host.bytes.len != 0 && parts->host.bytes.ptr[0] == '[';
   if (!parse_port(port_text, &url.port) || !valid_text(ms_strbuild_span(&parts->path)) ||
       !valid_text(ms_strbuild_span(&parts->fragment)) || !valid_query(ms_strbuild_span(&parts->raw_query)) ||
-      (url_has_byte(hostname, ':') && !bracketed)) {
+      (ms_span_has_byte(hostname, ':') && !bracketed)) {
     return MS_STATUS_INVALID_DATA;
   }
   url.omit_host = parts->omit_host;
@@ -177,7 +177,7 @@ static MsSpan field_span(const MsString *value) {
 static bool build_url(const MsUrl *v, UrlParts *url) {
   *url = (UrlParts){0};
   const MsSpan host = ms_string_span(&v->host);
-  const bool bracket = url_has_byte(host, ':');
+  const bool bracket = ms_span_has_byte(host, ':');
   if (bracket) {
     ms_strbuild_append_byte(&url->host, '[');
   }
@@ -200,11 +200,11 @@ static bool build_url(const MsUrl *v, UrlParts *url) {
     return false;
   }
   size_t percent = url->host.bytes.len;
-  (void)url_find_first(ms_strbuild_span(&url->host), '%', &percent);
+  (void)ms_span_find_byte(ms_strbuild_span(&url->host), '%', &percent);
   const MsSpan query = field_span(&v->query);
   const MsSpan address = ms_span_of(url->host.bytes.ptr, percent);
-  if (!valid_query(query) || url_has_byte(address, ' ') || url_has_byte(address, '<') ||
-      url_has_byte(address, '>') || url_has_byte(address, '"')) {
+  if (!valid_query(query) || ms_span_has_byte(address, ' ') || ms_span_has_byte(address, '<') ||
+      ms_span_has_byte(address, '>') || ms_span_has_byte(address, '"')) {
     return false;
   }
   url_append(&url->scheme, ms_string_span(&v->scheme));
@@ -372,7 +372,7 @@ uint8_t msstd_url_decode_component(const MsString *text, MsString *out) {
 /* One `key=value` part of a query as decoded text; false (InvalidData) when it is malformed. */
 static bool query_entry(MsSpan part, MsQueryEntry *entry) {
   size_t equals = part.len;
-  (void)url_find_first(part, '=', &equals);
+  (void)ms_span_find_byte(part, '=', &equals);
   const MsSpan key = ms_span_of(part.ptr, equals);
   const MsSpan value =
       equals < part.len ? ms_span_of(part.ptr + equals + 1, part.len - equals - 1) : ms_span_of(NULL, 0);
@@ -410,7 +410,7 @@ uint8_t msstd_url_parse_query(const MsString *text, uint8_t has_max, int64_t max
   uint8_t status = MS_STATUS_OK;
   for (size_t start = 0; status == MS_STATUS_OK && start <= query.len && query.len != 0;) {
     size_t amp = query.len - start;
-    (void)url_find_first(ms_span_of(query.ptr + start, query.len - start), '&', &amp);
+    (void)ms_span_find_byte(ms_span_of(query.ptr + start, query.len - start), '&', &amp);
     const MsSpan part = ms_span_of(query.ptr + start, amp);
     start += amp + 1;
     if (part.len == 0) {

@@ -32,6 +32,9 @@ bool ms_bind_field_chain(const MsFacts *facts, MsArena *arena, const MsExpr *exp
                          uint32_t *binding, MsLivePath *path);
 
 /* The bindings a lambda uses that are bound outside it, in order of first use. Owned by the caller. */
+/* Whether the call builds a value: its callee is a type or an enum case, maybe with type arguments applied. */
+bool ms_bind_is_constructor(const MsFacts *facts, const MsExpr *call);
+
 MsBindingList ms_bind_captures(const MsFacts *facts, const MsExpr *lambda);
 
 #endif

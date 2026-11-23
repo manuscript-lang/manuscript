@@ -148,17 +148,11 @@ uint8_t msstd_process_environment_map(MsMap *out, MsString *err) {
   return finish(MS_STATUS_OK, err);
 }
 
-/* Whether `span` has the byte `byte`. */
-static bool has_byte(MsSpan span, uint8_t byte) {
-  size_t at = 0;
-  return ms_span_find(span, ms_span_of(&byte, 1), &at);
-}
-
 uint8_t msstd_process_set_environment(const MsString *name, uint8_t has_value, const MsString *value,
                                       MsString *err) {
   const MsSpan key = ms_string_span(name);
   const MsSpan text = ms_string_span(value);
-  if (key.len == 0 || has_byte(key, 0) || has_byte(key, '=') || (has_value != 0 && has_byte(text, 0))) {
+  if (key.len == 0 || ms_span_has_byte(key, 0) || ms_span_has_byte(key, '=') || (has_value != 0 && ms_span_has_byte(text, 0))) {
     return finish(MS_STATUS_INVALID_INPUT, err);
   }
   MsOsText key_text = ms_os_text_new(key);
@@ -176,7 +170,7 @@ uint8_t msstd_process_set_environment(const MsString *name, uint8_t has_value, c
 
 uint8_t msstd_process_environment_is_set(const MsString *name) {
   const MsSpan key = ms_string_span(name);
-  if (has_byte(key, '=') || has_byte(key, 0)) {
+  if (ms_span_has_byte(key, '=') || ms_span_has_byte(key, 0)) {
     return 0;
   }
   MsOsText text = ms_os_text_new(key);

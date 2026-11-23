@@ -271,22 +271,13 @@ static bool special(TarReader *r, int64_t size, MsSpan *body) {
   return take(r, (size_t)size, body);
 }
 
-static bool has_byte(MsSpan s, uint8_t byte) {
-  for (size_t i = 0; i < s.len; i++) {
-    if (s.ptr[i] == byte) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool pax_valid_record(MsSpan key, MsSpan value) {
-  if (key.len == 0 || has_byte(key, '=')) {
+  if (key.len == 0 || ms_span_has_byte(key, '=')) {
     return false;
   }
   const bool value_key = ms_span_is_text(key, "path") || ms_span_is_text(key, "linkpath") ||
                          ms_span_is_text(key, "uname") || ms_span_is_text(key, "gname");
-  return !(value_key ? has_byte(value, 0) : has_byte(key, 0));
+  return !(value_key ? ms_span_has_byte(value, 0) : ms_span_has_byte(key, 0));
 }
 
 static void pax_add(PaxList *list, MsSpan key, MsSpan value) {
@@ -307,7 +298,7 @@ static void pax_free(PaxList *list) {
 static bool sparse_record_ok(MsSpan key, MsSpan value, size_t *seen) {
   const bool want_offset = *seen % 2 == 0;
   if ((want_offset && !ms_span_is_text(key, "GNU.sparse.offset")) ||
-      (!want_offset && !ms_span_is_text(key, "GNU.sparse.numbytes")) || has_byte(value, ',')) {
+      (!want_offset && !ms_span_is_text(key, "GNU.sparse.numbytes")) || ms_span_has_byte(value, ',')) {
     return false;
   }
   (*seen)++;

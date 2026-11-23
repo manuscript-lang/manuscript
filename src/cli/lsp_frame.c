@@ -110,6 +110,12 @@ void lsp_write_frame(FILE *output, MsSpan body) {
   (void)fflush(output);
 }
 
+/* A range as the JSON object LSP carries. */
+void lsp_json_range(MsStrBuild *out, LspRange range) {
+  ms_strbuild_printf(out, "{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}}",
+                     range.start.line, range.start.character, range.end.line, range.end.character);
+}
+
 void lsp_json_string(MsStrBuild *out, MsSpan text) {
   ms_strbuild_append_byte(out, '"');
   for (size_t i = 0; i < text.len; i++) {

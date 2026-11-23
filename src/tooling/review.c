@@ -248,11 +248,6 @@ static MsSpans touched_keys(MsArena *arena, const MsFactModel *head, const MsTou
   return result;
 }
 
-static int64_t compare_keys(uint8_t *env, const uint8_t *left, const uint8_t *right) {
-  (void)env;
-  return ms_span_compare(*(const MsSpan *)(const void *)left, *(const MsSpan *)(const void *)right);
-}
-
 MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFactModel *head, const MsDiffInput *input) {
   MsSpans keys = {0};
   for (size_t i = 0; i < head->entities.len; i++) {
@@ -263,7 +258,7 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
       ms_spans_push(arena, &keys, base->entities.ptr[i].key);
     }
   }
-  ms_sort((uint8_t *)keys.ptr, keys.len, sizeof(MsSpan), compare_keys, NULL);
+  ms_sort((uint8_t *)keys.ptr, keys.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   const MsSpans touched = touched_keys(arena, head, &input->touched);
   MsFindings findings = {0};
   MsSpans scored_keys = {0};

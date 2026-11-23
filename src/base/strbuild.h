@@ -21,6 +21,7 @@ void ms_strbuild_append_text(MsStrBuild *builder, const char *text); /* a C stri
 void ms_strbuild_append_byte(MsStrBuild *builder, uint8_t byte);
 void ms_strbuild_append_string(MsStrBuild *builder, const MsString *string);
 void ms_strbuild_append_u64(MsStrBuild *builder, uint64_t value);
+void ms_strbuild_append_indent(MsStrBuild *builder, size_t depth); /* two spaces per level, for pretty-printed JSON */
 void ms_strbuild_append_i64(MsStrBuild *builder, int64_t value);
 void ms_strbuild_append_u64_radix(MsStrBuild *builder, uint64_t value,
                                   unsigned radix); /* radix 2..16, lower case */

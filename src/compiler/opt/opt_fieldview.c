@@ -535,11 +535,6 @@ static void rewrite_block(View *v, MirBlock bi, MirValue first) {
   mir_block_set_insts(blk, &out);
 }
 
-static void remove_target_arg(MirTarget *t, uint32_t k) {
-  __builtin_memmove(&t->args[k], &t->args[k + 1], sizeof(MirValue) * (t->nargs - k - 1));
-  t->nargs--;
-}
-
 /* The record's parameters and their edge arguments go. */
 static void drop_params(View *v) {
   MirFunc *f = v->f;
@@ -550,7 +545,7 @@ static void drop_params(View *v) {
       const MirBlockData *to = &f->blocks.ptr[target->block];
       for (uint32_t k = (uint32_t)to->params.len; k-- > 0;) {
         if (v->view[to->params.ptr[k].value] && v->candidate[to->params.ptr[k].value]) {
-          remove_target_arg(target, k);
+          mir_target_remove_arg(target, k);
         }
       }
     }
