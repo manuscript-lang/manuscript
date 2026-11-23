@@ -55,7 +55,7 @@ export fn status(code: Int) Int:
 // searched. A program that cannot start, or one that ends with a status above 125,
 // reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
-	return run_program_in(program, arguments, none)
+	return run_program_in(program, arguments, null)
 
 // `run_program` in the directory `cwd` (the caller's when none). A path with a drive
 // letter in an argument reads as `host:file` to GNU tar, so a caller on Windows names
@@ -112,9 +112,10 @@ export fn use_stats_runtime() Int:
 		if out.is_error() or out.get().exit_code != 0:
 			note("cmake " + step.join(" ") + " failed")
 			if out.is_ok(): note(
-				out.get().stderr.decode_utf8().get_or(
-					""
-				) + out.get().stdout.decode_utf8().get_or("")
+				(out.get().stderr.decode_utf8() or "") + (
+					out.get().stdout.decode_utf8()
+					or ""
+				)
 			)
 			return 1
 
