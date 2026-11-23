@@ -151,6 +151,30 @@ bool fn_is_text_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
 }
 
+void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
+  while (place->kind == MS_E_MEMBER || (place->kind == MS_E_UNARY && place->op == MS_U_TRY)) {
+    place = place->kind == MS_E_MEMBER ? place->u.member.left : place->u.bin.left;
+  }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (!ms_expr_index(place, &container, &key)) {
+    return;
+  }
+  fn_presolve_keys(fn, container);
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+    return;
+  }
+  const MirValue value = fn_expr(fn, key, LW_BORROW);
+  if (value == MIR_NONE) {
+    return;
+  }
+  fn->presolved[fn->npresolved].expr = key;
+  fn->presolved[fn->npresolved++].value = value;
+  MirValue element = MIR_NONE; /* a list element that is not there faults now, before a later argument runs */
+  (void)fn_list_element_addr(fn, place, &element);
+}
+
 /* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
 /* Moves the value of `place` into a new slot and returns the slot's address. */
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier) {
@@ -330,6 +354,13 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                          (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
     /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
     const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
+    const bool receiver_place = index == 0 && (call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE) && arg->source == MS_ARG_WRITTEN;
+    if ((by_slot || receiver_place) && step < call->arg_count) { /* the keys of its place run where it is written, once */
+      const MsExpr *written = fn_written_arg(expr, arg->node.node);
+      if (written != NULL) {
+        fn_presolve_keys(fn, written);
+      }
+    }
     if (phase != step / call->arg_count) {
       continue;
     }

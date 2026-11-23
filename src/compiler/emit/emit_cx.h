@@ -91,7 +91,6 @@ void emit_register_name(char *out, size_t capacity, const char *prefix, uint32_t
 /* `%<prefix><number><suffix><second>`: `%w3_5`, `%u4b`, `%v7.1` (suffix NULL and second MIR_NONE for none). */
 void emit_text_name(char *out, size_t capacity, const char *prefix, uint32_t number, const char *suffix,
                     uint32_t second);
-bool emit_memory_inst(EmitCx *cx, const MirInst *inst, bool *handled);
 
 /* ---- operations by family; each sets `*handled` and returns false only when `cx->why` is set ---- */
 
@@ -101,6 +100,7 @@ typedef struct EmitSite {
   uint32_t *part; /* the current piece of the block */
 } EmitSite;
 
+bool emit_memory_inst(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_scalar_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 bool emit_checked_op(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled);
 /* Whether the runtime takes a value of `type` as its scalar leaves; anything else crosses by address. */

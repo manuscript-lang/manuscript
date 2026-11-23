@@ -29,7 +29,7 @@ static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *si
     ok = emit_checked_op(cx, inst, site, &handled);
   }
   if (!handled) {
-    ok = emit_memory_inst(cx, inst, &handled);
+    ok = emit_memory_inst(cx, inst, site, &handled);
   }
   if (!handled) {
     ok = emit_closure_op(cx, inst, site, &handled);
