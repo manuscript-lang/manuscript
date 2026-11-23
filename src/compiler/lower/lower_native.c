@@ -626,30 +626,6 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
 }
 
 /* `list.get(index)`: the element, a negative index counting from the end; an index out of range faults. */
-/* A native declared `@op=<name>` is one MIR instruction on Int operands: the standard wrapper has already checked a
- * shift count, and a rotation takes its count modulo 64. */
-bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, uint32_t argc, MirValue *out) {
-  static const struct {
-    const char *name;
-    MirOp op;
-    uint32_t operands;
-  } ops[] = {{"and", MOP_And, 2},       {"or", MOP_Or, 2},     {"xor", MOP_Xor, 2},       {"shl", MOP_Shl, 2},
-             {"sshr", MOP_Sshr, 2},     {"ushr", MOP_Ushr, 2}, {"rotl", MOP_Rotl, 2},     {"rotr", MOP_Rotr, 2},
-             {"popcnt", MOP_Popcnt, 1}, {"clz", MOP_Clz, 1}};
-  for (size_t at = 0; at < MS_COUNT_OF(ops); at++) {
-    if (!ms_span_is_text(ms_span_of_text(name), ops[at].name) || argc != ops[at].operands) {
-      continue;
-    }
-    if (mir_b_ty(&fn->b, args[0]) != MIR_INT) {
-      return false;
-    }
-    *out = argc == 2 ? mir_b_binop(&fn->b, ops[at].op, args[0], args[1])
-                     : mir_b_emit(&fn->b, ops[at].op, args, 1, (MirImm){0}, MIR_INT);
-    return true;
-  }
-  return false;
-}
-
 /* `String.scalar_at(offset)`: the scalar at a byte offset is the byte itself when it is ASCII, so that case is read
  * in line; any other offset (inside a multibyte scalar, out of range, or a default to answer) calls the runtime. */
 static MirValue scalar_at_inline(LowerFn *fn, MsName name, const MsNativeSig *sig, const MirValue *args, MirValue *wanted,
@@ -792,7 +768,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
   }
-  if (sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, argc, out)) {
+  if (sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, argc, ret, out)) {
     return true;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
