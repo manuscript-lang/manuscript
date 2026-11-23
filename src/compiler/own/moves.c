@@ -551,7 +551,8 @@ static void note_var_borrow(Moves *pass, const MsStmt *stmt) {
   ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
-/* `b := xs.get(i)` or `m.get(k)` of a resource: the collection keeps the element, so the binding would be a hidden copy. */
+/* `b := xs.get(i)` or `m.get(k)` of a resource: the collection keeps the element, so the binding would be a hidden copy.
+ * A workaround until such a binding borrows the element: delete this check and its reject fixture then (#6520). */
 static void note_read_bind(Moves *pass, const MsStmt *stmt) {
   const MsExpr *value = stmt->u.bind.value;
   if (pass->instance || value == NULL || value->kind != MS_E_CALL) {
