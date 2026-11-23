@@ -143,20 +143,21 @@ static int64_t compare_locals(uint8_t *env, const uint8_t *left, const uint8_t *
 static Local *collect_locals(Doc *d, size_t *count) {
   const MsLocalRecordList *records = &d->program->bindings;
   Local *locals = MS_ARENA_NEW_ARRAY(d->arena, Local, records->len + 1);
+  size_t kept = 0;
   for (size_t i = 0; i < records->len; i++) {
     const MsLocalRecord *r = &records->ptr[i];
+    if (r->module >= d->program->user_modules) {
+      continue; /* the standard library's locals are its own: listing them made a user's output change with every stdlib edit */
+    }
     MsStrBuild ty = ms_strbuild_new();
     ms_ty_show(&ty, d->program->names, &d->program->types, r->ty);
     const MsSpan name = ms_names_span(d->program->names, r->name);
-    const MsSpan file = file_of(d, r->module);
-    const bool std = r->module >= d->program->user_modules;
-    locals[i] = (Local){.name = name, .ty = ms_arena_copy(d->arena, ms_strbuild_span(&ty)), .module = r->module, .pos = r->pos,
-                        .checker_id = std ? ms_message_format(d->arena, "standard_%S_local%z_%S", file, i, name)
-                                          : ms_message_format(d->arena, "local%z_%S", i, name)};
+    locals[kept++] = (Local){.name = name, .ty = ms_arena_copy(d->arena, ms_strbuild_span(&ty)), .module = r->module,
+                             .pos = r->pos, .checker_id = ms_message_format(d->arena, "local%z_%S", i, name)};
     ms_strbuild_free(&ty);
   }
-  ms_sort((uint8_t *)locals, records->len, sizeof(Local), compare_locals, NULL);
-  *count = records->len;
+  ms_sort((uint8_t *)locals, kept, sizeof(Local), compare_locals, NULL);
+  *count = kept;
   return locals;
 }
 
