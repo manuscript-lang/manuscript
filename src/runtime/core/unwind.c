@@ -77,9 +77,22 @@ bool ms_unwinding(void) { return atomic_load_explicit(&running()->hdr.unwinding,
 /* ---- the cleanup stack ---- */
 
 size_t ms_cleanup_push(MsCleanupFn function, uint8_t *argument) { // NOLINT(readability-non-const-parameter): the cleanup writes it
-  MsTaskHdr *const hdr = &running()->hdr;
-  ms_cleanup_list_push(&hdr->cleanups, (MsCleanup){.function = function, .argument = argument});
-  return hdr->cleanups.len;
+  MsUnwind *const unwind = running();
+  MsTaskHdr *const hdr = &unwind->hdr;
+  const uint32_t serial = ++unwind->cleanup_serial;
+  ms_cleanup_list_push(&hdr->cleanups, (MsCleanup){.function = function, .argument = argument, .serial = serial});
+  return (size_t)serial << 32 | hdr->cleanups.len;
+}
+
+_Static_assert(sizeof(size_t) >= 8, "a cleanup handle holds the entry's serial above its height");
+
+/* The height `handle` names when its entry is still on the stack, else 0. */
+static size_t live_height(const MsTaskHdr *hdr, size_t handle) {
+  const size_t height = handle & UINT32_MAX;
+  if (height == 0 || height > hdr->cleanups.len || hdr->cleanups.ptr[height - 1].serial != (uint32_t)(handle >> 32)) {
+    return 0;
+  }
+  return height;
 }
 
 size_t ms_cleanup_base(void) { return running()->hdr.cleanups.len; }
@@ -123,7 +136,8 @@ void ms_cleanup_run_pending(void) {
 
 void ms_cleanup_run(size_t handle) {
   MsUnwind *const unwind = running();
-  while (handle > 0 && unwind->hdr.cleanups.len >= handle) {
+  const size_t height = live_height(&unwind->hdr, handle);
+  while (height > 0 && unwind->hdr.cleanups.len >= height) {
     if (!run_one_cleanup(unwind)) {
       break;
     }
@@ -139,8 +153,9 @@ static void prune_retired(MsTaskHdr *hdr) {
 
 void ms_cleanup_discard(size_t handle) {
   MsTaskHdr *const hdr = &running()->hdr;
-  if (handle > 0 && hdr->cleanups.len >= handle) {
-    hdr->cleanups.len = handle - 1;
+  const size_t height = live_height(hdr, handle);
+  if (height > 0) {
+    hdr->cleanups.len = height - 1;
   }
   prune_retired(hdr);
 }
@@ -149,22 +164,27 @@ static void do_nothing(uint8_t *argument) { (void)argument; } // NOLINT(readabil
 
 void ms_cleanup_cancel(size_t handle) {
   MsTaskHdr *const hdr = &running()->hdr;
-  if (handle == 0 || handle > hdr->cleanups.len) {
+  const size_t height = live_height(hdr, handle);
+  if (height == 0) {
     return;
   }
-  if (handle == hdr->cleanups.len) {
-    /* The innermost entry leaves the stack: a loop that cancels and registers again each pass reuses one slot. */
+  if (height == hdr->cleanups.len) {
+    /* The innermost entry leaves the stack: a loop that cancels and registers again each pass reuses one slot. The
+     * handle is dead now, and the entry that takes its height has another serial. */
     hdr->cleanups.len--;
     prune_retired(hdr);
     return;
   }
-  hdr->cleanups.ptr[handle - 1] = (MsCleanup){.function = do_nothing, .argument = NULL};
+  hdr->cleanups.ptr[height - 1].function = do_nothing;
+  hdr->cleanups.ptr[height - 1].argument = NULL;
 }
 
 void ms_cleanup_remove(size_t handle) {
   MsTaskHdr *const hdr = &running()->hdr;
-  if (handle > 0 && handle <= hdr->cleanups.len) {
-    hdr->cleanups.ptr[handle - 1] = (MsCleanup){.function = NULL, .argument = NULL};
+  const size_t height = live_height(hdr, handle);
+  if (height > 0) {
+    hdr->cleanups.ptr[height - 1].function = NULL;
+    hdr->cleanups.ptr[height - 1].argument = NULL;
     prune_retired(hdr);
   }
 }
