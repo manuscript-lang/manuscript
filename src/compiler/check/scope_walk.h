@@ -43,6 +43,9 @@ typedef struct MsScopeVisitor {
   /* Whether a parameter's written type is known to be wrong, so a match on it has no meaningful arms; may be
    * NULL. */
   bool (*invalid_param)(void *context, const MsParam *param);
+  /* Whether the lone lowercase name of a match arm may name a variant of the matched enum rather than bind an optional
+   * payload; such an arm binds nothing. May be NULL. */
+  bool (*variant_name)(void *context, MsName name);
   /* A binding has just come into scope, as the last of `scope`; may be NULL. */
   void (*declared)(void *context, const MsBinding *binding, const MsBindingList *scope);
   /* Every expression, before its parts; may be NULL. */

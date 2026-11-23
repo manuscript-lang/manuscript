@@ -285,8 +285,26 @@ static void request_task(void *arg) {
   ms_free(request);
 }
 
+typedef struct Watch {
+  MsServeConn *conn;
+  MsTaskHandle handler;
+} Watch;
+
+/* Waits for the peer to leave while the handler runs and cancels the handler when it does. A request with no
+ * body leaves the stream unread, so this is the only reader. Bytes that arrive instead (a pipelined request) end
+ * the watch and wait in the buffer for the next turn. */
+static void watch_peer(void *arg) {
+  Watch *watch = arg;
+  MsString err = ms_string_empty();
+  const uint8_t status = ms_serve_fill(watch->conn, MS_NO_DEADLINE, &err);
+  ms_string_release(&err);
+  if (status == MS_STATUS_NONE) {
+    ms_task_cancel(watch->handler);
+  }
+}
+
 /* 0: the handler returned; 1: it returned an error; 2: it faulted; 3: it ran out of time or was stopped. */
-static int run_handler(MsServeShared *shared, MsExchange *exchange) {
+static int run_handler(MsServeShared *shared, MsExchange *exchange, bool watching) {
   Request *request = ms_alloc_zeroed(sizeof *request);
   request->shared = shared;
   request->exchange = exchange;
@@ -298,9 +316,22 @@ static int run_handler(MsServeShared *shared, MsExchange *exchange) {
     ms_free(request);
     return 2;
   }
+  Watch watch = {exchange->conn, task};
+  MsTaskHandle watcher = 0;
+  if (watching && !exchange->conn->eof) {
+    watcher = ms_task_spawn(watch_peer, &watch, 0, 0, &spawned);
+  }
   uint8_t outcome = 0;
   MsFaultText message = {0};
-  if (ms_task_join(task, &outcome, &message) != MS_TASK_OK || outcome == 2) {
+  const MsTaskStatus joined = ms_task_join(task, &outcome, &message);
+  if (watcher != 0) {
+    uint8_t ignored = 0;
+    MsFaultText ignored_message = {0};
+    ms_task_cancel(watcher);
+    (void)ms_task_join(watcher, &ignored, &ignored_message);
+    ms_fault_text_free(&ignored_message);
+  }
+  if (joined != MS_TASK_OK || outcome == 2) {
     ms_task_cancel(task); /* this task was stopped while waiting: the request ends with it */
     return 3;
   }
@@ -329,7 +360,10 @@ static Next serve_request(MsServeConn *conn, MsServeShared *shared, MsH1Request 
   }
   MsExchange *exchange =
       ms_exchange_new(conn, head, &target, framing, keep_alive, scan.expect_continue, started);
-  const int failure = run_handler(shared, exchange);
+  /* A request that asks to upgrade hands the stream to the handler, which reads it itself. */
+  MsSpan upgrade = ms_span_of(NULL, 0);
+  const bool upgrading = ms_headers_first(exchange->headers, ms_span_of_text("Upgrade"), &upgrade);
+  const int failure = run_handler(shared, exchange, framing.kind == MS_H1_NO_BODY && !upgrading);
   atomic_fetch_sub(&shared->admitted, 1);
   const bool open = ms_exchange_finish(exchange, failure) && !conn->worker->closing;
   ms_exchange_release(exchange);
