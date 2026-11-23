@@ -76,6 +76,9 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
+  const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
+  const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
+  uint32_t nmoved_fields;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
