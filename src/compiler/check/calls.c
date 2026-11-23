@@ -380,6 +380,12 @@ static bool unapplied(const Body *body, MsTy ty) {
   return true;
 }
 
+/* Whether `expr` is the bare `none`, which takes its type from the parameter and so says nothing about type arguments. */
+static bool is_none_literal(const Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+}
+
 /* The parameter type with the variables bound so far substituted. */
 static MsTy expected_param(Body *body, const Target *target, MsTy param, const MsTy *bound) {
   size_t known = 0;
@@ -572,7 +578,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     ms_strbuild_free(&context);
     arg_tys[index] = with_context_modes(body, param, unapplied(body, arg_tys[index]) ? MS_TY_NONE : arg_tys[index]);
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
-        !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
+        !is_none_literal(body, arg->value) && !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
       (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
     }
   }
@@ -727,12 +733,24 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   MsTy sig = target->sig;
   bool instantiated = true;
   MsTyList typed = {0};
+  const MsTy *written = arg_tys; /* the arguments' own types, before any is held back from inference */
   if (body->program->diagnostics.len > diagnostics_before && only_callback_diagnostics(body->program, diagnostics_before)) {
     /* a callback that could not be typed gives the call no evidence about its type arguments */
     for (size_t index = 0; index < matched->count; index++) {
       ms_ty_list_push(&typed, holds_invalid(&body->program->types, arg_tys[index], 6) ? MS_TY_NONE : arg_tys[index]);
     }
     arg_tys = typed.ptr;
+  }
+  if (target->vars.len != 0 && typed.len == 0) {
+    bool bare = false;
+    for (size_t index = 0; index < matched->count; index++) {
+      bare = bare || (matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value));
+    }
+    for (size_t index = 0; bare && index < matched->count; index++) {
+      const bool none = matched->slot[index] >= 0 && is_none_literal(body, call->u.call.args.ptr[matched->slot[index]].value);
+      ms_ty_list_push(&typed, none ? MS_TY_NONE : arg_tys[index]);
+    }
+    arg_tys = bare ? typed.ptr : arg_tys;
   }
   if (target->vars.len != 0) {
     const MsSpan name = target->name;
@@ -743,7 +761,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {
       instantiated = false;
-      if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
+      if (uninferable(body, &instance, written, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
         /* the call's failure comes before the callbacks it could not type */
         MsCheckDiagList *list = &body->program->diagnostics;

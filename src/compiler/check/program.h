@@ -139,6 +139,7 @@ typedef struct MsCheckProgram {
   MsLocalRecordList bindings; /* every local, parameter and loop or match variable the bodies declared */
   MsTypeRefRecordList type_refs; /* every written type of the user's modules, as resolved */
   MsPendingBoundList pending_bounds;
+  MsCheckDiagList deferred; /* side-pass findings the body walk releases when it reaches their place */
   MsPendingDefaultList pending_defaults;
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
@@ -205,6 +206,16 @@ void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan so
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
 /* Whether `symbol` is a prelude declaration, which every module sees under its own name. */
 bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol);
+
+/* Moves the diagnostics from index `from` on aside until the body walk reaches the place they are about. */
+void ms_check_defer(MsCheckProgram *program, size_t from);
+
+/* Returns the deferred diagnostic of `module` at `offset` whose message starts with `prefix` to the list, in walk
+ * order; false when there is none. */
+bool ms_check_release(MsCheckProgram *program, uint32_t module, uint32_t offset, MsSpan prefix);
+
+/* Returns whatever the walk did not reach, as the side pass found it. */
+void ms_check_release_rest(MsCheckProgram *program);
 
 void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
 

@@ -216,6 +216,9 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
     return owner;
   }
+  if (!body->quiet) { /* the names pass found it unknown; the walk is where the oracle reports it */
+    (void)ms_check_release(body->program, body->module, expr->pos.offset, ms_span_of_text("unknown binding "));
+  }
   return MS_TY_NONE;
 }
 
@@ -262,7 +265,16 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
 /* `Type.name` where the type has no such case: an enum lists its cases, any other type has none to name. */
 static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
   const MsDef *def = body_def(body, owner);
-  if (body->module >= body->program->user_modules || body->quiet || def == NULL || def->cases.len == 0) {
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  if (def == NULL || def->cases.len == 0) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append(&text, ms_names_span(body->program->names, ms_ty_row(&body->program->types, owner)->name));
+    ms_strbuild_append_text(&text, " has no member ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, expr->u.member.name));
+    ms_strbuild_append_text(&text, "; a type name is followed only by an enum case");
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
     return;
   }
   MsSpanList names = {0};

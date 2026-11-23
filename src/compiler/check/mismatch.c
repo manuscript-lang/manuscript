@@ -61,7 +61,9 @@ static bool assignable(Body *body, MsTy actual, MsTy expected) {
   if ((left->open || right->open) && left->id == right->id && left->arg_count == right->arg_count) {
     return true;
   }
+  /* A value wraps once: a plain Int is not an Int??, though an Int? is. */
   if (ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1 &&
+      (!ms_ty_is(types, ms_ty_args(types, expected)[0], MS_BUILTIN_Optional) || ms_ty_is(types, actual, MS_BUILTIN_Optional)) &&
       assignable(body, actual, ms_ty_args(types, expected)[0])) {
     return true;
   }
