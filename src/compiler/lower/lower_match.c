@@ -325,6 +325,9 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   }
   match.ty = mir_b_ty(&fn->b, match.scrutinee);
   match.checked = ms_facts_type(fn->facts, expr->u.match.scrutinee->id);
+  if (match.checked != MS_TY_NONE) { /* inside a generic instance the scrutinee's type names its variables: use the instance's */
+    match.checked = ms_ty_subst(&fn->cx->program->types, match.checked, fn->subst.vars, fn->subst.args, fn->subst.count);
+  }
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
   const MsExpr *subject = expr->u.match.scrutinee;
   match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||
