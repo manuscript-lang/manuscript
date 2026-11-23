@@ -174,16 +174,6 @@ MsReport ms_project_report(MsArena *arena, const MsFactModel *head, MsReviewOpti
 
 /* ---- diff reports ---- */
 
-static MsSpan joined(MsArena *arena, const MsSpans *list, const char *sep) {
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < list->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : sep);
-    ms_strbuild_append(&out, list->ptr[i]);
-  }
-  const MsSpan span = ms_message_take_builder(arena, &out);
-  return span;
-}
-
 /* Whether an effect row of the finding (`permits: + std.fs.*`, `reaches: + std.net.connect`) lists `effect`, or a
  * listed name matches `effect` read as a pattern. */
 static bool names_effect(const MsFinding *finding, MsSpan effect) {
@@ -303,7 +293,7 @@ static MsSection internal_section(MsArena *arena, const MsFindings *findings, Ms
   for (size_t i = 0; i < findings->len; i++) {
     const MsFinding *f = &findings->ptr[i];
     if (ms_span_is_text(f->tier, "INTERNAL")) {
-      ms_spans_push(arena, &lines, ms_message_format(arena, "%S (%S)", f->entity, joined(arena, &f->changes, "; ")));
+      ms_spans_push(arena, &lines, ms_message_format(arena, "%S (%S)", f->entity, ms_spans_joined(arena, &f->changes, "; ")));
     }
   }
   for (size_t i = 1; i < lines.len; i++) {
@@ -363,7 +353,7 @@ MsReport ms_diff_report(MsArena *arena, const MsFactModel *base, const MsFactMod
     ms_spans_push(arena, &rows, number(arena, row));
     ms_spans_push(arena, &rows, f->tier);
     ms_spans_push(arena, &rows, f->entity);
-    ms_spans_push(arena, &rows, joined(arena, &f->changes, "; "));
+    ms_spans_push(arena, &rows, ms_spans_joined(arena, &f->changes, "; "));
     ms_spans_push(arena, &rows, number(arena, f->reach));
     ms_spans_push(arena, &rows, f->location);
     ms_spans_push(arena, &rows, ms_message_format(arena, "%z", (size_t)f->score));
@@ -372,9 +362,9 @@ MsReport ms_diff_report(MsArena *arena, const MsFactModel *base, const MsFactMod
     for (size_t e = 0; e < f->evidence.len; e++) {
       ms_spans_push(arena, &detail, f->evidence.ptr[e]);
     }
-    ms_spans_push(arena, &detail, ms_message_format(arena, "score: %S", joined(arena, &f->terms, ", ")));
+    ms_spans_push(arena, &detail, ms_message_format(arena, "score: %S", ms_spans_joined(arena, &f->terms, ", ")));
     ms_spans_push(arena, &evidence, number(arena, row));
-    ms_spans_push(arena, &evidence, joined(arena, &detail, " | "));
+    ms_spans_push(arena, &evidence, ms_spans_joined(arena, &detail, " | "));
   }
   static const char *const LOOK[] = {"#", "TIER", "ENTITY", "CHANGE", "REACH", "WHERE", "SCORE"};
   static const char *const EVIDENCE[] = {"#", "DETAIL"};

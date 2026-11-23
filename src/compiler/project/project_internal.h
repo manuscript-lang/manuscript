@@ -6,6 +6,9 @@
 #include "base/intern.h"
 #include "compiler/project/project.h"
 
+/* The absolute, cleaned spelling of `target`; false, with `error` set, when the working directory is unknown. */
+MS_NODISCARD bool ms_project_absolute_path(MsArena *arena, MsSpan target, MsSpan *absolute, MsProjectError *error);
+
 /* `text` in double quotes with the escapes of Rust's `{:?}`. */
 MsSpan ms_project_quote(MsArena *arena, MsSpan text);
 

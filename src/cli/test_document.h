@@ -27,6 +27,8 @@ typedef struct TestFilters {
   MsRegex *matching, *exclude;
 } TestFilters;
 bool test_filters_compile(MsArena *arena, const MsTestOptions *options, TestFilters *out, MsSpan *error);
+/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
+bool test_selection_valid(MsArena *arena, const MsTestOptions *options);
 void test_filters_free(TestFilters *filters);
 
 /* Seeded Fisher-Yates, as the Rust CLI does it. */

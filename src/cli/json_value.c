@@ -46,24 +46,6 @@ static bool hex4(Reader *r, uint32_t *out) {
   return true;
 }
 
-static void put_utf8(MsStrBuild *out, uint32_t code) {
-  if (code < 0x80) {
-    ms_strbuild_append_byte(out, (uint8_t)code);
-  } else if (code < 0x800) {
-    ms_strbuild_append_byte(out, (uint8_t)(0xC0 | (code >> 6)));
-    ms_strbuild_append_byte(out, (uint8_t)(0x80 | (code & 0x3F)));
-  } else if (code < 0x10000) {
-    ms_strbuild_append_byte(out, (uint8_t)(0xE0 | (code >> 12)));
-    ms_strbuild_append_byte(out, (uint8_t)(0x80 | ((code >> 6) & 0x3F)));
-    ms_strbuild_append_byte(out, (uint8_t)(0x80 | (code & 0x3F)));
-  } else {
-    ms_strbuild_append_byte(out, (uint8_t)(0xF0 | (code >> 18)));
-    ms_strbuild_append_byte(out, (uint8_t)(0x80 | ((code >> 12) & 0x3F)));
-    ms_strbuild_append_byte(out, (uint8_t)(0x80 | ((code >> 6) & 0x3F)));
-    ms_strbuild_append_byte(out, (uint8_t)(0x80 | (code & 0x3F)));
-  }
-}
-
 static void escape(Reader *r, MsStrBuild *out) {
   if (r->at >= r->text.len) {
     r->failed = true;
@@ -92,7 +74,7 @@ static void escape(Reader *r, MsStrBuild *out) {
       }
       code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
     }
-    put_utf8(out, code);
+    ms_strbuild_append_utf8(out, code);
     break;
   default: ms_strbuild_append_byte(out, c); break;
   }
