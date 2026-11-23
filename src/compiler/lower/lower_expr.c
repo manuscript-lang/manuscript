@@ -948,7 +948,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     for (size_t at = insts->len; at-- > 0;) {
       if (insts->ptr[at].res == value) {
         if (insts->ptr[at].op == MOP_MoveOut) {
+<<<<<<< Updated upstream
           return value; /* the field read already moved it out */
+=======
+          return value; /* the field read already left its record: a second move-out would leave two owners */
+>>>>>>> Stashed changes
         }
         break;
       }
