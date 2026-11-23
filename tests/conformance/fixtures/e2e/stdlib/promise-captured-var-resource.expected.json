@@ -4,7 +4,7 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 0,
-    "stdout": "closed\n3\n",
+    "stdout": "3\nclosed\n",
     "stderr": ""
   }
 }
