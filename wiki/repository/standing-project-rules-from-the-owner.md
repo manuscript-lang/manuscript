@@ -9,8 +9,9 @@ Decision (Chinmay): these rules apply to every PR and thread. Each line points t
 - Stack PRs and cut idle time: start the next slice on the open branch (base it on the previous PR's branch, retarget to `main` when it merges) instead of waiting for gates or CI; a failure found later is fixed on the branch that owns it and merged forward.
 - Cross-platform fixes: a speed fix should work on every platform, not only Linux epoll: check that a scheduler, reactor or server change has a kqueue (macOS) and IOCP via mio (Windows) path. Measuring on Linux is enough.
 - Workarounds: each gets an issue naming its removal condition, and is deleted once the real fix is on `main`.
-- Manuscript first: behavior goes in stdlib `.ms`; Rust keeps small, general runtime primitives.
-- Dependencies: never add a third-party crate or package without asking the owner. Prefer the Rust standard library, and replace a low-value dependency with in-house code.
+- Manuscript first: behavior goes in stdlib `.ms`; C keeps small, general runtime primitives.
+- Dependencies: never add a third-party library or package without asking the owner. Prefer the C standard library, and replace a low-value dependency with in-house code. Never link an LGPL or GPL library: programs link statically (libidn2 was rejected, 2026-11). curl stays.
+- Toolchain: in-process LLVM is the default backend. `lld` stays a child process; the owner declined bundling it in-process (2026-11).
 - Memory model: one owner per value, no refcounting, no implicit copies, borrow by default, `.clone()` the only copy, scalars always copy ([references](../../documentation/core-language/types/references.md), [borrowing](../language/results-borrow-parts-of-their-arguments-without-a-marker.md)). Rebase on `main` before merging and update old reference usages.
 - Issues: add the `in progress` label before fixing one, remove it when the fixing PR merges, and close every issue it fixes, verifying each ([fix-issue](../../skills/fix-issue/SKILL.md)).
 - No hacky fixes: [fix the root cause](fixes-address-the-root-cause-not-a-name-or-shape.md).
@@ -21,5 +22,15 @@ Decision (Chinmay): these rules apply to every PR and thread. Each line points t
 - Threads: keep cross-thread state minimal and avoid complex locking. Only a few things cross a thread boundary; everything else runs on one thread ([workers](../runtime/worker-threads-are-isolates-that-share-nothing.md)).
 - No comparison tables: do not put tables comparing Manuscript with Go, Python, Node, Rust or any other language or API in docs, wiki, READMEs or proposals (for example Go-to-Manuscript API mappings). Give idiom guidance as plain prose. Dated benchmark result pages under `bench/` stay as measurement evidence.
 
+Performance and design direction (Chinmay, 2026-11): see also [data-oriented perf](../benchmarks-and-performance/perf-work-follows-data-oriented-design-and-removes-caches.md).
+
+- Natural code is as fast as C: writing Manuscript costs no more speed than writing C, with no hand-tuning. Get there with better data structures and algorithms, never hacks or per-shape tweaks.
+- Optimizations are general passes, not patches (the Rust implementation's patchy approach is the counterexample). MIR passes should match what V8 does: fusion, jump threading and similar.
+- Question archaic or artifact designs. Update record fields in place, not through cells or hidden copies; prefer stack over heap.
+- Scheduler and web-server paths stay extremely fast and beat other runtimes.
+- Benchmarks compare against checked C (overflow and bounds checks on).
+- Errors are specific: name the failing value, place and expected form, not a generic message.
+- Do not unwrap an optional with `if v := x`; narrow with `v != null`.
+
 Apply when: starting any task or opening any PR.
-Verify: the PR is non-draft with auto-merge, adds no `Cargo.toml` dependency, and skips no platform, and adds no language-comparison table.
+Verify: the PR is non-draft with auto-merge, adds no dependency (and no GPL or LGPL one), and skips no platform, and adds no language-comparison table.
