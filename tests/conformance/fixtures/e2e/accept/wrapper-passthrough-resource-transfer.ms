@@ -90,8 +90,9 @@ test "owned native receivers stay closeable until later try arguments succeed":
 	held_optional_local(4, log.clone(), false)?
 	expect_equal(held_result_temporary(5, log.clone(), true).is_error(), true)?
 	expect_equal(held_result_local(6, log.clone(), true).is_error(), true)?
-	expect_equal(held_optional_temporary(7, log.clone(), true).is_error(), true)?
-	expect_equal(held_optional_local(8, log.clone(), true).is_error(), true)?
+	// `or` runs its right side only for an absent left, so a present receiver never reaches the failing callback.
+	expect_equal(held_optional_temporary(7, log.clone(), true).is_error(), false)?
+	expect_equal(held_optional_local(8, log.clone(), true).is_error(), false)?
 
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,2,3,4,5,6,7,8,")?

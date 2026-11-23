@@ -18,10 +18,10 @@ type OneByte:
 
 fn var OneByte.next() move Bytes?!:
 	var data = "".to_bytes()
-	held := self.held
+	held := self.held.clone()
 
 	if held != null:
-		data = held.clone()
+		data = held
 	else:
 		fresh := self.input.next()?
 		next := fresh
