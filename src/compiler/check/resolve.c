@@ -281,6 +281,19 @@ void ms_check_flush_pending_bounds(MsCheckProgram *program) {
     report_unsatisfied(program, pending.module, pending.pos, pending.ty);
   }
   program->pending_bounds.len = 0;
+  for (size_t index = 0; index < program->pending_defaults.len; index++) {
+    const MsPendingDefault pending = program->pending_defaults.ptr[index];
+    const MsTyVariable *record = ms_ty_variable(&program->types, pending.owner);
+    for (size_t at = 0; record != NULL && at < record->bounds.len; at++) {
+      const MsTy bound = ms_ty_subst(&program->types, record->bounds.ptr[at], &pending.owner, &pending.variable, 1);
+      if (!ms_check_implements(program, pending.variable, bound)) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_check_unsatisfied_message(program, pending.variable, bound, "choose a default that already implements it", &text);
+        ms_check_report(program, pending.module, pending.pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+    }
+  }
+  program->pending_defaults.len = 0;
 }
 
 /* The nominal type `base` applied to the arguments written after its name. */
