@@ -8,6 +8,7 @@
 #include "compiler/link/link.h"
 #include "compiler/link/object.h"
 #include "cli/backend.h"
+#include "cli/install_layout.h"
 #include "ms_runtime_paths.h"
 
 #if defined(_WIN32)
@@ -38,12 +39,12 @@ static bool fail(MsSpan *error, const char *message, MsSpan detail) {
 }
 
 /* The environment variable `name` or, without it, `fallback`. */
-static MsSpan setting(const char *name, const char *fallback, MsString *storage) {
+static MsSpan setting(const char *name, MsSpan fallback, MsString *storage) {
   *storage = ms_string_empty();
   if (ms_env_get(name, storage) && ms_string_span(storage).len != 0) {
     return ms_string_span(storage);
   }
-  return ms_span_of_text(fallback);
+  return fallback;
 }
 
 /* `MS_COUNT_OPS` set to anything but 0 counts operations in every build. */
@@ -116,12 +117,33 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
   MsString opt_storage, llc_storage, lld_storage, files_storage, runtime_storage;
+  MsStrBuild opt_installed = ms_strbuild_new(), llc_installed = ms_strbuild_new(), lld_installed = ms_strbuild_new();
+  MsStrBuild files_installed = ms_strbuild_new(), runtime_installed = ms_strbuild_new();
   MsString scratch = ms_string_empty();
-  const MsSpan opt = setting("MS_OPT", "opt", &opt_storage);
-  const MsSpan llc = setting("MS_LLC", "llc", &llc_storage);
-  const MsSpan lld = setting("MS_LLD", "lld", &lld_storage);
-  const MsSpan files = setting("MS_FILES", MS_BUILD_FILES, &files_storage);
-  const MsSpan runtime = setting("MS_RUNTIME", request->static_libc ? MS_BUILD_RUNTIME_STATIC : MS_BUILD_RUNTIME, &runtime_storage);
+  /* Installed beside its files, ms uses those; a build tree keeps the paths it was built with and PATH. */
+  MsStrBuild root = ms_strbuild_new();
+  const bool installed = ms_install_root(&root);
+  const MsSpan root_span = ms_strbuild_span(&root);
+  MsSpan opt_fallback = ms_span_of_text("opt"), llc_fallback = ms_span_of_text("llc"), lld_fallback = ms_span_of_text("lld");
+  MsSpan files_fallback = ms_span_of_text(MS_BUILD_FILES);
+  MsSpan runtime_fallback = ms_span_of_text(request->static_libc ? MS_BUILD_RUNTIME_STATIC : MS_BUILD_RUNTIME);
+  if (installed) {
+    ms_install_tool(root_span, "opt", &opt_installed);
+    ms_install_tool(root_span, "llc", &llc_installed);
+    ms_install_tool(root_span, "lld", &lld_installed);
+    ms_path_append_joined(&files_installed, root_span, ms_span_of_text("files"));
+    (void)ms_install_runtime(root_span, request->static_libc, &runtime_installed);
+    opt_fallback = ms_strbuild_span(&opt_installed);
+    llc_fallback = ms_strbuild_span(&llc_installed);
+    lld_fallback = ms_strbuild_span(&lld_installed);
+    files_fallback = ms_strbuild_span(&files_installed);
+    runtime_fallback = ms_strbuild_span(&runtime_installed);
+  }
+  const MsSpan opt = setting("MS_OPT", opt_fallback, &opt_storage);
+  const MsSpan llc = setting("MS_LLC", llc_fallback, &llc_storage);
+  const MsSpan lld = setting("MS_LLD", lld_fallback, &lld_storage);
+  const MsSpan files = setting("MS_FILES", files_fallback, &files_storage);
+  const MsSpan runtime = setting("MS_RUNTIME", runtime_fallback, &runtime_storage);
   MsSpan inputs[MAX_INPUTS];
   const size_t count = ok ? collect_inputs(request, runtime, inputs) : 0;
   if (ok && !ms_dir_make_temp(scratch_parent(request->output), ms_span_of_text(".ms-build-"), &scratch)) {
@@ -148,6 +170,12 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   ms_string_release(&scratch);
   ms_strbuild_free(&object);
   ms_string_release(&runtime_storage);
+  ms_strbuild_free(&root);
+  ms_strbuild_free(&runtime_installed);
+  ms_strbuild_free(&files_installed);
+  ms_strbuild_free(&lld_installed);
+  ms_strbuild_free(&llc_installed);
+  ms_strbuild_free(&opt_installed);
   ms_string_release(&files_storage);
   ms_string_release(&lld_storage);
   ms_string_release(&llc_storage);

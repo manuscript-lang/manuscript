@@ -13,6 +13,7 @@
 #include "base/fatal.h"
 #include "base/file.h"
 #include "base/ostext.h"
+#include "base/path.h"
 
 enum { LOG_MODE = 0600 };
 
@@ -330,4 +331,16 @@ bool ms_process_run_logged(MsSpan what, const MsProcessSpec *spec, MsStrBuild *w
   ms_strbuild_append_text(why, " failed: ");
   append_trimmed_log(spec->log_path, why);
   return false;
+}
+
+bool ms_process_executable(MsString *out) {
+  char buffer[4096];
+  size_t size = sizeof buffer;
+  if (uv_exepath(buffer, &size) != 0) {
+    return false;
+  }
+  ms_path_from_os(buffer, size);
+  ms_string_release(out);
+  *out = ms_string_from_span(ms_span_of((const uint8_t *)buffer, size));
+  return true;
 }

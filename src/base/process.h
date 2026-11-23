@@ -7,6 +7,7 @@
 #define MS_BASE_PROCESS_H
 
 #include "base/strbuild.h"
+#include "base/string.h"
 
 typedef struct MsProcessSpec {
   const MsSpan *argv; /* borrowed: the program (a path, or a name looked up on PATH) then its arguments */
@@ -30,6 +31,9 @@ MS_NODISCARD MS_NONNULL bool ms_process_run(const MsProcessSpec *spec, int *exit
 /* Runs the program and succeeds when it exits with status 0. On failure `why` gets `what` and either the
  * reason it could not start or its output (read from the log file). */
 MS_NODISCARD MS_NONNULL bool ms_process_run_logged(MsSpan what, const MsProcessSpec *spec, MsStrBuild *why);
+
+/* The absolute path of the running executable, `/`-separated; false when the host cannot say. */
+MS_NODISCARD MS_NONNULL bool ms_process_executable(MsString *out);
 
 /* Whether `name` is an executable on PATH. */
 bool ms_process_find(MsSpan name);

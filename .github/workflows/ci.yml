@@ -54,6 +54,15 @@ jobs:
       - run: cmake --build --preset ci
       - run: ctest --preset ci
       - run: cmake --build --preset ci --target lint
+      # The distribution archive, unpacked on its own and used to build a program (the six-platform runs only).
+      - if: env.PR != 'true'
+        run: cmake --build --preset ci --target dist-smoke
+      - if: env.PR != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
+          path: .artifacts/build/ci/dist/manuscript-*
+          retention-days: 7
       - run: cmake --build --preset ci --target repo-check
       # Each check reports on its own: a lint violation does not hide the corpus counts.
       - if: ${{ !cancelled() }}

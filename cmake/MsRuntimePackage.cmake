@@ -66,8 +66,8 @@ function(ms_package_runtime executable runtime)
   endif()
   # The `--static` runtime is the same archives built by the inner musl build, at the same place under its tree.
   set(musl_joined "")
+  set(musl_paths "")
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(musl_paths "")
     foreach(archive IN LISTS archives)
       if(archive STREQUAL "ms_glibc_compat")
         continue() # glibc's entry and stat family; musl brings its own
@@ -83,6 +83,24 @@ function(ms_package_runtime executable runtime)
 #define MS_BUILD_RUNTIME_STATIC \"${musl_joined}\"
 #define MS_BUILD_FILES \"${files}\"
 ")
+  # The same archives for cmake/MsPackage.cmake, as lists it can read at package time.
+  list(JOIN paths "\;" archive_list)
+  list(JOIN musl_paths "\;" musl_archive_list)
+  file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/generated/ms_runtime_list.cmake" CONTENT
+"set(MS_RUNTIME_ARCHIVES \"${archive_list}\")
+set(MS_RUNTIME_STATIC_ARCHIVES \"${musl_archive_list}\")
+")
+  add_custom_target(dist
+    COMMAND ${CMAKE_COMMAND}
+      "-DMS_EXE=$<TARGET_FILE:${executable}>" "-DFILES=${files}" "-DLIST=${CMAKE_BINARY_DIR}/generated/ms_runtime_list.cmake"
+      "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}" "-DBINARY_DIR=${CMAKE_BINARY_DIR}" "-DOS=${CMAKE_SYSTEM_NAME}"
+      "-DARCH=${CMAKE_SYSTEM_PROCESSOR}" "-DOUT=${CMAKE_BINARY_DIR}/dist"
+      -P "${CMAKE_SOURCE_DIR}/cmake/MsPackage.cmake"
+    DEPENDS ${executable} COMMENT "Assembling the distribution archive" VERBATIM)
+  add_custom_target(dist-smoke
+    COMMAND ${CMAKE_COMMAND} "-DDIST=${CMAKE_BINARY_DIR}/dist" "-DWORK=${CMAKE_BINARY_DIR}/dist-smoke"
+      -P "${CMAKE_SOURCE_DIR}/cmake/PackageSmoke.cmake"
+    DEPENDS dist COMMENT "Building the hello example with the unpacked archive alone" VERBATIM)
   target_include_directories(${executable} PRIVATE "${CMAKE_BINARY_DIR}/generated")
   add_custom_command(TARGET ${executable} POST_BUILD
     COMMAND ${CMAKE_COMMAND}
