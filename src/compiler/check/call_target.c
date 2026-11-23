@@ -175,6 +175,14 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }
   const MsSymbol *symbol = body_find_symbol(body, callee->u.sym);
+  if (symbol == NULL && body->resolver.self != MS_TY_NONE &&
+      ms_span_is_text(ms_names_span(body->program->names, callee->u.sym), "Self")) {
+    /* `Self(...)` in a method builds the receiver's own type */
+    const MsDef *home = body_def(body, body->resolver.self);
+    symbol = home != NULL && ms_ty_kind(&body->program->types, body->resolver.self) == MS_TY_TYPE
+                 ? &body->program->symbols.ptr[home->symbol]
+                 : NULL;
+  }
   if (symbol != NULL) {
     body_set_ref(body, callee->id, body_symbol_ref(body, symbol));
     return symbol_target(body, symbol, target);

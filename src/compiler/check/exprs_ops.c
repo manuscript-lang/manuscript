@@ -368,7 +368,8 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
 
 static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy left, MsTy right) {
   const bool text = ms_ty_is(&body->program->types, left, MS_BUILTIN_String);
-  if (left != right || !(is_numeric(body, left) || (text && op == MS_B_ADD))) {
+  const bool span = ms_ty_is(&body->program->types, left, MS_BUILTIN_Duration) && (op == MS_B_ADD || op == MS_B_SUB);
+  if (left != right || !(is_numeric(body, left) || (text && op == MS_B_ADD) || span)) {
     if (!holds_invalid(&body->program->types, left, 6) && !holds_invalid(&body->program->types, right, 6) &&
         body_reports(body) && !body->quiet) {
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
