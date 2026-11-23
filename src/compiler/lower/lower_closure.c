@@ -720,6 +720,8 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
     return MIR_NONE;
   }
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
+  fn->last_receiver = changes ? MIR_NONE : receiver;
+  fn->has_last_receiver = !changes;
   const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
   bool borrowed = false;
   if (owns) {

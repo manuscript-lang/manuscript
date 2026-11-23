@@ -148,6 +148,14 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     }
     order[place] = at;
   }
+  MirValue bound_receiver = MIR_NONE; /* a local bound to a method value: the receiver it captured */
+  const MsParams *bound_params = NULL;
+  for (uint32_t at = 0; ref != NULL && ref->kind == MS_REF_LOCAL && at < fn->nbound_self; at++) {
+    if (fn->bound_self[at].local == ref->local) {
+      bound_receiver = fn->bound_self[at].receiver;
+      bound_params = fn->bound_self[at].params;
+    }
+  }
   MirValue args[16];
   VarSlot slots[16];
   uint32_t nslots = 0;
@@ -156,6 +164,24 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     const uint32_t index = order[step];
     const MirTy param_ty = data->args[index];
     const MsExpr *written = written_args[index];
+    if (written == NULL && facts && bound_params != NULL && fact->args[index].source == MS_ARG_DEFAULT) {
+      /* A method value keeps its parameters' defaults: the default is written in the call, over the arguments so far and
+       * the receiver the value captured. */
+      fn->default_call = fact;
+      fn->default_args = args + 1;
+      fn->default_params = bound_params;
+      fn->default_self = bound_receiver;
+      fn->default_has_self = bound_receiver != MIR_NONE;
+      args[index + 1] = fn_default_argument(fn, fact, &fact->args[index], param_ty);
+      fn->default_call = NULL;
+      fn->default_args = NULL;
+      fn->default_has_self = false;
+      fn->default_params = NULL;
+      if (args[index + 1] == MIR_NONE) {
+        return MIR_NONE;
+      }
+      continue;
+    }
     if (written == NULL) {
       /* A parameter the call leaves out is none. */
       if (mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT) {
