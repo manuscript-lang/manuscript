@@ -16,3 +16,8 @@ fn again(value: String!String) String!String:
 fn copied(value: String!String) String!String:
 	text := value.clone()?
 	return ok(text + "x")
+
+fn aliased(value: String!String) String!String:
+	alias := value
+	text := alias?
+	return ok(text)
