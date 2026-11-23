@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 // A closure that does not outlive its maker reads what it captures in place; one that
 // is returned or stored owns a copy and keeps the value it was made with.
@@ -71,7 +74,7 @@ fn keep_map(text: String) Int:
 
 	var t = 0
 	for k in m.keys():
-		t += m.get(k).get()()
+		t += (m.get(k) or panic("called Optional.get() on null"))()
 	return t
 
 fn keep_opt(text: String) Int:
@@ -81,7 +84,7 @@ fn keep_opt(text: String) Int:
 
 	var t = 0
 	for o in os:
-		t += o.get()()
+		t += (o or panic("called Optional.get() on null"))()
 	return t
 
 fn store(var fs: List[fn() Int], move f: fn() Int) Void:

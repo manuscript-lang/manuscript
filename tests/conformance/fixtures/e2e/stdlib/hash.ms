@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	Crc64,
 	Crc64Polynomial,
 	MapHash,
@@ -23,14 +24,8 @@ test "FNV known vectors for both variants and widths":
 
 test "CRC64 matches the standard check values":
 	input := "123456789".to_bytes()
-	expect_equal(
-		crc64(Crc64Polynomial.Ecma, input).to_string(),
-		"11051210869376104954",
-	)?
-	expect_equal(
-		crc64(Crc64Polynomial.Iso, input).to_string(),
-		"13333283586479230977",
-	)?
+	expect_equal(crc64(Crc64Polynomial.Ecma, input).to_string(), "11051210869376104954")?
+	expect_equal(crc64(Crc64Polynomial.Iso, input).to_string(), "13333283586479230977")?
 	expect_equal(crc64(Crc64Polynomial.Ecma, Bytes([])).to_string(), "0")?
 
 test "CRC64 chunks equal one pass":
@@ -54,7 +49,12 @@ test "CRC64 table paths equal the bitwise path":
 		for length in [255, 256, 257, 4095, 4096, 4103, 9001]:
 			var raw: List[UInt8] = []
 			for index in 0..length:
-				raw.append(((index * 73 + index / 7) % 256).to_uint8().get())
+				raw.append(
+					(
+						(index * 73 + index / 7)
+						% 256
+					).to_uint8() or panic("called Optional.get() on null")
+				)
 
 			data := Bytes(raw.clone())
 			var chunked = Crc64(polynomial: polynomial)

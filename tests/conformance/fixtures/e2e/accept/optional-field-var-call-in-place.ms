@@ -1,6 +1,9 @@
 // conform: tags=testing,optional,mutation,tier-core
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type Node:
 	key: Int
@@ -72,11 +75,11 @@ test "an absent optional field is left alone":
 test "a change through a present field is kept":
 	var root = Node(10, Node(5, null, null), null)
 	root.rename_left(100)
-	expect_equal(root.left.get().key, 105)?
+	expect_equal((root.left or panic("called Optional.get() on null")).key, 105)?
 	expect_equal(root.key, 1010)?
 
 test "owned payload fields are updated in place":
 	var t = Tag("a", Tag("b", null))
 	t.label_next("!")
-	expect_equal(t.next.get().label, "b!")?
+	expect_equal((t.next or panic("called Optional.get() on null")).label, "b!")?
 	expect_equal(t.label, "a")?

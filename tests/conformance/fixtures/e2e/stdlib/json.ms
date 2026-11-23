@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	Data from "@std/core.ms",
+	Data, panic from "@std/core.ms",
 	JsonEncode,
 	JsonOptions,
 	JsonValue,
@@ -355,7 +355,12 @@ test "JSON parse decodes records by field name with defaults and optional fields
 
 	full := "{\"name\":\"B\",\"age\":30,\"nickname\":\"bee\",\"scores\":[]}"
 	other: Profile := parse[Profile](full)?
-	expect_false(other.age != 30 or other.nickname.get() != "bee")?
+	expect_false(
+		other.age != 30 or (
+			other.nickname
+			or panic("called Optional.get() on null")
+		) != "bee"
+	)?
 
 test "JSON parse rejects shape mismatches as InvalidData":
 	missing := "{\"scores\":[]}"
@@ -439,7 +444,7 @@ test "JSON parse inverts stringify and works in generic code":
 	text := stringify(profile)?
 	again: Profile := decoded[Profile](text)?
 	expect_equal((stringify(again)?), text)?
-	expect_equal(again.nickname.get(), "a")?
+	expect_equal(again.nickname or panic("called Optional.get() on null"), "a")?
 
 	shapes: List[Shape] := [Shape.Dot, Shape.Rect(3, 4)]
 	shapesBack: List[Shape] := decoded[List[Shape]](stringify(shapes)?)?

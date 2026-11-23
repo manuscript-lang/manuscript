@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 test "List count calls the predicate once per element":
 	values := [1, 2, 3, 4]
@@ -50,7 +53,7 @@ test "List pop and distinct copy payloads":
 	shared := Box(1)
 	var boxes = [shared.clone()]
 	popped := boxes.pop()
-	var item = popped.get().clone()
+	var item = (popped or panic("called Optional.get() on null")).clone()
 	item.value = 2
 	expect_false(shared.value != 1 or item.value != 2 or not boxes.is_empty())?
 

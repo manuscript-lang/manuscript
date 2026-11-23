@@ -1,7 +1,7 @@
 // conform: tags=scope-cleanup,closures,tier-io
 // conform: phase=run
 // conform: origin=value-semantics-audit
-import Closeable from "@std/core.ms"
+import Closeable, panic from "@std/core.ms"
 
 // A resource handed to a list or read by a callback closes exactly once.
 type Door:
@@ -33,4 +33,6 @@ fn main() Void:
 
 	failed: Door!Error := error(Error("no"))
 	fallback := failed.get_or_else(fn cause: Door("fallback"))
-	say(f"end {doors.length()} {name.get()} {size.get()} {fallback.name}")
+	say(
+		f"end {doors.length()} {(name or panic("called Optional.get() on null"))} {size.get()} {fallback.name}"
+	)

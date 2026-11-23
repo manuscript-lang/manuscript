@@ -1,5 +1,6 @@
 // Matched ratios, excluding round0: FILE [forward|swap] [wall|cpu].
 import (
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 
 	invalid, median, read_text from "./lib.ms",
@@ -122,7 +123,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 		values := groups[key]
 		interval := median_interval(values)?
 		slower := values.filter(fn value: value > 1.0).length()
-		report += f"{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={values.min().get()} max_ratio={values.max().get()} candidate_slower={slower}\n"
+		report += f"{key} n={values.length()} median_candidate_ratio={median(values)} median95_lower={interval[0]} median95_upper={interval[1]} min_ratio={(values.min() or panic("called Optional.get() on null"))} max_ratio={(values.max() or panic("called Optional.get() on null"))} candidate_slower={slower}\n"
 
 	return ok(report)
 

@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type WideKey:
 	a: Int
@@ -49,7 +52,7 @@ test "wide Map merge preserves order and owns values after the source drops":
 	expect_equal(merged.keys().map(fn k: k.a), [2, -1, 0, 1, 4, 5, 7])?
 
 	for i in [2, -1, 0, 1, 4, 5, 7]:
-		found := merged.get(key(i)).get()
+		found := merged.get(key(i)) or panic("called Optional.get() on null")
 		text := "a long independently owned runtime value " + i.to_string()
 		expect_equal(found.first, text)?
 		expect_equal(found.second, text)?

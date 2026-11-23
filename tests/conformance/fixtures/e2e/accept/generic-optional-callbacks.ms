@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_fault, expect_true from "@std/test/test.ms",
+)
 
 fn every[T](values: List[T], predicate: fn(T) Bool) Bool:
 	return values.all(fn value: predicate(value))
@@ -128,19 +131,19 @@ test "generic native folds accept Optional accumulators without omission wrapper
 	values := {"one": 1, "two": 2}
 	initial: Int? := null
 	sum := values.fold_right(initial, fn acc, key, value: (acc or 0) + value)
-	expect_equal(sum.get(), 3)?
+	expect_equal(sum or panic("called Optional.get() on null"), 3)?
 
 	fold := values.fold_right[Int?]
 	bound_sum := fold(initial, fn acc, key, value: (acc or 0) + value)
-	expect_equal(bound_sum.get(), 3)?
+	expect_equal(bound_sum or panic("called Optional.get() on null"), 3)?
 
 	set := Set([1, 2])
 	set_sum := set.fold_right(initial, fn acc, value: (acc or 0) + value)
-	expect_equal(set_sum.get(), 3)?
+	expect_equal(set_sum or panic("called Optional.get() on null"), 3)?
 
 	fold_set := set.fold_right[Int?]
 	bound_set_sum := fold_set(initial, fn acc, value: (acc or 0) + value)
-	expect_equal(bound_set_sum.get(), 3)?
+	expect_equal(bound_set_sum or panic("called Optional.get() on null"), 3)?
 
 test "bound generic native defaults preserve concrete and Optional payload types":
 	missing: Int? := null
@@ -155,7 +158,7 @@ test "bound generic native defaults preserve concrete and Optional payload types
 	expect_true(nested(absent).err() == null)?
 
 	present: Int? := 0
-	expect_equal(nested(present).err().get(), 0)?
+	expect_equal(nested(present).err() or panic("called Optional.get() on null"), 0)?
 
 test "bound Error causes are supplied at each call":
 	missing: Int? := null

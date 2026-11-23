@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	ReadStream, Source from "@std/io/io.ms",
 	SseEvent, SseLimits, sse_events from "@std/net/sse.ms",
 	expect_equal, expect_false, fail from "@std/test/test.ms",
@@ -171,7 +172,7 @@ test "a read failure is the stream's error and events before it arrive":
 			)
 		)
 	)
-	first := (events.next()?).get()
+	first := (events.next()?) or panic("called Optional.get() on null")
 	expect_equal(first.data, "a")?
 
 	failed := events.next()

@@ -2,12 +2,13 @@
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/result-error-values.ms
 import (
+	panic from "@std/core.ms",
 	expect_contains,
 	expect_equal,
 	expect_error,
 	expect_ok,
-	expect_true
-) from "@std/test/test.ms"
+	expect_true from "@std/test/test.ms",
+)
 
 enum ValidationError:
 	BelowMinimum(actual: Int, minimum: Int)
@@ -25,7 +26,7 @@ fn actual(cause: ValidationError) Int:
 		BelowMinimum(value, _): return value
 
 fn optional_result(value: Int!String?) Int:
-	return value.get().get_or(-1)
+	return (value or panic("called Optional.get() on null")).get_or(-1)
 
 test "optional Result arguments supply constructor type context":
 	optional_result(ok(4)) | expect_equal(4)?

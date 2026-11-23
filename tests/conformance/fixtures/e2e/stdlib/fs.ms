@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	read_all from "@std/io/streams.ms",
 	GlobOptions,
 	OpenMode,
@@ -152,7 +153,10 @@ test "filesystem scoped temporary directories and bounded file reads":
 
 	opened := open(path, OpenMode.Read) | expect_ok?
 	var input = opened.reader() | expect_ok?
-	(input.next() | expect_ok?).get() | expect_equal("hello".to_bytes())?
+	(
+		((input.next() | expect_ok?) or panic("called Optional.get() on null"))
+		| expect_equal("hello".to_bytes())?
+	)
 	temporary.close()?
 	(
 		stat(path: directory) | expect_fs_error(

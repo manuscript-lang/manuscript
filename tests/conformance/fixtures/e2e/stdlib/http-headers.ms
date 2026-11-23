@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	HttpClient,
 	HttpClientOptions,
 	HttpExchange,
@@ -138,7 +139,13 @@ test "string lookup leaves out values that are not UTF-8":
 	fields.get_all("RAW") | expect_equal(["first"])?
 	fields.get("RAW") | expect_equal("first")?
 	fields.get("missing") | expect_equal(null)?
-	fields.get_all_bytes("RAW").get().length() | expect_equal(2)?
+	(
+		(
+			fields.get_all_bytes("RAW")
+			or panic("called Optional.get() on null")
+		).length()
+		| expect_equal(2)?
+	)
 
 	match fields.append("bad name", "value"):
 		ok(_): return fail("malformed name accepted")
@@ -194,7 +201,7 @@ fn echoed_cookie(client: HttpClient, url: String) String!:
 	var response = client.request(HttpMethod.Get, url, headers(), timeout: 3.seconds())?
 	var text = ""
 	for chunk in response.body:
-		text += chunk.decode_utf8().get()
+		text += (chunk.decode_utf8() or panic("called Optional.get() on null"))
 	response.close()?
 	return ok(text)
 

@@ -1,7 +1,10 @@
 // conform: tags=closures,control-flow,faults,generics,lists,modules,mutation,numbers,optional,records,stdlib-collections,stdlib-testing,strings,testing,tier-stdlib,try-result
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/primitive-list-storage.ms
-import expect_equal, expect_false, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
 
 fn append_value[T: Clonable](var values: List[T], value: T) List[T]:
 	values.append(value)
@@ -24,14 +27,22 @@ test "primitive storage retains generic record Optional and independent copies":
 	expect_equal(record.values.length(), 4098)?
 	expect_equal(values[-1], 17)?
 	expect_equal(values[0], 9223372036854775807)?
-	expect_equal(wrapped.get()[0], 9223372036854775807)?
+	expect_equal(
+		(wrapped or panic("called Optional.get() on null"))[0],
+		9223372036854775807,
+	)?
 
 	var copy = values.clone()
 	values.set(0, 42)
 	expect_equal(copy[0], 9223372036854775807)?
 
 	nested: List[Int?] := [7, null]
-	expect_false(not (nested[0].get() == 7 and (nested[1] == null)))?
+	expect_false(
+		not (
+			(nested[0] or panic("called Optional.get() on null")) == 7
+			and (nested[1] == null)
+		)
+	)?
 
 test "Float Bool and String preserve mutation traversal and width":
 	var floats = [1e-300, 1e300, 0.25]

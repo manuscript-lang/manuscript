@@ -6,13 +6,17 @@
 // (it reads /proc/self/status); the tasks themselves are portable.
 import (
 	Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 	read_file from "@std/os/fs.ms",
 	monotonic, seconds, sleep from "@std/time.ms",
 )
 
 fn status(label: String) Void:
-	text := read_file("/proc/self/status", null).wait().get().decode_utf8().get()
+	text := (
+		read_file("/proc/self/status", null).wait().get().decode_utf8()
+		or panic("called Optional.get() on null")
+	)
 	for line in text.lines():
 		if line.contains("VmRSS") or line.contains("VmHWM") or line.contains("VmPTE"):
 			print(label + " " + line)
@@ -40,7 +44,7 @@ fn park_read(a: Int) Int!:
 
 fn main() Void:
 	args := arguments()
-	n := args[0].parse_int().get()
+	n := args[0].parse_int() or panic("called Optional.get() on null")
 	mode := args[1].clone()
 	status("before")
 

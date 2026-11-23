@@ -2,12 +2,13 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/accept/closed-local-int-map.ms
 import (
+	panic from "@std/core.ms",
 	expect_contains,
 	expect_equal,
 	expect_false,
 	expect_fault,
-	expect_true
-) from "@std/test/test.ms"
+	expect_true from "@std/test/test.ms",
+)
 
 fn effect(var visits: List[Int], value: Int) Int:
 	visits.append(value)
@@ -15,7 +16,7 @@ fn effect(var visits: List[Int], value: Int) Int:
 
 fn missing() Int:
 	values := Map[Int, Int]()
-	return values.get(0).get()
+	return values.get(0) or panic("called Optional.get() on null")
 
 fn returned_alias() Map[Int, Int]:
 	var values = Map[Int, Int]()
@@ -32,8 +33,8 @@ test "closed maps preserve lookup replacement and absence":
 	values.add(-1, 30)
 	values.length() | expect_equal(2)?
 	values.contains(7) | expect_true?
-	values.get(7).get() | expect_equal(20)?
-	values.get(-1).get() | expect_equal(30)?
+	(values.get(7) or panic("called Optional.get() on null")) | expect_equal(20)?
+	(values.get(-1) or panic("called Optional.get() on null")) | expect_equal(30)?
 	values.get_or(0, 99) | expect_equal(99)?
 
 test "closed map arguments retain written evaluation order":
@@ -42,8 +43,8 @@ test "closed map arguments retain written evaluation order":
 	values.add(value: effect(visits, 20), key: effect(visits, 2))
 	values.add(key: effect(visits, 3), value: effect(visits, 30))
 	visits | expect_equal([20, 2, 3, 30])?
-	values.get(2).get() | expect_equal(20)?
-	values.get(3).get() | expect_equal(30)?
+	(values.get(2) or panic("called Optional.get() on null")) | expect_equal(20)?
+	(values.get(3) or panic("called Optional.get() on null")) | expect_equal(30)?
 
 test "missing local lookups keep Optional faults":
 	(expect_fault(fn: _ignored := missing())?) | expect_contains("Optional.get")?
@@ -55,11 +56,11 @@ test "escaped map results keep insertion order":
 
 	var seen = values.map(fn entry: entry.key)
 	seen | expect_equal([2, 1])?
-	values.get(2).get() | expect_equal(21)?
+	(values.get(2) or panic("called Optional.get() on null")) | expect_equal(21)?
 
 test "captured maps read the entries present at capture":
 	var values = Map[Int, Int]()
 	values.add(1, 10)
 
-	callback := fn() Int: values.get(1).get()
+	callback := fn() Int: values.get(1) or panic("called Optional.get() on null")
 	callback() | expect_equal(10)?

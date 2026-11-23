@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 // These methods return owned lists. Moving an element must use that list, rather
 // than the in-place map walk used when a loop only reads its element.
@@ -18,22 +21,24 @@ fn collect_entries(
 
 fn capture_keys(source: Map[String, Int]) List[fn() String]:
 	var out = List[fn() String]()
+
 	for key in source.keys():
 		owned := key.clone()
 		out.append(fn: owned.clone())
+
 	return out
 
 test "map values move from their owned traversal result":
 	source := {"a": "alpha", "b": "beta", "c": "gamma"}
 	expect_equal(collect_values(source), ["alpha", "beta", "gamma"])?
-	expect_equal(source.get("b").get(), "beta")?
+	expect_equal(source.get("b") or panic("called Optional.get() on null"), "beta")?
 
 test "map entries retain independent nested values after a move":
 	source := {"a": ["alpha"], "b": ["beta"]}
 	var entries = collect_entries(source)
 	entries[0].value.append("changed")
 	expect_equal(entries[0].value, ["alpha", "changed"])?
-	expect_equal(source.get("a").get(), ["alpha"])?
+	expect_equal(source.get("a") or panic("called Optional.get() on null"), ["alpha"])?
 	expect_equal(entries[1].value, ["beta"])?
 
 test "map keys can move into escaping closures":

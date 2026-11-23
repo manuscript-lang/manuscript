@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	Curve,
 	ecdsa_generate,
 	public_key,
@@ -318,11 +319,30 @@ test "verify accepts empty claim objects and nested values":
 	nested := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuZXN0ZWQiOltdLCJhY3RpdmUiOnRydWV9.mgN1ikVmpILfLmGzXL3xy4bWgwTvpDt52bslkrtkIjM"
 	claims := (verify_token(empty, secret) | expect_ok?)
 	expect_true(claims.as_map() != null)?
-	claims.as_map().get().length() | expect_equal(0)?
+	(
+		(claims.as_map() or panic("called Optional.get() on null")).length()
+		| expect_equal(0)?
+	)
 
 	rich := (verify_token(nested, secret) | expect_ok?)
-	rich.get("active").get().as_bool().get() | expect_equal(true)?
-	rich.get("nested").get().as_list().get().length() | expect_equal(0)?
+	(
+		(
+			(
+				rich.get("active")
+				or panic("called Optional.get() on null")
+			).as_bool()
+			or panic("called Optional.get() on null")
+		) | expect_equal(true)?
+	)
+	(
+		(
+			(
+				rich.get("nested")
+				or panic("called Optional.get() on null")
+			).as_list()
+			or panic("called Optional.get() on null")
+		).length() | expect_equal(0)?
+	)
 
 test "rs256 signs with a private key and verifies with the public key":
 	private := (rsa_generate(2048) | expect_ok?)
@@ -482,10 +502,17 @@ test "verify keeps unknown noncritical and default encoding headers":
 	for token in tokens:
 		claims := (verify_token(token, secret) | expect_ok?)
 		expect_true(claims.as_map() != null)?
-		claims.as_map().get().length() | expect_equal(0)?
 		(
-			(failure(verify_token(token, "other".to_bytes()))?)
-			| expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
+			(
+				claims.as_map()
+				or panic("called Optional.get() on null")
+			).length()
+			| expect_equal(0)?
+		)
+		(
+			(
+				failure(verify_token(token, "other".to_bytes()))?
+			) | expect_equal(Error("jwt: bad signature", kind: "EBADMSG"))?
 		)
 
 test "configured algorithm validation precedes unsupported headers":

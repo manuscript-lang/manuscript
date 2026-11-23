@@ -12,16 +12,16 @@
         "message": "local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it",
         "position": {
           "file": "golden-1443.ms",
-          "line": 5,
+          "line": 7,
           "column": 5,
-          "offset": 97
+          "offset": 125
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1443.ms:5:5: type: local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 5 |     impossible := missing.get()\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1443.ms:7:5: type: local binding impossible is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 7 |     impossible := missing or panic(\"called Optional.get() on null\")\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

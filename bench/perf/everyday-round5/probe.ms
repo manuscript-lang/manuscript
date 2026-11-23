@@ -1,4 +1,7 @@
-import monotonic from "@std/time.ms"
+import (
+	panic from "@std/core.ms",
+	monotonic from "@std/time.ms",
+)
 
 type V3:
 	x: Int
@@ -253,12 +256,12 @@ fn e_rpn() Int:
 			match op:
 				Push(v): st.append(v)
 				Add:
-					b := st.pop().get()
-					a := st.pop().get()
+					b := st.pop() or panic("called Optional.get() on null")
+					a := st.pop() or panic("called Optional.get() on null")
 					st.append(a + b)
 				Mul:
-					b := st.pop().get()
-					a := st.pop().get()
+					b := st.pop() or panic("called Optional.get() on null")
+					a := st.pop() or panic("called Optional.get() on null")
 					st.append(a * b)
 				Dup: st.append(st[st.length() - 1])
 				Pop: st.pop()
@@ -325,7 +328,16 @@ fn r_min_by() Int:
 
 	var t = 0
 	for r in 0..10:
-		t += xs.min_by(fn p: p.x).get().y + xs.max_by(fn p: p.x).get().y
+		t += (
+			(
+				xs.min_by(fn p: p.x)
+				or panic("called Optional.get() on null")
+			).y
+			+ (
+				xs.max_by(fn p: p.x)
+				or panic("called Optional.get() on null")
+			).y
+		)
 	return t
 
 fn m_counts() Int:

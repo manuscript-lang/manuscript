@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	HttpRequest,
 	HttpResponse,
 	HttpServerOptions,
@@ -25,7 +26,7 @@ test "serve caps the request header block":
 	// The server may answer and close before the whole head is written.
 	_written := send(client, head)
 	reply := recv(client, 5.seconds()) | expect_ok?
-	text := reply.get().decode_utf8() or ""
+	text := (reply or panic("called Optional.get() on null")).decode_utf8() or ""
 	if not text.starts_with("HTTP/1.1 431"): return error(
 		Error(f"oversized header block was not rejected: {text}")
 	)

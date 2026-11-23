@@ -3,6 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/optional-arguments.ms
 import (
 	Queue from "@std/collections/queue.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
@@ -12,12 +13,12 @@ fn present[T](value: T?) T?: value
 
 fn nested(value: Int??) Bool: value == null
 
-fn list_size(value: List[Int]?) Int: value.get().length()
+fn list_size(value: List[Int]?) Int: (value or panic("called Optional.get() on null")).length()
 
-fn flag(value: Bool?) Bool: value.get()
+fn flag(value: Bool?) Bool: value or panic("called Optional.get() on null")
 
 fn success(value: Int!Error?) Int:
-	return value.get().get_or(-1)
+	return (value or panic("called Optional.get() on null")).get_or(-1)
 
 fn context[T](fallback: T, value: T?) T:
 	inner := value
@@ -53,13 +54,18 @@ fn next(var counter: Counter) Int:
 	return counter.calls
 
 fn ordered(first: Int?, second: Int?) Int:
-	return first.get() * 10 + second.get()
+	return (
+		(first or panic("called Optional.get() on null")) * 10
+		+ (second or panic("called Optional.get() on null"))
+	)
 
-fn invoke(value: (fn(Int) Int)?) Int: value.get()(4)
+fn invoke(value: (fn(Int) Int)?) Int: (value or panic("called Optional.get() on null"))(
+	4
+)
 
 fn increment(value: Int) Int: value + 1
 
-fn calls_of(value: Counter?) Int: value.get().calls
+fn calls_of(value: Counter?) Int: (value or panic("called Optional.get() on null")).calls
 
 test "plain values and explicit optionals share the call contract":
 	expect_equal(number(4), 4)?
@@ -72,11 +78,11 @@ test "plain values and explicit optionals share the call contract":
 
 	stored: fn(Int?) Int := number
 	expect_equal(stored(5), 5)?
-	expect_equal(present(6).get(), 6)?
-	expect_equal(present[Int](7).get(), 7)?
+	expect_equal(present(6) or panic("called Optional.get() on null"), 6)?
+	expect_equal(present[Int](7) or panic("called Optional.get() on null"), 7)?
 
 	generic_supplied: Int? := 8
-	expect_equal(present(generic_supplied).get(), 8)?
+	expect_equal(present(generic_supplied) or panic("called Optional.get() on null"), 8)?
 
 	missing: Int? := null
 	expect_false(not (nested(missing)))?
@@ -98,16 +104,16 @@ test "constructor fields and methods use optional arguments":
 	expect_false(not (defaulted.value == null))?
 
 	supplied := DefaultBox(3)
-	expect_equal(supplied.value.get(), 3)?
+	expect_equal(supplied.value or panic("called Optional.get() on null"), 3)?
 
 	box := Box(4)
-	expect_equal(box.value.get(), 4)?
+	expect_equal(box.value or panic("called Optional.get() on null"), 4)?
 
 	choice := Choice.chosen(5)
 
 	match choice:
 		chosen(value):
-			expect_equal(value.get(), 5)?
+			expect_equal(value or panic("called Optional.get() on null"), 5)?
 
 	reader := Reader(2)
 	expect_equal(reader.read(3), 5)?
@@ -123,7 +129,10 @@ test "constructor fields and methods use optional arguments":
 	expect_equal(counter.calls, 9)?
 
 	notice := Notice(Error("detail"))
-	expect_equal(notice.failure.get().message, "detail")?
+	expect_equal(
+		(notice.failure or panic("called Optional.get() on null")).message,
+		"detail",
+	)?
 
 test "wrapping evaluates arguments once in written order":
 	var counter = Counter(0)
@@ -135,7 +144,7 @@ test "queue capacity accepts a plain value or omission":
 	for value in [1, 2, 3, 4]:
 		expect_false(not (bounded.enqueue(value)))?
 	expect_false(bounded.enqueue(5))?
-	expect_equal(bounded.dequeue().get(), 1)?
+	expect_equal(bounded.dequeue() or panic("called Optional.get() on null"), 1)?
 
 	var unbounded = Queue[Int]()
 	var absent = Queue[Int]()

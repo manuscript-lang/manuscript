@@ -3,6 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	promise, wait_all from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	HttpClientOptions,
 	HttpExchange,
 	HttpMethod,
@@ -241,7 +242,10 @@ test "raw TLS listeners and clients handshake and report negotiated details":
 	served := promise(fn: ok(serve_one_tls(listener)))
 	var client = connect(address.clone(), tls: client_tls, timeout: 3.seconds()).wait()?
 	send(client, "ping")?
-	expect_equal((recv(client, 3.seconds())?).get(), "pong".to_bytes())?
+	expect_equal(
+		(recv(client, 3.seconds())?) or panic("called Optional.get() on null"),
+		"pong".to_bytes(),
+	)?
 
 	info := client.info.tls_info()?
 	expect_false(info.version < 771)?
@@ -353,7 +357,10 @@ test "start_tls upgrades a plain connection in place on both sides":
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	expect_false(plain.info.tls_info().is_ok())?
 	send(plain, "STARTTLS")?
-	expect_equal((recv(plain, 3.seconds())?).get(), "OK".to_bytes())?
+	expect_equal(
+		(recv(plain, 3.seconds())?) or panic("called Optional.get() on null"),
+		"OK".to_bytes(),
+	)?
 
 	var client = start_tls(plain, client_tls, 3.seconds())?
 	expect_equal(client.info.peer_address, address)?
@@ -362,7 +369,10 @@ test "start_tls upgrades a plain connection in place on both sides":
 	expect_false(info.version < 771)?
 	expect_false(not info.verified)?
 	send(client, "ping")?
-	expect_equal((recv(client, 3.seconds())?).get(), "pong".to_bytes())?
+	expect_equal(
+		(recv(client, 3.seconds())?) or panic("called Optional.get() on null"),
+		"pong".to_bytes(),
+	)?
 
 	// The plain value was consumed.
 	_late := expect_error(plain.output.write("late".to_bytes()))?
@@ -383,7 +393,10 @@ test "start_tls rejects an untrusted server and an empty server name":
 	var plain = connect(address.clone(), timeout: 3.seconds()).wait()?
 	_unnamed := expect_error(start_tls(plain, TlsOptions(), 3.seconds()))?
 	send(plain, "STARTTLS")?
-	expect_equal((recv(plain, 3.seconds())?).get(), "OK".to_bytes())?
+	expect_equal(
+		(recv(plain, 3.seconds())?) or panic("called Optional.get() on null"),
+		"OK".to_bytes(),
+	)?
 
 	_untrusted := expect_error(
 		start_tls(plain, TlsOptions(server_name: "stdlib.test"), 3.seconds())

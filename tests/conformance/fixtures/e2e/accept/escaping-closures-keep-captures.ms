@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type Box:
 	f: fn() Int
@@ -41,7 +44,7 @@ fn c2(text: String) Int:
 
 	var t = 0
 	for k in m.keys():
-		t += m.get(k).get()()
+		t += (m.get(k) or panic("called Optional.get() on null"))()
 	return t
 
 fn c3(text: String) Int:
@@ -105,4 +108,4 @@ test "closures that outlive their statement keep what they captured":
 	expect_equal(c6("a,b"), 5)?
 	expect_equal(c7("x,yyyy,zz"), 7)?
 	expect_equal(c8("abc"), 6)?
-	expect_equal(c9("x,yyyy,zz").get()(), 2)?
+	expect_equal((c9("x,yyyy,zz") or panic("called Optional.get() on null"))(), 2)?

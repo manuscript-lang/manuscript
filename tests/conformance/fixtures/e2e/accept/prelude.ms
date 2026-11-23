@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
 
 type Failure:
 	message_text: String
@@ -19,13 +22,16 @@ test "prelude cases and optional methods need no imports":
 	absent: Int? := null
 	qualified: Int? := 5
 	expect_false((inferred == null) or (absent != null))?
-	expect_false(inferred.get() != 3 or qualified.get() != 5)?
 	expect_false(
-		((absent or 9) != 9 or (absent or 11) != 11)
+		(inferred or panic("called Optional.get() on null")) != 3 or (
+			qualified
+			or panic("called Optional.get() on null")
+		) != 5
 	)?
+	expect_false(((absent or 9) != 9 or (absent or 11) != 11))?
 
 	value := success()?
-	expect_equal(value.get(), 7)?
+	expect_equal(value or panic("called Optional.get() on null"), 7)?
 
 test "try forwards an error of the same type unchanged":
 	outcome := propagated()

@@ -1,4 +1,5 @@
 import (
+	panic from "@std/core.ms",
 	stdin from "@std/io/io.ms",
 	lines from "@std/io/steps.ms",
 	collect from "@std/io/streams.ms",
@@ -42,7 +43,7 @@ fn number(s: String, lo: Int, hi: Int) Int?:
 		or not s.scalar_values().all(fn c: (c >= 48 and c <= 57))
 	): return null
 
-	n := s.parse_int().get()
+	n := s.parse_int() or panic("called Optional.get() on null")
 	return if n >= lo and n <= hi: n else: null
 
 fn place_order(var w: Warehouse, t: List[String]) String:
@@ -60,7 +61,14 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 			or not (number(p[1], 1, 100000) != null)
 		): return f"error: bad item {token}"
 
-		items.append(Item(p[0].clone(), number(p[1], 1, 100000).get()))
+		items.append(
+			Item(
+				p[0].clone(),
+				number(p[1], 1, 100000) or panic(
+					"called Optional.get() on null"
+				),
+			)
+		)
 
 	var seen = Set[String]()
 
@@ -76,12 +84,21 @@ fn place_order(var w: Warehouse, t: List[String]) String:
 	var total = 0
 
 	for it in items:
-		w.stock[it.sku.clone()] = w.stock.get(it.sku).get() - it.qty
+		w.stock[it.sku.clone()] = (
+			(w.stock.get(it.sku) or panic("called Optional.get() on null"))
+			- it.qty
+		)
 		total += (
 			if it.qty >= 10: (
-				it.qty * w.price.get(it.sku).get() * 90
+				it.qty * (
+					w.price.get(it.sku)
+					or panic("called Optional.get() on null")
+				) * 90
 				+ 50
-			) / 100 else: it.qty * w.price.get(it.sku).get()
+			) / 100 else: it.qty * (
+				w.price.get(it.sku)
+				or panic("called Optional.get() on null")
+			)
 		)
 
 	w.orders[id.clone()] = Order(items, "placed", total)
@@ -98,7 +115,7 @@ fn report(w: Warehouse) String:
 
 	count := fn(s: String) Int: orders.count(fn o: o.status == s)
 	rows := w.stock.keys().sorted(fn a, b: a.compare(b)).map(
-		fn k: f"{k} stock={w.stock.get(k).get()} price={money(w.price.get(k).get())} reserved={reserved.get_or(k, 0)}"
+		fn k: f"{k} stock={(w.stock.get(k) or panic("called Optional.get() on null"))} price={money(w.price.get(k) or panic("called Optional.get() on null"))} reserved={reserved.get_or(k, 0)}"
 	)
 	revenue := orders.filter(fn o: o.status == "shipped").map(fn o: o.total).sum()
 	return f"{rows.join("\n")}{if rows.is_empty(): "" else: "\n"}orders placed={count("placed")} shipped={count("shipped")} cancelled={count("cancelled")}\nrevenue={money(revenue)}"
@@ -119,7 +136,13 @@ fn run_command(var w: Warehouse, line: String) String:
 		if not valid_sku(t[1]): return "error: bad sku"
 		if not (number(t[2], 1, 100000) != null): return "error: bad quantity"
 
-		now := w.stock.get_or(t[1], 0) + number(t[2], 1, 100000).get()
+		now := (
+			w.stock.get_or(t[1], 0)
+			+ (
+				number(t[2], 1, 100000)
+				or panic("called Optional.get() on null")
+			)
+		)
 		w.stock[t[1].clone()] = now
 		w.price.add_default(t[1].clone(), 0)
 		return f"ok {t[1]} stock={now}"
@@ -128,17 +151,23 @@ fn run_command(var w: Warehouse, line: String) String:
 		if not (number(t[2], 0, 10000000) != null): return "error: bad price"
 		if not w.stock.contains(t[1]): return f"error: unknown sku {t[1]}"
 
-		w.price[t[1].clone()] = number(t[2], 0, 10000000).get()
+		w.price[t[1].clone()] = (
+			number(t[2], 0, 10000000)
+			or panic("called Optional.get() on null")
+		)
 		return "ok"
 
 	if not w.orders.contains(t[1]): return f"error: unknown order {t[1]}"
 
-	var o = w.orders.get(t[1]).get().clone()
+	var o = (w.orders.get(t[1]) or panic("called Optional.get() on null")).clone()
 
 	if name == "cancel":
 		if o.status != "placed": return f"error: order {t[1]} already {o.status}"
 
-		for it in o.items: w.stock[it.sku.clone()] = w.stock.get(it.sku).get() + it.qty
+		for it in o.items: w.stock[it.sku.clone()] = (
+			(w.stock.get(it.sku) or panic("called Optional.get() on null"))
+			+ it.qty
+		)
 		o.status = "cancelled"
 	else:
 		if o.status != "placed": return f"error: order {t[1]} {if o.status == "shipped": "already shipped" else: "is cancelled"}"

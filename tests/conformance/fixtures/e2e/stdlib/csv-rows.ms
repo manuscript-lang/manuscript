@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	CsvOptions, csv_rows, parse from "@std/data/csv.ms",
 	ReadStream, Source from "@std/io/io.ms",
 	collect, from_list from "@std/io/streams.ms",
@@ -157,7 +158,7 @@ test "continued reads after a record limit error keep only the consumed tail":
 
 		var rows = csv_rows(from_list(data), max_record_bytes: 3)
 		expect_equal(rows.next().err().kind, "EOVERFLOW")?
-		expect_equal((rows.next()?).get(), ["x"])?
+		expect_equal((rows.next()?) or panic("called Optional.get() on null"), ["x"])?
 		expect_equal((rows.next()?) == null, true)?
 
 	input := from_list(
@@ -166,7 +167,7 @@ test "continued reads after a record limit error keep only the consumed tail":
 	var rows = csv_rows(input, max_record_bytes: 3)
 	expect_equal(rows.next().err().kind, "EOVERFLOW")?
 	expect_equal(rows.next().err().kind, "EOVERFLOW")?
-	expect_equal((rows.next()?).get(), ["x"])?
+	expect_equal((rows.next()?) or panic("called Optional.get() on null"), ["x"])?
 	expect_equal((rows.next()?) == null, true)?
 
 test "the record budget does not depend on where chunks end":

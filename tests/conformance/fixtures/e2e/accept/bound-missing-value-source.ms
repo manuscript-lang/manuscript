@@ -1,6 +1,9 @@
 // conform: tags=testing
 // conform: phase=test
-import expect_equal, expect_fault, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_fault, expect_true from "@std/test/test.ms",
+)
 
 fn generic_convert[T: Clonable](cause: Error, value: T?) T!Error:
 	convert := value.ok_or[Error]
@@ -83,4 +86,4 @@ test "nested Optional errors remain intact":
 	expect_true(nested(inner_none).err() == null)?
 
 	inner_zero: Int? := 0
-	expect_equal(nested(inner_zero).err().get(), 0)?
+	expect_equal(nested(inner_zero).err() or panic("called Optional.get() on null"), 0)?

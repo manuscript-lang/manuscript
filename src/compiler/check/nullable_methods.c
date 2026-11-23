@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-typedef enum Removed { REMOVED_NONE, REMOVED_IS_NULL, REMOVED_IS_PRESENT, REMOVED_OR, REMOVED_OR_CALL, REMOVED_UNWRAP, REMOVED_OK_OR } Removed;
+typedef enum Removed { REMOVED_NONE, REMOVED_IS_NULL, REMOVED_IS_PRESENT, REMOVED_OR, REMOVED_OR_CALL, REMOVED_UNWRAP, REMOVED_OK_OR, REMOVED_GET } Removed;
 
 static Removed removed_kind(MsSpan name, size_t nargs) {
   if (ms_span_is_text(name, "is_none") && nargs == 0) {
@@ -24,6 +24,9 @@ static Removed removed_kind(MsSpan name, size_t nargs) {
   }
   if ((ms_span_is_text(name, "map") || ms_span_is_text(name, "and_then")) && nargs == 1) {
     return REMOVED_UNWRAP;
+  }
+  if (ms_span_is_text(name, "get") && nargs == 0) {
+    return REMOVED_GET;
   }
   if (ms_span_is_text(name, "ok_or") && nargs == 1) {
     return REMOVED_OK_OR;
@@ -156,7 +159,9 @@ static bool fix_text(const Body *body, const MsExpr *call, Removed kind, const M
     ms_strbuild_append_text(out, ")");
     return true;
   }
-  if (kind == REMOVED_IS_NULL || kind == REMOVED_IS_PRESENT) {
+  if (kind == REMOVED_GET) {
+    ms_strbuild_append_text(out, " or panic(\"called Optional.get() on null\")");
+  } else if (kind == REMOVED_IS_NULL || kind == REMOVED_IS_PRESENT) {
     ms_strbuild_append_text(out, kind == REMOVED_IS_NULL ? " == null" : " != null");
   } else {
     const MsExpr *arg = call->u.call.args.ptr[0].value;
@@ -202,7 +207,7 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   if (kind == REMOVED_NONE) {
     return;
   }
-  const char *write = kind == REMOVED_UNWRAP ? "if x != null:` and use `x" : kind == REMOVED_OK_OR ? "ok_or(x, cause)" : kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
+  const char *write = kind == REMOVED_UNWRAP ? "if x != null:` and use `x" : kind == REMOVED_GET ? "if x != null:` and use `x`, or `x or panic(\"...\")" : kind == REMOVED_OK_OR ? "ok_or(x, cause)" : kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "a nullable has no method `");
   ms_strbuild_append(&text, name);

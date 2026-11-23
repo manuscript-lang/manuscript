@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	SortedMap, SortedSet from "@std/collections/sorted.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
@@ -34,15 +35,15 @@ test "first last floor ceiling and pops":
 	var map = SortedMap[Int, Int]()
 	for key in [10, 20, 30]:
 		map.add(key, key * 2)
-	expect_equal(map.first().get(), 10)?
-	expect_equal(map.get(map.last().get()), 60)?
-	expect_equal(map.floor(25).get().key, 20)?
-	expect_equal(map.floor(20).get().key, 20)?
+	expect_equal(map.first() or panic("called Optional.get() on null"), 10)?
+	expect_equal(map.get(map.last() or panic("called Optional.get() on null")), 60)?
+	expect_equal((map.floor(25) or panic("called Optional.get() on null")).key, 20)?
+	expect_equal((map.floor(20) or panic("called Optional.get() on null")).key, 20)?
 	expect_equal(map.floor(5), null)?
-	expect_equal(map.ceiling(25).get().key, 30)?
+	expect_equal((map.ceiling(25) or panic("called Optional.get() on null")).key, 30)?
 	expect_equal(map.ceiling(31), null)?
-	expect_equal(map.pop_first().get().key, 10)?
-	expect_equal(map.pop_last().get().key, 30)?
+	expect_equal((map.pop_first() or panic("called Optional.get() on null")).key, 10)?
+	expect_equal((map.pop_last() or panic("called Optional.get() on null")).key, 30)?
 	expect_equal(map.keys(), [20])?
 	map.clear()
 	expect_equal(map.pop_first(), null)?

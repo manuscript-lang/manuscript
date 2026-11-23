@@ -108,11 +108,11 @@ test "Result preserves unconstrained payloads and success-only composition":
 	record: JsonOptions!Error := ok(limits.clone())
 	var changed = record.clone().map(fn value: value).get().clone()
 	changed.max_values = 7
-	expect_equal(changed.max_values.get(), 7)?
+	expect_equal(changed.max_values or panic("called Optional.get() on null"), 7)?
 	expect_false(limits.max_values != null)?
 
 	nested := success.clone().map(fn(n: Int) Int?: n)
-	expect_equal(nested.get().get(), 0)?
+	expect_equal(nested.get() or panic("called Optional.get() on null"), 0)?
 
 	unit_result: Void!Error := ok()
 	expect_false(not (unit_result.is_ok()))?
@@ -152,30 +152,39 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	expect_false(not (map_optional(unexpected, missing.clone()) == null))?
 
 	mapped := map_optional(transform, present.clone())
-	expect_equal(mapped.get().calls, 1)?
+	expect_equal((mapped or panic("called Optional.get() on null")).calls, 1)?
 	expect_equal(counter.calls, 0)?
 
-	var edited = mapped.get().clone()
+	var edited = (mapped or panic("called Optional.get() on null")).clone()
 	edited.calls = 2
-	expect_equal(mapped.get().calls, 1)?
+	expect_equal((mapped or panic("called Optional.get() on null")).calls, 1)?
 
 	chained := then_optional(fn(value: Counter) Counter?: value, present.clone())
-	expect_equal(chained.get().calls, 0)?
+	expect_equal((chained or panic("called Optional.get() on null")).calls, 0)?
 
 	absent := then_optional(fn(unused: Counter) Int?: null, present.clone())
 	expect_false(not (absent == null))?
 
 	create := fn() Counter?: Counter(5)
 	unexpected_create := fn() Counter?: panic("fallback must stay lazy")
-	expect_equal((present.clone() or unexpected_create()).get().calls, 0)?
+	expect_equal(
+		(
+			(present.clone() or unexpected_create())
+			or panic("called Optional.get() on null")
+		).calls,
+		0,
+	)?
 
 	fallback := missing.clone() or create()
-	expect_equal(fallback.get().calls, 5)?
+	expect_equal((fallback or panic("called Optional.get() on null")).calls, 5)?
 
 	nested := map_optional(fn(unused: Counter) Int?: null, present.clone())
 	expect_true(nested == null)?
 	expect_equal(
-		map_optional(fn value: value.calls.to_string(), mapped.clone()).get(),
+		map_optional(
+			fn value: value.calls.to_string(),
+			mapped.clone()
+		) or panic("called Optional.get() on null"),
 		"1",
 	)?
 	expect_false(

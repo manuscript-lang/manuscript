@@ -3,7 +3,7 @@
 // expect-stdout: after inspect
 // expect-stdout: original present true
 // expect-stdout: close 5
-import Closeable, print from "@std/core.ms"
+import Closeable, panic, print from "@std/core.ms"
 
 type Marker:
 	id: Int
@@ -12,7 +12,7 @@ fn move Marker.close() Void!:
 	print(f"close {self.id}")
 
 fn inspect(value: Marker?) Void:
-	print(f"value {value.get().id}")
+	print(f"value {(value or panic("called Optional.get() on null")).id}")
 	print(f"still present {(value != null)}")
 
 fn main() Void:

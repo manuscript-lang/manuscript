@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	ascii_decode from "@std/data/encoding.ms",
 	from_scalars from "@std/string.ms",
 	expect_equal from "@std/test/test.ms",
@@ -43,7 +44,10 @@ test "ASCII decoding preserves large offset views and rejects high byte tails":
 	data := padded.slice(2, 2 + expected.length())?
 	decode: fn(Bytes) String! := ascii_decode
 	expect_equal(decode(data)?, expected)?
-	expect_equal(decode(data)?, data.decode_utf8().get())?
+	expect_equal(
+		decode(data)?,
+		data.decode_utf8() or panic("called Optional.get() on null"),
+	)?
 	expect_equal(data.length(), expected.length())?
 
 	invalid: String! := error(Error("encoding: invalid data", kind: "EBADMSG"))
