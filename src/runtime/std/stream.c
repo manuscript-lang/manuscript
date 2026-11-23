@@ -37,20 +37,25 @@ MsStream *ms_stream_file(uv_file fd, int flags, MsSpan name) {
   stream->no_read = access == UV_FS_O_WRONLY;
   stream->no_write = access == 0;
   stream->append = (flags & UV_FS_O_APPEND) != 0;
+  uv_stat_t stat;
+  stream->file = ms_alloc_zeroed(sizeof *stream->file);
+  stream->file->tracked = ms_fs_fstat(fd, &stat) == 0 && ms_fs_is_regular(&stat);
+  atomic_store(&stream->file->references, 1);
   return stream;
 }
 
 bool ms_stream_duplicate(const MsStream *stream, MsStream **out, MsFail *fail) {
-  const int copy_fd = ms_sys_fs_dup(stream->fd);
-  if (copy_fd < 0) {
-    ms_fail_uv(fail, copy_fd, "duplicate", ms_string_span(&stream->name));
+  if (stream->file == NULL || stream->closed) {
+    ms_fail_status(fail, stream->closed ? MS_STATUS_CLOSED : MS_STATUS_UNSUPPORTED);
     return false;
   }
-  MsStream *copy = ms_stream_new(copy_fd, true, ms_string_span(&stream->name));
+  MsStream *copy = ms_stream_new(stream->fd, true, ms_string_span(&stream->name));
   copy->waitable = stream->waitable;
   copy->no_read = stream->no_read;
   copy->no_write = stream->no_write;
   copy->append = stream->append;
+  copy->file = stream->file;
+  atomic_fetch_add(&copy->file->references, 1);
   *out = copy;
   return true;
 }
@@ -62,6 +67,14 @@ bool ms_stream_close(MsStream *stream, MsFail *fail) {
   stream->closed = true;
   if (!stream->owned) {
     return true;
+  }
+  if (stream->file != NULL) {
+    MsOpenFile *const file = stream->file;
+    stream->file = NULL;
+    if (atomic_fetch_sub(&file->references, 1) != 1) {
+      return true; /* another stream still uses the descriptor */
+    }
+    ms_free(file);
   }
   uv_fs_t request;
   const int code = uv_fs_close(NULL, &request, stream->fd, NULL);
@@ -92,6 +105,7 @@ bool ms_stream_admit(const MsStream *stream, MsStreamAccess access, MsFail *fail
 
 typedef struct RawJob {
   uv_file fd;
+  int64_t at;          /* the offset, or -1 for the descriptor's own position */
   uint8_t *buffer;     /* for a read */
   const uint8_t *data; /* for a write */
   size_t length;       /* capacity of the buffer, or bytes of data */
@@ -106,8 +120,8 @@ static void raw_job(void *data) {
   const unsigned size = job->length > (size_t)INT_MAX ? (unsigned)INT_MAX : (unsigned)job->length;
   const uv_buf_t buffer = uv_buf_init(job->write ? (char *)(uintptr_t)job->data : (char *)job->buffer, size);
   uv_fs_t request;
-  job->result = job->write ? uv_fs_write(NULL, &request, job->fd, &buffer, 1, -1, NULL)
-                           : uv_fs_read(NULL, &request, job->fd, &buffer, 1, -1, NULL);
+  job->result = job->write ? uv_fs_write(NULL, &request, job->fd, &buffer, 1, job->at, NULL)
+                           : uv_fs_read(NULL, &request, job->fd, &buffer, 1, job->at, NULL);
   uv_fs_req_cleanup(&request);
 }
 
@@ -124,8 +138,30 @@ static bool wait_ready(const MsStream *stream, bool for_write, MsFail *fail) {
   return true;
 }
 
+bool ms_stream_tracked(const MsStream *stream) { return stream->file != NULL && stream->file->tracked; }
+
+int64_t ms_stream_offset(const MsStream *stream) {
+  return ms_stream_tracked(stream) ? atomic_load(&stream->file->at) : -1;
+}
+
+void ms_stream_advance(const MsStream *stream, int64_t offset, int64_t count, bool write) {
+  if (!ms_stream_tracked(stream)) {
+    return;
+  }
+  int64_t end = offset + count;
+  if (write && stream->append) {
+    uv_stat_t stat;
+    if (ms_fs_fstat(stream->fd, &stat) == 0) {
+      end = (int64_t)stat.st_size;
+    }
+  }
+  atomic_store(&stream->file->at, end);
+}
+
 static bool transfer(const MsStream *stream, RawJob *job, const char *operation, size_t *count, MsFail *fail) {
   job->fd = stream->fd;
+  const int64_t offset = ms_stream_offset(stream);
+  job->at = job->write && stream->append ? -1 : offset;
   do {
     if (!wait_ready(stream, job->write, fail)) {
       return false;
@@ -144,6 +180,7 @@ static bool transfer(const MsStream *stream, RawJob *job, const char *operation,
     return false;
   }
   *count = (size_t)job->result;
+  ms_stream_advance(stream, offset, job->result, job->write);
   return true;
 }
 

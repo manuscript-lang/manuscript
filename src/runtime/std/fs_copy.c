@@ -12,7 +12,7 @@
 #include "runtime/std/fs_tree.h"
 #include "runtime/sys/fs.h"
 
-enum { COPY_BUFFER_BYTES = 65536, COPY_MAX_DEPTH = 1024, COPY_MODE_MASK = 07777 };
+enum { COPY_CHUNK_BYTES = 1048576, COPY_MAX_DEPTH = 1024, COPY_MODE_MASK = 07777 };
 
 enum {
   FLAG_RECURSIVE = 1,
@@ -273,48 +273,30 @@ static void close_fd(uv_file fd) {
   uv_fs_req_cleanup(&request);
 }
 
-static int64_t transfer(uv_file fd, uint8_t *bytes, size_t size, bool writing) {
-  const uv_buf_t buffer = uv_buf_init((char *)bytes, (unsigned)size);
-  uv_fs_t request;
-  const int64_t done =
-      writing ? uv_fs_write(NULL, &request, fd, &buffer, 1, -1, NULL) : uv_fs_read(NULL, &request, fd, &buffer, 1, -1, NULL);
-  uv_fs_req_cleanup(&request);
-  return done;
-}
-
-/* Copies `input` to `output`, charging the byte budget. */
+/* Copies `input` to `output` inside the kernel where the host can (libuv: copy_file_range or sendfile, else a read and
+ * write loop), charging the byte budget one byte past what is left so an excess is seen. */
 static void copy_stream(FileJob *job, uv_file input, uv_file output) {
-  uint8_t *buffer = ms_alloc(COPY_BUFFER_BYTES);
+  int64_t offset = 0;
   for (;;) {
-    const int64_t count = transfer(input, buffer, COPY_BUFFER_BYTES, false);
+    const int64_t room = job->budget - job->copied;
+    const size_t want = room < (int64_t)COPY_CHUNK_BYTES ? (size_t)room + 1 : COPY_CHUNK_BYTES;
+    uv_fs_t request;
+    const int64_t count = uv_fs_sendfile(NULL, &request, output, input, offset, want, NULL);
+    uv_fs_req_cleanup(&request);
     if (count < 0) {
-      ms_fail_uv(&job->fail, (int)count, "read", job->source);
+      ms_fail_uv(&job->fail, (int)count, "copy", job->destination);
       break;
     }
     if (count == 0) {
       break;
     }
-    if (count > job->budget - job->copied) {
+    if (count > room) {
       ms_fail_status(&job->fail, MS_STATUS_LIMIT_EXCEEDED);
       break;
     }
-    int64_t done = 0;
-    while (done < count && !ms_fail_failed(&job->fail)) {
-      const int64_t written = transfer(output, buffer + done, (size_t)(count - done), true);
-      if (written < 0) {
-        ms_fail_uv(&job->fail, (int)written, "write", job->destination);
-      } else if (written == 0) {
-        ms_fail_text(&job->fail, "short write");
-      } else {
-        done += written;
-      }
-    }
-    if (ms_fail_failed(&job->fail)) {
-      break;
-    }
+    offset += count;
     job->copied += count;
   }
-  ms_free(buffer);
 }
 
 /* Creates the destination, which must not exist, with the source's permission bits. */

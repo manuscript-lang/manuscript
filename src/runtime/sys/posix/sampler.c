@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdatomic.h>
-#include <sys/resource.h>
 #include <sys/time.h>
 #ifdef __APPLE__
 #include <sys/ucontext.h> /* <ucontext.h> there demands _XOPEN_SOURCE, which hides the thread-state accessors */
@@ -17,14 +16,16 @@
 #include <ucontext.h>
 #endif
 
+#include <uv.h>
+
 #include "runtime/sys/sys.h"
 
 static _Atomic(MsSysSampleFn) sample_function;
 static uint64_t started_cpu_ns;
 
 static uint64_t process_cpu_ns(void) {
-  struct rusage usage;
-  if (getrusage(RUSAGE_SELF, &usage) != 0) {
+  uv_rusage_t usage;
+  if (uv_getrusage(&usage) != 0) {
     return 0;
   }
   const uint64_t seconds = (uint64_t)usage.ru_utime.tv_sec + (uint64_t)usage.ru_stime.tv_sec;

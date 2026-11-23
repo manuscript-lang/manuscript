@@ -1,4 +1,4 @@
-/* Process state on Linux and macOS: umask, groups, identity and the process title. Errors are libuv statuses. */
+/* Process state on Linux and macOS: groups and identity. Errors are libuv statuses. */
 #define _GNU_SOURCE
 
 #include <errno.h>
@@ -26,7 +26,7 @@ typedef gid_t MsGroupId;
 typedef size_t MsGroupCount;
 #endif
 
-enum { FIRST_GROUPS = 32, TITLE_LIMIT = 4096, PASSWD_BUFFER = 1024 };
+enum { FIRST_GROUPS = 32, PASSWD_BUFFER = 1024 };
 
 /* The libuv status of the failed system call that just set errno. */
 static int last_error(void) { return uv_translate_sys_error(errno); }
@@ -43,11 +43,6 @@ int64_t ms_sys_process_identity(MsSysIdentity which) {
       return (int64_t)getegid();
   }
   return -1;
-}
-
-int ms_sys_process_umask(uint32_t mask, uint32_t *previous) {
-  *previous = (uint32_t)umask((mode_t)mask);
-  return 0;
 }
 
 int ms_sys_process_groups(int64_t **list, size_t *count) {
@@ -150,60 +145,6 @@ int ms_sys_process_user_groups(const char *name, int64_t **list, size_t *count) 
   }
 }
 
-#ifdef __linux__
-static const char comm_path[] = "/proc/self/comm";
-
-int ms_sys_process_title(char **text, size_t *length) {
-  const int fd = open(comm_path, O_RDONLY | O_CLOEXEC);
-  if (fd < 0) {
-    return last_error();
-  }
-  char *buffer = ms_alloc(TITLE_LIMIT);
-  const ssize_t got = read(fd, buffer, TITLE_LIMIT);
-  const int error = got < 0 ? last_error() : 0;
-  close(fd);
-  if (got < 0) {
-    ms_free(buffer);
-    return error;
-  }
-  size_t size = (size_t)got;
-  if (size > 0 && buffer[size - 1] == '\n') {
-    size--;
-  }
-  *text = buffer;
-  *length = size;
-  return 0;
-}
-
-enum { COMM_LIMIT = 15 }; /* the longest Linux process title */
-
-int ms_sys_process_set_title(const char *text, size_t length) {
-  if (length > COMM_LIMIT) {
-    return UV_ENAMETOOLONG;
-  }
-  const int fd = open(comm_path, O_WRONLY | O_TRUNC | O_CLOEXEC);
-  if (fd < 0) {
-    return last_error();
-  }
-  const ssize_t put = write(fd, text, length);
-  const int error = put < 0 ? last_error() : 0;
-  close(fd);
-  return error;
-}
-#else
-int ms_sys_process_title(char **text, size_t *length) {
-  (void)text;
-  (void)length;
-  return UV_ENOTSUP;
-}
-
-int ms_sys_process_set_title(const char *text, size_t length) {
-  (void)text;
-  (void)length;
-  return UV_ENOTSUP;
-}
-#endif
-
 /* ---- a child process and what it leads ---- */
 
 struct MsSysGroup {
@@ -218,12 +159,12 @@ MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle) {
 }
 
 void ms_sys_group_signal(MsSysGroup *group, bool force) {
-  if (force || kill(-group->pid, SIGTERM) != 0) {
-    (void)kill(-group->pid, SIGKILL);
+  if (force || uv_kill(-(int)group->pid, SIGTERM) != 0) {
+    (void)uv_kill(-(int)group->pid, SIGKILL);
   }
 }
 
-void ms_sys_group_kill(MsSysGroup *group) { (void)kill(-group->pid, SIGKILL); }
+void ms_sys_group_kill(MsSysGroup *group) { (void)uv_kill(-(int)group->pid, SIGKILL); }
 
 int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int signal) {
   (void)group;

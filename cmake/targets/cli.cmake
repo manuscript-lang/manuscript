@@ -26,6 +26,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
 
+# `ms add`, `ms install` and `ms remove` against a local git repository.
+add_test(NAME package_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/package
+  -P ${CMAKE_SOURCE_DIR}/cmake/PackageRun.cmake)
+
 # The folded-stack conversion of `ms profile`, without the compiler.
 ms_executable(profile_folded_unit cli SOURCES profile_folded_unit.c profile_folded.c LINK ms_base)
 add_test(NAME driver_profile_folded COMMAND profile_folded_unit)

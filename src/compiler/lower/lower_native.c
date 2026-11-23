@@ -683,7 +683,7 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
   const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
-  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, NULL, 0);
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, NULL, 0, MS_TY_NONE);
   /* A method of another arity or result type (`to_string(prefix)` beside the operation `to_string()`) is not the operation. */
   if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].ret == ret && fn->cx->module->funcs.ptr[method].nparams == call->arg_count) {
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
@@ -755,6 +755,15 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
   }
   MsName name;
   const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
+  const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
+  if (op != NULL && fn_inline_scalar_op(fn, op, args, argc, ret, out)) {
+    return true;
+  }
+  if (op != NULL && sig == NULL) {
+    /* A scalar native with no signature row: the operands are the C parameters, so the call is the fallback. */
+    *out = fn_runtime_call(fn, name, args, argc, ret);
+    return *out != MIR_NONE;
+  }
   if (sig == NULL && argc == 2 && ms_span_is_text(operation, "group_by") && fn_list_group_by(fn, args, ret, out)) {
     return true;
   }
@@ -767,9 +776,6 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
      * when no walker exists for the operation the caller finds the scalar's own form. */
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
-  }
-  if (sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, argc, ret, out)) {
-    return true;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
     *out = fn_list_get(fn, args[0], args[1], ret);

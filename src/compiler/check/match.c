@@ -385,7 +385,9 @@ static ArmScope arm_statements(Body *body, const MsArm *arm, MsTy scrutinee, Arm
     body_set_ref(body, arm->id, (MsRef){.kind = MS_REF_TYPE, .local = body->next_local, .owner = scrutinee});
     body_set_type(body, arm->id, concrete);
   }
-  for (uint32_t at = 0; at < arm->bindings.len; at++) {
+  /* a bare arm that names a case (`case:`) binds nothing: its name is the case's */
+  const uint32_t declared = arm->bare && kase != NULL ? 0 : arm->bindings.len;
+  for (uint32_t at = 0; at < declared; at++) {
     const MsTy ty = concrete != MS_TY_NONE ? concrete : kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
     (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id, arm->pos);
     if (state->literal && arm->bare) {
@@ -554,8 +556,24 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
                     ms_string_from_span(ms_span_of_text("contract match requires a final wildcard for other implementations; add a last '_' arm")));
   }
   check_exhaustive(body, expr, scrutinee);
+  bool *open = MS_ARENA_NEW_ARRAY(&body->program->arena, bool, expr->u.match.arms.len + 1);
+  bool any_open = false;
   for (uint32_t index = 0; index < expr->u.match.arms.len; index++) {
     const MsTy value = arm_value(body, expr->u.match.arms.ptr[index], &kept[index], result == MS_TY_NONE ? expected : result, &state);
+    const bool complete = value != MS_TY_NONE && !holds_invalid(types, value, 6) && !body_has_foreign_variable(body, value);
+    if (complete && any_open && (result == MS_TY_NONE || holds_invalid(types, result, 6))) {
+      /* a later arm completes what an earlier one left open (`none: []`, `value: [value]`): they are read again with it */
+      for (uint32_t before = 0; before < index; before++) {
+        if (open[before]) {
+          (void)arm_value(body, expr->u.match.arms.ptr[before], &kept[before], value, &state);
+        }
+      }
+      result = value;
+      any_open = false;
+      continue;
+    }
+    open[index] = expr->u.match.arms.ptr[index]->value != NULL && !complete;
+    any_open = any_open || open[index];
     result = result == MS_TY_NONE ? value : result;
   }
   body->quiet = outer_quiet;

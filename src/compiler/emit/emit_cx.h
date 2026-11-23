@@ -137,7 +137,7 @@ void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, cons
 void emit_frame_slots(EmitCx *cx);
 /* Gives each slot confined to its own block the cell of its rank among that block's confined slots, so blocks share
  * storage; per value, UINT32_MAX for the rest. NULL when no slot is confined. */
-const uint32_t *emit_slot_pool(MsArena *arena, const EmitCx *cx);
+const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx);
 
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */
 typedef struct EmitIf {

@@ -9,9 +9,11 @@
 
 /* ms-sig: msrt_bytes_drop(b: *mut VecVal) @domain=binary @end */
 void msrt_bytes_drop(MsList *b);
-/* ms-sig: msrt_bytes_length(b: *const VecVal) -> i64 @domain=binary @op=list_len */
+/* ms-sig: msrt_bytes_length(b: *const VecVal) -> i64 @domain=binary @end */
+/* ms-op: msrt_bytes_length list_len */
 int64_t msrt_bytes_length(const MsList *b);
-/* ms-sig: msrt_bytes_is_empty(b: *const VecVal) -> u8 @domain=binary @op=list_is_empty */
+/* ms-sig: msrt_bytes_is_empty(b: *const VecVal) -> u8 @domain=binary @end */
+/* ms-op: msrt_bytes_is_empty list_is_empty */
 uint8_t msrt_bytes_is_empty(const MsList *b);
 /* ms-sig: msrt_bytes_copy(b: *const VecVal, out: *mut VecVal) @domain=binary @end */
 void msrt_bytes_copy(const MsList *b, MsList *out);
