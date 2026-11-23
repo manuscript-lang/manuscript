@@ -208,14 +208,20 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
-  if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
+  /* A record whose fields leave keeps the rest in a variable, released where the record was declared. */
+  const bool fields_leave = !stmt->u.bind.is_mutable && fresh && fn_leaves_fields(fn, local, ty);
+  if (reads_var && !stmt->u.bind.is_mutable && fn_leaves_fields(fn, local, ty) && fn->vars[local] == 0) {
+    fn->vars[local] = read + 1; /* `moved := record` is the same owner under another name */
+    return !fn->failed;
+  }
+  if ((stmt->u.bind.is_mutable || fields_leave) && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
       return fn_fail(fn, "a local binding is outside the function's locals");
     }
     fn->vars[local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
     fn_disown(fn, value);
     mir_b_def_var(&fn->b, fn->vars[local] - 1, value);
-    return fn_scope_own_var(fn, fn->vars[local] - 1) && !fn->failed;
+    return fn_scope_own_var(fn, fn->vars[local] - 1, fields_leave ? ms_facts_type(fn->facts, pattern->id) : MS_TY_NONE) && !fn->failed;
   }
   if (fn->local_owns != NULL && local < fn->nvars && (!borrow || fresh) && !stmt->u.bind.is_mutable &&
       mir_needs_drop(fn->cx->module, ty)) {
@@ -223,11 +229,6 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   } else if (fn->local_owns != NULL && local < fn->nvars && borrow && !fresh && !stmt->u.bind.is_mutable &&
              mir_needs_drop(fn->cx->module, ty)) {
     fn->local_owns[local] = 2; /* a view of another owner's value: moving it out copies it */
-  }
-  if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
-    /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it
-     * as a block parameter, which would hide the owner from a later move. */
-    fn->vars[local] = mir_b_declare_single(&fn->b, ty, MM_BORROW) + 1;
   }
   if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
     /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it
