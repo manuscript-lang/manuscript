@@ -102,6 +102,10 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
   }
+  if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &element)) { /* a field of a closing local changes where it lies */
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
   MsExpr *indexed = NULL;
   MsExpr *index_key = NULL;
   /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */

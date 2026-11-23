@@ -11,8 +11,15 @@
 
 #include "compiler/check/program.h"
 
-/* Fills the `uses` column of each user module whose facts the checker produced. */
-void ms_own_uses(MsCheckProgram *program);
+/* What the last uses run saw: each module's `uses` and `taken` columns as they stood after it. */
+typedef struct MsUsesSeen MsUsesSeen;
+
+/* Fills the `uses` column of each user module whose facts the checker produced. The first run (`*seen` NULL) marks
+ * every callable; a later one marks only callables that call a callable whose taken mask changed, or hold a lambda
+ * whose use changed, since the run before: the rest would mark the same. `*seen` is refreshed; free it with
+ * ms_own_uses_seen_free. */
+void ms_own_uses(MsCheckProgram *program, MsUsesSeen **seen);
+void ms_own_uses_seen_free(MsUsesSeen *seen);
 
 /* Reports a field moved out of a borrowed call result, once the result masks exist; changes no marking. */
 void ms_own_uses_report(MsCheckProgram *program);
