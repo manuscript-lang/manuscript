@@ -100,7 +100,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
 /* Whether a call reads a value that dies with the statement (`make().get()`): a result that borrows from it
  * cannot outlive the statement. */
 static bool call_reads_temporary(const MsFacts *facts, const MsExpr *call) {
-  const MsExpr *callee = call->u.call.callee;
+  const MsExpr *callee = fn_call_callee(call);
   if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_CALL) {
     return true;
   }

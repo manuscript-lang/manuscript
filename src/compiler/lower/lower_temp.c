@@ -147,7 +147,7 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
   scan->found |= expr->kind == MS_E_MEMBER && scan->skip == 0 && member_temp_type(scan->fn, expr, &member);
   const MsCall *call = expr->kind == MS_E_CALL && scan->skip == 0 ? fn_find_call(scan->fn->facts, expr->id) : NULL;
   /* A list literal a method changes in place (`[Door(1)].append(Door(2))`) is a temporary that closes what it holds. */
-  const MsExpr *callee = call != NULL ? expr->u.call.callee : NULL;
+  const MsExpr *callee = call != NULL ? fn_call_callee(expr) : NULL;
   if (callee != NULL && callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_LIST) {
     const MsTy listed = ms_ty_subst(&scan->fn->cx->program->types, ms_facts_type(scan->fn->facts, callee->u.member.left->id),
                                     scan->fn->subst.vars, scan->fn->subst.args, scan->fn->subst.count);

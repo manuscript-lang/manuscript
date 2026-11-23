@@ -162,11 +162,11 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   return value;
 }
 
-/* The position, among the call's arguments, of the callee parameter `ref` a default argument names. */
+/* The position, among the call's arguments, of the callee parameter `ref` a default argument names: the checker numbers a
+ * method's parameters after its receiver, as the call's arguments are. */
 static uint32_t default_position(const LowerFn *fn, const MsRef *ref) {
-  const MsCall *call = fn->default_call;
-  const size_t declared = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
-  return ref->local + (uint32_t)(call->arg_count - declared);
+  (void)fn;
+  return ref->local;
 }
 
 bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot) {
@@ -293,6 +293,30 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
   return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
+/* `self.value` in a method of a type set: `self` is the variable `Self`, so the checker knew no field. Once the call
+ * binds `Self` to a member, the field is looked up by name in that member's record. */
+static bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out) {
+  const MsTy left = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.member.left->id), fn->subst.vars,
+                                fn->subst.args, fn->subst.count);
+  if (left == MS_TY_NONE || fn->subst.count == 0) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, fn_type(fn, left));
+  if (data->kind != MK_TYPE) {
+    return false;
+  }
+  const MirTypeDef *def = &fn->cx->module->type_defs.ptr[data->id];
+  const MsSpan name = ms_names_span(fn->cx->program->names, expr->u.member.name);
+  for (uint32_t index = 0; index < def->nfields; index++) {
+    if (ms_span_equal(name, ms_names_span(&fn->cx->module->names, def->fields[index].name))) {
+      out->kind = MS_REF_FIELD;
+      out->index = index;
+      return true;
+    }
+  }
+  return false;
+}
+
 /* `value.field`: a field of a record, read from the value in place. */
 static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const bool taking = fn->taking_member == expr;
@@ -302,6 +326,10 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   }
   if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_OPERATION)) {
     return fn_bound_method(fn, expr, ref, expr); /* `value.method`, a method used as a value */
+  }
+  MsRef late = {0};
+  if ((ref == NULL || ref->kind == MS_REF_NONE) && fn_late_field(fn, expr, &late)) {
+    ref = &late;
   }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
@@ -319,7 +347,9 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
-  const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  const MirTy read_ty = late.kind == MS_REF_FIELD ? fn->cx->module->type_defs.ptr[data->id].fields[ref->index].ty
+                                                   : fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, read_ty);
   MirVar owner = 0;
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
                                         expr->u.member.left->kind == MS_E_CALL);
@@ -800,7 +830,7 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &temporary, 1, (MirImm){0}, MIR_NONE);
     return value;
   }
-  const MsExpr *receiver = expr->u.call.callee->kind == MS_E_MEMBER ? expr->u.call.callee->u.member.left : NULL;
+  const MsExpr *receiver = fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
   const MsTyTable *types = &fn->cx->program->types;
   const MsTy held = receiver == NULL ? MS_TY_NONE : ms_facts_type(fn->facts, receiver->id);
   if (held == MS_TY_NONE || (!ms_ty_is(types, held, MS_BUILTIN_Optional) && !ms_ty_is(types, held, MS_BUILTIN_Result))) {

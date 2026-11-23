@@ -838,7 +838,7 @@ static bool is_universal_operation(const LowerFn *fn, MsTy receiver, MsSpan oper
 }
 
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsExpr *callee = expr->u.call.callee;
+  const MsExpr *callee = fn_call_callee(expr);
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
     (void)fn_fail(fn, "a standard operation is called through a receiver");
     return MIR_NONE;
