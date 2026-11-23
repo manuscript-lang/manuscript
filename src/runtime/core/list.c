@@ -211,10 +211,9 @@ int64_t msrt_hash_list(const MsList *v, const MsTypeDesc *d) {
 /* ---- element mutators ---- */
 
 void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
+  msrt_list_check_insert((int64_t)v->len, index);
   size_t position = 0;
-  if (!ms_resolve_insert_index(v->len, index, &position)) {
-    msrt_list_index_fault(0, index, (int64_t)v->len);
-  }
+  (void)ms_resolve_insert_index(v->len, index, &position);
   ms_list_reserve(v, d->size, 1);
   uint8_t *slot = ms_list_slot(v, d, position);
   __builtin_memmove(slot + d->size, slot, (v->len - position) * d->size);
@@ -253,11 +252,33 @@ uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out) {
 }
 
 /* Replaces the element at `index` with `e` (consumed); the old element is dropped. */
-void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
+/* The index checks of the natives that take an owned element, apart from the natives: lowering calls them first, so
+ * a bad index faults while the caller still owns the element. */
+void msrt_list_check_set(int64_t length, int64_t index) {
   size_t position = 0;
-  if (!ms_resolve_index(v->len, index, &position)) {
-    msrt_list_index_fault(2, index, (int64_t)v->len);
+  if (!ms_resolve_index((size_t)length, index, &position)) {
+    msrt_list_index_fault(2, index, length);
   }
+}
+
+void msrt_list_check_replace(int64_t length, int64_t index) {
+  size_t position = 0;
+  if (!ms_resolve_index((size_t)length, index, &position)) {
+    msrt_list_index_fault(4, index, length);
+  }
+}
+
+void msrt_list_check_insert(int64_t length, int64_t index) {
+  size_t position = 0;
+  if (!ms_resolve_insert_index((size_t)length, index, &position)) {
+    msrt_list_index_fault(0, index, length);
+  }
+}
+
+void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
+  msrt_list_check_set((int64_t)v->len, index);
+  size_t position = 0;
+  (void)ms_resolve_index(v->len, index, &position);
   uint8_t *slot = ms_list_slot(v, d, position);
   /* The new element goes in first: dropping the old one runs closes, which may fault, and the list must own the new
    * element by then. */
@@ -272,10 +293,9 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
 /* Moves the element at `index` into `out` and stores `e` (consumed) in its place; nothing is copied or
  * dropped. */
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out) {
+  msrt_list_check_replace((int64_t)v->len, index);
   size_t position = 0;
-  if (!ms_resolve_index(v->len, index, &position)) {
-    msrt_list_index_fault(4, index, (int64_t)v->len);
-  }
+  (void)ms_resolve_index(v->len, index, &position);
   uint8_t *slot = ms_list_slot(v, d, position);
   __builtin_memcpy(out, slot, d->size);
   __builtin_memcpy(slot, e, d->size);
