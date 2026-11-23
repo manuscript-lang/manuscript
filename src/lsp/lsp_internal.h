@@ -24,6 +24,9 @@ void lsp_json_string(MsStrBuild *out, MsSpan text);
 /* ---- URIs ---- */
 
 bool lsp_uri_is_standard_library(MsSpan uri);
+/* The module name of a `manuscript-stdlib:` URI. Both spellings name one module: the server writes
+ * `manuscript-stdlib:///core.ms`, and a client that normalizes URIs (VS Code) sends back `manuscript-stdlib:/core.ms`. */
+bool lsp_uri_standard_module(MsSpan uri, MsSpan *name);
 /* A `file:` URI that does not decode to a path. */
 bool lsp_uri_is_malformed_file(MsSpan uri);
 /* The path of a `file:` URI; any other URI is its own name. Appended to `out`. */
