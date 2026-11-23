@@ -359,6 +359,7 @@ bool fn_number_bits(MsSpan text, uint64_t *out);
 bool fn_is_text_literal(const MsExpr *expr);
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
+bool fn_call_never(const LowerFn *fn, const MsExpr *expr);
 /* A call of the runtime function `name` (borrowed arguments; a result that needs a drop is fresh). */
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);

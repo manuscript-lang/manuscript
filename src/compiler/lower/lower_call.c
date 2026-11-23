@@ -811,18 +811,26 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   return joined;
 }
 
-/* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */
-MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  (void)want;
-  const MirValue result = call_expr(fn, expr);
-  /* The call's own result type: the checked type of the expression may be the one the context expects. */
+/* Whether `expr` is a call typed `Never`: it does not return. The call's own result type counts, not the checked type of the
+ * expression, which may be the one the context expects. */
+bool fn_call_never(const LowerFn *fn, const MsExpr *expr) {
+  if (expr->kind != MS_E_CALL) {
+    return false;
+  }
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   const MsTyTable *types = &fn->cx->program->types;
   MsTy ty = ms_facts_type(fn->facts, expr->id);
   if (call != NULL && call->callee_ty != MS_TY_NONE && ms_ty_kind(types, call->callee_ty) == MS_TY_FUNCTION) {
     ty = ms_ty_result(types, call->callee_ty);
   }
-  if (!fn->failed && !fn->terminated && ty != MS_TY_NONE && ms_ty_is(types, ty, MS_BUILTIN_Never)) {
+  return ty != MS_TY_NONE && ms_ty_is(types, ty, MS_BUILTIN_Never);
+}
+
+/* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */
+MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  (void)want;
+  const MirValue result = call_expr(fn, expr);
+  if (!fn->failed && !fn->terminated && fn_call_never(fn, expr)) {
     mir_b_unreachable(&fn->b);
     fn->terminated = true;
   }
