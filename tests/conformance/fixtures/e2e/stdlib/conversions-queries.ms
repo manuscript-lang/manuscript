@@ -20,7 +20,7 @@ fn require_lazy[T, E](create: fn() E, value: T?) T!E:
 
 fn success_only[T, E](value: T!E) T?:
 	if item := value: return item
-	return none
+	return null
 
 fn reduce_map[K: Hashable, V, A: Clonable](
 	values: Map[K, V],
@@ -40,7 +40,7 @@ fn locate[K: Hashable, V: Clonable](
 
 test "conversions and collection queries are callable":
 	present: Int? := 2
-	missing: Int? := none
+	missing: Int? := null
 	present.ok_or(Error("absent")).get() | expect_equal(2)?
 	expect_equal(missing.ok_or_else(fn: Error("absent")).err().message, "absent")?
 
@@ -62,7 +62,7 @@ test "conversions and collection queries are callable":
 test "conversions retain unconstrained payloads nesting and lazy counts":
 	var counter = Counter(0)
 	present: Int? := 0
-	missing: Int? := none
+	missing: Int? := null
 	(
 		(
 			require_value(counted(counter), present).get() != 0
@@ -100,7 +100,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	extracted.calls = 7
 	counter.calls | expect_equal(1)?
 
-	nested_none: Int? := none
+	nested_none: Int? := null
 	nested: Int?? := nested_none
 	converted := nested.ok_or(Error("absent"))
 	converted.is_error() | expect_true?
@@ -520,11 +520,11 @@ fn find_port(port: Int?) Int!:
 	return ok(value)
 
 test "ok_or reports its explicit cause":
-	absent: Int? := none
+	absent: Int? := null
 	direct: Int! := absent.ok_or(Error("missing"))
 	direct.err().message | expect_equal("missing")?
 
-	find_port(none).err().message | expect_equal("missing")?
+	find_port(null).err().message | expect_equal("missing")?
 	find_port(8080).get() | expect_equal(8080)?
 
 	named: Int!Error := absent.ok_or(Error("port"))

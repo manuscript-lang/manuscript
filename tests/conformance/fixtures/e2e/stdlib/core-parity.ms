@@ -41,7 +41,7 @@ test "core parity operations are callable":
 	expect_equal(chained.get(), "2")?
 
 	present: Int? := 2
-	missing: Int? := none
+	missing: Int? := null
 	expect_equal(present.map(fn n: n + 1).get(), 3)?
 	expect_equal(present.and_then(fn(n: Int) String?: n.to_string()).get(), "2")?
 	expect_equal(missing.or_else(fn: 4).get(), 4)?
@@ -143,7 +143,7 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 test "Optional composition keeps nesting identity and lazy callback counts":
 	counter := Counter(0)
 	present: Counter? := counter.clone()
-	missing: Counter? := none
+	missing: Counter? := null
 	transform := fn(value: Counter) Counter:
 		return Counter(value.calls + 1)
 	unexpected := fn(value: Counter) Counter: panic("map must not run for none")
@@ -160,7 +160,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	chained := present.clone().and_then(fn(value: Counter) Counter?: value)
 	expect_equal(chained.get().calls, 0)?
 
-	absent := present.clone().and_then(fn(unused: Counter) Int?: none)
+	absent := present.clone().and_then(fn(unused: Counter) Int?: null)
 	expect_false(not (absent.is_none()))?
 
 	create := fn() Counter?: Counter(5)
@@ -170,7 +170,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	fallback := missing.clone().or_else(create)
 	expect_equal(fallback.get().calls, 5)?
 
-	nested := present.clone().map(fn(unused: Counter) Int?: none)
+	nested := present.clone().map(fn(unused: Counter) Int?: null)
 	expect_true(nested.is_none())?
 
 	expect_equal(mapped.clone().map(fn value: value.calls.to_string()).get(), "1")?

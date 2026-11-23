@@ -43,7 +43,7 @@ fn propagate(result: Int!) Int!:
 test "Optional lazy fallbacks preserve nested absence and payload identity":
 	create := fn() Int?: 42
 	present: Int? := 0
-	missing: Int? := none
+	missing: Int? := null
 	expect_equal(present.or_else(create).get(), 0)?
 	expect_equal(missing.or_else(create).get(), 42)?
 

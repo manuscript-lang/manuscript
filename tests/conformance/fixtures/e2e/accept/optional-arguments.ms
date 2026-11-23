@@ -76,14 +76,14 @@ test "plain values and explicit optionals share the call contract":
     generic_supplied: Int? := 8
     expect_equal(present(generic_supplied).get(), 8)?
 
-    missing: Int? := none
+    missing: Int? := null
     expect_false(not (nested(missing)))?
 
     outer: Int?? := missing
     expect_false(not (nested(outer)))?
     expect_equal(list_size([]), 0)?
     expect_equal(list_size([1, 2]), 2)?
-    expect_equal(context(value: none, fallback: 9), 9)?
+    expect_equal(context(value: null, fallback: 9), 9)?
     expect_equal(context(value: [], fallback: [1]).length(), 0)?
     expect_equal(success(ok(10)), 10)?
     expect_false(flag(false))?

@@ -64,7 +64,7 @@ test "recursive alternatives construct match compare and clone":
 		Empty: return fail("lost mutual tree")
 
 test "recursive records clone into independent storage":
-	child := Node(value: 2, next: none)
+	child := Node(value: 2, next: null)
 	root := Node(value: 1, next: child.clone())
 	var alias = root.clone()
 	var copy = root.clone()
@@ -81,12 +81,12 @@ test "recursive records clone into independent storage":
 			or child.value != 2
 		) | expect_false?
 	)
-	copy.next = none
+	copy.next = null
 	root.next.is_none() | expect_false?
 
 test "recursive structural equality checks nested and unequal fields":
-	var left = Node(value: 1, next: none)
-	var right = Node(value: 1, next: none)
+	var left = Node(value: 1, next: null)
+	var right = Node(value: 1, next: null)
 	left.next = left.clone()
 	right.next = right.clone()
 	left.clone() | expect_equal(right.clone())?
@@ -104,14 +104,14 @@ test "recursive structural equality checks nested and unequal fields":
 		) | expect_false?
 	)
 
-	var a = Node(value: 1, next: none)
+	var a = Node(value: 1, next: null)
 	b := Node(value: 1, next: a.clone())
 	a.next = b
 	(right == a) | expect_false?
 
 test "recursive domain hashing uses explicit implementations":
-	var left = Link(value: 7, next: none)
-	var right = Link(value: 7, next: none)
+	var left = Link(value: 7, next: null)
+	var right = Link(value: 7, next: null)
 	left.next = left.clone()
 	right.next = right.clone()
 	(left != right or left.hash() != right.hash()) | expect_false?

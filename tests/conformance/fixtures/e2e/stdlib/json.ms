@@ -140,25 +140,25 @@ fn encoded[T: Data](item: T) String!:
 	return stringify(item)
 
 test "JSON stringify encodes records in declaration order and omits none fields":
-	var request = Request(model: "m", stream: true, user: none, temperature: 0.5, tags: ["a", "b"])
+	var request = Request(model: "m", stream: true, user: null, temperature: 0.5, tags: ["a", "b"])
 	expected := "{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"]}"
 	expect_equal((encoded(request)?), expected)?
 	request.user = "u"
 
 	named := "{\"model\":\"m\",\"stream\":true,\"temperature\":0.5,\"tags\":[\"a\",\"b\"],\"user\":\"u\"}"
 	expect_equal((encoded(request)?), named)?
-	expect_equal((encoded(Box[Int](1, none))?), "{\"first\":1}")?
+	expect_equal((encoded(Box[Int](1, null))?), "{\"first\":1}")?
 	expect_equal((encoded(Box[Int](1, 2))?), "{\"first\":1,\"second\":2}")?
 
 test "JSON stringify encodes alternatives and nested optionals":
-	scene := Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], none)
+	scene := Scene(Shape.Circle(2), [Shape.Dot, Shape.Rect(1, 2)], null)
 	expected := "{\"shape\":{\"Circle\":{\"radius\":2}},\"shapes\":[\"Dot\",{\"Rect\":{\"width\":1,\"height\":2}}]}"
 	expect_equal((encoded(scene)?), expected)?
 
-	sparse: List[Int?] := [1, none]
+	sparse: List[Int?] := [1, null]
 	expect_equal((encoded(sparse)?), "[1,null]")?
 
-	missing: Int? := none
+	missing: Int? := null
 	expect_equal((encoded(missing)?), "null")?
 
 test "JSON stringify encodes scalars exactly":
@@ -169,7 +169,7 @@ test "JSON stringify encodes scalars exactly":
 	expect_equal((encoded("<é\n")?), "\"<é\\n\"")?
 
 	parsed := parse("{\"n\":1.50}")?
-	mixed := Box[JsonValue](parsed, none)
+	mixed := Box[JsonValue](parsed, null)
 	expect_equal((encoded(mixed)?), "{\"first\":{\"n\":1.50}}")?
 
 test "JSON stringify reports non-finite numbers and budgets as errors":
@@ -183,10 +183,10 @@ test "JSON stringify reports non-finite numbers and budgets as errors":
 	expect_equal(stringify(1, StringifyOptions(max_bytes: -1)), negative)?
 
 test "JSON stringify repeats shared acyclic values and reads current field values":
-	shared := Node("s", none)
+	shared := Node("s", null)
 	var pair = [shared.clone(), shared.clone()]
 	before := encoded(pair)?
-	pair.set(0, Node("changed", none))
+	pair.set(0, Node("changed", null))
 	expect_equal(before, "[{\"label\":\"s\"},{\"label\":\"s\"}]")?
 	expect_not_equal((encoded(pair)?), before)?
 
@@ -219,7 +219,7 @@ enum Tagged:
 	Plain
 
 test "JSON stringify omits none fields":
-	var handler = Handler("h", none, none)
+	var handler = Handler("h", null, null)
 	expect_equal((encoded(handler)?), "{\"name\":\"h\"}")?
 
 	handler.retries = 3
@@ -237,7 +237,7 @@ test "JSON stringify encodes standard-library values":
 	expect_equal((encoded(ok)?), "{\"ok\":{\"value\":5}}")?
 	expect_equal((encoded("EBADMSG")?), "\"EBADMSG\"")?
 	expect_equal(
-		(encoded(Tagged.Named("n", none))?),
+		(encoded(Tagged.Named("n", null))?),
 		"{\"Named\":{\"name\":\"n\"}}",
 	)?
 	expect_equal((encoded(Tagged.Plain)?), "\"Plain\"")?
@@ -249,7 +249,7 @@ test "JSON stringify honors JsonEncode wherever the value appears":
 	expect_equal((encoded(Money(7))?), "\"usd:7\"")?
 
 test "JSON stringify indents like JSON.stringify and clamps at ten":
-	request := Request(model: "m", stream: true, user: none, temperature: 0.5, tags: ["a"])
+	request := Request(model: "m", stream: true, user: null, temperature: 0.5, tags: ["a"])
 	pretty := stringify(request, StringifyOptions(indent: 2))?
 	expected := "{\n  \"model\": \"m\",\n  \"stream\": true,\n  \"temperature\": 0.5,\n  \"tags\": [\n    \"a\"\n  ]\n}"
 	expect_equal(pretty, expected)?
@@ -504,7 +504,7 @@ type Wrap:
 	pairs: List[Pair[Int, Op]]
 
 test "JSON stringify fails on nesting deeper than parse accepts":
-	var head = Link(n: 0, next: none)
+	var head = Link(n: 0, next: null)
 	for i in 1..300000:
 		head = Link(n: i, next: head)
 
@@ -522,7 +522,7 @@ test "JSON round trips fields named like Go keywords":
 	expect_equal(back.range, 3)?
 
 test "JSON round trips generic records and alternatives":
-	w := Wrap([Op.Add(1, 2), Op.Neg(none), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)])
+	w := Wrap([Op.Add(1, 2), Op.Neg(null), Op.Neg(3), Op.Nop], [Pair(1, Op.Nop)])
 	t := stringify(w)?
 	back := parse[Wrap](t)?
 	expect_equal((stringify(back)?), t)?

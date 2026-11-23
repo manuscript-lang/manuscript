@@ -81,7 +81,7 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				visits = 1
 				1
-			none: 0
+			null: 0
 		,
 		2,
 	)
@@ -94,7 +94,7 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				key = 4
 				5
-			none: 0
+			null: 0
 	)
 	expect_false(original[3] != 5 or original.contains(4))?
 
@@ -104,14 +104,14 @@ test "map add captures receivers and arguments in written order":
 			_value:
 				order = 1
 				7
-			none: 0
+			null: 0
 		,
 		key: match present(1):
 			_value:
 				expect_equal(order, 1)?
 				order = 2
 				6
-			none: 0
+			null: 0
 	)
 	expect_false(order != 2 or original[6] != 7)?
 
