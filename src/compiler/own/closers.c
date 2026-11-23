@@ -85,27 +85,31 @@ static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t 
 
 /* The names a destructuring binds close like a plain binding of the same type, when the part is taken from the
  * record or list the pattern reads; lowering decides which parts it takes. */
-static void add_pattern_closers(Closers *pass, const MsPattern *pattern) {
+static void add_pattern_closers(Closers *pass, const MsPattern *pattern, bool is_var) {
   if (pattern->kind == MS_P_NAME) {
     const MsRef *ref = ms_facts_ref(pass->facts, pattern->id);
     if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      const size_t before = pass->facts->closers.len;
       add_closer(pass, pattern->id, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, pattern->id));
+      if (is_var && pass->facts->closers.len > before) {
+        pass->facts->closers.ptr[before].flags |= MS_CLOSER_VAR;
+      }
     }
   } else if (pattern->kind == MS_P_LIST) {
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
-      add_pattern_closers(pass, pattern->u.list.ptr[at]);
+      add_pattern_closers(pass, pattern->u.list.ptr[at], is_var);
     }
   } else {
     for (uint32_t at = 0; at < pattern->u.fields.len; at++) {
-      add_pattern_closers(pass, pattern->u.fields.ptr[at].pattern);
+      add_pattern_closers(pass, pattern->u.fields.ptr[at].pattern, is_var);
     }
   }
 }
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
-  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME && !stmt->u.bind.is_mutable) {
-    add_pattern_closers(pass, stmt->u.bind.pattern);
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME) {
+    add_pattern_closers(pass, stmt->u.bind.pattern, stmt->u.bind.is_mutable);
     return;
   }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
@@ -154,6 +158,12 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   const MsRef *ref = ms_facts_ref(pass->facts, node);
   if (ref == NULL || ref->kind != MS_REF_LOCAL) {
     return;
+  }
+  const MsNativeGet read = !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_CALL
+                               ? ms_own_native_get(pass->program, pass->facts, stmt->u.bind.value)
+                               : MS_NATIVE_GET_NONE;
+  if (read == MS_NATIVE_GET_LIST || read == MS_NATIVE_GET_MAP) {
+    return; /* a read that answers a part of its receiver in place (`xs.get(i)`) lends it: its owner closes it */
   }
   const size_t before = pass->facts->closers.len;
   add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));

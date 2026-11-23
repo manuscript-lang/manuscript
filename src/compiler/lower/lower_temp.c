@@ -11,12 +11,13 @@ typedef struct Consumed {
   const MsFacts *facts;
   uint32_t param;
   bool found;
+  bool moving; /* the parameter is `move`: a body that moves it owns it; a borrowed one is cloned where it is moved */
 } Consumed;
 
 static void note_consumed(void *ctx, const MsExpr *expr) {
   Consumed *state = ctx;
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(state->facts, expr->id) : NULL;
-  state->found |= ref != NULL && ref->kind == MS_REF_PARAM && ref->local == state->param &&
+  state->found |= state->moving && ref != NULL && ref->kind == MS_REF_PARAM && ref->local == state->param &&
                   ms_facts_use(state->facts, expr->id) == MS_USE_MOVE;
 }
 
@@ -39,7 +40,8 @@ static bool callee_consumes(LowerFn *fn, const MsCall *call, uint32_t index) {
   if (!fn_callee_target(fn, call, &target)) {
     return false;
   }
-  Consumed state = {&fn->cx->program->modules.ptr[target.module].facts, index, false};
+  Consumed state = {&fn->cx->program->modules.ptr[target.module].facts, index, false,
+                    index < target.func->params.len && target.func->params.ptr[index]->moving};
   const MsVisitor visitor = {.ctx = &state, .expr = note_consumed, .stmt = note_handed_on};
   ms_walk_block(&visitor, target.func->body);
   return state.found;
@@ -56,7 +58,9 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
     return false;
   }
   const MsTy result = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (result == MS_TY_NONE || ms_check_holds_resource(fn->cx->program, result)) {
+  /* A result that holds a resource may be a part of the argument; one that borrows from another argument is not. */
+  if (result == MS_TY_NONE || (ms_check_holds_resource(fn->cx->program, result) &&
+                               ms_own_call_borrows(fn->cx->program, call, index))) {
     return false;
   }
   *checked = ms_ty_subst(types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);

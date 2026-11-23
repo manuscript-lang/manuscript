@@ -85,6 +85,7 @@ static bool marker(ElEm *em, uint32_t *cur, ElState *state, const MirInst *inst,
   const MirValue value = inst->nargs > 0 ? inst->args[0] : MIR_NONE;
   switch ((MirOp)inst->op) {
   case MOP_ScopeDisown:
+  case MOP_ScopeUnpin:
     return disown_marker(em, *cur, state, inst, value);
   case MOP_ScopeMark:
     return mark_marker(em, cur, state, inst, value);

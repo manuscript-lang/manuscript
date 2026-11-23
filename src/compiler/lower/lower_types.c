@@ -104,6 +104,7 @@ static MirTy lower_record(Lower *cx, MsTy ty) {
       }
     }
   }
+  cx->module->type_defs.ptr[id].opaque = ms_check_def_opaque(cx->program, def);
   cx->module->type_defs.ptr[id].fields = fields;
   cx->module->type_defs.ptr[id].nfields = (uint32_t)def->fields.len;
   return result;
@@ -123,6 +124,7 @@ static MirTy lower_alt(Lower *cx, MsTy ty) {
     cases[index].nfields = (uint32_t)source->fields.len;
   }
   MirAltDef *alt = &cx->module->alts.ptr[id];
+  alt->opaque = ms_check_def_opaque(cx->program, def);
   alt->cases = cases;
   alt->ncases = (uint32_t)def->cases.len;
   const MsBuiltin builtin = ms_ty_builtin(&cx->program->types, ty);
@@ -148,7 +150,8 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     methods[index].params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, count + 1);
     methods[index].nparams = (uint32_t)count;
     for (size_t p = 0; p < count; p++) {
-      methods[index].params[p] = lower_type(cx, &subst, params[p].ty);
+      /* A `var` parameter crosses as the address of the caller's slot, as in a function type and a body. */
+      methods[index].params[p] = (params[p].flags & MS_PARAM_VAR) != 0 && p < 32 ? MIR_PTR : lower_type(cx, &subst, params[p].ty);
       methods[index].owned |= (params[p].flags & MS_PARAM_MOVE) != 0 && p < 64 ? UINT64_C(1) << p : 0;
     }
     const MsMethod *declared = ms_check_operation_declaration(cx->program, ty, operation);

@@ -146,7 +146,9 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, absent);
   mir_b_switch_to(&fn->b, some_block);
-  const MirValue payload = mir_b_emit(&fn->b, MOP_OptGet, &taken, 1, (MirImm){0}, opt->elem);
+  /* The slot owns the payload while the call runs, and the writeback makes the Optional again from it. */
+  const MirValue payload = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, opt->elem) ? MOP_OptUnbox : MOP_OptGet, &taken, 1,
+                                      (MirImm){0}, opt->elem);
   const MirImm of_type = {.tag = MI_TY, .a = opt->elem};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, payload};

@@ -339,5 +339,5 @@ const MvtRule mvt_rules_ops[MOP_COUNT] = {
   [MOP_CleanupRun] = mvt_cleanup_run, [MOP_CleanupPush] = mvt_cleanup_push,
   [MOP_GlobalGet] = mvt_global_get, [MOP_GlobalSet] = mvt_global_set, [MOP_ScopeBegin] = mvt_scope_marker,
   [MOP_ScopeOwn] = mvt_scope_marker, [MOP_ScopeEnd] = mvt_scope_marker,
-  [MOP_ScopeDisown] = mvt_scope_disown, [MOP_ScopeMark] = mvt_scope_mark,
+  [MOP_ScopeDisown] = mvt_scope_disown, [MOP_ScopeUnpin] = mvt_scope_disown, [MOP_ScopeMark] = mvt_scope_mark,
 };

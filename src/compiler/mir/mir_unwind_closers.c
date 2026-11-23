@@ -250,6 +250,7 @@ void uw_name_holes(UwCx *cx, MirFunc *f, const UwHash *in_slots) {
   cx->partials = (UwHash){0};
   cx->proj = (UwHash){0};
   UwHash taken_from = {0};
+  UwHash closing = {0}; /* slots whose close is registered by hand, as a closing local's is */
   uint64_t *found = MS_ARENA_NEW_ARRAY(&cx->fn, uint64_t, 1);
   uint32_t nfound = 0, cfound = 1;
   for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
@@ -258,6 +259,8 @@ void uw_name_holes(UwCx *cx, MirFunc *f, const UwHash *in_slots) {
       const MirInst *inst = &blk->insts.ptr[k];
       if (inst->op == MOP_Take && inst->res != MIR_NONE && inst->nargs > 0) {
         (void)uh_put(&cx->fn, &taken_from, inst->res, inst->args[0]);
+      } else if (inst->op == MOP_CleanupPush && inst->nargs > 0) {
+        (void)uh_put(&cx->fn, &closing, inst->args[0], 0);
       } else if (inst->op == MOP_TypeGet && inst->imm.tag == MI_FIELD &&
            inst->res != MIR_NONE && inst->nargs > 0) {
         (void)uh_put(&cx->fn, &cx->proj, inst->res, (uint64_t)inst->args[0] << 32 | inst->imm.b);
@@ -286,7 +289,7 @@ void uw_name_holes(UwCx *cx, MirFunc *f, const UwHash *in_slots) {
     uint64_t slot = 0;
     /* A value taken from a slot whose close is registered is dropped whole by that close, and
      * one taken from a slot this function does not own (a closure's capture) by its owner. */
-    const bool foreign = uh_get(&taken_from, base, &slot) && !uh_has(&cx->cells, slot);
+    const bool foreign = uh_get(&taken_from, base, &slot) && !uh_has(&cx->cells, slot) && !uh_has(&closing, slot);
     if (cx->m->type_defs.ptr[d->id].nfields > 32 || foreign || uh_has(in_slots, base) ||
       uh_has(&cx->holes, found[i])) {
       continue;

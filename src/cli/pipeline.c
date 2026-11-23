@@ -90,7 +90,7 @@ static bool make_object(const MsLinkRequest *request, const BackendProgram *prog
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
-  const BackendOptions backend = {.optimize = true, .verify = false,
+  const BackendOptions backend = {.optimize = true, .verify = true,
                                   .tests = request->tests, .bench = request->bench,
                                   .count_ops = request->count_ops || ops_from_environment()};
   BackendProgram program;

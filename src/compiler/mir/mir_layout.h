@@ -38,6 +38,9 @@ bool mir_boxing_alt(MirBoxing *boxing, uint32_t alt);
 /* Whether `inner?` contains itself by value. */
 bool mir_boxing_opt(MirBoxing *boxing, MirTy inner);
 
+/* Whether `opt<inner>` is boxed, for a caller that holds no MirBoxing (the module's types must be complete for `inner`). */
+bool mir_ty_opt_boxed(const MirModule *module, MirTy inner);
+
 /* ---- leaves and memory layout ---- */
 
 typedef uint8_t MirLeaf;

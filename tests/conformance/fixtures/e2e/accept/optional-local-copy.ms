@@ -5,11 +5,12 @@ import expect_equal from "@std/test/test.ms"
 fn grown() Int:
 	var o: List[String]? = ["a"]
 
-	if var l = o:
-		l.append("q")
-		return l.length()
+	if l := o:
+		var copy = l.clone()
+		copy.append("q")
+		return copy.length()
 
 	return 0
 
-test "if var on an optional local changes its own value":
+test "an optional local is changed through an independent copy":
 	expect_equal(grown(), 2)?

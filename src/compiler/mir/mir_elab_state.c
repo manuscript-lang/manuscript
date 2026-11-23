@@ -161,10 +161,12 @@ bool el_is_slot_owner(const ElCx *cx, MirValue value) {
 /* ---- transfer ---- */
 
 /* The owner `value` left the scope's hands on this path. A slot owner or a disowned owner stays tracked as
- * moved: its cleanup entry or the exits after it still act on it. Any other owner needs nothing from here
+ * moved: its cleanup entry or the exits after it still act on it, and so does an owner a scope registers again at a later
+ * exit (a variable's value), which must not be owned anew once it moved. Any other owner needs nothing from here
  * on, so its entry goes: keeping one per moved temporary made every block's state grow with the function. */
 static void finish_owner(ElCx *cx, ElState *state, MirValue value) {
-  const bool tracked = (el_tagged(cx, value) && cx->tag_kind[value] >= 2) || mh_has(&cx->disown_moves, value);
+  const bool tracked = (el_tagged(cx, value) && cx->tag_kind[value] >= 2) || mh_has(&cx->disown_moves, value) ||
+                       mh_has(&cx->reowned, value);
   if (tracked) {
     el_set(cx, state, value, EL_MOVED);
   } else {
@@ -221,6 +223,16 @@ static bool apply_disown(ElCx *cx, ElState *state, MirValue value) {
     el_remove(cx, state, value);
   }
   return true;
+}
+
+/* A variable's value pinned to a scope for a close failure goes back to its variable. An owning block parameter is
+ * owned by the block it enters, not by the pin, so it stays owned: joins see it the same on every path. */
+static bool apply_unpin(ElCx *cx, ElState *state, MirValue value) {
+  ElSt kind = 0;
+  if (mh_has(&cx->param_owned, value) && el_get(state, value, &kind) && kind == EL_LIVE) {
+    return true;
+  }
+  return apply_disown(cx, state, value);
 }
 
 static bool apply_mark(ElCx *cx, ElState *state, const MirInst *inst) {
@@ -308,6 +320,8 @@ bool el_apply(ElCx *cx, ElState *state, const MirInst *inst) {
   switch ((MirOp)inst->op) {
   case MOP_ScopeDisown:
     return apply_disown(cx, state, inst->args[0]);
+  case MOP_ScopeUnpin:
+    return apply_unpin(cx, state, inst->args[0]);
   case MOP_ScopeMark:
     return apply_mark(cx, state, inst);
   case MOP_ScopeOwn:

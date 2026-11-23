@@ -2,6 +2,7 @@
 #include "compiler/check/properties.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/own/closers.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/mir/mir_analysis.h"
 
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
@@ -53,20 +54,59 @@ static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
   return entry != NULL ? &entry->source->func.params : NULL;
 }
 
+/* `b := m.get(k)` over a resource: an Optional that views the entry in place, `none` when the key is absent, so the
+ * binding borrows what the map keeps instead of copying it. MIR_NONE (nothing emitted) for any other call. */
+static MirValue map_get_view(LowerFn *fn, const MsExpr *call) {
+  if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP ||
+      !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
+    return MIR_NONE;
+  }
+  const MsExpr *receiver = call->u.call.callee->u.member.left;
+  const MirValue map = fn_expr(fn, receiver, LW_BORROW);
+  MirTy entry_ty = MIR_VOID;
+  const MirValue address = map == MIR_NONE ? MIR_NONE : fn_entry_address(fn, map, call->u.call.args.ptr[0].value, &entry_ty);
+  if (address == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirTy opt_ty = fn_type(fn, ms_facts_type(fn->facts, call->id));
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, &address, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  const MirBlock join = mir_b_new_block(&fn->b);
+  const MirValue result = mir_b_add_block_param(&fn->b, join, opt_ty, MM_BORROW);
+  mir_b_br_if(&fn->b, absent, miss, NULL, 0, hit, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, hit);
+  const MirValue entry = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = entry_ty}, entry_ty);
+  const MirValue some = mir_b_emit(&fn->b, MOP_OptView, &entry, 1, (MirImm){0}, opt_ty);
+  mir_b_br(&fn->b, join, &some, 1);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, opt_ty);
+  mir_b_br(&fn->b, join, &none, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  return result;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
     MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
     MirVar owner = 0;
     MirValue taken = MIR_NONE;
-    if (source != MIR_NONE && !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_NAME &&
+    if (source != MIR_NONE && stmt->u.bind.value->kind == MS_E_NAME &&
         fn_closing_move(fn, stmt->u.bind.value, source, &taken)) {
       /* A record destructured out of a closing slot hands its parts to the names: the slot gives the record up. */
-      return fn_bind_parts(fn, pattern, taken, true, NULL, false, false, ms_facts_type(fn->facts, stmt->u.bind.value->id));
+      return fn_bind_parts(fn, pattern, taken, true, NULL, stmt->u.bind.is_mutable, false, ms_facts_type(fn->facts, stmt->u.bind.value->id));
     }
     const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
+    /* A `var` pattern takes its parts out of a record that is given up (a fresh result, or a name read for the last time)
+     * instead of copying them: a resource part has no copy. */
+    const bool gives_up = fn_fresh_owner(fn, source) ||
+                          (stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(fn->facts, stmt->u.bind.value->id) == MS_USE_MOVE);
     return source != MIR_NONE &&
-           fn_bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
+           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source)),
                       from_var ? &owner : NULL, stmt->u.bind.is_mutable, false,
                       ms_facts_type(fn->facts, stmt->u.bind.value->id));
   }
@@ -114,7 +154,12 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   }
   fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
   fn->has_last_receiver = false;
-  MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  MirValue value = from_call ? map_get_view(fn, stmt->u.bind.value) : MIR_NONE;
+  if (value != MIR_NONE) {
+    borrow = true;
+  } else if (!fn->failed) {
+    value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  }
   fn->moving_field = NULL;
   const MsRef *bound_ref = value != MIR_NONE ? ms_facts_ref(fn->facts, pattern->id) : NULL;
   const MsParams *bound_params = bound_ref != NULL ? bound_value_params(fn, stmt->u.bind.value) : NULL;
@@ -313,7 +358,7 @@ bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
     return true;
   }
   if (fn_closing_param(fn, base, &slot, &var)) {
-    const MirTy ty = mir_b_ty(&fn->b, mir_b_use_var(&fn->b, var));
+    const MirTy ty = fn->b.vars.ptr[var].ty; /* the declared type: reading the variable would carry it through every loop */
     *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
     return true;
   }
@@ -359,7 +404,9 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
     }
   }
   if (!moved_out && mir_needs_drop(fn->cx->module, field_ty)) {
-    const MirValue old = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    /* The field's old value leaves the record before it is dropped or closed: `type.set` fills the hole. */
+    const MirValue view = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
+    const MirValue old = mir_b_emit(&fn->b, MOP_MoveOut, &view, 1, (MirImm){0}, field_ty);
     const MsTy checked = ms_facts_type(fn->facts, place->id);
     if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
       if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
@@ -384,10 +431,19 @@ static bool set_element(LowerFn *fn, const MsExpr *container, const MsExpr *key,
   if (at == MIR_NONE) {
     return false;
   }
-  const MirValue args[3] = {receiver, at, value};
+  const bool map = ms_ty_is(types, owner, MS_BUILTIN_Map);
+  /* A map stores its key as well: the key is the container's own copy, not the borrow the statement read. */
+  const MirValue stored_key = map && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, at)) ? fn_implicit_clone(fn, at, true) : at;
+  if (stored_key == MIR_NONE) {
+    return false;
+  }
+  const MirValue args[3] = {receiver, stored_key, value};
   MirValue out = MIR_NONE;
-  const MsSpan operation = ms_span_of_text(ms_ty_is(types, owner, MS_BUILTIN_Map) ? "add" : "set");
-  if (!fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out)) {
+  const MsSpan operation = ms_span_of_text(map ? "add" : "set");
+  fn->native_arg_moves = (map && stored_key != at ? 1u << 1 : 0u) | (1u << 2); /* the stored value (and key) are owned and held by no scope: the container takes them */
+  const bool done = fn_native_on(fn, container, owner, operation, 3, args, MIR_VOID, &out);
+  fn->native_arg_moves = 0;
+  if (!done) {
     return fn_fail(fn, "an element of this container cannot be assigned yet");
   }
   return !fn->failed;
@@ -646,6 +702,9 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
 /* What a function returns when it ends without a value: nothing, except the entry declared Void, which returns
  * the status 0. */
 MirValue fn_default_result(LowerFn *fn) {
+  if (mir_ty_data(fn->cx->module, fn->ret)->kind == MK_OPT) {
+    return mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret); /* an Optional function that returns nothing returns none */
+  }
   return fn->ret == MIR_INT && fn->b.func.ret == MIR_INT && fn->decl_void ? mir_b_iconst(&fn->b, 0) : MIR_NONE;
 }
 
@@ -748,10 +807,8 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
   if (!probes && stmt->u.branch.binding != NULL && !fn_iflet_bind(fn, stmt->u.branch.binding, entry, owns)) {
     return false;
   }
-  const bool writes_back = !probes && !owns && stmt->u.branch.is_mutable && stmt->u.branch.binding != NULL &&
-                           fn_iflet_writeback(fn, stmt, entry);
   bool ok = fn_stmts(fn, stmt->u.branch.body);
-  if (probes || writes_back) {
+  if (probes) {
     fn_probe_end(fn, !fn->terminated);
   }
   if (!fn->terminated) {
@@ -787,10 +844,13 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   const MirBlock done = mir_b_new_block(&fn->b);
   mir_b_br(&fn->b, head, NULL, 0);
   enter(fn, head);
+  /* What the condition makes (a constant list read, a copy) lives for one trip: it goes before the test branches. */
+  (void)fn_scope_begin(fn);
   const MirValue cond = fn_expr(fn, stmt->u.loop.cond, LW_BORROW);
   if (cond == MIR_NONE) {
     return false;
   }
+  fn_scope_end(fn);
   mir_b_br_if(&fn->b, cond, body, NULL, 0, done, NULL, 0);
   mir_b_seal_block(&fn->b, body);
   enter(fn, body);
