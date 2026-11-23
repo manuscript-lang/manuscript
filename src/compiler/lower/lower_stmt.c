@@ -635,12 +635,15 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     return fn_fail(fn, "an assignment does not name a local");
   }
   fn->nmoved_names = 0;
+  fn->refilling_var = var + 1;
   const MirValue advanced = take_field_of_old(fn, stmt, var);
+  fn->refilling_var = advanced != MIR_NONE ? 0 : fn->refilling_var;
   if (advanced != MIR_NONE) { /* the old value is gone: nothing is left to drop */
     mir_b_def_var(&fn->b, var, advanced);
     return !fn->failed;
   }
   const MirValue value = take_value(fn, stmt->u.assign.value);
+  fn->refilling_var = 0;
   if (value == MIR_NONE) {
     return false;
   }

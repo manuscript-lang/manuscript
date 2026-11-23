@@ -932,6 +932,14 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
+  /* A `var` parameter is the caller's value: it leaves only into an assignment to itself, which refills it. */
+  bool var_param = false;
+  for (uint32_t at = 0; expr->kind == MS_E_NAME && ref != NULL && ref->kind == MS_REF_PARAM && at < fn->nvar_params; at++) {
+    var_param |= fn->var_params[at].var == fn->param_vars[ref->local] && fn->refilling_var != fn->param_vars[ref->local] + 1;
+  }
+  if (var_param) {
+    return fn_implicit_clone(fn, value, true);
+  }
   if (in_var_record && fn->moving_field == expr && fn->nmoved_fields < 4 && !borrowed_param) {
     /* `old := self.f` followed by `self.f = g`: the field leaves the record and the assignment drops nothing. */
     fn->moved_fields[fn->nmoved_fields++] = expr;
