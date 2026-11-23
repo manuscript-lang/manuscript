@@ -42,6 +42,7 @@ typedef struct LowerFnLocals {
   MirValue *closing;
   bool *closing_var;
   uint8_t *shared;
+  bool *holds_value;
   MirTy *closing_types;
   uint32_t nvars;
 } LowerFnLocals;
@@ -100,6 +101,7 @@ typedef struct LowerFn {
   MirTy default_record_ty;
   uint32_t shared_params; /* bit i: a lambda changes the `var` parameter i */
   uint8_t *shared;      /* by local id: a lambda changes it, so it lives in a slot (the closing machinery) */
+  bool *holds_value;     /* by local id: the body assigns the whole local or moves a field out of it, so it stays a variable, not a cell */
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
