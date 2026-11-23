@@ -147,13 +147,12 @@ static MsSpan protected_output(const BuildReport *report, MsSpan project_root) {
   return (MsSpan){0};
 }
 
-/* The `.ms-build.json` beside the executable: what built it. */
-static bool write_metadata(const BuildReport *report) {
-  const MsSpan path = ms_message_format(report->arena, "%S.ms-build.json", report->output);
-  const MsSpan text = ms_message_format(report->arena,
+bool ms_build_metadata_write(MsArena *arena, MsSpan output, MsBuildType type) {
+  const MsSpan path = ms_message_format(arena, "%S.ms-build.json", output, (MsSpan){0});
+  const MsSpan text = ms_message_format(arena,
                                         "{\n  \"format\": 1,\n  \"version\": \"%s\",\n  \"backend\": \"llvm\",\n  "
                                         "\"build_type\": \"%s\"\n}\n",
-                                        MS_VERSION, ms_build_type_name(report->invocation->build_type));
+                                        MS_VERSION, ms_build_type_name(type));
   return ms_file_write(path, text);
 }
 
@@ -171,7 +170,7 @@ static int link_program(const BuildReport *report, MsCheckedInput *checked) {
   if (!ms_pipeline_link(&request, &error)) {
     return fail(report, "build", error);
   }
-  if (!write_metadata(report)) {
+  if (!ms_build_metadata_write(report->arena, report->output, invocation->build_type)) {
     return fail(report, "build",
                 ms_message_format(report->arena,
                                   "cannot write build metadata %S.ms-build.json; choose an output path "

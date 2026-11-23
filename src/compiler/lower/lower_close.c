@@ -269,7 +269,8 @@ static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue valu
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
   const MirValue stored[2] = {slot, value};
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, none, MIR_NONE);
-  const MirImm own = {.tag = MI_SCOPE, .a = scope, .b = silent + 2};
+  /* A temporary of a bind statement ends before the name the statement binds, which is registered above it. */
+  const MirImm own = {.tag = MI_SCOPE, .a = scope, .b = silent + 2, .c = fn->bind_scope != 0 && scope + 1 != fn->bind_scope ? 1u : 0u};
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
   for (uint32_t depth = fn->nopen; depth > 0; depth--) {
     if (fn->open[depth - 1] == scope) {

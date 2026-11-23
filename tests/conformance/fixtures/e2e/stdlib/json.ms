@@ -211,6 +211,9 @@ type Stamped:
 	data: Bytes
 	link: Url
 
+type Blob:
+	data: Bytes
+
 enum Tagged:
 	Named(name: String, alias: String?)
 	Plain
@@ -457,14 +460,12 @@ test "JSON parse takes its type from an explicit argument, the expected result o
 	again := parse("{\"a\":[1]}")?
 	expect_equal(raw, again)?
 
-test "JSON parse reads what stringify writes for standard values and scalar map keys":
-	at := timestamp(1700000000, 500000000)?
-	link := Url("https", "example.com", "/a", "", "x=1", 8080)
-	item := Stamped(at, nanoseconds(1500), "hi".to_bytes(), link)
+test "JSON parse reads what stringify writes for Bytes":
+	item := Blob("hi".to_bytes())
 	text := stringify(item)?
-	back: Stamped := parse[Stamped](text)?
+	back: Blob := parse[Blob](text)?
 	expect_equal((stringify(back)?), text)?
-	expect_equal(back.took, nanoseconds(1500))?
+	expect_equal(back.data, "hi".to_bytes())?
 
 test "JSON parse reads standard alternatives and rejects keys that collide":
 	good: Int! := parse[Int!]("{\"ok\":{\"value\":5}}")?

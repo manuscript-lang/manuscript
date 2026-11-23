@@ -112,7 +112,7 @@ static void optional_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, M
 static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsShape *shape) {
   MirLayouts *layouts = build->layouts;
   const MirTypeDef *def = &build->module->type_defs.ptr[data->id];
-  shape->kind = MS_SHAPE_RECORD;
+  shape->kind = def->decimal ? MS_SHAPE_DECIMAL : MS_SHAPE_RECORD;
   shape->flags |= (def->opaque ? MS_SHAPE_NAME_ONLY : 0) | (def->text_fn1 != 0 ? MS_SHAPE_TEXT_FORM : 0) | (def->json_fn1 != 0 ? MS_SHAPE_JSON_FORM : 0);
   shape->name = add_type_name(build, def->name);
   uint32_t *offsets = MS_ARENA_NEW_ARRAY(&build->arena, uint32_t, (size_t)def->nfields + 1);
@@ -131,6 +131,10 @@ static void record_shape(ShapeBuild *build, MirTy ty, const MirTyData *data, MsS
     for (uint32_t index = 0; index < def->nfields; index++) {
       offsets[index] = mir_field_offset(layouts, data->id, index);
     }
+  }
+  if (def->decimal) { /* the words are the runtime's: a number, with no members to name */
+    shape->first = (uint32_t)build->members.len;
+    return;
   }
   for (uint32_t index = 0; index < def->nfields; index++) {
     kinds[index] = shape_of(build, def->fields[index].ty);
@@ -289,7 +293,7 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
     shape.elem = data->nargs > 0 ? shape_of(build, data->args[0]) : MS_SHAPE_NONE;
     shape.value = data->nargs > 1 ? shape_of(build, data->args[1]) : MS_SHAPE_NONE;
   } else if (data->kind == MK_OBJ) {
-    shape.kind = MS_SHAPE_OBJECT;
+    shape.kind = data->obj_class == MIR_OBJ_VALUE ? MS_SHAPE_BIGINT : MS_SHAPE_OBJECT;
     uint32_t text = 0, json = 0;
     hook_functions(build, index, &text, &json);
     shape.flags |= (text != 0 ? MS_SHAPE_TEXT_FORM : 0) | (json != 0 ? MS_SHAPE_JSON_FORM : 0);
@@ -390,6 +394,12 @@ static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text
   }
 }
 
+/* 1 + the constructor thunk of an untyped JSON tree shape, 0 for any other. */
+static uint32_t tree_function(const ShapeBuild *build, size_t index) {
+  const MirTyData *data = mir_ty_data(build->module, build->types.ptr[index]);
+  return data->kind == MK_ALT ? build->module->alts.ptr[data->id].tree_fn1 : 0;
+}
+
 static bool is_scalar_shape(const MsShape *shape) {
   return shape->kind <= MS_SHAPE_BYTES;
 }
@@ -409,6 +419,9 @@ static bool *descriptor_wants(ShapeBuild *build) {
   }
   for (size_t index = 0; index < build->shapes.len; index++) {
     const MsShape *shape = &build->shapes.ptr[index];
+    if (tree_function(build, index) != 0) {
+      wants[index] = true; /* a parse builds the tree by its descriptor */
+    }
     if (is_collection_shape(shape)) {
       wants[index] = true;
       want_child(build, wants, shape->elem);
@@ -432,7 +445,7 @@ static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
   for (size_t index = 0; index < build->shapes.len; index++) {
     uint32_t text, json;
     hook_functions(build, index, &text, &json);
-    wanted += (wants[index] ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0);
+    wanted += (wants[index] ? 1 : 0) + (text != 0 ? 1 : 0) + (json != 0 ? 1 : 0) + (tree_function(build, index) != 0 ? 1 : 0);
   }
   if (wanted == 0) {
     return MIR_NONE;
@@ -451,6 +464,9 @@ static uint32_t hook_symbol(DataCx *cx, ShapeBuild *build, uint32_t number) {
     }
     if (json != 0) {
       sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)(index * entry + offsetof(MsShapeHook, json_encode)), {.kind = MREF_FUNC, .index = json - 1}};
+    }
+    if (tree_function(build, index) != 0) {
+      sym.relocs[sym.nrelocs++] = (MirReloc){(uint32_t)(index * entry + offsetof(MsShapeHook, tree_ctor)), {.kind = MREF_FUNC, .index = tree_function(build, index) - 1}};
     }
   }
   return mird_add_sym(cx, &sym);

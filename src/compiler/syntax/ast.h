@@ -304,6 +304,7 @@ typedef struct MsFunc {
   MsStmts body;
   bool external;
   bool bodiless; /* declared with the body `...`: the runtime provides it */
+  bool deferred; /* the checker set the body aside until a call reaches it (check/lazy_std.c): not a bodiless function */
 } MsFunc;
 
 typedef struct MsMethod {

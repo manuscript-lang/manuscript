@@ -243,6 +243,8 @@ MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty);
  * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
+/* Whether the expression holds a call whose borrowed resource argument closes where the expression ends. */
+bool fn_expr_has_temporary(LowerFn *fn, const MsExpr *expr);
 /* The base of the field read `member`, closed with its statement when it is a temporary. */
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
@@ -307,6 +309,7 @@ bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
+bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);
 bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);
 /* `m.get(k)` over a resource as an Optional that views the entry; MIR_NONE (nothing emitted) for any other call. */
 MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call);
@@ -443,6 +446,8 @@ typedef struct VarSlot {
   struct VarSlot *outer; /* `a?.b?.change()`: the slot of `a`'s payload, whose field `b` is this slot's home; it goes back after this one */
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
+/* A field of a closing local, as its address in the local's slot (lower_field.c). */
+bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr);
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 /* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */

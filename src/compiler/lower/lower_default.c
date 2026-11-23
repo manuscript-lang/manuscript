@@ -111,6 +111,22 @@ static const MsParam *declared_default(const MsDecl *decl, const MsParams *metho
   return NULL;
 }
 
+/* The parameter of a module-level function, written in `module`, whose default expression is node `node`: a call through a
+ * function value names no callee, so the default is found from the node the checker recorded. */
+static const MsParam *function_default(const Lower *cx, uint32_t module, MsNode node) {
+  for (MsSymbolId id = 1; id < cx->program->symbols.len; id++) {
+    const MsSymbol *symbol = &cx->program->symbols.ptr[id];
+    if (symbol->module != module || symbol->decl == NULL || symbol->decl->kind != MS_D_FN) {
+      continue;
+    }
+    const MsParam *found = declared_default(symbol->decl, NULL, 0, node);
+    if (found != NULL) {
+      return found;
+    }
+  }
+  return NULL;
+}
+
 /* The parameter of an interface operation, written in `module`, whose default expression is node `node`. */
 static const MsParam *interface_default(const Lower *cx, uint32_t module, MsNode node) {
   for (MsSymbolId id = 1; id < cx->program->symbols.len; id++) {
@@ -202,6 +218,9 @@ static MirValue default_argument(LowerFn *fn, const MsCall *call, const MsCallAr
                                           call->callee.index, arg->node.node);
   if (param == NULL) {
     param = interface_default(fn->cx, arg->node.module, arg->node.node); /* the interface's own default */
+  }
+  if (param == NULL) {
+    param = function_default(fn->cx, arg->node.module, arg->node.node); /* a function value's default */
   }
   if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
     fn->facts = saved_facts;

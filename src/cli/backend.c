@@ -15,7 +15,7 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
   if (!mir_pipeline_prepare(module, &pipeline, why)) {
     return false;
   }
-  if ((options->optimize && !mir_optimize(module, false, why)) ||
+  if ((options->optimize && !mir_optimize(module, options->verify, why)) ||
       !mir_pipeline_finish(module, &pipeline, glue, why)) {
     return false;
   }
@@ -35,15 +35,6 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
                           .wide_leaves = wide_leaves};
   if (!emit_module(module, data, glue, &emit, ir, why)) {
     return false;
-  }
-  /* A size tier (`optnone`) sends the whole module through llc -O0, which gives every load its own stack slot: held
-   * values then cost frames instead of saving them, so the module is emitted again with registers. */
-  if (wide_leaves != 0 && ms_span_find(ms_strbuild_span(ir), ms_span_of_text(" optnone"), &(size_t){0})) {
-    ms_strbuild_clear(ir);
-    const EmitOptions plain = {.export_all = emit.export_all, .places = emit.places, .wide_leaves = 0};
-    if (!emit_module(module, data, glue, &plain, ir, why)) {
-      return false;
-    }
   }
   emit_entry_main(module, kept != NULL, ir);
   return true;

@@ -32,6 +32,10 @@ uint8_t msstd_json_parse(const MsString *text, uint8_t has_max_bytes, int64_t ma
                          uint8_t has_max_depth, int64_t max_depth, uint8_t has_max_values, int64_t max_values,
                          void **out, uint32_t *root, MsString *err);
 
+/* Builds the node `id` of a parsed document as one value of the alternative `desc` describes, with the same
+ * constructor `msstd_json_parse_tree` takes; written to `out` on success. */
+uint8_t msstd_json_node_tree(const void *doc, uint32_t id, const MsTypeDesc *desc, JsonCtorFn ctor, uint8_t *out);
+
 /* Parses `text` straight into a value of the recursive alternative described by `desc`, built by `ctor` (see
  * the notes above), written to `out` on success. */
 /* ms-sig: msstd_json_parse_tree(text: *const StrVal, has_max_bytes: HasRaw, max_bytes: i64, has_max_depth:

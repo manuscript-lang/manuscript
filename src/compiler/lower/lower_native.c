@@ -4,6 +4,7 @@
  * one MIR instruction are written out here: copying a string is `clone`, and joining two strings is the concat
  * function with its result fresh. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
@@ -533,10 +534,30 @@ bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
 /* The address of the element or entry `place` (`xs[i]`, `m[k]`, `m[a][b]`) names, found once: a list index out of range or a
  * missing map key faults as a read does. A map in an element is reached through the address of its element, so the entry
  * lies where the owner holds it. `*ty` is the element's type. False when `place` is not such an index of a changeable place. */
+/* The container and key of an entry read written as an index (`m[k]`), as `m.get(k).get()`, or as `xs.get(i)`. */
+bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key) {
+  if (ms_expr_index(place, container, key)) {
+    return true;
+  }
+  const MsExpr *read = place;
+  if (read->kind == MS_E_CALL && read->u.call.args.len == 0 && read->u.call.callee->kind == MS_E_MEMBER &&
+      read->u.call.callee->u.member.left->kind == MS_E_CALL &&
+      ms_own_native_get(fn->cx->program, fn->facts, read) == MS_NATIVE_GET_PAYLOAD) {
+    read = read->u.call.callee->u.member.left; /* `m.get(k).get()` reads the entry `m.get(k)` names */
+  }
+  const MsNativeGet get = read->kind == MS_E_CALL ? ms_own_native_get(fn->cx->program, fn->facts, read) : MS_NATIVE_GET_NONE;
+  if (get != MS_NATIVE_GET_MAP && !(get == MS_NATIVE_GET_LIST && read == place)) {
+    return false;
+  }
+  *container = read->u.call.callee->u.member.left;
+  *key = read->u.call.args.ptr[0].value;
+  return true;
+}
+
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty) {
   MsExpr *container = NULL;
   MsExpr *key = NULL;
-  if (!ms_expr_index(place, &container, &key) || !fn_place_changeable(fn, container)) {
+  if (!fn_entry_read_parts(fn, place, &container, &key) || !fn_place_changeable(fn, container)) {
     return false;
   }
   MirValue holder = MIR_NONE;

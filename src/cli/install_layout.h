@@ -1,0 +1,19 @@
+/* cli/install_layout.h: where an installed `ms` finds the files it links programs with.
+ *
+ * A package unpacks to `<prefix>/bin/ms` and `<prefix>/lib/ms/`: `bin/{opt,llc,lld}`, `files/` (the startup files),
+ * and `runtime/` and `runtime-static/`, each with an `archives` file naming the runtime archives in link order, one
+ * per line. A build tree has no `<prefix>/lib/ms`, so ms keeps the paths it was built with; the environment variables
+ * (MS_OPT, MS_LLC, MS_LLD, MS_FILES, MS_RUNTIME) still override both. */
+#ifndef MS_CLI_INSTALL_LAYOUT_H
+#define MS_CLI_INSTALL_LAYOUT_H
+
+#include "base/strbuild.h"
+
+/* Appends `<prefix>/lib/ms` for the running executable when that directory holds `files`; false otherwise. */
+MS_NODISCARD MS_NONNULL bool ms_install_root(MsStrBuild *root);
+/* Appends the path of the tool `name` (`opt`, `llc` or `lld`) under `root`, with the host's executable suffix. */
+MS_NONNULL void ms_install_tool(MsSpan root, const char *name, MsStrBuild *out);
+/* Appends the absolute archive paths of the dynamic or static runtime under `root`, separated like MS_RUNTIME. */
+MS_NODISCARD MS_NONNULL bool ms_install_runtime(MsSpan root, bool static_libc, MsStrBuild *out);
+
+#endif

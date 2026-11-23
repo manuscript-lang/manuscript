@@ -76,6 +76,33 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
   return true;
 }
 
+/* The address of the field `place` names inside a resource local that lives in its closing slot, for a callee that
+ * changes it where it lies: the record stays in its slot, so the local's cleanup stays registered through a fault in
+ * the call. False when `place` is not a field path rooted in such a local. */
+bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr) {
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root = NULL;
+  uint32_t count = 0;
+  MirValue cell;
+  MirTy record_ty;
+  if (!field_path(fn, place, fields, &count, &root) || !fn_closing_local(fn, root, &cell, &record_ty)) {
+    return false;
+  }
+  MirValue at = cell;
+  for (uint32_t index = 0; index < count; index++) {
+    const MirTyData *data = mir_ty_data(fn->cx->module, record_ty);
+    if (data->kind != MK_TYPE) {
+      return false;
+    }
+    const MsRef *ref = ms_facts_ref(fn->facts, fields[index]->id);
+    const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
+    at = mir_b_emit(&fn->b, MOP_PtrField, &at, 1, imm, MIR_PTR);
+    record_ty = fn_type(fn, ms_facts_type(fn->facts, fields[index]->id));
+  }
+  *addr = at;
+  return true;
+}
+
 /* Stores `field`, the changed value of the field `fn_take_field` took, back: the old ones share its storage, so they
  * are not dropped. */
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {

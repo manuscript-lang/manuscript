@@ -12,6 +12,7 @@
 
 #include "base/alloc.h"
 #include "base/arena.h"
+#include "base/env.h"
 #include "cli/json_value.h"
 #include "cli/lsp_input.h"
 #include "cli/lsp_sync.h"
@@ -43,6 +44,7 @@ typedef struct Supervisor {
   MsArena initialize_arena;
   MsJson *initialize; /* the client's `initialize` request, in initialize_arena */
   bool initialized, replay_pending, exiting;
+  bool log; /* `MS_LSP_LOG` is set: report each worker start on standard error */
   bool draining; /* the client's input ended: answer what the worker still owes, then stop */
   LspDocList docs;
   uint64_t restarts[RESTART_LIMIT + 1];
@@ -122,6 +124,7 @@ static bool start_worker(Supervisor *s) {
   s->to_worker = fdopen(to_child[1], "wb");
   s->from_worker = fdopen(from_child[0], "rb");
   s->generation++;
+  if (s->log) (void)fprintf(stderr, "ms-lsp: worker %d started\n", worker->process.pid);
   return s->to_worker != NULL && s->from_worker != NULL && lsp_input_attach(s->events, s->from_worker, s->generation, false);
 }
 
@@ -304,7 +307,9 @@ _Noreturn void lsp_supervise(void) {
 #ifndef _WIN32
   (void)signal(SIGPIPE, SIG_IGN); /* a dead worker is noticed through its closed output */
 #endif
-  Supervisor s = {.events = lsp_input_create()};
+  MsString log_setting;
+  Supervisor s = {.events = lsp_input_create(), .log = ms_env_get("MS_LSP_LOG", &log_setting)};
+  if (s.log) ms_string_release(&log_setting);
   if (s.events == NULL || !lsp_input_attach(s.events, stdin, SOURCE_CLIENT, false) || !start_worker(&s)) {
     (void)fputs("ms-lsp: cannot start the worker\n", stderr);
     lsp_input_exit(1);

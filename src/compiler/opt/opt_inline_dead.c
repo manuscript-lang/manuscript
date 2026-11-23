@@ -69,6 +69,9 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
     if (m->alts.ptr[a].text_fn1 != 0) {
       il_push_root(stack, &n, m->alts.ptr[a].text_fn1 - 1);
     }
+    if (m->alts.ptr[a].tree_fn1 != 0) {
+      il_push_root(stack, &n, m->alts.ptr[a].tree_fn1 - 1);
+    }
     if (m->alts.ptr[a].json_fn1 != 0) {
       il_push_root(stack, &n, m->alts.ptr[a].json_fn1 - 1);
     }
@@ -144,6 +147,7 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
   }
   for (uint32_t a = 0; a < m->alts.len; a++) {
     MirAltDef *def = &m->alts.ptr[a];
+    def->tree_fn1 = def->tree_fn1 != 0 ? map[def->tree_fn1 - 1] + 1 : 0;
     def->text_fn1 = def->text_fn1 != 0 ? map[def->text_fn1 - 1] + 1 : 0;
     def->json_fn1 = def->json_fn1 != 0 ? map[def->json_fn1 - 1] + 1 : 0;
   }

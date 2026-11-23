@@ -189,12 +189,17 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
 }
 
 MirValue fn_try(LowerFn *fn, const MsExpr *expr, LowerWant want) {
-  const MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
-  const bool fresh = want == LW_MOVE && value != MIR_NONE && fn_fresh_owner(fn, value);
+  MirValue value = fn_expr(fn, expr->u.bin.left, LW_BORROW);
   uint32_t alt = 0;
   if (value == MIR_NONE) {
     return MIR_NONE;
   }
+  if (want == LW_MOVE && expr->u.bin.left->kind == MS_E_CALL && fn_is_borrowed_view(fn, value)) {
+    /* A call that answers its dying temporary argument (`id(open(path))?`) hands the temporary's payload to the new owner. */
+    const MirValue answered = fn_take_from_temporary(fn, expr->u.bin.left, value);
+    value = answered != MIR_NONE ? answered : value;
+  }
+  const bool fresh = want == LW_MOVE && fn_fresh_owner(fn, value);
   if (mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind == MK_OPT) {
     return try_optional(fn, expr, value);
   }
