@@ -10,11 +10,11 @@
 // comparing (`--only-missing` keeps recorded ones, `--no-stable-check` skips the second
 // observation, `--prune` deletes fixtures that cannot be recorded). Fuzz and harvest
 // are not ported (#6225, #6226). MS names the ms under test (default
-// target/release/ms). CONFORM_DIFF=1 prints each failure's expected and observed (first
-// 600 characters). CONFORM_BUILD_TYPE picks the build type of run and test (default
-// Release). Fixtures tagged `aliasing` are left out of check, run and test as the gate
-// does (`--exclude-tag aliasing`). Usage: ms run tools/conform-run.ms -- [--phase
-// parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
+// .artifacts/build/ci/src/cli/ms). CONFORM_DIFF=1 prints each failure's expected and
+// observed (first 600 characters). CONFORM_BUILD_TYPE picks the build type of run and
+// test (default Release). Fixtures tagged `aliasing` are left out of check, run and
+// test as the gate does (`--exclude-tag aliasing`). Usage: ms run tools/conform-run.ms
+// -- [--phase parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
 // `<phase>: passed/total` and one `FAIL <id>` line per difference.
 import (
 	Bytes from "@std/bytes.ms",

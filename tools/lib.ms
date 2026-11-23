@@ -85,14 +85,14 @@ export fn file_sha256(path: String) String:
 	data := read_file(path).wait().get()
 	return hex_encode(sha256(data))
 
-// The host triple's architecture field, as `rustc` reports it (`x86_64`, `aarch64`).
+// The machine architecture as `uname -m` reports it (`x86_64`, `aarch64`); Windows
+// reports `x86_64` unless the build says otherwise.
 export fn rust_arch() String:
-	for line in capture("rustc", ["-vV"]).split("\n"):
-		if line.starts_with("host: "): return line.slice(
-			6,
-			line.length(),
-		).split("-")[0].clone()
-	return "x86_64"
+	machine := capture("uname", ["-m"]).trim()
+	if machine == "arm64" or machine == "ARM64": return "aarch64"
+	if machine == "": return "x86_64"
+
+	return machine
 
 // Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the
 // target the programs link against (glibc on Linux, mingw-w64 on Windows) and points
