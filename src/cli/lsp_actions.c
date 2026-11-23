@@ -116,7 +116,7 @@ static void checker_fixes(Actions *actions, LspAnalysis *analysis) {
   for (size_t i = 0; i < analysis->checked.findings.len; i++) {
     const Finding *finding = &analysis->checked.findings.ptr[i];
     if (finding->lint_code != NULL || !finding->diag.has_fix) continue;
-    const MsSpan file = lsp_absolute_file(&analysis->arena, analysis->checked.graph.source_root, finding->file);
+    const MsSpan file = lsp_absolute_file(analysis->arena, analysis->checked.graph.source_root, finding->file);
     if (!ms_span_equal(file, ms_string_span(&actions->doc->path))) continue;
     const MsDiag *diag = &finding->diag;
     const MsSpan code = ms_span_of_text(finding_code(finding));
@@ -183,11 +183,11 @@ static void lexical_fixes(Actions *actions, MsArena *arena) {
 
 static void unused_imports(Actions *actions, LspAnalysis *analysis) {
   MsLintFindingList lint = {0};
-  ms_lint_modules(&analysis->arena, &analysis->checked.program, &lint);
+  ms_lint_modules(analysis->arena, &analysis->checked.program, &lint);
   for (size_t i = 0; i < lint.len; i++) {
     const MsLintFinding *item = &lint.ptr[i];
     if (!item->has_fix || !ms_span_is_text(ms_span_of_text(item->code), "MSL102")) continue;
-    const MsSpan file = lsp_absolute_file(&analysis->arena, analysis->checked.graph.source_root, item->file);
+    const MsSpan file = lsp_absolute_file(analysis->arena, analysis->checked.graph.source_root, item->file);
     if (!ms_span_equal(file, ms_string_span(&actions->doc->path))) continue;
     const LspPosition at = lsp_position(actions->source, item->pos.offset);
     if (!eligible(actions, (LspRange){at, at})) continue;
@@ -495,7 +495,7 @@ static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule 
   for (size_t i = 0; i < analysis->checked.findings.len; i++) {
     const Finding *finding = &analysis->checked.findings.ptr[i];
     if (finding->lint_code != NULL) continue;
-    const MsSpan file = lsp_absolute_file(&analysis->arena, analysis->checked.graph.source_root, finding->file);
+    const MsSpan file = lsp_absolute_file(analysis->arena, analysis->checked.graph.source_root, finding->file);
     MsSpan name;
     bool types_only;
     if (!ms_span_equal(file, ms_string_span(&actions->doc->path)) || !unresolved_name(finding->diag.message, &name, &types_only)) continue;
@@ -503,7 +503,7 @@ static void add_imports(Actions *actions, LspAnalysis *analysis, const MsModule 
     const LspRange shown = {lsp_position(actions->source, start), lsp_position(actions->source, start + name.len)};
     if (!eligible(actions, shown)) continue;
     MsSpanList statements = {0};
-    project_imports(actions, &analysis->arena, name, types_only, &statements);
+    project_imports(actions, analysis->arena, name, types_only, &statements);
     /* The checker's own fix names the standard module that exports it. */
     if (finding->diag.has_fix && ms_span_starts_with(finding->diag.replacement, ms_span_of_text("import "))) {
       MsSpan statement = trim(finding->diag.replacement);
@@ -543,7 +543,7 @@ void lsp_code_actions(const LspDocList *docs, const LspDoc *doc, LspRange reques
     if (ms_span_equal(analysis.paths[m], ms_string_span(&doc->path))) tree = program->modules.ptr[m].tree;
   }
   if (tree != NULL) add_imports(&actions, &analysis, tree);
-  lexical_fixes(&actions, &analysis.arena);
+  lexical_fixes(&actions, analysis.arena);
   if (analysis.resolved) unused_imports(&actions, &analysis);
   if (tree != NULL) organize_imports(&actions, tree);
   lsp_analysis_release(&analysis);
