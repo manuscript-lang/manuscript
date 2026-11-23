@@ -56,7 +56,7 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
       continue; /* handed on, or already owned by the end of an inner scope */
     }
     const MirValue value = mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var);
-    if (fn->owned_vars[at - 1].moved == 0) {
+    if (fn->owned_vars[at - 1].moved == 0 && !fn->owned_vars[at - 1].leaves) {
       fn_own(fn, scope, value);
     } else {
       fn_disown(fn, value); /* an exit before the move owned it: the settle after the scope ends takes over */
@@ -69,27 +69,39 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
 static void settle_moved_vars(LowerFn *fn, uint32_t scope) {
   for (uint32_t at = fn->nowned_vars; at > 0; at--) {
     const LowerOwnedVar *entry = &fn->owned_vars[at - 1];
-    if (entry->scope != scope || entry->released || entry->pinned != MIR_NONE || entry->moved == 0) {
+    if (entry->scope != scope || entry->released || entry->pinned != MIR_NONE || (entry->moved == 0 && !entry->leaves)) {
       continue;
     }
     const MirValue value = mir_b_use_var(&fn->b, entry->var);
     uint32_t handled = entry->moved;
     if (entry->has_mask && entry->checked != MS_TY_NONE) {
-      handled |= fn_close_left_fields(fn, value, entry->checked, 0, NULL, entry->moved, mir_b_use_var(&fn->b, entry->mask));
+      const LowerPartMoves parts = {.partial = entry->partial, .bits = entry->nbits,
+                                    .flag = entry->has_nmask ? mir_b_use_var(&fn->b, entry->nmask) : MIR_NONE, .inner = entry->inner};
+      handled |= fn_close_left_fields(fn, value, entry->checked, 0, NULL, entry->moved, mir_b_use_var(&fn->b, entry->mask),
+                                      entry->partial != 0 ? &parts : NULL);
     }
     const MirImm mask = {.tag = MI_TYPEMASK, .a = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->id, .b = handled};
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, mask, MIR_NONE);
   }
 }
 
-bool fn_scope_own_var(LowerFn *fn, MirVar var) {
+bool fn_scope_own_var(LowerFn *fn, MirVar var, MsTy leaves) {
   fn->owned_vars = fn_grow(fn, fn->owned_vars, &fn->owned_vars_cap, fn->nowned_vars, sizeof(LowerOwnedVar));
   LowerOwnedVar *entry = &fn->owned_vars[fn->nowned_vars++];
-  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .var = var, .checked = MS_TY_NONE, .pinned = MIR_NONE};
+  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .var = var, .checked = leaves, .leaves = leaves != MS_TY_NONE, .pinned = MIR_NONE};
   if (mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->kind == MK_TYPE) {
     entry->mask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
     entry->has_mask = true;
     mir_b_def_var(&fn->b, entry->mask, mir_b_iconst(&fn->b, 0));
+    const MirTypeDef *def = &fn->cx->module->type_defs.ptr[mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->id];
+    for (uint32_t at = 0; at < def->nfields && at < 8; at++) { /* a record field may hand a part of its own on */
+      if (mir_ty_data(fn->cx->module, def->fields[at].ty)->kind == MK_TYPE && mir_needs_drop(fn->cx->module, def->fields[at].ty)) {
+        entry->nmask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
+        entry->has_nmask = true;
+        mir_b_def_var(&fn->b, entry->nmask, mir_b_iconst(&fn->b, 0));
+        break;
+      }
+    }
   }
   return true;
 }
@@ -107,6 +119,24 @@ void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field, MsTy checked) {
       return;
     }
   }
+}
+
+bool fn_scope_var_moved_part(LowerFn *fn, MirVar var, uint32_t field, uint32_t part, MsTy checked, MsTy field_type) {
+  for (uint32_t at = fn->nowned_vars; at > 0 && field < 8 && part < 8; at--) {
+    LowerOwnedVar *entry = &fn->owned_vars[at - 1];
+    if (entry->var != var || !entry->has_nmask) {
+      continue;
+    }
+    entry->moved |= UINT32_C(1) << field;
+    entry->partial |= UINT32_C(1) << field;
+    entry->nbits |= UINT64_C(1) << (field * 8 + part);
+    entry->checked = checked;
+    entry->inner[field] = field_type;
+    const MirValue bit = mir_b_iconst(&fn->b, (int64_t)(UINT64_C(1) << (field * 8 + part)));
+    mir_b_def_var(&fn->b, entry->nmask, mir_b_binop(&fn->b, MOP_Or, mir_b_use_var(&fn->b, entry->nmask), bit));
+    return true;
+  }
+  return false;
 }
 
 void fn_scope_var_released(LowerFn *fn, MirVar var, bool released) {
