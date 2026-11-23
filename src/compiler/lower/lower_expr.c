@@ -357,7 +357,8 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                                         expr->u.member.left->kind == MS_E_CALL);
   const bool moves = (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
-  if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
+  /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
+  if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
     fn_scope_var_moved(fn, owner, ref->index);
     /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
     return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
@@ -932,6 +933,14 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
+  /* A `var` parameter is the caller's value: it leaves only into an assignment to itself, which refills it. */
+  bool var_param = false;
+  for (uint32_t at = 0; expr->kind == MS_E_NAME && ref != NULL && ref->kind == MS_REF_PARAM && at < fn->nvar_params; at++) {
+    var_param |= fn->var_params[at].var == fn->param_vars[ref->local] && fn->refilling_var != fn->param_vars[ref->local] + 1;
+  }
+  if (var_param) {
+    return fn_implicit_clone(fn, value, true);
+  }
   if (in_var_record && fn->moving_field == expr && fn->nmoved_fields < 4 && !borrowed_param) {
     /* `old := self.f` followed by `self.f = g`: the field leaves the record and the assignment drops nothing. */
     fn->moved_fields[fn->nmoved_fields++] = expr;

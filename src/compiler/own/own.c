@@ -22,10 +22,10 @@ void ms_own_check(MsCheckProgram *program) {
   ms_own_result_borrows(program);
   ms_own_uses_report(program);
   ms_own_closers(program);
-  ms_own_unused(program);
   ms_own_changes(program);
   ms_own_borrows(program);
   if (checked_clean) {
     ms_own_moves(program);
   }
+  ms_own_unused(program); /* a clean program only: any other diagnostic leaves unread bindings unreported */
 }

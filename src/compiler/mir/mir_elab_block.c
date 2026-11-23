@@ -62,11 +62,15 @@ static bool disown_marker(ElEm *em, uint32_t cur, ElState *state, const MirInst 
 }
 
 static bool mark_marker(ElEm *em, uint32_t *cur, ElState *state, const MirInst *inst, MirValue value) {
-  const bool refill = inst->imm.i == 2;
+  /* Kind 2 stores a new value in a slot (what it held closes); kind 3 puts back the value a lend took out, so only an
+   * owner the lend moved out of is registered again. */
+  const bool lend = inst->imm.i == 3;
+  const bool refill = inst->imm.i == 2 || lend;
   ElSt was = EL_LIVE;
   MirValue key = MIR_NONE;
   const bool had = el_get(state, value, &was);
-  if (!el_apply(em->cx, state, inst) || (refill && !em_refill(em, cur, value, had, was))) {
+  const bool moved = had && (was == EL_MOVED || was == EL_MAYBE || was == EL_CLOSED_OR_MOVED);
+  if (!el_apply(em->cx, state, inst) || (refill && (!lend || moved) && !em_refill(em, cur, value, had, was))) {
     return false;
   }
   if (em_flag_of(&em->ckeys, value, &key)) {

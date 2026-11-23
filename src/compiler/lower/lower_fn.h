@@ -95,6 +95,7 @@ typedef struct LowerFn {
   uint32_t nmoved_fields;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
+  MirVar refilling_var; /* plus one: the `var` parameter an assignment to it is refilling, whose value the right side may take */
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
   uint32_t nwritebacks;
   bool failed;

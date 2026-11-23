@@ -308,8 +308,8 @@ fn Result[T, E].is_error() Bool:
 fn Result[T, E].get() T:
 	match self:
 		ok(value): return value
-		error(_): panic(
-			"called Result.get() on error; check is_ok first, or pass a default: get(default: ...)"
+		error(cause): panic(
+			f"called Result.get() on error: {cause}; check is_ok first, or pass a default: get(default: ...)"
 		)
 
 // Returns the successful payload, or `default` when this is an error. The default is
@@ -440,9 +440,6 @@ fn Optional[T: Clonable].clone() move T?:
 	match self:
 		value: return value.clone()
 		none: return none
-
-fn Error.clone() move Error:
-	return Error(self.message.clone(), self.kind.clone(), self.details.clone())
 
 // A String is its own text.
 fn String.to_string() String:

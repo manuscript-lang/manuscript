@@ -637,6 +637,29 @@ static void report_not_callable(Body *body, const MsExpr *call, const Target *ta
   ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* `A()` where A is a constant: the parentheses are the mistake. Reports it and answers true. */
+static bool report_constant_call(Body *body, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  const MsSymbol *symbol = callee->kind == MS_E_NAME && body_find_local(body, callee->u.sym) == NULL
+                               ? body_find_symbol(body, callee->u.sym)
+                               : NULL;
+  if (symbol == NULL || symbol->decl == NULL || symbol->decl->kind != MS_D_CONST) {
+    return false;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
+  }
+  if (body_reports(body) && !body->quiet) {
+    MsStrBuild text = ms_strbuild_new();
+    const MsSpan name = ms_names_span(body->program->names, callee->u.sym);
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, " is a constant, not a function; remove the parentheses and write ");
+    ms_strbuild_append(&text, name);
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  return true;
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -685,6 +708,8 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   } else if (target.sig != MS_TY_NONE && !ms_ty_is_invalid(&body->program->types, target.sig) &&
              ms_ty_kind(&body->program->types, target.sig) != MS_TY_FUNCTION) {
     report_not_callable(body, expr, &target);
+  } else if (report_constant_call(body, expr)) {
+    /* a constant is not called: reported, and the arguments are read */
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {

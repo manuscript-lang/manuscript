@@ -117,6 +117,7 @@ typedef struct MsCheckDiag {
   bool has_end;     /* the diagnostic spans [pos, end) */
   MsPos end;
   uint8_t stage;    /* an MsCheckStage: imports, then declarations (each in the order found), then bodies */
+  uint32_t anchor;  /* where the oracle's walk emits it among the body's diagnostics, when after its position; else 0 */
   bool ends_decl;   /* found once the declaration's body was walked: listed after the rest of its declaration */
   bool has_fix;     /* an edit that repairs the diagnostic: replace [fix_pos, fix_end) with `fix_text` */
   MsPos fix_pos, fix_end;
