@@ -51,7 +51,9 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     program->stage = MS_STAGE_SIDE;
     ms_check_mutation(program, index, graph->modules[index].source);
     ms_check_shadowing(program, index);
+    const size_t before_names = program->diagnostics.len;
     ms_check_names(program, index);
+    ms_check_defer(program, before_names);
     ms_check_returns(program, index);
     program->stage = MS_STAGE_DECLARATIONS;
   }
@@ -60,6 +62,7 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
   }
+  ms_check_release_rest(program);
   ms_check_flush_pending_bounds(program);
   ms_check_finite_functions(program);
   for (uint32_t index = 0; index < program->user_modules; index++) {

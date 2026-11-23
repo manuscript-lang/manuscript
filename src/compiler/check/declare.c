@@ -29,6 +29,7 @@ void ms_check_program_free(MsCheckProgram *program) {
   ms_local_record_list_free(&program->bindings);
   ms_type_ref_record_list_free(&program->type_refs);
   ms_pending_bound_list_free(&program->pending_bounds);
+  ms_check_diag_list_free(&program->deferred);
   ms_pending_default_list_free(&program->pending_defaults);
   ms_methods_free(&program->methods);
   ms_property_memo_free(&program->properties);
@@ -47,6 +48,35 @@ void ms_check_report(MsCheckProgram *program, uint32_t module, MsPos pos, MsChec
   ms_check_diag_list_push(&program->diagnostics,
                           (MsCheckDiag){.module = module, .pos = pos, .phase = phase, .message = message,
                                         .stage = program->stage});
+}
+
+void ms_check_defer(MsCheckProgram *program, size_t from) {
+  for (size_t index = from; index < program->diagnostics.len; index++) {
+    ms_check_diag_list_push(&program->deferred, program->diagnostics.ptr[index]);
+  }
+  program->diagnostics.len = from;
+}
+
+bool ms_check_release(MsCheckProgram *program, uint32_t module, uint32_t offset, MsSpan prefix) {
+  for (size_t index = 0; index < program->deferred.len; index++) {
+    MsCheckDiag *diag = &program->deferred.ptr[index];
+    if (diag->module != module || diag->pos.offset != offset || !ms_span_starts_with(ms_string_span(&diag->message), prefix)) {
+      continue;
+    }
+    MsCheckDiag released = *diag;
+    released.stage = MS_STAGE_WALK;
+    ms_check_diag_list_push(&program->diagnostics, released);
+    *diag = program->deferred.ptr[--program->deferred.len];
+    return true;
+  }
+  return false;
+}
+
+void ms_check_release_rest(MsCheckProgram *program) {
+  for (size_t index = 0; index < program->deferred.len; index++) {
+    ms_check_diag_list_push(&program->diagnostics, program->deferred.ptr[index]);
+  }
+  program->deferred.len = 0;
 }
 
 void ms_check_attach_end(MsCheckProgram *program, MsPos end) {
