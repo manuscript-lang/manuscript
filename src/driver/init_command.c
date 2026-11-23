@@ -256,7 +256,7 @@ int ms_init_command(int argc, char **argv) {
       }
     }
     if (status == 0 && !write_files(&arena, absolute, files, count)) {
-      print_span(stderr, ms_message_format(&arena, "ms init: cannot create project in %S: cannot write it\n", directory));
+      print_span(stderr, ms_message_format(&arena, "ms init: cannot create project in %S; check that the directory is writable\n", directory));
       status = STATUS_FAILED;
     } else if (status == 0) {
       print_next(&arena, &options, directory);
