@@ -242,6 +242,11 @@ static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, u
   return from.line != to.line ? from.line < to.line : from.column < to.column;
 }
 
+/* Whether the call builds a record or an alternative from its arguments. */
+static bool owning_constructor(const MsCall *call) {
+  return call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
+}
+
 /* A runtime operation hands a fresh resource argument on only once it succeeds (a list's bad index faults first), so the
  * argument stays in its closing slot across the call; `held` gets that slot. */
 static bool held_across(const MsCall *call, bool native) {
