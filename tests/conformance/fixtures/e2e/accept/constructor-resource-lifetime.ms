@@ -162,7 +162,8 @@ test "a later field fault closes earlier acquired fields repeatedly":
 
 	for attempt in 0..3:
 		log := f"{dir.path()}/{attempt}"
-		work := promise(fn: direct(log, 2))
+		own := log.clone()
+		work := promise(fn: direct(own, 2))
 		cause := work.wait() | expect_error?
 		expect_equal(cause.kind, "EIO")?
 		expect_equal(events(log), "acquire 1\nacquire 2\ncheck\nclose 2\nclose 1\n")?
@@ -224,7 +225,8 @@ test "cancelling a later field closes acquired fields once":
 
 	for attempt in 0..2:
 		log := f"{dir.path()}/{attempt}"
-		work := promise(fn: direct(log, 3))
+		own := log.clone()
+		work := promise(fn: direct(own, 3))
 		wait_for_check(log)?
 		work.cancel()
 

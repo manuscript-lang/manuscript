@@ -103,7 +103,7 @@ test "whole transfer keeps newer argument cleanups active until statement end":
 	transfer_first(path)?
 	expect_equal(log_text(path)?, "13,12,")?
 
-fn resource_path(value: Resource?) String: value.get().path
+fn resource_path(value: Resource?) String: value.get().path.clone()
 
 test "borrowed parts are copied before their temporary owner closes":
 	directory := temporary("source-wrapper-")?
