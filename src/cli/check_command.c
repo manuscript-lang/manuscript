@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 
+#include "base/dir.h"
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
@@ -88,6 +89,9 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
     } else {
       target_list_push(&options->targets, ms_span_of_text(argument));
     }
+  }
+  if (options->targets.len == 0 && ms_path_kind(ms_span_of_text("ms.toml")) == MS_PATH_FILE) {
+    target_list_push(&options->targets, ms_span_of_text("ms.toml")); /* no target: the project in this directory */
   }
   if (options->targets.len == 0) {
     (void)fprintf(stderr, "ms %s: missing a target; pass .ms files, directories, or ms.toml\n", options->name);

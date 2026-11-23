@@ -8,23 +8,23 @@
 
 #include "base/string.h"
 
-/* ms-sig: msrt_string_upper(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
+/* ms-sig: msrt_string_upper(s: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_upper(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_lower(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf @takes_self */
+/* ms-sig: msrt_string_lower(s: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_lower(const MsString *s, MsString *out);
-/* ms-sig: msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
+/* ms-sig: msrt_string_upper_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_upper_take(MsString *s, MsString *out);
-/* ms-sig: msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) @domain=string @leaf */
+/* ms-sig: msrt_string_lower_take(s: *mut StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_lower_take(MsString *s, MsString *out);
 /* ms-sig: msrt_string_normalize(s: *const StrVal, form: *const StrVal, has_max: HasRaw, max: i64, out: *mut
- * StrVal) -> u8 @domain=string @leaf */
+ * StrVal) -> u8 @domain=string @end */
 uint8_t msrt_string_normalize(const MsString *s, const MsString *form, uint8_t has_max, int64_t max,
                               MsString *out);
 /* ms-sig: msrt_string_normalize_kind(s: *const StrVal, kind: i64, has_max: HasRaw, max: i64, out: *mut
- * StrVal) -> u8 @domain=string @leaf */
+ * StrVal) -> u8 @domain=string @end */
 uint8_t msrt_string_normalize_kind(const MsString *s, int64_t kind, uint8_t has_max, int64_t max,
                                    MsString *out);
-/* ms-sig: msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @fresh @leaf */
+/* ms-sig: msrt_string_quote(s: *const StrVal, out: *mut StrVal) @domain=string @end */
 void msrt_string_quote(const MsString *s, MsString *out);
 
 #endif

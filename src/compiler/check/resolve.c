@@ -8,7 +8,7 @@
 #include "compiler/check/std_exports.h"
 #include "compiler/check/bounds.h"
 #include "compiler/check/suggest.h"
-#include <string.h>
+#include "base/cstr.h"
 
 static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",

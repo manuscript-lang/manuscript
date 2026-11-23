@@ -6,7 +6,7 @@ ms_executable(ms cli
     invocation.c invocation_rules.c build_type.c build_command.c run_command.c test_command.c test_document.c
     bench_command.c profile_command.c profile_folded.c test_options.c test_records.c test_run.c watch.c package_cache.c
     package_commands.c package_fetch.c package_git.c package_validate.c snippet.c help_command.c help_text.c
-    explain_command.c lsp_command.c lsp_analysis.c lsp_frame.c lsp_uri.c lsp_text.c lsp_nav.c lsp_symbols.c lsp_semantic.c
+    explain_command.c lsp_command.c lsp_analysis.c lsp_frame.c lsp_uri.c lsp_text.c lsp_nav.c lsp_symbols.c lsp_semantic.c lsp_signature.c lsp_actions.c lsp_completion.c lsp_workspace.c
   LINK ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link ms_tooling ms_std_text)
 file(STRINGS ${CMAKE_SOURCE_DIR}/.msversion MS_VERSION_TEXT LIMIT_COUNT 1)
 target_compile_definitions(ms PRIVATE MS_VERSION="${MS_VERSION_TEXT}")
@@ -20,6 +20,11 @@ ms_package_runtime(ms ms_runtime)
 get_filename_component(MS_COMPILER_BIN "${CMAKE_C_COMPILER}" DIRECTORY)
 add_test(NAME smoke_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # The same program linked against musl (`--static`), the other Linux link path.
+  add_test(NAME smoke_run_static COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DRUN_FLAGS=--static
+    -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
+endif()
 
 # The folded-stack conversion of `ms profile`, without the compiler.
 ms_executable(profile_folded_unit cli SOURCES profile_folded_unit.c profile_folded.c LINK ms_base)

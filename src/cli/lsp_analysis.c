@@ -14,6 +14,17 @@
 #include "compiler/syntax/diag.h"
 #include "tooling/lint.h"
 
+MsSpan lsp_path_uri(const LspDocList *docs, MsArena *arena, MsSpan path) {
+  for (size_t i = 0; i < docs->len; i++) {
+    if (ms_span_equal(ms_string_span(&docs->ptr[i].path), path)) return ms_arena_copy(arena, ms_string_span(&docs->ptr[i].uri));
+  }
+  MsStrBuild uri = ms_strbuild_new();
+  lsp_file_uri(path, &uri);
+  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&uri));
+  ms_strbuild_free(&uri);
+  return copy;
+}
+
 LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri) {
   for (size_t i = 0; i < docs->len; i++) {
     if (ms_span_equal(ms_string_span(&docs->ptr[i].uri), uri)) return &docs->ptr[i];

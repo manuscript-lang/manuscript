@@ -8,7 +8,7 @@
 #include "base/list.h"
 #include "base/string.h"
 
-/* ms-sig: msstd_net_network() -> *mut ObjCell<NetH> @handle @domain=network */
+/* ms-sig: msstd_net_network() -> *mut ObjCell<NetH> @domain=network @end */
 MsObj *msstd_net_network(void);
 /* ms-sig: msstd_net_network_close(handle net: *const ObjCell<NetH>) @domain=network */
 void msstd_net_network_close(const MsObj *net);

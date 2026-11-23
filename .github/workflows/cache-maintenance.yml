@@ -1,15 +1,15 @@
 name: Cache maintenance
 
-# Every scheduled run of main (and every manual one) runs the full CI/CD matrix, which saves the sccache caches. This workflow
-# keeps one cache per name. A lockfile change writes a new cargo cache and nothing removes the old
-# one, so copies pile up until GitHub evicts at the 10 GB limit and takes live entries with it.
-# Only main saves caches; entries from pull request refs and from the earlier rust-cache and lld
-# keys are dead and go too.
+# Every scheduled run of main (and every manual one) runs the full CI matrix, and `Warm C caches` runs after each push;
+# both save the ccache and OpenSSL caches. This workflow keeps one cache per name: a changed key writes a new
+# cache and nothing removes the old one, so copies pile up until GitHub evicts at the 10 GB limit and takes live
+# entries with it. Only main saves caches that pull requests can restore; entries from pull request refs are dead
+# and go too.
 
 on:
   # Right after a main run saved its caches, so the superseded entries go before the limit is reached.
   workflow_run:
-    workflows: [CI/CD, Warm caches, Warm C caches]
+    workflows: [CI, Warm C caches]
     types: [completed]
     branches: [main]
   workflow_dispatch:

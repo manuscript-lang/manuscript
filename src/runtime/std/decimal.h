@@ -16,40 +16,39 @@ typedef struct MsDecimal {
 } MsDecimal;
 /* ms-repr: Decimal inline24 */
 
-/* ms-sig: msstd_decimal_add(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number @leaf */
+/* ms-sig: msstd_decimal_add(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number @end */
 void msstd_decimal_add(const MsDecimal *a, const MsDecimal *b, MsDecimal *out);
 /* ms-sig: msstd_decimal_subtract(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number
- * @leaf */
+ * */
 void msstd_decimal_subtract(const MsDecimal *a, const MsDecimal *b, MsDecimal *out);
 /* ms-sig: msstd_decimal_multiply(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number
- * @leaf */
+ * */
 void msstd_decimal_multiply(const MsDecimal *a, const MsDecimal *b, MsDecimal *out);
-/* ms-sig: msstd_decimal_divide(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number @leaf
- */
+/* ms-sig: msstd_decimal_divide(a: *const DecType, b: *const DecType, out: *mut DecType) @domain=number @end */
 void msstd_decimal_divide(const MsDecimal *a, const MsDecimal *b, MsDecimal *out);
-/* ms-sig: msstd_decimal_negate(a: *const DecType, out: *mut DecType) @domain=number @leaf */
+/* ms-sig: msstd_decimal_negate(a: *const DecType, out: *mut DecType) @domain=number @end */
 void msstd_decimal_negate(const MsDecimal *a, MsDecimal *out);
-/* ms-sig: msstd_decimal_compare(a: *const DecType, b: *const DecType) -> i64 @domain=number @leaf */
+/* ms-sig: msstd_decimal_compare(a: *const DecType, b: *const DecType) -> i64 @domain=number @end */
 int64_t msstd_decimal_compare(const MsDecimal *a, const MsDecimal *b);
-/* ms-sig: msstd_decimal_parse(text: *const StrVal, out: *mut DecType) -> u8 @domain=number @leaf */
+/* ms-sig: msstd_decimal_parse(text: *const StrVal, out: *mut DecType) -> u8 @domain=number @end */
 uint8_t msstd_decimal_parse(const MsString *text, MsDecimal *out);
-/* ms-sig: msstd_decimal_from_int(n: i64, out: *mut DecType) @domain=number @leaf */
+/* ms-sig: msstd_decimal_from_int(n: i64, out: *mut DecType) @domain=number @end */
 void msstd_decimal_from_int(int64_t n, MsDecimal *out);
-/* ms-sig: msstd_decimal_from_uint(n: i64, out: *mut DecType) @domain=number @leaf */
+/* ms-sig: msstd_decimal_from_uint(n: i64, out: *mut DecType) @domain=number @end */
 void msstd_decimal_from_uint(int64_t n, MsDecimal *out);
 /* ms-sig: msstd_decimal_round(value: *const DecType, places: i64, has_mode: HasRaw, mode: i64, out: *mut
- * DecType) -> u8 @domain=number @leaf */
+ * DecType) -> u8 @domain=number @end */
 uint8_t msstd_decimal_round(const MsDecimal *value, int64_t places, uint8_t has_mode, int64_t mode,
                             MsDecimal *out);
 /* ms-sig: msstd_decimal_to_fixed(value: *const DecType, digits: i64, has_mode: HasRaw, mode: i64, out: *mut
- * StrVal) -> u8 @domain=number @leaf */
+ * StrVal) -> u8 @domain=number @end */
 uint8_t msstd_decimal_to_fixed(const MsDecimal *value, int64_t digits, uint8_t has_mode, int64_t mode,
                                MsString *out);
-/* ms-sig: msstd_decimal_to_float(a: *const DecType) -> f64 @domain=number @leaf */
+/* ms-sig: msstd_decimal_to_float(a: *const DecType) -> f64 @domain=number @end */
 double msstd_decimal_to_float(const MsDecimal *a);
-/* ms-sig: msstd_decimal_to_string(a: *const DecType, out: *mut StrVal) @domain=number @leaf */
+/* ms-sig: msstd_decimal_to_string(a: *const DecType, out: *mut StrVal) @domain=number @end */
 void msstd_decimal_to_string(const MsDecimal *a, MsString *out);
-/* ms-sig: msstd_decimal_truncate_to_int(a: *const DecType, out: *mut i64) -> u8 @domain=number @leaf */
+/* ms-sig: msstd_decimal_truncate_to_int(a: *const DecType, out: *mut i64) -> u8 @domain=number @end */
 uint8_t msstd_decimal_truncate_to_int(const MsDecimal *a, int64_t *out);
 
 /* `to_decimal()` of each integer type. */

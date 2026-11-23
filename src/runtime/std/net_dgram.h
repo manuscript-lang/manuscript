@@ -25,7 +25,7 @@ void msstd_net_datagram_address(const MsObj *handle, MsString *out);
 void msstd_net_datagram_close(const MsObj *handle);
 /* ms-sig: msstd_net_datagram_close_if_last(handle sock: *const ObjCell<DgramH>) @domain=network */
 void msstd_net_datagram_close_if_last(const MsObj *handle);
-/* ms-sig: msstd_net_datagram_share(handle sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @handle @domain=network */
+/* ms-sig: msstd_net_datagram_share(handle sock: *const ObjCell<DgramH>) -> *mut ObjCell<DgramH> @domain=network @end */
 MsObj *msstd_net_datagram_share(const MsObj *handle);
 
 #endif

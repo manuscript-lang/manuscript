@@ -4,16 +4,21 @@
 #include "cli/lsp_command.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/arena.h"
 #include "base/cstr.h"
 #include "base/sort.h"
 #include "cli/json_value.h"
+#include "cli/lsp_actions.h"
 #include "cli/lsp_analysis.h"
+#include "cli/lsp_completion.h"
 #include "cli/lsp_internal.h"
 #include "cli/lsp_nav.h"
 #include "cli/lsp_semantic.h"
+#include "cli/lsp_signature.h"
+#include "cli/lsp_workspace.h"
 #include "cli/lsp_symbols.h"
 
 enum { ERROR_PARSE = -32700, ERROR_INVALID_REQUEST = -32600, ERROR_NOT_FOUND = -32601, ERROR_INVALID_PARAMS = -32602,
@@ -25,6 +30,7 @@ typedef struct Session {
   LspDocList docs;
   RootList roots;
   bool initialized, shutdown;
+  bool snippets; /* the client takes snippet text in completions */
 } Session;
 
 static void send(MsStrBuild *message) {
@@ -85,6 +91,12 @@ static bool json_position(const MsJson *value, LspPosition *position) {
 
 static void handle_initialize(Session *session, const MsJson *id, const MsJson *params) {
   session->initialized = true;
+  const MsJson *capabilities = member_kind(params, "capabilities", MS_JSON_OBJECT);
+  const MsJson *text_document = member_kind(capabilities, "textDocument", MS_JSON_OBJECT);
+  const MsJson *completion = member_kind(text_document, "completion", MS_JSON_OBJECT);
+  const MsJson *completion_item = member_kind(completion, "completionItem", MS_JSON_OBJECT);
+  const MsJson *snippet_support = member_kind(completion_item, "snippetSupport", MS_JSON_BOOL);
+  session->snippets = snippet_support != NULL && ms_span_is_text(snippet_support->text, "true");
   const MsJson *root = member_kind(params, "rootUri", MS_JSON_STRING);
   if (root != NULL && root->text.len > 0 && !lsp_uri_is_malformed_file(root->text)) {
     MsStrBuild path = ms_strbuild_new();
@@ -102,7 +114,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"workspaceSymbolProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"/\"]},\"codeActionProvider\":{\"codeActionKinds\":[\"source.fixAll.manuscript\",\"quickfix\",\"source.organizeImports\"]},\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\",\":\"],\"retriggerCharacters\":[\",\"]},\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -181,7 +193,7 @@ static void handle_close(Session *session, const MsJson *params) {
 
 /* The textDocument requests that read one document at a position. Returns false for a method it does not serve. */
 static bool handle_document_request(Session *session, const MsJson *id, MsSpan method, const MsJson *params) {
-  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "semanticTokens/full", "prepareRename", "rename"};
+  static const char *const SERVED[] = {"hover", "definition", "references", "documentHighlight", "documentSymbol", "formatting", "foldingRange", "typeDefinition", "inlayHint", "signatureHelp", "codeAction", "completion", "semanticTokens/full", "prepareRename", "rename"};
   bool served = false;
   for (size_t i = 0; i < sizeof SERVED / sizeof SERVED[0]; i++) {
     MsStrBuild name = ms_strbuild_new();
@@ -198,7 +210,7 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   const bool outline = ms_span_is_text(requested, "documentSymbol") || ms_span_is_text(requested, "formatting") ||
                        ms_span_is_text(requested, "foldingRange") ||
                        ms_span_is_text(requested, "semanticTokens/full") ||
-                       ms_span_is_text(requested, "inlayHint");
+                       ms_span_is_text(requested, "inlayHint") || ms_span_is_text(requested, "codeAction");
   if (uri == NULL || (!outline && !json_position(ms_json_member(params, "position"), &position))) {
     if (id != NULL) reply_error(id, ERROR_INVALID_PARAMS, "invalid parameters");
     return true;
@@ -239,6 +251,25 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
       }
     }
     lsp_nav_inlay_hints(&session->docs, doc, wanted, &result);
+  } else if (ms_span_is_text(kind, "completion")) {
+    lsp_completion(&session->docs, doc, position, session->snippets, &result);
+  } else if (ms_span_is_text(kind, "codeAction")) {
+    LspRange wanted = {{0, 0}, {(size_t)-1, (size_t)-1}};
+    const MsJson *range = member_kind(params, "range", MS_JSON_OBJECT);
+    LspPosition start, end;
+    if (range != NULL && json_position(ms_json_member(range, "start"), &start) && json_position(ms_json_member(range, "end"), &end)) {
+      wanted = (LspRange){start, end};
+    }
+    const MsJson *context = member_kind(params, "context", MS_JSON_OBJECT);
+    const MsJson *only = member_kind(context, "only", MS_JSON_ARRAY);
+    MsSpan kinds[16];
+    size_t kind_count = 0;
+    for (size_t i = 0; only != NULL && i < only->count && kind_count < 16; i++) {
+      if (only->items[i]->kind == MS_JSON_STRING) kinds[kind_count++] = only->items[i]->text;
+    }
+    lsp_code_actions(&session->docs, doc, wanted, kinds, kind_count, &result);
+  } else if (ms_span_is_text(kind, "signatureHelp")) {
+    lsp_signature_help(&session->docs, doc, position, &result);
   } else if (ms_span_is_text(kind, "semanticTokens/full")) {
     lsp_semantic_tokens(&session->docs, doc, &result);
   } else if (ms_span_is_text(kind, "foldingRange")) {
@@ -278,6 +309,27 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
   return true;
+}
+
+/* The source of a bundled module by its `manuscript-stdlib:` URI. */
+static void handle_standard_library_source(const MsJson *id, const MsJson *params) {
+  const MsJson *document = member_kind(params, "textDocument", MS_JSON_OBJECT);
+  const MsJson *uri = member_kind(document, "uri", MS_JSON_STRING);
+  const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
+  if (uri == NULL || !ms_span_starts_with(uri->text, prefix) || ms_span_find(uri->text, ms_span_of_text("?"), &(size_t){0}) ||
+      ms_span_find(uri->text, ms_span_of_text("#"), &(size_t){0})) {
+    reply_error(id, ERROR_INVALID_PARAMS, "invalid standard-library URI");
+    return;
+  }
+  MsStdSource source;
+  if (!ms_std_source_find(ms_span_of(uri->text.ptr + prefix.len, uri->text.len - prefix.len), &source)) {
+    reply_error(id, ERROR_INVALID_PARAMS, "unknown standard-library module");
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  lsp_json_string(&text, source.text);
+  reply_result(id, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
 }
 
 /* One message. Returns -1 to continue, or the process status when the session ends. */
@@ -336,6 +388,19 @@ static int handle_message(Session *session, MsSpan body) {
   } else if (ms_span_is_text(method->text, "textDocument/didClose")) {
     handle_close(session, params);
     if (id != NULL) reply_result(id, ms_span_of_text("null"));
+  } else if (ms_span_is_text(method->text, "manuscript/standardLibrarySource")) {
+    if (id != NULL) handle_standard_library_source(id, params);
+  } else if (ms_span_is_text(method->text, "workspace/symbol")) {
+    if (id != NULL) {
+      const MsJson *query = member_kind(params, "query", MS_JSON_STRING);
+      MsSpan *roots = session->roots.len == 0 ? NULL : malloc(session->roots.len * sizeof *roots);
+      for (size_t i = 0; i < session->roots.len; i++) roots[i] = ms_string_span(&session->roots.ptr[i]);
+      MsStrBuild result = ms_strbuild_new();
+      lsp_workspace_symbols(&session->docs, roots, session->roots.len, query != NULL ? query->text : (MsSpan){0}, &result);
+      reply_result(id, ms_strbuild_span(&result));
+      ms_strbuild_free(&result);
+      free(roots);
+    }
   } else if (handle_document_request(session, id, method->text, params)) {
     /* answered */
   } else if (id != NULL) {

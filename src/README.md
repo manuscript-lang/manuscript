@@ -11,7 +11,8 @@ cmake --build --preset debug
 ctest --preset debug
 ```
 
-Presets: `debug`, `ci`, `release`, `sanitize`. Ninja on every platform; clang is the compiler.
+Presets: `debug` (-O0), `ci` (-O2 with frame pointers; CI builds and replays the corpus with it, about 4x faster per `ms` process than `debug`), `release`, `sanitize`. Ninja on every platform; clang is the compiler.
+
 Build output goes to `.artifacts/build/<preset>`. Generated files never go into `src/`.
 
 ## Layers (an include crosses layers only downward)
@@ -36,18 +37,20 @@ Build output goes to `.artifacts/build/<preset>`. Generated files never go into 
 
 `ms` runs every phase and names each one not yet implemented (exit status 70).
 
-## Oracle and the gate
-
-The frozen Rust `ms` and `ms-conform` from `660429d4` are the oracle. Build them from that
-commit (`make build`, `cargo build --release --locked -p ms-conform`), keep them outside the
-repository, and point `MS_ORACLE_DIR` at the directory holding both.
+## Conformance
 
 ```sh
-MS_ORACLE_DIR=<dir> cmake --build --preset debug --target conform-c
+cmake --build --preset ci --target conform
 ```
 
-prints `phase: passed/total` for `parse`, `check`, `run` and `test`, then `commands: passed/total` for the command fixtures. Select a subset with
-`-DMS_CONFORM_EXTRA="--tag;tier-core"`. A PR that lowers any phase count is not merged.
+replays the corpus with the ms built here (`tools/conform-run.ms`, a Manuscript program that ms runs) and prints
+`phase: passed/total` for `parse`, `check`, `run` and `test`, then `commands: passed/total` for the command
+fixtures, with each failure above the counts. The command fixtures must all pass; the corpus phases are reported
+until the port is complete (`-DMS_CONFORM_ENFORCE=ON` fails the target on any difference). A PR that lowers a
+count is not merged.
+
+The frozen Rust `ms` from `660429d4` is only the oracle fixtures were recorded from: build it with the `Oracle`
+workflow when a fixture needs re-recording.
 
 ## Command fixtures
 

@@ -25,7 +25,7 @@ void msrt_free(void *block);
 
 /* Operations executed, as the counting calls of an `ms bench --ops` build add them (a block's instruction count). */
 
-/* ms-sig: msrt_ops_add(n: i64) @leaf */
+/* ms-sig: msrt_ops_add(n: i64) @end */
 void msrt_ops_add(int64_t count);
 
 /* The operations counted so far. */

@@ -43,7 +43,7 @@ uint8_t msstd_tls_parse_certificates(const MsString *pem, uint8_t has_max, int64
  * StrVal, now: *const Timestamp) -> u8 @domain=TLS */
 uint8_t msstd_tls_verify_certificates(const MsString *chain_pem, const MsString *roots_pem,
                                       const MsString *server_name, const MsTimestamp *now);
-/* ms-sig: msstd_tls_error_message(status: u8, out: *mut StrVal) @domain=TLS @leaf */
+/* ms-sig: msstd_tls_error_message(status: u8, out: *mut StrVal) @domain=TLS @end */
 void msstd_tls_error_message(uint8_t status, MsString *out);
 
 #endif
