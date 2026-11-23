@@ -369,7 +369,7 @@ static bool lower_blocks(MsCheckProgram *program, MirModule *module, MsStrBuild 
     module->entry = entry;
   }
   lower_release(&cx);
-  return ok;
+  return ok && !cx.failed;
 }
 
 bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *error) {

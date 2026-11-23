@@ -114,6 +114,18 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   }
   const MirTy saved_hint = fn->hint;
   fn->hint = expected;
+  /* A default is written over the callee's type variables (`items: List[T?] = []`): this call's type arguments stand
+   * for them while it is lowered. */
+  const LowerSubst saved_subst = fn->subst;
+  MsTy *own_args = NULL;
+  const MsSymbol *owner = callee_id != 0 ? &fn->cx->program->symbols.ptr[callee_id] : NULL;
+  if (owner != NULL && owner->var_count != 0 && owner->var_count == call->type_arg_count) {
+    own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, owner->var_count);
+    for (uint32_t at = 0; at < owner->var_count; at++) {
+      own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
+    }
+    fn->subst = (LowerSubst){fn->cx->program->symbol_vars.ptr + owner->var_at, own_args, owner->var_count};
+  }
   /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
    * would let the default's `var _resource` stand for a caller local with the same number. */
   const LowerFnLocals saved_locals = fn_locals_save(fn);
@@ -121,6 +133,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
   fn_locals_restore(fn, &saved_locals);
+  fn->subst = saved_subst;
   fn->hint = saved_hint;
   fn->facts = saved_facts;
   fn->file = saved_file;

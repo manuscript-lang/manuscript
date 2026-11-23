@@ -120,6 +120,17 @@ static bool holds(const Escapes *pass, const MsCall *call, uint32_t index) {
          is_held(pass, call->callee.decl.module, call->callee.decl.node, index);
 }
 
+/* Whether the callee takes parameter `index` and neither keeps it nor hands it on in its result: it only consumes it. */
+static bool joins(const Escapes *pass, const MsCall *call, uint32_t index) {
+  const MsRefKind kind = call->callee.kind;
+  if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
+    return false;
+  }
+  const MsFunc *func = kind == MS_REF_FUNCTION ? ms_own_find_func(pass->program, &call->callee) : NULL;
+  return (func == NULL || !func->external) && !is_kept(pass, call->callee.decl.module, call->callee.decl.node, index) &&
+         !is_held(pass, call->callee.decl.module, call->callee.decl.node, index);
+}
+
 static void mark_ok(Escapes *pass, const MsExpr *expr) {
   if (expr->id < pass->program->modules.ptr[pass->module].facts.node_count) {
     pass->modules[pass->module].ok[expr->id] = 1;
@@ -170,6 +181,10 @@ static void visit_call(Escapes *pass, const MsExpr *call) {
     const MsExpr *value = call->u.call.args.ptr[at].value;
     uint32_t index = 0;
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value, &index);
+    if (arg != NULL && value->kind == MS_E_LIST && joins(pass, fact, index)) {
+      mark_elements_ok(pass, value); /* promises started in a list literal only the callee joins stay in the function */
+      continue;
+    }
     if (arg == NULL || keeps(pass, fact, arg, index)) {
       /* A result a local collection takes stays in the function while the collection does. */
       const MsRef *receiver = callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_NAME
