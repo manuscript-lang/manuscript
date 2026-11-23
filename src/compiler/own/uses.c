@@ -399,7 +399,9 @@ static void collect_views(void *ctx, const MsStmt *stmt) {
       !owns_place(pass, stmt->u.bind.value->u.bin.left)) {
     note_pattern_views(pass, stmt->u.bind.pattern);
   }
-  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME &&
+  /* A record destructured out of a name that moves hands its parts to the new names: they own them. */
+  const bool handed_over = stmt->kind == MS_S_BIND && stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(pass->facts, stmt->u.bind.value->id) == MS_USE_MOVE;
+  if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME && !handed_over &&
       (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
     note_pattern_views(pass, stmt->u.bind.pattern);
   }
