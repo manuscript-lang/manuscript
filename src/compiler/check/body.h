@@ -60,6 +60,7 @@ void ms_check_test_fixture(Body *body);
 void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 void body_block(Body *body, MsStmts stmts); /* a nested scope */
+void body_statements(Body *body, MsStmts stmts); /* in the current scope: the locals stay visible to what follows */
 size_t body_scope_mark(const Body *body);
 void body_scope_reset(Body *body, size_t mark);
 /* Declares a local or parameter in the current scope. */
@@ -69,6 +70,8 @@ MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_
 /* The reference a use of `local` records. */
 MsRef body_local_ref(const Body *body, const MsLocal *local);
 const MsLocal *body_find_local(const Body *body, MsName name);
+/* The innermost local of that name, including one a rejected pattern named. */
+const MsLocal *body_find_any_local(const Body *body, MsName name);
 
 /* ---- facts recording ---- */
 

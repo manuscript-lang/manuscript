@@ -944,6 +944,15 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   if (in_var_record && fn->moving_field == expr && fn->nmoved_fields < 4 && !borrowed_param) {
     /* `old := self.f` followed by `self.f = g`: the field leaves the record and the assignment drops nothing. */
     fn->moved_fields[fn->nmoved_fields++] = expr;
+    const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+    for (size_t at = insts->len; at-- > 0;) {
+      if (insts->ptr[at].res == value) {
+        if (insts->ptr[at].op == MOP_MoveOut) {
+          return value; /* the field read already moved it out */
+        }
+        break;
+      }
+    }
     return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
   if (!borrowed_param && !borrowed_root && !in_var_record && !view_local && leaves_binding(fn, expr)) {

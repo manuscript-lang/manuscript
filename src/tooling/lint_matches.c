@@ -55,9 +55,9 @@ static void two_arm(Scan *scan, const MsExpr *expr) {
   if (has_first && has_second) {
     ms_lint_add(scan->findings, optional ? "MSL108" : "MSL109", scan->file, expr->pos,
                 optional ? ms_span_of_text("Matching an Optional with only a payload arm and none; use 'if value := "
-                                           "...:' with 'else:', or an Optional method such as get(default) or map")
+                                           "...:' with 'else:', or an Optional method such as get_or(default) or map")
                          : ms_span_of_text("Matching a Result with only ok and error; use a trailing '?', 'if value "
-                                           ":= ...:' with 'else:', or a Result method such as get(default), "
+                                           ":= ...:' with 'else:', or a Result method such as get_or(default), "
                                            "is_error, or err"));
   }
 }

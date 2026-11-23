@@ -76,9 +76,7 @@ static void report(const Moves *pass, const MsExpr *expr, MsNode next) {
     ms_strbuild_append_text(&text, ":");
     ms_strbuild_append_u64(&text, later.column);
   }
-  if (ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
-    ms_strbuild_append_text(&text, "; a function value has one owner and cannot be cloned, so move it only at its last use or declare a named `fn`, which can be passed as often as needed");
-  } else if (ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
+  if (ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
     ms_strbuild_append_text(&text, "; a resource has one owner and cannot be cloned, so move it only at its last use, or pass it where it is only read");
   } else {
     ms_strbuild_append_text(&text, "; a value has one owner, so move it only at its last use, or pass `");
@@ -232,7 +230,6 @@ static void check_lambda(const Moves *pass, const MsExpr *lambda) {
       ms_strbuild_free(&text);
       continue;
     } else if (again && !copy) {
-      /* A function value never changes, so each closure takes its own copy of it and the maker keeps using the original. */
       ms_strbuild_append_text(&text, "this closure outlives the statement, so it takes `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "` with it, but `");
@@ -339,7 +336,7 @@ static void check_move_receiver(Moves *pass, const MsExpr *call) {
       ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));
       ms_strbuild_append_text(&moved, "` only when `");
       ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));
-      ms_strbuild_append_text(&moved, "` is a `let` or a parameter and no type on the path has a `close` of its own; use `");
+      ms_strbuild_append_text(&moved, "` is a `:=` binding or a parameter and no type on the path has a `close` of its own; use `");
       ms_strbuild_append(&moved, place_text(pass, receiver));
       ms_strbuild_append_text(&moved, "` in place, move the whole `");
       ms_strbuild_append(&moved, ms_names_span(pass->program->names, root->u.sym));

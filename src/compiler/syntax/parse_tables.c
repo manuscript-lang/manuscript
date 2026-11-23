@@ -213,8 +213,8 @@ bool parse_foreign_declaration(Parser *p, MsToken t, MsSpan *message, const char
              ms_span_is_text(w, "internal") || ms_span_is_text(w, "async") || ms_span_is_text(w, "extern") ||
              ms_span_is_text(w, "package") || ms_span_is_text(w, "namespace") ||
              ms_span_is_text(w, "module")) {
-    advice = "there is no such modifier; top level holds only import, let, fn, type, enum, interface, impl, "
-             "and test, optionally prefixed by export";
+    advice = "there is no such modifier; top level holds only import, fn, type, enum, interface, and test, "
+             "constants (NAME := value), optionally prefixed by export";
   } else {
     return false;
   }

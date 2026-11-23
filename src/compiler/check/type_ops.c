@@ -39,6 +39,10 @@ static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *ta
     return;
   }
   (*budget)--;
+  if (ms_ty_kind(table, ty) == MS_TY_INVALID) {
+    ms_strbuild_append_text(out, "<invalid>");
+    return;
+  }
   if (ms_ty_kind(table, ty) == MS_TY_FUNCTION) {
     show_function(out, names, table, ty, budget);
     return;

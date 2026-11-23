@@ -23,8 +23,8 @@ static bool is_text(MsSpan name, const char *text) {
 /* The two hints about `this`/`pass`, which no other lookup precedes. */
 static bool keyword_hint(MsSpan name, bool has_self, Hint *hint) {
   if (is_text(name, "this")) {
-    ms_strbuild_append_text(&hint->text, has_self ? "; the receiver in an impl method is 'self'; write self instead of this"
-                                                  : "; there is no 'this'; inside an impl method the receiver is 'self'");
+    ms_strbuild_append_text(&hint->text, has_self ? "; the receiver in a method is 'self'; write self instead of this"
+                                                  : "; there is no 'this'; inside a method the receiver is 'self'");
     hint->edit = has_self ? "self" : NULL;
     return true;
   }

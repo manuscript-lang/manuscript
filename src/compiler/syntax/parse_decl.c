@@ -323,7 +323,7 @@ static void report_bad_declaration(Parser *p, MsToken token) {
   parse_fail(p, token,
              parse_fmt(p,
                        "expected a module declaration or import, found %S; top level holds only import, "
-                       "constants (NAME := value), fn, type, enum, interface, impl, and test (optionally "
+                       "constants (NAME := value), fn, type, enum, interface, and test (optionally "
                        "prefixed by export), so put statements inside a fn",
                        found));
 }

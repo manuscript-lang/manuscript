@@ -185,7 +185,7 @@ static MsTy generic_as_value(Body *body, const MsSymbol *symbol, MsTy expected) 
 
 static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsName name = expr->u.sym;
-  const MsLocal *local = body_find_local(body, name);
+  const MsLocal *local = body_find_any_local(body, name);
   if (local != NULL && local->rejected) {
     if (!body->quiet && body_reports(body) && !ms_check_release(body->program, body->module, expr->pos.offset, ms_span_of_text("unknown binding "))) {
       MsStrBuild text = ms_strbuild_new();
@@ -206,6 +206,18 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
     return local->ty;
   }
   const MsSymbol *symbol = body_find_symbol(body, name);
+  if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
+    /* a type's name is read only as a callee or before a `.`: alone it builds nothing */
+    if (!body->quiet && body_reports(body)) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "type name requires a constructor call; write ");
+      ms_strbuild_append(&text, ms_names_span(body->program->names, name));
+      ms_strbuild_append_text(&text, "(field: value, ...) to build a value");
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    body_set_ref(body, expr->id, body_symbol_ref(body, symbol));
+    return MS_TY_NONE;
+  }
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
@@ -392,6 +404,16 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (found.len != 0) {
     ty = found.ptr[0].ty;
     body_set_ref(body, expr->id, body_method_ref(&found.ptr[0], receiver));
+    if (found.ptr[0].entry != NULL && found.ptr[0].entry->source->mutating && !body->quiet && body_reports(body)) {
+      const MsExpr *root = expr->u.member.left; /* a temporary receiver has no variable to share */
+      const MsLocal *home = root->kind == MS_E_NAME ? body_find_local(body, root->u.sym) : NULL;
+      if (home == NULL) {
+        ms_check_diag_list_push(&body->program->ownership,
+                                (MsCheckDiag){.module = body->module, .pos = expr->pos, .phase = MS_CHECK_TYPE,
+                                              .stage = MS_STAGE_WALK,
+                                              .message = ms_string_from_span(ms_span_of_text("a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closure"))});
+      }
+    }
   } else {
     body_report_unknown_member(body, expr, receiver);
   }

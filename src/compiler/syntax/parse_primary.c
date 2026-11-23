@@ -150,7 +150,7 @@ MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
             p, parse_peek(p),
             ms_span_of_text(
                 "'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v:' or "
-                "give it a default with 'v.get(default)', or bind a Result to a name before the next '?'"));
+                "give it a default with 'v.get_or(default)', or bind a Result to a name before the next '?'"));
         return false;
       }
       MsPos pos = e->pos;

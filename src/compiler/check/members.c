@@ -322,8 +322,11 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   const MsSpan name = ms_names_span(body->program->names, member->u.member.name);
   const MsTyVariable *variable =
       ms_ty_kind(types, receiver) == MS_TY_VARIABLE ? ms_ty_variable(&body->program->types, receiver) : NULL;
+  MsStrBuild reason = ms_strbuild_new(); /* a method whose receiver bound is unmet is explained even if the name is standard */
+  const bool unmet = unmet_member_bound(body, receiver, member->u.member.name, &reason);
+  ms_strbuild_free(&reason);
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
-      (ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name))) {
+      (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name))) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();

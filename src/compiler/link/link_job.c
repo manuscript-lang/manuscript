@@ -58,6 +58,6 @@ void link_foreign_advice(MsSpan detail, MsStrBuild *out) {
                                 "object or static library that defines it with --link <file>");
     return;
   }
-  ms_strbuild_append_text(out, "A missing symbol or library usually means a stale or mismatched runtime "
-                              "(check MS_RT_LIB), not a source error");
+  ms_strbuild_append_text(out, "A missing symbol or library usually means the Manuscript runtime does not match this "
+                              "compiler, not a mistake in your source; reinstall ms");
 }

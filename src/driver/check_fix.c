@@ -134,8 +134,8 @@ static size_t fix_file(MsArena *arena, CheckFixRun *run, const CheckFix *fixes, 
   MsBytes bytes = {0};
   if (!ms_file_read(path, &bytes)) {
     add_problem(arena, run, path,
-                ms_message_format(arena, "cannot read source for --fix: cannot open it; check the file and its "
-                                         "permissions, then re-run the command"));
+                ms_message_format(arena, "cannot read this file for --fix; check that it exists and is readable, "
+                                         "then re-run the command"));
     return 0;
   }
   const MsSpan text = ms_arena_copy(arena, ms_bytes_span(&bytes));
@@ -156,8 +156,8 @@ static size_t fix_file(MsArena *arena, CheckFixRun *run, const CheckFix *fixes, 
   }
   if (!ms_file_write(path, result)) {
     add_problem(arena, run, path,
-                ms_message_format(arena, "cannot write source for --fix: cannot write it; check the file and its "
-                                         "permissions, then re-run the command"));
+                ms_message_format(arena, "cannot write this file for --fix; check that it is writable, then "
+                                         "re-run the command"));
     return 0;
   }
   (void)note_edited(run, path);

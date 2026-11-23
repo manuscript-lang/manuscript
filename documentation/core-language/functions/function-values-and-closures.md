@@ -128,7 +128,7 @@ fn total(values: List[Int]) Int:
     return sum
 ```
 
-A function value has one owner and no `.clone()`. A type or list that holds one is not `Clonable`. To use a function value, pass it where it is only read, move it at its last use, or make it again from a named `fn`.
+A function value never changes, so the checker shares it freely: pass it, store it, or capture it in several closures and keep using the original. It has no `.clone()`, so a type or list that holds one is not `Clonable`.
 
 A closure that is returned or stored owns what it captures, so it cannot change a captured variable:
 
