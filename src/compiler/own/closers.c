@@ -213,7 +213,9 @@ static MsTy bound_type(const Closers *pass, MsTy scrutinee, uint32_t kase, uint3
 static void visit_match(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
   const MsExpr *subject = expr->kind == MS_E_MATCH ? expr->u.match.scrutinee : NULL;
-  const MsTy scrutinee = subject != NULL && subject->kind == MS_E_CALL ? ms_facts_type(pass->facts, subject->id) : MS_TY_NONE;
+  const bool owned = subject != NULL && (subject->kind == MS_E_CALL ||
+                                         (subject->kind == MS_E_NAME && ms_facts_use(pass->facts, subject->id) == MS_USE_MOVE));
+  const MsTy scrutinee = owned ? ms_facts_type(pass->facts, subject->id) : MS_TY_NONE;
   if (scrutinee == MS_TY_NONE) {
     return;
   }
@@ -225,7 +227,7 @@ static void visit_match(void *ctx, const MsExpr *expr) {
     }
     for (uint32_t at = 0; at < arm->bindings.len; at++) {
       const MsTy ty = bound_type(pass, scrutinee, bound->index, at);
-      if (ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
+      if (ty != MS_TY_NONE && (ms_check_holds_resource(pass->program, ty) || ms_ty_has_variable(&pass->program->types, ty))) {
         add_closer(pass, arm->id, MS_REF_LOCAL, bound->local + at, ty);
         break;
       }
@@ -287,10 +289,21 @@ static int64_t compare(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   return left < right ? -1 : left > right;
 }
 
-static MsCloser *find(Closers *pass, MsRefKind ref_kind, uint32_t local) {
+/* Whether `node` is the parameter of a lambda visited: its index is its own, so an outer parameter of the same index is not it. */
+static bool is_lambda_param(const Closers *pass, MsNode node) {
+  for (size_t index = 0; index < pass->own.len; index++) {
+    if (pass->own.ptr[index] == node) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static MsCloser *find_ref(Closers *pass, const MsRef *ref) {
   for (size_t index = pass->first; index < pass->facts->closers.len; index++) {
     MsCloser *closer = &pass->facts->closers.ptr[index];
-    if (closer->ref_kind == ref_kind && closer->local == local) {
+    if (closer->ref_kind == ref->kind && closer->local == ref->local &&
+        !(ref->kind == MS_REF_PARAM && closer->node != ref->decl.node && is_lambda_param(pass, closer->node))) {
       return closer;
     }
   }
@@ -298,7 +311,7 @@ static MsCloser *find(Closers *pass, MsRefKind ref_kind, uint32_t local) {
 }
 
 static void flag(Closers *pass, const MsRef *ref, uint16_t flags) {
-  MsCloser *closer = ref == NULL ? NULL : find(pass, ref->kind, ref->local);
+  MsCloser *closer = ref == NULL ? NULL : find_ref(pass, ref);
   if (closer != NULL) {
     closer->flags = (uint16_t)(closer->flags | flags);
   }
