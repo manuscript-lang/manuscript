@@ -5,7 +5,9 @@ weight = 1
 
 # Repository architecture
 
-`ms` is a Rust workspace under `crates/`. It compiles Manuscript to native code through Cranelift, or through LLVM for optimized builds when its tools are available. Tests sit beside their code in each crate; the conformance corpus and publication checks live in `tests/`. See [Rust toolchain](rust-toolchain.md) for building and the crate map, and the [design contract](https://github.com/manuscript-lang/manuscript/blob/main/crates/DESIGN.md) for the pipeline, value layout, and runtime ABI.
+`ms` is implemented in C under `src/`, in layers an include may cross only downward (`src/layers.txt`, enforced by `ms_lint`): `base`, `abi`, `runtime`, then the compiler stages `compiler/syntax`, `project`, `check`, `own`, `lower`, `mir`, `opt`, `emit`, `link`, then `tooling` and `cli`. The conformance corpus and publication checks live in `tests/`. See [src/README.md](https://github.com/manuscript-lang/manuscript/blob/main/src/README.md) for building and testing.
+
+> The sections below were written for the Rust implementation in `crates/`, which is frozen at `660429d4` and serves only as the oracle for conformance fixtures. Crate names there map to the C layers above; check `src/` before relying on a detail.
 
 ## Follow one compilation
 
