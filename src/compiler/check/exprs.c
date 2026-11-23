@@ -186,6 +186,21 @@ static MsTy generic_as_value(Body *body, const MsSymbol *symbol, MsTy expected) 
 static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsName name = expr->u.sym;
   const MsLocal *local = body_find_local(body, name);
+  if (local != NULL && local->rejected) {
+    if (!body->quiet && body_reports(body) && !ms_check_release(body->program, body->module, expr->pos.offset, ms_span_of_text("unknown binding "))) {
+      MsStrBuild text = ms_strbuild_new();
+      const MsSpan written = ms_names_span(body->program->names, name);
+      ms_strbuild_append_text(&text, "unknown binding ");
+      ms_strbuild_append(&text, written);
+      ms_strbuild_append_text(&text, "; declare it with '");
+      ms_strbuild_append(&text, written);
+      ms_strbuild_append_text(&text, " := ...' before use, define 'fn ");
+      ms_strbuild_append(&text, written);
+      ms_strbuild_append_text(&text, "(...) T:', or import it from a module");
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+    }
+    return MS_TY_NONE;
+  }
   if (local != NULL) {
     body_set_ref(body, expr->id, body_local_ref(body, local));
     return local->ty;

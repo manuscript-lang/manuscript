@@ -7,6 +7,7 @@ typedef struct Walk {
   MsScopeSite site;
   MsName self;
   uint32_t depth; /* the nesting the next binding is declared at */
+  uint32_t anchor; /* the anchor of the next binding */
 } Walk;
 
 static void walk_stmts(Walk *pass, MsStmts body);
@@ -18,7 +19,8 @@ static void set_kind(Walk *pass, MsBindingKind kind) {
 }
 
 static void declare(Walk *pass, MsName name, MsPos decl, bool mutable_, MsBindingOrigin origin) {
-  const MsBinding binding = {.name = name, .decl = decl, .mutable_ = mutable_, .origin = origin, .depth = pass->depth};
+  const MsBinding binding = {.name = name, .decl = decl, .mutable_ = mutable_, .origin = origin, .depth = pass->depth,
+                           .anchor = pass->anchor};
   ms_binding_list_push(&pass->scope, binding);
   if (pass->visitor->declared != NULL) {
     pass->visitor->declared(pass->visitor->context, &binding, &pass->scope);
@@ -221,7 +223,9 @@ static void walk_branch(Walk *pass, const MsStmt *stmt) {
   const size_t mark = pass->scope.len;
   if (stmt->u.branch.binding != NULL) {
     pass->depth++;
+    pass->anchor = stmt->u.branch.cond->end.offset;
     declare_pattern(pass, stmt->u.branch.binding, stmt->u.branch.is_mutable, MS_BIND_NARROWED);
+    pass->anchor = 0;
     pass->depth--;
   }
   walk_scoped(pass, stmt->u.branch.body);

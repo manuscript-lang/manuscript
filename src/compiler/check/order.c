@@ -47,11 +47,15 @@ static int64_t compare(uint8_t *env, const uint8_t *left, const uint8_t *right) 
   return a->ends_decl == b->ends_decl ? 0 : (a->ends_decl ? 1 : -1);
 }
 
+static uint32_t slot(const MsCheckDiag *diag) {
+  return diag->anchor != 0 ? diag->anchor : diag->pos.offset;
+}
+
 static int64_t by_position(uint8_t *env, const uint8_t *left, const uint8_t *right) {
   (void)env;
   const MsCheckDiag *a = (const MsCheckDiag *)__builtin_assume_aligned(left, _Alignof(MsCheckDiag));
   const MsCheckDiag *b = (const MsCheckDiag *)__builtin_assume_aligned(right, _Alignof(MsCheckDiag));
-  return (int64_t)a->pos.offset - (int64_t)b->pos.offset;
+  return (int64_t)slot(a) - (int64_t)slot(b);
 }
 
 /* Within one declaration's body diagnostics, the body walk's own order is kept and what the side passes found is
@@ -66,7 +70,7 @@ static void merge_group(MsCheckDiag *group, size_t count) {
   size_t next = 0;
   size_t at = 0;
   for (size_t index = 0; index < walk.len; index++) {
-    while (next < side.len && side.ptr[next].pos.offset < walk.ptr[index].pos.offset) {
+    while (next < side.len && slot(&side.ptr[next]) < walk.ptr[index].pos.offset) {
       group[at++] = side.ptr[next++];
     }
     group[at++] = walk.ptr[index];

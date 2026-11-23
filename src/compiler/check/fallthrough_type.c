@@ -2,8 +2,8 @@
  *
  * Prints a written type reference the way the resolved type would display: `Optional[T]` as `T?`, other
  * arguments as `Name[A, B]`. Only names whose meaning is certain without the signature passes are printed: a
- * primitive, a prelude type, a type parameter of the function, or a type, enum or interface of the module. An
- * alias, an import, a qualified name or a function type is refused, and the caller reports nothing. */
+ * primitive, a prelude type, a type parameter of the function, or a type, enum or interface of the module or one it
+ * imports. An alias, a qualified name or a function type is refused, and the caller reports nothing. */
 #include "compiler/check/fallthrough.h"
 
 static const char *const PRELUDE[] = {"Optional", "Result", "Error", "List", "Map", "Set"};
@@ -28,7 +28,10 @@ static bool is_prelude(MsSpan text) {
 
 static bool is_declared_type(const MsCheckProgram *program, uint32_t module, MsName name) {
   const MsSymbolId *id = ms_scope_get(&program->modules.ptr[module].scope, name);
-  return id != NULL && program->symbols.ptr[*id].kind == MS_SYMBOL_TYPE;
+  if (id == NULL) {
+    id = ms_scope_get(&program->modules.ptr[module].imports, name); /* an imported type prints as written */
+  }
+  return id != NULL && *id != 0 && program->symbols.ptr[*id].kind == MS_SYMBOL_TYPE;
 }
 
 static bool known_name(const MsCheckProgram *program, uint32_t module, const MsFunc *func, MsName name) {

@@ -24,6 +24,7 @@ typedef struct MsBinding {
   bool invalid; /* its type is known to be wrong */
   MsBindingOrigin origin;
   MsBindingKind kind;
+  uint32_t anchor; /* where the walk reaches it, when that is later than its position (an `if` binding: after the condition); else 0 */
   uint32_t depth; /* how many blocks, loops, arms and lambdas enclose it inside its function: 0 for parameters */
 } MsBinding;
 
