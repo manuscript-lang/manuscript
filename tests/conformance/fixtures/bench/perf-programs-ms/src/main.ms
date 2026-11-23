@@ -1,6 +1,5 @@
 import stdout, stdin, read_line, ReadStream from "@std/io/io.ms"
 import Instant, monotonic from "@std/time.ms"
-import StringBuilder from "@std/string_builder.ms"
 
 interface Counter:
     fn bump(by: Int) Int
@@ -60,14 +59,14 @@ fn area(s: Shape) Int:
 
 fn bench_string() Int:
     t := monotonic()
-    var sb = StringBuilder()
+    var sb = ""
     var i = 0
 
     while i < 50000:
-        sb.append("x")
+        sb += "x"
         i += 1
 
-    built := sb.build()
+    built := sb
     report("string_append_50k", 50000, t)
     return built.length()
 

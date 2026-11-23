@@ -1,14 +1,13 @@
 import bench, words from "./harness.ms"
-import StringBuilder from "@std/string_builder.ms"
 import parse, escape, unescape from "@std/data/html.ms"
 
 fn html_doc(count: Int) String:
-    var sb = StringBuilder()
-    sb.append("<div>")
+    var sb = ""
+    sb += "<div>"
     for i in 0..count:
-        sb.append(f"<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>")
-    sb.append("</div>")
-    return sb.build()
+        sb += f"<p class=\"row\" id=\"r{i}\">item <b>{i}</b> &amp; more</p>"
+    sb += "</div>"
+    return sb
 
 export fn bench_html() Void:
     html := html_doc(2000)
