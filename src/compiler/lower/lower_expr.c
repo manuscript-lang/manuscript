@@ -430,7 +430,11 @@ static MirValue float_binary(LowerFn *fn, const BinaryOps *ops, MirValue left, M
  * holds: a payload view is copied, a fresh `x` gives its payload up. */
 static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   const MirTy result_ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
-  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  /* A name this expression moves, or reads for the last time, gives its payload up as `if v := name:` does. */
+  const MsExpr *named = expr->u.bin.left;
+  const bool moving = named->kind == MS_E_NAME && (ms_facts_use(fn->facts, named->id) == MS_USE_MOVE ||
+                                                   (fn->facts->last != NULL && fn->facts->last[named->id] != 0));
+  const MirValue left = fn_expr(fn, named, moving ? LW_MOVE : LW_BORROW);
   if (left == MIR_NONE || result_ty == MIR_VOID) {
     return MIR_NONE;
   }
