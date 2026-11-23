@@ -217,8 +217,7 @@ export fn set_options[T](
 // Internal: the result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
 	taken := msrt_promise_take[Slot[V]](id)
-	slot := taken
-	if slot != null: return ok(slot.value)
+	if taken != null: return ok(taken.value)
 
 	return error(outcome(id, 4))
 
