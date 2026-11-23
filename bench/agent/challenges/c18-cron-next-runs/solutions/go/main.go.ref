@@ -79,7 +79,7 @@ func parseField(text string, lo, hi int) []bool {
 			}
 			step = s
 		}
-		a, b int
+		var a, b int
 		if body == "*" {
 			a, b = lo, hi
 		} else if v, ok := digits(body, 1, 2); ok {

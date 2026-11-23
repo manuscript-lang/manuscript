@@ -238,6 +238,27 @@ static void sf_scalar(MirBuilder *b, uint32_t slow_ext, bool step) {
 }
 
 static void sf_scalar_at(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, false); }
+
+/* `scalar_text(text, offset)`: the scalar at a byte offset inside the text, as a string. An ASCII byte is the inline
+ * string of its one byte, built here so its users compare words instead of calling the runtime. */
+static void sf_scalar_text(MirBuilder *b, uint32_t slow_ext) {
+  MirValue ps[2];
+  mir_b_params(b, ps, 2);
+  const MirBlock slow = mir_b_new_block(b), ascii = mir_b_new_block(b);
+  const MirValue b0 = sf_byte_of_text(b, ps[0], ps[1]);
+  ob_br_if(b, sf_const_cmp(b, MCC_LT, b0, 128), ascii, slow);
+  mir_b_switch_to(b, ascii);
+  const MirValue out = mir_b_emit(b, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_PTR);
+  const MirValue low[2] = {out, b0};
+  (void)mir_b_emit(b, MOP_Store, low, 2, (MirImm){0}, MIR_NONE);
+  const int64_t tagged = (int64_t)((UINT64_C(1) << SF_TAG_SHIFT) | (UINT64_C(1) << SF_LEN_SHIFT));
+  const MirValue high[2] = {ob_add(b, out, SF_WORD), mir_b_iconst(b, tagged)};
+  (void)mir_b_emit(b, MOP_Store, high, 2, (MirImm){0}, MIR_NONE);
+  mir_b_ret(b, mir_b_emit(b, MOP_Take, &out, 1, (MirImm){.tag = MI_TY, .a = MIR_STR}, MIR_STR));
+  mir_b_seal_block(b, slow);
+  mir_b_switch_to(b, slow);
+  sf_call_slow(b, slow_ext, ps, 2);
+}
 static void sf_scalar_step(MirBuilder *b, uint32_t slow_ext) { sf_scalar(b, slow_ext, true); }
 
 /* ---- starts_with, ends_with ---- */
@@ -504,6 +525,7 @@ static const SfKind sf_kinds[] = {
   {MR_STRING_COMPARE, "string_compare", 2, {MIR_STR, MIR_STR}, MIR_INT, sf_compare},
   {MR_STRING_SCALAR_STEP, "scalar_step", 2, {MIR_STR, MIR_INT}, MIR_INT, sf_scalar_step},
   {MR_STRBUILDER_APPEND, "strbuilder_append", 2, {MIR_PTR, MIR_STR}, MIR_VOID, sf_strbuilder_append},
+  {MR_STRING_SCALAR_TEXT, "scalar_text", 2, {MIR_STR, MIR_INT}, MIR_STR, sf_scalar_text},
   {MR_STRING_SCALAR_AT, "scalar_at", 4, {MIR_STR, MIR_INT, MIR_BOOL, MIR_INT}, MIR_INT, sf_scalar_at},
 };
 

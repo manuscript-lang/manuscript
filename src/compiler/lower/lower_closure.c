@@ -8,6 +8,7 @@
 #include "base/message.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/own/closers.h"
 #include "compiler/syntax/walk.h"
 
 /* ---- making the closure ---- */
@@ -49,6 +50,22 @@ static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
           !fn->closing_var[fn->nvars + capture->index]);
 }
 
+/* Whether an escaping closure owns the capture: it has something to drop, or a closer that closes it (a resource
+ * made of plain fields, such as a `Pipe`, drops nothing but still needs its close). */
+static bool capture_owned(LowerFn *fn, const LowerCapture *capture) {
+  if (mir_needs_drop(fn->cx->module, capture->ty)) {
+    return true;
+  }
+  if (capture->use == NULL) {
+    return false;
+  }
+  const MsTy concrete = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, capture->use->id), fn->subst.vars,
+                                    fn->subst.args, fn->subst.count);
+  MsCloser closer;
+  return ms_own_closer_of(fn->cx->program, concrete, &closer) && (closer.flags & MS_CLOSER_DROP) == 0 &&
+         ((closer.flags & MS_CLOSER_PARTS) == 0 || lower_parts_supported(fn->cx, concrete));
+}
+
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
 static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed,
                            bool escapes, bool *borrows, MirCaptureCloser *closers, uint32_t *nclosers) {
@@ -79,7 +96,7 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       captures[index].cell = true;
       captures[index].elem = captures[index].ty;
     }
-    if (mir_needs_drop(fn->cx->module, captures[index].ty)) {
+    if (capture_owned(fn, &captures[index])) {
       MirValue slot_value = MIR_NONE;
       if (!escapes) {
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
@@ -102,7 +119,7 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
     }
     out[index] = value;
     uint32_t silent = MIR_NONE;
-    if (escapes && captures[index].use != NULL && mir_needs_drop(fn->cx->module, captures[index].ty) &&
+    if (escapes && captures[index].use != NULL && capture_owned(fn, &captures[index]) &&
         fn_capture_closer(fn, ms_facts_type(fn->facts, captures[index].use->id), captures[index].ty, &silent)) {
       closers[(*nclosers)++] = (MirCaptureCloser){index, silent}; /* the closure closes what it owns when it is dropped */
     }

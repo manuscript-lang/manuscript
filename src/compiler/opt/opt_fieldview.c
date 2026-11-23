@@ -12,6 +12,7 @@
  * the chain would have put back. */
 
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/opt/opt_pass.h"
 #include "base/safe.h"
 
@@ -23,6 +24,7 @@ typedef struct Lend {
 
 typedef struct View {
   MirModule *m;
+  MirLayouts *layouts;
   MirFunc *f;
   MsArena *arena;
   MirValue param; /* the `var` pointer */
@@ -42,7 +44,7 @@ static bool is_view(const View *v, MirValue x) {
 /* The lend made on slot value `s`, or NULL. */
 static const Lend *lend_of(const View *v, MirValue s) {
   for (uint32_t i = 0; i < v->nlends; i++) {
-    if (v->f->blocks.ptr[v->lends[i].block].insts.ptr[v->lends[i].slot].res == s) {
+    if (v->f->blocks.ptr[v->lends[i].block].insts.ptr[v->lends[i].slot].res == s && v->lent[s]) {
       return &v->lends[i];
     }
   }
@@ -162,11 +164,22 @@ static void settle(View *v, MirValue first) {
   }
 }
 
+/* Whether a read of field `field` at its offset in the record equals a read of the field alone. The record lays its
+ * leaves out in one run, so a field of several leaves that starts off its own alignment (after a bool) has its leaves
+ * at other offsets than the field's own cell, and a whole-field load would read the wrong bytes. */
+static bool field_aligned(const View *v, uint32_t field) {
+  const MirTy ty = v->m->type_defs.ptr[v->def].fields[field].ty;
+  if (mir_leaves(v->layouts, ty).len <= 1) {
+    return true;
+  }
+  return mir_field_offset(v->layouts, v->def, field) % mir_type_mem(v->layouts, ty).align == 0;
+}
+
 /* Whether the use of a record value at argument `a` of `inst` is one the rewrite handles. */
 static bool use_ok(const View *v, const MirInst *inst, uint32_t a) {
   switch ((MirOp)inst->op) {
   case MOP_TypeGet:
-    return a == 0 && inst->imm.tag == MI_FIELD && inst->imm.a == v->def;
+    return a == 0 && inst->imm.tag == MI_FIELD && inst->imm.a == v->def && field_aligned(v, inst->imm.b);
   case MOP_TypeSet:
     return a == 0 && is_view(v, inst->res);
   case MOP_Put:
@@ -305,7 +318,7 @@ static void drop_params(View *v) {
 }
 
 /* Keeps the record of `var` parameter `index` in its pointer; false when some use is not handled. */
-static bool view_param(MirModule *m, MirFunc *f, uint32_t index) {
+static bool view_param(MirModule *m, MirLayouts *layouts, MirFunc *f, uint32_t index) {
   const MirValue param = f->blocks.ptr[0].params.ptr[index].value;
   MirValue first = MIR_NONE;
   MirTy record = MIR_NONE;
@@ -323,10 +336,18 @@ static bool view_param(MirModule *m, MirFunc *f, uint32_t index) {
   if (data->kind != MK_TYPE || m->type_defs.ptr[data->id].indirect || m->type_defs.ptr[data->id].native) {
     return false;
   }
+  /* A Map or Set field lives in a box, a word in the record: `ptr.field` offsets and loads do not see that. */
+  const MirTypeDef *def = &m->type_defs.ptr[data->id];
+  for (uint32_t k = 0; k < def->nfields; k++) {
+    if (mir_ty_is_map_or_set(m, def->fields[k].ty)) {
+      return false;
+    }
+  }
   MsArena arena = ms_arena_new();
   const uint32_t *uses = mir_use_counts(&arena, f);
   const size_t n = (size_t)f->values.len + 1;
   View v = {.m = m,
+            .layouts = layouts,
             .f = f,
             .arena = &arena,
             .param = param,
@@ -349,6 +370,14 @@ static bool view_param(MirModule *m, MirFunc *f, uint32_t index) {
     }
   }
   settle(&v, first);
+  /* A slot of the record's type that holds some other record (another `var` parameter's) is not a lend of this one. */
+  for (uint32_t i = 0; i < v.nlends; i++) {
+    const Lend *lend = &v.lends[i];
+    const MirBlockData *home = &f->blocks.ptr[lend->block];
+    if (!is_view(&v, home->insts.ptr[lend->put].args[1])) {
+      v.lent[home->insts.ptr[lend->slot].res] = false;
+    }
+  }
   const bool ok = uses_ok(&v, first);
   if (ok) {
     for (MirBlock b = 0; b < f->blocks.len; b++) {
@@ -362,13 +391,16 @@ static bool view_param(MirModule *m, MirFunc *f, uint32_t index) {
 
 bool opt_fieldview(MirModule *m) {
   bool changed = false;
+  MirLayouts layouts;
+  mir_layouts_init(&layouts, m);
   for (uint32_t fi = 0; fi < m->funcs.len; fi++) {
     MirFunc *f = &m->funcs.ptr[fi];
     for (uint32_t p = 0; f->blocks.len > 0 && p < f->blocks.ptr[0].params.len; p++) {
-      if (mir_value_ty(f, f->blocks.ptr[0].params.ptr[p].value) == MIR_PTR && view_param(m, f, p)) {
+      if (mir_value_ty(f, f->blocks.ptr[0].params.ptr[p].value) == MIR_PTR && view_param(m, &layouts, f, p)) {
         changed = true;
       }
     }
   }
+  mir_layouts_free(&layouts);
   return changed;
 }
