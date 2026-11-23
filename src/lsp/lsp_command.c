@@ -337,6 +337,8 @@ static int handle_message(Session *session, MsSpan body) {
   current_request = id;
   if (id != NULL && !is_exit && id_canceled(id)) {
     reply_error(id, ERROR_CANCELED, "request canceled");
+  } else if (ms_span_is_text(method->text, "initialize") && session->initialized) {
+    if (id != NULL) reply_error(id, ERROR_INVALID_REQUEST, "server already initialized");
   } else if (ms_span_is_text(method->text, "initialize")) {
     handle_initialize(session, id, params);
   } else if (ms_span_is_text(method->text, "shutdown")) {

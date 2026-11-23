@@ -150,6 +150,10 @@ static bool uw_cell_use_ok(UwCells *c, UwHash *full, const MirInst *inst, uint32
      * could receive it at this position only borrows it. */
     return inst->op == MOP_CallInd && k > 0 && uh_has(full, a) &&
        uw_closures_borrow(cx, inst->nargs, k);
+  case MOP_CallRt:
+    /* A native that edits the slot's value in place keeps it owned by the slot while it runs and when it faults. */
+    return k == 0 && inst->imm.tag == MI_EXT && cx->m->externs.ptr[inst->imm.a].role == MR_KEEPS_SLOT &&
+       uh_has(full, a);
   case MOP_ClosureNew:
     return uw_is_func(inst, MOP_ClosureNew, &g) && uh_has(full, a) &&
        uw_closure_borrows_capture(cx->m, &cx->safe, cx->parks, g, k);

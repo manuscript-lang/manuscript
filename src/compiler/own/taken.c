@@ -16,13 +16,21 @@ static bool names_param(const Scan *scan, const MsExpr *expr) {
   return ref != NULL && ref->kind == MS_REF_PARAM && ref->local == scan->local;
 }
 
+/* The parameter at the root of a field path: `param`, `param.a`, `param.a.b`. */
+static bool roots_at_param(const Scan *scan, const MsExpr *expr) {
+  while (expr != NULL && expr->kind == MS_E_MEMBER) {
+    expr = expr->u.member.left;
+  }
+  return names_param(scan, expr);
+}
+
 static void scan_payload(void *ctx, const MsExpr *expr);
 
 static void scan_expr(void *ctx, const MsExpr *expr) {
   Scan *scan = ctx;
   scan->found |= names_param(scan, expr) && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE;
   /* A field of the parameter handed to a consumer that takes it leaves the parameter: the caller's argument moves in. */
-  scan->found |= expr->kind == MS_E_MEMBER && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE && names_param(scan, expr->u.member.left);
+  scan->found |= expr->kind == MS_E_MEMBER && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE && roots_at_param(scan, expr->u.member.left);
   scan_payload(ctx, expr);
 }
 

@@ -12,7 +12,7 @@ ms_library(ms_sys runtime/sys
 
 ms_library(ms_io runtime/io
   SOURCES
-    ring.c reactor.c refused.c pool.c stdout.c stop.c ${MS_OS_DIR}/platform.c
+    ring.c edge.c reactor.c refused.c pool.c stdout.c stop.c ${MS_OS_DIR}/platform.c
   LINK ms_abi ms_base ms_sys uv)
 
 ms_library(ms_core runtime/core

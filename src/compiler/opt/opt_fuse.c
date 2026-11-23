@@ -536,11 +536,7 @@ static void apply(MirModule *m, MirFunc *f, MsArena *arena, const Ctx *c, const 
   const MirBlock cont = mir_new_block(f);
   MirBlockData *site = &f->blocks.ptr[fu->site];
   const uint32_t tail_from = fu->take_at + 3;
-  bool **marks = opt_dead_flags(arena, f);
-  mark_dead(f, c, fu, marks);
-  for (uint32_t i = fu->take_at; i < site->insts.len; i++) {
-    marks[fu->site][i] = true;
-  }
+  /* Made before the flags so the new block has its own. */
   {
     const uint32_t ntail = (uint32_t)site->insts.len - tail_from;
     MirInst *tail = MS_ARENA_NEW_ARRAY(arena, MirInst, (size_t)ntail + 1);
@@ -551,6 +547,11 @@ static void apply(MirModule *m, MirFunc *f, MsArena *arena, const Ctx *c, const 
     f->blocks.ptr[cont].term = site->term;
     f->blocks.ptr[cont].term_loc = site->term_loc;
     f->blocks.ptr[cont].cold = site->cold;
+  }
+  bool **marks = opt_dead_flags(arena, f);
+  mark_dead(f, c, fu, marks);
+  for (uint32_t i = fu->take_at; i < site->insts.len; i++) {
+    marks[fu->site][i] = true;
   }
   /* Where the builder's element goes. */
   const MirValue element = fu->element;

@@ -10,6 +10,7 @@
 #include "base/index.h"
 #include "runtime/core/index_fault.h"
 #include "runtime/core/list_support.h"
+#include "runtime/core/scratch.h"
 
 #define INLINE_COPY_BYTES 64
 
@@ -227,6 +228,10 @@ void msrt_list_prepend(MsList *v, const MsTypeDesc *d, const uint8_t *e) {
 
 /* `insert` of a borrowed element: the list stores its own copy, and the caller keeps `e`. */
 void msrt_list_insert_copy(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e) {
+  size_t position = 0;
+  if (!ms_resolve_insert_index(v->len, index, &position)) { /* before the copy: nothing to release when it faults */
+    msrt_list_index_fault(0, index, (int64_t)v->len);
+  }
   _Alignas(16) uint8_t scratch[INLINE_COPY_BYTES];
   const bool on_stack = d->size <= sizeof scratch;
   uint8_t *copy = on_stack ? scratch : ms_alloc(d->size);
@@ -254,8 +259,14 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
     msrt_list_index_fault(2, index, (int64_t)v->len);
   }
   uint8_t *slot = ms_list_slot(v, d, position);
-  ms_slot_drop(d, slot);
+  /* The new element goes in first: dropping the old one runs closes, which may fault, and the list must own the new
+   * element by then. */
+  MsrtScratch old;
+  msrt_scratch_open(&old, d->size);
+  __builtin_memcpy(old.ptr, slot, d->size);
   __builtin_memcpy(slot, e, d->size);
+  ms_slot_drop(d, old.ptr);
+  msrt_scratch_close(&old);
 }
 
 /* Moves the element at `index` into `out` and stores `e` (consumed) in its place; nothing is copied or

@@ -65,9 +65,10 @@ static void iface_own(EmitCx *cx, const MirInst *inst) {
   ms_strbuild_printf(cx->out, "  %%p%u = inttoptr i64 %%t%ua to ptr\n  %%k%u = load i64, ptr %%p%u\n", n, n, n, n);
   ms_strbuild_printf(cx->out, "  %%z%u = icmp eq i64 %%k%u, 0\n  %%m%u = select i1 %%z%u, i64 1, i64 %%k%u\n", n, n, n, n, n);
   ms_strbuild_printf(cx->out, "  %%v%u = call i64 @msrt_alloc(i64 %%m%u)\n", inst->res, n);
-  ms_strbuild_printf(cx->out, "  %%d%u = inttoptr i64 %%v%u to ptr\n  %%s%u = inttoptr i64 %%v%u to ptr\n", n, inst->res, n,
+  /* `%s<value>` names a slot's alloca, so the source pointer takes another prefix: the counter and the value numbers overlap. */
+  ms_strbuild_printf(cx->out, "  %%d%u = inttoptr i64 %%v%u to ptr\n  %%from%u = inttoptr i64 %%v%u to ptr\n", n, inst->res, n,
                      inst->args[0]);
-  ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %%d%u, ptr %%s%u, i64 %%k%u, i1 false)\n", n, n, n);
+  ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %%d%u, ptr %%from%u, i64 %%k%u, i1 false)\n", n, n, n);
   ms_strbuild_printf(cx->out, "  %%v%u.1 = add i64 %s, %u\n", inst->res, table, TAG_BOX);
 }
 

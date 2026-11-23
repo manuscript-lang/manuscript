@@ -159,6 +159,8 @@ typedef struct MsSched {
   uint8_t *zombie_stack; /* the finished task's stack, released once its successor runs */
   size_t zombie_stack_length;
   MsTask *zombie_task;   /* the finished task's record, freed the same way */
+  MsTask *spare_tasks;   /* finished records kept for the next task, chained through `argument`; their lists keep their buffers */
+  size_t spare_count;
 
   MsTokenList tokens;
   MsIndexList free_tokens;
@@ -191,6 +193,11 @@ MS_RETURNS_NONNULL static inline MsTask *ms_task_running(void) {
 }
 /* Frees a record, its segments and buffers; its stacks go to the pool. The slot is the caller's to clear. */
 void ms_task_destroy(MsSched *sched, MsTask *task) MS_NONNULL;
+/* Frees every record kept by ms_task_recycle. */
+void ms_task_spares_free(MsSched *sched) MS_NONNULL;
+/* Retires a finished record: keeps it (with the buffers of its cleanup, guard and equality lists) for the next task
+ * when there are few kept, else destroys it. */
+void ms_task_recycle(MsSched *sched, MsTask *task) MS_NONNULL;
 /* The record behind `handle`, or NULL. */
 MsTask *ms_task_lookup(const MsSched *sched, MsTaskHandle handle);
 /* Makes `task` the running task's header a remote stop raises its cancel flag on (see ms_sched_stop_remote), then
