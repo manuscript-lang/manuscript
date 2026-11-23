@@ -35,7 +35,20 @@ void ms_alloc_install(const MsAllocator *allocator) {
   installed = allocator;
 }
 
+static _Thread_local int64_t counted_allocations, counted_bytes;
+
+void ms_alloc_counts(int64_t *allocations, int64_t *bytes) {
+  *allocations = counted_allocations;
+  *bytes = counted_bytes;
+}
+
+static void count(size_t size) {
+  counted_allocations++;
+  counted_bytes += (int64_t)size;
+}
+
 void *ms_alloc(size_t size) {
+  count(size);
   return checked(current()->allocate(size));
 }
 
@@ -46,6 +59,7 @@ void *ms_alloc_zeroed(size_t size) {
 }
 
 void *ms_realloc(void *block, size_t size) {
+  count(size);
   return checked(block == NULL ? current()->allocate(size) : current()->reallocate(block, size));
 }
 
