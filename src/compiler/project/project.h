@@ -142,6 +142,10 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
 /* Whether a directory of this name is left out of discovery and search: hidden, `vendor` or `node_modules`. */
 bool ms_project_skips_name(MsSpan name);
 
+/* For a directory with no `.ms` files of its own: text starting with "; " that names the projects (directories with
+ * their own ms.toml) below it, or empty when there are none. */
+MsSpan ms_project_nested_hint(MsArena *arena, MsSpan dir);
+
 MS_NODISCARD bool ms_project_format_files(MsArena *arena, MsSpan target, MsSpanList *paths,
                                           MsProjectError *error);
 
