@@ -34,3 +34,12 @@ const char *ms_native_repr_find(MsSpan type) {
   }
   return NULL;
 }
+
+const char *ms_native_op_find(MsSpan name) {
+  for (const MsNativeOp *row = ms_native_ops; row->name != NULL; row++) {
+    if (ms_span_is_text(name, row->name)) {
+      return row->op;
+    }
+  }
+  return NULL;
+}
