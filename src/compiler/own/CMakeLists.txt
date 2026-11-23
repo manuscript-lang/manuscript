@@ -1,3 +1,3 @@
-add_library(ms_own STATIC class.c own.c unused.c changes.c borrows.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c bind.c live_expr.c live_set.c live_stmt.c places.c)
+add_library(ms_own STATIC class.c own.c unused.c changes.c borrows.c uses.c escapes.c moves.c closers.c taken.c result_borrows.c bind.c live_expr.c live_set.c live_stmt.c places.c overlaps.c expr_text.c)
 ms_target_defaults(ms_own)
 target_link_libraries(ms_own PUBLIC ms_base ms_syntax ms_project ms_check ms_native_sigs)

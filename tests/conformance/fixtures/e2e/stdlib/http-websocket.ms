@@ -280,6 +280,7 @@ test "HTTP requests reject an empty method":
 		error(cause):
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
 
+// The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep instead of waiting it out.
 fn silent(var exchange: HttpExchange) Void!:
 	var _socket = (
 		http_result(
@@ -294,13 +295,25 @@ fn silent(var exchange: HttpExchange) Void!:
 	void sleep(30.seconds()).wait()
 
 test "a WebSocket read cancelled by its timeout leaves the socket closable":
-	server := serve(address: "127.0.0.1:0", handler: silent) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: silent,
+			options: HttpServerOptions(grace: 0.seconds()),
+		) | expect_ok?
+	)
 	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 	expect_true(within(socket.input, 50.milliseconds()).is_error())?
 	socket.close() | expect_ok?
 
 test "a promise cancelled while it owns a WebSocket closes it without ending the program":
-	server := serve(address: "127.0.0.1:0", handler: silent) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: silent,
+			options: HttpServerOptions(grace: 0.seconds()),
+		) | expect_ok?
+	)
 	var socket = web_socket(f"ws://{server.address()}/") | expect_ok?
 
 	// The closure takes the socket; its close at the end of the cancelled task parks,

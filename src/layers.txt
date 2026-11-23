@@ -14,4 +14,4 @@ compiler/opt: base abi compiler/check compiler/mir
 compiler/emit: base abi compiler/check compiler/mir compiler/opt
 compiler/link: base abi compiler/mir compiler/emit
 tooling: base abi compiler
-driver: base abi compiler tooling runtime/std
+cli: base abi compiler tooling runtime/std
