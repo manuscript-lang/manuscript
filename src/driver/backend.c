@@ -15,8 +15,8 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
   if (!mir_pipeline_prepare(module, &pipeline, why)) {
     return false;
   }
-  const MirOptLevel level = options->optimize ? MIR_OPT_SPEED : MIR_OPT_NONE;
-  if (!mir_optimize(module, level, options->verify, why) || !mir_pipeline_finish(module, &pipeline, glue, why)) {
+  if ((options->optimize && !mir_optimize(module, options->verify, why)) ||
+      !mir_pipeline_finish(module, &pipeline, glue, why)) {
     return false;
   }
   mir_pipeline_backend(module, glue, data);

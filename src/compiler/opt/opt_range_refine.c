@@ -110,12 +110,12 @@ static bool rg_env_has_rel(const RgEnv *e, const RgRel *r) {
 RgEnv rg_env_clone(MsArena *arena, const RgEnv *src) {
   RgEnv e = {.arena = arena};
   if (src->nent != 0) {
-    e.ent = RG_ZNEW(arena, RgEnt, src->nent);
+    e.ent = RG_NEW(arena, RgEnt, src->nent);
     __builtin_memcpy(e.ent, src->ent, (size_t)src->nent * sizeof(RgEnt));
     e.nent = e.cent = src->nent;
   }
   if (src->nrel != 0) {
-    e.rel = RG_ZNEW(arena, RgRel, src->nrel);
+    e.rel = RG_NEW(arena, RgRel, src->nrel);
     __builtin_memcpy(e.rel, src->rel, (size_t)src->nrel * sizeof(RgRel));
     e.nrel = e.crel = src->nrel;
   }
@@ -229,7 +229,7 @@ static void rg_prune(RgFa *fa, RgEnv *env, uint32_t bi) {
     }
   }
   env->nent = kept;
-  uint32_t *starts = RG_ZNEW(rg_tmp(fa), uint32_t, (size_t)env->nrel + 1);
+  uint32_t *starts = RG_NEW(rg_tmp(fa), uint32_t, (size_t)env->nrel + 1);
   uint32_t nstarts = 0;
   for (uint32_t i = 0; i < env->nrel; i++) {
     if (rg_prune_reach(fa, env->rel[i].b, pos)) {

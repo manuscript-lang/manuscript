@@ -15,6 +15,9 @@ static inline void *rg_zalloc(MsArena *a, size_t n, size_t elem) {
 }
 #define RG_ZNEW(a, T, n) ((T *)rg_zalloc((a), (n), sizeof(T)))
 
+/* Storage for `n` elements the caller fills before reading. */
+#define RG_NEW(a, T, n) ((T *)ms_arena_alloc((a), (n) * sizeof(T), 16))
+
 /* ---- intervals ---- */
 
 typedef struct RgItv {
@@ -144,7 +147,7 @@ typedef struct RgFa {
 /* The scratch arena. Nothing frees it while a query runs: its owner calls `rg_tmp_reset` between
  * queries, when no environment made in it is still in use. */
 static inline MsArena *rg_tmp(RgFa *fa) { return &fa->tmp; }
-static inline void rg_tmp_reset(RgFa *fa) { ms_arena_free(&fa->tmp); }
+static inline void rg_tmp_reset(RgFa *fa) { ms_arena_reset(&fa->tmp); }
 
 const MirInst *rg_def_inst(const RgFa *fa, MirValue v);
 bool rg_constant(const RgFa *fa, MirValue v, int64_t *out);
