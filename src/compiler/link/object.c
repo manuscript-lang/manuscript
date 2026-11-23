@@ -86,7 +86,12 @@ static void wrap_assembly(MsSpan triple, MsSpan text, MsStrBuild *ir) {
     for (size_t at = start; at < end; at++) {
       uint8_t byte = text.ptr[at];
       if (byte >= 0x20 && byte < 0x7f && byte != '"' && byte != '\\') {
-        ms_strbuild_append_byte(ir, byte);
+        const size_t run = at;
+        while (at + 1 < end && text.ptr[at + 1] >= 0x20 && text.ptr[at + 1] < 0x7f && text.ptr[at + 1] != '"' &&
+               text.ptr[at + 1] != '\\') {
+          at++;
+        }
+        ms_strbuild_append(ir, ms_span_of(text.ptr + run, at + 1 - run));
         continue;
       }
       ms_strbuild_append_byte(ir, '\\');
