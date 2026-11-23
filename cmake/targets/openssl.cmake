@@ -4,8 +4,8 @@
 # and make as a pair (Git's perl lacks modules Configure loads, and records paths only MSYS2 make resolves).
 include(ExternalProject)
 find_program(MS_PERL perl REQUIRED)
-set(OPENSSL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openssl)
-set(OPENSSL_BUILD ${CMAKE_CURRENT_BINARY_DIR}/openssl_build)
+set(OPENSSL_DIR ${MS_TP}/openssl)
+set(OPENSSL_BUILD ${MS_TP_BIN}/openssl_build)
 set(OPENSSL_OPTIONS no-shared no-tests no-apps no-docs no-module no-engine no-dso no-legacy no-comp no-ssl3
   no-weak-ssl-ciphers no-autoload-config no-ui-console no-deprecated)
 # make runs one job unless told otherwise, and OpenSSL's libraries are about a thousand objects: serial, they were
@@ -42,6 +42,7 @@ set(OPENSSL_SSL ${OPENSSL_BUILD}/${OPENSSL_LIB_PREFIX}ssl${OPENSSL_LIB_SUFFIX})
 file(MAKE_DIRECTORY ${OPENSSL_BUILD}/include)
 ExternalProject_Add(openssl_build
   SOURCE_DIR ${OPENSSL_DIR}
+  PREFIX ${MS_TP_BIN}/openssl_build-prefix
   BINARY_DIR ${OPENSSL_BUILD}
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env CC=${OPENSSL_CC} ${OPENSSL_TOOLS}
     ${MS_PERL} ${OPENSSL_DIR}/Configure ${OPENSSL_TARGET} ${OPENSSL_OPTIONS} -fPIC ${MS_LIBC_FLAGS} ${MS_ATOMIC_FLAGS}
