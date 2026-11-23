@@ -31,12 +31,18 @@ static const MsMethodEntry *resolve_operation(Lower *cx, MsTy receiver, MsName n
 }
 
 /* Instantiates `entry` for `receiver`: its variables are bound by matching the receiver form. */
-static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy receiver) {
+static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy receiver, const MsTy *args, uint32_t nargs) {
   MsTy bound[16] = {0};
   const size_t count = entry->variables.len;
   if (count > 16 || !ms_check_unify(&cx->program->types, entry->receiver, receiver, entry->variables.ptr, count, bound)) {
     (void)lower_fail(cx, "an interface method does not fit its receiver type");
     return MIR_NONE;
+  }
+  /* The method's own variables (`pick[K]`) are read off the arguments of the call. */
+  const size_t nparams = ms_ty_param_count(&cx->program->types, entry->ty);
+  const MsTyParam *params = ms_ty_params(&cx->program->types, entry->ty);
+  for (uint32_t at = 0; at < nargs && at < nparams; at++) {
+    (void)ms_check_unify(&cx->program->types, params[at].ty, args[at], entry->variables.ptr, count, bound);
   }
   const LowerTarget target = {entry->module, entry->source->id, &entry->source->func, entry->name, entry->ty,
                               {NULL, 0}, entry->variables.ptr, (uint32_t)count, MS_TY_NONE, 0, false};
@@ -47,9 +53,11 @@ static uint32_t method_function(Lower *cx, const MsMethodEntry *entry, MsTy rece
   return lower_instance(cx, &with_receiver, bound, (uint32_t)count, NULL);
 }
 
-uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name) {
+uint32_t lower_operation_method(Lower *cx, MsTy receiver, MsName name, const MsTy *args, uint32_t nargs) {
   const MsMethodEntry *entry = resolve_operation(cx, receiver, name);
-  return entry != NULL && !entry->source->func.external && entry->source->func.body.len > 0 ? method_function(cx, entry, receiver) : MIR_NONE;
+  return entry != NULL && !entry->source->func.external && entry->source->func.body.len > 0
+             ? method_function(cx, entry, receiver, args, nargs)
+             : MIR_NONE;
 }
 
 uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
@@ -57,7 +65,7 @@ uint32_t lower_named_method(Lower *cx, MsTy receiver, const char *operation) {
   if (!ms_names_find(cx->program->names, ms_span_of_text(operation), &name)) {
     return MIR_NONE;
   }
-  return lower_operation_method(cx, receiver, name);
+  return lower_operation_method(cx, receiver, name, NULL, 0);
 }
 
 uint32_t lower_own_method(Lower *cx, MsTy receiver, MsProperty property) {
@@ -215,7 +223,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       }
       continue;
     }
-    methods[index] = entry != NULL ? method_function(cx, entry, receiver) : MIR_NONE;
+    methods[index] = entry != NULL ? method_function(cx, entry, receiver, NULL, 0) : MIR_NONE;
     if (methods[index] != MIR_NONE) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append(&text, ms_names_span(&cx->module->names, cx->module->funcs.ptr[methods[index]].name));

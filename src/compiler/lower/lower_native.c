@@ -739,7 +739,7 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);
   const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
-  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name);
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, NULL, 0);
   if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].ret == ret) { /* a method of another result type is not the operation */
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);

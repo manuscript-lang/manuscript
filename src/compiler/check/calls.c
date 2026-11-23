@@ -475,12 +475,17 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound, const MsTy *hint) {
   const MsTyTable *types = &body->program->types;
-  for (size_t index = 0; index < matched->count; index++) {
+  /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
+  for (size_t round = 0; round < 2 * matched->count; round++) {
+    const size_t index = round % matched->count;
     if (matched->slot[index] < 0) {
       continue;
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     const MsArg *arg = &call->u.call.args.ptr[matched->slot[index]];
+    if ((arg->value->kind == MS_E_LAMBDA) != (round >= matched->count)) {
+      continue;
+    }
     MsStrBuild context = ms_strbuild_new();
     if (target->name.len != 0) {
       ms_strbuild_append_text(&context, "argument '");
