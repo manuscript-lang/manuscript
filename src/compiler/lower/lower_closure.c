@@ -351,6 +351,10 @@ uint32_t lower_forwarding_closure(Lower *cx, MirTy fn_ty, uint32_t callee) {
   mir_b_params(&b, values, reserved.nparams);
   MirValue result = mir_b_call(&b, callee, values + 1, reserved.nparams - 1);
   if (result != MIR_NONE && cx->module->funcs.ptr[callee].ret_borrowed && mir_needs_drop(cx->module, reserved.ret)) {
+    if (!lower_hidden_copies_allowed()) {
+      (void)lower_fail(cx, "a function value returns what its function borrows: the result type must say so, or the function must return an owner");
+      return MIR_NONE;
+    }
     result = mir_b_emit(&b, MOP_Clone, &result, 1, (MirImm){0}, reserved.ret); /* the closure's result is its caller's to own */
   }
   mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
@@ -399,7 +403,7 @@ static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee
   }
   MirValue result = mir_b_call(&fn.b, callee, args, reserved.nparams - 1);
   if (result != MIR_NONE && cx->module->funcs.ptr[callee].ret_borrowed && mir_needs_drop(cx->module, reserved.ret)) {
-    result = mir_b_emit(&fn.b, MOP_Clone, &result, 1, (MirImm){0}, reserved.ret); /* the closure's result is its caller's to own */
+    result = fn_implicit_clone(&fn, result, false); /* the closure's result is its caller's to own */
   }
   fn_scope_unwind(&fn, 0);
   mir_b_ret(&fn.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
