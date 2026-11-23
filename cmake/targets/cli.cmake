@@ -26,6 +26,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
 
+# A debugger stopped in a Debug build's function finds it by name and shows its parameters and the caller's line.
+add_test(NAME debug_info COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/debug-info
+  -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/DebugInfoCheck.cmake)
+
 # Fixtures that own resources, fault, recurse deeply or start threads leave nothing allocated at exit with the process-exit
 # frees kept (cmake/LeakCheck.cmake); a test that fails here found a leak, not a stale baseline.
 set(MS_LEAK_FIXTURES accept/bind-collection-resource-read-in-place accept/interface-box-freed-with-resource
