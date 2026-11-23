@@ -91,6 +91,55 @@ void mirlo_str_eq_lits(LowerCx *cx, MirFunc *func) {
   }
 }
 
+/* ---- string drops ---- */
+
+/* A string owns heap memory only when its tag is zero, and most strings built by a program are inline or
+ * borrowed, so `drop s` becomes `drop.if owns s`: the runtime is called only for the strings that need it. The
+ * tag word is read through one slot made in the entry block, which the back end keeps in registers. */
+void mirlo_str_drops(LowerCx *cx, MirFunc *func) {
+  MirValue slot = MIR_NONE;
+  for (size_t bi = 0; bi < func->blocks.len; bi++) {
+    MirInstList out = {0};
+    bool changed = false;
+    for (size_t ii = 0; ii < func->blocks.ptr[bi].insts.len; ii++) {
+      const MirInst held = func->blocks.ptr[bi].insts.ptr[ii];
+      if (held.op != MOP_Drop || mir_value_ty(func, held.args[0]) != MIR_STR) {
+        mir_inst_list_push(&out, held);
+        continue;
+      }
+      changed = true;
+      if (slot == MIR_NONE) {
+        slot = mir_new_value(func, MIR_PTR);
+      }
+      const MirValue value = held.args[0];
+      const MirValue stored[2] = {slot, value};
+      (void)add(cx, func, &out, MOP_Store, stored, 2, mir_imm_none(), MIR_NONE, held.loc);
+      const MirValue eight = add(cx, func, &out, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 8}, MIR_INT, held.loc);
+      const MirValue pair[2] = {slot, eight};
+      const MirValue tag_at = add(cx, func, &out, MOP_PtrAdd, pair, 2, mir_imm_none(), MIR_PTR, held.loc);
+      const MirValue word = add(cx, func, &out, MOP_Load, &tag_at, 1, (MirImm){.tag = MI_TY, .a = MIR_INT}, MIR_INT, held.loc);
+      const MirValue shift = add(cx, func, &out, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 62}, MIR_INT, held.loc);
+      const MirValue shifted_args[2] = {word, shift};
+      const MirValue tag = add(cx, func, &out, MOP_Ushr, shifted_args, 2, mir_imm_none(), MIR_INT, held.loc);
+      const MirValue zero = add(cx, func, &out, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_INT, held.loc);
+      const MirValue compared[2] = {tag, zero};
+      const MirValue owns = add(cx, func, &out, MOP_ICmp, compared, 2, mir_imm_cc(MCC_EQ), MIR_BOOL, held.loc);
+      const MirValue conditional[2] = {owns, value};
+      (void)add(cx, func, &out, MOP_DropIf, conditional, 2, mir_imm_none(), MIR_NONE, held.loc);
+    }
+    if (changed) {
+      mir_block_set_insts(&func->blocks.ptr[bi], &out);
+    } else {
+      mir_inst_list_free(&out);
+    }
+  }
+  if (slot != MIR_NONE) {
+    const MirInst made = mir_inst(MOP_Slot, (MirImm){.tag = MI_TY, .a = MIR_STR}, slot, func->loc,
+                                  mir_args_copy(cx->module, NULL, 0), 0);
+    mir_block_insert(&func->blocks.ptr[0], mir_entry_insert_at(func), &made);
+  }
+}
+
 /* ---- block copies ---- */
 
 /* A clone of bytes, or of a list whose elements own nothing, is one block copy by the runtime. A list's copy
