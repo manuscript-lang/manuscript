@@ -189,9 +189,28 @@ static const char *early_type(MsSpan data) {
   return NULL;
 }
 
+/* Whether any signature, tag or box can match data that starts with `first`. The tables above are tried one by one, so
+ * a body of plain text or JSON (the usual answer) would otherwise run them all. This lists the first byte of every
+ * entry: the HTML tags and the XML prolog (`<` after white space), "%PDF-" and "%!PS-Adobe-", the byte order marks
+ * (0xfe, 0xff, 0xef), and the first bytes of SIGNATURES and AFTER_MP4. An MP4 box and an embedded font start with
+ * any byte (the size) or a zero, and are checked apart. */
+static bool may_match(uint8_t first) {
+  switch (first) {
+    case '\t': case '\n': case '\f': case '\r': case ' ': case '<': case '%': case 0xfe: case 0xff: case 0xef:
+    case 'G': case 0x89: case 'B': case 'R': case 0x00: case 'F': case 'I': case 'O': case 'M': case 0x1a:
+    case 0x1f: case 'P': case 't': case 'w':
+      return true;
+    default:
+      return false;
+  }
+}
+
 const char *ms_http_detect_content_type(MsSpan data) {
   if (data.len > SNIFF_LIMIT) {
     data.len = SNIFF_LIMIT;
+  }
+  if (data.len > 0 && !may_match(data.ptr[0]) && !is_mp4(data)) {
+    return is_text(data) ? "text/plain; charset=utf-8" : "application/octet-stream";
   }
   const char *type = early_type(data);
   if (type == NULL) {

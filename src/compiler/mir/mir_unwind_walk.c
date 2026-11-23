@@ -22,8 +22,19 @@ static bool uw_parks_at(const UwCx *cx, const MirInst *inst) {
   }
 }
 
+/* Whether `inst` discards or cancels cleanup entries: stack bookkeeping that neither parks nor
+ * faults, and that a window must not open at, since the discard would pop the window's own
+ * registrations before the instructions it covers. */
+static bool uw_is_bookkeeping(const UwCx *cx, const MirInst *inst) {
+  return inst->op == MOP_CallRt && inst->imm.tag == MI_EXT &&
+      (inst->imm.a == cx->discard || inst->imm.a == cx->cancel);
+}
+
 /* Whether `inst` can reach a cancellation point or fault. */
 bool uw_exits_at(const UwCx *cx, const MirInst *inst) {
+  if (uw_is_bookkeeping(cx, inst)) {
+    return false;
+  }
   if (uw_parks_at(cx, inst)) {
     return true;
   }
@@ -217,7 +228,6 @@ typedef struct UwBlk {
   OwnerSet live;
   bool has_reach;
   OwnerSet reach;
-  bool opened_by_discard;
   uint32_t open;
   UwHash holed;
   bool unnamed;
@@ -343,7 +353,7 @@ static void uw_step_push(UwBlk *s, UwWindow *win, uint32_t at, const OwnerSet *t
 }
 
 /* Plans the registration around instruction `k`: extends the window that is open, or starts one. */
-static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k, bool discards) {
+static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k) {
   MsArena *a = uw_an_arena(s);
   OwnerSet under = s->live;
   if (s->open > 0) {
@@ -371,7 +381,7 @@ static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k, bool discard
   UwWindow *last = s->w->nplans[s->bi] ? &s->w->plans[s->bi][s->w->nplans[s->bi] - 1] : NULL;
   if (s->has_reach && last != NULL && owner_equal(&s->reach, &drops)) {
     last->last = k;
-  } else if (s->has_reach && last != NULL && !s->opened_by_discard) {
+  } else if (s->has_reach && last != NULL) {
     /* The live owners changed: the window follows them, so a value that died is discarded and
      * one born since is registered, and the owners that stay are not registered again. */
     last->last = k;
@@ -379,7 +389,6 @@ static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k, bool discard
     s->reach = drops;
   } else {
     s->has_reach = false;
-    s->opened_by_discard = discards;
     if (!owner_is_empty(&drops)) {
       s->has_reach = true;
       s->reach = drops;
@@ -424,9 +433,7 @@ static void uw_an_births(UwBlk *s, const MirInst *inst) {
 
 static void uw_an_inst(UwBlk *s, uint32_t k) {
   const MirInst *inst = &s->blk->insts.ptr[k];
-  const bool discards = inst->op == MOP_CallRt && inst->imm.tag == MI_EXT &&
-             inst->imm.a == s->fa->cx->discard;
-  if (discards) {
+  if (inst->op == MOP_CallRt && inst->imm.tag == MI_EXT && inst->imm.a == s->fa->cx->discard) {
     s->has_reach = false; /* the discard may pop entries the window pushed */
   }
   uw_an_consume(s, inst);
@@ -438,7 +445,7 @@ static void uw_an_inst(UwBlk *s, uint32_t k) {
       uw_event_push(s, k, &target);
     }
   }
-  uw_an_window(s, inst, k, discards);
+  uw_an_window(s, inst, k);
   const uint32_t before = s->open;
   s->open = uw_hole_step(s->open, inst, uw_next_inst(s->blk, k), s->calls);
   if (s->open > before) {

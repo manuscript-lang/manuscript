@@ -17,7 +17,7 @@ static const MsAllocator *installed = NULL;
 /* Whether any hook, observer or live-byte tracking is on. Without one the allocation functions are the counters and
  * the mimalloc call: no indirect call, no atomic add of a zero delta. */
 #ifdef MS_STATS
-static _Atomic bool hooked = true; /* the stats runtime tracks every block from the first allocation */
+static _Atomic bool hooked = true; /* the counting runtime tracks live blocks from the first allocation */
 #else
 static _Atomic bool hooked = false;
 #endif

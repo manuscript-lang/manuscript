@@ -26,10 +26,13 @@
 
 typedef void (*MsCleanupFn)(uint8_t *); /* the argument is the cleanup's own state, as generated code passes it */
 
-/* One registered action. `function` is NULL for an entry removed without disturbing newer ones. */
+/* One registered action. `function` is NULL for an entry removed without disturbing newer ones. `serial` tells the
+ * entry apart from a later one at the same height: a handle carries it, so a handle whose entry is gone does
+ * nothing, even when another entry has taken its place. */
 typedef struct MsCleanup {
   MsCleanupFn function;
   uint8_t *argument;
+  uint32_t serial;
 } MsCleanup;
 
 MS_LIST_DEFINE(MsCleanupList, ms_cleanup_list, MsCleanup)
@@ -42,14 +45,13 @@ typedef struct MsTaskHdr {
   _Atomic uint16_t stop_shield; /* depth of the task's stop shields (SIGINT and SIGTERM held back) */
   _Atomic uint32_t shield;      /* depth of the task's cancellation shields */
   _Atomic uint8_t unwinding;    /* a park delivered a cancel by returning: frames take their cancel exit */
-  MsCleanupList cleanups;       /* the cleanup stack, pushed and discarded inline (pointer at offset 24) */
+  MsCleanupList cleanups;       /* the cleanup stack (pointer at offset 24); only the runtime reads its entries */
 } MsTaskHdr;
 
 _Static_assert(offsetof(MsTaskHdr, cancel) == 8, "ISOLATE_HDR_CANCEL");
 _Static_assert(offsetof(MsTaskHdr, guarded) == 9, "ISOLATE_HDR_GUARDED");
 _Static_assert(offsetof(MsTaskHdr, unwinding) == 16, "ISOLATE_HDR_UNWINDING");
 _Static_assert(offsetof(MsTaskHdr, cleanups) == 24, "the cleanup stack sits at offset 24");
-_Static_assert(sizeof(MsCleanup) == 2 * sizeof(uintptr_t), "a cleanup is two words");
 
 /* State captured when a guard opens, restored when a fault or cancel leaves it. */
 typedef struct MsGuardFrame {
@@ -80,12 +82,15 @@ typedef struct MsUnwind {
   uint8_t task_cancel;   /* a cancel aimed at this task; 0 when none */
   struct MsFaultFlight *flight; /* the fault being reported on this task, in its raiser's frame, or NULL */
   bool unwind_drops;     /* a guarded task is being left: drop cleanups act now */
+  uint32_t cleanup_serial; /* the serial of the latest cleanup entry pushed */
   MsEqPairList eq_pairs; /* the object pairs an equality comparison of this task is inside (cycle guard) */
 } MsUnwind;
 
 /* ---- the cleanup stack ---- */
 
-/* Pushes an action; the result is its handle (the new height, counted from 1). */
+/* Pushes an action; the result is its handle: the new height, counted from 1, in the low 32 bits and the entry's
+ * serial above them. Every operation on a handle ignores one whose entry is gone (cancelled off the top, discarded
+ * by an older handle), so a handle used twice cannot reach the entry that took its height. */
 size_t ms_cleanup_push(MsCleanupFn function, uint8_t *argument) MS_NONNULL_ARGS(1);
 /* Height of the cleanup stack, to pass to ms_cleanup_unwind_to or ms_cleanup_truncate. */
 size_t ms_cleanup_base(void);

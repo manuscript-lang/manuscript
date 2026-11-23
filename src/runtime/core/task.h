@@ -37,6 +37,9 @@ typedef void (*MsTaskEntry)(void *);
 /* Request bit: keep the descriptor registered between waits. Only for a descriptor its owner drains before every
  * wait and keeps open for good. */
 #define MS_WAIT_KEEP 32u
+/* Request bit: the caller's system call on `fd` just found nothing more to take, so wait for the poller's next edge
+ * of the registration the caller made (ms_io_edge_reset) instead of asking whether the descriptor is ready now. */
+#define MS_WAIT_EDGE 256u
 /* Internal: marks a descriptor waiter that is a promise, not a task. */
 #define MS_WAIT_PROMISE 128u
 
