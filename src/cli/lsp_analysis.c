@@ -12,6 +12,7 @@
 #include "cli/findings.h"
 #include "cli/lsp_internal.h"
 #include "compiler/syntax/diag.h"
+#include "tooling/lint.h"
 
 LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri) {
   for (size_t i = 0; i < docs->len; i++) {
@@ -81,12 +82,12 @@ void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOver
   }
   out->overlay = files;
   const MsOverlay overlay = {files, total};
-  const MsLoadOptions options = {.overlay = &overlay};
+  const MsLoadOptions options = {.overlay = &overlay, .recover = true};
   (void)ms_checked_input_load_with(&out->arena, &out->checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
   if (!out->checked.checked) return;
   const MsCheckProgram *program = &out->checked.program;
   out->resolved = true;
-  out->index = ms_occurrence_index(&out->arena, &out->checked.program);
+  out->index = ms_occurrence_index_with_types(&out->arena, &out->checked.program, &out->written);
   out->paths = MS_ARENA_NEW_ARRAY(&out->arena, MsSpan, program->user_modules == 0 ? 1 : program->user_modules);
   for (uint32_t m = 0; m < program->user_modules; m++) {
     const MsSpan name = ms_names_span(program->names, program->modules.ptr[m].file);
@@ -152,6 +153,31 @@ static MsString diagnostics_of(const LspDoc *doc, const LspDocList *docs) {
     if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
     append_diagnostic(&out, &first, source, finding);
   }
+  /* The advisories: the lint rules over the checked program, or the lexical ones alone when it did not load. */
+  MsLintFindingList lint = {0};
+  if (analysis.resolved) {
+    ms_lint_modules(&analysis.arena, &analysis.checked.program, &lint);
+  } else {
+    ms_lint_source(&analysis.arena, ms_string_span(&doc->path), source, &lint);
+  }
+  for (size_t i = 0; i < lint.len; i++) {
+    const MsLintFinding *item = &lint.ptr[i];
+    const MsSpan file = lsp_absolute_file(&analysis.arena, analysis.checked.graph.source_root, item->file);
+    if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
+    const LspRange range = lsp_diagnostic_range(source, item->pos.offset);
+    if (!first) ms_strbuild_append_byte(&out, ',');
+    first = false;
+    ms_strbuild_printf(&out,
+                       "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},"
+                       "\"severity\":%d,\"source\":\"manuscript-lint\",\"code\":",
+                       range.start.line, range.start.character, range.end.line, range.end.character,
+                       item->severity == MS_LINT_ERROR ? 1 : 2);
+    lsp_json_string(&out, ms_span_of_text(item->code));
+    ms_strbuild_append_text(&out, ",\"message\":");
+    lsp_json_string(&out, item->message);
+    ms_strbuild_append_byte(&out, '}');
+  }
+  ms_lint_finding_list_free(&lint);
   lsp_analysis_release(&analysis);
   return ms_strbuild_finish(&out);
 }

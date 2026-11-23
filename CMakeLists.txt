@@ -1,4 +1,4 @@
-# Root build of Manuscript (see src/README.md). All the code lives under src/.
+# Root build of Manuscript (see src/README.md). All the code lives under src/, all the build rules under cmake/.
 cmake_minimum_required(VERSION 3.25)
 project(manuscript LANGUAGES C)
 
@@ -8,7 +8,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include(MsWarnings)
+include(MsTarget)
 include(MsSysroot)
 
 # Program links use lld without libgcc or compiler-rt, so no archive may call the out-of-line atomic helpers
@@ -25,19 +25,19 @@ if(MS_CCACHE)
 endif()
 
 enable_testing()
-add_subdirectory(src/third_party)
-add_subdirectory(src/base)
-add_subdirectory(src/abi)
-add_subdirectory(src/runtime)
+# Every target is defined in cmake/targets/, one file per layer; src/ holds only sources (vendored libraries keep
+# their own CMakeLists.txt there).
+foreach(layer third_party base abi runtime)
+  include(targets/${layer})
+endforeach()
 if(MS_LIBC STREQUAL "musl")
   return() # the inner build of the `--static` runtime holds the runtime archives only
 endif()
-add_subdirectory(src/compiler)
-add_subdirectory(src/tooling)
-add_subdirectory(src/cli)
-add_subdirectory(src/lint)
+foreach(layer compiler tooling cli lint)
+  include(targets/${layer})
+endforeach()
 
-# `cmake --build <dir> --target conform-c` replays the whole conformance corpus against ms-c and prints the progress
+# `cmake --build <dir> --target conform-c` replays the whole conformance corpus against ms and prints the progress
 # numbers; `conform-commands` replays only the command fixtures (tests/conformance/commands), for the platforms where
 # the corpus is too slow. MS_ORACLE_DIR holds the oracle `ms-conform` built from 660429d4, outside the repository;
 # MS_CONFORM_EXTRA adds ms-conform selection arguments, semicolon separated.
@@ -47,14 +47,14 @@ function(ms_conform_target name only comment)
   add_custom_target(${name}
     COMMAND ${CMAKE_COMMAND}
       "-DMS_CONFORM=${MS_ORACLE_DIR}/ms-conform${CMAKE_EXECUTABLE_SUFFIX}"
-      "-DMS_C=$<TARGET_FILE:ms-c>"
+      "-DMS_C=$<TARGET_FILE:ms>"
       "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
       "-DEXTRA=${MS_CONFORM_EXTRA}"
       "-DONLY=${only}"
       -P "${CMAKE_SOURCE_DIR}/cmake/ConformC.cmake"
-    DEPENDS ms-c
+    DEPENDS ms
     USES_TERMINAL
     COMMENT "${comment}")
 endfunction()
-ms_conform_target(conform-c "" "Running the conformance corpus against ms-c")
-ms_conform_target(conform-commands commands "Replaying the command fixtures against ms-c")
+ms_conform_target(conform-c "" "Running the conformance corpus against ms")
+ms_conform_target(conform-commands commands "Replaying the command fixtures against ms")

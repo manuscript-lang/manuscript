@@ -8,7 +8,7 @@ Apply when: changing CLI argument decoding or path identity.
 Evidence: [entry point](../../crates/ms-cli/src/main.rs), [collision regression](../../crates/ms-cli/tests/cli_errors.rs), [argument requirement](../../documentation/developer-tooling/implementation.md).
 Verify: an invalid-byte argument returns usage status 2 even when its lossy spelling exists; a genuine UTF-8 replacement-character filename remains accepted.
 
-The same boundary applies after manifest escape decoding: hex/octal bytes must form valid UTF-8 before becoming source, entry or alias paths. Lossy decoding can otherwise select a real U+FFFD filename. [Manifest regressions](../../crates/ms-driver/tests/project_project.rs) preserve valid multibyte byte escapes and explicit replacement characters while rejecting invalid encodings.
+The same boundary applies after manifest escape decoding: hex/octal bytes must form valid UTF-8 before becoming source, entry or alias paths. Lossy decoding can otherwise select a real U+FFFD filename. [Manifest regressions](../../crates/ms-cli/tests/project_project.rs) preserve valid multibyte byte escapes and explicit replacement characters while rejecting invalid encodings.
 
 URI percent escapes require exactly two ASCII hex digits before numeric conversion: integer parsers may also accept a leading `+`, decoding `%+A` as a newline. [URI decoder tests](../../crates/ms-lsp/src/uri.rs) cover every ASCII digit pair; [protocol regressions](../../crates/ms-lsp/tests/uri_identity.rs) require malformed requests to return Invalid params while a valid `%2B` filename still receives hover information.
 

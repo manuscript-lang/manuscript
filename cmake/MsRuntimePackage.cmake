@@ -1,6 +1,6 @@
-# Packages the runtime for `ms-c` so linking needs no environment variables (pipeline.h).
+# Packages the runtime for `ms` so linking needs no environment variables (pipeline.h).
 #
-#   ms_package_runtime(<ms-c target> <runtime target>)
+#   ms_package_runtime(<ms target> <runtime target>)
 #
 # Finds every static library the runtime target links, makes the executable depend on them, and generates
 # `ms_runtime_paths.h` with MS_BUILD_RUNTIME (their paths, separated like MS_RUNTIME) and MS_BUILD_FILES (the

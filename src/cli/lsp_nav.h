@@ -6,6 +6,7 @@
 #include "cli/lsp_analysis.h"
 #include "cli/lsp_internal.h"
 
+void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
 void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
 void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool include_declaration,
                         MsStrBuild *out);
@@ -15,5 +16,9 @@ void lsp_nav_highlight(const LspDocList *docs, const LspDoc *doc, LspPosition po
  * refused (static text). */
 bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsSpan new_name, MsStrBuild *out,
                     MsStrBuild *error);
+
+void lsp_nav_type_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
+/* The inferred types of unannotated bindings whose names end inside `range`. */
+void lsp_nav_inlay_hints(const LspDocList *docs, const LspDoc *doc, LspRange range, MsStrBuild *out);
 
 #endif

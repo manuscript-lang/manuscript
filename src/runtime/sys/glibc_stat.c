@@ -1,6 +1,6 @@
 /* The `stat` family for glibc 2.28, which exports only `__xstat` and friends: its headers inline `stat` over them
  * and its `libc_nonshared.a` carries the out-of-line copies, which the glibc stubs we link do not. Linked into
- * programs (never into `ms-c`, whose host libc exports the real functions); on 64-bit targets `struct stat` is
+ * programs (never into `ms`, whose host libc exports the real functions); on 64-bit targets `struct stat` is
  * `struct stat64`, so both names share one implementation. */
 #define _GNU_SOURCE
 #include <sys/stat.h>

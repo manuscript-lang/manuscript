@@ -67,15 +67,6 @@ bool lsp_offset(MsSpan source, LspPosition position, bool clamp, size_t *offset)
   return true;
 }
 
-typedef enum TokenKind { TOKEN_COMMENT, TOKEN_STRING, TOKEN_NAME, TOKEN_CHAR } TokenKind;
-
-typedef struct Token {
-  TokenKind kind;
-  size_t start, end;
-} Token;
-
-MS_LIST_DEFINE(TokenList, token_list, Token)
-
 static bool starts(MsSpan source, size_t at, const char *text) {
   return ms_span_starts_with(ms_span_of(source.ptr + at, source.len - at), ms_span_of_text(text));
 }
@@ -87,7 +78,7 @@ static size_t find(MsSpan source, size_t from, const char *needle) {
 }
 
 /* The tokens of `source`, forgiving of anything that does not lex. */
-static void scan_tokens(MsSpan source, TokenList *tokens) {
+void lsp_scan_tokens(MsSpan source, LspTokenList *tokens) {
   size_t at = 0;
   while (at < source.len) {
     const size_t start = at;
@@ -96,7 +87,7 @@ static void scan_tokens(MsSpan source, TokenList *tokens) {
       at++;
     } else if (starts(source, at, "//")) {
       while (at < source.len && source.ptr[at] != '\n') at++;
-      token_list_push(tokens, (Token){TOKEN_COMMENT, start, at});
+      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_COMMENT, start, at});
     } else if (starts(source, at, "/*")) {
       /* One token per line, so clients that do not take multi-line tokens still color it. */
       const size_t found = find(source, at + 2, "*/");
@@ -105,7 +96,7 @@ static void scan_tokens(MsSpan source, TokenList *tokens) {
       while (line < close) {
         size_t end = line;
         while (end < close && source.ptr[end] != '\n') end++;
-        if (end > line) token_list_push(tokens, (Token){TOKEN_COMMENT, line, end});
+        if (end > line) lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_COMMENT, line, end});
         line = end + 1;
       }
       at = close;
@@ -113,7 +104,7 @@ static void scan_tokens(MsSpan source, TokenList *tokens) {
       at += source.ptr[at] == '"' ? 3 : 4;
       const size_t found = find(source, at, "\"\"\"");
       at = found == source.len ? source.len : found + 3;
-      token_list_push(tokens, (Token){TOKEN_STRING, start, at});
+      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_STRING, start, at});
     } else if (b == '"' || starts(source, at, "f\"")) {
       at += b == '"' ? 1 : 2;
       while (at < source.len) {
@@ -123,23 +114,23 @@ static void scan_tokens(MsSpan source, TokenList *tokens) {
           break;
         }
       }
-      token_list_push(tokens, (Token){TOKEN_STRING, start, at});
+      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_STRING, start, at});
     } else if (is_identifier(b)) {
       while (at < source.len && is_identifier(source.ptr[at])) at++;
-      token_list_push(tokens, (Token){TOKEN_NAME, start, at});
+      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_NAME, start, at});
     } else {
       size_t width, size;
       rune_width(source.ptr + at, source.len - at, &width, &size);
       at += size;
-      token_list_push(tokens, (Token){TOKEN_CHAR, start, at});
+      lsp_token_list_push(tokens, (LspEditorToken){LSP_TOKEN_CHAR, start, at});
     }
   }
 }
 
 /* Where a diagnostic at `offset` inside `token` ends. A text literal is one token, but a diagnostic inside its
  * interpolation (`{name}`) covers only the name there, not the rest of the literal. */
-static size_t diagnostic_end(MsSpan source, const Token *token, size_t offset) {
-  if (token->kind != TOKEN_STRING || offset == token->start) return token->end;
+static size_t diagnostic_end(MsSpan source, const LspEditorToken *token, size_t offset) {
+  if (token->kind != LSP_TOKEN_STRING || offset == token->start) return token->end;
   size_t name = 0;
   while (offset + name < token->end && is_identifier(source.ptr[offset + name])) name++;
   return name == 0 ? token->end : offset + name;
@@ -148,15 +139,51 @@ static size_t diagnostic_end(MsSpan source, const Token *token, size_t offset) {
 LspRange lsp_diagnostic_range(MsSpan source, size_t offset) {
   const LspPosition start = lsp_position(source, offset);
   LspRange range = {start, start};
-  TokenList tokens = {0};
-  scan_tokens(source, &tokens);
+  LspTokenList tokens = {0};
+  lsp_scan_tokens(source, &tokens);
   for (size_t i = 0; i < tokens.len; i++) {
-    const Token *token = &tokens.ptr[i];
+    const LspEditorToken *token = &tokens.ptr[i];
     if (offset >= token->start && offset < token->end) {
       range.end = lsp_position(source, diagnostic_end(source, token, offset));
       break;
     }
   }
-  token_list_free(&tokens);
+  lsp_token_list_free(&tokens);
   return range;
+}
+
+bool lsp_header(MsSpan source, size_t offset, MsSpan name, size_t *at) {
+  if (offset > source.len || name.len == 0) return false;
+  size_t start = offset;
+  if (starts(source, start, "\r\n")) start += 2;
+  else if (starts(source, start, "\n")) start += 1;
+  size_t end = start;
+  while (end < source.len && source.ptr[end] != '\n') end++;
+  const MsSpan line = ms_span_of(source.ptr + start, end - start);
+  LspTokenList tokens = {0};
+  lsp_scan_tokens(line, &tokens);
+  bool found = false;
+  for (size_t i = 0; i < tokens.len && !found; i++) {
+    const LspEditorToken *token = &tokens.ptr[i];
+    if (token->kind == LSP_TOKEN_NAME && ms_span_equal(ms_span_of(line.ptr + token->start, token->end - token->start), name)) {
+      *at = start + token->start;
+      found = true;
+    }
+  }
+  lsp_token_list_free(&tokens);
+  return found;
+}
+
+bool lsp_line_opens_suite(MsSpan line) {
+  LspTokenList tokens = {0};
+  lsp_scan_tokens(line, &tokens);
+  bool opens = false;
+  for (size_t i = tokens.len; i > 0; i--) {
+    const LspEditorToken *token = &tokens.ptr[i - 1];
+    if (token->kind == LSP_TOKEN_COMMENT) continue;
+    opens = token->kind == LSP_TOKEN_CHAR && line.ptr[token->start] == ':';
+    break;
+  }
+  lsp_token_list_free(&tokens);
+  return opens;
 }

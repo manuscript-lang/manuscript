@@ -199,21 +199,83 @@ static Reach classify(Pass *pass, const MsExpr *expr) {
   return expr->kind == MS_E_CALL ? classify_call(pass, expr) : OWNED;
 }
 
-static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
+/* What a callable's returns carry: the joined reach, the first value that borrows a parameter and the first that is new. */
+typedef struct Reached {
+  Reach all;
+  const MsExpr *borrowed;
+  const MsExpr *fresh;
+  bool known;
+} Reached;
+
+static Reached reached_by(Pass *pass, MsParams params, MsStmts body) {
   pass->view_count = 0;
   pass->depth = 0;
   ms_walk_callable(&(MsVisitor){.ctx = pass, .stmt = view_stmt, .expr = view_expr}, params, body);
   Returns returns = {.len = 0};
   const MsVisitor visitor = {.ctx = &returns, .stmt = collect_return};
   ms_walk_block(&visitor, body);
-  if (returns.overflow || returns.len == 0) {
+  Reached out = {.all = NEUTRAL, .known = !returns.overflow && returns.len != 0};
+  for (uint32_t index = 0; out.known && index < returns.len; index++) {
+    const Reach reach = classify(pass, returns.values[index]);
+    out.all = join(out.all, reach);
+    if (reach.mask != 0 && out.borrowed == NULL) {
+      out.borrowed = returns.values[index];
+    }
+    if (reach.owned && reach.mask == 0 && out.fresh == NULL) {
+      out.fresh = returns.values[index];
+    }
+  }
+  return out;
+}
+
+static uint32_t mask_of(Pass *pass, MsParams params, MsStmts body) {
+  const Reached reached = reached_by(pass, params, body);
+  if (!reached.known) {
     return 0;
   }
-  Reach all = NEUTRAL;
-  for (uint32_t index = 0; index < returns.len; index++) {
-    all = join(all, classify(pass, returns.values[index]));
+  return reached.all.mask | (reached.all.owned || reached.all.mask == 0 ? 0 : MS_RESULT_BORROWED);
+}
+
+/* A callable that returns a part of its arguments on one path and a new value on another cannot say who owns its result. */
+static void report_mixed(Pass *pass, uint32_t module, MsNode node, MsParams params, MsStmts body) {
+  const Reached reached = reached_by(pass, params, body);
+  if (!reached.known || reached.borrowed == NULL || reached.fresh == NULL) {
+    return;
   }
-  return all.mask | (all.owned || all.mask == 0 ? 0 : MS_RESULT_BORROWED);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "this function returns a reference into its arguments at ");
+  ms_strbuild_append_u64(&text, reached.borrowed->pos.line);
+  ms_strbuild_append_text(&text, ":");
+  ms_strbuild_append_u64(&text, reached.borrowed->pos.column);
+  ms_strbuild_append_text(&text, " but a new value here; return `.clone()` of the part there, or build a new value on every path");
+  ms_check_report(pass->program, module, reached.fresh->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  if (node < pass->facts->node_count) {
+    pass->facts->result_borrows[node] = 0; /* callers see an owner, so one mistake is reported once */
+  }
+}
+
+void ms_own_mixed_returns(MsCheckProgram *program) {
+  MsClassifier classes = ms_class_new(program);
+  for (uint32_t module = 0; module < program->user_modules && module < program->modules.len; module++) {
+    MsFacts *facts = &program->modules.ptr[module].facts;
+    const MsModule *tree = program->modules.ptr[module].tree;
+    Pass pass = {.program = program, .classes = &classes, .facts = facts, .self_module = module,
+                 .self_name = ms_names_intern(program->names, ms_span_of_text("self"))};
+    for (uint32_t index = 0; facts->result_borrows != NULL && index < tree->ndecls; index++) {
+      const MsDecl *decl = tree->decls[index];
+      if (decl->kind == MS_D_FN) {
+        pass.method = false;
+        pass.self_node = decl->id;
+        report_mixed(&pass, module, decl->id, decl->u.fn.params, decl->u.fn.body);
+      }
+      for (uint32_t at = 0; decl->kind == MS_D_IMPL && at < decl->u.impl.methods.len; at++) {
+        const MsMethod *method = decl->u.impl.methods.ptr[at];
+        pass.method = true;
+        pass.self_node = method->id;
+        report_mixed(&pass, module, method->id, method->func.params, method->func.body);
+      }
+    }
+  }
 }
 
 static bool store(MsFacts *facts, MsNode node, uint32_t mask) {

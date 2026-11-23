@@ -67,7 +67,7 @@ jobs:
             ${{ github.workspace }}/.artifacts/build/debug/src/third_party/openssl_build-prefix
             ${{ github.workspace }}/.artifacts/build/debug/musl/src/third_party/openssl_build
             ${{ github.workspace }}/.artifacts/build/debug/musl/src/third_party/openssl_build-prefix
-          key: openssl-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'src/third_party/cmake/openssl.cmake') }}
+          key: openssl-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'cmake/targets/openssl.cmake') }}
       - if: runner.os != 'Windows'
         run: cmake --preset debug
       - if: runner.os == 'Windows'
@@ -102,4 +102,4 @@ jobs:
             ${{ github.workspace }}/.artifacts/build/debug/src/third_party/openssl_build-prefix
             ${{ github.workspace }}/.artifacts/build/debug/musl/src/third_party/openssl_build
             ${{ github.workspace }}/.artifacts/build/debug/musl/src/third_party/openssl_build-prefix
-          key: openssl-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'src/third_party/cmake/openssl.cmake') }}
+          key: openssl-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'cmake/targets/openssl.cmake') }}
