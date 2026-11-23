@@ -1,5 +1,6 @@
 /* compiler/check/instantiate.c: type argument inference for generic calls. */
 #include "compiler/check/instantiate.h"
+#include "compiler/check/body.h"
 #include "compiler/check/program.h"
 
 void ms_instance_free(MsInstance *instance) {
@@ -52,6 +53,46 @@ static bool unify_argument(const MsTyTable *types, MsTy pattern, MsTy actual, co
   }
   return ms_ty_is(types, pattern, MS_BUILTIN_Optional) && ms_ty_arg_count(types, pattern) == 1 &&
          unify_commit(types, ms_ty_args(types, pattern)[0], actual, vars, count, bound);
+}
+
+/* Whether `actual` fits `pattern` where a part that failed to resolve (invalid) fits anything. */
+static bool unify_tolerant(const MsTyTable *types, MsTy pattern, MsTy actual, const MsTy *vars, size_t count,
+                           MsTy *bound) {
+  if (ms_ty_is_invalid(types, actual) || ms_ty_is_invalid(types, pattern)) {
+    return true;
+  }
+  for (size_t index = 0; index < count; index++) {
+    if (vars[index] != pattern) {
+      continue;
+    }
+    if (bound[index] == MS_TY_NONE) {
+      bound[index] = actual;
+      return true;
+    }
+    return bound[index] == actual || ms_ty_is_invalid(types, bound[index]);
+  }
+  if (!ms_ty_has_variable(types, pattern)) {
+    return pattern == actual;
+  }
+  const MsTyRow *want = ms_ty_row(types, pattern);
+  const MsTyRow *have = ms_ty_row(types, actual);
+  if (want->id != have->id || want->kind != have->kind || want->arg_count != have->arg_count ||
+      want->param_count != have->param_count) {
+    return false;
+  }
+  for (uint32_t index = 0; index < want->arg_count; index++) {
+    if (!unify_tolerant(types, ms_ty_args(types, pattern)[index], ms_ty_args(types, actual)[index], vars, count, bound)) {
+      return false;
+    }
+  }
+  for (uint32_t index = 0; index < want->param_count; index++) {
+    if (!unify_tolerant(types, ms_ty_params(types, pattern)[index].ty, ms_ty_params(types, actual)[index].ty, vars,
+                        count, bound)) {
+      return false;
+    }
+  }
+  return want->kind != MS_TY_FUNCTION || want->result == MS_TY_NONE || have->result == MS_TY_NONE ||
+         unify_tolerant(types, want->result, have->result, vars, count, bound);
 }
 
 static void conflict(MsInstance *out, size_t param, const MsTy *bound, size_t count) {
@@ -122,6 +163,15 @@ static void missing_message(MsCheckProgram *program, MsSpan name, const MsTy *va
   (void)fail(out, &text);
 }
 
+static bool is_own(const MsTy *variables, size_t count, MsTy ty) {
+  for (size_t index = 0; index < count; index++) {
+    if (variables[index] == ty) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, size_t nvars, MsSpan name,
                   const MsTy *explicit_args, size_t nexplicit, const MsTy *arg_tys, size_t nargs,
                   const size_t *order, MsTy expected_result, MsInstance *out, MsTy *bound) {
@@ -155,7 +205,13 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
     for (size_t at = 0; at < nvars; at++) {
       ms_ty_list_push(&fresh, MS_TY_NONE);
     }
-    const bool alone = unify_argument(types, pattern, actual, variables, nvars, fresh.ptr);
+    bool alone = unify_argument(types, pattern, actual, variables, nvars, fresh.ptr);
+    if (!alone && ms_ty_kind(types, actual) == MS_TY_FUNCTION && holds_invalid(types, actual, 6)) { /* a callback with an unresolved slot conflicts where its resolved parts do not fit */
+      for (size_t at = 0; at < nvars; at++) {
+        fresh.ptr[at] = MS_TY_NONE;
+      }
+      alone = !unify_tolerant(types, pattern, actual, variables, nvars, fresh.ptr);
+    }
     ms_ty_list_free(&fresh);
     if (alone) {
       conflict(out, index, bound, nvars);
@@ -163,6 +219,10 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
     }
   }
   const MsTy result = ms_ty_result(types, callee);
+  MsTyList from_arguments = {0}; /* what the arguments bound, before the expected result is consulted */
+  for (size_t at = 0; at < nvars; at++) {
+    ms_ty_list_push(&from_arguments, bound[at]);
+  }
   if (expected_result != MS_TY_NONE && !ms_ty_is_invalid(types, expected_result) && nvars > 0 &&
       ms_ty_has_variable(types, result)) {
     if (!unify_commit(types, result, expected_result, variables, nvars, bound)) {
@@ -189,6 +249,16 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
       }
     }
   }
+  for (size_t at = 0; at < nvars; at++) {
+    /* An open variable of another call, offered only by the expected result, loses to the variable's own default. */
+    const MsTyVariable *record = ms_ty_variable(types, variables[at]);
+    if (from_arguments.ptr[at] == MS_TY_NONE && bound[at] != MS_TY_NONE && record != NULL &&
+        record->default_ty != MS_TY_NONE && ms_ty_kind(types, bound[at]) == MS_TY_VARIABLE &&
+        !is_own(variables, nvars, bound[at])) {
+      bound[at] = MS_TY_NONE;
+    }
+  }
+  ms_ty_list_free(&from_arguments);
   apply_defaults(program, variables, nvars, bound);
   for (size_t index = 0; index < nvars; index++) {
     if (bound[index] == MS_TY_NONE) {
