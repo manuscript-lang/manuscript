@@ -140,6 +140,7 @@ typedef struct LowerFn {
   const MsExpr *taking_member; /* the member read whose value the consumer takes (LW_MOVE) */
   bool read_moves;             /* the expression being read hands its value to a consumer (LW_MOVE) */
   const MsExpr *narrow_take;   /* the narrowed local whose payload the reader takes, as a field moves out of it */
+  const MsExpr *or_view;        /* the `x or d` a field read looks through: its payload may stay a view of `x` */
   const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
   const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
   uint32_t nmoved_fields;

@@ -587,7 +587,9 @@ static MirValue take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var) {
   if (old_data->kind != MK_OPT || !mir_needs_drop(fn->cx->module, old_data->elem)) {
     return MIR_NONE;
   }
+  fn->or_view = member->u.member.left; /* a probe: `(x or d).field` keeps its payload a view */
   const MirValue view = fn_expr(fn, member->u.member.left, LW_BORROW);
+  fn->or_view = NULL;
   if (view == MIR_NONE || !views_payload_of(fn, view, old)) {
     return MIR_NONE;
   }
@@ -625,7 +627,9 @@ static bool take_field_into_slot(LowerFn *fn, const MsStmt *stmt, const MsRef *r
       mir_ty_data(fn->cx->module, old_data->elem)->kind != MK_TYPE) {
     return true;
   }
+  fn->or_view = member->u.member.left; /* a probe: `(x or d).field` keeps its payload a view */
   const MirValue view = fn_expr(fn, member->u.member.left, LW_BORROW);
+  fn->or_view = NULL;
   if (view == MIR_NONE || !views_payload_in(fn, view, MIR_NONE, slot)) {
     return !fn->failed;
   }

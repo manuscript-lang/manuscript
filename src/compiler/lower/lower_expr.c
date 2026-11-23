@@ -333,8 +333,10 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                        ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
                        (mir_needs_drop(fn->cx->module, fn_type(fn, member_ty)) || ms_check_holds_resource(fn->cx->program, member_ty));
   fn->narrow_take = leaves || or_take ? left : NULL;
+  fn->or_view = left->kind == MS_E_BINARY && !leaves && !or_take ? left : NULL;
   const MirValue read = fn_expr(fn, left, leaves ? LW_MOVE : LW_BORROW);
   fn->narrow_take = NULL;
+  fn->or_view = NULL;
   if (read == MIR_NONE) {
     return MIR_NONE;
   }
@@ -446,9 +448,12 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   mir_b_seal_block(&fn->b, some_block);
   mir_b_seal_block(&fn->b, null_block);
   mir_b_switch_to(&fn->b, some_block);
-  const bool owns = (fn_fresh_owner(fn, left) && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving);
+  /* A temporary (`f()?`, a call) gives its payload up; a name or field gives it up only where it is moved. */
+  const bool place = named->kind == MS_E_NAME || named->kind == MS_E_MEMBER || named->kind == MS_E_INDEX;
+  const bool owns = (fn_fresh_owner(fn, left) && (named->kind != MS_E_NAME || moving)) || (named->kind == MS_E_CALL && moving) ||
+                    (!place && named->kind != MS_E_CALL && fn_fresh_owner(fn, left));
   /* `x or panic(..)` read in place: nothing else reaches the join, so the payload stays a view of `x` */
-  const bool view_only = !owns && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
+  const bool view_only = !owns && fn->or_view == expr && ms_ty_is(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.bin.right->id), MS_BUILTIN_Never) &&
                          ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE;
   MirTy payload_ty = MIR_VOID;
   MirValue payload;
