@@ -38,6 +38,13 @@ typedef struct NestedEdit {
   uint32_t nsets, sets[8];
 } NestedEdit;
 
+/* A field replaced as a whole: `g = type.get T.f V;  m = move.out g;  drop m;  r = type.set T.f W, x`, nothing between
+ * them. The old value is dropped and `x` stored where the field lies, with no fault point in between. */
+typedef struct Replace {
+  MirBlock block;
+  uint32_t get, outer;
+} Replace;
+
 typedef struct View {
   MirModule *m;
   MirLayouts *layouts;
@@ -55,6 +62,10 @@ typedef struct View {
   uint32_t nflends;
   bool *fslot; /* by value: the slot of a field lend */
   bool *fdead; /* by value: the result of a get, move.out or take that a field lend removes */
+  Replace *reps;
+  uint32_t nreps;
+  uint32_t *rset; /* by value: 1 + the replacement the type.set producing it ends, or 0 */
+  bool *rmove;    /* by value: the result of the move.out a replacement keeps */
   NestedEdit *nedits;
   uint32_t nnedits;
   uint32_t *nsub;   /* by value: 1 + the nested edit the type.set producing it is a step of, or 0 */
@@ -220,6 +231,16 @@ static void find_lends(View *v, MirBlock bi, const uint32_t *uses) {
       v->flends[v->nflends++] = fl;
     }
   }
+  for (uint32_t gi = 0; gi + 3 < blk->insts.len; gi++) {
+    const MirInst *get = &blk->insts.ptr[gi], *mv = &blk->insts.ptr[gi + 1], *dr = &blk->insts.ptr[gi + 2],
+                  *set = &blk->insts.ptr[gi + 3];
+    if (get->op == MOP_TypeGet && get->imm.tag == MI_FIELD && get->imm.a == v->def && mv->op == MOP_MoveOut &&
+        mv->args[0] == get->res && dr->op == MOP_Drop && dr->args[0] == mv->res && set->op == MOP_TypeSet &&
+        set->imm.tag == MI_FIELD && set->imm.a == v->def && set->imm.b == get->imm.b && set->nargs == 2 &&
+        uses[get->res] == 1 && uses[mv->res] == 1 && !scalar_field(v, get->imm.b) && field_aligned(v, get->imm.b)) {
+      v->reps[v->nreps++] = (Replace){bi, gi, gi + 3};
+    }
+  }
   for (uint32_t oi = 0; oi < blk->insts.len; oi++) {
     NestedEdit edit;
     if (nested_edit_at(v, bi, oi, uses, &edit)) {
@@ -248,6 +269,9 @@ static bool propagate(View *v) {
       if (inst->op == MOP_TypeSet && inst->imm.tag == MI_FIELD && inst->imm.a == v->def && is_view(v, inst->args[0]) &&
           scalar_field(v, inst->imm.b)) {
         now = true;
+      } else if (v->rset[inst->res] != 0) {
+        const Replace *rp = &v->reps[v->rset[inst->res] - 1];
+        now = is_view(v, inst->args[0]) && is_view(v, blk->insts.ptr[rp->get].args[0]);
       } else if (v->nouter[inst->res] != 0) {
         const NestedEdit *ne = &v->nedits[v->nouter[inst->res] - 1];
         now = is_view(v, inst->args[0]) && is_view(v, blk->insts.ptr[ne->get].args[0]);
@@ -314,9 +338,6 @@ static void settle(View *v, MirValue first) {
  * at other offsets than the field's own cell, and a whole-field load would read the wrong bytes. */
 static bool field_aligned(const View *v, uint32_t field) {
   const MirTy ty = v->m->type_defs.ptr[v->def].fields[field].ty;
-  if (mir_ty_is_map_or_set(v->m, ty)) {
-    return false; /* a box: the record holds a word that points to it */
-  }
   if (mir_leaves(v->layouts, ty).len <= 1) {
     return true;
   }
@@ -366,7 +387,7 @@ static bool uses_ok(const View *v, MirValue first) {
   for (MirBlock b = 0; b < f->blocks.len; b++) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       const MirInst *inst = &f->blocks.ptr[b].insts.ptr[i];
-      if (inst->op == MOP_MoveOut && read[inst->args[0]] && !v->ndead[inst->res]) {
+      if (inst->op == MOP_MoveOut && read[inst->args[0]] && !v->ndead[inst->res] && !v->rmove[inst->res]) {
         return false;
       }
     }
@@ -446,6 +467,14 @@ static void rewrite_block(View *v, MirBlock bi, MirValue first) {
       const MirInst *get = field_get_of(v, inst.res);
       const MirValue base[1] = {v->param};
       mir_inst_list_push(&out, make(v->m, MOP_PtrField, inst.res, base, 1, get->imm, inst.loc));
+      continue;
+    }
+    if (inst.res != MIR_NONE && v->rset[inst.res] != 0) {
+      const MirValue at = mir_new_value(v->f, MIR_PTR);
+      const MirValue base[1] = {v->param};
+      mir_inst_list_push(&out, make(v->m, MOP_PtrField, at, base, 1, inst.imm, inst.loc));
+      const MirValue stored[2] = {at, inst.args[1]};
+      mir_inst_list_push(&out, make(v->m, MOP_Put, MIR_NONE, stored, 2, mir_imm_none(), inst.loc));
       continue;
     }
     if (inst.res != MIR_NONE && v->nsub[inst.res] != 0) {
@@ -593,6 +622,9 @@ static bool view_param(MirModule *m, MirLayouts *layouts, MirFunc *f, uint32_t i
             .fslot = MS_ARENA_NEW_ARRAY(&arena, bool, n),
             .fdead = MS_ARENA_NEW_ARRAY(&arena, bool, n),
             .fset = MS_ARENA_NEW_ARRAY(&arena, uint32_t, n),
+            .reps = MS_ARENA_NEW_ARRAY(&arena, Replace, (size_t)mir_inst_count(f) + 1),
+            .rset = MS_ARENA_NEW_ARRAY(&arena, uint32_t, n),
+            .rmove = MS_ARENA_NEW_ARRAY(&arena, bool, n),
             .nedits = MS_ARENA_NEW_ARRAY(&arena, NestedEdit, (size_t)mir_inst_count(f) + 1),
             .nsub = MS_ARENA_NEW_ARRAY(&arena, uint32_t, n),
             .nouter = MS_ARENA_NEW_ARRAY(&arena, uint32_t, n),
@@ -614,6 +646,11 @@ static bool view_param(MirModule *m, MirLayouts *layouts, MirFunc *f, uint32_t i
   }
   for (uint32_t i = 0; i < v.nnedits; i++) {
     set_nested(&v, &v.nedits[i], i + 1, true);
+  }
+  for (uint32_t i = 0; i < v.nreps; i++) {
+    const MirBlockData *home = &f->blocks.ptr[v.reps[i].block];
+    v.rset[home->insts.ptr[v.reps[i].outer].res] = i + 1;
+    v.rmove[home->insts.ptr[v.reps[i].get + 1].res] = true;
   }
   for (MirBlock b = 1; b < f->blocks.len; b++) {
     for (uint32_t k = 0; k < f->blocks.ptr[b].params.len; k++) {
@@ -639,6 +676,13 @@ static bool view_param(MirModule *m, MirLayouts *layouts, MirFunc *f, uint32_t i
     const MirBlockData *home = &f->blocks.ptr[ne->block];
     if (!is_view(&v, home->insts.ptr[ne->get].args[0]) || !is_view(&v, home->insts.ptr[ne->outer].args[0])) {
       set_nested(&v, ne, i + 1, false);
+    }
+  }
+  for (uint32_t i = 0; i < v.nreps; i++) {
+    const MirBlockData *home = &f->blocks.ptr[v.reps[i].block];
+    if (!is_view(&v, home->insts.ptr[v.reps[i].get].args[0]) || !is_view(&v, home->insts.ptr[v.reps[i].outer].args[0])) {
+      v.rset[home->insts.ptr[v.reps[i].outer].res] = 0;
+      v.rmove[home->insts.ptr[v.reps[i].get + 1].res] = false;
     }
   }
   /* A slot of the record's type that holds some other record (another `var` parameter's) is not a lend of this one. */
