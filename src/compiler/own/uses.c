@@ -359,9 +359,11 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value
                     : stmt->u.bind.value->kind == MS_E_MEMBER ? stmt->u.bind.value
                                                               : bound_local_source(pass, stmt->u.bind.value));
-  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_TYPE &&
-             stmt->u.bind.value->kind == MS_E_NAME) {
-    mark_move(pass, stmt->u.bind.value); /* `{a: x, b: y} := record` hands the parts to the names, `var` or not */
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_TYPE && stmt->u.bind.value->kind == MS_E_NAME &&
+             (!stmt->u.bind.is_mutable || ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, stmt->u.bind.value->id)))) {
+    /* `{a: x, b: y} := record` hands the parts to the names; `var` does too when a part is a resource, and copies a
+     * record that holds none. */
+    mark_move(pass, stmt->u.bind.value);
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
     mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {

@@ -78,7 +78,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  ms check ms.toml --json\n"
     "  ms check src utilities.ms --json\n"},
     {"lint",
-    "Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings]\n"
+    "Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings] [--syntax]\n"
     "\n"
     "Check source hygiene and semantic lint rules in independent inputs and their imports.\n"
     "A project directory selects ms.toml; standalone directories discover .ms files recursively. A project lints all its source modules and test files, imported or not.\n"
@@ -91,6 +91,8 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  --json  Emit versioned JSON findings with stable rule codes\n"
     "  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
     "  --deny-warnings  Treat warnings as errors (for CI)\n"
+    "  --syntax  Run only the rules that need a parse (nested matches) on each file, and on the code fences of a .md file;\n"
+    "            code that does not type-check is still linted, code that does not parse is skipped\n"
     "  --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)\n"
     "  -h, --help  Show this help without executing the command\n"
     "\n"

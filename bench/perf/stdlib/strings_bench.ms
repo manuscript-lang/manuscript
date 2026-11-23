@@ -1,126 +1,101 @@
 import (
 	StringBuilder from "@std/string_builder.ms",
-	keep, measure from "@std/test/bench.ms",
 
 	words from "./src/harness.ms",
 )
 
-bench "string.append_builder":
-	fn work() Result[Void, Error]:
-		var sb = StringBuilder()
-		for i in 0..100000:
-			sb.append("x")
-		return keep(sb.build().length())
+type BenchData:
+	text: String
+	text_5: String
+	text_6: String
+	text_7: String
+	text_9: String
+	text_10: String
 
-	measure(100000, work)?
-
-bench "string.concat":
-	fn work() Result[Void, Error]:
-		var s = ""
-		for i in 0..20000:
-			s = s.concat("x")
-		return keep(s.length())
-
-	measure(20000, work)?
-
-bench "string.append_interpolated":
-	fn work() Result[Void, Error]:
-		var s = ""
-		for i in 0..20000:
-			s += f"item-{i},"
-		return keep(s.length())
-
-	measure(20000, work)?
-
-bench "string.split":
+fn make_fixture() BenchData:
 	text := words(2000).join(" ")
+	text_5 := words(2000).join(" ")
+	text_6 := words(2000).join(" ")
+	text_7 := words(2000).join(" ")
+	text_9 := words(2000).join(" ")
+	text_10 := words(2000).join(" ")
+	return BenchData(
+		text: text,
+		text_5: text_5,
+		text_6: text_6,
+		text_7: text_7,
+		text_9: text_9,
+		text_10: text_10,
+	)
 
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..200:
-			n += text.split(" ").length()
-		return keep(n)
+bench "string.append_builder" per 100000:
+	var sb = StringBuilder()
+	for i in 0..100000:
+		sb.append("x")
+	sb.build().length()
 
-	measure(200, work)?
+bench "string.concat" per 20000:
+	var s = ""
+	for i in 0..20000:
+		s = s.concat("x")
+	s.length()
 
-bench "string.replace":
-	text := words(2000).join(" ")
+bench "string.append_interpolated" per 20000:
+	var s = ""
+	for i in 0..20000:
+		s += f"item-{i},"
+	s.length()
 
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..200:
-			n = (n + text.replace("word", "w").length())
-		return keep(n)
+bench "string.split" per 200:
+	var n = 0
+	for i in 0..200:
+		n += fixture.text.split(" ").length()
+	n
 
-	measure(200, work)?
+bench "string.replace" per 200:
+	var n = 0
+	for i in 0..200:
+		n = (n + fixture.text_5.replace("word", "w").length())
+	n
 
-bench "string.contains":
-	text := words(2000).join(" ")
+bench "string.contains" per 2000:
+	var n = 0
+	for i in 0..2000:
+		if fixture.text_6.contains("word976 word0"): n += 1
+	n
 
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..2000:
-			if text.contains("word976 word0"): n += 1
-		return keep(n)
+bench "string.upper" per 200:
+	var n = 0
+	for i in 0..200:
+		n += fixture.text_7.upper().length()
+	n
 
-	measure(2000, work)?
+bench "string.trim" per 100000:
+	var n = 0
+	for i in 0..100000:
+		n += "  padded  ".trim().length()
+	n
 
-bench "string.upper":
-	text := words(2000).join(" ")
+bench "string.index_char_at" per 100000:
+	var n = 0
+	for i in 0..100000:
+		n += fixture.text_9.scalar_at(i % 5000, 0)
+	n
 
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..200:
-			n += text.upper().length()
-		return keep(n)
+bench "string.chars" per 20:
+	var n = 0
+	for i in 0..20:
+		n += fixture.text_10.chars().length()
+	n
 
-	measure(200, work)?
+bench "string.parse_int" per 100000:
+	var n = 0
+	for i in 0..100000:
+		n += "12345".parse_int().get_or(0)
+	n
 
-bench "string.trim":
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..100000:
-			n += "  padded  ".trim().length()
-		return keep(n)
-
-	measure(100000, work)?
-
-bench "string.index_char_at":
-	text := words(2000).join(" ")
-
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..100000:
-			n += text.scalar_at(i % 5000, 0)
-		return keep(n)
-
-	measure(100000, work)?
-
-bench "string.chars":
-	text := words(2000).join(" ")
-
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..20:
-			n += text.chars().length()
-		return keep(n)
-
-	measure(20, work)?
-
-bench "string.parse_int":
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..100000:
-			n += "12345".parse_int().get_or(0)
-		return keep(n)
-
-	measure(100000, work)?
-
-bench "string.interpolate":
-	fn work() Result[Void, Error]:
-		var n = 0
-		for i in 0..100000:
-			n += f"item {i} of {n}".length()
-		return keep(n)
-
-	measure(100000, work)?
+bench "string.interpolate" per 100000:
+	var n = 0
+	for i in 0..100000:
+		n += f"item {i} of {n}".length()
+	n

@@ -3,16 +3,17 @@
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
-file(WRITE "${WORK}/sum_bench.ms" "import keep, measure, opaque from \"@std/test/bench.ms\"
+file(WRITE "${WORK}/sum_bench.ms" "type Input:
+    count: Int
 
-bench \"sum_to_1000\":
-    fn work() Result[Void, Error]:
-        var total = 0
-        for i in 0..opaque(1000):
-            total += i
-        return keep(total)
+fn make_fixture() Input:
+    return Input(count: 1000)
 
-    measure(1000, work)?
+bench \"sum_to_1000\" per 1000:
+    var total = 0
+    for i in 0..fixture.count:
+        total += i
+    total
 ")
 if(WIN32)
   set(separator ";")
@@ -45,7 +46,7 @@ endif()
 expect_contains("${out}" "sum_to_1000" "json")
 expect_contains("${out}" "\"stats\"" "json")
 expect_contains("${out}" "\"median_ns\"" "json")
-# The work has to be timed: a body over constants must not be folded away by the optimizer (keep is a barrier).
+# The work has to be timed: the body reads its input from the fixture so the optimizer cannot fold it, and its last value is kept.
 string(REGEX MATCH "\"median_ns\": *([0-9.eE+-]+)" unused "${out}")
 set(median "${CMAKE_MATCH_1}")
 if(median STREQUAL "" OR median MATCHES "^0(\\.0*)?$")

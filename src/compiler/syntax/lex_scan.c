@@ -17,10 +17,6 @@ bool lex_is_graphic(uint8_t byte) {
   return byte > 0x20 && byte < 0x7f;
 }
 
-bool lex_is_word_byte(uint8_t byte) {
-  return ms_ascii_is_ident_start(byte) || ms_ascii_is_digit(byte);
-}
-
 /* ---- errors ---- */
 
 MsPos lex_pos(const Scanner *s) {

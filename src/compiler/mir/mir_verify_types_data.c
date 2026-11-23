@@ -169,6 +169,17 @@ static const char *mvt_str_to_int(const MvtCx *c, const char *msg) {
   return mvt_want(mvt_t(c, 0) == MIR_STR && mvt_res_is(c, MIR_INT), msg);
 }
 
+static const char *mvt_str_data(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  return mvt_want(mvt_t(c, 0) == MIR_STR && mvt_res_is(c, MIR_PTR), "str.data takes a string and yields an address");
+}
+
+static const char *mvt_mem_copy(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 3));
+  return mvt_want(mvt_t(c, 0) == MIR_PTR && mvt_t(c, 1) == MIR_PTR && mvt_t(c, 2) == MIR_INT && !c->has_res,
+                  "mem.copy takes a destination, a source and a length");
+}
+
 static const char *mvt_str_len(const MvtCx *c) {
   return mvt_str_to_int(c, "str.len takes a string and yields int");
 }
@@ -371,7 +382,7 @@ const MvtRule mvt_rules_data[MOP_COUNT] = {
   [MOP_OptView] = mvt_opt_wrap, [MOP_OptViewAt] = mvt_opt_view_at, [MOP_OptNone] = mvt_opt_none,
   [MOP_OptNoneOwned] = mvt_opt_none, [MOP_OptIsSome] = mvt_opt_is_some, [MOP_OptGet] = mvt_opt_payload,
   [MOP_OptUnwrap] = mvt_opt_payload, [MOP_OptUnbox] = mvt_opt_payload, [MOP_OptAddr] = mvt_opt_addr,
-  [MOP_StrLen] = mvt_str_len, [MOP_StrByte] = mvt_str_byte, [MOP_StrAscii] = mvt_str_ascii,
+  [MOP_StrLen] = mvt_str_len, [MOP_StrData] = mvt_str_data, [MOP_MemCopy] = mvt_mem_copy, [MOP_StrByte] = mvt_str_byte, [MOP_StrAscii] = mvt_str_ascii,
   [MOP_StrAsciiLen] = mvt_str_ascii_len, [MOP_StrEqLit] = mvt_str_eq_lit, [MOP_StrBytes] = mvt_str_bytes,
   [MOP_BytesPush] = mvt_bytes_push, [MOP_ClosureNew] = mvt_closure_new, [MOP_ClosureCap] = mvt_closure_cap,
   [MOP_ClosureCapAddr] = mvt_closure_cap_addr, [MOP_IfaceNew] = mvt_iface_wrap,

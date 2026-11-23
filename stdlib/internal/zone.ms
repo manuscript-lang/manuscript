@@ -54,6 +54,89 @@ export type Zone:
 	start: Rule
 	end: Rule
 
+// The transition time of entry `i`.
+fn Zone.time(i: Int) Int:
+	return be_signed(self.data, self.times + i * self.time_size, self.time_size)
+
+// The offset and abbreviation of local time type `t`.
+fn Zone.type_at(t: Int) ZoneAt:
+	at := self.types + t * 6
+	start := self.abbrevs + self.data.get(at + 5).to_int()
+	limit := self.abbrevs + self.abbrev_size
+	var stop = start
+	while stop < limit and self.data.get(stop).to_int() != 0:
+		stop += 1
+	return ZoneAt(
+		offset: be_i32(self.data, at),
+		abbreviation: self.data.decode_utf8_range(start, stop).get_or(""),
+	)
+
+// The footer rule's offset and abbreviation at `unix`.
+fn Zone.rule_at(unix: Int) ZoneAt:
+	if not self.has_dst: return ZoneAt(
+		offset: self.std_offset,
+		abbreviation: self.std_name.clone(),
+	)
+
+	year := year_of_days(floor_div(unix + self.std_offset, 86400))
+	begin := rule_seconds(self.start, year) - self.std_offset
+	finish := rule_seconds(self.end, year) - self.dst_offset
+	var summer = false
+
+	if begin < finish:
+		summer = unix >= begin and unix < finish
+	else:
+		summer = not (unix >= finish and unix < begin)
+
+	if summer: return ZoneAt(
+		offset: self.dst_offset,
+		abbreviation: self.dst_name.clone(),
+	)
+
+	return ZoneAt(offset: self.std_offset, abbreviation: self.std_name.clone())
+
+// The offset (seconds east of UTC) and abbreviation of this zone at a Unix time.
+fn Zone.at(unix: Int) ZoneAt:
+	if self.kind == 0: return ZoneAt(offset: 0, abbreviation: "UTC")
+	if self.kind == 1: return ZoneAt(
+		offset: self.fixed,
+		abbreviation: self.name.clone(),
+	)
+
+	if self.count == 0:
+		if self.has_footer: return self.rule_at(unix)
+		return self.type_at(0)
+
+	if unix < self.time(0): return self.type_at(0)
+	if unix >= self.time(self.count - 1) and self.has_footer: return self.rule_at(unix)
+
+	// The last transition at or before `unix`.
+	var low = 0
+	var high = self.count
+
+	while high - low > 1:
+		mid := (low + high) / 2
+
+		if self.time(mid) <= unix:
+			low = mid
+		else:
+			high = mid
+
+	return self.type_at(self.data.get(self.indexes + low).to_int())
+
+// The offset that local seconds `local` (the fields read as UTC) belong to; a time
+// skipped or repeated by a transition takes the offset before it.
+fn Zone.offset_for_local(local: Int) Int:
+	if self.kind != 2: return self.at(local).offset
+
+	before := self.at(local - 86400).offset
+	after := self.at(local + 86400).offset
+	if before == after: return before
+	if self.at(local - before).offset == before: return before
+	if self.at(local - after).offset == after: return after
+
+	return before
+
 fn bad_zone() Error:
 	return Error("time: invalid zone data", kind: "EBADMSG")
 
@@ -433,89 +516,6 @@ fn rule_seconds(rule: Rule, year: Int) Int:
 		day = days_from_civil(year, 1, 1) + rule.day
 
 	return day * 86400 + rule.time
-
-// The transition time of entry `i`.
-fn Zone.time(i: Int) Int:
-	return be_signed(self.data, self.times + i * self.time_size, self.time_size)
-
-// The offset and abbreviation of local time type `t`.
-fn Zone.type_at(t: Int) ZoneAt:
-	at := self.types + t * 6
-	start := self.abbrevs + self.data.get(at + 5).to_int()
-	limit := self.abbrevs + self.abbrev_size
-	var stop = start
-	while stop < limit and self.data.get(stop).to_int() != 0:
-		stop += 1
-	return ZoneAt(
-		offset: be_i32(self.data, at),
-		abbreviation: self.data.decode_utf8_range(start, stop).get_or(""),
-	)
-
-// The footer rule's offset and abbreviation at `unix`.
-fn Zone.rule_at(unix: Int) ZoneAt:
-	if not self.has_dst: return ZoneAt(
-		offset: self.std_offset,
-		abbreviation: self.std_name.clone(),
-	)
-
-	year := year_of_days(floor_div(unix + self.std_offset, 86400))
-	begin := rule_seconds(self.start, year) - self.std_offset
-	finish := rule_seconds(self.end, year) - self.dst_offset
-	var summer = false
-
-	if begin < finish:
-		summer = unix >= begin and unix < finish
-	else:
-		summer = not (unix >= finish and unix < begin)
-
-	if summer: return ZoneAt(
-		offset: self.dst_offset,
-		abbreviation: self.dst_name.clone(),
-	)
-
-	return ZoneAt(offset: self.std_offset, abbreviation: self.std_name.clone())
-
-// The offset (seconds east of UTC) and abbreviation of this zone at a Unix time.
-fn Zone.at(unix: Int) ZoneAt:
-	if self.kind == 0: return ZoneAt(offset: 0, abbreviation: "UTC")
-	if self.kind == 1: return ZoneAt(
-		offset: self.fixed,
-		abbreviation: self.name.clone(),
-	)
-
-	if self.count == 0:
-		if self.has_footer: return self.rule_at(unix)
-		return self.type_at(0)
-
-	if unix < self.time(0): return self.type_at(0)
-	if unix >= self.time(self.count - 1) and self.has_footer: return self.rule_at(unix)
-
-	// The last transition at or before `unix`.
-	var low = 0
-	var high = self.count
-
-	while high - low > 1:
-		mid := (low + high) / 2
-
-		if self.time(mid) <= unix:
-			low = mid
-		else:
-			high = mid
-
-	return self.type_at(self.data.get(self.indexes + low).to_int())
-
-// The offset that local seconds `local` (the fields read as UTC) belong to; a time
-// skipped or repeated by a transition takes the offset before it.
-fn Zone.offset_for_local(local: Int) Int:
-	if self.kind != 2: return self.at(local).offset
-
-	before := self.at(local - 86400).offset
-	after := self.at(local + 86400).offset
-	if before == after: return before
-	if self.at(local - before).offset == before: return before
-	if self.at(local - after).offset == after: return after
-
-	return before
 
 // `[+-]hh:mm` as seconds east of UTC, or none.
 fn fixed_offset(text: String) Int?:

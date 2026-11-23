@@ -1,7 +1,7 @@
 import (
-	JsonValue from "@std/data/json.ms",
 	Promise, adopt from "@std/concurrency/promise.ms",
 	Data, panic from "@std/core.ms",
+	JsonValue from "@std/data/json.ms",
 	ReadStream, Source from "@std/io/io.ms",
 
 	msrt_promise_sleep from "@std/internal/promises.ms",
@@ -721,11 +721,9 @@ export fn ticker(period: Duration) ReadStream[Instant]:
 fn unit_count(operation: String, n: Int, scale: Int) Int:
 	low := (-9223372036854775807 - 1) / scale
 	high := 9223372036854775807 / scale
-
 	if n < low or n > high: panic(
 		f"{operation}: value must be between {low} and {high}, found {n}"
 	)
-
 	return n
 
 fn Int.milliseconds() Duration:

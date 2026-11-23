@@ -133,6 +133,7 @@ typedef struct MsCheckProgram {
   MsDefs defs;
   MsPropertyMemo properties; /* property queries in flight and answered */
   MsMethodList methods; /* every module's methods, in declaration order */
+  MsMethodIndex method_index; /* methods by name and by declaring node, rebuilt as modules register theirs */
   MsSymbolList symbols; /* index 0 is unused */
   MsTyList symbol_vars; /* the type variables of every symbol, by range */
   MsModuleList modules;
