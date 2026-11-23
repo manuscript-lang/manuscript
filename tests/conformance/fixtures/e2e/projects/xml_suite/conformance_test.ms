@@ -22,7 +22,7 @@ fn passes(tree: FileTree, kind: String, path: String) Bool:
 	// accepted.
 	if text == null: return kind == "not-wf"
 
-	parsed := parse(text or "")
+	parsed := parse(text)
 	if kind == "not-wf": return parsed.is_error()
 
 	return parsed.is_ok()

@@ -413,7 +413,7 @@ test "parse_float rounds like the exact rational at the range edges":
 				) or nearest == 0.0 and (parsed or 1.5) == 0.0
 			)?
 		else:
-			expect_true((parsed == null) or not (parsed or 0.0).is_finite())?
+			expect_true((parsed == null) or not (parsed).is_finite())?
 
 test "BigRat and BigFloat arithmetic is exact or correctly rounded on Float boundaries":
 	for x in finite_float_boundaries():

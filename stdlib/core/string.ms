@@ -50,7 +50,7 @@ fn String.split_once(separator: String) SplitParts?:
 	at := self.index_of(separator)
 	if at == null: return null
 
-	cut := at or 0
+	cut := at
 	return SplitParts(
 		before: self.view(0, cut).clone(),
 		after: self.view(cut + separator.length(), self.length()).clone(),
@@ -65,7 +65,7 @@ fn String.rsplit_once(separator: String) SplitParts?:
 	at := self.last_index_of(separator)
 	if at == null: return null
 
-	cut := at or 0
+	cut := at
 	return SplitParts(
 		before: self.view(0, cut).clone(),
 		after: self.view(cut + separator.length(), self.length()).clone(),

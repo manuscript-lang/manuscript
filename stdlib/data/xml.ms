@@ -726,7 +726,7 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 			invalid_at(chars, here, "an entity reference must end with `;`")
 		)
 
-		entity := tail.view(0, end or 0)
+		entity := tail.view(0, end)
 
 		if entity == "lt": out.append("<")
 		else if entity == "gt": out.append(">")
@@ -752,7 +752,7 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 		else:
 			return error(invalid_at(chars, here, f"unknown entity `&{entity};`"))
 
-		out.append(tail.view((end or 0) + 1, tail.length()))
+		out.append(tail.view((end) + 1, tail.length()))
 
 	return ok(out.build())
 
@@ -777,11 +777,11 @@ fn is_xml_char(code: Int) Bool:
 	)
 
 fn scalar(chars: List[String], at: Int, value: Int?) String!:
-	if (value == null) or not is_xml_char(value or 0): return error(
+	if (value == null) or not is_xml_char(value): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)
 
-	text := from_scalars([(value or 0)])
+	text := from_scalars([(value)])
 	if text.is_error(): return error(
 		invalid_at(chars, at, "invalid character reference")
 	)

@@ -130,7 +130,7 @@ export fn each_cell(
 		found := record.get()
 		if found == null: break
 
-		count := found or 0
+		count := found
 		if rows >= rows_budget or count > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -416,7 +416,7 @@ fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 	decoded := data.decode_utf8_range(0, end)
 	if decoded == null: return invalid_text()
 
-	text := decoded or ""
+	text := decoded
 	return write_rows(parse(text, self.options)?, out)
 
 fn var CsvRows.finish(var out: List[List[String]]) Void!:
@@ -430,7 +430,7 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	decoded := data.decode_utf8()
 	if decoded == null: return invalid_text()
 
-	text := decoded or ""
+	text := decoded
 	return write_rows(parse(text, self.options)?, out)
 
 fn invalid_text() Void!:

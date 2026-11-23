@@ -28,13 +28,13 @@ fn var Node.rename(delta: Int) Void:
 fn count(node: Node?) Int:
 	if node == null: return 0
 
-	n := node.get()
+	n := node
 	return 1 + count(n.left) + count(n.right)
 
 fn keys(var out: List[Int], node: Node?) Void:
 	if node == null: return
 
-	n := node.get()
+	n := node
 	keys(out, n.left)
 	out.append(n.key)
 	keys(out, n.right)

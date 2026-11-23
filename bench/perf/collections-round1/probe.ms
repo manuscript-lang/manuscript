@@ -31,7 +31,7 @@ fn big_int_map() Int:
 		x = lcg(x)
 
 		v := m.get(x * 7919 % 4000037)
-		if v != null: t += v.get()
+		if v != null: t += v
 
 	return t + m.length()
 
@@ -112,7 +112,7 @@ fn make_tree(d: Int) Node?:
 fn count(n: Node?) Int:
 	if n == null: return 0
 
-	nn := n.get()
+	nn := n
 	return 1 + count(nn.left) + count(nn.right)
 
 fn trees() Int:

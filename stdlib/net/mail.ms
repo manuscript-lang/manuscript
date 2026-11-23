@@ -88,8 +88,8 @@ fn valid_address(address: String) Bool:
 	at := address.last_index_of("@")
 	if at == null: return false
 
-	local := address.view(0, at or 0)
-	domain := address.view((at or 0) + 1, address.length())
+	local := address.view(0, at)
+	domain := address.view((at) + 1, address.length())
 	if local.is_empty() or domain.is_empty(): return false
 
 	return not address.contains_any(" \t<>,;")

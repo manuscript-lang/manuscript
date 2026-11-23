@@ -417,7 +417,7 @@ fn extension_of_base(base: String) String:
 	dot := base.last_index_of(".")
 	if dot == null: return ""
 
-	at := dot or 0
+	at := dot
 	if at == 0 or base == "..": return ""
 
 	return base.view(at, base.length()).clone()
@@ -640,9 +640,9 @@ fn dirname_in(windows: Bool, original: String) String:
 		if root.is_empty(): return "."
 		return original.view(0, root.length()).clone()
 
-	if (at or 0) < root.length(): return original.view(0, root.length()).clone()
+	if (at) < root.length(): return original.view(0, root.length()).clone()
 
-	return original.view(0, at or 0).clone()
+	return original.view(0, at).clone()
 
 fn join_in(windows: Bool, items: List[String]) String:
 	var first = ""
@@ -690,11 +690,11 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 		invalid_input()
 	)
 
-	base := slash(windows, base_resolved or "")
-	target := slash(windows, target_resolved.clone() or "")
+	base := slash(windows, base_resolved)
+	target := slash(windows, target_resolved.clone())
 	base_root := root_of(windows, base)
 	target_root := root_of(windows, target)
-	if not same_text(windows, base_root, target_root): return ok(target_resolved or "")
+	if not same_text(windows, base_root, target_root): return ok(target_resolved)
 
 	// The components borrow `base` and `target` for the comparison; only the result
 	// copies.
@@ -782,7 +782,7 @@ fn namespaced_in(windows: Bool, text: String) String:
 	resolved := resolve_inner(true, text, [])
 	if resolved == null: return text.clone()
 
-	value := resolved or ""
+	value := resolved
 	if value.starts_with("\\\\"): return f"\\\\?\\UNC\\{value.view(2, value.length())}"
 
 	return f"\\\\?\\{value}"

@@ -79,7 +79,7 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 		count := parts[2].parse_int() or (-1)
 		elapsed := parts[3].parse_int() or (-1)
-		if count != (want or 0) or elapsed <= 0:
+		if count != (want) or elapsed <= 0:
 			return invalid(f"incorrect work count or timing: {line.trim()}")
 
 		key := f"{version} {name}"

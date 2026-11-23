@@ -151,8 +151,8 @@ export fn parse_media_type(text: String) MediaType!:
 		at := piece.index_of("=")
 		if at == null: return error(Error("MIME: invalid media type", kind: "EBADMSG"))
 
-		name := piece.view(0, at or 0).trim().lower()
-		raw := piece.view((at or 0) + 1, piece.length()).trim()
+		name := piece.view(0, at).trim().lower()
+		raw := piece.view((at) + 1, piece.length()).trim()
 		if name.is_empty(): return error(
 			Error("MIME: invalid media type", kind: "EBADMSG")
 		)
@@ -162,7 +162,7 @@ export fn parse_media_type(text: String) MediaType!:
 			Error("MIME: invalid media type", kind: "EBADMSG")
 		)
 
-		params.add(name, value or "")
+		params.add(name, value)
 
 	return ok(MediaType(essence: essence, params: params))
 
@@ -262,14 +262,14 @@ export fn parse_headers(text: String) Headers!:
 			continue
 
 		at := line.index_of(":")
-		if (at == null) or (at or 0) == 0: return error(
+		if (at == null) or (at) == 0: return error(
 			Error("MIME: invalid header", kind: "EBADMSG")
 		)
 
 		fields.append(
 			HeaderField(
-				name: line.view(0, at or 0).trim().clone(),
-				value: line.view((at or 0) + 1, line.length()).trim(),
+				name: line.view(0, at).trim().clone(),
+				value: line.view((at) + 1, line.length()).trim(),
 			)
 		)
 
@@ -322,7 +322,7 @@ fn make_part(section: Bytes) Part!:
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
 
-	headers := parse_headers(header_text or "")?
+	headers := parse_headers(header_text)?
 	var part = Part(
 		headers: headers,
 		data: inner.slice(data_start, inner.length()).clone().get_or(
@@ -422,7 +422,7 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 
 			break
 
-		end := at or 0
+		end := at
 
 		if self.in_part:
 			if limit := self.max_part_bytes:

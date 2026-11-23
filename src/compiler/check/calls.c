@@ -844,6 +844,9 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy result = MS_TY_NONE;
   const size_t diagnostics_before = body->program->diagnostics.len;
   const MsExpr *callee = expr->u.call.callee;
+  if (body_present_get(body, expr, &result)) {
+    return result;
+  }
   target.name_text = ms_strbuild_new();
   append_callee_name(body, &target.name_text, callee);
   target.name = ms_strbuild_span(&target.name_text);

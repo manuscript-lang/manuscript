@@ -57,7 +57,7 @@ export fn run_ints(path: String, args: List[String]) List[Int]!:
 		n := part.parse_int()
 		if n == null: return invalid(f"not an integer: {part}")
 
-		out.append(n or 0)
+		out.append(n)
 
 	return ok(out)
 
@@ -121,7 +121,7 @@ export fn before_median(summary: JsonValue, name: String, operation: String) Flo
 		same_op := (
 			operation == ""
 			or (op == null)
-			or ((op or JsonValue.Null).as_string() or "") == operation
+			or ((op).as_string() or "") == operation
 		)
 		if c == name and same_op:
 			if v := row.get_in(["distributions", "before", "median_ns"]):
@@ -146,7 +146,7 @@ export fn all_ints(values: List[String]) List[Int]!:
 		n := v.trim().parse_int()
 		if n == null: return invalid(f"not an integer: {v}")
 
-		out.append(n or 0)
+		out.append(n)
 
 	return ok(out)
 

@@ -60,7 +60,7 @@ fn main() Int:
 		)
 		return 1
 
-	all := counts or []
+	all := counts
 	var totals = [0, 0, 0, 0]
 	var out = (
 		"challenge".pad_end(26, " ")

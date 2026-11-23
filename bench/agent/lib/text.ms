@@ -91,8 +91,8 @@ export fn split_max(text: String, separator: String, splits: Int) List[String]:
 		at := rest.index_of(separator)
 		if at == null: break
 
-		out.append(rest.slice(0, at or 0))
-		rest = rest.slice((at or 0) + separator.length(), rest.length())
+		out.append(rest.slice(0, at))
+		rest = rest.slice((at) + separator.length(), rest.length())
 
 	out.append(rest)
 	return out

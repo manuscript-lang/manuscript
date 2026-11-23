@@ -618,7 +618,7 @@ fn var Parser.read_until_close_angle() Void:
 		self.data_end = self.raw_end
 		return
 
-	self.raw_end = (idx or 0) + 1
+	self.raw_end = (idx) + 1
 	self.data_end = self.raw_end - 1
 
 fn var Parser.read_markup_declaration() Int:
@@ -925,7 +925,7 @@ fn var Parser.next_token() Int:
 			self.eof = true
 			break
 
-		self.raw_end = (idx or 0) + 1
+		self.raw_end = (idx) + 1
 
 		c := self.read_byte()
 		if self.eof: break
@@ -3072,7 +3072,7 @@ fn var Parser.adjust_foreign_attributes() Void:
 		colon := key.index_of(":")
 
 		if colon != null:
-			at := colon or 0
+			at := colon
 			self.tok_nss[i] = key.view(0, at).clone()
 			self.tok_keys[i] = key.view(at + 1, key.length()).clone()
 
@@ -4967,7 +4967,7 @@ fn limit_error() Error:
 fn budget(limit: Int?) Int!:
 	if limit == null: return ok(9223372036854775807)
 
-	n := limit or 0
+	n := limit
 	if n < 0: return error(Error("HTML: invalid input", kind: "EINVAL"))
 
 	return ok(n)

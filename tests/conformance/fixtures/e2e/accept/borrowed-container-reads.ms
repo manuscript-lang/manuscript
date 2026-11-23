@@ -29,7 +29,7 @@ fn by_binding(orders: Map[String, Order], id: String) Int:
 	found := orders.get(id)
 	if found == null: return 0
 
-	o := found.get()
+	o := found
 	return o.items.length() + o.status.length()
 
 fn by_if_let(orders: Map[String, Order], id: String) Int:

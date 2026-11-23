@@ -66,8 +66,8 @@ fn by_name(a: DirectoryEntry, b: DirectoryEntry) Int:
 	return a.name.compare(b.name)
 
 fn limited(move entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry]!:
-	if (max_entries != null) and max_entries.get() < 0: return error(fs_invalid_input())
-	if (max_entries != null) and entries.length() > max_entries.get(): return error(
+	if (max_entries != null) and max_entries < 0: return error(fs_invalid_input())
+	if (max_entries != null) and entries.length() > max_entries: return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -243,11 +243,11 @@ fn MemoryTree.read(path: String, max_bytes: Int?) Bytes!:
 	if found == null: return error(
 		Error("filesystem: file or directory not found", kind: "ENOENT")
 	)
-	if (max_bytes != null) and found.get().length() > max_bytes.get(): return error(
+	if (max_bytes != null) and found.length() > max_bytes: return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 	)
 
-	return ok(found.get().clone())
+	return ok(found.clone())
 
 // Lists the files and directories directly under `path`, sorted by name.
 fn MemoryTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
@@ -309,8 +309,8 @@ fn EmbeddedTree.read(path: String, max_bytes: Int?) Bytes!:
 	)
 
 	load := self.load
-	data := load(found.get())
-	if (max_bytes != null) and data.length() > max_bytes.get(): return error(
+	data := load(found)
+	if (max_bytes != null) and data.length() > max_bytes: return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 	)
 
@@ -388,7 +388,7 @@ export fn walk(
 		entry := WalkEntry(pending[top].path.clone(), pending[top].directory)
 		pending.remove(top)
 		found.append(WalkEntry(relative(entry.path, start), entry.directory))
-		if (max_entries != null) and found.length() > max_entries.get(): return error(
+		if (max_entries != null) and found.length() > max_entries: return error(
 			Error("filesystem: limit exceeded", kind: "EOVERFLOW")
 		)
 

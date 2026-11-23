@@ -20,7 +20,7 @@ fn passes(tree: FileTree, name: String) Bool:
 	// A String cannot hold invalid UTF-8, so such a file cannot be accepted.
 	if text == null: return name.starts_with("n_")
 
-	parsed := parse[JsonValue](text or "")
+	parsed := parse[JsonValue](text)
 	if name.starts_with("n_"): return parsed.is_error()
 
 	return parsed.is_ok()

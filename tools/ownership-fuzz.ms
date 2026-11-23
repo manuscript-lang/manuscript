@@ -298,7 +298,7 @@ fn well_formed(line: String) Bool:
 	dash := line.index_of("-")
 	if dash == null: return false
 
-	for c in line.slice(dash.get() + 1, line.length()).chars():
+	for c in line.slice(dash + 1, line.length()).chars():
 		if c < "a" or c > "j": return false
 	return true
 

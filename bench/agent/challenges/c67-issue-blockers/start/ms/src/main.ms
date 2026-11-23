@@ -732,7 +732,7 @@ fn build_term(
 		q := st.views.get(value)
 		if q == null: return error(Error(f"query: unknown view '{value}'"))
 
-		qs := split_query(q or "")?
+		qs := split_query(q)?
 		root := parse_filter(st, qs.filter, nodes, refs)?
 		refs.append(value.clone())
 		return ok(add_node(nodes, Node(kind: 4, a: root)))
@@ -1324,7 +1324,7 @@ fn var State.cmd_view(rest: String) String!:
 		q := self.views.get(ws[1])
 		if q == null: return error(Error(f"unknown view '{ws[1]}'"))
 
-		return ok(f"{ws[1]}: {(q or "")}")
+		return ok(f"{ws[1]}: {(q)}")
 
 	if sub == "delete":
 		if ws.length() != 2: return error(Error("usage: view delete NAME"))
@@ -1352,7 +1352,7 @@ fn var State.cmd_view(rest: String) String!:
 		q := self.views.get(name)
 		if q == null: return error(Error(f"unknown view '{name}'"))
 
-		spec := split_query(q or "")?
+		spec := split_query(q)?
 		extra := split_query(rest_after(rest, 2))?
 		if extra.filter.trim() != "": return error(
 			Error(f"unexpected '{extra.filter.trim()}'")

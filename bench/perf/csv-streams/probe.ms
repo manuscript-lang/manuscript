@@ -44,7 +44,7 @@ fn read(item: Case) Int!:
 	found := first?
 	if found == null: return error(Error("missing row"))
 
-	row := found.get()
+	row := found
 	if row.length() != 1 or row[0] != item.expected: return error(Error("wrong row"))
 	if (rows.next()?) != null: return error(Error("extra row"))
 

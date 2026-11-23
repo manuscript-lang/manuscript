@@ -108,15 +108,15 @@ export fn summarize(
 		if (micros == null) or (check == null): return invalid(
 			f"invalid sample: {line.trim()}"
 		)
-		if (micros or 0) < 0: return invalid(f"negative timing: {line.trim()}")
+		if (micros) < 0: return invalid(f"negative timing: {line.trim()}")
 
 		key := f"{name} {version}"
 		var list = samples.get_or(key, List[Float]())
-		list.append((micros or 0).to_float())
+		list.append((micros).to_float())
 		samples.add(key.clone(), list)
 
 		var seen = checks.get_or(name, Set[Int]())
-		seen.add(check or 0)
+		seen.add(check)
 		checks.add(name.clone(), seen)
 		pending.add(name.clone())
 
