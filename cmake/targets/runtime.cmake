@@ -171,6 +171,10 @@ endif()
 ms_executable(shape_unit runtime/std SOURCES shape_unit.c LINK ${shape_libs} m)
 add_test(NAME std_shape COMMAND shape_unit)
 
+# The public suffix list is in the binary and libcurl uses it (cookies for `co.uk` are refused).
+ms_executable(http_psl_unit runtime/std SOURCES http_psl_unit.c LINK curl psl_static zlib nghttp2 openssl_ssl openssl_crypto)
+add_test(NAME std_psl COMMAND http_psl_unit)
+
 # Everything a program links, in one name.
 add_library(ms_runtime INTERFACE)
 target_link_libraries(ms_runtime INTERFACE ms_abi ms_sys ms_io ms_core ms_entry ms_values ms_std_text ms_std_data
