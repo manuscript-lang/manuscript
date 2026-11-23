@@ -59,7 +59,7 @@ void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
   }
   fn_presolve_keys(fn, container);
   const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved)) {
     return;
   }
   const MirValue value = fn_expr(fn, key, LW_BORROW);
@@ -80,6 +80,20 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     return fn_try_var_slot(fn, place, out);
   }
   MirValue element;
+  const MsRef *named = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (named != NULL && named->kind == MS_REF_PARAM && fn->param_vars == NULL && fn->default_base != MIR_NONE &&
+      fn->default_call == NULL) {
+    /* A field default passes an earlier field of the record under construction on as `var`: the callee changes it in place. */
+    const MirTyData *data = mir_ty_data(fn->cx->module, fn->default_record_ty);
+    if (data->kind != MK_TYPE || named->local >= fn->cx->module->type_defs.ptr[data->id].nfields) {
+      (void)fn_fail(fn, "a field default reads a field its record does not have");
+      return MIR_NONE;
+    }
+    const MirImm field = {.tag = MI_FIELD, .a = data->id, .b = named->local};
+    element = mir_b_emit(&fn->b, MOP_PtrField, &fn->default_base, 1, field, MIR_PTR);
+    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
   if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
     *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
@@ -370,6 +384,15 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                                        fn->subst.count);
         pending[index] = fn_pending_own(fn, param, out[index]);
       }
+    } else if (arg->source == MS_ARG_MISSING_VALUE) {
+      const MsTyTable *types = &fn->cx->program->types;
+      const size_t declared = ms_ty_param_count(types, call->callee_ty);
+      const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      out[index] = fn_missing_value(fn, expr->pos);
+      if (out[index] != MIR_NONE && (ms_ty_params(types, call->callee_ty)[at].flags & MS_PARAM_LIFTED) != 0) {
+        const MirTy opt = mir_ty_opt(fn->cx->module, mir_b_ty(&fn->b, out[index])); /* an omittable parameter is passed as an optional */
+        out[index] = fn_emit(fn, MOP_OptSome, &out[index], 1, (MirImm){0}, opt);
+      }
     } else {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
@@ -635,7 +658,9 @@ static bool callee_is_operation(LowerFn *fn, const MsExpr *expr, const MsCall *c
 static bool is_bodiless_function(LowerFn *fn, const MsCall *call) {
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   const MsSymbol *symbol = id == 0 ? NULL : &fn->cx->program->symbols.ptr[id];
-  return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless;
+  /* A program's own `fn f() Void: ...` is an ordinary empty declaration: it has a body that does nothing. */
+  return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless &&
+         call->callee.decl.module >= fn->cx->program->user_modules;
 }
 
 static int base64_digit(uint8_t c) {

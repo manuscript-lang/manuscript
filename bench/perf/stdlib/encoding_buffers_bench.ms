@@ -6,7 +6,6 @@ import (
 	base32_decode,
 	base32_encode,
 	base64_encode from "@std/data/encoding.ms",
-	keep, measure from "@std/test/bench.ms",
 	expect_equal from "@std/test/test.ms",
 )
 
@@ -19,36 +18,52 @@ fn sample(length: Int, zero: Bool = false) Bytes:
 
 	return out.build()
 
-fn unpadded(length: Int, url: Bool) Void!:
+// One prepared case: the input, the options and the answer the run must reproduce.
+type Case:
+	data: Bytes
+	text: String
+	expected_text: String
+	expected: Bytes!
+	hex: Bool
+	padded: Bool
+	url: Bool
+	weight: Int
+	limit: Int?
+
+fn plain(data: Bytes) Case:
+	return Case(
+		data: data,
+		text: "",
+		expected_text: "",
+		expected: ok(Bytes([])),
+		limit: none,
+		hex: false,
+		padded: false,
+		url: false,
+		weight: 0,
+	)
+
+fn prep_unpadded(length: Int, url: Bool) Case:
 	data := sample(length)
 	expected := base64_encode(data, url).replace("=", "")
+	var c = plain(data)
+	c.url = url
+	c.expected_text = expected
+	return c
 
-	fn work() Void!:
-		actual := base64_encode(data, url, false)
-		expect_equal(actual, expected)?
-		return keep(actual.length())
-
-	measure(1, work)?
-
-fn base32(length: Int, hex: Bool, padded: Bool) Void!:
+fn prep_base32(length: Int, hex: Bool, padded: Bool) Case:
 	data := sample(length)
-	expected := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-	expect_equal(
-		base32_decode(
-			expected,
-			Base32Options(hex_alphabet: hex, padded: padded),
-		)?,
-		data,
-	)?
+	options := Base32Options(hex_alphabet: hex, padded: padded)
+	expected := base32_encode(data, options)
+	expect_equal(base32_decode(expected, options).get(), data).get()
 
-	fn work() Void!:
-		actual := base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
-		expect_equal(actual, expected)?
-		return keep(actual.length())
+	var c = plain(data)
+	c.hex = hex
+	c.padded = padded
+	c.expected_text = expected
+	return c
 
-	measure(1, work)?
-
-fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Void!:
+fn prep_decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Case:
 	data := sample(length)
 	var text = base32_encode(data, Base32Options(hex_alphabet: hex, padded: padded))
 	if mode == 1 or mode == 7: text = "!" + ("A".repeat(text.length() - 1))
@@ -67,36 +82,31 @@ fn decode32(length: Int, hex: Bool, padded: Bool, mode: Int) Void!:
 	if mode == 3: expected = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	if mode == 4: expected = error(Error("encoding: invalid input", kind: "EINVAL"))
 
-	fn work() Void!:
-		actual := base32_decode(
-			text,
-			Base32Options(hex_alphabet: hex, padded: padded),
-			limit,
-		)
-		expect_equal(actual, expected)?
-		return keep(if mode == 0 or mode == 5 or mode == 6: data.length() else: 1)
+	var c = plain(data)
+	c.hex = hex
+	c.padded = padded
+	c.text = text
+	c.limit = limit
+	c.expected = expected
+	c.weight = if mode == 0 or mode == 5 or mode == 6: data.length() else: 1
+	return c
 
-	measure(1, work)?
-
-fn encode85(length: Int) Void!:
+fn prep_encode85(length: Int) Case:
 	data := sample(length)
 	expected := ascii85_encode(data)
-	expect_equal(ascii85_decode(expected)?, data)?
+	expect_equal(ascii85_decode(expected).get(), data).get()
 
-	fn work() Void!:
-		actual := ascii85_encode(data)
-		expect_equal(actual, expected)?
-		return keep(actual.length())
+	var c = plain(data)
+	c.expected_text = expected
+	return c
 
-	measure(1, work)?
-
-fn decode85(
+fn prep_decode85(
 	length: Int,
 	bounded: Bool,
 	under: Bool,
 	zero: Bool = false,
 	bad: Int = 0,
-) Void!:
+) Case:
 	data := sample(length, zero)
 	var text = ascii85_encode(data)
 	if bad == 1: text = "v" + text
@@ -109,181 +119,263 @@ fn decode85(
 	if under: expected = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	if bad != 0: expected = error(Error("encoding: invalid data", kind: "EBADMSG"))
 
-	fn work() Void!:
-		actual := ascii85_decode(text, limit)
-		expect_equal(actual, expected)?
-		return keep(if actual.is_ok(): data.length() else: 1)
+	var c = plain(data)
+	c.text = text
+	c.limit = limit
+	c.expected = expected
+	c.weight = if bad == 0 and not under: data.length() else: 1
+	return c
 
-	measure(1, work)?
-	return ok()
+fn prep_zero_budget() Case:
+	var c = plain(Bytes([]))
+	c.text = ascii85_encode(sample(4096))
+	c.limit = 0
+	c.expected = error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	c.weight = 1
+	return c
 
-fn zero_budget85() Void!:
-	text := ascii85_encode(sample(4096))
-	expected: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+fn prep_whitespace(bounded: Bool) Case:
+	var c = plain(Bytes([]))
+	c.text = " \t\r\n".repeat(16384)
+	c.limit = if bounded: 0 else: none
+	c.weight = 1
+	return c
 
-	fn work() Void!:
-		expect_equal(ascii85_decode(text, 0), expected)?
-		return keep(1)
+fn run_unpadded(c: Case) Int!:
+	actual := base64_encode(c.data, c.url, false)
+	expect_equal(actual, c.expected_text)?
+	return ok(actual.length())
 
-	measure(1, work)?
+fn run_base32(c: Case) Int!:
+	actual := base32_encode(
+		c.data,
+		Base32Options(hex_alphabet: c.hex, padded: c.padded),
+	)
+	expect_equal(actual, c.expected_text)?
+	return ok(actual.length())
 
-fn whitespace85(bounded: Bool) Void!:
-	text := " \t\r\n".repeat(16384)
-	limit: Int? := if bounded: 0 else: none
-	expected: Bytes! := ok(Bytes([]))
+fn run_decode32(c: Case) Int!:
+	actual := base32_decode(
+		c.text,
+		Base32Options(hex_alphabet: c.hex, padded: c.padded),
+		c.limit,
+	)
+	expect_equal(actual, c.expected)?
+	return ok(c.weight)
 
-	fn work() Void!:
-		expect_equal(ascii85_decode(text, limit), expected)?
-		return keep(1)
+fn run_encode85(c: Case) Int!:
+	actual := ascii85_encode(c.data)
+	expect_equal(actual, c.expected_text)?
+	return ok(actual.length())
 
-	measure(1, work)?
+fn run_decode85(c: Case) Int!:
+	actual := ascii85_decode(c.text, c.limit)
+	expect_equal(actual, c.expected)?
+	return ok(c.weight)
+
+type BenchData:
+	cases: List[Case]
+
+fn make_fixture() BenchData:
+	var cases: List[Case] = []
+	cases.append(prep_unpadded(0, false))
+	cases.append(prep_unpadded(4, false))
+	cases.append(prep_unpadded(7, false))
+	cases.append(prep_unpadded(21, false))
+	cases.append(prep_unpadded(4096, false))
+	cases.append(prep_unpadded(1048576, false))
+	cases.append(prep_unpadded(21, true))
+	cases.append(prep_unpadded(4096, true))
+	cases.append(prep_base32(21, false, true))
+	cases.append(prep_base32(4096, false, false))
+	cases.append(prep_base32(4096, true, true))
+	cases.append(prep_base32(21, true, false))
+	cases.append(prep_encode85(21))
+	cases.append(prep_encode85(4096))
+	cases.append(prep_decode85(0, false, false))
+	cases.append(prep_decode85(0, true, false))
+	cases.append(prep_decode85(8, false, false))
+	cases.append(prep_decode85(8, true, false))
+	cases.append(prep_decode85(4096, false, false))
+	cases.append(prep_decode85(4096, true, false))
+	cases.append(prep_decode85(8, true, true))
+	cases.append(prep_decode85(4096, true, true))
+	cases.append(prep_zero_budget())
+	cases.append(prep_decode85(4096, true, false, bad: 1))
+	cases.append(prep_decode85(4096, true, false, bad: 2))
+	cases.append(prep_decode85(8, false, false, true))
+	cases.append(prep_decode85(8, true, false, true))
+	cases.append(prep_decode85(8, true, true, true))
+	cases.append(prep_whitespace(false))
+	cases.append(prep_whitespace(true))
+	cases.append(prep_decode32(7, false, true, 0))
+	cases.append(prep_decode32(4096, false, true, 0))
+	cases.append(prep_decode32(4096, false, true, 5))
+	cases.append(prep_decode32(4096, false, true, 6))
+	cases.append(prep_decode32(4096, false, true, 1))
+	cases.append(prep_decode32(1048576, false, true, 1))
+	cases.append(prep_decode32(4096, false, true, 7))
+	cases.append(prep_decode32(4096, false, true, 2))
+	cases.append(prep_decode32(4096, false, true, 3))
+	cases.append(prep_decode32(4096, false, true, 4))
+	cases.append(prep_decode32(7, true, false, 0))
+	cases.append(prep_decode32(4096, true, false, 0))
+	cases.append(prep_decode32(4096, true, false, 5))
+	cases.append(prep_decode32(4096, true, false, 6))
+	cases.append(prep_decode32(4096, true, false, 1))
+	cases.append(prep_decode32(1048576, true, false, 1))
+	cases.append(prep_decode32(4096, true, false, 7))
+	cases.append(prep_decode32(4096, true, false, 2))
+	cases.append(prep_decode32(4096, true, false, 3))
+	cases.append(prep_decode32(4096, true, false, 4))
+	return BenchData(cases: cases)
 
 bench "buffers.unpadded.std.0":
-	unpadded(0, false)?
+	run_unpadded(fixture.cases[0])?
 
 bench "buffers.unpadded.std.4":
-	unpadded(4, false)?
+	run_unpadded(fixture.cases[1])?
 
 bench "buffers.unpadded.std.7":
-	unpadded(7, false)?
+	run_unpadded(fixture.cases[2])?
 
 bench "buffers.unpadded.std.21":
-	unpadded(21, false)?
+	run_unpadded(fixture.cases[3])?
 
 bench "buffers.unpadded.std.4096":
-	unpadded(4096, false)?
+	run_unpadded(fixture.cases[4])?
 
 bench "buffers.unpadded.std.1048576":
-	unpadded(1048576, false)?
+	run_unpadded(fixture.cases[5])?
 
 bench "buffers.unpadded.url.21":
-	unpadded(21, true)?
+	run_unpadded(fixture.cases[6])?
 
 bench "buffers.unpadded.url.4096":
-	unpadded(4096, true)?
+	run_unpadded(fixture.cases[7])?
 
 bench "buffers.base32.std.pad.21":
-	base32(21, false, true)?
+	run_base32(fixture.cases[8])?
 
 bench "buffers.base32.std.raw.4096":
-	base32(4096, false, false)?
+	run_base32(fixture.cases[9])?
 
 bench "buffers.base32.hex.pad.4096":
-	base32(4096, true, true)?
+	run_base32(fixture.cases[10])?
 
 bench "buffers.base32.hex.raw.21":
-	base32(21, true, false)?
+	run_base32(fixture.cases[11])?
 
 bench "buffers.ascii85.encode.21":
-	encode85(21)?
+	run_encode85(fixture.cases[12])?
 
 bench "buffers.ascii85.encode.4096":
-	encode85(4096)?
+	run_encode85(fixture.cases[13])?
 
 bench "buffers.ascii85.none.0":
-	decode85(0, false, false)?
+	run_decode85(fixture.cases[14])?
 
 bench "buffers.ascii85.exact.0":
-	decode85(0, true, false)?
+	run_decode85(fixture.cases[15])?
 
 bench "buffers.ascii85.none.8":
-	decode85(8, false, false)?
+	run_decode85(fixture.cases[16])?
 
 bench "buffers.ascii85.exact.8":
-	decode85(8, true, false)?
+	run_decode85(fixture.cases[17])?
 
 bench "buffers.ascii85.none.4096":
-	decode85(4096, false, false)?
+	run_decode85(fixture.cases[18])?
 
 bench "buffers.ascii85.exact.4096":
-	decode85(4096, true, false)?
+	run_decode85(fixture.cases[19])?
 
 bench "buffers.ascii85.under.8":
-	decode85(8, true, true)?
+	run_decode85(fixture.cases[20])?
 
 bench "buffers.ascii85.under.4096":
-	decode85(4096, true, true)?
+	run_decode85(fixture.cases[21])?
 
 bench "buffers.ascii85.zero.4096":
-	zero_budget85()?
+	run_decode85(fixture.cases[22])?
 
 bench "buffers.ascii85.invalid.first":
-	decode85(4096, true, false, bad: 1)?
+	run_decode85(fixture.cases[23])?
 
 bench "buffers.ascii85.invalid.last":
-	decode85(4096, true, false, bad: 2)?
+	run_decode85(fixture.cases[24])?
 
 bench "buffers.ascii85.z.none":
-	decode85(8, false, false, true)?
+	run_decode85(fixture.cases[25])?
 
 bench "buffers.ascii85.z.exact":
-	decode85(8, true, false, true)?
+	run_decode85(fixture.cases[26])?
 
 bench "buffers.ascii85.z.under":
-	decode85(8, true, true, true)?
+	run_decode85(fixture.cases[27])?
 
 bench "buffers.ascii85.whitespace.none":
-	whitespace85(false)?
+	run_decode85(fixture.cases[28])?
 
 bench "buffers.ascii85.whitespace.exact":
-	whitespace85(true)?
+	run_decode85(fixture.cases[29])?
 
 bench "buffers.decode32.std.pad.valid.7":
-	decode32(7, false, true, 0)?
+	run_decode32(fixture.cases[30])?
 
 bench "buffers.decode32.std.pad.valid.4096":
-	decode32(4096, false, true, 0)?
+	run_decode32(fixture.cases[31])?
 
 bench "buffers.decode32.std.pad.exact.4096":
-	decode32(4096, false, true, 5)?
+	run_decode32(fixture.cases[32])?
 
 bench "buffers.decode32.std.pad.generous.4096":
-	decode32(4096, false, true, 6)?
+	run_decode32(fixture.cases[33])?
 
 bench "buffers.decode32.std.pad.first.4096":
-	decode32(4096, false, true, 1)?
+	run_decode32(fixture.cases[34])?
 
 bench "buffers.decode32.std.pad.first.1048576":
-	decode32(1048576, false, true, 1)?
+	run_decode32(fixture.cases[35])?
 
 bench "buffers.decode32.std.pad.first.generous.4096":
-	decode32(4096, false, true, 7)?
+	run_decode32(fixture.cases[36])?
 
 bench "buffers.decode32.std.pad.last.4096":
-	decode32(4096, false, true, 2)?
+	run_decode32(fixture.cases[37])?
 
 bench "buffers.decode32.std.pad.zero.4096":
-	decode32(4096, false, true, 3)?
+	run_decode32(fixture.cases[38])?
 
 bench "buffers.decode32.std.pad.negative.4096":
-	decode32(4096, false, true, 4)?
+	run_decode32(fixture.cases[39])?
 
 bench "buffers.decode32.hex.raw.valid.7":
-	decode32(7, true, false, 0)?
+	run_decode32(fixture.cases[40])?
 
 bench "buffers.decode32.hex.raw.valid.4096":
-	decode32(4096, true, false, 0)?
+	run_decode32(fixture.cases[41])?
 
 bench "buffers.decode32.hex.raw.exact.4096":
-	decode32(4096, true, false, 5)?
+	run_decode32(fixture.cases[42])?
 
 bench "buffers.decode32.hex.raw.generous.4096":
-	decode32(4096, true, false, 6)?
+	run_decode32(fixture.cases[43])?
 
 bench "buffers.decode32.hex.raw.first.4096":
-	decode32(4096, true, false, 1)?
+	run_decode32(fixture.cases[44])?
 
 bench "buffers.decode32.hex.raw.first.1048576":
-	decode32(1048576, true, false, 1)?
+	run_decode32(fixture.cases[45])?
 
 bench "buffers.decode32.hex.raw.first.generous.4096":
-	decode32(4096, true, false, 7)?
+	run_decode32(fixture.cases[46])?
 
 bench "buffers.decode32.hex.raw.last.4096":
-	decode32(4096, true, false, 2)?
+	run_decode32(fixture.cases[47])?
 
 bench "buffers.decode32.hex.raw.zero.4096":
-	decode32(4096, true, false, 3)?
+	run_decode32(fixture.cases[48])?
 
 bench "buffers.decode32.hex.raw.negative.4096":
-	decode32(4096, true, false, 4)?
+	run_decode32(fixture.cases[49])?

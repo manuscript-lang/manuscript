@@ -127,6 +127,12 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_che
           args[at + 1] = mir_b_emit(&inner.b, MOP_OptView, &values[at + 1], 1, none, from->args[at]);
         }
         continue;
+      } else if (to->args[at] == MIR_PTR && from->args[at] != MIR_PTR && !takes) {
+        /* A function that only reads its argument stands in for one that changes it (`var`): the wrapper is handed the
+         * slot and reads the value out of it. */
+        args[at + 1] = mir_b_emit(&inner.b, MOP_Load, &values[at + 1], 1, (MirImm){.tag = MI_TY, .a = from->args[at]},
+                                  from->args[at]);
+        continue;
       } else if (have->kind == MK_OPT && have->elem == from->args[at]) {
         args[at + 1] = mir_b_emit(&inner.b, MOP_OptGet, &values[at + 1], 1, none, from->args[at]);
         if (takes && mir_needs_drop(cx->module, from->args[at])) {
@@ -248,7 +254,8 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     const uint32_t index = order[step];
     const MirTy param_ty = data->args[index];
     const MsExpr *written = written_args[index];
-    if (written == NULL && facts && bound_params != NULL && fact->args[index].source == MS_ARG_DEFAULT) {
+    if (written == NULL && facts && fact->args[index].source == MS_ARG_DEFAULT &&
+        (bound_params != NULL || mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT)) {
       /* A method value keeps its parameters' defaults: the default is written in the call, over the arguments so far and
        * the receiver the value captured. */
       const LowerOuterEnv caller = fn_env_capture(fn);
@@ -268,9 +275,19 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       }
       continue;
     }
+    if (written == NULL && facts && fact->args[index].source == MS_ARG_MISSING_VALUE) {
+      /* `ok_or` bound as a value keeps its cause optional: the call that leaves it out supplies the `Error` of its own line. */
+      args[index + 1] = fn_missing_value(fn, expr->pos);
+      if (args[index + 1] != MIR_NONE && mir_ty_data(fn->cx->module, param_ty)->kind == MK_OPT) {
+        args[index + 1] = fn_emit(fn, MOP_OptSome, &args[index + 1], 1, (MirImm){0}, param_ty);
+      }
+      if (args[index + 1] == MIR_NONE) {
+        return MIR_NONE;
+      }
+      continue;
+    }
     if (written == NULL) {
-      /* A parameter the call leaves out is none; one of an interface operation's with a default is the zero value, as in a
-       * direct call of the operation (the checker records no default expression for an operation). */
+      /* A parameter the call leaves out is none. */
       args[index + 1] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
       continue;
     }

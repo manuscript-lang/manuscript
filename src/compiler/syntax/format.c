@@ -1,5 +1,6 @@
 /* syntax/format.c: paragraph breaks, the line pass and the entry point ms_format. */
 #include "compiler/syntax/format.h"
+#include "base/alloc.h"
 #include "compiler/syntax/format_internal.h"
 #include "compiler/syntax/walk.h"
 
@@ -398,6 +399,28 @@ done:
   return step;
 }
 
+FmtParsed *fmt_parsed_entry(Fmt *f, MsSpan source) {
+  for (size_t index = 0; index < f->nparsed; index++) {
+    if (fmt_eq(f->parsed[index].text, source)) {
+      return &f->parsed[index];
+    }
+  }
+  if (f->nparsed == f->cap_parsed) {
+    const size_t cap = f->cap_parsed == 0 ? 16 : f->cap_parsed * 2;
+    FmtParsed *grown = ms_realloc(f->parsed, cap * sizeof *grown);
+    f->parsed = grown;
+    f->cap_parsed = cap;
+  }
+  FmtParsed *entry = &f->parsed[f->nparsed++];
+  *entry = (FmtParsed){.text = ms_arena_copy(&f->memo, source)};
+  return entry;
+}
+
+void fmt_memo_free(Fmt *f) {
+  ms_free(f->parsed);
+  ms_arena_free(&f->memo);
+}
+
 bool fmt_lines(Fmt *f, MsSpan source, MsSpan *out) {
   for (;;) {
     const LineStep step = format_lines_step(f, source, out);
@@ -439,6 +462,7 @@ bool ms_format(MsArena *result_arena, MsSpan source, MsStrBuild *out, MsDiag *di
     diag->message = ms_arena_copy(result_arena, f.diag.message);
     diag->replacement = ms_arena_copy(result_arena, f.diag.replacement);
   }
+  fmt_memo_free(&f);
   ms_names_free(&names);
   ms_arena_free(&arena);
   return ok;

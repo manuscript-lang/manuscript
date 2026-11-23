@@ -63,7 +63,7 @@ Keep Manuscript source out of Rust strings. Diagnostics and run output belong in
 
 Write source assertions with `@std/test/test.ms` and propagate their Results: `operation() | expect_ok? | expect_equal(value)?`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
 
-`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib`. `BENCHREPEATS` sets the sample count per case and `BENCHFILTER` narrows the cases. Add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (`measure(ops, work)` times the work after untimed setup). It is a profiling guide, not a gate.
+`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib`. `BENCHREPEATS` sets the sample count per case and `BENCHFILTER` narrows the cases. Add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (a `fixture` built by `make_fixture` keeps setup out of the timing). It is a profiling guide, not a gate.
 
 `make agent-bench-check` runs the agent benchmark oracle.
 

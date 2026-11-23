@@ -22,7 +22,6 @@ import (
 	encode_jpeg,
 	new_image from "@std/image/image.ms",
 	compile from "@std/regex.ms",
-	keep from "@std/test/bench.ms",
 )
 
 type Row:
@@ -46,7 +45,7 @@ bench "signatures":
 		if ecdsa_verify(pubk, HashAlgorithm.Sha256, msg, esig): n += 1
 		n += (ecdh_shared_secret(priv, pubk)?).length()
 
-	keep(n)?
+	n
 
 // A regex with a literal prefix over generated text (#4189).
 bench "regex find_all":
@@ -55,7 +54,7 @@ bench "regex find_all":
 		text += f"line {i} some filler text here\nfunc name{i}(a, b)\n"
 
 	re := compile("func\\s+\\w+\\(")?
-	keep((re.find_all(text, none)?).length())?
+	(re.find_all(text, none)?).length()
 
 // JPEG and PNG encode and decode of one image (#4197).
 bench "image codecs":
@@ -72,11 +71,12 @@ bench "image codecs":
 
 	png := encode_image(img, ImageFormat.Png)?
 	jpg := encode_jpeg(img)?
-	keep(
-		png.length() + jpg.length() + (decode_image(png)?).width + (
-			decode_image(jpg)?
-		).width
-	)?
+	(
+		png.length()
+		+ jpg.length()
+		+ (decode_image(png)?).width
+		+ (decode_image(jpg)?).width
+	)
 
 // Iterator chains over records and strings (#4185).
 bench "fused chains":
@@ -91,7 +91,7 @@ bench "fused chains":
 	words := text.split(" ").filter(fn(w: String) Bool: w.length() > 3).map(
 		fn(w: String) Int: w.length()
 	).sum()
-	keep(total + words)?
+	total + words
 
 // Map lookups, contains, and any and all over strings and records.
 bench "map probes and predicates":
@@ -110,4 +110,4 @@ bench "map probes and predicates":
 	any_row := rows.any(fn(r: Row) Bool: r.name.starts_with("name3") and r.id > 4990)
 	every := rows.all(fn(r: Row) Bool: r.name.length() > 4)
 	lower := text.chars().all(fn(c: String) Bool: c != "Z")
-	keep(hits + (if any_row: 1 else: 0) + (if every: 1 else: 0) + (if lower: 1 else: 0))?
+	hits + (if any_row: 1 else: 0) + (if every: 1 else: 0) + (if lower: 1 else: 0)

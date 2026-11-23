@@ -1,5 +1,6 @@
 /* compiler/check/properties.c: Equal, Hashable, Clonable and Data from a type's shape (see properties.h). */
 #include "compiler/check/properties.h"
+#include "base/alloc.h"
 
 #include "compiler/check/program.h"
 #include "compiler/project/project.h"
@@ -27,6 +28,7 @@ void ms_property_memo_free(MsPropertyMemo *memo) {
   ms_property_key_list_free(&memo->active);
   ms_property_key_list_free(&memo->done);
   ms_held_list_free(&memo->held);
+  ms_free(memo->shapes);
   ms_ty_list_free(&memo->shared_sets);
 }
 

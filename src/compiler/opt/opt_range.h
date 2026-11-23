@@ -114,6 +114,12 @@ typedef struct RgSquare {
   uint32_t block, index, next;
 } RgSquare;
 
+/* An element access of a list of length origin `origin` at the index value it is keyed by. */
+typedef struct RgAccess {
+  uint32_t block, index, next;
+  MirValue origin;
+} RgAccess;
+
 typedef struct RgFa {
   const MirModule *m;
   const MirFunc *f;
@@ -128,6 +134,11 @@ typedef struct RgFa {
   uint32_t *sq_head;
   RgSquare *squares;
   uint32_t nsq, csq;
+  /* The element accesses by index value. A checked access that has run proves its index below the length of
+   * every list of that length origin, so a later access with the same index needs no check of its own. */
+  uint32_t *acc_head;
+  RgAccess *accesses;
+  uint32_t nacc, cacc;
   uint32_t *in_start; /* block b's incoming edges are in[in_start[b]..in_start[b + 1]] */
   RgEdge *in;
   RgItv *base;

@@ -96,13 +96,8 @@ static void walk_by_scanning(const MsSysSample *sample, const MsTables *tables, 
   }
 }
 
-static void on_sample(const MsSysSample *sample) {
-  const size_t index = atomic_load_explicit(&sample_count, memory_order_relaxed);
-  if (index >= MAX_SAMPLES) {
-    atomic_fetch_add_explicit(&dropped, 1, memory_order_relaxed);
-    return;
-  }
-  uintptr_t *const slot = buffer + index * SAMPLE_WORDS;
+/* Writes the stack of `sample` into `slot`: the frame count, then the pcs innermost first. */
+static void capture(const MsSysSample *sample, uintptr_t *slot) {
   Walk walk = {.frames = slot + 1};
   (void)add_frame(sample->pc, &walk);
   uintptr_t window[3];
@@ -120,7 +115,46 @@ static void on_sample(const MsSysSample *sample) {
     }
   }
   slot[0] = walk.count;
+}
+
+static void on_sample(const MsSysSample *sample) {
+  const size_t index = atomic_load_explicit(&sample_count, memory_order_relaxed);
+  if (index >= MAX_SAMPLES) {
+    atomic_fetch_add_explicit(&dropped, 1, memory_order_relaxed);
+    return;
+  }
+  capture(sample, buffer + index * SAMPLE_WORDS);
   atomic_store_explicit(&sample_count, index + 1, memory_order_release);
+}
+
+/* ---- allocation sampling: every `alloc_period`th allocation of the main thread is a sample ---- */
+
+enum { DEFAULT_ALLOC_PERIOD = 128 };
+
+static MsString alloc_path;
+static uintptr_t *alloc_buffer;
+static uint64_t *alloc_sizes;
+static size_t alloc_samples;
+static uint32_t alloc_period;
+static _Atomic bool alloc_active;
+static _Thread_local bool main_thread;
+static _Thread_local uint32_t alloc_tick;
+
+/* Called by the allocator (base/alloc.h) with each request's size; the stack is the caller's, read as a signal sample
+ * would read it: the frame register at the call is the generated function's, and the first return address into source
+ * code above this frame is its caller. */
+static __attribute__((noinline)) void on_alloc(size_t size) {
+  if (!main_thread || !atomic_load_explicit(&alloc_active, memory_order_relaxed) || ++alloc_tick < alloc_period) {
+    return;
+  }
+  alloc_tick = 0;
+  if (alloc_samples >= MAX_SAMPLES) {
+    return;
+  }
+  const uintptr_t frame = (uintptr_t)__builtin_frame_address(0);
+  const MsSysSample here = {.pc = (uintptr_t)&on_alloc, .sp = frame, .fp = read_word(frame)};
+  capture(&here, alloc_buffer + alloc_samples * SAMPLE_WORDS);
+  alloc_sizes[alloc_samples++] = size;
 }
 
 /* ---- control ---- */
@@ -138,6 +172,32 @@ static uint32_t configured_rate(void) {
   return hz >= 1 && hz <= MAX_HZ ? (uint32_t)hz : DEFAULT_HZ;
 }
 
+/* MS_PROFILE_ALLOCS=<path> also samples allocations: counts go to <path>, bytes to <path>.bytes. */
+static void start_allocs(void) {
+  MsString path;
+  if (!ms_env_get("MS_PROFILE_ALLOCS", &path)) {
+    return;
+  }
+  if (ms_string_length(&path) == 0) {
+    ms_string_release(&path);
+    return;
+  }
+  alloc_path = path;
+  alloc_period = DEFAULT_ALLOC_PERIOD;
+  MsString value;
+  if (ms_env_get("MS_PROFILE_ALLOC_PERIOD", &value)) {
+    const MsSpan text = ms_string_span(&value);
+    uint64_t period = 0;
+    for (size_t i = 0; i < text.len && text.ptr[i] >= '0' && text.ptr[i] <= '9' && period <= UINT32_MAX; i++) {
+      period = period * 10 + (uint64_t)(text.ptr[i] - '0');
+    }
+    ms_string_release(&value);
+    alloc_period = period >= 1 && period <= UINT32_MAX ? (uint32_t)period : DEFAULT_ALLOC_PERIOD;
+  }
+  alloc_buffer = ms_alloc_zeroed(MAX_SAMPLES * SAMPLE_WORDS * sizeof *alloc_buffer);
+  alloc_sizes = ms_alloc_zeroed(MAX_SAMPLES * sizeof *alloc_sizes);
+}
+
 void ms_profile_start(void) {
   MsString path;
   if (!ms_env_get("MS_PROFILE", &path)) {
@@ -150,6 +210,7 @@ void ms_profile_start(void) {
   out_path = path;
   rate = configured_rate();
   buffer = ms_alloc_zeroed(MAX_SAMPLES * SAMPLE_WORDS * sizeof *buffer);
+  start_allocs();
   atomic_store(&active, true);
   ms_sys_sampler_exclude_thread();
 }
@@ -191,6 +252,11 @@ void ms_profile_attach(void) {
 #ifndef _WIN32
   write_perf_map();
 #endif
+  if (atomic_load(&active) && alloc_buffer != NULL) {
+    main_thread = true;
+    atomic_store(&alloc_active, true);
+    ms_alloc_observe(on_alloc);
+  }
   if (atomic_load(&active) && !ms_sys_sampler_start(rate, on_sample)) {
     atomic_store(&active, false);
   }
@@ -207,6 +273,7 @@ void ms_profile_exclude_thread(void) {
 typedef struct Key {
   size_t offset;
   size_t length;
+  size_t sample; /* the sample the stack came from */
 } Key;
 
 /* Compares two folded stacks by their text. */
@@ -254,7 +321,9 @@ static bool fold_one(const MsTables *tables, const uintptr_t *sample, MsStrBuild
   return ms_strbuild_length(text) > start;
 }
 
-void ms_profile_fold(const uintptr_t *samples, size_t count, size_t stride, MsStrBuild *out) {
+/* `weights[s]`, times `scale`, is what sample `s` counts for (1 each when `weights` is NULL). */
+static void fold_weighted(const uintptr_t *samples, size_t count, size_t stride, const uint64_t *weights, uint64_t scale,
+                          MsStrBuild *out) {
   const MsTables *const tables = ms_frames_tables();
   if (tables == NULL || count == 0) {
     return;
@@ -265,7 +334,7 @@ void ms_profile_fold(const uintptr_t *samples, size_t count, size_t stride, MsSt
   for (size_t s = 0; s < count; s++) {
     const size_t offset = ms_strbuild_length(&text);
     if (fold_one(tables, samples + s * stride, &text)) {
-      keys[kept++] = (Key){.offset = offset, .length = ms_strbuild_length(&text) - offset};
+      keys[kept++] = (Key){.offset = offset, .length = ms_strbuild_length(&text) - offset, .sample = s};
     }
   }
   /* The buffer may move while it grows, so keys are offsets; the sort runs once it is final. */
@@ -274,18 +343,65 @@ void ms_profile_fold(const uintptr_t *samples, size_t count, size_t stride, MsSt
     ms_sort((uint8_t *)keys, kept, sizeof *keys, compare_keys, bytes);
   }
   for (size_t i = 0; i < kept;) {
+    uint64_t weight = (weights != NULL ? weights[keys[i].sample] : 1) * scale;
     size_t next = i + 1;
     while (next < kept && compare_keys(bytes, (const uint8_t *)&keys[i], (const uint8_t *)&keys[next]) == 0) {
+      weight += (weights != NULL ? weights[keys[next].sample] : 1) * scale;
       next++;
     }
     ms_strbuild_append(out, ms_span_of(bytes + keys[i].offset, keys[i].length));
     ms_strbuild_append_byte(out, ' ');
-    ms_strbuild_append_u64(out, next - i);
+    ms_strbuild_append_u64(out, weight);
     ms_strbuild_append_byte(out, '\n');
     i = next;
   }
   ms_free(keys);
   ms_strbuild_free(&text);
+}
+
+void ms_profile_fold(const uintptr_t *samples, size_t count, size_t stride, MsStrBuild *out) {
+  fold_weighted(samples, count, stride, NULL, 1, out);
+}
+
+/* The sum of `weights[0..count)`. */
+static uint64_t total_of(const uint64_t *weights, size_t count) {
+  uint64_t total = 0;
+  for (size_t i = 0; i < count; i++) {
+    total += weights[i];
+  }
+  return total;
+}
+
+/* Writes the allocation profile: <path> holds the stacks weighted by allocation count, <path>.bytes by bytes, each sample
+ * standing for `alloc_period` allocations. */
+static void finish_allocs(void) {
+  if (!atomic_exchange(&alloc_active, false)) {
+    return;
+  }
+  ms_alloc_observe(NULL);
+  const size_t count = alloc_samples;
+  MsStrBuild counts = ms_strbuild_new();
+  MsStrBuild bytes = ms_strbuild_new();
+  ms_strbuild_append_text(&counts, "# period ");
+  ms_strbuild_append_u64(&counts, alloc_period);
+  ms_strbuild_append_text(&counts, "\n# allocs ");
+  ms_strbuild_append_u64(&counts, (uint64_t)count * alloc_period);
+  ms_strbuild_append_text(&counts, "\n");
+  ms_strbuild_append_text(&bytes, "# period ");
+  ms_strbuild_append_u64(&bytes, alloc_period);
+  ms_strbuild_append_text(&bytes, "\n# bytes ");
+  ms_strbuild_append_u64(&bytes, total_of(alloc_sizes, count) * alloc_period);
+  ms_strbuild_append_text(&bytes, "\n");
+  fold_weighted(alloc_buffer, count, SAMPLE_WORDS, NULL, alloc_period, &counts);
+  fold_weighted(alloc_buffer, count, SAMPLE_WORDS, alloc_sizes, alloc_period, &bytes);
+  MsStrBuild bytes_path = ms_strbuild_new();
+  ms_strbuild_append(&bytes_path, ms_string_span(&alloc_path));
+  ms_strbuild_append_text(&bytes_path, ".bytes");
+  (void)ms_file_write(ms_string_span(&alloc_path), ms_strbuild_span(&counts));
+  (void)ms_file_write(ms_strbuild_span(&bytes_path), ms_strbuild_span(&bytes));
+  ms_strbuild_free(&bytes_path);
+  ms_strbuild_free(&counts);
+  ms_strbuild_free(&bytes);
 }
 
 /* The rate the samples really came at: the kernel delivers the timer on its own tick, so a program profiled at 1000 Hz on
@@ -302,6 +418,7 @@ void ms_profile_finish(void) {
   if (!atomic_exchange(&active, false)) {
     return;
   }
+  finish_allocs();
   ms_sys_sampler_stop();
   const uint64_t span_ns = ms_sys_sampler_span_ns();
   const size_t count = atomic_load_explicit(&sample_count, memory_order_acquire);

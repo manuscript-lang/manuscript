@@ -126,6 +126,7 @@ MS_NODISCARD bool parse_test_block(Parser *p, bool bench, MsDecl *d) {
     }
   }
   MsStmts body = {0};
+  p->bench_suite = bench;
   if (!parse_suite(p, &body))
     return false;
   d->kind = MS_D_TEST;

@@ -118,14 +118,41 @@ static void float_function_inst(EmitCx *cx, const MirInst *inst) {
 }
 
 static void int_to_float(EmitCx *cx, const MirInst *inst) {
+  const char *convert = inst->op == MOP_U2F ? "uitofp" : "sitofp";
   if (emit_value_leaves(cx, inst->res).ptr[0] == MIR_LEAF_F32) {
     /* One rounding, straight to binary32: through a double it would round twice at the midpoints. */
     uint32_t number = cx->next++;
-    ms_strbuild_printf(cx->out, "  %%i%u = sitofp i64 %%v%u to float\n  %%v%u = fpext float %%i%u to double\n",
-                       number, inst->args[0], inst->res, number);
+    ms_strbuild_printf(cx->out, "  %%i%u = %s i64 %%v%u to float\n  %%v%u = fpext float %%i%u to double\n",
+                       number, convert, inst->args[0], inst->res, number);
     return;
   }
-  ms_strbuild_printf(cx->out, "  %%v%u = sitofp i64 %%v%u to double\n", inst->res, inst->args[0]);
+  ms_strbuild_printf(cx->out, "  %%v%u = %s i64 %%v%u to double\n", inst->res, convert, inst->args[0]);
+}
+
+/* `f.bits`: the bit pattern of a Float (64 bits) or Float32 (its 32 bits, as a non-negative Int). */
+static void float_bits(EmitCx *cx, const MirInst *inst) {
+  if (inst->imm.i == 32) {
+    uint32_t number = cx->next++;
+    ms_strbuild_printf(cx->out,
+                       "  %%i%ua = fptrunc double %%v%u to float\n  %%i%ub = bitcast float %%i%ua to i32\n"
+                       "  %%v%u = zext i32 %%i%ub to i64\n",
+                       number, inst->args[0], number, number, inst->res, number);
+    return;
+  }
+  ms_strbuild_printf(cx->out, "  %%v%u = bitcast double %%v%u to i64\n", inst->res, inst->args[0]);
+}
+
+/* `bits.f`: a Float of 64 bits, or a Float32 of the low 32 bits. */
+static void bits_float(EmitCx *cx, const MirInst *inst) {
+  if (inst->imm.i == 32) {
+    uint32_t number = cx->next++;
+    ms_strbuild_printf(cx->out,
+                       "  %%i%ua = trunc i64 %%v%u to i32\n  %%i%ub = bitcast i32 %%i%ua to float\n"
+                       "  %%v%u = fpext float %%i%ub to double\n",
+                       number, inst->args[0], number, number, inst->res, number);
+    return;
+  }
+  ms_strbuild_printf(cx->out, "  %%v%u = bitcast i64 %%v%u to double\n", inst->res, inst->args[0]);
 }
 
 /* The one-operand operations. */
@@ -142,7 +169,14 @@ static bool unary_inst(EmitCx *cx, const MirInst *inst) {
     ms_strbuild_printf(out, "  %%v%u = fneg double %%v%u\n", inst->res, inst->args[0]);
     return true;
   case MOP_I2F:
+  case MOP_U2F:
     int_to_float(cx, inst);
+    return true;
+  case MOP_FBits:
+    float_bits(cx, inst);
+    return true;
+  case MOP_BitsF:
+    bits_float(cx, inst);
     return true;
   case MOP_B2I:
     ms_strbuild_printf(out, "  %%v%u = zext i1 %%v%u to i64\n", inst->res, inst->args[0]);

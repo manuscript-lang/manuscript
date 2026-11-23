@@ -161,6 +161,12 @@ static bool dp_insert_enter(MirFunc *func) {
 /* Frames above this many bytes (by the bound below, before elaboration) get the stack check. */
 #define DP_LARGE_FRAME 8192
 
+/* The bytes a value of `ty` takes in the frame of a call it crosses, or 0 when it passes in registers. */
+static int64_t dp_by_address(MirLayouts *lay, MirTy ty) {
+  const uint32_t size = mir_type_mem(lay, ty).size;
+  return size > 16 ? (int64_t)size : 0;
+}
+
 /* A bound on the frame of `f` once compiled: its slots, and a word for every value, since the fast register
  * allocator spills each value that lives across a block. The check leaves this much room below the limit, so a frame
  * that does not fit grows a segment instead of running into the guard page. */
@@ -171,8 +177,16 @@ static int64_t dp_frame_bound(MirModule *m, const MirFunc *f) {
   for (size_t block = 0; block < f->blocks.len; block++) {
     const MirInstList *insts = &f->blocks.ptr[block].insts;
     for (size_t index = 0; index < insts->len; index++) {
-      if (insts->ptr[index].op == MOP_Slot) {
-        bytes += (int64_t)mir_type_mem(&lay, insts->ptr[index].imm.a).size;
+      const MirInst *inst = &insts->ptr[index];
+      if (inst->op == MOP_Slot) {
+        bytes += (int64_t)mir_type_mem(&lay, inst->imm.a).size;
+      } else if (inst->op == MOP_Call || inst->op == MOP_CallInd || inst->op == MOP_CallMethod || inst->op == MOP_CallRt) {
+        /* A value of more than two words crosses a call by address: the emitter keeps a copy of each argument and an
+         * area for the result in the frame. */
+        for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+          bytes += dp_by_address(&lay, mir_value_ty(f, inst->args[arg]));
+        }
+        bytes += inst->res != MIR_NONE ? dp_by_address(&lay, mir_value_ty(f, inst->res)) : 0;
       }
     }
   }
@@ -204,6 +218,62 @@ static void dp_expand(MirModule *m, uint32_t fi, const DpRuntime *rt) {
   /* The rare path: the backends lay it out of line. */
   f->blocks.ptr[grow].cold = true;
   dp_grow_path(&e, rt, shim_id, &cells, entry.params.ptr, grow);
+}
+
+/* Frames above this many bytes (by the bound) put the check in a small function of its own: a frame that big, once
+ * allocated, may already sit below the guard page, and the grow path could not run in it. The function keeps its place
+ * and becomes the check; its body moves to `<name>.body`. */
+#define DP_STUB_FRAME 16384
+
+/* `f` becomes the check and the grow path; its code, minus `depth.enter`, is the new function `<name>.body` that the
+ * check calls when the stack has room. */
+static void dp_split(MirModule *m, uint32_t fi, const DpRuntime *rt) {
+  const DpCells cells = dp_cells(m, &m->funcs.ptr[fi]);
+  const int64_t bound = dp_frame_bound(m, &m->funcs.ptr[fi]);
+  const uint32_t shim_id = dp_shim(m, fi, &cells);
+  MirFunc body = m->funcs.ptr[fi];
+  MirInstList *insts = &body.blocks.ptr[0].insts;
+  for (uint32_t i = 1; i < insts->len; i++) {
+    insts->ptr[i - 1] = insts->ptr[i];
+  }
+  insts->len--;
+  body.name = mir_name_suffixed(m, body.name, ms_span_of_text(".body"));
+  body.linkage = ML_INTERNAL;
+  body.inline_hint = MINL_NEVER;
+  const uint32_t body_id = mir_add_func(m, &body);
+  MirFunc *f = &m->funcs.ptr[fi];
+  MirFunc fresh;
+  mir_func_init(m, &fresh, f->name, f->params, f->nparams, f->ret);
+  f->blocks = fresh.blocks;
+  f->values = fresh.values;
+  f->names = fresh.names;
+  f->scopes = fresh.scopes;
+  f->exact = NULL;
+  f->nexact = 0;
+  f->noalias = NULL;
+  f->nnoalias = 0;
+  f->has_slot_result = f->has_close_exit = f->has_slot_close = false;
+  f->raw_scratch = false;
+  const MirBlock grow = mir_new_block(f);
+  const MirBlock run = mir_new_block(f);
+  const MirBlockParam *params = f->blocks.ptr[0].params.ptr;
+  DpEmit e = {.m = m, .f = f, .block = 0};
+  const MirValue low = dp_op(&e, MOP_StackNear, NULL, 0, mir_imm_int(bound), true, MIR_BOOL);
+  f->blocks.ptr[0].term = (MirTerm){.kind = MT_CONDBR, .value = low, .a = {.block = grow}, .b = {.block = run}};
+  f->blocks.ptr[0].term_loc = MIR_LOC_NONE;
+  f->blocks.ptr[grow].cold = true;
+  dp_grow_path(&e, rt, shim_id, &cells, params, grow);
+  e.block = run;
+  MirValue *args = MS_ARENA_NEW_ARRAY(&m->arena, MirValue, f->nparams ? f->nparams : 1);
+  for (uint32_t i = 0; i < f->nparams; i++) {
+    args[i] = params[i].value;
+  }
+  MirValue result = dp_op(&e, MOP_Call, args, f->nparams, dp_imm_func(body_id), true, f->ret);
+  if (f->ret == MIR_VOID) {
+    result = dp_op(&e, MOP_VoidConst, NULL, 0, mir_imm_none(), true, MIR_VOID);
+  }
+  f->blocks.ptr[run].term = (MirTerm){.kind = MT_RET, .value = result};
+  f->blocks.ptr[run].term_loc = MIR_LOC_NONE;
 }
 
 static uint32_t dp_extern(MirModule *m, const char *name, const MirTy *params, uint32_t n, MirTy ret,
@@ -241,7 +311,11 @@ bool mir_depth_lower(MirModule *m) {
     .grow = dp_extern(m, "msrt_task_grow", two_ptrs, 2, MIR_VOID, false),
   };
   for (uint32_t k = 0; k < ntodo; k++) {
-    dp_expand(m, todo[k], &rt);
+    if (m->funcs.ptr[todo[k]].kind == MFK_NORMAL && dp_frame_bound(m, &m->funcs.ptr[todo[k]]) > DP_STUB_FRAME) {
+      dp_split(m, todo[k], &rt);
+    } else {
+      dp_expand(m, todo[k], &rt);
+    }
   }
   return true;
 }
