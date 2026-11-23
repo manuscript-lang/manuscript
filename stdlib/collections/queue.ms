@@ -13,7 +13,7 @@ export type Queue[T]:
 
 // Adds a value and returns true, or returns false when a bounded queue is full. A
 // capacity of zero or below is always full.
-fn var Queue[T].enqueue(value: T) Bool:
+fn var Queue[T].enqueue(move value: T) Bool:
 	if limit := self.capacity:
 		if self.length() >= limit: return false
 

@@ -335,7 +335,7 @@ fn var JsonReading[T].fail(cause: Error) Void!:
 	// Dropping the partial value releases its buffered bytes.
 	self.reset()
 	self.failure = cause.clone()
-	return error(cause)
+	return error(cause.clone())
 
 // Parses the buffered value and clears the scanner for the next one.
 fn var JsonReading[T].complete() move T!:
