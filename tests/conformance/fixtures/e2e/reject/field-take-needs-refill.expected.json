@@ -9,7 +9,7 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "cannot move the resource `pair.first` out of `pair`: a resource cannot be cloned, and it leaves `pair` only when `pair` is a `:=` binding or a parameter and no type on the path has a `close` of its own; use `pair.first` in place, move the whole `pair`, or take it with `part := pair.first` and refill `pair.first = ...` in the next statement",
+        "message": "cannot move the resource `pair.first` out of `pair`: a resource cannot be cloned, and it leaves `pair` only when `pair` is a `let` or a parameter and no type on the path has a `close` of its own; use `pair.first` in place, move the whole `pair`, or take it with `part := pair.first` and refill `pair.first = ...` in the next statement",
         "position": {
           "file": "field-take-needs-refill.ms",
           "line": 19,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/field-take-needs-refill.ms:19:10: type: cannot move the resource `pair.first` out of `pair`: a resource cannot be cloned, and it leaves `pair` only when `pair` is a `:=` binding or a parameter and no type on the path has a `close` of its own; use `pair.first` in place, move the whole `pair`, or take it with `part := pair.first` and refill `pair.first = ...` in the next statement\n    |\n 19 |     pair.first.close()?\n    |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/field-take-needs-refill.ms:19:10: type: cannot move the resource `pair.first` out of `pair`: a resource cannot be cloned, and it leaves `pair` only when `pair` is a `let` or a parameter and no type on the path has a `close` of its own; use `pair.first` in place, move the whole `pair`, or take it with `part := pair.first` and refill `pair.first = ...` in the next statement\n    |\n 19 |     pair.first.close()?\n    |          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -6,6 +6,7 @@
  * import that does not resolve binds to symbol 0 so later passes do not report it a second time. */
 #include "base/message.h"
 #include "compiler/check/program.h"
+#include "compiler/check/std_cache.h"
 #include "compiler/syntax/parse.h"
 
 bool ms_check_std_path(MsSpan path, MsSpan *name) {
@@ -33,6 +34,12 @@ static bool load_std_module(MsCheckProgram *program, MsSpan path, uint32_t *out)
   MsStdSource source = {0};
   if (!ms_check_std_path(path, &name) || !ms_std_source_find(name, &source)) {
     return false;
+  }
+  const MsModule *cached = program->std_cache != NULL ? ms_std_cache_tree(program->std_cache, file) : NULL;
+  if (cached != NULL) {
+    *out = ms_check_add_module(program, file, cached);
+    program->modules.ptr[*out].source = source.text;
+    return true;
   }
   MsModule *tree = MS_ARENA_NEW(&program->arena, MsModule);
   MsDiag diag = {0};

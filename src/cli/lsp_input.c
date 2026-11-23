@@ -17,7 +17,7 @@ typedef struct Entry {
   MsString body;
   LspFrameStatus status;
   const char *error;
-  bool change;
+  bool defers; /* a didChange or completion request: diagnostics for an earlier edit wait behind it */
   int source;
 } Entry;
 
@@ -51,8 +51,8 @@ static Pending *find_pending(LspInput *input, MsSpan key) {
 }
 
 /* Records a request's id, or marks the canceled one. Returns true for a cancellation, which is not queued. */
-static bool note_message(LspInput *input, MsSpan body, bool *change) {
-  *change = false;
+static bool note_message(LspInput *input, MsSpan body, bool *defers) {
+  *defers = false;
   MsArena arena = ms_arena_new();
   const MsJson *message = ms_json_parse(&arena, body);
   bool canceled = false;
@@ -86,8 +86,10 @@ static bool note_message(LspInput *input, MsSpan body, bool *change) {
         }
         uv_mutex_unlock(&input->lock);
       }
-      *change = id == NULL && is_method && jsonrpc != NULL && jsonrpc->kind == MS_JSON_STRING &&
-                ms_span_is_text(jsonrpc->text, "2.0") && ms_span_is_text(method->text, "textDocument/didChange");
+      const bool v2 = jsonrpc != NULL && jsonrpc->kind == MS_JSON_STRING && ms_span_is_text(jsonrpc->text, "2.0");
+      *defers = is_method && v2 &&
+                ((id == NULL && ms_span_is_text(method->text, "textDocument/didChange")) ||
+                 (id != NULL && ms_span_is_text(method->text, "textDocument/completion")));
     }
   }
   ms_arena_free(&arena);
@@ -122,9 +124,9 @@ static void read_loop(void *argument) {
       enqueue(input, (Entry){.status = status, .error = error, .source = reader->source});
       break;
     }
-    bool change = false;
-    if (reader->track && note_message(input, ms_strbuild_span(&body), &change)) continue;
-    enqueue(input, (Entry){.body = ms_string_from_span(ms_strbuild_span(&body)), .status = LSP_FRAME_OK, .change = change,
+    bool defers = false;
+    if (reader->track && note_message(input, ms_strbuild_span(&body), &defers)) continue;
+    enqueue(input, (Entry){.body = ms_string_from_span(ms_strbuild_span(&body)), .status = LSP_FRAME_OK, .defers = defers,
                            .source = reader->source});
   }
   ms_strbuild_free(&body);
@@ -177,11 +179,11 @@ LspFrameStatus lsp_input_next(LspInput *input, MsStrBuild *body, const char **er
   return entry.status;
 }
 
-bool lsp_input_next_is_change(LspInput *input) {
+bool lsp_input_next_defers_publish(LspInput *input) {
   uv_mutex_lock(&input->lock);
-  const bool change = input->count > 0 && input->queue[input->head].status == LSP_FRAME_OK && input->queue[input->head].change;
+  const bool defers = input->count > 0 && input->queue[input->head].status == LSP_FRAME_OK && input->queue[input->head].defers;
   uv_mutex_unlock(&input->lock);
-  return change;
+  return defers;
 }
 
 bool lsp_input_canceled(LspInput *input, bool is_string, MsSpan id) {

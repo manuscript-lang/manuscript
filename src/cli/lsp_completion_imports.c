@@ -20,11 +20,11 @@
 static bool is_type_decl(const MsDecl *decl);
 static bool public_module(MsSpan name);
 
-/* The placeholders of a function's parameters that have no default. */
-static MsString declared_call_text(const Completer *c, const MsNames *names, MsSpan name, const MsParams *params) {
+/* The placeholders of a function's parameters that have no default, or the bare name without snippets. */
+static MsString declared_call_text(bool snippets, const MsNames *names, MsSpan name, const MsParams *params) {
   MsStrBuild out = ms_strbuild_new();
   ms_strbuild_append(&out, name);
-  if (!c->snippets) return ms_strbuild_finish(&out);
+  if (!snippets) return ms_strbuild_finish(&out);
   ms_strbuild_append_byte(&out, '(');
   size_t at = 1, written = 0;
   for (uint32_t i = 0; i < params->len; i++) {
@@ -44,66 +44,111 @@ static MsString declared_call_text(const Completer *c, const MsNames *names, MsS
   return ms_strbuild_finish(&out);
 }
 
-/* Offers the exports of the module `text` (imported as `path`) that match the word, each with the edit that imports it. */
-static void add_importable(Completer *c, MsSpan text, MsSpan path, bool bundled) {
-  if (!name_matches(text, c->prefix)) return; /* the names would have to appear, in order, somewhere in the file */
+/* One exported name of a module, with everything an offer needs, so a module is parsed once and not per keystroke. */
+typedef struct Importable {
+  MsString name, path, documentation, plain, call; /* `call` is the snippet form; `plain` the bare name */
+  int kind;
+  bool is_type;
+} Importable;
+
+MS_LIST_DEFINE(ImportableList, importable_list, Importable)
+
+static void importable_list_release(ImportableList *list) {
+  for (size_t i = 0; i < list->len; i++) {
+    Importable *item = &list->ptr[i];
+    ms_string_release(&item->name);
+    ms_string_release(&item->path);
+    ms_string_release(&item->documentation);
+    ms_string_release(&item->plain);
+    ms_string_release(&item->call);
+  }
+  importable_list_free(list);
+}
+
+/* Parses the module `text` (imported as `path`) and appends its exported names to `out`. */
+static void collect_importable(MsSpan text, MsSpan path, bool bundled, ImportableList *out) {
   MsArena arena = ms_arena_new();
   MsNames names;
   ms_names_init(&names);
   MsModule module;
   MsDiag diag;
   if (ms_parse(&arena, &names, text, &module, &diag)) {
-    MsStrBuild file = ms_strbuild_new();
-    if (bundled) ms_strbuild_append(&file, path);
     for (uint32_t d = 0; d < module.ndecls; d++) {
       MsName declared;
       const MsDecl *decl = module.decls[d];
       if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
       const MsSpan name = ms_names_span(&names, declared);
-      if (!name_matches(name, c->prefix) || ms_span_starts_with(name, ms_span_of_text(MARKER))) continue;
-      if (c->type_context && !is_type_decl(decl)) continue;
-      if (bundled && ms_check_is_prelude_declaration(ms_strbuild_span(&file), name)) continue;
-      bool seen = false;
-      for (size_t i = 0; i < c->items.len && !seen; i++) seen = ms_span_equal(ms_string_span(&c->items.ptr[i].label), name);
-      if (seen) continue;
-      const int kind = is_type_decl(decl) ? 7 : decl->kind == MS_D_CONST ? 21 : 3;
-      MsString insert = decl->kind == MS_D_FN ? declared_call_text(c, &names, name, &decl->u.fn.params) : own(name);
-      MsStrBuild detail = ms_strbuild_new();
-      ms_strbuild_append_text(&detail, "— ");
-      ms_strbuild_append(&detail, path);
+      if (ms_span_starts_with(name, ms_span_of_text(MARKER))) continue;
+      if (bundled && ms_check_is_prelude_declaration(path, name)) continue;
+      const bool is_type = is_type_decl(decl);
+      const bool function = decl->kind == MS_D_FN;
       const MsSpan comment = ms_declaration_comment(&arena, text, decl->pos.offset, decl->pos.line);
-      MsStrBuild statement = ms_strbuild_new();
-      ms_strbuild_append_text(&statement, "import ");
-      ms_strbuild_append(&statement, name);
-      ms_strbuild_append_text(&statement, " from \"");
-      ms_strbuild_append(&statement, path);
-      ms_strbuild_append_byte(&statement, '"');
-      LspPosition at;
-      MsStrBuild inserted = ms_strbuild_new();
-      lsp_import_insertion(c->source, c->tree, ms_strbuild_span(&statement), &at, &inserted);
-      MsStrBuild edit = ms_strbuild_new();
-      ms_strbuild_printf(&edit, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"newText\":", at.line,
-                         at.character, at.line, at.character);
-      lsp_json_string(&edit, ms_strbuild_span(&inserted));
-      ms_strbuild_append_byte(&edit, '}');
-      MsStrBuild sort = ms_strbuild_new();
-      ms_strbuild_append_text(&sort, "04_");
-      ms_strbuild_append(&sort, name);
-      Item item = {.label = own(name), .detail = ms_strbuild_finish(&detail), .documentation = own(comment), .sort = ms_strbuild_finish(&sort),
-                   .insert = insert, .additional = ms_strbuild_finish(&edit), .kind = kind,
-                   .format = c->snippets && (contains(ms_string_span(&insert), "${") || contains(ms_string_span(&insert), "$0")) ? 2 : 1};
-      item_list_push(&c->items, item);
-      ms_strbuild_free(&statement);
-      ms_strbuild_free(&inserted);
+      importable_list_push(out, (Importable){.name = own(name),
+                                             .path = own(path),
+                                             .documentation = own(comment),
+                                             .plain = own(name),
+                                             .call = function ? declared_call_text(true, &names, name, &decl->u.fn.params) : own(name),
+                                             .kind = is_type ? 7 : decl->kind == MS_D_CONST ? 21 : 3,
+                                             .is_type = is_type});
     }
-    ms_strbuild_free(&file);
   }
   ms_names_free(&names);
   ms_arena_free(&arena);
 }
 
-/* Names the bundled library and the project's other files export, offered with the import that makes them visible. */
-void lsp_import_suggestions(Completer *c, const LspDocList *docs, const LspDoc *doc) {
+/* Offers `item` when it matches the word, with the edit that imports it. */
+static void offer_importable(Completer *c, const Importable *item) {
+  const MsSpan name = ms_string_span(&item->name), path = ms_string_span(&item->path);
+  if (!name_matches(name, c->prefix)) return;
+  if (c->type_context && !item->is_type) return;
+  for (size_t i = 0; i < c->items.len; i++) {
+    if (ms_span_equal(ms_string_span(&c->items.ptr[i].label), name)) return;
+  }
+  MsString insert = own(ms_string_span(c->snippets ? &item->call : &item->plain));
+  MsStrBuild detail = ms_strbuild_new();
+  ms_strbuild_append_text(&detail, "— ");
+  ms_strbuild_append(&detail, path);
+  MsStrBuild statement = ms_strbuild_new();
+  ms_strbuild_append_text(&statement, "import ");
+  ms_strbuild_append(&statement, name);
+  ms_strbuild_append_text(&statement, " from \"");
+  ms_strbuild_append(&statement, path);
+  ms_strbuild_append_byte(&statement, '"');
+  LspPosition at;
+  MsStrBuild inserted = ms_strbuild_new();
+  lsp_import_insertion(c->source, c->tree, ms_strbuild_span(&statement), &at, &inserted);
+  MsStrBuild edit = ms_strbuild_new();
+  ms_strbuild_printf(&edit, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"newText\":", at.line,
+                     at.character, at.line, at.character);
+  lsp_json_string(&edit, ms_strbuild_span(&inserted));
+  ms_strbuild_append_byte(&edit, '}');
+  MsStrBuild sort = ms_strbuild_new();
+  ms_strbuild_append_text(&sort, "04_");
+  ms_strbuild_append(&sort, name);
+  Item entry = {.label = own(name), .detail = ms_strbuild_finish(&detail), .documentation = own(ms_string_span(&item->documentation)),
+                .sort = ms_strbuild_finish(&sort), .insert = insert, .additional = ms_strbuild_finish(&edit), .kind = item->kind,
+                .format = c->snippets && (contains(ms_string_span(&insert), "${") || contains(ms_string_span(&insert), "$0")) ? 2 : 1};
+  item_list_push(&c->items, entry);
+  ms_strbuild_free(&statement);
+  ms_strbuild_free(&inserted);
+}
+
+/* Offers the exports of the module `text` (imported as `path`) that match the word. */
+static void add_importable(Completer *c, MsSpan text, MsSpan path) {
+  if (!name_matches(text, c->prefix)) return; /* the names would have to appear, in order, somewhere in the file */
+  ImportableList found = {0};
+  collect_importable(text, path, false, &found);
+  for (size_t i = 0; i < found.len; i++) offer_importable(c, &found.ptr[i]);
+  importable_list_release(&found);
+}
+
+/* The exports of every public bundled module, parsed once for the process (the library cannot change under a running
+ * server), in module order. */
+static ImportableList bundled_importable;
+static bool bundled_collected;
+
+static const ImportableList *bundled_exports(void) {
+  if (bundled_collected) return &bundled_importable;
   size_t count = 0;
   const MsStdSource *sources = ms_std_sources(&count);
   MsStrBuild path = ms_strbuild_new();
@@ -112,9 +157,17 @@ void lsp_import_suggestions(Completer *c, const LspDocList *docs, const LspDoc *
     ms_strbuild_clear(&path);
     ms_strbuild_append_text(&path, "@std/");
     ms_strbuild_append(&path, sources[i].name);
-    add_importable(c, sources[i].text, ms_strbuild_span(&path), true);
+    collect_importable(sources[i].text, ms_strbuild_span(&path), true, &bundled_importable);
   }
   ms_strbuild_free(&path);
+  bundled_collected = true;
+  return &bundled_importable;
+}
+
+/* Names the bundled library and the project's other files export, offered with the import that makes them visible. */
+void lsp_import_suggestions(Completer *c, const LspDocList *docs, const LspDoc *doc) {
+  const ImportableList *bundled = bundled_exports();
+  for (size_t i = 0; i < bundled->len; i++) offer_importable(c, &bundled->ptr[i]);
   MsArena arena = ms_arena_new();
   MsSpanList files = {0};
   lsp_workspace_files(&arena, ms_string_span(&doc->path), &files);
@@ -131,7 +184,7 @@ void lsp_import_suggestions(Completer *c, const LspDocList *docs, const LspDoc *
     }
     const bool on_disk = text.ptr == NULL && ms_file_read(files.ptr[i], &bytes);
     if (on_disk) text = ms_bytes_span(&bytes);
-    if (text.ptr != NULL) add_importable(c, text, import_path, false);
+    if (text.ptr != NULL) add_importable(c, text, import_path);
     if (on_disk) ms_bytes_free(&bytes);
   }
   ms_strbuild_free(&base);

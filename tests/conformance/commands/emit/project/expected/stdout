@@ -9,7 +9,7 @@ extern @msrt_string_join(str, int) -> str fresh leaf string_join
 extern @msstd_value_to_string(ptr, ptr) -> str fresh
 extern @msrt_string_concat(str, str) -> str fresh leaf string_concat
 extern @msrt_io_write_stdout(str) -> void
-extern @msrt_string_parse_int(str, ptr) -> uint8
+extern @msrt_string_parse_int(str, ptr) -> uint8 string_parse_int
 extern @msrt_string_clone(str) -> str fresh
 extern @msrt_panic(str) -> void
 entry @main

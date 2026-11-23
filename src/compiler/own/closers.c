@@ -213,7 +213,9 @@ static MsTy bound_type(const Closers *pass, MsTy scrutinee, uint32_t kase, uint3
 static void visit_match(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
   const MsExpr *subject = expr->kind == MS_E_MATCH ? expr->u.match.scrutinee : NULL;
-  const MsTy scrutinee = subject != NULL && subject->kind == MS_E_CALL ? ms_facts_type(pass->facts, subject->id) : MS_TY_NONE;
+  const bool owned = subject != NULL && (subject->kind == MS_E_CALL ||
+                                         (subject->kind == MS_E_NAME && ms_facts_use(pass->facts, subject->id) == MS_USE_MOVE));
+  const MsTy scrutinee = owned ? ms_facts_type(pass->facts, subject->id) : MS_TY_NONE;
   if (scrutinee == MS_TY_NONE) {
     return;
   }
@@ -225,7 +227,7 @@ static void visit_match(void *ctx, const MsExpr *expr) {
     }
     for (uint32_t at = 0; at < arm->bindings.len; at++) {
       const MsTy ty = bound_type(pass, scrutinee, bound->index, at);
-      if (ty != MS_TY_NONE && ms_check_holds_resource(pass->program, ty)) {
+      if (ty != MS_TY_NONE && (ms_check_holds_resource(pass->program, ty) || ms_ty_has_variable(&pass->program->types, ty))) {
         add_closer(pass, arm->id, MS_REF_LOCAL, bound->local + at, ty);
         break;
       }
@@ -287,10 +289,21 @@ static int64_t compare(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   return left < right ? -1 : left > right;
 }
 
-static MsCloser *find(Closers *pass, MsRefKind ref_kind, uint32_t local) {
+/* Whether `node` is the parameter of a lambda visited: its index is its own, so an outer parameter of the same index is not it. */
+static bool is_lambda_param(const Closers *pass, MsNode node) {
+  for (size_t index = 0; index < pass->own.len; index++) {
+    if (pass->own.ptr[index] == node) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static MsCloser *find_ref(Closers *pass, const MsRef *ref) {
   for (size_t index = pass->first; index < pass->facts->closers.len; index++) {
     MsCloser *closer = &pass->facts->closers.ptr[index];
-    if (closer->ref_kind == ref_kind && closer->local == local) {
+    if (closer->ref_kind == ref->kind && closer->local == ref->local &&
+        !(ref->kind == MS_REF_PARAM && closer->node != ref->decl.node && is_lambda_param(pass, closer->node))) {
       return closer;
     }
   }
@@ -298,7 +311,7 @@ static MsCloser *find(Closers *pass, MsRefKind ref_kind, uint32_t local) {
 }
 
 static void flag(Closers *pass, const MsRef *ref, uint16_t flags) {
-  MsCloser *closer = ref == NULL ? NULL : find(pass, ref->kind, ref->local);
+  MsCloser *closer = ref == NULL ? NULL : find_ref(pass, ref);
   if (closer != NULL) {
     closer->flags = (uint16_t)(closer->flags | flags);
   }
@@ -347,13 +360,26 @@ static bool names_param(const Closers *pass, const MsExpr *place) {
 }
 
 static void flag_taken_by(Closers *pass, const MsExpr *call) {
+  /* `value.get()` handed on takes the payload out of `value` at that call, which lowering does on the path that
+   * reaches it: the paths that do not still close `value`. */
+  if (ms_facts_use(pass->facts, call->id) == MS_USE_MOVE &&
+      ms_own_native_get(pass->program, pass->facts, call) == MS_NATIVE_GET_PAYLOAD) {
+    return;
+  }
   const MsTy result = ms_facts_type(pass->facts, call->id);
   if (result == MS_TY_NONE ||
       !(ms_ty_has_variable(&pass->program->types, result) || ms_check_holds_resource(pass->program, result))) {
     return;
   }
+  /* A constructor (`error(cause)`, `Pair(a, b)`) stores each argument whole: no part of one leaves it, and the use that
+   * moves a name flags it moved. */
+  const MsRef *callee = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const bool constructor = callee != NULL && (callee->kind == MS_REF_TYPE || callee->kind == MS_REF_CASE);
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *arg = call->u.call.args.ptr[index].value;
+    if (constructor && arg->kind == MS_E_NAME) {
+      continue;
+    }
     const MsTy arg_ty = ms_facts_type(pass->facts, arg->id);
     /* An argument that holds no resource has none to hand to the result. */
     if (arg_ty != MS_TY_NONE && !ms_ty_has_variable(&pass->program->types, arg_ty) &&
@@ -470,7 +496,11 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (pass->lambdas != 0) {
     /* A local a lambda that outlives the statement captures moves into it, on the paths that build the lambda, and its
      * scope closes it on the others; any other capture leaves the ownership to the closure. */
-    flag(pass, ref, pass->escaping != 0 && ref->kind == MS_REF_LOCAL ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
+    if (pass->escaping != 0 && ref->kind == MS_REF_LOCAL) {
+      flag(pass, ref, MS_CLOSER_MOVED);
+    } else if (pass->escaping != 0 || ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
+      flag(pass, ref, MS_CLOSER_PARTIAL);
+    } /* a lambda that stays in its maker only reads the capture in place: the scope still closes it */
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
     const MsRef *member = expr->kind == MS_E_MEMBER ? ms_facts_ref(pass->facts, expr->id) : NULL;
     /* A method value that leaves its maker carries its receiver along: the whole binding moves into the closure. */

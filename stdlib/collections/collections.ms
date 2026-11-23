@@ -815,16 +815,16 @@ fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
-// absent. The key is looked up once, `initial` is always evaluated, and `change`
-// runs once. Example: `counts.update(word, 0, fn n: n + 1)` counts occurrences.
+// absent. The key is looked up once to read and once to store, `initial` is always
+// evaluated, and `change` runs once. Example: `counts.update(word, 0, fn n: n + 1)`
+// counts occurrences.
 fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move key: T,
 	move initial: U,
 	change: fn(U) U
 ) Void:
-	var base = initial
-	if self.contains(key): base = self.get(key).get()
-	self.add(key, change(base))
+	next := change(self.get_or(key, initial))
+	self.add(key, next)
 
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.

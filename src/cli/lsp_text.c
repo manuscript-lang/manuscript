@@ -127,6 +127,24 @@ void lsp_scan_tokens(MsSpan source, LspTokenList *tokens) {
   }
 }
 
+bool lsp_literal_closed(MsSpan source, const LspEditorToken *token) {
+  size_t open = 1;
+  if (source.ptr[token->start] == 'r' || source.ptr[token->start] == 'f') open = 2;
+  const size_t length = token->end - token->start;
+  const bool triple = length >= open + 2 && source.ptr[token->start + open] == '"' && source.ptr[token->start + open + 1] == '"' &&
+                      (open == 1 || source.ptr[token->start + open - 1] == '"');
+  if (source.ptr[token->start] == '"' && length >= 3 && source.ptr[token->start + 1] == '"' && source.ptr[token->start + 2] == '"') {
+    return length >= 6 && source.ptr[token->end - 1] == '"' && source.ptr[token->end - 2] == '"' && source.ptr[token->end - 3] == '"';
+  }
+  if (triple || (open == 2 && length >= 4 && source.ptr[token->start + 2] == '"' && source.ptr[token->start + 3] == '"')) {
+    return length >= 7 && source.ptr[token->end - 1] == '"' && source.ptr[token->end - 2] == '"' && source.ptr[token->end - 3] == '"';
+  }
+  if (length < open + 1 || source.ptr[token->end - 1] != '"') return false;
+  size_t slashes = 0;
+  while (token->end - 2 - slashes > token->start + open - 1 && source.ptr[token->end - 2 - slashes] == '\\') slashes++;
+  return slashes % 2 == 0;
+}
+
 /* Where a diagnostic at `offset` inside `token` ends. A text literal is one token, but a diagnostic inside its
  * interpolation (`{name}`) covers only the name there, not the rest of the literal. */
 static size_t diagnostic_end(MsSpan source, const LspEditorToken *token, size_t offset) {

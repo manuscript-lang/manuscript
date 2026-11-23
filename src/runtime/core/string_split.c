@@ -288,6 +288,34 @@ static void fill_job(uint8_t *destination, const void *context) {
   }
 }
 
+/* Replaces every match of the non-empty `needle` by a replacement no longer than it, in one search pass: the
+ * result fits the input's length, so it is written into a block of that size and trimmed when mostly spare.
+ * Returns false, leaving `out` untouched, when nothing matched. */
+static bool replace_shrinking(const MsString *s, const MsNeedle *needle, MsSpan replacement, MsString *out) {
+  const MsSpan text = msrt_text(s);
+  size_t read = 0;
+  size_t before = ms_needle_find(needle, text);
+  if (before == SIZE_MAX) {
+    return false;
+  }
+  uint8_t *const block = ms_alloc(text.len);
+  uint8_t *destination = block;
+  while (before != SIZE_MAX) {
+    destination = write_bytes(destination, ms_span_of(text.ptr + read, before));
+    destination = write_bytes(destination, replacement);
+    read += before + needle->pattern.len;
+    before = text.len - read >= needle->pattern.len ? ms_needle_find(needle, between(text, read, text.len))
+                                                    : SIZE_MAX;
+  }
+  destination = write_bytes(destination, between(text, read, text.len));
+  const size_t length = (size_t)(destination - block);
+  *out = msrt_string_from_block(length > text.len - (text.len >> 2) || length <= MS_STRING_INLINE_MAX
+                                    ? block
+                                    : ms_realloc(block, length),
+                                length);
+  return true;
+}
+
 /* Replaces every match; a result over the string limit faults like concat. The input is only read. */
 void msrt_string_replace(const MsString *s, const MsString *old, const MsString *replacement, MsString *out) {
   const MsSpan text = msrt_text(s);
@@ -297,6 +325,12 @@ void msrt_string_replace(const MsString *s, const MsString *old, const MsString 
     job.matches = ms_utf8_count(text.ptr, text.len) + 1;
   } else {
     job.needle = ms_needle_for(old_text, text.len);
+    if (job.replacement.len <= old_text.len) {
+      if (!replace_shrinking(s, &job.needle, job.replacement, out)) {
+        *out = ms_string_clone(s);
+      }
+      return;
+    }
     job.matches = count_matches(&job.needle, text);
   }
   const size_t total = replaced_length(text.len, job.matches, old_text.len, job.replacement.len);

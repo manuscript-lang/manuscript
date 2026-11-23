@@ -67,16 +67,15 @@ vscode-install: vscode-package
 	@vsix=$$(node -p 'const p = require("./extensions/vscode/package.json"); "extensions/vscode/" + p.name + "-" + p.version + ".vsix"') && \
 		"$(VSCODE_CLI)" --install-extension "$$vsix" --force
 
-# Rust tool kept until it is ported to Manuscript (#6380): docs.
-# The book and API reference come from the Rust docgen (crates/ms-tooling).
-docs:
-	cargo run -q --release --locked -p ms-tooling --bin ms-docgen
+# The API reference, its downloads and the description coverage come from tools/docgen.ms, which reads `ms doc`.
+docs: build
+	MS="$(MS)" $(MS) run tools/docgen.ms
 
-docs-check:
-	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check
+docs-check: build
+	cmake --build --preset ci --target docs-check
 
-docs-coverage:
-	cargo run -q --release --locked -p ms-tooling --bin ms-docgen -- -check -coverage .artifacts/stdlib-doc-coverage.json
+docs-coverage: build
+	MS="$(MS)" $(MS) run tools/docgen.ms -- --check --coverage .artifacts/stdlib-doc-coverage.json
 
 # BOOK_BASEURL moves the site to another address, as a release's archived copy under versions/v<version>/.
 book: docs

@@ -39,6 +39,7 @@ static void escaping_handler(MsFatalKind kind, MsSpan message) {
 
 int main(void) {
   const MsAllocator counting = {counting_allocate, counting_reallocate, counting_release};
+  ms_alloc_track_live();
   const int64_t live_before = ms_alloc_live_bytes();
   uint8_t *block = ms_alloc_zeroed(8);
   CHECK(block[7] == 0);

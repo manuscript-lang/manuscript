@@ -31,6 +31,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  remove         Remove a dependency from ms.toml and ms.lock\n"
     "  lsp            Serve the language server on stdin/stdout\n"
     "  search_symbol  Find a project or standard-library symbol: definition, type, uses\n"
+    "  doc            Emit the standard library's documentation snapshot as JSON\n"
     "  explain        Explain diagnostic codes and their usual repairs\n"
     "  help           Show help for a command\n"
     "  version        Print the compiler version\n"
@@ -468,6 +469,19 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  ms search_symbol parse_config\n"
     "  ms search_symbol read file lines\n"
     "  ms search_symbol json.parse\n"},
+    {"doc",
+    "Usage: ms doc\n"
+    "\n"
+    "Print the documentation of the bundled standard library as versioned JSON: every\n"
+    "importable module (prelude first, then by path) with its declarations, their source\n"
+    "excerpts, descriptions, declared effects and documented members. tools/docgen.ms\n"
+    "builds the API reference, the downloads and the description coverage from it.\n"
+    "\n"
+    "Options:\n"
+    "  -h, --help  Show this help\n"
+    "\n"
+    "Examples:\n"
+    "  ms doc > stdlib.json\n"},
     {"explain",
     "Usage: ms explain <code...> [--json]\n"
     "\n"

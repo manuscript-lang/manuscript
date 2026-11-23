@@ -18,6 +18,7 @@ typedef struct LspDoc {
   int64_t version;
   bool dirty;         /* changed since its diagnostics were last sent */
   MsString published; /* the diagnostics last sent, as JSON, to send only changes */
+  MsString deps;      /* the files its last diagnostics were computed from, one path per line; empty when unknown */
 } LspDoc;
 
 MS_LIST_DEFINE(LspDocList, lsp_doc_list, LspDoc)
