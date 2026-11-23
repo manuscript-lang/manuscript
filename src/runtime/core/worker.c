@@ -114,6 +114,18 @@ static void start_one_blocking(void) {
   atomic_store(&spawning, 0);
 }
 
+/* Waits until every thread started so far (by this pick or by an earlier, non-blocking nudge) has registered its
+ * isolate: a pick that scored only the registered ones would put several spread starts on the main thread. */
+static void await_started(void) {
+  const uint32_t count = atomic_load(&started);
+  for (uint32_t i = 0; i < count && i < MS_MAX_ISOLATES; i++) {
+    while (atomic_load_explicit(&workers[i].isolate, memory_order_acquire) == MS_NO_ISOLATE &&
+           atomic_load(&workers[i].failed) == 0) {
+      ms_sys_yield();
+    }
+  }
+}
+
 uint32_t ms_workers_spread_pick(void) {
   if (ms_workers_limit() <= 1) {
     return MS_NO_ISOLATE;
@@ -121,6 +133,7 @@ uint32_t ms_workers_spread_pick(void) {
   if (ms_isolate_count() < ms_workers_limit()) {
     start_one_blocking();
   }
+  await_started();
   uint32_t best = MS_NO_ISOLATE;
   uint32_t best_score = UINT32_MAX;
   for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
