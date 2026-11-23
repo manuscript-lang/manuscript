@@ -9,7 +9,7 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown import alias @value; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)",
+        "message": "unknown import alias @value; this project declares none, so add one under [aliases] in ms.toml, e.g. \"@lib\" = \"./src/lib\" (use @std/... for the standard library)",
         "position": {
           "file": "testmodulesandprojectpaths-2.ms",
           "line": 4,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testmodulesandprojectpaths-2.ms:4:1: resolution: unknown import alias @value; this project declares none, so add one under [aliases] in ms.toml, e.g. @lib = \"src/lib\" (use @std/... for the standard library)\n   |\n 4 | import Identity from \"@value\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testmodulesandprojectpaths-2.ms:4:1: resolution: unknown import alias @value; this project declares none, so add one under [aliases] in ms.toml, e.g. \"@lib\" = \"./src/lib\" (use @std/... for the standard library)\n   |\n 4 | import Identity from \"@value\"\n   | ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
