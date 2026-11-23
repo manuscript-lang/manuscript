@@ -15,11 +15,24 @@ static void probe_huge(size_t size, const char *what) {
     return;
   }
   const unsigned long long base = (unsigned long long)(uintptr_t)GetModuleHandleA(NULL);
-  void **fp = (void **)__builtin_frame_address(0);
   (void)fprintf(stderr, "probe-huge %s size=%llu\n", what, (unsigned long long)size);
-  for (int i = 0; i < 12 && fp != NULL && ((uintptr_t)fp & 7) == 0 && (uintptr_t)fp > 0x10000; i++) {
-    (void)fprintf(stderr, "probe-frame 0x%llx\n", (unsigned long long)(uintptr_t)fp[1] - base);
-    fp = (void **)fp[0];
+  CONTEXT context;
+  RtlCaptureContext(&context);
+  for (int i = 0; i < 16; i++) {
+#if defined(__aarch64__)
+    const DWORD64 pc = context.Pc;
+#else
+    const DWORD64 pc = context.Rip;
+#endif
+    DWORD64 image = 0;
+    PRUNTIME_FUNCTION entry = RtlLookupFunctionEntry(pc, &image, NULL);
+    (void)fprintf(stderr, "probe-frame 0x%llx entry=%d\n", (unsigned long long)pc - base, entry != NULL);
+    if (entry == NULL) {
+      break;
+    }
+    PVOID handler_data = NULL;
+    DWORD64 establisher = 0;
+    (void)RtlVirtualUnwind(0, image, pc, entry, &context, &handler_data, &establisher, NULL);
   }
 }
 #else
