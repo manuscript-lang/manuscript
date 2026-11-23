@@ -8,7 +8,8 @@
 
 #include "runtime/sys/sys.h"
 
-enum { STACK_OVERFLOW_CODE = 0xC00000FDu, ACCESS_VIOLATION_CODE = 0xC0000005u };
+#define STACK_OVERFLOW_CODE ((DWORD)0xC00000FDu)
+#define ACCESS_VIOLATION_CODE ((DWORD)0xC0000005u)
 
 static _Atomic(MsSysFaultFn) fault_callback;
 static atomic_flag installed = ATOMIC_FLAG_INIT;
