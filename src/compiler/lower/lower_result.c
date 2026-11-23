@@ -171,9 +171,13 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
     return fn_fail(fn, "`try` of a Result whose error type differs from the function's is not lowered yet");
   }
   const MirImm err_imm = {.tag = MI_ALTFIELD, .a = alt, .b = ERR_CASE, .c = 0};
-  /* The error moves out of the operand, which the function scope then drops without it. */
-  const MirOp take = mir_needs_drop(fn->cx->module, err_ty) ? MOP_AltTake : MOP_AltGet;
-  const MirValue err = mir_b_emit(&fn->b, take, &value, 1, err_imm, err_ty);
+  /* The error moves out of an operand the function owns, which its scope then drops without it. */
+  const bool drops = mir_needs_drop(fn->cx->module, err_ty);
+  const bool owned = drops && fn_fresh_owner(fn, value);
+  MirValue err = mir_b_emit(&fn->b, owned ? MOP_AltTake : MOP_AltGet, &value, 1, err_imm, err_ty);
+  if (drops && !owned) {
+    err = mir_b_emit(&fn->b, MOP_Clone, &err, 1, (MirImm){0}, err_ty); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
+  }
   const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, fn->ret);
   const MirImm none = {0};
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
