@@ -8,4 +8,4 @@ Rules: do not keep a `&mut State` across a call that may reach the state again; 
 
 Miri has no `mmap` or inline assembly. Tests that need task stacks, context switches, real file descriptors or the memory copy bodies carry `cfg_attr(miri, ignore = "reason")`; exhaustive differential sweeps that take minutes interpreted do too, and the native run still covers them. The owner approved these 31 Miri-only ignores on 2026-11-15; no other test is gated without approval.
 
-Verify: `MIRIFLAGS=-Zmiri-ignore-leaks cargo +nightly miri test -p ms-rt --lib` (about half an hour; run one test with `-- --exact name`). The nightly safety workflow runs it on `main`.
+Verify: `MIRIFLAGS=-Zmiri-ignore-leaks cargo +nightly miri test -p ms-rt --lib` (about half an hour; run one test with `-- --exact name`). The nightly Miri job was retired with the C release; run it by hand on the Rust runtime history if needed.
