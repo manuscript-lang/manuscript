@@ -33,7 +33,7 @@ test "core parity operations are callable":
 	failure: Int!Error := error(Error("failed"))
 	expect_false(not (success.is_ok()) or success.is_error())?
 	expect_false(success.get() != 2 or failure.err().message != "failed")?
-	expect_equal(failure.get_or(7), 7)?
+	expect_equal(failure.clone().get_or(7), 7)?
 	expect_equal(failure.get_or_else(fn cause: cause.message.scalar_length()), 6)?
 	expect_equal(success.clone().map(fn n: n + 1).get(), 3)?
 
@@ -122,7 +122,7 @@ test "Result fallbacks are eager or lazy, and closures copy their receivers":
 	var counter = Counter(0)
 	success: Int!Counter := ok(0)
 	failure: Int!Counter := error(counter.clone())
-	expect_false(success.get_or(bump(counter)) != 0 or counter.calls != 1)?
+	expect_false(success.clone().get_or(bump(counter)) != 0 or counter.calls != 1)?
 
 	create := fn(cause: Counter) Int: 12
 	unexpected := fn(cause: Counter) Int: panic("fallback must stay lazy")
