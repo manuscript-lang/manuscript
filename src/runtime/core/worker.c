@@ -4,10 +4,11 @@
 #include <stdatomic.h>
 
 #include "base/alloc.h"
+#include "runtime/core/isolate.h"
 #include "runtime/core/scheduler.h"
 #include "runtime/sys/sys.h"
 
-enum { WORKER_STACK = 0 };
+enum { WORKER_STACK = 0, SPREAD_WEIGHT = 1024 }; /* a spread start outweighs any number of tasks */
 
 typedef struct Worker {
   MsSysThread *thread;
@@ -87,6 +88,55 @@ static void worker_main(void *argument) {
   if (config.finish != NULL) {
     config.finish();
   }
+}
+
+static _Atomic uint32_t assigned[MS_MAX_ISOLATES]; /* spread starts placed on each isolate: long-lived work, so never taken back */
+
+/* Starts one thread and waits until its isolate is registered, so the caller can send it work. */
+static void start_one_blocking(void) {
+  if (atomic_exchange(&spawning, 1) != 0) {
+    return;
+  }
+  const uint32_t count = atomic_load(&started);
+  if (count + 1 < ms_workers_limit() && count < MS_MAX_ISOLATES) {
+    Worker *const worker = &workers[count];
+    atomic_store(&worker->isolate, MS_NO_ISOLATE);
+    atomic_store(&worker->failed, 0);
+    worker->thread = ms_sys_thread_spawn(WORKER_STACK, worker_main, worker);
+    if (worker->thread != NULL) {
+      atomic_fetch_add(&started, 1);
+      while (atomic_load_explicit(&worker->isolate, memory_order_acquire) == MS_NO_ISOLATE &&
+             atomic_load(&worker->failed) == 0) {
+        ms_sys_yield();
+      }
+    }
+  }
+  atomic_store(&spawning, 0);
+}
+
+uint32_t ms_workers_spread_pick(void) {
+  if (ms_workers_limit() <= 1) {
+    return MS_NO_ISOLATE;
+  }
+  if (ms_isolate_count() < ms_workers_limit()) {
+    start_one_blocking();
+  }
+  uint32_t best = MS_NO_ISOLATE;
+  uint32_t best_score = UINT32_MAX;
+  for (uint32_t i = 0; i < MS_MAX_ISOLATES; i++) {
+    if (!ms_isolate_live(i)) {
+      continue;
+    }
+    const uint32_t score = atomic_load(&assigned[i]) * SPREAD_WEIGHT + ms_isolate_load(i);
+    if (score < best_score) {
+      best = i;
+      best_score = score;
+    }
+  }
+  if (best != MS_NO_ISOLATE) {
+    atomic_fetch_add(&assigned[best], 1);
+  }
+  return best;
 }
 
 void ms_workers_nudge(void) {

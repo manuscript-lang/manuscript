@@ -53,6 +53,10 @@ static void conn_shutdown_write(void *context) {
   ms_string_release(&err);
 }
 
+static bool conn_steal_read(void *context, MsBytes *out) {
+  return ms_net_core_steal_read(ms_net_handle_core(context), out);
+}
+
 static void conn_release(void *context) {
   MsObj *connection = context;
   connection->drop(connection);
@@ -65,7 +69,8 @@ MsWsTransport ms_net_connection_transport(MsObj *connection) {
                          .close = conn_close,
                          .is_closed = conn_is_closed,
                          .release = conn_release,
-                         .shutdown_write = conn_shutdown_write};
+                         .shutdown_write = conn_shutdown_write,
+                         .steal_read = conn_steal_read};
 }
 
 MsWsSession *ms_ws_connection_session(MsObj *connection, MsWsConfig *config, MsSpan leftover) {

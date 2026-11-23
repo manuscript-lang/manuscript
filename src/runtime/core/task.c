@@ -8,6 +8,7 @@
 
 #include "base/alloc.h"
 #include "runtime/core/context.h"
+#include "runtime/core/isolate.h"
 #include "runtime/sys/sys.h"
 
 enum {
@@ -62,6 +63,7 @@ static MsTask *new_task(MsSched *sched) {
   task->kill_at = MS_NO_DEADLINE;
   sched->slots.ptr[index].task = task;
   sched->live++;
+  ms_isolate_set_load((uint32_t)(sched->live - sched->waiting_roots));
   return task;
 }
 
@@ -72,6 +74,7 @@ static void free_task(MsSched *sched, MsTask *task) {
   ms_index_list_push(&sched->free_slots, (uint32_t)index);
   ms_task_destroy(sched, task);
   sched->live--;
+  ms_isolate_set_load((uint32_t)(sched->live - sched->waiting_roots));
 }
 
 /* The record of the thread's own flow of control, created on first use: it runs on the thread's stack, so it
@@ -104,7 +107,7 @@ bool ms_task_stack_overflow_at(uintptr_t address) {
 
 /* ---- the ready ring ---- */
 
-void ms_task_enqueue(MsSched *sched, MsTask *task) {
+static void ready_room(MsSched *sched) {
   if (sched->ready_len == sched->ready_cap) {
     /* The ring is full: double it and move the wrapped entries behind the old end. */
     const size_t old_capacity = sched->ready_cap;
@@ -114,7 +117,19 @@ void ms_task_enqueue(MsSched *sched, MsTask *task) {
       sched->ready[old_capacity + i] = sched->ready[i];
     }
   }
+}
+
+void ms_task_enqueue(MsSched *sched, MsTask *task) {
+  ready_room(sched);
   sched->ready[(sched->ready_head + sched->ready_len) % sched->ready_cap] = task->handle;
+  sched->ready_len++;
+}
+
+/* Ready before every task already waiting for the processor. */
+static void enqueue_front(MsSched *sched, MsTask *task) {
+  ready_room(sched);
+  sched->ready_head = (sched->ready_head + sched->ready_cap - 1) % sched->ready_cap;
+  sched->ready[sched->ready_head] = task->handle;
   sched->ready_len++;
 }
 
@@ -356,7 +371,11 @@ MsTaskHandle ms_task_spawn(MsTaskEntry entry, void *arg, uint32_t flags, size_t 
   task->teb[0] = bounds.high;
   task->teb[1] = bounds.high - MS_STACK_INITIAL_COMMIT;
   task->teb[2] = (uintptr_t)base;
-  ms_task_enqueue(sched, task);
+  if ((flags & MS_SPAWN_FRONT) != 0) {
+    enqueue_front(sched, task);
+  } else {
+    ms_task_enqueue(sched, task);
+  }
   *status = MS_TASK_OK;
   return task->handle;
 }

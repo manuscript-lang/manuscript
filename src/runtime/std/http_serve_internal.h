@@ -9,6 +9,7 @@
 typedef struct MsServeConn MsServeConn;
 typedef struct MsH2Conn MsH2Conn;
 typedef struct MsH2Stream MsH2Stream;
+typedef struct MsServeIdle MsServeIdle;
 
 struct MsServeConn {
   MsServeWorker *worker;
@@ -21,6 +22,9 @@ struct MsServeConn {
   bool eof;
   bool h2;
   MsTaskHandle task;
+  size_t listed_at;  /* its place in the idle list while it waits for a request (http_serve_steal.c) */
+  bool listed;
+  bool taken;        /* another thread took the connection: its task ends without closing it */
 };
 
 struct MsServeWorker {
@@ -28,6 +32,7 @@ struct MsServeWorker {
   MsServeConn *conns;
   size_t count;
   bool closing;
+  MsServeIdle *idle; /* NULL when connections of this worker cannot be taken */
 };
 
 struct MsExchange {
@@ -95,6 +100,25 @@ void ms_serve_conn_close(MsServeConn *conn);
 /* Takes one request slot of the serving's admission limit; false when none is free. Return it by decrementing
  * `admitted`. */
 bool ms_serve_admit(MsServeShared *shared);
+
+/* Serves `stream` (taken) and the request bytes already read from it, in a task of `worker` (a connection another
+ * worker's thread took): closes the stream and returns false when the worker is closing. */
+bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, MsBytes first);
+
+/* ---- taking idle connections from a held-up thread (http_serve_steal.c) ---- */
+
+/* The idle list of `worker` (on the calling thread's isolate), registered so the watcher can send a resting worker
+ * of the same server to take from it; NULL when the server cannot (TLS, one isolate). */
+MsServeIdle *ms_serve_idle_open(MsServeWorker *worker);
+/* Unregisters and releases the list; takers that still hold it find no worker. */
+void ms_serve_idle_close(MsServeIdle *idle);
+/* The connection waits for the first byte of a request: another thread may take it. */
+void ms_serve_idle_list(MsServeConn *conn);
+/* The wait ended. Whether another thread took the connection meanwhile (then it is theirs and this task ends
+ * without closing it). Also safe for a connection that was never listed. */
+bool ms_serve_idle_unlist(MsServeConn *conn);
+/* Whether another thread took the connection (it is theirs to close). */
+bool ms_serve_idle_taken(MsServeConn *conn);
 
 /* ---- HTTP/2 (http_serve_h2.c, http_serve_h2_exchange.c) ---- */
 
