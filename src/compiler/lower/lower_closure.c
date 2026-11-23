@@ -43,7 +43,8 @@ static bool fn_capture_moves(const LowerFn *fn, const LowerCapture *capture) {
     return capture->index < fn->nvars && fn->local_owns != NULL && fn->local_owns[capture->index] == 1 &&
            (fn->closing == NULL || !fn->closing_var[capture->index]);
   }
-  return capture->index < fn->b.func.nparams && fn->b.func.params[capture->index].mode == MM_MOVE &&
+  const uint32_t param_at = capture->index + (fn->lambda != NULL ? 1u : 0u); /* a closure's first parameter is its environment */
+  return param_at < fn->b.func.nparams && fn->b.func.params[param_at].mode == MM_MOVE &&
          (fn->closing == NULL || capture->index >= LOWER_MAX_CLOSING_PARAMS ||
           !fn->closing_var[fn->nvars + capture->index]);
 }
@@ -95,8 +96,12 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
       } else if (!fn_capture_moves(fn, &captures[index])) {
         MirValue taken = MIR_NONE;
+        MirVar owned_var = 0;
         if (fn_capture_slot_owned(fn, &captures[index]) && fn_closing_take(fn, &ref, value, &taken)) {
           value = taken; /* a resource or var in a slot gives its value to the closure */
+        } else if (captures[index].kind == MS_REF_LOCAL && captures[index].use != NULL &&
+                   fn_owned_local(fn, captures[index].use, &owned_var) && fn->b.vars.ptr[owned_var].mode == MM_MOVE) {
+          fn_scope_var_released(fn, owned_var, true); /* an owning `var` the maker does not use again goes to the closure */
         } else {
           value = fn_implicit_clone(fn, value, false);
         }
