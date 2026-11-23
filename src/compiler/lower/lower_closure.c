@@ -93,6 +93,9 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
         } else {
           value = fn_implicit_clone(fn, value, false);
         }
+      } else if (mir_ty_data(fn->cx->module, captures[index].ty)->kind == MK_FN && captures[index].use != NULL &&
+                 ms_facts_use(fn->facts, captures[index].use->id) == MS_USE_CLONE) {
+        value = fn_implicit_clone(fn, value, true); /* a function value is shared: each closure takes its own copy */
       } else if (fn_closing_take(fn, &ref, value, &slot_value)) {
         value = slot_value; /* a resource its scope closes gives its value to the closure, on the paths that build it */
       }

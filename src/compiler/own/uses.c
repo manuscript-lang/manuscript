@@ -28,6 +28,7 @@ typedef struct Uses {
   uint32_t ncand_places;
   MsBindingList moved; /* the locals a name moves in the callable being marked */
   MsBindingList arms; /* the arms of the module's matches: what an arm binds is a view of the scrutinee */
+  uint32_t assigned; /* the local the statement being marked assigns, or UINT32_MAX: its old value dies with the assignment */
 } Uses;
 
 /* Whether `expr` is a local name or a field read of one. */
@@ -121,6 +122,11 @@ static bool moves_out_of_borrowed_result(const Uses *pass, const MsExpr *expr) {
                             ? root->u.call.callee->u.member.left
                             : (root->u.call.args.len != 0 ? root->u.call.args.ptr[0].value : NULL);
   if (owner != NULL && owner->kind == MS_E_CALL) {
+    return false;
+  }
+  /* `cur = cur.get().next`: the assignment replaces the owner, so the field leaves it. */
+  const MsRef *owner_ref = owner != NULL && owner->kind == MS_E_NAME ? ms_facts_ref(pass->facts, owner->id) : NULL;
+  if (owner_ref != NULL && owner_ref->kind == MS_REF_LOCAL && owner_ref->local == pass->assigned) {
     return false;
   }
   ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE,
@@ -329,7 +335,10 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
     mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
+    const MsRef *target = stmt->u.assign.member_target ? NULL : ms_facts_ref(pass->facts, stmt->id);
+    pass->assigned = target != NULL && target->kind == MS_REF_LOCAL ? target->local : UINT32_MAX;
     mark_move(pass, stmt->u.assign.value);
+    pass->assigned = UINT32_MAX;
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
              owns_place(pass, stmt->u.branch.cond) && hands_payload_on(pass, stmt)) {
@@ -626,7 +635,7 @@ static void run_uses(MsCheckProgram *program, bool report) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->modules.len; module++) {
     Uses pass = {.program = program, .module = module, .report = report, .classes = &classes, .facts = &program->modules.ptr[module].facts,
-                 .names = program->names};
+                 .names = program->names, .assigned = UINT32_MAX};
     if (pass.facts->uses == NULL) {
       continue;
     }

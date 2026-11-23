@@ -162,7 +162,8 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   if (value == MIR_NONE) {
     return MIR_NONE;
   }
-  if (implicit_clone_is_error) {
+  /* A function value never changes, so copying one is how it is shared. */
+  if (implicit_clone_is_error && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->kind != MK_FN) {
     const MsSpan file = fn->b.loc.file < fn->cx->module->files.len ? fn->cx->module->files.ptr[fn->b.loc.file] : ms_span_of_text("?");
     (void)fn_fail(fn, "a value is copied where the source does not say `.clone()`; move it or borrow it (at %.*s:%u:%u)",
                   (int)file.len, (const char *)file.ptr, fn->b.loc.line, fn->b.loc.col);
