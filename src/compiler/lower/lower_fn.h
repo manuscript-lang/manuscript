@@ -260,6 +260,8 @@ uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty);
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
+/* A call result a comparison reads: it closes with the statement. */
+MirValue fn_closing_operand(LowerFn *fn, const MsExpr *operand, MirValue value);
 MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value);
 /* The resources the other fields of record `base` hold, closed with the statement once field `moved` has left it; the mask of the fields taken out. */
 uint32_t fn_close_rest(LowerFn *fn, const MsExpr *member, MirValue base, uint32_t type_id, uint32_t moved);

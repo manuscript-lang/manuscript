@@ -774,10 +774,14 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
     (void)fn_fail(fn, "this binary operator is not lowered yet");
     return MIR_NONE;
   }
-  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
-  const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
   if (left == MIR_NONE || right == MIR_NONE) {
     return MIR_NONE;
+  }
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    left = fn_closing_operand(fn, expr->u.bin.left, left);
+    right = fn_closing_operand(fn, expr->u.bin.right, right);
   }
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     return fn_string_concat(fn, left, right);

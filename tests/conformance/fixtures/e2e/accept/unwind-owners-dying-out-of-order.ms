@@ -32,7 +32,7 @@ fn run(log: String, fail: Bool) Int:
 
 fn closed(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok(bytes.decode_utf8().get_or(""))
+	return ok((bytes.decode_utf8() or ""))
 
 test "resources registered together close once when the function returns":
 	temp := temporary("unwind-order-")?
