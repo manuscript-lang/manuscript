@@ -2,6 +2,10 @@
  * `or`, and integer arithmetic over literals that always faults (division by zero, overflow). */
 #include "compiler/check/body.h"
 
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
 typedef __int128 Wide;
 
 typedef struct Range {
@@ -188,6 +192,36 @@ void body_check_literal_range(Body *body, const MsExpr *number, bool negated, Ms
   ms_strbuild_append_text(&out, " and ");
   append_wide(&out, range.high);
   ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE, ms_strbuild_finish(&out));
+}
+
+void body_check_int64_literal(Body *body, const MsExpr *number, bool negated) {
+  Wide value = 0;
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  if (!reporting(body) || (literal_value(text, &value) && (value <= (Wide)INT64_MAX || (negated && value == (Wide)INT64_MAX + 1)))) {
+    return;
+  }
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("Int literal is outside signed 64-bit range; use a value between "
+                                                      "-9223372036854775808 and 9223372036854775807, or BigInt")));
+}
+
+void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty) {
+  const MsSpan text = ms_names_span(body->program->names, number->u.sym);
+  char buffer[128];
+  if (!reporting(body) || text.len == 0 || text.len >= sizeof buffer) {
+    return;
+  }
+  memcpy(buffer, text.ptr, text.len);
+  buffer[text.len] = '\0';
+  const bool narrow = ty != MS_TY_NONE && ms_ty_is(&body->program->types, ty, MS_BUILTIN_Float32);
+  const bool finite = narrow ? isfinite(strtof(buffer, NULL)) : isfinite(strtod(buffer, NULL));
+  if (finite) {
+    return;
+  }
+  ms_check_report(body->program, body->module, number->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text(
+                      narrow ? "Float literal is outside finite binary32 range; use a smaller magnitude (about 3.4e38 at most)"
+                             : "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")));
 }
 
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty) {
