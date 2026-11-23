@@ -335,7 +335,8 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
       if (want == LW_MOVE && (owning_constructor(call) || (held_across(call, native) && index > 0)) && out[index] != MIR_NONE &&
-          written != NULL && written->kind == MS_E_CALL && (step + 1 < call->arg_count || held_across(call, native))) {
+          written != NULL && (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
+          (step + 1 < call->arg_count || held_across(call, native))) {
         MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
                                    fn->subst.args, fn->subst.count);
         const size_t params = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
@@ -360,6 +361,12 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       fn->default_call = NULL;
       fn->default_args = NULL;
       fn->default_has_self = outer_has_self;
+      if (owning_constructor(call) && out[index] != MIR_NONE) {
+        /* A default resource waits in a closing slot too: a later default that faults closes it. */
+        const MsTy param = ms_ty_subst(&fn->cx->program->types, ms_ty_params(types, call->callee_ty)[at].ty, fn->subst.vars, fn->subst.args,
+                                       fn->subst.count);
+        pending[index] = fn_pending_own(fn, param, out[index]);
+      }
     } else {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
