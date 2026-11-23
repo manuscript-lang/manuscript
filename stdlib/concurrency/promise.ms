@@ -263,7 +263,7 @@ export fn caller_frame() String:
 export fn promise[U](
 	entry: fn() U!,
 	options: PromiseOptions = PromiseOptions(),
-	site: String = caller_frame(),
+	site: String = caller_frame()
 ) Promise[U]:
 	id := msrt_promise_new()
 

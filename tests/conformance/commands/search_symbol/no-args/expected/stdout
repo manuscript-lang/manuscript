@@ -14,7 +14,7 @@ deque        Deque
 itertools    Run, accumulate +7
 queue        HeapEntry, PriorityQueue +1
 sorted       SortedEntry, SortedMap +1
-promise      Cancel, Placement, Promise +11
+promise      Cancel, Placement, Promise +12
 resilience   CircuitBreaker +7
 core         Clonable, Closeable +14
 blake2       blake2b, blake2s

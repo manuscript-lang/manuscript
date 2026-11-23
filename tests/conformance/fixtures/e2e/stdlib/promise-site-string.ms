@@ -26,4 +26,9 @@ test "a built site string is freed when the promise is dropped unwaited":
 test "a built site string shows in the report":
 	p := promise[Int](fn: boom(3), site: label(9))
 	reason := p.wait() | expect_error?
-	expect_equal(reason.details["report"].contains("at a-long-made-up-place-9.ms:9 in somewhere"), true)?
+	expect_equal(
+		reason.details["report"].contains(
+			"at a-long-made-up-place-9.ms:9 in somewhere"
+		),
+		true,
+	)?

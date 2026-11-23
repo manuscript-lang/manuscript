@@ -236,7 +236,7 @@ export fn map_concurrent[T, U](
 	items: List[T],
 	limit: Int,
 	work: fn(T) U,
-	site: String = caller_frame(),
+	site: String = caller_frame()
 ) List[U]!:
 	if limit < 1:
 		return error(
@@ -251,7 +251,12 @@ export fn map_concurrent[T, U](
 
 	for stripe in 0..stripes:
 		mine := items.clone()
-		running.append(promise(fn: stripe_results(mine, stripe, stripes, work), site: site))
+		running.append(
+			promise(
+				fn: stripe_results(mine, stripe, stripes, work),
+				site: site
+			)
+		)
 
 	var parts = wait_all(running)?
 	var results: List[U] = []
