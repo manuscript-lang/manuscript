@@ -124,7 +124,7 @@ static void append_two_digits(MsStrBuild *out, int64_t value) {
   ms_strbuild_append_byte(out, (uint8_t)('0' + value % 10));
 }
 
-void ms_h1_http_date(MsStrBuild *out, int64_t unix_seconds) {
+static void format_http_date(MsStrBuild *out, int64_t unix_seconds) {
   static const char *const DAYS[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
   static const char *const MONTHS[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
@@ -143,4 +143,27 @@ void ms_h1_http_date(MsStrBuild *out, int64_t unix_seconds) {
   ms_strbuild_append_byte(out, ':');
   append_two_digits(out, civil.second);
   ms_strbuild_append_text(out, " GMT");
+}
+
+/* Every response carries the date, and it changes once a second: the last text a thread formatted answers the
+ * requests of the same second. */
+void ms_h1_http_date(MsStrBuild *out, int64_t unix_seconds) {
+  enum { DATE_MAX = 48 };
+  static _Thread_local int64_t cached_seconds = -1;
+  static _Thread_local size_t cached_length;
+  static _Thread_local char cached_text[DATE_MAX];
+  if (cached_seconds != unix_seconds) {
+    MsStrBuild text = ms_strbuild_new();
+    format_http_date(&text, unix_seconds);
+    const MsSpan span = ms_strbuild_span(&text);
+    cached_length = span.len < DATE_MAX ? span.len : 0;
+    if (cached_length != 0) {
+      __builtin_memcpy(cached_text, span.ptr, cached_length);
+      cached_seconds = unix_seconds;
+    }
+    ms_strbuild_append(out, span);
+    ms_strbuild_free(&text);
+    return;
+  }
+  ms_strbuild_append(out, ms_span_of((const uint8_t *)cached_text, cached_length));
 }
