@@ -809,9 +809,11 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
   }
   if (sig == NULL) {
     /* An operation every value has (`to_string`) is done by the walker over its shape. */
-    if (argc == 0 || (mir_is_scalar(fn->cx->module, mir_b_ty(&fn->b, args[0])) && !ms_span_is_text(operation, "hash"))) {
-      return false; /* a scalar has its own forms of these, except its hash, which only the shape walker has */
+    if (argc == 0) {
+      return false;
     }
+    /* A scalar with no runtime function of its own for the operation (its hash) is walked by its shape like any value;
+     * when no walker exists for the operation the caller finds the scalar's own form. */
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
   }
