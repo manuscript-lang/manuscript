@@ -10,12 +10,12 @@ type Failure:
 	detail: String
 
 fn relay[T, E](result: T!E, var visits: List[Int]) T!E:
-	value := result?
+	value := result.clone()?
 	visits.append(1)
 	return ok(value)
 
 fn text(result: Int!Error) String!Error:
-	value := result?
+	value := result.clone()?
 	return ok(value.to_string())
 
 test "try preserves empty errors and skips success effects":
@@ -43,7 +43,7 @@ fn visit[T, E](result: T!E, var visits: List[Int]) T!E:
 	return result
 
 fn tail[T, E](result: T!E, var visits: List[Int]) T!E:
-	value := visit(result, visits)?
+	value := visit(result, visits).clone()?
 	return ok(value)
 
 type TailCleanup:
@@ -55,11 +55,11 @@ fn move TailCleanup.close() Void!:
 
 fn tail_cleanup(result: Int!Error, var visits: List[Int], marker: String) Int!Error:
 	_resource := TailCleanup(marker)
-	value := visit(result, visits)?
+	value := visit(result, visits).clone()?
 	return ok(value)
 
 fn function_tail(result: (fn() Int)!Error) (fn() Int)!Error:
-	value := result?
+	value := result.clone()?
 	return ok(value)
 
 test "tail Results evaluate once and retain payload identity":
