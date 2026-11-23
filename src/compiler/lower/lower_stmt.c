@@ -1,5 +1,6 @@
 /* compiler/lower/lower_stmt.c: statements: bindings, assignment, calls, return, if, while, break, continue. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/closers.h"
 #include "compiler/mir/mir_analysis.h"
 
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
@@ -692,7 +693,8 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   const MsName assigned = stmt->u.assign.target != NULL && stmt->u.assign.target->kind == MS_E_NAME ? stmt->u.assign.target->u.sym : stmt->u.assign.name;
   if (fn_closing_at(fn, ref, assigned) != UINT32_MAX) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
-    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, value, &resource);
+    const uint32_t target_id = stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id;
+    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, ms_facts_type(fn->facts, target_id), value, &resource);
   }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     var = fn->vars[ref->local] - 1;
@@ -718,7 +720,17 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     for (uint32_t at = 0; at < fn->nmoved_names; at++) {
       handed_on |= fn->moved_names[at] == old;
     }
-    if (!handed_on) {
+    const uint32_t target_id = stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id;
+    const MsTy checked = ms_facts_type(fn->facts, target_id);
+    if (handed_on) {
+      /* nothing is left to release */
+    } else if (checked != MS_TY_NONE && ms_own_closer_of(fn->cx->program, ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars,
+                                                                                         fn->subst.args, fn->subst.count),
+                                                         &(MsCloser){0})) {
+      if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
+        return false;
+      }
+    } else {
       (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
     }
   }
