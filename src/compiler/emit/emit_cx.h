@@ -165,6 +165,7 @@ bool emit_wide_return(EmitCx *cx, MirValue value);
 bool emit_wide_held(const EmitCx *cx, MirValue value);
 bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity);
 bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capacity);
+bool emit_wide_same_cell(const EmitCx *cx, MirValue first, MirValue second);
 
 
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */

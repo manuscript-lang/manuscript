@@ -3,8 +3,6 @@
  * piece of the block (emit_record_pieces). */
 #include "compiler/emit/emit_cx.h"
 
-#include <string.h>
-
 #include "base/alloc.h"
 #include "base/fatal.h"
 #include "compiler/mir/mir_pass.h"
@@ -93,12 +91,10 @@ static bool held_record_new(EmitCx *cx, const MirInst *inst) {
   for (uint32_t arg = 0; ok && arg < inst->nargs; arg++) {
     bool aligned = true;
     char from[24];
-    char to[24];
     if (emit_wide_address(cx, inst->args[arg], from, sizeof from)) {
       (void)packed_bytes(cx, inst->args[arg], offsets[at], &aligned);
       /* A field that shares the result's cell would be overwritten by the stores before it is copied. */
-      (void)emit_wide_address(cx, inst->res, to, sizeof to);
-      aligned = aligned && strcmp(from, to) != 0;
+      aligned = aligned && !emit_wide_same_cell(cx, inst->args[arg], inst->res);
     }
     ok = aligned;
     at += (uint32_t)emit_value_leaves(cx, inst->args[arg]).len;
@@ -138,7 +134,7 @@ static bool held_record_set(EmitCx *cx, const MirInst *inst, uint32_t start, uin
       !emit_wide_result(cx, inst->res, to, sizeof to)) {
     return false;
   }
-  if (strcmp(from, to) != 0) {
+  if (!emit_wide_same_cell(cx, inst->args[0], inst->res)) {
     ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to, from,
                        emit_slot_bytes(cx, value_type(cx, inst->res)));
   }
