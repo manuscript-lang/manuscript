@@ -51,15 +51,16 @@ fn main() Int:
 		f"Node {expected_node}",
 		f"Node {expected_node} (install the version in .node-version)",
 	): failed += 1
+	for command in ["cmake", "ninja"]:
+		if not say(
+			works(command, ["--version"]),
+			command,
+			f"{command} (builds ms: cmake --preset ci)",
+		): failed += 1
 	if not say(
-		works("cargo", ["--version"]),
-		"cargo",
-		"cargo (install rustup; rust-toolchain.toml pins the toolchain)",
-	): failed += 1
-	if not say(
-		works("cargo", ["nextest", "--version"]),
-		"cargo-nextest",
-		"cargo-nextest (cargo install cargo-nextest --locked)",
+		works("clang", ["--version"]),
+		"clang",
+		"clang (the C compiler the ci preset builds with)",
 	): failed += 1
 	if not say(
 		works("python3", ["--version"]) or works("python", ["--version"]),

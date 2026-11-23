@@ -128,7 +128,7 @@ static const char *const role_names[] = {
     [MR_VIEW_RESULT] = "view_result", [MR_TAKES_DYING] = "takes_dying", [MR_SPAWNS_TASK] = "spawns_task",
     [MR_SHIELD_ENTER] = "shield_enter", [MR_SHIELD_EXIT] = "shield_exit", [MR_UNWINDING] = "unwinding",
     [MR_MAP_PROBE_INT] = "map_probe_int", [MR_MAP_PROBE_STR] = "map_probe_str",
-    [MR_SET_PROBE_INT] = "set_probe_int", [MR_STRING_SLICE] = "string_slice",
+    [MR_SET_PROBE_INT] = "set_probe_int", [MR_SET_PROBE_STR] = "set_probe_str", [MR_STRING_SLICE] = "string_slice",
     [MR_BYTES_READ_WORD] = "bytes_read_word", [MR_BYTES_INDEX_OF_BYTE] = "bytes_index_of_byte",
     [MR_STRING_PARSE_INT] = "string_parse_int", [MR_STRING_CONTAINS] = "string_contains",
     [MR_STRING_STARTS_WITH] = "string_starts_with", [MR_STRING_ENDS_WITH] = "string_ends_with",

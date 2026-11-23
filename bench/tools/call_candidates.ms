@@ -75,7 +75,7 @@ fn measure(
 			file := files[(i + round * 7) % files.length()]
 
 			for label in order:
-				binary := if label == "before": before else: after
+				binary := if label == "before": before.clone() else: after.clone()
 				command := [
 					"60",
 					"taskset",
