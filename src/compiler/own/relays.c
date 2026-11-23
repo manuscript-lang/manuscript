@@ -1,6 +1,7 @@
 /* compiler/own/relays.c: borrowed results that would leave as owned ones (see relays.h). */
 #include "compiler/own/relays.h"
 
+#include "compiler/own/bind.h"
 #include "compiler/own/class.h"
 #include "compiler/own/expr_text.h"
 #include "compiler/own/result_borrows.h"
@@ -13,20 +14,33 @@ typedef struct Relays {
   const MsFacts *facts;
   const MsExpr *callee; /* the name of the call just entered: written as a callee, not used as a value */
   const MsExpr *applied; /* the name of the type application just entered, which checks as a whole */
+  MsBindingList views;   /* locals bound to a borrowed part of a parameter: they borrow it too */
 } Relays;
 
 static bool owns_memory(const Relays *pass, MsTy ty) {
   return ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
 }
 
-/* A parameter, or a field of one, that the function only borrows. */
+/* A parameter, a field of one, or a local bound to one, that the function only borrows. */
 static bool is_borrowed_param_place(const Relays *pass, const MsExpr *place) {
   const MsExpr *root = place;
   while (root->kind == MS_E_MEMBER) {
     root = root->u.member.left;
   }
   const MsRef *ref = root->kind == MS_E_NAME ? ms_facts_ref(pass->facts, root->id) : NULL;
-  return ref != NULL && ref->kind == MS_REF_PARAM && ms_facts_use(pass->facts, root->id) == MS_USE_BORROW;
+  if (ref == NULL) {
+    return false;
+  }
+  if (ref->kind == MS_REF_LOCAL) {
+    uint32_t binding = 0;
+    for (size_t index = 0; ms_bind_of(pass->facts, root->id, &binding) && index < pass->views.len; index++) {
+      if (pass->views.ptr[index] == binding) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return ref->kind == MS_REF_PARAM && ms_facts_use(pass->facts, root->id) == MS_USE_BORROW;
 }
 
 /* Whether a call's result borrows an argument that is a place someone else owns: a borrowed result of a temporary the
@@ -96,6 +110,16 @@ static void check_function_value(Relays *pass, const MsExpr *name, const MsExpr 
   ms_check_report(pass->program, pass->module, name->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+static void visit_stmt(void *ctx, const MsStmt *stmt) {
+  Relays *pass = ctx;
+  uint32_t binding = 0;
+  if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value != NULL &&
+      (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER) &&
+      is_borrowed_param_place(pass, stmt->u.bind.value) && ms_bind_of(pass->facts, stmt->u.bind.pattern->id, &binding)) {
+    ms_binding_list_push(&pass->views, binding);
+  }
+}
+
 static void visit_expr(void *ctx, const MsExpr *expr) {
   Relays *pass = ctx;
   if (expr->kind == MS_E_CALL) {
@@ -119,10 +143,11 @@ void ms_own_relays(MsCheckProgram *program) {
   for (uint32_t module = 0; module < program->user_modules && module < (uint32_t)program->modules.len; module++) {
     Relays pass = {.program = program, .classes = &classes, .module = module, .facts = &program->modules.ptr[module].facts};
     const MsModule *tree = program->modules.ptr[module].tree;
-    const MsVisitor visitor = {.ctx = &pass, .expr = visit_expr};
+    const MsVisitor visitor = {.ctx = &pass, .expr = visit_expr, .stmt = visit_stmt};
     for (uint32_t index = 0; index < tree->ndecls; index++) {
       ms_walk_decl(&visitor, tree->decls[index]);
     }
+    ms_binding_list_free(&pass.views);
   }
   ms_class_free(&classes);
 }

@@ -57,9 +57,34 @@ static void on_closed(uv_handle_t *handle) {
   ms_net_core_unref(core); /* the libuv handle's reference */
 }
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#endif
+
+/* Reads and drops what the peer sent that nobody read. Closing a socket with unread bytes in its receive queue
+ * sends a reset, which can discard the data this side wrote and the peer has not read yet (a TLS server's
+ * post-handshake tickets are such bytes), so a connection drains before it closes. */
+static void drain_unread(MsNetCore *core) {
+  uv_os_fd_t fd;
+  if (core->kind != MS_NET_CONNECTION || core->is_pipe || uv_fileno(&core->h.handle, &fd) != 0) {
+    return;
+  }
+  char sink[4096];
+#ifdef _WIN32
+  while (recv((SOCKET)fd, sink, (int)sizeof sink, 0) > 0) {
+  }
+#else
+  while (recv(fd, sink, sizeof sink, MSG_DONTWAIT) > 0) {
+  }
+#endif
+}
+
 static void close_start(MsNetOp *op) {
   MsNetCore *core = ((CloseOp *)op)->core;
   if (!uv_is_closing(&core->h.handle)) {
+    drain_unread(core);
     ms_net_conn_close_ops(core);
     ms_net_listen_close_ops(core);
     ms_net_dgram_close_ops(core);
@@ -97,10 +122,35 @@ MsObj *ms_net_handle_new(MsNetCore *core) {
   atomic_fetch_add(&core->handles, 1);
   handle->header.drop = handle_drop;
   handle->core = core;
+  handle->generation = atomic_load(&core->generation);
   return &handle->header;
 }
 
-MsNetCore *ms_net_handle_core(const MsObj *handle) { return ((const MsNetHandle *)handle)->core; }
+/* What a handle that an upgrade consumed finds: a closed connection. */
+static MsNetCore *consumed_core(void) {
+  static _Atomic(MsNetCore *) dead;
+  static atomic_int once;
+  if (atomic_exchange(&once, 1) == 0) {
+    MsNetCore *core = ms_net_core_new(MS_NET_CONNECTION, false);
+    atomic_store(&core->closed, true);
+    atomic_store(&core->references, 1 << 30); /* never freed */
+    atomic_store(&dead, core);
+  }
+  while (atomic_load(&dead) == NULL) {
+  }
+  return atomic_load(&dead);
+}
+
+MsNetCore *ms_net_handle_core(const MsObj *handle) {
+  const MsNetHandle *self = (const MsNetHandle *)handle;
+  return self->generation == atomic_load(&self->core->generation) ? self->core : consumed_core();
+}
+
+MsObj *ms_net_handle_upgraded(const MsObj *handle) {
+  MsNetCore *core = ms_net_handle_core(handle);
+  atomic_fetch_add(&core->generation, 1);
+  return ms_net_handle_new(core);
+}
 
 MsObj *ms_net_handle_alias(const MsObj *handle) { return ms_net_handle_new(ms_net_handle_core(handle)); }
 
