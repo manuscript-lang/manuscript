@@ -18,6 +18,11 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
     if (ref == NULL || ref->kind != MS_REF_LOCAL) {
       return fn_fail(fn, "a bound name has no local");
     }
+    const MsTy owned_ty = ms_facts_type(fn->facts, pattern->id);
+    if (reassignable && part_owned && fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), owned_ty)) {
+      /* A `var` part taken out of its record closes where this scope ends, and may be reassigned. */
+      return fn_bind_closing_in(fn, fn_scope(fn), ref->local, owned_ty, value, true);
+    }
     if (reassignable) { /* `var` takes its own copy of the part, which the name then owns and may reassign */
       const MirTy ty = mir_b_ty(&fn->b, value);
       if (!mir_needs_drop(module, ty)) {
@@ -27,7 +32,7 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
       if (ref->local >= fn->nvars) {
         return fn_fail(fn, "a local binding is outside the function's locals");
       }
-      const MirValue copy = fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty);
+      const MirValue copy = part_owned ? value : fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty); /* a taken part is already the name's */
       fn->vars[ref->local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
       fn_disown(fn, copy);
       mir_b_def_var(&fn->b, fn->vars[ref->local] - 1, copy);

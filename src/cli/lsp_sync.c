@@ -1,6 +1,8 @@
 /* cli/lsp_sync.c: message JSON helpers and document synchronization. */
 #include "cli/lsp_sync.h"
 
+#include "compiler/project/project.h"
+
 const MsJson *lsp_json_member(const MsJson *object, const char *key, MsJsonKind kind) {
   const MsJson *value = object != NULL && object->kind == MS_JSON_OBJECT ? ms_json_member(object, key) : NULL;
   return value != NULL && value->kind == kind ? value : NULL;
@@ -55,6 +57,19 @@ bool lsp_sync_change(LspDocList *docs, bool open, const MsJson *params) {
   if (uri == NULL) return false;
   size_t version = 0;
   (void)lsp_json_integer(lsp_json_member(document, "version", MS_JSON_NUMBER), &version);
+  const bool bundled = lsp_uri_is_standard_library(uri->text);
+  if (bundled && !open) return true; /* a bundled module is read-only */
+  if (open && bundled) {
+    /* The client's text is not trusted: the module is what this executable carries. */
+    const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
+    MsStdSource source;
+    if (!ms_span_starts_with(uri->text, prefix) ||
+        !ms_std_source_find(ms_span_of(uri->text.ptr + prefix.len, uri->text.len - prefix.len), &source)) {
+      return true;
+    }
+    lsp_doc_set(docs, uri->text, (int64_t)version, source.text);
+    return true;
+  }
   if (open) {
     const MsJson *text = lsp_json_member(document, "text", MS_JSON_STRING);
     if (text == NULL) return false;
