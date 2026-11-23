@@ -98,7 +98,7 @@ fn user_name(d: JsonValue) String?:
 test "JSON get_in reads a chain of members in place":
 	d := doc()
 	expect_equal(user_name(d), "ada")?
-	expect_equal(d.get_in(["user", "age"]).and_then(fn n: n.as_int()), 36)?
+	expect_equal(d.get_in(["user", "age"]).clone().and_then(fn n: n.as_int()), 36)?
 	if tags := d.get_in(["user", "tags"]):
 		if last := tags.get_index(-1): expect_equal(string_of(last), "c")?
 	expect_true(d.get_in(["user", "missing"]).is_none())?

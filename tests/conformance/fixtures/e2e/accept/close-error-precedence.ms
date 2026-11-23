@@ -107,7 +107,7 @@ test "a pending borrowed error retains the caller's fields":
 	dir := temporary("close-borrowed-error-") | expect_ok?
 	log := f"{dir.path()}/events"
 	original := Error("caller error", kind: "ECALLER", details: {"id": "caller"})
-	cause := borrowed(log, original) | expect_error?
+	cause := borrowed(log, original.clone()) | expect_error?
 	expect_equal(cause.message, "caller error")?
 	expect_equal(cause.kind, "ECALLER")?
 	expect_equal(cause.details["id"], "caller")?
@@ -158,7 +158,7 @@ fn forward_error(log: String, source: Int!) String!:
 	_resource := Failing(log.clone(), 1)
 	return mixed_error(source)
 
-fn generic_error[E](log: String, cause: E) Int!E:
+fn generic_error[E](log: String, move cause: E) Int!E:
 	_resource := Failing(log.clone(), 1)
 	return error(cause)
 
