@@ -501,6 +501,14 @@ static void note_last_read(void *ctx, const MsExpr *expr) {
   }
 }
 
+/* The furthest offset any expression of a scan ends at. */
+static void note_extent(void *ctx, const MsExpr *expr) {
+  uint32_t *end = ctx;
+  if (expr->end.offset > *end) {
+    *end = expr->end.offset;
+  }
+}
+
 typedef struct Enclosing {
   uint32_t at;
   bool inside;
@@ -513,9 +521,9 @@ static void note_enclosing(void *ctx, const MsStmt *stmt) {
   if (body.len == 0 || stmt->pos.offset >= scan->at) {
     return;
   }
-  LastRead extent = {0};
-  ms_walk_block(&(MsVisitor){.ctx = &extent, .expr = note_last_read}, body);
-  scan->inside = scan->inside || extent.end > scan->at;
+  uint32_t end = 0;
+  ms_walk_block(&(MsVisitor){.ctx = &end, .expr = note_extent}, body);
+  scan->inside = scan->inside || end > scan->at;
 }
 
 /* Whether the name `iter` of a `for` is the last read of its local and the loop is not inside another loop: the loop
