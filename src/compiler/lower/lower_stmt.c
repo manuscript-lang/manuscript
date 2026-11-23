@@ -201,8 +201,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
   const bool in_cell = stmt->u.bind.is_mutable && fn->closing != NULL && local < fn->nvars &&
-                       fn->holds_value != NULL && !fn->holds_value[local] &&
-                       mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE && mir_needs_drop(fn->cx->module, ty) && fresh;
+                       mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE;
   if (shared || in_cell || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
@@ -346,50 +345,6 @@ bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
     return fn_place_owns(fn, place->u.member.left);
   }
   return fn_closing_local(fn, place, &slot, &ty) ? mir_needs_drop(fn->cx->module, ty) : fn_owned_local(fn, place, &var) && var_owns(fn, var);
-}
-
-/* The owned value of `base`, a place a part of it is assigned in: an owning local's value is taken out (stored
- * back by `fn_put_place`), a member or element path's value is copied. */
-bool fn_take_place(LowerFn *fn, const MsExpr *base, MirValue *out) {
-  uint32_t position;
-  if (fn_default_param_place(fn, base, &position)) {
-    *out = fn->default_args[position]; /* the value the call passes: the default changes it and `fn_put_place` hands the change back */
-    return true;
-  }
-  MirVar var;
-  if (fn_owned_local(fn, base, &var)) {
-    *out = mir_b_use_var(&fn->b, var);
-    return true;
-  }
-  MirValue slot;
-  MirTy slot_ty;
-  if (fn_closing_local(fn, base, &slot, &slot_ty)) {
-    if (mir_needs_drop(fn->cx->module, slot_ty)) {
-      /* The value is lent out: its owner now is whoever holds it, and the slot closes it again once `fn_put_place`
-       * refills it. A cancellation while it is out must not close the bytes the borrower is changing. */
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
-    }
-    *out = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Take : MOP_Load, &slot, 1,
-                      (MirImm){.tag = MI_TY, .a = slot_ty}, slot_ty);
-    return true;
-  }
-  if (fn_closing_param(fn, base, &slot, &var)) {
-    const MirTy ty = fn->b.vars.ptr[var].ty; /* the declared type: reading the variable would carry it through every loop */
-    *out = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
-    return true;
-  }
-  MsExpr *index_left = NULL;
-  MsExpr *index_key = NULL;
-  if (base->kind != MS_E_MEMBER && !ms_expr_index(base, &index_left, &index_key)) {
-    return fn_fail(fn, "assignment into this place is not lowered yet (expression kind %d at %u:%u)", (int)base->kind, base->pos.line, base->pos.column);
-  }
-  const MirValue inner = fn_expr(fn, base, LW_BORROW);
-  if (inner == MIR_NONE) {
-    return false;
-  }
-  *out = fn_implicit_clone(fn, inner, true);
-  fn_disown(fn, *out);
-  return true;
 }
 
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
@@ -674,9 +629,21 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     if (!take_field_into_slot(fn, stmt, ref, assigned, &lowered) || lowered) {
       return lowered;
     }
-    const MirValue value = take_value(fn, stmt->u.assign.value);
     const uint32_t target_id = stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id;
-    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, ms_facts_type(fn->facts, target_id), value, &resource);
+    const MsTy target_ty = ms_facts_type(fn->facts, target_id);
+    const bool gave_up = fn_cell_gives_up(fn, ref, assigned, target_ty);
+    fn->nmoved_names = 0;
+    const MirValue value = take_value(fn, stmt->u.assign.value);
+    if (gave_up) {
+      if (value == MIR_NONE) {
+        fn->cell_old_at = 0;
+        return false;
+      }
+      fn_disown(fn, value);
+      fn_cell_takes_back(fn, ref, assigned, value);
+      return !fn->failed;
+    }
+    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, target_ty, value, &resource);
   }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     var = fn->vars[ref->local] - 1;
