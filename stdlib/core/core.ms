@@ -308,8 +308,8 @@ fn Result[T, E].is_error() Bool:
 fn Result[T, E].get() T:
 	match self:
 		ok(value): return value
-		error(_): panic(
-			"called Result.get() on error; check is_ok first, or pass a default: get(default: ...)"
+		error(cause): panic(
+			f"called Result.get() on error: {cause}; check is_ok first, or pass a default: get(default: ...)"
 		)
 
 // Returns the successful payload, or `default` when this is an error. The default is
