@@ -3,6 +3,7 @@
  * The message names the receiver, then the hint the oracle gives first of: an optional or result used as its
  * payload, a near miss, the members the type has (all of them when there are at most 40, else those that start
  * with the same letter). */
+#include "compiler/syntax/parse.h"
 #include "compiler/check/body.h"
 #include "compiler/check/bounds.h"
 #include "compiler/check/methods.h"
@@ -325,6 +326,11 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   MsStrBuild reason = ms_strbuild_new(); /* a method whose receiver bound is unmet is explained even if the name is standard */
   const bool unmet = unmet_member_bound(body, receiver, member->u.member.name, &reason);
   ms_strbuild_free(&reason);
+  if (ms_span_is_text(name, MS_INDEX_SET)) { /* `data[0] = v` on a type with no `set` operation */
+    ms_check_report(body->program, body->module, member->pos, MS_CHECK_TYPE,
+                    ms_string_from_span(ms_span_of_text("index assignment requires a List[T] or Map[K, V]; Bytes and String are immutable, build a new value instead")));
+    return;
+  }
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
       (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name))) {
     return;
