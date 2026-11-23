@@ -31,5 +31,11 @@ for arch in x86_64 aarch64; do
         done
     } > "$out.tmp"
     mv "$out.tmp" "$out"
-    sh "$here/apply-aliases.sh" "$here/aliases" "$out"
+    # Name the primary on the data line of each alias whose primary is in the same table.
+    awk -v file="$here/aliases" '
+        BEGIN { while ((getline line < file) > 0) if (line !~ /^#/ && split(line, p, " ") == 2) primary[p[1]] = p[2] }
+        NR == FNR { if ($4 == "D") defined[$3] = 1; next }
+        $4 == "D" && NF == 5 && ($3 in primary) && (primary[$3] in defined) { print $0 " " primary[$3]; next }
+        { print }' "$out" "$out" > "$out.tmp"
+    mv "$out.tmp" "$out"
 done
