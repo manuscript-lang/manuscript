@@ -86,14 +86,23 @@ static void vtable_name(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy 
 enum { LOWER_THUNK_PARAMS = 33 };
 
 /* The interface-callable form of a method: it takes the address of the stored data first, reads the receiver
- * from it, and calls `method` with it (a `var` receiver is passed on as that address). */
-static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName name, bool changes_receiver) {
+ * from it, and calls `method` with it (a `var` receiver is passed on as that address). A parameter the interface
+ * declares as an interface value (`other: Self`) arrives as one: it is unwrapped when it holds `own` (this
+ * vtable's type), and otherwise the call has no answer (`false`, or a fault for any other result). */
+static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName name, bool changes_receiver,
+                             const MirMethodSig *sig, uint32_t own) {
   const MirFunc target = cx->module->funcs.ptr[method];
   MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)target.nparams + 1);
   for (uint32_t index = 0; index < target.nparams; index++) {
     params[index] = target.params[index];
   }
   params[0] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
+  for (uint32_t index = 1; index < target.nparams && index <= sig->nparams; index++) {
+    const MirTy declared = sig->params[index - 1];
+    if (declared != params[index].ty && mir_ty_data(cx->module, declared)->kind == MK_IFACE) {
+      params[index].ty = declared;
+    }
+  }
   MirBuilder b;
   mir_b_init(&b, cx->module, name, params, target.nparams, target.ret);
   b.func.kind = MFK_METHOD;
@@ -104,6 +113,28 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
   if (!changes_receiver) { /* a `var` receiver is the slot itself: the method reads and writes it */
     const MirOp read = target.params[0].mode == MM_MOVE ? MOP_Take : MOP_Load;
     args[0] = mir_b_emit(&b, read, args, 1, ty, data_ty);
+  }
+  for (uint32_t index = 1; index < target.nparams && index <= sig->nparams; index++) {
+    if (params[index].ty == target.params[index].ty) {
+      continue;
+    }
+    const MirImm vtable = {.tag = MI_VTABLE, .a = own};
+    const MirValue same = mir_b_emit(&b, MOP_IfaceIs, &args[index], 1, vtable, MIR_BOOL);
+    const MirBlock yes = mir_b_new_block(&b);
+    const MirBlock no = mir_b_new_block(&b);
+    mir_b_br_if(&b, same, yes, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(&b, no);
+    mir_b_switch_to(&b, no);
+    if (target.ret == MIR_BOOL) {
+      mir_b_ret(&b, mir_b_emit(&b, MOP_IConst, NULL, 0, (MirImm){.tag = MI_INT, .i = 0}, MIR_BOOL));
+    } else {
+      mir_b_unreachable(&b);
+    }
+    mir_b_seal_block(&b, yes);
+    mir_b_switch_to(&b, yes);
+    const MirValue data = mir_b_emit(&b, MOP_IfaceData, &args[index], 1, (MirImm){0}, MIR_PTR);
+    args[index] = mir_b_emit(&b, MOP_Load, &data, 1, (MirImm){.tag = MI_TY, .a = target.params[index].ty},
+                             target.params[index].ty);
   }
   mir_b_ret(&b, mir_b_call(&b, method, args, target.nparams));
   uint32_t id = MIR_NONE;
@@ -163,6 +194,10 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
     return MIR_NONE;
   }
   const MirTy iface_ty = lower_type(cx, subst, iface);
+  /* Added before its methods are built: a method taking `Self` checks its argument against this vtable. */
+  const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len + 1,
+                            lower_type(cx, subst, receiver)};
+  const uint32_t own = mir_add_vtable(cx->module, &vtable);
   for (size_t index = 0; index <= def->operations.len; index++) { /* the last slot is the payload's text */
     const MsName operation = index < def->operations.len ? def->operations.ptr[index].name : text_name;
     const MsMethodEntry *entry = resolve_operation(cx, receiver, operation);
@@ -187,15 +222,14 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       ms_strbuild_append_text(&text, ".vt");
       const MsName thunk = mir_name(cx->module, ms_strbuild_span(&text));
       ms_strbuild_free(&text);
-      methods[index] = method_thunk(cx, methods[index], lower_type(cx, subst, receiver), thunk, entry->source->mutating);
+      methods[index] = method_thunk(cx, methods[index], lower_type(cx, subst, receiver), thunk, entry->source->mutating,
+                                  &cx->module->ifaces.ptr[mir_ty_data(cx->module, iface_ty)->id].methods[index], own);
     }
     if (methods[index] == MIR_NONE) {
       return MIR_NONE;
     }
   }
-  const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len + 1,
-                            lower_type(cx, subst, receiver)};
-  return mir_add_vtable(cx->module, &vtable);
+  return own;
 }
 
 uint32_t lower_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface) {
