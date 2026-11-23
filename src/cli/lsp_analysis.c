@@ -28,6 +28,41 @@ MsSpan lsp_path_uri(const LspDocList *docs, MsArena *arena, MsSpan path) {
 /* Moves on whenever an open document changes, so cached analyses stop matching. */
 static uint64_t generation = 1;
 
+/* The files whose open text changed since the diagnostics were last published, one path per line, and whether
+ * something unnamed changed. A document whose last diagnostics did not read any of them keeps its diagnostics. */
+static MsStrBuild changed_files;
+static bool everything_changed;
+
+static void note_changed(MsSpan path) {
+  ms_strbuild_append(&changed_files, path);
+  ms_strbuild_append_byte(&changed_files, '\n');
+}
+
+/* Whether a line of `lines` equals `path`. */
+static bool has_line(MsSpan lines, MsSpan path) {
+  size_t start = 0;
+  for (size_t i = 0; i <= lines.len; i++) {
+    if (i < lines.len && lines.ptr[i] != '\n') continue;
+    if (i - start == path.len && ms_span_equal((MsSpan){lines.ptr + start, i - start}, path)) return true;
+    start = i + 1;
+  }
+  return false;
+}
+
+/* Whether the diagnostics of `doc` can have changed since they were published. */
+static bool needs_analysis(const LspDoc *doc) {
+  if (everything_changed || doc->dirty || ms_string_span(&doc->deps).len == 0) return true;
+  const MsSpan deps = ms_string_span(&doc->deps);
+  const MsSpan changed = ms_strbuild_span(&changed_files);
+  size_t start = 0;
+  for (size_t i = 0; i <= changed.len; i++) {
+    if (i < changed.len && changed.ptr[i] != '\n') continue;
+    if (i > start && has_line(deps, (MsSpan){changed.ptr + start, i - start})) return true;
+    start = i + 1;
+  }
+  return false;
+}
+
 LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri) {
   for (size_t i = 0; i < docs->len; i++) {
     if (ms_span_equal(ms_string_span(&docs->ptr[i].uri), uri)) return &docs->ptr[i];
@@ -61,6 +96,7 @@ void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text) {
   doc->text = text_copy;
   doc->version = version;
   doc->dirty = true;
+  note_changed(ms_string_span(&doc->path));
   generation++;
 }
 
@@ -68,12 +104,15 @@ void lsp_doc_remove(LspDocList *docs, MsSpan uri) {
   for (size_t i = 0; i < docs->len; i++) {
     LspDoc *doc = &docs->ptr[i];
     if (!ms_span_equal(ms_string_span(&doc->uri), uri)) continue;
+    MsString gone = doc->path;
     ms_string_release(&doc->uri);
-    ms_string_release(&doc->path);
     ms_string_release(&doc->text);
     ms_string_release(&doc->published);
+    ms_string_release(&doc->deps);
     memmove(doc, doc + 1, (docs->len - i - 1) * sizeof *doc);
     docs->len--;
+    note_changed(ms_string_span(&gone));
+    ms_string_release(&gone);
     generation++;
     return;
   }
@@ -101,7 +140,10 @@ typedef struct CacheSlot {
 static CacheSlot cache[CACHE_SLOTS];
 static uint64_t clock_tick;
 
-void lsp_analysis_invalidate(void) { generation++; }
+void lsp_analysis_invalidate(void) {
+  generation++;
+  everything_changed = true;
+}
 
 void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out) {
   CacheSlot *victim = &cache[0];
@@ -209,9 +251,23 @@ static void append_diagnostic(MsStrBuild *out, bool *first, MsSpan source, const
 }
 
 /* The diagnostics of `doc` as the elements of a JSON array. */
-static MsString diagnostics_of(const LspDoc *doc, const LspDocList *docs) {
+static MsString diagnostics_of(LspDoc *doc, const LspDocList *docs) {
   LspAnalysis analysis;
   lsp_analyze(docs, doc, &analysis);
+  /* The files these diagnostics are computed from; unknown when the program did not load. */
+  ms_string_release(&doc->deps);
+  doc->deps = ms_string_from_span(ms_span_of_text(""));
+  if (analysis.resolved) {
+    MsStrBuild deps = ms_strbuild_new();
+    for (size_t g = 0; g < analysis.checked.graph.count; g++) {
+      ms_strbuild_append(&deps, analysis.checked.graph.modules[g].path);
+      ms_strbuild_append_byte(&deps, '\n');
+    }
+    ms_strbuild_append(&deps, ms_string_span(&doc->path));
+    ms_strbuild_append_byte(&deps, '\n');
+    ms_string_release(&doc->deps);
+    doc->deps = ms_strbuild_finish(&deps);
+  }
   MsStrBuild out = ms_strbuild_new();
   bool first = true;
   const MsSpan source = ms_string_span(&doc->text);
@@ -278,6 +334,8 @@ void lsp_publish_diagnostics(LspDocList *docs, void (*send)(MsStrBuild *message)
   for (size_t i = 0; i < docs->len; i++) {
     LspDoc *doc = order[i];
     const bool library = lsp_uri_is_standard_library(ms_string_span(&doc->uri));
+    /* A document that reads none of the files changed since the last publish keeps its diagnostics unanalysed. */
+    if (!library && !needs_analysis(doc)) continue;
     MsString diagnostics = library ? ms_string_from_span(ms_span_of_text("")) : diagnostics_of(doc, docs);
     /* A changed document always republishes (its version moved); the others only when their findings changed. */
     if (doc->dirty || !ms_string_equal(&diagnostics, &doc->published)) {
@@ -290,6 +348,8 @@ void lsp_publish_diagnostics(LspDocList *docs, void (*send)(MsStrBuild *message)
     }
   }
   free(order);
+  ms_strbuild_clear(&changed_files);
+  everything_changed = false;
 }
 
 void lsp_publish_empty(MsSpan uri, void (*send)(MsStrBuild *message)) {

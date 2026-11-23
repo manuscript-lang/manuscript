@@ -25,8 +25,10 @@ LspInput *lsp_input_start(FILE *file);
  * may be NULL. */
 LspFrameStatus lsp_input_next(LspInput *input, MsStrBuild *body, const char **error, int *source);
 
-/* Whether the next frame already waiting is a `textDocument/didChange` notification. */
-bool lsp_input_next_is_change(LspInput *input);
+/* Whether the next frame already waiting is a `textDocument/didChange` notification or a completion request: the
+ * diagnostics of an edit wait behind the first (a later edit supersedes them) and behind the second (the person is
+ * typing and wants the list first). */
+bool lsp_input_next_defers_publish(LspInput *input);
 
 /* Whether the client canceled the request with this id (a JSON number as written, or a string's decoded text). */
 bool lsp_input_canceled(LspInput *input, bool is_string, MsSpan id);
