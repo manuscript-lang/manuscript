@@ -1,55 +1,59 @@
-# Field views: a `var` record parameter is read and written in place
+# Frames in the hundreds of bytes: shared call temporaries, in-place `var` records
 
 ## Summary
 
-- Problem: a function that takes `var flow: Flow` loads the whole 520-byte record at entry (`take Flow %0`), rebuilds it for every `flow.pos += 1` (`type.set`), and stores it back before every call or return (`put %0, v`). In Debug the record lives in 520-byte stack cells, so yaml `quoted.body` keeps a 2488-byte frame and `flow_value.body` 3256 bytes.
-- Change: a MIR pass turns a record that is only a copy of a `var` parameter's memory into field loads and stores on the parameter's pointer, so the record is never materialized.
-- Decision requested: none; no language change. Chinmay's target is frames "in the hundreds of bytes".
+- Problem: yaml `quoted.body` has a 2384-byte Debug frame. Measured (`llc -print-after=prologepilog` frame objects): two 520 B `Flow` cells 1040 B, per-call temporaries 664 B, other allocas 160 B, about 62 spill slots 500 B.
+- Change, by size and risk: (1) share the per-call temporaries (`y<n>_<k>` argument copies, `s<n>` result areas) across blocks never live together, about -450 B; (2) forward `put S,v; take S` through effectful instructions for a private slot, so the record stops being parked in `slot Flow`; (3) keep a `var` record parameter in the caller's memory and read and write its fields in place, -1040 B; (4) find why about 62 values spill.
+- Decision requested: none; no language change and no stdlib change. Chinmay's target is frames "in the hundreds of bytes".
 
 ## Status
 
-Proposal, 2026-11-23, checked against `e47e2b0d0b`. Review (skeptical subagent): revise. About 1 KB of `quoted`'s frame is spills (about 130 eight-byte words), so removing both 520 B cells gives about 1.3 KB, not hundreds of bytes; the chain parks the record in `slot Flow` temporaries (7 in `quoted`), which Stage 1 skips; unwind of a half-updated record and cancel mid-chain are unspecified (`mir_unwind_cells.c:131`, `mir_unwind_own.c:106`); `MIR_E_OWNERSHIP` `type.set` has never aliased memory for `copyelim`/`lastuse`. Not built until revised.
+Proposal, 2026-11-23, checked against `e47e2b0d0b`. Review (skeptical subagent): revise; this text covers its findings (slot-parked chains, unwind of a half-updated record, spills, `MIR_E_OWNERSHIP` aliasing). The stdlib is frozen: no reshaping of `yaml.ms` (coordinator, 2026-11-23).
 
 ## Problem
 
-Measured on `e47e2b0d0b`: `ms build` (Debug) of a program that calls `@std/data/yaml.ms` `parse`, `objdump` of the `sub rsp` in each function.
+`ms build --build-type Debug` of a program calling `@std/data/yaml.ms` `parse`; frame objects of `quoted.body` (`MS_WIDE_LEAVES=4` IR, `opt default<O2>`, `llc -O2`):
 
-| Function | Frame |
-| --- | --- |
-| `flow_value.body` | 3256 B |
-| `quoted.body` | 2488 B |
-| `block_value.body` | 2360 B |
+| Part | Count | Bytes |
+| --- | --- | --- |
+| `Flow` cells (`cell0`, `cell1`) | 2 | 1040 |
+| `y<n>_<k>` call argument copies (16 B) and `s<n>` result areas (24 B) | 19 and 15 | 304 and 360 |
+| other cells and allocas | 6 | 160 |
+| spill slots | about 62 | about 500 |
 
-- `quoted.body` allocas (Debug IR): two 520 B cells (`Flow`), 22 x 16 B, 15 x 24 B, one 96 B, one 56 B; the rest is spills. The 520 B cells are the `Flow` chain of block parameters (`b17(%117: move Flow)`, `b18`, `b34`, ... eight of them) and the `type.set` results between them.
-- MIR of `quoted` after `--opt`: one `%1 = take Flow %0`, 46 `type.set Flow` and 208 `type.get Flow` in the whole yaml module, and six `put %0, %v` before the calls and returns that need the record in memory. The record is inlined `advance(flow)`: `type.get Flow.chars`, `type.get Flow.pos`, then `type.set Flow.pos`.
-- Release is unaffected by frame size but runs the same copies; the cost is the copy itself.
+- The per-call temporaries are five inlined error-message f-strings (`y46_*`, `y518_*`, `y538_*`, `y539_*`, `y541_*`: four copies and two int-format areas each). The five sites are on different paths, so one set could serve all five.
+- MIR of `quoted` after `--opt` (`ms emit <file> --opt`): `%1 = take Flow %0`, five `type.set Flow.pos`, eight `move Flow` block parameters (`b17(%117: move Flow)` ...), seven `slot Flow` temporaries (`put %2, %118; %120 = take Flow %2`) and six `put %0, %v` before exits. The record is copied through the slots and block parameters, each a 520 B cell.
+- Spills (hypothesis, measured in stage 3): 624 of 6035 SSA values in `quoted.body` are used outside their defining block (211 `getelementptr`, 141 `load`, 122 `select`, 81 `icmp`); the selects and compares come from the inlined small-string equality at each `c == quote`.
 
 ## Design
 
-- Candidate: a value `x = take T p` where `p` is a `var` parameter pointer (or a slot used only by put and take), whose every use is `type.get`, `type.set` (a new value with one field changed), a block-parameter pass of such a value, `put p, x`, or a by-value argument of a call.
-- Rewrite: while the chain is live, memory at `p` holds the current record. `type.get T.f x` becomes a load from `p + offset(f)`; `type.set T.f x, y` becomes a store of `y` to `p + offset(f)` and its result names the same memory; `put p, x` of the chain value is deleted; a by-value call argument keeps its copy (`take T p` just before the call).
-- Fields that own memory (`List`, `String`, `Map`) are lent by `type.get`, as today; `type.set` of an owning field drops the old value first, as today. Only the record's own storage stops being copied.
-- A chain is skipped when `p` could alias another use of the record in the function (a second `var` pointer, a call that receives `p` while the chain is live and is not one of the rewritten forms) or when any use is outside the list above. The test is the use list, nothing keyed to `Flow`.
-- Ownership: `take` moves the record out of `p`; the rewrite keeps the record in `p`, so the unwinding and drop elaboration must see `p` as still owning it. The verifier runs after the pass.
+1. Temporaries: the emitter's pool (`emit_slot_pool`) shares one-block slots by rank. Give argument copies and result areas the same sharing through `mir_cell_conflicts` liveness, so any two never live together share a cell. A temporary whose address the callee keeps (`mir_extern_pins_argument`, a view result) stays unshared.
+2. Put-take forwarding (`opt_simplify_put_takes`): today only pure instructions may sit between `put S,v` and `r = take S`. Allow any instruction when no instruction other than a put or take names `S`. Measured alone: `slot Flow` in `quoted` 7 to 2, frame 2488 to 2472 B, so it only enables stage 2.
+3. In-place record: for `x = take T p` with `p` a `var` parameter pointer, every use of `x` and of values derived from it by `type.set` and block parameters is rewritten: `type.get T.f` loads `p + offset(f)`, `type.set T.f x, y` stores `y` at `p + offset(f)`, the `put p, x'` before an exit is deleted, and a by-value use (call argument, return) takes `T` from `p` at that point.
+   - Faults are well defined: `p` always holds a valid record. A scalar store is one instruction; an owning field is dropped and stored by one `type.set` with no fault point between. A fault or cancel mid-chain leaves the caller's record valid with some fields updated, as for `flow.pos += 1` written field by field. Today the record is moved out of `p` and `p` is invalid until the `put`; this is strictly more defined.
+   - Unwind: a take from a caller-owned `var` pointer is `from_caller` (`mir_unwind_own.c:106`) and is not dropped on unwind. After the rewrite no owned value exists, so unwind has nothing to add; `mir_unwind_cells.c:131` must treat the rewritten loads and stores as plain memory. The verifier (`mir_verify_own.c`) runs after the pass.
+   - Skipped when `p` can alias another use (a second `var` pointer to the same record, a call that receives `p` and is not rewritten) or when any use of the chain is outside the forms above. The test is the use list, never a type name.
+4. Spills: measure first (live ranges across `msrt_string_clone` calls, the inlined small-string compare), then decide; no design until the cause is shown.
 
 ## Components touched
 
 | Component | Change | Test |
 | --- | --- | --- |
-| `src/compiler/opt/` new `opt_fieldview.c`, `opt_pipeline.c` | the pass, after inlining and `simplify` | MIR fixtures: `type.get`/`type.set` chain on a `var` param becomes loads and stores |
-| `src/compiler/mir/mir_verify_own.c` | accept a record owned by the parameter pointer across the chain | `ms check` of a fault inside the chain (drop count) |
-| `tests/conformance/fixtures/e2e/accept/` | var-record fixture with a fault and a cancel mid-chain | `make verify` |
-| `bench/perf/` | before/after on yaml and toml parsers | dated result |
+| `src/compiler/emit/emit_frame*.c`, `src/compiler/mir/mir_slot_scope.c` | share call temporaries by liveness | frames of yaml `quoted`, toml `string_value`; e2e sweep |
+| `src/compiler/opt/opt_simplify_mutate.c` | put-take forwarding across effects for a private slot | MIR fixture; e2e |
+| `src/compiler/opt/` new `opt_fieldview.c` | stage 2 rewrite | MIR fixtures; a fault and a cancel mid-chain keep a valid record |
+| `src/compiler/mir/mir_unwind_cells.c`, `mir_verify_own.c` | accept the rewritten forms | `ms check`, drop-count fixture |
+| `bench/perf/` | before/after yaml and toml parsers | dated result |
 
 ## Alternatives
 
-- Do nothing: `quoted` stays 2.5 KB; the 20000-deep TOML nesting test already passes with 13 KB frames, so only the target frame size changes.
-- Lend `Flow` to the helper functions in `yaml.ms` (`peek(flow)` borrows): already the case; the copies come from the mutating helpers.
-- Restructure `yaml.ms`: move the rarely changed fields (`chars`, `codes`, `context`) into a nested record behind one reference so `Flow` is about 10 leaves. Smaller, no compiler change, but each parser written with a wide record hits the same cost.
-- Hold fewer values (more `wide_leaves` tuning): measured no gain; two cells are already the minimum for a chain plus a callee result.
-- Already tried and dropped: forwarding `put S,v; take S` across effectful instructions (frame 2488 to 2472 B), bulk-pop slot sharing (byte-identical).
+- Do nothing: Debug-only frames and the 20000-deep TOML test passes. Rejected by the owner's target.
+- Reshape `yaml.ms`: rejected (stdlib frozen; a source workaround for a compiler cost).
+- Hold fewer values (`wide_leaves` tuning): measured, two cells are the minimum for a chain plus a callee result.
+- Copy-on-write records: a runtime representation change for a Debug frame problem.
 
 ## Stages
 
-1. Pass for `var` parameter pointers with scalar-field updates; yaml `quoted` frame and all e2e green.
-2. Owning fields and slots used only by put and take.
+1. Share call temporaries (about -450 B). Check: frames of `quoted`, `flow_value`, toml; e2e sweep.
+2. Put-take forwarding with the in-place record (forwarding alone moves nothing). Check: `quoted` below 1.5 KB; fault, cancel and drop-count fixtures.
+3. Spills, once the measurement shows a cause.
