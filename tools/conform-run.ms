@@ -11,7 +11,7 @@
 // observation, `--prune` deletes fixtures that cannot be recorded). Fuzz and harvest
 // are not ported (#6225, #6226). MS names the ms under test (default
 // .artifacts/build/ci/src/cli/ms). CONFORM_DIFF=1 prints each failure's expected and
-// observed (first 600 characters). CONFORM_BUILD_TYPE picks the build type of run and
+// observed (first 2500 characters). CONFORM_BUILD_TYPE picks the build type of run and
 // test (default Release). Fixtures tagged `aliasing` are left out of check, run and
 // test as the gate does (`--exclude-tag aliasing`). Usage: ms run tools/conform-run.ms
 // -- [--phase parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
@@ -581,27 +581,18 @@ fn sweep(
 
 		if same(fx.expected, observed): lines.append("ok")
 		else if detail: lines.append(
-			f"FAIL {fx.id}\n  expected: {clipped(fx.expected, observed)}\n  observed: {clipped(observed, fx.expected)}"
+			f"FAIL {fx.id}\n  expected: {clipped(fx.expected)}\n  observed: {clipped(observed)}"
 		)
 		else: lines.append(f"FAIL {fx.id}")
 
 	return lines
 
-// Up to 600 characters of a value, for `CONFORM_DIFF=1` failure reports: the window around the first character
-// where it differs from `other`, so the difference itself is shown however far into the report it lies.
-fn clipped(value: JsonValue, other: JsonValue) String:
+// The first 2500 characters of a value, for `CONFORM_DIFF=1` failure reports.
+fn clipped(value: JsonValue) String:
 	text := stringify(value).get()
-	if text.length() <= 600: return text.clone()
+	if text.length() <= 2500: return text.clone()
 
-	against := stringify(other).get()
-	var first = 0
-	while first < text.length() and first < against.length() and text.slice(first, first + 1) == against.slice(first, first + 1):
-		first += 1
-	if first < 100: return f"{text.slice(0, 600)}..."
-
-	start := first - 100
-	end := if start + 600 < text.length(): start + 600 else: text.length()
-	return f"...{text.slice(start, end)}"
+	return f"{text.slice(0, 2500)}..."
 
 // The text of `ms version`, stored in each expectation for provenance.
 fn oracle_version(ms: String) String:
