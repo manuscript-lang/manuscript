@@ -11,6 +11,8 @@
 
 /* Whether `inst` has an owned result, and how the result is held: a borrow of something that outlives it, or
  * an owned value (MM_MOVE). False when there is no result or it needs no drop. */
+/* Whether the result of `inst` is a view of a value something else owns, for a result of any type. */
+MS_NODISCARD MS_NONNULL bool mir_result_borrowed(const MirModule *module, const MirFunc *func, const MirInst *inst);
 MS_NODISCARD MS_NONNULL bool mir_result_mode(const MirModule *module, const MirFunc *func, const MirInst *inst,
                                              MirMode *mode);
 

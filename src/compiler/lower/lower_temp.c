@@ -4,6 +4,7 @@
 #include "compiler/check/properties.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/own/result_borrows.h"
 #include "compiler/syntax/walk.h"
 
 typedef struct Consumed {
@@ -81,14 +82,37 @@ static bool member_temp_type(LowerFn *fn, const MsExpr *member, MsTy *checked) {
   }
   const MsTy field = ms_ty_subst(types, ms_facts_type(fn->facts, member->id), fn->subst.vars, fn->subst.args, fn->subst.count);
   *checked = ms_ty_subst(types, ms_facts_type(fn->facts, base->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  return field != MS_TY_NONE && !ms_check_holds_resource(fn->cx->program, field) && *checked != MS_TY_NONE &&
-         fn_temp_closes(fn, *checked);
+  /* A resource field read in place (a method's receiver) leaves the record whole; one the statement moves does not. */
+  const bool kept = !ms_check_holds_resource(fn->cx->program, field) || ms_facts_use(fn->facts, member->id) != MS_USE_MOVE;
+  return field != MS_TY_NONE && kept && *checked != MS_TY_NONE && fn_temp_closes(fn, *checked);
+}
+
+/* The type of the call result an element is read from (`doors()[1]`), which nothing else owns. A moved element leaves
+ * the collection, which is a different path. */
+static bool index_temp_type(LowerFn *fn, const MsExpr *index, MsTy *checked) {
+  MsExpr *left = NULL;
+  MsExpr *at = NULL;
+  if (!ms_expr_index(index, &left, &at) || left->kind != MS_E_CALL || ms_facts_use(fn->facts, index->id) == MS_USE_MOVE) {
+    return false;
+  }
+  MsTyTable *types = &fn->cx->program->types;
+  *checked = ms_ty_subst(types, ms_facts_type(fn->facts, left->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return *checked != MS_TY_NONE && ms_ty_is(types, *checked, MS_BUILTIN_List) && fn_temp_closes(fn, *checked);
+}
+
+MirValue fn_closing_indexed(LowerFn *fn, const MsExpr *index, MirValue list) {
+  MsTy checked = MS_TY_NONE;
+  if (!fn->temps || !index_temp_type(fn, index, &checked) || fn_type(fn, checked) != mir_b_ty(&fn->b, list) ||
+      !fn_owns_result(fn, list)) {
+    return list;
+  }
+  return fn_own_temporary(fn, checked, list);
 }
 
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base) {
   MsTy checked = MS_TY_NONE;
   if (!fn->temps || !member_temp_type(fn, member, &checked) || fn_type(fn, checked) != mir_b_ty(&fn->b, base) ||
-      (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, base)) && !fn_fresh_owner(fn, base))) {
+      !fn_owns_result(fn, base)) {
     return base;
   }
   return fn_own_temporary(fn, checked, base);
@@ -97,7 +121,7 @@ MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base) {
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value) {
   MsTy checked = MS_TY_NONE;
   if (!fn->temps || !temp_type(fn, expr, index, written, &checked) || fn_type(fn, checked) != mir_b_ty(&fn->b, value) ||
-      (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_fresh_owner(fn, value))) {
+      !fn_owns_result(fn, value)) {
     return value;
   }
   return fn_own_temporary(fn, checked, value);
@@ -145,6 +169,7 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
   }
   MsTy member = MS_TY_NONE;
   scan->found |= expr->kind == MS_E_MEMBER && scan->skip == 0 && member_temp_type(scan->fn, expr, &member);
+  scan->found |= expr->kind == MS_E_INDEX && scan->skip == 0 && index_temp_type(scan->fn, expr, &member);
   const MsCall *call = expr->kind == MS_E_CALL && scan->skip == 0 ? fn_find_call(scan->fn->facts, expr->id) : NULL;
   /* A list literal a method changes in place (`[Door(1)].append(Door(2))`) is a temporary that closes what it holds. */
   const MsExpr *callee = call != NULL ? fn_call_callee(expr) : NULL;
@@ -166,6 +191,18 @@ static void scan_leave(void *ctx, const MsExpr *expr) {
   if (conditional(expr)) {
     scan->skip--;
   }
+}
+
+/* Whether the call `value` answers an owner independent of what it reads: a function whose results are not parts of its
+ * parameters. A bodiless one (a native) is taken to borrow unless it says otherwise. */
+static bool call_answers_owner(LowerFn *fn, const MsExpr *value) {
+  const MsCall *call = value->kind == MS_E_CALL ? fn_find_call(fn->facts, value->id) : NULL;
+  if (call == NULL || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
+    return false;
+  }
+  const MsFunc *callee = ms_own_find_func(fn->cx->program, &call->callee);
+  return callee != NULL && !callee->bodiless && !callee->external &&
+         !ms_own_result_is_borrowed(fn->cx->program, call->callee.decl.module, call->callee.decl.node);
 }
 
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
@@ -190,7 +227,10 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     if (stmt->kind == MS_S_BIND && fn_temp_closes(fn, bound)) {
       return scan.receiver;
     }
-    if (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound)) {
+    /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
+    const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&
+                       call_answers_owner(fn, value);
+    if (!outer && (mir_needs_drop(fn->cx->module, fn_type(fn, bound)) || fn_temp_closes(fn, bound))) {
       return false;
     }
   }
