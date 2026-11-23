@@ -38,6 +38,7 @@ typedef struct MsFaultDetail {
   size_t message_length;
   MsFrameList frames;    /* where the fault was raised */
   MsFrameList started;   /* where the task was started, when it ran as one (empty otherwise) */
+  char *started_names;   /* owned: the file and function names of `started`'s frame, or NULL */
   MsFaultNoteList notes; /* faults raised by cleanups, in order; each note owns its bytes */
 } MsFaultDetail;
 
@@ -53,9 +54,9 @@ typedef struct MsFaultText {
 void ms_fault_text_free(MsFaultText *text) MS_NONNULL;
 /* An independent copy of the report, detail included; the caller frees it. */
 MsFaultText ms_fault_text_clone(const MsFaultText *text) MS_NONNULL;
-/* Adds the frames a task was started from to `text`, under a `task started by:` line. `addresses` are what
- * ms_fault_capture_frames returned. */
-void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, size_t count) MS_NONNULL_ARGS(1);
+/* Adds the line a task was started from to `text`, under a `task started by:` line. `site` is that line as a
+ * report shows a frame (`file:line in function`); a line of the standard library is left out. */
+void ms_fault_text_add_started(MsFaultText *text, MsSpan site) MS_NONNULL_ARGS(1);
 
 /* ---- raising ---- */
 
@@ -78,10 +79,6 @@ MS_NORETURN void ms_fault_fatal(MsFaultKind kind, MsSpan message);
 /* Reports a fault that left a guarded task (its cleanups already ran) and ends the process with its status.
  * Frees `text`. */
 MS_NORETURN void ms_fault_exit(MsFaultText *text) MS_NONNULL;
-
-/* The return addresses of the frames calling this function, innermost first, at most `capacity`; nothing is
- * allocated. Describe them later with ms_fault_text_add_started. Returns how many were captured. */
-size_t ms_fault_capture_frames(uintptr_t *out, size_t capacity) MS_NONNULL;
 
 /* Installs the fatal hook of base so its unrecoverable conditions (allocation failure, overflow, a bad
  * index) raise Manuscript faults. Called once by the runtime at start-up. */

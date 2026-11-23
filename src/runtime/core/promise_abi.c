@@ -66,10 +66,10 @@ int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsList *ids, i
 }
 
 int64_t msrt_promise_sleep(int64_t ns) { return ms_promise_sleep(ns); }
-void msrt_promise_start(int64_t id, MsObj *work) { ms_promise_start(id, work); }
-void msrt_promise_start_here(int64_t id, MsObj *work) { ms_promise_start_here(id, work); }
-void msrt_promise_start_idle(int64_t id, MsObj *work) { ms_promise_start_idle(id, work); }
-void msrt_promise_start_spread(int64_t id, MsObj *work) { ms_promise_start_spread(id, work); }
+void msrt_promise_start(int64_t id, MsObj *work, const MsString *site) { ms_promise_start(id, work, site); }
+void msrt_promise_start_here(int64_t id, MsObj *work, const MsString *site) { ms_promise_start_here(id, work, site); }
+void msrt_promise_start_idle(int64_t id, MsObj *work, const MsString *site) { ms_promise_start_idle(id, work, site); }
+void msrt_promise_start_spread(int64_t id, MsObj *work, const MsString *site) { ms_promise_start_spread(id, work, site); }
 
 uint8_t msrt_promise_take(int64_t id, const MsTypeDesc *d, uint8_t *out) { return ms_promise_take(id, d, out) ? 1 : 0; }
 int64_t msrt_promise_wait(int64_t id, int64_t timeout_ns) { return msrt_end_wait(ms_promise_wait(id, timeout_ns)); }

@@ -100,3 +100,14 @@ The optimizer fuses the closure the standard library wraps around the work with 
 | `batch` | 173 / 173 | 143 / 154 | 26 |
 
 Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/ownership-counts/promise_wrapper_closure.ms`).
+
+### Later the same day: the start line is a constant
+
+`promise` takes `site: String = caller_frame()`: the compiler passes the line of the call as a literal, and the row keeps the two words of that string. A start no longer walks the stack. The fault report's `task started by:` line reads the same. Before is the section above; median of 9 interleaved runs, ns at 1 / 4 threads (the machine was quieter than for the section above, so compare within this table).
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline` | 147 / 148 | 141 / 137 | 33 |
+| `batch` | 125 / 140 | 113 / 130 | 26 |
+
+Instructions for `inline` at one thread: 2,168 to 1,914.

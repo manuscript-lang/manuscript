@@ -53,9 +53,6 @@ typedef struct Hot {
   uint64_t token; /* the waiter's wait word (the parked task, or a token for a wait on several), or 0 */
 } Hot;
 
-/* Frames a start records: the runtime's and the standard library's own, then the program line that started the
- * work, which is the one a fault report shows. */
-enum { PROMISE_STARTED_FRAMES = 8 };
 /* Words of a result kept in the row: an Int, a Float, a String or a small Result needs no heap block. */
 enum { PROMISE_SMALL_WORDS = 3 };
 
@@ -84,10 +81,9 @@ typedef struct Cold {
   uint32_t prev_started;
   uint32_t runner;            /* the isolate that took the work (FLAG_REMOTE), once it said so */
   MsTaskHandle runner_task;   /* the task running it there, or 0 */
-  /* Return addresses of the code that started the work, nearest first, for a fault report. Kept in the row: a
-   * start allocates nothing for them and walks at most this many frames. */
-  uintptr_t started[PROMISE_STARTED_FRAMES];
-  uint32_t started_count;
+  /* The program line that started the work, as a fault report shows a frame (`file:line in function`), or empty.
+   * The compiler passes it to the start as a literal, so a start pays nothing for it. */
+  MsString started;
 } Cold;
 
 /* Remote tokens to post when a promise finishes: (row, generation) entries of promises another isolate waits on. */
@@ -152,7 +148,7 @@ void promise_end_started(size_t base);
 bool promise_timer_live(uint64_t id, int64_t deadline);
 void promise_timer_fire(uint64_t id, int64_t deadline);
 bool promise_fd_ready(uint64_t id, uint32_t bits);
-static inline void promise_release_started(Cold *cold) { cold->started_count = 0; }
+static inline void promise_release_started(Cold *cold) { ms_string_release(&cold->started); }
 void promise_release_result(size_t row);
 /* The stored result's bytes, or NULL when the row holds none. */
 static inline uint8_t *promise_result_bytes(Cold *cold) {
