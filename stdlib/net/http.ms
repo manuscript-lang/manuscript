@@ -395,6 +395,7 @@ export fn native_handler(
 	return fn(move native: NativeExchange):
 		result := handler(ServerExchange(native: native))
 		if result.is_error(): return 1
+
 		return 0
 
 // Buffered request accepted by the simple HTTP server handler.
