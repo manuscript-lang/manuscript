@@ -87,6 +87,39 @@ expect_contains("${out}" "\"stdout\": \"hello\\n\"" "json")
 expect_contains("${out}" "\"reason\": \"program_exit\"" "json")
 expect_contains("${out}" "\"profile\": {" "json")
 
+# --allocs: a recursive function that allocates on every call is named in the allocation report, text and JSON.
+file(WRITE "${WORK}/alloc.ms" "fn grow(n: Int) Int:
+    if n == 0:
+        return 0
+    var xs: List[Int] = []
+    xs.append(n)
+    xs.append(n)
+    return xs.length() + grow(n - 1)
+
+fn main() Int:
+    var total = 0
+    for round in 0..300:
+        total += grow(300)
+    print(total)
+    return 0
+")
+execute_process(COMMAND "${MS_C}" profile alloc.ms --out-dir alloc-bundle --allocs WORKING_DIRECTORY "${WORK}"
+  RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
+if(NOT status EQUAL 0)
+  message(FATAL_ERROR "ms profile --allocs exited with '${status}'\n${out}${err}")
+endif()
+expect_contains("${out}" "Allocations on the main thread" "allocation report")
+expect_contains("${out}" "grow" "allocation report")
+foreach(file allocs.folded allocs.folded.bytes allocs.txt)
+  if(NOT EXISTS "${WORK}/alloc-bundle/${file}")
+    message(FATAL_ERROR "the bundle has no ${file}")
+  endif()
+endforeach()
+execute_process(COMMAND "${MS_C}" profile alloc.ms --out-dir alloc-json --allocs --json WORKING_DIRECTORY "${WORK}"
+  RESULT_VARIABLE status OUTPUT_VARIABLE out ERROR_VARIABLE err)
+expect_contains("${out}" "\"allocs\": {" "json")
+expect_contains("${out}" "\"function\": \"grow\"" "json")
+
 # A program that does not compile leaves no directory behind.
 file(WRITE "${WORK}/bad.ms" "fn main() Int:\n    x: Int := \"no\"\n    return 0\n")
 execute_process(COMMAND "${MS_C}" profile bad.ms --out-dir bad-bundle WORKING_DIRECTORY "${WORK}"
