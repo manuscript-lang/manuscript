@@ -581,18 +581,27 @@ fn sweep(
 
 		if same(fx.expected, observed): lines.append("ok")
 		else if detail: lines.append(
-			f"FAIL {fx.id}\n  expected: {clipped(fx.expected)}\n  observed: {clipped(observed)}"
+			f"FAIL {fx.id}\n  expected: {clipped(fx.expected, observed)}\n  observed: {clipped(observed, fx.expected)}"
 		)
 		else: lines.append(f"FAIL {fx.id}")
 
 	return lines
 
-// The first 600 characters of a value, for `CONFORM_DIFF=1` failure reports.
-fn clipped(value: JsonValue) String:
+// Up to 600 characters of a value, for `CONFORM_DIFF=1` failure reports: the window around the first character
+// where it differs from `other`, so the difference itself is shown however far into the report it lies.
+fn clipped(value: JsonValue, other: JsonValue) String:
 	text := stringify(value).get()
 	if text.length() <= 600: return text.clone()
 
-	return f"{text.slice(0, 600)}..."
+	against := stringify(other).get()
+	var first = 0
+	while first < text.length() and first < against.length() and text.slice(first, first + 1) == against.slice(first, first + 1):
+		first += 1
+	if first < 100: return f"{text.slice(0, 600)}..."
+
+	start := first - 100
+	end := if start + 600 < text.length(): start + 600 else: text.length()
+	return f"...{text.slice(start, end)}"
 
 // The text of `ms version`, stored in each expectation for provenance.
 fn oracle_version(ms: String) String:
