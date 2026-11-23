@@ -47,6 +47,22 @@ uint8_t ms_fail_classify(int code) {
     case UV_ENOTSUP:
     case UV_ENOSYS:
       return MS_STATUS_UNSUPPORTED;
+    case UV_EBUSY:
+    case UV_ETXTBSY:
+      return MS_STATUS_BUSY;
+    case UV_ENAMETOOLONG:
+      return MS_STATUS_NAME_TOO_LONG;
+    case UV_ELOOP:
+      return MS_STATUS_LINK_LOOP;
+    case UV_ENOSPC:
+      return MS_STATUS_NO_SPACE;
+    case UV_EROFS:
+      return MS_STATUS_READ_ONLY;
+    case UV_EXDEV:
+      return MS_STATUS_CROSS_DEVICE;
+    case UV_EMFILE:
+    case UV_ENFILE:
+      return MS_STATUS_TOO_MANY_OPEN;
     default:
       return MS_STATUS_FAILED;
   }
