@@ -66,6 +66,7 @@ typedef struct ElCx {
   uint32_t close;        /* the module's `close` function or MIR_NONE */
   uint32_t discard, cancel, shield_enter, shield_exit; /* extern ids or MIR_NONE */
   MirHash disown_moves;  /* flagged owners a `scope.disown` ahead of the consuming op moves */
+  MirHash reowned;       /* owners a scope registers at more than one place (a variable at each exit): consumed, they stay moved */
   ElPart *parts;         /* interned partial-move states, id EL_PLAIN_KINDS + index */
   uint32_t nparts, cparts;
 } ElCx;

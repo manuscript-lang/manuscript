@@ -609,10 +609,12 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
   }
   MirValue owned;
   MirValue record = MIR_NONE;
+  const uint32_t taken = fn->native_moves; /* reading the receiver's place builds runtime calls of its own */
   const bool in_place = fn_take_field(fn, place, &record, &owned);
   if (!in_place && !fn_take_place(fn, place, &owned)) {
     return MIR_NONE;
   }
+  fn->native_moves = taken;
   const MirTy ty = mir_b_ty(&fn->b, owned);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);

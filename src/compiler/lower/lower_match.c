@@ -115,6 +115,13 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   (void)mir_b_emit(&fn->b, MOP_AltRelease, &match->scrutinee, 1, taken, MIR_NONE);
 }
 
+/* A binding that only views the scrutinee's payload: handing it on copies it. */
+static void view_binding(LowerFn *fn, uint32_t local, MirTy ty) {
+  if (fn->local_owns != NULL && local < fn->nvars && mir_needs_drop(fn->cx->module, ty)) {
+    fn->local_owns[local] = 2;
+  }
+}
+
 static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
   const MirModule *module = fn->cx->module;
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
@@ -123,6 +130,7 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
       const MirTy elem = mir_ty_data(module, match->ty)->elem;
       const MirValue item = mir_b_emit(&fn->b, MOP_OptGet, &match->scrutinee, 1, (MirImm){0}, elem);
       mir_b_def_var(&fn->b, fn_local(fn, ref->local, elem), item);
+      view_binding(fn, ref->local, elem);
     }
     return;
   }
@@ -132,6 +140,7 @@ static void bind_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
     const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
     const MirValue field = mir_b_emit(&fn->b, MOP_AltGet, &match->scrutinee, 1, imm, def->fields[at].ty);
     mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
+    view_binding(fn, ref->local + at, def->fields[at].ty);
   }
 }
 

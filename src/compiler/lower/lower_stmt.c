@@ -901,10 +901,13 @@ static bool lower_while(LowerFn *fn, const MsStmt *stmt) {
   const MirBlock done = mir_b_new_block(&fn->b);
   mir_b_br(&fn->b, head, NULL, 0);
   enter(fn, head);
+  /* What the condition makes (a constant list read, a copy) lives for one trip: it goes before the test branches. */
+  (void)fn_scope_begin(fn);
   const MirValue cond = fn_expr(fn, stmt->u.loop.cond, LW_BORROW);
   if (cond == MIR_NONE) {
     return false;
   }
+  fn_scope_end(fn);
   mir_b_br_if(&fn->b, cond, body, NULL, 0, done, NULL, 0);
   mir_b_seal_block(&fn->b, body);
   enter(fn, body);

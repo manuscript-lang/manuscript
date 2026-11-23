@@ -161,10 +161,12 @@ bool el_is_slot_owner(const ElCx *cx, MirValue value) {
 /* ---- transfer ---- */
 
 /* The owner `value` left the scope's hands on this path. A slot owner or a disowned owner stays tracked as
- * moved: its cleanup entry or the exits after it still act on it. Any other owner needs nothing from here
+ * moved: its cleanup entry or the exits after it still act on it, and so does an owner a scope registers again at a later
+ * exit (a variable's value), which must not be owned anew once it moved. Any other owner needs nothing from here
  * on, so its entry goes: keeping one per moved temporary made every block's state grow with the function. */
 static void finish_owner(ElCx *cx, ElState *state, MirValue value) {
-  const bool tracked = (el_tagged(cx, value) && cx->tag_kind[value] >= 2) || mh_has(&cx->disown_moves, value);
+  const bool tracked = (el_tagged(cx, value) && cx->tag_kind[value] >= 2) || mh_has(&cx->disown_moves, value) ||
+                       mh_has(&cx->reowned, value);
   if (tracked) {
     el_set(cx, state, value, EL_MOVED);
   } else {

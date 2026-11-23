@@ -168,6 +168,15 @@ static MirHash disowned_values(ElCx *cx, const MirFunc *func) {
  * the moved state, so the exits after the move do not release it again. */
 static bool block_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElState *entry, bool *has,
                          MirHash *flagged) {
+  MirHash seen = {0};
+  for (size_t b = 0; b < cx->f->blocks.len; b++) {
+    const MirInstList *insts = &cx->f->blocks.ptr[b].insts;
+    for (size_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].op == MOP_ScopeOwn && !mh_put(cx->ma, &seen, insts->ptr[i].args[0], 0)) {
+        (void)mh_put(cx->ma, &cx->reowned, insts->ptr[i].args[0], 0);
+      }
+    }
+  }
   if (!el_analyze(cx, order, norder, entry, has)) {
     return false;
   }
