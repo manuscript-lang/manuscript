@@ -243,6 +243,8 @@ MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty);
  * when it is a borrowed temporary. */
 MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsExpr *written, MirValue value);
 bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
+/* Whether the expression holds a call whose borrowed resource argument closes where the expression ends. */
+bool fn_expr_has_temporary(LowerFn *fn, const MsExpr *expr);
 /* The base of the field read `member`, closed with its statement when it is a temporary. */
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
