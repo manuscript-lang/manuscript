@@ -496,7 +496,11 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (pass->lambdas != 0) {
     /* A local a lambda that outlives the statement captures moves into it, on the paths that build the lambda, and its
      * scope closes it on the others; any other capture leaves the ownership to the closure. */
-    flag(pass, ref, pass->escaping != 0 && ref->kind == MS_REF_LOCAL ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
+    if (pass->escaping != 0 && ref->kind == MS_REF_LOCAL) {
+      flag(pass, ref, MS_CLOSER_MOVED);
+    } else if (pass->escaping != 0 || ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
+      flag(pass, ref, MS_CLOSER_PARTIAL);
+    } /* a lambda that stays in its maker only reads the capture in place: the scope still closes it */
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
     const MsRef *member = expr->kind == MS_E_MEMBER ? ms_facts_ref(pass->facts, expr->id) : NULL;
     /* A method value that leaves its maker carries its receiver along: the whole binding moves into the closure. */
