@@ -11,7 +11,7 @@
 #include "compiler/mir/mir_pipeline.h"
 #include "compiler/mir/mir_print.h"
 #include "cli/backend.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/opt/opt.h"
 #include "cli/invocation.h"
 

@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include "base/strbuild.h"
-#include "cli/json_value.h"
+#include "tooling/json_value.h"
 #include "cli/test_options.h"
 #include "runtime/std/regex_engine.h"
 
