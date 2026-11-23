@@ -307,6 +307,15 @@ MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 /* Marks the locals of `body` that a lambda written in it changes: they live in slots the lambda borrows. */
 void fn_find_shared(LowerFn *fn, MsStmts body);
+
+/* The parameters and locals of `fn` that `lambda` reads (lower_captures.c); false when a capture is not lowered yet. */
+bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out, uint32_t *count);
+
+/* Whether `lambda` changes each of `captures`: `changed` gets one flag per capture. */
+bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCapture *captures, uint32_t count, bool *changed);
+
+/* Whether `sym` is a parameter of `lambda` itself rather than something it captures. */
+bool is_own_param(const LowerFn *fn, const MsExpr *lambda, MsName sym, const MsRef *ref);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 /* The position of the interface operation the member `callee` names (`index` when it is not a member). */

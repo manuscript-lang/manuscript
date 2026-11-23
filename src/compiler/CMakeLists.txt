@@ -1,4 +1,5 @@
 add_subdirectory(mir)
+add_subdirectory(natives)
 add_subdirectory(syntax)
 add_subdirectory(project)
 add_subdirectory(emit)

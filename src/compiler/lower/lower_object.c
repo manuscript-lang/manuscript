@@ -1,6 +1,6 @@
 /* Owns the operators of value objects: negation and binary operators call the object type's runtime functions. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* The operation word of a binary operator on a value object: its runtime function is `msstd_<type>_<word>`, the

@@ -2,7 +2,7 @@
 #include "compiler/own/result_borrows.h"
 
 #include "compiler/check/properties.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/own/class.h"
 #include "compiler/syntax/walk.h"
 
