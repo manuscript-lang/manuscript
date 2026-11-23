@@ -953,9 +953,11 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {
     const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
-    body->quiet = true;
     for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
-      (void)body_expr(body, expr->u.call.args.ptr[index].value, MS_TY_NONE);
+      const MsExpr *value = expr->u.call.args.ptr[index].value;
+      /* a method of an unresolved receiver still reads its callbacks, which have no context to take parameters from */
+      body->quiet = quiet ? true : !(value->kind == MS_E_LAMBDA && callee->kind == MS_E_MEMBER);
+      (void)body_expr(body, value, MS_TY_NONE);
     }
     body->quiet = quiet;
   }
