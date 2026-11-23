@@ -7,8 +7,13 @@ static bool is_authority_byte(uint8_t b) {
   if ((b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')) {
     return true;
   }
-  size_t at = 0;
-  return b != 0 && ms_span_find(ms_span_of_text("-._~%!$&'()*+,;=:[]"), ms_span_of(&b, 1), &at);
+  switch (b) {
+    case '-': case '.': case '_': case '~': case '%': case '!': case '$': case '&': case '\'': case '(': case ')':
+    case '*': case '+': case ',': case ';': case '=': case ':': case '[': case ']':
+      return true;
+    default:
+      return false;
+  }
 }
 
 bool ms_http_valid_authority(MsSpan value) {
