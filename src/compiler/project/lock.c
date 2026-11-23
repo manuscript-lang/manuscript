@@ -345,19 +345,6 @@ MsSpan ms_lock_index_path(MsArena *arena, MsSpan cache, MsSpan hash) {
 
 /* ---- the index ---- */
 
-static int64_t compare_paths(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  const MsSpan x = *(const MsSpan *)(const void *)a;
-  const MsSpan y = *(const MsSpan *)(const void *)b;
-  const size_t common = x.len < y.len ? x.len : y.len;
-  for (size_t i = 0; i < common; i++) {
-    if (x.ptr[i] != y.ptr[i]) {
-      return x.ptr[i] < y.ptr[i] ? -1 : 1;
-    }
-  }
-  return x.len == y.len ? 0 : (x.len < y.len ? -1 : 1);
-}
-
 typedef struct Collect {
   MsArena *arena;
   MsList files; /* of MsSpan, the `/` paths below the package root */
@@ -410,7 +397,7 @@ bool ms_lock_index_tree(MsArena *arena, MsSpan directory, MsSpan *index, MsSpan 
     return false;
   }
   MsSpan *files = (MsSpan *)(void *)c.files.ptr;
-  ms_sort((uint8_t *)files, c.files.len, sizeof(MsSpan), compare_paths, NULL);
+  ms_sort((uint8_t *)files, c.files.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   MsStrBuild text = ms_strbuild_new();
   size_t total = 0;
   bool ok = true;

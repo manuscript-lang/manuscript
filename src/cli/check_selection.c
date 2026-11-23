@@ -11,22 +11,9 @@
 
 MS_LIST_DEFINE(PathList, path_list, MsSpan)
 
-static int64_t order_spans(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  const MsSpan x = *(const MsSpan *)(const void *)a;
-  const MsSpan y = *(const MsSpan *)(const void *)b;
-  const size_t common = x.len < y.len ? x.len : y.len;
-  for (size_t i = 0; i < common; i++) {
-    if (x.ptr[i] != y.ptr[i]) {
-      return x.ptr[i] < y.ptr[i] ? -1 : 1;
-    }
-  }
-  return x.len == y.len ? 0 : (x.len < y.len ? -1 : 1);
-}
-
 static int64_t order_inputs(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
-  return order_spans(NULL, (const uint8_t *)&((const CheckInput *)(const void *)a)->display,
+  return ms_sort_compare_spans(NULL, (const uint8_t *)&((const CheckInput *)(const void *)a)->display,
                      (const uint8_t *)&((const CheckInput *)(const void *)b)->display);
 }
 
@@ -89,7 +76,7 @@ static int64_t order_walked(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
   const Walked *x = (const Walked *)(const void *)a;
   const Walked *y = (const Walked *)(const void *)b;
-  const int64_t by_name = order_spans(NULL, (const uint8_t *)&x->name, (const uint8_t *)&y->name);
+  const int64_t by_name = ms_sort_compare_spans(NULL, (const uint8_t *)&x->name, (const uint8_t *)&y->name);
   return by_name != 0 ? by_name : (int64_t)x->is_dir - (int64_t)y->is_dir;
 }
 

@@ -15,20 +15,6 @@ static MsSpan upper(MsArena *arena, MsSpan word) {
   return ms_span_of(copy, word.len);
 }
 
-static MsSpan effect_list(MsArena *arena, const MsSpans *effects) {
-  if (effects->len == 0) {
-    return text("none");
-  }
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < effects->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : "+");
-    ms_strbuild_append(&out, effects->ptr[i]);
-  }
-  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return joined;
-}
-
 static MsSpan or_none(MsSpan value) {
   return value.len == 0 ? text("none") : value;
 }
@@ -150,7 +136,7 @@ static bool relevant(MsSpan view, const MsFact *f) {
 
 static MsSpan expander_label(Expander *x, const MsFact *f) {
   if (is(x->view, "effects")) {
-    return ms_message_format(x->arena, "%S  effects: %S", f->name, effect_list(x->arena, &f->effects));
+    return ms_message_format(x->arena, "%S  effects: %S", f->name, ms_effects_joined(x->arena, &f->effects));
   }
   if (is(x->view, "errors")) {
     return ms_message_format(x->arena, "%S  error: %S, try sites: %z", f->name, or_none(f->error), f->tries);
@@ -810,7 +796,7 @@ static MsSpan module_summary(MsArena *arena, const Module *m) {
 
 static MsSpan module_line(MsArena *arena, const Module *m) {
   return ms_message_format(arena, "%S%s  %S  effects: %S", m->file, m->entry ? "  [entry]" : "", module_summary(arena, m),
-                           effect_list(arena, &m->effects));
+                           ms_effects_joined(arena, &m->effects));
 }
 
 static void overview_ascii(MsArena *arena, const Module *modules, size_t count, MsStrBuild *out) {
@@ -844,7 +830,7 @@ static void overview_mermaid(MsArena *arena, const Module *modules, size_t count
     const Module *m = &modules[i];
     const char *class_name = m->entry ? "entry" : m->effects.len == 0 ? "pure" : "effect";
     ms_strbuild_append(out, ms_message_format(arena, "    m_%S[\"%S<br/>%S<br/>%S\"]:::%s\n", ms_views_sanitize(arena, m->file, false), m->file,
-                                              module_summary(arena, m), effect_list(arena, &m->effects), class_name));
+                                              module_summary(arena, m), ms_effects_joined(arena, &m->effects), class_name));
   }
   for (size_t i = 0; i < count && i < MS_NODE_CAP; i++) {
     for (size_t c = 0; c < modules[i].call_files.len; c++) {

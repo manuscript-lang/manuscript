@@ -8,15 +8,6 @@
 #include "compiler/syntax/walk.h"
 #include "tooling/flow.h"
 
-int ms_span_compare(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 MsViewNode *ms_view_node(MsArena *arena, MsSpan label) {
   MsViewNode *node = MS_ARENA_NEW(arena, MsViewNode);
   node->label = label;
@@ -63,17 +54,8 @@ static MsFact *fact_mut(MsFactModel *model, MsSpan key) {
   return NULL;
 }
 
-static bool contains(const MsSpans *list, MsSpan value) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], value)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static void append_unique(MsArena *arena, MsSpans *list, MsSpan value) {
-  if (!contains(list, value)) {
+  if (!ms_spans_contains(list, value)) {
     ms_spans_push(arena, list, value);
   }
 }
@@ -716,4 +698,18 @@ MsFactModel ms_facts_collect(MsArena *arena, MsCheckProgram *program) {
   }
   ms_inspection_free(&inspection);
   return model;
+}
+
+MsSpan ms_effects_joined(MsArena *arena, const MsSpans *effects) {
+  if (effects->len == 0) {
+    return ms_span_of_text("none");
+  }
+  MsStrBuild out = ms_strbuild_new();
+  for (size_t i = 0; i < effects->len; i++) {
+    ms_strbuild_append_text(&out, i == 0 ? "" : "+");
+    ms_strbuild_append(&out, effects->ptr[i]);
+  }
+  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
+  ms_strbuild_free(&out);
+  return joined;
 }

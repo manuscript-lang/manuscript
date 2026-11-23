@@ -13,6 +13,16 @@
 
 MS_LIST_DEFINE(MsBindingList, ms_binding_list, uint32_t)
 
+/* Whether the list holds `binding`. */
+static inline bool ms_binding_list_contains(const MsBindingList *list, uint32_t binding) {
+  for (size_t index = 0; index < list->len; index++) {
+    if (list->ptr[index] == binding) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* The binding `node` names; false when it resolves to anything but a local or a parameter. */
 bool ms_bind_of(const MsFacts *facts, MsNode node, uint32_t *binding);
 

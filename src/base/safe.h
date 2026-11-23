@@ -166,6 +166,16 @@ static inline bool ms_span_equal(MsSpan a, MsSpan b) {
   return a.len == b.len && (a.len == 0 || __builtin_memcmp(a.ptr, b.ptr, a.len) == 0);
 }
 
+/* Byte order of two texts: -1, 0 or 1. */
+static inline int ms_span_compare(MsSpan a, MsSpan b) {
+  const size_t common = a.len < b.len ? a.len : b.len;
+  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
+  if (order != 0) {
+    return order < 0 ? -1 : 1;
+  }
+  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
+}
+
 /* Whether `span` is exactly the C string `text`. This and ms_span_of_text are the only places a C string
  * becomes a span: the entry point of an OS or libc string. */
 static inline MsSpan ms_span_of_text(const char *text) {

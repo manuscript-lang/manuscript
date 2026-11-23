@@ -105,13 +105,6 @@ static int symbol_kind(const MsCheckProgram *program, const MsOccurrence *entry)
   }
 }
 
-static bool listed(const MsSpanList *paths, MsSpan path) {
-  for (size_t i = 0; i < paths->len; i++) {
-    if (ms_span_equal(paths->ptr[i], path)) return true;
-  }
-  return false;
-}
-
 void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t root_count, MsSpan query, MsStrBuild *out) {
   MsArena arena = ms_arena_new();
   MsSpanList paths = {0};
@@ -119,7 +112,7 @@ void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t r
     MsSpanList project = {0};
     lsp_workspace_files(&arena, ms_string_span(&docs->ptr[i].path), &project);
     for (size_t p = 0; p < project.len; p++) {
-      if (!listed(&paths, project.ptr[p])) ms_span_list_push(&paths, project.ptr[p]);
+      if (!ms_span_list_contains(&paths, project.ptr[p])) ms_span_list_push(&paths, project.ptr[p]);
     }
     ms_span_list_free(&project);
   }
@@ -127,7 +120,7 @@ void lsp_workspace_symbols(const LspDocList *docs, const MsSpan *roots, size_t r
     MsSpanList project = {0};
     lsp_workspace_files(&arena, ms_message_format(&arena, "%S/__workspace_index.ms", roots[i], (MsSpan){0}), &project);
     for (size_t p = 0; p < project.len; p++) {
-      if (!listed(&paths, project.ptr[p])) ms_span_list_push(&paths, project.ptr[p]);
+      if (!ms_span_list_contains(&paths, project.ptr[p])) ms_span_list_push(&paths, project.ptr[p]);
     }
     ms_span_list_free(&project);
   }

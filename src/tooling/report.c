@@ -12,20 +12,6 @@ static MsSpan text(const char *literal) {
   return ms_span_of_text(literal);
 }
 
-static MsSpan effect_list(MsArena *arena, const MsSpans *effects) {
-  if (effects->len == 0) {
-    return text("none");
-  }
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < effects->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : "+");
-    ms_strbuild_append(&out, effects->ptr[i]);
-  }
-  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return joined;
-}
-
 /* A section of a table: the first ROW_CAP rows unless `all`. */
 static MsSection table(MsArena *arena, const char *title, const char *const *headers, size_t columns, const MsSpans *cells,
                        MsReviewOptions options) {
@@ -72,15 +58,6 @@ static MsSection import_map(MsArena *arena, const MsFactModel *head) {
   return lines_section("DEPENDENCIES", lines);
 }
 
-static bool seen(const MsSpans *list, MsSpan value) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], value)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static MsSpan number(MsArena *arena, size_t n) {
   return ms_message_format(arena, "%z", n);
 }
@@ -103,12 +80,12 @@ MsReport ms_project_report(MsArena *arena, const MsFactModel *head, MsReviewOpti
     exported += f->exported ? 1 : 0;
     tests += ms_span_is_text(f->kind, "test") ? 1 : 0;
     scopes += f->scopes > 0 ? 1 : 0;
-    if (!seen(&files, f->file)) {
+    if (!ms_spans_contains(&files, f->file)) {
       ms_spans_push(arena, &files, f->file);
     }
   }
   for (size_t i = 0; i < head->imports.len; i++) {
-    if (!seen(&files, head->imports.ptr[i].file)) {
+    if (!ms_spans_contains(&files, head->imports.ptr[i].file)) {
       ms_spans_push(arena, &files, head->imports.ptr[i].file);
     }
   }
@@ -136,7 +113,7 @@ MsReport ms_project_report(MsArena *arena, const MsFactModel *head, MsReviewOpti
     if ((ms_span_is_text(f->name, "main") && f->exported) || ms_span_is_text(f->kind, "test")) {
       ms_spans_push(arena, &entries, f->name);
       ms_spans_push(arena, &entries, f->kind);
-      ms_spans_push(arena, &entries, effect_list(arena, &f->effects));
+      ms_spans_push(arena, &entries, ms_effects_joined(arena, &f->effects));
       ms_spans_push(arena, &entries, at);
     }
     if (f->scopes > 0) {
@@ -288,7 +265,7 @@ static MsSection import_section(MsArena *arena, const MsFactModel *base, const M
     ms_spans_push(arena, &names, base->imports.ptr[i].file);
   }
   for (size_t i = 0; i < head->imports.len; i++) {
-    if (!seen(&names, head->imports.ptr[i].file)) {
+    if (!ms_spans_contains(&names, head->imports.ptr[i].file)) {
       ms_spans_push(arena, &names, head->imports.ptr[i].file);
     }
   }
@@ -305,14 +282,14 @@ static MsSection import_section(MsArena *arena, const MsFactModel *base, const M
     const MsImports *now = imports_of(head, names.ptr[n]);
     if (now != NULL) {
       for (size_t p = 0; p < now->paths.len; p++) {
-        if (old == NULL || !seen(&old->paths, now->paths.ptr[p])) {
+        if (old == NULL || !ms_spans_contains(&old->paths, now->paths.ptr[p])) {
           ms_spans_push(arena, &lines, ms_message_format(arena, "+ %S imports %S", names.ptr[n], now->paths.ptr[p]));
         }
       }
     }
     if (old != NULL) {
       for (size_t p = 0; p < old->paths.len; p++) {
-        if (now == NULL || !seen(&now->paths, old->paths.ptr[p])) {
+        if (now == NULL || !ms_spans_contains(&now->paths, old->paths.ptr[p])) {
           ms_spans_push(arena, &lines, ms_message_format(arena, "- %S imports %S", names.ptr[n], old->paths.ptr[p]));
         }
       }
