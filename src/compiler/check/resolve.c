@@ -7,7 +7,7 @@
 #include "compiler/check/std_exports.h"
 #include "compiler/check/bounds.h"
 #include "compiler/check/suggest.h"
-#include <string.h>
+#include "base/cstr.h"
 
 static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result", "Error", "List", "Map", "Set",
@@ -124,7 +124,7 @@ static void type_candidates(const Resolver *resolver, MsSpanList *out) {
     ms_span_list_push(out, ms_span_of_text(PRIMITIVES[index]));
   }
   for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_TYPES); index++) {
-    if (strcmp(PRELUDE_TYPES[index], "Optional") != 0) {
+    if (!ms_cstr_equal(PRELUDE_TYPES[index], "Optional")) {
       ms_span_list_push(out, ms_span_of_text(PRELUDE_TYPES[index]));
     }
   }
