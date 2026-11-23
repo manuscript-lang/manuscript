@@ -39,19 +39,3 @@ test "successful cause cleanup transfers the protected receiver exactly once":
 	write_file(log, "").wait()?
 	normal_transfer(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "2,1,")?
-
-fn failing_callback(move log: String) fn() Marker:
-	captured := Marker(2, log, true)
-	return fn: Marker(3, captured.log.clone(), false)
-
-fn discard_callback(move log: String) Void:
-	_kept := source(log.clone()).ok_or_else(failing_callback(log))
-
-// Capture closer thunks discard returned close errors; this is a cleanup control, not a
-// fault.
-test "unused owning callback cleanup closes its capture without invoking the callback":
-	tmp := temporary("cause-callback-fault-") | expect_ok?
-	log := f"{tmp.path()}/log"
-	write_file(log, "").wait()?
-	discard_callback(log.clone())
-	expect_equal(read_file(log).wait().get().decode_utf8() or "", "2,1,")?

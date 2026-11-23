@@ -18,9 +18,10 @@ import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
-    path := arguments().first().ok_or(Error("missing path", kind: "EINVAL"))?
+    path := ok_or(arguments().first(), Error("missing path", kind: "EINVAL"))?
     text := read_file(path, max_bytes: 1048576).wait()?
-        | .decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
+        | .decode_utf8()
+        | ok_or(Error("not UTF-8", kind: "EBADMSG"))?
     stdout().write(text)?
     return stdout().flush()
 
@@ -49,7 +50,7 @@ import arguments from "@std/os/env.ms"
 import write_file from "@std/os/fs.ms"
 
 fn run() Result[Void, Error]:
-    path := arguments().first().ok_or(Error("missing path", kind: "EINVAL"))?
+    path := ok_or(arguments().first(), Error("missing path", kind: "EINVAL"))?
     return write_file(path, "saved notes\n", replace: false).wait()
 
 fn main() Void!:

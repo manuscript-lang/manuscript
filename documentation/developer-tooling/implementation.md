@@ -301,7 +301,7 @@ Each lint rule is a **warning** or an **error**. `lint` returns 1 when a source 
 | MSL132 | warning | `xs.slice(a, b).get_or(fallback)` returns the fallback for any bad range, including an end past the length, with no error. Write `xs.slice(a, b)?`, or clamp the end with `min(end, xs.length())` first |
 | MSL133 | warning | `mid := (lo + hi) // 2` compiles as `(lo + hi)` because `//` starts a comment, so the number after it is ignored. Int `/` already truncates: write `(lo + hi) / 2` |
 | MSL134 | warning | `ys := xs.sort()` binds Void and `print(xs.reverse())` prints `void`: `sort` and `reverse` change the list in place and return nothing. Call them as statements, or use `sorted()` or `reversed()` for a new list |
-| MSL135 | warning | `bytes.to_string()` renders `Bytes(104, 105)`, not the text: a WebSocket message, file or socket read holds bytes. Write `bytes.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?` for the text |
+| MSL135 | warning | `bytes.to_string()` renders `Bytes(104, 105)`, not the text: a WebSocket message, file or socket read holds bytes. Write `ok_or(bytes.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?` for the text |
 
 Whitespace warnings exclude text-literal payloads. Whitespace deletion fixes are withheld while lexical boundaries are invalid or incomplete.
 

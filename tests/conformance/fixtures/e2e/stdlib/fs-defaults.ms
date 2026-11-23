@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	CopyOptions,
 	copy,
 	create_directory,

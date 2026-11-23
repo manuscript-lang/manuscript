@@ -112,22 +112,8 @@ test "assertion failures can describe values without a reporting implementation"
 		)?
 	)
 
-test "Optional adapters accept primitive errors and remain lazy":
+test "Optional adapters accept primitive errors":
 	present: Int? := 4
 	missing: Int? := null
 	ok_or(missing, "absent").err() | expect_equal("absent")?
 	ok_or(present, 9).get() | expect_equal(4)?
-
-	var calls = 0
-	present.ok_or_else(
-		fn() Int:
-			calls += 1
-			return 9
-	).get() | expect_equal(4)?
-	calls | expect_equal(0)?
-	missing.ok_or_else(
-		fn() Int:
-			calls += 1
-			return 9
-	).err() | expect_equal(9)?
-	calls | expect_equal(1)?

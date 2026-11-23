@@ -35,7 +35,7 @@ fn greet(var exchange: HttpExchange, params: RouteParams) Void!:
 
 fn sum(var exchange: HttpExchange, params: RouteParams) Void!:
     body := read_body(exchange)?
-    numbers := parse[Numbers](body.decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?)
+    numbers := parse[Numbers](ok_or(body.decode_utf8(), Error("not UTF-8", kind: "EBADMSG"))?)
     if numbers.is_error():
         return reply(exchange, text(400, "expected a list named values"))
     return reply(exchange, json(200, Total(total: numbers.get().values.sum()))?)

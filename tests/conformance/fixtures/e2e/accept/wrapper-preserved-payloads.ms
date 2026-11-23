@@ -18,7 +18,7 @@ fn optional_cause(move log: String) Void:
 
 fn optional_callback(move log: String) Void:
 	value: Marker? := Marker(2, log)
-	_kept := value.ok_or_else(fn: "failure")
+	_kept := ok_or(value, "failure")
 
 fn result_error_map(move log: String) Void:
 	value: Marker!Int := ok(Marker(3, log))
@@ -98,7 +98,7 @@ test "map takes a resource payload while reusable methods copy only retained dat
 test "empty and transformed branches do not manufacture retained payloads":
 	absent: Int? := null
 	expect_equal(ok_or(absent, "failure").is_error(), true)?
-	expect_equal(absent.ok_or_else(fn: "failure").is_error(), true)?
+	expect_equal(ok_or(absent, "failure").is_error(), true)?
 
 	failed: Int!Int := error(3)
 	expect_equal(failed.map_error(fn cause: cause + 1).is_error(), true)?
@@ -125,8 +125,10 @@ test "discarded owned errors close, named ones too once to_optional moves them":
 	named_error(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "30,31,")?
 
-fn specialized_optional[T](create: fn() Int, value: T?) T!Int:
-	return value.ok_or_else[Int](create)
+fn specialized_optional[T](create: fn() Int, move value: T?) T!Int:
+	if value != null: return ok(value)
+
+	return error(create())
 
 fn specialized_error[T](value: Int!T) String!T:
 	return value.map[String](fn item: f"{item}")

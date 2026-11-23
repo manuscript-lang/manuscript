@@ -71,7 +71,7 @@ const MsLintRule MS_LINT_RULES[] = {
     {"MSL134", "Void value bound or printed", MS_LINT_WARNING,
      "call `xs.sort()` or `xs.reverse()` as a statement, or use `sorted()` or `reversed()` for a new list"},
     {"MSL135", "`to_string()` on Bytes", MS_LINT_WARNING,
-     "`bytes.to_string()` renders `Bytes(104, 105)`; write `bytes.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?` for the text"},
+     "`bytes.to_string()` renders `Bytes(104, 105)`; write `ok_or(bytes.decode_utf8(), Error(\"not UTF-8\", kind: \"EBADMSG\"))?` for the text"},
 };
 
 const size_t MS_LINT_RULE_COUNT = sizeof MS_LINT_RULES / sizeof MS_LINT_RULES[0];

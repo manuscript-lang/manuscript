@@ -35,18 +35,13 @@ fn transferred(log: String) Void!:
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,")?
 	expect_equal(kept.is_error(), true)?
 
-fn lazy(log: String) Void!:
-	kept := present().ok_or_else(fn: marker(4, log.clone()))
-	expect_equal(kept.get(), 7)?
-	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,")?
-
 fn explicit_wrapped(log: String) Void!:
-	kept := present().ok_or[Marker?](optional_marker(5, log.clone()))
+	kept := ok_or(present(), optional_marker(5, log.clone()))
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,5,")?
 	expect_equal(kept.get(), 7)?
 
 fn explicit_wrapped_transfer(log: String) Void!:
-	kept := absent().ok_or[Marker?](optional_marker(6, log.clone()))
+	kept := ok_or(absent(), optional_marker(6, log.clone()))
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,5,")?
 	expect_equal(kept.is_error(), true)?
 
@@ -59,8 +54,6 @@ test "unused eager resource causes close immediately only when owned":
 	borrowed_scalar(8)?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,")?
 	transferred(log.clone())?
-	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,")?
-	lazy(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,")?
 	explicit_wrapped(log.clone())?
 	expect_equal(read_file(log).wait().get().decode_utf8() or "", "1,3,5,")?

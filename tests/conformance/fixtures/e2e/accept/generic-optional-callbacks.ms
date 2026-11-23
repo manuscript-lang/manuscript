@@ -34,14 +34,10 @@ fn same_optional(left: Int?, right: Int?) Bool:
 fn optional_default(value: Int? = 7) Int: value or (-1)
 
 fn bound_missing[T: Clonable](cause: Error, value: T?) T!Error:
-	convert := value.ok_or[Error]
-	return convert(cause)
+	return ok_or(value, cause)
 
 fn nested_bound_missing[T: Clonable](cause: Error, value: T?) T!Error:
-	convert := fn:
-		bound := value.ok_or[Error]
-		return bound(cause.clone())
-
+	convert := fn: ok_or(value.clone(), cause.clone())
 	return convert()
 
 type Defaults:
@@ -145,35 +141,15 @@ test "generic native folds accept Optional accumulators without omission wrapper
 	bound_set_sum := fold_set(initial, fn acc, value: (acc or 0) + value)
 	expect_equal(bound_set_sum or panic("called Optional.get() on null"), 3)?
 
-test "bound generic native defaults preserve concrete and Optional payload types":
-	missing: Int? := null
-	text := missing.ok_or[String]
-	expect_equal(text("absent").err(), "absent")?
-
-	number := missing.ok_or[Int]
-	expect_equal(number(0).err(), 0)?
-
-	nested := missing.ok_or[Int?]
-	absent: Int? := null
-	expect_true(nested(absent).err() == null)?
-
-	present: Int? := 0
-	expect_equal(nested(present).err() or panic("called Optional.get() on null"), 0)?
-
 test "bound Error causes are supplied at each call":
 	missing: Int? := null
 	direct := ok_or(missing, Error("direct"))
 	expect_equal(direct.err().message, "direct")?
 
-	convert := missing.ok_or[Error]
-	expect_equal(convert(Error("first")).err().message, "first")?
-	expect_equal(convert(Error("second")).err().message, "second")?
 	expect_equal(bound_missing(Error("generic"), missing).err().message, "generic")?
 	expect_equal(nested_bound_missing(Error("nested"), missing).err().message, "nested")?
 
 	present: Int? := 0
-	keep := present.ok_or[Error]
-	expect_equal(keep(Error("unused")).get(), 0)?
 	expect_equal(bound_missing(Error("unused"), present).get(), 0)?
 	expect_equal(nested_bound_missing(Error("unused"), present).get(), 0)?
 

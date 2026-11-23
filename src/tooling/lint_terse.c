@@ -244,7 +244,7 @@ static void bytes_to_string(const TerseScan *scan, const MsExpr *e) {
   if (left != NULL && terse_type_is(scan, left->id, MS_BUILTIN_Bytes)) {
     terse_note(scan, "MSL135",
                text_of("`to_string()` on Bytes gives `Bytes(104, 105)`, not the text; `decode_utf8()` returns the text as "
-                       "a `String?`, so write `.decode_utf8().ok_or(Error(\"not UTF-8\", kind: \"EBADMSG\"))?`"),
+                       "a `String?`, so write `ok_or(x.decode_utf8(), Error(\"not UTF-8\", kind: \"EBADMSG\"))?`"),
                e->pos);
   }
 }

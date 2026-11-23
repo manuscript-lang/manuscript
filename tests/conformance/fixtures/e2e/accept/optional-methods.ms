@@ -58,9 +58,6 @@ test "Optional methods retain generic payload and receiver identity":
 	record: Counter? := counter.clone()
 	expect_equal((record or panic("called Optional.get() on null")).calls, 3)?
 
-	extract := record.get
-	expect_equal(extract().calls, 3)?
-
 	callback: (fn(Int) Int)? := increment
 	expect_equal((callback or panic("called Optional.get() on null"))(2), 3)?
 

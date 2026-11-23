@@ -19,7 +19,9 @@ fn require_value[T, E](cause: E, value: T?) T!E:
 	return ok_or(value, cause)
 
 fn require_lazy[T, E](create: fn() E, value: T?) T!E:
-	return value.ok_or_else[E](create)
+	if value != null: return ok(value)
+
+	return error(create())
 
 fn success_only[T, E](value: T!E) T?:
 	if item := value: return item
@@ -45,7 +47,7 @@ test "conversions and collection queries are callable":
 	present: Int? := 2
 	missing: Int? := null
 	ok_or(present, Error("absent")).get() | expect_equal(2)?
-	expect_equal(missing.ok_or_else(fn: Error("absent")).err().message, "absent")?
+	expect_equal(ok_or(missing, Error("absent")).err().message, "absent")?
 
 	failed: Int!Error := error(Error("failed"))
 	(failed.to_optional() == null) | expect_true?
@@ -92,12 +94,6 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	var lazy_cause = error_result.err().clone()
 	lazy_cause.calls = 4
 	error_result.err().calls | expect_equal(10)?
-
-	bound := missing.ok_or[Counter]
-	var bound_cause = bound(cause: counter.clone()).err().clone()
-	bound_cause.calls = 5
-	counter.calls | expect_equal(1)?
-	missing.clone().ok_or_else(create).err().calls | expect_equal(10)?
 
 	failure: Counter!Pending := error(Pending([1, 2]))
 	(success_only(failure) == null) | expect_true?

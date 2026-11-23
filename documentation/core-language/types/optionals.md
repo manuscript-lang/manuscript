@@ -165,7 +165,7 @@ Pass the error explicitly. Any function whose error type is `Error` can `?` the 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 fn port_number(text: String) Int!:
-    port := text.parse_int().ok_or(Error("missing port"))?
+    port := ok_or(text.parse_int(), Error("missing port"))?
     return ok(port)
 ```
 

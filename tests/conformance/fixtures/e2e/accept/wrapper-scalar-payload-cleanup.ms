@@ -20,7 +20,7 @@ fn optional_cause() Void:
 	_kept := ok_or(present(), 0)
 
 fn optional_callback() Void:
-	_kept := present().ok_or_else(fn: 0)
+	_kept := ok_or(present(), 0)
 
 fn result_error_map() Void:
 	_kept := success().map_error(fn cause: cause + 1)
