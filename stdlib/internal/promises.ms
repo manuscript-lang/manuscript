@@ -11,8 +11,9 @@ export extern fn msrt_promise_put[T](id: Int, move value: T, failed: Int) Void
 
 export extern fn msrt_promise_take[T](id: Int) move T?
 
-// A result held in a slot of its own: taking `Slot[T]` instead of `T` tells a result that is `none`
-// (`T` nullable) from a result that is gone, which `T?` of a nullable `T` cannot. It has the layout of `T`.
+// A result held in a slot of its own: taking `Slot[T]` instead of `T` tells a result
+// that is `none` (`T` nullable) from a result that is gone, which `T?` of a nullable
+// `T` cannot. It has the layout of `T`.
 export type Slot[T]:
 	value: T
 
