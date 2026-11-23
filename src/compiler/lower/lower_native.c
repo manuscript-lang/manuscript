@@ -809,7 +809,34 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
 /* `slot` is the address of the receiver's storage when the receiver is not a place of this function (a bound
  * method value): a native that changes its receiver writes through it. */
 static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+                      const MirValue *args, MirTy ret, MirValue *out);
+
+/* `list.set(index, value)` on resources: the element it replaces closes, so the set is a `replace` whose old element
+ * the scope closes (the incoming value is still held by its closing slot until the replace stored it). */
+static bool list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
+                             const MirValue *args, MirValue *out) {
+  MsTyTable *types = &fn->cx->program->types;
+  if (argc != 3 || !ms_ty_is(types, owner, MS_BUILTIN_List) || fn->closing == NULL) {
+    return false;
+  }
+  const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[0], fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (!fn_temp_closes(fn, elem)) {
+    return false;
+  }
+  MirValue old = MIR_NONE;
+  if (!native_on(fn, place, slot, owner, ms_span_of_text("replace"), argc, args, mir_b_ty(&fn->b, args[2]), &old) ||
+      old == MIR_NONE || !fn_close_replaced(fn, elem, old)) {
+    return false;
+  }
+  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
+  return true;
+}
+
+static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                       const MirValue *args, MirTy ret, MirValue *out) {
+  if (ms_span_is_text(operation, "set") && list_set_closing(fn, place, slot, owner, argc, args, out)) {
+    return true;
+  }
   MsName name;
   const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
   if (sig == NULL && argc == 2 && ms_span_is_text(operation, "group_by") && fn_list_group_by(fn, args, ret, out)) {
@@ -862,13 +889,19 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
        * becomes the value the slot holds afterwards. */
       const MirTy ty = mir_b_ty(&fn->b, args[0]);
       const MirImm of_type = {.tag = MI_TY, .a = ty};
-      const MirValue held = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
-      const MirValue stored[2] = {held, args[0]};
-      (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);
-      wanted[0] = held;
-      *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
-      fn_own(fn, fn_scope(fn), mir_b_emit(&fn->b, MOP_Take, &held, 1, of_type, ty));
+      const MirValue owned = fn_temp_closes(fn, owner) ? fn_pending_own(fn, owner, args[0]) : MIR_NONE;
+      if (owned != MIR_NONE) { /* a list of resources: its slot closes them where the scope ends, a fault included */
+        wanted[0] = owned;
+        *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+      } else {
+        const MirValue held = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+        const MirValue stored[2] = {held, args[0]};
+        (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);
+        wanted[0] = held;
+        *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
+        fn_own(fn, fn_scope(fn), mir_b_emit(&fn->b, MOP_Take, &held, 1, of_type, ty));
+      }
     } else {
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     }

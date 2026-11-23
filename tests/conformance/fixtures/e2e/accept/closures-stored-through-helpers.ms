@@ -2,20 +2,20 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn store(var fs: List[fn() Int], f: fn() Int) Void:
+fn store(var fs: List[fn() Int], move f: fn() Int) Void:
 	fs.append(f)
 
-fn relay(var fs: List[fn() Int], f: fn() Int) Void:
+fn relay(var fs: List[fn() Int], move f: fn() Int) Void:
 	store(fs, f)
 
-fn deep(var fs: List[fn() Int], f: fn() Int, n: Int) Void:
+fn deep(var fs: List[fn() Int], move f: fn() Int, n: Int) Void:
 	if n == 0:
 		relay(fs, f)
 		return
 
 	deep(fs, f, n - 1)
 
-fn keep[T](var xs: List[T], x: T) Void:
+fn keep[T](var xs: List[T], move x: T) Void:
 	xs.append(x)
 
 fn sum(fs: List[fn() Int]) Int:

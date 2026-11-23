@@ -242,7 +242,8 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
       body_set_ref(body, left->u.apply.left->id, body_symbol_ref(body, symbol));
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+      return !body_report_type_member(body, callee->pos, symbol->ty, callee->u.member.name, true) &&
+             case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   if (left->kind == MS_E_NAME && body_find_local(body, left->u.sym) == NULL) {
@@ -250,7 +251,8 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
     if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+      return !body_report_type_member(body, callee->pos, symbol->ty, callee->u.member.name, true) &&
+             case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   const MsTy receiver = body_expr(body, left, MS_TY_NONE);
@@ -816,6 +818,27 @@ static bool report_builtin_constructor(Body *body, const MsExpr *call) {
   return true;
 }
 
+/* A call whose callee is a value that is not a function. */
+static void report_not_callable(Body *body, const MsExpr *call, const Target *target) {
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
+  }
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  if (target->name.len != 0) {
+    ms_strbuild_append(&text, target->name);
+    ms_strbuild_append_text(&text, " is not a function");
+  } else {
+    ms_strbuild_append_text(&text, "callee is not a function");
+  }
+  ms_strbuild_append_text(&text, " (it has type ");
+  ms_ty_show(&text, body->program->names, &body->program->types, target->sig);
+  ms_strbuild_append_text(&text, "); only functions and methods can be called, so remove the (...) or call a function instead");
+  ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -843,7 +866,11 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     MsTy hint[16] = {0};
     result_hint(body, &target, expected, hint);
     type_args(body, &target, expr, &matched, arg_tys, bound, hint);
-    matched.bound = bound;
+    MsTy *shown = MS_ARENA_NEW_ARRAY(&body->program->arena, MsTy, target.vars.len + 1);
+    for (size_t index = 0; index < target.vars.len; index++) { /* the expected result fixes what the arguments left open */
+      shown[index] = bound[index] != MS_TY_NONE || index >= 16 ? bound[index] : hint[index];
+    }
+    matched.bound = shown;
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
     /* an argument that already disagreed with the expected result's type is the one error: the call has that type */
@@ -852,6 +879,9 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
         ms_ty_is(&body->program->types, expected, MS_BUILTIN_Result) && !ms_ty_has_variable(&body->program->types, expected)) {
       result = expected;
     }
+  } else if (target.sig != MS_TY_NONE && !ms_ty_is_invalid(&body->program->types, target.sig) &&
+             ms_ty_kind(&body->program->types, target.sig) != MS_TY_FUNCTION) {
+    report_not_callable(body, expr, &target);
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {

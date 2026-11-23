@@ -15,7 +15,7 @@ fn eval(e: Expr) Int!:
 		Num(n): return ok(n)
 		Var(name): return error(Error(f"unbound {name}"))
 		Keep(name):
-			xs := [name]
+			xs := [name.clone()]
 			return ok(xs.length())
 		Add(l, r):
 			a := eval(l)?

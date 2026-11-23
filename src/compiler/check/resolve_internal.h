@@ -47,4 +47,7 @@ MsSymbolId resolver_prelude_symbol(const MsCheckProgram *program, MsName name);
 /* The nominal type `base` applied to `count` type arguments; `base` itself when there are none. */
 MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t count);
 
+/* Reports written type arguments that fail their bounds; run once the module's methods are declared. */
+void ms_check_flush_pending_bounds(MsCheckProgram *program);
+
 #endif

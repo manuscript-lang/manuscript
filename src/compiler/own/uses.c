@@ -301,6 +301,19 @@ static bool binds_assigned_local(const Uses *pass, const MsExpr *expr) {
   return false;
 }
 
+static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts body, const MsStmt *loop, const MsExpr *iter);
+
+/* Whether `if r := o:` gives the payload of `o` to `r`: always for a resource or a parameter, and for another local only when `o` is
+ * not read again, so a later read of `o` still finds its payload. */
+static bool hands_payload_on(const Uses *pass, const MsStmt *stmt) {
+  const MsExpr *cond = stmt->u.branch.cond;
+  if (ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, cond->id))) {
+    return true;
+  }
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
+  return ref == NULL || ref->kind != MS_REF_LOCAL || last_use_outside_loops(pass, pass->params, pass->body, stmt, cond);
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Uses *pass = ctx;
   if (stmt->kind == MS_S_RETURN) {
@@ -319,7 +332,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
              !stmt->u.branch.is_mutable &&
-             owns_place(pass, stmt->u.branch.cond)) {
+             owns_place(pass, stmt->u.branch.cond) && hands_payload_on(pass, stmt)) {
     mark_move(pass, stmt->u.branch.cond); /* `if r := o:` hands the payload of a resource `o` to `r` */
   }
 }

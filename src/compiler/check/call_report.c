@@ -154,6 +154,9 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
   const MsTy shown = matched->bound != NULL && target->vars.len != 0
                          ? ms_ty_subst(&body->program->types, param->ty, target->vars.ptr, matched->bound, target->vars.len)
                          : param->ty;
+  if ((shown == MS_TY_NONE || ms_ty_has_variable(&body->program->types, shown)) && target->vars.len != 0) {
+    return; /* a type argument nothing fixes is reported as one that cannot be inferred */
+  }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "missing argument ");
   const bool positional = target_positional(target, index, &body->program->types);

@@ -134,6 +134,29 @@ static bool import_target(MsCheckProgram *program, uint32_t module, uint32_t ind
   return true;
 }
 
+/* A second import of a name this module already imported. */
+static void report_collision(MsCheckProgram *program, uint32_t module, const MsImport *import, MsSymbolId earlier) {
+  const MsSpan name = ms_names_span(program->names, import->name);
+  MsStrBuild text = ms_strbuild_new();
+  if (earlier != 0 && !ms_check_is_prelude_symbol(program, &program->symbols.ptr[earlier])) {
+    ms_strbuild_append_text(&text, "import ");
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, " collides with another ");
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, " in this module; an import cannot be renamed, so import only one ");
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, " here and wrap the other in a small module that exports it under a new name");
+  } else {
+    ms_strbuild_append_text(&text, "duplicate or intrinsic name ");
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, "; this name is already declared, imported, or built in, so rename one of them");
+  }
+  const uint8_t stage = program->stage;
+  program->stage = MS_STAGE_DECLARATIONS;
+  ms_check_report(program, module, import->name_pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  program->stage = stage;
+}
+
 void ms_check_bind_imports(MsCheckProgram *program, uint32_t module) {
   const MsModule *tree = program->modules.ptr[module].tree;
   for (uint32_t index = 0; index < tree->nimports; index++) {
@@ -146,6 +169,10 @@ void ms_check_bind_imports(MsCheckProgram *program, uint32_t module) {
           program->symbols.ptr[*found].exported) {
         symbol = *found;
       }
+    }
+    const MsSymbolId *earlier = ms_scope_get(&program->modules.ptr[module].imports, import->name);
+    if (earlier != NULL && module < program->user_modules) {
+      report_collision(program, module, import, *earlier);
     }
     ms_scope_put(&program->modules.ptr[module].imports, import->name, symbol);
   }

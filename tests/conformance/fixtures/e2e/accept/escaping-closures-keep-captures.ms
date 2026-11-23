@@ -6,13 +6,13 @@ type Box:
 	f: fn() Int
 
 interface Sink:
-	var fn put(f: fn() Int) Void
+	var fn put(move f: fn() Int) Void
 	fn total() Int
 
 type ListSink:
 	fs: List[fn() Int]
 
-fn var ListSink.put(f: fn() Int) Void:
+fn var ListSink.put(move f: fn() Int) Void:
 	self.fs.append(f)
 
 fn ListSink.total() Int:
@@ -21,11 +21,11 @@ fn ListSink.total() Int:
 		t += f()
 	return t
 
-fn mk(f: fn() Int) Box:
+fn mk(move f: fn() Int) Box:
 	return Box(f: f)
 
-fn c1(text: String) Int:
-	var out = text.split(",").map(fn p: mk(fn() Int: return p.length()))
+fn c1(move text: String) Int:
+	var out = text.split(",").map(fn(move p: String): mk(fn() Int: return p.length()))
 	var t = 0
 	for b in out:
 		t += b.f()
@@ -62,12 +62,12 @@ fn c5(text: String) Int:
 		sink.put(fn() Int: return p.length())
 	return sink.total()
 
-fn outer(text: String) fn() Int:
+fn outer(move text: String) fn() Int:
 	var held = text.split(",").length()
 	inner := fn() Int: return held + text.length()
 	return fn() Int: return inner()
 
-fn c6(text: String) Int:
+fn c6(move text: String) Int:
 	return outer(text)()
 
 fn c7(text: String) Int:
@@ -82,12 +82,12 @@ fn c7(text: String) Int:
 		t += f()
 	return t
 
-fn maker(text: String) fn() fn() Int:
+fn maker(move text: String) fn() fn() Int:
 	return fn() fn() Int:
 		n := text.length()
 		return fn() Int: return n + n
 
-fn c8(text: String) Int:
+fn c8(move text: String) Int:
 	return maker(text)()()
 
 fn c9(text: String) (fn() Int)?:
