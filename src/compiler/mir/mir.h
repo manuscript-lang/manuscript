@@ -90,7 +90,10 @@ typedef enum MirImmKind {
 } MirImmKind;
 
 enum {
-  MIR_E_READS = 1, MIR_E_WRITES = 2, MIR_E_FAULTS = 4, MIR_E_OWNERSHIP = 8, MIR_E_ALLOC = 16, MIR_E_IO = 32
+  MIR_E_READS = 1, MIR_E_WRITES = 2, MIR_E_FAULTS = 4, MIR_E_OWNERSHIP = 8, MIR_E_ALLOC = 16, MIR_E_IO = 32,
+  /* with MIR_E_FAULTS: the only fault is a refused allocation, which leaves every place the operands came from
+   * holding its value, so a cleanup entry for such a place need not be retired around the instruction */
+  MIR_E_OOM = 64
 };
 
 typedef enum MirOp {

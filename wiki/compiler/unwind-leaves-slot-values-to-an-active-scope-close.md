@@ -21,3 +21,5 @@ A scope-end list close whose element close returns an error leaked the list buff
 Apply when: changing the unwind pass, inlining of mutable methods, or slot-held cleanup entries.
 Evidence: [lifecycle fixture](../../tests/conformance/fixtures/e2e/accept/promise-fault-scope-close-unwind.ms), [MIR controls](../../crates/ms-mir/tests/unwind.rs).
 Verify: run the fixture in Debug under valgrind or a counting runtime, and dispatch the full platform matrix.
+
+Lesson (cleanup entry around a push, 2026-11-23): elaboration cancels a slot owner's cleanup entry where the value is taken out and registers a new one where the slot is refilled, so a `List.push` loop paid two runtime calls per element (`closures_20M` 217 ms, now 95 ms). When nothing between the cancel and the refill can leave the function, the entry stays registered and both go (`cancelled_then_quiet`). An instruction counts as quiet unless it has `MIR_E_FAULTS` or `MIR_E_IO`; `MIR_E_OOM` marks the one allowed exception, a fault that is only a refused allocation, which leaves the slot holding its old value for the closer. Mark a new op `MIR_E_OOM` only if that holds.

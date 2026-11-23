@@ -247,7 +247,7 @@ static bool function_blocks(ElCx *cx, MirFunc *func, ElEm *em) {
 static bool elaborate_function(ElCx *cx, MirModule *module, MirFunc *func) {
   cx->f = func;
   el_tags(cx);
-  ElEm em = {.cx = cx, .m = module, .f = func, .pending = MIR_NONE};
+  ElEm em = {.cx = cx, .m = module, .f = func, .pending = MIR_NONE, .cancelled = {.value = MIR_NONE}};
   const bool ok = function_blocks(cx, func, &em);
   if (ok) {
     el_prune_undominated_drops(cx);
