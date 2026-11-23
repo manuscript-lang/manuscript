@@ -34,7 +34,7 @@ Build output goes to `.artifacts/build/<preset>`. Generated files never go into 
 2. Use `ms_target_defaults(<target>)`: strict warnings are errors, no exemptions.
 3. Start the file with a comment saying what it owns. Check `base` first for any helper.
 
-`ms-c` runs every phase and names each one not yet implemented (exit status 70).
+`ms` runs every phase and names each one not yet implemented (exit status 70).
 
 ## Oracle and the gate
 

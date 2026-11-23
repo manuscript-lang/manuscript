@@ -37,7 +37,7 @@ add_subdirectory(src/tooling)
 add_subdirectory(src/cli)
 add_subdirectory(src/lint)
 
-# `cmake --build <dir> --target conform-c` replays the whole conformance corpus against ms-c and prints the progress
+# `cmake --build <dir> --target conform-c` replays the whole conformance corpus against ms and prints the progress
 # numbers; `conform-commands` replays only the command fixtures (tests/conformance/commands), for the platforms where
 # the corpus is too slow. MS_ORACLE_DIR holds the oracle `ms-conform` built from 660429d4, outside the repository;
 # MS_CONFORM_EXTRA adds ms-conform selection arguments, semicolon separated.
@@ -47,14 +47,14 @@ function(ms_conform_target name only comment)
   add_custom_target(${name}
     COMMAND ${CMAKE_COMMAND}
       "-DMS_CONFORM=${MS_ORACLE_DIR}/ms-conform${CMAKE_EXECUTABLE_SUFFIX}"
-      "-DMS_C=$<TARGET_FILE:ms-c>"
+      "-DMS_C=$<TARGET_FILE:ms>"
       "-DSOURCE_DIR=${CMAKE_SOURCE_DIR}"
       "-DEXTRA=${MS_CONFORM_EXTRA}"
       "-DONLY=${only}"
       -P "${CMAKE_SOURCE_DIR}/cmake/ConformC.cmake"
-    DEPENDS ms-c
+    DEPENDS ms
     USES_TERMINAL
     COMMENT "${comment}")
 endfunction()
-ms_conform_target(conform-c "" "Running the conformance corpus against ms-c")
-ms_conform_target(conform-commands commands "Replaying the command fixtures against ms-c")
+ms_conform_target(conform-c "" "Running the conformance corpus against ms")
+ms_conform_target(conform-commands commands "Replaying the command fixtures against ms")

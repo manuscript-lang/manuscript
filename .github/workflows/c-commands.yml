@@ -1,6 +1,6 @@
 name: C port commands
 
-# Replays the command fixtures (tests/conformance/commands) against ms-c on every platform, with the frozen oracle
+# Replays the command fixtures (tests/conformance/commands) against ms on every platform, with the frozen oracle
 # binaries a `C port oracle` run kept as artifacts (run 44945230921 built all six). Run it by hand; it prints
 # each failing fixture and `commands: passed/total`, and does not fail on fixtures that differ.
 on:

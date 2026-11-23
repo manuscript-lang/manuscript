@@ -1,5 +1,5 @@
 # `ms profile` end to end on this platform: builds a program that burns CPU in a recursive function, runs it under the
-# sampler and checks the bundle and both reports: `cmake -DMS_C=<ms-c> -DWORK=<scratch dir> -P cmake/ProfileRun.cmake`.
+# sampler and checks the bundle and both reports: `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/ProfileRun.cmake`.
 # The LLVM tools come from TOOL_DIR, PATH, or Homebrew's keg-only prefixes on macOS, as in SmokeRun.cmake.
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")

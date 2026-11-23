@@ -1,4 +1,4 @@
-/* Driver: the compile phases `ms-c` runs, in order, and what is implemented.
+/* Driver: the compile phases `ms` runs, in order, and what is implemented.
  *
  * Every phase has a stub that reports "not implemented"; a layer owner replaces the stub
  * in the same PR that lands the layer. The pass counts of `conform-c` then move. */
