@@ -445,6 +445,14 @@ static bool same_place(const Uses *pass, const MsExpr *a, const MsExpr *b) {
          same_place(pass, a->u.member.left, b->u.member.left);
 }
 
+/* A local or a parameter, as one number: a parameter's index follows the locals' range. */
+static uint32_t swap_key(const MsRef *ref) {
+  if (ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
+    return UINT32_MAX;
+  }
+  return ref->kind == MS_REF_PARAM ? ref->local | UINT32_C(0x40000000) : ref->local;
+}
+
 /* `old := a` borrows `a`; if the next thing the callable does with `a` is assign it, the binding must own the value,
  * or the assignment frees what the binding still reads. A read of `a` in between keeps the plain borrow. */
 static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
@@ -457,8 +465,8 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
     }
     const MsExpr *source_name = bound_local_source(pass, stmt->u.bind.value);
     const MsRef *source = source_name == NULL ? NULL : ms_facts_ref(pass->facts, source_name->id);
-    if (source != NULL && source->kind == MS_REF_LOCAL) {
-      ms_binding_list_push(&pass->cand_locals, source->local);
+    if (swap_key(source) != UINT32_MAX) {
+      ms_binding_list_push(&pass->cand_locals, swap_key(source));
       ms_binding_list_push(&pass->cand_nodes, source_name->id);
     }
     return;
@@ -476,8 +484,8 @@ static void note_swap_stmt(void *ctx, const MsStmt *stmt) {
     return;
   }
   const MsRef *target = ms_facts_ref(pass->facts, stmt->id);
-  for (size_t index = 0; target != NULL && target->kind == MS_REF_LOCAL && index < pass->cand_locals.len; index++) {
-    if (pass->cand_locals.ptr[index] == target->local) {
+  for (size_t index = 0; swap_key(target) != UINT32_MAX && index < pass->cand_locals.len; index++) {
+    if (pass->cand_locals.ptr[index] == swap_key(target)) {
       ms_binding_list_push(&pass->swapped, pass->cand_nodes.ptr[index]);
       pass->cand_locals.ptr[index] = UINT32_MAX;
     }
@@ -492,8 +500,8 @@ static void note_swap_expr(void *ctx, const MsExpr *expr) {
     }
   }
   const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(pass->facts, expr->id) : NULL;
-  for (size_t index = 0; ref != NULL && ref->kind == MS_REF_LOCAL && index < pass->cand_locals.len; index++) {
-    if (pass->cand_locals.ptr[index] == ref->local && pass->cand_nodes.ptr[index] != expr->id) {
+  for (size_t index = 0; swap_key(ref) != UINT32_MAX && index < pass->cand_locals.len; index++) {
+    if (pass->cand_locals.ptr[index] == swap_key(ref) && pass->cand_nodes.ptr[index] != expr->id) {
       pass->cand_locals.ptr[index] = UINT32_MAX; /* read again before any assignment */
     }
   }

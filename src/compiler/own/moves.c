@@ -27,6 +27,7 @@ typedef struct Moves {
   MsBindingList vars;   /* binding sites of `var` locals of the body */
   MsBindingList reads;  /* `if p := name:` scrutinees that are not resources: the payload is a view, the name stays whole */
   MsBindingList moving; /* binding sites of `move` parameters of the body */
+  uint32_t assigning; /* the binding the statement being visited assigns whole, or UINT32_MAX */
   MsBindingList varparams; /* binding sites of `var` parameters: the caller's place, which a closure cannot take */
   MsBindingList borrowed; /* binding sites of names bound to a view of another value */
   MsBindingList owners;   /* binding sites of locals that hold a value of their own: made by a call or literal, or a `var` */
@@ -279,6 +280,11 @@ static void check_handed_on(Moves *pass, const MsExpr *value) {
 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
+  uint32_t assigned = 0;
+  pass->assigning = stmt->kind == MS_S_ASSIGN && stmt->u.assign.target == NULL && !stmt->u.assign.has_compound &&
+                            ms_bind_of(pass->facts, stmt->id, &assigned)
+                        ? assigned
+                        : UINT32_MAX;
   if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL) {
     check_handed_on(pass, stmt->u.expr);
   }
@@ -350,6 +356,27 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || contains(&pass->reads, expr->id) ||
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;
+  }
+  if (!pass->instance && pass->depth == 0 && binding != pass->assigning && contains(&pass->varparams, binding)) {
+    const MsTy held = ms_facts_type(pass->facts, expr->id);
+    const bool resource = held != MS_TY_NONE && ms_check_holds_resource(pass->program, held);
+    if (held != MS_TY_NONE && ms_class_of(pass->classes, held) != MS_CLASS_COPY &&
+        ms_ty_kind(&pass->program->types, held) != MS_TY_FUNCTION) {
+      MsStrBuild text = ms_strbuild_new();
+      const MsSpan name = ms_names_span(pass->program->names, expr->u.sym);
+      ms_strbuild_append_text(&text, "cannot move `");
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, "` out of the function: the caller keeps ownership of a var parameter");
+      if (resource) {
+        ms_strbuild_append_text(&text, " and closes it; a resource cannot be cloned, so change it in place");
+      } else {
+        ms_strbuild_append_text(&text, "; return `");
+        ms_strbuild_append(&text, name);
+        ms_strbuild_append_text(&text, ".clone()` or change the value in place");
+      }
+      ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      return;
+    }
   }
   const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(expr->id, binding));
   if (use != NULL && !use->last) {
