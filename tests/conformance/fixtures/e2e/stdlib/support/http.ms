@@ -16,7 +16,7 @@ export fn list_headers(fields: Map[String, List[String]]) HttpHeaders!:
 
 // Streaming callbacks must fail with a Failed Error; retain the diagnostic text of
 // another operation.
-export fn http_result[T](outcome: T!) T!:
+export fn http_result[T](move outcome: T!) T!:
 	match outcome:
 		ok(found): return ok(found)
 		error(cause): return error(Error(cause.message.clone(), kind: "EIO"))
