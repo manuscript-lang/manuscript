@@ -1,4 +1,5 @@
 /* compiler/check/effects_directives.c: reading effect directives out of comment lines. */
+#include <stdint.h>
 #include "compiler/check/effects_directives.h"
 #include "base/chars.h"
 
@@ -83,19 +84,41 @@ MsDirectives ms_directives_header(MsSpan source) {
   return found;
 }
 
+/* The offset where the 0-based line `index` starts, or SIZE_MAX when the source has fewer lines. */
+static size_t line_start(MsSpan source, size_t index) {
+  size_t start = 0;
+  for (size_t line = 0; line < index; line++) {
+    const uint8_t *newline = __builtin_memchr(source.ptr + start, '\n', source.len - start);
+    if (newline == NULL) {
+      return SIZE_MAX;
+    }
+    start = (size_t)(newline - source.ptr) + 1;
+  }
+  return start;
+}
+
 MsDirectives ms_directives_above(MsSpan source, uint32_t line) {
   MsDirectives found = {0};
-  MsSpanList lines = {0};
-  size_t next = 0;
-  for (size_t cursor = 0; cursor <= source.len; cursor = next) {
-    ms_span_list_push(&lines, line_at(source, cursor, &next));
+  const size_t above = line > 0 ? line - 1 : 0; /* the 0-based index of the line above the declaration, plus one */
+  if (above == 0) {
+    return found;
   }
-  size_t at = line > 0 ? line - 1 : 0;
-  while (at > 0 && at <= lines.len && ms_span_starts_with(trim(lines.ptr[at - 1]), ms_span_of_text("//"))) {
-    read_line(&found, lines.ptr[at - 1]);
-    at--;
+  size_t start = line_start(source, above - 1);
+  while (start != SIZE_MAX) {
+    size_t next = 0;
+    const MsSpan text = line_at(source, start, &next);
+    if (!ms_span_starts_with(trim(text), ms_span_of_text("//"))) {
+      break;
+    }
+    read_line(&found, text);
+    if (start == 0) {
+      break;
+    }
+    start--; /* the newline that ends the line above */
+    while (start > 0 && source.ptr[start - 1] != '\n') {
+      start--;
+    }
   }
-  ms_span_list_free(&lines);
   return found;
 }
 

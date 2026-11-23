@@ -20,7 +20,7 @@ make verify
 - `make build` produces `target/release/ms`; the Rust build details are in [Rust toolchain](rust-toolchain.md).
 - `make fmt`, `make docs`, and `make licenses` write corrections and generated output explicitly.
 
-`make repo-check` (the `ms-repo-check` crate) also caps multi-line Manuscript programs held in Rust string literals per file (`BASELINE` in `inline_source.rs`; the counts only go down), and rejects invalid syntax in any `stdlib/*.ms` file, nested matches in repository Manuscript sources, and Markdown fences (`manuscript`, `ms`, `text`), including untracked files Git does not ignore. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
+`make repo-check` runs `tools/repo-check.ms` with the built `ms` (it also runs in pull request CI): `ms fmt --check` over the repository's `.ms` files, `ms lint --syntax` for nested matches in `.ms` files and Markdown fences (`manuscript`, `ms`, `text`; a `// manuscript:allow-nested-match <reason>` line before a match allows a fixture), the `.msversion` calendar version and the extension pin, the `ci.yml` triggers, the standard-library rules in `tools/stdlib-rules.ms` (an `options` or `limits` parameter has a default, no stream-shaped method names, methods follow their type, every `stdlib/internal` extern is used; `tools/optional-defaults-allowed.txt` and `tools/stream-names-allowed.txt` only shrink), and the license inventory. Keep examples and remedies flat; see [flat match flow](../core-language/control-flow/pattern-matching.md#keep-match-flow-flat).
 
 - Allowance: a deliberate regression puts `// manuscript:allow-nested-match <reason>` before one inner match in a `tests/*.ms` fixture.
 - Each allowance covers one match; implementation and documentation cannot opt out.
@@ -63,7 +63,7 @@ Keep Manuscript source out of Rust strings. Diagnostics and run output belong in
 
 Write source assertions with `@std/test/test.ms` and propagate their Results: `operation() | expect_ok? | expect_equal(value)?`. Fault messages are asserted in `.ms` tests with `expect_fault`. For callbacks that must be skipped, record invocations and assert that the record stays empty.
 
-`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib`. `BENCHREPEATS` sets the sample count per case and `BENCHFILTER` narrows the cases. Add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (`measure(ops, work)` times the work after untimed setup). It is a profiling guide, not a gate.
+`make stdlib-bench` prints per-case ns/op for `bench/perf/stdlib`. `BENCHREPEATS` sets the sample count per case and `BENCHFILTER` narrows the cases. Add cases as `bench` blocks in `bench/perf/stdlib/*_bench.ms` (a `fixture` built by `make_fixture` keeps setup out of the timing). It is a profiling guide, not a gate.
 
 `make agent-bench-check` runs the agent benchmark oracle.
 

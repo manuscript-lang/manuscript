@@ -1,54 +1,40 @@
-import keep, measure from "@std/test/bench.ms"
-
 // `a.min(b)` and `a.clamp(low, high)` against the same comparison written with `if`; both should cost the same.
-bench "ordering.min_method":
-	fn work() Result[Void, Error]:
-		var total = 0
-		for i in 0..1000000:
-			total += ((i * 7919) % 10007).min(5000)
-		return keep(total)
+bench "ordering.min_method" per 1000000:
+	var total = 0
+	for i in 0..1000000:
+		total += ((i * 7919) % 10007).min(5000)
+	total
 
-	measure(1000000, work)?
+bench "ordering.min_if" per 1000000:
+	var total = 0
 
-bench "ordering.min_if":
-	fn work() Result[Void, Error]:
-		var total = 0
+	for i in 0..1000000:
+		value := (i * 7919) % 10007
 
-		for i in 0..1000000:
-			value := (i * 7919) % 10007
+		if value < 5000:
+			total += value
+		else:
+			total += 5000
 
-			if value < 5000:
-				total += value
-			else:
-				total += 5000
+	total
 
-		return keep(total)
+bench "ordering.clamp_method" per 1000000:
+	var total = 0
+	for i in 0..1000000:
+		total += ((i * 7919) % 10007).clamp(2000, 8000)
+	total
 
-	measure(1000000, work)?
+bench "ordering.clamp_if" per 1000000:
+	var total = 0
 
-bench "ordering.clamp_method":
-	fn work() Result[Void, Error]:
-		var total = 0
-		for i in 0..1000000:
-			total += ((i * 7919) % 10007).clamp(2000, 8000)
-		return keep(total)
+	for i in 0..1000000:
+		value := (i * 7919) % 10007
 
-	measure(1000000, work)?
+		if value < 2000:
+			total += 2000
+		else if value > 8000:
+			total += 8000
+		else:
+			total += value
 
-bench "ordering.clamp_if":
-	fn work() Result[Void, Error]:
-		var total = 0
-
-		for i in 0..1000000:
-			value := (i * 7919) % 10007
-
-			if value < 2000:
-				total += 2000
-			else if value > 8000:
-				total += 8000
-			else:
-				total += value
-
-		return keep(total)
-
-	measure(1000000, work)?
+	total

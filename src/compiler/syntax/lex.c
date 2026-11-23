@@ -137,6 +137,7 @@ void lex_scanner_init(Scanner *s, MsArena *arena, MsSpan text, const uint32_t *l
                  .line_offsets = line_offsets,
                  .diag = diag};
   level_list_push(&s->levels, (Level){0, 0});
+  token_list_reserve(&s->tokens, text.len / 4 + 8); /* about one token per four source bytes */
 }
 
 void lex_scanner_free(Scanner *s) {
@@ -168,8 +169,9 @@ static void sort_ranges(RangeList *ranges) {
 }
 
 static bool has_crlf(MsSpan source) {
-  for (size_t index = 1; index < source.len; index++) {
-    if (source.ptr[index] == '\n' && source.ptr[index - 1] == '\r') {
+  for (const uint8_t *at = __builtin_memchr(source.ptr, '\r', source.len); at != NULL;
+       at = __builtin_memchr(at + 1, '\r', (size_t)(source.ptr + source.len - (at + 1)))) {
+    if (at + 1 < source.ptr + source.len && at[1] == '\n') {
       return true;
     }
   }

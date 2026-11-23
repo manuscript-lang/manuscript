@@ -92,6 +92,38 @@ static bool member_temp_type(LowerFn *fn, const MsExpr *member, MsTy *checked) {
   *checked = ms_ty_subst(types, ms_facts_type(fn->facts, base->id), fn->subst.vars, fn->subst.args, fn->subst.count);
   /* A resource field read in place (a method's receiver) leaves the record whole; one the statement moves does not. */
   const bool kept = !ms_check_holds_resource(fn->cx->program, field) || ms_facts_use(fn->facts, member->id) != MS_USE_MOVE;
+  /* A call that answers a part of its arguments (`o.get().id`) leaves what it borrowed from to its owner. */
+  const MsCall *call = ms_facts_call(fn->facts, base->id);
+  const MsFunc *callee = call != NULL ? ms_own_find_func(fn->cx->program, &call->callee) : NULL;
+  for (uint32_t index = 0; callee != NULL && index < callee->params.len; index++) {
+    if (callee->params.ptr[index]->moving) {
+      call = NULL; /* the callee owns a moved argument: its result is not a part of one the caller keeps */
+      break;
+    }
+  }
+  const MsExpr *callee_expr = base->u.call.callee;
+  const bool has_receiver = callee_expr->kind == MS_E_MEMBER && call != NULL && call->callee.kind == MS_REF_METHOD;
+  bool borrows_place = false;
+  bool borrows_temporary = false;
+  for (uint32_t position = 0; call != NULL && position <= base->u.call.args.len + (has_receiver ? 1u : 0u); position++) {
+    if (!ms_own_call_borrows(fn->cx->program, call, position)) {
+      continue;
+    }
+    /* A part of a temporary argument dies with the statement: that temporary closes it, so this one stays. */
+    const MsExpr *source = has_receiver && position == 0 ? callee_expr->u.member.left
+                           : position - (has_receiver ? 1u : 0u) < base->u.call.args.len
+                               ? base->u.call.args.ptr[position - (has_receiver ? 1u : 0u)].value
+                               : NULL;
+    const MsNativeGet view = source != NULL && source->kind == MS_E_CALL ? ms_own_native_get(fn->cx->program, fn->facts, source) : MS_NATIVE_GET_NONE;
+    if (source != NULL && source->kind == MS_E_CALL && view != MS_NATIVE_GET_LIST && view != MS_NATIVE_GET_MAP) {
+      borrows_temporary = true;
+    } else {
+      borrows_place = true;
+    }
+  }
+  if (borrows_place && !borrows_temporary) {
+    return false;
+  }
   return field != MS_TY_NONE && kept && *checked != MS_TY_NONE && fn_temp_closes(fn, *checked);
 }
 
@@ -254,7 +286,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     }
     /* A name that closes is made in the scope outside the statement's own (`bind_scope`). */
     if (stmt->kind == MS_S_BIND && fn_temp_closes(fn, bound)) {
-      return scan.receiver;
+      return scan.receiver || scan.found;
     }
     /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
     const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&

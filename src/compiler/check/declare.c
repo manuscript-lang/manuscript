@@ -33,6 +33,8 @@ void ms_check_program_free(MsCheckProgram *program) {
   ms_check_diag_list_free(&program->ownership);
   ms_pending_default_list_free(&program->pending_defaults);
   ms_methods_free(&program->methods);
+  ms_method_key_list_free(&program->method_index.by_name);
+  ms_method_key_list_free(&program->method_index.by_decl);
   ms_property_memo_free(&program->properties);
   ms_defs_free(&program->defs);
   ms_tys_free(&program->types);

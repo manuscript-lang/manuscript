@@ -1,14 +1,15 @@
 import (
 	panic from "@std/core.ms",
 	JsonValue from "@std/data/json.ms",
+
 	msstd_url_decode_component,
 	msstd_url_encode_component,
 	msstd_url_format,
 	msstd_url_format_query,
 	msstd_url_parse,
 	msstd_url_parse_query,
-	msstd_url_resolve
-) from "@std/internal/net.ms"
+	msstd_url_resolve from "@std/internal/net.ms",
+)
 
 // URLs follow RFC 3986 as Go's `net/url` reads it, not the WHATWG URL Standard that
 // browsers implement: there is no IDNA, IPv4 canonicalization or default-port removal.
@@ -46,6 +47,11 @@ export type Url:
 	// then omits the empty authority, so the text round-trips.
 	omit_host: Bool = false
 
+// Writes the formatted URL as a JSON string; components `format` rejects fault.
+fn Url.to_json() JsonValue:
+	text := format(self).get_or_else(fn cause: panic(f"Url.to_json: {cause.message}"))
+	return JsonValue.StringValue(text)
+
 // Decodes one percent-encoded URL component. `+` is not treated as a space.
 export fn decode_component(text: String) String!:
 	return msstd_url_decode_component(text)
@@ -53,11 +59,6 @@ export fn decode_component(text: String) String!:
 // Percent-encodes one URL component using UTF-8 bytes.
 export fn encode_component(text: String) String:
 	return msstd_url_encode_component(text)
-
-// Writes the formatted URL as a JSON string; components `format` rejects fault.
-fn Url.to_json() JsonValue:
-	text := format(self).get_or_else(fn cause: panic(f"Url.to_json: {cause.message}"))
-	return JsonValue.StringValue(text)
 
 // Formats URL components as an absolute hierarchical URL. Missing or malformed schemes
 // and hostless relative paths return EINVAL, as do other invalid components.

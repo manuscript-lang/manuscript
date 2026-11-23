@@ -88,7 +88,9 @@ bool lex_fail_format_(Scanner *s, const char *format, ...);
 bool lex_fail_previous_byte(Scanner *s, MsSpan message);
 bool lex_is_debug_escaped(uint32_t scalar);
 bool lex_is_graphic(uint8_t byte);
-bool lex_is_word_byte(uint8_t byte);
+static inline bool lex_is_word_byte(uint8_t byte) {
+  return ms_ascii_is_ident_start(byte) || ms_ascii_is_digit(byte);
+}
 int lex_last_kind(const Scanner *s);
 bool lex_names_a_member(const Scanner *s, size_t hi);
 MsDiag *lex_new_diag(Scanner *s, MsPos pos, MsSpan message);
