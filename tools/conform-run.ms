@@ -10,7 +10,8 @@
 // comparing (`--only-missing` keeps recorded ones, `--no-stable-check` skips the second
 // observation, `--prune` deletes fixtures that cannot be recorded). Fuzz and harvest
 // are not ported (#6225, #6226). MS names the ms under test (default
-// target/release/ms). CONFORM_BUILD_TYPE picks the build type of run and test (default
+// target/release/ms). CONFORM_DIFF=1 prints each failure's expected and observed (first
+// 600 characters). CONFORM_BUILD_TYPE picks the build type of run and test (default
 // Release). Fixtures tagged `aliasing` are left out of check, run and test as the gate
 // does (`--exclude-tag aliasing`). Usage: ms run tools/conform-run.ms -- [--phase
 // parse|check|run|test] [--jobs N] [fixture id substring ...] Prints
@@ -565,14 +566,31 @@ fn same(left: JsonValue, right: JsonValue) Bool:
 	return stringify(left).get() == stringify(right).get()
 
 // Observes each fixture of `chunk`: one `ok` or `FAIL <id>` line apiece.
-fn sweep(ms: String, build_type: String, chunk: List[Fixture]) List[String]:
+fn sweep(
+	ms: String,
+	build_type: String,
+	chunk: List[Fixture],
+	detail: Bool,
+) List[String]:
 	var lines = List[String]()
 
 	for fx in chunk:
-		if same(fx.expected, observe(ms, fx, build_type)): lines.append("ok")
+		observed := observe(ms, fx, build_type)
+
+		if same(fx.expected, observed): lines.append("ok")
+		else if detail: lines.append(
+			f"FAIL {fx.id}\n  expected: {clipped(fx.expected)}\n  observed: {clipped(observed)}"
+		)
 		else: lines.append(f"FAIL {fx.id}")
 
 	return lines
+
+// The first 600 characters of a value, for `CONFORM_DIFF=1` failure reports.
+fn clipped(value: JsonValue) String:
+	text := stringify(value).get()
+	if text.length() <= 600: return text.clone()
+
+	return f"{text.slice(0, 600)}..."
 
 // The text of `ms version`, stored in each expectation for provenance.
 fn oracle_version(ms: String) String:
@@ -682,6 +700,9 @@ fn main() Int:
 		Map[String, String]()
 	).get("CONFORM_BUILD_TYPE"): build_type = configured.clone()
 
+	show_diff := environment().get_or(
+		Map[String, String]()
+	).get("CONFORM_DIFF").is_some()
 	var chosen = List[Fixture]()
 
 	for fx in fixtures(f"{root}/tests/conformance/fixtures", phase, filters):
@@ -754,7 +775,8 @@ fn main() Int:
 		tool := ms.clone()
 		kind := build_type.clone()
 		mine := chunks[worker].clone()
-		tasks.append(promise(fn: ok(sweep(tool, kind, mine))))
+		detail := show_diff
+		tasks.append(promise(fn: ok(sweep(tool, kind, mine, detail))))
 
 	var passed = 0
 
