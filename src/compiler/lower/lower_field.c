@@ -84,7 +84,7 @@ static bool word_leaves(const MirModule *module, MirTy ty, uint32_t depth) {
   case MK_INT: case MK_FLOAT: case MK_UINT64: case MK_STR: case MK_BYTES: case MK_PTR: case MK_LIST: case MK_FN: case MK_IFACE:
     return true;
   case MK_OBJ:
-    return data->obj_class == MIR_OBJ_HANDLE;
+    return data->obj_class != MIR_OBJ_VALUE; /* a handle is a word, a collection is words */
   case MK_TYPE: {
     const MirTypeDef *def = &module->type_defs.ptr[data->id];
     for (uint32_t index = 0; index < def->nfields; index++) {
@@ -259,27 +259,54 @@ bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address,
   return !fn->failed;
 }
 
-/* Whether `expr` is a field path rooted in a `var` parameter that stays in the caller's cell. */
-static bool field_of_param_cell(LowerFn *fn, const MsExpr *expr) {
-  const MsExpr *root = expr;
-  while (root->kind == MS_E_MEMBER) {
-    root = root->u.member.left;
-  }
-  MirValue slot;
-  MirVar var;
-  return fn_closing_param(fn, root, &slot, &var);
+/* An empty value of `ty` stored over the field at `address`: what a field moved out of its record leaves, so the
+ * record's later drop releases nothing there. A slot starts zeroed, and the zero of every type drops as nothing. */
+static void field_hole(LowerFn *fn, MirValue address, MirTy ty) {
+  const MirImm of_type = {.tag = MI_TY, .a = ty};
+  const MirValue zero = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+  const MirValue empty = mir_b_emit(&fn->b, MOP_Take, &zero, 1, of_type, ty);
+  const MirValue stored[2] = {address, empty};
+  (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
 }
 
-/* A field of a record that lies in its cell, read where it lies; a field moved out of the caller's record is read the
- * same way (the move marks the hole). False when the field is read some other way. */
+/* A field of a record that lies in its cell, read where it lies. A field the read hands on (a move) leaves the cell
+ * with a hole, which a later assignment to it fills. False when the field is read some other way. */
 bool fn_read_field_in_place(LowerFn *fn, const MsExpr *expr, MirValue *value) {
   MirValue address = MIR_NONE;
-  if ((ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && !field_of_param_cell(fn, expr)) || !fn_field_address(fn, expr, &address)) {
+  if (!fn_field_address(fn, expr, &address)) {
     return false;
   }
   const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
   *value = fn_emit(fn, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+  if (fn->placing_member != expr && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, ty)) {
+    *value = fn_emit(fn, MOP_MoveOut, value, 1, (MirImm){0}, ty);
+    field_hole(fn, address, ty);
+  }
   return true;
+}
+
+/* `self.value` in a method of a type set: `self` is the variable `Self`, so the checker knew no field. Once the call
+ * binds `Self` to a member, the field is looked up by name in that member's record. */
+bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out) {
+  const MsTy left = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.member.left->id), fn->subst.vars,
+                                fn->subst.args, fn->subst.count);
+  if (left == MS_TY_NONE || fn->subst.count == 0) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, fn_type(fn, left));
+  if (data->kind != MK_TYPE) {
+    return false;
+  }
+  const MirTypeDef *def = &fn->cx->module->type_defs.ptr[data->id];
+  const MsSpan name = ms_names_span(fn->cx->program->names, expr->u.member.name);
+  for (uint32_t index = 0; index < def->nfields; index++) {
+    if (ms_span_equal(name, ms_names_span(&fn->cx->module->names, def->fields[index].name))) {
+      out->kind = MS_REF_FIELD;
+      out->index = index;
+      return true;
+    }
+  }
+  return false;
 }
 
 bool fn_move_field(LowerFn *fn, const MsExpr *expr, uint32_t index) {

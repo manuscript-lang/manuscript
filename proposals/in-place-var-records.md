@@ -8,7 +8,7 @@
 
 ## Status
 
-Built and merged with this proposal, 2026-11-23. The skeptical review asked for params before locals, partial moves and a measurement first; all three are covered below.
+Built, 2026-11-23: params and fresh locals in #6732, every `var` record in a cell (#6750) in the follow-up. The skeptical review asked for params before locals, partial moves and a measurement first; all three are covered below.
 
 ## Problem
 
@@ -49,6 +49,13 @@ yaml parse, `ms test` build (task-starting programs, `ci` preset, `/tmp/h/frames
 - Box records over a size: an allocation per record, and the chain stays; a separate lever.
 - Copy-on-write records: a runtime representation change for a lowering problem.
 
+## Every `var` record in a cell (#6750)
+
+- All mutable record locals live in a cell (plain data in a slot nothing closes), and so do `move` parameters assigned into. `holds_value`, the #6753 workaround that kept whole-assigned and partly moved locals as variables, is deleted.
+- Partial move: the field is loaded and `move.out`, and the cell gets a zeroed hole (`field_hole`); zero of any type drops as nothing, and an assignment to the field fills it.
+- `x = f(x)`: the old value is taken out of the cell first, reads of `x` on the right are that value, and afterwards it is dropped or handed on and the cell refilled. The old value stays an SSA owner, so a dying receiver's `clone` is still turned into a move (`consumed-arguments-stay-linear` 0.6 s, not 60 s).
+- A native that lends a field in place (`fn->placing_member`) reads it without moving.
+
 ## Remaining
 
-- Fields the alignment gate refuses, and locals not bound from a fresh value, keep the old path; they are the next candidates once the layout puts fields in their own cells.
+- Fields the alignment gate refuses keep the old path; closer methods' `self` and some `fn_owned_local` bases still take/put. Follow-ups: a struct-style layout where every field has its own cell and its own offset, and static unwind tables in place of runtime cleanup registration.

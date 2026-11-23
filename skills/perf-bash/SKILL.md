@@ -29,7 +29,7 @@ Do not fall back to Rust to make a program fast: make Manuscript fast enough, wi
 
 ## Standing rules
 
-Fix root causes with general algorithms and no benchmark hacks. Design data-oriented (flat arrays, indices) and compare against checked C on both Cranelift and LLVM, reading the generated machine code. Never gate or drop a test without the owner's okay. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until nothing new is found.
+Fix root causes with general algorithms and no benchmark hacks. Design data-oriented (flat arrays, indices) and compare against checked C (overflow and bounds checks on) on both Cranelift and LLVM, reading the generated machine code. Never gate or drop a test without the owner's okay. Stack PRs with auto-merge and do not idle on CI. Keep platform parity, add no CI shards, add no dependencies without asking, and keep stdlib work in Manuscript. Say "borrow", never "lend". Add the `in progress` label before fixing an issue and verify every fixed issue closes. Keep going until nothing new is found.
 
 ## Areas
 
