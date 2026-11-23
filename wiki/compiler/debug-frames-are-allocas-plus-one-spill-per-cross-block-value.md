@@ -9,3 +9,9 @@ The emitter shares storage itself, since LLVM will not at -O0: call result areas
 Decision (Chinmay, 2026-11-23): Debug builds run `opt default<O2>` (no vectorizers) and `llc -O2`, since 7.9 KB frames were still too big. Measured on the TOML parser: `string_value` 7.9 to 2.7 KB, `parse` 8.9 to 2.1 KB, `read_value` 5.9 to 1.4 KB; the accept+stdlib e2e sweep (8 parallel) went from 248 s to 383 s. `opt -O1` and `llc -O1` give the same frames. The emitter work above still matters: it shrinks the IR that opt and llc see. `e2e/stdlib/http-fault-leak.ms` (cancelled-fetch heap growth) fails intermittently at -O0 and -O2 alike (about 1 run in 4 grows 27 to 32 MB), so it is not caused by the optimizer.
 
 Measured after this (2026-11-23, TOML parser, Debug -O2): `string_value` 2.7 to 1.0 KB, `scalar` 1.4 KB to under 0.9 KB. Per-site runtime-call argument copies were 100 of 126 allocas of `string_value` (LLVM cannot merge them: the emitter writes no lifetime markers). What is left is about half allocas (shared `%X`/`%P`/`%R` areas, slots whose address escapes) and half spills.
+
+## Debug build pipeline (2026-11-23)
+
+- Debug runs `function(sroa,early-cse,simplifycfg,instcombine<no-verify-fixpoint>,sroa,simplifycfg)` and `llc -O1 -regalloc=basic -enable-misched=0`: frames within 0.2% of `default<O2>`, LLVM time 8.5 s against 21.6 s on a 30 MB program. SROA alone is +2.7%.
+- Not FastISel: it moves the line a fault trace reports (seed-0025 shows 60, not 63).
+- `instcombine` without `<no-verify-fixpoint>` aborts LLVM 23 builds that verify the fixpoint ("did not reach a fixpoint after 1 iterations").
