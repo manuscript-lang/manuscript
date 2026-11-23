@@ -95,6 +95,7 @@ static void release_process_memory(void) {
   ms_net_release_all();
   ms_http_engine_release_all();
   ms_streams_release_all();
+  ms_core_heap_report();
 }
 
 /* ---- ending the process ---- */
