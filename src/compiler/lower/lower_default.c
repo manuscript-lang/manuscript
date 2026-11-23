@@ -192,10 +192,7 @@ void fn_env_install(LowerFn *fn, const LowerOuterEnv *env) {
 
 /* A default argument is written in the callee's module: its names and types come from that module's facts. */
 MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected, const LowerOuterEnv *outer) {
-  if (fn->nouter == LOWER_MAX_DEFAULT_DEPTH) {
-    (void)fn_fail(fn, "default arguments nest too deeply");
-    return MIR_NONE;
-  }
+  fn->outer = fn_grow(fn, fn->outer, &fn->outer_cap, fn->nouter, sizeof(LowerOuterEnv));
   fn->outer[fn->nouter++] = *outer; /* what the caller's writebacks put their values back in */
   const MirValue value = default_argument(fn, call, arg, expected);
   fn->nouter--;

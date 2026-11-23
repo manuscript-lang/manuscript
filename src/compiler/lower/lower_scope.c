@@ -4,6 +4,29 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 
+/* Doubles `*items` (arena memory, so the old block is simply left) until it holds one more element than `used`. */
+void *fn_grow(LowerFn *fn, void *items, uint32_t *cap, uint32_t used, size_t size) {
+  const uint32_t need = used + 1;
+  if (need <= *cap) {
+    return items;
+  }
+  uint32_t next = *cap == 0 ? 16 : *cap * 2;
+  while (next < need) {
+    next *= 2;
+  }
+  void *fresh = ms_arena_alloc_zeroed(&fn->cx->module->arena, size * next, 16);
+  if (used > 0) {
+    __builtin_memcpy(fresh, items, size * used);
+  }
+  *cap = next;
+  return fresh;
+}
+
+void fn_loop_push(LowerFn *fn, MirBlock break_to, MirBlock continue_to) {
+  fn->loops = fn_grow(fn, fn->loops, &fn->loops_cap, fn->nloops, sizeof(LowerLoop));
+  fn->loops[fn->nloops++] = (LowerLoop){break_to, continue_to, fn->nopen};
+}
+
 uint32_t fn_scope(const LowerFn *fn) {
   return fn->open[fn->nopen - 1];
 }
@@ -14,10 +37,9 @@ uint32_t fn_scope_begin(LowerFn *fn) {
   const uint32_t parent_plus_one = fn->nopen > 0 ? fn->open[fn->nopen - 1] + 1 : 0;
   const MirImm imm = {.tag = MI_SCOPE, .a = id, .b = parent_plus_one};
   (void)mir_b_emit(&fn->b, MOP_ScopeBegin, NULL, 0, imm, MIR_NONE);
-  if (fn->nopen == LOWER_MAX_SCOPES) {
-    (void)fn_fail(fn, "scopes nest too deeply");
-    return id;
-  }
+  uint32_t closes_cap = fn->open_cap; /* both arrays grow together, from the same capacity */
+  fn->open = fn_grow(fn, fn->open, &closes_cap, fn->nopen, sizeof(uint32_t));
+  fn->open_closes = fn_grow(fn, fn->open_closes, &fn->open_cap, fn->nopen, sizeof(bool));
   fn->open_closes[fn->nopen] = false;
   fn->open[fn->nopen++] = id;
   return id;
@@ -61,21 +83,7 @@ static void settle_moved_vars(LowerFn *fn, uint32_t scope) {
 }
 
 bool fn_scope_own_var(LowerFn *fn, MirVar var) {
-  if (fn->nowned_vars == LOWER_MAX_OWNED_VARS) {
-    uint32_t kept = 0; /* entries of scopes that ended on a path that returned are stale */
-    for (uint32_t at = 0; at < fn->nowned_vars; at++) {
-      for (uint32_t depth = 0; depth < fn->nopen; depth++) {
-        if (fn->open[depth] == fn->owned_vars[at].scope) {
-          fn->owned_vars[kept++] = fn->owned_vars[at];
-          break;
-        }
-      }
-    }
-    fn->nowned_vars = kept;
-    if (kept == LOWER_MAX_OWNED_VARS) {
-      return fn_fail(fn, "too many mutable variables are open at once");
-    }
-  }
+  fn->owned_vars = fn_grow(fn, fn->owned_vars, &fn->owned_vars_cap, fn->nowned_vars, sizeof(LowerOwnedVar));
   LowerOwnedVar *entry = &fn->owned_vars[fn->nowned_vars++];
   *entry = (LowerOwnedVar){.scope = fn_scope(fn), .var = var, .checked = MS_TY_NONE, .pinned = MIR_NONE};
   if (mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->kind == MK_TYPE) {
