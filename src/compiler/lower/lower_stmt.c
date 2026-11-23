@@ -499,7 +499,7 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   if (fn_closing_local(fn, place, &slot, &slot_ty)) {
     const MirValue stored[2] = {slot, value};
     if (mir_needs_drop(fn->cx->module, slot_ty)) {
-      const MirImm refill = {.tag = MI_INT, .i = 2};
+      const MirImm refill = {.tag = MI_INT, .i = 3}; /* the lent value comes back */
       (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
     }
     (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
@@ -635,12 +635,15 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     return fn_fail(fn, "an assignment does not name a local");
   }
   fn->nmoved_names = 0;
+  fn->refilling_var = var + 1;
   const MirValue advanced = take_field_of_old(fn, stmt, var);
+  fn->refilling_var = advanced != MIR_NONE ? 0 : fn->refilling_var;
   if (advanced != MIR_NONE) { /* the old value is gone: nothing is left to drop */
     mir_b_def_var(&fn->b, var, advanced);
     return !fn->failed;
   }
   const MirValue value = take_value(fn, stmt->u.assign.value);
+  fn->refilling_var = 0;
   if (value == MIR_NONE) {
     return false;
   }

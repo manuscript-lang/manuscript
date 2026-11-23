@@ -803,6 +803,8 @@ static void count_whole_returns(void *ctx, const MsStmt *stmt) {
 /* `var t = id(make())`, `make().get()`: a call that answers its dying temporary argument itself (`id`), or the payload
  * of a dying Optional or Result receiver (`get`), gives the new owner that temporary's value instead of a copy.
  * Returns the owned value, or MIR_NONE when the call answers something else. */
+static bool leaves_binding(const LowerFn *fn, const MsExpr *expr);
+
 MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value) {
   const MsCall *call = ms_facts_call(fn->facts, expr->id);
   if (call == NULL || (call->callee.kind != MS_REF_FUNCTION && call->callee.kind != MS_REF_METHOD)) {
@@ -823,10 +825,17 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
     return MIR_NONE;
   }
   const uint32_t position = whole ? counts.local + (call->callee.kind == MS_REF_METHOD ? 1u : 0u) : 0;
-  if ((!whole && !payload) || position >= last->nargs || !fn_fresh_owner(fn, last->args[position])) {
+  if ((!whole && !payload) || position >= last->nargs) {
     return MIR_NONE;
   }
-  const MirValue temporary = last->args[position];
+  /* A name read for the last time dies with the call too: its payload leaves it. */
+  const MsExpr *dying = payload && !whole && fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
+  const MsRef *dying_ref = dying != NULL && dying->kind == MS_E_NAME ? ms_facts_ref(fn->facts, dying->id) : NULL;
+  const bool name_dies = dying_ref != NULL && dying_ref->kind == MS_REF_LOCAL && leaves_binding(fn, dying);
+  if (!name_dies && !fn_fresh_owner(fn, last->args[position])) {
+    return MIR_NONE;
+  }
+  MirValue temporary = last->args[position];
   if (whole) {
     if (ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, expr->id)) ||
         mir_b_ty(&fn->b, temporary) != mir_b_ty(&fn->b, value)) {
@@ -843,6 +852,12 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   }
   if (ms_ty_args(types, held)[0] != ms_facts_type(fn->facts, expr->id)) {
     return MIR_NONE; /* not the success payload */
+  }
+  if (name_dies && !fn_fresh_owner(fn, temporary)) {
+    temporary = fn_expr(fn, dying, LW_MOVE); /* the name hands its value on: its scope no longer releases it */
+    if (temporary == MIR_NONE) {
+      return MIR_NONE;
+    }
   }
   MirTy ty = MIR_VOID;
   return fn_take_payload(fn, temporary, &ty);
@@ -918,6 +933,14 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
+  /* A `var` parameter is the caller's value: it leaves only into an assignment to itself, which refills it. */
+  bool var_param = false;
+  for (uint32_t at = 0; expr->kind == MS_E_NAME && ref != NULL && ref->kind == MS_REF_PARAM && at < fn->nvar_params; at++) {
+    var_param |= fn->var_params[at].var == fn->param_vars[ref->local] && fn->refilling_var != fn->param_vars[ref->local] + 1;
+  }
+  if (var_param) {
+    return fn_implicit_clone(fn, value, true);
+  }
   if (in_var_record && fn->moving_field == expr && fn->nmoved_fields < 4 && !borrowed_param) {
     /* `old := self.f` followed by `self.f = g`: the field leaves the record and the assignment drops nothing. */
     fn->moved_fields[fn->nmoved_fields++] = expr;
