@@ -25,6 +25,7 @@ typedef struct LspAnalysis {
   MsArena arena;
   MsCheckedInput checked;
   MsOccurrences index; /* empty unless `resolved` */
+  MsWrittenTypes written;
   MsSpan *paths;       /* the file of each user module of the program */
   void *overlay;       /* the open documents' text, as the loader reads it */
   bool resolved;       /* the program was checked, with or without diagnostics */

@@ -26,7 +26,7 @@ typedef struct MsLinkRequest {
  * The tools come from the environment: `MS_OPT`, `MS_LLC` and `MS_LLD` name the executables (default `opt`, `llc`,
  * `lld`, found on PATH); `MS_FILES` is the directory of startup files and the glibc export table; `MS_RUNTIME` lists
  * the runtime archives, separated by `:` (`;` on Windows). Without `MS_FILES` and `MS_RUNTIME` the build's own
- * `files` directory next to `ms-c` and its runtime archives are used (cmake/MsRuntimePackage.cmake). */
+ * `files` directory next to `ms` and its runtime archives are used (cmake/MsRuntimePackage.cmake). */
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error);
 
 /* The name of the executable `run` and `test` build inside their temporary folder: Windows will not start a program

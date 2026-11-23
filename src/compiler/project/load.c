@@ -36,6 +36,7 @@ typedef struct Loader {
   MsSpanList active;  /* canonical paths being loaded, for cycle text */
   MsSpanList loaded;  /* canonical path of modules[i] */
   GraphDiagList diagnostics;
+  bool recover; /* MsLoadOptions.recover */
 } Loader;
 
 static MsPos start_position(void) {
@@ -184,6 +185,25 @@ static bool parse_source(Loader *loader, MsSpan file, MsSpan text, MsModule *mod
     return false;
   }
   if (!ms_parse(loader->arena, loader->names, text, module, &diag)) {
+    if (loader->recover) {
+      /* Keep what parses; the file's problems are the graph's diagnostics. */
+      MsDiag *issues = NULL;
+      size_t count = 0;
+      (void)ms_parse_partial(loader->arena, loader->names, text, module, &issues, &count);
+      /* The recovering parse names where the problem began; the strict one only where it was noticed. */
+      bool covered = false;
+      for (size_t i = 0; i < count; i++) {
+        covered |= issues[i].pos.line > 0 && ((diag.opener_line != 0 && issues[i].opener_line == diag.opener_line) ||
+                                              issues[i].pos.offset == diag.pos.offset);
+        if (issues[i].pos.line > 0) {
+          graph_diag_list_push(&loader->diagnostics, (MsGraphDiag){.file = file, .phase = MS_GRAPH_PARSE, .diag = issues[i]});
+        }
+      }
+      if (!covered) {
+        graph_diag_list_push(&loader->diagnostics, (MsGraphDiag){.file = file, .phase = MS_GRAPH_PARSE, .diag = diag});
+      }
+      return true;
+    }
     add_secondary(loader, file, text, &diag);
     *failure = parse_failure(file, &diag);
     return false;
@@ -530,7 +550,8 @@ void ms_project_load(MsArena *arena, MsNames *names, MsSpan filename, const MsLo
                    .names = names,
                    .overlay = options == NULL ? NULL : options->overlay,
                    .manifest = governed ? &manifest : NULL,
-                   .root = governed ? manifest.root : root};
+                   .root = governed ? manifest.root : root,
+                   .recover = options != NULL && options->recover};
   out->source_root = loader.root;
   const bool is_manifest = ms_span_is_text(ms_path_file_name(absolute), "ms.toml");
   if (is_manifest) {

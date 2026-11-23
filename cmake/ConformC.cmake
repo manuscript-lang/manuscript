@@ -1,5 +1,5 @@
-# Runs the frozen conformance corpus against ms-c and prints `phase: passed/total` per phase.
-# Called as: cmake -DMS_CONFORM=<oracle ms-conform> -DMS_C=<ms-c> -DSOURCE_DIR=<repo> -P ConformC.cmake
+# Runs the frozen conformance corpus against ms and prints `phase: passed/total` per phase.
+# Called as: cmake -DMS_CONFORM=<oracle ms-conform> -DMS_C=<ms> -DSOURCE_DIR=<repo> -P ConformC.cmake
 # Extra selection (for example a layer's subset): -DEXTRA="--tag;tier-core".
 # ms-conform is the frozen oracle runner from 660429d4; it is not part of the C build.
 foreach(required MS_CONFORM MS_C SOURCE_DIR)

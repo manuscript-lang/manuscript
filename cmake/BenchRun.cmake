@@ -1,5 +1,5 @@
 # `ms bench` end to end on this platform: runs a real bench block and checks the report's shape, not its timings, plus the
-# failure and listing paths: `cmake -DMS_C=<ms-c> -DWORK=<scratch dir> -P cmake/BenchRun.cmake`.
+# failure and listing paths: `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/BenchRun.cmake`.
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
