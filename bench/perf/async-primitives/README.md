@@ -111,3 +111,22 @@ Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start a
 | `batch` | 125 / 140 | 113 / 130 | 26 |
 
 Instructions for `inline` at one thread: 2,168 to 1,914.
+
+### Later the same day: the owner removes its queue entry without the lock
+
+Three changes to the path of a start that its own waiter runs:
+
+- The owner takes its entry back with one compare-and-swap on the entry (`ms_queue_remove`), not under the queue's lock; the ring is indexed by sequence number, and removed entries are trimmed at the next push or look.
+- A guarded inline run registers no cleanup for the closure: every way out of the guard returns to the caller, which drops it.
+- Freeing an empty fault report and an empty start line is an inline test.
+
+Before is the section above; median of 9 interleaved runs, ns at 1 / 4 threads.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline` | 134 / 136 | 121 / 124 | 33 |
+| `batch` (4 threads) | 124 | 102 | 26 |
+
+Instructions for `inline` at one thread: 1,914 to 1,750. `bench/perf/promise-tree` `tree 36 10` against the build of the one-closure section (ms, median of 7, 1 / 2 / 4 threads): 160 / 114 / 64 to 145 / 79 / 55.
+
+Not done. `inline` is 1,750 instructions against the C port's 270. The profile is flat: no function is above 80. About 1,000 are the promise and queue functions (six runtime calls per promise: new, start, wait, take, end, drop), about 250 are cleanup registrations and the shield in compiled code, 90 the guard.

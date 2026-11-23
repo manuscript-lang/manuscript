@@ -19,3 +19,5 @@ A result of at most three words stays in the row (`small`), so start and wait al
 A descriptor waiter that is not a promise: `ms_sched_fd_notify(kind, id, fd, events)` calls a function registered once per kind; use it where a `new`, `io_on_ready`, `fd_ready`, `drop` promise only watched a descriptor.
 
 Apply when: changing promise start, wait, the unstarted-work queue, worker wakes, or the fault report's start site. Check `bench/perf/async-primitives` at 1 and 4 threads, `promise-tree` and a program where one background promise must get its own thread.
+
+The owner removes its own queue entry with one compare-and-swap on the entry's id and takes no lock (2026-11-23): the ring is indexed by sequence number, so the owner finds the slot from the sequence it kept in the row, and only the owner pushes, so only it replaces the ring. A thief, under the lock, takes an entry with the same compare-and-swap, which decides between the two. `live` is therefore an upper bound until the next push or look trims. Keep it that way: do not add a field the owner must read under the lock to remove.

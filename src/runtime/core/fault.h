@@ -50,8 +50,13 @@ typedef struct MsFaultText {
   MsFaultDetail *detail; /* owned, or NULL for a report made without one (a deadlock found by the scheduler) */
 } MsFaultText;
 
-/* Frees the report and leaves `*text` empty. */
-void ms_fault_text_free(MsFaultText *text) MS_NONNULL;
+void ms_fault_text_release(MsFaultText *text) MS_NONNULL;
+/* Frees the report and leaves `*text` empty. Most reports are empty (no fault happened), so that test is inline. */
+MS_NONNULL static inline void ms_fault_text_free(MsFaultText *text) {
+  if (text->bytes != NULL || text->detail != NULL) {
+    ms_fault_text_release(text);
+  }
+}
 /* An independent copy of the report, detail included; the caller frees it. */
 MsFaultText ms_fault_text_clone(const MsFaultText *text) MS_NONNULL;
 /* Adds the line a task was started from to `text`, under a `task started by:` line. `site` is that line as a
