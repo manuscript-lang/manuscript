@@ -76,72 +76,7 @@ fn var List[T].reverse() Void: ...
 // Sorts the list in place, stably, in the order `compare` defines, as `sorted` does.
 // Comparable elements also have `sort()` without a comparator. Example:
 // `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
-fn var List[T].sort(compare: fn(T, T) Int) Void:
-	// A stable bottom-up merge sort of an index order (so no element is copied), then
-	// the order is applied in place by swapping along its cycles.
-	size := self.length()
-	if size < 2: return
-
-	var order = List[Int](reserve: size)
-	var merged = List[Int](reserve: size)
-
-	for i in 0..size:
-		order.append(i)
-		merged.append(0)
-
-	var width = 1
-
-	while width < size:
-		var low = 0
-
-		while low < size:
-			middle := if low + width < size: low + width else: size
-			high := if low + 2 * width < size: low + 2 * width else: size
-			var left = low
-			var right = middle
-			var out = low
-
-			while left < middle and right < high:
-				if compare(self[order[right]], self[order[left]]) < 0:
-					merged.set(out, order[right])
-					right += 1
-				else:
-					merged.set(out, order[left])
-					left += 1
-
-				out += 1
-
-			while left < middle:
-				merged.set(out, order[left])
-				left += 1
-				out += 1
-
-			while right < high:
-				merged.set(out, order[right])
-				right += 1
-				out += 1
-
-			low += 2 * width
-
-		for i in 0..size:
-			order.set(i, merged[i])
-		width *= 2
-
-	var placed = List[Bool](reserve: size)
-	for i in 0..size:
-		placed.append(false)
-
-	for start in 0..size:
-		if placed[start]: continue
-
-		var at = start
-
-		while order[at] != start:
-			self.swap(at, order[at])
-			placed.set(at, true)
-			at = order[at]
-
-		placed.set(at, true)
+fn var List[T].sort(compare: fn(T, T) Int) Void: ...
 
 // Returns the zero-based index of the first element for which `predicate` is true,
 // or `none`.
@@ -313,10 +248,7 @@ Returns a new list ordered by `compare`; the receiver is unchanged. The sort is 
 A negative, zero or positive result puts the first argument before, level with or after the second. Comparable elements also have `sorted()` without a comparator.
 Example: `names.sorted(fn a, b: a.length() - b.length())` orders by length.
 */
-fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]:
-	var out = self.clone()
-	out.sort(compare)
-	return out
+fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]: ...
 
 // Returns a new list of the values for which `predicate` is true, in their original
 // order.
@@ -447,9 +379,7 @@ Float orders NaN above every other value.
 Example: `[3, 1, 2].sorted()` is `[1, 2, 3]`.
 */
 fn List[T: Comparable & Clonable].sorted() List[T]:
-	var out = self.clone()
-	out.sort(fn a, b: a.compare(b))
-	return out
+	return self.sorted(fn a, b: a.compare(b))
 
 // Sorts the list in place, stably, in the same order as `sorted()`.
 // Example: `var xs = [3, 1, 2]` then `xs.sort()` leaves `[1, 2, 3]`.

@@ -375,6 +375,10 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
 bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                const MirValue *args, MirTy ret, MirValue *out);
 bool lists_in_place(LowerFn *fn, const MsExpr *expr);
+/* The `sort.cmp` thunk the runtime sort calls for comparator type `closure` over `elem`s; MIR_NONE on failure. */
+/* An operand in a slot of its own, for a native that reads or takes it by address; `lookup` only borrows it. */
+MirValue fn_operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup);
+uint32_t fn_sort_thunk(LowerFn *fn, MirTy elem, MirTy closure);
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);
