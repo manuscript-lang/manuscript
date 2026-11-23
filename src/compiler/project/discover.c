@@ -131,26 +131,13 @@ static bool scan_tree(Scan *scan, MsSpan root, bool all) {
   return walk_entry(scan, root, all, root, ms_path_file_name(root), kind == MS_PATH_DIRECTORY);
 }
 
-static int64_t span_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
-  (void)env;
-  const MsSpan *x = (const void *)a;
-  const MsSpan *y = (const void *)b;
-  const size_t common = x->len < y->len ? x->len : y->len;
-  for (size_t i = 0; i < common; i++) {
-    if (x->ptr[i] != y->ptr[i]) {
-      return x->ptr[i] < y->ptr[i] ? -1 : 1;
-    }
-  }
-  return x->len == y->len ? 0 : (x->len < y->len ? -1 : 1);
-}
-
 bool ms_project_discover(MsArena *arena, MsSpan root, MsSpan source, bool include_source, MsSpanList *files,
                          MsProjectError *error) {
   MsSpanList found = {0};
   Scan scan = {.arena = arena, .root = root, .source = source, .include_source = include_source,
                .files = &found, .error = error};
   const bool ok = (!include_source || scan_tree(&scan, source, true)) && scan_tree(&scan, root, false);
-  ms_sort((uint8_t *)found.ptr, found.len, sizeof(MsSpan), span_order, NULL);
+  ms_sort((uint8_t *)found.ptr, found.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   for (size_t i = 0; ok && i < found.len; i++) {
     if (i == 0 || !ms_span_equal(found.ptr[i - 1], found.ptr[i])) {
       ms_span_list_push(files, found.ptr[i]);

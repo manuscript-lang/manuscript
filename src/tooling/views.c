@@ -161,7 +161,7 @@ static MsViewNode *expand(Expander *x, const MsFact *f, int64_t level, MsSpans *
     if (callee == NULL || !relevant(x->view, callee)) {
       continue;
     }
-    if (contains(path, key)) {
+    if (ms_spans_contains(path, key)) {
       if (x->count >= MS_NODE_CAP) {
         x->skipped++;
         continue;
@@ -210,7 +210,7 @@ static void mark_reachable(const MsFactModel *model, MsSpan view, MsSpan start, 
   ms_spans_push(arena, &pending, start);
   while (pending.len > 0) {
     const MsSpan key = pending.ptr[--pending.len];
-    if (contains(seen, key)) {
+    if (ms_spans_contains(seen, key)) {
       continue;
     }
     ms_spans_push(arena, seen, key);
@@ -261,7 +261,7 @@ static bool view_roots(MsArena *arena, const MsFactModel *model, MsSpan view, Ms
   }
   for (size_t i = 0; i < model->entities.len; i++) {
     const MsFact *f = &model->entities.ptr[i];
-    if (is_callable(f) && relevant(view, f) && !contains(&called, f->key)) {
+    if (is_callable(f) && relevant(view, f) && !ms_spans_contains(&called, f->key)) {
       ms_views_roots_push(arena, roots, f);
     }
   }
@@ -272,7 +272,7 @@ static bool view_roots(MsArena *arena, const MsFactModel *model, MsSpan view, Ms
   }
   for (size_t i = 0; i < model->entities.len; i++) {
     const MsFact *f = &model->entities.ptr[i];
-    if (is_callable(f) && relevant(view, f) && !contains(&reached, f->key)) {
+    if (is_callable(f) && relevant(view, f) && !ms_spans_contains(&reached, f->key)) {
       ms_views_roots_push(arena, roots, f);
       mark_reachable(model, view, f->key, &reached, arena);
     }
@@ -369,7 +369,7 @@ static void flow_expand(FlowExpander *x, const MsViewNodes *nodes, int64_t level
     MsViewNode *copy = copy_shallow(x->arena, n);
     flow_expand(x, &n->kids, level, path, &copy->kids);
     if (n->reference.len > 0 && level < x->depth) {
-      if (contains(path, n->reference)) {
+      if (ms_spans_contains(path, n->reference)) {
         kid(x->arena, copy, leaf(x->arena, text("(cycle)")));
       } else {
         ms_spans_push(x->arena, path, n->reference);
@@ -531,7 +531,7 @@ static MsViewNode *ownership_node(MsArena *arena, const MsFactModel *model, cons
   ms_spans_push(arena, path, f->key);
   for (size_t i = 0; i < f->calls.len; i++) {
     const MsFact *callee = ms_views_fact_of(model, f->calls.ptr[i]);
-    if (callee == NULL || contains(path, f->calls.ptr[i]) || *count >= MS_NODE_CAP) {
+    if (callee == NULL || ms_spans_contains(path, f->calls.ptr[i]) || *count >= MS_NODE_CAP) {
       continue;
     }
     kid(arena, node, ownership_node(arena, model, callee, level + 1, depth, path, count));
@@ -605,7 +605,7 @@ static MsViewNode *type_node(MsArena *arena, const MsFactModel *model, const MsF
       if (target == NULL) {
         continue;
       }
-      if (contains(path, s->refs.ptr[r])) {
+      if (ms_spans_contains(path, s->refs.ptr[r])) {
         MsViewNode *cycle = leaf(arena, ms_message_format(arena, "%S  (cycle)", target->name));
         cycle->kind = text("cycle");
         cycle->reference = s->refs.ptr[r];
@@ -644,7 +644,7 @@ static bool types_view(MsArena *arena, const MsFactModel *model, MsSpan entity, 
       const MsFact *f = &model->entities.ptr[i];
       if (ms_views_is_data_type(f)) {
         ms_views_roots_push(arena, &all, f);
-        if (!contains(&held, f->key)) {
+        if (!ms_spans_contains(&held, f->key)) {
           ms_views_roots_push(arena, &roots, f);
         }
       }
@@ -756,7 +756,7 @@ static Module *overview(MsArena *arena, const MsFactModel *model, size_t *count)
       m->tests++;
     }
     for (size_t i = 0; i < f->effects.len; i++) {
-      if (!contains(&m->effects, f->effects.ptr[i])) {
+      if (!ms_spans_contains(&m->effects, f->effects.ptr[i])) {
         ms_spans_push(arena, &m->effects, f->effects.ptr[i]);
       }
     }

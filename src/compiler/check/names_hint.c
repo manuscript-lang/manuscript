@@ -125,16 +125,6 @@ static size_t min_size(size_t a, size_t b) {
   return a < b ? a : b;
 }
 
-static int span_order(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  for (size_t index = 0; index < common; index++) {
-    if (a.ptr[index] != b.ptr[index]) {
-      return a.ptr[index] < b.ptr[index] ? -1 : 1;
-    }
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 static bool is_better(const Best *best, size_t distance, bool unrelated, MsSpan candidate) {
   if (!best->found || distance != best->distance) {
     return !best->found || distance < best->distance;
@@ -142,7 +132,7 @@ static bool is_better(const Best *best, size_t distance, bool unrelated, MsSpan 
   if (unrelated != best->unrelated) {
     return !unrelated;
   }
-  return span_order(candidate, best->name) < 0;
+  return ms_span_compare(candidate, best->name) < 0;
 }
 
 /* The candidate closest to `name` that is a plausible misspelling of it. */

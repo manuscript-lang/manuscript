@@ -39,16 +39,11 @@ static bool eligible(const Actions *actions, LspRange range) {
   return range.start.line <= actions->requested.end.line && range.end.line >= actions->requested.start.line;
 }
 
-static void write_range(MsStrBuild *out, LspRange range) {
-  ms_strbuild_printf(out, "{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}}",
-                     range.start.line, range.start.character, range.end.line, range.end.character);
-}
-
 /* One text edit as JSON. */
 static void append_edit(MsStrBuild *edits, LspRange range, MsSpan text) {
   if (ms_strbuild_span(edits).len > 0) ms_strbuild_append_byte(edits, ',');
   ms_strbuild_append_text(edits, "{\"range\":");
-  write_range(edits, range);
+  lsp_json_range(edits, range);
   ms_strbuild_append_text(edits, ",\"newText\":");
   lsp_json_string(edits, text);
   ms_strbuild_append_byte(edits, '}');
@@ -57,7 +52,7 @@ static void append_edit(MsStrBuild *edits, LspRange range, MsSpan text) {
 /* A diagnostic as the server published it, for an action to pair with. */
 static void append_diagnostic(MsStrBuild *out, LspRange range, MsSpan message, MsSpan code, const char *source) {
   ms_strbuild_append_text(out, "{\"range\":");
-  write_range(out, range);
+  lsp_json_range(out, range);
   ms_strbuild_append_text(out, ",\"message\":");
   lsp_json_string(out, message);
   ms_strbuild_append_text(out, ",\"code\":");

@@ -42,16 +42,11 @@ static MsSpan uri_of(LspAnalysis *analysis, const LspDocList *docs, MsSpan path)
   return lsp_path_uri(docs, analysis->arena, path);
 }
 
-static void write_range(MsStrBuild *out, LspRange range) {
-  ms_strbuild_printf(out, "{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}}",
-                     range.start.line, range.start.character, range.end.line, range.end.character);
-}
-
 static void write_place(MsStrBuild *out, const Place *place) {
   ms_strbuild_append_text(out, "{\"uri\":");
   lsp_json_string(out, place->uri);
   ms_strbuild_append_text(out, ",\"range\":");
-  write_range(out, place->range);
+  lsp_json_range(out, place->range);
   ms_strbuild_append_byte(out, '}');
 }
 
@@ -99,7 +94,7 @@ static void write_places(MsStrBuild *out, const PlaceList *places, const char *k
       write_place(out, &places->ptr[i]);
     } else {
       ms_strbuild_append_text(out, "{\"range\":");
-      write_range(out, places->ptr[i].range);
+      lsp_json_range(out, places->ptr[i].range);
       ms_strbuild_printf(out, ",\"kind\":%s}", kind);
     }
   }
@@ -210,7 +205,7 @@ static bool hover_expression(const LspAnalysis *analysis, const LspDoc *doc, siz
     ms_strbuild_append_text(out, "{\"contents\":{\"kind\":\"markdown\",\"value\":");
     lsp_json_string(out, ms_strbuild_span(&value));
     ms_strbuild_append_text(out, "},\"range\":");
-    write_range(out, (LspRange){lsp_position(text, found.offset), lsp_position(text, found.end)});
+    lsp_json_range(out, (LspRange){lsp_position(text, found.offset), lsp_position(text, found.end)});
     ms_strbuild_append_byte(out, '}');
     ms_strbuild_free(&shown);
     ms_strbuild_free(&value);
@@ -279,7 +274,7 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   ms_strbuild_append_text(out, "{\"contents\":{\"kind\":\"markdown\",\"value\":");
   lsp_json_string(out, ms_strbuild_span(&value));
   ms_strbuild_append_text(out, "},\"range\":");
-  write_range(out, (LspRange){lsp_position(text, selected->offset), lsp_position(text, selected->end)});
+  lsp_json_range(out, (LspRange){lsp_position(text, selected->offset), lsp_position(text, selected->end)});
   ms_strbuild_append_byte(out, '}');
   ms_strbuild_free(&shown);
   ms_strbuild_free(&value);
@@ -309,7 +304,7 @@ static bool import_path_definition(LspAnalysis *analysis, const LspDocList *docs
         ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
         ms_strbuild_append(out, ms_span_of(written.ptr + 5, written.len - 5));
         ms_strbuild_append_text(out, "\",\"range\":");
-        write_range(out, (LspRange){{0, 0}, {0, 0}});
+        lsp_json_range(out, (LspRange){{0, 0}, {0, 0}});
         ms_strbuild_append_text(out, "}]");
         return true;
       }
@@ -328,7 +323,7 @@ static bool import_path_definition(LspAnalysis *analysis, const LspDocList *docs
         ms_strbuild_append_text(out, "[{\"uri\":");
         lsp_json_string(out, uri_of(analysis, docs, target));
         ms_strbuild_append_text(out, ",\"range\":");
-        write_range(out, (LspRange){{0, 0}, {0, 0}});
+        lsp_json_range(out, (LspRange){{0, 0}, {0, 0}});
         ms_strbuild_append_text(out, "}]");
       }
       ms_strbuild_free(&joined);
@@ -365,7 +360,7 @@ static bool self_definition(LspAnalysis *analysis, const LspDocList *docs, const
     ms_strbuild_append_text(out, "[{\"uri\":");
     lsp_json_string(out, uri_of(analysis, docs, ms_string_span(&doc->path)));
     ms_strbuild_append_text(out, ",\"range\":");
-    write_range(out, (LspRange){place, place});
+    lsp_json_range(out, (LspRange){place, place});
     ms_strbuild_append_text(out, "}]");
     return true;
   }
@@ -391,7 +386,7 @@ void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition p
       ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
       ms_strbuild_append(out, bundled.file);
       ms_strbuild_append_text(out, "\",\"range\":");
-      write_range(out, (LspRange){lsp_position(bundled.source, bundled.at), lsp_position(bundled.source, bundled.at + selected->name.len)});
+      lsp_json_range(out, (LspRange){lsp_position(bundled.source, bundled.at), lsp_position(bundled.source, bundled.at + selected->name.len)});
       ms_strbuild_append_text(out, "}]");
       lsp_analysis_release(&analysis);
       return;
@@ -624,7 +619,7 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     }
     const MsSpan source = source_of(&analysis, selected);
     ms_strbuild_append_text(out, "{\"range\":");
-    write_range(out, (LspRange){lsp_position(source, selected->offset), lsp_position(source, selected->end)});
+    lsp_json_range(out, (LspRange){lsp_position(source, selected->offset), lsp_position(source, selected->end)});
     ms_strbuild_append_text(out, ",\"placeholder\":");
     lsp_json_string(out, selected->name);
     ms_strbuild_append_byte(out, '}');
@@ -732,7 +727,7 @@ bool lsp_nav_rename(const LspDocList *docs, const LspDoc *doc, LspPosition posit
       }
       if (e > 0) ms_strbuild_append_byte(&body, ',');
       ms_strbuild_append_text(&body, "{\"range\":");
-      write_range(&body, (LspRange){lsp_position(source, edits.ptr[e].start), lsp_position(source, edits.ptr[e].end)});
+      lsp_json_range(&body, (LspRange){lsp_position(source, edits.ptr[e].start), lsp_position(source, edits.ptr[e].end)});
       ms_strbuild_append_text(&body, ",\"newText\":");
       lsp_json_string(&body, new_name);
       ms_strbuild_append_byte(&body, '}');
@@ -795,7 +790,7 @@ void lsp_nav_type_definition(const LspDocList *docs, const LspDoc *doc, LspPosit
         ms_strbuild_append_text(out, "[{\"uri\":\"manuscript-stdlib:///");
         ms_strbuild_append(out, ms_span_of(file.ptr + 5, file.len - 5));
         ms_strbuild_append_text(out, "\",\"range\":");
-        write_range(out, (LspRange){lsp_position(source, at), lsp_position(source, at + name_length)});
+        lsp_json_range(out, (LspRange){lsp_position(source, at), lsp_position(source, at + name_length)});
         ms_strbuild_append_text(out, "}]");
         lsp_analysis_release(&analysis);
         return;

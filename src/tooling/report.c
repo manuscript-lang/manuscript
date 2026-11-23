@@ -724,12 +724,6 @@ static void body(MsArena *arena, const MsReport *report, bool markdown, MsStrBui
   ms_strbuild_free(&b);
 }
 
-static void indent(MsStrBuild *out, size_t depth) {
-  for (size_t i = 0; i < depth; i++) {
-    ms_strbuild_append_text(out, "  ");
-  }
-}
-
 static void json_strings(MsStrBuild *out, const MsSpan *items, size_t count, size_t depth) {
   if (count == 0) {
     ms_strbuild_append_text(out, "[]");
@@ -737,53 +731,53 @@ static void json_strings(MsStrBuild *out, const MsSpan *items, size_t count, siz
   }
   ms_strbuild_append_text(out, "[\n");
   for (size_t i = 0; i < count; i++) {
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_json_string(out, items[i]);
     ms_strbuild_append_text(out, i + 1 < count ? ",\n" : "\n");
   }
-  indent(out, depth);
+  ms_strbuild_append_indent(out, depth);
   ms_strbuild_append_text(out, "]");
 }
 
 static void json_section(MsStrBuild *out, const MsSection *s) {
-  indent(out, 2);
+  ms_strbuild_append_indent(out, 2);
   ms_strbuild_append_text(out, "{\n");
-  indent(out, 3);
+  ms_strbuild_append_indent(out, 3);
   ms_strbuild_append_text(out, "\"title\": ");
   ms_json_string(out, s->title);
   if (s->headers.len > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "\"headers\": ");
     json_strings(out, s->headers.ptr, s->headers.len, 3);
   }
   if (s->cells.len > 0) {
     const size_t columns = s->headers.len;
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "\"rows\": [\n");
     const size_t rows = s->cells.len / columns;
     for (size_t r = 0; r < rows; r++) {
-      indent(out, 4);
+      ms_strbuild_append_indent(out, 4);
       json_strings(out, s->cells.ptr + r * columns, columns, 4);
       ms_strbuild_append_text(out, r + 1 < rows ? ",\n" : "\n");
     }
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "]");
   }
   if (s->lines.len > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "\"lines\": ");
     json_strings(out, s->lines.ptr, s->lines.len, 3);
   }
   if (s->more > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_printf(out, "\"more\": %zu", s->more);
   }
   ms_strbuild_append_text(out, "\n");
-  indent(out, 2);
+  ms_strbuild_append_indent(out, 2);
   ms_strbuild_append_text(out, "}");
 }
 
@@ -807,31 +801,31 @@ static void json_finding(MsStrBuild *out, const MsFinding *f, size_t number, siz
     MsSpan value;
   } head[] = {{"id", f->id}, {"tier", f->tier}, {"entity", f->entity}, {"where", f->location}};
   for (size_t i = 0; i < 4; i++) {
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_strbuild_printf(out, "\"%s\": ", head[i].key);
     ms_json_string(out, head[i].value);
     ms_strbuild_append_text(out, ",\n");
   }
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_append_text(out, "\"changes\": ");
   json_strings_or_null(out, &f->changes, depth + 1);
   ms_strbuild_append_text(out, ",\n");
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_printf(out, "\"reach\": %zu,\n", f->reach);
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_printf(out, "\"score\": %lld,\n", (long long)f->score);
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_append_text(out, "\"terms\": ");
   json_strings_or_null(out, &f->terms, depth + 1);
   if (f->evidence.len > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_strbuild_append_text(out, "\"evidence\": ");
     json_strings(out, f->evidence.ptr, f->evidence.len, depth + 1);
   }
   if (with_number) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     if (number == 0) {
       ms_strbuild_append_text(out, "\"number\": null");
     } else {
@@ -839,7 +833,7 @@ static void json_finding(MsStrBuild *out, const MsFinding *f, size_t number, siz
     }
   }
   ms_strbuild_append_text(out, "\n");
-  indent(out, depth);
+  ms_strbuild_append_indent(out, depth);
   ms_strbuild_append_text(out, "}");
 }
 
@@ -853,11 +847,11 @@ static void json_findings(MsStrBuild *out, const MsReport *report) {
   for (size_t i = 0; i < report->findings.len; i++) {
     const MsFinding *f = &report->findings.ptr[i];
     const size_t number = is_internal(f) ? 0 : ++rank;
-    indent(out, 2);
+    ms_strbuild_append_indent(out, 2);
     json_finding(out, f, number, 2, true);
     ms_strbuild_append_text(out, i + 1 < report->findings.len ? ",\n" : "\n");
   }
-  indent(out, 1);
+  ms_strbuild_append_indent(out, 1);
   ms_strbuild_append_text(out, "]");
 }
 

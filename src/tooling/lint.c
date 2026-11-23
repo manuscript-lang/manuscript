@@ -27,21 +27,12 @@ MsPos ms_lint_pos_at(MsSpan source, size_t offset) {
   return (MsPos){(uint32_t)offset, line, (uint32_t)(offset - line_start + 1)};
 }
 
-static int compare_spans(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 /* Semantic findings by file, offset and code, as the Rust rules sort them before the final merge. */
 static int64_t compare_semantic(uint8_t *env, const uint8_t *left, const uint8_t *right) {
   (void)env;
   const MsLintFinding *a = (const void *)left;
   const MsLintFinding *b = (const void *)right;
-  int order = compare_spans(a->file, b->file);
+  int order = ms_span_compare(a->file, b->file);
   if (order == 0) {
     order = a->pos.offset == b->pos.offset ? 0 : (a->pos.offset < b->pos.offset ? -1 : 1);
   }
@@ -55,7 +46,7 @@ static int64_t compare_position(uint8_t *env, const uint8_t *left, const uint8_t
   (void)env;
   const MsLintFinding *a = (const void *)left;
   const MsLintFinding *b = (const void *)right;
-  int order = compare_spans(a->file, b->file);
+  int order = ms_span_compare(a->file, b->file);
   if (order == 0) {
     order = a->pos.line == b->pos.line ? 0 : (a->pos.line < b->pos.line ? -1 : 1);
   }

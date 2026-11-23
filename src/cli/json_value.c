@@ -230,12 +230,6 @@ const MsJson *ms_json_member(const MsJson *object, const char *key) {
   return NULL;
 }
 
-static void indent(MsStrBuild *out, size_t depth) {
-  for (size_t i = 0; i < depth; i++) {
-    ms_strbuild_append_text(out, "  ");
-  }
-}
-
 void ms_json_write(MsStrBuild *out, const MsJson *json, size_t depth) {
   switch (json->kind) {
   case MS_JSON_NULL: ms_strbuild_append_text(out, "null"); return;
@@ -252,7 +246,7 @@ void ms_json_write(MsStrBuild *out, const MsJson *json, size_t depth) {
   }
   ms_strbuild_append_text(out, object ? "{\n" : "[\n");
   for (size_t i = 0; i < json->count; i++) {
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     if (object) {
       ms_json_string(out, json->keys[i]);
       ms_strbuild_append_text(out, ": ");
@@ -260,6 +254,6 @@ void ms_json_write(MsStrBuild *out, const MsJson *json, size_t depth) {
     ms_json_write(out, json->items[i], depth + 1);
     ms_strbuild_append_text(out, i + 1 < json->count ? ",\n" : "\n");
   }
-  indent(out, depth);
+  ms_strbuild_append_indent(out, depth);
   ms_strbuild_append_byte(out, object ? '}' : ']');
 }

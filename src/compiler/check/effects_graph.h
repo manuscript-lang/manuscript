@@ -46,7 +46,5 @@ static inline uint32_t ms_reach_target(const MsReachGraph *graph, MsName callee)
 uint32_t ms_reach_path(MsReachGraph *graph, uint32_t start, uint32_t bit, MsArena *arena,
                        const uint32_t **path);
 
-/* Byte-wise order of two texts: negative when `a` sorts first. */
-int64_t ms_span_order(MsSpan a, MsSpan b);
 
 #endif

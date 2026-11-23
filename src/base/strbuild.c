@@ -39,6 +39,12 @@ void ms_strbuild_append_u64_radix(MsStrBuild *builder, uint64_t value, unsigned 
   }
 }
 
+void ms_strbuild_append_indent(MsStrBuild *builder, size_t depth) {
+  for (size_t i = 0; i < depth; i++) {
+    ms_strbuild_append_text(builder, "  ");
+  }
+}
+
 void ms_strbuild_append_u64(MsStrBuild *builder, uint64_t value) {
   ms_strbuild_append_u64_radix(builder, value, 10);
 }

@@ -60,13 +60,8 @@ static void append_unique(MsArena *arena, MsSpans *list, MsSpan value) {
   }
 }
 
-static int64_t compare_span_items(uint8_t *env, const uint8_t *left, const uint8_t *right) {
-  (void)env;
-  return ms_span_compare(*(const MsSpan *)(const void *)left, *(const MsSpan *)(const void *)right);
-}
-
 static void sort_spans(MsSpans *list) {
-  ms_sort((uint8_t *)list->ptr, list->len, sizeof(MsSpan), compare_span_items, NULL);
+  ms_sort((uint8_t *)list->ptr, list->len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
 }
 
 /* `E` of a function type whose result is `Result[T, E]`, or empty. Port of `error_type`. */

@@ -222,6 +222,11 @@ void mir_func_init(MirModule *module, MirFunc *func, MsName name, const MirParam
 
 /* ---- terminators ---- */
 
+void mir_target_remove_arg(MirTarget *t, uint32_t k) {
+  __builtin_memmove(&t->args[k], &t->args[k + 1], sizeof(MirValue) * (t->nargs - k - 1));
+  t->nargs--;
+}
+
 uint32_t mir_term_ntargets(const MirTerm *term) {
   switch ((MirTermKind)term->kind) {
   case MT_BR:
