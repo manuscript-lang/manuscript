@@ -44,6 +44,11 @@ bool ms_invocation_takes_value(MsSpan flag) {
   return false;
 }
 
+bool ms_invocation_skips_value(MsSpan flag) {
+  return ms_invocation_takes_value(flag) || ms_span_is_text(flag, "--limit") || ms_span_is_text(flag, "--explain") ||
+         ms_span_is_text(flag, "--effect");
+}
+
 /* `--name=value` for a long option that takes a value; any other token stays whole. */
 static bool split_inline(MsSpan arg, MsSpan *flag, MsSpan *value) {
   *flag = arg;
