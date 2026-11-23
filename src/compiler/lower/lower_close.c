@@ -236,15 +236,19 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked) {
 }
 
 /* Puts `value` in a fresh slot owned by the innermost scope and returns the slot; `owns` says it needs a drop. */
-static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent) {
+static MirValue own_slot_in(LowerFn *fn, uint32_t scope, MirTy ty, MirValue value, uint32_t silent) {
   const MirImm none = {0};
   const bool owns = mir_needs_drop(fn->cx->module, ty);
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, imm_ty(ty), MIR_PTR);
   const MirValue stored[2] = {slot, value};
   (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, none, MIR_NONE);
-  const MirImm own = {.tag = MI_SCOPE, .a = fn_scope(fn), .b = silent + 2};
+  const MirImm own = {.tag = MI_SCOPE, .a = scope, .b = silent + 2};
   (void)mir_b_emit(&fn->b, MOP_ScopeOwn, &slot, 1, own, MIR_NONE);
   return slot;
+}
+
+static MirValue own_slot(LowerFn *fn, MirTy ty, MirValue value, uint32_t silent) {
+  return own_slot_in(fn, fn_scope(fn), ty, value, silent);
 }
 
 /* `fn(slot)`: takes the value the slot holds and drops it. */
@@ -329,6 +333,10 @@ bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old) {
 }
 
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var) {
+  return fn_bind_closing_in(fn, fn_scope(fn), local, checked, value, is_var);
+}
+
+bool fn_bind_closing_in(LowerFn *fn, uint32_t scope, uint32_t local, MsTy checked, MirValue value, bool is_var) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   if (fn->shared != NULL && local < fn->nvars && fn->shared[local] == LOWER_SHARED && !mir_needs_drop(fn->cx->module, ty)) {
     /* A variable of plain data that a lambda changes: a slot nothing closes. */
@@ -348,7 +356,7 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
   if (mir_needs_drop(fn->cx->module, ty)) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
   }
-  const MirValue slot = own_slot(fn, ty, value, silent);
+  const MirValue slot = own_slot_in(fn, scope, ty, value, silent);
   fn->closing[local] = slot;
   fn->closing_var[local] = is_var;
   fn->closing_types[local] = ty;

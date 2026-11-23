@@ -249,12 +249,23 @@ static void flag_root(Closers *pass, const MsExpr *place, uint16_t flags) {
 
 /* A call that returns a value which may hold a resource (or whose type is not known yet) may take a part out of
  * a holder it is given, or called on: a holder closes whole only when no call does. */
-/* Whether the result of `call` is a view of the argument `value`: it hands out nothing the holder gives up. */
-static bool result_views(const Closers *pass, const MsExpr *call, const MsExpr *value) {
+/* Whether `call` leaves the holder `value` whole: its result is a view of it, or the callee changes it in place (a
+ * `var` argument, a mutating method), so what it hands out leaves the holder consistent. */
+static bool keeps_holder(const Closers *pass, const MsExpr *call, const MsExpr *value) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
   for (uint32_t index = 0; fact != NULL && index < fact->arg_count; index++) {
-    if (fact->args[index].source == MS_ARG_WRITTEN && fact->args[index].node.node == value->id) {
-      return ms_own_call_borrows(pass->program, fact, index);
+    if (fact->args[index].source != MS_ARG_WRITTEN || fact->args[index].node.node != value->id) {
+      continue;
+    }
+    if (ms_own_call_borrows(pass->program, fact, index) || (fact->args[index].flags & MS_PARAM_VAR) != 0) {
+      return true;
+    }
+    for (size_t at = 0; at < pass->program->methods.len; at++) {
+      const MsMethodEntry *entry = &pass->program->methods.ptr[at];
+      if (entry->module == fact->callee.decl.module && entry->source->id == fact->callee.decl.node && entry->source->mutating &&
+          !entry->source->consuming) {
+        return true;
+      }
     }
   }
   return false;
@@ -274,11 +285,11 @@ static void flag_taken_by(Closers *pass, const MsExpr *call) {
         !ms_check_holds_resource(pass->program, arg_ty)) {
       continue;
     }
-    if (!result_views(pass, call, arg)) {
+    if (!keeps_holder(pass, call, arg)) {
       flag_root(pass, arg, MS_CLOSER_TAKEN);
     }
   }
-  if (call->u.call.callee->kind == MS_E_MEMBER && !result_views(pass, call, call->u.call.callee->u.member.left)) {
+  if (call->u.call.callee->kind == MS_E_MEMBER && !keeps_holder(pass, call, call->u.call.callee->u.member.left)) {
     flag_root(pass, call->u.call.callee->u.member.left, MS_CLOSER_TAKEN);
   }
 }
