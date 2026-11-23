@@ -14,6 +14,10 @@ bool opt_ifconv(MirModule *m);    /* small pure diamonds become `select` */
 bool opt_ifconv_func(MirModule *m, MirFunc *f);
 bool opt_twins(MirModule *m);     /* blocks that run the same operations merge, selecting what differs */
 bool opt_twins_func(MirModule *m, MirFunc *f);
+bool opt_thread(MirModule *m);    /* a predecessor that knows a join's branch gets its own copy of the join and the chosen successor */
+bool opt_thread_func(MirModule *m, MirFunc *f);
+bool opt_thread(MirModule *m);    /* a predecessor that knows a join's branch gets its own copy of the join and the chosen successor */
+bool opt_thread_func(MirModule *m, MirFunc *f);
 bool opt_reserve(MirModule *m);   /* a list filled by a counted loop is allocated at its final size */
 bool opt_copyelim(MirModule *m);  /* deep copies that only feed reads are removed */
 bool opt_copyelim_func(MirModule *m, MirFunc *f);
