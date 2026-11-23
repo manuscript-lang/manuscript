@@ -1,7 +1,7 @@
 {
   "format": 1,
   "phase": "run",
-  "oracle": "Manuscript 0.1.0",
+  "oracle": "Manuscript 2026.11.0",
   "expected": {
     "exit_code": 0,
     "stdout": "eval x\neval y\neval z\nx1-y2-z3\neval a\neval b\neval c\nok([a1|b2|ok|c3])\neval a\neval b\nerror(Error(details: Map(), kind: none, message: bad 1))\neval p\neval p\neval p\np00p11p22\neval a\neval b\neval c\neval d\nok(start;[a1|ok|b2|0]c3-d4)\neval a\nerror(Error(details: Map(), kind: none, message: bad 1))\n",

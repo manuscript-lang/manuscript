@@ -1,7 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
 	Writable from "@std/core.ms",
-	StringBuilder from "@std/string_builder.ms",
 
 	msrt_string_fields,
 	msrt_string_from_scalars,
@@ -149,20 +148,21 @@ fn String.fields_by(is_separator: fn(String) Bool) List[String]:
 			out.append(self.view(start, i).clone())
 		return out
 
-	var current = StringBuilder()
+	var current = ""
 	var open = false
 
 	for c in self.chars():
 		if is_separator(c):
 			if open:
-				out.append(current.drain())
+				out.append(current)
+				current = ""
 				open = false
 		else:
-			current.append(c)
+			current += c
 			open = true
 
 	if open:
-		out.append(current.drain())
+		out.append(current)
 	return out
 
 // Compares text ignoring case. Both sides are uppercased and then lowercased with
@@ -261,7 +261,7 @@ fn String.title() String:
 	// ASCII text: lowercase it once and copy the lowercase runs between the first
 	// letters of words, which come from the uppercase alphabet by index.
 	lowered := self.lower()
-	var out = StringBuilder()
+	var out = ""
 	var copied = 0
 	var in_word = false
 
@@ -275,36 +275,36 @@ fn String.title() String:
 		)
 
 		if word and not in_word and ((b >= 97 and b <= 122) or (b >= 65 and b <= 90)):
-			out.append(lowered.view(copied, i))
+			out += lowered.view(copied, i)
 
 			var letter = b.to_int() - 97
 			if b <= 90: letter = b.to_int() - 65
-			out.append("ABCDEFGHIJKLMNOPQRSTUVWXYZ".view(letter, letter + 1))
+			out += "ABCDEFGHIJKLMNOPQRSTUVWXYZ".view(letter, letter + 1)
 			copied = i + 1
 
 		in_word = word
 
-	out.append(lowered.view(copied, count))
-	return out.build()
+	out += lowered.view(copied, count)
+	return out
 
 // `title` for text with any non-ASCII scalar, one word at a time.
 fn title_scalars(text: String) String:
-	var out = StringBuilder()
-	var word = StringBuilder()
+	var out = ""
+	var word = ""
 	var in_word = false
 
 	for c in text.chars():
 		if is_word_scalar(c):
-			word.append(c)
+			word += c
 			in_word = true
 		else:
-			if in_word: out.append(title_word(word.build()))
-			word = StringBuilder()
+			if in_word: out += title_word(word)
+			word = ""
 			in_word = false
-			out.append(c)
+			out += c
 
-	if in_word: out.append(title_word(word.build()))
-	return out.build()
+	if in_word: out += title_word(word)
+	return out
 
 // The word with its first scalar titlecased and the rest lowercased in context.
 fn title_word(word: String) String:
@@ -383,26 +383,26 @@ fn title_scalar(c: String) String:
 	if greek_iota_tail(code) and upper.ends_with("Ι"):
 		return upper.view(0, upper.length() - 2).concat("\u{345}")
 
-	var out = StringBuilder()
+	var out = ""
 	var seen_cased = false
 
 	for u in upper.chars():
 		cased := u.lower() != u or u.upper() != u
 
-		if cased and seen_cased: out.append(u.lower())
-		else: out.append(u)
+		if cased and seen_cased: out += u.lower()
+		else: out += u
 
 		if cased: seen_cased = true
 
-	return out.build()
+	return out
 
 // Replaces each scalar (a one-scalar string) with the result of `transform`; an
 // empty result deletes it.
 fn String.map_chars(transform: fn(String) String) String:
-	var out = StringBuilder()
+	var out = ""
 	for c in self.chars():
-		out.append(transform(c))
-	return out.build()
+		out += transform(c)
+	return out
 
 // Returns the byte offset of the first scalar (passed as a one-scalar string) for
 // which `predicate` returns true, or `none`.
@@ -434,7 +434,7 @@ fn String.replace_each(pairs: Map[String, String]) String:
 	for key in keys:
 		nexts.append(if key.is_empty(): n else: -1)
 
-	var out = StringBuilder()
+	var out = ""
 	var copied = 0
 	var i = 0
 	count := keys.length()
@@ -471,13 +471,13 @@ fn String.replace_each(pairs: Map[String, String]) String:
 			i += 1
 			continue
 
-		out.append(self.view(copied, i))
-		out.append(news[hit])
+		out += self.view(copied, i)
+		out += news[hit]
 		i += keys[hit].length()
 		copied = i
 
-	out.append(self.view(copied, n))
-	return out.build()
+	out += self.view(copied, n)
+	return out
 
 fn is_word_scalar(c: String) Bool:
 	return msstd_unicode_is_alphanumeric(c.scalar_at(0, -1)) or c == "'"

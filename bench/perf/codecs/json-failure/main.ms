@@ -1,7 +1,6 @@
 import (
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
-	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -14,22 +13,22 @@ fn main() Int:
 	shape := args[2]
 	valid := shape.ends_with("valid")
 	typed := shape.starts_with("typed")
-	var expected = StringBuilder()
-	var input = StringBuilder()
+	var expected = ""
+	var input = ""
 
-	if valid: input.append("\"")
-	else: input.append("]")
+	if valid: input += "\""
+	else: input += "]"
 
 	for i in 0..size:
-		expected.append("a")
+		expected += "a"
 
-		if shape.ends_with("escaped"): input.append("\\")
-		else: input.append("a")
+		if shape.ends_with("escaped"): input += "\\"
+		else: input += "a"
 
-	if valid: input.append("\"")
+	if valid: input += "\""
 
-	wanted := expected.build()
-	text := input.build()
+	wanted := expected
+	text := input
 	var checksum = 0
 	cpu_start := codec_bench_cpu_ns()
 	if cpu_start < 0: return 4

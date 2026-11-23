@@ -3,7 +3,6 @@ import (
 	base64_decode, latin1_decode from "@std/data/encoding.ms",
 	parse_int from "@std/math/math.ms",
 	Headers, parse_headers from "@std/net/mime.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
@@ -99,7 +98,7 @@ fn valid_address(address: String) Bool:
 // invalid item returns `EBADMSG`.
 export fn parse_address_list(text: String) List[Address]!:
 	var out = List[Address]()
-	var current = StringBuilder()
+	var current = ""
 	var quoted = false
 	var escaped = false
 	var depth = 0
@@ -108,12 +107,12 @@ export fn parse_address_list(text: String) List[Address]!:
 	for c in text.chars():
 		if escaped:
 			escaped = false
-			current.append(c)
+			current += c
 			continue
 
 		if quoted and c == "\\":
 			escaped = true
-			current.append(c)
+			current += c
 			continue
 
 		if c == "\"": quoted = not quoted
@@ -121,11 +120,12 @@ export fn parse_address_list(text: String) List[Address]!:
 		if not quoted and c == ">": depth -= 1
 
 		if c == "," and not quoted and depth == 0:
-			pieces.append(current.drain())
+			pieces.append(current)
+			current = ""
 		else:
-			current.append(c)
+			current += c
 
-	pieces.append(current.drain())
+	pieces.append(current)
 
 	for piece in pieces:
 		if piece.trim().is_empty(): continue
@@ -189,25 +189,27 @@ export fn decode_words(text: String) String:
 	// `=` and takes the next three fields (charset, encoding, payload); the field after
 	// them must start with the closing `=`.
 	fields := text.split("?")
-	var out = StringBuilder()
-	var head = StringBuilder()
+	var out = ""
+	var head = ""
 	var previous_encoded = false
 	var index = 0
 	var seg = fields[0].clone()
 
 	while true:
 		if index == fields.length() - 1 or not seg.ends_with("="):
-			head.append(seg)
+			head += seg
 			if index == fields.length() - 1: break
 
-			head.append("?")
+			head += "?"
 			index += 1
 			seg = fields[index].clone()
 			continue
 
-		head.append(seg.view(0, seg.length() - 1))
+		head += seg.view(0, seg.length() - 1)
 
-		literal := head.drain()
+		literal := head
+		head = ""
+
 		var decoded: String? = none
 		if index + 4 < fields.length() and fields[index + 4].starts_with("="):
 			decoded = decode_word(
@@ -217,22 +219,22 @@ export fn decode_words(text: String) String:
 			)
 
 		if decoded.is_none():
-			out.append(literal)
-			out.append("=?")
+			out += literal
+			out += "=?"
 			previous_encoded = false
 			index += 1
 			seg = fields[index].clone()
 			continue
 
 		// Whitespace between two adjacent encoded words is dropped.
-		if not (previous_encoded and literal.trim().is_empty()): out.append(literal)
-		out.append(decoded.get_or(""))
+		if not (previous_encoded and literal.trim().is_empty()): out += literal
+		out += decoded.get_or("")
 		previous_encoded = true
 		seg = fields[index + 4].view(1, fields[index + 4].length()).clone()
 		index += 4
 
-	out.append(head.drain())
-	return out.build()
+	out += head
+	return out
 
 fn decode_word(charset: String, encoding: String, payload: String) String?:
 	set := charset.lower()
