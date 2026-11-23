@@ -316,7 +316,8 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   if (resolver->report && args.len != arity) {
     report_arity(resolver, type, base, type->args.len, arity, required);
   }
-  const MsTy applied = resolver_apply(resolver->program, base, args.ptr, args.len);
+  /* A wrong count keeps the bare type: a value of the applied type then differs from it, as the oracle says. */
+  const MsTy applied = args.len == arity ? resolver_apply(resolver->program, base, args.ptr, args.len) : base;
   if (resolver->report && args.len == arity && arity != 0) {
     if (program->stage == MS_STAGE_DECLARATIONS) { /* signatures resolve before the methods that satisfy bounds */
       ms_pending_bound_list_push(&program->pending_bounds, (MsPendingBound){resolver->module, type->pos, applied});

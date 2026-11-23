@@ -1,5 +1,4 @@
-add_executable(ms_lint main.c rules.c layers.c repo.c text.c)
-ms_target_defaults(ms_lint)
+ms_executable(ms_lint lint SOURCES main.c rules.c layers.c repo.c text.c)
 
 # `cmake --build <dir> --target lint`: lists the repository's files, then runs ms_lint.
 add_custom_target(lint

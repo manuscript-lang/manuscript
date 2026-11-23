@@ -1,4 +1,4 @@
-# Root build of Manuscript (see src/README.md). All the code lives under src/.
+# Root build of Manuscript (see src/README.md). All the code lives under src/, all the build rules under cmake/.
 cmake_minimum_required(VERSION 3.25)
 project(manuscript LANGUAGES C)
 
@@ -8,7 +8,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
-include(MsWarnings)
+include(MsTarget)
 include(MsSysroot)
 
 # Program links use lld without libgcc or compiler-rt, so no archive may call the out-of-line atomic helpers
@@ -25,17 +25,17 @@ if(MS_CCACHE)
 endif()
 
 enable_testing()
-add_subdirectory(src/third_party)
-add_subdirectory(src/base)
-add_subdirectory(src/abi)
-add_subdirectory(src/runtime)
+# Every target is defined in cmake/targets/, one file per layer; src/ holds only sources (vendored libraries keep
+# their own CMakeLists.txt there).
+foreach(layer third_party base abi runtime)
+  include(targets/${layer})
+endforeach()
 if(MS_LIBC STREQUAL "musl")
   return() # the inner build of the `--static` runtime holds the runtime archives only
 endif()
-add_subdirectory(src/compiler)
-add_subdirectory(src/tooling)
-add_subdirectory(src/cli)
-add_subdirectory(src/lint)
+foreach(layer compiler tooling cli lint)
+  include(targets/${layer})
+endforeach()
 
 # `cmake --build <dir> --target conform`: the conformance corpus (parse, check, run, test) and the command
 # fixtures, replayed against the ms built here, one `passed/total` line each (cmake/Conform.cmake).

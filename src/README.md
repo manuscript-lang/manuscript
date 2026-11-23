@@ -31,7 +31,7 @@ Build output goes to `.artifacts/build/<preset>`. Generated files never go into 
 
 ## Adding a module
 
-1. Put it in the layer directory and add it to that directory's `CMakeLists.txt`.
+1. Put it in the layer directory and add it to that layer's file in `cmake/targets/` (all build rules live there; `src/` holds only sources).
 2. Use `ms_target_defaults(<target>)`: strict warnings are errors, no exemptions.
 3. Start the file with a comment saying what it owns. Check `base` first for any helper.
 

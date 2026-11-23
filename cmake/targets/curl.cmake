@@ -2,11 +2,11 @@
 # threaded resolver; TLS through the vendored OpenSSL on every platform (Windows trusts its system certificate store).
 #
 # curl's configure step compiles and links against OpenSSL, and OpenSSL builds with its own Configure at build time
-# (cmake/openssl.cmake), so curl is an ExternalProject ordered after it instead of an add_subdirectory. zlib and nghttp2
+# (cmake/targets/openssl.cmake), so curl is an ExternalProject ordered after it instead of an add_subdirectory. zlib and nghttp2
 # are in-tree targets, so their archives and headers are handed over as arguments.
 include(ExternalProject)
-set(CURL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/curl)
-set(CURL_BUILD ${CMAKE_CURRENT_BINARY_DIR}/curl_build)
+set(CURL_DIR ${MS_TP}/curl)
+set(CURL_BUILD ${MS_TP_BIN}/curl_build)
 set(CURL_LIB ${CURL_BUILD}/lib/libcurl${CMAKE_STATIC_LIBRARY_SUFFIX})
 
 string(TOUPPER "${CMAKE_BUILD_TYPE}" CURL_CONFIG)
@@ -14,7 +14,7 @@ set(CURL_C_FLAGS "${CMAKE_C_FLAGS}")
 # OpenSSL builds out of tree, so its generated headers (opensslv.h, configuration.h) sit beside, not inside, the source include directory.
 string(APPEND CURL_C_FLAGS " -isystem ${OPENSSL_BUILD}/include")
 # zlib and nghttp2 do the same: zconf.h and nghttp2ver.h are generated into their build directories.
-string(APPEND CURL_C_FLAGS " -isystem ${CMAKE_CURRENT_BINARY_DIR}/zlib -isystem ${CMAKE_CURRENT_BINARY_DIR}/nghttp2/lib/includes")
+string(APPEND CURL_C_FLAGS " -isystem ${MS_TP_BIN}/zlib -isystem ${MS_TP_BIN}/nghttp2/lib/includes")
 # nghttp2 is a static archive: without this its headers declare every symbol dllimport on Windows.
 string(APPEND CURL_C_FLAGS " -DNGHTTP2_STATICLIB")
 set(CURL_ARGS
@@ -30,9 +30,9 @@ set(CURL_ARGS
   -DOPENSSL_INCLUDE_DIR=${OPENSSL_DIR}/include -DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL}
   -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO}
   -DUSE_NGHTTP2=ON
-  -DNGHTTP2_INCLUDE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/lib/includes
+  -DNGHTTP2_INCLUDE_DIR=${MS_TP}/nghttp2/lib/includes
   -DNGHTTP2_LIBRARY=$<TARGET_FILE:nghttp2_static>
-  -DCURL_ZLIB=ON -DZLIB_INCLUDE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/zlib -DZLIB_LIBRARY=$<TARGET_FILE:zlibstatic>
+  -DCURL_ZLIB=ON -DZLIB_INCLUDE_DIR=${MS_TP}/zlib -DZLIB_LIBRARY=$<TARGET_FILE:zlibstatic>
   -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DENABLE_ARES=OFF -DUSE_LIBIDN2=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF
   -DENABLE_UNIX_SOCKETS=ON
   -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON
@@ -47,6 +47,7 @@ if(MS_CCACHE)
   list(APPEND CURL_ARGS -DCMAKE_C_COMPILER_LAUNCHER=${MS_CCACHE})
 endif()
 ExternalProject_Add(curl_build
+  PREFIX ${MS_TP_BIN}/curl_build-prefix
   SOURCE_DIR ${CURL_DIR}
   BINARY_DIR ${CURL_BUILD}
   DEPENDS openssl_build zlibstatic nghttp2_static
