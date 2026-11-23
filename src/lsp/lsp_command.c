@@ -282,14 +282,14 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
 static void handle_standard_library_source(const MsJson *id, const MsJson *params) {
   const MsJson *document = lsp_json_member(params, "textDocument", MS_JSON_OBJECT);
   const MsJson *uri = lsp_json_member(document, "uri", MS_JSON_STRING);
-  const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
-  if (uri == NULL || !ms_span_starts_with(uri->text, prefix) || ms_span_find(uri->text, ms_span_of_text("?"), &(size_t){0}) ||
+  MsSpan name = {0};
+  if (uri == NULL || !lsp_uri_standard_module(uri->text, &name) || ms_span_find(uri->text, ms_span_of_text("?"), &(size_t){0}) ||
       ms_span_find(uri->text, ms_span_of_text("#"), &(size_t){0})) {
     reply_error(id, ERROR_INVALID_PARAMS, "invalid standard-library URI");
     return;
   }
   MsStdSource source;
-  if (!ms_std_source_find(ms_span_of(uri->text.ptr + prefix.len, uri->text.len - prefix.len), &source)) {
+  if (!ms_std_source_find(name, &source)) {
     reply_error(id, ERROR_INVALID_PARAMS, "unknown standard-library module");
     return;
   }
@@ -304,11 +304,12 @@ static int handle_message(Session *session, MsSpan body) {
   MsArena arena = ms_arena_new();
   int status = -1;
   const MsJson *id = NULL;
-  const MsJson *message = ms_json_parse(&arena, body);
+  MsJson *message = ms_json_parse(&arena, body);
   if (message == NULL) {
     reply_error(NULL, ERROR_PARSE, "invalid JSON");
     goto done;
   }
+  lsp_normalize_uris(&arena, message);
   id = message->kind == MS_JSON_OBJECT ? ms_json_member(message, "id") : NULL;
   const MsJson *jsonrpc = message->kind == MS_JSON_OBJECT ? ms_json_member(message, "jsonrpc") : NULL;
   const MsJson *method = message->kind == MS_JSON_OBJECT ? ms_json_member(message, "method") : NULL;

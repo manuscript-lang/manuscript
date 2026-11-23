@@ -5,7 +5,7 @@ weight = 2
 
 # Build levels
 
-`--build-type` sets native optimization and debugging information. `ms build` and `ms bench` default to an optimized Release executable. `ms run` and `ms test` default to Debug, which compiles with Cranelift and builds much faster. Pass `--build-type Release` to run or test the optimized (LLVM) code.
+`--build-type` sets native optimization and debugging information. `ms build` and `ms bench` default to an optimized Release executable. `ms run` and `ms test` default to Debug, which runs LLVM with a light optimization pipeline and builds faster. Pass `--build-type Release` to run or test the fully optimized code.
 
 Save this entrypoint as `main.ms`:
 

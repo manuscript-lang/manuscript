@@ -1,10 +1,14 @@
 /* Driver: `ms fmt <files> [--check] [--json] [--drop-labels]`. Formats each file in place, or with --check only reports
  * which files differ. With --json the report is `{format, files, diagnostics}` on stdout; without it
  * problems go to stderr. Status 0 is clean, 1 an error or a file needing formatting, 2 a usage error. */
+#define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
+
 #include "cli/fmt_command.h"
 
 #include <stdio.h>
+#include <stdatomic.h>
 #include <stdlib.h>
+#include <uv.h>
 
 #include "base/arena.h"
 #include "base/dir.h"
@@ -181,6 +185,44 @@ static void format_file(MsSpan path, const FmtOptions *options, FmtOutcome *outc
   ms_bytes_free(&bytes);
 }
 
+/* Files are independent, so a few workers take them in turn; the console text is printed afterwards in file order. */
+enum { MAX_WORKERS = 16 };
+
+typedef struct FmtJob {
+  const FmtFile *files;
+  size_t count;
+  const FmtOptions *options;
+  FmtOutcome *outcomes;
+  _Atomic size_t next;
+} FmtJob;
+
+static void format_worker(void *argument) {
+  FmtJob *job = argument;
+  for (size_t index = atomic_fetch_add(&job->next, 1); index < job->count; index = atomic_fetch_add(&job->next, 1)) {
+    format_file(job->files[index].path, job->options, &job->outcomes[index]);
+  }
+}
+
+static void format_files(const FmtFile *files, size_t count, const FmtOptions *options, FmtOutcome *outcomes) {
+  FmtJob job = {.files = files, .count = count, .options = options, .outcomes = outcomes};
+  atomic_init(&job.next, 0);
+  size_t workers = uv_available_parallelism();
+  workers = workers > MAX_WORKERS ? MAX_WORKERS : workers;
+  workers = workers > count ? count : workers;
+  uv_thread_t threads[MAX_WORKERS];
+  size_t started = 0;
+  /* The calling thread is a worker too; a thread that cannot start only leaves its share to the others. */
+  for (; started + 1 < workers; started++) {
+    if (uv_thread_create(&threads[started], format_worker, &job) != 0) {
+      break;
+    }
+  }
+  format_worker(&job);
+  for (size_t index = 0; index < started; index++) {
+    (void)uv_thread_join(&threads[index]);
+  }
+}
+
 /* The `--json` document: the files with their states and every diagnostic. */
 static void write_report(MsStrBuild *out, const FmtOutcome *outcomes, size_t count) {
   ms_strbuild_append_text(out, "{\n  \"format\": 1,\n  \"files\": [");
@@ -274,11 +316,12 @@ int ms_fmt_command(int argc, char **argv) {
     status |= print_console(&outcomes[index], &options);
   }
   for (size_t index = 0; index < files.len; index++) {
-    FmtOutcome *outcome = &outcomes[problems.len + index];
-    outcome->display = files.ptr[index].display;
-    outcome->listed = true;
-    format_file(files.ptr[index].path, &options, outcome);
-    status |= print_console(outcome, &options);
+    outcomes[problems.len + index].display = files.ptr[index].display;
+    outcomes[problems.len + index].listed = true;
+  }
+  format_files(files.ptr, files.len, &options, outcomes + problems.len);
+  for (size_t index = 0; index < files.len; index++) {
+    status |= print_console(&outcomes[problems.len + index], &options);
   }
   if (files.len == 0 && status == 0 && !options.json) {
     (void)fprintf(stderr, "ms fmt: no .ms files found in ");

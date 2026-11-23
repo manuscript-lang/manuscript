@@ -295,7 +295,7 @@ static void report_stats(void) {
 /* The runtime thread: runs main as the isolate's main task and ends the scheduler. */
 static void runtime_thread(void *argument) {
   (void)argument;
-  (void)ms_sys_fault_handler_install(report_overflow); /* Windows reports false */
+  (void)ms_sys_fault_handler_install(report_overflow);
   if (!open_scheduler()) {
     ms_fault_fatal(MS_FAULT_KIND_FAULT, ms_span_of_text("cannot open the event loop"));
   }

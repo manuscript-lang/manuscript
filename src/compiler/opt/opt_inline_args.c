@@ -140,11 +140,23 @@ static bool ic_has_call_ind(const MirFunc *f) {
 }
 
 
-/* Whether the call to `ci` from `fi` is worth a private copy: a plain, acyclic, small callee that
- * calls a closure indirectly. */
+/* Whether `ci` is on a cycle that is only a call to itself: its copy for a known closure calls that same
+ * copy again, since the recursive call passes the closure on. */
+static bool ic_only_self_recursive(const IcSpecialize *s, uint32_t ci) {
+  for (uint32_t k = 0; k < opt_inline_degree(&s->graph, ci); k++) {
+    const uint32_t to = opt_inline_edge(&s->graph, ci, k);
+    if (to != ci && to < s->ncyc && s->cyc[to]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* Whether the call to `ci` from `fi` is worth a private copy: a plain, small callee that calls a closure
+ * indirectly and does not recurse through other functions. */
 static bool ic_specializable(const IcSpecialize *s, uint32_t fi, uint32_t ci) {
   const MirFunc *callee = &s->m->funcs.ptr[ci];
-  const bool cyclic = ci < s->ncyc && s->cyc[ci];
+  const bool cyclic = ci < s->ncyc && s->cyc[ci] && !ic_only_self_recursive(s, ci);
   return ci != fi && !cyclic && callee->kind == MFK_NORMAL && callee->inline_hint != MINL_NEVER &&
      mir_inst_count(callee) <= OPT_INLINE_SPECIALIZE_MAX_SIZE && ic_has_call_ind(callee);
 }
@@ -225,6 +237,7 @@ bool opt_inline_specialize_closure_args(MirModule *m) {
     const OptInlineGraph g = opt_inline_direct_graph(&arena, m);
     s.cyc = opt_inline_cyclic(&arena, &g);
     s.ncyc = g.n;
+    s.graph = g;
     bool any = false;
     const uint32_t nfuncs = (uint32_t)m->funcs.len;
     for (uint32_t fi = 0; fi < nfuncs; fi++) {

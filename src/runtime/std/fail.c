@@ -8,6 +8,7 @@
 #include "base/strbuild.h"
 #include "runtime/core/unwind.h"
 #include "runtime/io/pool.h"
+#include "runtime/sys/fs.h"
 
 MsFail ms_fail_new(void) { return (MsFail){.status = MS_STATUS_OK, .message = ms_string_empty()}; }
 
@@ -84,6 +85,7 @@ void ms_fail_uv_text(MsFail *fail, int code, const char *operation, MsSpan name)
 }
 
 void ms_fail_uv(MsFail *fail, int code, const char *operation, MsSpan name) {
+  code = ms_sys_fs_refine_error(code, (const char *)name.ptr, name.len);
   const uint8_t status = ms_fail_classify(code);
   if (status != MS_STATUS_FAILED) {
     ms_fail_status(fail, status);
