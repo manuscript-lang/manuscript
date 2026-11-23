@@ -160,6 +160,10 @@ bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue fi
 bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record);
 bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field);
 bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b);
+bool fn_same_member_path(LowerFn *fn, const MsExpr *a, const MsExpr *b);
+/* The slot a closing `var` local or parameter lives in. */
+bool fn_closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirVar *var);
+bool fn_closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirTy *ty);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value

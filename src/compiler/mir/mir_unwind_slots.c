@@ -457,6 +457,10 @@ static UwHash uw_refilled_from_covered(MsArena *a, const MirModule *m, const Mir
     for (uint32_t n = 0; n < blk->insts.len; n++) {
       const MirInst *inst = &blk->insts.ptr[n];
       const bool owns = inst->res != MIR_NONE && mir_needs_drop(m, mir_value_ty(f, inst->res));
+      if (inst->op == MOP_ClosureCap && inst->res != MIR_NONE && mir_value_ty(f, inst->res) == MIR_PTR) {
+        /* A slot a closure captured by reference is the enclosing function's, covered there. */
+        (void)uh_put(a, &params, inst->res, 0);
+      }
       if (inst->op == MOP_Put && uh_has(&taken, uw_arg(inst, 1))) {
         (void)uh_put(a, &out, inst->args[0], 0);
       } else if (owns && ((inst->op == MOP_Take && uh_has(&params, uw_arg(inst, 0))) ||
