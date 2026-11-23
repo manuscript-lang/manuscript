@@ -5,7 +5,7 @@
 // programs print no count and are skipped. The `test` blocks of
 // tests/conformance/fixtures/e2e run the same way, one count per test. Arguments name
 // the files to sweep instead; a file with test blocks is run with `ms test`. MS names
-// the ms that runs the programs (default target/release/ms). Usage: ms run
+// the ms that runs the programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
 // tools/leak-check.ms [-- files]
 import (
 	Promise, promise from "@std/concurrency/promise.ms",

@@ -7,8 +7,9 @@
 // per case: `mk` prints
 // `made-N`, `close` prints `closed-N`, and the two must match at exit, in Debug and Release.
 // A new standard operation that stores, returns or discards a `T` belongs in OPERATIONS
-// below. MS names the ms that runs the programs (default target/release/ms). Usage: ms
-// run tools/resource-matrix.ms [-- name-filter]
+// below. MS names the ms that runs the programs (default
+// .artifacts/build/ci/src/cli/ms). Usage: ms run tools/resource-matrix.ms [--
+// name-filter]
 import (
 	JsonValue, parse from "@std/data/json.ms",
 	stdout from "@std/io/io.ms",

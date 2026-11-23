@@ -137,10 +137,11 @@ export fn use_stats_runtime() Int:
 	return 0
 
 // The ms that runs the programs under test: `MS` (resolved against `root` when
-// relative), else target/release/ms.
+// relative), else the CMake build's ms (`cmake --preset ci`), which the Makefile also
+// names.
 export fn tool_ms(root: String) String:
 	named := env("MS", "")
-	if named == "": return f"{root}/target/release/ms{exe()}"
+	if named == "": return f"{root}/.artifacts/build/ci/src/cli/ms{exe()}"
 	if named.starts_with("/") or named.contains(":"): return named
 
 	return f"{root}/{named}{exe()}"
