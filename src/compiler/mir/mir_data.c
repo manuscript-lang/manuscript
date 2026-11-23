@@ -143,9 +143,13 @@ static void build_vtables(DataCx *cx) {
     const MirVtable *vtable = &module->vtables.ptr[index];
     const MirTy data_ty = mir_ty_unscoped(vtable->data_ty);
     const uint32_t nslots = vtable->nmethods + 2;
+    /* The payload's size in bytes follows the clone: `iface.own` copies the leaves of a payload it only borrows. */
+    uint8_t *size_word = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)(nslots + 1) * 8);
+    mird_put_word(size_word + (size_t)nslots * 8, mir_type_mem(cx->layouts, data_ty).size);
     MirDataSym sym = {.name = mird_name(cx, "vtable", (uint32_t)index),
-                      .size = nslots * 8,
+                      .size = (nslots + 1) * 8,
                       .align = 8,
+                      .bytes = ms_span_of(size_word, (size_t)(nslots + 1) * 8),
                       .relocs = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirReloc, nslots)};
     sym.relocs[sym.nrelocs++] = func_reloc(0, vtable->close_drop != 0 ? vtable->close_drop - 1
                                                                      : mir_glue_find(cx->glue, MG_BLOCK_DROP, data_ty, 0, 0));

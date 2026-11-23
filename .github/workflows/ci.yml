@@ -56,19 +56,22 @@ jobs:
       # llc. The step exports MS_LLVM to the steps after it.
       - run: cmake --build --preset ci --target llvm-lib
       - run: ctest --preset ci
-      - run: cmake --build --preset ci --target lint
+      # Each check below reports on its own: a failing test run does not hide the lint, package and repository results.
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target lint
       # The distribution archive, unpacked on its own and used to build a program (the six-platform runs only).
-      - if: env.PR != 'true'
+      - if: ${{ !cancelled() && env.PR != 'true' }}
         run: cmake --build --preset ci --target dist-smoke
-      - if: env.PR != 'true'
+      - if: ${{ !cancelled() && env.PR != 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
           path: .artifacts/build/ci/dist/manuscript-*
           retention-days: 7
-      - run: cmake --build --preset ci --target repo-check
-      - run: cmake --build --preset ci --target docs-check
-      # Each check reports on its own: a lint violation does not hide the corpus counts.
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target repo-check
+      - if: ${{ !cancelled() }}
+        run: cmake --build --preset ci --target docs-check
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target conform
       - if: always()

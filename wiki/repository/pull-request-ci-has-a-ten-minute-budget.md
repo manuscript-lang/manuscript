@@ -29,3 +29,5 @@ Decision (Chinmay, 2026-11-14): a pull request's CI must finish in under 10 minu
 Apply when: adding or changing a test, a CI step or a workflow.
 Evidence: [cicd.yml](../../.github/workflows/cicd.yml), [rust-scope](../../.github/actions/rust-scope/action.yml), [AGENTS.md](../../AGENTS.md).
 Verify: the latest pull request run shows both Linux jobs under 600 s and a passing `Time budget` check.
+
+Conformance jobs (2026-11-23): `tools/conform-run.ms` ran 8 fixtures at once whatever the core count. On a 4-core box that made `image`, `image-fuzz`, `router` and `builtin-parity` (3 to 7 s alone) exceed the 30 s test-phase limit in every run, while a run with `--jobs 4` passed 744 of 744 in about the same wall time (374 s against 352 s). The default is now the logical CPU count, at most 8. Do not read such timeouts as slow fixtures before checking `--jobs`.

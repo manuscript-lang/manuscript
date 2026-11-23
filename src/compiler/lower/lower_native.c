@@ -199,6 +199,15 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       if (!fn_descriptor_argument(fn, kind, args, nargs, &out[used++])) {
         return false;
       }
+    } else if (kind == NS_CMP_FN && next < nargs && next > 0 && at + 1 < params) {
+      const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+      const uint32_t thunk = list->kind == MK_LIST ? fn_sort_thunk(fn, list->elem, mir_b_ty(&fn->b, args[next])) : MIR_NONE;
+      if (thunk == MIR_NONE) {
+        return false;
+      }
+      out[used++] = fn_emit(fn, MOP_FuncAddr, NULL, 0, (MirImm){.tag = MI_FUNC, .a = thunk}, MIR_PTR);
+      out[used++] = args[next++];
+      at++; /* the environment parameter is the closure the thunk calls */
     } else if (kind == NS_HAS_RAW && next < nargs) {
       if (!fn_has_raw_pair(fn, args[next++], &out[used])) {
         return false;
@@ -339,7 +348,7 @@ static bool mutates_receiver(const MsNativeSig *sig, MirTy ret) {
 
 /* An operand in a new slot of its own: the runtime function takes the value from the slot's address. A `lookup`
  * only reads the value (a map key it searches for), so the slot borrows it and nothing is copied. */
-static MirValue operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
+MirValue fn_operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
   MirValue value = fn_expr(fn, expr, lookup ? LW_BORROW : LW_MOVE);
   if (value == MIR_NONE) {
     return MIR_NONE;
@@ -360,40 +369,6 @@ static MirValue operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup) {
   return slot;
 }
 
-MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
-  MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
-  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  if (fn->hint != MIR_VOID && (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2)) {
-    ty = fn->hint; /* the checker left the literal's type open: the parameter it fills gives it */
-    data = mir_ty_data(fn->cx->module, ty);
-  }
-  if (data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < 2) {
-    (void)fn_fail(fn, "a map literal is not typed as a map");
-    return MIR_NONE;
-  }
-  const MirValue empty = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_map_new")), NULL, 0, ty);
-  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &empty, 1, (MirImm){0}, MIR_NONE);
-  const MirImm of_map = {.tag = MI_TY, .a = ty};
-  const MirValue map = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_map, MIR_PTR);
-  const MirValue created[2] = {map, empty};
-  (void)mir_b_emit(&fn->b, MOP_Put, created, 2, (MirImm){0}, MIR_NONE);
-  const MirImm key_ty = {.tag = MI_TY, .a = data->args[0]};
-  const MirImm value_ty = {.tag = MI_TY, .a = data->args[1]};
-  const MsName add = mir_name(fn->cx->module, ms_span_of_text("msrt_map_add"));
-  for (uint32_t at = 0; at < expr->u.map.len; at++) {
-    const MirValue key = operand_slot(fn, expr->u.map.ptr[at].key, false);
-    const MirValue value = key == MIR_NONE ? MIR_NONE : operand_slot(fn, expr->u.map.ptr[at].value, false);
-    if (value == MIR_NONE) {
-      return MIR_NONE;
-    }
-    const MirValue key_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, key_ty, MIR_PTR);
-    const MirValue value_desc = mir_b_emit(&fn->b, MOP_TypeDesc, NULL, 0, value_ty, MIR_PTR);
-    const MirValue operands[5] = {map, key_desc, value_desc, key, value};
-    (void)fn_runtime_call(fn, add, operands, 5, MIR_VOID);
-  }
-  return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
-}
-
 /* Ends the current block with the fault of a missing map key: `key` is the slot holding the key of type `key_ty`. */
 static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
   const MirImm of_key = {.tag = MI_TY, .a = key_ty};
@@ -411,7 +386,7 @@ static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
-  const MirValue key = operand_slot(fn, key_expr, true);
+  const MirValue key = fn_operand_slot(fn, key_expr, true);
   if (key == MIR_NONE) {
     return MIR_NONE;
   }
@@ -440,7 +415,7 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
   const MirTy ty = mir_b_ty(&fn->b, container);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION && data->nargs >= 2) {
-    const MirValue key = operand_slot(fn, key_expr, true);
+    const MirValue key = fn_operand_slot(fn, key_expr, true);
     if (key == MIR_NONE) {
       return MIR_NONE;
     }
@@ -598,7 +573,7 @@ bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *t
   mir_b_seal_block(&fn->b, miss);
   mir_b_seal_block(&fn->b, hit);
   mir_b_switch_to(&fn->b, miss);
-  const MirValue key_slot = operand_slot(fn, key, true); /* the key again, for the fault text only */
+  const MirValue key_slot = fn_operand_slot(fn, key, true); /* the key again, for the fault text only */
   fault_missing_key(fn, key_slot, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder))->args[0]);
   mir_b_switch_to(&fn->b, hit);
   *addr = address;
@@ -796,6 +771,13 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
  * method value): a native that changes its receiver writes through it. */
 bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                       const MirValue *args, MirTy ret, MirValue *out) {
+  /* The pieces of a split of a variable or field borrow it (the checker keeps them from outliving it), so no piece is
+   * copied; a temporary receiver keeps the copying form, as it is gone before its pieces are. */
+  if (ms_span_is_text(operation, "split") && argc == 2 && place != NULL && slot == MIR_NONE &&
+      (place->kind == MS_E_NAME || place->kind == MS_E_MEMBER) &&
+      ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_String)) {
+    operation = ms_span_of_text("split_view");
+  }
   if (ms_span_is_text(operation, "set") && fn_list_set_closing(fn, place, slot, owner, argc, args, out)) {
     return true;
   }

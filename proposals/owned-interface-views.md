@@ -8,7 +8,7 @@
 
 ## Status
 
-Draft 2026-11-23 on `3cd1d69288`, revised after a skeptical review (subagent). The review confirmed the by-address route cannot work and found holes in the first draft (a tag-2 view of a local's box dangling; no `view_moves` fact in the C checker); this version closes them by never producing a tag-2 view from a view lender. Not implemented. AGENTS.md still owes a `bench/perf` before/after run if this lands.
+Implemented 2026-11-23 (owner chose the owned-box lender). A returned interface view that is not a fresh owner goes through `iface.own`: one allocation of the payload size (a size word after the vtable slots) with the payload copied, tag 1 so the caller drops it. `Reportable?` results take the same path through an implicit clone. `interface-views` is in `MS_LEAK_FIXTURES`. No interface-view benchmark exists in `bench/perf`; the cost is one small allocation per returned view, which replaced a leaked one.
 
 ## Problem
 

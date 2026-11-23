@@ -76,6 +76,8 @@ typedef struct IcSortEdit { MirValue addr; uint32_t thunk, code; } IcSortEdit;
 
 bool ic_known_has(const IcKnown *k, MirValue v);
 IcKnown ic_known_closures(MsArena *arena, const MirModule *m, const MirFunc *f);
+/* Every value that always holds a known closure, including copies and block parameters of one. */
+IcKnown ic_known_aliased(MsArena *arena, const MirModule *m, const MirFunc *f);
 bool ic_delete_unused(MirModule *m, uint32_t fi);
 bool ic_closure_usable(const MirFunc *f);
 

@@ -6,6 +6,7 @@
 #include "base/path.h"
 #include "base/process.h"
 #include "compiler/link/link.h"
+#include "compiler/link/llvm_inproc.h"
 #include "compiler/link/object.h"
 #include "cli/backend.h"
 #include "cli/install_layout.h"
@@ -45,6 +46,20 @@ static MsSpan setting(const char *name, MsSpan fallback, MsString *storage) {
     return ms_string_span(storage);
   }
   return fallback;
+}
+
+/* The shared LLVM library to optimize and generate code with in-process, or empty for the opt and llc child processes.
+ * `MS_LLVM` names a library (a library that does not load is an error) or `none` for the child processes. Unset, the
+ * library installed beside ms is used when it loads, and the child processes otherwise. */
+static MsSpan choose_llvm(MsSpan installed, MsString *storage) {
+  const MsSpan named = setting("MS_LLVM", ms_span_of_text(""), storage);
+  if (ms_span_is_text(named, "none")) {
+    return ms_span_of_text("");
+  }
+  if (named.len != 0) {
+    return named;
+  }
+  return installed.len != 0 && ms_file_is_regular(installed) && llvm_usable(installed) ? installed : ms_span_of_text("");
 }
 
 /* `MS_COUNT_OPS` set to anything but 0 counts operations in every build. */
@@ -158,7 +173,11 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   const MsSpan opt = setting("MS_OPT", opt_fallback, &opt_storage);
   const MsSpan llc = setting("MS_LLC", llc_fallback, &llc_storage);
   MsString llvm_storage;
-  const MsSpan llvm = setting("MS_LLVM", ms_span_of_text(""), &llvm_storage);
+  MsStrBuild llvm_installed = ms_strbuild_new();
+  if (installed) {
+    ms_install_llvm(root_span, &llvm_installed);
+  }
+  const MsSpan llvm = choose_llvm(ms_strbuild_span(&llvm_installed), &llvm_storage);
   const MsSpan lld = setting("MS_LLD", lld_fallback, &lld_storage);
   const MsSpan files = setting("MS_FILES", files_fallback, &files_storage);
   const MsSpan runtime = setting("MS_RUNTIME", runtime_fallback, &runtime_storage);
@@ -198,6 +217,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   ms_string_release(&lld_storage);
   ms_string_release(&llc_storage);
   ms_string_release(&llvm_storage);
+  ms_strbuild_free(&llvm_installed);
   ms_string_release(&opt_storage);
   ms_backend_program_free(&program);
   ms_strbuild_free(&why);

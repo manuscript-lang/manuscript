@@ -16,6 +16,7 @@ typedef struct Borrow {
   MsPos at; /* where it is bound */
   uint32_t after; /* the offset its initializer ends at */
   bool mutable_;
+  bool alias; /* bound from a bare name (`b := s`): a view that only a move of the source ends */
   bool method_value; /* a method read as a value (`f := xs.any`): it keeps its receiver until it is last called */
   uint32_t root; /* the binding it borrows from */
   const MsExpr *place; /* the part of it that is borrowed */
@@ -25,6 +26,7 @@ typedef struct Change {
   uint32_t root;
   MsPos pos;     /* where the changed place starts */
   uint32_t end;  /* the offset it ends at */
+  bool moved;   /* a whole name goes to a `move` parameter */
   bool assign;  /* a whole name is assigned: a field or element store is a change of the name */
   MsPos at;     /* where the diagnostic points: a stored field's own name, else where the place starts */
   const MsExpr *place; /* the changed place; NULL when it is the whole binding */
@@ -109,8 +111,16 @@ static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out);
 /* The local an argument expression borrows from: a local, a field of one, or a borrowing call on one. */
 static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
   const MsExpr *at = arg;
-  while (at->kind == MS_E_MEMBER) {
-    at = at->u.member.left;
+  for (;;) {
+    MsExpr *left = NULL;
+    MsExpr *index = NULL;
+    if (at->kind == MS_E_MEMBER) {
+      at = at->u.member.left;
+    } else if (ms_expr_index(at, &left, &index)) {
+      at = left; /* an element read in place borrows the collection it sits in */
+    } else {
+      break;
+    }
   }
   if (at->kind == MS_E_NAME && owns_memory(pass, arg)) {
     out->place = arg;
@@ -184,7 +194,7 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   if (pattern == NULL || pattern->kind != MS_P_NAME || value == NULL || !origin_of_arg(pass, value, &source) ||
-      value->kind == MS_E_NAME || !local_of(pass->facts, pattern->id, &binding)) {
+      !local_of(pass->facts, pattern->id, &binding)) {
     return;
   }
   /* A resource field bound by name leaves its record (the next statement refills it): that is a take, not a borrow. */
@@ -192,13 +202,14 @@ static void note_bind(Borrows *pass, const MsStmt *stmt) {
     return;
   }
   borrow_list_push(&pass->borrows, (Borrow){.binding = binding, .name = pattern->u.name, .at = pattern->pos, .after = value->end.offset,
-                                            .mutable_ = stmt->u.bind.is_mutable, .root = source.root, .place = source.place});
+                                            .mutable_ = stmt->u.bind.is_mutable, .alias = value->kind == MS_E_NAME,
+                                            .root = source.root, .place = source.place});
 }
 
 /* Records the place a store or `var` argument changes. */
 static const MsExpr *captured_by_open_closure(const Borrows *pass, const MsExpr *name);
 
-static void note_change(Borrows *pass, const MsExpr *place, bool assign) {
+static void note_change(Borrows *pass, const MsExpr *place, bool assign, bool moved) {
   if (place == NULL) {
     return;
   }
@@ -218,7 +229,7 @@ static void note_change(Borrows *pass, const MsExpr *place, bool assign) {
   if (at->kind == MS_E_NAME && local_of(pass->facts, at->id, &root)) {
     const bool stored_field = assign && place->kind == MS_E_MEMBER;
     change_list_push(&pass->changes, (Change){.root = root, .pos = ms_expr_start(place), .end = place->end.offset,
-                                              .assign = assign && !stored_field, .at = stored_field ? place->pos : ms_expr_start(place),
+                                              .moved = moved, .assign = assign && !stored_field, .at = stored_field ? place->pos : ms_expr_start(place),
                                               .place = place, .lambda = captured_by_open_closure(pass, at)});
   }
 }
@@ -476,7 +487,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   if (stmt->kind == MS_S_BIND) {
     note_bind(pass, stmt);
   } else if (stmt->kind == MS_S_ASSIGN) {
-    note_change(pass, stmt->u.assign.target, true);
+    note_change(pass, stmt->u.assign.target, true, false);
     uint32_t root = 0;
     if (!stmt->u.assign.member_target && local_of(pass->facts, stmt->id, &root)) {
       const uint32_t length = (uint32_t)ms_names_span(pass->program->names, stmt->u.assign.name).len;
@@ -514,17 +525,26 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   }
   for (uint32_t index = 0; fact != NULL && index < fact->arg_count; index++) {
     const MsCallArg *arg = &fact->args[index];
+    if (arg->source == MS_ARG_WRITTEN && (arg->flags & MS_PARAM_MOVE) != 0) {
+      /* A whole name handed to a `move` parameter is gone: a view bound from it must not be used after. */
+      for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
+        const MsExpr *value = expr->u.call.args.ptr[at].value;
+        if (value->id == arg->node.node && value->kind == MS_E_NAME) {
+          note_change(pass, value, false, true);
+        }
+      }
+    }
     if (arg->source != MS_ARG_WRITTEN || (arg->flags & MS_PARAM_VAR) == 0) {
       continue;
     }
     const MsExpr *callee = expr->u.call.callee;
     if (callee->kind == MS_E_MEMBER && arg->node.node == callee->u.member.left->id) {
-      note_change(pass, callee->u.member.left, false);
+      note_change(pass, callee->u.member.left, false, false);
       continue;
     }
     for (uint32_t at = 0; at < expr->u.call.args.len; at++) {
       if (expr->u.call.args.ptr[at].value->id == arg->node.node) {
-        note_change(pass, expr->u.call.args.ptr[at].value, false);
+        note_change(pass, expr->u.call.args.ptr[at].value, false, false);
       }
     }
   }
@@ -620,7 +640,7 @@ static void report(Borrows *pass, const Borrow *borrow, const Change *change, Ms
     return;
   }
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_text(&text, change->assign ? "cannot reassign `" : "cannot change `");
+  ms_strbuild_append_text(&text, change->assign ? "cannot reassign `" : change->moved ? "cannot move `" : "cannot change `");
   ms_strbuild_append(&text, (MsSpan){pass->source.ptr + start.offset, change->end - start.offset});
   ms_strbuild_append_text(&text, "` while `");
   append_name(pass, &text, borrow->name);
@@ -652,11 +672,21 @@ static bool places_overlap(const MsExpr *a, const MsExpr *b) {
   const MsExpr *both[2] = {a, b};
   for (int side = 0; side < 2; side++) {
     const MsExpr *at = both[side];
-    for (; at != NULL && at->kind == MS_E_MEMBER; at = at->u.member.left) {
+    for (;;) {
+      MsExpr *left = NULL;
+      MsExpr *index = NULL;
+      if (at != NULL && ms_expr_index(at, &left, &index)) {
+        at = left; /* an element lies inside its collection's place */
+        continue;
+      }
+      if (at == NULL || at->kind != MS_E_MEMBER) {
+        break;
+      }
       if (length[side] == 16) {
         return true;
       }
       chain[side][length[side]++] = at;
+      at = at->u.member.left;
     }
     if (at == NULL || at->kind != MS_E_NAME) {
       return true;
@@ -681,6 +711,9 @@ static void judge(Borrows *pass) {
     for (size_t index = 0; index < pass->changes.len; index++) {
       const Change *change = &pass->changes.ptr[index];
       const uint32_t offset = change->pos.offset;
+      if (borrow->alias && !change->moved) {
+        continue;
+      }
       if (change->root == borrow->root && offset >= borrow->after && used_after(pass, borrow, offset) &&
           (change->place == NULL || borrow->place == NULL || places_overlap(change->place, borrow->place))) {
         report(pass, borrow, change, change->at);

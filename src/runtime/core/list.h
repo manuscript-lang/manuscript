@@ -141,8 +141,7 @@ uint8_t msrt_list_range_by(int64_t start, int64_t end, int64_t step, uint8_t has
                            MsList *out);
 /* ms-sig: msrt_list_to_set(v: *const VecVal, d: ElemDesc, out: *mut MapVal) @domain=collection @end */
 void msrt_list_to_set(const MsList *v, const MsTypeDesc *d, MsMap *out);
-/* ms-sig: msrt_list_sort_in_place(v: *mut VecVal, d: ElemDesc, cmp: CmpFn, env: *mut u8) @domain=collection
- */
+/* ms-sig: msrt_list_sort_in_place(v: *mut VecVal, d: ElemDesc, cmp: CmpFn, env: *mut u8) @domain=collection @method=List.sort */
 void msrt_list_sort_in_place(MsList *v, const MsTypeDesc *d, MsCompareFn cmp, uint8_t *env);
 /* ms-sig: msrt_list_sort_ints(v: *mut VecVal, desc: i64) @domain=collection @end */
 void msrt_list_sort_ints(MsList *v, int64_t desc);

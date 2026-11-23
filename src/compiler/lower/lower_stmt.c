@@ -105,8 +105,12 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
      * instead of copying them: a resource part has no copy. */
     const bool gives_up = fn_fresh_owner(fn, source) ||
                           (stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(fn->facts, stmt->u.bind.value->id) == MS_USE_MOVE);
+    /* A record of resources that holds nothing to drop is still given up when it is a temporary: its parts close here. */
+    const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;
+    const bool temporary = source != MIR_NONE && kind != MS_E_NAME && kind != MS_E_MEMBER && kind != MS_E_INDEX &&
+                           fn_temp_closes(fn, ms_facts_type(fn->facts, stmt->u.bind.value->id)) && fn_owns_result(fn, source);
     return source != MIR_NONE &&
-           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source)),
+           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source) || temporary),
                       from_var ? &owner : NULL, stmt->u.bind.is_mutable, false,
                       ms_facts_type(fn->facts, stmt->u.bind.value->id));
   }
@@ -722,10 +726,30 @@ MirValue fn_default_result(LowerFn *fn) {
   return fn->ret == MIR_INT && fn->b.func.ret == MIR_INT && fn->decl_void ? mir_b_iconst(&fn->b, 0) : MIR_NONE;
 }
 
+/* A view lender's `return`: the value is read where it lives, and a reference to an interface value somebody else owns
+ * (a parameter, a field of one, an element) is boxed by `iface.own`, so the caller owns a box of its own and never the
+ * payload. A moved name, a fresh value and another lender's result are already owned. */
+static MirValue view_return(LowerFn *fn, const MsExpr *expr) {
+  const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER || expr->kind == MS_E_INDEX;
+  if (place && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+    return take_value(fn, expr);
+  }
+  const MirValue value = fn_expr(fn, expr, LW_BORROW);
+  if (value == MIR_NONE || fn->terminated || fn_fresh_owner(fn, value)) {
+    return value;
+  }
+  const MirTy ty = mir_b_ty(&fn->b, value);
+  if (mir_ty_data(fn->cx->module, ty)->kind == MK_IFACE) {
+    return fn_emit(fn, MOP_IfaceOwn, &value, 1, (MirImm){0}, ty);
+  }
+  /* An optional interface that is a reference is copied whole: the copy owns its payload. */
+  return mir_needs_drop(fn->cx->module, ty) ? fn_implicit_clone(fn, value, true) : value;
+}
+
 static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = MIR_NONE;
   if (stmt->u.expr != NULL) {
-    value = fn->returns_borrow ? fn_expr(fn, stmt->u.expr, LW_BORROW) : take_value(fn, stmt->u.expr);
+    value = fn->returns_borrow ? fn_expr(fn, stmt->u.expr, LW_BORROW) : fn->returns_view ? view_return(fn, stmt->u.expr) : take_value(fn, stmt->u.expr);
     if (fn->terminated) { /* the expression never returns: `return panic(...)` */
       return !fn->failed;
     }

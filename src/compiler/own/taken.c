@@ -21,6 +21,8 @@ static void scan_payload(void *ctx, const MsExpr *expr);
 static void scan_expr(void *ctx, const MsExpr *expr) {
   Scan *scan = ctx;
   scan->found |= names_param(scan, expr) && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE;
+  /* A field of the parameter handed to a consumer that takes it leaves the parameter: the caller's argument moves in. */
+  scan->found |= expr->kind == MS_E_MEMBER && ms_facts_use(scan->facts, expr->id) == MS_USE_MOVE && names_param(scan, expr->u.member.left);
   scan_payload(ctx, expr);
 }
 
