@@ -27,14 +27,15 @@ b0:
   %8: str = str "total " !0:9:5
   %9: int = iconst 2 !0:9:11
   %10: str = call.rt @msrt_string_fmt2 (%9, %8, %7) !0:9:11
-  %11: str = str "\n" !0:9:11
-  %12: str = clone %11 !0:9:11
+  %11: str = str "\n" !0:9:11:1
+  %12: str = clone %11 !0:9:11:1
   %13: void = call @print[String] (%10, %12) !0:9:5
   %14: int = iconst 0 !0:10:5
   drop %12
   drop %10
   drop %6
   ret %14 !0:10:5
+  scope "print" 1 0 9
 }
 
 fn @parse_total(%0: list<str>) -> int !2:0:0 {
