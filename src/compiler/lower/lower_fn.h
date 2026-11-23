@@ -139,6 +139,7 @@ typedef struct LowerFn {
   LowerOuterEnv outer[LOWER_MAX_DEFAULT_DEPTH]; /* the environments of the calls whose defaults are being lowered, outermost first */
   uint32_t nouter;
   bool failed;
+  bool returns_view; /* the result is a view lender's owned box of an interface that borrows: a returned reference is boxed by `iface.own` */
   bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
   MirTy comparing[8]; /* the records and alternatives whose equality is being written out, innermost last */
   uint32_t ncomparing;
