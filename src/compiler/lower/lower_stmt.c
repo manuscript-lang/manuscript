@@ -826,6 +826,9 @@ static bool lower_call_stmt(LowerFn *fn, const MsStmt *stmt) {
   if (value == MIR_NONE) {
     return !fn->failed;
   }
+  if (stmt == fn->sink_stmt && mir_b_ty(&fn->b, value) != MIR_VOID) {
+    fn_bench_sink(fn, value);
+  }
   const MsTy checked = discarded_type(fn, expr);
   const bool owned = fn_fresh_owner(fn, value) ||
                      (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_is_borrowed_view(fn, value));

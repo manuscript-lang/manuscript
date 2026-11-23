@@ -565,11 +565,13 @@ static void declaration(Body *body, const MsDecl *decl) {
     body->result = error == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Result", args, 2);
     /* With a valid `make_fixture` factory in the module, `fixture` names its value: a `var` parameter of the test. */
     const size_t mark = body_scope_mark(body);
-    if (body->fixture_ty != MS_TY_NONE && !decl->u.test.bench) {
+    if (body->fixture_ty != MS_TY_NONE) {
       const MsName fixture = ms_names_intern(body->program->names, ms_span_of_text("fixture"));
       (void)body_declare(body, fixture, body->fixture_ty, MS_REF_PARAM, true, decl->id, decl->pos);
     }
+    body->bench_last = decl->u.test.bench && decl->u.test.body.len > 0 ? decl->u.test.body.ptr[decl->u.test.body.len - 1] : NULL;
     body_block(body, decl->u.test.body);
+    body->bench_last = NULL;
     body_scope_reset(body, mark);
     body->result = MS_TY_NONE;
     body->facts->local_counts[decl->id] = body->next_local;

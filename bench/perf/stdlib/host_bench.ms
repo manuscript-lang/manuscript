@@ -4,7 +4,6 @@ import (
 	ArchiveEntry, ArchiveFormat, pack, unpack from "@std/io/archive.ms",
 	ReadStream, Source from "@std/io/io.ms",
 	sse_events from "@std/net/sse.ms",
-	keep, measure from "@std/test/bench.ms",
 	parse_timestamp from "@std/time.ms",
 )
 
@@ -54,54 +53,41 @@ fn count_events(data: Bytes) Int:
 
 	return count
 
-bench "archive.zip_pack":
+type BenchData:
+	list: List[ArchiveEntry]
+	list_2: List[ArchiveEntry]
+	data: Bytes
+	packed: Bytes
+
+fn make_fixture() BenchData:
 	list := entries(2000)
-
-	fn work() Result[Void, Error]:
-		if b := pack(list, ArchiveFormat.Zip): return keep(b.length())
-		return keep(0)
-
-	measure(2000, work)?
-
-bench "archive.tar_pack":
-	list := entries(2000)
-
-	fn work() Result[Void, Error]:
-		if b := pack(list, ArchiveFormat.Tar): return keep(b.length())
-		return keep(0)
-
-	measure(2000, work)?
-
-bench "archive.zip_unpack":
-	if packed := pack(entries(2000), ArchiveFormat.Zip):
-		fn work() Result[Void, Error]:
-			if e := unpack(packed, ArchiveFormat.Zip): return keep(e.length())
-			return keep(0)
-
-		measure(2000, work)?
-
-bench "sse.feed":
+	list_2 := entries(2000)
 	data := sse_stream(2000)
-	fn work() Result[Void, Error]:
-		return keep(count_events(data.clone()))
-	measure(2000, work)?
+	packed := pack(entries(2000), ArchiveFormat.Zip).get()
+	return BenchData(list: list, list_2: list_2, data: data, packed: packed)
 
-bench "time.timestamp_to_string":
-	fn work() Result[Void, Error]:
-		var n = 0
-		if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
-			for i in 0..20000:
-				n += t.to_string().length()
-		return keep(n)
+bench "archive.zip_pack" per 2000:
+	pack(fixture.list, ArchiveFormat.Zip).get().length()
 
-	measure(20000, work)?
+bench "archive.tar_pack" per 2000:
+	pack(fixture.list_2, ArchiveFormat.Tar).get().length()
 
-bench "random.uuid_v4":
-	fn work() Result[Void, Error]:
-		var n = 0
+bench "archive.zip_unpack" per 2000:
+	unpack(fixture.packed, ArchiveFormat.Zip).get().length()
+
+bench "sse.feed" per 2000:
+	count_events(fixture.data.clone())
+
+bench "time.timestamp_to_string" per 20000:
+	var n = 0
+	if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
 		for i in 0..20000:
-			if u := uuid_v4():
-				n += u.length()
-		return keep(n)
+			n += t.to_string().length()
+	n
 
-	measure(20000, work)?
+bench "random.uuid_v4" per 20000:
+	var n = 0
+	for i in 0..20000:
+		if u := uuid_v4():
+			n += u.length()
+	n
