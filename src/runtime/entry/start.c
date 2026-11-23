@@ -9,6 +9,7 @@
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
 #include "runtime/entry/entry.h"
+#include "runtime/entry/profile.h"
 
 #include <stdatomic.h>
 #include <string.h>
@@ -76,6 +77,7 @@ uint8_t msrt_exit_frees(void) {
 /* Flushes output, runs the exit hooks and ends the process. */
 MS_NORETURN static void finish_process(int status) {
   ms_stdout_flush();
+  ms_profile_finish();
   ms_process_run_exit_hooks();
   ms_sys_exit_now(status);
 }
@@ -207,6 +209,7 @@ void msrt_runtime_set_threads(int64_t threads) {
 int64_t msrt_runtime_limit(void) { return ms_workers_limit(); }
 
 static bool worker_setup(MsPollOps *poll, MsWakeFn *wake, void **wake_argument) {
+  ms_profile_exclude_thread();
   (void)ms_sys_fault_handler_install(report_overflow);
   return open_poller(false, poll, wake, wake_argument);
 }
@@ -245,6 +248,7 @@ static void runtime_thread(void *argument) {
     ms_fault_fatal(MS_FAULT_KIND_FAULT, ms_span_of_text("cannot open the event loop"));
   }
   ms_sched_set_stop_target();
+  ms_profile_attach(); /* after the stop target is set: a sample reads the running task's stack through it */
   configure_workers();
   uint8_t outcome = 0;
   MsFaultText message = {0};
@@ -265,6 +269,7 @@ static void runtime_thread(void *argument) {
 }
 
 int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *const *argv) {
+  ms_profile_start(); /* first: the threads started below must not take the profiling signal */
   ms_fault_install_base_hook();
   ms_obj_install_bounded_drop();
   ms_http_install_task_waiter();
@@ -283,6 +288,7 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
   }
   ms_sys_thread_join(thread);
   ms_stdout_flush();
+  ms_profile_finish();
   ms_process_run_exit_hooks();
   const int status = (int)main_result;
   const int32_t lost = ms_stdout_error();

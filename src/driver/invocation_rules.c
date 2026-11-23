@@ -377,7 +377,7 @@ static int tool_rules(MsArena *arena, MsInvocation *invocation) {
                                                    ms_invocation_quote(arena, invocation->format), (MsSpan){0}));
   }
   static const char *const WRITERS[] = {"build", "emit", "inspect", "diagram", "review", "profile"};
-  if (invocation->output.len > 0 && !is_one_of(command, WRITERS, 5)) {
+  if (invocation->output.len > 0 && !is_one_of(command, WRITERS, 6)) {
     return ms_usage_error(arena, ms_message_format(arena, "-o and --output are valid only for ms build, emit, inspect, "
                                                           "diagram, or profile, not ms %S; run 'ms help %S' for its options",
                                                    command, hint));
