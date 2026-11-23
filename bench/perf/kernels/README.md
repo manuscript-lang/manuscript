@@ -6,6 +6,28 @@ The current runner reports the minimum of N rotating runs. It checks each produc
 
 Record the source revision, machine, tool versions, build type and effective backend when publishing timings. `ms build` defaults to Release; a release-built compiler binary alone does not establish LLVM use. `MS_BACKEND=cranelift` opts out of LLVM, and unavailable LLVM tools can also cause a fallback. This validation change does not rerun or change the historical results below.
 
+## main at de7f94d1 after the list, string, probe and repeated fixes (2026-11-23)
+
+linux/amd64, four shared vCPUs, Go 1.24.7, rustc 1.99.1, gcc `-O2`, `ms` Release build with LLVM built from the C compiler (`cmake --preset ci`); minimum of 9 rotating runs, microseconds. Changes since the previous section: `String.slice` and `String.view` inline (#6628), `Int`- and `String`-key map and set probes read inline (#6624, #6634), `List.repeated` as the bulk native (#6640, `stencil_1000_20` 1169M to 941M instructions). A first run on this machine right after boot was 30% noisier; the table is the second run.
+
+| kernel | go us | ms us | ms / go | rust us | rust / go | rust-checked us | rust-checked / go | c us | c / go | c-ms us | c-ms / go | ms / rust | ms / rust-checked |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| sieve_5M | 45648 | 25794 | 0.57x | 24765 | 0.54x | 23789 | 0.52x | 20379 | 0.45x | 24254 | 0.53x | 1.04x | 1.08x |
+| nbody_200k | 7907 | 6774 | 0.86x | 5202 | 0.66x | 5226 | 0.66x | 6413 | 0.81x | 6694 | 0.85x | 1.30x | 1.30x |
+| life_128x128_50 | 44249 | 3099 | 0.07x | 2658 | 0.06x | 2819 | 0.06x | 25675 | 0.58x | 38133 | 0.86x | 1.17x | 1.10x |
+| matmul_200 | 9016 | 5892 | 0.65x | 5525 | 0.61x | 5811 | 0.64x | 3466 | 0.38x | 10055 | 1.12x | 1.07x | 1.01x |
+| trees_d16_x20 | 32143 | 27874 | 0.87x | 26373 | 0.82x | 24838 | 0.77x | 20676 | 0.64x | 20699 | 0.64x | 1.06x | 1.12x |
+| collatz_1M | 220331 | 189534 | 0.86x | 139910 | 0.63x | 220662 | 1.00x | 180208 | 0.82x | 254319 | 1.15x | 1.35x | 0.86x |
+| map_count_2M | 18908 | 40316 | 2.13x | 18171 | 0.96x | 19281 | 1.02x | n/a | n/a | 12747 | 0.67x | 2.22x | 2.09x |
+| mandel_400 | 11564 | 11041 | 0.95x | 10854 | 0.94x | 11202 | 0.97x | 11399 | 0.99x | 11563 | 1.00x | 1.02x | 0.99x |
+| particles_1k_5k | 5294 | 2944 | 0.56x | 3049 | 0.58x | 3048 | 0.58x | 3729 | 0.70x | 4032 | 0.76x | 0.97x | 0.97x |
+| vm_5M | 50663 | 50685 | 1.00x | 40185 | 0.79x | 36510 | 0.72x | 45965 | 0.91x | 65940 | 1.30x | 1.26x | 1.39x |
+| expr_d20_x20 | 399569 | 320376 | 0.80x | 83560 | 0.21x | 316473 | 0.79x | 279681 | 0.70x | 640878 | 1.60x | 3.83x | 1.01x |
+| closures_20M | 38065 | 47053 | 1.24x | 31196 | 0.82x | 34548 | 0.91x | 72177 | 1.90x | 133951 | 3.52x | 1.51x | 1.36x |
+| stencil_1000_20 | 46390 | 44936 | 0.97x | 35434 | 0.76x | 38572 | 0.83x | 26912 | 0.58x | 65290 | 1.41x | 1.27x | 1.16x |
+
+Gaps against checked Rust, widest first: `map_count_2M` 2.1x (the `Map.update` read-then-insert is two probes where Rust's entry API is one; `ms_map_probe` is 60% of its 815M instructions), `closures_20M` 1.36x, `vm_5M` 1.39x, `nbody_200k` 1.30x, `trees_d16_x20` 1.12x, `stencil_1000_20` 1.16x. `expr_d20_x20` is 1.01x against checked Rust; the unchecked column folds a loop-invariant `eval`. Against Go `map_count_2M` (2.13x) and `closures_20M` (1.24x) are the two kernels where Manuscript is slower.
+
 ## main at 48f9cccf after the C-compiler fixes (2026-11-23)
 
 linux/amd64, four shared vCPUs, Go, rustc and gcc `-O2` as on 2026-11-18, `ms` Release build with LLVM built from the C compiler (`cmake --preset ci`); minimum of 5 rotating runs, microseconds. The first C-compiler run of this suite had `closures_20M` at 194 ms, `map_count_2M` at 53 ms, `stencil_1000_20` at 159 ms and `vm_5M` at 108 ms. Fixes since: cleanup entries kept across a take and refill (#6584), `Map.update` with one read probe (#6590), `StringBuilder.append` in MIR and a one-pass shrinking replace (#6595), a TBAA class for list headers in slots (#6600), `List.pop` in line (#6605). `sieve_5M` varied between 27 and 62 ms in the rotating run on this shared machine; alone it takes 27 to 32 ms.
