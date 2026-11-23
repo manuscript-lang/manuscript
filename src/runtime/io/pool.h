@@ -1,13 +1,14 @@
 /* pool.h: the blocking pool for calls the kernel cannot wait on (file-system calls, regular-file reads and writes,
  * console and pipe reads on Windows).
  *
- * A few threads, started on demand, run jobs from one queue; the submitting task parks on a remote token that the
- * thread posts when the job ends. MS_POOL_THREADS sets the thread count (default 4).
+ * Jobs run on libuv's thread pool (uv_queue_work on the submitting thread's reactor); the submitting task parks on a
+ * remote token that the thread posts when the job ends. UV_THREADPOOL_SIZE sets the thread count (default 4); the
+ * pool is shared with DNS lookups and libuv's own file calls.
  *
  * Rules for a job: it runs on a pool thread, where it may allocate with ms_alloc but must not fault, park, or touch
  * task or scheduler state. A task cancelled while it waits abandons a running job: the pool keeps the job's data and
- * calls its release function on the submitting thread once the job ends. After a pool call returns cancelled, release
- * what the call holds and end the task with ms_cancelled.
+ * calls its release function inside the reactor's after-work callback once the job ends, so release only frees
+ * memory. After a pool call returns cancelled, release what the call holds and end the task with ms_cancelled.
  */
 #ifndef MS_RUNTIME_IO_POOL_H
 #define MS_RUNTIME_IO_POOL_H

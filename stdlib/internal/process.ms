@@ -71,8 +71,6 @@ export extern fn msstd_process_set_title(title: String) Void!
 
 export extern fn msstd_process_title() move String!
 
-export extern fn msstd_process_umask(mask: Int) Int!
-
 export extern fn msstd_process_watch_signals(
 	signals: List[Int],
 	capacity: Int?,

@@ -134,6 +134,28 @@ MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *a
     }
     fn->subst = (LowerSubst){own_vars, own_args, own_count};
   }
+  if (method != NULL && method->shared != 0 && call->arg_count > ms_ty_param_count(&fn->cx->program->types, call->callee_ty) &&
+      call->args[0].source == MS_ARG_WRITTEN && fn->default_params == NULL) {
+    /* A default over the receiver's type variables (`value: T = self.value.clone()`): the receiver's own type
+     * arguments stand for them. */
+    MsTyTable *types = &fn->cx->program->types;
+    const MsTy receiver = ms_ty_subst(types, ms_facts_type(saved_facts, call->args[0].node.node), saved_subst.vars,
+                                      saved_subst.args, saved_subst.count);
+    const size_t have = ms_ty_arg_count(types, receiver);
+    if (have >= method->shared) {
+      const size_t total = method->shared + fn->subst.count;
+      MsTy *vars = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, total * 2 + 1);
+      for (size_t at = 0; at < method->shared; at++) {
+        vars[at] = method->variables.ptr[at];
+        vars[total + at] = ms_ty_args(types, receiver)[at];
+      }
+      for (size_t at = 0; at < fn->subst.count; at++) {
+        vars[method->shared + at] = fn->subst.vars[at];
+        vars[total + method->shared + at] = fn->subst.args[at];
+      }
+      fn->subst = (LowerSubst){vars, vars + total, total};
+    }
+  }
   /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
    * would let the default's `var _resource` stand for a caller local with the same number. */
   const LowerFnLocals saved_locals = fn_locals_save(fn);
@@ -548,7 +570,8 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
     written[at] = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.call.args.ptr[at].value->id),
                               fn->subst.vars, fn->subst.args, fn->subst.count);
   }
-  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten);
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten,
+                                              ms_ty_subst(&fn->cx->program->types, call->callee_ty, fn->subst.vars, fn->subst.args, fn->subst.count));
   if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == call->arg_count) { /* the operation's own arity */
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
@@ -772,7 +795,8 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   }
   const uint32_t external = runtime_function(fn, &fn->cx->program->symbols.ptr[id], ret);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
-  if (sig != NULL && sig->inline_op != NULL && fn_inline_scalar_op(fn, sig->inline_op, args, call->arg_count, ret, &checked)) {
+  const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
+  if (op != NULL && fn_inline_scalar_op(fn, op, args, call->arg_count, ret, &checked)) {
     return checked;
   }
   /* A plain enum handed to a number parameter of the signature is its case index. */

@@ -45,7 +45,12 @@ static void slot_name(char out[static 48], char prefix, uint32_t block, uint32_t
 static bool temps_shared(const EmitCx *cx, const MirInst *inst) {
   MirTy result = MIR_NONE;
   if ((MirOp)inst->op == MOP_CallRt) {
-    result = cx->module->externs.ptr[inst->imm.a].ret;
+    const MirExtern *external = &cx->module->externs.ptr[inst->imm.a];
+    /* A runtime call that neither returns a view nor keeps an argument leaves nothing pointing into the copies. */
+    if (!mir_extern_pins_argument(external)) {
+      return true;
+    }
+    result = external->ret;
   } else if (inst->res != MIR_NONE) {
     result = value_type(cx, inst->res);
     /* A function whose result is not a view of an argument leaves nothing pointing into the copies. */
@@ -127,32 +132,71 @@ static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t
   }
 }
 
-const uint32_t *emit_slot_pool(MsArena *arena, const EmitCx *cx) {
+/* Slots whose live ranges are disjoint share one `%cell` alloca: the slots are taken in order of their first
+ * position and each goes to the free cell that fits it best (the smallest that is big enough, else the largest,
+ * which then grows). */
+const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx) {
   const MirFunc *func = cx->func;
-  const MirBlock *confined = mir_confined_slots(arena, cx->module, func);
-  if (confined == NULL) {
+  uint32_t *lo = NULL;
+  uint32_t *hi = NULL;
+  uint32_t length = 0;
+  if (!mir_slot_ranges(arena, cx->module, func, &lo, &hi, &length)) {
     return NULL;
   }
-  uint32_t *pool = MS_ARENA_NEW_ARRAY(arena, uint32_t, func->values.len + 1);
-  uint32_t *rank = MS_ARENA_NEW_ARRAY(arena, uint32_t, func->blocks.len + 1);
-  for (size_t value = 0; value <= func->values.len; value++) {
+  const size_t count = func->values.len + 1;
+  uint32_t *pool = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
+  uint32_t *bytes = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
+  uint32_t *next = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
+  uint32_t *head = MS_ARENA_NEW_ARRAY(arena, uint32_t, (size_t)length + 1);
+  for (size_t position = 0; position <= length; position++) {
+    head[position] = UINT32_MAX;
+  }
+  for (size_t value = 0; value < count; value++) {
     pool[value] = UINT32_MAX;
   }
-  for (size_t block = 0; block <= func->blocks.len; block++) {
-    rank[block] = 0;
-  }
-  bool any = false;
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirInstList *insts = &func->blocks.ptr[block].insts;
     for (uint32_t index = 0; index < insts->len; index++) {
       const MirInst *inst = &insts->ptr[index];
-      /* Zeroed where the slot is made, so it must be made in the block that uses it. */
-      if (inst->op == MOP_Slot && confined[inst->res] == block) {
-        pool[inst->res] = rank[block]++;
-        any = true;
+      if (inst->op == MOP_Slot && hi[inst->res] != UINT32_MAX) {
+        bytes[inst->res] = emit_slot_bytes(cx, inst->imm.a);
+        next[inst->res] = head[lo[inst->res]];
+        head[lo[inst->res]] = inst->res;
       }
     }
   }
+  uint32_t *free_from = NULL; /* by cell: the first position its last slot no longer holds */
+  uint32_t *cell_bytes = NULL;
+  uint32_t ncells = 0;
+  bool any = false;
+  for (uint32_t position = 0; position <= length; position++) {
+    for (uint32_t slot = head[position]; slot != UINT32_MAX; slot = next[slot]) {
+      uint32_t best = UINT32_MAX;
+      for (uint32_t cell = 0; cell < ncells; cell++) {
+        if (free_from[cell] > position) {
+          continue;
+        }
+        const bool fits = cell_bytes[cell] >= bytes[slot];
+        const bool best_fits = best != UINT32_MAX && cell_bytes[best] >= bytes[slot];
+        if (best == UINT32_MAX || (fits && (!best_fits || cell_bytes[cell] < cell_bytes[best])) ||
+            (!fits && !best_fits && cell_bytes[cell] > cell_bytes[best])) {
+          best = cell;
+        }
+      }
+      if (best == UINT32_MAX) {
+        free_from = ms_realloc(free_from, (ncells + 1) * sizeof(uint32_t));
+        cell_bytes = ms_realloc(cell_bytes, (ncells + 1) * sizeof(uint32_t));
+        best = ncells++;
+        cell_bytes[best] = 0;
+      }
+      cell_bytes[best] = bytes[slot] > cell_bytes[best] ? bytes[slot] : cell_bytes[best];
+      free_from[best] = hi[slot] + 1;
+      pool[slot] = best;
+      any = true;
+    }
+  }
+  ms_free(free_from);
+  ms_free(cell_bytes);
   return any ? pool : NULL;
 }
 

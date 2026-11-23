@@ -225,7 +225,7 @@ static void stack_check(EmitCx *cx, const MirInst *inst) {
   ms_strbuild_printf(out, "  %%l%up = inttoptr i64 %%c%u to ptr\n  %%l%u = load i64, ptr %%l%up\n", number, number,
                      number, number);
   if (inst->op == MOP_StackNear) {
-    ms_strbuild_printf(out, "  %%l%u2 = add i64 %%l%u, %lld\n  %%v%u = icmp ult i64 %%sp%u, %%l%u2\n", number,
+    ms_strbuild_printf(out, "  %%lm%u = add i64 %%l%u, %lld\n  %%v%u = icmp ult i64 %%sp%u, %%lm%u\n", number,
                        number, (long long)inst->imm.i, inst->res, number, number);
     return;
   }

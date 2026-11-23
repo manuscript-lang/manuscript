@@ -35,20 +35,22 @@ static uint32_t drop_opt(const GlCx *cx) {
 
 /* ---- lists ---- */
 
-/* The loop that drops elements `[start, len)` of `list`; the builder ends in the block that frees the list. */
+/* The loop that drops elements `[start, len)` of `list`, last to first (a resource closes in the reverse of the order it
+ * was made); the builder ends in the block that frees the list. */
 static void drop_elements(MirBuilder *b, MirValue list, MirValue start, MirTy elem) {
   const MirValue len = mirgl_list_len(b, list);
   const MirBlock head = mir_b_new_block(b);
   const MirBlock body = mir_b_new_block(b);
   const MirBlock free_block = mir_b_new_block(b);
   const MirValue index = mir_b_add_block_param(b, head, MIR_INT, MM_BORROW);
-  mir_b_br(b, head, &start, 1);
+  const MirValue last = mir_b_binop(b, MOP_ISub, len, mir_b_iconst(b, 1));
+  mir_b_br(b, head, &last, 1);
   mir_b_switch_to(b, head);
-  mir_b_br_if(b, mir_b_icmp(b, MCC_LT, index, len), body, NULL, 0, free_block, NULL, 0);
+  mir_b_br_if(b, mir_b_icmp(b, MCC_GE, index, start), body, NULL, 0, free_block, NULL, 0);
   mir_b_switch_to(b, body);
   const MirValue get_args[2] = {list, index};
   mirgl_drop(b, mirgl_val(b, MOP_ListGetU, get_args, 2, (MirImm){0}, elem));
-  const MirValue next = mir_b_binop(b, MOP_IAdd, index, mir_b_iconst(b, 1));
+  const MirValue next = mir_b_binop(b, MOP_ISub, index, mir_b_iconst(b, 1));
   mir_b_br(b, head, &next, 1);
   mir_b_switch_to(b, free_block);
 }

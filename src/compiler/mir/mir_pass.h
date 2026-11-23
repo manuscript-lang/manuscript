@@ -62,10 +62,16 @@ bool *mir_framed_iface_borrows(MsArena *arena, const MirModule *module, const Mi
 /* The same for closure objects of closures that close nothing and that only drops and borrowing calls use. */
 bool *mir_framed_closures(MsArena *arena, const MirModule *module, const MirFunc *func);
 
-/* Per value of `func` (in `arena`): the block a stack `slot` is confined to, MIR_NONE for every other value.
- * A slot whose address is formed, offset, loaded and stored through and passed to calls inside one block,
- * and whose first access there writes it, holds nothing outside that block, so a backend may give its
- * storage to another block's temporary. NULL when `func` has no slot. */
-MirBlock *mir_confined_slots(MsArena *arena, const MirModule *module, const MirFunc *func);
+/* Whether a runtime call's result or the runtime may keep the address of an argument beyond the call. */
+bool mir_extern_pins_argument(const MirExtern *external);
+
+/* Where each stack `slot` of `func` is live, as a range of instruction positions (blocks in order, each
+ * instruction one position and its terminator one more; `*length` positions in all): `lo[slot]..hi[slot]` by
+ * slot value, covering its creation, every use of an address derived from it, and every block it is live
+ * through. A slot whose address is stored, returned, passed to a block or kept by the runtime has
+ * `hi == UINT32_MAX`: it keeps its place for the whole function. Two slots with disjoint ranges may share
+ * storage. False when `func` has no slot or is too large to analyse. */
+bool mir_slot_ranges(MsArena *arena, const MirModule *module, const MirFunc *func, uint32_t **lo, uint32_t **hi,
+                     uint32_t *length);
 
 #endif

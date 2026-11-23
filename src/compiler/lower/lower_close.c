@@ -320,6 +320,39 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint3
   return true;
 }
 
+uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty) {
+  MsCloser closer;
+  if (!ms_own_closer_of(cx->program, receiver, &closer) || !lowerable(closer.flags, false) ||
+      ((closer.flags & MS_CLOSER_PARTS) != 0 && !lower_parts_supported(cx, receiver))) {
+    return MIR_NONE;
+  }
+  LowerFn fn = {.cx = cx, .facts = &cx->program->modules.ptr[0].facts, .module_index = 0, .file = lower_file(cx, 0), .ret = MIR_VOID};
+  uint32_t silent = MIR_NONE;
+  if (!prepare(&fn, receiver, data_ty, false, &silent)) {
+    return MIR_NONE;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_printf(&text, "vtable.close.%u", (unsigned)data_ty);
+  const MsName name = mir_name(cx->module, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+  const uint32_t found = mir_func_by_name(cx->module, name);
+  if (found != MIR_NONE) {
+    return found;
+  }
+  /* The vtable's payload drop of an owned interface value: close the resource the block holds, then free the block. */
+  MirBuilder b;
+  const MirParam param = {MIR_PTR, (uint8_t)MM_BORROW};
+  mir_b_init(&b, cx->module, name, &param, 1, MIR_VOID);
+  b.func.linkage = ML_INTERNAL;
+  MirValue block = MIR_NONE;
+  mir_b_params(&b, &block, 1);
+  (void)mir_b_call(&b, silent, &block, 1);
+  (void)mir_b_emit(&b, MOP_Free, &block, 1, (MirImm){0}, MIR_NONE);
+  mir_b_ret(&b, mir_b_unit(&b));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
 bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
   const MsTy concrete = ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
   MsCloser plain;

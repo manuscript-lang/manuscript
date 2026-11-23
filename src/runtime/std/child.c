@@ -10,12 +10,6 @@
 #include "runtime/core/task.h"
 #include "runtime/std/run.h"
 
-#ifdef _WIN32
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
-
 enum { SAMPLE_MS = 20 };
 
 void ms_child_lock(MsChild *child) { uv_mutex_lock(&child->lock); }
@@ -115,11 +109,9 @@ static void loop_thread(void *argument) {
 
 void ms_child_close_descriptor(int fd) {
   if (fd >= 0) {
-#ifdef _WIN32
-    (void)_close(fd);
-#else
-    (void)close(fd);
-#endif
+    uv_fs_t request;
+    (void)uv_fs_close(NULL, &request, fd, NULL);
+    uv_fs_req_cleanup(&request);
   }
 }
 

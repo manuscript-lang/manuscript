@@ -30,6 +30,7 @@ typedef struct MsLocal {
 } MsLocal;
 
 MS_LIST_DEFINE(MsLocalList, ms_local_list, MsLocal)
+MS_LIST_DEFINE(MsNodeJournal, ms_node_journal, MsNode)
 
 typedef struct Body {
   MsCheckProgram *program;
@@ -46,7 +47,9 @@ typedef struct Body {
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
+  MsNodeJournal typed; /* owned: the nodes typed so far in this function, so a call can settle what its arguments left open */
   const MsExpr *borrowing_probe; /* the `place[key]?` an `if var name = ...` binds: the one probe that may be written */
+  const MsExpr *returned_expr; /* the return that gave `returned` */
   MsTy returned; /* the first returned value's type while the result is still unknown (lambdas) */
 } Body;
 

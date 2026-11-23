@@ -207,6 +207,9 @@ bool lower_parts_supported(Lower *cx, MsTy ty);
 uint32_t lower_part_close(Lower *cx, MsTy ty);
 /* The function `fn(move value)` that closes an interface value through its `close` operation. */
 uint32_t lower_close_iface(Lower *cx, MsTy ty);
+/* The function that drops the block of an owned interface value whose payload `receiver` is a resource: it closes the
+ * payload and frees the block. MIR_NONE when the type holds no resource. */
+uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty);
 /* Whether a temporary of the type `checked` closes where its statement ends, and its owner: the value goes into a
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);

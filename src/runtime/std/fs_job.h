@@ -75,8 +75,10 @@ void ms_fs_remove_tree(MsFail *fail, MsSpan path);
 bool ms_fs_make_temporary_directory(MsFail *fail, MsSpan pattern, MsStrBuild *out);
 
 /* Reads to the end of `fd` into `out`, failing with MS_STATUS_LIMIT_EXCEEDED past `max` bytes. A cancellable read checks
- * for a stop request between reads (a pool thread must not) and waits for a pipe or device to be readable. */
-void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat_t *stat, MsBytes *out, MsFail *fail);
+ * for a stop request between reads (a pool thread must not) and waits for a pipe or device to be readable. `at` is the
+ * offset to read from, advanced by what is read; NULL reads from the descriptor's own position. */
+void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat_t *stat, int64_t *at, MsBytes *out,
+                        MsFail *fail);
 
 /* An optional size limit: unset is unlimited, a negative one invalid. */
 MS_NODISCARD bool ms_fs_limit(uint8_t present, int64_t value, int64_t *out);

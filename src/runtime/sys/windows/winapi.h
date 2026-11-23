@@ -16,8 +16,6 @@
 #endif
 
 // NOLINTBEGIN(readability-identifier-naming): the names are Win32's
-MS_WINAPI int QueryPerformanceCounter(int64_t *count);
-MS_WINAPI int QueryPerformanceFrequency(int64_t *frequency);
 MS_WINAPI void *VirtualAlloc(void *address, size_t length, uint32_t kind, uint32_t protection);
 MS_WINAPI int VirtualFree(void *address, size_t length, uint32_t kind);
 MS_WINAPI int SwitchToThread(void);
