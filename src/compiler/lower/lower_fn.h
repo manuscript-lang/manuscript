@@ -266,6 +266,19 @@ bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation,
                        MirTy ret, MirValue *out);
 /* Whether the native `operation` of `owner` writes its receiver in place. */
 bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret);
+
+/* lower_native_list.c: natives on lists that edit an element in place or close what they replace. `native_on` is the
+ * dispatcher that calls them; `lists_in_place` says whether borrowing a list expression gives it where it lies. */
+bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+               const MirValue *args, MirTy ret, MirValue *out);
+bool lists_in_place(LowerFn *fn, const MsExpr *expr);
+MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
+bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
+                         const MirValue *args, MirValue *out);
+bool fn_native_closing_take(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+                                const MirValue *args, MirValue *out);
 /* `left op right` over two values of one standard type (lower_expr.c). */
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
 MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);

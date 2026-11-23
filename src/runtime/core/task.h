@@ -249,6 +249,9 @@ MsTaskStatus ms_task_grow(void (*shim)(void *), void *block) MS_NONNULL_ARGS(1);
  * recursion limit: the check a recursive native makes the way a written cyclic function does. A stack that cannot grow
  * is a stack overflow fault. */
 void ms_stack_call(void (*fn)(void *), void *arg) MS_NONNULL_ARGS(1);
+/* Whether fewer than MS_STACK_NATIVE_ROOM bytes remain before the running task's recursion limit (the test
+ * ms_stack_call makes), for a hot native that packs its arguments only when it must grow. */
+bool ms_stack_low(void);
 /* The segment the running task is on (0 is its home slot). */
 uint32_t ms_task_segment(void);
 /* Puts the running task back on `segment` after a guard exit skipped the returns of the grows above it. */

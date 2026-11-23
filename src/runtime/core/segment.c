@@ -160,9 +160,13 @@ static void run_stack_call(void *block) {
   call->fn(call->arg);
 }
 
-void ms_stack_call(void (*fn)(void *), void *arg) {
+bool ms_stack_low(void) {
   const uintptr_t limit = ms_task_running()->unwind.hdr.limit;
-  if (limit == 0 || (uintptr_t)__builtin_frame_address(0) - limit > MS_STACK_NATIVE_ROOM) {
+  return limit != 0 && (uintptr_t)__builtin_frame_address(0) - limit <= MS_STACK_NATIVE_ROOM;
+}
+
+void ms_stack_call(void (*fn)(void *), void *arg) {
+  if (!ms_stack_low()) {
     fn(arg);
     return;
   }
