@@ -92,7 +92,7 @@ static MirValue caller_position(LowerFn *fn) {
 }
 
 /* A default argument is written in the callee's module: its names and types come from that module's facts. */
-static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
+MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
   const MsFacts *saved_facts = fn->facts;
   const uint32_t saved_file = fn->file;
   const uint32_t saved_module = fn->module_index;
@@ -104,7 +104,7 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
                                     : NULL;
   const MsSymbolId callee_id = method != NULL ? 0 : fn_symbol_at(fn->cx, call->callee.decl);
   const MsDecl *callee_decl = callee_id != 0 ? fn->cx->program->symbols.ptr[callee_id].decl : NULL;
-  const MsParam *param = declared_default(callee_decl, method != NULL ? &method->source->func.params : NULL,
+  const MsParam *param = declared_default(callee_decl, fn->default_params != NULL ? fn->default_params : method != NULL ? &method->source->func.params : NULL,
                                           call->callee.index, arg->node.node);
   if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
     fn->facts = saved_facts;
@@ -135,9 +135,12 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
   /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
    * would let the default's `var _resource` stand for a caller local with the same number. */
   const LowerFnLocals saved_locals = fn_locals_save(fn);
-  const uint32_t counted = fn->facts->local_counts != NULL ? fn->facts->local_counts[call->callee.decl.node] : 0;
+  const uint32_t counted = fn->facts->local_counts != NULL && call->callee.kind != MS_REF_LOCAL ? fn->facts->local_counts[call->callee.decl.node] : 0;
   fn_locals_fresh(fn, counted > 16 ? counted : 16);
+  const MsParams *outer_params = fn->default_params; /* a call inside the default is an ordinary call */
+  fn->default_params = NULL;
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  fn->default_params = outer_params;
   fn_locals_restore(fn, &saved_locals);
   fn->subst = saved_subst;
   fn->hint = saved_hint;
@@ -412,11 +415,14 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
       const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
+      const bool outer_has_self = fn->default_has_self; /* an ordinary call inside a method value's default */
+      fn->default_has_self = false;
       fn->default_call = call;
       fn->default_args = out;
-      out[index] = default_arg(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty));
+      out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty));
       fn->default_call = NULL;
       fn->default_args = NULL;
+      fn->default_has_self = outer_has_self;
     } else {
       const MsTyTable *types = &fn->cx->program->types;
       const size_t declared = ms_ty_param_count(types, call->callee_ty);

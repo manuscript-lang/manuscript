@@ -123,6 +123,16 @@ static bool is_empty_optional(const LowerFn *fn, MirValue value) {
   return insts->len != 0 && insts->ptr[insts->len - 1].res == value && insts->ptr[insts->len - 1].op == MOP_OptNone;
 }
 
+/* The parameters of the method a binding's value is, whose defaults a call through the name may leave out (a lambda applies
+ * its own defaults in its body). */
+static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
+  const bool member = value->kind == MS_E_MEMBER || (value->kind == MS_E_APPLY && value->u.apply.left->kind == MS_E_MEMBER);
+  const MsRef *ref = member ? ms_facts_ref(fn->facts, value->id) : NULL;
+  const MsMethodEntry *entry = ref != NULL && ref->kind == MS_REF_METHOD ? fn_method_entry(fn->cx, ref->decl.module, ref->decl.node) : NULL;
+  /* a generic method's defaults are written over its type variables, which a method value does not carry */
+  return entry != NULL && entry->variables.len == 0 ? &entry->source->func.params : NULL;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -157,8 +167,18 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     fn->hint = fn_type(fn, bound_ty);
   }
   fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
+  fn->has_last_receiver = false;
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   fn->moving_field = NULL;
+  const MsRef *bound_ref = value != MIR_NONE ? ms_facts_ref(fn->facts, pattern->id) : NULL;
+  const MsParams *bound_params = bound_ref != NULL ? bound_value_params(fn, stmt->u.bind.value) : NULL;
+  if (bound_params != NULL && fn->nbound_self < MS_COUNT_OF(fn->bound_self)) {
+    /* A lambda or method value keeps the defaults of its parameters; one that reads `self` reads the receiver it captured. */
+    fn->bound_self[fn->nbound_self].local = bound_ref->local;
+    fn->bound_self[fn->nbound_self].params = bound_params;
+    fn->bound_self[fn->nbound_self++].receiver = fn->has_last_receiver ? fn->last_receiver : MIR_NONE;
+  }
+  fn->has_last_receiver = false;
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
     if (call_reads_temporary(fn->facts, stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
