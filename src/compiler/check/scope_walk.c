@@ -103,7 +103,9 @@ static void walk_match(Walk *pass, const MsExpr *expr) {
     const MsArm *arm = expr->u.match.arms.ptr[index];
     const size_t mark = pass->scope.len;
     pass->depth++;
-    for (uint32_t at = 0; at < arm->bindings.len; at++) {
+    const bool variant = arm->bare && arm->bindings.len == 1 && pass->visitor->variant_name != NULL &&
+                         pass->visitor->variant_name(pass->visitor->context, arm->bindings.ptr[0].name);
+    for (uint32_t at = 0; !variant && at < arm->bindings.len; at++) {
       declare(pass, arm->bindings.ptr[at].name, arm->bindings.ptr[at].pos, false, MS_BIND_PAYLOAD);
     }
     walk_stmts(pass, arm->body);
