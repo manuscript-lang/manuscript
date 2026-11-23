@@ -79,8 +79,7 @@ static void free_task(MsSched *sched, MsTask *task) {
 
 /* The record of the thread's own flow of control, created on first use: it runs on the thread's stack, so it
  * has none to prepare. */
-MsTask *ms_task_running(void) {
-  MsSched *const sched = ms_sched();
+MsTask *ms_task_running_slow(MsSched *sched) {
   if (sched->current == NULL) {
     MsTask *const task = new_task(sched);
     task->state = MS_STATE_RUNNING;

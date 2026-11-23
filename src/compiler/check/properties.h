@@ -26,7 +26,29 @@ typedef struct MsPropertyKey {
 
 MS_LIST_DEFINE(MsPropertyKeyList, ms_property_key_list, MsPropertyKey)
 
+/* Whether a type holds a resource, by type id: `stamp` is the method-table size + 1 the answer was computed at. */
+typedef struct MsHeld {
+  uint32_t stamp;
+  bool result;
+} MsHeld;
+
+MS_LIST_DEFINE(MsHeldList, ms_held_list, MsHeld)
+
+/* Whether a receiver implements a contract by shape, in an open-addressing table keyed by the pair: `stamp` is the
+ * method-table size + 1 the answer was computed at, and 0 marks an empty slot. */
+typedef struct MsShapeSlot {
+  uint64_t key;
+  uint32_t stamp;
+  bool result;
+} MsShapeSlot;
+
 typedef struct MsPropertyMemo {
+  MsShapeSlot *shapes;
+  size_t shape_cap; /* a power of two, or 0 */
+  size_t shape_len;
+  MsHeldList held;
+  MsTyList shared_sets; /* native.c: (contract, type set) pairs of the standard interfaces bounded by a type set */
+  size_t shared_stamp;  /* the symbol count they were collected at, plus one */
   MsPropertyKeyList active;
   MsPropertyKeyList done;
   MsTy closeable; /* the standard Closeable interface once found */

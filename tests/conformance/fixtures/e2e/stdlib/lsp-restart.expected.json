@@ -11,7 +11,7 @@
       "tests": [
         {
           "index": 0,
-          "name": "if-var-optional-copy.ms::if var on an optional local changes its own value",
+          "name": "lsp-restart.ms::a killed worker is replaced and the open document is replayed",
           "status": "passed"
         }
       ],
@@ -25,7 +25,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN if-var-optional-copy.ms::if var on an optional local changes its own value\nPASS if-var-optional-copy.ms::if var on an optional local changes its own value\n1 tests, 0 failed\n",
+      "stdout": "RUN lsp-restart.ms::a killed worker is replaced and the open document is replayed\nPASS lsp-restart.ms::a killed worker is replaced and the open document is replayed\n1 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

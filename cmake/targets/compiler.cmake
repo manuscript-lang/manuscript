@@ -55,7 +55,7 @@ ms_library(ms_emit compiler/emit
   SOURCES
     emit_leaf.c emit_memory.c emit_scalar.c emit_call.c emit_checked.c emit_record.c emit_term.c emit_func.c emit.c
     emit_decl.c emit_entry.c emit_data.c emit_option.c emit_list.c emit_string.c emit_closure.c emit_iface.c
-    emit_task.c emit_debug.c emit_tables.c emit_hints.c emit_copies.c
+    emit_task.c emit_debug.c emit_tables.c emit_hints.c emit_copies.c emit_wide.c
   LINK ms_mir ms_base)
 
 # One linker per OS family.
@@ -74,7 +74,7 @@ ms_library(ms_link compiler/link
 ms_library(ms_check compiler/check
   SOURCES
     import_errors.c import_fix.c suggest.c scope_walk.c names.c names_hint.c names_habit.c std_exports.c mutate.c
-    mutate_fix.c fallthrough.c message_fixes.c shadow.c effects_scan.c returns.c fallthrough_type.c constants.c
+    mutate_fix.c fallthrough.c message_fixes.c shadow.c effects_scan.c lazy_std.c returns.c fallthrough_type.c constants.c
     exports.c symbol_text.c effects_directives.c effects_paths.c effects_reach.c builtins.c check.c declare.c
     imports.c resolve.c signatures.c methods.c implements.c properties.c bounds.c instantiate.c typevars.c types.c
     type_ops.c facts.c bodies.c exprs.c exprs_ops.c conversions.c calls.c call_target.c call_report.c match.c

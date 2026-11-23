@@ -1,13 +1,12 @@
-/* compiler/lower/lower_text.c: interpolated text. The pieces are evaluated left to right and joined by one
- * runtime call: `msrt_string_concatN`, or `msrt_string_fmtN` (a mask of the integer pieces first) when a piece is
- * an integer, which the join writes in decimal. At most six pieces go in one call; a longer text joins the
- * first group, then that result and the next pieces. */
+/* compiler/lower/lower_text.c: interpolated text. The pieces are evaluated left to right and joined by one call with
+ * the role `MR_STRING_JOIN`, any number of pieces, an integer piece passed as an Int; `mir_expand` replaces it with the
+ * length sum, the allocation and the copies. */
 #include "compiler/lower/lower_fn.h"
 #include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
-enum { TEXT_MAX_JOIN = 6 };
+enum { TEXT_MAX_PIECES = 16 }; /* pieces joined from a frame array; more come from the arena */
 
 typedef struct TextPiece {
   MirValue value;
@@ -48,31 +47,8 @@ MirValue fn_string_concat(LowerFn *fn, MirValue left, MirValue right) {
   return call_join(fn, "msrt_string_concat", 0, params, 2, args, MR_STRING_CONCAT);
 }
 
-/* Joins up to six pieces. */
-static MirValue join_group(LowerFn *fn, const TextPiece *group, uint32_t count) {
-  MirTy params[TEXT_MAX_JOIN + 1];
-  MirValue args[TEXT_MAX_JOIN + 1];
-  uint32_t used = 0;
-  int64_t mask = 0;
-  bool ints = false;
-  for (uint32_t index = 0; index < count; index++) {
-    ints = ints || group[index].is_int;
-    mask |= group[index].is_int ? (int64_t)1 << index : 0;
-  }
-  if (ints) {
-    args[used] = mir_b_iconst(&fn->b, mask);
-    params[used++] = MIR_INT;
-  }
-  for (uint32_t index = 0; index < count; index++) {
-    args[used] = group[index].value;
-    params[used++] = group[index].is_int ? MIR_INT : MIR_STR;
-  }
-  if (ints) {
-    return call_join(fn, "msrt_string_fmt", count, params, used, args, MR_STRING_JOIN);
-  }
-  return call_join(fn, "msrt_string_concat", count == 2 ? 0 : count, params, used, args, MR_STRING_CONCAT);
-}
-
+/* Joins the pieces in one call that `mir_expand` writes out: the sum of the lengths, one allocation, a copy of each
+ * piece, and each Int written in decimal. Two strings stay a concat, which the append pass also recognises. */
 static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count) {
   if (count == 1 && pieces[0].is_int) {
     const MirTy param = MIR_INT;
@@ -81,29 +57,42 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
   if (count == 1) {
     return pieces[0].value;
   }
-  uint32_t taken = count < TEXT_MAX_JOIN ? count : TEXT_MAX_JOIN;
-  MirValue joined = join_group(fn, pieces, taken);
-  while (taken < count && joined != MIR_NONE) {
-    TextPiece group[TEXT_MAX_JOIN] = {{joined, false}};
-    uint32_t used = 1;
-    while (used < TEXT_MAX_JOIN && taken < count) {
-      group[used++] = pieces[taken++];
-    }
-    joined = join_group(fn, group, used);
+  MirTy params[TEXT_MAX_PIECES];
+  MirValue args[TEXT_MAX_PIECES];
+  bool ints = false;
+  MirTy *wide = count <= TEXT_MAX_PIECES ? params : MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirTy, count);
+  MirValue *values = count <= TEXT_MAX_PIECES ? args : MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, count);
+  for (uint32_t index = 0; index < count; index++) {
+    ints = ints || pieces[index].is_int;
+    values[index] = pieces[index].value;
+    wide[index] = pieces[index].is_int ? MIR_INT : MIR_STR;
   }
-  return joined;
+  if (count == 2 && !ints) {
+    return call_join(fn, "msrt_string_concat", 0, wide, 2, values, MR_STRING_CONCAT);
+  }
+  return call_join(fn, "msrt_string_join", 0, wide, count, values, MR_STRING_JOIN);
 }
 
 /* Any other value is written by the runtime's walker over the value's shape table: the value goes into a stack
  * slot (a borrow, so nothing is dropped) and the walker reads it through the table. */
-static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *function) {
+static MirValue value_shown_as(LowerFn *fn, MirValue value, MirTy ty, const char *function, MirTy ret) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
   (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
   const MirValue table = fn_shape(fn, of_type.a);
   const MirValue args[2] = {table, slot};
-  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, MIR_STR);
+  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, ret);
+}
+
+static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *function) {
+  return value_shown_as(fn, value, ty, function, MIR_STR);
+}
+
+/* A bench body's last value goes to the runtime's sink, which the compiler cannot see into: the work that computed
+ * it stays in the program. */
+void fn_bench_sink(LowerFn *fn, MirValue value) {
+  (void)value_shown_as(fn, value, mir_b_ty(&fn->b, value), "msstd_bench_sink", MIR_VOID);
 }
 
 /* An interface value is written by its payload's type: the vtable carries a text slot after the declared methods. */

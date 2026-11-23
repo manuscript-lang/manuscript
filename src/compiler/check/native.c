@@ -54,8 +54,10 @@ static bool add_operation(MsCheckProgram *program, const char *interface, MsTy r
 
 /* The standard interfaces that declare `receiver` a member: those whose one type parameter is bounded by a type set
  * that lists it (`interface IntegerOperations[T: IntegerTypes]`). */
-static void shared_contracts(MsCheckProgram *program, MsTy receiver, MsTyList *out) {
+static void collect_shared_sets(MsCheckProgram *program) {
   MsTyTable *types = &program->types;
+  MsPropertyMemo *memo = &program->properties;
+  ms_ty_list_clear(&memo->shared_sets);
   for (size_t index = 1; index < program->symbols.len; index++) {
     const MsSymbol *symbol = &program->symbols.ptr[index];
     if (symbol->kind != MS_SYMBOL_TYPE || symbol->ty == MS_TY_NONE || symbol->module < program->user_modules ||
@@ -64,11 +66,26 @@ static void shared_contracts(MsCheckProgram *program, MsTy receiver, MsTyList *o
     }
     const MsTyVariable *variable = ms_ty_variable(types, program->symbol_vars.ptr[symbol->var_at]);
     for (size_t at = 0; variable != NULL && at < variable->bounds.len; at++) {
-      const MsTy bound = variable->bounds.ptr[at];
-      for (size_t member = 0; ms_ty_is(types, bound, MS_BUILTIN_TypeSet) && member < ms_ty_arg_count(types, bound); member++) {
-        if (ms_ty_args(types, bound)[member] == receiver) {
-          ms_ty_list_push(out, symbol->ty);
-        }
+      if (ms_ty_is(types, variable->bounds.ptr[at], MS_BUILTIN_TypeSet)) {
+        ms_ty_list_push(&memo->shared_sets, symbol->ty);
+        ms_ty_list_push(&memo->shared_sets, variable->bounds.ptr[at]);
+      }
+    }
+  }
+  memo->shared_stamp = program->symbols.len + 1;
+}
+
+static void shared_contracts(MsCheckProgram *program, MsTy receiver, MsTyList *out) {
+  MsTyTable *types = &program->types;
+  MsPropertyMemo *memo = &program->properties;
+  if (memo->shared_stamp != program->symbols.len + 1) {
+    collect_shared_sets(program);
+  }
+  for (size_t index = 0; index + 1 < memo->shared_sets.len; index += 2) {
+    const MsTy bound = memo->shared_sets.ptr[index + 1];
+    for (size_t member = 0; member < ms_ty_arg_count(types, bound); member++) {
+      if (ms_ty_args(types, bound)[member] == receiver) {
+        ms_ty_list_push(out, memo->shared_sets.ptr[index]);
       }
     }
   }

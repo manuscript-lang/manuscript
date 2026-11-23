@@ -3,6 +3,7 @@
  * Gives every type, enum, interface, alias, function and constant a symbol and a scope entry. A type-like
  * declaration also gets its (still empty) definition and nominal type, so later passes can name it before its
  * fields are resolved. A name already in scope is a duplicate. */
+#include "compiler/check/lazy_std.h"
 #include "base/alloc.h"
 #include "compiler/check/program.h"
 
@@ -32,7 +33,10 @@ void ms_check_program_free(MsCheckProgram *program) {
   ms_check_diag_list_free(&program->deferred);
   ms_check_diag_list_free(&program->ownership);
   ms_pending_default_list_free(&program->pending_defaults);
+  ms_check_lazy_std_free(program);
   ms_methods_free(&program->methods);
+  ms_method_key_list_free(&program->method_index.by_name);
+  ms_method_key_list_free(&program->method_index.by_decl);
   ms_property_memo_free(&program->properties);
   ms_defs_free(&program->defs);
   ms_tys_free(&program->types);

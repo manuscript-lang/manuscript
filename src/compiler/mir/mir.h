@@ -295,6 +295,7 @@ typedef struct MirTypeDef {
   MirField *fields; /* in the module arena */
   uint32_t nfields;
   bool indirect; /* one pointer to a heap block */
+  bool opaque;   /* declared `opaque`: its text is the type name only */
   bool native;   /* an extern type the runtime reads and writes by address (`@repr=inline<N>`): words, no fields to name */
   bool decimal;  /* the standard `Decimal`: its shape is a number written and read as digits */
   uint32_t text_fn1; /* 1 + the function `fn(slot, out)` that writes the type's own `to_string` text, for its shape; 0 for none */
@@ -317,6 +318,7 @@ typedef struct MirAltDef {
   MirCaseDef *cases; /* in the module arena */
   uint32_t ncases;
   uint64_t borrowed;
+  bool opaque; /* as for MirTypeDef */
   uint32_t text_fn1; /* as for MirTypeDef */
   uint32_t json_fn1;
   uint32_t tree_fn1; /* 1 + the constructor thunk of the untyped tree (`JsonValue`) for its shape; 0 for none */
@@ -353,9 +355,9 @@ MS_LIST_DEFINE(MirIfaceDefList, mir_iface_def_list, MirIfaceDef)
 
 typedef enum MirRole {
   MR_NONE, MR_BORROWS_ARGUMENT, MR_STRBUILDER_APPEND, MR_STRBUILDER_APPEND_INT, MR_STRING_CONCAT,
-  MR_STRING_JOIN, MR_STRING_APPEND, MR_INT_TO_STRING, MR_LIST_SORTED, MR_RAW_SLOTS, MR_RAW_FREE,
+  MR_STRING_JOIN, MR_STRING_JOIN_GROW, MR_STRING_APPEND, MR_INT_TO_STRING, MR_LIST_SORTED, MR_RAW_SLOTS, MR_RAW_FREE,
   MR_LIST_SORT_INTS, MR_LIST_SORTED_BY_DIFFERENCE, MR_LIST_NEW, MR_MAP_NEW, MR_BYTES_VALUES, MR_STRING_EQ,
-  MR_CLEANUP_DISCARD, MR_BYTES_APPEND, MR_VIEW_RESULT, MR_TAKES_DYING, MR_SPAWNS_TASK, MR_SHIELD_ENTER,
+  MR_CLEANUP_DISCARD, MR_CLEANUP_CANCEL, MR_BYTES_APPEND, MR_VIEW_RESULT, MR_TAKES_DYING, MR_SPAWNS_TASK, MR_SHIELD_ENTER,
   MR_SHIELD_EXIT, MR_UNWINDING, MR_MAP_PROBE_INT, MR_MAP_PROBE_STR, MR_SET_PROBE_INT, MR_STRING_SLICE,
   MR_BYTES_READ_WORD, MR_BYTES_INDEX_OF_BYTE, MR_STRING_PARSE_INT, MR_STRING_CONTAINS,
   MR_STRING_STARTS_WITH, MR_STRING_ENDS_WITH, MR_STRING_COMPARE, MR_STRING_SCALAR_STEP,
@@ -368,6 +370,7 @@ typedef struct MirExtern {
   uint32_t nparams;
   MirTy ret;
   bool noreturn, pure, fresh, leaf, reads, retains;
+  bool handle; /* keeps its pointer arguments until the last use of its result (`msrt_cleanup_push` and its handle) */
   uint8_t role; /* a MirRole */
 } MirExtern;
 

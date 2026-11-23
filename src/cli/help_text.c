@@ -57,7 +57,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "Builds link with the linker bundled in ms on every platform; no C compiler or SDK is needed.\n"
     "MANUSCRIPT_CACHE_DIR selects the user cache for standalone run/test/profile artifacts.\n"},
     {"check",
-    "Usage: ms check <file.ms|directory|ms.toml>... [--json [--with-text [--each]]] [--watch] [--fix]\n"
+    "Usage: ms check <file.ms|directory|ms.toml>... [--json [--with-text [--each]]] [--watch] [--fix] [--std]\n"
     "\n"
     "Parse, resolve imports, and type-check independent inputs without executing source.\n"
     "A project directory selects ms.toml and checks all source modules, discovered tests, and its entry signature.\n"
@@ -68,6 +68,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  --json  Emit versioned JSON diagnostics instead of terminal messages\n"
     "  --with-text  With --json, also carry the terminal output as text.stdout and text.stderr\n"
     "  --each  With --json --with-text, report every input as its own result, `{\"results\": [{\"target\", \"exit_code\", \"document\"}]}`, from one standard-library load\n"
+    "  --std   Check every bundled standard-library body, not only those the program reaches\n"
     "  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
     "  --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)\n"
     "  -h, --help  Show this help without executing the command\n"
@@ -78,7 +79,7 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  ms check ms.toml --json\n"
     "  ms check src utilities.ms --json\n"},
     {"lint",
-    "Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings]\n"
+    "Usage: ms lint <file.ms|directory|ms.toml>... [--json] [--watch] [--fix] [--deny-warnings] [--syntax]\n"
     "\n"
     "Check source hygiene and semantic lint rules in independent inputs and their imports.\n"
     "A project directory selects ms.toml; standalone directories discover .ms files recursively. A project lints all its source modules and test files, imported or not.\n"
@@ -91,6 +92,8 @@ const MsHelpPage MS_HELP_PAGES[] = {
     "  --json  Emit versioned JSON findings with stable rule codes\n"
     "  --watch Recheck after each saved change to an input or loaded module (no --json)\n"
     "  --deny-warnings  Treat warnings as errors (for CI)\n"
+    "  --syntax  Run only the rules that need a parse (nested matches) on each file, and on the code fences of a .md file;\n"
+    "            code that does not type-check is still linted, code that does not parse is skipped\n"
     "  --fix   Apply machine-applicable fixes (the `fix` field of --json diagnostics) in place, then report what remains (no --watch)\n"
     "  -h, --help  Show this help without executing the command\n"
     "\n"

@@ -43,10 +43,6 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
   if (options->cancel_edges && mir_cancel_edges(module) && options->verify && !verified(module, "cancel_edges", error)) {
     return false;
   }
-  /* After unwind, which looks for the check as the first instruction of a function. */
-  if (mir_depth_lower(module) && options->verify && !verified(module, "depth", error)) {
-    return false;
-  }
   /* The checks and list growth the emitter prints are explicit MIR from here on. */
   (void)mir_expand(module, options->checks);
   if (options->verify && !verified(module, "expand", error)) {
@@ -55,6 +51,9 @@ bool mir_pipeline_finish(MirModule *module, const MirPipelineOptions *options, M
   /* Drop and clone functions are made here; the emitter prints only primitives. */
   mir_desc_glue(module); /* its functions only call the runtime, so glue and lowering need nothing more */
   mir_glue_run_and_expand(module, glue);
+  /* After unwind, which looks for the check as the first instruction of a function, and after every pass that adds
+   * slots (expand, glue): a frame is measured once they are there. */
+  (void)mir_depth_lower(module); /* not verified here: glue functions are checked by their own builder */
   return true;
 }
 

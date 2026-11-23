@@ -106,6 +106,18 @@ static void add_pattern_closers(Closers *pass, const MsPattern *pattern, bool is
   }
 }
 
+/* `xs.first()` or `xs.last()` on a list: the element is read in place, so the list keeps and closes it. */
+static bool reads_list_end(const Closers *pass, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (call->u.call.args.len != 0 || callee->kind != MS_E_MEMBER || ms_facts_call(pass->facts, call->id) == NULL) {
+    return false;
+  }
+  const MsSpan name = ms_names_span(pass->program->names, callee->u.member.name);
+  const MsTy held = ms_facts_type(pass->facts, callee->u.member.left->id);
+  return (ms_span_is_text(name, "first") || ms_span_is_text(name, "last")) && held != MS_TY_NONE &&
+         ms_ty_is(&pass->program->types, held, MS_BUILTIN_List);
+}
+
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
   if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind != MS_P_NAME) {
@@ -119,7 +131,8 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
     /* A read that answers a part of its receiver in place (`m.get(k)`) lends the payload: its owner closes it. */
     const bool lent = !stmt->u.branch.is_mutable && stmt->u.branch.cond->kind == MS_E_CALL &&
-                      ms_own_native_get(pass->program, pass->facts, stmt->u.branch.cond) != MS_NATIVE_GET_NONE;
+                      (ms_own_native_get(pass->program, pass->facts, stmt->u.branch.cond) != MS_NATIVE_GET_NONE ||
+                       reads_list_end(pass, stmt->u.branch.cond));
     if (bound != NULL && bound->kind == MS_REF_LOCAL && !lent) {
       const size_t before = pass->facts->closers.len;
       add_closer(pass, stmt->u.branch.binding->id, MS_REF_LOCAL, bound->local, ms_facts_type(pass->facts, stmt->u.branch.binding->id));
@@ -158,6 +171,12 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   const MsRef *ref = ms_facts_ref(pass->facts, node);
   if (ref == NULL || ref->kind != MS_REF_LOCAL) {
     return;
+  }
+  const MsNativeGet read = !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_CALL
+                               ? ms_own_native_get(pass->program, pass->facts, stmt->u.bind.value)
+                               : MS_NATIVE_GET_NONE;
+  if (read == MS_NATIVE_GET_LIST || read == MS_NATIVE_GET_MAP) {
+    return; /* a read that answers a part of its receiver in place (`xs.get(i)`) lends it: its owner closes it */
   }
   const size_t before = pass->facts->closers.len;
   add_closer(pass, node, MS_REF_LOCAL, ref->local, ms_facts_type(pass->facts, node));
@@ -453,7 +472,11 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
      * scope closes it on the others; any other capture leaves the ownership to the closure. */
     flag(pass, ref, pass->escaping != 0 && ref->kind == MS_REF_LOCAL ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
-    flag(pass, ref, expr->kind != MS_E_NAME ? MS_CLOSER_PARTIAL : expr->id == pass->receiver ? MS_CLOSER_MOVED | MS_CLOSER_RECEIVER : MS_CLOSER_MOVED);
+    const MsRef *member = expr->kind == MS_E_MEMBER ? ms_facts_ref(pass->facts, expr->id) : NULL;
+    /* A method value that leaves its maker carries its receiver along: the whole binding moves into the closure. */
+    const bool method_value = member != NULL && (member->kind == MS_REF_METHOD || member->kind == MS_REF_NATIVE) &&
+                              expr->u.member.left->kind == MS_E_NAME;
+    flag(pass, ref, method_value ? MS_CLOSER_MOVED : expr->kind != MS_E_NAME ? MS_CLOSER_PARTIAL : expr->id == pass->receiver ? MS_CLOSER_MOVED | MS_CLOSER_RECEIVER : MS_CLOSER_MOVED);
   }
 }
 

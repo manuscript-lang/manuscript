@@ -1,7 +1,9 @@
 /* compiler/lower/lower_func.c: the lowering driver. Functions are lowered on demand from `main`: a use of a
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
+#include "base/fatal.h"
 #include "compiler/lower/lower_fn.h"
+#include "compiler/mir/mir_layout.h"
 #include "compiler/own/moves.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
@@ -181,7 +183,7 @@ static uint32_t target_params(const Lower *cx, const LowerTarget *target, MsTyPa
 /* A result that is a place of a parameter, or a call whose own result is such a place: the callee can hand back
  * the reference itself. */
 typedef struct PlaceReturns {
-  const Lower *cx;
+  Lower *cx;
   const MsFacts *facts;
   const MsFunc *func; /* the function whose returns are counted */
   MsTy result; /* the declared result type, or MS_TY_NONE when unknown */
@@ -190,14 +192,41 @@ typedef struct PlaceReturns {
   uint32_t places;
 } PlaceReturns;
 
-static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
+static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth);
 
 /* A native whose result is a type argument of one of its arguments (`List[T].get` answers a `T` of a `List[T]`): it can
  * only hand back a part of what it was given, so its result is a view. A native with any other result (a status, a
  * count) builds a new value. */
+/* Whether an argument of `call` that the result may be a part of is a value built in the call (`get_or(i, Tok(..))`):
+ * it dies with the statement, so the result is not something to lend on. */
+static bool built_source(const PlaceReturns *counts, const MsCall *call, const MsExpr *value) {
+  const MsTyTable *types = &counts->cx->program->types;
+  const MsTy result = ms_facts_type(counts->facts, value->id);
+  for (uint32_t index = 0; index < call->arg_count; index++) {
+    if (call->args[index].node.node == 0 ||
+        &counts->cx->program->modules.ptr[call->args[index].node.module].facts != counts->facts) {
+      continue;
+    }
+    const MsTy arg = ms_facts_type(counts->facts, call->args[index].node.node);
+    bool holds = arg == result && index > 0; /* a fallback of the result's own type may be what is handed back */
+    for (size_t at = 0; arg != MS_TY_NONE && at < ms_ty_arg_count(types, arg); at++) {
+      holds = holds || ms_ty_args(types, arg)[at] == result;
+    }
+    const MsExpr *written = holds ? fn_written_arg(value, call->args[index].node.node) : NULL;
+    if (written != NULL && written->kind != MS_E_NAME && written->kind != MS_E_MEMBER && written->kind != MS_E_INDEX &&
+        written->kind != MS_E_APPLY) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool native_returns_element(const PlaceReturns *counts, const MsCall *call, const MsExpr *value) {
   const MsTyTable *types = &counts->cx->program->types;
   const MsTy result = ms_facts_type(counts->facts, value->id);
+  if (built_source(counts, call, value)) {
+    return false;
+  }
   for (uint32_t index = 0; index < call->arg_count; index++) {
     if (call->args[index].node.node == 0) {
       continue;
@@ -241,7 +270,7 @@ static bool call_borrows(const PlaceReturns *counts, const MsExpr *value) {
   const MsTyTable *types = &counts->cx->program->types;
   const MsTy signature = ms_facts_type(&counts->cx->program->modules.ptr[call->callee.decl.module].facts, call->callee.decl.node);
   const MsTy result = signature != MS_TY_NONE && ms_ty_kind(types, signature) == MS_TY_FUNCTION ? ms_ty_result(types, signature) : MS_TY_NONE;
-  return returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
+  return !built_source(counts, call, value) && returns_places(counts->cx, call->callee.decl.module, callee, result, counts->depth + 1);
 }
 
 static void count_place_returns(void *ctx, const MsStmt *stmt) {
@@ -259,8 +288,16 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   counts->returns++;
   if (counts->result != MS_TY_NONE && ms_facts_type(counts->facts, value->id) != counts->result) {
     const MsConversion *conversion = ms_facts_conversion(counts->facts, value->id);
-    if (conversion == NULL || conversion->kind != MS_CONV_OPTIONAL_WRAP) {
-      return; /* any other conversion builds a new owner; a wrapped place stays a view of it */
+    if (conversion == NULL || (conversion->kind != MS_CONV_OPTIONAL_WRAP && conversion->kind != MS_CONV_INTERFACE_VIEW)) {
+      return; /* any other conversion builds a new owner; a wrapped or interface-viewed place stays a view of it */
+    }
+    if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
+      /* Only a value that lives in memory can be viewed in place; a flat one is copied into the interface's block. */
+      const LowerSubst none = {0};
+      if (ms_ty_has_variable(&counts->cx->program->types, conversion->from) ||
+          !mir_needs_drop(counts->cx->module, lower_type(counts->cx, &none, conversion->from))) {
+        return;
+      }
     }
   }
   if (value->kind == MS_E_NAME) { /* `none` and a case name are values, not places */
@@ -273,7 +310,7 @@ static void count_place_returns(void *ctx, const MsStmt *stmt) {
   }
 }
 
-static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
+static bool returns_places(Lower *cx, uint32_t module, const MsFunc *func, MsTy result, uint32_t depth) {
   PlaceReturns counts = {cx, &cx->program->modules.ptr[module].facts, func, result, depth, 0, 0};
   const MsVisitor visitor = {.ctx = &counts, .stmt = count_place_returns};
   ms_walk_block(&visitor, func->body);
@@ -282,8 +319,33 @@ static bool returns_places(const Lower *cx, uint32_t module, const MsFunc *func,
 
 /* Whether the callee's result borrows from a parameter: the checker's fact says every path returns a part of a
  * parameter, and each return is that place itself (a wrapper such as `ok(part)` builds a value and stays an owner). */
-static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
-  if (target->entry || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
+typedef struct BodyCloses {
+  const MsFacts *facts;
+  bool found;
+} BodyCloses;
+
+static void note_body_closes(void *ctx, const MsStmt *stmt) {
+  BodyCloses *closes = ctx;
+  if (stmt->kind == MS_S_BIND && ms_facts_closer(closes->facts, stmt->u.bind.pattern->id) != NULL) {
+    closes->found = true;
+  }
+}
+
+/* A body that closes resources can replace its result with the close error, a new value: it never hands back a part
+ * of a parameter. */
+static bool body_closes(const Lower *cx, const LowerTarget *target) {
+  BodyCloses closes = {&cx->program->modules.ptr[target->module].facts, false};
+  const MsVisitor visitor = {.ctx = &closes, .stmt = note_body_closes};
+  ms_walk_block(&visitor, target->func->body);
+  return closes.found;
+}
+
+static bool borrows_result(Lower *cx, const LowerTarget *target, MirTy ret, const MirParam *params, uint32_t count) {
+  const MirTyData *ret_data = mir_ty_data(cx->module, ret);
+  if (ret_data->kind == MK_OPT && mir_ty_opt_boxed(cx->module, ret_data->elem)) {
+    return false; /* a boxed Optional owns the heap block that holds its payload: a view of a part cannot be one */
+  }
+  if (target->entry || body_closes(cx, target) || !ms_own_result_is_borrowed(cx->program, target->module, target->node) ||
       !mir_needs_drop(cx->module, ret)) {
     return false;
   }
@@ -297,6 +359,9 @@ static bool borrows_result(const Lower *cx, const LowerTarget *target, MirTy ret
 
 /* Reserves the MIR function of an instance: its signature, and a body that is `unreachable` until lowered. */
 static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, uint32_t nargs) {
+  if (target->func != NULL && target->func->deferred) {
+    ms_fatal(MS_FATAL_INVARIANT, "lowering reached a standard body the checker never checked");
+  }
   MsTy vars[16];
   if (nargs > 16 || (nargs > 0 && !decl_variables(cx, target, vars, nargs))) {
     (void)lower_fail(cx, "a function has too many type parameters");
@@ -306,6 +371,12 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MsTyTable *types = &cx->program->types;
   MsTyParam params[LOWER_MAX_PARAMS];
   const uint32_t count = target_params(cx, target, params);
+  if (count != (target->receiver != MS_TY_NONE ? 1u : 0u) + (uint32_t)ms_ty_param_count(types, target->ty)) {
+    const MsSpan file = cx->module->files.ptr[lower_file(cx, target->module)];
+    (void)lower_user_fail(cx, "%.*s: a function takes at most %u parameters; pass a record instead", (int)file.len,
+                          (const char *)file.ptr, (unsigned)LOWER_MAX_PARAMS);
+    return MIR_NONE;
+  }
   MirParam *mir_params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
     /* A `var` parameter travels as the address of a slot that holds its value. */
@@ -373,6 +444,21 @@ static void note_param_write(void *ctx, const MsStmt *stmt) {
  * variable tracks. */
 static void note_param_move(void *ctx, const MsExpr *expr) {
   ParamWrites *writes = ctx;
+  const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(writes->facts, expr->id) : NULL;
+  for (uint32_t at = 0; call != NULL && at < call->arg_count; at++) {
+    /* A field handed on as a `var` argument (`param.items.append(x)`) is changed in the parameter's own record. */
+    const MsExpr *written = (call->args[at].flags & MS_PARAM_VAR) != 0 && call->args[at].source == MS_ARG_WRITTEN
+                                ? fn_written_arg(expr, call->args[at].node.node)
+                                : NULL;
+    const MsExpr *root = written;
+    while (root != NULL && root->kind == MS_E_MEMBER) {
+      root = root->u.member.left;
+    }
+    const MsRef *ref = root != NULL && root != written && root->kind == MS_E_NAME ? ms_facts_ref(writes->facts, root->id) : NULL;
+    if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
+      writes->found = true;
+    }
+  }
   if (expr->kind != MS_E_MEMBER || expr->u.member.left->kind != MS_E_NAME ||
       ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
     return;
@@ -454,7 +540,10 @@ static void finish_body(LowerFn *fn) {
     mir_b_unreachable(&fn->b);
     return;
   }
-  const MirValue done = fn_result_wrap(fn, MIR_NONE);
+  MirValue done = fn_result_wrap(fn, MIR_NONE);
+  if (done == MIR_NONE) {
+    done = fn_default_result(fn);
+  }
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, done);
 }
@@ -541,6 +630,9 @@ bool lower_pending(Lower *cx) {
 }
 
 void lower_init(Lower *cx, MsCheckProgram *program, MirModule *module, MsStrBuild *error) {
+  if (program->lazy_std) {
+    ms_fatal(MS_FATAL_INVARIANT, "a program checked for analysis only was lowered");
+  }
   *cx = (Lower){.program = program, .module = module, .error = error};
   ms_names_init(&cx->instance_keys);
   ms_names_init(&cx->vtable_keys);

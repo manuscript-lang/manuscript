@@ -58,6 +58,7 @@ typedef struct ElCx {
   const MirFunc *f;      /* the function being walked (its stand-in is in the module) */
   uint32_t nvalues0;     /* values the function had before the pass */
   int64_t *tag_scope;    /* per value: the scope that owns it, -1 when untagged */
+  MirBits cancel_end;    /* owners whose entry is cancelled, not discarded, where their scope ends: an outer scope pushed after them */
   int64_t *tag_kind;     /* the owner's kind (0 drop, 1 close, k >= 2 slot closed by k - 2) */
   MirIdList *owners;     /* per scope: the values it owns, in tag order */
   int64_t *parent;       /* per scope; -1 for the root */
@@ -65,7 +66,9 @@ typedef struct ElCx {
   uint32_t nscopes;
   uint32_t close;        /* the module's `close` function or MIR_NONE */
   uint32_t discard, cancel, shield_enter, shield_exit; /* extern ids or MIR_NONE */
+  MirHash param_owned;   /* values that are owning block parameters */
   MirHash disown_moves;  /* flagged owners a `scope.disown` ahead of the consuming op moves */
+  MirHash reowned;       /* owners a scope registers at more than one place (a variable at each exit): consumed, they stay moved */
   ElPart *parts;         /* interned partial-move states, id EL_PLAIN_KINDS + index */
   uint32_t nparts, cparts;
 } ElCx;

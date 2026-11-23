@@ -383,6 +383,37 @@ static bool rg_below_len(RgFa *fa, MirValue idx, MirValue l, const RgEnv *env) {
   return rg_prove(fa, idx, (RgGoal){true, fa->lengths[l]}, -1, env);
 }
 
+/* Whether an access to a list of the same length as `l` at index value `idx` comes before instruction `ii` of
+ * block `bi` on every path. It either went through (so `idx` is below that length) or faulted (so this one is
+ * never reached), whatever it checked. A list's length origin stands for every list of one length, so the
+ * access need not be on `l` itself. */
+static bool rg_access_before(const RgFa *fa, MirValue idx, MirValue l, uint32_t bi, uint32_t ii) {
+  const MirValue origin = fa->lengths[l];
+  if (origin == MIR_NONE) {
+    return false;
+  }
+  for (uint32_t a = fa->acc_head[idx]; a != MIR_NONE; a = fa->accesses[a].next) {
+    const RgAccess *access = &fa->accesses[a];
+    if (access->origin != origin) {
+      continue;
+    }
+    if (access->block == bi) {
+      if (access->index < ii) {
+        return true;
+      }
+      continue;
+    }
+    uint32_t b = bi;
+    while (b != access->block && b != 0) {
+      b = fa->idom[b];
+    }
+    if (b == access->block) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* Proves `idx >= 0` where the interval alone cannot, for `idx = x - y` with `y <= x`. */
 static bool rg_nonneg(RgFa *fa, MirValue idx, const RgEnv *env) {
   if (rg_lo_at_least(fa, idx, 0, env)) {
@@ -576,7 +607,8 @@ static void rg_edit_list_access(const RgSite *s) {
     return;
   }
   const bool nn = rg_nonneg(fa, s->inst->args[1], s->env);
-  const bool inside = nn && rg_below_len(fa, s->inst->args[1], s->inst->args[0], s->env);
+  const bool inside = nn && (rg_below_len(fa, s->inst->args[1], s->inst->args[0], s->env) ||
+                rg_access_before(fa, s->inst->args[1], s->inst->args[0], s->bi, s->ii));
   const bool set = op == MOP_ListSet || op == MOP_ListSetNn;
   if (op == MOP_ListAddr) {
     if (inside) {

@@ -20,11 +20,13 @@ void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, uint
   if (kind->widen == EMIT_SAME) {
     ms_strbuild_append_text(out, "  ");
     emit_name(out, dst, index);
-    ms_strbuild_printf(out, " = load %s, ptr %%a%u%s\n", kind->mem, address, tbaa_text(cx));
+    ms_strbuild_printf(out, " = load %s%s, ptr %%a%u%s\n", cx->volatile_loads ? "volatile " : "", kind->mem, address,
+                       tbaa_text(cx));
     return;
   }
   uint32_t number = cx->next++;
-  ms_strbuild_printf(out, "  %%l%u = load %s, ptr %%a%u%s\n  ", number, kind->mem, address, tbaa_text(cx));
+  ms_strbuild_printf(out, "  %%l%u = load %s%s, ptr %%a%u%s\n  ", number, cx->volatile_loads ? "volatile " : "", kind->mem,
+                     address, tbaa_text(cx));
   emit_name(out, dst, index);
   switch (kind->widen) {
   case EMIT_SEXT:
@@ -175,18 +177,22 @@ static bool emit_ptr_field(EmitCx *cx, const MirInst *inst) {
 }
 
 bool emit_memory_inst(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled) {
+  (void)site;
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_Slot:
-    /* Allocated at the top of the entry block; a slot met again (inlined into a loop) starts zeroed each time. */
+    /* Allocated at the top of the entry block; it starts zeroed each time the instruction runs. */
     if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
       ms_strbuild_printf(cx->out,
                          "  call void @llvm.memset.p0.i64(ptr %%cell%u, i8 0, i64 %u, i1 false)\n"
                          "  %%v%u = ptrtoint ptr %%cell%u to i64\n",
                          cx->pool[inst->res], emit_slot_bytes(cx, inst->imm.a), inst->res, cx->pool[inst->res]);
-    } else if (site->block != 0) {
-      ms_strbuild_printf(cx->out, "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 0, i64 %u, i1 false)\n", inst->res,
-                         emit_slot_bytes(cx, inst->imm.a));
+    } else {
+      /* Zeroed, so padding bytes compare equal when a descriptor compares a slot as bytes. */
+      ms_strbuild_printf(cx->out,
+                         "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 0, i64 %u, i1 false)\n"
+                         "  %%v%u = ptrtoint ptr %%s%u to i64\n",
+                         inst->res, emit_slot_bytes(cx, inst->imm.a), inst->res, inst->res);
     }
     return true;
   case MOP_Load:

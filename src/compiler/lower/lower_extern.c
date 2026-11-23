@@ -39,6 +39,40 @@ static MirValue string_literal(LowerFn *fn, const char *text) {
   return string_span_literal(fn, ms_span_of_text(text));
 }
 
+/* The `Error` an `ok_or` call that leaves its cause out answers: kind ENOENT, naming the file and line of the call. */
+MirValue fn_missing_value(LowerFn *fn, MsPos at) {
+  Lower *cx = fn->cx;
+  const MsSymbolList *symbols = &cx->program->symbols;
+  uint32_t build = MIR_NONE;
+  for (MsSymbolId id = 1; id < symbols->len && build == MIR_NONE; id++) {
+    const MsSymbol *symbol = &symbols->ptr[id];
+    if (symbol->kind == MS_SYMBOL_FN && symbol->native == MS_NATIVE_SOURCE &&
+        ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "status_error_text")) {
+      const LowerTarget target = lower_symbol_target(cx, id);
+      build = lower_instance(cx, &target, NULL, 0, &fn->subst);
+    }
+  }
+  if (build == MIR_NONE) {
+    return fn_fail(fn, "`ok_or` without a cause needs core's Error builder"), MIR_NONE;
+  }
+  const MsSpan path = cx->module->files.ptr[fn->file];
+  size_t base = path.len;
+  while (base > 0 && path.ptr[base - 1] != '/' && path.ptr[base - 1] != '\\') {
+    base--;
+  }
+  MsStrBuild said = ms_strbuild_new();
+  ms_strbuild_append_text(&said, "missing value at ");
+  ms_strbuild_append(&said, (MsSpan){path.ptr + base, path.len - base});
+  ms_strbuild_printf(&said, ":%u", at.line);
+  const MirValue text = fn_emit(fn, MOP_Clone, &(MirValue){string_span_literal(fn, ms_strbuild_span(&said))}, 1, (MirImm){0}, MIR_STR);
+  ms_strbuild_free(&said);
+  const MirValue kind = fn_emit(fn, MOP_Clone, &(MirValue){string_literal(fn, "ENOENT")}, 1, (MirImm){0}, MIR_STR);
+  const MirValue args[4] = {string_literal(fn, "-"), kind, string_literal(fn, ""), text};
+  const MirValue error = mir_b_call(&fn->b, build, args, 4);
+  fn_own_result(fn, error);
+  return error;
+}
+
 /* The Result alternative of `ret` and its ok payload type, or false when `ret` is not a Result. */
 static bool result_alt(const LowerFn *fn, MirTy ret, uint32_t *alt, MirTy *payload) {
   const MirModule *module = fn->cx->module;

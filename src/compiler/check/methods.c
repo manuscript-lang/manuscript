@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "base/alloc.h"
+#include "base/sort.h"
 #include "compiler/check/resolve_internal.h"
 
 typedef struct Context {
@@ -484,6 +485,69 @@ static void add_block(Context *context, const MsDecl *decl) {
   }
 }
 
+static int64_t compare_keys(uint8_t *env, const uint8_t *left, const uint8_t *right) {
+  (void)env;
+  const MsMethodKey *a = (const MsMethodKey *)(const void *)left;
+  const MsMethodKey *b = (const MsMethodKey *)(const void *)right;
+  if (a->key != b->key) {
+    return a->key < b->key ? -1 : 1;
+  }
+  return a->entry < b->entry ? -1 : a->entry > b->entry;
+}
+
+/* Adds the entries from `from` on to the sorted `list`: sorts the new keys and merges them in. */
+static void extend_index(MsMethodKeyList *list, const MsMethodList *methods, size_t from, bool by_name) {
+  MsMethodKeyList added = {0};
+  for (size_t index = from; index < methods->len; index++) {
+    const MsMethodEntry *entry = &methods->ptr[index];
+    const uint64_t key = by_name ? entry->name : (uint64_t)entry->module << 32 | entry->source->id;
+    ms_method_key_list_push(&added, (MsMethodKey){.key = key, .entry = (uint32_t)index});
+  }
+  if (added.len > 1) {
+    ms_sort((uint8_t *)added.ptr, added.len, sizeof *added.ptr, compare_keys, NULL);
+  }
+  MsMethodKeyList merged = {0};
+  ms_method_key_list_reserve(&merged, list->len + added.len);
+  size_t left = 0;
+  size_t right = 0;
+  while (left < list->len || right < added.len) {
+    const bool take_left = right == added.len || (left < list->len && compare_keys(NULL, (const uint8_t *)&list->ptr[left], (const uint8_t *)&added.ptr[right]) <= 0);
+    ms_method_key_list_push(&merged, take_left ? list->ptr[left++] : added.ptr[right++]);
+  }
+  ms_method_key_list_free(list);
+  ms_method_key_list_free(&added);
+  *list = merged;
+}
+
+static void index_methods(MsCheckProgram *program) {
+  MsMethodIndex *index = &program->method_index;
+  extend_index(&index->by_name, &program->methods, index->indexed, true);
+  extend_index(&index->by_decl, &program->methods, index->indexed, false);
+  index->indexed = program->methods.len;
+}
+
+/* The first key at or after `key`. */
+static size_t lower_bound(const MsMethodKeyList *list, uint64_t key) {
+  size_t low = 0;
+  size_t high = list->len;
+  while (low < high) {
+    const size_t mid = low + (high - low) / 2;
+    if (list->ptr[mid].key < key) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+const MsMethodEntry *ms_check_method_at(const MsCheckProgram *program, uint32_t module, uint32_t node) {
+  const MsMethodKeyList *list = &program->method_index.by_decl;
+  const uint64_t key = (uint64_t)module << 32 | node;
+  const size_t at = lower_bound(list, key);
+  return at < list->len && list->ptr[at].key == key ? &program->methods.ptr[list->ptr[at].entry] : NULL;
+}
+
 void ms_check_methods(MsCheckProgram *program, uint32_t module) {
   Context context = {.program = program, .module = module};
   resolver_init(&context.resolver, program, module);
@@ -496,6 +560,7 @@ void ms_check_methods(MsCheckProgram *program, uint32_t module) {
   ms_ty_list_free(&context.fresh);
   ms_ty_list_free(&context.open);
   resolver_free(&context.resolver);
+  index_methods(program);
 }
 
 /* ---- lookup ---- */
@@ -591,11 +656,9 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     ms_check_find_native(program, receiver, name, out);
     return;
   }
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->name != name) {
-      continue;
-    }
+  const MsMethodKeyList *named = &program->method_index.by_name;
+  for (size_t slot = lower_bound(named, name); slot < named->len && named->ptr[slot].key == name; slot++) {
+    const MsMethodEntry *entry = &program->methods.ptr[named->ptr[slot].entry];
     MsTyList bound = {0};
     for (uint32_t at = 0; at < entry->shared; at++) {
       ms_ty_list_push(&bound, MS_TY_NONE);

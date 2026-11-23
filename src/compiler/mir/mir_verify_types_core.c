@@ -140,9 +140,13 @@ static const char *mvt_icmp(const MvtCx *c) {
   }
   MirTy t = mvt_t(c, 0);
   bool equality = c->in->imm.a == MCC_EQ || c->in->imm.a == MCC_NE;
-  bool ok = t == mvt_t(c, 1) && (mvt_is_int(c, t) || (t == MIR_BOOL && equality));
+  /* A bool, a pointer or a value held by reference (an object handle, an interface value, a function value) is
+   * equal to itself: eq/ne compare identity. */
+  const MirTyKind kind = mvt_kind(c, t);
+  const bool identity = t == MIR_BOOL || kind == MK_PTR || kind == MK_OBJ || kind == MK_IFACE || kind == MK_FN;
+  bool ok = t == mvt_t(c, 1) && (mvt_is_int(c, t) || (identity && equality));
   return mvt_want(ok && mvt_res_is(c, MIR_BOOL),
-          "icmp compares two ints (or bools for eq/ne) and yields bool");
+          "icmp compares two ints (or bools and references for eq/ne) and yields bool");
 }
 
 static const char *mvt_fcmp(const MvtCx *c) {
@@ -178,6 +182,22 @@ static const char *mvt_i2f(const MvtCx *c) {
   MVT_TRY(mvt_arity(c, 1));
   return mvt_want(mvt_is_int(c, mvt_t(c, 0)) && c->has_res && mvt_is_float(c, c->res),
           "i2f converts an int type to a float type");
+}
+
+static const char *mvt_u2f(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  return mvt_want(mvt_t(c, 0) == MIR_UINT64 && c->has_res && mvt_is_float(c, c->res),
+          "u2f converts a UInt64 to a float type");
+}
+
+static const char *mvt_f_bits(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  return mvt_want(mvt_is_float(c, mvt_t(c, 0)) && mvt_res_is(c, MIR_INT), "f.bits reads the bits of a float as an int");
+}
+
+static const char *mvt_bits_f(const MvtCx *c) {
+  MVT_TRY(mvt_arity(c, 1));
+  return mvt_want(mvt_t(c, 0) == MIR_INT && c->has_res && mvt_is_float(c, c->res), "bits.f makes a float of the bits of an int");
 }
 
 static const char *mvt_f2i_opt(const MvtCx *c) {
@@ -409,7 +429,7 @@ const MvtRule mvt_rules_core[MOP_COUNT] = {
   [MOP_FSub] = mvt_float_binary, [MOP_FMul] = mvt_float_binary, [MOP_FDiv] = mvt_float_binary,
   [MOP_FNeg] = mvt_float_unary, [MOP_FSqrt] = mvt_float_unary, [MOP_FAbs] = mvt_float_unary,
   [MOP_FFloor] = mvt_float_unary, [MOP_FCeil] = mvt_float_unary, [MOP_FTrunc] = mvt_float_unary,
-  [MOP_I2F] = mvt_i2f, [MOP_F2IOpt] = mvt_f2i_opt, [MOP_B2I] = mvt_b2i, [MOP_TypeNew] = mvt_type_new,
+  [MOP_I2F] = mvt_i2f, [MOP_U2F] = mvt_u2f, [MOP_FBits] = mvt_f_bits, [MOP_BitsF] = mvt_bits_f, [MOP_F2IOpt] = mvt_f2i_opt, [MOP_B2I] = mvt_b2i, [MOP_TypeNew] = mvt_type_new,
   [MOP_TypeGet] = mvt_type_field, [MOP_TypeSet] = mvt_type_field, [MOP_TypeFill] = mvt_type_field,
   [MOP_TypeRelease] = mvt_type_release, [MOP_AltNew] = mvt_alt_ctor, [MOP_AltView] = mvt_alt_ctor,
   [MOP_AltPlain] = mvt_alt_plain, [MOP_AltTag] = mvt_alt_tag, [MOP_AltRelease] = mvt_alt_release,

@@ -107,6 +107,18 @@ void ms_check_load_std(MsCheckProgram *program) {
       (void)load_std_module(program, ms_span_of_text("@std/test/test.ms"), &loaded);
     }
   }
+  if (program->all_std) {
+    size_t count = 0;
+    const MsStdSource *sources = ms_std_sources(&count);
+    for (size_t index = 0; index < count; index++) {
+      MsStrBuild path = ms_strbuild_new();
+      ms_strbuild_append_text(&path, "@std/");
+      ms_strbuild_append(&path, sources[index].name);
+      uint32_t loaded = 0;
+      (void)load_std_module(program, ms_strbuild_span(&path), &loaded);
+      ms_strbuild_free(&path);
+    }
+  }
   for (uint32_t module = 0; module < program->modules.len; module++) {
     const MsModule *tree = program->modules.ptr[module].tree;
     for (uint32_t index = 0; index < tree->nimports; index++) {

@@ -32,7 +32,8 @@ MS_LIST_DEFINE(TargetList, target_list, MsSpan)
 
 typedef struct CheckOptions {
   bool json, with_text, each, fix, watch;
-  bool lint, deny_warnings; /* `ms lint` */
+  bool std; /* `ms check --std`: check every bundled standard body */
+  bool lint, deny_warnings, syntax; /* `ms lint` */
   const char *name;         /* "check" or "lint" */
   TargetList targets;
 } CheckOptions;
@@ -74,6 +75,16 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       options->fix = true;
     } else if (is_option(argument, "--watch")) {
       options->watch = true;
+    } else if (is_option(argument, "--std")) {
+      if (options->lint) {
+        return refuse("--std requires check, not lint", STATUS_USAGE);
+      }
+      options->std = true;
+    } else if (is_option(argument, "--syntax")) {
+      if (!options->lint) {
+        return refuse("--syntax requires lint, not check; use ms lint <file> --syntax", STATUS_USAGE);
+      }
+      options->syntax = true;
     } else if (is_option(argument, "--deny-warnings")) {
       if (!options->lint) {
         return refuse("--deny-warnings requires lint, not check; use ms lint <file> --deny-warnings", STATUS_USAGE);
@@ -96,6 +107,9 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
   if (options->targets.len == 0) {
     (void)fprintf(stderr, "ms %s: missing a target; pass .ms files, directories, or ms.toml\n", options->name);
     return STATUS_USAGE;
+  }
+  if (options->syntax && (options->fix || options->watch || options->each)) {
+    return refuse("--syntax cannot be combined with --fix or --watch; use ms lint <file> --syntax", STATUS_USAGE);
   }
   if (options->with_text && options->lint) {
     return refuse("--with-text requires check --json, not lint; use ms check <file> --json --with-text", STATUS_USAGE);
@@ -205,6 +219,8 @@ static void collect_fixes(MsArena *arena, MsSpan root, const FindingList *found,
   }
 }
 
+static bool check_all_std; /* `--std`: set once by the command before any input is checked */
+
 /* Checks one input and adds what it found to `analysis`. */
 static void check_input(MsArena *arena, const CheckSelection *selection, const CheckInput *input, bool fix,
                         bool watching, bool lint_findings, Analysis *analysis) {
@@ -217,7 +233,11 @@ static void check_input(MsArena *arena, const CheckSelection *selection, const C
   MsCheckProgram program = {0};
   finding_add_graph(&graph, &found);
   if (found.len == 0) {
-    ms_check_graph(&program, &names, &graph);
+    if (check_all_std) {
+      ms_check_graph_std(&program, &names, &graph);
+    } else {
+      ms_check_graph_analysis(&program, &names, &graph);
+    }
     ms_own_check(&program);
     finding_add_check(&program, &names, &found);
     if (found.len == 0 && !graph.library && graph.project_root.len == 0) {
@@ -317,6 +337,27 @@ static void analyze(MsArena *arena, const MsSpan *targets, size_t count, bool fi
   check_selection_free(&selection);
 }
 
+/* `--syntax`: the rules that need a parse and nothing else over each file target, and over the code fences of each
+ * Markdown one. Code that does not parse is skipped; `ms check` owns it. */
+static void analyze_syntax(MsArena *arena, const MsSpan *targets, size_t count, Analysis *analysis) {
+  for (size_t i = 0; i < count; i++) {
+    MsBytes bytes = {0};
+    if (!ms_file_read(targets[i], &bytes)) {
+      finding_list_push(&analysis->findings,
+                        (Finding){.file = ms_arena_copy(arena, targets[i]), .phase = "resolution",
+                                  .diag = {.pos = {.offset = 0, .line = 1, .column = 1},
+                                           .message = ms_span_of_text("cannot read the file")}});
+      continue;
+    }
+    MsLintFindingList lint = {0};
+    const MsSpan file = ms_arena_copy(arena, targets[i]);
+    ms_lint_syntax(arena, file, ms_arena_copy(arena, ms_bytes_span(&bytes)), &lint);
+    finding_add_lint(&lint, &analysis->findings);
+    ms_lint_finding_list_free(&lint);
+    ms_bytes_free(&bytes);
+  }
+}
+
 /* The `ms check` text and document of an analysis: what it prints, and the status. */
 static int render(const Analysis *analysis, const CheckOptions *options, const MsSpan *targets, size_t count,
                   MsStrBuild *out, MsStrBuild *err, MsStrBuild *document) {
@@ -380,12 +421,17 @@ static int check_each(MsArena *arena, const CheckOptions *options) {
 /* One run of the command: with --fix, rounds of fixing until no fix applies. */
 static int check_targets(MsArena *arena, const CheckOptions *options, MsSpanList *watched) {
   CheckFixRun run = {0};
+  check_all_std = options->std;
   Analysis analysis = {.summaries = ms_strbuild_new()};
   const size_t passes = 64;
   for (size_t pass = 0; pass < passes; pass++) {
     free_analysis(&analysis);
     analysis = (Analysis){.summaries = ms_strbuild_new()};
     const bool fixing = options->fix && pass + 1 < passes;
+    if (options->syntax) {
+      analyze_syntax(arena, options->targets.ptr, options->targets.len, &analysis);
+      break;
+    }
     analyze(arena, options->targets.ptr, options->targets.len, fixing, options->watch, options->lint, &analysis);
     if (!fixing || check_apply_fixes(arena, &run, &analysis.fixes) == 0) {
       break;

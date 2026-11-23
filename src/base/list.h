@@ -24,11 +24,25 @@ _Static_assert(sizeof(MsList) == 24, "list layout is ABI");
 /* Makes room for `extra` more elements of `element_size` bytes. */
 void ms_list_reserve(MsList *list, size_t element_size, size_t extra);
 
-/* Appends one element (a copy of `element_size` bytes at `element`). */
-void ms_list_push(MsList *list, size_t element_size, const void *element);
+/* Appends `count` uninitialised elements and returns the address of the first, growing the buffer first. The
+ * inline `ms_list_extend` takes this only when the buffer has no room (or the list is a view, whose cap is 0). */
+MS_RETURNS_NONNULL void *ms_list_extend_grow(MsList *list, size_t element_size, size_t count);
 
-/* Appends `count` uninitialised elements and returns the address of the first. */
-MS_RETURNS_NONNULL void *ms_list_extend(MsList *list, size_t element_size, size_t count);
+/* Appends `count` uninitialised elements and returns the address of the first. A list that owns a buffer with
+ * room for them takes no call. */
+MS_RETURNS_NONNULL static inline void *ms_list_extend(MsList *list, size_t element_size, size_t count) {
+  if (list->cap == 0 || count > list->cap - list->len) {
+    return ms_list_extend_grow(list, element_size, count);
+  }
+  uint8_t *const first = list->ptr + list->len * element_size;
+  list->len += count;
+  return first;
+}
+
+/* Appends one element (a copy of `element_size` bytes at `element`). */
+static inline void ms_list_push(MsList *list, size_t element_size, const void *element) {
+  __builtin_memcpy(ms_list_extend(list, element_size, 1), element, element_size);
+}
 
 /* Frees the buffer of an owning list and leaves it empty; a view just becomes empty. */
 void ms_list_free(MsList *list);
@@ -61,6 +75,10 @@ MS_NODISCARD MS_NONNULL static inline bool ms_list_at(const MsList *list, size_t
     ms_list_reserve(prefix##_erased(list), sizeof(T), extra);                                                \
   }                                                                                                          \
   MS_UNUSED static inline void prefix##_push(Name *list, T value) {                                          \
+    if (list->len < list->cap) { /* room: the common case stores in place, with no call */                  \
+      list->ptr[list->len++] = value;                                                                        \
+      return;                                                                                                \
+    }                                                                                                        \
     ms_list_push(prefix##_erased(list), sizeof(T), &value);                                                  \
   }                                                                                                          \
   MS_UNUSED static inline T *prefix##_extend(Name *list, size_t count) {                                     \

@@ -141,7 +141,7 @@ MsRef body_method_ref(const MsMethodMatch *match, MsTy receiver) {
   MsRef ref = {.kind = MS_REF_METHOD, .owner = receiver};
   if (entry != NULL) {
     ref.decl = (MsNodeRef){entry->module, entry->source->id};
-    ref.kind = entry->source->func.body.len == 0 ? MS_REF_NATIVE : MS_REF_METHOD;
+    ref.kind = entry->source->func.body.len == 0 && !entry->source->func.deferred ? MS_REF_NATIVE : MS_REF_METHOD;
   } else if (match->operation != NULL) {
     ref.kind = match->native ? MS_REF_NATIVE : MS_REF_OPERATION;
     ref.decl = (MsNodeRef){match->operation->decl.file, match->operation->decl.node};

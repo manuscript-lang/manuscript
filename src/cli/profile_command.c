@@ -1,7 +1,8 @@
 /* Owns `ms profile` (profile_command.h): builds the program into a new bundle directory, runs it with the runtime's
  * sampling profiler switched on (MS_PROFILE names the file the runtime writes its folded stacks to), converts what the
  * runtime wrote and reports it as text or as the versioned JSON document. Port of crates/ms-cli/src/profile.rs; the
- * conversion lives in profile_folded.c. Not yet ported: `--allocs`. */
+ * conversion lives in profile_folded.c. `--allocs` also has the runtime sample allocations (MS_PROFILE_ALLOCS) and
+ * reports which functions allocate. */
 #include "cli/profile_command.h"
 
 #include <stdio.h>
@@ -11,15 +12,17 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "base/process.h"
+#include "base/sort.h"
 #include "base/utf8.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/checked_input.h"
+#include "cli/build_command.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
 #include "cli/profile_folded.h"
 #include "cli/watch.h"
 
-enum { STATUS_FAILED = 1, STATUS_NOT_IMPLEMENTED = 70 };
+enum { STATUS_FAILED = 1 };
 
 #ifdef _WIN32
 #define PROGRAM_NAME "program.exe" /* Windows will not start a program whose name lacks `.exe` */
@@ -41,9 +44,10 @@ typedef struct Profile {
   MsSpan output;   /* absolute */
   MsSpan program;  /* the executable inside the bundle */
   MsSpan folded;
+  MsSpan allocs;   /* the runtime's allocation counts; the bytes are in `<allocs>.bytes` */
   MsSpan captured; /* the program's standard output under --json */
   size_t top;
-  Artifact artifacts[8];
+  Artifact artifacts[12];
   size_t artifact_count;
   MsSpan message;     /* a failure of ms profile itself, or empty */
   const char *phase;  /* the phase of that failure */
@@ -51,6 +55,8 @@ typedef struct Profile {
   int status;
   bool completed;
   MsStrBuild profile_json; /* the `profile` member, once the folded stacks were read */
+  MsStrBuild allocs_json;  /* the `allocs` member of it, with --allocs */
+  MsStrBuild allocs_text;  /* the allocation report, with --allocs */
 } Profile;
 
 static void print_span(FILE *stream, MsSpan text) { (void)fwrite(text.ptr, 1, text.len, stream); }
@@ -198,9 +204,24 @@ static void print_document(const Profile *profile) {
   } else {
     ms_strbuild_append_byte(&out, ']');
   }
-  if (profile->profile_json.bytes.len > 0) {
+  if (profile->profile_json.bytes.len > 0 || profile->allocs_json.bytes.len > 0) {
     ms_strbuild_append_text(&out, ",\n  \"profile\": ");
-    ms_strbuild_append(&out, ms_strbuild_span(&profile->profile_json));
+    if (profile->profile_json.bytes.len > 0) {
+      /* the object's closing brace gives way to the `allocs` member */
+      MsSpan body = ms_strbuild_span(&profile->profile_json);
+      if (profile->allocs_json.bytes.len > 0) {
+        ms_strbuild_append(&out, ms_span_of(body.ptr, body.len - 4)); /* up to "\n  }" */
+        ms_strbuild_append_text(&out, ",\n    \"allocs\": ");
+        ms_strbuild_append(&out, ms_strbuild_span(&profile->allocs_json));
+        ms_strbuild_append_text(&out, "\n  }");
+      } else {
+        ms_strbuild_append(&out, body);
+      }
+    } else {
+      ms_strbuild_append_text(&out, "{\n    \"allocs\": ");
+      ms_strbuild_append(&out, ms_strbuild_span(&profile->allocs_json));
+      ms_strbuild_append_text(&out, "\n  }");
+    }
   }
   ms_strbuild_append_text(&out, "\n}\n");
   print_span(stdout, ms_strbuild_span(&out));
@@ -262,9 +283,12 @@ static bool run_program(Profile *profile, int *status, MsSpan scratch) {
   for (size_t i = 0; i < invocation->arguments.len; i++) {
     ms_span_list_push(&argv, invocation->arguments.ptr[i]);
   }
-  const MsSpan environment = ms_message_format(profile->arena, "MS_PROFILE=%S", profile->folded);
+  MsSpan environment[2] = {ms_message_format(profile->arena, "MS_PROFILE=%S", profile->folded)};
+  if (invocation->allocs) {
+    environment[1] = ms_message_format(profile->arena, "MS_PROFILE_ALLOCS=%S", profile->allocs);
+  }
   const MsSpan captured_path = ms_message_format(profile->arena, "%S/stdout", scratch);
-  const MsProcessSpec spec = {.argv = argv.ptr, .argc = argv.len, .env = &environment, .envc = 1,
+  const MsProcessSpec spec = {.argv = argv.ptr, .argc = argv.len, .env = environment, .envc = invocation->allocs ? 2 : 1,
                               .log_path = captured_path, .inherit_error = true, .inherit = !invocation->json};
   MsStrBuild why = ms_strbuild_new();
   (void)fflush(stdout);
@@ -302,6 +326,184 @@ static void note_problem(Profile *profile, MsSpan message, int *status) {
   if (*status == 0) {
     *status = STATUS_FAILED;
   }
+}
+
+
+/* ---- allocations ---- */
+
+typedef struct AllocRow {
+  MsSpan function;
+  uint64_t allocations;
+  uint64_t bytes;
+} AllocRow;
+MS_LIST_DEFINE(AllocRows, alloc_rows, AllocRow)
+
+/* An allocation belongs to the innermost Manuscript function of its stack: the runtime frames above it are how it got
+ * the memory, not who asked. */
+static MsSpan stack_owner(const MsFoldedProfile *folded, size_t stack) {
+  for (size_t at = folded->length.ptr[stack]; at > 0; at--) {
+    const MsSpan name = ms_names_span(&folded->names, (MsName)folded->frames.ptr[folded->first.ptr[stack] + at - 1]);
+    if (!ms_span_is_text(name, "[runtime]")) {
+      return name;
+    }
+  }
+  return ms_span_of_text("[runtime]");
+}
+
+static AllocRow *row_of(AllocRows *rows, MsSpan function) {
+  for (size_t i = 0; i < rows->len; i++) {
+    if (ms_span_equal(rows->ptr[i].function, function)) {
+      return &rows->ptr[i];
+    }
+  }
+  alloc_rows_push(rows, (AllocRow){.function = function});
+  return &rows->ptr[rows->len - 1];
+}
+
+static int64_t compare_rows(uint8_t *unused, const uint8_t *a, const uint8_t *b) {
+  (void)unused;
+  AllocRow left_row;
+  AllocRow right_row;
+  __builtin_memcpy(&left_row, a, sizeof left_row);
+  __builtin_memcpy(&right_row, b, sizeof right_row);
+  const AllocRow *const left = &left_row;
+  const AllocRow *const right = &right_row;
+  if (left->allocations != right->allocations) {
+    return left->allocations > right->allocations ? -1 : 1;
+  }
+  if (left->bytes != right->bytes) {
+    return left->bytes > right->bytes ? -1 : 1;
+  }
+  const size_t common = left->function.len < right->function.len ? left->function.len : right->function.len;
+  const int order = __builtin_memcmp(left->function.ptr, right->function.ptr, common);
+  return order != 0 ? order : (left->function.len < right->function.len ? -1 : left->function.len > right->function.len);
+}
+
+/* `text` right-aligned in `width` columns after one space. */
+static void pad_left(MsStrBuild *out, MsSpan text, size_t width) {
+  ms_strbuild_append_byte(out, ' ');
+  for (size_t used = text.len; used + 1 < width; used++) {
+    ms_strbuild_append_byte(out, ' ');
+  }
+  ms_strbuild_append(out, text);
+}
+
+static void pad_number(MsStrBuild *out, uint64_t value, size_t width) {
+  MsStrBuild digits = ms_strbuild_new();
+  ms_strbuild_append_u64(&digits, value);
+  pad_left(out, ms_strbuild_span(&digits), width);
+  ms_strbuild_free(&digits);
+}
+
+/* The value after `# <key> ` in the runtime's comments, or 0. */
+static uint64_t comment_value(MsSpan text, const char *key) {
+  const size_t keylen = __builtin_strlen(key);
+  for (size_t at = 0; at + 2 + keylen < text.len;) {
+    size_t end = at;
+    while (end < text.len && text.ptr[end] != '\n') {
+      end++;
+    }
+    const MsSpan line = ms_span_of(text.ptr + at, end - at);
+    if (line.len > 2 + keylen && line.ptr[0] == '#' && line.ptr[1] == ' ' && __builtin_memcmp(line.ptr + 2, key, keylen) == 0 &&
+        line.ptr[2 + keylen] == ' ') {
+      uint64_t value = 0;
+      for (size_t i = 3 + keylen; i < line.len && line.ptr[i] >= '0' && line.ptr[i] <= '9'; i++) {
+        value = value * 10 + (uint64_t)(line.ptr[i] - '0');
+      }
+      return value;
+    }
+    at = end + 1;
+  }
+  return 0;
+}
+
+/* Reads the runtime's two allocation files and builds the report and the `allocs` member. False (with `problem`) when
+ * the program wrote none. */
+static bool read_allocs(Profile *profile, MsSpan *problem) {
+  const MsSpan bytes_path = ms_message_format(profile->arena, "%S.bytes", profile->allocs);
+  bool found_counts = false;
+  bool found_bytes = false;
+  const MsSpan counts_text = read_text(profile->arena, profile->allocs, &found_counts);
+  const MsSpan bytes_text = read_text(profile->arena, bytes_path, &found_bytes);
+  if (!found_counts || !found_bytes) {
+    *problem = ms_message_format(profile->arena,
+                                 "the program wrote no allocation profile to %S; a program that never allocates on its "
+                                 "main thread, a runtime built without profiling support or a program killed before "
+                                 "cleanup writes nothing",
+                                 found_counts ? bytes_path : profile->allocs);
+    return false;
+  }
+  MsFoldedProfile counts = {0};
+  MsFoldedProfile bytes = {0};
+  MsSpan error = {0};
+  if (!ms_folded_parse(profile->arena, counts_text, &counts, &error)) {
+    *problem = ms_message_format(profile->arena, "cannot read %S: %S", profile->allocs, error);
+    return false;
+  }
+  if (!ms_folded_parse(profile->arena, bytes_text, &bytes, &error)) {
+    ms_folded_free(&counts);
+    *problem = ms_message_format(profile->arena, "cannot read %S: %S", bytes_path, error);
+    return false;
+  }
+  AllocRows rows = {0};
+  for (size_t s = 0; s < counts.counts.len; s++) {
+    row_of(&rows, stack_owner(&counts, s))->allocations += counts.counts.ptr[s];
+  }
+  for (size_t s = 0; s < bytes.counts.len; s++) {
+    row_of(&rows, stack_owner(&bytes, s))->bytes += bytes.counts.ptr[s];
+  }
+  if (rows.len > 0) {
+    ms_sort((uint8_t *)rows.ptr, rows.len, sizeof(AllocRow), compare_rows, NULL);
+  }
+  const uint64_t period = comment_value(counts_text, "period");
+  const size_t shown = rows.len < profile->top ? rows.len : profile->top;
+  MsStrBuild *const text = &profile->allocs_text;
+  *text = ms_strbuild_new();
+  ms_strbuild_printf(text, "Allocations on the main thread: about %zu (%zu bytes), sampling every %zuth; top %zu of %zu functions\n",
+                     (size_t)counts.total, (size_t)bytes.total, (size_t)period, shown, rows.len);
+  pad_left(text, ms_span_of_text("allocs"), 10);
+  pad_left(text, ms_span_of_text("allocs%"), 8);
+  pad_left(text, ms_span_of_text("bytes"), 13);
+  ms_strbuild_append_text(text, "  function\n");
+  MsStrBuild *const json = &profile->allocs_json;
+  *json = ms_strbuild_new();
+  ms_strbuild_printf(json, "{\n      \"period\": %zu,\n      \"allocations\": %zu,\n      \"bytes\": %zu,\n      \"top\": [",
+                     (size_t)period, (size_t)counts.total, (size_t)bytes.total);
+  for (size_t i = 0; i < shown; i++) {
+    const AllocRow *const row = &rows.ptr[i];
+    const uint64_t hundredths = ms_percent_hundredths(row->allocations, counts.total);
+    pad_number(text, row->allocations, 10);
+    MsStrBuild percent = ms_strbuild_new();
+    ms_strbuild_printf(&percent, "%zu.%s%zu%%", (size_t)(hundredths / 100), hundredths % 100 < 10 ? "0" : "",
+                       (size_t)(hundredths % 100));
+    pad_left(text, ms_strbuild_span(&percent), 8);
+    ms_strbuild_free(&percent);
+    pad_number(text, row->bytes, 13);
+    ms_strbuild_append_text(text, "  ");
+    ms_strbuild_append(text, row->function);
+    ms_strbuild_append_byte(text, '\n');
+    ms_strbuild_append_text(json, i == 0 ? "\n        {\n          \"function\": " : ",\n        {\n          \"function\": ");
+    ms_json_string(json, row->function);
+    ms_strbuild_printf(json, ",\n          \"allocations\": %zu,\n          \"bytes\": %zu\n        }", (size_t)row->allocations,
+                       (size_t)row->bytes);
+  }
+  ms_strbuild_append_text(json, shown == 0 ? "]\n    }" : "\n      ]\n    }");
+  alloc_rows_free(&rows);
+  ms_folded_free(&counts);
+  ms_folded_free(&bytes);
+  return true;
+}
+
+/* The allocation report: allocs.txt in the bundle, and the text and JSON the run prints. */
+static void convert_allocs(Profile *profile, int *status) {
+  MsSpan problem = {0};
+  if (!read_allocs(profile, &problem)) {
+    note_problem(profile, problem, status);
+    return;
+  }
+  add_artifact(profile, "allocs", profile->allocs, "written");
+  add_artifact(profile, "allocs_bytes", ms_message_format(profile->arena, "%S.bytes", profile->allocs), "written");
+  write_bundle_file(profile, "allocs.txt", ms_strbuild_span(&profile->allocs_text), "allocs_top", status);
 }
 
 /* Converts what the runtime wrote into the bundle files and the report. */
@@ -352,6 +554,10 @@ static void convert(Profile *profile, int *status, MsStrBuild *report) {
 static void print_text_report(const Profile *profile, const MsStrBuild *report) {
   MsArena *const arena = profile->arena;
   print_span(stdout, ms_strbuild_span(report));
+  if (profile->allocs_text.bytes.len > 0) {
+    (void)fputc('\n', stdout);
+    print_span(stdout, ms_strbuild_span(&profile->allocs_text));
+  }
   print_span(stdout, ms_message_format(arena, "\nProfile bundle: %S\n", profile->display));
   static const struct {
     const char *file;
@@ -388,6 +594,7 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
   profile->output = absolute(profile->arena, profile->display);
   profile->program = bundle_file(profile, PROGRAM_NAME);
   profile->folded = bundle_file(profile, "profile.folded");
+  profile->allocs = bundle_file(profile, "allocs.folded");
   profile->top = invocation->top == 0 ? MS_PROFILE_DEFAULT_TOP : (size_t)invocation->top;
   MsSpan why = {0};
   if (!make_bundle_directory(profile, &why)) {
@@ -407,6 +614,9 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
     print_span(stderr, ms_message_format(profile->arena, "%S\n", error));
     return fail(profile, "build", error, STATUS_FAILED);
   }
+  if (!ms_build_metadata_write(profile->arena, profile->program, invocation->build_type)) {
+    return fail(profile, "build", ms_span_of_text("cannot write the build metadata beside the program"), STATUS_FAILED);
+  }
   add_artifact(profile, "executable", profile->program, "verified");
   const MsString temp = ms_temp_dir();
   MsString scratch = ms_string_empty();
@@ -425,6 +635,9 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
   profile->reason = ms_span_of_text("program_exit");
   MsStrBuild report = ms_strbuild_new();
   convert(profile, &status, &report);
+  if (invocation->allocs) {
+    convert_allocs(profile, &status);
+  }
   profile->status = status;
   if (invocation->json) {
     print_document(profile);
@@ -433,6 +646,8 @@ static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
   }
   ms_strbuild_free(&report);
   ms_strbuild_free(&profile->profile_json);
+  ms_strbuild_free(&profile->allocs_json);
+  ms_strbuild_free(&profile->allocs_text);
   return status;
 }
 
@@ -440,10 +655,7 @@ int ms_profile_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
   int status = ms_invocation_parse(&arena, "profile", argc, argv, &invocation);
-  if (status == 0 && invocation.allocs) {
-    (void)fputs("ms profile: --allocs is not implemented in this build yet\n", stderr);
-    status = STATUS_NOT_IMPLEMENTED;
-  } else if (status == 0) {
+  if (status == 0) {
     Profile profile = {.arena = &arena, .invocation = &invocation};
     MsCheckedInput checked = {0};
     status = build_and_profile(&profile, &checked);

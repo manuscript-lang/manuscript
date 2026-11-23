@@ -472,17 +472,8 @@ static void function_decl(Body *body, const MsSymbol *symbol) {
   ms_ty_list_truncate(&body->resolver.types, mark);
 }
 
-static const MsMethodEntry *find_entry(const MsCheckProgram *program, const MsMethod *method) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    if (program->methods.ptr[index].source == method) {
-      return &program->methods.ptr[index];
-    }
-  }
-  return NULL;
-}
-
 static void method_decl(Body *body, const MsMethod *method) {
-  const MsMethodEntry *entry = find_entry(body->program, method);
+  const MsMethodEntry *entry = ms_check_method_at(body->program, body->module, method->id);
   if (entry == NULL) {
     return;
   }
@@ -575,11 +566,13 @@ static void declaration(Body *body, const MsDecl *decl) {
     body->result = error == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Result", args, 2);
     /* With a valid `make_fixture` factory in the module, `fixture` names its value: a `var` parameter of the test. */
     const size_t mark = body_scope_mark(body);
-    if (body->fixture_ty != MS_TY_NONE && !decl->u.test.bench) {
+    if (body->fixture_ty != MS_TY_NONE) {
       const MsName fixture = ms_names_intern(body->program->names, ms_span_of_text("fixture"));
       (void)body_declare(body, fixture, body->fixture_ty, MS_REF_PARAM, true, decl->id, decl->pos);
     }
+    body->bench_last = decl->u.test.bench && decl->u.test.body.len > 0 ? decl->u.test.body.ptr[decl->u.test.body.len - 1] : NULL;
     body_block(body, decl->u.test.body);
+    body->bench_last = NULL;
     body_scope_reset(body, mark);
     body->result = MS_TY_NONE;
     body->facts->local_counts[decl->id] = body->next_local;
@@ -619,6 +612,16 @@ static void declaration(Body *body, const MsDecl *decl) {
       ms_check_report(body->program, body->module, decl->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("an interface declares at least one operation; only the standard "
                                                           "library declares a property without operations, like `Data`")));
+    }
+    /* An operation's default is what a call through the interface passes when it leaves the argument out. */
+    for (uint32_t index = 0; index < decl->u.iface.methods.len; index++) {
+      const MsParams params = decl->u.iface.methods.ptr[index]->func.params;
+      for (uint32_t at = 0; at < params.len; at++) {
+        if (params.ptr[at]->def != NULL) {
+          const MsTy declared = params.ptr[at]->ty != NULL ? resolver_type(&body->resolver, params.ptr[at]->ty) : MS_TY_NONE;
+          (void)body_default(body, params.ptr[at]->def, declared);
+        }
+      }
     }
     break;
   case MS_D_ALIAS:
@@ -675,6 +678,24 @@ void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {
     declaration(&body, info->tree->decls[index]);
     body_scope_reset(&body, 0);
   }
+  ms_facts_finish(&info->facts);
+  resolver_free(&body.resolver);
+  ms_local_list_free(&body.locals);
+  ms_node_journal_free(&body.typed);
+}
+
+void ms_check_deferred_body(MsCheckProgram *program, uint32_t module, const MsDecl *decl, const MsMethod *method) {
+  MsModuleInfo *info = &program->modules.ptr[module];
+  Body body = {.program = program, .module = module, .facts = &info->facts, .source = (MsSpan){0}};
+  resolver_init(&body.resolver, program, module);
+  body.typed.len = 0;
+  body.next_local = 0;
+  if (method != NULL) {
+    method_decl(&body, method);
+  } else {
+    declaration(&body, decl);
+  }
+  body_scope_reset(&body, 0);
   ms_facts_finish(&info->facts);
   resolver_free(&body.resolver);
   ms_local_list_free(&body.locals);

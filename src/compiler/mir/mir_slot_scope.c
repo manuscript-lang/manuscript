@@ -1,4 +1,7 @@
-/* compiler/mir/mir_slot_scope.c: where each stack slot of a function is live.
+/* compiler/mir/mir_slot_scope.c: where each stack slot, and each value kept in a stack cell, of a function is live.
+ *
+ * A value the caller asks for (a record held in memory instead of in registers) is live from its definition, or
+ * from the end of each block that passes it to a block parameter, through its last use.
  *
  * A `slot` whose address (and the addresses derived from it by offsets and selects) is only loaded through,
  * stored through and passed to calls that do not keep it holds nothing outside the instructions between its
@@ -8,7 +11,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 
-typedef enum Access { ACCESS_READ, ACCESS_WRITE, ACCESS_DERIVE, ACCESS_ESCAPE } Access;
+typedef enum Access { ACCESS_READ, ACCESS_WRITE, ACCESS_DERIVE, ACCESS_HANDLE, ACCESS_ESCAPE } Access;
 
 /* Whether a runtime call keeps the address of an argument beyond the call. */
 bool mir_extern_pins_argument(const MirExtern *external) {
@@ -27,6 +30,9 @@ static Access access_of(const MirModule *module, const MirInst *inst, uint32_t a
   case MOP_Call: case MOP_CallInd: case MOP_CallMethod:
     return ACCESS_WRITE;
   case MOP_CallRt:
+    if (inst->imm.tag == MI_EXT && module->externs.ptr[inst->imm.a].handle) {
+      return ACCESS_HANDLE; /* kept while the result is used: the result stands for the slot */
+    }
     return inst->imm.tag == MI_EXT && !mir_extern_pins_argument(&module->externs.ptr[inst->imm.a]) ? ACCESS_WRITE
                                                                                         : ACCESS_ESCAPE;
   default:
@@ -36,22 +42,28 @@ static Access access_of(const MirModule *module, const MirInst *inst, uint32_t a
 
 
 typedef struct Scan {
-  uint32_t *owner;  /* by value: the slot an address derives from, or MIR_NONE */
-  bool *bad;        /* by slot value: the slot may not share storage */
+  uint32_t *owner;     /* by value: the slot an address derives from, or the value itself, or MIR_NONE */
+  bool *bad;           /* by slot value: the slot may not share storage */
+  const bool *values;  /* by value: kept in a cell, not a slot; NULL for none */
 } Scan;
+
+static bool is_cell_value(const Scan *scan, uint32_t object) {
+  return scan->values != NULL && scan->values[object];
+}
 
 static void term_use(void *context, MirValue value) {
   const Scan *scan = context;
-  if (scan->owner[value] != MIR_NONE) {
+  if (scan->owner[value] != MIR_NONE && !is_cell_value(scan, scan->owner[value])) {
     scan->bad[scan->owner[value]] = true;
   }
 }
 
-/* Marks each slot instruction as its own owner; false when there is none. */
-static bool find_slots(const MirFunc *func, uint32_t *owner) {
+/* Marks each slot instruction and each wanted value as its own owner; false when there is none. */
+static bool find_slots(const MirFunc *func, const bool *values, uint32_t *owner) {
   bool any = false;
   for (size_t value = 0; value < func->values.len; value++) {
-    owner[value] = MIR_NONE;
+    owner[value] = values != NULL && values[value] ? (uint32_t)value : MIR_NONE;
+    any = any || owner[value] != MIR_NONE;
   }
   for (size_t block = 0; block < func->blocks.len; block++) {
     const MirInstList *insts = &func->blocks.ptr[block].insts;
@@ -93,6 +105,13 @@ static void derive_owners(const MirModule *module, const MirFunc *func, Scan *sc
         } else if (owner[inst->args[0]] != MIR_NONE && access_of(module, inst, 0) == ACCESS_DERIVE) {
           owner[inst->res] = owner[inst->args[0]];
           grew = true;
+        } else if ((MirOp)inst->op == MOP_CallRt && access_of(module, inst, 0) == ACCESS_HANDLE) {
+          for (uint32_t arg = 0; arg < inst->nargs; arg++) { /* the handle stands for the slot it keeps */
+            if (owner[inst->args[arg]] != MIR_NONE && owner[inst->res] == MIR_NONE) {
+              owner[inst->res] = owner[inst->args[arg]];
+              grew = true;
+            }
+          }
         }
       }
     }
@@ -104,7 +123,7 @@ static void scan_inst(const MirModule *module, const Scan *scan, const MirInst *
   const bool select = (MirOp)inst->op == MOP_Select && inst->nargs == 3;
   for (uint32_t index = 0; index < inst->nargs; index++) {
     const uint32_t slot = scan->owner[inst->args[index]];
-    if (slot == MIR_NONE) {
+    if (slot == MIR_NONE || is_cell_value(scan, slot)) {
       continue;
     }
     if (select && index > 0) {
@@ -136,50 +155,193 @@ static bool has_bit(const uint64_t *bits, uint32_t number) {
   return (bits[number / 64] >> (number % 64) & 1) != 0;
 }
 
-typedef struct Ranges {
-  uint32_t *lo, *hi; /* by slot value */
-} Ranges;
-
-static void touch(const Ranges *ranges, uint32_t slot, uint32_t position) {
-  ranges->lo[slot] = position < ranges->lo[slot] ? position : ranges->lo[slot];
-  ranges->hi[slot] = position > ranges->hi[slot] ? position : ranges->hi[slot];
-}
-
-/* The largest set of slots the liveness rows may span; a bigger function keeps one alloca per slot. */
+/* The largest number of words the liveness and conflict rows may take; a bigger function keeps one alloca per
+ * slot. */
 #define MAX_LIVE_WORDS ((size_t)1 << 22)
 
-bool mir_slot_ranges(MsArena *arena, const MirModule *module, const MirFunc *func, uint32_t **lo_out,
-                     uint32_t **hi_out, uint32_t *length) {
+/* Everything the walks over a function need. */
+typedef struct Walk {
+  const MirFunc *func;
+  const uint32_t *owner;
+  const uint32_t *ordinal;
+  const Live *live;
+  uint32_t words;
+  uint64_t *conflict; /* a row per object: the objects live at a point where it is made */
+} Walk;
+
+static uint64_t *conflict_row(const Walk *walk, uint32_t object) {
+  return walk->conflict + (size_t)object * walk->words;
+}
+
+static void add_conflict(const Walk *walk, uint32_t a, uint32_t b) {
+  if (a != b) {
+    set_bit(conflict_row(walk, a), b);
+    set_bit(conflict_row(walk, b), a);
+  }
+}
+
+/* `object` shares no storage with anything in `set`. */
+static void conflict_with(const Walk *walk, uint32_t object, const uint64_t *set) {
+  for (uint32_t word = 0; word < walk->words; word++) {
+    for (uint64_t bits = set[word]; bits != 0; bits &= bits - 1) {
+      add_conflict(walk, object, word * 64 + (uint32_t)__builtin_ctzll(bits));
+    }
+  }
+}
+
+typedef struct TermLive {
+  const Walk *walk;
+  uint64_t *set;
+} TermLive;
+
+static void term_live(void *context, MirValue value) {
+  TermLive *use = context;
+  const uint32_t owner = use->walk->owner[value];
+  if (owner != MIR_NONE) {
+    set_bit(use->set, use->walk->ordinal[owner]);
+  }
+}
+
+/* A block parameter is made where each predecessor ends: it conflicts with what is live into the block, the values
+ * the edge hands over (its sources are read as it is written) and the block's other parameters. */
+static void walk_edges(const Walk *walk, uint32_t block, uint64_t *scratch) {
+  const MirBlockData *data = &walk->func->blocks.ptr[block];
+  for (uint32_t target = 0; target < mir_term_ntargets(&data->term); target++) {
+    const MirTarget *edge = mir_term_target_const(&data->term, target);
+    const MirBlockData *next = &walk->func->blocks.ptr[edge->block];
+    for (uint32_t word = 0; word < walk->words; word++) {
+      scratch[word] = row(walk->live->in, walk->live, edge->block)[word];
+    }
+    for (uint32_t param = 0; param < next->params.len; param++) {
+      const MirValue value = next->params.ptr[param].value;
+      if (walk->owner[value] == value) {
+        set_bit(scratch, walk->ordinal[value]);
+      }
+    }
+    for (uint32_t param = 0; param < next->params.len; param++) {
+      const MirValue value = next->params.ptr[param].value;
+      if (walk->owner[value] != value) {
+        continue;
+      }
+      const uint32_t object = walk->ordinal[value];
+      conflict_with(walk, object, scratch);
+      /* It is written as the other arguments are read; its own argument may sit where it will. */
+      for (uint32_t arg = 0; arg < edge->nargs; arg++) {
+        const uint32_t owner = walk->owner[edge->args[arg]];
+        if (owner != MIR_NONE && arg != param) {
+          add_conflict(walk, object, walk->ordinal[owner]);
+        }
+      }
+    }
+  }
+}
+
+/* Walks the block backwards from what is live at its end, so each object made there conflicts with everything live
+ * where it is made, including the operands of the instruction that makes it. */
+static void walk_block(const Walk *walk, uint32_t block, uint64_t *set) {
+  const MirBlockData *data = &walk->func->blocks.ptr[block];
+  for (uint32_t word = 0; word < walk->words; word++) {
+    set[word] = row(walk->live->out, walk->live, block)[word];
+  }
+  TermLive term = {walk, set};
+  mir_term_each_value(&data->term, term_live, &term);
+  for (size_t index = data->insts.len; index-- > 0;) {
+    const MirInst *inst = &data->insts.ptr[index];
+    if (inst->res != MIR_NONE && walk->owner[inst->res] == inst->res) {
+      const uint32_t object = walk->ordinal[inst->res];
+      conflict_with(walk, object, set);
+      /* A callee writes its result while it reads its arguments; any other operation reads what it needs before it
+       * writes, so a value may take the place of the one it replaces. */
+      const bool call = inst->op == MOP_Call || inst->op == MOP_CallInd || inst->op == MOP_CallMethod ||
+                        inst->op == MOP_CallRt;
+      for (uint32_t arg = 0; call && arg < inst->nargs; arg++) {
+        const uint32_t owner = walk->owner[inst->args[arg]];
+        if (owner != MIR_NONE) {
+          add_conflict(walk, object, walk->ordinal[owner]);
+        }
+      }
+      set[object / 64] &= ~((uint64_t)1 << (object % 64));
+    }
+    for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+      const uint32_t owner = walk->owner[inst->args[arg]];
+      if (owner != MIR_NONE) {
+        set_bit(set, walk->ordinal[owner]);
+      }
+    }
+  }
+  for (uint32_t param = 0; param < data->params.len; param++) {
+    const MirValue value = data->params.ptr[param].value;
+    if (walk->owner[value] == value) {
+      conflict_with(walk, walk->ordinal[value], set);
+    }
+  }
+}
+
+bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *func, const bool *values,
+                        MirCellMap *map) {
   const size_t count = func->values.len + 1;
   uint32_t *owner = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  if (!find_slots(func, owner)) {
+  if (!find_slots(func, values, owner)) {
     return false;
   }
   bool *bad = MS_ARENA_NEW_ARRAY(arena, bool, count);
   for (size_t value = 0; value < count; value++) {
     bad[value] = false;
   }
-  Scan scan = {owner, bad};
+  Scan scan = {owner, bad, values};
   derive_owners(module, func, &scan);
   uint32_t *ordinal = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  uint32_t nslots = 0;
+  uint32_t *object_value = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
+  uint32_t nobjects = 0;
   for (size_t value = 0; value < func->values.len; value++) {
-    ordinal[value] = owner[value] == value ? nslots++ : MIR_NONE;
+    ordinal[value] = MIR_NONE;
+    if (owner[value] == value) {
+      ordinal[value] = nobjects;
+      object_value[nobjects++] = (uint32_t)value;
+    }
   }
-  uint32_t *base = MS_ARENA_NEW_ARRAY(arena, uint32_t, func->blocks.len + 1);
-  uint32_t total = 0;
+  /* A handle keeps its slot until the cleanup is discarded; a path that leaves without discarding it leaves the
+   * cleanup pending, so only a handle used in the block that makes it bounds the slot's life. */
+  uint32_t *handle_block = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
+  for (size_t value = 0; value < count; value++) {
+    handle_block[value] = MIR_NONE;
+  }
   for (size_t block = 0; block < func->blocks.len; block++) {
-    base[block] = total;
-    total += (uint32_t)func->blocks.ptr[block].insts.len + 1;
+    const MirInstList *insts = &func->blocks.ptr[block].insts;
+    for (size_t index = 0; index < insts->len; index++) {
+      const MirInst *inst = &insts->ptr[index];
+      if (inst->res != MIR_NONE && (MirOp)inst->op == MOP_CallRt && access_of(module, inst, 0) == ACCESS_HANDLE) {
+        handle_block[inst->res] = (uint32_t)block;
+      }
+    }
+  }
+  /* A handle nobody uses is popped in bulk by an earlier handle's discard, somewhere the slot's life does not see. */
+  bool *handle_used = MS_ARENA_NEW_ARRAY(arena, bool, count);
+  for (size_t value = 0; value < count; value++) {
+    handle_used[value] = false;
+  }
+  for (size_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
     for (size_t index = 0; index < data->insts.len; index++) {
-      scan_inst(module, &scan, &data->insts.ptr[index]);
+      const MirInst *inst = &data->insts.ptr[index];
+      scan_inst(module, &scan, inst);
+      for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+        const MirValue value = inst->args[arg];
+        handle_used[value] = true;
+        if (handle_block[value] != MIR_NONE && handle_block[value] != block && owner[value] != MIR_NONE) {
+          bad[owner[value]] = true;
+        }
+      }
     }
     mir_term_each_value(&data->term, term_use, &scan);
   }
-  base[func->blocks.len] = total;
-  Live live = {.words = (nslots + 63) / 64};
-  if (live.words * func->blocks.len > MAX_LIVE_WORDS) {
+  for (size_t value = 0; value < count; value++) {
+    if (handle_block[value] != MIR_NONE && !handle_used[value] && owner[value] != MIR_NONE) {
+      bad[owner[value]] = true;
+    }
+  }
+  Live live = {.words = (nobjects + 63) / 64};
+  if ((live.words + 1) * (func->blocks.len + nobjects + 1) > MAX_LIVE_WORDS) {
     return false;
   }
   const size_t cells = live.words * func->blocks.len + 1;
@@ -190,39 +352,42 @@ bool mir_slot_ranges(MsArena *arena, const MirModule *module, const MirFunc *fun
   for (size_t cell = 0; cell < cells; cell++) {
     live.in[cell] = live.out[cell] = live.gen[cell] = live.kill[cell] = 0;
   }
-  uint32_t *lo = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  uint32_t *hi = MS_ARENA_NEW_ARRAY(arena, uint32_t, count);
-  Ranges ranges = {lo, hi};
-  for (size_t value = 0; value < count; value++) {
-    lo[value] = UINT32_MAX;
-    hi[value] = 0;
-  }
   for (size_t block = 0; block < func->blocks.len; block++) {
     uint64_t *gen = row(live.gen, &live, block);
     uint64_t *kill = row(live.kill, &live, block);
-    const MirInstList *insts = &func->blocks.ptr[block].insts;
-    for (size_t index = 0; index < insts->len; index++) {
-      const MirInst *inst = &insts->ptr[index];
-      const uint32_t position = base[block] + (uint32_t)index;
-      if (inst->op == MOP_Slot && inst->res != MIR_NONE) {
-        set_bit(kill, ordinal[inst->res]);
-        touch(&ranges, inst->res, position);
-        continue;
-      }
-      for (uint32_t arg = 0; arg < inst->nargs; arg++) {
-        const uint32_t slot = owner[inst->args[arg]];
-        if (slot == MIR_NONE) {
-          continue;
-        }
-        touch(&ranges, slot, position);
-        if (!has_bit(kill, ordinal[slot])) {
-          set_bit(gen, ordinal[slot]);
-        }
+    const MirBlockData *data = &func->blocks.ptr[block];
+    /* A block parameter is made where each predecessor ends, and is not live before the block. */
+    for (uint32_t param = 0; param < data->params.len; param++) {
+      const MirValue value = data->params.ptr[param].value;
+      if (owner[value] == value) {
+        set_bit(kill, ordinal[value]);
       }
     }
+    for (size_t index = 0; index < data->insts.len; index++) {
+      const MirInst *inst = &data->insts.ptr[index];
+      for (uint32_t arg = 0; arg < inst->nargs; arg++) {
+        const uint32_t object = owner[inst->args[arg]];
+        if (object != MIR_NONE && !has_bit(kill, ordinal[object])) {
+          set_bit(gen, ordinal[object]);
+        }
+      }
+      if (inst->res != MIR_NONE && owner[inst->res] == inst->res) {
+        set_bit(kill, ordinal[inst->res]);
+      }
+    }
+    uint64_t *term_set = MS_ARENA_NEW_ARRAY(arena, uint64_t, live.words + 1);
+    for (uint32_t word = 0; word < live.words; word++) {
+      term_set[word] = 0;
+    }
+    Walk shallow = {func, owner, ordinal, &live, live.words, NULL};
+    TermLive collect = {&shallow, term_set};
+    mir_term_each_value(&data->term, term_live, &collect);
+    for (uint32_t word = 0; word < live.words; word++) {
+      gen[word] |= term_set[word] & ~kill[word];
+    }
   }
-  /* Slot addresses are SSA values, so a slot is live from its creation through the last use of an address
-   * derived from it, around loops included. */
+  /* Slot addresses and held values are SSA values, so each is live from its definition through its last use,
+   * around loops included. */
   for (bool changed = true; changed;) {
     changed = false;
     for (size_t block = func->blocks.len; block-- > 0;) {
@@ -244,26 +409,22 @@ bool mir_slot_ranges(MsArena *arena, const MirModule *module, const MirFunc *fun
       }
     }
   }
-  for (size_t value = 0; value < func->values.len; value++) {
-    if (owner[value] != value) {
-      continue;
-    }
-    if (bad[value]) {
-      lo[value] = 0;
-      hi[value] = UINT32_MAX;
-      continue;
-    }
-    for (size_t block = 0; block < func->blocks.len; block++) {
-      if (has_bit(row(live.in, &live, block), ordinal[value])) {
-        touch(&ranges, (uint32_t)value, base[block]);
-      }
-      if (has_bit(row(live.out, &live, block), ordinal[value])) {
-        touch(&ranges, (uint32_t)value, base[block + 1] - 1);
-      }
-    }
+  uint64_t *rows = MS_ARENA_NEW_ARRAY(arena, uint64_t, (size_t)nobjects * live.words + 1);
+  for (size_t word = 0; word < (size_t)nobjects * live.words + 1; word++) {
+    rows[word] = 0;
   }
-  *lo_out = lo;
-  *hi_out = hi;
-  *length = total;
+  Walk walk = {func, owner, ordinal, &live, live.words, rows};
+  uint64_t *set = MS_ARENA_NEW_ARRAY(arena, uint64_t, live.words + 1);
+  uint64_t *scratch = MS_ARENA_NEW_ARRAY(arena, uint64_t, live.words + 1);
+  for (uint32_t block = 0; block < func->blocks.len; block++) {
+    walk_block(&walk, block, set);
+    walk_edges(&walk, block, scratch);
+  }
+  bool *keep = MS_ARENA_NEW_ARRAY(arena, bool, (size_t)nobjects + 1);
+  for (uint32_t object = 0; object < nobjects; object++) {
+    keep[object] = !bad[object_value[object]];
+  }
+  *map = (MirCellMap){.nobjects = nobjects, .words = live.words, .value = object_value, .ordinal = ordinal,
+                      .conflict = rows, .shareable = keep};
   return true;
 }

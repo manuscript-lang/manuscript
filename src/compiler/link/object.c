@@ -41,9 +41,10 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
   return run_tool(ms_span_of_text("opt (LLVM optimizer)"), argv, argc, log, why);
 }
 
-/* Whether the IR holds a function the emitter marked `optnone`, which is how a size tier shows. */
+/* Whether the IR holds a function the emitter marked `"ms-huge"`: generated code of tens of thousands of lines. A
+ * smaller `optnone` function is generated at the module's own level, which skips the optimizing passes for it. */
 static bool has_optnone(MsSpan ir) {
-  MsSpan needle = ms_span_of_text(" optnone");
+  MsSpan needle = ms_span_of_text("\"ms-huge\"");
   for (size_t at = 0; at + needle.len <= ir.len; at++) {
     if (ms_span_equal(ms_span_of(ir.ptr + at, needle.len), needle)) {
       return true;

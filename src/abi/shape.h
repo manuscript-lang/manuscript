@@ -62,6 +62,7 @@ enum {
   MS_SHAPE_TEXT_FORM = 1u << 2, /* the shape's hooks supply the text form (its own `to_string`) */
   MS_SHAPE_JSON_FORM =
       1u << 3, /* the shape's hooks supply its JSON form (a JsonEncode, Url, Timestamp, ...) */
+  MS_SHAPE_NAME_ONLY = 1u << 6, /* RECORD and ALTERNATIVE: an `opaque` type, whose text is its type name only */
   MS_SHAPE_HEAP_PAYLOAD = 1u << 5, /* OPTIONAL with NULLABLE: the slot points to a heap block holding the payload */
   MS_SHAPE_JSON_TREE = 1u << 4 /* ALTERNATIVE: the untyped JSON value (null, bool, number, string, array, object cases),
                                   written as its own document */

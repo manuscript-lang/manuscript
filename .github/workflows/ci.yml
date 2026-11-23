@@ -5,7 +5,8 @@ name: CI
 #   pull request   the two Linux legs (amd64, arm64), the book and the repository checks, and the time budget.
 #   main           every six hours: all six platforms; this also warms the caches pull requests restore, and
 #                  publishes the book to Pages.
-#   manual         all six platforms, or the Linux two.
+#   manual         on main: all six platforms, or the Linux two; on any other branch always the Linux two, so a branch run
+#                  cannot queue macOS and Windows runners (the platform fixes land on main).
 on:
   pull_request:
   merge_group:
@@ -45,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.platforms == 'linux') && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel","shell":"bash"},{"os":"darwin","arch":"arm64","runner":"macos-15","shell":"bash"},{"os":"windows","arch":"amd64","runner":"windows-2025","shell":"msys2 {0}"},{"os":"windows","arch":"arm64","runner":"windows-11-arm","shell":"msys2 {0}"}]') }}
+        include: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.platforms == 'linux' || github.ref != 'refs/heads/main') && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel","shell":"bash"},{"os":"darwin","arch":"arm64","runner":"macos-15","shell":"bash"},{"os":"windows","arch":"amd64","runner":"windows-2025","shell":"msys2 {0}"},{"os":"windows","arch":"arm64","runner":"windows-11-arm","shell":"msys2 {0}"}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
@@ -53,6 +54,16 @@ jobs:
       - run: cmake --build --preset ci
       - run: ctest --preset ci
       - run: cmake --build --preset ci --target lint
+      # The distribution archive, unpacked on its own and used to build a program (the six-platform runs only).
+      - if: env.PR != 'true'
+        run: cmake --build --preset ci --target dist-smoke
+      - if: env.PR != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
+          path: .artifacts/build/ci/dist/manuscript-*
+          retention-days: 7
+      - run: cmake --build --preset ci --target repo-check
       # Each check reports on its own: a lint violation does not hide the corpus counts.
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target conform
@@ -93,17 +104,6 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: .artifacts/book
-
-  # Repository rules and third-party licenses. Still the Rust ms-repo-check, which does not build while the Rust
-  # tree is red, so it runs on main and by hand only, not on pull requests, until it is ported to Manuscript (#6380).
-  repo-rules:
-    name: repo-rules
-    if: ${{ github.event_name != 'pull_request' && github.event_name != 'merge_group' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - run: make repo-check licenses-check
 
   # The VS Code extension package.
   checks:

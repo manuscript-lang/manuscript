@@ -73,7 +73,9 @@ static void enter(void *context, const MsExpr *expr) {
                                 "a compatible trailing '?', or call a small helper"));
   }
   scan->depth++;
-  two_arm(scan, expr);
+  if (scan->program != NULL) {
+    two_arm(scan, expr);
+  }
 }
 
 static void leave(void *context, const MsExpr *expr) {
@@ -94,5 +96,13 @@ void ms_lint_matches(MsArena *arena, const MsCheckProgram *program, uint32_t mod
   const MsVisitor visitor = {.ctx = &scan, .expr = enter, .leave_expr = leave};
   for (uint32_t i = 0; i < module->tree->ndecls; i++) {
     ms_walk_decl(&visitor, module->tree->decls[i]);
+  }
+}
+
+void ms_lint_nested_matches(const MsModule *tree, MsSpan file, MsLintFindingList *findings) {
+  Scan scan = {NULL, NULL, file, 0, findings};
+  const MsVisitor visitor = {.ctx = &scan, .expr = enter, .leave_expr = leave};
+  for (uint32_t i = 0; i < tree->ndecls; i++) {
+    ms_walk_decl(&visitor, tree->decls[i]);
   }
 }

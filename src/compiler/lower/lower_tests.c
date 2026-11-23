@@ -17,6 +17,7 @@ typedef struct TestRun {
   uint32_t next_index;
   bool bench;         /* lower the `bench` blocks instead of the `test` blocks */
   uint32_t driver;    /* the MIR function of run_bench_block, when lowering benches */
+  MsSymbolId fixture_driver; /* run_bench_fixture, the generic driver of a file with a fixture */
 } TestRun;
 
 /* The symbol `name` of the bundled test runner module, or 0. */
@@ -100,6 +101,9 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
   fn.local_owns = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint8_t, (size_t)fn.nvars + 1);
   fn_init_closing(&fn);
   fn_find_shared(&fn, decl->u.test.body);
+  if (decl->u.test.bench && decl->u.test.body.len > 0) {
+    fn.sink_stmt = decl->u.test.body.ptr[decl->u.test.body.len - 1];
+  }
   const bool ok = fn_stmts(&fn, decl->u.test.body);
   if (!fn.terminated) {
     const MirValue done = fn_result_wrap(&fn, MIR_NONE);
@@ -150,6 +154,35 @@ static uint32_t bench_closure(TestRun *run, uint32_t module_index, uint32_t body
   }
   const MirValue args[2] = {closure, mir_b_iconst(&fn.b, per)};
   const MirValue result = mir_b_call(&fn.b, run->driver, args, 2);
+  fn_own_result(&fn, result);
+  (void)mir_b_emit(&fn.b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, result);
+  return end_fn(&fn, slot, true) ? slot : MIR_NONE;
+}
+
+/* The closure of one `bench` block of a file with a fixture, of the type a test of such a file has (`fn(var F) Void!`):
+ * `run_bench_fixture[F](body, operations, fixture)`, the driver that times `body(fixture)`. The fixture was made, and
+ * `before_all` and `before_each` ran, before this is called, so the setup is outside the timing. */
+static uint32_t bench_fixture_closure(TestRun *run, uint32_t module_index, uint32_t body, MirTy test_fn, MsTy fixture,
+                                      int64_t per) {
+  Lower *cx = run->cx;
+  const LowerTarget target = lower_symbol_target(cx, run->fixture_driver);
+  const uint32_t driver = lower_instance(cx, &target, &fixture, 1, NULL);
+  if (driver == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const uint32_t slot = lower_closure_func(cx, test_fn, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = begin_fn(cx, module_index, &reserved);
+  MirValue values[2];
+  mir_b_params(&fn.b, values, 2);
+  const MirValue closure = closure_value(&fn, body, test_fn);
+  if (cx->module->funcs.ptr[driver].params[0].mode == MM_MOVE) {
+    (void)mir_b_emit(&fn.b, MOP_ScopeDisown, &closure, 1, (MirImm){0}, MIR_NONE); /* the driver owns it */
+  }
+  const MirValue args[3] = {closure, mir_b_iconst(&fn.b, per), values[1]};
+  const MirValue result = mir_b_call(&fn.b, driver, args, 3);
   fn_own_result(&fn, result);
   (void)mir_b_emit(&fn.b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
   fn_scope_unwind(&fn, 0);
@@ -225,6 +258,9 @@ static uint32_t lower_fixture_runner(TestRun *run, uint32_t module_index, uint32
   uint32_t *tests = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
     tests[index] = lower_test(run, module_index, decls[index], test_fn, fixture);
+    if (tests[index] != MIR_NONE && run->bench) {
+      tests[index] = bench_fixture_closure(run, module_index, tests[index], test_fn, fixture, decls[index]->u.test.per);
+    }
     if (tests[index] == MIR_NONE) {
       return MIR_NONE;
     }
@@ -287,7 +323,7 @@ static bool lower_file_tests(TestRun *run, uint32_t module_index, uint32_t *runn
   run->next_index += count;
   const MsSymbolId factory = fixture_factory(run->cx->program, module_index);
   uint32_t runner = MIR_NONE;
-  if (factory != 0 && !run->bench) {
+  if (factory != 0) {
     runner = lower_fixture_runner(run, module_index, *nrunners, factory, decls, count, first);
   } else {
     uint32_t *tests = MS_ARENA_NEW_ARRAY(&run->cx->module->arena, uint32_t, (size_t)count + 1);
@@ -353,6 +389,8 @@ static bool lower_blocks(MsCheckProgram *program, MirModule *module, MsStrBuild 
       const LowerTarget target = lower_symbol_target(&cx, driver);
       run.driver = lower_instance(&cx, &target, NULL, 0, NULL);
       ok = run.driver != MIR_NONE;
+      run.fixture_driver = module_symbol(program, "test/bench.ms", "run_bench_fixture");
+      ok = ok && run.fixture_driver != 0;
     }
   }
   if (ok) {

@@ -158,7 +158,7 @@ static bool disowned_before(ElCx *cx, const MirBlock **idom, const MirPreds *pre
     mir_bits_set(seen, current);
     const MirInstList *insts = &func->blocks.ptr[current].insts;
     for (size_t i = 0; i < insts->len; i++) {
-      if (insts->ptr[i].op == MOP_ScopeDisown && insts->ptr[i].args[0] == value) {
+      if ((insts->ptr[i].op == MOP_ScopeDisown || insts->ptr[i].op == MOP_ScopeUnpin) && insts->ptr[i].args[0] == value) {
         return true;
       }
     }
@@ -172,7 +172,7 @@ static bool disowned_before(ElCx *cx, const MirBlock **idom, const MirPreds *pre
   for (size_t b = 0; b < func->blocks.len; b++) {
     const MirInstList *insts = &func->blocks.ptr[b].insts;
     for (size_t i = 0; i < insts->len; i++) {
-      if (insts->ptr[i].op == MOP_ScopeDisown && insts->ptr[i].args[0] == value) {
+      if ((insts->ptr[i].op == MOP_ScopeDisown || insts->ptr[i].op == MOP_ScopeUnpin) && insts->ptr[i].args[0] == value) {
         ensure_idom(cx, idom);
         return dominates(*idom, (MirBlock)b, block);
       }
@@ -228,6 +228,7 @@ void el_tags(ElCx *cx) {
     cx->tag_kind[i] = -1;
   }
   cx->nvalues0 = (uint32_t)nvalues;
+  cx->cancel_end = mir_bits_new(cx->ma, (uint32_t)nvalues + 1);
   read_scopes(cx, func);
   MirBits disowned = mir_bits_new(cx->ma, (uint32_t)nvalues);
   const MirBlock *idom = NULL;
@@ -235,10 +236,13 @@ void el_tags(ElCx *cx) {
     const MirInstList *insts = &func->blocks.ptr[b].insts;
     for (size_t i = 0; i < insts->len; i++) {
       const MirInst *inst = &insts->ptr[i];
-      if (inst->op == MOP_ScopeDisown) {
+      if (inst->op == MOP_ScopeDisown || inst->op == MOP_ScopeUnpin) {
         mir_bits_set(&disowned, inst->args[0]);
       }
       if (inst->op == MOP_ScopeOwn) {
+        if (inst->imm.c != 0) {
+          mir_bits_set(&cx->cancel_end, inst->args[0]);
+        }
         tag_owner(cx, &idom, &disowned, inst);
       }
     }

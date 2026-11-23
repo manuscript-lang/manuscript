@@ -173,36 +173,38 @@ bool fn_probe_bind(LowerFn *fn, const MsStmt *stmt, MirValue address, MirTy ty) 
   const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &address, 1,
                                     (MirImm){.tag = MI_TY, .a = ty}, ty);
   mir_b_def_var(&fn->b, var, value);
-  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.var = var, .address = address, .ty = ty, .depth = fn->nopen};
+  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.var = var, .address = address, .ty = ty, .depth = fn->nopen, .env = fn->nouter};
   return !fn->failed;
 }
 
-/* `if var name = owner:` over an Optional `var` local: the binding changes the payload, so the owner is made again from
- * it wherever the body is left. Returns whether the writeback was registered. */
-bool fn_iflet_writeback(LowerFn *fn, const MsStmt *stmt, MirValue entry) {
-  MirVar owner = 0;
-  const MsRef *ref = ms_facts_ref(fn->facts, stmt->u.branch.binding->id);
-  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, entry));
-  if (data->kind != MK_OPT || ref == NULL || ref->kind != MS_REF_LOCAL || !fn_owned_local(fn, stmt->u.branch.cond, &owner)) {
-    return false;
-  }
+/* A `for` over a variable lends it to the iterator slot for the loop: leaving the function meanwhile puts it back. */
+bool fn_lend_writeback(LowerFn *fn, VarSlot *lent) {
   if (fn->nwritebacks == LOWER_MAX_WRITEBACKS) {
-    return fn_fail(fn, "`if var` entries nest too deeply");
+    return fn_fail(fn, "loops over variables nest too deeply");
   }
-  const MirVar var = fn_local(fn, ref->local, data->elem);
-  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){var, MIR_NONE, data->elem, fn->nopen, owner,
-                                                       mir_b_ty(&fn->b, entry), true};
+  fn->writebacks[fn->nwritebacks++] = (LowerWriteback){.depth = fn->nopen, .env = fn->nouter, .lent = lent};
   return true;
 }
 
-static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
-  if (back->rewrap) {
-    const MirValue payload = mir_b_use_var(&fn->b, back->var);
-    mir_b_def_var(&fn->b, back->owner, mir_b_emit(&fn->b, MOP_OptSome, &payload, 1, (MirImm){0}, back->owner_ty));
+static void put_writeback_here(LowerFn *fn, const LowerWriteback *back) {
+  if (back->lent != NULL) {
+    (void)fn_var_slots_back(fn, back->lent, 1);
     return;
   }
   const MirValue stored[2] = {back->address, mir_b_use_var(&fn->b, back->var)};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, back->ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+}
+
+/* Puts one writeback back, in the environment it was registered in: a default argument's early exit runs it from the callee's. */
+static void put_writeback(LowerFn *fn, const LowerWriteback *back) {
+  if (back->env == fn->nouter) {
+    put_writeback_here(fn, back);
+    return;
+  }
+  const LowerOuterEnv inner = fn_env_capture(fn);
+  fn_env_install(fn, &fn->outer[back->env]);
+  put_writeback_here(fn, back);
+  fn_env_install(fn, &inner);
 }
 
 /* Stores each entry binding opened inside the scopes above `keep` back to its entry: a return, break or continue

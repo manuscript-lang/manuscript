@@ -46,6 +46,7 @@ typedef struct Body {
   const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
+  const MsStmt *bench_last; /* the last statement of the bench being checked: its value is the bench's result, kept by the harness */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */
   MsNodeJournal typed; /* owned: the nodes typed so far in this function, so a call can settle what its arguments left open */
   const MsExpr *borrowing_probe; /* the `place[key]?` an `if var name = ...` binds: the one probe that may be written */
@@ -62,6 +63,8 @@ void ms_check_test_fixture(Body *body);
 
 /* Types every function, method, test and constant of `module`; fills its facts. */
 void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source);
+/* Checks one function (`method` NULL) or method of a standard module whose body was set aside (lazy_std.c). */
+void ms_check_deferred_body(MsCheckProgram *program, uint32_t module, const MsDecl *decl, const MsMethod *method);
 
 void body_block(Body *body, MsStmts stmts); /* a nested scope */
 void body_statements(Body *body, MsStmts stmts); /* in the current scope: the locals stay visible to what follows */

@@ -158,9 +158,8 @@ static void append_base64(MsStrBuild *out, MsSpan data) {
   }
 }
 
-/* The name as a string literal; a control character is refused. */
-static bool append_literal(MsStrBuild *out, MsSpan text, MsString *refusal) {
-  ms_strbuild_append_byte(out, '"');
+/* The name as the inside of a string literal; a control character is refused. */
+static bool append_escaped(MsStrBuild *out, MsSpan text, MsString *refusal) {
   for (size_t i = 0; i < text.len; i++) {
     const uint8_t c = text.ptr[i];
     if (c < 0x20 || c == 0x7f) {
@@ -176,13 +175,17 @@ static bool append_literal(MsStrBuild *out, MsSpan text, MsString *refusal) {
     }
     ms_strbuild_append_byte(out, c);
   }
-  ms_strbuild_append_byte(out, '"');
   return true;
 }
 
+/* The generated module is data, not one statement per file: its size must not grow the functions the compiler
+ * optimizes. Each file's bytes are a function of their own, `load` finds one by halving, and the paths are two string
+ * literals the generated `files` splits at run time. */
 typedef struct Emit {
-  MsStrBuild loads, entries;
-  size_t files;
+  MsStrBuild loads;   /* `fn file_<n>() Bytes`, one per file */
+  MsStrBuild paths;   /* the file paths, in file order, separated by `\n` escapes */
+  MsStrBuild dirs;    /* the directory paths, separated by `\n` escapes */
+  size_t files, directories;
   uint64_t total;
 } Emit;
 
@@ -207,12 +210,11 @@ static bool emit_file(Walk *w, Emit *emit, const Found *item, MsSpan path_litera
     return too_big ? emit_failure(w, "embedded ", item->path, " is larger than 16 MiB; keep large data outside the program")
                    : emit_failure(w, "embedded ", name, " holds more than 64 MiB; keep large data outside the program");
   }
-  ms_strbuild_printf(&emit->loads, "    if index == %zu: return msstd_embed_bytes(\"", emit->files);
+  ms_strbuild_printf(&emit->loads, "fn file_%zu() Bytes:\n    return msstd_embed_bytes(\"", emit->files);
   append_base64(&emit->loads, ms_bytes_span(&data));
-  ms_strbuild_append_text(&emit->loads, "\")\n");
-  ms_strbuild_append_text(&emit->entries, "    indexes.add(");
-  ms_strbuild_append(&emit->entries, path_literal);
-  ms_strbuild_printf(&emit->entries, ", %zu)\n", emit->files);
+  ms_strbuild_append_text(&emit->loads, "\")\n\n");
+  ms_strbuild_append_text(&emit->paths, emit->files == 0 ? "" : "\\n");
+  ms_strbuild_append(&emit->paths, path_literal);
   emit->files++;
   ms_bytes_free(&data);
   return true;
@@ -221,7 +223,7 @@ static bool emit_file(Walk *w, Emit *emit, const Found *item, MsSpan path_litera
 static bool emit_item(Walk *w, Emit *emit, const Found *item, MsSpan name) {
   MsStrBuild literal = ms_strbuild_new();
   MsString refusal = ms_string_empty();
-  if (!append_literal(&literal, item->path, &refusal)) {
+  if (!append_escaped(&literal, item->path, &refusal)) {
     ms_strbuild_free(&literal);
     ms_project_error_message(w->error, ms_arena_copy(w->arena, ms_string_span(&refusal)));
     ms_string_release(&refusal);
@@ -229,9 +231,8 @@ static bool emit_item(Walk *w, Emit *emit, const Found *item, MsSpan name) {
   }
   bool ok = true;
   if (item->directory) {
-    ms_strbuild_append_text(&emit->entries, "    directories.add(");
-    ms_strbuild_append(&emit->entries, ms_strbuild_span(&literal));
-    ms_strbuild_append_text(&emit->entries, ")\n");
+    ms_strbuild_append_text(&emit->dirs, emit->directories++ == 0 ? "" : "\\n");
+    ms_strbuild_append(&emit->dirs, ms_strbuild_span(&literal));
   } else {
     ok = emit_file(w, emit, item, ms_strbuild_span(&literal), name);
   }
@@ -239,10 +240,48 @@ static bool emit_item(Walk *w, Emit *emit, const Found *item, MsSpan name) {
   return ok;
 }
 
+enum { DISPATCH_LEAF = 32 };
+
+/* The test of file numbers [first, last) by halving, in function `body`'s text: one test and one call per file. */
+static void emit_halves(MsStrBuild *out, size_t first, size_t last, size_t depth) {
+  if (last - first == 1) {
+    for (size_t i = 0; i < depth; i++) {
+      ms_strbuild_append_text(out, "    ");
+    }
+    ms_strbuild_printf(out, "return file_%zu()\n", first);
+    return;
+  }
+  const size_t middle = first + (last - first) / 2;
+  for (size_t i = 0; i < depth; i++) {
+    ms_strbuild_append_text(out, "    ");
+  }
+  ms_strbuild_printf(out, "if index < %zu:\n", middle);
+  emit_halves(out, first, middle, depth + 1);
+  emit_halves(out, middle, last, depth); /* the branch above returns, so the rest follows flat */
+}
+
+/* `load_<first>_<last>(index)` finds file numbers [first, last): a range above DISPATCH_LEAF splits into two such
+ * functions, so no function is longer than a few hundred lines however many files there are. */
+static void emit_load(MsStrBuild *out, size_t first, size_t last) {
+  const size_t middle = first + (last - first) / 2;
+  if (last - first > DISPATCH_LEAF) {
+    emit_load(out, first, middle);
+    emit_load(out, middle, last);
+  }
+  ms_strbuild_printf(out, "fn load_%zu_%zu(index: Int) Bytes:\n", first, last);
+  if (last - first > DISPATCH_LEAF) {
+    ms_strbuild_printf(out, "    if index < %zu:\n        return load_%zu_%zu(index)\n    return load_%zu_%zu(index)\n\n",
+                       middle, first, middle, middle, last);
+  } else {
+    emit_halves(out, first, last, 1);
+    ms_strbuild_append_byte(out, '\n');
+  }
+}
+
 bool ms_project_embed_generate(MsArena *arena, MsSpan name, MsSpan directory, MsSpan *source,
                                MsProjectError *error) {
   Walk walk = {.arena = arena, .error = error};
-  Emit emit = {.loads = ms_strbuild_new(), .entries = ms_strbuild_new()};
+  Emit emit = {.loads = ms_strbuild_new(), .paths = ms_strbuild_new(), .dirs = ms_strbuild_new()};
   bool ok = walk_directory(&walk, directory, (MsSpan){0}) && check_case(&walk);
   for (size_t i = 0; ok && i < walk.found.len; i++) {
     ok = emit_item(&walk, &emit, &walk.found.ptr[i], name);
@@ -250,17 +289,32 @@ bool ms_project_embed_generate(MsArena *arena, MsSpan name, MsSpan directory, Ms
   if (ok) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, PRELUDE);
-    ms_strbuild_append_text(&text, "fn load(index: Int) Bytes:\n");
     ms_strbuild_append(&text, ms_strbuild_span(&emit.loads));
-    ms_strbuild_append_text(&text, "    return msstd_embed_bytes(\"\")\n\nexport fn files() EmbeddedTree:\n"
+    if (emit.files > 0) {
+      emit_load(&text, 0, emit.files);
+      ms_strbuild_printf(&text, "fn load(index: Int) Bytes:\n    return load_0_%zu(index)\n", emit.files);
+    } else {
+      ms_strbuild_append_text(&text, "fn load(index: Int) Bytes:\n    return msstd_embed_bytes(\"\")\n");
+    }
+    ms_strbuild_append_text(&text, "\nexport fn files() EmbeddedTree:\n"
                                    "    var indexes = Map[String, Int]()\n    var directories = Set[String]()\n"
                                    "    directories.add(\"\")\n");
-    ms_strbuild_append(&text, ms_strbuild_span(&emit.entries));
+    if (emit.files > 0) {
+      ms_strbuild_append_text(&text, "    var number = 0\n    for path in \"");
+      ms_strbuild_append(&text, ms_strbuild_span(&emit.paths));
+      ms_strbuild_append_text(&text, "\".split(\"\\n\"):\n        indexes.add(path, number)\n        number += 1\n");
+    }
+    if (emit.directories > 0) {
+      ms_strbuild_append_text(&text, "    for path in \"");
+      ms_strbuild_append(&text, ms_strbuild_span(&emit.dirs));
+      ms_strbuild_append_text(&text, "\".split(\"\\n\"):\n        directories.add(path)\n");
+    }
     ms_strbuild_append_text(&text, "    return embedded_tree(indexes, directories, load)\n");
     *source = ms_project_text(arena, &text);
   }
   ms_strbuild_free(&emit.loads);
-  ms_strbuild_free(&emit.entries);
+  ms_strbuild_free(&emit.paths);
+  ms_strbuild_free(&emit.dirs);
   found_list_free(&walk.found);
   return ok;
 }
