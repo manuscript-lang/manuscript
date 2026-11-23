@@ -96,10 +96,10 @@ static bool parse_number(MsSpan line, size_t *at, uint32_t *out) {
   return true;
 }
 
-/* A `.loc file line column ...` (COFF: `.cv_loc function file line column`). */
-static void place_loc(AsmScan *scan, MsSpan line, size_t at) {
+/* A `.loc file line column ...`, or `.cv_loc function file line column` (CodeView). `want` is the count of
+ * numbers up to the column. */
+static void place_loc(AsmScan *scan, MsSpan line, size_t at, uint32_t want) {
   uint32_t numbers[4];
-  uint32_t want = scan->format == ASM_COFF ? 4 : 3;
   for (uint32_t index = 0; index < want; index++) {
     if (!parse_number(line, &at, &numbers[index])) {
       return;
@@ -155,8 +155,13 @@ static bool indented(AsmScan *scan, MsSpan line) {
   if (scan->current == UINT32_MAX) {
     return false;
   }
-  if (is_directive(text, scan->format == ASM_COFF ? ".cv_loc" : ".loc")) {
-    place_loc(scan, text, scan->format == ASM_COFF ? 7 : 4);
+  /* llc writes DWARF `.loc` for every target of ours, mingw's included; `.cv_loc` appears only for CodeView. */
+  if (is_directive(text, ".loc")) {
+    place_loc(scan, text, 4, 3);
+    return true;
+  }
+  if (is_directive(text, ".cv_loc")) {
+    place_loc(scan, text, 7, 4);
     return true;
   }
   if (is_directive(text, ".size") || is_directive(text, ".cfi_endproc") || is_directive(text, ".seh_endproc")) {
