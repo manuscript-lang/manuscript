@@ -45,11 +45,15 @@ static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue r
   return true;
 }
 
-/* The address of the list that `place` names when it is an element of a list lying in a variable, field or element
- * (`rows[i].append(x)`), else MIR_NONE. */
+/* The address of the list that `place` names when it is a field of a record that lies in its cell (`context.rows.append(x)`)
+ * or an element of a list lying in a variable, field or element (`rows[i].append(x)`), else MIR_NONE. */
 static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
   MsExpr *container = NULL;
   MsExpr *key = NULL;
+  MirValue field = MIR_NONE;
+  if (place != NULL && place->kind == MS_E_MEMBER && fn_field_address(fn, place, &field)) {
+    return field;
+  }
   if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
     return MIR_NONE;
   }

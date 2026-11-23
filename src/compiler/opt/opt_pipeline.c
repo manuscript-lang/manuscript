@@ -92,7 +92,6 @@ static const Step early_steps[] = {
 
 static const Step late_steps[] = {
     {"fuse", opt_fuse_step},
-    {"fieldview", opt_fieldview},
     {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
