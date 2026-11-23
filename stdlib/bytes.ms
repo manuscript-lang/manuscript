@@ -62,6 +62,7 @@ fn Bytes.get_or(index: Int, default: UInt8?) UInt8:
 	position := index
 	if index < 0: position = count + index
 	if position >= 0 and position < count: return self.get(position)
+
 	match default:
 		value: return value
 		none: return self.get(index)

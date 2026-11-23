@@ -38,7 +38,11 @@ fn test_run(ms: String, file: String, stress: Bool) Int:
 	var settings = Map[String, String]()
 	if stress: settings["MS_SCHED_STRESS"] = "1"
 
-	out := run(ms, ["test", file.clone()], RunOptions(timeout: seconds(300), env: settings)).wait()
+	out := run(
+		ms,
+		["test", file.clone()],
+		RunOptions(timeout: seconds(300), env: settings),
+	).wait()
 	if done := out: return done.exit_code
 
 	return 1
@@ -65,7 +69,14 @@ fn changed(since: String) List[String]:
 	var found = List[String]()
 	text := capture(
 		"git",
-		["diff", "--name-only", "--diff-filter=AM", since.clone(), "--", fixtures.clone()],
+		[
+			"diff",
+			"--name-only",
+			"--diff-filter=AM",
+			since.clone(),
+			"--",
+			fixtures.clone(),
+		],
 	)
 
 	for line in text.split("\n"):
@@ -106,6 +117,7 @@ fn main() Int:
 		chunks.append(mine)
 
 	var tasks = List[Promise[List[String]]]()
+
 	for worker in 0..jobs:
 		ms_copy := ms.clone()
 		chunk := chunks[worker].clone()

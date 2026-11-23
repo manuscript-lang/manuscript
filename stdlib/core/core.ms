@@ -77,6 +77,7 @@ fn status_kind(status: Int) String:
 	if status == 14: return "EOVERFLOW"
 	if status == 15: return "ENOTTY"
 	if status == 17: return "EBUSY"
+
 	return "EAUTH"
 
 // The words of a status; `-` means the native's own text is the whole message.
@@ -97,13 +98,21 @@ fn status_words(status: Int) String:
 	if status == 14: return "output limit exceeded"
 	if status == 15: return "not a terminal"
 	if status == 17: return "terminal is busy"
+
 	return "authentication failed"
 
-// The `Error` of a failed runtime native: `status` is the native's status number, `domain` names what it works
-// on, and `said` is the text the native explained itself in, or empty. `overrides` holds the
+// The `Error` of a failed runtime native: `status` is the native's status number,
+// `domain` names what it works on, and `said` is the text the native explained itself
+// in, or empty. `overrides` holds the
 // `// ms: words NUMBER TEXT` lines of the file that declares the native, one per line, and takes the place of
-// the status's usual words. Lowering calls this for every `extern fn` that returns `T!`.
-fn msstd_status_error(status: UInt8, domain: String, move said: String, overrides: String) Error:
+// the status's usual words. Lowering calls this for every `extern fn` that returns
+// `T!`.
+fn msstd_status_error(
+	status: UInt8,
+	domain: String,
+	move said: String,
+	overrides: String,
+) Error:
 	number := status.to_int()
 	kind := status_kind(number)
 	words := override_words(overrides, number).get_or(status_words(number))
@@ -115,12 +124,19 @@ fn override_words(overrides: String, number: Int) String?:
 		if words := line.cut_prefix(f"{number} "): return words
 	return none
 
-fn status_error_text(words: String, move kind: String, domain: String, move said: String) Error:
+fn status_error_text(
+	words: String,
+	move kind: String,
+	domain: String,
+	move said: String,
+) Error:
 	if words == "-":
 		if said.length() > 0: return Error(said, kind: kind)
 		return Error(f"{domain}: failed", kind: kind)
+
 	if said.starts_with(f"{domain}: "): return Error(said, kind: kind)
 	if said.length() > 0: return Error(f"{domain}: {words}: {said}", kind: kind)
+
 	return Error(f"{domain}: {words}", kind: kind)
 
 // Raises a programming fault with the supplied message and stops the current operation.
@@ -212,13 +228,16 @@ fn Optional[T].is_none() Bool:
 fn Optional[T].get() T:
 	match self:
 		value: return value
-		none: panic("called Optional.get() on none; check is_some first, or pass a default: get(default: ...)")
+		none: panic(
+			"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)"
+		)
 
 // Returns the payload, or `default` when this is `none`. The default is always
 // evaluated; use `get_or_else` when it costs work.
 fn move Optional[T].get_or(move default: T?) T:
 	if value := self: return value
 	if fallback := default: return fallback
+
 	panic("called Optional.get_or with a none default")
 
 // Transforms a present payload with `transform`; `none` stays `none`.
@@ -289,13 +308,16 @@ fn Result[T, E].is_error() Bool:
 fn Result[T, E].get() T:
 	match self:
 		ok(value): return value
-		error(_): panic("called Result.get() on error; check is_ok first, or pass a default: get(default: ...)")
+		error(_): panic(
+			"called Result.get() on error; check is_ok first, or pass a default: get(default: ...)"
+		)
 
 // Returns the successful payload, or `default` when this is an error. The default is
 // always evaluated; use `get_or_else` when it costs work.
 fn move Result[T, E].get_or(move default: T?) T:
 	if value := self: return value
 	if fallback := default: return fallback
+
 	panic("called Result.get_or with a none default")
 
 // Returns the error payload; check `is_error()` first, because a successful result
@@ -426,8 +448,8 @@ fn Error.clone() move Error:
 fn String.to_string() String:
 	return self.clone()
 
-// Pads on the left (`pad_start`) or the right (`pad_end`) until the scalar length reaches `target_length`,
-// repeating `padding` and cutting its last copy.
+// Pads on the left (`pad_start`) or the right (`pad_end`) until the scalar length
+// reaches `target_length`, repeating `padding` and cutting its last copy.
 fn String.pad_start(target_length: Int, padding: String) String:
 	return padding_for(self, target_length, padding) + self
 
@@ -437,14 +459,19 @@ fn String.pad_end(target_length: Int, padding: String) String:
 fn padding_for(text: String, target_length: Int, padding: String) String:
 	missing := target_length - text.scalar_length()
 	if missing <= 0 or padding.is_empty(): return ""
-	// Repeating first makes an oversized request fault at the string limit instead of looping to it.
+
+	// Repeating first makes an oversized request fault at the string limit instead of
+	// looping to it.
 	source := padding.repeat(missing / padding.scalar_length() + 1)
 	var filler = ""
 	var count = 0
+
 	for scalar in source.chars():
 		if count >= missing: break
+
 		filler += scalar
 		count += 1
+
 	return filler
 
 // Plain numbers and flags copy by value: their `clone` is the value itself.
