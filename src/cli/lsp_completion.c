@@ -9,6 +9,7 @@
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
+#include "cli/lsp_actions.h"
 #include "cli/lsp_workspace.h"
 #include "compiler/check/program.h"
 #include "compiler/project/manifest.h"
@@ -21,7 +22,7 @@
 #define MARKER "__manuscript_completion"
 
 typedef struct Item {
-  MsString label, detail, documentation, sort, insert;
+  MsString label, detail, documentation, sort, insert, additional; /* additional: the JSON of an extra text edit, or empty */
   int kind, format;
 } Item;
 
@@ -36,6 +37,7 @@ typedef struct Completer {
   MsCheckProgram *program;
   uint32_t module; /* the document's module, or UINT32_MAX */
   MsBindingList scope;
+  const MsModule *tree; /* the document's parsed module, for placing imports */
   MsNode left; /* the receiver of the member being completed */
   bool has_left;
   ItemList items;
@@ -430,6 +432,130 @@ static bool in_type_position(MsSpan source, size_t start) {
   return result;
 }
 
+/* ---- names that are not imported yet ---- */
+
+static bool is_type_decl(const MsDecl *decl);
+static bool public_module(MsSpan name);
+
+/* The placeholders of a function's parameters that have no default. */
+static MsString declared_call_text(const Completer *c, const MsNames *names, MsSpan name, const MsParams *params) {
+  MsStrBuild out = ms_strbuild_new();
+  ms_strbuild_append(&out, name);
+  if (!c->snippets) return ms_strbuild_finish(&out);
+  ms_strbuild_append_byte(&out, '(');
+  size_t at = 1, written = 0;
+  for (uint32_t i = 0; i < params->len; i++) {
+    if (params->ptr[i]->def != NULL) continue;
+    const MsSpan label = ms_names_span(names, params->ptr[i]->name);
+    if (written > 0) ms_strbuild_append_text(&out, ", ");
+    if (params->len != 1) {
+      ms_strbuild_append(&out, label);
+      ms_strbuild_append_text(&out, ": ");
+    }
+    ms_strbuild_printf(&out, "${%zu:", at++);
+    ms_strbuild_append(&out, label);
+    ms_strbuild_append_byte(&out, '}');
+    written++;
+  }
+  ms_strbuild_append_text(&out, ")$0");
+  return ms_strbuild_finish(&out);
+}
+
+/* Offers the exports of the module `text` (imported as `path`) that match the word, each with the edit that imports it. */
+static void add_importable(Completer *c, MsSpan text, MsSpan path, bool bundled) {
+  if (!name_matches(text, c->prefix)) return; /* the names would have to appear, in order, somewhere in the file */
+  MsArena arena = ms_arena_new();
+  MsNames names;
+  ms_names_init(&names);
+  MsModule module;
+  MsDiag diag;
+  if (ms_parse(&arena, &names, text, &module, &diag)) {
+    MsStrBuild file = ms_strbuild_new();
+    if (bundled) ms_strbuild_append(&file, path);
+    for (uint32_t d = 0; d < module.ndecls; d++) {
+      MsName declared;
+      const MsDecl *decl = module.decls[d];
+      if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
+      const MsSpan name = ms_names_span(&names, declared);
+      if (!name_matches(name, c->prefix) || ms_span_starts_with(name, ms_span_of_text(MARKER))) continue;
+      if (c->type_context && !is_type_decl(decl)) continue;
+      if (bundled && ms_check_is_prelude_declaration(ms_strbuild_span(&file), name)) continue;
+      bool seen = false;
+      for (size_t i = 0; i < c->items.len && !seen; i++) seen = ms_span_equal(ms_string_span(&c->items.ptr[i].label), name);
+      if (seen) continue;
+      const int kind = is_type_decl(decl) ? 7 : decl->kind == MS_D_CONST ? 21 : 3;
+      MsString insert = decl->kind == MS_D_FN ? declared_call_text(c, &names, name, &decl->u.fn.params) : own(name);
+      MsStrBuild detail = ms_strbuild_new();
+      ms_strbuild_append_text(&detail, "— ");
+      ms_strbuild_append(&detail, path);
+      const MsSpan comment = ms_declaration_comment(&arena, text, decl->pos.offset, decl->pos.line);
+      MsStrBuild statement = ms_strbuild_new();
+      ms_strbuild_append_text(&statement, "import ");
+      ms_strbuild_append(&statement, name);
+      ms_strbuild_append_text(&statement, " from \"");
+      ms_strbuild_append(&statement, path);
+      ms_strbuild_append_byte(&statement, '"');
+      LspPosition at;
+      MsStrBuild inserted = ms_strbuild_new();
+      lsp_import_insertion(c->source, c->tree, ms_strbuild_span(&statement), &at, &inserted);
+      MsStrBuild edit = ms_strbuild_new();
+      ms_strbuild_printf(&edit, "{\"range\":{\"start\":{\"line\":%zu,\"character\":%zu},\"end\":{\"line\":%zu,\"character\":%zu}},\"newText\":", at.line,
+                         at.character, at.line, at.character);
+      lsp_json_string(&edit, ms_strbuild_span(&inserted));
+      ms_strbuild_append_byte(&edit, '}');
+      MsStrBuild sort = ms_strbuild_new();
+      ms_strbuild_append_text(&sort, "04_");
+      ms_strbuild_append(&sort, name);
+      Item item = {.label = own(name), .detail = ms_strbuild_finish(&detail), .documentation = own(comment), .sort = ms_strbuild_finish(&sort),
+                   .insert = insert, .additional = ms_strbuild_finish(&edit), .kind = kind,
+                   .format = c->snippets && (contains(ms_string_span(&insert), "${") || contains(ms_string_span(&insert), "$0")) ? 2 : 1};
+      item_list_push(&c->items, item);
+      ms_strbuild_free(&statement);
+      ms_strbuild_free(&inserted);
+    }
+    ms_strbuild_free(&file);
+  }
+  ms_names_free(&names);
+  ms_arena_free(&arena);
+}
+
+/* Names the bundled library and the project's other files export, offered with the import that makes them visible. */
+static void import_suggestions(Completer *c, const LspDocList *docs, const LspDoc *doc) {
+  size_t count = 0;
+  const MsStdSource *sources = ms_std_sources(&count);
+  MsStrBuild path = ms_strbuild_new();
+  for (size_t i = 0; i < count; i++) {
+    if (!public_module(sources[i].name)) continue;
+    ms_strbuild_clear(&path);
+    ms_strbuild_append_text(&path, "@std/");
+    ms_strbuild_append(&path, sources[i].name);
+    add_importable(c, sources[i].text, ms_strbuild_span(&path), true);
+  }
+  ms_strbuild_free(&path);
+  MsArena arena = ms_arena_new();
+  MsSpanList files = {0};
+  lsp_workspace_files(&arena, ms_string_span(&doc->path), &files);
+  MsStrBuild base = ms_strbuild_new();
+  ms_path_dir(ms_string_span(&doc->path), &base);
+  for (size_t i = 0; i < files.len; i++) {
+    if (ms_span_equal(files.ptr[i], ms_string_span(&doc->path))) continue;
+    MsSpan import_path;
+    if (!lsp_relative_import(&arena, ms_strbuild_span(&base), files.ptr[i], &import_path)) continue;
+    MsBytes bytes = {0};
+    MsSpan text = {0};
+    for (size_t d = 0; d < docs->len; d++) {
+      if (ms_span_equal(ms_string_span(&docs->ptr[d].path), files.ptr[i])) text = ms_string_span(&docs->ptr[d].text);
+    }
+    const bool on_disk = text.ptr == NULL && ms_file_read(files.ptr[i], &bytes);
+    if (on_disk) text = ms_bytes_span(&bytes);
+    if (text.ptr != NULL) add_importable(c, text, import_path, false);
+    if (on_disk) ms_bytes_free(&bytes);
+  }
+  ms_strbuild_free(&base);
+  ms_span_list_free(&files);
+  ms_arena_free(&arena);
+}
+
 /* ---- imports ---- */
 
 /* An item with no scoring of its own: sorted by label, the detail naming the module. */
@@ -783,6 +909,7 @@ static void checked_items(Completer *c, const LspDocList *docs, const LspDoc *do
       if (ms_span_equal(analysis->paths[m], ms_string_span(&doc->path))) c->module = m;
     }
   }
+  if (c->module != UINT32_MAX) c->tree = c->program->modules.ptr[c->module].tree;
   if (c->module != UINT32_MAX) {
     Walk walk = {c, ms_names_intern(c->program->names, ms_span_of_text(MARKER))};
     const MsScopeVisitor visitor = {.context = &walk, .name = walk_name, .expr = walk_expr};
@@ -796,6 +923,7 @@ static void checked_items(Completer *c, const LspDocList *docs, const LspDoc *do
       keyword_items(c);
     }
   }
+  if (!c->member && c->prefix.len > 0) import_suggestions(c, docs, doc);
 }
 
 void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool snippets, MsStrBuild *out) {
@@ -860,6 +988,11 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
       ms_strbuild_append_text(out, ",\"detail\":");
       lsp_json_string(out, ms_string_span(&item->detail));
     }
+    if (ms_string_length(&item->additional) > 0) {
+      ms_strbuild_append_text(out, ",\"additionalTextEdits\":[");
+      ms_strbuild_append(out, ms_string_span(&item->additional));
+      ms_strbuild_append_byte(out, ']');
+    }
     if (ms_string_length(&item->documentation) > 0) {
       ms_strbuild_append_text(out, ",\"documentation\":{\"kind\":\"markdown\",\"value\":");
       lsp_json_string(out, ms_string_span(&item->documentation));
@@ -874,6 +1007,7 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     ms_string_release(&c.items.ptr[i].documentation);
     ms_string_release(&c.items.ptr[i].sort);
     ms_string_release(&c.items.ptr[i].insert);
+    ms_string_release(&c.items.ptr[i].additional);
   }
   item_list_free(&c.items);
   ms_binding_list_free(&c.scope);

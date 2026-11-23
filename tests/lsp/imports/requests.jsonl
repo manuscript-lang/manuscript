@@ -10,3 +10,7 @@
 {"jsonrpc": "2.0", "id": 6, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/group.ms"}, "position": {"line": 1, "character": 3}}}
 {"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/bare.ms", "languageId": "manuscript", "version": 1, "text": "import maxx\n"}}}
 {"jsonrpc": "2.0", "id": 7, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/bare.ms"}, "position": {"line": 0, "character": 10}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/use.ms", "languageId": "manuscript", "version": 1, "text": "import other from \"./sub/inner.ms\"\n\nfn main() Void:\n\tx := helper_t\n\ty := isqr\n\tz := Shap\n"}}}
+{"jsonrpc": "2.0", "id": 8, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/use.ms"}, "position": {"line": 3, "character": 14}}}
+{"jsonrpc": "2.0", "id": 9, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/use.ms"}, "position": {"line": 4, "character": 10}}}
+{"jsonrpc": "2.0", "id": 10, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/use.ms"}, "position": {"line": 5, "character": 10}}}
