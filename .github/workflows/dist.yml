@@ -65,10 +65,11 @@ jobs:
           root=$(ls -d "$PWD"/.artifacts/build/release/dist-smoke/unpacked/manuscript-*)
           mkdir -p /tmp/empty
           cd "$root/examples/hello"
-          ( while :; do for d in /tmp/manuscript-test-*; do [ -f "$d/program" ] && cp -f "$d/program" /tmp/prog.copy 2>/dev/null; done; done ) &
+          set +e
+          ( while :; do for d in /tmp/manuscript-test-*; do if [ -f "$d/program" ]; then cp -f "$d/program" /tmp/prog.copy 2>/dev/null; fi; done; done ) &
           copier=$!
           env -i PATH=/tmp/empty "$root/bin/ms" test test.ms || true
-          sleep 1; kill $copier
+          sleep 1; kill $copier 2>/dev/null
           ls -l /tmp/prog.copy
           mkdir -p /tmp/res
           env -i PATH=/tmp/empty MS_TEST_RESULTS=/tmp/res gdb -batch -ex run -ex bt -ex 'info sharedlibrary' -ex 'x/8i $rip' -ex 'info registers' /tmp/prog.copy 2>&1 | tail -70 || true
