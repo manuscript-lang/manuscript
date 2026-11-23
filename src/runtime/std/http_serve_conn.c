@@ -360,7 +360,10 @@ static Next serve_request(MsServeConn *conn, MsServeShared *shared, MsH1Request 
   }
   MsExchange *exchange =
       ms_exchange_new(conn, head, &target, framing, keep_alive, scan.expect_continue, started);
-  const int failure = run_handler(shared, exchange, framing.kind == MS_H1_NO_BODY);
+  /* A request that asks to upgrade hands the stream to the handler, which reads it itself. */
+  MsSpan upgrade = ms_span_of(NULL, 0);
+  const bool upgrading = ms_headers_first(exchange->headers, ms_span_of_text("Upgrade"), &upgrade);
+  const int failure = run_handler(shared, exchange, framing.kind == MS_H1_NO_BODY && !upgrading);
   atomic_fetch_sub(&shared->admitted, 1);
   const bool open = ms_exchange_finish(exchange, failure) && !conn->worker->closing;
   ms_exchange_release(exchange);
