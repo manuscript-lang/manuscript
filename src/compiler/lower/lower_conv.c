@@ -373,6 +373,18 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     }
     return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }
+  if (conversion->kind == MS_CONV_NARROW) {
+    /* A nullable local read where `v != null` holds: the payload of the same value, a view while the binding keeps it. */
+    const MirTy payload = fn_type(fn, conversion->to);
+    if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
+      return value;
+    }
+    if (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value)) {
+      MirTy taken = payload;
+      return fn_take_payload(fn, value, &taken);
+    }
+    return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
+  }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to), conversion->to);
   }

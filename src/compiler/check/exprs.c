@@ -23,10 +23,10 @@ const MsSymbol *body_find_symbol(const Body *body, MsName name) {
   if (found == NULL) {
     id = resolver_prelude_symbol(program, name);
   }
-  /* `print` is a core function every module sees, and `a..b` calls the collections function `range`. */
+  /* `print` and `ok_or` are core functions every module sees, and `a..b` calls the collections function `range`. */
   const MsSpan text = ms_names_span(program->names, name);
   const bool range = ms_span_is_text(text, "..");
-  if (id == 0 && (range || ms_span_is_text(text, "print"))) {
+  if (id == 0 && (range || ms_span_is_text(text, "print") || ms_span_is_text(text, "ok_or"))) {
     const MsName home = intern(body, range ? "@std/collections/collections.ms" : "@std/core.ms");
     const MsName target = range ? intern(body, "range") : name;
     for (uint32_t index = program->user_modules; index < program->modules.len; index++) {
