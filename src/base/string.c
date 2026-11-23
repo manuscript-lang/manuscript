@@ -17,13 +17,11 @@ static size_t checked_length(size_t length) {
 }
 
 static MsString make_inline(MsSpan span) {
-  MsString string = ms_string_empty();
-  if (span.len != 0) {
-    __builtin_memcpy(string.inline_bytes, span.ptr, span.len);
-  }
-  string.tagged = (string.tagged & ~(UINT64_C(15) << MS_STRING_INLINE_SHIFT)) |
-                  ((uint64_t)span.len << MS_STRING_INLINE_SHIFT);
-  return string;
+  /* The bytes go into the two words from overlapping loads: no copy of a variable length. */
+  uint64_t low, high;
+  ms_hash_words(span.ptr, span.len, &low, &high);
+  return (MsString){.low_bits = low,
+                    .tagged = high | ((uint64_t)span.len << MS_STRING_INLINE_SHIFT) | (UINT64_C(1) << MS_STRING_TAG_SHIFT)};
 }
 
 MsString ms_string_from_span(MsSpan span) {
