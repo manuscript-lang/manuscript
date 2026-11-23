@@ -46,6 +46,7 @@ static bool split_fields(const MsList *fields, Pseudo *pseudo, MsHeaderField **r
     MsStrBuild canonical = ms_strbuild_new();
     ms_header_canonical(name, &canonical);
     (*names)[*count] = ms_strbuild_finish(&canonical);
+    ms_strbuild_free(&canonical);
     (*rest)[*count] = (MsHeaderField){.name = ms_string_span(&(*names)[*count]), .value = value};
     (*count)++;
   }

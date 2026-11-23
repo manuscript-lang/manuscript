@@ -6,6 +6,7 @@
  * arguments come from ms_check_instantiate. The MsCall fact lists one argument per parameter, the receiver
  * first for a method: written, defaulted, or omitted. */
 #include "compiler/check/call_internal.h"
+#include "compiler/syntax/walk.h"
 
 #include <string.h>
 #include "compiler/check/instantiate.h"
@@ -258,6 +259,20 @@ static bool report_shape_mismatch(Body *body, const Target *target, const MsExpr
   }
   if (body_reports(body) && !body->quiet) {
     ms_check_report(body->program, body->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    const MsExpr *result = value->kind == MS_E_LAMBDA && value->u.lambda.body.len == 1 &&
+                                   (value->u.lambda.body.ptr[0]->kind == MS_S_CALL || value->u.lambda.body.ptr[0]->kind == MS_S_RETURN)
+                               ? value->u.lambda.body.ptr[0]->u.expr
+                               : NULL;
+    const MsSpan source = body->program->modules.ptr[body->module].source;
+    const MsPos from = result != NULL ? ms_expr_start(result) : (MsPos){0};
+    if (result != NULL && is_function(types, param) && ms_ty_is(types, ms_ty_result(types, param), MS_BUILTIN_Result) &&
+        result->end.offset > from.offset && result->end.offset <= source.len) {
+      MsStrBuild fix = ms_strbuild_new(); /* wrap the callback's value: it reports failure as a value */
+      ms_strbuild_append_text(&fix, "ok(");
+      ms_strbuild_append(&fix, ms_span_of(source.ptr + from.offset, result->end.offset - from.offset));
+      ms_strbuild_append_text(&fix, ")");
+      ms_check_attach_fix(body->program, from, result->end, ms_strbuild_finish(&fix));
+    }
   } else {
     ms_strbuild_free(&text);
   }
@@ -630,7 +645,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       instantiated = false;
       if (instance.conflict != SIZE_MAX) {
         report_conflict(body, call, target, &instance, arg_tys, matched, diagnostics_before);
-      } else if (uninferable(body, &instance, written, matched, diagnostics_before, target->sig)) {
+      } else if ((expected == MS_TY_NONE || !holds_invalid(&body->program->types, expected, 6)) && uninferable(body, &instance, written, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
         if (target->constructor && instance.unbound.len != 0 && instance.args.len == target->vars.len) {
           /* what the arguments did fix stays: `ok(1)` is a Result whose error type is the invalid marker */

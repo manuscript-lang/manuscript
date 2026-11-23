@@ -9,7 +9,7 @@
 void ms_core_heap_stats(int64_t *used, int64_t *committed) {
   size_t current_commit = 0;
   mi_process_info(NULL, NULL, NULL, NULL, NULL, &current_commit, NULL, NULL);
-  *used = (int64_t)current_commit;
+  *used = ms_alloc_live_bytes();
   *committed = (int64_t)current_commit;
 }
 

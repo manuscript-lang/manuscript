@@ -4,6 +4,7 @@
 #include "cli/lsp_command.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/arena.h"
@@ -17,6 +18,7 @@
 #include "cli/lsp_nav.h"
 #include "cli/lsp_semantic.h"
 #include "cli/lsp_signature.h"
+#include "cli/lsp_workspace.h"
 #include "cli/lsp_symbols.h"
 
 enum { ERROR_PARSE = -32700, ERROR_INVALID_REQUEST = -32600, ERROR_NOT_FOUND = -32601, ERROR_INVALID_PARAMS = -32602,
@@ -112,7 +114,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"/\"]},\"codeActionProvider\":{\"codeActionKinds\":[\"source.fixAll.manuscript\",\"quickfix\",\"source.organizeImports\"]},\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\",\":\"],\"retriggerCharacters\":[\",\"]},\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"documentSymbolProvider\":true,\"documentFormattingProvider\":true,\"typeDefinitionProvider\":true,\"inlayHintProvider\":true,\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[" LSP_TOKEN_LEGEND "],\"tokenModifiers\":[]},\"full\":true},\"foldingRangeProvider\":true,\"workspaceSymbolProvider\":true,\"completionProvider\":{\"triggerCharacters\":[\".\",\":\",\"/\"]},\"codeActionProvider\":{\"codeActionKinds\":[\"source.fixAll.manuscript\",\"quickfix\",\"source.organizeImports\"]},\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\",\":\"],\"retriggerCharacters\":[\",\"]},\"hoverProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -309,6 +311,27 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   return true;
 }
 
+/* The source of a bundled module by its `manuscript-stdlib:` URI. */
+static void handle_standard_library_source(const MsJson *id, const MsJson *params) {
+  const MsJson *document = member_kind(params, "textDocument", MS_JSON_OBJECT);
+  const MsJson *uri = member_kind(document, "uri", MS_JSON_STRING);
+  const MsSpan prefix = ms_span_of_text("manuscript-stdlib:///");
+  if (uri == NULL || !ms_span_starts_with(uri->text, prefix) || ms_span_find(uri->text, ms_span_of_text("?"), &(size_t){0}) ||
+      ms_span_find(uri->text, ms_span_of_text("#"), &(size_t){0})) {
+    reply_error(id, ERROR_INVALID_PARAMS, "invalid standard-library URI");
+    return;
+  }
+  MsStdSource source;
+  if (!ms_std_source_find(ms_span_of(uri->text.ptr + prefix.len, uri->text.len - prefix.len), &source)) {
+    reply_error(id, ERROR_INVALID_PARAMS, "unknown standard-library module");
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  lsp_json_string(&text, source.text);
+  reply_result(id, ms_strbuild_span(&text));
+  ms_strbuild_free(&text);
+}
+
 /* One message. Returns -1 to continue, or the process status when the session ends. */
 static int handle_message(Session *session, MsSpan body) {
   MsArena arena = ms_arena_new();
@@ -362,9 +385,26 @@ static int handle_message(Session *session, MsSpan body) {
     } else if (id != NULL) {
       reply_result(id, ms_span_of_text("null"));
     }
+  } else if (ms_span_is_text(method->text, "workspace/didChangeWatchedFiles")) {
+    lsp_analysis_invalidate();
+    publish(session);
+    if (id != NULL) reply_result(id, ms_span_of_text("null"));
   } else if (ms_span_is_text(method->text, "textDocument/didClose")) {
     handle_close(session, params);
     if (id != NULL) reply_result(id, ms_span_of_text("null"));
+  } else if (ms_span_is_text(method->text, "manuscript/standardLibrarySource")) {
+    if (id != NULL) handle_standard_library_source(id, params);
+  } else if (ms_span_is_text(method->text, "workspace/symbol")) {
+    if (id != NULL) {
+      const MsJson *query = member_kind(params, "query", MS_JSON_STRING);
+      MsSpan *roots = session->roots.len == 0 ? NULL : malloc(session->roots.len * sizeof *roots);
+      for (size_t i = 0; i < session->roots.len; i++) roots[i] = ms_string_span(&session->roots.ptr[i]);
+      MsStrBuild result = ms_strbuild_new();
+      lsp_workspace_symbols(&session->docs, roots, session->roots.len, query != NULL ? query->text : (MsSpan){0}, &result);
+      reply_result(id, ms_strbuild_span(&result));
+      ms_strbuild_free(&result);
+      free(roots);
+    }
   } else if (handle_document_request(session, id, method->text, params)) {
     /* answered */
   } else if (id != NULL) {
