@@ -1,6 +1,6 @@
 /* runtime/std/http_serve_abi.h: the natives of the server half of @std/net/http.ms: `serve`'s serving, its
- * workers and the exchange a handler receives (http_serve_abi.c). The handler is a closure over `fn(var
- * NativeExchange) Void!`; the runtime calls it with the exchange handle and never builds an Error itself. */
+ * workers and the exchange a handler receives (http_serve_abi.c). The handler is a closure over `fn(move
+ * NativeExchange) Int`; the runtime calls it with the exchange handle and reads only its 0 or 1 answer. */
 #ifndef MS_RUNTIME_STD_HTTP_SERVE_ABI_H
 #define MS_RUNTIME_STD_HTTP_SERVE_ABI_H
 

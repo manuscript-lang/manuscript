@@ -13,23 +13,19 @@
 
 /* ---- the program's handler ---- */
 
-/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Void!` takes the address
- * of its result first (a result of more than one leaf goes through memory), then the closure, then the
- * handle, which the handler now owns and drops. The result's first word is the tag: 0 for ok. */
+/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Int` takes the closure,
+ * then the handle, which the handler now owns and drops, and answers 0 when the request was handled and 1 when
+ * the program's handler failed. The handler's own result, and the Error in it, is released inside the closure. */
 typedef struct HandlerClosure {
   MsObj header;
-  void (*code)(uint64_t *result, void *closure, int64_t exchange);
+  int64_t (*code)(void *closure, int64_t exchange);
 } HandlerClosure;
 _Static_assert(offsetof(HandlerClosure, code) == 16, "the compiler puts a closure's code after its header");
 
-enum { RESULT_WORDS = 16 }; /* room for the Error record of the error case */
-
 static MsHandlerEnd call_handler(void *context, MsExchange *exchange) {
   HandlerClosure *closure = context;
-  uint64_t result[RESULT_WORDS] = {0};
   MsObj *handle = ms_exchange_handle(exchange);
-  closure->code(result, closure, (int64_t)(intptr_t)handle);
-  return result[0] == 0 ? MS_HANDLER_OK : MS_HANDLER_ERROR;
+  return closure->code(closure, (int64_t)(intptr_t)handle) == 0 ? MS_HANDLER_OK : MS_HANDLER_ERROR;
 }
 
 static void drop_handler(void *context) {
