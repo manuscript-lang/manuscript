@@ -13,12 +13,12 @@ import (
 
 fn entries(value: YamlValue) Map[String, YamlValue]!:
 	match value:
-		ObjectValue(values): return ok(values)
+		ObjectValue(values): return ok(values.clone())
 		_: return error(Error("expected YAML mapping"))
 
 fn items(value: YamlValue) List[YamlValue]!:
 	match value:
-		ArrayValue(values): return ok(values)
+		ArrayValue(values): return ok(values.clone())
 		_: return error(Error("expected YAML sequence"))
 
 fn limits(bytes: Int?, depth: Int?, values: Int?) YamlOptions:
@@ -28,7 +28,7 @@ type ScalarCase:
 	text: String
 	expected: String
 
-fn scalar(text: String, expected: String) Void!:
+fn scalar(text: String,move expected: String) Void!:
 	root := (
 		parse(text: text)
 		| expect_ok?

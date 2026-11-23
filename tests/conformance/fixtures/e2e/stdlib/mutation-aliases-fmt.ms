@@ -118,7 +118,7 @@ type ListAdapter:
     values: List[Int]
 
 fn var ListAdapter.splice(start: Int, delete_count: Int, replacement: List[Int]) Void:
-    self.values.splice(start, delete_count, replacement)
+    self.values.splice(start, delete_count, replacement.clone())
 
 fn ListAdapter.contents() List[Int]: self.values.clone()
 
