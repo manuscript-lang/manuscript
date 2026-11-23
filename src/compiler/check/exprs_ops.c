@@ -312,6 +312,16 @@ static bool collection_literal(const MsExpr *expr) {
   return expr->kind == MS_E_LIST || expr->kind == MS_E_MAP;
 }
 
+static bool names_none(Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
+}
+
+static bool is_nullable(const Body *body, MsTy ty) {
+  const MsTyTable *types = &body->program->types;
+  return ty != MS_TY_NONE && ms_ty_is(types, ty, MS_BUILTIN_Optional) && ms_ty_arg_count(types, ty) == 1;
+}
+
 /* Types the two operands. Literals beside a sized number take its type; arithmetic over literals alone takes the
  * expected sized type. */
 static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *left, MsTy *right) {
@@ -342,6 +352,10 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
                        ms_ty_is(&body->program->types, *left, MS_BUILTIN_Optional) &&
                        ms_ty_arg_count(&body->program->types, *left) == 1;
     const bool shaped = (op == MS_B_EQ || op == MS_B_NE) && collection_literal(r);
+    if (op == MS_B_OR && is_nullable(body, *left)) {
+      *right = body_expr(body, r, names_none(body, r) ? *left : ms_ty_args(&body->program->types, *left)[0]);
+      return;
+    }
     *right = body_expr(body, r, wraps || shaped ? *left : literal_hint(body, r, *left));
   }
 }
@@ -377,6 +391,28 @@ static MsTy equality_type(Body *body, const MsExpr *expr, MsTy left, MsTy right)
   return body_primitive(body, MS_BUILTIN_Bool);
 }
 
+/* `x or d` over a nullable `x`: `d` is evaluated only when `x` is null. The result is the payload when `d` is a plain
+ * value and a nullable when `d` is one. */
+static MsTy nullable_or_type(Body *body, const MsExpr *expr, MsTy left, MsTy right) {
+  const MsTy payload = ms_ty_args(&body->program->types, left)[0];
+  if (right == payload || right == left) {
+    return right;
+  }
+  if (right != MS_TY_NONE && !is_invalid(body, right) && body_reports(body) && !body->quiet) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "`or` on ");
+    ms_ty_show(&text, body->program->names, &body->program->types, left);
+    ms_strbuild_append_text(&text, " needs ");
+    ms_ty_show(&text, body->program->names, &body->program->types, payload);
+    ms_strbuild_append_text(&text, " or ");
+    ms_ty_show(&text, body->program->names, &body->program->types, left);
+    ms_strbuild_append_text(&text, " on the right, found ");
+    ms_ty_show(&text, body->program->names, &body->program->types, right);
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  return payload;
+}
+
 static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy left, MsTy right) {
   const bool text = ms_ty_is(&body->program->types, left, MS_BUILTIN_String);
   const bool span = ms_ty_is(&body->program->types, left, MS_BUILTIN_Duration) && (op == MS_B_ADD || op == MS_B_SUB);
@@ -400,33 +436,22 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
   return left;
 }
 
-static bool names_none(Body *body, const MsExpr *expr) {
-  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
-}
-
-/* `x == null` and `x != null`: `null` takes its type from a target, and an operand is null. The other operand is
- * typed alone; it is reported unless it is itself wrong. */
+/* `x == null` and `x != null`: the `null` side takes the nullable type of the other, and the comparison is Bool. Any
+ * other operand is reported unless it is itself wrong. */
 static MsTy none_comparison(Body *body, const MsExpr *expr) {
-  const MsExpr *other = names_none(body, expr->u.bin.left) ? expr->u.bin.right : expr->u.bin.left;
+  const bool null_left = names_none(body, expr->u.bin.left);
+  const MsExpr *other = null_left ? expr->u.bin.right : expr->u.bin.left;
+  const MsExpr *nothing = null_left ? expr->u.bin.left : expr->u.bin.right;
   const MsTy ty = body_expr(body, other, MS_TY_NONE);
+  if (is_nullable(body, ty)) {
+    body_expr(body, nothing, ty);
+    return body_primitive(body, MS_BUILTIN_Bool);
+  }
   if (ty != MS_TY_NONE && !is_invalid(body, ty) && body_reports(body) && !body->quiet) {
-    const bool optional = ms_ty_is(&body->program->types, ty, MS_BUILTIN_Optional);
     ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_span_of_text(
-                        "null has no type of its own here; test absence with `x.is_none()` or `x.is_some()` (`x != "
-                        "null` is `x.is_some()`), or compare with the plain value, e.g. x == 3")));
-    MsSpan text = {0};
-    const MsPos start = ms_expr_start(other);
-    if (optional && other->end.offset > start.offset && ms_span_slice(body->source, start.offset, other->end.offset, &text)) {
-      MsStrBuild fix = ms_strbuild_new();
-      const bool parens = !body_expr_is_atomic(other);
-      ms_strbuild_append_text(&fix, parens ? "(" : "");
-      ms_strbuild_append(&fix, text);
-      ms_strbuild_append_text(&fix, parens ? ")" : "");
-      ms_strbuild_append_text(&fix, expr->op == MS_B_NE ? ".is_some()" : ".is_none()");
-      ms_check_attach_fix(body->program, ms_expr_start(expr), expr->end, ms_strbuild_finish(&fix));
-    }
+                        "null has no type of its own here; compare a nullable with `x == null`, or compare plain "
+                        "values with each other, e.g. x == 3")));
   }
   return body_primitive(body, MS_BUILTIN_Bool);
 }
@@ -442,7 +467,9 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy right = MS_TY_NONE;
   operand_types(body, expr, expected, &left, &right);
   MsTy ty = MS_TY_NONE;
-  if (is_logical(op)) {
+  if (op == MS_B_OR && is_nullable(body, left)) {
+    ty = nullable_or_type(body, expr, left, right);
+  } else if (is_logical(op)) {
     body_check_logical(body, expr, left, right);
     ty = body_primitive(body, MS_BUILTIN_Bool);
   } else if (is_invalid(body, left) || is_invalid(body, right)) {

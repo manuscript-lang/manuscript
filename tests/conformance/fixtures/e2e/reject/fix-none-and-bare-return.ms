@@ -4,6 +4,6 @@ fn find() Int?:
 	return null
 
 fn run() Void!:
-	if find() != null:
+	if find() == 1:
 		return
 	return
