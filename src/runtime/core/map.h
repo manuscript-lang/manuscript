@@ -54,6 +54,11 @@ void msrt_map_add_default_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeD
  * *mut u8 @domain=map @end */
 uint8_t *msrt_map_slot_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key,
                             uint8_t *default_value);
+/* Replaces the value in a map slot: the generated `update.step` thunk of an `update` call, run with the closure. */
+typedef void (*MsUpdateFn)(uint8_t *env, uint8_t *slot);
+/* ms-sig: msrt_map_update(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, initial: *mut u8, step: CmpFn, env: *mut u8) @domain=map @method=Map.update */
+void msrt_map_update(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *initial,
+                     MsUpdateFn step, uint8_t *env);
 /* ms-sig: msrt_map_remove(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) @domain=map @end */
 void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
 /* ms-sig: msrt_map_remove_take(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut VecVal)
