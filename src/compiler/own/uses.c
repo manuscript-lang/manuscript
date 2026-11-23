@@ -302,10 +302,13 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
 
 /* Whether the scrutinee is a resource or a place the callable owns: a local, or a parameter it takes by `move`. */
 static bool owns_place(const Uses *pass, const MsExpr *cond) {
+  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_PARAM && !(ref->local < 32 && (pass->moving >> ref->local & 1u) != 0)) {
+    return false; /* a parameter the function does not take: the caller keeps what it holds, so the payload is read in place */
+  }
   if (ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, cond->id))) {
     return true;
   }
-  const MsRef *ref = cond->kind == MS_E_NAME ? ms_facts_ref(pass->facts, cond->id) : NULL;
   return ref != NULL && (ref->kind == MS_REF_LOCAL || (ref->kind == MS_REF_PARAM && ref->local < 32 &&
                                                        (pass->moving >> ref->local & 1u) != 0));
 }
