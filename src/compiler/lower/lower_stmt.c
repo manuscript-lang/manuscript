@@ -59,14 +59,18 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
     MirVar owner = 0;
     MirValue taken = MIR_NONE;
-    if (source != MIR_NONE && !stmt->u.bind.is_mutable && stmt->u.bind.value->kind == MS_E_NAME &&
+    if (source != MIR_NONE && stmt->u.bind.value->kind == MS_E_NAME &&
         fn_closing_move(fn, stmt->u.bind.value, source, &taken)) {
       /* A record destructured out of a closing slot hands its parts to the names: the slot gives the record up. */
-      return fn_bind_parts(fn, pattern, taken, true, NULL, false, false, ms_facts_type(fn->facts, stmt->u.bind.value->id));
+      return fn_bind_parts(fn, pattern, taken, true, NULL, stmt->u.bind.is_mutable, false, ms_facts_type(fn->facts, stmt->u.bind.value->id));
     }
     const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
+    /* A `var` pattern takes its parts out of a record that is given up (a fresh result, or a name read for the last time)
+     * instead of copying them: a resource part has no copy. */
+    const bool gives_up = fn_fresh_owner(fn, source) ||
+                          (stmt->u.bind.value->kind == MS_E_NAME && ms_facts_use(fn->facts, stmt->u.bind.value->id) == MS_USE_MOVE);
     return source != MIR_NONE &&
-           fn_bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
+           fn_bind_parts(fn, pattern, source, stmt->u.bind.is_mutable ? (!from_var && gives_up) : (from_var || fn_fresh_owner(fn, source)),
                       from_var ? &owner : NULL, stmt->u.bind.is_mutable, false,
                       ms_facts_type(fn->facts, stmt->u.bind.value->id));
   }
