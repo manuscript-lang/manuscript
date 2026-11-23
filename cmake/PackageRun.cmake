@@ -2,7 +2,17 @@
 # committed and tagged, added to a project, installed again from the lock and removed again:
 # `cmake -DMS_C=<ms> -DWORK=<scratch dir> -P cmake/PackageRun.cmake`.
 cmake_minimum_required(VERSION 3.25)
-find_program(GIT git)
+if(WIN32)
+  # Git for Windows, which reads `file:///D:/...` URLs; the MSYS2 shell's PATH has no git, and an MSYS git would take
+  # that path for a POSIX one. `ms add` finds the same git through PATH.
+  find_program(GIT git PATHS "$ENV{ProgramFiles}/Git/cmd" NO_DEFAULT_PATH)
+  if(GIT)
+    get_filename_component(git_dir "${GIT}" DIRECTORY)
+    set(ENV{PATH} "${git_dir};$ENV{PATH}")
+  endif()
+else()
+  find_program(GIT git)
+endif()
 if(NOT GIT)
   message(FATAL_ERROR "git is needed to build the package repository")
 endif()

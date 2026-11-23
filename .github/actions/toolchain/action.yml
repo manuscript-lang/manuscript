@@ -22,7 +22,7 @@ runs:
         msystem: ${{ runner.arch == 'ARM64' && 'CLANGARM64' || 'CLANG64' }}
         update: false
         install: >-
-          ${{ runner.arch == 'ARM64' && 'mingw-w64-clang-aarch64-toolchain mingw-w64-clang-aarch64-cmake mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-ccache perl make git' || 'mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-ccache perl make git' }}
+          ${{ runner.arch == 'ARM64' && 'mingw-w64-clang-aarch64-toolchain mingw-w64-clang-aarch64-cmake mingw-w64-clang-aarch64-ninja mingw-w64-clang-aarch64-ccache perl make' || 'mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-cmake mingw-w64-clang-x86_64-ninja mingw-w64-clang-x86_64-ccache perl make' }}
     - uses: actions/cache/restore@v6
       with:
         path: .artifacts/ccache
