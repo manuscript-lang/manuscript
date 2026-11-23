@@ -667,3 +667,29 @@ void msrt_pipe_close_reader(int64_t pipe) {
   cell_unlock(cell);
   complete_flushes(flushes, count);
 }
+
+/* Frees the table, the free list and every ring's array, for a process that ends with the allocator's books balanced
+ * (MS_FREE_AT_EXIT). No pipe may be used afterwards; the entries of a pipe still live are dropped. */
+void ms_pipe_release_all(void) {
+  for (size_t chunk_index = 0; chunk_index < PIPE_CHUNKS; chunk_index++) {
+    PipeCell *chunk = atomic_exchange_explicit(&pipe_table[chunk_index], NULL, memory_order_acq_rel);
+    if (chunk == NULL) {
+      continue;
+    }
+    for (size_t at = 0; at < PIPE_CHUNK; at++) {
+      PipeCell *cell = &chunk[at];
+      ItemRing *const rings[] = {&cell->queue, &cell->front, &cell->local};
+      for (size_t ring = 0; ring < 3; ring++) {
+        ring_clear(rings[ring]);
+        ms_free(rings[ring]->items);
+      }
+      ms_free(cell->flushes);
+    }
+    ms_free(chunk);
+  }
+  ms_spin_lock(&registry.lock);
+  ms_free(registry.free_list);
+  registry.free_list = NULL;
+  registry.free_count = registry.free_cap = registry.count = 0;
+  ms_spin_unlock(&registry.lock);
+}

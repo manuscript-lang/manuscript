@@ -252,6 +252,14 @@ void ms_serve_idle_close(MsServeIdle *idle) {
   idle_release(idle); /* the worker's */
 }
 
+void ms_serve_idle_release_all(void) {
+  registry_lock();
+  ms_free(registry.all);
+  registry.all = NULL;
+  registry.count = registry.capacity = 0;
+  registry_unlock();
+}
+
 void ms_serve_idle_list(MsServeConn *conn) {
   MsServeIdle *idle = conn->worker->idle;
   if (idle == NULL || conn->io.steal_read == NULL || conn->listed) {

@@ -117,6 +117,8 @@ bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, 
 MsServeIdle *ms_serve_idle_open(MsServeWorker *worker);
 /* Unregisters and releases the list; takers that still hold it find no worker. */
 void ms_serve_idle_close(MsServeIdle *idle);
+/* Frees the registry's array, for a process that ends with balanced books (MS_FREE_AT_EXIT); every list is closed. */
+void ms_serve_idle_release_all(void);
 /* The connection waits for the first byte of a request: another thread may take it. */
 void ms_serve_idle_list(MsServeConn *conn);
 /* The wait ended. Whether another thread took the connection meanwhile (then it is theirs and this task ends

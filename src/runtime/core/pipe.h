@@ -5,6 +5,10 @@
 
 #include "base/desc.h"
 
+/* Frees the pipe table and every ring for a process that ends with balanced books (MS_FREE_AT_EXIT); no pipe is used
+ * afterwards. */
+void ms_pipe_release_all(void);
+
 /* Results of msrt_pipe_write. */
 enum {
   MS_PIPE_WRITTEN = 0, /* the value was taken */

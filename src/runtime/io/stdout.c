@@ -59,7 +59,16 @@ void ms_stdout_flush(void) {
   }
 }
 
-void ms_stdout_release(void) { ms_stdout_flush(); }
+void ms_stdout_release(void) {
+  ms_stdout_flush();
+  ms_spin_lock(&captures.lock);
+  for (size_t i = 0; i < captures.list.len; i++) {
+    byte_buffer_free(&captures.list.ptr[i].text);
+  }
+  capture_list_free(&captures.list);
+  ms_spin_unlock(&captures.lock);
+  ms_test_release_faults();
+}
 
 /* Appends to capture `id`; false when it has ended (the output then goes to standard output). */
 static bool capture_append(uint64_t id, MsSpan data) {
