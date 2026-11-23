@@ -7,7 +7,8 @@
     {"name": "libuv", "version": "1.53.0", "license": "src/third_party/libuv/LICENSE", "sha256": "16de0c32b265cb7d46a6d3bd614f259dd4d693a5e26b3407b04aae8d73041f0c"},
     {"name": "nghttp2", "version": "1.71.0", "license": "src/third_party/nghttp2/COPYING", "sha256": "6b94f3abc1aabd0c72a7c7d92a77f79dda7c8a0cb3df839a97890b4116a2de2a"},
     {"name": "curl", "version": "8.23.0", "license": "src/third_party/curl/COPYING", "sha256": "82f2f4427d6545ee5aaac4f0b80428da6cc8ba41c2cf5da3a03680ec327b9681"},
-    {"name": "openssl", "version": "3.5.4", "license": "src/third_party/openssl/LICENSE.txt", "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"}
+    {"name": "openssl", "version": "3.5.4", "license": "src/third_party/openssl/LICENSE.txt", "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"},
+    {"name": "libpsl", "version": "0.23.3", "license": "src/third_party/libpsl/LICENSE", "sha256": "e7c9f0d8498d28a360a7e8293ea70fd7bd952955b636938322c13d60a03b5a45"}
   ],
   "notices": [
     {"path": "website/themes/hugo-book/LICENSE", "sha256": "450c3f8358cc7b0fd3465e59a79ed8c7eed68eeff189bd002843e40c394d6be3"}

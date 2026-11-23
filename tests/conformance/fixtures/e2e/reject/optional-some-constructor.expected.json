@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. x: Int? := 5",
+        "position": {
+          "file": "optional-some-constructor.ms",
+          "line": 5,
+          "column": 22,
+          "offset": 198
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/optional-some-constructor.ms:5:22: type: there is no some(...); a plain value converts where a T? is expected, so pass it directly, or annotate the binding, e.g. x: Int? := 5\n   |\n 5 |     if n > 2: return some(n * 2)\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}

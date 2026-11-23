@@ -321,23 +321,10 @@ static void find_shared_expr(void *ctx, const MsExpr *expr) {
   }
 }
 
-/* `name = value` replaces the local whole: the old value may flow into the new one (`x = f(x)`), which only a variable
- * carries on without a copy (#6750). */
-static void find_whole_writes(void *ctx, const MsStmt *stmt) {
-  SharedScan *scan = ctx;
-  if (stmt->kind != MS_S_ASSIGN || stmt->u.assign.member_target) {
-    return;
-  }
-  const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id);
-  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < scan->fn->nvars) {
-    scan->fn->holds_value[ref->local] = true;
-  }
-}
-
 void fn_find_shared(LowerFn *fn, MsStmts body) {
   fn->shared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
   fn->holds_value = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)fn->nvars + 1);
   SharedScan scan = {fn, NULL, NULL};
-  const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr, .stmt = find_whole_writes};
+  const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr};
   ms_walk_block(&visitor, body);
 }
