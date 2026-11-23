@@ -5,10 +5,6 @@
 
 #include "base/desc.h"
 
-/* Frees the pipe table and every ring for a process that ends with balanced books (MS_FREE_AT_EXIT); no pipe is used
- * afterwards. */
-void ms_pipe_release_all(void);
-
 /* Results of msrt_pipe_write. */
 enum {
   MS_PIPE_WRITTEN = 0, /* the value was taken */
@@ -47,5 +43,9 @@ void msrt_pipe_close_writer(int64_t pipe);
 /* Closes the reading end: queued values are dropped, flushes finish, later writes answer MS_PIPE_CLOSED. */
 /* ms-sig: msrt_pipe_close_reader(pipe: i64) @domain=pipe */
 void msrt_pipe_close_reader(int64_t pipe);
+
+/* Frees the tables of retired pipes (cells' rings, chunks without a live pipe, the free list) that
+ * a process keeps for reuse, so only a live pipe's blocks count as leaked. */
+void ms_pipe_release_all(void);
 
 #endif

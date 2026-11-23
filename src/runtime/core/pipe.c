@@ -254,6 +254,40 @@ static size_t registry_take(void) {
   return index;
 }
 
+/* Frees the tables of retired pipes (rings, chunks without a live pipe, the free list) that a process keeps for reuse, at
+ * the end of one that balances its books; a live pipe keeps its chunk, so a leaked pipe is still counted. */
+void ms_pipe_release_all(void) {
+  bool kept_any = false;
+  for (size_t chunk = 0; chunk < registry.count / PIPE_CHUNK + 1 && chunk < PIPE_CHUNKS; chunk++) {
+    PipeCell *cells = atomic_load_explicit(&pipe_table[chunk], memory_order_acquire);
+    if (cells == NULL) {
+      continue;
+    }
+    bool live = false;
+    for (size_t i = 0; i < PIPE_CHUNK; i++) {
+      live = live || cells[i].live;
+    }
+    if (live) {
+      kept_any = true; /* a leaked pipe keeps its chunk, and its blocks stay counted */
+      continue;
+    }
+    for (size_t i = 0; i < PIPE_CHUNK; i++) {
+      ms_free(cells[i].queue.items);
+      ms_free(cells[i].front.items);
+      ms_free(cells[i].local.items);
+      ms_free(cells[i].flushes);
+    }
+    atomic_store_explicit(&pipe_table[chunk], NULL, memory_order_release);
+    ms_free(cells);
+  }
+  if (!kept_any) {
+    ms_free(registry.free_list);
+    registry.free_list = NULL;
+    registry.free_count = registry.free_cap = registry.count = 0;
+  }
+}
+#endif
+
 /* ---- the reader's side ---- */
 
 static bool take_ready(PipeCell *cell, PipeItem *out) {
@@ -666,30 +700,4 @@ void msrt_pipe_close_reader(int64_t pipe) {
   retire(cell);
   cell_unlock(cell);
   complete_flushes(flushes, count);
-}
-
-/* Frees the table, the free list and every ring's array, for a process that ends with the allocator's books balanced
- * (MS_FREE_AT_EXIT). No pipe may be used afterwards; the entries of a pipe still live are dropped. */
-void ms_pipe_release_all(void) {
-  for (size_t chunk_index = 0; chunk_index < PIPE_CHUNKS; chunk_index++) {
-    PipeCell *chunk = atomic_exchange_explicit(&pipe_table[chunk_index], NULL, memory_order_acq_rel);
-    if (chunk == NULL) {
-      continue;
-    }
-    for (size_t at = 0; at < PIPE_CHUNK; at++) {
-      PipeCell *cell = &chunk[at];
-      ItemRing *const rings[] = {&cell->queue, &cell->front, &cell->local};
-      for (size_t ring = 0; ring < 3; ring++) {
-        ring_clear(rings[ring]);
-        ms_free(rings[ring]->items);
-      }
-      ms_free(cell->flushes);
-    }
-    ms_free(chunk);
-  }
-  ms_spin_lock(&registry.lock);
-  ms_free(registry.free_list);
-  registry.free_list = NULL;
-  registry.free_count = registry.free_cap = registry.count = 0;
-  ms_spin_unlock(&registry.lock);
 }

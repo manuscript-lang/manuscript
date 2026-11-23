@@ -148,7 +148,9 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
     pool[value] = UINT32_MAX;
   }
   MirCellMap map;
-  if (!mir_cell_conflicts(arena, cx->module, func, held, &map)) {
+  cx->poison = NULL;
+  cx->npoison = 0;
+  if (!mir_cell_conflicts(arena, cx->module, func, held, cx->poison_slots, &map)) {
     if (held == NULL) {
       return NULL;
     }
@@ -239,6 +241,22 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
   ms_free(cell_bytes);
   ms_free(cell_escape);
   ms_free(cell_rows);
+  if (cx->poison_slots && map.ndeaths != 0) {
+    EmitPoison *fills = MS_ARENA_NEW_ARRAY(arena, EmitPoison, (size_t)map.ndeaths + 1);
+    uint32_t nfills = 0;
+    for (uint32_t at = 0; at < map.ndeaths; at++) {
+      const uint32_t object = map.deaths[at].object;
+      const uint32_t cell = pool[map.value[object]];
+      const MirInst *at_inst = &func->blocks.ptr[map.deaths[at].block].insts.ptr[map.deaths[at].index];
+      /* An operation that is not a call may write its result over an operand's cell; that result lives there now. */
+      const bool replaced = at_inst->res != MIR_NONE && pool[at_inst->res] == cell;
+      if (map.shareable[object] && cell != UINT32_MAX && bytes[object] != 0 && !replaced) {
+        fills[nfills++] = (EmitPoison){map.deaths[at].block, map.deaths[at].index, cell, bytes[object]};
+      }
+    }
+    cx->poison = fills;
+    cx->npoison = nfills;
+  }
   cx->cell_bytes = sizes;
   cx->cell_escape = escape;
   cx->ncells = ncells;

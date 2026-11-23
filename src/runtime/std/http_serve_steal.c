@@ -236,6 +236,16 @@ MsServeIdle *ms_serve_idle_open(MsServeWorker *worker) {
   return idle;
 }
 
+void ms_serve_idle_release_registry(void) {
+  registry_lock();
+  if (registry.count == 0) {
+    ms_free(registry.all);
+    registry.all = NULL;
+    registry.capacity = 0;
+  }
+  registry_unlock();
+}
+
 void ms_serve_idle_close(MsServeIdle *idle) {
   registry_lock();
   for (size_t i = 0; i < registry.count; i++) {
@@ -250,14 +260,6 @@ void ms_serve_idle_close(MsServeIdle *idle) {
   unlock(idle);
   idle_release(idle); /* the registry's */
   idle_release(idle); /* the worker's */
-}
-
-void ms_serve_idle_release_all(void) {
-  registry_lock();
-  ms_free(registry.all);
-  registry.all = NULL;
-  registry.count = registry.capacity = 0;
-  registry_unlock();
 }
 
 void ms_serve_idle_list(MsServeConn *conn) {
