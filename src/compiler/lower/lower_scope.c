@@ -28,6 +28,9 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
     if (fn->owned_vars[at - 1].scope != scope) {
       continue;
     }
+    if (fn->owned_vars[at - 1].released) {
+      continue;
+    }
     const MirValue value = mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var);
     const uint32_t moved = fn->owned_vars[at - 1].moved;
     if (moved == 0) {
@@ -56,7 +59,7 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var) {
       return fn_fail(fn, "too many mutable variables are open at once");
     }
   }
-  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0};
+  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0, false};
   return true;
 }
 
@@ -64,6 +67,15 @@ void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field) {
   for (uint32_t at = fn->nowned_vars; at > 0 && field < 32; at--) {
     if (fn->owned_vars[at - 1].var == var) {
       fn->owned_vars[at - 1].moved |= UINT32_C(1) << field;
+      return;
+    }
+  }
+}
+
+void fn_scope_var_released(LowerFn *fn, MirVar var, bool released) {
+  for (uint32_t at = fn->nowned_vars; at > 0; at--) {
+    if (fn->owned_vars[at - 1].var == var) {
+      fn->owned_vars[at - 1].released = released;
       return;
     }
   }
