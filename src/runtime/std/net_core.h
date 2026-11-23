@@ -44,7 +44,7 @@ typedef struct MsNetCore {
   uint8_t *stash;           /* loop thread: bytes read ahead of a reader that gave up */
   size_t stash_length;
   bool eof;                 /* loop thread: the peer ended its side */
-  bool broken;              /* loop thread: a write was abandoned, so the stream is torn */
+  atomic_bool broken;       /* a write was abandoned, so the stream is torn (set on the loop thread, read by direct reads) */
   void *reading;            /* loop thread: the read or receive in progress */
   void *accepting;          /* loop thread: accept operations waiting, oldest first */
   struct MsNetOp *close_wait; /* loop thread: the explicit close that waits for libuv to release the descriptor */
