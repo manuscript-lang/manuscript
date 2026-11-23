@@ -17,6 +17,9 @@ void emit_edge_blocks(EmitCx *cx, const MirTerm *term, uint32_t from);
 /* The phis of block `block`; `last` is the final piece number of every block. */
 void emit_phis(EmitCx *cx, uint32_t block, const uint32_t *last);
 
+/* Replaces every use of a value that only copies another register by the register, and drops the copy. */
+void emit_forward_copies(MsStrBuild *body);
+
 /* Writes function `index` of the module; false with `cx->why` set when it cannot. */
 bool emit_function(EmitCx *cx, uint32_t index);
 
