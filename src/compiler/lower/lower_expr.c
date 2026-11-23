@@ -991,9 +991,9 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
       return fn->presolved[at].value;
     }
   }
-  const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
+  const MirValue made = expr_value(fn, expr, want);
   if (expr->kind == MS_E_CALL) {
-    fn_unwind_site(fn, value);
+    fn_unwind_site(fn, made); /* before the result changes hands: the exit still owns it */
   }
-  return fn_convert(fn, expr, value);
+  return fn_convert(fn, expr, take_ownership(fn, expr, made, want));
 }

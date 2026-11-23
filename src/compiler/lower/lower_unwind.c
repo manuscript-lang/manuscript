@@ -2,8 +2,27 @@
  * pending. After the call the program tests the task's `unwinding` byte; when it is set, the function leaves as a
  * `return` does, through the same scope exit (`fn_scope_unwind`), so elaboration closes whatever is live there like it
  * does on any early exit. A later pass deletes the test after calls that provably cannot park or fault. */
+#include "base/env.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_pass.h"
+#include "compiler/mir/mir_analysis.h"
+
+/* A value other than 1 in MS_UNWIND_EXITS names the functions that get exits (a substring of the name): a way to
+ * find which function's exits change a program's behavior. */
+static bool exits_in(const LowerFn *fn) {
+  MsString filter = ms_string_empty();
+  bool all = true;
+  if (ms_env_get("MS_UNWIND_EXITS", &filter) && !(ms_string_span(&filter).len == 1 && ms_string_span(&filter).ptr[0] == '1')) {
+    const MsSpan name = ms_names_span(&fn->cx->module->names, fn->b.func.name);
+    const MsSpan want = ms_string_span(&filter);
+    all = false;
+    for (size_t at = 0; at + want.len <= name.len && !all; at++) {
+      all = __builtin_memcmp(name.ptr + at, want.ptr, want.len) == 0;
+    }
+  }
+  ms_string_release(&filter);
+  return all;
+}
 
 const MirInst *fn_just_made(const LowerFn *fn, MirValue value) {
   if (value == MIR_NONE) {
@@ -35,7 +54,17 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
       return;
     }
   }
-  if (!fn->cx->unwind_exits || fn->terminated || fn->failed || fn->b.func.unwind_only) {
+  /* A compiled callee that leaves this way returns `undef`: its result is dead and nothing here may close it. A
+   * native hands back a value that is still its caller's to drop. */
+  bool dead_result = false;
+  if (made) {
+    const MirInst *call = &before->ptr[made_at];
+    MirMode mode = MM_BORROW;
+    dead_result = (call->op == MOP_Call || call->op == MOP_CallInd || call->op == MOP_CallMethod) &&
+                  mir_result_mode(fn->cx->module, &fn->b.func, call, &mode) && mode == MM_MOVE;
+  }
+  if (!fn->cx->unwind_exits || !exits_in(fn) || fn->terminated || fn->failed || fn->b.func.unwind_only ||
+      fn->b.func.closer) {
     return;
   }
   if (fn->cx->unwinding == MIR_NONE) {
@@ -52,7 +81,17 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
   mir_b_seal_block(&fn->b, leave);
   mir_b_seal_block(&fn->b, next);
   mir_b_switch_to(&fn->b, leave);
+  if (dead_result) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+    (void)mir_b_emit(&fn->b, MOP_Forget, &result, 1, (MirImm){0}, MIR_NONE); /* dead: nothing to release */
+  }
+  /* The closes on the way out run as on any exit: the pending state is set aside while they do, so a close may park and
+   * its own calls do not leave, and is delivered again before this function returns. */
+  const uint32_t pause = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_pause"), NULL, 0, MIR_VOID, false, MR_NONE);
+  const uint32_t resume = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding_resume"), NULL, 0, MIR_VOID, false, MR_NONE);
+  (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = pause}, MIR_VOID);
   fn_scope_unwind(fn, 0);
+  (void)mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = resume}, MIR_VOID);
   MirValue undef = MIR_NONE;
   if (fn->b.func.ret != MIR_VOID) {
     undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->returns_borrow ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);

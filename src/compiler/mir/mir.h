@@ -250,6 +250,7 @@ typedef struct MirFunc {
   /* Set by passes: a function made only to run while a cancellation unwinds; one whose lists are raw slot
    * copies (they own no elements). */
   bool unwind_only, raw_scratch;
+  bool closer; /* a consuming `close` method: its callers run it shielded, so it runs to its end and has no exit sites */
   /* A function that leaves a cancel by its own explicit exits; the indexes of its pointer parameters no
    * other memory overlaps (`var` parameters); on a `slot_close` thunk, the function running the same close
    * for its result; on a function with fallible closing owners, the (plain, pending) functions that turn a
