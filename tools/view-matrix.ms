@@ -39,7 +39,12 @@ type Operation:
 	shown: String
 	expected: String
 
-fn op(move name: String, move binds: String, move shown: String, move expected: String) Operation:
+fn op(
+	move name: String,
+	move binds: String,
+	move shown: String,
+	move expected: String,
+) Operation:
 	return Operation(name, binds, shown, expected)
 
 fn operations() List[Operation]:

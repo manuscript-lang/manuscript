@@ -3,6 +3,7 @@
  * A name resolves in this order: `Self`, the declaration's type variables, the primitives, the module's own
  * types, its imports, then the prelude. A qualified name (`mod.Type`) is not resolved yet and is invalid
  * without a diagnostic. A name given type arguments becomes the nominal type applied to them. */
+#include "base/cstr.h"
 #include "compiler/check/resolve_internal.h"
 #include "compiler/check/std_exports.h"
 #include "compiler/check/bounds.h"
@@ -15,7 +16,7 @@ static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable",
 static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms"};
 
 void resolver_init(Resolver *resolver, MsCheckProgram *program, uint32_t module) {
-  *resolver = (Resolver){.program = program, .module = module, .report = module < program->user_modules};
+  *resolver = (Resolver){.program = program, .module = module, .report = module < program->user_modules || program->check_std};
 }
 
 void resolver_free(Resolver *resolver) {
@@ -124,7 +125,7 @@ static void type_candidates(const Resolver *resolver, MsSpanList *out) {
     ms_span_list_push(out, ms_span_of_text(PRIMITIVES[index]));
   }
   for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_TYPES); index++) {
-    if (strcmp(PRELUDE_TYPES[index], "Optional") != 0) {
+    if (!ms_cstr_equal(PRELUDE_TYPES[index], "Optional")) {
       ms_span_list_push(out, ms_span_of_text(PRELUDE_TYPES[index]));
     }
   }
@@ -217,10 +218,10 @@ MsTy resolver_apply(MsCheckProgram *program, MsTy base, const MsTy *args, size_t
 }
 
 /* Appends the defaults of the type parameters `args` leaves out: `Pair[Int]` of `Pair[A, B = A]` is `Pair[Int, Int]`. */
-static void fill_defaults(MsCheckProgram *program, MsTy base, MsTyList *args) {
+static void fill_defaults(MsCheckProgram *program, MsTy base, MsTyList *args, bool bare) {
   const uint32_t at = ms_ty_row(&program->types, base)->def;
   const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
-  for (size_t index = args->len; def != NULL && args->len != 0 && index < def->variables.len; index++) {
+  for (size_t index = args->len; def != NULL && (args->len != 0 || bare) && index < def->variables.len; index++) {
     const MsTyVariable *record = ms_ty_variable(&program->types, def->variables.ptr[index]);
     if (record == NULL || record->default_ty == MS_TY_NONE) {
       return;
@@ -311,7 +312,7 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
     const MsTyVariable *record = ms_ty_variable(&program->types, def->variables.ptr[index]);
     required = record != NULL && record->default_ty == MS_TY_NONE ? index + 1 : required;
   }
-  fill_defaults(resolver->program, base, &args);
+  fill_defaults(resolver->program, base, &args, arity != 0 && required == 0); /* a bare name of a fully defaulted type */
   if (resolver->report && args.len != arity) {
     report_arity(resolver, type, base, type->args.len, arity, required);
   }

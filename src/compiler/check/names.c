@@ -56,15 +56,18 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
   const MsName name = expr->u.sym;
   const MsSpan text = ms_names_span(pass->program->names, name);
   if (ms_scope_lookup(scope, name) != NULL || is_declared(pass, name) || always_known(text) || ms_builtin_primitive(text) != MS_BUILTIN_NONE ||
-      ms_check_is_case_name(pass->program, name)) {
+      ms_check_is_case_name(pass->program, name) || (site->impl != NULL && ms_span_is_text(text, "Self"))) {
     return;
   }
   /* A compound assignment's target is read again in its desugared value; the name is reported once. */
-  for (size_t index = 0; index < pass->program->diagnostics.len; index++) {
-    const MsCheckDiag *diag = &pass->program->diagnostics.ptr[index];
-    if (diag->module == pass->module && diag->pos.offset == expr->pos.offset && diag->phase == MS_CHECK_RESOLUTION) {
-      ((Names *)context)->unknown = expr;
-      return;
+  const MsCheckDiagList *lists[2] = {&pass->program->diagnostics, &pass->program->deferred};
+  for (size_t at = 0; at < 2; at++) {
+    for (size_t index = 0; index < lists[at]->len; index++) {
+      const MsCheckDiag *diag = &lists[at]->ptr[index];
+      if (diag->module == pass->module && diag->pos.offset == expr->pos.offset && diag->phase == MS_CHECK_RESOLUTION) {
+        ((Names *)context)->unknown = expr;
+        return;
+      }
     }
   }
   ms_unknown_name_report(pass->program, pass->module, expr->pos, name, scope, site);

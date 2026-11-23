@@ -490,7 +490,10 @@ fn main() Int:
 
 					for line in lines:
 						if line.starts_with("made-"): made.append(
-							line.slice(5, line.length()).clone()
+							line.slice(
+								5,
+								line.length(),
+							).clone()
 						)
 						if line.starts_with("closed-"):
 							closed.append(line.slice(7, line.length()).clone())

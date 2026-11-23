@@ -21,6 +21,7 @@ fn List[T].get_or(index: Int, default: T?) T:
 	position := index
 	if index < 0: position = count + index
 	if position >= 0 and position < count: return self.get(position)
+
 	match default:
 		value: return value
 		none: return self.get(index)
@@ -76,26 +77,30 @@ fn var List[T].reverse() Void: ...
 // Comparable elements also have `sort()` without a comparator. Example:
 // `var xs = [3, 1, 2]` then `xs.sort(fn a, b: b - a)` leaves `[3, 2, 1]`.
 fn var List[T].sort(compare: fn(T, T) Int) Void:
-	// A stable bottom-up merge sort of an index order (so no element is copied), then the order is applied in place
-	// by swapping along its cycles.
+	// A stable bottom-up merge sort of an index order (so no element is copied), then
+	// the order is applied in place by swapping along its cycles.
 	size := self.length()
 	if size < 2: return
 
 	var order = List[Int](reserve: size)
 	var merged = List[Int](reserve: size)
+
 	for i in 0..size:
 		order.append(i)
 		merged.append(0)
 
 	var width = 1
+
 	while width < size:
 		var low = 0
+
 		while low < size:
 			middle := if low + width < size: low + width else: size
 			high := if low + 2 * width < size: low + 2 * width else: size
 			var left = low
 			var right = middle
 			var out = low
+
 			while left < middle and right < high:
 				if compare(self[order[right]], self[order[left]]) < 0:
 					merged.set(out, order[right])
@@ -103,16 +108,21 @@ fn var List[T].sort(compare: fn(T, T) Int) Void:
 				else:
 					merged.set(out, order[left])
 					left += 1
+
 				out += 1
+
 			while left < middle:
 				merged.set(out, order[left])
 				left += 1
 				out += 1
+
 			while right < high:
 				merged.set(out, order[right])
 				right += 1
 				out += 1
+
 			low += 2 * width
+
 		for i in 0..size:
 			order.set(i, merged[i])
 		width *= 2
@@ -120,13 +130,17 @@ fn var List[T].sort(compare: fn(T, T) Int) Void:
 	var placed = List[Bool](reserve: size)
 	for i in 0..size:
 		placed.append(false)
+
 	for start in 0..size:
 		if placed[start]: continue
+
 		var at = start
+
 		while order[at] != start:
 			self.swap(at, order[at])
 			placed.set(at, true)
 			at = order[at]
+
 		placed.set(at, true)
 
 // Returns the zero-based index of the first element for which `predicate` is true,
@@ -139,9 +153,12 @@ fn List[T].find_index(predicate: fn(T) Bool) Int?:
 // Searches from the end and returns the last matching zero-based index, or `none`.
 fn List[T].find_last_index(predicate: fn(T) Bool) Int?:
 	var i = self.length() - 1
+
 	while i >= 0:
 		if predicate(self[i]): return i
+
 		i -= 1
+
 	return none
 
 // Counts the values for which `predicate` is true, calling it once per element in
@@ -200,9 +217,11 @@ fn List[T].fold[A](move initial: A, step: fn(A, T) A) A:
 fn List[T].fold_right[A](initial: A, step: fn(A, T) A) A:
 	var acc = initial
 	var i = self.length() - 1
+
 	while i >= 0:
 		acc = step(acc, self[i])
 		i -= 1
+
 	return acc
 
 /*
@@ -274,11 +293,13 @@ fn List[T: Clonable].windows(size: Int) move List[List[T]]: ...
 fn List[T: Clonable].partition(predicate: fn(T) Bool) Partition[T]:
 	var matching = List[T]()
 	var rest = List[T]()
+
 	for item in self:
 		if predicate(item):
 			matching.append(item.clone())
 		else:
 			rest.append(item.clone())
+
 	return Partition[T](matching, rest)
 
 // Returns an independent reversed copy, including nested values.
@@ -315,9 +336,12 @@ fn List[T: Clonable].find(predicate: fn(T) Bool) T?:
 // is true, or `none`.
 fn List[T: Clonable].find_last(predicate: fn(T) Bool) T?:
 	var i = self.length() - 1
+
 	while i >= 0:
 		if predicate(self[i]): return self[i].clone()
+
 		i -= 1
+
 	return none
 
 // Sets the elements in [start, end) to copies of `value` in place. Bounds must
@@ -599,10 +623,14 @@ fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 // `[1, 2, 1, 2]`.
 fn List[T: Clonable].repeated(count: Int) List[T]:
 	var out = List[T]()
+	if self.is_empty(): return out
+
 	var round = 0
+
 	while round < count:
 		out.extend(self)
 		round += 1
+
 	return out
 
 // Appends a copy of every element of `other`, in order, to this list in place;
@@ -639,9 +667,11 @@ fn Map[T, U].fold_right[A](initial: A, step: fn(A, T, U) A) A:
 	var acc = initial
 	keys := self.keys()
 	var i = keys.length() - 1
+
 	while i >= 0:
 		acc = step(acc, keys[i], self.get(keys[i]).get())
 		i -= 1
+
 	return acc
 
 // Reports whether any entry satisfies `predicate`, stopping at the first match. An
@@ -666,6 +696,7 @@ fn var Map[T, U].add_default(move key: T, move value: U) Void: ...
 // existing key keeps its value and position, and `create` is not called.
 fn var Map[T, U].add_default_from(move key: T, create: fn(T) U) Void:
 	if self.contains(key): return
+
 	value := create(key)
 	self.add(key, value)
 
@@ -712,19 +743,25 @@ fn Map[T: Hashable & Clonable, U: Clonable].clone() move Map[T, U]:
 // the traversal is rejected.
 fn Map[T: Hashable & Clonable, U: Clonable].filter(predicate: fn(T, U) Bool) Map[T, U]:
 	var out = Map[T, U]()
+
 	for key in self.keys():
 		value := self.get(key).get()
 		if predicate(key, value): out.add(key.clone(), value)
+
 	return out
 
 // Returns a new map with each key replaced by `transform(key, value)`, in insertion
 // order, and the values copied. When two entries produce equal keys, the result keeps
 // the first position and the last value.
-fn Map[T: Hashable & Clonable, U: Clonable].map_keys[W: Hashable](transform: fn(T, U) W) Map[W, U]:
+fn Map[T: Hashable & Clonable, U: Clonable].map_keys[W: Hashable](
+	transform: fn(T, U) W
+) Map[W, U]:
 	var out = Map[W, U]()
+
 	for key in self.keys():
 		value := self.get(key).get()
 		out.add(transform(key, value), value)
+
 	return out
 
 // Returns the stored value, or `fallback` when the key is absent. The fallback is
@@ -733,21 +770,32 @@ fn Map[T: Hashable, U: Clonable].get_or(key: T, fallback: U) move U: ...
 
 // Returns the first entry for which `predicate` is true as a new `MapEntry` holding
 // copies of the key and value, or `none`.
-fn Map[T: Hashable & Clonable, U: Clonable].find(predicate: fn(T, U) Bool) MapEntry[T, U]?:
+fn Map[T: Hashable & Clonable, U: Clonable].find(
+	predicate: fn(T, U) Bool
+) MapEntry[T, U]?:
 	for key in self.keys():
 		value := self.get(key).get()
 		if predicate(key, value): return MapEntry(key: key.clone(), value: value)
+
 	return none
 
 // Searches from the end and returns the last entry for which `predicate` is true as
 // a new `MapEntry` holding copies of the key and value, or `none`.
-fn Map[T: Hashable & Clonable, U: Clonable].find_last(predicate: fn(T, U) Bool) MapEntry[T, U]?:
+fn Map[T: Hashable & Clonable, U: Clonable].find_last(
+	predicate: fn(T, U) Bool
+) MapEntry[T, U]?:
 	keys := self.keys()
 	var i = keys.length() - 1
+
 	while i >= 0:
 		value := self.get(keys[i]).get()
-		if predicate(keys[i], value): return MapEntry(key: keys[i].clone(), value: value)
+		if predicate(keys[i], value): return MapEntry(
+			key: keys[i].clone(),
+			value: value,
+		)
+
 		i -= 1
+
 	return none
 
 // Returns a new list of the values in insertion order.
@@ -843,9 +891,11 @@ fn Set[T].fold_right[A](initial: A, step: fn(A, T) A) A:
 	var acc = initial
 	values := self.values()
 	var i = values.length() - 1
+
 	while i >= 0:
 		acc = step(acc, values[i])
 		i -= 1
+
 	return acc
 
 // Returns the first element for which `predicate` is true, or `none`.
@@ -859,9 +909,12 @@ fn Set[T: Hashable & Clonable].find(predicate: fn(T) Bool) T?:
 fn Set[T: Hashable & Clonable].find_last(predicate: fn(T) Bool) T?:
 	values := self.values()
 	var i = values.length() - 1
+
 	while i >= 0:
 		if predicate(values[i]): return values[i].clone()
+
 		i -= 1
+
 	return none
 
 // Reports whether any element satisfies `predicate`, stopping at the first match. An
@@ -997,9 +1050,11 @@ MAX_LIST_ITEMS := 268435456
 fn range(start: Int, end: Int) List[Int]:
 	var out = List[Int](reserve: if end > start: end - start else: 0)
 	var next = start
+
 	while next < end:
 		out.append(next)
 		next += 1
+
 	return out
 
 // Settings for `range_by`: an optional cap on the number of items.

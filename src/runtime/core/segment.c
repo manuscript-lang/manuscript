@@ -147,3 +147,33 @@ MsTaskStatus ms_task_grow(void (*shim)(void *), void *block) {
   set_segment_state(unwind, previous);
   return MS_TASK_OK;
 }
+
+enum { MS_STACK_NATIVE_ROOM = 64 * 1024 };
+
+typedef struct StackCall {
+  void (*fn)(void *);
+  void *arg;
+} StackCall;
+
+static void run_stack_call(void *block) {
+  const StackCall *call = block;
+  call->fn(call->arg);
+}
+
+bool ms_stack_low(void) {
+  const uintptr_t limit = ms_task_running()->unwind.hdr.limit;
+  return limit != 0 && (uintptr_t)__builtin_frame_address(0) - limit <= MS_STACK_NATIVE_ROOM;
+}
+
+void ms_stack_call(void (*fn)(void *), void *arg) {
+  if (!ms_stack_low()) {
+    fn(arg);
+    return;
+  }
+  StackCall *call = ms_alloc(sizeof *call);
+  *call = (StackCall){.fn = fn, .arg = arg};
+  if (ms_task_grow(run_stack_call, call) != MS_TASK_OK) {
+    ms_fault_text(MS_FAULT_KIND_STACK_OVERFLOW, "stack overflow: recursion too deep or stack frames too large");
+  }
+  ms_free(call);
+}

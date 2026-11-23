@@ -124,7 +124,7 @@ void ms_own_changes(MsCheckProgram *program) {
   if (program->diagnostics.len != 0) {
     return;
   }
-  for (uint32_t module = 0; module < program->user_modules; module++) {
+  for (uint32_t module = 0; module < program->modules.len; module++) {
     Changes pass = {.program = program, .module = module, .source = program->modules.ptr[module].source};
     const MsScopeVisitor visitor = {.context = &pass, .expr = visit_expr};
     ms_scope_walk_module(program->modules.ptr[module].tree, &visitor, program->names);

@@ -162,11 +162,10 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   return value;
 }
 
-/* The position, among the call's arguments, of the callee parameter `ref` a default argument names. */
+/* The position, among the call's arguments, of the callee parameter `ref` a default argument names: the checker numbers a
+ * method's parameters after its receiver, as the call's arguments are. */
 static uint32_t default_position(const LowerFn *fn, const MsRef *ref) {
-  const MsCall *call = fn->default_call;
-  const size_t declared = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
-  return ref->local + (uint32_t)(call->arg_count - declared);
+  return fn->default_has_self && ref->local > 0 ? ref->local - 1 : ref->local;
 }
 
 bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot) {
@@ -186,6 +185,9 @@ bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot)
  * parameter is read from the slot the callee changes it in. */
 static MirValue default_param(LowerFn *fn, const MsRef *ref) {
   const MsCall *call = fn->default_call;
+  if (fn->default_has_self && ref->local == 0) {
+    return fn->default_self; /* `self` in the default of a method called through a method value */
+  }
   const uint32_t at = default_position(fn, ref);
   if (at >= call->arg_count) {
     (void)fn_fail(fn, "a default argument reads a parameter that has no value yet");
@@ -198,7 +200,7 @@ static MirValue default_param(LowerFn *fn, const MsRef *ref) {
   }
   if ((call->args[at].flags & MS_PARAM_VAR) != 0) {
     const MsTyTable *types = &fn->cx->program->types;
-    const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[ref->local].ty);
+    const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[default_position(fn, ref)].ty);
     return mir_b_emit(&fn->b, MOP_Load, &value, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
   }
   return value;
@@ -257,7 +259,7 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   const MirTy ty = fn_type(fn, checked);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OPT && (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
-    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none` */
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none`: owned only where taken, below */
   }
   if (data->kind == MK_ALT && ref != NULL && ref->kind == MS_REF_CASE) {
     const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = ref->index};
@@ -293,14 +295,43 @@ static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
   return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
+/* `self.value` in a method of a type set: `self` is the variable `Self`, so the checker knew no field. Once the call
+ * binds `Self` to a member, the field is looked up by name in that member's record. */
+static bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out) {
+  const MsTy left = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.member.left->id), fn->subst.vars,
+                                fn->subst.args, fn->subst.count);
+  if (left == MS_TY_NONE || fn->subst.count == 0) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, fn_type(fn, left));
+  if (data->kind != MK_TYPE) {
+    return false;
+  }
+  const MirTypeDef *def = &fn->cx->module->type_defs.ptr[data->id];
+  const MsSpan name = ms_names_span(fn->cx->program->names, expr->u.member.name);
+  for (uint32_t index = 0; index < def->nfields; index++) {
+    if (ms_span_equal(name, ms_names_span(&fn->cx->module->names, def->fields[index].name))) {
+      out->kind = MS_REF_FIELD;
+      out->index = index;
+      return true;
+    }
+  }
+  return false;
+}
+
 /* `value.field`: a field of a record, read from the value in place. */
 static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
+  const bool taking = fn->taking_member == expr;
   const MsRef *ref = ms_facts_ref(fn->facts, expr->id);
   if (ref != NULL && ref->kind == MS_REF_CASE) {
     return fn_name_ref(fn, expr, ref); /* `Type.Case`, a case with no fields */
   }
   if (ref != NULL && (ref->kind == MS_REF_METHOD || ref->kind == MS_REF_NATIVE || ref->kind == MS_REF_OPERATION)) {
     return fn_bound_method(fn, expr, ref, expr); /* `value.method`, a method used as a value */
+  }
+  MsRef late = {0};
+  if ((ref == NULL || ref->kind == MS_REF_NONE) && fn_late_field(fn, expr, &late)) {
+    ref = &late;
   }
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     (void)fn_fail(fn, "this member is not a record field (reference kind %d at %u:%u)", ref == NULL ? -1 : (int)ref->kind,
@@ -318,14 +349,24 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
     return MIR_NONE;
   }
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
-  const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+  const MirTy read_ty = late.kind == MS_REF_FIELD ? fn->cx->module->type_defs.ptr[data->id].fields[ref->index].ty
+                                                   : fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  const MirValue field = fn_emit(fn, MOP_TypeGet, &base, 1, imm, read_ty);
   MirVar owner = 0;
-  const bool moves = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
+  const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
+                                        expr->u.member.left->kind == MS_E_CALL);
+  const bool moves = (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
+                     mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
+    /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
+    return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }
-  if (moves && expr->u.member.left->kind == MS_E_CALL && fn_fresh_owner(fn, base)) {
-    /* The field leaves a temporary that dies with the statement: the rest of the record is released with it. */
+  const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME && fn->facts->last != NULL &&
+                          fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base);
+  if (moves && (expr->u.member.left->kind == MS_E_CALL || last_field) && fn_fresh_owner(fn, base)) {
+    /* The field leaves a temporary that dies with the statement, or a name at its last use: the rest of the record is
+     * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
     const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
     const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
@@ -682,7 +723,9 @@ static MirValue expr_value(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     case MS_E_VOID: return mir_b_unit(&fn->b);
     case MS_E_TEXT: return lower_text(fn, expr);
     case MS_E_NAME: return lower_name(fn, expr);
-    case MS_E_MEMBER: return lower_member(fn, expr);
+    case MS_E_MEMBER:
+      fn->taking_member = want == LW_MOVE ? expr : NULL;
+      return lower_member(fn, expr);
     case MS_E_MAP: return fn_map_literal(fn, expr);
     case MS_E_BINARY: return lower_binary(fn, expr);
     case MS_E_CALL: return fn_call(fn, expr, want);
@@ -791,7 +834,7 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &temporary, 1, (MirImm){0}, MIR_NONE);
     return value;
   }
-  const MsExpr *receiver = expr->u.call.callee->kind == MS_E_MEMBER ? expr->u.call.callee->u.member.left : NULL;
+  const MsExpr *receiver = fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
   const MsTyTable *types = &fn->cx->program->types;
   const MsTy held = receiver == NULL ? MS_TY_NONE : ms_facts_type(fn->facts, receiver->id);
   if (held == MS_TY_NONE || (!ms_ty_is(types, held, MS_BUILTIN_Optional) && !ms_ty_is(types, held, MS_BUILTIN_Result))) {
@@ -804,6 +847,18 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   return fn_take_payload(fn, temporary, &ty);
 }
 
+/* Whether a read of `expr` leaves the binding: the checker's move, or an owner's last read (own/moves.c). */
+static bool leaves_binding(const LowerFn *fn, const MsExpr *expr) {
+  return ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE ||
+         (expr->kind == MS_E_NAME && fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0);
+}
+
+/* A field read at its record's last use, where the consumer takes ownership: it leaves the record. */
+static bool field_leaves(const LowerFn *fn, const MsExpr *expr) {
+  return expr->kind == MS_E_MEMBER && ((fn->facts->last != NULL && expr->id < fn->facts->node_count && fn->facts->last[expr->id] != 0) ||
+                                       expr->u.member.left->kind == MS_E_CALL);
+}
+
 /* A name or field read where the consumer takes ownership: the value stays with its binding unless the use moves
  * it, so the consumer gets a copy. */
 static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, LowerWant want) {
@@ -812,7 +867,8 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     /* A literal is static, so what owns it holds a copy. */
     return fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && fn_closing_move(fn, expr, value, &taken)) {
+  if (want == LW_MOVE && expr->kind == MS_E_NAME && value != MIR_NONE && leaves_binding(fn, expr) &&
+      fn_closing_take(fn, ms_facts_ref(fn->facts, expr->id), value, &taken)) {
     return taken;
   }
   if (want == LW_MOVE && expr->kind == MS_E_CALL && value != MIR_NONE && fn_is_borrowed_view(fn, value) &&
@@ -863,16 +919,25 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     fn->moved_fields[fn->nmoved_fields++] = expr;
     return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  if (!borrowed_param && !in_var_record && !view_local && leaves_binding(fn, expr)) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }
     return value;
   }
+  if (expr->kind == MS_E_MEMBER && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || field_leaves(fn, expr)) &&
+      fn_fresh_owner(fn, value)) {
+    return value; /* the field was taken out of its record: nothing to copy */
+  }
   return fn_implicit_clone(fn, value, true);
 }
 
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  for (uint32_t at = 0; at < fn->npresolved; at++) {
+    if (fn->presolved[at].expr == expr) {
+      return fn->presolved[at].value;
+    }
+  }
   const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
   return fn_convert(fn, expr, value);
 }

@@ -103,7 +103,7 @@ test "big floats add, subtract and compare across magnitudes":
 	expect_equal(huge.negate().add(tiny).compare(huge.negate()), 0)?
 	expect_equal(huge.compare(tiny), 1)?
 	expect_equal(big_float_of_int(5, 64).subtract(big_float_of_int(5, 64)).sign(), 0)?
-	expect_equal(big_float_of_float(0.5, 53).get_or(tiny).add(tiny).to_float(), 1.5)?
+	expect_equal(big_float_of_float(0.5, 53).get_or(tiny.clone()).add(tiny).to_float(), 1.5)?
 	expect_equal(
 		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get_or(
 			tiny

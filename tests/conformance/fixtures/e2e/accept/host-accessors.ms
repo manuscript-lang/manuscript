@@ -13,7 +13,7 @@ fn check_services() Void!:
 
     before := monotonic()
     after := monotonic()
-    (after - before < 0.milliseconds()) | expect_false?
+    (after.difference(before) < 0.milliseconds()) | expect_false?
     (now().unix_seconds() <= 0) | expect_false?
     (system_info().cpu_count <= 0) | expect_false?
 

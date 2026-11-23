@@ -124,7 +124,7 @@ bool body_find_case(Body *body, MsName name, MsTy expected, const MsPos *at, MsT
   }
   ms_symbol_list_free(&seen);
   (void)expected;
-  if (matches > 1 && at != NULL && !body->quiet && body->module < program->user_modules) {
+  if (matches > 1 && at != NULL && !body->quiet && body_reports(body)) {
     MsStrBuild text = ms_strbuild_new();
     const MsSpan written = ms_names_span(program->names, name);
     ms_strbuild_append_text(&text, "ambiguous alternative case ");
@@ -194,6 +194,16 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
+    if (ref.kind != MS_REF_CONSTANT && symbol->kind == MS_SYMBOL_FN && symbol->var_count != 0 && expected == MS_TY_NONE) {
+      if (!body->quiet && body_reports(body)) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "a generic function value requires explicit specialization; write ");
+        ms_strbuild_append(&text, ms_names_span(body->program->names, name));
+        ms_strbuild_append_text(&text, "[Type] or call it with arguments");
+        ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+      return MS_TY_NONE;
+    }
     return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : generic_as_value(body, symbol, expected);
   }
   const MsSpan text = ms_names_span(body->program->names, name);
@@ -216,6 +226,9 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
     body_set_ref(body, expr->id, (MsRef){.kind = MS_REF_CASE, .index = index, .owner = owner});
     return owner;
   }
+  if (!body->quiet) { /* the names pass found it unknown; the walk is where the oracle reports it */
+    (void)ms_check_release(body->program, body->module, expr->pos.offset, ms_span_of_text("unknown binding "));
+  }
   return MS_TY_NONE;
 }
 
@@ -230,7 +243,7 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
   if (!optional && !contract && !bare) {
     return false;
   }
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return true;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -262,7 +275,16 @@ bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, boo
 /* `Type.name` where the type has no such case: an enum lists its cases, any other type has none to name. */
 static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
   const MsDef *def = body_def(body, owner);
-  if (body->module >= body->program->user_modules || body->quiet || def == NULL || def->cases.len == 0) {
+  if (!body_reports(body) || body->quiet) {
+    return;
+  }
+  if (def == NULL || def->cases.len == 0) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append(&text, ms_names_span(body->program->names, ms_ty_row(&body->program->types, owner)->name));
+    ms_strbuild_append_text(&text, " has no member ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, expr->u.member.name));
+    ms_strbuild_append_text(&text, "; a type name is followed only by an enum case");
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
     return;
   }
   MsSpanList names = {0};
@@ -375,8 +397,39 @@ static MsTy expected_arg(const Body *body, MsTy expected, MsBuiltin builtin, siz
              : MS_TY_NONE;
 }
 
+/* A literal holding the bare `none` beside values of one type holds that type optionally: `[none, 0]` is `[Int?]`. */
+static MsTy none_widened(Body *body, MsExpr *const *entries, size_t count) {
+  bool has_none = false;
+  const MsExpr *typed = NULL;
+  for (size_t index = 0; index < count; index++) {
+    const MsExpr *entry = entries[index];
+    const bool none = entry->kind == MS_E_NAME && body_find_local(body, entry->u.sym) == NULL &&
+                      ms_span_is_text(ms_names_span(body->program->names, entry->u.sym), "none");
+    has_none = has_none || none;
+    typed = typed == NULL && !none ? entry : typed;
+  }
+  if (!has_none || typed == NULL) {
+    return MS_TY_NONE;
+  }
+  const bool quiet = body->quiet;
+  body->quiet = true;
+  const MsTy value = body_expr(body, typed, MS_TY_NONE);
+  body->quiet = quiet;
+  if (value == MS_TY_NONE || holds_invalid(&body->program->types, value, 6) ||
+      ms_ty_is(&body->program->types, value, MS_BUILTIN_Optional)) {
+    return MS_TY_NONE;
+  }
+  return body_std_type(body, "Optional", &value, 1);
+}
+
 static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy element = expected_arg(body, expected, MS_BUILTIN_List, 0);
+  if (element != MS_TY_NONE && body_has_foreign_variable(body, element)) {
+    element = MS_TY_NONE; /* an open slot of the enclosing call is filled by the entries, not imposed on them */
+  }
+  if (element == MS_TY_NONE) {
+    element = none_widened(body, expr->u.list.ptr, expr->u.list.len);
+  }
   bool unknown = false;
   for (uint32_t index = 0; index < expr->u.list.len; index++) {
     MsStrBuild context = ms_strbuild_new();
@@ -394,6 +447,13 @@ static MsTy list_expr(Body *body, const MsExpr *expr, MsTy expected) {
 
 static MsTy map_expr(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy args[2] = {expected_arg(body, expected, MS_BUILTIN_Map, 0), expected_arg(body, expected, MS_BUILTIN_Map, 1)};
+  if (args[1] == MS_TY_NONE && expr->u.map.len != 0) {
+    MsExpr **values = MS_ARENA_NEW_ARRAY(&body->program->arena, MsExpr *, expr->u.map.len);
+    for (uint32_t index = 0; index < expr->u.map.len; index++) {
+      values[index] = expr->u.map.ptr[index].value;
+    }
+    args[1] = none_widened(body, values, expr->u.map.len);
+  }
   for (uint32_t index = 0; index < expr->u.map.len; index++) {
     const MsTy key = body_expr(body, expr->u.map.ptr[index].key, args[0]);
     const MsTy value = body_expr(body, expr->u.map.ptr[index].value, args[1]);
@@ -438,7 +498,7 @@ static bool explicit_method_value(Body *body, const MsExpr *expr, MsTy *ty) {
   ms_check_find_method(body->program, receiver, member->u.member.name, &found);
   const MsMethodEntry *entry = found.len != 0 ? found.ptr[0].entry : NULL;
   const size_t own = entry != NULL ? entry->variables.len - entry->shared : 0;
-  if (entry == NULL || own != expr->u.apply.types.len) {
+  if (entry == NULL || own < expr->u.apply.types.len) {
     ms_method_match_list_free(&found);
     return false;
   }
@@ -446,6 +506,34 @@ static bool explicit_method_value(Body *body, const MsExpr *expr, MsTy *ty) {
   for (uint32_t index = 0; index < expr->u.apply.types.len; index++) {
     ms_ty_list_push(&args, resolver_type(&body->resolver, expr->u.apply.types.ptr[index]));
   }
+  /* type arguments left out take the method's defaults, which may name the receiver's arguments and earlier ones */
+  const MsTyTable *types = &body->program->types;
+  MsTyList names = {0};
+  MsTyList values = {0};
+  for (size_t at = 0; at < entry->shared && at < ms_ty_arg_count(types, receiver); at++) {
+    ms_ty_list_push(&names, entry->variables.ptr[at]);
+    ms_ty_list_push(&values, ms_ty_args(types, receiver)[at]);
+  }
+  for (size_t at = 0; at < args.len; at++) {
+    ms_ty_list_push(&names, entry->variables.ptr[entry->shared + at]);
+    ms_ty_list_push(&values, args.ptr[at]);
+  }
+  for (size_t at = args.len; at < own; at++) {
+    const MsTyVariable *record = ms_ty_variable(&body->program->types, entry->variables.ptr[entry->shared + at]);
+    if (record == NULL || record->default_ty == MS_TY_NONE) {
+      ms_method_match_list_free(&found);
+      ms_ty_list_free(&names);
+      ms_ty_list_free(&values);
+      ms_ty_list_free(&args);
+      return false;
+    }
+    const MsTy fixed = ms_ty_subst(&body->program->types, record->default_ty, names.ptr, values.ptr, names.len);
+    ms_ty_list_push(&args, fixed);
+    ms_ty_list_push(&names, entry->variables.ptr[entry->shared + at]);
+    ms_ty_list_push(&values, fixed);
+  }
+  ms_ty_list_free(&names);
+  ms_ty_list_free(&values);
   body_set_ref(body, expr->id, *ms_facts_ref(body->facts, member->id));
   *ty = ms_ty_subst(&body->program->types, method, entry->variables.ptr + entry->shared, args.ptr, args.len);
   ms_ty_list_free(&args);
@@ -482,7 +570,7 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
   if (ms_ty_is(types, receiver, MS_BUILTIN_Bytes)) {
     return body_primitive(body, MS_BUILTIN_UInt8);
   }
-  if (receiver != MS_TY_NONE && !ms_ty_is_invalid(types, receiver) && body->module < body->program->user_modules &&
+  if (receiver != MS_TY_NONE && !ms_ty_is_invalid(types, receiver) && body_reports(body) &&
       !body->quiet) {
     ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE,
                     ms_string_from_span(ms_span_of_text(
@@ -536,7 +624,7 @@ static uint8_t context_modes(const MsTyTable *types, MsTy expected, bool shaped,
 
 /* A callback parameter with no written type and no context to take one from. */
 static void report_uninferred_callback(Body *body, const MsParam *param) {
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -551,10 +639,14 @@ static void report_uninferred_callback(Body *body, const MsParam *param) {
  * written result, the expected one, or the first returned value's type. */
 static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTyTable *types = &body->program->types;
+  if (expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1 &&
+      ms_ty_kind(types, ms_ty_args(types, expected)[0]) == MS_TY_FUNCTION) {
+    expected = ms_ty_args(types, expected)[0]; /* a function literal where an optional function is wanted */
+  }
   bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
   bool miscounted = false;
   if (shaped && ms_ty_param_count(types, expected) != expr->u.lambda.params.len) {
-    if (body->module < body->program->user_modules && !body->quiet) {
+    if (body_reports(body) && !body->quiet) {
       const size_t want = ms_ty_param_count(types, expected);
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_printf(&text, "callback parameter count does not match its context; the context expects %zu parameter%s, "
@@ -569,7 +661,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const size_t mark = body_scope_mark(body);
   for (uint32_t index = 0; index < expr->u.lambda.params.len; index++) {
     const MsParam *param = expr->u.lambda.params.ptr[index];
-    for (uint32_t before = 0; !body->quiet && body->module < body->program->user_modules && before < index; before++) {
+    for (uint32_t before = 0; !body->quiet && body_reports(body) && before < index; before++) {
       if (expr->u.lambda.params.ptr[before]->name == param->name) {
         MsStrBuild text = ms_strbuild_new();
         ms_strbuild_append_text(&text, "duplicate parameter or field ");

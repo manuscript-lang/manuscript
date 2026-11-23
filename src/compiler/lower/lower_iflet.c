@@ -33,7 +33,9 @@ MirValue fn_iflet_test(LowerFn *fn, MirValue value) {
 bool fn_iflet_owns(LowerFn *fn, const MsStmt *stmt) {
   const MsExpr *cond = stmt->u.branch.cond;
   /* A call's result, or a name the statement moves, is the binding's to own: the payload leaves the temporary. */
-  const bool fresh = cond->kind == MS_E_CALL || (cond->kind == MS_E_NAME && ms_facts_use(fn->facts, cond->id) == MS_USE_MOVE);
+  const bool fresh = cond->kind == MS_E_CALL ||
+                     (cond->kind == MS_E_NAME && (ms_facts_use(fn->facts, cond->id) == MS_USE_MOVE ||
+                                                  (fn->facts->last != NULL && fn->facts->last[cond->id] != 0)));
   /* A `var` binding of a name writes back to what it names; a call's result has nothing to write back to. */
   const bool writes_back = stmt->u.branch.is_mutable && cond->kind != MS_E_CALL;
   return fresh && !writes_back && stmt->u.branch.binding->kind == MS_P_NAME;
@@ -67,8 +69,9 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   if (owns) {
     payload = fn_take_payload(fn, value, &ty);
     const MsTy checked = ms_facts_type(fn->facts, pattern->id);
-    if (fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), checked)) {
-      return fn_bind_closing(fn, ref->local, checked, payload, false);
+    const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
+    if (fn_closer_for(fn, closer, checked)) {
+      return fn_bind_closing(fn, ref->local, checked, payload, closer != NULL && (closer->flags & MS_CLOSER_VAR) != 0);
     }
     if (mir_needs_drop(module, ty)) {
       fn_own(fn, fn_scope(fn), payload);

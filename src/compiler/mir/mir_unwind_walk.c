@@ -40,8 +40,11 @@ uint32_t uw_hole_step(uint32_t open, MirOp op, const MirInst *next) {
       return open;
     }
     return open + 1 < 8 ? open + 1 : 8;
+  case MOP_AltTake: /* the payload leaves its alternative; `alt.release` frees what is left */
+    return open + 1 < 8 ? open + 1 : 8;
   case MOP_TypeFill:
   case MOP_ListFill:
+  case MOP_AltRelease:
     return open > 0 ? open - 1 : 0;
   default:
     return open;
@@ -117,6 +120,10 @@ static UwHash uw_field_defs(MsArena *a, const MirFunc *f) {
 
 static bool uw_hole_base(const UwHash *defs, const MirInst *inst, uint32_t *base) {
   uint64_t v = 0;
+  if (inst->op == MOP_AltTake && inst->nargs > 0) { /* the alternative itself is the owner */
+    *base = inst->args[0];
+    return true;
+  }
   if (inst->nargs == 0 || !uh_get(defs, inst->args[0], &v)) {
     return false;
   }
@@ -258,6 +265,11 @@ static void uw_an_consume(UwBlk *s, const MirInst *inst) {
   if (inst->op == MOP_TypeFill && inst->imm.tag == MI_FIELD && inst->nargs > 0 &&
     uh_get(&fa->cx->holes, (uint64_t)inst->args[0] << 32 | inst->imm.b, &p)) {
     (void)owner_remove(a, &s->live, (uint32_t)p);
+  }
+  if (inst->op == MOP_AltTake && inst->nargs > 0) {
+    /* The payload left the value: dropping the shell whole would free it a second time, so the shell
+     * is not covered from here (it is only released, which an unwind may skip). */
+    (void)owner_remove(a, &s->live, inst->args[0]);
   }
   if (inst->op == MOP_Take && inst->nargs > 0 && uw_is_cell(s, inst->args[0])) {
     (void)owner_remove(a, &s->live, inst->args[0]);
@@ -447,6 +459,16 @@ static void uw_an_edges(UwBlk *s) {
     if (!w->has[t->block]) {
       w->entry[t->block] = after;
       w->has[t->block] = true;
+    } else if (!w->done[t->block]) {
+      /* Edges that disagree on what is owned (a value one path made): only what every path owns is
+       * covered, since a value made on one path is not defined where they meet. */
+      uint32_t count = 0;
+      const uint32_t *held = owner_to_vec(a, &w->entry[t->block], &count);
+      for (uint32_t i = 0; i < count; i++) {
+        if (!owner_contains(&after, held[i])) {
+          (void)owner_remove(a, &w->entry[t->block], held[i]);
+        }
+      }
     }
   }
 }
@@ -477,12 +499,14 @@ UwWalk uw_analyze(const UwFacts *fa) {
   MsArena *a = &cx->fn;
   const uint32_t n = (uint32_t)f->blocks.len;
   UwWalk w = {.entry = MS_ARENA_NEW_ARRAY(a, OwnerSet, n), .has = MS_ARENA_NEW_ARRAY(a, bool, n),
+        .done = MS_ARENA_NEW_ARRAY(a, bool, n),
         .plans = MS_ARENA_NEW_ARRAY(a, UwWindow *, n), .nplans = MS_ARENA_NEW_ARRAY(a, uint32_t, n),
         .cplans = MS_ARENA_NEW_ARRAY(a, uint32_t, n), .at_fault = MS_ARENA_NEW_ARRAY(a, MirValue *, n),
         .nat_fault = MS_ARENA_NEW_ARRAY(a, uint32_t, n), .events = MS_ARENA_NEW_ARRAY(a, UwEvent *, n),
         .nevents = MS_ARENA_NEW_ARRAY(a, uint32_t, n), .cevents = MS_ARENA_NEW_ARRAY(a, uint32_t, n)};
   __builtin_memset(w.entry, 0, sizeof(OwnerSet) * n);
   __builtin_memset(w.has, 0, n);
+  __builtin_memset(w.done, 0, n);
   __builtin_memset(w.plans, 0, sizeof(UwWindow *) * n);
   __builtin_memset(w.nplans, 0, sizeof(uint32_t) * n);
   __builtin_memset(w.cplans, 0, sizeof(uint32_t) * n);
@@ -501,6 +525,7 @@ UwWalk uw_analyze(const UwFacts *fa) {
     if (!uw_an_start(&s)) {
       continue;
     }
+    w.done[s.bi] = true;
     s.open = fa->holes[s.bi];
     s.holed = uh_clone(a, &hole_in[s.bi].named);
     s.unnamed = hole_in[s.bi].unnamed;

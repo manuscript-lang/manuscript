@@ -20,7 +20,9 @@ import (
 fn copies(text: String) List[String]:
 	var sites = List[String]()
 	for line in text.split("\n"):
-		if line.starts_with("copy-probe\t"): sites.append(line.slice(11, line.length()).clone())
+		if line.starts_with("copy-probe\t"): sites.append(
+			line.slice(11, line.length()).clone()
+		)
 	return sites
 
 fn main() Int:

@@ -12,6 +12,7 @@
 
 #include "compiler/mir/mir_unwind.h"
 
+
 #include "base/fatal.h"
 
 /* Which functions can fault: a checked operation, an explicit fault, an indirect call or a

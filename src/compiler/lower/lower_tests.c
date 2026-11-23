@@ -123,7 +123,9 @@ static MirValue closure_value(LowerFn *fn, uint32_t func, MirTy ty) {
 static MirValue list_of(LowerFn *fn, MirValue *items, uint32_t count, MirTy list_ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, list_ty);
   if (count == 0) {
-    return mir_b_list_new(&fn->b, data->elem, mir_b_iconst(&fn->b, 0));
+    const MirValue fresh = mir_b_list_new(&fn->b, data->elem, mir_b_iconst(&fn->b, 0));
+    fn_own_result(fn, fresh);
+    return fresh;
   }
   if (mir_needs_drop(fn->cx->module, data->elem)) {
     for (uint32_t index = 0; index < count; index++) {
@@ -367,7 +369,7 @@ static bool lower_blocks(MsCheckProgram *program, MirModule *module, MsStrBuild 
     module->entry = entry;
   }
   lower_release(&cx);
-  return ok;
+  return ok && !cx.failed;
 }
 
 bool ms_lower_tests(MsCheckProgram *program, MirModule *module, MsStrBuild *error) {

@@ -419,7 +419,7 @@ static bool rg_pass_params(RgFa *fa, uint32_t bi, bool narrow) {
 /* One round over the blocks in reverse post-order; returns whether any interval changed. */
 static bool rg_fa_pass(RgFa *fa, bool narrow) {
   bool changed = false;
-  ms_arena_free(&fa->gen[fa->round & 1]);
+  ms_arena_reset(&fa->gen[fa->round & 1]);
   for (uint32_t r = 0; r < fa->nrpo; r++) {
     const uint32_t bi = fa->rpo[r];
     rg_tmp_reset(fa);

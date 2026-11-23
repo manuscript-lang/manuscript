@@ -18,14 +18,9 @@ static void report_text(Body *body, MsPos pos, size_t length, MsStrBuild *text) 
 }
 
 MsName target_param_name(const Body *body, const Target *target, size_t index) {
-  return target->ast != NULL && index < target->ast->len ? target->ast->ptr[index]->name
-                                                          : ms_ty_params(&body->program->types, target->sig)[index].name;
-}
-
-bool target_positional(const Target *target, size_t index, const MsTyTable *types) {
-  const bool value = target->ast == NULL && (target->ref.kind == MS_REF_LOCAL || target->ref.kind == MS_REF_PARAM ||
-                                             target->ref.kind == MS_REF_NONE);
-  return value || (ms_ty_params(types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
+  const MsParams *declared = target->ast != NULL ? target->ast : target->names;
+  return declared != NULL && index < declared->len ? declared->ptr[index]->name
+                                                   : ms_ty_params(&body->program->types, target->sig)[index].name;
 }
 
 /* Whether the callee is a local or parameter declared with a written function type, whose parameters carry no labels. */
@@ -40,6 +35,13 @@ static bool written_fn_value(const Body *body, const Target *target) {
     }
   }
   return false;
+}
+
+bool target_positional(const Body *body, const Target *target, size_t index) {
+  /* A lambda or method value keeps its parameters' names (the local's `ast`); any other function value has none. */
+  const bool value = target->ast == NULL && target->names == NULL && (target->ref.kind == MS_REF_LOCAL || target->ref.kind == MS_REF_PARAM ||
+                                             target->ref.kind == MS_REF_NONE);
+  return value || (ms_ty_params(&body->program->types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
 }
 
 static MsSpan param_name(const Body *body, const Target *target, size_t index) {
@@ -70,7 +72,7 @@ static void unknown_hint(Body *body, const Target *target, MsSpan name, MsStrBui
   bool all_positional = count != 0;
   for (size_t index = 0; index < count; index++) {
     ms_span_list_push(&names, param_name(body, target, index));
-    all_positional = all_positional && target_positional(target, index, types);
+    all_positional = all_positional && target_positional(body, target, index);
   }
   if (all_positional) {
     ms_strbuild_append_text(out, "; function values take positional arguments (");
@@ -141,11 +143,12 @@ bool body_param_omittable(const Body *body, const MsParam *param) {
 /* A parameter a call may leave out: lifted, declared with a default, or the only payload of a case, a Void. */
 static bool omittable(const Body *body, const Target *target, const MsTyParam *param, size_t index) {
   const MsTyTable *types = &body->program->types;
+  const MsParams *declared = target->ast != NULL ? target->ast : target->names;
   const bool void_payload = target->ref.kind == MS_REF_CASE && ms_ty_param_count(types, target->sig) == 1 &&
                             (ms_ty_is(types, param->ty, MS_BUILTIN_Void) || ms_ty_kind(types, param->ty) == MS_TY_VARIABLE);
   return void_payload || (param->flags & MS_PARAM_LIFTED) != 0 ||
-         (target->ast != NULL ? index < target->ast->len && body_param_omittable(body, target->ast->ptr[index])
-                              : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
+         (declared != NULL ? index < declared->len && body_param_omittable(body, declared->ptr[index])
+                           : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
 }
 
 static void report_missing(Body *body, const Target *target, const MsExpr *call, const Matched *matched, size_t index) {
@@ -159,7 +162,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "missing argument ");
-  const bool positional = target_positional(target, index, &body->program->types);
+  const bool positional = target_positional(body, target, index);
   if (positional) {
     ms_strbuild_printf(&text, "%zu", index + 1);
   } else {
@@ -185,7 +188,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
 }
 
 void body_report_arguments(Body *body, const Target *target, const MsExpr *call, const Matched *matched) {
-  const bool report = body->module < body->program->user_modules && !body->quiet && !target->builtin;
+  const bool report = body_reports(body) && !body->quiet && !target->builtin;
   bool hinted = false;
   for (uint32_t at = 0; at < call->u.call.args.len; at++) {
     const MsArg *arg = &call->u.call.args.ptr[at];

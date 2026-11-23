@@ -334,6 +334,10 @@ static void check_contract_arm(Body *body, ArmState *state, const MsArm *arm) {
 
 static void check_arm(Body *body, ArmState *state, const MsArm *arm) {
   if (!state->report) {
+    /* Lowering reads the type of every literal arm, so it is recorded even where nothing is reported. */
+    if (state->literal && literal_key(body, arm->path) != MS_NAME_EMPTY) {
+      (void)body_expr(body, arm->path, state->scrutinee);
+    }
     return;
   }
   if (state->contract) {
@@ -404,7 +408,7 @@ static bool unmatchable(const Body *body, MsTy ty) {
 
 /* Reports a scrutinee no match can take; true when it did, and the arms are then left unreported. */
 static bool check_scrutinee(Body *body, const MsExpr *expr, MsTy ty) {
-  if (body->quiet || body->module >= body->program->user_modules || !unmatchable(body, ty)) {
+  if (body->quiet || !body_reports(body) || !unmatchable(body, ty)) {
     return false;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -420,7 +424,7 @@ static bool check_scrutinee(Body *body, const MsExpr *expr, MsTy ty) {
 static void check_exhaustive(Body *body, const MsExpr *expr, MsTy scrutinee) {
   const MsDef *def = body_def(body, scrutinee);
   MsCheckProgram *program = body->program;
-  if (body->quiet || body->module >= program->user_modules || def == NULL || def->kind != MS_TY_ALTERNATIVE ||
+  if (body->quiet || !body_reports(body) || def == NULL || def->kind != MS_TY_ALTERNATIVE ||
       ms_ty_kind(&program->types, scrutinee) != MS_TY_ALTERNATIVE) {
     return;
   }
@@ -499,7 +503,7 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
                     .case_count = def == NULL ? 0 : (uint32_t)def->cases.len};
   state.discarded = body->statement_match == expr;
   state.contract = ms_ty_kind(types, scrutinee) == MS_TY_CONTRACT;
-  state.report = !body->quiet && body->module < body->program->user_modules && (state.literal || def != NULL || state.contract);
+  state.report = !body->quiet && body_reports(body) && (state.literal || def != NULL || state.contract);
   state.seen = MS_ARENA_NEW_ARRAY(&body->program->arena, MsName, expr->u.match.arms.len + 1);
   /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
   MsTy result = expected != MS_TY_NONE && body_has_foreign_variable(body, expected) ? MS_TY_NONE : expected;

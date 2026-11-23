@@ -58,7 +58,7 @@ fn var HttpHeaders.append_bytes(name: String, value: Bytes) Void!:
 // Returns the first value as text, or none for an absent name. A value that is not
 // valid UTF-8 is skipped; read it with get_all_bytes.
 fn HttpHeaders.get(name: String) String?:
-	return self.get_all(name).first()
+	return self.get_all(name).first().clone()
 
 // Returns every value as an owned list, empty for an absent name.
 // A received value that is not valid UTF-8 is left out; read it with get_all_bytes.
@@ -282,7 +282,7 @@ export interface HttpExchange:
 	// Returns the next chunk of the request body, at most `max_bytes` and never more
 	// than 65536, or none at the end of the body. Reading past `max_body_bytes` returns
 	// an `Error` of kind `EOVERFLOW`, and a non-positive `max_bytes` returns EINVAL.
-	var fn read(max_bytes: Int?) Bytes?!
+	var fn read(max_bytes: Int?) move Bytes?!
 	// Sends a whole response: the status line, `headers`, and `body` with its length
 	// known, so the response carries `Content-Length` rather than chunked framing.
 	// Requests with HEAD and statuses without a body get the head alone. The rules of
@@ -342,7 +342,7 @@ fn ServerExchange.protocol() String:
 fn ServerExchange.query() String:
 	return msstd_http_exchange_query(self.native)
 
-fn var ServerExchange.read(max_bytes: Int?) Bytes?!:
+fn var ServerExchange.read(max_bytes: Int?) move Bytes?!:
 	return msstd_http_exchange_read(self.native, max_bytes)
 
 fn var ServerExchange.send(status: Int, headers: HttpHeaders, body: Bytes) Void!:

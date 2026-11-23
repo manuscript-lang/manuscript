@@ -315,7 +315,7 @@ static bool unmet_member_bound(Body *body, MsTy receiver, MsName name, MsStrBuil
 
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver) {
   const MsTyTable *types = &body->program->types;
-  if (body->module >= body->program->user_modules || body->quiet || holds_invalid(types, receiver, 6) ||
+  if (!body_reports(body) || body->quiet || holds_invalid(types, receiver, 6) ||
       ms_ty_kind(types, receiver) == MS_TY_FUNCTION) {
     return;
   }

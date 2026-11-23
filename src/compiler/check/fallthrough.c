@@ -69,21 +69,44 @@ static Reach call_reach(const Ctx *ctx, const MsExpr *call) {
   return ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never) ? REACH_NO : REACH_YES;
 }
 
+/* A call whose receiver or argument never returns never runs, so what follows it is unreachable. */
+static bool operand_never_returns(const Ctx *ctx, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_MEMBER && expression_flow(ctx, callee->u.member.left).reach == REACH_NO) {
+    return true;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    if (expression_flow(ctx, call->u.call.args.ptr[index].value).reach == REACH_NO) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static Flow expression_flow(const Ctx *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_MATCH) {
     return match_flow(ctx, expr);
   }
-  return (Flow){.reach = expr->kind == MS_E_CALL ? call_reach(ctx, expr) : REACH_YES};
+  if (expr->kind != MS_E_CALL) {
+    return (Flow){.reach = REACH_YES};
+  }
+  return (Flow){.reach = operand_never_returns(ctx, expr) ? REACH_NO : call_reach(ctx, expr)};
 }
 
 /* A value that is bound or assigned stops the path only when it is known to have type Never. */
 static Flow value_flow(const Ctx *ctx, const MsExpr *value) {
   const MsTy ty = ms_facts_type(ctx->facts, value->id);
   const bool never = ty != MS_TY_NONE && ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never);
-  return (Flow){.reach = never ? REACH_NO : REACH_YES};
+  /* a match whose every arm returns, or a call whose operand never returns, ends the path as well */
+  const bool ends = !never && (value->kind == MS_E_MATCH || value->kind == MS_E_CALL) &&
+                    expression_flow(ctx, value).reach == REACH_NO;
+  return (Flow){.reach = never || ends ? REACH_NO : REACH_YES};
 }
 
 static Flow branch_flow(const Ctx *ctx, const MsStmt *stmt) {
+  if (stmt->u.branch.cond != NULL && expression_flow(ctx, stmt->u.branch.cond).reach == REACH_NO) {
+    return (Flow){.reach = REACH_NO}; /* the condition never completes: neither branch runs */
+  }
   const Flow then = block_flow(ctx, &stmt->u.branch.body);
   Flow other = {.reach = REACH_YES};
   if (stmt->u.branch.else_body.len != 0) {

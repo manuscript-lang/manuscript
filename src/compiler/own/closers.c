@@ -16,6 +16,7 @@ typedef struct Closers {
   MsName close;
   size_t first;        /* the first closer of the callable being walked */
   uint32_t lambdas;    /* lambdas open around the node being visited */
+  uint32_t escaping;   /* of those, the lambdas that outlive the statement: they take what they capture */
   MsNode receiver;     /* the receiver name of the call being visited */
   MsBindingList own;   /* parameters of the lambdas visited: used in their body they are not captures */
 } Closers;
@@ -85,10 +86,16 @@ static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
-      !stmt->u.branch.is_mutable) { /* `if r := value:` owns the payload it binds */
+      (!stmt->u.branch.is_mutable || stmt->u.branch.cond->kind == MS_E_CALL)) {
+    /* `if r := value:` owns the payload it binds, and so does `if var r = call():`, whose result has no place to
+     * write back to. */
     const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
     if (bound != NULL && bound->kind == MS_REF_LOCAL) {
+      const size_t before = pass->facts->closers.len;
       add_closer(pass, stmt->u.branch.binding->id, MS_REF_LOCAL, bound->local, ms_facts_type(pass->facts, stmt->u.branch.binding->id));
+      if (stmt->u.branch.is_mutable && pass->facts->closers.len > before) {
+        pass->facts->closers.ptr[before].flags |= MS_CLOSER_VAR;
+      }
     }
     return;
   }
@@ -350,6 +357,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
   if (expr->kind == MS_E_LAMBDA) {
     pass->lambdas++;
+    pass->escaping += ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE ? 1u : 0u;
     for (size_t index = 0; index < expr->u.lambda.params.len; index++) {
       ms_binding_list_push(&pass->own, expr->u.lambda.params.ptr[index]->id);
     }
@@ -399,7 +407,9 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     return; /* a lambda's own parameter, not a capture: judged by its own closer */
   }
   if (pass->lambdas != 0) {
-    flag(pass, ref, MS_CLOSER_PARTIAL);
+    /* A local a lambda that outlives the statement captures moves into it, on the paths that build the lambda, and its
+     * scope closes it on the others; any other capture leaves the ownership to the closure. */
+    flag(pass, ref, pass->escaping != 0 && ref->kind == MS_REF_LOCAL ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
     flag(pass, ref, expr->kind != MS_E_NAME ? MS_CLOSER_PARTIAL : expr->id == pass->receiver ? MS_CLOSER_MOVED | MS_CLOSER_RECEIVER : MS_CLOSER_MOVED);
   }
@@ -409,12 +419,14 @@ static void leave_expr(void *ctx, const MsExpr *expr) {
   Closers *pass = ctx;
   if (expr->kind == MS_E_LAMBDA) {
     pass->lambdas--;
+    pass->escaping -= ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE ? 1u : 0u;
   }
 }
 
 static void callable(Closers *pass, MsNode node, const MsMethod *method, MsParams params, MsStmts body) {
   pass->first = pass->facts->closers.len;
   pass->lambdas = 0;
+  pass->escaping = 0;
   pass->own.len = 0;
   if (method != NULL) {
     add_receiver(pass, method);

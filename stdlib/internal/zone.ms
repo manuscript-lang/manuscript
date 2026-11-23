@@ -284,7 +284,7 @@ fn plain_zone(kind: Int, move name: String, fixed: Int) Zone:
 	empty := no_rule()
 	return Zone(
 		kind: kind,
-		name: name,
+		name: name.clone(),
 		fixed: fixed,
 		data: "".to_bytes(),
 		count: 0,
@@ -388,7 +388,7 @@ fn from_tzif(name: String, data: Bytes, whole: Bool) Zone!:
 	return ok(
 		Zone(
 			kind: 2,
-			name: name,
+			name: name.clone(),
 			fixed: 0,
 			data: data.clone(),
 			count: count,

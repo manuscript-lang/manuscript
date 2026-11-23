@@ -31,6 +31,5 @@ bool opt_probe(MirModule *m);     /* a map or set lookup of a fixed layout runs 
 bool opt_appendfast(MirModule *m);/* `string_append` on an owned string with room runs inline */
 bool opt_exit_drops(MirModule *m); /* the plain drops on the entry's return paths run only when `msrt_exit_frees` says so */
 bool opt_inline(MirModule *m);
-bool opt_inline_small(MirModule *m);
 
 #endif
