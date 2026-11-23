@@ -44,6 +44,9 @@ void lsp_analysis_release(LspAnalysis *analysis);
 /* The file `path` of a checked module's name as the editor spells it: absolute. */
 MsSpan lsp_absolute_file(MsArena *arena, MsSpan source_root, MsSpan file);
 
+/* The URI an editor opened `path` under, else its `file:` URI; copied into `arena`. */
+MsSpan lsp_path_uri(const LspDocList *docs, MsArena *arena, MsSpan path);
+
 LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri);
 /* Stores the document, replacing an earlier version. */
 void lsp_doc_set(LspDocList *docs, MsSpan uri, int64_t version, MsSpan text);

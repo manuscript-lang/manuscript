@@ -1,0 +1,8 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/shapes.ms", "languageId": "manuscript", "version": 1, "text": "// Doubles a value.\nexport fn double(value: Int) Int:\n\treturn value * 2\n\nfn helper() Int:\n\treturn 1\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/references", "params": {"textDocument": {"uri": "$ROOT_URI/shapes.ms"}, "position": {"line": 1, "character": 11}, "context": {"includeDeclaration": true}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/references", "params": {"textDocument": {"uri": "$ROOT_URI/shapes.ms"}, "position": {"line": 4, "character": 4}, "context": {"includeDeclaration": true}}}
+{"jsonrpc": "2.0", "id": 4, "method": "workspace/symbol", "params": {"query": "doub"}}
+{"jsonrpc": "2.0", "id": 5, "method": "workspace/symbol", "params": {"query": "QUAD"}}
+{"jsonrpc": "2.0", "id": 6, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}
