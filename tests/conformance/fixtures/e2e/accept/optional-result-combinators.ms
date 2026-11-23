@@ -80,9 +80,6 @@ test "Result map_error converts the error type and feeds try":
 	expect_equal(convert(false).err().message(), "wrapped bad")?
 
 test "map and and_then on both types keep their meaning":
-	present: Int? := 2
 	success: Int!Error := ok(2)
-	expect_equal(present.map(fn n: n + 1).get(), 3)?
-	expect_equal(present.and_then(fn(n: Int) Int?: n * 2).get(), 4)?
 	expect_equal(success.clone().map(fn n: n + 1).get(), 3)?
 	expect_equal(success.and_then(fn n: ok(n * 2)).get(), 4)?

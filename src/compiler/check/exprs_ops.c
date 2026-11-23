@@ -448,7 +448,17 @@ static MsTy none_comparison(Body *body, const MsExpr *expr) {
   const bool null_left = names_none(body, expr->u.bin.left);
   const MsExpr *other = null_left ? expr->u.bin.right : expr->u.bin.left;
   const MsExpr *nothing = null_left ? expr->u.bin.left : expr->u.bin.right;
+  /* a narrowed local is read as the nullable it is stored as: the test is about presence, not the payload */
+  const MsLocal *found = other->kind == MS_E_NAME ? body_find_local(body, other->u.sym) : NULL;
+  MsLocal *narrowed = found != NULL ? &body->locals.ptr[found - body->locals.ptr] : NULL;
+  const MsTy held = narrowed != NULL ? narrowed->narrowed : MS_TY_NONE;
+  if (narrowed != NULL) {
+    narrowed->narrowed = MS_TY_NONE;
+  }
   const MsTy ty = body_expr(body, other, MS_TY_NONE);
+  if (narrowed != NULL) {
+    narrowed->narrowed = held;
+  }
   if (is_nullable(body, ty)) {
     body_expr(body, nothing, ty);
     return body_primitive(body, MS_BUILTIN_Bool);

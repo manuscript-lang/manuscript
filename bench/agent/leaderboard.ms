@@ -251,7 +251,8 @@ fn collect(dirs: List[String]) Int:
 			path := entry.path.clone()
 			dir := f"{jobs}/{path}"
 			leaf := path.split("/").last() or ""
-			is_dir := stat(dir).to_optional().map(fn s: s.is_directory()) or (false)
+			info := stat(dir).to_optional()
+			is_dir := info != null and info.is_directory()
 
 			if is_dir and leaf.split("__").length() == 2:
 				t := read_trial(dir)
