@@ -671,6 +671,7 @@ static MirValue take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var) {
 
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
+    fn_presolve_keys(fn, stmt->u.assign.target); /* the target's indices run before the value, once */
     const MirValue value = take_value(fn, stmt->u.assign.value);
     if (value == MIR_NONE) {
       return false;
