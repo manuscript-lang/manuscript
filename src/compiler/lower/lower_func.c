@@ -359,6 +359,12 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MsTyTable *types = &cx->program->types;
   MsTyParam params[LOWER_MAX_PARAMS];
   const uint32_t count = target_params(cx, target, params);
+  if (count != (target->receiver != MS_TY_NONE ? 1u : 0u) + (uint32_t)ms_ty_param_count(types, target->ty)) {
+    const MsSpan file = cx->module->files.ptr[lower_file(cx, target->module)];
+    (void)lower_user_fail(cx, "%.*s: a function takes at most %u parameters; pass a record instead", (int)file.len,
+                          (const char *)file.ptr, (unsigned)LOWER_MAX_PARAMS);
+    return MIR_NONE;
+  }
   MirParam *mir_params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
     /* A `var` parameter travels as the address of a slot that holds its value. */

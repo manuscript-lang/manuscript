@@ -255,8 +255,11 @@ static bool held_across(const MsCall *call, bool native) {
 
 static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirValue *out, VarSlot *slots,
                        uint32_t *nslots, bool receiver_var, bool native, MirValue *held) {
-  uint32_t order[LOWER_MAX_ARGS];
-  MirValue pending[LOWER_MAX_ARGS];
+  uint32_t order_small[LOWER_MAX_ARGS];
+  MirValue pending_small[LOWER_MAX_ARGS];
+  const bool big = call->arg_count > LOWER_MAX_ARGS;
+  uint32_t *order = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint32_t, call->arg_count) : order_small;
+  MirValue *pending = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, call->arg_count) : pending_small;
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
     pending[at] = MIR_NONE;
@@ -275,7 +278,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
-                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind == MS_REF_FUNCTION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
+                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind == MS_REF_FUNCTION)) || (index == 0 && receiver_var)) && *nslots < call->arg_count;
     /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
     const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
     const bool receiver_place = index == 0 && (call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE) && arg->source == MS_ARG_WRITTEN;
@@ -744,12 +747,15 @@ static MirValue construct_self(LowerFn *fn, const MsExpr *expr) {
   const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(fn->cx->module, ty);
   const MirTypeDef *def = data == NULL || data->kind != MK_TYPE ? NULL : &fn->cx->module->type_defs.ptr[data->id];
   const size_t written = expr->u.call.args.len;
-  if (def == NULL || def->nfields == 0 || def->nfields > LOWER_MAX_ARGS || written != def->nfields) {
+  if (def == NULL || def->nfields == 0 || written != def->nfields) {
     (void)fn_fail(fn, "`Self(...)` needs a record type that every argument fills");
     return MIR_NONE;
   }
-  MirValue values[LOWER_MAX_ARGS];
-  bool filled[LOWER_MAX_ARGS] = {false};
+  MirValue *values = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, def->nfields);
+  bool *filled = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, def->nfields);
+  for (size_t at = 0; at < def->nfields; at++) {
+    filled[at] = false;
+  }
   for (size_t at = 0; at < written; at++) {
     const MsArg *arg = &expr->u.call.args.ptr[at];
     size_t field = at;
@@ -772,7 +778,15 @@ static MirValue construct_self(LowerFn *fn, const MsExpr *expr) {
   return fn_emit(fn, MOP_TypeNew, values, def->nfields, imm, ty);
 }
 
-static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
+/* Where one call keeps its arguments, their `var` slots and the operands it holds: the stack for most calls, the module's
+ * arena for a call of more than LOWER_MAX_ARGS arguments (a record constructor takes one per field). */
+typedef struct CallBufs {
+  MirValue *args, *held;
+  VarSlot *slots;
+} CallBufs;
+
+static MirValue call_body(LowerFn *fn, const MsExpr *expr, CallBufs *bufs) {
+  MirValue *held = bufs->held;
   const MsCall *call = fn_find_call(fn->facts, expr->id);
   if (call == NULL && expr->u.call.callee->kind == MS_E_NAME &&
       ms_span_is_text(ms_names_span(fn->cx->program->names, expr->u.call.callee->u.sym), "Self")) {
@@ -785,12 +799,12 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
   if (value_callee && (named || call != NULL)) {
     return fn_call_value(fn, expr, call != NULL && named && call->callee.kind != MS_REF_NONE ? &call->callee : NULL);
   }
-  if (call == NULL || call->arg_count > LOWER_MAX_ARGS) {
+  if (call == NULL) {
     (void)fn_fail(fn, "the checker recorded no usable call at %u:%u (node %u, %u calls)", expr->pos.line, expr->pos.column, expr->id, (unsigned)fn->facts->calls.len);
     return MIR_NONE;
   }
-  MirValue args[LOWER_MAX_ARGS];
-  VarSlot slots[LOWER_MAX_ARGS];
+  MirValue *args = bufs->args;
+  VarSlot *slots = bufs->slots;
   uint32_t nslots = 0;
   LowerTarget target;
   const bool source = (call->callee.kind == MS_REF_FUNCTION || call->callee.kind == MS_REF_METHOD) &&
@@ -858,16 +872,23 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
 }
 
 static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
-  MirValue held[LOWER_MAX_ARGS];
-  for (uint32_t at = 0; at < LOWER_MAX_ARGS; at++) {
-    held[at] = MIR_NONE;
+  const MsCall *found = fn_find_call(fn->facts, expr->id);
+  const uint32_t count = found != NULL && found->arg_count > LOWER_MAX_ARGS ? found->arg_count : LOWER_MAX_ARGS;
+  MirValue args_small[LOWER_MAX_ARGS], held_small[LOWER_MAX_ARGS];
+  VarSlot slots_small[LOWER_MAX_ARGS];
+  const bool big = count > LOWER_MAX_ARGS;
+  CallBufs bufs = {.args = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, count) : args_small,
+                   .held = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, count) : held_small,
+                   .slots = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, VarSlot, count) : slots_small};
+  for (uint32_t at = 0; at < count; at++) {
+    bufs.held[at] = MIR_NONE;
   }
   const uint32_t lent = fn->nwritebacks; /* the `var` arguments' slots, lent for this call only */
-  const MirValue result = call_body(fn, expr, held);
+  const MirValue result = call_body(fn, expr, &bufs);
   fn->nwritebacks = lent;
-  for (uint32_t at = 0; at < LOWER_MAX_ARGS && !fn->terminated; at++) {
-    if (held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &held[at], 1, (MirImm){0}, MIR_NONE);
+  for (uint32_t at = 0; at < count && !fn->terminated; at++) {
+    if (bufs.held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
+      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &bufs.held[at], 1, (MirImm){0}, MIR_NONE);
     }
   }
   return result;
