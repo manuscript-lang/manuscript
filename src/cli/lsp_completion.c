@@ -2,6 +2,8 @@
  * scope walk shows the bindings in scope at the marker and the checked type of what a member is taken from. */
 #include "cli/lsp_completion.h"
 
+#include "cli/lsp_completion_internal.h"
+
 #include <stdlib.h>
 
 #include "base/cstr.h"
@@ -9,6 +11,7 @@
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
+#include "cli/lsp_actions.h"
 #include "cli/lsp_workspace.h"
 #include "compiler/check/program.h"
 #include "compiler/project/manifest.h"
@@ -17,51 +20,6 @@
 #include "tooling/facts.h"
 #include "compiler/check/scope_walk.h"
 #include "tooling/doc_comment.h"
-
-#define MARKER "__manuscript_completion"
-
-typedef struct Item {
-  MsString label, detail, documentation, sort, insert;
-  int kind, format;
-} Item;
-
-MS_LIST_DEFINE(ItemList, item_list, Item)
-
-typedef struct Completer {
-  MsSpan source;
-  size_t start, end, offset; /* the word under the cursor, and the cursor */
-  MsSpan prefix;
-  bool member, type_context, snippets;
-  LspAnalysis *analysis;
-  MsCheckProgram *program;
-  uint32_t module; /* the document's module, or UINT32_MAX */
-  MsBindingList scope;
-  MsNode left; /* the receiver of the member being completed */
-  bool has_left;
-  ItemList items;
-} Completer;
-
-static bool is_word(uint8_t byte) {
-  return byte == '_' || (byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') || byte >= 0x80;
-}
-
-static uint8_t lower(uint8_t byte) { return byte >= 'A' && byte <= 'Z' ? (uint8_t)(byte + 32) : byte; }
-
-/* Case-insensitive subsequence match. */
-static bool name_matches(MsSpan name, MsSpan query) {
-  size_t at = 0;
-  for (size_t i = 0; i < name.len && at < query.len; i++) {
-    if (lower(name.ptr[i]) == lower(query.ptr[at])) at++;
-  }
-  return at == query.len;
-}
-
-static bool contains(MsSpan text, const char *needle) {
-  size_t at;
-  return ms_span_find(text, ms_span_of_text(needle), &at);
-}
-
-static MsString own(MsSpan text) { return ms_string_from_span(text); }
 
 static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSpan insert, MsSpan documentation) {
   if (!name_matches(name, c->prefix) || ms_span_starts_with(name, ms_span_of_text(MARKER))) return;
@@ -388,7 +346,7 @@ static void walk_expr(void *context, const MsExpr *expr, const MsBindingList *sc
   walk->completer->has_left = true;
 }
 
-static int compare_item(const void *left, const void *right) {
+int lsp_completion_compare_item(const void *left, const void *right) {
   const Item *a = left, *b = right;
   const MsSpan x[2] = {ms_string_span(&a->sort), ms_string_span(&a->detail)};
   const MsSpan y[2] = {ms_string_span(&b->sort), ms_string_span(&b->detail)};
@@ -430,342 +388,6 @@ static bool in_type_position(MsSpan source, size_t start) {
   return result;
 }
 
-/* ---- imports ---- */
-
-/* An item with no scoring of its own: sorted by label, the detail naming the module. */
-static void import_item(Completer *c, MsSpan label, int kind, MsSpan detail, MsSpan insert) {
-  Item item = {.label = own(label), .detail = own(detail), .documentation = own((MsSpan){0}), .sort = own(label), .insert = own(insert),
-               .kind = kind, .format = 1};
-  item_list_push(&c->items, item);
-}
-
-/* The `import` declaration the cursor is in: where it starts and whether it is a parenthesized group. `*braces` is the
- * group depth at the cursor. */
-static bool import_site(MsSpan source, size_t word_start, size_t offset, size_t *start, bool *grouped, int *braces) {
-  LspTokenList tokens = {0};
-  lsp_scan_tokens(ms_span_of(source.ptr, offset), &tokens);
-  bool found = false;
-  *grouped = false;
-  *braces = 0;
-  for (size_t i = 0; i < tokens.len; i++) {
-    const LspEditorToken *token = &tokens.ptr[i];
-    const MsSpan text = ms_span_of(source.ptr + token->start, token->end - token->start);
-    if (token->kind == LSP_TOKEN_NAME && ms_span_is_text(text, "import") && token->end <= word_start) {
-      *start = token->start;
-      found = true;
-      *grouped = false;
-      *braces = 0;
-    } else if (found && token->kind == LSP_TOKEN_CHAR) {
-      if (text.ptr[0] == '(') {
-        (*braces)++;
-        *grouped = true;
-      } else if (text.ptr[0] == ')') {
-        (*braces)--;
-      } else if (text.ptr[0] == '\n' && *braces <= 0) {
-        found = false;
-      }
-    }
-  }
-  lsp_token_list_free(&tokens);
-  return found;
-}
-
-static bool is_type_decl(const MsDecl *decl) {
-  return decl->kind == MS_D_TYPE || decl->kind == MS_D_ENUM || decl->kind == MS_D_ALIAS || decl->kind == MS_D_INTERFACE;
-}
-
-static bool listed(const MsSpanList *names, MsSpan name) {
-  for (size_t i = 0; i < names->len; i++) {
-    if (ms_span_equal(names->ptr[i], name)) return true;
-  }
-  return false;
-}
-
-/* Offers the exports of the module `text` (named `path`, a bundled module when `bundled`) that match the word and are not
- * imported yet. `known` says the declaration names its module; `with_from` adds ` from "path"` to the inserted name. */
-static void add_exports(Completer *c, MsSpan text, MsSpan path, bool bundled, const MsSpanList *imported, bool known, bool with_from) {
-  MsArena arena = ms_arena_new();
-  MsNames names;
-  ms_names_init(&names);
-  MsModule module;
-  MsDiag diag;
-  if (ms_parse(&arena, &names, text, &module, &diag)) {
-    for (uint32_t d = 0; d < module.ndecls; d++) {
-      MsName declared;
-      const MsDecl *decl = module.decls[d];
-      if (!decl->is_exported || !ms_check_declared_name(decl, &declared)) continue;
-      const MsSpan name = ms_names_span(&names, declared);
-      if ((bundled && ms_check_is_prelude_declaration(path, name)) || listed(imported, name) || !name_matches(name, c->prefix)) continue;
-      MsStrBuild insert = ms_strbuild_new();
-      ms_strbuild_append(&insert, name);
-      if (with_from) {
-        ms_strbuild_append_text(&insert, " from \"");
-        ms_strbuild_append(&insert, path);
-        ms_strbuild_append_byte(&insert, '"');
-      }
-      import_item(c, name, !known ? 7 : (is_type_decl(decl) ? 7 : decl->kind == MS_D_CONST ? 21 : 3), path, ms_strbuild_span(&insert));
-      ms_strbuild_free(&insert);
-    }
-  }
-  ms_names_free(&names);
-  ms_arena_free(&arena);
-}
-
-/* The bundled modules a user may import: not the internal ones, and not the two that hold only prelude names. */
-static bool public_module(MsSpan name) { return !ms_span_starts_with(name, ms_span_of_text("internal/")); }
-
-static bool has_public_export(MsSpan name, MsSpan text) {
-  MsArena arena = ms_arena_new();
-  MsNames names;
-  ms_names_init(&names);
-  MsModule module;
-  MsDiag diag;
-  bool found = false;
-  if (ms_parse(&arena, &names, text, &module, &diag)) {
-    MsStrBuild file = ms_strbuild_new();
-    ms_strbuild_append_text(&file, "@std/");
-    ms_strbuild_append(&file, name);
-    for (uint32_t d = 0; d < module.ndecls && !found; d++) {
-      MsName declared;
-      const MsDecl *decl = module.decls[d];
-      found = decl->is_exported && ms_check_declared_name(decl, &declared) &&
-              !ms_check_is_prelude_declaration(ms_strbuild_span(&file), ms_names_span(&names, declared));
-    }
-    ms_strbuild_free(&file);
-  }
-  ms_names_free(&names);
-  ms_arena_free(&arena);
-  return found;
-}
-
-static void add_path(Completer *c, MsSpan path, bool directory) {
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append(&text, path);
-  if (directory) ms_strbuild_append_byte(&text, '/');
-  import_item(c, ms_strbuild_span(&text), 17, ms_strbuild_span(&text), ms_strbuild_span(&text));
-  ms_strbuild_free(&text);
-}
-
-static int compare_entry(const void *left, const void *right) {
-  return (int)ms_span_compare(ms_string_span(&((const MsDirEntry *)left)->name), ms_string_span(&((const MsDirEntry *)right)->name));
-}
-
-/* The names an import in `doc` may start with (`@alias`, `@dependency`) and the directory each reaches. */
-static bool project_names(MsArena *arena, const LspDoc *doc, MsManifest *manifest) {
-  MsStrBuild base = ms_strbuild_new();
-  ms_path_dir(ms_string_span(&doc->path), &base);
-  const MsSpan root = lsp_project_root(arena, ms_arena_copy(arena, ms_strbuild_span(&base)));
-  ms_strbuild_free(&base);
-  const MsSpan file = ms_message_format(arena, "%S/ms.toml", root, (MsSpan){0});
-  MsProjectError error;
-  return ms_path_kind(file) == MS_PATH_FILE && ms_manifest_read(arena, file, manifest, &error);
-}
-
-static bool name_target(const MsManifest *manifest, MsSpan name, MsSpan *target) {
-  return ms_manifest_find(&manifest->aliases, name, target) || ms_manifest_find(&manifest->deps, name, target);
-}
-
-/* The `.ms` files and directories of `directory` whose path, written after `directory_prefix`, starts with `prefix`. The
- * directory must lie inside `root`. */
-static void list_directory(Completer *c, MsArena *arena, MsSpan directory, MsSpan root, MsSpan directory_prefix, MsSpan prefix) {
-  MsStrBuild cleaned = ms_strbuild_new(), inside = ms_strbuild_new();
-  ms_path_clean(&cleaned, directory);
-  MsDirEntryList entries = {0};
-  if (ms_path_relative(&inside, root, ms_strbuild_span(&cleaned)) && !ms_path_escapes(ms_strbuild_span(&inside)) &&
-      ms_dir_list(ms_strbuild_span(&cleaned), &entries)) {
-    if (entries.len > 1) qsort(entries.ptr, entries.len, sizeof(MsDirEntry), compare_entry);
-    for (size_t i = 0; i < entries.len; i++) {
-      const MsSpan name = ms_string_span(&entries.ptr[i].name);
-      const MsSpan full = ms_message_format(arena, "%S%S", directory_prefix, name);
-      MsStrBuild entry_path = ms_strbuild_new();
-      ms_path_join(ms_strbuild_span(&cleaned), name, &entry_path);
-      const bool is_directory = entries.ptr[i].kind == MS_PATH_DIRECTORY ||
-                                (entries.ptr[i].kind == MS_PATH_SYMLINK && ms_dir_exists(ms_strbuild_span(&entry_path)));
-      ms_strbuild_free(&entry_path);
-      if (ms_span_starts_with(full, prefix) && (is_directory || ms_span_ends_with(name, ms_span_of_text(".ms")))) add_path(c, full, is_directory);
-    }
-  }
-  ms_dir_entries_free(&entries);
-  ms_strbuild_free(&cleaned);
-  ms_strbuild_free(&inside);
-}
-
-/* The module paths that start with `prefix`: bundled modules, the project's `@` names and, after `./`, `../` or an `@` name's
- * slash, the entries of that directory. */
-static void path_items(Completer *c, const LspDoc *doc, MsSpan prefix) {
-  size_t count = 0;
-  const MsStdSource *sources = ms_std_sources(&count);
-  MsStrBuild path = ms_strbuild_new();
-  for (size_t i = 0; i < count; i++) {
-    if (!public_module(sources[i].name) || !has_public_export(sources[i].name, sources[i].text)) continue;
-    ms_strbuild_clear(&path);
-    ms_strbuild_append_text(&path, "@std/");
-    ms_strbuild_append(&path, sources[i].name);
-    if (ms_span_starts_with(ms_strbuild_span(&path), prefix)) add_path(c, ms_strbuild_span(&path), false);
-  }
-  ms_strbuild_free(&path);
-  MsArena arena = ms_arena_new();
-  MsManifest manifest = {0};
-  const bool has_manifest = project_names(&arena, doc, &manifest);
-  if (has_manifest) {
-    const ManifestNameList *lists[2] = {&manifest.aliases, &manifest.deps};
-    for (size_t l = 0; l < 2; l++) {
-      for (size_t i = 0; i < lists[l]->len; i++) {
-        const MsManifestName *entry = &lists[l]->ptr[i];
-        if (ms_span_starts_with(entry->name, prefix)) add_path(c, entry->name, ms_dir_exists(entry->target));
-      }
-    }
-  }
-  size_t slash = prefix.len;
-  while (slash > 0 && prefix.ptr[slash - 1] != '/') slash--;
-  const MsSpan directory_prefix = ms_span_of(prefix.ptr, slash);
-  const bool relative = ms_span_starts_with(prefix, ms_span_of_text("./")) || ms_span_starts_with(prefix, ms_span_of_text("../"));
-  const bool aliased = ms_span_starts_with(prefix, ms_span_of_text("@")) && !ms_span_starts_with(prefix, ms_span_of_text("@std/"));
-  if (slash > 0 && relative) {
-    MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new();
-    ms_path_dir(ms_string_span(&doc->path), &base);
-    ms_path_join(ms_strbuild_span(&base), directory_prefix, &joined);
-    const MsSpan root = lsp_project_root(&arena, ms_arena_copy(&arena, ms_strbuild_span(&base)));
-    list_directory(c, &arena, ms_strbuild_span(&joined), root, directory_prefix, prefix);
-    ms_strbuild_free(&base);
-    ms_strbuild_free(&joined);
-  } else if (slash > 0 && aliased && has_manifest) {
-    /* `@lib/sub/` lists the directory of `@lib` below `sub/`. */
-    const MsSpan trimmed = ms_span_of(prefix.ptr, slash - 1);
-    size_t cut = 0;
-    while (cut < trimmed.len && trimmed.ptr[cut] != '/') cut++;
-    const MsSpan alias = ms_span_of(trimmed.ptr, cut);
-    const MsSpan remainder = cut < trimmed.len ? ms_span_of(trimmed.ptr + cut + 1, trimmed.len - cut - 1) : (MsSpan){0};
-    MsSpan target;
-    if (name_target(&manifest, alias, &target) && ms_dir_exists(target)) {
-      MsStrBuild joined = ms_strbuild_new();
-      ms_path_join(target, remainder, &joined);
-      list_directory(c, &arena, ms_strbuild_span(&joined), target, directory_prefix, prefix);
-      ms_strbuild_free(&joined);
-    }
-  }
-  ms_arena_free(&arena);
-}
-
-/* The module path of the `from "..."` that follows the cursor in the same declaration. */
-static bool following_path(MsSpan source, size_t from, int braces, MsSpan *path) {
-  const int depth = braces; /* a group's entry names its module at the group's depth */
-  LspTokenList tokens = {0};
-  lsp_scan_tokens(ms_span_of(source.ptr + from, source.len - from), &tokens);
-  bool found = false;
-  for (size_t i = 0; i < tokens.len && !found; i++) {
-    const LspEditorToken *token = &tokens.ptr[i];
-    const MsSpan text = ms_span_of(source.ptr + from + token->start, token->end - token->start);
-    if ((token->kind == LSP_TOKEN_CHAR && text.ptr[0] == '\n' && braces <= 0) || (token->kind == LSP_TOKEN_NAME && ms_span_is_text(text, "import"))) break;
-    if (token->kind == LSP_TOKEN_CHAR && text.ptr[0] == '(') braces++;
-    if (token->kind == LSP_TOKEN_CHAR && text.ptr[0] == ')') braces--;
-    if (braces < depth) break;
-    if (braces == depth && token->kind == LSP_TOKEN_NAME && ms_span_is_text(text, "from") && i + 1 < tokens.len &&
-        tokens.ptr[i + 1].kind == LSP_TOKEN_STRING) {
-      const LspEditorToken *quoted = &tokens.ptr[i + 1];
-      const MsSpan literal = ms_span_of(source.ptr + from + quoted->start, quoted->end - quoted->start);
-      if (literal.len >= 2 && literal.ptr[literal.len - 1] == '"' && literal.ptr[0] == '"') {
-        *path = ms_span_of(literal.ptr + 1, literal.len - 2);
-        found = true;
-      }
-    }
-  }
-  lsp_token_list_free(&tokens);
-  return found;
-}
-
-/* The names an import declaration already lists, except the word under the cursor. */
-static void imported_names(Completer *c, size_t start, bool grouped, MsSpanList *out) {
-  size_t stop = start;
-  while (stop < c->source.len && c->source.ptr[stop] != (grouped ? ')' : '\n')) stop++;
-  LspTokenList tokens = {0};
-  lsp_scan_tokens(ms_span_of(c->source.ptr + start, stop - start), &tokens);
-  for (size_t i = 0; i < tokens.len; i++) {
-    const LspEditorToken *token = &tokens.ptr[i];
-    const MsSpan text = ms_span_of(c->source.ptr + start + token->start, token->end - token->start);
-    if (token->kind != LSP_TOKEN_NAME || ms_span_is_text(text, "import") || ms_span_is_text(text, "from")) continue;
-    if (start + token->end <= c->start || start + token->start >= c->end) ms_span_list_push(out, text);
-  }
-  lsp_token_list_free(&tokens);
-}
-
-/* Completion inside an `import` declaration: module paths in the string, exported names elsewhere. False outside one. */
-static bool import_items(Completer *c, const LspDoc *doc, const LspDocList *docs) {
-  size_t start;
-  bool grouped;
-  int braces;
-  if (!import_site(c->source, c->start, c->offset, &start, &grouped, &braces)) return false;
-  LspTokenList tokens = {0};
-  lsp_scan_tokens(ms_span_of(c->source.ptr + start, c->offset - start), &tokens);
-  size_t quote = SIZE_MAX;
-  for (size_t i = 0; i < tokens.len && quote == SIZE_MAX; i++) {
-    if (tokens.ptr[i].kind == LSP_TOKEN_STRING) quote = start + tokens.ptr[i].start;
-  }
-  lsp_token_list_free(&tokens);
-  if (quote != SIZE_MAX) {
-    c->start = quote + 1;
-    c->end = c->offset;
-    while (c->end < c->source.len && c->source.ptr[c->end] != '"' && c->source.ptr[c->end] != '\n') c->end++;
-    path_items(c, doc, ms_span_of(c->source.ptr + c->start, c->offset - c->start));
-    qsort(c->items.ptr, c->items.len, sizeof(Item), compare_item);
-    return true;
-  }
-  MsSpanList imported = {0};
-  imported_names(c, start, grouped, &imported);
-  MsSpan path;
-  if (following_path(c->source, c->end, braces, &path)) {
-    if (ms_span_starts_with(path, ms_span_of_text("@std/"))) {
-      MsStdSource source;
-      if (ms_std_source_find(ms_span_of(path.ptr + 5, path.len - 5), &source)) add_exports(c, source.text, path, true, &imported, true, false);
-    } else if (ms_span_starts_with(path, ms_span_of_text(".")) || ms_span_starts_with(path, ms_span_of_text("@"))) {
-      MsArena arena = ms_arena_new();
-      MsStrBuild base = ms_strbuild_new(), joined = ms_strbuild_new(), file = ms_strbuild_new();
-      bool resolved = true;
-      if (path.ptr[0] == '.') {
-        ms_path_dir(ms_string_span(&doc->path), &base);
-        ms_path_join(ms_strbuild_span(&base), path, &joined);
-      } else {
-        MsManifest manifest = {0};
-        size_t cut = 0;
-        while (cut < path.len && path.ptr[cut] != '/') cut++;
-        MsSpan target;
-        resolved = project_names(&arena, doc, &manifest) && name_target(&manifest, ms_span_of(path.ptr, cut), &target);
-        if (resolved) ms_path_join(target, cut < path.len ? ms_span_of(path.ptr + cut + 1, path.len - cut - 1) : (MsSpan){0}, &joined);
-      }
-      ms_path_clean(&file, ms_strbuild_span(&joined));
-      MsBytes bytes = {0};
-      MsSpan text = {0};
-      for (size_t i = 0; resolved && i < docs->len; i++) {
-        if (ms_span_equal(ms_string_span(&docs->ptr[i].path), ms_strbuild_span(&file))) text = ms_string_span(&docs->ptr[i].text);
-      }
-      const bool on_disk = resolved && text.ptr == NULL && ms_file_read(ms_strbuild_span(&file), &bytes);
-      if (on_disk) text = ms_bytes_span(&bytes);
-      if (text.ptr != NULL) add_exports(c, text, path, false, &imported, true, false);
-      if (on_disk) ms_bytes_free(&bytes);
-      ms_strbuild_free(&base);
-      ms_strbuild_free(&joined);
-      ms_strbuild_free(&file);
-      ms_arena_free(&arena);
-    }
-  } else {
-    size_t count = 0;
-    const MsStdSource *sources = ms_std_sources(&count);
-    MsStrBuild module = ms_strbuild_new();
-    for (size_t i = 0; i < count; i++) {
-      if (!public_module(sources[i].name)) continue;
-      ms_strbuild_clear(&module);
-      ms_strbuild_append_text(&module, "@std/");
-      ms_strbuild_append(&module, sources[i].name);
-      add_exports(c, sources[i].text, ms_strbuild_span(&module), true, &imported, false, !grouped);
-    }
-    ms_strbuild_free(&module);
-  }
-  ms_span_list_free(&imported);
-  if (c->items.len > 1) qsort(c->items.ptr, c->items.len, sizeof(Item), compare_item);
-  return true;
-}
-
-/* The marked document's analysis and, from it, the items of the cursor's place. */
 static void checked_items(Completer *c, const LspDocList *docs, const LspDoc *doc, MsStrBuild *marked, LspAnalysis *analysis) {
   const MsSpan source = c->source;
   /* The document with the word replaced by the marker. */
@@ -783,6 +405,7 @@ static void checked_items(Completer *c, const LspDocList *docs, const LspDoc *do
       if (ms_span_equal(analysis->paths[m], ms_string_span(&doc->path))) c->module = m;
     }
   }
+  if (c->module != UINT32_MAX) c->tree = c->program->modules.ptr[c->module].tree;
   if (c->module != UINT32_MAX) {
     Walk walk = {c, ms_names_intern(c->program->names, ms_span_of_text(MARKER))};
     const MsScopeVisitor visitor = {.context = &walk, .name = walk_name, .expr = walk_expr};
@@ -796,6 +419,7 @@ static void checked_items(Completer *c, const LspDocList *docs, const LspDoc *do
       keyword_items(c);
     }
   }
+  if (!c->member && c->prefix.len > 0) lsp_import_suggestions(c, docs, doc);
 }
 
 void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool snippets, MsStrBuild *out) {
@@ -830,7 +454,7 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
   if (c.end < source.len && source.ptr[c.end] == '(') c.snippets = false; /* the call is already written */
   LspAnalysis analysis = {0};
   MsStrBuild marked = ms_strbuild_new();
-  const bool imports = (in_string || !c.member) && import_items(&c, doc, docs);
+  const bool imports = (in_string || !c.member) && lsp_import_items(&c, doc, docs);
   if (in_string && !imports) {
     item_list_free(&c.items);
     ms_strbuild_free(&marked);
@@ -838,7 +462,7 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     return;
   }
   if (!imports) checked_items(&c, docs, doc, &marked, &analysis);
-  if (!imports && c.items.len > 1) qsort(c.items.ptr, c.items.len, sizeof(Item), compare_item);
+  if (!imports && c.items.len > 1) qsort(c.items.ptr, c.items.len, sizeof(Item), lsp_completion_compare_item);
   ms_strbuild_append_byte(out, '[');
   for (size_t i = 0; i < c.items.len; i++) {
     const Item *item = &c.items.ptr[i];
@@ -860,6 +484,11 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
       ms_strbuild_append_text(out, ",\"detail\":");
       lsp_json_string(out, ms_string_span(&item->detail));
     }
+    if (ms_string_length(&item->additional) > 0) {
+      ms_strbuild_append_text(out, ",\"additionalTextEdits\":[");
+      ms_strbuild_append(out, ms_string_span(&item->additional));
+      ms_strbuild_append_byte(out, ']');
+    }
     if (ms_string_length(&item->documentation) > 0) {
       ms_strbuild_append_text(out, ",\"documentation\":{\"kind\":\"markdown\",\"value\":");
       lsp_json_string(out, ms_string_span(&item->documentation));
@@ -874,6 +503,7 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
     ms_string_release(&c.items.ptr[i].documentation);
     ms_string_release(&c.items.ptr[i].sort);
     ms_string_release(&c.items.ptr[i].insert);
+    ms_string_release(&c.items.ptr[i].additional);
   }
   item_list_free(&c.items);
   ms_binding_list_free(&c.scope);
