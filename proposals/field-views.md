@@ -8,7 +8,7 @@
 
 ## Status
 
-Stages 1 and 2 implemented 2026-11-23 (`opt_fieldview.c`); proposal, 2026-11-23, checked against `e47e2b0d0b`. Review (skeptical subagent): revise; this text covers its findings (slot-parked chains, unwind of a half-updated record, spills, `MIR_E_OWNERSHIP` aliasing). The stdlib is frozen: no reshaping of `yaml.ms` (coordinator, 2026-11-23).
+Stages 1 and 2 implemented 2026-11-23 (`opt_fieldview.c`); stage 2 also handles a field lent to a call through a slot (the callee gets the field's address), a scalar edit of a record field (`flow.context.values -= 1` stores in place and drops the clone) and a call that only borrows the record (it gets a loaded copy). In `ms test` builds `flow_value` goes from 28.4 KB to 5.8 KB; proposal, 2026-11-23, checked against `e47e2b0d0b`. Review (skeptical subagent): revise; this text covers its findings (slot-parked chains, unwind of a half-updated record, spills, `MIR_E_OWNERSHIP` aliasing). The stdlib is frozen: no reshaping of `yaml.ms` (coordinator, 2026-11-23).
 
 ## Problem
 
