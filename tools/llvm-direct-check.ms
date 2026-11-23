@@ -11,8 +11,8 @@
 //
 // Hosts that build releases with Cranelift (Windows) have one backend, so both sides
 // are identical there and the check still runs. MS picks the compiler (default
-// target/debug/ms), RUNS the kernel repeats (default 5, interleaved; the minimum is
-// reported).
+// .artifacts/build/ci/src/cli/ms), RUNS the kernel repeats (default 5, interleaved; the
+// minimum is reported).
 import (
 	arguments from "@std/os/env.ms",
 	access,
@@ -28,7 +28,7 @@ import (
 )
 
 fn ms_path() String:
-	return env("MS", f"target/debug/ms{exe()}")
+	return env("MS", f".artifacts/build/ci/src/cli/ms{exe()}")
 
 // One release build: what it took, what it emitted and what the program printed.
 type Built:

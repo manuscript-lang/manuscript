@@ -621,17 +621,7 @@ fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 // Returns a new list holding the elements `count` times over, in order. A `count` of
 // zero or below gives an empty list. Example: `[1, 2].repeated(2)` is
 // `[1, 2, 1, 2]`.
-fn List[T: Clonable].repeated(count: Int) List[T]:
-	var out = List[T]()
-	if self.is_empty(): return out
-
-	var round = 0
-
-	while round < count:
-		out.extend(self)
-		round += 1
-
-	return out
+fn List[T: Clonable].repeated(count: Int) List[T]: ...
 
 // Appends a copy of every element of `other`, in order, to this list in place;
 // `other` is unchanged. The argument cannot be the receiver. Example: after
@@ -815,16 +805,16 @@ fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
-// absent. The key is looked up once, `initial` is always evaluated, and `change`
-// runs once. Example: `counts.update(word, 0, fn n: n + 1)` counts occurrences.
+// absent. The key is looked up once to read and once to store, `initial` is always
+// evaluated, and `change` runs once. Example: `counts.update(word, 0, fn n: n + 1)`
+// counts occurrences.
 fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move key: T,
 	move initial: U,
 	change: fn(U) U
 ) Void:
-	var base = initial
-	if self.contains(key): base = self[key]
-	self.add(key, change(base))
+	next := change(self.get_or(key, initial))
+	self.add(key, next)
 
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.

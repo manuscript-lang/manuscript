@@ -4,7 +4,7 @@
 
 - Problem: the emitter spreads every value over one SSA register per leaf, so a 66-leaf record (the YAML parser's `Flow`) is 66 spilled registers wherever it is live, plus a 520-byte argument copy per call.
 - Change: in Debug builds a value of more than `wide_leaves` leaves lives in a stack cell; each instruction loads only the leaves it reads; calls pass the cell's address; cells that are never live together share storage.
-- Decision requested: none (no language change; Release code is unchanged).
+- Decision requested: none (no language change; Release changes only for values over 16 leaves).
 
 ## Status
 
@@ -29,7 +29,7 @@ Debug frames (`ms build --build-type Debug`, `llc -O2`) of the standard-library 
 - A block parameter that is held has a cell and no phi. Each edge copies the argument's cell (`llvm.memcpy`) into it; a conditional edge goes through a block of its own so only the taken edge copies. An argument that is a parameter of the target (a swap around a loop) is copied leaf by leaf from loads taken before any copy.
 - A held argument of a call is passed by the address of its cell, a held result is written to its cell by the callee, and a parameter that arrives by address is read from there.
 - Cells and `slot`s share storage when they are never live together (`mir_cell_conflicts`: block liveness plus a backwards walk per block; a callee's result conflicts with its arguments, any other operation may replace its operand). Cells are given to LLVM through an empty `asm`, so `opt` does not promote them back to registers.
-- Release builds keep registers: `wide_leaves` is 0 unless the build is Debug.
+- Release builds hold values of more than 16 leaves the same way, with plain loads and no `asm` (`wide_hide` false) so `sroa` and `memcpyopt` still see them; Debug builds hide the cells (volatile loads, an opaque `asm`) and hold from 4 leaves. 2026-11-23: a 66-leaf `Flow` copied 125 times in one yaml function was 8000 stores; opt and llc took 21 s for the yaml test module, 15 s after.
 
 ## Components touched
 

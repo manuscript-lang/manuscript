@@ -87,6 +87,74 @@ bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirVa
   return list_put(fn, place, slot, record, updated);
 }
 
+/* `list.pop()`: the last element moves out into a `some`, the length drops by one and the list goes back; an empty list
+ * goes back unchanged and the answer is `none`. */
+bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out) {
+  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
+  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
+  const MirTyData *result = mir_ty_data(fn->cx->module, ret);
+  if (list->kind != MK_LIST || result->kind != MK_OPT || result->elem != list->elem) {
+    return false;
+  }
+  if (slot == MIR_NONE) {
+    slot = list_element_slot(fn, place);
+  }
+  MirValue owned;
+  MirValue record;
+  if (!list_changeable(fn, place, slot) || !list_take(fn, place, slot, list_ty, &owned, &record)) {
+    return false;
+  }
+  const MirBlock some = mir_b_new_block(&fn->b), none = mir_b_new_block(&fn->b), join = mir_b_new_block(&fn->b);
+  const MirValue answer = mir_b_add_block_param(&fn->b, join, ret, MM_MOVE);
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &owned, 1, (MirImm){0}, MIR_INT);
+  mir_b_br_if(&fn->b, mir_b_icmp(&fn->b, MCC_GT, length, mir_b_iconst(&fn->b, 0)), some, NULL, 0, none, NULL, 0);
+  mir_b_seal_block(&fn->b, some);
+  mir_b_seal_block(&fn->b, none);
+  mir_b_switch_to(&fn->b, some);
+  const MirValue at[2] = {owned, mir_b_binop(&fn->b, MOP_ISub, length, mir_b_iconst(&fn->b, 1))};
+  const MirValue item = mir_b_emit(&fn->b, MOP_ListTake, at, 2, (MirImm){0}, list->elem);
+  const MirValue shorter = mir_b_emit(&fn->b, MOP_ListDropLast, &owned, 1, (MirImm){.tag = MI_INT, .i = 1}, list_ty);
+  if (!list_put(fn, place, slot, record, shorter)) {
+    return false;
+  }
+  const MirValue found = mir_b_emit(&fn->b, MOP_OptSome, &item, 1, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &found, 1);
+  mir_b_switch_to(&fn->b, none);
+  if (!list_put(fn, place, slot, record, owned)) {
+    return false;
+  }
+  const MirValue missing = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  mir_b_br(&fn->b, join, &missing, 1);
+  mir_b_seal_block(&fn->b, join);
+  mir_b_switch_to(&fn->b, join);
+  if (mir_needs_drop(fn->cx->module, ret)) {
+    fn_own(fn, fn_scope(fn), answer);
+  }
+  *out = answer;
+  return true;
+}
+
+/* `index` counted from the end when negative, checked against `length`: out of range faults with `kind` (the runtime's
+ * `List` fault kind of the operation) and the code after it runs only for an index inside the list. */
+static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int64_t kind) {
+  const MirValue zero = mir_b_iconst(&fn->b, 0);
+  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, zero);
+  const MirValue at = mir_b_select(&fn->b, negative, mir_b_binop(&fn->b, MOP_IAdd, index, length), index);
+  const MirValue pair[2] = {at, length};
+  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue fault_args[3] = {mir_b_iconst(&fn->b, kind), index, length};
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_list_index_fault")), fault_args, 3, MIR_VOID);
+  mir_b_unreachable(&fn->b);
+  mir_b_switch_to(&fn->b, hit);
+  return at;
+}
+
 /* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the
  * old one): the receiver is taken out of its place or slot, the index is checked with the runtime's `List.set`
  * fault, the element is stored by `list.set.u`, and the updated list goes back. */
@@ -103,21 +171,7 @@ bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue
     return false;
   }
   const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
-  const MirValue zero = mir_b_iconst(&fn->b, 0);
-  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, args[1], zero);
-  const MirValue at = mir_b_select(&fn->b, negative, mir_b_binop(&fn->b, MOP_IAdd, args[1], length), args[1]);
-  const MirValue pair[2] = {at, length};
-  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
-  const MirBlock hit = mir_b_new_block(&fn->b);
-  const MirBlock miss = mir_b_new_block(&fn->b);
-  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
-  mir_b_seal_block(&fn->b, hit);
-  mir_b_seal_block(&fn->b, miss);
-  mir_b_switch_to(&fn->b, miss);
-  const MirValue fault_args[3] = {mir_b_iconst(&fn->b, 2), args[1], length};
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_list_index_fault")), fault_args, 3, MIR_VOID);
-  mir_b_unreachable(&fn->b);
-  mir_b_switch_to(&fn->b, hit);
+  const MirValue at = checked_index(fn, args[1], length, 2);
   MirValue owned;
   MirValue record;
   if (!list_take(fn, place, slot, list_ty, &owned, &record)) {
@@ -125,6 +179,40 @@ bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue
   }
   const MirValue operands[3] = {owned, at, args[2]};
   const MirValue updated = mir_b_emit(&fn->b, MOP_ListSetU, operands, 3, (MirImm){0}, list_ty);
+  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
+  return list_put(fn, place, slot, record, updated);
+}
+
+/* `list.swap(i, j)` on a list of plain values: both indices are checked with the runtime's `List.swap` fault, then
+ * the two elements are read and stored crosswise in line. Elements that own something go through the runtime. */
+bool fn_list_swap(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out) {
+  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
+  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
+  if (list->kind != MK_LIST || mir_needs_drop(fn->cx->module, list->elem)) {
+    return false;
+  }
+  if (slot == MIR_NONE) {
+    slot = list_element_slot(fn, place);
+  }
+  if (!list_changeable(fn, place, slot)) {
+    return false;
+  }
+  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
+  const MirValue first = checked_index(fn, args[1], length, 3);
+  const MirValue second = checked_index(fn, args[2], length, 3);
+  MirValue owned;
+  MirValue record;
+  if (!list_take(fn, place, slot, list_ty, &owned, &record)) {
+    return false;
+  }
+  const MirValue from_first[2] = {owned, first};
+  const MirValue from_second[2] = {owned, second};
+  const MirValue a = mir_b_emit(&fn->b, MOP_ListGetU, from_first, 2, (MirImm){0}, list->elem);
+  const MirValue b = mir_b_emit(&fn->b, MOP_ListGetU, from_second, 2, (MirImm){0}, list->elem);
+  const MirValue put_first[3] = {owned, first, b};
+  const MirValue half = mir_b_emit(&fn->b, MOP_ListSetU, put_first, 3, (MirImm){0}, list_ty);
+  const MirValue put_second[3] = {half, second, a};
+  const MirValue updated = mir_b_emit(&fn->b, MOP_ListSetU, put_second, 3, (MirImm){0}, list_ty);
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
   return list_put(fn, place, slot, record, updated);
 }

@@ -72,6 +72,13 @@ typedef struct LowerWriteback {
 enum { LOWER_MAX_WRITEBACKS = 8 };
 enum { LOWER_MAX_VAR_PARAMS = 8, LOWER_MAX_CLOSING_PARAMS = 32 };
 
+/* The exit of a call whose default argument uses `?`: the error leaves the call as its result, not the caller (lower_call.c). */
+typedef struct DefaultExit {
+  MirBlock join; /* the block the call's result, or the failed Result, flows to */
+  uint32_t keep; /* the scopes open outside the call: the exit ends the ones the call opened */
+  MirTy ret;     /* the call's result type, the type of the failed Result */
+} DefaultExit;
+
 typedef struct LowerFn {
   Lower *cx;
   MirBuilder b;
@@ -96,6 +103,8 @@ typedef struct LowerFn {
   MirTy *closing_types; /* the same index: the type of the value in the slot */
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
+  const DefaultExit *call_exit;    /* the call being lowered, when its defaults can exit it */
+  const DefaultExit *default_exit; /* while such a default is lowered: where its `?` leaves to */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
   MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
   LowerSubst default_vars; /* ... and the method's type variables as the value was bound */
@@ -108,6 +117,7 @@ typedef struct LowerFn {
   MirValue last_receiver; /* the receiver of the method value just lowered */
   bool has_last_receiver;
   MirTy ret;
+  MsTy ret_checked; /* the checked result type of a named function (MS_TY_NONE for a lambda): a pending result closes through it */
   uint32_t next_scope;               /* the next scope id to hand out */
   uint32_t open[LOWER_MAX_SCOPES];   /* the scopes open now, outermost first */
   bool open_closes[LOWER_MAX_SCOPES]; /* whether the scope at that depth owns a slot that closes where it ends */
@@ -135,6 +145,7 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  MirValue receiver_slot; /* a native call's fresh receiver, in the closing slot its arguments were evaluated after (MIR_NONE: none) */
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   MirTy native_value_ty; /* the element or value type of the collection the native being called reads, else MIR_NONE */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
@@ -165,6 +176,7 @@ void fn_env_install(LowerFn *fn, const LowerOuterEnv *env);
 uint32_t fn_scope_begin(LowerFn *fn);
 /* Closes the innermost scope: its owners are dropped or closed where it ends. */
 void fn_scope_end(LowerFn *fn);
+void fn_scope_pop(LowerFn *fn);
 /* Emits the `scope.end` of every open scope from the innermost down to (not including) depth `keep`, without
  * popping them: the code after it leaves the function or the loop. */
 void fn_scope_unwind(LowerFn *fn, uint32_t keep);
@@ -239,6 +251,8 @@ uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty);
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
 MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value);
+/* The resources the other fields of record `base` hold, closed with the statement once field `moved` has left it; the mask of the fields taken out. */
+uint32_t fn_close_rest(LowerFn *fn, const MsExpr *member, MirValue base, uint32_t type_id, uint32_t moved);
 MirValue fn_pending_take(LowerFn *fn, MirValue slot, MirTy ty);
 /* lower_temp.c: argument `index` of call `expr`, written as `written`, read as `value`: closed with its statement
  * when it is a borrowed temporary. */
@@ -255,6 +269,8 @@ const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
 bool lower_hidden_copies_allowed(void);
 /* The value of a parameter the call leaves to its default (lower_call.c). */
 MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected, const LowerOuterEnv *outer);
+/* Whether a default the call omits uses `?`, which leaves the call (lower_default.c). */
+bool fn_call_default_tries(const LowerFn *fn, const MsCall *call);
 
 /* The callee of a call, with explicit type arguments set aside: `value.method[T](args)` calls `value.method`. */
 static inline const MsExpr *fn_call_callee(const MsExpr *call) {
@@ -333,6 +349,7 @@ MirValue fn_call(LowerFn *fn, const MsExpr *expr, LowerWant want);
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
 bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first);
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */
@@ -352,6 +369,8 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
 bool lists_in_place(LowerFn *fn, const MsExpr *expr);
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);
+bool fn_list_swap(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
                          const MirValue *args, MirValue *out);

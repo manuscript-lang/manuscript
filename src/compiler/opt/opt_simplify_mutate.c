@@ -208,9 +208,40 @@ bool opt_simplify_shields(MirModule *m, MirFunc *f) {
   return changed;
 }
 
+typedef struct SmNamed {
+  MirValue value;
+  bool found;
+} SmNamed;
+
+static void sm_term_names(void *context, MirValue value) {
+  SmNamed *named = context;
+  named->found = named->found || value == named->value;
+}
+
+/* Whether nothing but a `put` or a `take` names the slot, so no other instruction can read or write it. */
+static bool sm_slot_private(const MirFunc *f, MirValue slot) {
+  for (uint32_t bi = 0; bi < f->blocks.len; bi++) {
+    const MirBlockData *b = &f->blocks.ptr[bi];
+    for (uint32_t k = 0; k < b->insts.len; k++) {
+      const MirInst *i = &b->insts.ptr[k];
+      for (uint32_t a = 0; a < i->nargs; a++) {
+        if (i->args[a] == slot && !((i->op == MOP_Put || i->op == MOP_Take) && a == 0)) {
+          return false;
+        }
+      }
+    }
+    SmNamed named = {slot, false};
+    mir_term_each_value(&b->term, sm_term_names, &named);
+    if (named.found) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* A value put into a slot and taken straight back out (inlining a callee that receives its
  * argument through a slot leaves `put S, v; r = take S`) is `v` itself: the pair is deleted and `r`
- * renamed to `v`, and only pure instructions may sit between the two. */
+ * renamed to `v`. Only pure instructions may sit between the two, unless the slot is private. */
 bool opt_simplify_put_takes(MirFunc *f) {
   MsArena arena = ms_arena_new();
   OptSubst subst = opt_subst_new(&arena, (uint32_t)f->values.len);
@@ -224,6 +255,7 @@ bool opt_simplify_put_takes(MirFunc *f) {
         continue;
       }
       const MirValue slot = put->args[0], v = put->args[1];
+      int private_slot = -1; /* whether only puts and takes name the slot: -1 not looked up yet */
       for (uint32_t ti = pi + 1; ti < b->insts.len; ti++) {
         const MirInst *take = &b->insts.ptr[ti];
         if (take->op == MOP_Take && take->args[0] == slot) {
@@ -234,8 +266,16 @@ bool opt_simplify_put_takes(MirFunc *f) {
           }
           break;
         }
-        if (sm_has_arg(take, slot) || mir_op_info[take->op].effects != 0) {
+        if (sm_has_arg(take, slot)) {
           break;
+        }
+        if (mir_op_info[take->op].effects != 0) {
+          if (private_slot < 0) {
+            private_slot = sm_slot_private(f, slot) ? 1 : 0;
+          }
+          if (private_slot == 0) {
+            break;
+          }
         }
       }
     }

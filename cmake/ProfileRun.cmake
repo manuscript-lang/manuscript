@@ -4,14 +4,16 @@
 cmake_minimum_required(VERSION 3.25)
 file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}")
-# A recursive function, which the compiler cannot inline into `main`, so it shows as a frame of its own.
+# A recursive function, which the compiler cannot inline into `main`, so it shows as a frame of its own. It runs for
+# about half a second: the sampler ticks no faster than the kernel timer (about 100 Hz on macOS), so a run of tens of
+# milliseconds can get one sample, in the runtime, and no frame of its own.
 file(WRITE "${WORK}/busy.ms" "fn fib(n: Int) Int:
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
 
 fn main() Int:
-    print(fib(34))
+    print(fib(40))
     return 0
 ")
 file(WRITE "${WORK}/exit.ms" "fn main() Int:

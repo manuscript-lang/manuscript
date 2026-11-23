@@ -314,7 +314,13 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
   /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
   bool typed[32] = {false};
   const size_t nargs = call->u.call.args.len;
-  for (size_t round = 0; round < nargs * (nargs + 1); round++) {
+  bool has_lambda = false;
+  for (size_t at = 0; at < nargs; at++) {
+    has_lambda = has_lambda || call->u.call.args.ptr[at].value->kind == MS_E_LAMBDA;
+  }
+  /* Without a function literal only the first pass types anything; the later passes would only scan. */
+  const size_t rounds = has_lambda ? nargs * (nargs + 1) : nargs;
+  for (size_t round = 0; round < rounds; round++) {
     const size_t written = round % nargs; /* arguments bind variables in the order they are written */
     const size_t pass = round / nargs;    /* 0 types the other arguments; each later pass the function literals */
     size_t index = 0;

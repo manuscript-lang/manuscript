@@ -5,7 +5,7 @@
 // Such a value has one owner and a program duplicates it only through a written
 // `.clone()`, which the probe leaves out, so each line is a lowering site to fix; the
 // sweep fails while any remain. Arguments name the files to sweep instead. MS names the
-// ms that builds the programs (default target/release/ms). Usage: ms run
+// ms that builds the programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
 // tools/copy-check.ms [-- files]
 import (
 	arguments, change_directory, working_directory from "@std/os/env.ms",

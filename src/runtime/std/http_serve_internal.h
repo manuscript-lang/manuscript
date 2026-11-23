@@ -28,6 +28,8 @@ struct MsServeConn {
   MsH2 *session;     /* the HTTP/2 session a take moved here, for the task to continue with */
   bool resumed;      /* taken from another thread's connection: its handshake is done */
   bool taken;        /* another thread took the connection: its task ends without closing it */
+  bool idle_swept;   /* worker close already closed it while it was idle */
+  bool cancelled;    /* worker close already cancelled its task */
 };
 
 struct MsServeWorker {

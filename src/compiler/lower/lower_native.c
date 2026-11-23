@@ -302,24 +302,6 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
   return fn_emit(fn, mir_needs_drop(fn->cx->module, ret) ? MOP_Take : MOP_Load, &slot, 1, of_type, ret);
 }
 
-/* The runtime function `name` taking the types of `args` and returning `ret`. */
-/* The role of a runtime string function the optimiser answers inline for the common case (`opt_strfast`). */
-static MirRole string_role(MsSpan name) {
-  static const struct {
-    const char *name;
-    MirRole role;
-  } table[] = {{"msrt_string_eq", MR_STRING_EQ},
-               {"msrt_string_compare", MR_STRING_COMPARE},
-               {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
-               {"msrt_string_ends_with", MR_STRING_ENDS_WITH}};
-  for (size_t at = 0; at < sizeof table / sizeof table[0]; at++) {
-    if (ms_span_is_text(name, table[at].name)) {
-      return table[at].role;
-    }
-  }
-  return MR_NONE;
-}
-
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
@@ -333,7 +315,8 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret),
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
-                                           : sig != NULL && sig->spawns ? MR_SPAWNS_TASK : string_role(text))};
+                                           : sig != NULL && sig->spawns ? MR_SPAWNS_TASK
+                                           : fn_native_role(fn->cx->module, text, nargs > 0 ? params[0].ty : MIR_VOID))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -652,6 +635,12 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
     wanted[0] = cell;
     return call_native(fn, name, wanted, count, ret, result_slot);
   }
+  /* So does a field of one: the native changes it where it lies, and the local's close stays registered meanwhile. */
+  MirValue field;
+  if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &field)) {
+    wanted[0] = field;
+    return call_native(fn, name, wanted, count, ret, result_slot);
+  }
   MirValue owned;
   MirValue record = MIR_NONE;
   const uint32_t taken = fn->native_moves; /* reading the receiver's place builds runtime calls of its own */
@@ -662,12 +651,19 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
   fn->native_moves = taken;
   const MirTy ty = mir_b_ty(&fn->b, owned);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
-  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
-  const MirValue stored[2] = {slot, owned};
-  (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  /* While the value is out of its place, a fault in the native closes the resources it holds. */
+  const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, place->id), fn->subst.vars, fn->subst.args,
+                                   fn->subst.count);
+  const MirValue guarded = checked != MS_TY_NONE && mir_needs_drop(fn->cx->module, ty) ? fn_pending_own(fn, checked, owned) : MIR_NONE;
+  MirValue slot = guarded;
+  if (guarded == MIR_NONE) {
+    slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    const MirValue stored[2] = {slot, owned};
+    (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  }
   wanted[0] = slot;
   const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
-  const MirValue updated = mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
+  const MirValue updated = guarded != MIR_NONE ? fn_pending_take(fn, guarded, ty) : mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
   if (in_place ? !fn_put_field(fn, place, record, updated) : !fn_put_place(fn, place, updated)) {
     return MIR_NONE;
   }
@@ -839,8 +835,16 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       fn_list_set(fn, place, slot, args, out)) {
     return true;
   }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_swap") && argc == 3 &&
+      fn_list_swap(fn, place, slot, args, out)) {
+    return true;
+  }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_append") && argc == 2 &&
       fn_list_append(fn, place, slot, args, out)) {
+    return true;
+  }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_pop") && argc == 1 &&
+      fn_list_pop(fn, place, slot, args, ret, out)) {
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
@@ -975,7 +979,11 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
                      fn_closing_at(fn, receiver_ref, receiver->u.sym) != UINT32_MAX && !via_bound &&
                      fn_native_changes_receiver(fn, owner, operation, ret);
   MirValue through = MIR_NONE;
-  if (taken) {
+  const MirValue eager = fn->receiver_slot; /* the fresh receiver is already in a closing slot */
+  fn->receiver_slot = MIR_NONE;
+  if (eager != MIR_NONE && !via_bound && fn_native_changes_receiver(fn, owner, operation, ret)) {
+    through = eager;
+  } else if (taken) {
     const MirTy receiver_ty = mir_b_ty(&fn->b, args[0]);
     const MirImm of_type = {.tag = MI_TY, .a = receiver_ty};
     through = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
@@ -983,7 +991,7 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     const MirValue stored[2] = {through, args[0]};
     (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
   }
-  const bool done = taken ? fn_native_through(fn, through, owner, operation, call->arg_count, args, ret, &result)
+  const bool done = taken || through != MIR_NONE ? fn_native_through(fn, through, owner, operation, call->arg_count, args, ret, &result)
                           : fn_native_on(fn, receiver, owner, operation, call->arg_count, args, ret, &result);
   fn->native_arg_moves = 0;
   if (done) {

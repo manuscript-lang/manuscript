@@ -55,13 +55,17 @@ static bool ops_from_environment(void) {
   return set;
 }
 
-/* A value of more leaves than this lives in a stack cell in a Debug build, so recursion through a function with a big
- * record holds the record once, not once per register it spreads over. `MS_WIDE_LEAVES` sets another number (0: never). */
-#define DEFAULT_WIDE_LEAVES 4u
+/* A value of more leaves than this lives in a stack cell, so recursion through a function with a big record holds
+ * the record once, not once per register it spreads over, and a copy is one `memcpy` where a leaf bag is a load and a
+ * store per leaf (a 66-leaf record copied 125 times made 8000 stores in one yaml function, and LLVM spent 21 s on the
+ * module). A Debug build hides the cells from LLVM (volatile leaf loads) so frames stay small; an optimized build
+ * leaves them to `sroa` and `memcpyopt`. `MS_WIDE_LEAVES` sets another number (0: never). */
+#define DEBUG_WIDE_LEAVES 4u
+#define RELEASE_WIDE_LEAVES 16u
 
 static uint32_t wide_leaves(bool debug) {
   MsString value = ms_string_empty();
-  uint32_t number = debug ? DEFAULT_WIDE_LEAVES : 0;
+  uint32_t number = debug ? DEBUG_WIDE_LEAVES : RELEASE_WIDE_LEAVES;
   if (ms_env_get("MS_WIDE_LEAVES", &value) && ms_string_span(&value).len != 0) {
     const MsSpan text = ms_string_span(&value);
     number = 0;
@@ -92,9 +96,9 @@ static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *
 }
 
 static bool make_object(const MsLinkRequest *request, const BackendProgram *program, MsSpan ir, MsSpan directory,
-                        MsSpan opt, MsSpan llc, MsSpan object, MsSpan *error) {
+                        MsSpan opt, MsSpan llc, MsSpan llvm, MsSpan object, MsSpan *error) {
   const bool debug = request->build_type == MS_BUILD_DEBUG;
-  const ObjectOptions options = {.opt = opt, .llc = llc, .directory = directory, .speed = true, .debug = debug,
+  const ObjectOptions options = {.opt = opt, .llc = llc, .llvm = llvm, .directory = directory, .speed = true, .debug = debug,
                                  .vectorize = !debug,
                                  .module = &program->module, .tables = &program->tables};
   MsStrBuild why = ms_strbuild_new();
@@ -112,7 +116,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   const BackendOptions backend = {.optimize = true, .verify = true,
                                   .tests = request->tests, .bench = request->bench,
                                   .count_ops = request->count_ops || ops_from_environment(),
-                                  .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG)};
+                                  .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
+                                  .wide_hide = request->build_type == MS_BUILD_DEBUG};
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));
@@ -141,6 +146,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   }
   const MsSpan opt = setting("MS_OPT", opt_fallback, &opt_storage);
   const MsSpan llc = setting("MS_LLC", llc_fallback, &llc_storage);
+  MsString llvm_storage;
+  const MsSpan llvm = setting("MS_LLVM", ms_span_of_text(""), &llvm_storage);
   const MsSpan lld = setting("MS_LLD", lld_fallback, &lld_storage);
   const MsSpan files = setting("MS_FILES", files_fallback, &files_storage);
   const MsSpan runtime = setting("MS_RUNTIME", runtime_fallback, &runtime_storage);
@@ -152,7 +159,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild object = ms_strbuild_new();
   if (ok) {
     ms_path_append_joined(&object, ms_string_span(&scratch), ms_span_of_text("program.o"));
-    ok = make_object(request, &program, ms_strbuild_span(&ir), ms_string_span(&scratch), opt, llc, ms_strbuild_span(&object),
+    ok = make_object(request, &program, ms_strbuild_span(&ir), ms_string_span(&scratch), opt, llc, llvm, ms_strbuild_span(&object),
                      error);
   }
   if (ok) {
@@ -179,6 +186,7 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   ms_string_release(&files_storage);
   ms_string_release(&lld_storage);
   ms_string_release(&llc_storage);
+  ms_string_release(&llvm_storage);
   ms_string_release(&opt_storage);
   ms_backend_program_free(&program);
   ms_strbuild_free(&why);

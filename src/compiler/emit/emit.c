@@ -27,12 +27,16 @@
 #define EMIT_TBAA_ROOT 900000
 #define EMIT_TBAA_SCALAR 900001
 #define EMIT_TBAA_SCALAR_TAG 900002
+#define EMIT_TBAA_HEADER 900003
+#define EMIT_TBAA_HEADER_TAG 900004
 
 static void write_tbaa(MsStrBuild *out) {
   ms_strbuild_printf(out,
-                     "!%d = !{!\"ms.tbaa\"}\n!%d = !{!\"ms.scalar-elem\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n",
+                     "!%d = !{!\"ms.tbaa\"}\n!%d = !{!\"ms.scalar-elem\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n"
+                     "!%d = !{!\"ms.list-header\", !%d, i64 0}\n!%d = !{!%d, !%d, i64 0}\n",
                      EMIT_TBAA_ROOT, EMIT_TBAA_SCALAR, EMIT_TBAA_ROOT, EMIT_TBAA_SCALAR_TAG, EMIT_TBAA_SCALAR,
-                     EMIT_TBAA_SCALAR);
+                     EMIT_TBAA_SCALAR, EMIT_TBAA_HEADER, EMIT_TBAA_ROOT, EMIT_TBAA_HEADER_TAG, EMIT_TBAA_HEADER,
+                     EMIT_TBAA_HEADER);
 }
 
 /* The file name the compile unit shows: the base name of the first function's file. */
@@ -75,6 +79,7 @@ bool emit_module(const MirModule *module, const MirData *data, const MirGlue *gl
   cx.glue = glue;
   cx.export_all = options->export_all;
   cx.wide_leaves = options->wide_leaves;
+  cx.wide_hide = options->wide_hide;
   EmitDebug debug;
   uint32_t total_scopes = 0;
   for (uint32_t index = 0; index < module->funcs.len; index++) {

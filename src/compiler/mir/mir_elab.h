@@ -126,6 +126,12 @@ typedef struct ElEm {
   MirHash flags;   /* the current flag value of each flagged owner (reset per block) */
   MirHash handles; /* owner -> the `cleanup.push` handle of each closing owner */
   MirValue pending; /* the value the block returns, still to be returned after its scope ends */
+  /* The last cancel emitted: a refill right after it, with nothing between that can exit, reuses the entry. */
+  struct {
+    MirValue value, handle;
+    uint32_t block;
+    size_t index;
+  } cancelled;
   bool counts_depth;
 } ElEm;
 

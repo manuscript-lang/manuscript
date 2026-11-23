@@ -213,6 +213,30 @@ static bool parse_source(Loader *loader, MsSpan file, MsSpan text, MsModule *mod
 
 static bool visit(Loader *loader, MsSpan canonical, int32_t *index, Failure *failure);
 
+/* A module with no text standing in for a file an import names that does not exist. */
+static bool load_missing(Loader *loader, MsSpan importer, const MsImport *item, int32_t *index) {
+  MsStrBuild joined = ms_strbuild_new();
+  ms_path_join(ms_path_parent(importer), item->path, &joined);
+  MsStrBuild cleaned = ms_strbuild_new();
+  ms_path_clean(&cleaned, ms_strbuild_span(&joined));
+  ms_strbuild_free(&joined);
+  const MsSpan canonical = ms_project_text(loader->arena, &cleaned);
+  size_t at = 0;
+  if (find_span(&loader->loaded, canonical, &at)) {
+    *index = (int32_t)at;
+    return true;
+  }
+  int32_t *targets = ms_arena_alloc_array(loader->arena, sizeof(int32_t), _Alignof(int32_t), 1);
+  *index = (int32_t)loader->modules.len;
+  module_list_push(&loader->modules, (MsGraphModule){.name = logical_name(loader, canonical),
+                                                     .path = canonical,
+                                                     .source = (MsSpan){0},
+                                                     .syntax = (MsModule){0},
+                                                     .targets = targets});
+  ms_span_list_push(&loader->loaded, canonical);
+  return true;
+}
+
 /* Resolves and loads the module a local import names. */
 static bool import_module(Loader *loader, MsSpan importer, MsSpan file, const MsImport *item, int32_t *index,
                           Failure *failure) {
@@ -221,6 +245,11 @@ static bool import_module(Loader *loader, MsSpan importer, MsSpan file, const Ms
   if (!ms_project_resolve_in(loader->arena, loader->manifest, loader->root, loader->overlay, importer,
                              item->path, &target, &error)) {
     const MsSpan message = ms_project_explain(loader->arena, &error, item->path);
+    if (loader->recover && error.kind == MS_PERR_PATH && error.os_error == ENOENT) {
+      /* An editor keeps checking: the missing file is a module with nothing in it, and the diagnostic says so. */
+      graph_diag_list_push(&loader->diagnostics, resolution(file, item->pos, ms_project_explain_absolute(loader->arena, &error, item->path)));
+      return load_missing(loader, importer, item, index);
+    }
     failure->kind = FAIL_DIAGNOSTIC;
     failure->diag = resolution(file, item->pos, message);
     return false;

@@ -32,7 +32,7 @@ static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSp
   ms_strbuild_append_byte(&sort, '_');
   ms_strbuild_append(&sort, name);
   MsStrBuild detail = ms_strbuild_new();
-  if (ty != MS_TY_NONE) ms_ty_show(&detail, c->program->names, &c->program->types, ty);
+  if (ty != MS_TY_NONE) ms_ty_show_plain(&detail, c->program->names, &c->program->types, ty);
   Item item = {.label = own(name), .detail = ms_strbuild_finish(&detail), .documentation = own(documentation),
                .sort = ms_strbuild_finish(&sort), .insert = own(insert), .kind = kind,
                .format = c->snippets && (contains(insert, "${") || contains(insert, "$0")) ? 2 : 1};
@@ -114,6 +114,14 @@ static void add_case(Completer *c, const MsTyCase *entry, MsTy owner, int priori
   add_callable(c, name, 20, signature, priority, NULL, 0, NULL, (MsSpan){0});
 }
 
+/* The interned `String`, or MS_TY_NONE when the program never names it. */
+static MsTy string_type(const MsCheckProgram *program) {
+  for (size_t ty = 1; ty < program->types.rows.len; ty++) {
+    if (ms_ty_is(&program->types, (MsTy)ty, MS_BUILTIN_String)) return (MsTy)ty;
+  }
+  return MS_TY_NONE;
+}
+
 static void add_members(Completer *c, MsTy receiver) {
   MsCheckProgram *program = c->program;
   if (receiver == MS_TY_NONE || ms_ty_is_invalid(&program->types, receiver)) return;
@@ -122,8 +130,13 @@ static void add_members(Completer *c, MsTy receiver) {
   const uint32_t def_index = row->kind == MS_TY_VARIABLE ? 0 : row->def;
   const MsDef *def = def_index == 0 ? NULL : ms_defs_get(&program->defs, def_index);
   if (def != NULL && ms_ty_kind(&program->types, receiver) == MS_TY_TYPE) {
+    const size_t arg_count = ms_ty_arg_count(&program->types, receiver);
     for (size_t i = 0; i < def->fields.len; i++) {
-      add(c, ms_names_span(program->names, def->fields.ptr[i].name), 5, def->fields.ptr[i].ty, 0, ms_names_span(program->names, def->fields.ptr[i].name), (MsSpan){0});
+      MsTy field = def->fields.ptr[i].ty;
+      if (arg_count > 0 && arg_count == def->variables.len) {
+        field = ms_ty_subst(&program->types, field, def->variables.ptr, ms_ty_args(&program->types, receiver), arg_count);
+      }
+      add(c, ms_names_span(program->names, def->fields.ptr[i].name), 5, field, 0, ms_names_span(program->names, def->fields.ptr[i].name), (MsSpan){0});
     }
   }
   for (size_t i = 0; def != NULL && i < def->operations.len; i++) {
@@ -147,8 +160,20 @@ static void add_members(Completer *c, MsTy receiver) {
     ms_ty_list_free(&args);
     ms_ty_list_free(&bound);
     if (!applies) continue;
+    const MsSpan documentation = entry->source == NULL ? (MsSpan){0}
+        : ms_declaration_comment(c->analysis->arena, program->modules.ptr[entry->module].source, entry->source->pos.offset,
+                                 entry->source->pos.line);
     add_callable(c, ms_names_span(program->names, entry->name), 2, signature, 0, NULL, 0,
-                 entry->source != NULL ? &entry->source->func.params : NULL, (MsSpan){0});
+                 entry->source != NULL ? &entry->source->func.params : NULL, documentation);
+  }
+  /* A record, alternative or opaque type clones and prints itself without declaring either. */
+  const MsTyKind kind = ms_ty_kind(&program->types, receiver);
+  if (kind == MS_TY_TYPE || kind == MS_TY_ALTERNATIVE) {
+    const MsName fn = ms_names_intern(program->names, ms_span_of_text("fn"));
+    const MsTyDesc clone = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .result = receiver};
+    const MsTyDesc print = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .result = string_type(program)};
+    add_callable(c, ms_span_of_text("clone"), 2, ms_ty_intern(&program->types, &clone), 0, NULL, 0, NULL, (MsSpan){0});
+    add_callable(c, ms_span_of_text("to_string"), 2, ms_ty_intern(&program->types, &print), 0, NULL, 0, NULL, (MsSpan){0});
   }
   MsSpanList natives = {0};
   ms_check_native_names(program, receiver, &natives);
@@ -434,7 +459,7 @@ void lsp_completion(const LspDocList *docs, const LspDoc *doc, LspPosition posit
   bool in_string = false;
   for (size_t i = 0; i < tokens.len; i++) {
     const LspEditorToken *token = &tokens.ptr[i];
-    const bool inside = offset > token->start && offset <= token->end && (token->kind != LSP_TOKEN_STRING || offset < token->end);
+    const bool inside = offset > token->start && offset <= token->end && (token->kind != LSP_TOKEN_STRING || offset < token->end || !lsp_literal_closed(source, token));
     if (inside && token->kind == LSP_TOKEN_COMMENT) {
       lsp_token_list_free(&tokens);
       ms_strbuild_append_text(out, "[]");

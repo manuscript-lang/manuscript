@@ -50,4 +50,9 @@ function(ms_executable name dir)
   ms_target_defaults(${name})
   set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/src/${dir}")
   target_link_libraries(${name} PRIVATE ${arg_LINK})
+  if(MS_LIBC STREQUAL "musl")
+    # The inner musl build holds the runtime archives only. Its executables are built against musl's headers but would
+    # link on the host's glibc (aarch64 libcrypto's armcap.o names musl's `sigsetjmp`), so they are not part of it.
+    set_target_properties(${name} PROPERTIES EXCLUDE_FROM_ALL ON)
+  endif()
 endfunction()

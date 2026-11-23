@@ -8,8 +8,8 @@
 // a bare number, is a borrow that read freed or reused storage. The checker rejects
 // most programs (use after move, a borrow held over a change); only the rest run.
 // Arguments: seed (default 1) and count (default 200). MS names the ms that runs the
-// programs (default target/release/ms). Usage: ms run tools/ownership-fuzz.ms [-- seed
-// count]
+// programs (default .artifacts/build/ci/src/cli/ms). Usage: ms run
+// tools/ownership-fuzz.ms [-- seed count]
 import (
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",

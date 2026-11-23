@@ -27,6 +27,8 @@ static Access access_of(const MirModule *module, const MirInst *inst, uint32_t a
     return arg == 0 ? ACCESS_WRITE : ACCESS_ESCAPE;
   case MOP_PtrField: case MOP_PtrAdd:
     return arg == 0 ? ACCESS_DERIVE : ACCESS_ESCAPE;
+  case MOP_MemCopy: /* (destination, source, length): the bytes are read or written where the instruction is */
+    return arg == 0 ? ACCESS_WRITE : ACCESS_READ;
   case MOP_Call: case MOP_CallInd: case MOP_CallMethod:
     return ACCESS_WRITE;
   case MOP_CallRt:
@@ -68,7 +70,8 @@ static bool find_slots(const MirFunc *func, const bool *values, uint32_t *owner)
   for (size_t block = 0; block < func->blocks.len; block++) {
     const MirInstList *insts = &func->blocks.ptr[block].insts;
     for (size_t index = 0; index < insts->len; index++) {
-      if (insts->ptr[index].op == MOP_Slot && insts->ptr[index].res != MIR_NONE) {
+      /* `str.data` of an inline string points into a 16-byte frame slot of its own, which lives as long as the address. */
+      if ((insts->ptr[index].op == MOP_Slot || insts->ptr[index].op == MOP_StrData) && insts->ptr[index].res != MIR_NONE) {
         owner[insts->ptr[index].res] = insts->ptr[index].res;
         any = true;
       }

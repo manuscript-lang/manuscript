@@ -16,6 +16,8 @@
 #include "compiler/mir/mir_layout.h"
 
 #define EMIT_DIRECT_BYTES 16
+/* The frame slot an inline string's two words are written to so its bytes have an address. */
+#define STR_DATA_BYTES 16u
 
 typedef struct EmitDebug EmitDebug;
 typedef struct EmitTemps EmitTemps;
@@ -34,6 +36,7 @@ typedef struct EmitCx {
   const uint32_t *pool;    /* per value: the shared cell a one-block `slot` lives in, UINT32_MAX for any other value; NULL when none */
   const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame; NULL when none */
   uint32_t wide_leaves;    /* a value of more leaves than this lives in a stack cell (emit_wide.c); 0 for never */
+  bool wide_hide;          /* those cells are hidden from LLVM: volatile leaf loads and an opaque `asm` */
   EmitWide *wide;          /* the values of `func` that do; NULL when none */
   const uint32_t *cell_bytes; /* the shared cells of `func`: bytes of each */
   const bool *cell_escape;    /* per cell: holds a value, so its address is hidden from LLVM's promotion to registers */
@@ -164,6 +167,7 @@ bool emit_wide_return(EmitCx *cx, MirValue value);
 bool emit_wide_held(const EmitCx *cx, MirValue value);
 bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity);
 bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capacity);
+bool emit_wide_same_cell(const EmitCx *cx, MirValue first, MirValue second);
 
 
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */

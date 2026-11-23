@@ -181,6 +181,8 @@ const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held) {
       const MirInst *inst = &insts->ptr[index];
       if (inst->op == MOP_Slot && map.ordinal[inst->res] != MIR_NONE) {
         bytes[map.ordinal[inst->res]] = emit_slot_bytes(cx, inst->imm.a);
+      } else if (inst->op == MOP_StrData && map.ordinal[inst->res] != MIR_NONE) {
+        bytes[map.ordinal[inst->res]] = STR_DATA_BYTES;
       }
     }
   }
@@ -277,9 +279,14 @@ void emit_frame_slots(EmitCx *cx) {
                              emit_slot_bytes(cx, value_type(cx, inst->args[0])));
         }
         break;
-      case MOP_StrByte:
       case MOP_StrData:
-        ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", block, index);
+        if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
+          break; /* in a shared cell */
+        }
+        ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [%u x i8], align 8\n", block, index, STR_DATA_BYTES);
+        break;
+      case MOP_StrByte:
+        ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [%u x i8], align 8\n", block, index, STR_DATA_BYTES);
         break;
       case MOP_CallRt:
         frame_rt_call(cx, inst, block, index, shared_p, &result_area);
@@ -291,7 +298,7 @@ void emit_frame_slots(EmitCx *cx) {
   }
   for (uint32_t cell = 0; cell < cx->ncells; cell++) {
     ms_strbuild_printf(cx->out, "  %%cell%u = alloca [%u x i8], align 8\n", cell, cx->cell_bytes[cell]);
-    if (cx->cell_escape[cell]) {
+    if (cx->cell_escape[cell] && cx->wide_hide) {
       /* An empty `asm` takes the address, so LLVM keeps the cell in memory instead of promoting it to registers. */
       ms_strbuild_printf(cx->out, "  call void asm sideeffect \"\", \"r,~{memory}\"(ptr %%cell%u)\n", cell);
     }

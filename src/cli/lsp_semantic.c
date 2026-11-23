@@ -132,14 +132,7 @@ static void scan(MsSpan source, SemanticList *tokens) {
                                                  .start = t->pos.offset,
                                                  .end = t->end.offset});
     }
-    /* The lexer drops comments, so the forgiving scanner supplies them. */
-    LspTokenList scanned = {0};
-    lsp_scan_tokens(source, &scanned);
-    for (size_t i = 0; i < scanned.len; i++) {
-      if (scanned.ptr[i].kind != LSP_TOKEN_COMMENT) continue;
-      semantic_list_push(tokens, (SemanticToken){.kind = LEX_COMMENT, .start = scanned.ptr[i].start, .end = scanned.ptr[i].end});
-    }
-    lsp_token_list_free(&scanned);
+    /* The strict lexer drops comments, as the oracle's does: only the forgiving scan below colours them. */
     qsort(tokens->ptr, tokens->len, sizeof(SemanticToken), compare_start);
   } else {
     /* The text does not lex: fall back to the forgiving scanner. */
@@ -179,6 +172,10 @@ static uint8_t kind_of(const MsCheckProgram *program, const MsOccurrence *entry)
   if (key_starts(entry->key, "field:")) return KIND_PROPERTY;
   if (key_starts(entry->key, "parameter:")) return KIND_PARAMETER;
   if (key_starts(entry->key, "case:")) return KIND_ENUM_MEMBER;
+  /* A bare standard constructor (`none`, `ok`) is keyed as a native; only its type tells it from a native function. */
+  if (key_starts(entry->key, "native:") && entry->ty != MS_TY_NONE && ms_ty_kind(&program->types, entry->ty) != MS_TY_FUNCTION) {
+    return KIND_ENUM_MEMBER;
+  }
   if (key_starts(entry->key, "binding:typeparam:")) return KIND_TYPE_PARAMETER;
   const MsSymbol *symbol = entry->symbol != 0 ? &program->symbols.ptr[entry->symbol] : NULL;
   if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) return KIND_TYPE;
@@ -204,7 +201,16 @@ void lsp_semantic_tokens(const LspDocList *docs, const LspDoc *doc, MsStrBuild *
   for (size_t i = 0; analysis.resolved && i < analysis.index.len; i++) {
     const MsOccurrence *entry = &analysis.index.ptr[i];
     if (!ms_span_equal(analysis.paths[entry->module], ms_string_span(&doc->path))) continue;
-    resolved_list_push(&resolved, (Resolved){entry->offset, kind_of(&analysis.checked.program, entry)});
+    const uint8_t kind = kind_of(&analysis.checked.program, entry);
+    /* A bare constructor has an occurrence per identity (its case and its native); the case colours it. */
+    bool known = false;
+    for (size_t r = 0; r < resolved.len; r++) {
+      if (resolved.ptr[r].offset != entry->offset) continue;
+      known = true;
+      if (kind == KIND_ENUM_MEMBER) resolved.ptr[r].kind = kind;
+    }
+    if (known) continue;
+    resolved_list_push(&resolved, (Resolved){entry->offset, kind});
   }
   /* A written type is a type even when it has no declaration to index, like `Int`. */
   for (size_t i = 0; i < analysis.written.len; i++) {

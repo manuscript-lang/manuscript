@@ -55,6 +55,12 @@ export fn status(code: Int) Int:
 // searched. A program that cannot start, or one that ends with a status above 125,
 // reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
+	return run_program_in(program, arguments, none)
+
+// `run_program` in the directory `cwd` (the caller's when none). A path with a drive
+// letter in an argument reads as `host:file` to GNU tar, so a caller on Windows names
+// files relative to `cwd` instead.
+export fn run_program_in(program: String, arguments: List[String], cwd: String?) Int:
 	if child := spawn(
 		program,
 		arguments,
@@ -62,6 +68,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
+			cwd: cwd,
 		),
 	):
 		return status(child.wait().clone().get_or(125))
@@ -85,14 +92,14 @@ export fn file_sha256(path: String) String:
 	data := read_file(path).wait().get()
 	return hex_encode(sha256(data))
 
-// The host triple's architecture field, as `rustc` reports it (`x86_64`, `aarch64`).
+// The machine architecture as `uname -m` reports it (`x86_64`, `aarch64`); Windows
+// reports `x86_64` unless the build says otherwise.
 export fn rust_arch() String:
-	for line in capture("rustc", ["-vV"]).split("\n"):
-		if line.starts_with("host: "): return line.slice(
-			6,
-			line.length(),
-		).split("-")[0].clone()
-	return "x86_64"
+	machine := capture("uname", ["-m"]).trim()
+	if machine == "arm64" or machine == "ARM64": return "aarch64"
+	if machine == "": return "x86_64"
+
+	return machine
 
 // Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the
 // target the programs link against (glibc on Linux, mingw-w64 on Windows) and points
@@ -137,10 +144,11 @@ export fn use_stats_runtime() Int:
 	return 0
 
 // The ms that runs the programs under test: `MS` (resolved against `root` when
-// relative), else target/release/ms.
+// relative), else the CMake build's ms (`cmake --preset ci`), which the Makefile also
+// names.
 export fn tool_ms(root: String) String:
 	named := env("MS", "")
-	if named == "": return f"{root}/target/release/ms{exe()}"
+	if named == "": return f"{root}/.artifacts/build/ci/src/cli/ms{exe()}"
 	if named.starts_with("/") or named.contains(":"): return named
 
 	return f"{root}/{named}{exe()}"

@@ -418,7 +418,21 @@ static UwTable uw_covered_slot_params(MsArena *a, const MirModule *m) {
     for (uint32_t ci = 0; ci < m->funcs.len; ci++) {
       const MirFunc *caller = &m->funcs.ptr[ci];
       MsArena tmp = {0};
-      const UwHash entries = uw_push_entries(&tmp, caller);
+      UwHash entries = uw_push_entries(&tmp, caller);
+      /* A slot a closure captured by reference is the enclosing function's, covered there; a field of a held slot lies
+       * in it, so lending the field in place lends covered storage too. */
+      UW_INSTS(caller, b0, i0, held_inst) {
+        if (held_inst->res == MIR_NONE) {
+          continue;
+        }
+        const bool capture = held_inst->op == MOP_ClosureCap && mir_value_ty(caller, held_inst->res) == MIR_PTR;
+        const uint32_t pp = held_inst->nargs > 0 && caller->blocks.len ? uw_param_pos(caller, held_inst->args[0]) : MIR_NONE;
+        const bool field = held_inst->op == MOP_PtrField && held_inst->nargs > 0 &&
+                   (uh_has(&entries, held_inst->args[0]) || (pp != MIR_NONE && uw_flag(&covered, ci, pp)));
+        if (capture || field) {
+          (void)uh_put(&tmp, &entries, held_inst->res, 0);
+        }
+      }
       UW_INSTS(caller, b, i, inst) {
         uint32_t g = 0;
         if (!uw_is_func(inst, MOP_Call, &g)) {
