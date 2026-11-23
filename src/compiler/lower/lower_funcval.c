@@ -127,6 +127,12 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty, MsTy to_che
           args[at + 1] = mir_b_emit(&inner.b, MOP_OptView, &values[at + 1], 1, none, from->args[at]);
         }
         continue;
+      } else if (to->args[at] == MIR_PTR && from->args[at] != MIR_PTR && !takes) {
+        /* A function that only reads its argument stands in for one that changes it (`var`): the wrapper is handed the
+         * slot and reads the value out of it. */
+        args[at + 1] = mir_b_emit(&inner.b, MOP_Load, &values[at + 1], 1, (MirImm){.tag = MI_TY, .a = from->args[at]},
+                                  from->args[at]);
+        continue;
       } else if (have->kind == MK_OPT && have->elem == from->args[at]) {
         args[at + 1] = mir_b_emit(&inner.b, MOP_OptGet, &values[at + 1], 1, none, from->args[at]);
         if (takes && mir_needs_drop(cx->module, from->args[at])) {

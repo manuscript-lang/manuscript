@@ -80,6 +80,20 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     return fn_try_var_slot(fn, place, out);
   }
   MirValue element;
+  const MsRef *named = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (named != NULL && named->kind == MS_REF_PARAM && fn->param_vars == NULL && fn->default_base != MIR_NONE &&
+      fn->default_call == NULL) {
+    /* A field default passes an earlier field of the record under construction on as `var`: the callee changes it in place. */
+    const MirTyData *data = mir_ty_data(fn->cx->module, fn->default_record_ty);
+    if (data->kind != MK_TYPE || named->local >= fn->cx->module->type_defs.ptr[data->id].nfields) {
+      (void)fn_fail(fn, "a field default reads a field its record does not have");
+      return MIR_NONE;
+    }
+    const MirImm field = {.tag = MI_FIELD, .a = data->id, .b = named->local};
+    element = mir_b_emit(&fn->b, MOP_PtrField, &fn->default_base, 1, field, MIR_PTR);
+    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
   if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
     *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
@@ -635,7 +649,9 @@ static bool callee_is_operation(LowerFn *fn, const MsExpr *expr, const MsCall *c
 static bool is_bodiless_function(LowerFn *fn, const MsCall *call) {
   const MsSymbolId id = fn_symbol_at(fn->cx, call->callee.decl);
   const MsSymbol *symbol = id == 0 ? NULL : &fn->cx->program->symbols.ptr[id];
-  return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless;
+  /* A program's own `fn f() Void: ...` is an ordinary empty declaration: it has a body that does nothing. */
+  return symbol != NULL && symbol->decl != NULL && symbol->decl->kind == MS_D_FN && symbol->decl->u.fn.bodiless &&
+         call->callee.decl.module >= fn->cx->program->user_modules;
 }
 
 static int base64_digit(uint8_t c) {
