@@ -81,7 +81,7 @@ MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
 }
 
 /* A scalar operand a native reads through an address (`e: *const u8`): it goes into a stack slot. */
-static MirValue spill_scalar(LowerFn *fn, MirValue value) {
+static MirValue spill_scalar(LowerFn *fn, MirValue value, bool moved) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   /* A closure or interface value is a pointer the runtime copies by address, as it does a scalar. */
   if (!mir_is_scalar(fn->cx->module, ty) && !spilled_by_address(fn, value)) {
@@ -90,7 +90,8 @@ static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
-  (void)fn_emit(fn, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+  /* An owned operand the native takes goes into the slot as a move: the slot holds it from here. */
+  (void)fn_emit(fn, moved && mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
   return slot;
 }
 
@@ -199,7 +200,8 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
         operand = fn_move_out_of_scope(fn, operand);
       }
-      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand)
+      const bool taken = used < 32 && (fn->native_moves >> used & 1u) != 0;
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand, taken)
                     : kind == NS_VALUE                         ? fn_native_scalar(fn, operand)
                                                                : operand;
       next++;
@@ -279,7 +281,7 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
   }
   (void)fn_runtime_call(fn, name, wanted, count, MIR_VOID);
   const MirImm of_type = {.tag = MI_TY, .a = ret};
-  return fn_emit(fn, MOP_Load, &slot, 1, of_type, ret);
+  return fn_emit(fn, mir_needs_drop(fn->cx->module, ret) ? MOP_Take : MOP_Load, &slot, 1, of_type, ret);
 }
 
 /* The runtime function `name` taking the types of `args` and returning `ret`. */
@@ -607,10 +609,12 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
   }
   MirValue owned;
   MirValue record = MIR_NONE;
+  const uint32_t taken = fn->native_moves; /* reading the receiver's place builds runtime calls of its own */
   const bool in_place = fn_take_field(fn, place, &record, &owned);
   if (!in_place && !fn_take_place(fn, place, &owned)) {
     return MIR_NONE;
   }
+  fn->native_moves = taken;
   const MirTy ty = mir_b_ty(&fn->b, owned);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
@@ -805,11 +809,6 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       wanted[0] = slot;
       *out = call_native(fn, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else if (mutates_receiver(sig, ret) && (fn_place_changeable(fn, place) || is_try_place(fn, place))) {
-      if (argc > 0 && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[0])) && fn_fresh_owner(fn, args[0])) {
-        /* The receiver was read out of its place once already (a `move` method takes a field): the call below takes the
-         * place itself, so that read must not be released as well. */
-        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &args[0], 1, (MirImm){0}, MIR_NONE);
-      }
       *out = call_changing(fn, place, name, wanted, count, ret, scalar_result_slot(fn, sig, ret));
     } else if (mutates_receiver(sig, ret) && argc > 0 && wanted[0] == args[0] && fn_fresh_owner(fn, args[0])) {
       /* A temporary receiver (`[0].append(9)`): the native may regrow it through its slot, so the temporary's owner

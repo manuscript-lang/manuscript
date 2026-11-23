@@ -82,6 +82,14 @@ static bool edge_build(ElEm *em, uint32_t cur, const MirTarget *target, const El
   MirValue *moved = MS_ARENA_NEW_ARRAY(em->cx->ma, MirValue, (size_t)target->nargs + 1);
   bool per_edge = false;
   const uint32_t nmoved = moved_args(em, target, fp, args, moved, &per_edge);
+  /* A loop head's owning parameter is born again on every trip: the value of the trip that ends here, when a path
+   * left it flagged, is settled before the edge, or nothing would ever release it. */
+  uint32_t nredefined = 0;
+  const MirValue *redefined = el_own_params(em->cx, target->block, &nredefined);
+  for (uint32_t i = 0; i < nredefined && !per_edge; i++) {
+    MirValue old_flag = MIR_NONE;
+    per_edge = mh_has(&em->flagged, redefined[i]) && em_flag_of(&em->flags, redefined[i], &old_flag);
+  }
   /* A trampoline body is built in a scratch block so the instructions land in order. */
   const uint32_t at = per_edge ? em_new_block(em) : cur;
   uint32_t used = 0;
@@ -94,6 +102,13 @@ static bool edge_build(ElEm *em, uint32_t cur, const MirTarget *target, const El
       args[used] = em_move_arg(em, at, arg);
     }
     used++;
+  }
+  for (uint32_t i = 0; i < nredefined; i++) {
+    MirValue old_flag = MIR_NONE;
+    if (mh_has(&em->flagged, redefined[i]) && em_flag_of(&em->flags, redefined[i], &old_flag)) {
+      const MirValue settle[2] = {old_flag, redefined[i]};
+      em_push(em, at, MOP_DropIf, settle, 2, mir_imm_none(), EM_NO_RESULT);
+    }
   }
   uint32_t nargs = target->nargs;
   for (size_t i = 0; i < fp->key.len; i++) {

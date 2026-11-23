@@ -72,7 +72,7 @@ bool mv_is_raw(const MirFunc *f) {
     for (uint32_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
       MirOp op = (MirOp)f->blocks.ptr[b].insts.ptr[i].op;
       if (op == MOP_ScopeBegin || op == MOP_ScopeOwn || op == MOP_ScopeEnd ||
-        op == MOP_ScopeDisown || op == MOP_ScopeMark) {
+        op == MOP_ScopeDisown || op == MOP_ScopeUnpin || op == MOP_ScopeMark) {
         return true;
       }
     }

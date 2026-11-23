@@ -263,6 +263,8 @@ static void emit_result_case(Lower *cx, MirBuilder *b, MirValue holder, uint32_t
   if (owns) {
     const MirImm taken = {.tag = MI_ALTMASK, .a = alt, .b = kase, .c = 1};
     (void)mir_b_emit(b, MOP_AltRelease, &holder, 1, taken, MIR_NONE);
+  } else {
+    drop_value(b, holder); /* the payload holds nothing on the heap: it is its own copy, and the holder's shell goes now */
   }
   const Part part = {value, part_close(cx, ty)};
   close_taken(b, &part, 1);

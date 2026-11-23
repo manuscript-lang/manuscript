@@ -18,6 +18,7 @@ uint32_t fn_scope_begin(LowerFn *fn) {
     (void)fn_fail(fn, "scopes nest too deeply");
     return id;
   }
+  fn->open_closes[fn->nopen] = false;
   fn->open[fn->nopen++] = id;
   return id;
 }
@@ -28,8 +29,8 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
     if (fn->owned_vars[at - 1].scope != scope) {
       continue;
     }
-    if (fn->owned_vars[at - 1].released) {
-      continue;
+    if (fn->owned_vars[at - 1].released || fn->owned_vars[at - 1].pinned != MIR_NONE) {
+      continue; /* handed on, or already owned by the end of an inner scope */
     }
     const MirValue value = mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var);
     const uint32_t moved = fn->owned_vars[at - 1].moved;
@@ -59,7 +60,7 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var) {
       return fn_fail(fn, "too many mutable variables are open at once");
     }
   }
-  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0, false};
+  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0, false, MIR_NONE};
   return true;
 }
 
@@ -81,18 +82,55 @@ void fn_scope_var_released(LowerFn *fn, MirVar var, bool released) {
   }
 }
 
-static void emit_end(LowerFn *fn, uint32_t scope) {
+/* The depth at which `scope` is open; past every depth when it is not open (it ended on a path that returned). */
+static uint32_t scope_depth(const LowerFn *fn, uint32_t scope) {
+  uint32_t depth = fn->nopen;
+  while (depth > 0 && fn->open[depth - 1] != scope) {
+    depth--;
+  }
+  return depth > 0 ? depth - 1 : UINT32_MAX;
+}
+
+/* Ending a scope that closes a resource can leave the function when the close fails, and the `var` locals of the scopes
+ * around it are owned only where those scopes end: until then the close failure's exit would leak them. The scope
+ * that is ending owns them for it. */
+static void pin_outer_vars(LowerFn *fn, uint32_t depth) {
+  for (uint32_t at = fn->nowned_vars; at > 0; at--) {
+    LowerOwnedVar *entry = &fn->owned_vars[at - 1];
+    if (entry->released || entry->moved != 0 || entry->pinned != MIR_NONE || scope_depth(fn, entry->scope) >= depth) {
+      continue;
+    }
+    entry->pinned = mir_b_use_var(&fn->b, entry->var);
+    fn_own(fn, entry->scope, entry->pinned);
+  }
+}
+
+/* Ends `scope`. A pinned value whose scope stays open past `keep` is the variable's again afterwards. */
+static void emit_end(LowerFn *fn, uint32_t scope, uint32_t keep) {
   own_vars(fn, scope);
+  const uint32_t depth = scope_depth(fn, scope);
+  if (fn->open_closes[depth]) {
+    pin_outer_vars(fn, depth);
+  }
   const MirImm imm = {.tag = MI_SCOPE, .a = scope, .b = 0};
   (void)mir_b_emit(&fn->b, MOP_ScopeEnd, NULL, 0, imm, MIR_NONE);
+  for (uint32_t at = 0; at < fn->nowned_vars; at++) {
+    LowerOwnedVar *entry = &fn->owned_vars[at];
+    if (entry->pinned != MIR_NONE && scope_depth(fn, entry->scope) < keep) {
+      (void)mir_b_emit(&fn->b, MOP_ScopeUnpin, &entry->pinned, 1, (MirImm){0}, MIR_NONE);
+      entry->pinned = MIR_NONE;
+    }
+  }
 }
 
 void fn_scope_end(LowerFn *fn) {
   if (fn->nopen == 0) {
     return;
   }
-  const uint32_t scope = fn->open[--fn->nopen];
-  emit_end(fn, scope);
+  const uint32_t depth = fn->nopen - 1;
+  const uint32_t scope = fn->open[depth];
+  emit_end(fn, scope, depth);
+  fn->nopen--;
   while (fn->nowned_vars > 0 && fn->owned_vars[fn->nowned_vars - 1].scope == scope) {
     fn->nowned_vars--;
   }
@@ -114,7 +152,10 @@ void fn_scope_unwind(LowerFn *fn, uint32_t keep) {
     put_var_params(fn);
   }
   for (uint32_t depth = fn->nopen; depth > keep; depth--) {
-    emit_end(fn, fn->open[depth - 1]);
+    emit_end(fn, fn->open[depth - 1], keep);
+  }
+  for (uint32_t at = 0; at < fn->nowned_vars; at++) {
+    fn->owned_vars[at].pinned = MIR_NONE; /* this path is over: the next one starts without the pins */
   }
 }
 
@@ -174,6 +215,9 @@ MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
     return MIR_NONE;
   }
   const MirTy ty = mir_b_ty(&fn->b, value);
+  if (!mir_needs_drop(fn->cx->module, ty)) {
+    return value; /* a plain value is its own copy */
+  }
   return own ? fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty) : mir_b_emit(&fn->b, MOP_Clone, &value, 1, (MirImm){0}, ty);
 }
 

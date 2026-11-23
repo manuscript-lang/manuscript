@@ -324,7 +324,8 @@ static void uw_covered_step(UwCovered *c, UwHash *covered, const MirInst *inst) 
   if (inst->op == MOP_CleanupRun) {
     *covered = (UwHash){0};
   } else if (inst->op == MOP_CallRt && inst->imm.tag == MI_EXT && inst->nargs == 1) {
-    if (c->m->externs.ptr[inst->imm.a].role == MR_CLEANUP_DISCARD &&
+    const MirRole role = c->m->externs.ptr[inst->imm.a].role;
+    if ((role == MR_CLEANUP_DISCARD || role == MR_CLEANUP_CANCEL) &&
       uh_get(&c->handle, inst->args[0], &via)) {
       (void)uh_del(covered, via);
     }
