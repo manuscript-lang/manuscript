@@ -909,6 +909,9 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
                            fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
   const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
                              fn_owned_local(fn, root, &root_var);
+  /* A field of a parameter taken by borrow is as much the caller's as the parameter. */
+  const bool borrowed_root = expr->kind == MS_E_MEMBER && root_ref != NULL && root_ref->kind == MS_REF_PARAM && !moved_param &&
+                             !in_var_record && root_ref->local + (fn->lambda != NULL ? 1u : 0u) < fn->b.func.nparams;
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
@@ -917,7 +920,7 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
     fn->moved_fields[fn->nmoved_fields++] = expr;
     return fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
   }
-  if (!borrowed_param && !in_var_record && !view_local && leaves_binding(fn, expr)) {
+  if (!borrowed_param && !borrowed_root && !in_var_record && !view_local && leaves_binding(fn, expr)) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

@@ -147,6 +147,9 @@ uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
+/* A `var` local of a type that needs a drop owns its current value; `fn_disown` hands a value on without dropping it (lower_stmt.c). */
+bool fn_var_owns(const LowerFn *fn, MirVar var);
+void fn_disown(LowerFn *fn, MirValue value);
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
 void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
