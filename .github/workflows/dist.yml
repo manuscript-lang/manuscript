@@ -61,13 +61,11 @@ jobs:
       - name: Diagnose a failed smoke test
         if: failure() && matrix.container
         run: |
-          dnf install -y strace || true
+          dnf install -y gdb || true
           root=$(ls -d "$PWD"/.artifacts/build/release/dist-smoke/unpacked/manuscript-*)
           mkdir -p /tmp/empty
           cd "$root/examples/hello"
-          strace -f -s 120 -o /tmp/trace.txt env -i PATH=/tmp/empty "$root/bin/ms" test test.ms || true
-          echo "status above; signals and failures:"
-          grep -n "SIG\|killed\|exit_group\|execve\|= -1 E[^N]" /tmp/trace.txt | tail -60
+          gdb -batch -ex 'set detach-on-fork off' -ex 'set follow-fork-mode parent' -ex 'set exec-wrapper env -i PATH=/tmp/empty' -ex 'catch signal SIGSEGV' -ex run -ex 'info inferiors' -ex 'thread apply all bt 12' -ex 'info registers rip' -ex 'x/6i $rip' --args "$root/bin/ms" test test.ms 2>&1 | tail -80 || true
       # The shipped ms must run on glibc 2.28 (the floor of programs it builds, proposals/glibc-2-28-floor.md).
       - name: Check the glibc floor of ms
         if: matrix.os == 'linux'
