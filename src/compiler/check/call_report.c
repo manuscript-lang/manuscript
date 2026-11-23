@@ -143,11 +143,12 @@ bool body_param_omittable(const Body *body, const MsParam *param) {
 /* A parameter a call may leave out: lifted, declared with a default, or the only payload of a case, a Void. */
 static bool omittable(const Body *body, const Target *target, const MsTyParam *param, size_t index) {
   const MsTyTable *types = &body->program->types;
+  const MsParams *declared = target->ast != NULL ? target->ast : target->names;
   const bool void_payload = target->ref.kind == MS_REF_CASE && ms_ty_param_count(types, target->sig) == 1 &&
                             (ms_ty_is(types, param->ty, MS_BUILTIN_Void) || ms_ty_kind(types, param->ty) == MS_TY_VARIABLE);
   return void_payload || (param->flags & MS_PARAM_LIFTED) != 0 ||
-         (target->ast != NULL ? index < target->ast->len && body_param_omittable(body, target->ast->ptr[index])
-                              : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
+         (declared != NULL ? index < declared->len && body_param_omittable(body, declared->ptr[index])
+                           : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
 }
 
 static void report_missing(Body *body, const Target *target, const MsExpr *call, const Matched *matched, size_t index) {

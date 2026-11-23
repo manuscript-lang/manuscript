@@ -627,7 +627,9 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
       const MirValue limit = mir_b_iconst(&fn->b, (int64_t)1 << 27);
       capacity = mir_b_select(&fn->b, mir_b_icmp(&fn->b, MCC_GT, capacity, limit), limit, capacity);
     }
-    return mir_b_list_new(&fn->b, data->elem, capacity);
+    const MirValue fresh = mir_b_list_new(&fn->b, data->elem, capacity);
+    fn_own_result(fn, fresh);
+    return fresh;
   }
   const MsExpr *written = expr->u.call.args.len == 1 ? expr->u.call.args.ptr[0].value : NULL;
   const bool empty_list = written != NULL && written->kind == MS_E_LIST && written->u.list.len == 0;

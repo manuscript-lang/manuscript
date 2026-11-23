@@ -147,9 +147,6 @@ uint32_t fn_scope(const LowerFn *fn);
 /* Registers `var`, which holds an owned value that is not owned by any scope, with the innermost scope. */
 bool fn_scope_own_var(LowerFn *fn, MirVar var);
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
-/* A `var` local of a type that needs a drop owns its current value; `fn_disown` hands a value on without dropping it (lower_stmt.c). */
-bool fn_var_owns(const LowerFn *fn, MirVar var);
-void fn_disown(LowerFn *fn, MirValue value);
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
 void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
@@ -163,6 +160,10 @@ bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue fi
 bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record);
 bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field);
 bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b);
+bool fn_same_member_path(LowerFn *fn, const MsExpr *a, const MsExpr *b);
+/* The slot a closing `var` local or parameter lives in. */
+bool fn_closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirVar *var);
+bool fn_closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirTy *ty);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value

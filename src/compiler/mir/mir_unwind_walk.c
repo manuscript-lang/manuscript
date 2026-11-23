@@ -40,8 +40,11 @@ uint32_t uw_hole_step(uint32_t open, MirOp op, const MirInst *next) {
       return open;
     }
     return open + 1 < 8 ? open + 1 : 8;
+  case MOP_AltTake: /* the payload leaves its alternative; `alt.release` frees what is left */
+    return open + 1 < 8 ? open + 1 : 8;
   case MOP_TypeFill:
   case MOP_ListFill:
+  case MOP_AltRelease:
     return open > 0 ? open - 1 : 0;
   default:
     return open;
@@ -117,6 +120,10 @@ static UwHash uw_field_defs(MsArena *a, const MirFunc *f) {
 
 static bool uw_hole_base(const UwHash *defs, const MirInst *inst, uint32_t *base) {
   uint64_t v = 0;
+  if (inst->op == MOP_AltTake && inst->nargs > 0) { /* the alternative itself is the owner */
+    *base = inst->args[0];
+    return true;
+  }
   if (inst->nargs == 0 || !uh_get(defs, inst->args[0], &v)) {
     return false;
   }
@@ -258,6 +265,11 @@ static void uw_an_consume(UwBlk *s, const MirInst *inst) {
   if (inst->op == MOP_TypeFill && inst->imm.tag == MI_FIELD && inst->nargs > 0 &&
     uh_get(&fa->cx->holes, (uint64_t)inst->args[0] << 32 | inst->imm.b, &p)) {
     (void)owner_remove(a, &s->live, (uint32_t)p);
+  }
+  if (inst->op == MOP_AltTake && inst->nargs > 0) {
+    /* The payload left the value: dropping the shell whole would free it a second time, so the shell
+     * is not covered from here (it is only released, which an unwind may skip). */
+    (void)owner_remove(a, &s->live, inst->args[0]);
   }
   if (inst->op == MOP_Take && inst->nargs > 0 && uw_is_cell(s, inst->args[0])) {
     (void)owner_remove(a, &s->live, inst->args[0]);

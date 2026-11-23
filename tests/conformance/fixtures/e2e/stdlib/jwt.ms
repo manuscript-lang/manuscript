@@ -69,7 +69,7 @@ test "verify returns the claims as a record or as a JSON document":
 	typed.iss | expect_equal("me")?
 
 	raw := (verify_token(token, secret) | expect_ok?)
-	raw.get("sub").get_or(JsonValue.Null).as_string().get_or("") | expect_equal("42")?
+	raw.get("sub").clone().get_or(JsonValue.Null).as_string().get_or("") | expect_equal("42")?
 
 test "verify rejects a wrong key, a tampered body and a different algorithm":
 	secret := "secret".to_bytes()
@@ -176,7 +176,7 @@ test "verify enforces exp, nbf, iss and aud":
 	)
 
 	doc := (verify_token(stamp, secret, JwtCheck(at: 5)) | expect_ok?)
-	doc.get("exp").get_or(JsonValue.Null).as_int().get_or(0) | expect_equal(1000)?
+	doc.get("exp").clone().get_or(JsonValue.Null).as_int().get_or(0) | expect_equal(1000)?
 
 type Timed:
 	nbf: Int

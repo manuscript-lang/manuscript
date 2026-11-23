@@ -33,8 +33,23 @@ static void declared(void *context, const MsBinding *binding, const MsBindingLis
   ms_check_report(pass->program, pass->module, binding->decl, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* The lone name of an arm may be a variant: some declared enum has a variant of that name. */
+static bool variant_name(void *context, MsName name) {
+  const Shadow *pass = context;
+  const MsDefs *defs = &pass->program->defs;
+  for (size_t index = 1; index < defs->count; index++) {
+    const MsDef *def = ms_defs_get(defs, (uint32_t)index);
+    for (size_t at = 0; at < def->cases.len; at++) {
+      if (def->cases.ptr[at].name == name) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void ms_check_shadowing(MsCheckProgram *program, uint32_t module) {
   Shadow pass = {.program = program, .module = module};
-  const MsScopeVisitor visitor = {.context = &pass, .declared = declared};
+  const MsScopeVisitor visitor = {.context = &pass, .declared = declared, .variant_name = variant_name};
   ms_scope_walk_module(program->modules.ptr[module].tree, &visitor, program->names);
 }

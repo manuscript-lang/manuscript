@@ -259,7 +259,7 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   const MirTy ty = fn_type(fn, checked);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OPT && (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
-    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none` */
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none`: owned only where taken, below */
   }
   if (data->kind == MK_ALT && ref != NULL && ref->kind == MS_REF_CASE) {
     const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = ref->index};
@@ -359,6 +359,8 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner)) {
     fn_scope_var_moved(fn, owner, ref->index);
+    /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
+    return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }
   const bool last_field = moves && expr->u.member.left->kind == MS_E_NAME && fn->facts->last != NULL &&
                           fn->facts->last[expr->id] != 0 && fn_fresh_owner(fn, base);

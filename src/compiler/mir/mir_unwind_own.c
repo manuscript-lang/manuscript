@@ -124,6 +124,7 @@ static bool uw_defs_inst(UwDefs *d, const MirInst *inst) {
   case MOP_MoveOut:
     return r != MIR_NONE && uh_has(&d->caller_projections, a0) && uw_caller_value(d, r);
   case MOP_TypeFill:
+  case MOP_TypeSet:
   case MOP_ListFill:
     /* Refilling a field moved out of a caller's value yields that same value again. */
     return r != MIR_NONE && uh_has(&d->from_slot, a0) && uw_caller_value(d, r);

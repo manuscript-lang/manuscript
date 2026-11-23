@@ -18,7 +18,9 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
   const uint32_t count = expr->u.list.len;
   if (count == 0) {
     const MirValue capacity = mir_b_iconst(&fn->b, 0);
-    return mir_b_list_new(&fn->b, data->elem, capacity);
+    const MirValue fresh = mir_b_list_new(&fn->b, data->elem, capacity);
+    fn_own_result(fn, fresh);
+    return fresh;
   }
   MirValue *items = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, count);
   for (uint32_t index = 0; index < count; index++) {

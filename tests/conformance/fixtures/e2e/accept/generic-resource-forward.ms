@@ -32,7 +32,7 @@ type Forward[T]:
 
 fn var Forward[T].next() T!?:
 	result := self.source.next()
-	if result.is_error(): return error(result.err())
+	if result.is_error(): return error(result.err().clone())
 	if item := result.get(): return ok(item)
 
 	return none
