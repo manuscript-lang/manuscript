@@ -1,9 +1,48 @@
 /* compiler/lower/lower_stmt.c: statements: bindings, assignment, calls, return, if, while, break, continue. */
+#include "compiler/syntax/walk.h"
 #include "compiler/check/properties.h"
 #include "compiler/lower/lower_fn.h"
 #include "compiler/own/closers.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/mir/mir_analysis.h"
+
+
+/* Whether `local` is an Optional that a later read narrows (`v != null` then `v`): the read may take its payload on one
+ * path only, so the binding is a variable the scope tracks across paths. */
+typedef struct NarrowedScan {
+  const LowerFn *fn;
+  uint32_t local;
+  bool found;
+} NarrowedScan;
+
+static void narrowed_expr(void *ctx, const MsExpr *expr) {
+  NarrowedScan *scan = ctx;
+  if (expr->kind != MS_E_NAME || scan->found) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(scan->fn->facts, expr->id);
+  if (ref == NULL || ref->kind != MS_REF_LOCAL || ref->local != scan->local) {
+    return;
+  }
+  const MsConversion *list = scan->fn->facts->conversions.ptr;
+  for (size_t at = 0; at < scan->fn->facts->conversions.len; at++) {
+    scan->found |= list[at].node == expr->id && list[at].kind == MS_CONV_NARROW;
+  }
+}
+
+static bool narrowed_local(const LowerFn *fn, uint32_t local, MirTy ty) {
+  if (mir_ty_data(fn->cx->module, ty)->kind != MK_OPT) {
+    return false;
+  }
+  NarrowedScan scan = {.fn = fn, .local = local};
+  const MsVisitor visitor = {.ctx = &scan, .expr = narrowed_expr};
+  if (fn->func != NULL) {
+    ms_walk_block(&visitor, fn->func->body);
+  } else if (fn->lambda != NULL) {
+    ms_walk_block(&visitor, fn->lambda->expr->u.lambda.body);
+  }
+  return scan.found;
+}
 
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
   const MirValue value = fn_expr(fn, expr, LW_MOVE);
@@ -205,7 +244,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
   }
-  if (stmt->u.bind.is_mutable && mir_needs_drop(fn->cx->module, ty)) {
+  if ((stmt->u.bind.is_mutable || narrowed_local(fn, local, ty)) && mir_needs_drop(fn->cx->module, ty)) {
     if (local >= fn->nvars) {
       return fn_fail(fn, "a local binding is outside the function's locals");
     }

@@ -376,7 +376,13 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
     if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
       return value;
     }
-    if (fn->narrow_take == expr || (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value))) {
+    const bool last_use = fn->read_moves && expr->kind == MS_E_NAME && fn->facts->last != NULL && fn->facts->last[expr->id] != 0;
+    /* A parameter taken by borrow is the caller's: its payload is only viewed. */
+    const MsRef *name_ref = expr->kind == MS_E_NAME ? ms_facts_ref(fn->facts, expr->id) : NULL;
+    const uint32_t param_at = name_ref != NULL ? name_ref->local + (fn->lambda != NULL ? 1u : 0u) : 0;
+    const bool borrowed_param = name_ref != NULL && name_ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
+                                fn->b.func.params[param_at].mode != MM_MOVE;
+    if (!borrowed_param && (fn->narrow_take == expr || ((ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || last_use) && fn_fresh_owner(fn, value)))) {
       MirTy taken = payload;
       const MirValue unboxed = fn_take_payload(fn, value, &taken);
       MirVar owner = 0;
@@ -384,7 +390,7 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
         /* The binding gave its payload up: it holds an empty optional, which the scope's end closes as nothing. */
         mir_b_def_var(&fn->b, owner, mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, mir_b_ty(&fn->b, value)));
       }
-      if (fn->narrow_take == expr) { /* a field leaves it: the payload is an owner of its own, closed but for that field */
+      if (fn->narrow_take == expr || mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, unboxed))) { /* a fresh owner, as a call's result is */
         fn_own(fn, fn_scope(fn), unboxed);
       }
       return unboxed;

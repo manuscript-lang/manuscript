@@ -487,6 +487,13 @@ static MirValue lower_or_null(LowerFn *fn, const MsExpr *expr) {
   fn->temps = saved_temps || fn_expr_has_temporary(fn, expr->u.bin.right);
   MirValue other = fn_expr(fn, expr->u.bin.right, LW_MOVE);
   fn->temps = saved_temps;
+  if (fn->terminated) { /* `x or panic(..)`: the right side never returns, so only the present branch reaches the join */
+    fn->nopen--;
+    fn->terminated = false;
+    mir_b_seal_block(&fn->b, join);
+    mir_b_switch_to(&fn->b, join);
+    return mir_b_use_var(&fn->b, result);
+  }
   if (other == MIR_NONE) {
     return MIR_NONE;
   }
@@ -1079,5 +1086,8 @@ MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
     }
   }
   const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
-  return fn_convert(fn, expr, value);
+  fn->read_moves = want == LW_MOVE;
+  const MirValue converted = fn_convert(fn, expr, value);
+  fn->read_moves = false;
+  return converted;
 }
