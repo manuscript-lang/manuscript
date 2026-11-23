@@ -1,4 +1,4 @@
-/* Owns writing one function: its header, entry block, instructions and size tier. */
+/* Owns writing one function: its header, entry block, instructions. */
 #include "compiler/emit/emit_func.h"
 
 #include "base/alloc.h"
@@ -6,20 +6,6 @@
 #include "compiler/emit/emit_debug.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
-
-/* Body lines above which a function is compiled without LLVM's optimizer (`optnone`): SROA, the SLP vectorizer
- * and the code generator grow faster than linearly with one function's size, so a generated function of
- * thousands of statements took minutes. Hand-written functions are far below this; a function above it is
- * run-once straight-line code in practice. */
-#define EMIT_HUGE_FUNCTION_LINES 60000u
-/* Body lines above which a function is optimized for size (`optsize`): loop unrolling, induction-variable
- * simplification and GVN are superlinear in one function's size, and under `optsize` the unroller and inliner
- * stop growing the body. */
-#define EMIT_LARGE_FUNCTION_LINES 25000u
-/* Body lines above which a function with no loop is compiled without the optimizer: one block of thousands of
- * instructions makes instruction selection and the SLP vectorizer superlinear (#3928: a workaround for
- * LLVM's passes, to be removed when they are not). */
-#define EMIT_LOOPFREE_HUGE_FUNCTION_LINES 8000u
 
 /* A checked operation on a sized integer also faults when its result leaves the type's range. */
 static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
@@ -174,7 +160,7 @@ static bool emit_block(EmitCx *cx, uint32_t block, const uint32_t *last) {
 }
 
 /* `define <result> @name(<hidden result pointer>, <leaves of each parameter>)`; returns after `nounwind`. */
-static void emit_header(EmitCx *cx, uint32_t index, const char *tier, uint32_t subprogram) {
+static void emit_header(EmitCx *cx, uint32_t index, uint32_t subprogram) {
   const MirFunc *func = cx->func;
   MsStrBuild *out = cx->out;
   bool exported = cx->export_all || func->linkage == ML_EXPORT || cx->module->entry == index;
@@ -209,7 +195,6 @@ static void emit_header(EmitCx *cx, uint32_t index, const char *tier, uint32_t s
    * frameless wrapper would drop its caller's frame from the trace. */
   ms_strbuild_append_text(out, ") nounwind noinline");
   ms_strbuild_append_text(out, " \"frame-pointer\"=\"non-leaf\" \"disable-tail-calls\"=\"true\"");
-  ms_strbuild_append_text(out, tier);
   if (cx->pure) {
     ms_strbuild_append_text(out, " willreturn nofree nosync memory(none)");
   }
@@ -217,34 +202,6 @@ static void emit_header(EmitCx *cx, uint32_t index, const char *tier, uint32_t s
     ms_strbuild_printf(out, " !dbg !%u", subprogram);
   }
   ms_strbuild_append_text(out, " {\n");
-}
-
-/* Whether a branch goes to a block that starts at or before it: a loop. Blocks are written in order. */
-static bool has_back_edge(const MirFunc *func) {
-  for (uint32_t block = 0; block < func->blocks.len; block++) {
-    const MirTerm *term = &func->blocks.ptr[block].term;
-    uint32_t count = mir_term_ntargets(term);
-    for (uint32_t edge = 0; edge < count; edge++) {
-      if (mir_term_target_const(term, edge)->block <= block) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-/* The attributes a function of `lines` body lines gets so that LLVM's superlinear passes stay bounded. */
-static const char *size_tier(const EmitCx *cx, uint32_t lines) {
-  bool huge = lines > EMIT_HUGE_FUNCTION_LINES ||
-              (lines > EMIT_LOOPFREE_HUGE_FUNCTION_LINES && !has_back_edge(cx->func));
-  if (lines > EMIT_HUGE_FUNCTION_LINES) {
-    /* The marker tells the linker to generate the whole module without optimizing (object.c). */
-    return cx->noinline ? " optnone \"ms-huge\"" : " optnone noinline \"ms-huge\"";
-  }
-  if (huge) {
-    return cx->noinline ? " optnone" : " optnone noinline"; /* `optnone` needs `noinline` */
-  }
-  return lines > EMIT_LARGE_FUNCTION_LINES ? " optsize" : "";
 }
 
 /* The pieces each block splits into: its checked operations each end one, and the last piece is what the
@@ -260,16 +217,8 @@ static void count_pieces(const EmitCx *cx, uint32_t *last) {
   }
 }
 
-static uint32_t count_lines(MsSpan text) {
-  uint32_t lines = 0;
-  for (size_t at = 0; at < text.len; at++) {
-    lines += text.ptr[at] == '\n' ? 1u : 0u;
-  }
-  return lines;
-}
-
-/* Writes function `index`. The body is written first into a builder of its own, because its size picks the
- * attributes of the header. */
+/* Writes function `index`. The body is written first into a builder of its own, because the header is written
+ * after the instructions have set the state it reads. */
 bool emit_function(EmitCx *cx, uint32_t index) {
   const MirFunc *func = cx->func;
   if (!types_ok(cx)) {
@@ -297,7 +246,7 @@ bool emit_function(EmitCx *cx, uint32_t index) {
   cx->out = module_out;
   if (ok) {
     emit_forward_copies(&body);
-    emit_header(cx, index, size_tier(cx, count_lines(ms_strbuild_span(&body))), subprogram);
+    emit_header(cx, index, subprogram);
     ms_strbuild_append(module_out, ms_strbuild_span(&body));
     ms_strbuild_append_text(module_out, "}\n\n");
   }
