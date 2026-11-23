@@ -275,7 +275,7 @@ static bool check_baseline(MsArena *arena, const MsTestOptions *options, const D
   const MsSpan path = options->baseline;
   MsBytes bytes = {0};
   if (!ms_file_read(path, &bytes)) {
-    test_print(stderr, ms_message_format(arena, "cannot read --baseline %S: No such file or directory (os error 2)\n", path,
+    test_print(stderr, ms_message_format(arena, "cannot read --baseline %S; check that the file exists and can be read\n", path,
                                          (MsSpan){0}));
     return false;
   }

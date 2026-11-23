@@ -154,7 +154,7 @@ static MsSpan without_directory(MsArena *arena, MsSpan message, MsSpan directory
 static bool check_top_level(MsArena *arena, MsSpan key, MsSpan directory, MsSpan *error) {
   MsDirEntryList entries = {0};
   if (!ms_dir_list(directory, &entries)) {
-    *error = ms_message_format(arena, "read %S: cannot list it", directory);
+    *error = ms_message_format(arena, "cannot read directory %S; check that it exists and is readable", directory);
     return false;
   }
   bool ok = true;
