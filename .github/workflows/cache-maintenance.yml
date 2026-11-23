@@ -9,7 +9,7 @@ name: Cache maintenance
 on:
   # Right after a main run saved its caches, so the superseded entries go before the limit is reached.
   workflow_run:
-    workflows: [CI/CD, Warm caches]
+    workflows: [CI/CD, Warm caches, Warm C caches]
     types: [completed]
     branches: [main]
   workflow_dispatch:

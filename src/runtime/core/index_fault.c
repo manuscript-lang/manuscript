@@ -10,7 +10,7 @@ MS_NORETURN void msrt_index_fault(int64_t index, int64_t length) {
   ms_strbuild_append_i64(&message, index);
   ms_strbuild_append_text(&message, " out of range for length ");
   ms_strbuild_append_i64(&message, length);
-  ms_strbuild_append_text(&message, "; pass a default: get(index:, default: ...)");
+  ms_strbuild_append_text(&message, "; use get_or(index, default) to avoid the fault");
   ms_fault(MS_FAULT_KIND_INDEX_OUT_OF_RANGE, ms_strbuild_span(&message));
 }
 

@@ -1547,7 +1547,7 @@ pub extern "C-unwind" fn msrt_index_fault(index: i64, length: i64) -> ! {
     fault_fmt_kind(
         FaultKind::IndexOutOfRange,
         format_args!(
-            "index {index} out of range for length {length}; pass a default: get(index:, default: ...)"
+            "index {index} out of range for length {length}; use get_or(index, default) to avoid the fault"
         ),
     )
 }
@@ -1582,15 +1582,13 @@ pub extern "C-unwind" fn msrt_list_index_fault(operation: i64, index: i64, len: 
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_fault_unwrap_none() -> ! {
-    fault(
-        b"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)",
-    )
+    fault(b"called Optional.get() on none; check is_some first, or use get_or(default)")
 }
 
 #[unsafe(no_mangle)]
 // ms: leaf
 pub extern "C-unwind" fn msrt_fault_result_get() -> ! {
-    fault(b"called Result.get() on error; check is_ok first, or pass a default: get(default: ...)")
+    fault(b"called Result.get() on error; check is_ok first, or use get_or(default)")
 }
 
 #[unsafe(no_mangle)]
@@ -2950,7 +2948,7 @@ mod tests {
         reset_for_tests();
         assert_eq!(
             fault_of(|| msrt_index_fault(7, 3)).unwrap(),
-            "index 7 out of range for length 3; pass a default: get(index:, default: ...)"
+            "index 7 out of range for length 3; use get_or(index, default) to avoid the fault"
         );
         assert_eq!(
             fault_of(|| msrt_fault_depth()).unwrap(),

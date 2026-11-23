@@ -185,7 +185,7 @@ static MsTy generic_as_value(Body *body, const MsSymbol *symbol, MsTy expected) 
 
 static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsName name = expr->u.sym;
-  const MsLocal *local = body_find_local(body, name);
+  const MsLocal *local = body_find_any_local(body, name);
   if (local != NULL && local->rejected) {
     if (!body->quiet && body_reports(body) && !ms_check_release(body->program, body->module, expr->pos.offset, ms_span_of_text("unknown binding "))) {
       MsStrBuild text = ms_strbuild_new();
@@ -206,6 +206,18 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
     return local->ty;
   }
   const MsSymbol *symbol = body_find_symbol(body, name);
+  if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
+    /* a type's name is read only as a callee or before a `.`: alone it builds nothing */
+    if (!body->quiet && body_reports(body)) {
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append_text(&text, "type name requires a constructor call; write ");
+      ms_strbuild_append(&text, ms_names_span(body->program->names, name));
+      ms_strbuild_append_text(&text, "(field: value, ...) to build a value");
+      ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+    }
+    body_set_ref(body, expr->id, body_symbol_ref(body, symbol));
+    return MS_TY_NONE;
+  }
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
@@ -219,7 +231,31 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
       }
       return MS_TY_NONE;
     }
-    return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : generic_as_value(body, symbol, expected);
+    if (ref.kind == MS_REF_CONSTANT) {
+      return body_constant_type(body, symbol);
+    }
+    const MsTy value = generic_as_value(body, symbol, expected);
+    uint32_t home = 0;
+    const MsParams *declared = symbol->kind == MS_SYMBOL_FN ? body_function_params(body, expr, value, &home) : NULL;
+    bool changes = false;
+    bool defaults = false;
+    for (uint32_t at = 0; declared != NULL && at < declared->len; at++) {
+      changes = changes || declared->ptr[at]->is_mutable;
+      defaults = defaults || declared->ptr[at]->def != NULL;
+    }
+    if (changes && defaults) { /* a function value fills defaults in a thunk that cannot also pass a changed parameter */
+      if (!body->quiet && body_reports(body)) {
+        MsStrBuild text = ms_strbuild_new();
+        const MsSpan written = ms_names_span(body->program->names, name);
+        ms_strbuild_append(&text, written);
+        ms_strbuild_append_text(&text, " has both a var parameter and a parameter default, so it cannot be a function value; call ");
+        ms_strbuild_append(&text, written);
+        ms_strbuild_append_text(&text, " from a closure that supplies the default");
+        ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+      return MS_TY_NONE;
+    }
+    return value;
   }
   const MsSpan text = ms_names_span(body->program->names, name);
   if (ms_span_is_text(text, "__LINE__")) {
@@ -367,6 +403,30 @@ static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
   return true;
 }
 
+static void report_ownership(Body *body, MsPos pos, const char *text) {
+  if (body_reports(body) && !body->quiet) {
+    ms_check_diag_list_push(&body->program->ownership,
+                            (MsCheckDiag){.module = body->module, .pos = pos, .phase = MS_CHECK_TYPE,
+                                          .stage = MS_STAGE_WALK, .message = ms_string_from_span(ms_span_of_text(text))});
+  }
+}
+
+/* Whether the method type takes a callback that may change an element of the receiver (`fn(var T)` on `List[T]`). */
+static bool takes_element_mutator(const MsTyTable *types, MsTy method, MsTy receiver) {
+  for (size_t at = 0; ms_ty_kind(types, method) == MS_TY_FUNCTION && at < ms_ty_param_count(types, method); at++) {
+    const MsTy callback = ms_ty_params(types, method)[at].ty;
+    for (size_t index = 0; ms_ty_kind(types, callback) == MS_TY_FUNCTION && index < ms_ty_param_count(types, callback); index++) {
+      const MsTyParam *param = &ms_ty_params(types, callback)[index];
+      for (size_t arg = 0; (param->flags & MS_PARAM_VAR) != 0 && arg < ms_ty_arg_count(types, receiver); arg++) {
+        if (ms_ty_args(types, receiver)[arg] == param->ty) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   (void)expected;
   MsTy ty = MS_TY_NONE;
@@ -392,6 +452,18 @@ static MsTy member_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (found.len != 0) {
     ty = found.ptr[0].ty;
     body_set_ref(body, expr->id, body_method_ref(&found.ptr[0], receiver));
+    if (found.ptr[0].entry != NULL && found.ptr[0].entry->source->mutating && !body->quiet && body_reports(body)) {
+      const MsExpr *root = expr->u.member.left; /* a temporary receiver has no variable to share */
+      const MsLocal *home = root->kind == MS_E_NAME ? body_find_local(body, root->u.sym) : NULL;
+      if (home == NULL) {
+        report_ownership(body, expr->pos, "a method value that changes its receiver must come from a variable, like `xs.append`; call the method, or write a closure");
+      }
+    }
+    const MsExpr *place = expr->u.member.left;
+    if (place->kind == MS_E_NAME && body_find_local(body, place->u.sym) != NULL &&
+        takes_element_mutator(&body->program->types, ty, receiver)) {
+      report_ownership(body, expr->pos, "this method takes a callback that can change the receiver's elements, so it cannot be used as a value; call it, or write a closure");
+    }
   } else {
     body_report_unknown_member(body, expr, receiver);
   }
@@ -599,6 +671,9 @@ static MsTy index_expr(Body *body, const MsExpr *expr) {
 }
 
 static MsTy probe_expr(Body *body, const MsExpr *expr) {
+  if (expr != body->borrowing_probe) {
+    report_ownership(body, expr->pos, "`?` after an index is only written as `if var name = place[key]?`, where it borrows the entry in place");
+  }
   const MsTy entry = body_expr(body, expr->u.bin.left, MS_TY_NONE);
   return entry == MS_TY_NONE ? MS_TY_NONE : body_std_type(body, "Optional", &entry, 1);
 }

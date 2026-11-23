@@ -24,7 +24,7 @@ static int64_t stage_rank(const MsCheckDiag *diag) {
   if (diag->stage == MS_STAGE_IMPORTS) {
     return -1;
   }
-  return in_body(diag) ? 1 : 0;
+  return diag->stage == MS_STAGE_FINAL ? 2 : (in_body(diag) ? 1 : 0);
 }
 
 static int64_t compare(uint8_t *env, const uint8_t *left, const uint8_t *right) {

@@ -1,6 +1,6 @@
 # Fills the startup-files directory (MS_FILES) next to ms-c; run after each build by MsRuntimePackage.cmake.
 #   -DFILES=<dir> -DSOURCE_DIR=<repo> -DOS=<Linux|Darwin|Windows> -DARCH=<processor>
-#   -DMUSL_SYSROOT=<the musl sysroot of cmake/MsMusl.cmake> -DMINGW_DIR=<llvm-mingw root> -DCOMPILER=<the C compiler>
+#   -DMUSL_SYSROOT=<the musl sysroot of cmake/MsSysroot.cmake> -DMINGW_DIR=<llvm-mingw root> -DCOMPILER=<the C compiler>
 # Linux gets the glibc export table (and the musl and unwinder files for `--static` and the unwinder input);
 # Windows gets the mingw-w64 startup object and libraries; macOS needs only the directory (the SDK stubs are
 # made there on demand). A file that cannot be found is reported once and skipped.
@@ -34,9 +34,6 @@ if(OS STREQUAL "Linux")
 elseif(OS STREQUAL "Windows")
   # MINGW_DIR is an MSYS2 toolchain prefix (`<msys64>/clang64`: lib/ holds crt2.o and the libraries) or an llvm-mingw
   # release (`<dir>/<arch>-w64-mingw32/lib`).
-  if(NOT MINGW_DIR)
-    set(MINGW_DIR "${SOURCE_DIR}/target/llvm-bundle/mingw")
-  endif()
   set(lib "${MINGW_DIR}/${arch}-w64-mingw32/lib")
   if(NOT IS_DIRECTORY "${lib}")
     set(lib "${MINGW_DIR}/lib")

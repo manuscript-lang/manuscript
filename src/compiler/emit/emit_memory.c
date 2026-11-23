@@ -179,7 +179,12 @@ bool emit_memory_inst(EmitCx *cx, const MirInst *inst, const EmitSite *site, boo
   switch ((MirOp)inst->op) {
   case MOP_Slot:
     /* Allocated at the top of the entry block; a slot met again (inlined into a loop) starts zeroed each time. */
-    if (site->block != 0) {
+    if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
+      ms_strbuild_printf(cx->out,
+                         "  call void @llvm.memset.p0.i64(ptr %%cell%u, i8 0, i64 %u, i1 false)\n"
+                         "  %%v%u = ptrtoint ptr %%cell%u to i64\n",
+                         cx->pool[inst->res], emit_slot_bytes(cx, inst->imm.a), inst->res, cx->pool[inst->res]);
+    } else if (site->block != 0) {
       ms_strbuild_printf(cx->out, "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 0, i64 %u, i1 false)\n", inst->res,
                          emit_slot_bytes(cx, inst->imm.a));
     }

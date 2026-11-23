@@ -215,6 +215,58 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
   return true;
 }
 
+/* Whether `actual` cannot be what `pattern` shapes, whatever its variables turn out to be: another kind or another head. */
+static bool head_differs(const MsTyTable *types, MsTy pattern, MsTy actual) {
+  if (ms_ty_kind(types, pattern) == MS_TY_VARIABLE || ms_ty_kind(types, pattern) == MS_TY_CONTRACT || actual == MS_TY_NONE || ms_ty_is_invalid(types, actual) ||
+      ms_ty_kind(types, actual) == MS_TY_VARIABLE) {
+    return false;
+  }
+  const MsTyRow *want = ms_ty_row(types, pattern);
+  const MsTyRow *have = ms_ty_row(types, actual);
+  return want->kind != have->kind || want->id != have->id;
+}
+
+/* An argument whose shape cannot meet the parameter that infers the callee's variables: reported at the argument, as
+ * the parameter's type and what the argument is (a callback gets its result named). */
+static bool report_shape_mismatch(Body *body, const Target *target, const MsExpr *value, MsTy param, MsTy actual) {
+  const MsTyTable *types = &body->program->types;
+  if (!mentions_vars(types, param, &target->vars) || is_none_literal(body, value) || holds_invalid(types, actual, 6)) {
+    return false;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  if (is_function(types, param) && is_function(types, actual) &&
+      ms_ty_param_count(types, param) == ms_ty_param_count(types, actual) &&
+      ms_ty_is(types, ms_ty_result(types, param), MS_BUILTIN_Result) &&
+      head_differs(types, ms_ty_result(types, param), ms_ty_result(types, actual))) {
+    const MsTy wanted = ms_ty_result(types, param);
+    ms_strbuild_append_text(&text, "the callback returns ");
+    ms_ty_show(&text, body->program->names, types, ms_ty_result(types, actual));
+    ms_strbuild_append_text(&text, ", but this parameter needs a function returning ");
+    ms_ty_show(&text, body->program->names, types, wanted);
+    if (ms_ty_is(types, wanted, MS_BUILTIN_Result)) {
+      ms_strbuild_append_text(&text, "; a Result-returning callback reports failure as a value, so wrap the value in ok(...), "
+                                     "e.g. fn: ok(value)");
+    }
+  } else if (!is_function(types, param) && !ms_ty_is(types, param, MS_BUILTIN_Optional) && head_differs(types, param, actual) && !is_function(types, actual)) {
+    ms_strbuild_append_text(&text, "expected ");
+    ms_ty_show(&text, body->program->names, types, param);
+    ms_strbuild_append_text(&text, ", found ");
+    ms_ty_show(&text, body->program->names, types, actual);
+    ms_strbuild_append_text(&text, "; the argument must be a ");
+    ms_ty_show(&text, body->program->names, types, param);
+    ms_strbuild_append_text(&text, ", and the type variables are inferred from it");
+  } else {
+    ms_strbuild_free(&text);
+    return false;
+  }
+  if (body_reports(body) && !body->quiet) {
+    ms_check_report(body->program, body->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  } else {
+    ms_strbuild_free(&text);
+  }
+  return true;
+}
+
 /* The type the expected result gives the callee's own variable `variable`, or MS_TY_NONE. */
 static MsTy hint_for(const Target *target, MsTy variable, const MsTy *hint) {
   for (size_t at = 0; at < target->vars.len && at < 16; at++) {
@@ -307,7 +359,9 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     if (target->vars.len != 0 && target->vars.len <= 16 && arg_tys[index] != MS_TY_NONE &&
         !is_none_literal(body, arg->value) && !(is_function(types, arg_tys[index]) && unapplied(body, ms_ty_result(types, arg_tys[index]))) &&
         !report_callback_arity(body, target, arg->value, param, arg_tys[index], bound)) {
-      (void)ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound);
+      if (!ms_check_unify(types, param, arg_tys[index], target->vars.ptr, target->vars.len, bound)) {
+        (void)report_shape_mismatch(body, target, arg->value, param, arg_tys[index]);
+      }
     }
   }
   /* An argument checked while the callee's variables were open meets its final parameter type only now. */
@@ -341,6 +395,15 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
   }
 }
 
+/* Whether the function argument takes its parameter `at` as `var`: a lambda by what it writes (an expected `var` does
+ * not make a reading lambda change it), another function by its type. */
+static bool written_var(const MsTyTable *types, const MsExpr *value, MsTy given, size_t at) {
+  if (value->kind == MS_E_LAMBDA) {
+    return at < value->u.lambda.params.len && value->u.lambda.params.ptr[at]->is_mutable;
+  }
+  return (ms_ty_params(types, given)[at].flags & MS_PARAM_VAR) != 0;
+}
+
 /* One MsCallArg per parameter (the receiver first): written, defaulted or omitted. */
 static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched,
                              uint32_t *count) {
@@ -350,6 +413,27 @@ static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *cal
   if (offset != 0) {
     args[0] = (MsCallArg){.source = MS_ARG_WRITTEN, .node = {body->module, target->receiver->id},
                           .flags = target->receiver_flags};
+  }
+  for (size_t index = 0; offset != 0 && index < matched->count && (args[0].flags & MS_PARAM_VAR) == 0; index++) {
+    /* A callback that takes one of the receiver's elements as `var` changes the receiver where it runs. */
+    const MsTy declared = ms_ty_params(types, target->sig)[index].ty;
+    const MsTy receiver = ms_facts_type(body->facts, target->receiver->id);
+    if (matched->slot[index] < 0 || receiver == MS_TY_NONE || !is_function(types, declared)) {
+      continue;
+    }
+    const MsTy given = ms_facts_type(body->facts, call->u.call.args.ptr[matched->slot[index]].value->id);
+    for (size_t at = 0; given != MS_TY_NONE && is_function(types, given) && at < ms_ty_param_count(types, declared) &&
+                        at < ms_ty_param_count(types, given);
+         at++) {
+      const MsTyParam *want = &ms_ty_params(types, declared)[at];
+      for (size_t arg = 0; (want->flags & MS_PARAM_VAR) != 0 && written_var(types, call->u.call.args.ptr[matched->slot[index]].value, given, at) &&
+                           arg < ms_ty_arg_count(types, receiver);
+           arg++) {
+        if (ms_ty_args(types, receiver)[arg] == want->ty) {
+          args[0].flags |= MS_PARAM_VAR;
+        }
+      }
+    }
   }
   for (size_t index = 0; index < matched->count; index++) {
     const MsTyParam *param = &ms_ty_params(types, target->sig)[index];
@@ -402,11 +486,14 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
   }
 }
 
-/* Whether every diagnostic since `before` is an uninferred callback parameter, which the call's own failure explains. */
+/* Whether every diagnostic since `before` is an uninferred callback parameter or an argument or type the call could
+ * not read, which the call's own failure explains. */
 static bool only_callback_diagnostics(const MsCheckProgram *program, size_t before) {
   for (size_t index = before; index < program->diagnostics.len; index++) {
-    if (!ms_span_starts_with(ms_string_span(&program->diagnostics.ptr[index].message),
-                             ms_span_of_text("cannot infer callback parameter"))) {
+    const MsSpan message = ms_string_span(&program->diagnostics.ptr[index].message);
+    if (!ms_span_starts_with(message, ms_span_of_text("cannot infer callback parameter")) &&
+        !ms_span_starts_with(message, ms_span_of_text("unknown argument ")) &&
+        !ms_span_starts_with(message, ms_span_of_text("unknown type "))) {
       return false;
     }
   }
@@ -489,6 +576,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   MsInstance instance = {0};
   MsTy sig = target->sig;
   bool instantiated = true;
+  MsTy partial = MS_TY_NONE; /* a constructor that left a variable unbound still has the parts the arguments fixed */
   MsTyList typed = {0};
   const MsTy *written = arg_tys; /* the arguments' own types, before any is held back from inference */
   if (body->program->diagnostics.len > diagnostics_before && only_callback_diagnostics(body->program, diagnostics_before)) {
@@ -543,6 +631,11 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
         report_conflict(body, call, target, &instance, arg_tys, matched, diagnostics_before);
       } else if (uninferable(body, &instance, written, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
+        if (target->constructor && instance.unbound.len != 0 && instance.args.len == target->vars.len) {
+          /* what the arguments did fix stays: `ok(1)` is a Result whose error type is the invalid marker */
+          partial = ms_ty_result(&body->program->types, ms_ty_subst(&body->program->types, target->sig, target->vars.ptr,
+                                                                    instance.args.ptr, instance.args.len));
+        }
         /* the call's failure comes before the callbacks it could not type */
         MsCheckDiagList *list = &body->program->diagnostics;
         if (list->len > diagnostics_before + 1) {
@@ -558,7 +651,7 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   body_set_type(body, call->u.call.callee->id, sig);
   ms_instance_free(&instance);
   ms_ty_list_free(&typed);
-  return instantiated ? result : MS_TY_NONE;
+  return instantiated ? result : partial;
 }
 
 /* The callee as written: `f`, `values.map`; empty for any other expression. */
@@ -637,6 +730,33 @@ static void report_not_callable(Body *body, const MsExpr *call, const Target *ta
   ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
 }
 
+/* `I(value)` where I is an interface: the value already passes wherever I is expected. Reports and answers true. */
+static bool report_interface_build(Body *body, const MsExpr *call, const Target *target) {
+  MsTyTable *types = &body->program->types;
+  if (target->nominal == MS_TY_NONE || ms_ty_kind(types, target->nominal) != MS_TY_CONTRACT) {
+    return false;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
+  }
+  if (body_reports(body) && !body->quiet) {
+    const MsDef *def = body_def(body, target->nominal);
+    MsTy shown = target->nominal;
+    if (def != NULL && target->explicit_args.len == def->variables.len && def->variables.len != 0) {
+      shown = ms_ty_subst(types, target->nominal, def->variables.ptr, target->explicit_args.ptr, def->variables.len);
+    }
+    MsStrBuild text = ms_strbuild_new();
+    ms_ty_show(&text, body->program->names, types, shown);
+    ms_strbuild_append_text(&text, " is an interface and cannot be constructed; a type whose methods match ");
+    ms_ty_show(&text, body->program->names, types, shown);
+    ms_strbuild_append_text(&text, " passes wherever ");
+    ms_ty_show(&text, body->program->names, types, shown);
+    ms_strbuild_append_text(&text, " is expected, so pass the value directly");
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  return true;
+}
+
 /* `A()` where A is a constant: the parentheses are the mistake. Reports it and answers true. */
 static bool report_constant_call(Body *body, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
@@ -708,6 +828,8 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   } else if (target.sig != MS_TY_NONE && !ms_ty_is_invalid(&body->program->types, target.sig) &&
              ms_ty_kind(&body->program->types, target.sig) != MS_TY_FUNCTION) {
     report_not_callable(body, expr, &target);
+  } else if (report_interface_build(body, expr, &target)) {
+    /* an interface is not constructed: reported, and the arguments are read */
   } else if (report_constant_call(body, expr)) {
     /* a constant is not called: reported, and the arguments are read */
   } else if (report_builtin_constructor(body, expr)) {

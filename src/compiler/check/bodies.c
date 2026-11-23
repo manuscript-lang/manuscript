@@ -47,13 +47,19 @@ MsLocal *body_declare(Body *body, MsName name, MsTy ty, MsRefKind kind, bool is_
   return ms_local_list_last(&body->locals);
 }
 
-const MsLocal *body_find_local(const Body *body, MsName name) {
+const MsLocal *body_find_any_local(const Body *body, MsName name) {
   for (size_t index = body->locals.len; index > 0; index--) {
     if (body->locals.ptr[index - 1].name == name) {
       return &body->locals.ptr[index - 1];
     }
   }
   return NULL;
+}
+
+/* A rejected name binds nothing: a call or type of that name still finds the function or type. */
+const MsLocal *body_find_local(const Body *body, MsName name) {
+  const MsLocal *local = body_find_any_local(body, name);
+  return local != NULL && local->rejected ? NULL : local;
 }
 
 /* The type a loop variable takes from the iterated type: a list's element, a set's member, or what the
@@ -138,7 +144,7 @@ static void bind_pattern_from(Body *body, const MsPattern *pattern, MsTy ty, boo
   const bool known = ty != MS_TY_NONE && !holds_invalid(&body->program->types, ty, 6);
   if (pattern->kind == MS_P_LIST) {
     const bool list = ms_ty_is(types, ty, MS_BUILTIN_List) && ms_ty_arg_count(types, ty) == 1;
-    if (known && !list) {
+    if (!list) {
       report_pattern(body, pattern->pos, "positional binding requires a list; use [a, b] patterns only with List values");
       reject_pattern(body, pattern);
       return;
@@ -273,6 +279,7 @@ static MsTy payload_type(const Body *body, MsTy tested) {
 }
 
 static void stmt_if(Body *body, const MsStmt *stmt) {
+  body->borrowing_probe = stmt->u.branch.binding != NULL && stmt->u.branch.is_mutable ? stmt->u.branch.cond : NULL;
   const MsTy cond = stmt->u.branch.binding != NULL
                         ? body_expr(body, stmt->u.branch.cond, MS_TY_NONE)
                         : body_expect(body, stmt->u.branch.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("an if condition"));
@@ -346,11 +353,15 @@ static void statement(Body *body, const MsStmt *stmt) {
   }
 }
 
-void body_block(Body *body, MsStmts stmts) {
-  const size_t mark = body_scope_mark(body);
+void body_statements(Body *body, MsStmts stmts) {
   for (uint32_t index = 0; index < stmts.len; index++) {
     statement(body, stmts.ptr[index]);
   }
+}
+
+void body_block(Body *body, MsStmts stmts) {
+  const size_t mark = body_scope_mark(body);
+  body_statements(body, stmts);
   body_scope_reset(body, mark);
 }
 
@@ -487,7 +498,14 @@ static void field_defaults(Body *body, MsParams fields, const MsSymbol *owner) {
                         : (field->ty != NULL ? resolver_type(&body->resolver, field->ty) : MS_TY_NONE);
     body->resolver.report = report;
     if (field->def != NULL) {
+      /* the field itself and the ones after it are not yet known to its default */
+      const size_t unknown = body_scope_mark(body);
+      for (uint32_t later = index; later < fields.len; later++) {
+        (void)body_declare(body, fields.ptr[later]->name, MS_TY_NONE, MS_REF_LOCAL, false, fields.ptr[later]->id, fields.ptr[later]->pos);
+        ms_local_list_last(&body->locals)->rejected = true;
+      }
       (void)body_default(body, field->def, ty);
+      body_scope_reset(body, unknown);
     }
     /* A default may use the fields before it, which it reads as the constructor's arguments. */
     MsLocal *local = body_declare(body, field->name, ty, MS_REF_PARAM, false, field->id, field->pos);
@@ -539,11 +557,17 @@ static void declaration(Body *body, const MsDecl *decl) {
     body->resolver.report = body->resolver.report && !rejected_value(body, decl->u.konst.value);
     const MsTy declared = decl->u.konst.ty != NULL ? resolver_type(&body->resolver, decl->u.konst.ty) : MS_TY_NONE;
     body->resolver.report = body_reports(body);
-    body->quiet = true; /* the initializer is reported by the constants pass */
+    const bool rejected = rejected_value(body, decl->u.konst.value); /* the constants pass reported its shape */
+    body->quiet = rejected;
     const MsTy value = body_expr(body, decl->u.konst.value, declared);
     body->quiet = false;
-    if (declared != MS_TY_NONE && value != MS_TY_NONE && !rejected_value(body, decl->u.konst.value)) {
+    if (declared != MS_TY_NONE && value != MS_TY_NONE && !rejected) {
       body_check_assignable(body, decl->u.konst.value, value, declared, (MsSpan){0});
+    }
+    if (declared == MS_TY_NONE && decl->u.konst.value->kind == MS_E_LIST && decl->u.konst.value->u.list.len == 0 &&
+        body_reports(body)) {
+      ms_check_report(body->program, body->module, decl->u.konst.value->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("cannot infer list element type; add an annotation, e.g. xs: List[Int] := []")));
     }
     body_report_decimal_literals(body, decl->u.konst.value);
     break;

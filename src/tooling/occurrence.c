@@ -860,7 +860,11 @@ static void index_tables(Builder *b) {
 }
 
 MsOccurrences ms_occurrence_index(MsArena *arena, MsCheckProgram *program) {
-  Builder b = {.arena = arena, .program = program};
+  return ms_occurrence_index_with_types(arena, program, NULL);
+}
+
+MsOccurrences ms_occurrence_index_with_types(MsArena *arena, MsCheckProgram *program, MsWrittenTypes *written) {
+  Builder b = {.arena = arena, .program = program, .written_out = written};
   index_tables(&b);
   for (uint32_t module = 0; module < program->user_modules; module++) {
     name_parameters(&b, module);
