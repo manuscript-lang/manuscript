@@ -63,7 +63,7 @@ static MirHash handle_keys(ElCx *cx, MirFunc *func) {
         (void)mh_get(&owned_at, inst->args[0], &seen);
         (void)mh_put(cx->ma, &owned_at, inst->args[0], seen + 1);
       }
-      if (inst->op == MOP_ScopeMark && inst->imm.tag == MI_INT && inst->imm.i == 2 && !mh_has(&keys, inst->args[0])) {
+      if (inst->op == MOP_ScopeMark && inst->imm.tag == MI_INT && (inst->imm.i == 2 || inst->imm.i == 3) && !mh_has(&keys, inst->args[0])) {
         (void)mh_put(cx->ma, &keys, inst->args[0], mir_new_value(func, MIR_INT));
       }
     }
