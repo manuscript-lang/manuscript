@@ -28,3 +28,7 @@ Open (not fixed here):
 Nesting deeper than 1000 levels and expression chains over 10000 operators stop with a parse diagnostic, not a crash; no input in this sweep crashed the compiler.
 
 Limits probed and graceful on both backends: expression nesting over 1000 levels and chains over 10000 operators are parse errors that say to split the expression; 9000-term sums, string concatenations and method chains, 900 nested parentheses, 450 nested list literals, 200 and 900 nested `if`s and a 2000-parameter function build and run; unbounded recursion stops with a `stack overflow` message and exit code 67.
+
+## 2026-11-23
+
+`record` with thousands of fields (a constructor call with that many arguments): `type_args` in `check/calls.c` ran `nargs * (nargs + 1)` rounds, each scanning the argument slots, although only a call with a function literal needs more than the first `nargs` rounds. `ms build` of `gen_flat.py record 4000` went from 45 s to 0.8 s, and 20000 fields build in 11 s (was not finishing). Size tiers are gone (see `wiki/compiler/there-are-no-function-size-tiers-in-the-emitter.md`).
