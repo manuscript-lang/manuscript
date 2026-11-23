@@ -11,8 +11,6 @@
  * single assignment makes that safe wherever the line dominated its users. */
 #include "compiler/emit/emit_func.h"
 
-#include <string.h>
-
 #include "base/alloc.h"
 #include "base/hash.h"
 
@@ -57,15 +55,24 @@ static size_t name_end(const uint8_t *text, size_t at, size_t limit) {
   return at;
 }
 
+static MsSpan view(const uint8_t *text, size_t at, size_t length) { return ms_span_of(text + at, length); }
+
 static bool has(const Line *line, size_t at, const char *prefix) {
-  const size_t length = strlen(prefix);
-  return at + length <= line->end && memcmp(line->text + at, prefix, length) == 0;
+  return at <= line->end && ms_span_starts_with(view(line->text, at, line->end - at), ms_span_of_text(prefix));
+}
+
+static bool same_text(const uint8_t *text, size_t a, size_t a_len, size_t b, size_t b_len) {
+  return ms_span_equal(view(text, a, a_len), view(text, b, b_len));
 }
 
 /* Whether the line continues at `at` with `, <second>` and then its end or a comma. */
 static bool second_is(const Line *line, size_t at, const char *second) {
-  const size_t end = at + 2 + strlen(second);
+  const size_t end = at + 2 + ms_span_of_text(second).len;
   return has(line, at, ", ") && has(line, at + 2, second) && (end == line->end || line->text[end] == ',');
+}
+
+static bool same_text_literal(const Line *line, const Copy *copy, const char *literal) {
+  return ms_span_equal(view(line->text, copy->value, copy->value_len), ms_span_of_text(literal));
 }
 
 static bool is_integer(const uint8_t *text, size_t at, size_t length) {
@@ -103,20 +110,15 @@ static bool parse_copy(const Line *line, Copy *copy) {
   copy->resolved = true;
   copy->line = line->at;
   size_t at = copy->name + copy->name_len;
-  static const char *const integer_types[] = {"i64", "i32", "i16", "i8"};
+  static const char *const or_heads[] = {" = or i64 ", " = or i32 ", " = or i16 ", " = or i8 "};
+  static const char *const add_heads[] = {" = add i64 ", " = add i32 ", " = add i16 ", " = add i8 "};
   for (size_t type = 0; type < 4; type++) {
-    char head[24];
-    const size_t length = strlen(integer_types[type]);
     for (int operation = 0; operation < 2; operation++) { /* `or` copies a register, `add` writes a constant */
-      memcpy(head, operation == 0 ? " = or " : " = add ", operation == 0 ? 6 : 7);
-      const size_t used = operation == 0 ? 6 : 7;
-      memcpy(head + used, integer_types[type], length);
-      memcpy(head + used + length, " ", 2);
+      const char *head = operation == 0 ? or_heads[type] : add_heads[type];
       if (!has(line, at, head)) {
         continue;
       }
-      const size_t first = at + used + length + 1;
-      const size_t stop = read_first(line, first, copy);
+      const size_t stop = read_first(line, at + ms_span_of_text(head).len, copy);
       if (copy->value_len == 0 || !second_is(line, stop, "0")) {
         return false;
       }
@@ -132,7 +134,7 @@ static bool parse_copy(const Line *line, Copy *copy) {
       return second_is(line, stop, "false");
     }
     /* `or i1 false, true` is `true`. */
-    if (copy->value_len != 5 || memcmp(line->text + copy->value, "false", 5) != 0) {
+    if (!same_text_literal(line, copy, "false")) {
       return false;
     }
     const bool one = second_is(line, stop, "true");
@@ -148,7 +150,7 @@ static bool parse_copy(const Line *line, Copy *copy) {
     if (!copy->constant) {
       return second_is(line, stop, "-0.0");
     }
-    const bool zero = copy->value_len == 3 && memcmp(line->text + copy->value, "0.0", 3) == 0;
+    const bool zero = same_text_literal(line, copy, "0.0");
     return zero ? second_is(line, stop, "0.0") : (line->text[copy->value] != '-' && second_is(line, stop, "-0.0"));
   }
   return false;
@@ -209,7 +211,7 @@ static Copy *find_entry(const Table *table, const uint8_t *text, size_t at, size
   size_t slot = slot_of(table, text, at, length);
   while (table->index[slot] != SIZE_MAX) {
     Copy *copy = &table->copies[table->index[slot]];
-    if (copy->name_len == length && memcmp(text + copy->name, text + at, length) == 0) {
+    if (copy->name_len == length && same_text(text, copy->name, length, at, length)) {
       return copy;
     }
     slot = (slot + 1) & table->mask;
@@ -234,8 +236,7 @@ static Copy resolve(const Table *table, const uint8_t *text, size_t at, size_t l
 }
 
 static bool same_operand(const uint8_t *text, const Copy *a, const Copy *b) {
-  return a->constant == b->constant && a->value_len == b->value_len &&
-         memcmp(text + a->value, text + b->value, a->value_len) == 0;
+  return a->constant == b->constant && same_text(text, a->value, a->value_len, b->value, b->value_len);
 }
 
 /* Reads the operands of a phi line and sets `copy->value` to the one value they all resolve to, ignoring the
@@ -264,7 +265,7 @@ static bool single_incoming(const Table *table, const Line *line, Copy *self) {
       operand.value_len = stop - at;
     }
     const bool is_self = !operand.constant && operand.value_len == self->name_len &&
-                         memcmp(text + operand.value, text + self->name, self->name_len) == 0;
+                         same_text(text, operand.value, operand.value_len, self->name, self->name_len);
     if (!is_self) {
       if (found && !same_operand(text, &only, &operand)) {
         return false;
@@ -361,7 +362,9 @@ void emit_forward_copies(MsStrBuild *body) {
     table.mask <<= 1;
   }
   table.index = ms_alloc(table.mask * sizeof(size_t));
-  memset(table.index, 0xff, table.mask * sizeof(size_t));
+  for (size_t slot = 0; slot < table.mask; slot++) {
+    table.index[slot] = SIZE_MAX;
+  }
   table.mask -= 1;
   for (size_t at = 0; at < span.len;) {
     const Line line = {text, at, line_end(text, at, span.len)};
