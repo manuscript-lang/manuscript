@@ -16,6 +16,8 @@
 #include "compiler/mir/mir_layout.h"
 
 #define EMIT_DIRECT_BYTES 16
+/* The frame slot an inline string's two words are written to so its bytes have an address. */
+#define STR_DATA_BYTES 16u
 
 typedef struct EmitDebug EmitDebug;
 typedef struct EmitTemps EmitTemps;
