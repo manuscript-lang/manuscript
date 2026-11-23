@@ -19,8 +19,9 @@ static void declared(void *context, const MsBinding *binding, const MsBindingLis
     return;
   }
   bool outer = false;
-  for (size_t index = 0; index + 1 < scope->len && !outer; index++) {
-    outer = scope->ptr[index].name == binding->name && scope->ptr[index].depth < binding->depth;
+  /* The earlier bindings of this name, innermost first (the one just declared is last in the scope). */
+  for (uint32_t at = scope->ptr[scope->len - 1].shadowed; at != 0 && !outer; at = scope->ptr[at - 1].shadowed) {
+    outer = scope->ptr[at - 1].depth < binding->depth;
   }
   if (!outer) {
     return;
