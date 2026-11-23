@@ -51,6 +51,9 @@ typedef struct LowerFn {
   MirBuilder b;
   const MsFacts *facts;
   const MsFunc *func;
+  /* Index keys of a `var` place evaluated early, in written order: the place's later uses read these, not the keys again. */
+  struct { const MsExpr *expr; MirValue value; } presolved[8];
+  uint32_t npresolved;
   bool keeps_scoped; /* this function keeps the closures it is given (the flag of its MIR function) */
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
@@ -351,6 +354,8 @@ typedef struct VarSlot {
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
+/* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */
+void fn_presolve_keys(LowerFn *fn, const MsExpr *place);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier);
 bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot); /* a default argument passes the callee's own `var` parameter on */
 bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count);
