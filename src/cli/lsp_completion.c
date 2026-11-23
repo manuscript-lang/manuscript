@@ -32,7 +32,7 @@ static void add(Completer *c, MsSpan name, int kind, MsTy ty, int priority, MsSp
   ms_strbuild_append_byte(&sort, '_');
   ms_strbuild_append(&sort, name);
   MsStrBuild detail = ms_strbuild_new();
-  if (ty != MS_TY_NONE) ms_ty_show(&detail, c->program->names, &c->program->types, ty);
+  if (ty != MS_TY_NONE) ms_ty_show_plain(&detail, c->program->names, &c->program->types, ty);
   Item item = {.label = own(name), .detail = ms_strbuild_finish(&detail), .documentation = own(documentation),
                .sort = ms_strbuild_finish(&sort), .insert = own(insert), .kind = kind,
                .format = c->snippets && (contains(insert, "${") || contains(insert, "$0")) ? 2 : 1};

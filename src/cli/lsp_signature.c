@@ -312,7 +312,7 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
       ms_strbuild_append(&one, ms_names_span(program->names, ast != NULL ? ast->ptr[i]->name : params[i].name));
       ms_strbuild_append_text(&one, ": ");
     }
-    ms_ty_show(&one, program->names, &program->types, params[i].ty);
+    ms_ty_show_plain(&one, program->names, &program->types, params[i].ty);
     if (defaults != NULL && defaults->ptr[i]->def != NULL) ms_strbuild_append_text(&one, " = ...");
     if (i > 0) ms_strbuild_append_text(&label, ", ");
     ms_strbuild_append(&label, ms_strbuild_span(&one));
@@ -323,7 +323,7 @@ static void signature_for(LspAnalysis *analysis, const LspDocList *docs, MsSpan 
     ms_strbuild_free(&one);
   }
   ms_strbuild_append_text(&label, ") ");
-  if (result != MS_TY_NONE) ms_ty_show(&label, program->names, &program->types, result);
+  if (result != MS_TY_NONE) ms_ty_show_plain(&label, program->names, &program->types, result);
   /* The active parameter: a written label picks its slot, an unlabeled argument the first slot not yet taken. */
   size_t active = 0;
   bool *used = count == 0 ? NULL : calloc(count, sizeof *used);

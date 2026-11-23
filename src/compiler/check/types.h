@@ -199,6 +199,8 @@ MsTyVariable *ms_ty_variable(MsTyTable *table, MsTy ty);
 /* Appends `ty` as source reads it (`Int?`, `List[Int]`, `fn(var Int) Void`). At most 64 type nodes are
  * written; the rest of a larger type is `…`. */
 void ms_ty_show(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty);
+/* The same without the `move` of a parameter: the signature an editor shows, where ownership is not the point. */
+void ms_ty_show_plain(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty);
 
 /* `ty` with each variable `vars[i]` replaced by `args[i]`, through arguments, parameters and results; `ty`
  * itself when nothing changes. Variables match by identity. New types are interned in the table. */
