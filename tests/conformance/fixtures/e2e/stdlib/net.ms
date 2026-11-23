@@ -90,7 +90,7 @@ test "closing the input leaves the output open and closing both ends the connect
 
 test "host names resolve whatever their case":
 	listener := listen("127.0.0.1:0")?
-	port := listener.address().split(":").last().get_or("")
+	port := listener.address().split(":").last().clone().get_or("")
 	client := connect(f"LocalHost:{port}", timeout: 2.seconds()).wait()?
 	server := listener.accept(2.seconds()).wait()?
 	expect_equal(server.info.peer_address, client.info.local_address)?

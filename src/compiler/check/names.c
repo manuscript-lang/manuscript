@@ -71,6 +71,16 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
   ((Names *)context)->unknown = expr;
 }
 
+/* An assignment to a plain name that nothing declares: the same report as reading it. */
+static void assign_name(void *context, const MsStmt *stmt, const MsBindingList *scope, const MsScopeSite *site) {
+  const Names *pass = context;
+  const MsName name = stmt->u.assign.name;
+  if (site->in_constant_call || ms_scope_lookup(scope, name) != NULL || is_declared(pass, name)) {
+    return;
+  }
+  ms_unknown_name_report(pass->program, pass->module, stmt->pos, name, scope, site);
+}
+
 static bool was_reported(void *context, const MsExpr *expr) {
   return ((const Names *)context)->unknown == expr;
 }
@@ -93,6 +103,6 @@ static bool has_broken_type(void *context, const MsParam *param) {
 
 void ms_check_names(MsCheckProgram *program, uint32_t module) {
   Names pass = {.program = program, .module = module};
-  const MsScopeVisitor visitor = {.context = &pass, .name = read_name, .invalid_param = has_broken_type, .unknown = was_reported};
+  const MsScopeVisitor visitor = {.context = &pass, .name = read_name, .assign = assign_name, .invalid_param = has_broken_type, .unknown = was_reported};
   ms_scope_walk_module(program->modules.ptr[module].tree, &visitor, program->names);
 }

@@ -65,7 +65,7 @@ fn name_of(path: String) String:
 fn by_name(a: DirectoryEntry, b: DirectoryEntry) Int:
 	return a.name.compare(b.name)
 
-fn limited(entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry]!:
+fn limited(move entries: List[DirectoryEntry], max_entries: Int?) List[DirectoryEntry]!:
 	if max_entries.is_some() and max_entries.get() < 0: return error(fs_invalid_input())
 	if max_entries.is_some() and entries.length() > max_entries.get(): return error(
 		Error("filesystem: limit exceeded", kind: "EOVERFLOW")
@@ -342,7 +342,7 @@ fn EmbeddedTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 export fn embedded_tree(
 	move indexes: Map[String, Int],
 	move directories: Set[String],
-	load: fn(Int) Bytes
+	move load: fn(Int) Bytes
 ) EmbeddedTree:
 	var kids = Map[String, List[String]]()
 	for key in indexes.keys():

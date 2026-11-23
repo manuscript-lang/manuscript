@@ -14,7 +14,7 @@ type Tracked:
 fn move Tracked.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn track(log: String, id: Int) Tracked:
+fn track(move log: String, id: Int) Tracked:
 	return Tracked(log, id)
 
 fn closed(log: String) String:
@@ -42,7 +42,7 @@ type Wrapper:
 fn move Wrapper.close() Void!:
 	void append_file(self.log, "wrapper,").wait()
 
-fn holds_fields(log: String) Int:
+fn holds_fields(move log: String) Int:
 	p := Pair(track(log.clone(), 1), track(log, 2))
 	return p.first.id
 

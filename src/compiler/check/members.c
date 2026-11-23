@@ -28,7 +28,8 @@ static void member_names(Body *body, MsTy receiver, MsSpanList *out) {
     for (uint32_t at = 0; at < entry->shared; at++) {
       ms_ty_list_push(&bound, MS_TY_NONE);
     }
-    if (ms_check_unify(&program->types, entry->receiver, receiver, entry->variables.ptr, entry->shared, bound.ptr)) {
+    if (ms_check_unify(&program->types, entry->receiver, receiver, entry->variables.ptr, entry->shared, bound.ptr) &&
+        ms_check_bounds_satisfied(program, entry->variables.ptr, entry->shared, bound.ptr)) {
       ms_span_list_push(out, ms_names_span(program->names, entry->name));
     }
     ms_ty_list_free(&bound);
@@ -95,6 +96,144 @@ static bool payload_hint(Body *body, MsTy receiver, MsSpan name, MsStrBuild *out
   ms_strbuild_append_text(out, optional ? "`if value := x:` or x.get_or(default)"
                                         : "`x?` inside a fn that returns Result, `if value := x:` or x.get_or(default)");
   return true;
+}
+
+static bool name_in_list(MsSpan name, const char *const *names) {
+  for (size_t index = 0; names[index] != NULL; index++) {
+    if (ms_span_is_text(name, names[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+#define NAME_IN(name, ...) name_in_list(name, (const char *const[]){__VA_ARGS__, NULL})
+
+/* Habits from other languages, in the order the oracle tries them: a name the module declares as a function, an
+ * optional or result read as in other languages, `is_none` on a value that cannot be none. */
+static bool habit_before_payload(Body *body, MsTy receiver, MsName id, MsSpan name, MsStrBuild *out) {
+  const MsTyTable *types = &body->program->types;
+  const MsSymbol *symbol = body_find_symbol(body, id);
+  if (symbol != NULL && symbol->kind == MS_SYMBOL_FN) {
+    ms_strbuild_append_text(out, "; ");
+    ms_strbuild_append(out, name);
+    ms_strbuild_append_text(out, " is a function here, not a method of ");
+    show(body, out, receiver);
+    ms_strbuild_append_text(out, ": call it as ");
+    ms_strbuild_append(out, name);
+    ms_strbuild_append_text(out, "(value) with the value as an argument, or declare it as a method with `fn ");
+    show(body, out, receiver);
+    ms_strbuild_append_text(out, ".");
+    ms_strbuild_append(out, name);
+    ms_strbuild_append_text(out, "()`");
+    return true;
+  }
+  const bool optional = ms_ty_is(types, receiver, MS_BUILTIN_Optional);
+  const bool result = ms_ty_is(types, receiver, MS_BUILTIN_Result);
+  const char *fix = NULL;
+  if (optional && (NAME_IN(name, "unwrap", "expect", "value", "unwrap_or") || NAME_IN(name, "unwrap_or_else", "or_default", "unwrap_or_default"))) {
+    fix = "read an Optional with x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:` to test and unwrap; x.get() with no default faults on none";
+  } else if (optional && NAME_IN(name, "map_or", "is_some_and", "flatten", "filter")) {
+    fix = "use map, and_then, is_some, or `if value := x:`";
+  } else if (result && (NAME_IN(name, "unwrap", "expect", "unwrap_or", "unwrap_or_else") || NAME_IN(name, "unwrap_or_default"))) {
+    fix = "read a Result with `x?` inside a fn that returns Result, x.get_or(default), x.get_or_else(create) for a lazy fallback, or `if value := x:`";
+  } else if (result && NAME_IN(name, "unwrap_err", "err", "ok")) {
+    fix = "inspect a Result with `if value := x:` or is_error()";
+  }
+  if (fix != NULL) {
+    ms_strbuild_append_text(out, "; ");
+    ms_strbuild_append_text(out, fix);
+    return true;
+  }
+  if (!optional && !result && NAME_IN(name, "is_none", "is_some")) {
+    ms_strbuild_append_text(out, "; a value of type ");
+    show(body, out, receiver);
+    ms_strbuild_append_text(out, " is never none here. List.get(i) returns the element and faults when i is out of range: use xs.get_or(i, default) for a fallback, or check i against xs.length() first");
+    return true;
+  }
+  return false;
+}
+
+static const char *const MEMBER_SYNONYMS[][4] = {
+    {"byte_length", "length"}, {"len", "length", "scalar_length"}, {"size", "length", "scalar_length"},
+    {"count", "length", "scalar_length"}, {"length", "scalar_length"}, {"push", "append", "add"}, {"add", "append"},
+    {"insert", "append", "add"}, {"delete", "remove"}, {"decode", "to_string"}, {"toString", "to_string"},
+    {"to_text", "to_string"}, {"includes", "contains"}, {"has", "contains"}, {"indexOf", "index_of"},
+    {"find_index", "index_of"}, {"reduce", "fold"}, {"each", "for_each"}, {"substring", "slice", "view"},
+    {"substr", "slice", "view"}, {"charAt", "scalar_at"}, {"char_at", "scalar_at"}, {"sort", "sorted"},
+    {"trim_left", "trim_start"}, {"trim_right", "trim_end"}, {"to_upper", "upper"}, {"to_lower", "lower"},
+    {"to_uppercase", "upper"}, {"to_lowercase", "lower"}, {"toUpperCase", "upper"}, {"toLowerCase", "lower"},
+    {"trimStart", "trim_start"}, {"trimEnd", "trim_end"}, {"to_int", "parse_int", "truncate_to_int"},
+    {"replace_all", "replace"}, {"replace_n", "replace", "replace_first"},
+};
+
+/* Appends `'x'` for each name the receiver has that the written name is a habit for, joined by " or ". */
+static bool synonym_hint(MsSpan name, const MsSpanList *names, MsStrBuild *out) {
+  MsStrBuild snake = ms_strbuild_new();
+  for (size_t index = 0; index < name.len; index++) {
+    const char c = (char)name.ptr[index];
+    if (c >= 'A' && c <= 'Z') {
+      ms_strbuild_append_text(&snake, "_");
+      const char lower[2] = {(char)(c - 'A' + 'a'), 0};
+      ms_strbuild_append_text(&snake, lower);
+    } else {
+      const char same[2] = {c, 0};
+      ms_strbuild_append_text(&snake, same);
+    }
+  }
+  MsStrBuild found = ms_strbuild_new();
+  size_t count = 0;
+  const bool has_upper = ms_strbuild_length(&snake) != name.len;
+  if (has_upper && has_name(names, ms_strbuild_span(&snake))) {
+    ms_strbuild_append_text(&found, "'");
+    ms_strbuild_append(&found, ms_strbuild_span(&snake));
+    ms_strbuild_append_text(&found, "'");
+    count++;
+  }
+  for (size_t row = 0; row < MS_COUNT_OF(MEMBER_SYNONYMS); row++) {
+    if (!ms_span_is_text(name, MEMBER_SYNONYMS[row][0])) {
+      continue;
+    }
+    for (size_t at = 1; at < 4 && MEMBER_SYNONYMS[row][at] != NULL; at++) {
+      for (size_t index = 0; index < names->len; index++) {
+        if (ms_span_is_text(names->ptr[index], MEMBER_SYNONYMS[row][at])) {
+          ms_strbuild_append_text(&found, count++ == 0 ? "'" : " or '");
+          ms_strbuild_append_text(&found, MEMBER_SYNONYMS[row][at]);
+          ms_strbuild_append_text(&found, "'");
+        }
+      }
+    }
+  }
+  if (count != 0) {
+    ms_strbuild_append_text(out, "; did you mean ");
+    ms_strbuild_append(out, ms_strbuild_span(&found));
+    ms_strbuild_append_text(out, "?");
+  }
+  ms_strbuild_free(&snake);
+  ms_strbuild_free(&found);
+  return count != 0;
+}
+
+/* The renames and habits that follow the payload hint: `some`/`every`, `Map.set`, then synonyms. */
+static bool habit_after_payload(Body *body, MsTy receiver, MsSpan name, const MsSpanList *names, MsStrBuild *out) {
+  const MsTyTable *types = &body->program->types;
+  const bool collection = ms_ty_is(types, receiver, MS_BUILTIN_List) || ms_ty_is(types, receiver, MS_BUILTIN_Map) ||
+                          ms_ty_is(types, receiver, MS_BUILTIN_Set);
+  if (collection && (ms_span_is_text(name, "some") || ms_span_is_text(name, "every"))) {
+    ms_strbuild_append_text(out, "; ");
+    ms_strbuild_append(out, name);
+    ms_strbuild_append_text(out, "(predicate) is now ");
+    ms_strbuild_append_text(out, ms_span_is_text(name, "some") ? "any" : "all");
+    ms_strbuild_append_text(out, "(predicate)");
+    return true;
+  }
+  if (ms_ty_is(types, receiver, MS_BUILTIN_Map) && ms_span_is_text(name, "set")) {
+    ms_strbuild_append_text(out, "; write m[key] = value or m.add(key, value) to insert or replace a Map entry; "
+                                 "available: ");
+    ms_suggest_list(out, names, names->len);
+    return true;
+  }
+  return synonym_hint(name, names, out);
 }
 
 static void append_available(MsStrBuild *out, const MsSpanList *names, MsSpan name) {
@@ -196,7 +335,9 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   member_names(body, receiver, &names);
   if (unmet_member_bound(body, receiver, member->u.member.name, &text)) {
     /* the reason is the whole hint */
-  } else if (!payload_hint(body, receiver, name, &text)) {
+  } else if (habit_before_payload(body, receiver, member->u.member.name, name, &text)) {
+    /* a habit from another language */
+  } else if (!payload_hint(body, receiver, name, &text) && !habit_after_payload(body, receiver, name, &names, &text)) {
     if (ms_suggest_did_you_mean(&text, name, &names)) {
       if (unique_count(&names) <= 40) {
         append_available(&text, &names, name);
@@ -219,5 +360,18 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
     }
   }
   ms_span_list_free(&names);
+  /* An operation that returns its Result directly has nothing to wait for: drop `.wait()`. */
+  const bool wait = ms_ty_is(types, receiver, MS_BUILTIN_Result) && ms_span_is_text(name, "wait");
+  if (wait) {
+    ms_strbuild_append_text(&text, "; this call returns its Result directly, not a Promise, so drop `.wait()`");
+  }
   ms_check_report(body->program, body->module, member->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  const MsSpan source = body->program->modules.ptr[body->module].source;
+  const size_t after = (size_t)member->pos.offset + name.len;
+  if (wait && member->pos.offset > 0 && after + 2 <= source.len && source.ptr[after] == '(' &&
+      source.ptr[after + 1] == ')') {
+    const MsPos from = {member->pos.offset - 1, member->pos.line, member->pos.column - 1};
+    const MsPos to = {(uint32_t)after + 2, member->pos.line, member->pos.column + (uint32_t)name.len + 2};
+    ms_check_attach_fix(body->program, from, to, ms_string_from_span(ms_span_of_text("")));
+  }
 }

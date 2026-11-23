@@ -19,12 +19,28 @@ static void disown(LowerFn *fn, MirValue value) {
 
 /* Binds the names of `pattern` to the parts of `value`: a record pattern reads fields, a list pattern reads
  * elements. The parts are borrowed from `value`, which the binding's source keeps alive. */
-static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned, const MirVar *owner) {
+static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool owned, const MirVar *owner,
+                       bool reassignable) {
   const MirModule *module = fn->cx->module;
   if (pattern->kind == MS_P_NAME) {
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
     if (ref == NULL || ref->kind != MS_REF_LOCAL) {
       return fn_fail(fn, "a bound name has no local");
+    }
+    if (reassignable) { /* `var` takes its own copy of the part, which the name then owns and may reassign */
+      const MirTy ty = mir_b_ty(&fn->b, value);
+      if (!mir_needs_drop(module, ty)) {
+        mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), value);
+        return !fn->failed;
+      }
+      if (ref->local >= fn->nvars) {
+        return fn_fail(fn, "a local binding is outside the function's locals");
+      }
+      const MirValue copy = fn_emit(fn, MOP_Clone, &value, 1, (MirImm){0}, ty);
+      fn->vars[ref->local] = mir_b_declare_var(&fn->b, ty, MM_MOVE) + 1;
+      disown(fn, copy);
+      mir_b_def_var(&fn->b, fn->vars[ref->local] - 1, copy);
+      return fn_scope_own_var(fn, fn->vars[ref->local] - 1) && !fn->failed;
     }
     mir_b_def_var(&fn->b, fn_local(fn, ref->local, mir_b_ty(&fn->b, value)), value);
     return !fn->failed;
@@ -37,7 +53,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
       const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
-      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false, NULL)) {
+      if (!bind_parts(fn, pattern->u.list.ptr[at], element, false, NULL, reassignable)) {
         return false;
       }
     }
@@ -71,7 +87,7 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
         fn_scope_var_moved(fn, *owner, found);
       }
     }
-    if (!bind_parts(fn, field->pattern, part, false, NULL)) {
+    if (!bind_parts(fn, field->pattern, part, false, NULL, reassignable)) {
       return false;
     }
   }
@@ -99,14 +115,12 @@ static bool call_reads_temporary(const MsExpr *call) {
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
-    if (stmt->u.bind.is_mutable) {
-      return fn_fail(fn, "a `var` destructuring is not lowered yet");
-    }
     const MirValue source = fn_expr(fn, stmt->u.bind.value, LW_BORROW);
     MirVar owner = 0;
-    const bool from_var = source != MIR_NONE && fn_owned_local(fn, stmt->u.bind.value, &owner);
+    const bool from_var = source != MIR_NONE && !stmt->u.bind.is_mutable && fn_owned_local(fn, stmt->u.bind.value, &owner);
     return source != MIR_NONE &&
-           bind_parts(fn, pattern, source, from_var || fn_fresh_owner(fn, source), from_var ? &owner : NULL);
+           bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
+                      from_var ? &owner : NULL, stmt->u.bind.is_mutable);
   }
   /* A name bound to another name borrows it unless the checker marked the read a move (the source is assigned while
    * the binding lives); anything else, and every `var`, is a new owner. */
@@ -164,6 +178,11 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   } else if (fn->local_owns != NULL && local < fn->nvars && borrow && !fresh && !stmt->u.bind.is_mutable &&
              mir_needs_drop(fn->cx->module, ty)) {
     fn->local_owns[local] = 2; /* a view of another owner's value: moving it out copies it */
+  }
+  if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
+    /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it
+     * as a block parameter, which would hide the owner from a later move. */
+    fn->vars[local] = mir_b_declare_single(&fn->b, ty, MM_BORROW) + 1;
   }
   if (!stmt->u.bind.is_mutable && local < fn->nvars && fn->vars[local] == 0 && mir_needs_drop(fn->cx->module, ty)) {
     /* An owned binding that is never assigned again has one value everywhere it is read: no loop or join carries it
@@ -377,6 +396,12 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
 /* Stores `field`, the changed value of the field `fn_take_field` took, back: the old ones share its storage, so they
  * are not dropped. */
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field) {
+  return fn_put_field_chain(fn, place, record, field, NULL);
+}
+
+/* The same, and `*updated_record` is the root record with the field changed: a later field of the same root is put
+ * into that, not into the record the first one replaced. */
+bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record) {
   const MsExpr *fields[FIELD_PATH_MAX];
   const MsExpr *root = NULL;
   uint32_t count = 0;
@@ -392,7 +417,37 @@ bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue fi
     const MirValue operands[2] = {values[index], updated};
     updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, values[index]));
   }
+  if (updated_record != NULL) {
+    *updated_record = updated;
+  }
   return fn_put_place(fn, root, updated);
+}
+
+/* The field `place` of the root record `record`, which an earlier field of the same root already took out of its variable. */
+bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field) {
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root = NULL;
+  uint32_t count = 0;
+  MirValue values[FIELD_PATH_MAX + 1];
+  if (!field_path(fn, place, fields, &count, &root) || !read_path(fn, fields, count, record, values)) {
+    return false;
+  }
+  *field = values[count];
+  return true;
+}
+
+/* Whether the field paths `a` and `b` start at the same variable. */
+bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b) {
+  const MsExpr *fields[FIELD_PATH_MAX];
+  const MsExpr *root_a = NULL;
+  const MsExpr *root_b = NULL;
+  uint32_t count = 0;
+  if (!field_path(fn, a, fields, &count, &root_a) || !field_path(fn, b, fields, &count, &root_b)) {
+    return false;
+  }
+  const MsRef *ref_a = ms_facts_ref(fn->facts, root_a->id);
+  const MsRef *ref_b = ms_facts_ref(fn->facts, root_b->id);
+  return ref_a != NULL && ref_b != NULL && ref_a->kind == ref_b->kind && ref_a->local == ref_b->local;
 }
 
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
@@ -507,6 +562,55 @@ static bool update_map_entry(LowerFn *fn, const MsExpr *place, MirValue value, b
   return !fn->failed;
 }
 
+/* Whether `view` is the result of a call that borrows `owner` (`n := cur.get()` views the payload of `cur`). */
+static bool views_payload_of(const LowerFn *fn, MirValue view, MirValue owner) {
+  for (size_t block = 0; block < fn->b.func.blocks.len; block++) {
+    const MirInstList *insts = &fn->b.func.blocks.ptr[block].insts;
+    for (size_t at = 0; at < insts->len; at++) {
+      const MirInst *inst = &insts->ptr[at];
+      if (inst->res == view) {
+        MirMode mode = MM_MOVE;
+        return inst->nargs != 0 && inst->args[0] == owner && mir_result_mode(fn->cx->module, &fn->b.func, inst, &mode) &&
+               mode == MM_BORROW;
+      }
+    }
+  }
+  return false;
+}
+
+/* `cur = n.next` where `n` views the payload of the owning Optional `cur`: the old payload leaves `cur`, its field
+ * moves into the new value and the rest of it is released, so a walk along a list does not copy what is left of it.
+ * `value` is the new value, or MIR_NONE when the assignment is not that shape. */
+static MirValue take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var) {
+  const MsExpr *member = stmt->u.assign.value;
+  const MsRef *ref = member->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, member->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_FIELD || ms_facts_use(fn->facts, member->id) != MS_USE_MOVE || !var_owns(fn, var)) {
+    return MIR_NONE;
+  }
+  const MirValue old = mir_b_use_var(&fn->b, var);
+  const MirTyData *old_data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, old));
+  if (old_data->kind != MK_OPT || !mir_needs_drop(fn->cx->module, old_data->elem)) {
+    return MIR_NONE;
+  }
+  const MirValue view = fn_expr(fn, member->u.member.left, LW_BORROW);
+  if (view == MIR_NONE || !views_payload_of(fn, view, old)) {
+    return MIR_NONE;
+  }
+  const MirTy elem = old_data->elem;
+  const MirTyData *record = mir_ty_data(fn->cx->module, elem);
+  if (record->kind != MK_TYPE) {
+    return MIR_NONE;
+  }
+  const MirImm imm = {.tag = MI_FIELD, .a = record->id, .b = ref->index};
+  const MirValue item = mir_b_emit(&fn->b, MOP_OptUnbox, &old, 1, (MirImm){0}, elem);
+  const MirTy field_ty = fn_type(fn, ms_facts_type(fn->facts, member->id));
+  const MirValue field = mir_b_emit(&fn->b, MOP_TypeGet, &item, 1, imm, field_ty);
+  const MirValue taken = mir_b_emit(&fn->b, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+  const MirImm mask = {.tag = MI_TYPEMASK, .a = record->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
+  (void)mir_b_emit(&fn->b, MOP_TypeRelease, &item, 1, mask, MIR_NONE);
+  return taken;
+}
+
 static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   if (stmt->u.assign.member_target) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
@@ -539,6 +643,11 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     return fn_fail(fn, "an assignment does not name a local");
   }
   fn->nmoved_names = 0;
+  const MirValue advanced = take_field_of_old(fn, stmt, var);
+  if (advanced != MIR_NONE) { /* the old value is gone: nothing is left to drop */
+    mir_b_def_var(&fn->b, var, advanced);
+    return !fn->failed;
+  }
   const MirValue value = take_value(fn, stmt->u.assign.value);
   if (value == MIR_NONE) {
     return false;
@@ -579,7 +688,18 @@ static bool lower_return(LowerFn *fn, const MsStmt *stmt) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, none, MIR_NONE);
   }
   value = fn_result_wrap(fn, value);
+  /* `return x` over an owning `var` hands its value on: the unwind must not own it again. */
+  MirVar returned = 0;
+  const bool hands_on = stmt->u.expr != NULL && stmt->u.expr->kind == MS_E_NAME && value != MIR_NONE &&
+                        ms_facts_use(fn->facts, stmt->u.expr->id) == MS_USE_MOVE && fn_owned_local(fn, stmt->u.expr, &returned) &&
+                        mir_b_use_var(&fn->b, returned) == value;
+  if (hands_on) {
+    fn_scope_var_released(fn, returned, true);
+  }
   fn_scope_unwind(fn, 0);
+  if (hands_on) {
+    fn_scope_var_released(fn, returned, false);
+  }
   mir_b_ret(&fn->b, value == MIR_NONE ? fn_default_result(fn) : value);
   fn->terminated = true;
   return !fn->failed;
@@ -623,6 +743,9 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
       const MirValue taken = fn_take_from_temporary(fn, stmt->u.branch.cond, tested);
       owns = taken != MIR_NONE;
       tested = owns ? taken : tested;
+      if (owns && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, tested))) {
+        fn_own(fn, fn_scope(fn), tested); /* the payload taken from the temporary is the scope's until the branch binds it */
+      }
     }
     if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
       fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */

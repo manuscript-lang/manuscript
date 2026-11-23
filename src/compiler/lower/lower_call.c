@@ -134,12 +134,16 @@ bool fn_is_text_literal(const MsExpr *expr) {
 
 /* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
 /* Moves the value of `place` into a new slot and returns the slot's address. */
-MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
+MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier) {
   MirValue owned;
   if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
     return fn_try_var_slot(fn, place, out);
   }
   MirValue element;
+  if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
+    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    return element;
+  }
   if (fn_list_element_addr(fn, place, &element)) {
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE};
     return element;
@@ -151,7 +155,16 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   MirValue record = MIR_NONE;
   if (is_place) {
     /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
-    if (!fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
+    /* Another field of a variable an earlier argument already took: it is read from that record, which goes back once. */
+    bool shared = false;
+    for (uint32_t at = 0; at < nearlier && !shared; at++) {
+      if (earlier[at].record != MIR_NONE && earlier[at].place != NULL && fn_same_field_root(fn, earlier[at].place, place) &&
+          fn_read_field(fn, place, earlier[at].record, &owned)) {
+        record = earlier[at].record;
+        shared = true;
+      }
+    }
+    if (!shared && !fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
       return MIR_NONE;
     }
   } else {
@@ -183,8 +196,26 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out) {
   return slot;
 }
 
+/* Stores slot `at`'s value into its place. A field's record carries the change on to the later fields of the same root. */
+static bool put_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at, MirValue value) {
+  if (slots[at].record == MIR_NONE) {
+    return fn_put_place(fn, slots[at].place, value);
+  }
+  const MirValue old = slots[at].record;
+  MirValue record = old;
+  if (!fn_put_field_chain(fn, slots[at].place, old, value, &record)) {
+    return false;
+  }
+  for (uint32_t later = at + 1; later < count; later++) {
+    if (slots[later].record == old) {
+      slots[later].record = record;
+    }
+  }
+  return true;
+}
+
 /* After the call: each slot's value goes back into the place it came from. */
-bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
+bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
     if (slots[at].in_place) {
       continue;
@@ -199,16 +230,14 @@ bool fn_var_slots_back(LowerFn *fn, const VarSlot *slots, uint32_t count) {
         (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
         continue;
       }
-      if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, wrapped)
-                                         : fn_put_place(fn, slots[at].place, wrapped))) {
+      if (!put_back(fn, slots, count, at, wrapped)) {
         return false;
       }
     } else if (slots[at].place == NULL) {
       if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
         (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
       }
-    } else if (!(slots[at].record != MIR_NONE ? fn_put_field(fn, slots[at].place, slots[at].record, updated)
-                                              : fn_put_place(fn, slots[at].place, updated))) {
+    } else if (!put_back(fn, slots, count, at, updated)) {
       return false;
     }
   }
@@ -265,17 +294,20 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
   }
   /* A `var` argument is the variable itself, taken into its slot once every other argument has run: a call
    * among them that changes the variable is seen by the callee. */
-  for (uint32_t step = 0; step < 2 * call->arg_count; step++) {
+  for (uint32_t step = 0; step < 3 * call->arg_count; step++) {
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
                          (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
-    if (by_slot != (step >= call->arg_count)) {
+    /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
+    const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
+    if (phase != step / call->arg_count) {
       continue;
     }
     if (by_slot) {
       const MsExpr *place = fn_written_arg(expr, arg->node.node);
-      out[index] = place != NULL ? fn_var_slot(fn, place, &slots[(*nslots)++]) : MIR_NONE;
+      out[index] = place != NULL ? fn_var_slot(fn, place, &slots[*nslots], slots, *nslots) : MIR_NONE;
+      (*nslots) += place != NULL ? 1 : 0;
     } else if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
@@ -703,7 +735,9 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   uint32_t ntype_args = call->type_arg_count;
   if (target.variables != NULL) {
     /* A method's variables are the receiver form's and its own: bind them against the instantiated signature. */
-    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, call->callee_ty, target.variables,
+    /* The call's type is written in the caller's variables; the receiver below is already in its instance's types. */
+    const MsTy callee_ty = ms_ty_subst(&fn->cx->program->types, call->callee_ty, fn->subst.vars, fn->subst.args, fn->subst.count);
+    if (target.nvariables > 16 || !ms_check_unify(&fn->cx->program->types, target.ty, callee_ty, target.variables,
                                                   target.nvariables, bound)) {
       (void)fn_fail(fn, "a method's type arguments could not be found from its call");
       return MIR_NONE;

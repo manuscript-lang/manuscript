@@ -116,8 +116,9 @@ fn Gen[T].flat_map[B](next: fn(T) Gen[B]) Gen[B]:
 
 // Keeps only the values for which `keep` is true. After 50 consecutive rejections the
 // case is marked invalid and discarded.
-fn Gen[T].filter(keep: fn(T) Bool) Gen[T]:
-	return Gen[T](fn s: filter_draw(self, keep, s.clone()))
+fn Gen[T].filter(move keep: fn(T) Bool) Gen[T]:
+	source := self.clone()
+	return Gen[T](fn s: filter_draw(source, keep, s.clone()))
 
 // Generates one value from this generator and one from `other`, and combines them
 // with `combine`.
@@ -228,7 +229,7 @@ fn zip_draw[A, B, C](
 	return Drawn(combine(a, b), source)
 
 // Generates a value or `none`, shrinking toward `none`.
-export fn optionals[T](gen: Gen[T]) Gen[T?]:
+export fn optionals[T](move gen: Gen[T]) Gen[T?]:
 	return Gen[T?](fn s: optional_draw(gen, s.clone()))
 
 fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
@@ -240,7 +241,7 @@ fn optional_draw[T](gen: Gen[T], s: Source) Drawn[T?]:
 
 // Generates lists of `min_length` through `max_length` elements, shrinking toward fewer
 // and simpler elements.
-export fn lists[T](gen: Gen[T], min_length: Int = 0, max_length: Int = 20) Gen[List[T]]:
+export fn lists[T](move gen: Gen[T], min_length: Int = 0, max_length: Int = 20) Gen[List[T]]:
 	return Gen[List[T]](fn s: list_draw(gen, min_length, max_length, s.clone()))
 
 fn list_draw[T](gen: Gen[T], min_length: Int, max_length: Int, s: Source) Drawn[List[T]]:
@@ -505,7 +506,7 @@ fn report[T](
 	small := shrink(gen, property, used, 2000)
 	final := replay(gen, property, small)
 	{value: shown} := gen.make(Source(small.clone(), 0, 0, false, false))
-	reason := final.failure.get_or(message)
+	reason := final.failure.clone().get_or(message.clone())
 
 	// The failure keeps the details of the assertion that failed, which name its source
 	// position.

@@ -19,6 +19,7 @@ typedef struct Scan {
   uint32_t nvars;
   const MsExpr **names;
   const MsRef **refs; /* parallel to names: the ref a call fact holds for a callee, else NULL */
+  MsName *syms;       /* parallel to names: the name written, which an assignment's bare-name target has no expression for */
   uint32_t nnames, cnames;
   const MsExpr *inner[16]; /* lambdas written inside the root: their parameters are bound there */
   uint32_t ninner;
@@ -53,6 +54,8 @@ static void mark_changed(Scan *scan, const MsRef *ref, MsName name) {
   }
 }
 
+static void push_sym(Scan *scan, const MsExpr *name, const MsRef *ref, MsName sym);
+
 static void scan_stmt(void *ctx, const MsStmt *stmt) {
   Scan *scan = ctx;
   const MsRef *ref = ms_facts_ref(scan->fn->facts, stmt->id);
@@ -77,10 +80,13 @@ static void scan_stmt(void *ctx, const MsStmt *stmt) {
     const MsRef *target = ms_facts_ref(scan->fn->facts, root != NULL && root->kind == MS_E_NAME ? root->id : stmt->id);
     /* A target that is a bare name is kept in the statement's `name`, not as an expression. */
     mark_changed(scan, target, root != NULL && root->kind == MS_E_NAME ? root->u.sym : (stmt->u.assign.member_target ? 0 : stmt->u.assign.name));
+    if (root == NULL && !stmt->u.assign.member_target && scan->root != NULL) { /* a bare name no expression stands for: still a capture */
+      push_sym(scan, NULL, ms_facts_ref(scan->fn->facts, stmt->id), stmt->u.assign.name);
+    }
   }
 }
 
-static void push_name(Scan *scan, const MsExpr *name, const MsRef *ref) {
+static void push_sym(Scan *scan, const MsExpr *name, const MsRef *ref, MsName sym) {
   if (ref == NULL) {
     return;
   }
@@ -88,15 +94,23 @@ static void push_name(Scan *scan, const MsExpr *name, const MsRef *ref) {
     scan->cnames = scan->cnames == 0 ? 16 : scan->cnames * 2;
     const MsExpr **names = MS_ARENA_NEW_ARRAY(&scan->fn->cx->module->arena, const MsExpr *, scan->cnames);
     const MsRef **refs = MS_ARENA_NEW_ARRAY(&scan->fn->cx->module->arena, const MsRef *, scan->cnames);
+    MsName *syms = MS_ARENA_NEW_ARRAY(&scan->fn->cx->module->arena, MsName, scan->cnames);
     for (uint32_t index = 0; index < scan->nnames; index++) {
       names[index] = scan->names[index];
       refs[index] = scan->refs[index];
+      syms[index] = scan->syms[index];
     }
     scan->names = names;
     scan->refs = refs;
+    scan->syms = syms;
   }
   scan->names[scan->nnames] = name;
+  scan->syms[scan->nnames] = sym;
   scan->refs[scan->nnames++] = ref;
+}
+
+static void push_name(Scan *scan, const MsExpr *name, const MsRef *ref) {
+  push_sym(scan, name, ref, name->u.sym);
 }
 
 static void scan_expr(void *ctx, const MsExpr *expr) {
@@ -126,10 +140,10 @@ static void scan_expr(void *ctx, const MsExpr *expr) {
 }
 
 /* Whether the parameter reference `expr` names a parameter of the lambda itself. */
-static bool is_own_param(const LowerFn *fn, const MsExpr *lambda, const MsExpr *expr, const MsRef *ref) {
+static bool is_own_param(const LowerFn *fn, const MsExpr *lambda, MsName sym, const MsRef *ref) {
   (void)fn;
   const MsParams *params = (const MsParams *)&lambda->u.lambda.params;
-  return ref->local < params->len && params->ptr[ref->local]->name == expr->u.sym;
+  return ref->local < params->len && params->ptr[ref->local]->name == sym;
 }
 
 static bool have_capture(const LowerCapture *captures, uint32_t count, uint8_t kind, uint32_t index, MsName name) {
@@ -158,20 +172,21 @@ static bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out,
   uint32_t used = 0;
   for (uint32_t index = 0; index < scan.nnames; index++) {
     const MsExpr *name = scan.names[index];
+    const MsName sym = scan.syms[index];
     const MsRef *ref = scan.refs[index];
     if ((ref->kind != MS_REF_PARAM && ref->kind != MS_REF_LOCAL)) {
       continue;
     }
-    bool bound = ref->kind == MS_REF_PARAM ? is_own_param(fn, lambda, name, ref)
+    bool bound = ref->kind == MS_REF_PARAM ? is_own_param(fn, lambda, sym, ref)
                                             : (ref->local < fn->nvars && scan.declared[ref->local] != 0);
     for (uint32_t at = 0; ref->kind == MS_REF_PARAM && !bound && at < scan.ninner; at++) {
-      bound = is_own_param(fn, scan.inner[at], name, ref);
+      bound = is_own_param(fn, scan.inner[at], sym, ref);
     }
     if (bound) {
       continue;
     }
-    if (!have_capture(captures, used, (uint8_t)ref->kind, ref->local, name->u.sym)) {
-      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, name->u.sym, name, MIR_VOID, false, MIR_VOID};
+    if (!have_capture(captures, used, (uint8_t)ref->kind, ref->local, sym)) {
+      captures[used++] = (LowerCapture){(uint8_t)ref->kind, ref->local, sym, name, MIR_VOID, false, MIR_VOID};
     }
   }
   *out = captures;
@@ -471,7 +486,7 @@ bool fn_lambda_name(LowerFn *fn, const MsExpr *expr, const MsRef *ref, MirValue 
   if (lambda == NULL || ref == NULL || ref->kind != MS_REF_PARAM) {
     return false;
   }
-  if (is_own_param(fn, lambda->expr, expr, ref)) {
+  if (is_own_param(fn, lambda->expr, expr->u.sym, ref)) {
     return false;
   }
   for (uint32_t index = 0; index < lambda->ncaptures; index++) {
@@ -679,6 +694,39 @@ static uint32_t lower_defaulting_closure(Lower *cx, MirTy fn_ty, uint32_t callee
   return slot;
 }
 
+/* A function the standard library declares without a body, used as a value: a closure whose body is the runtime call. */
+static uint32_t lower_native_closure(Lower *cx, MirTy fn_ty, MsSymbolId id) {
+  const MsSymbol *symbol = &cx->program->symbols.ptr[id];
+  const uint32_t slot = lower_closure_func(cx, fn_ty, NULL, 0);
+  const MirFunc reserved = cx->module->funcs.ptr[slot];
+  LowerFn fn = {.cx = cx,
+                .facts = &cx->program->modules.ptr[symbol->module].facts,
+                .module_index = symbol->module,
+                .file = lower_file(cx, symbol->module),
+                .ret = reserved.ret};
+  mir_b_init(&fn.b, cx->module, reserved.name, reserved.params, reserved.nparams, reserved.ret);
+  fn.b.func.kind = MFK_CLOSURE;
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  MirValue *values = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirValue, (size_t)reserved.nparams + 1);
+  mir_b_params(&fn.b, values, reserved.nparams);
+  const MirValue result = fn_builtin_named(&fn, id, reserved.nparams - 1, values + 1, reserved.ret);
+  if (result != MIR_NONE && fn_fresh_owner(&fn, result)) {
+    (void)mir_b_emit(&fn.b, MOP_ScopeDisown, (MirValue[]){result}, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, reserved.ret == MIR_VOID ? MIR_NONE : result);
+  MirFunc built;
+  if (fn.failed || !mir_b_into_func(&fn.b, &built)) {
+    return MIR_NONE;
+  }
+  built.linkage = ML_INTERNAL;
+  built.kind = MFK_CLOSURE;
+  mir_func_release(&cx->module->funcs.ptr[slot]);
+  cx->module->funcs.ptr[slot] = built;
+  return slot;
+}
+
 /* A module function used as a value: a closure with no captures whose body calls it. */
 MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   Lower *cx = fn->cx;
@@ -693,6 +741,15 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (data->kind != MK_FN || id == 0 || cx->program->symbols.ptr[id].native != MS_NATIVE_SOURCE) {
     (void)fn_fail(fn, "this function cannot be used as a value yet");
     return MIR_NONE;
+  }
+  const MsSymbol *named = &cx->program->symbols.ptr[id];
+  if (named->decl != NULL && named->decl->kind == MS_D_FN && named->decl->u.fn.bodiless) {
+    const uint32_t native = lower_native_closure(cx, fn_ty, id);
+    if (native == MIR_NONE) {
+      (void)fn_fail(fn, "a function value could not be built");
+      return MIR_NONE;
+    }
+    return fn_emit(fn, MOP_ClosureNew, NULL, 0, (MirImm){.tag = MI_FUNC, .a = native}, fn_ty);
   }
   const LowerTarget target = lower_symbol_target(cx, id);
   MsTy bound[16] = {0};
@@ -790,8 +847,12 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
     args[at] = values[at];
   }
   MirValue result = MIR_NONE;
-  const bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
-                            : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  bool done = changes ? fn_native_through(&body, address, owner, operation, data->nargs + 1, args, reserved.ret, &result)
+                      : fn_native_on(&body, NULL, owner, operation, data->nargs + 1, args, reserved.ret, &result);
+  if (!done && !changes && !body.failed) { /* a scalar's own conversion has no form of its own: the runtime function */
+    result = fn_native_default(&body, owner, operation, data->nargs + 1, args, reserved.ret);
+    done = result != MIR_NONE || reserved.ret == MIR_VOID;
+  }
   if (!done || body.failed) {
     (void)fn_fail(fn, "the operation `%.*s` cannot be used as a value yet", (int)operation.len, (const char *)operation.ptr);
     return MIR_NONE;

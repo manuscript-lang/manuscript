@@ -185,13 +185,55 @@ static void fill_defaults(MsCheckProgram *program, MsTy base, MsTyList *args) {
   }
 }
 
+/* `Name[T1, T2]` for an arity, as the oracle sketches the fix. */
+static void append_sketch(MsStrBuild *out, MsSpan name, size_t arity) {
+  ms_strbuild_append(out, name);
+  if (arity == 0) {
+    ms_strbuild_append_text(out, " with no type arguments");
+    return;
+  }
+  ms_strbuild_append_text(out, "[");
+  for (size_t index = 0; index < arity; index++) {
+    ms_strbuild_printf(out, "%sT%zu", index == 0 ? "" : ", ", index + 1);
+  }
+  ms_strbuild_append_text(out, "]");
+}
+
+/* A type written with the wrong number of type arguments. */
+static void report_arity(Resolver *resolver, const MsTypeRef *type, MsTy base, size_t found, size_t arity,
+                         size_t required) {
+  MsCheckProgram *program = resolver->program;
+  const MsSpan name = ms_names_span(program->names, ms_ty_row(&program->types, base)->name);
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append(&text, name);
+  if (required < arity) {
+    ms_strbuild_printf(&text, " takes %zu to %zu type arguments, found %zu; write ", required, arity, found);
+  } else {
+    ms_strbuild_printf(&text, " requires %zu type arguments, found %zu; write ", arity, found);
+  }
+  append_sketch(&text, name, arity);
+  ms_check_report(program, resolver->module, type->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 /* The nominal type `base` applied to the arguments written after its name. */
 static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
   MsTyList args = {0};
   for (uint32_t index = 0; index < type->args.len; index++) {
     ms_ty_list_push(&args, resolver_type(resolver, type->args.ptr[index]));
   }
+  MsCheckProgram *program = resolver->program;
+  const uint32_t at = ms_ty_row(&program->types, base)->def;
+  const MsDef *def = at == 0 ? NULL : ms_defs_get(&program->defs, at);
+  const size_t arity = def == NULL ? 0 : def->variables.len;
+  size_t required = 0;
+  for (size_t index = 0; index < arity; index++) {
+    const MsTyVariable *record = ms_ty_variable(&program->types, def->variables.ptr[index]);
+    required = record != NULL && record->default_ty == MS_TY_NONE ? index + 1 : required;
+  }
   fill_defaults(resolver->program, base, &args);
+  if (resolver->report && args.len != arity) {
+    report_arity(resolver, type, base, type->args.len, arity, required);
+  }
   const MsTy applied = resolver_apply(resolver->program, base, args.ptr, args.len);
   ms_ty_list_free(&args);
   return applied;
@@ -279,6 +321,16 @@ MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound) {
 void resolver_params(Resolver *resolver, MsParams params, MsTyParamList *out) {
   for (uint32_t index = 0; index < params.len; index++) {
     const MsParam *param = params.ptr[index];
+    for (uint32_t before = 0; resolver->report && before < index; before++) {
+      if (params.ptr[before]->name == param->name) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "duplicate parameter or field ");
+        ms_strbuild_append(&text, ms_names_span(resolver->program->names, param->name));
+        ms_strbuild_append_text(&text, "; each name may appear once, so rename one");
+        ms_check_report(resolver->program, resolver->module, param->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+        break;
+      }
+    }
     const uint8_t flags = (uint8_t)((param->is_mutable ? MS_PARAM_VAR : 0) | (param->moving ? MS_PARAM_MOVE : 0));
     const MsTy ty = param->ty != NULL ? resolver_type(resolver, param->ty) : MS_TY_NONE;
     ms_ty_param_list_push(out, (MsTyParam){.name = param->name, .ty = ty, .flags = flags});

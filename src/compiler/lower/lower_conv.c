@@ -110,14 +110,67 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
 
+/* The interface-callable form of an operation a standard type implements natively (`compare` of an Int): it reads the
+ * receiver from the address it is given and does the operation the way a call on that type would. */
+static uint32_t native_thunk(Lower *cx, MsTy receiver, MsName operation, const MirMethodSig *sig, MirTy data_ty,
+                             MsName name) {
+  const uint32_t nparams = sig->nparams + 1;
+  MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)nparams + 1);
+  params[0] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
+  for (uint32_t index = 0; index < sig->nparams; index++) {
+    params[index + 1] = (MirParam){sig->params[index], (uint8_t)(mir_owns(sig->owned, index) ? MM_MOVE : MM_BORROW)};
+  }
+  LowerFn fn = {.cx = cx, .facts = &cx->program->modules.ptr[0].facts, .module_index = 0, .file = lower_file(cx, 0),
+                .ret = sig->ret};
+  mir_b_init(&fn.b, cx->module, name, params, nparams, sig->ret);
+  fn.b.func.kind = MFK_METHOD;
+  fn.b.func.linkage = ML_INTERNAL;
+  fn.b.func.loc = (MirLoc){fn.file, 0, 0, 0};
+  (void)fn_scope_begin(&fn);
+  fn.nvars = 16;
+  fn.vars = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirVar, (size_t)fn.nvars + 1);
+  MirValue args[LOWER_THUNK_PARAMS] = {MIR_NONE};
+  mir_b_params(&fn.b, args, nparams);
+  const MirImm ty = {.tag = MI_TY, .a = data_ty};
+  args[0] = mir_b_emit(&fn.b, MOP_Load, args, 1, ty, data_ty);
+  MirValue result = MIR_NONE;
+  const bool done = fn_native_on(&fn, NULL, receiver, ms_names_span(cx->program->names, operation), nparams, args,
+                                 sig->ret, &result);
+  if (!done || fn.failed) {
+    const MsSpan op = ms_names_span(cx->program->names, operation);
+    (void)lower_fail(cx, "the interface operation `%.*s` has no native form for its receiver type", (int)op.len,
+                     (const char *)op.ptr);
+    return MIR_NONE;
+  }
+  fn_scope_unwind(&fn, 0);
+  mir_b_ret(&fn.b, result);
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&fn.b, &id) ? id : MIR_NONE;
+}
+
 static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, MsTy iface, MsName name) {
   if (subst != NULL && subst->count > 0) { /* the methods are those of the instance's receiver, not of its variables */
     receiver = ms_ty_subst(&cx->program->types, receiver, subst->vars, subst->args, subst->count);
   }
   const MsDef *def = ms_defs_get(&cx->program->defs, ms_ty_row(&cx->program->types, iface)->def);
   uint32_t *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, uint32_t, def->operations.len + 1);
+  const MirTy iface_ty = lower_type(cx, subst, iface);
   for (size_t index = 0; index < def->operations.len; index++) {
     const MsMethodEntry *entry = resolve_operation(cx, receiver, def->operations.ptr[index].name);
+    if (entry == NULL || entry->source->func.external) { /* the runtime implements it: no body to call */
+      MsStrBuild text = ms_strbuild_new();
+      ms_strbuild_append(&text, ms_names_span(&cx->module->names, name));
+      ms_strbuild_printf(&text, ".native.%zu", index);
+      const MsName thunk = mir_name(cx->module, ms_strbuild_span(&text));
+      ms_strbuild_free(&text);
+      const MirIfaceDef *shape = &cx->module->ifaces.ptr[mir_ty_data(cx->module, iface_ty)->id];
+      methods[index] = native_thunk(cx, receiver, def->operations.ptr[index].name, &shape->methods[index],
+                                    lower_type(cx, subst, receiver), thunk);
+      if (methods[index] == MIR_NONE) {
+        return MIR_NONE;
+      }
+      continue;
+    }
     methods[index] = entry != NULL ? method_function(cx, entry, receiver) : MIR_NONE;
     if (methods[index] != MIR_NONE) {
       MsStrBuild text = ms_strbuild_new();
@@ -131,7 +184,6 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       return MIR_NONE;
     }
   }
-  const MirTy iface_ty = lower_type(cx, subst, iface);
   const MirVtable vtable = {name, mir_ty_data(cx->module, iface_ty)->id, methods, (uint32_t)def->operations.len,
                             lower_type(cx, subst, receiver)};
   return mir_add_vtable(cx->module, &vtable);
@@ -170,7 +222,8 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
     }
     return fn_emit(fn, MOP_IfaceNew, &value, 1, imm, to);
   }
-  const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, imm, to);
+  const MirImm kept = {.tag = MI_VTABLE, .a = vtable, .b = 1}; /* the operand stays with its binding */
+  const MirValue view = mir_b_emit(&fn->b, MOP_IfaceNew, &value, 1, kept, to);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, (MirImm){0}, MIR_NONE);
   return view;
 }

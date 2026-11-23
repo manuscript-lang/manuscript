@@ -560,7 +560,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 			if not part.is_empty(): has_tail = true
 			start -= 1
 
-		anchor := if start == 0: base else: parts[start - 1]
+		anchor := if start == 0: base.clone() else: parts[start - 1].clone()
 
 		if not has_tail:
 			value = anchor.clone()
@@ -755,7 +755,7 @@ fn same_text(windows: Bool, left: String, right: String) Bool:
 // Builds a path from `parts`: `directory` (else `root`), then `base` (else `name` plus
 // `extension`), joined by the dialect's separator.
 fn format_in(windows: Bool, parts: PathParts) String:
-	directory := if parts.directory.is_empty(): parts.root else: parts.directory
+	directory := if parts.directory.is_empty(): parts.root.clone() else: parts.directory.clone()
 	var base = parts.base.clone()
 
 	if base.is_empty():
@@ -861,11 +861,11 @@ export fn with_extension(path: String, extension: String) String:
 
 	return format(
 		PathParts(
-			root: parts.root,
-			directory: parts.directory,
+			root: parts.root.clone(),
+			directory: parts.directory.clone(),
 			base: "",
 			extension: extension.clone(),
-			name: parts.name,
+			name: parts.name.clone(),
 		)
 	)
 

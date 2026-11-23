@@ -2,6 +2,7 @@
 #include "compiler/own/result_borrows.h"
 
 #include "compiler/check/properties.h"
+#include "compiler/lower/native_sigs.h"
 #include "compiler/own/class.h"
 #include "compiler/syntax/walk.h"
 
@@ -87,6 +88,12 @@ static void view_stmt(void *ctx, const MsStmt *stmt) {
     const MsRef *ref = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
     if (ref != NULL && ref->kind == MS_REF_LOCAL) {
       add_view(pass, ref->local, stmt->u.branch.cond);
+    }
+  } else if (stmt->kind == MS_S_FOR && (stmt->u.each.iter->kind == MS_E_NAME || stmt->u.each.iter->kind == MS_E_MEMBER)) {
+    /* The loop variable of a walk over a place views one element of it. */
+    const MsRef *ref = ms_facts_ref(pass->facts, stmt->id);
+    if (ref != NULL && ref->kind == MS_REF_LOCAL) {
+      add_view(pass, ref->local, stmt->u.each.iter);
     }
   } else if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME &&
              (stmt->u.bind.value->kind == MS_E_NAME || stmt->u.bind.value->kind == MS_E_MEMBER)) {
@@ -256,14 +263,63 @@ uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t modul
   return facts->result_borrows != NULL && node < facts->node_count ? facts->result_borrows[node] : 0;
 }
 
+/* Whether the runtime native behind a bodiless declaration says its result is a fresh owner (no `@borrows`): a copy,
+ * not a view into an argument. False when the table does not know the native. */
+static bool native_result_is_fresh(const MsCheckProgram *program, const MsCall *call) {
+  MsTy receiver = MS_TY_NONE;
+  MsName name = 0;
+  const MsFunc *func = ms_own_find_func(program, &call->callee);
+  for (size_t index = 0; index < program->methods.len; index++) {
+    const MsMethodEntry *at = &program->methods.ptr[index];
+    if (at->module == call->callee.decl.module && at->source->id == call->callee.decl.node) {
+      receiver = at->receiver;
+      name = at->name;
+    }
+  }
+  if (func != NULL && receiver == MS_TY_NONE) { /* an operation of an interface: the receiver is the first argument */
+    const MsCallArg *first = call->arg_count > 0 ? &call->args[0] : NULL;
+    if (first != NULL && first->node.node != 0 && first->node.module < program->modules.len) {
+      receiver = ms_facts_type(&program->modules.ptr[first->node.module].facts, first->node.node);
+      name = func->name;
+    }
+  }
+  if (receiver == MS_TY_NONE) {
+    return false;
+  }
+  /* Only flat data: a copied Bytes or String holds no part of its source, while a List or Map operation may hand back
+   * a view of an element or an entry that the runtime does not mark. */
+  if (!ms_ty_is(&program->types, receiver, MS_BUILTIN_Bytes) && !ms_ty_is(&program->types, receiver, MS_BUILTIN_String)) {
+    return false;
+  }
+  const char *type_name = ms_builtin_name(ms_ty_builtin(&program->types, receiver));
+  const MsSpan operation = ms_names_span(program->names, name);
+  const MsNativeSig *sig = ms_native_sig_find_method(ms_span_of_text(type_name), operation);
+  if (sig == NULL) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "msrt_");
+    for (const char *at = type_name; *at != '\0'; at++) {
+      ms_strbuild_append_byte(&text, (uint8_t)(*at >= 'A' && *at <= 'Z' ? *at - 'A' + 'a' : *at));
+    }
+    ms_strbuild_append_byte(&text, '_');
+    ms_strbuild_append(&text, operation);
+    sig = ms_native_sig_find(ms_strbuild_span(&text));
+    ms_strbuild_free(&text);
+  }
+  return sig != NULL && !sig->borrows;
+}
+
 bool ms_own_call_borrows(const MsCheckProgram *program, const MsCall *call, uint32_t position) {
   const MsRefKind kind = call->callee.kind;
+  if (kind == MS_REF_NATIVE || kind == MS_REF_OPERATION) {
+    return !native_result_is_fresh(program, call);
+  }
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
-    return kind == MS_REF_NATIVE || kind == MS_REF_OPERATION || kind == MS_REF_CASE;
+    return kind == MS_REF_CASE;
   }
   const MsFunc *func = ms_own_find_func(program, &call->callee);
   if (func == NULL || func->bodiless || func->external) {
-    return true; /* the runtime provides it, and its result may be any part of its arguments */
+    /* the runtime provides it: its result may be any part of its arguments unless the table says it builds a new one */
+    return !native_result_is_fresh(program, call);
   }
   return position < 31 && (ms_own_result_borrow_mask(program, call->callee.decl.module, call->callee.decl.node) >> position & 1u) != 0;
 }

@@ -27,7 +27,7 @@ fn logged(path: String) String:
 
 	return ""
 
-fn open_door(id: Int, log: String) Door:
+fn open_door(id: Int, move log: String) Door:
 	return Door(id, log, 0)
 
 // A temporary that a `var fn` changes in place is still a temporary: it closes when its

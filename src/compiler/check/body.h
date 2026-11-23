@@ -127,6 +127,7 @@ void body_convert(Body *body, const MsExpr *expr, MsTy actual, MsTy expected);
 /* ---- exprs_ops.c ---- */
 
 /* Literals (number, bool, void, text) and the unary and binary operators. */
+void body_report_decimal_literals(Body *body, const MsExpr *expr);
 MsTy body_literal(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_unary(Body *body, const MsExpr *expr, MsTy expected);
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected);
@@ -142,6 +143,9 @@ bool holds_invalid(const MsTyTable *types, MsTy ty, int depth);
 
 /* members.c: a member the receiver does not have. */
 void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver);
+
+/* externs.c: the signature of a user `extern fn`. */
+void body_check_extern(Body *body, const MsDecl *decl, MsTy fn_ty);
 
 /* operands.c: operands that cannot work whatever their values. */
 void body_check_not(Body *body, const MsExpr *expr, MsTy operand);
