@@ -164,6 +164,30 @@ static MirHash disowned_values(ElCx *cx, const MirFunc *func) {
   return set;
 }
 
+/* The owning results a `scope.unpin` names. A pin only tags such a value for a close failure: unpinned, it is the
+ * live value it was before, on this path as on one that never pinned it. */
+static void collect_unpin_live(ElCx *cx) {
+  MirHash unpinned = {0};
+  for (size_t b = 0; b < cx->f->blocks.len; b++) {
+    const MirInstList *insts = &cx->f->blocks.ptr[b].insts;
+    for (size_t i = 0; i < insts->len; i++) {
+      if (insts->ptr[i].op == MOP_ScopeUnpin) {
+        (void)mh_put(cx->ma, &unpinned, insts->ptr[i].args[0], 0);
+      }
+    }
+  }
+  for (size_t b = 0; unpinned.n > 0 && b < cx->f->blocks.len; b++) {
+    const MirInstList *insts = &cx->f->blocks.ptr[b].insts;
+    for (size_t i = 0; i < insts->len; i++) {
+      MirMode mode = MM_BORROW;
+      if (insts->ptr[i].res != MIR_NONE && mh_has(&unpinned, insts->ptr[i].res) &&
+          mir_result_mode(cx->m, cx->f, &insts->ptr[i], &mode) && mode == MM_MOVE) {
+        (void)mh_put(cx->ma, &cx->unpin_live, insts->ptr[i].res, 0);
+      }
+    }
+  }
+}
+
 /* The move state on entry to every block. A flagged owner that is disowned before the op consuming it needs
  * the moved state, so the exits after the move do not release it again. */
 static bool block_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElState *entry, bool *has,
@@ -182,6 +206,7 @@ static bool block_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElSta
       }
     }
   }
+  collect_unpin_live(cx);
   if (!el_analyze(cx, order, norder, entry, has)) {
     return false;
   }

@@ -844,8 +844,7 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   }
   MirValue temporary = last->args[position];
   if (whole) {
-    if (ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, expr->id)) ||
-        mir_b_ty(&fn->b, temporary) != mir_b_ty(&fn->b, value)) {
+    if (mir_b_ty(&fn->b, temporary) != mir_b_ty(&fn->b, value)) {
       return MIR_NONE;
     }
     /* The answer is the temporary itself: it is taken out first, then the temporary's owner steps aside. */

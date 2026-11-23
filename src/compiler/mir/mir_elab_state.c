@@ -229,7 +229,7 @@ static bool apply_disown(ElCx *cx, ElState *state, MirValue value) {
  * owned by the block it enters, not by the pin, so it stays owned: joins see it the same on every path. */
 static bool apply_unpin(ElCx *cx, ElState *state, MirValue value) {
   ElSt kind = 0;
-  if (mh_has(&cx->param_owned, value) && el_get(state, value, &kind) && kind == EL_LIVE) {
+  if ((mh_has(&cx->param_owned, value) || mh_has(&cx->unpin_live, value)) && el_get(state, value, &kind) && kind == EL_LIVE) {
     return true;
   }
   return apply_disown(cx, state, value);
@@ -294,12 +294,13 @@ static bool consume_args(ElCx *cx, ElState *state, const MirInst *inst) {
 
 static bool apply_own(ElCx *cx, ElState *state, const MirInst *inst) {
   /* A disowned view that moves into another local is owned again by that local's scope; a slot owner handed
-   * on to an enclosing scope holds its value again. */
+   * on to an enclosing scope holds its value again. A flagged owner a disown left tracked as moved is live again
+   * the same way: a failing close between a statement's temporary and its binding must still release it. */
   const MirValue value = inst->args[0];
   ElSt kind = 0;
   if (!el_get(state, value, &kind)) {
     el_push(cx, state, value, EL_LIVE);
-  } else if (kind == EL_MOVED && el_is_slot_owner(cx, value)) {
+  } else if (kind == EL_MOVED && (el_is_slot_owner(cx, value) || mh_has(&cx->disown_moves, value))) {
     el_set(cx, state, value, EL_LIVE);
   }
   return true;
