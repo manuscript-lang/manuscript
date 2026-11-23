@@ -96,7 +96,7 @@ test "parse trees keep their size and checksum for the recorded large documents"
 		body := got.cut_prefix("ok ")
 		if body == null: return fail(f"parse failed: {got}")
 
-		tree := body or ""
+		tree := body
 		summary := f"ok {tree.length()} {checksum_hex(tree)}"
 		if summary != f[f.length() - 1]: return fail(
 			f"{summary} != {f[f.length() - 1]}"

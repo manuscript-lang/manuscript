@@ -114,11 +114,11 @@ fn read_identities(path: String) Map[String, Identity]!:
 
 		for item in items:
 			v := item.as_int()
-			if (v == null) or (v or (-1)) < 0: return invalid(
+			if (v == null) or (v) < 0: return invalid(
 				"identities must have nonnegative integers and positive iterations"
 			)
 
-			n.append(v or 0)
+			n.append(v)
 
 		if n[1] == 0: return invalid(
 			"identities must have nonnegative integers and positive iterations"

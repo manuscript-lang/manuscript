@@ -40,20 +40,16 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		version := f[1].clone()
 		name := f[2].clone()
 		if (
-			(trial or (-1)) < 0
-			or (trial or (-1)) >= repeats
+			(trial) < 0
+			or (trial) >= repeats
 			or not (version == "ms" or version == "rust")
 			or not names.contains(name)
 		):
 			return invalid(f"unknown sample: {line.trim()}")
 
-		key := f"{(trial or 0)} {version}"
+		key := f"{(trial)} {version}"
 		var cases = seen.get_or(key, Set[String]())
-		if (
-			cases.contains(name)
-			or (check or 0) != checksum(name)
-			or (elapsed or 0) <= 0
-		):
+		if (cases.contains(name) or (check) != checksum(name) or (elapsed) <= 0):
 			return invalid(f"duplicate or invalid measurement: {line.trim()}")
 
 		cases.add(name.clone())
@@ -62,9 +58,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		id := f"{name} {version}"
 
 		if prior := best.get(id):
-			best.add(id.clone(), if (elapsed or 0) < prior: (elapsed or 0) else: prior)
+			best.add(id.clone(), if (elapsed) < prior: (elapsed) else: prior)
 		else:
-			best.add(id.clone(), elapsed or 0)
+			best.add(id.clone(), elapsed)
 
 	if (
 		seen.length() != repeats * 2

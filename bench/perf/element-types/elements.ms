@@ -131,7 +131,7 @@ fn optional_records() Int:
 
 	for i in 0..5000000:
 		e := find(xs, i)
-		if e != null: t += e.get().score
+		if e != null: t += e.score
 
 	return t
 
@@ -145,7 +145,7 @@ fn deque_records() Int:
 
 		if i % 3 == 2:
 			j := q.pop_front()
-			if j != null: t += j.get().pri
+			if j != null: t += j.pri
 
 	return t
 
@@ -161,7 +161,7 @@ fn pq_records() Int:
 
 		if i % 3 == 2:
 			j := pq.dequeue()
-			if j != null: t += j.get().pri
+			if j != null: t += j.pri
 
 	return t
 
@@ -290,7 +290,7 @@ fn generic_stack() Int:
 
 		if i % 3 == 2:
 			e := s.pop()
-			if e != null: t += e.get().score
+			if e != null: t += e.score
 
 	return t
 
@@ -312,7 +312,7 @@ fn map_enums() Int:
 			s := m.get(i)
 
 			if s != null:
-				match s.get():
+				match s:
 					Circle(rad): t += 3 * rad * rad
 					Rect(w, h): t += w * h
 					Dot: t += 1

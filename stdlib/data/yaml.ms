@@ -649,7 +649,7 @@ fn pair_key_text(flow: Flow, key: YamlValue, from: Int, empty: Bool) String!:
 		)
 	)
 
-	return ok(scalar or "")
+	return ok(scalar)
 
 // Whether the cursor sits on a flow `?` that opens an explicit key.
 fn explicit_start(flow: Flow) Bool:
@@ -1084,7 +1084,7 @@ fn flow_value(var flow: Flow, depth: Int, key: Bool) YamlValue!:
 					)
 				)
 
-				name = flow_key or ""
+				name = flow_key
 				flow_space(flow)
 
 				// A key with no colon, as in `{a, b: 1}`, maps to null.
@@ -2215,7 +2215,7 @@ fn explicit_entry(var context: Context, base: Int, depth: Int) ExplicitEntry!:
 			)
 		)
 
-		if rest != "" or node != YamlValue.Null: name = scalar or ""
+		if rest != "" or node != YamlValue.Null: name = scalar
 		skip(context)
 
 	if context.index >= context.lines.length(): return ok(
@@ -2414,7 +2414,7 @@ fn block(
 				aliased := context.anchors.get(alias_name)
 				if aliased == null: return error(invalid(context, "unknown anchor"))
 
-				alias_text := key_text(aliased or YamlValue.Null)
+				alias_text := key_text(aliased)
 				if alias_text == null: return error(
 					yaml_unsupported(
 						line: source_line(
@@ -2425,7 +2425,7 @@ fn block(
 					)
 				)
 
-				name = alias_text or ""
+				name = alias_text
 				plain_key = false
 
 			if (

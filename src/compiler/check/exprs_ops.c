@@ -3,6 +3,7 @@
  * records the operand conversions the lowering needs; diagnostics for ill-typed operands come in a later change,
  * so an operand that does not fit yields the invalid type. */
 #include "compiler/check/body.h"
+#include "compiler/check/call_internal.h"
 #include "compiler/syntax/walk.h"
 
 /* ---- classifying types ---- */
@@ -356,7 +357,12 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
       *right = body_expr(body, r, names_none(body, r) ? *left : ms_ty_args(&body->program->types, *left)[0]);
       return;
     }
+    const size_t narrow = body_narrow_mark(body);
+    if (op == MS_B_AND || op == MS_B_OR) {
+      body_narrow(body, l, op == MS_B_AND); /* `v != null and ...` reads v as present; `v == null or ...` too */
+    }
     *right = body_expr(body, r, wraps || shaped ? *left : literal_hint(body, r, *left));
+    body_narrow_reset(body, narrow);
   }
 }
 
@@ -469,6 +475,10 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   MsTy ty = MS_TY_NONE;
   if (op == MS_B_OR && is_nullable(body, left)) {
     ty = nullable_or_type(body, expr, left, right);
+  } else if (op == MS_B_OR && !is_invalid(body, left) && left != MS_TY_NONE && left == right &&
+             !ms_ty_is(&body->program->types, left, MS_BUILTIN_Bool)) {
+    body_redundant_or(body, expr);
+    ty = left;
   } else if (is_logical(op)) {
     body_check_logical(body, expr, left, right);
     ty = body_primitive(body, MS_BUILTIN_Bool);

@@ -236,7 +236,7 @@ fn pax_size(data: Bytes) Int:
 
 		var length = 0
 
-		for i in pos..space.get():
+		for i in pos..space:
 			digit := data.get_or(i, 0).to_int()
 			if digit < 48 or digit > 57 or i - pos > 9: return found
 
@@ -245,16 +245,16 @@ fn pax_size(data: Bytes) Int:
 		if length < 5 or pos + length > data.length(): break
 
 		end := pos + length - 1
-		eq := data.index_of_byte(61, space.get() + 1)
+		eq := data.index_of_byte(61, space + 1)
 
-		if (eq != null) and eq.get() < end:
-			key := data.slice(space.get() + 1, eq.get()).clone().get_or("".to_bytes())
+		if (eq != null) and eq < end:
+			key := data.slice(space + 1, eq).clone().get_or("".to_bytes())
 
 			if key == "size".to_bytes():
 				var value = 0
-				var valid = eq.get() + 1 < end and end - eq.get() - 1 <= 15
+				var valid = eq + 1 < end and end - eq - 1 <= 15
 
-				for i in eq.get() + 1..end:
+				for i in eq + 1..end:
 					digit := data.get_or(i, 0).to_int()
 					if digit < 48 or digit > 57: valid = false
 					if valid: value = value * 10 + digit - 48
@@ -365,7 +365,7 @@ fn var TarEntries.admit(path: String, directory: Bool) Void!:
 		slash := dir.last_index_of("/")
 		if slash == null: break
 
-		dir = dir.view(0, slash.get()).clone()
+		dir = dir.view(0, slash).clone()
 		if self.files.contains(dir.clone()): return invalid
 
 		self.parents.add(dir.clone())

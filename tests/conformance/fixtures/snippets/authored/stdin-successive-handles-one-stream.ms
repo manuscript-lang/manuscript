@@ -14,6 +14,6 @@ export fn main() Int:
 	if chunk == null: return 1
 
 	rest := read_all(input: stdin()).get()
-	text := (chunk.get().decode_utf8() or "") + (rest.decode_utf8() or "")
+	text := (chunk.decode_utf8() or "") + (rest.decode_utf8() or "")
 	stdout().write(text).get()
 	return 0

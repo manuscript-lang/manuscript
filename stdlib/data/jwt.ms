@@ -182,7 +182,7 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
 	text := raw.get_or("".to_bytes()).decode_utf8()
 	if text == null: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-	value := parse[T](text or "")
+	value := parse[T](text)
 	if decoded := value: return ok(decoded)
 
 	return error(Error("jwt: malformed token", kind: "EBADMSG"))
@@ -269,7 +269,7 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 
 	if issuer := check.issuer:
 		actual := (claims.get("iss").clone() or JsonValue.Null).as_string()
-		if (actual == null) or (actual or "") != issuer: return error(
+		if (actual == null) or (actual) != issuer: return error(
 			Error("jwt: wrong issuer", kind: "EBADMSG")
 		)
 

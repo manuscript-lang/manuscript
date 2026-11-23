@@ -27,10 +27,17 @@ typedef struct MsLocal {
   bool rejected;            /* named by a pattern the checker rejected: reading it reports an unknown binding */
   const MsParams *fn_names; /* the parameter names of a native method it was bound to, which has no source */
   MsNode site; /* the node that binds it: a reference to the local names it as its declaration */
+  MsTy narrowed; /* the payload type while `v != null` holds for this immutable nullable, else MS_TY_NONE */
 } MsLocal;
 
 MS_LIST_DEFINE(MsLocalList, ms_local_list, MsLocal)
 MS_LIST_DEFINE(MsNodeJournal, ms_node_journal, MsNode)
+
+#define MS_NARROW_MAX 32
+typedef struct BodyNarrow {
+  size_t local; /* index in the body's locals */
+  MsTy previous;
+} BodyNarrow;
 
 typedef struct Body {
   MsCheckProgram *program;
@@ -38,6 +45,8 @@ typedef struct Body {
   MsFacts *facts;
   Resolver resolver;  /* the type variables and `Self` in scope */
   MsLocalList locals; /* owned */
+  BodyNarrow narrowed[MS_NARROW_MAX]; /* narrowings in force, innermost last */
+  size_t narrow_len;
   uint32_t next_local;
   MsTy result;  /* the enclosing function's result type; MS_TY_NONE inside no function */
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
@@ -87,6 +96,15 @@ void body_set_ref(Body *body, MsNode node, MsRef ref);
 
 /* The primitive type `builtin`. */
 MsTy body_primitive(Body *body, MsBuiltin builtin);
+
+/* ---- narrow.c ---- */
+
+size_t body_narrow_mark(const Body *body);
+void body_narrow_reset(Body *body, size_t mark);
+/* Narrows the nullable locals `cond` being `truth` shows present, until the matching reset. */
+void body_narrow(Body *body, const MsExpr *cond, bool truth);
+bool body_block_exits(const Body *body, MsStmts stmts);
+void body_note_narrowing(Body *body, const MsExpr *expr, MsTy read);
 
 /* ---- exprs.c ---- */
 

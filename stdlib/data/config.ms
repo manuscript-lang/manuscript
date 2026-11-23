@@ -31,7 +31,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 		found := assignment.index_of("=")
 		if found == null: return error(config_error(number, "expected NAME=value"))
 
-		at := found or 0
+		at := found
 		name := assignment.view(0, at).trim()
 		if not valid_name(name): return error(
 			config_error(number, "invalid variable name")
@@ -109,7 +109,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 		split := first_assignment(entry)
 		if split == null: return error(config_error(number, "expected key = value"))
 
-		at := split or 0
+		at := split
 		key := entry.view(0, at).trim()
 		if key.is_empty(): return error(config_error(number, "empty key"))
 
@@ -153,7 +153,7 @@ fn first_assignment(entry: String) Int?:
 	if eq == null: return colon
 	if colon == null: return eq
 
-	return (eq or 0).min(colon or 0)
+	return (eq).min(colon)
 
 fn ini_value(value: String) String:
 	trimmed := value.trim()

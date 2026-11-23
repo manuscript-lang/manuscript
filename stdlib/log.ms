@@ -100,8 +100,8 @@ fn merge_context(child: String, parent: String?) String!:
 	added := right.get().as_map()
 	if (members == null) or (added == null): return ok(child)
 
-	var merged = (members or Map[String, JsonValue]()).clone()
-	for entry in (added or Map[String, JsonValue]()).entries():
+	var merged = (members).clone()
+	for entry in (added).entries():
 		merged.add(entry.key, entry.value.clone())
 
 	text := stringify(JsonValue.ObjectValue(merged))

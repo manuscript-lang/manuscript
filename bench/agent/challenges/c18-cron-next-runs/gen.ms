@@ -67,15 +67,9 @@ fn parse_field(text: String, lo: Int, hi: Int) List[Int]?:
 		var stepped = false
 		slash := item.last_index_of("/")
 
-		if (
-			slash != null
-			and full_match(
-				NUM2,
-				item.slice((slash or 0) + 1, item.length()),
-			)
-		):
-			body = item.slice(0, slash or 0)
-			step = item.slice((slash or 0) + 1, item.length()).parse_int() or 0
+		if (slash != null and full_match(NUM2, item.slice((slash) + 1, item.length()))):
+			body = item.slice(0, slash)
+			step = item.slice((slash) + 1, item.length()).parse_int() or 0
 			stepped = true
 			if step < 1: return null
 			if not (body == "*" or full_match("[0-9]{1,2}-[0-9]{1,2}", body)): return null

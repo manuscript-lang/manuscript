@@ -190,7 +190,7 @@ fn difference(case_dir: String, outcome: Outcome) String:
 
 		seen := outcome.files.get(found.path)
 		if seen == null: return f"missing file {found.path}"
-		if text_of(read_file(f"{tree}/{found.path}").wait().get()) != seen.get(): return f"file {found.path} differs"
+		if text_of(read_file(f"{tree}/{found.path}").wait().get()) != seen: return f"file {found.path} differs"
 
 	if recorded != outcome.files.length():
 		var extra = List[String]()

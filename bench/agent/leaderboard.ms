@@ -151,7 +151,7 @@ fn read_trial(dir: String) Trial?:
 	task := r.get("task_name")
 	if task == null: return null
 
-	name := ((task or JsonValue.Null).as_string() or "").split("/").last() or ""
+	name := ((task).as_string() or "").split("/").last() or ""
 	cut := name.last_index_of("-") or 0
 	cid := name.slice(0, cut)
 	lang := name.slice(cut + 1, name.length())
@@ -315,7 +315,7 @@ fn agg(rs: List[Trial]) Agg:
 fn fmt(kind: String, v: Float?) String:
 	if v == null: return if kind == "n0": "n/a" else: "-"
 
-	x := v or 0.0
+	x := v
 	if kind == "pct": return pct0(x)
 	if kind == "tok": return fixed(x / 1000.0, 0) + "k"
 	if kind == "n": return fixed(x, 1)

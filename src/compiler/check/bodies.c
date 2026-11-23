@@ -298,9 +298,26 @@ static void stmt_if(Body *body, const MsStmt *stmt) {
     }
     bind_pattern(body, stmt->u.branch.binding, wraps ? payload_type(body, cond) : MS_TY_NONE, stmt->u.branch.is_mutable);
   }
+  const size_t narrow = body_narrow_mark(body);
+  const bool plain = stmt->u.branch.binding == NULL;
+  if (plain) {
+    body_narrow(body, stmt->u.branch.cond, true);
+  }
   body_block(body, stmt->u.branch.body);
   body_scope_reset(body, mark);
+  body_narrow_reset(body, narrow);
+  if (plain) {
+    body_narrow(body, stmt->u.branch.cond, false);
+  }
   body_block(body, stmt->u.branch.else_body);
+  body_narrow_reset(body, narrow);
+  /* `if v == null: return` leaves v present for the rest of the block; the enclosing block ends the narrowing */
+  if (plain && stmt->u.branch.else_body.len == 0 && body_block_exits(body, stmt->u.branch.body)) {
+    body_narrow(body, stmt->u.branch.cond, false);
+  } else if (plain && stmt->u.branch.else_body.len != 0 && body_block_exits(body, stmt->u.branch.else_body) &&
+             !body_block_exits(body, stmt->u.branch.body)) {
+    body_narrow(body, stmt->u.branch.cond, true);
+  }
 }
 
 static void stmt_for(Body *body, const MsStmt *stmt) {
@@ -373,10 +390,14 @@ static void statement(Body *body, const MsStmt *stmt) {
   case MS_S_IF:
     stmt_if(body, stmt);
     break;
-  case MS_S_WHILE:
+  case MS_S_WHILE: {
     (void)body_expect(body, stmt->u.loop.cond, body_primitive(body, MS_BUILTIN_Bool), ms_span_of_text("a while condition"));
+    const size_t narrow = body_narrow_mark(body);
+    body_narrow(body, stmt->u.loop.cond, true);
     body_block(body, stmt->u.loop.body);
+    body_narrow_reset(body, narrow);
     break;
+  }
   case MS_S_FOR:
     stmt_for(body, stmt);
     break;
@@ -394,8 +415,10 @@ void body_statements(Body *body, MsStmts stmts) {
 
 void body_block(Body *body, MsStmts stmts) {
   const size_t mark = body_scope_mark(body);
+  const size_t narrow = body_narrow_mark(body);
   body_statements(body, stmts);
   body_scope_reset(body, mark);
+  body_narrow_reset(body, narrow);
 }
 
 /* ---- declarations ---- */

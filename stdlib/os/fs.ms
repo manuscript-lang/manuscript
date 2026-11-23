@@ -441,7 +441,7 @@ fn var WatchSource.next() move FileEvent?!:
 		if next == null: return ok(null)
 
 		// An empty batch only means nothing changed yet; only null ends the stream.
-		var batch = next or List[FileEvent]()
+		var batch = next
 		batch.reverse()
 		self.pending = batch
 

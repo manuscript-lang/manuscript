@@ -203,7 +203,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   }
   if (local != NULL) {
     body_set_ref(body, expr->id, body_local_ref(body, local));
-    return local->ty;
+    return local->narrowed != MS_TY_NONE ? local->narrowed : local->ty;
   }
   const MsSymbol *symbol = body_find_symbol(body, name);
   if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
@@ -877,6 +877,9 @@ MsTy body_expr(Body *body, const MsExpr *expr, MsTy expected) {
     break;
   }
   body_set_type(body, expr->id, ty);
+  if (expr->kind == MS_E_NAME) {
+    body_note_narrowing(body, expr, ty);
+  }
   body_convert(body, expr, ty, expected);
   return ty;
 }

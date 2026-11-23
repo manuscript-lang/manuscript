@@ -103,7 +103,7 @@ export fn load_environment(path: String, max_bytes: Int? = null) Void!:
 	text := data.decode_utf8()
 	if text == null: return error(Error("environment: invalid data", kind: "EBADMSG"))
 
-	entries := parse_dotenv(text or "")?
+	entries := parse_dotenv(text)?
 
 	for entry in entries.entries():
 		if msstd_process_environment_is_set(entry.key): continue

@@ -260,7 +260,7 @@ export fn pow_int(base: Int, exponent: Int) Int?:
 			next_result := checked_multiply(result, factor)
 			if next_result == null: return null
 
-			result = next_result or 0
+			result = next_result
 
 		left /= 2
 
@@ -268,7 +268,7 @@ export fn pow_int(base: Int, exponent: Int) Int?:
 			next_factor := checked_multiply(factor, factor)
 			if next_factor == null: return null
 
-			factor = next_factor or 0
+			factor = next_factor
 
 	return result
 

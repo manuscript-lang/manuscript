@@ -115,7 +115,7 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
 		v := fields[i].parse_int()
 		if v == null: return invalid(f"not an integer: {fields[i]}")
 
-		n.append(v or 0)
+		n.append(v)
 
 	return ok(Run(n[0], n[1], n[2], n[3]))
 

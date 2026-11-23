@@ -40,9 +40,9 @@ fn count_of(name: String) Int:
 
 fn ratio(num: Float?, den: Float?) String:
 	if (num == null) or (den == null): return "-"
-	if (num or 0.0) == 0.0 or (den or 0.0) == 0.0: return "-"
+	if (num) == 0.0 or (den) == 0.0: return "-"
 
-	return ((num or 0.0) / (den or 0.0)).to_fixed(2)
+	return ((num) / (den)).to_fixed(2)
 
 fn cell(value: Float?) String:
 	if v := value: return right(v.to_fixed(1), 9)
@@ -94,16 +94,11 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 
 		ops := parts[2].parse_int()
 		ns := parts[3].parse_int()
-		if (
-			ops == null
-			or (ns == null)
-			or (ops or 0) != count_of(name)
-			or (ns or 0) < 0
-		):
+		if (ops == null or (ns == null) or (ops) != count_of(name) or (ns) < 0):
 			return invalid(f"invalid count or timing: {line.trim()}")
 
 		key := f"{name} {version}"
-		now := (ns or 0).to_float()
+		now := (ns).to_float()
 
 		if prior := best.get(key):
 			best.add(key.clone(), if now < prior: now else: prior)

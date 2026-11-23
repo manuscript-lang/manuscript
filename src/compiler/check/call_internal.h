@@ -41,6 +41,10 @@ bool body_resolve_target(Body *body, const MsExpr *callee, MsTy expected, Target
 void body_target_free(Target *target);
 /* A method of a nullable that `==`, `!=` and `or` replaced is reported with its rewrite as the fix. */
 void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *target);
+/* `v.get()` on a local `v != null` shows present reads `v`; the fix says so. */
+bool body_present_get(Body *body, const MsExpr *call, MsTy *result);
+/* `l or d` where `l` is a plain value never falls back; the fix keeps `l`. */
+void body_redundant_or(Body *body, const MsExpr *expr);
 /* A constructor or case call of an opaque type outside its module is denied. */
 void body_deny_opaque_build(Body *body, const MsExpr *call, const Target *target);
 MsTy body_call_function_type(Body *body, const MsTyParamList *params, MsTy result);

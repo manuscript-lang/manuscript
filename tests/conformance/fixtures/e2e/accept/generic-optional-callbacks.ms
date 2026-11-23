@@ -26,7 +26,7 @@ fn same_optional(left: Int?, right: Int?) Bool:
 	if left == null: return right == null
 	if right == null: return false
 
-	return left.get() == right.get()
+	return left == right
 
 fn optional_default(value: Int? = 7) Int: value or (-1)
 
@@ -48,12 +48,12 @@ fn Defaults.optional(value: Int? = self.base) Int: value or (-1)
 
 test "generic callbacks preserve Optional inputs and present zero":
 	values: List[Int?] := [null, 0, 4]
-	expect_true(every(values, fn value: (value == null) or value.get() >= 0))?
+	expect_true(every(values, fn value: (value == null) or value >= 0))?
 	expect_false(every(values, fn value: value == null))?
 	expect_true(
 		every_value(
 			{"missing": null, "zero": 0},
-			fn(value: Int?): ((value == null) or value.get() == 0)
+			fn(value: Int?): ((value == null) or value == 0)
 		)
 	)?
 
@@ -65,13 +65,13 @@ test "generic callbacks see a nested Optional input as one layer":
 	present_zero: Int?? := inner_zero
 	expect_true(every([absent], fn value: value == null))?
 	expect_true(every([present_absent], fn value: value == null))?
-	expect_true(every([present_zero], fn value: ((value != null) and value.get() == 0)))?
+	expect_true(every([present_zero], fn value: ((value != null) and value == 0)))?
 
 test "generic callbacks keep Optional inputs through nested closures":
 	value: Int? := null
 	zero: Int? := 0
 	expect_true(nested(value, fn item: item == null))?
-	expect_true(nested(zero, fn item: (item != null) and item.get() == 0))?
+	expect_true(nested(zero, fn item: (item != null) and item == 0))?
 
 test "generic closure defaults and explicit callable arguments keep their behavior":
 	expect_true(defaulted(7, 7, fn left, right: left == right))?

@@ -55,7 +55,7 @@ fn solve(s: String) String:
 			bad += 1
 			continue
 
-		e := r or Entry("", "", 0, 0, "", "")
+		e := r
 		valid += 1
 		levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 

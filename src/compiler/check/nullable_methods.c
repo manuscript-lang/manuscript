@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-typedef enum Removed { REMOVED_NONE, REMOVED_IS_NULL, REMOVED_IS_PRESENT, REMOVED_OR, REMOVED_OR_CALL } Removed;
+typedef enum Removed { REMOVED_NONE, REMOVED_IS_NULL, REMOVED_IS_PRESENT, REMOVED_OR, REMOVED_OR_CALL, REMOVED_UNWRAP, REMOVED_OK_OR } Removed;
 
 static Removed removed_kind(MsSpan name, size_t nargs) {
   if (ms_span_is_text(name, "is_none") && nargs == 0) {
@@ -21,6 +21,12 @@ static Removed removed_kind(MsSpan name, size_t nargs) {
   }
   if ((ms_span_is_text(name, "get_or_else") || ms_span_is_text(name, "or_else")) && nargs == 1) {
     return REMOVED_OR_CALL;
+  }
+  if ((ms_span_is_text(name, "map") || ms_span_is_text(name, "and_then")) && nargs == 1) {
+    return REMOVED_UNWRAP;
+  }
+  if (ms_span_is_text(name, "ok_or") && nargs == 1) {
+    return REMOVED_OK_OR;
   }
   return REMOVED_NONE;
 }
@@ -77,6 +83,9 @@ static bool written_receiver(const Body *body, const MsExpr *receiver, MsSpan na
   size_t begin = start->offset;
   size_t end = receiver->end.offset;
   *atomic = body_expr_is_atomic(receiver);
+  if (end > source.len) { /* a bundled module keeps no source to rewrite */
+    return false;
+  }
   for (;;) {
     size_t before = begin;
     while (before > 0 && blank(source.ptr[before - 1])) {
@@ -137,9 +146,23 @@ static MsSpan lambda_body(const Body *body, const MsExpr *lambda, MsSpan text) {
 static bool fix_text(const Body *body, const MsExpr *call, Removed kind, const MsExpr *receiver, MsPos start,
                      MsSpan receiver_text, bool atomic, MsStrBuild *out) {
   (void)receiver;
-  const bool bare = stands_alone(body, call, start);
+  const bool bare = stands_alone(body, call, start) || kind == REMOVED_OK_OR;
   ms_strbuild_append_text(out, bare ? "" : "(");
-  append_operand(out, receiver_text, atomic);
+  if (kind != REMOVED_OK_OR) {
+    append_operand(out, receiver_text, atomic);
+  }
+  if (kind == REMOVED_OK_OR) {
+    MsSpan arg_text = {0};
+    if (!slice(body, call->u.call.args.ptr[0].value, &arg_text)) {
+      return false;
+    }
+    ms_strbuild_append_text(out, "ok_or(");
+    ms_strbuild_append(out, receiver_text);
+    ms_strbuild_append_text(out, ", ");
+    ms_strbuild_append(out, arg_text);
+    ms_strbuild_append_text(out, ")");
+    return true;
+  }
   if (kind == REMOVED_IS_NULL || kind == REMOVED_IS_PRESENT) {
     ms_strbuild_append_text(out, kind == REMOVED_IS_NULL ? " == null" : " != null");
   } else {
@@ -186,7 +209,7 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   if (kind == REMOVED_NONE) {
     return;
   }
-  const char *write = kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
+  const char *write = kind == REMOVED_UNWRAP ? "if v := x:` and use `v" : kind == REMOVED_OK_OR ? "ok_or(x, cause)" : kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "a nullable has no method `");
   ms_strbuild_append(&text, name);
@@ -198,10 +221,64 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   MsPos start = {0};
   bool atomic = false;
   MsStrBuild fix = ms_strbuild_new();
-  if (written_receiver(body, target->receiver, name, &receiver_text, &start, &atomic) &&
+  if (kind != REMOVED_UNWRAP && written_receiver(body, target->receiver, name, &receiver_text, &start, &atomic) &&
       fix_text(body, call, kind, target->receiver, start, receiver_text, atomic, &fix)) {
     ms_check_attach_fix(body->program, start, call->end, ms_strbuild_finish(&fix));
   } else {
     ms_strbuild_free(&fix);
+  }
+}
+
+/* A narrowed local: an immutable nullable that `v != null` shows present at this use. */
+static bool narrowed_name(const Body *body, const MsExpr *expr) {
+  if (expr->kind != MS_E_NAME) {
+    return false;
+  }
+  const MsLocal *local = body_find_local(body, expr->u.sym);
+  return local != NULL && local->narrowed != MS_TY_NONE;
+}
+
+static void report_present(Body *body, const MsExpr *whole, const MsExpr *name, const char *what) {
+  if (!body_reports(body) || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append(&text, ms_names_span(body->program->names, name->u.sym));
+  ms_strbuild_append_text(&text, " is present here, so ");
+  ms_strbuild_append_text(&text, what);
+  ms_strbuild_append_text(&text, "; write ");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, name->u.sym));
+  ms_check_report(body->program, body->module, whole->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  MsSpan written = {0};
+  if (slice(body, name, &written)) {
+    MsStrBuild fix = ms_strbuild_new();
+    ms_strbuild_append(&fix, written);
+    ms_check_attach_fix(body->program, ms_expr_start(whole), whole->end, ms_strbuild_finish(&fix));
+  }
+}
+
+bool body_present_get(Body *body, const MsExpr *call, MsTy *result) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind != MS_E_MEMBER || call->u.call.args.len != 0 || !narrowed_name(body, callee->u.member.left) ||
+      !ms_span_is_text(ms_names_span(body->program->names, callee->u.member.name), "get")) {
+    return false;
+  }
+  *result = body_expr(body, callee->u.member.left, MS_TY_NONE);
+  report_present(body, call, callee->u.member.left, "get() has nothing to unwrap");
+  return true;
+}
+
+void body_redundant_or(Body *body, const MsExpr *expr) {
+  if (!body_reports(body) || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "the left of `or` is never null here, so the right is never used; write the left alone");
+  ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  MsSpan written = {0};
+  if (slice(body, expr->u.bin.left, &written)) {
+    MsStrBuild fix = ms_strbuild_new();
+    ms_strbuild_append(&fix, written);
+    ms_check_attach_fix(body->program, ms_expr_start(expr), expr->end, ms_strbuild_finish(&fix));
   }
 }
