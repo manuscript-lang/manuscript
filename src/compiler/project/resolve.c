@@ -100,7 +100,7 @@ static bool unknown_alias(MsArena *arena, const MsManifest *manifest, MsSpan ali
   const size_t count = declared_names(arena, manifest, &names);
   if (count == 0) {
     ms_strbuild_append_text(&text, "; this project declares none, so add one under [aliases] in ms.toml, e.g. "
-                                   "@lib = \"src/lib\" (use @std/... for the standard library)");
+                                   "\"@lib\" = \"./src/lib\" (use @std/... for the standard library)");
     return message(arena, error, &text);
   }
   ms_strbuild_append_text(&text, "; declared aliases: ");
