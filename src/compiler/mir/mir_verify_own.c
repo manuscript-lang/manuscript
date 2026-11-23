@@ -452,7 +452,16 @@ static void mv_own_ret(MvOwn *o, MirBlock bi, const MirTerm *t, MvSet *live) {
     }
   }
   if (live->count > 0) {
-    mv_err(v, bi, "ret: owned value %%%u is never released", live->ids[0]);
+    const char *made = "a block parameter";
+    const MirFunc *fn = v->cx.f;
+    for (uint32_t b = 0; b < fn->blocks.len; b++) {
+      for (uint32_t k = 0; k < fn->blocks.ptr[b].insts.len; k++) {
+        if (fn->blocks.ptr[b].insts.ptr[k].res == live->ids[0]) {
+          made = mir_op_info[fn->blocks.ptr[b].insts.ptr[k].op].name;
+        }
+      }
+    }
+    mv_err(v, bi, "ret: owned value %%%u (made by %s) is never released", live->ids[0], made);
   }
 }
 

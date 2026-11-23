@@ -127,7 +127,7 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
         (void)fn_fail(fn, "a call of a function value leaves out a required argument");
         return MIR_NONE;
       }
-      args[index + 1] = fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
+      args[index + 1] = fn_emit(fn, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, param_ty);
       continue;
     }
     const MsExpr *written = expr->u.call.args.ptr[index].value;

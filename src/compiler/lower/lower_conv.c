@@ -306,11 +306,8 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     if (!mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) || (!kept && fn_fresh_owner(fn, value))) {
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }
-    /* The elaborator owns every moved-in result; this view must not drop what the binding still owns, and
-     * an exit that closes the binding must not drop it a second time. */
-    const MirValue view = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, none, to);
-    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &view, 1, none, MIR_NONE);
-    return view;
+    /* A view of a value something else owns: `opt.view` is borrowed, so dropping it closes nothing. */
+    return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to));

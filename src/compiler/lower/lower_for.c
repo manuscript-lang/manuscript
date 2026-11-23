@@ -437,7 +437,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     if (param_ty != MIR_VOID && mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT) {
       return fn_fail(fn, "`next` of a `for` source takes only optional parameters");
     }
-    next_args[at] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
+    next_args[at] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, param_ty);
   }
   const MirImm method = {.tag = MI_METHOD, .a = iterator_data->id, .b = next_index};
   if (dispatched) { /* the vtable call takes the interface value; its payload changes in place */

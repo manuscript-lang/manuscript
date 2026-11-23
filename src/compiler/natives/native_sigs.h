@@ -42,6 +42,7 @@ typedef struct MsNativeSig {
   bool status;        /* returns a u8 */
   const char *inline_op; /* `@inline=` the operation lowering writes out as MIR instead of calling the native, else NULL */
   bool borrows;          /* `@borrows`: the result is a view into an argument, not a fresh owner */
+  bool spawns;           /* `@spawns`: starts a task that runs code of the program */
 } MsNativeSig;
 
 extern const MsNativeSig ms_native_sigs[];

@@ -115,7 +115,11 @@ static bool call_reads_temporary(const MsExpr *call) {
 /* Whether `value` is the `none` just built: it holds nothing, so the binding that takes it owns all of it. */
 static bool is_empty_optional(const LowerFn *fn, MirValue value) {
   const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  return insts->len != 0 && insts->ptr[insts->len - 1].res == value && insts->ptr[insts->len - 1].op == MOP_OptNone;
+  if (insts->len == 0 || insts->ptr[insts->len - 1].res != value) {
+    return false;
+  }
+  const MirOp op = (MirOp)insts->ptr[insts->len - 1].op;
+  return op == MOP_OptNone || op == MOP_OptNoneOwned;
 }
 
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {

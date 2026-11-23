@@ -1,4 +1,5 @@
 /* driver/pipeline.c: see pipeline.h. */
+#include <stdlib.h>
 #include "driver/pipeline.h"
 
 #include "base/env.h"
@@ -89,7 +90,7 @@ static bool make_object(const MsLinkRequest *request, const BackendProgram *prog
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
-  const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = false,
+  const BackendOptions backend = {.optimize = request->build_type != MS_BUILD_DEBUG, .verify = true,
                                   .tests = request->tests, .bench = request->bench,
                                   .count_ops = request->count_ops || ops_from_environment()};
   BackendProgram program;

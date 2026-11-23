@@ -146,7 +146,9 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
     mir_b_ret(&b, convert(&b, module, values[0], (uint32_t)(from - module->alts.ptr), ret, (uint32_t)(to - module->alts.ptr)));
   } else {
     for (uint32_t at = 0; at < (pending ? 2u : 1u); at++) {
-      (void)mir_b_emit(&b, MOP_Drop, &values[at], 1, none, MIR_NONE);
+      if (mir_needs_drop(module, params[at].ty)) {
+        (void)mir_b_emit(&b, MOP_Drop, &values[at], 1, none, MIR_NONE);
+      }
     }
     const MirBlock block = b.cur;
     mir_b_fault(&b, MF_MESSAGE);

@@ -248,7 +248,7 @@ static MirValue optional_from_status(LowerFn *fn, MsName name, MirValue *wanted,
   const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, none_block);
-  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &none, 1);
   mir_b_seal_block(&fn->b, join);
   mir_b_switch_to(&fn->b, join);
@@ -304,7 +304,7 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
                          .fresh = !views && mir_needs_drop(fn->cx->module, ret),
-                         .role = (uint8_t)(views ? MR_VIEW_RESULT : string_role(text))};
+                         .role = (uint8_t)(views ? MR_VIEW_RESULT : sig != NULL && sig->spawns ? MR_SPAWNS_TASK : string_role(text))};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -413,7 +413,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
   mir_b_unreachable(&fn->b);
   mir_b_switch_to(&fn->b, hit);
-  return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
+  return fn_emit(fn, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
 
 /* The address of the entry `place[key]?` names in a list or map, or a null pointer when there is none (a list index
