@@ -1,0 +1,38 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`sockets.get(..)` reads an element that `sockets` keeps, and a binding would own it too; read it in place with an index, `xs[i]`, or bind `.clone()` of it",
+        "position": {
+          "file": "bind-collection-resource-read-needs-clone.ms",
+          "line": 7,
+          "column": 22,
+          "offset": 318
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`sockets.get(..)` reads an element that `sockets` keeps, and a binding would own it too; use it in place with `if x := sockets.get(..):`, or bind `.clone()` of it",
+        "position": {
+          "file": "bind-collection-resource-read-needs-clone.ms",
+          "line": 11,
+          "column": 22,
+          "offset": 435
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/bind-collection-resource-read-needs-clone.ms:7:22: type: `sockets.get(..)` reads an element that `sockets` keeps, and a binding would own it too; read it in place with an index, `xs[i]`, or bind `.clone()` of it\n   |\n 7 |     first := sockets.get(0)\n   |                      ^\n<DIR>/bind-collection-resource-read-needs-clone.ms:11:22: type: `sockets.get(..)` reads an element that `sockets` keeps, and a binding would own it too; use it in place with `if x := sockets.get(..):`, or bind `.clone()` of it\n    |\n 11 |     found := sockets.get(\"a\")\n    |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
