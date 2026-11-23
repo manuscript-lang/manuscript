@@ -253,8 +253,9 @@ fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]: ...
 // Returns a new list of the values for which `predicate` is true, in their original
 // order.
 fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]:
-	var out = self.clone()
-	out.retain(predicate)
+	var out = List[T]()
+	for item in self:
+		if predicate(item): out.append(item.clone())
 	return out
 
 // Returns a copy of the first element for which `predicate` is true, or `none`.
