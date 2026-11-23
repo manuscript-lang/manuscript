@@ -2,28 +2,24 @@
 // the opt and llc subprocess route (MS_OPT and MS_LLC name the tools), on the programs
 // below, in Debug and Release. Builds alternate between the routes so drift on a shared
 // runner hits both; the median and the minimum of RUNS builds (default 5) are printed
-// per program, build type and route, with the executables compared byte for byte. MS
-// names the compiler (default .artifacts/build/ci/src/cli/ms), MS_LLVM the library, and
-// MS_OPT and MS_LLC the tools of the same LLVM release. Usage: ms run
-// tools/llvm-route-bench.ms
+// per program, build type and route, with each executable run and its exit status and
+// output compared: the routes name the module differently, so the bytes of the two
+// executables differ. MS names the compiler (default .artifacts/build/ci/src/cli/ms),
+// MS_LLVM the library, and MS_OPT and MS_LLC the tools of the same LLVM release. Usage:
+// ms run tools/llvm-route-bench.ms
 import (
-	sha256 from "@std/crypto/crypto.ms",
-	hex_encode from "@std/data/encoding.ms",
-	canonicalize,
-	create_directory,
-	read_file,
-	remove,
-	temporary_directory from "@std/os/fs.ms",
+	canonicalize, remove, temporary_directory from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
 	monotonic from "@std/time.ms",
 
 	env, exe, note from "./lib.ms",
 )
 
-// One build: seconds, and the SHA-256 of the executable.
+// One build: seconds, and the exit status and standard output of running the
+// executable.
 type Built:
 	seconds: Float
-	digest: String
+	behavior: String
 
 fn route_env(inproc: Bool) Map[String, String]:
 	var vars = Map[String, String]()
@@ -52,7 +48,13 @@ fn build(ms: String, source: String, level: String, dir: String, inproc: Bool) B
 			)
 		)
 
-	return ok(Built(seconds, hex_encode(sha256(read_file(output).wait()?))))
+	program := run(output.clone(), [], RunOptions(cwd: dir.clone())).wait()?
+	return ok(
+		Built(
+			seconds,
+			f"{program.exit_code}:{program.stdout.decode_utf8().get_or("")}",
+		)
+	)
 
 fn median(values: List[Float]) Float:
 	sorted := values.sorted()
@@ -62,7 +64,7 @@ fn report(ms: String, source: String, level: String, runs: Int) Int:
 	dir := temporary_directory("ms-route-bench-").get()
 	var process = List[Float]()
 	var inproc = List[Float]()
-	var digests = List[String]()
+	var behaviors = List[String]()
 
 	for round in 0..runs:
 		for use_inproc in [false, true]:
@@ -77,13 +79,13 @@ fn report(ms: String, source: String, level: String, runs: Int) Int:
 			else:
 				process.append(built.get().seconds)
 
-			digests.append(built.get().digest.clone())
+			behaviors.append(built.get().behavior.clone())
 
 	void remove(dir.clone(), recursive: true)
 
 	var same = true
-	for digest in digests:
-		if digest != digests[0]: same = false
+	for behavior in behaviors:
+		if behavior != behaviors[0]: same = false
 
 	slow := median(process)
 	fast := median(inproc)
@@ -98,7 +100,7 @@ fn main() Int:
 	ms := canonicalize(env("MS", f".artifacts/build/ci/src/cli/ms{exe()}")).get()
 	runs := env("RUNS", "5").parse_int().get_or(5)
 	print(
-		"| program | build | process median s | in-process median s | speedup | process min s | in-process min s | same binary |"
+		"| program | build | process median s | in-process median s | speedup | process min s | in-process min s | same behavior |"
 	)
 	print("| --- | --- | --- | --- | --- | --- | --- | --- |")
 
