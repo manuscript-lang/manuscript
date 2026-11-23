@@ -1,6 +1,6 @@
-# Packages the runtime for `ms-c` so linking needs no environment variables (pipeline.h).
+# Packages the runtime for `ms` so linking needs no environment variables (pipeline.h).
 #
-#   ms_package_runtime(<ms-c target> <runtime target>)
+#   ms_package_runtime(<ms target> <runtime target>)
 #
 # Finds every static library the runtime target links, makes the executable depend on them, and generates
 # `ms_runtime_paths.h` with MS_BUILD_RUNTIME (their paths, separated like MS_RUNTIME) and MS_BUILD_FILES (the
@@ -66,7 +66,7 @@ function(ms_package_runtime executable runtime)
   endif()
   # The `--static` runtime is the same archives built by the inner musl build, at the same place under its tree.
   set(musl_joined "")
-  if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND MS_BUILD_MUSL)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(musl_paths "")
     foreach(archive IN LISTS archives)
       if(archive STREQUAL "ms_glibc_compat")
@@ -99,7 +99,7 @@ endfunction()
 
 # The inner build that compiles the runtime against musl (MS_LIBC=musl), for `ms build --static`.
 function(ms_add_musl_runtime)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT MS_BUILD_MUSL OR MS_LIBC STREQUAL "musl")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MS_LIBC STREQUAL "musl")
     return()
   endif()
   include(ExternalProject)

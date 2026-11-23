@@ -395,6 +395,15 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
   }
 }
 
+/* Whether the function argument takes its parameter `at` as `var`: a lambda by what it writes (an expected `var` does
+ * not make a reading lambda change it), another function by its type. */
+static bool written_var(const MsTyTable *types, const MsExpr *value, MsTy given, size_t at) {
+  if (value->kind == MS_E_LAMBDA) {
+    return at < value->u.lambda.params.len && value->u.lambda.params.ptr[at]->is_mutable;
+  }
+  return (ms_ty_params(types, given)[at].flags & MS_PARAM_VAR) != 0;
+}
+
 /* One MsCallArg per parameter (the receiver first): written, defaulted or omitted. */
 static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched,
                              uint32_t *count) {
@@ -404,6 +413,27 @@ static MsCallArg *build_args(Body *body, const Target *target, const MsExpr *cal
   if (offset != 0) {
     args[0] = (MsCallArg){.source = MS_ARG_WRITTEN, .node = {body->module, target->receiver->id},
                           .flags = target->receiver_flags};
+  }
+  for (size_t index = 0; offset != 0 && index < matched->count && (args[0].flags & MS_PARAM_VAR) == 0; index++) {
+    /* A callback that takes one of the receiver's elements as `var` changes the receiver where it runs. */
+    const MsTy declared = ms_ty_params(types, target->sig)[index].ty;
+    const MsTy receiver = ms_facts_type(body->facts, target->receiver->id);
+    if (matched->slot[index] < 0 || receiver == MS_TY_NONE || !is_function(types, declared)) {
+      continue;
+    }
+    const MsTy given = ms_facts_type(body->facts, call->u.call.args.ptr[matched->slot[index]].value->id);
+    for (size_t at = 0; given != MS_TY_NONE && is_function(types, given) && at < ms_ty_param_count(types, declared) &&
+                        at < ms_ty_param_count(types, given);
+         at++) {
+      const MsTyParam *want = &ms_ty_params(types, declared)[at];
+      for (size_t arg = 0; (want->flags & MS_PARAM_VAR) != 0 && written_var(types, call->u.call.args.ptr[matched->slot[index]].value, given, at) &&
+                           arg < ms_ty_arg_count(types, receiver);
+           arg++) {
+        if (ms_ty_args(types, receiver)[arg] == want->ty) {
+          args[0].flags |= MS_PARAM_VAR;
+        }
+      }
+    }
   }
   for (size_t index = 0; index < matched->count; index++) {
     const MsTyParam *param = &ms_ty_params(types, target->sig)[index];

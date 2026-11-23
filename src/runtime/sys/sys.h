@@ -115,6 +115,29 @@ typedef void (*MsSysFaultFn)(uintptr_t address);
  * Linux and macOS only: Windows reports false. */
 MS_NODISCARD bool ms_sys_fault_handler_install(MsSysFaultFn on_fault);
 
+/* sys/{posix,windows}/sampler.c: the profiler's clock. */
+
+/* The registers of a sampled thread at the moment it was interrupted. */
+typedef struct MsSysSample {
+  uintptr_t pc;
+  uintptr_t sp;
+  uintptr_t fp;
+} MsSysSample;
+/* Called about `hz` times a second of the process's CPU time with the sampled thread's registers. Linux and macOS: in a
+ * signal handler on that thread, so it may only use async-signal-safe calls. Windows: on a sampler thread while the
+ * sampled thread is suspended, so it must not take a lock or allocate. */
+typedef void (*MsSysSampleFn)(const MsSysSample *sample);
+/* Starts sampling the calling thread: `hz` is 1 to 10000. False when the system refuses. */
+MS_NODISCARD bool ms_sys_sampler_start(uint32_t hz, MsSysSampleFn on_sample);
+/* Stops sampling; no sample is taken once this returns. */
+void ms_sys_sampler_stop(void);
+/* The time the samples cover: the CPU time of the process since sampling started on Linux and macOS (what the timer
+ * counts, whatever tick the kernel really delivers it at), the wall-clock time on Windows. */
+uint64_t ms_sys_sampler_span_ns(void);
+/* The calling thread, and the threads it starts afterwards, take no samples (Linux and macOS: the signal is blocked).
+ * Windows samples one thread by handle, so there is nothing to do. */
+void ms_sys_sampler_exclude_thread(void);
+
 /* sys/{posix,windows}/stdout.c: Called once before the program writes: standard output takes bytes as they are (Windows
  * would turn each newline into a carriage return and a newline). */
 void ms_sys_stdout_prepare(void);

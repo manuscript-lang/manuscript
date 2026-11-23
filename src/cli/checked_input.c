@@ -121,7 +121,7 @@ bool ms_checked_input_load_with(MsArena *arena, MsCheckedInput *checked, MsSpan 
     return false;
   }
   finding_add_graph(graph, &checked->findings);
-  if (checked->findings.len > 0) {
+  if (checked->findings.len > 0 && !(extra->recover && graph->count > 0)) {
     return false;
   }
   ms_check_graph(&checked->program, &checked->names, graph);

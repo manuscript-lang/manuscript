@@ -22,6 +22,10 @@
 /* Recomputes the masks of every module. */
 void ms_own_result_borrows(MsCheckProgram *program);
 
+/* Reports each user callable that returns a part of its arguments on one path and a new value on another, and makes
+ * its callers see an owner. */
+void ms_own_mixed_returns(MsCheckProgram *program);
+
 /* The mask of the function or method declared by `node` of `module`. */
 uint32_t ms_own_result_borrow_mask(const MsCheckProgram *program, uint32_t module, MsNode node);
 

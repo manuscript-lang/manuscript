@@ -1,4 +1,4 @@
-/* Driver: the `ms-c` entry point.
+/* Driver: the `ms` entry point.
  *
  * For every command it walks all phases and names each one that is not implemented, so a
  * run shows exactly what is missing. Exit status 70 means "not implemented". */
@@ -21,6 +21,7 @@
 #include "cli/fmt_command.h"
 #include "cli/help_command.h"
 #include "cli/init_command.h"
+#include "cli/lsp_command.h"
 #include "cli/package_commands.h"
 #include "cli/phases.h"
 #include "cli/profile_command.h"
@@ -83,6 +84,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "diagram")) return ms_diagram_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "emit")) return ms_emit_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "check")) return ms_check_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "lsp")) return ms_lsp_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "lint")) return ms_lint_command(argc - 2, argv + 2);
   ms_verify_set_program(argv[0]);
   if (ms_cstr_equal(argv[1], "verify")) return ms_verify_command(argc - 2, argv + 2);
@@ -95,7 +97,7 @@ int main(int argc, char **argv) {
   size_t missing = 0;
   for (size_t index = 0; index < count; index++) {
     if (phases[index].run()) continue;
-    (void)fprintf(stderr, "ms-c: not implemented: phase %s (%s), needed by `%s`\n",
+    (void)fprintf(stderr, "ms: not implemented: phase %s (%s), needed by `%s`\n",
                   phases[index].name, phases[index].layer, argv[1]);
     missing++;
   }

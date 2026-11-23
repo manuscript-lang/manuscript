@@ -15,4 +15,4 @@ runs:
         path: |
           .artifacts/build/ci/src/third_party/openssl_build*
           .artifacts/build/ci/musl/src/third_party/openssl_build*
-        key: openssl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'src/third_party/cmake/openssl.cmake') }}
+        key: openssl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'cmake/targets/openssl.cmake') }}
