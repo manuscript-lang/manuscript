@@ -536,6 +536,9 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
     }
     MsTy ty = param->ty != NULL ? resolver_type(&body->resolver, param->ty) : MS_TY_NONE;
     ty = ty == MS_TY_NONE && shaped && index < ms_ty_param_count(types, expected) ? ms_ty_params(types, expected)[index].ty : ty;
+    if (param->ty == NULL && ty != MS_TY_NONE && shaped && body_has_foreign_variable(body, ty)) {
+      ty = MS_TY_NONE; /* a context parameter no other argument has fixed yet is no context */
+    }
     if (ty == MS_TY_NONE && param->ty == NULL && !miscounted) {
       report_uninferred_callback(body, param);
     }

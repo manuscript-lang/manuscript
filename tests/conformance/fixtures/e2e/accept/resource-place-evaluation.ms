@@ -30,7 +30,7 @@ fn next(var calls: Int) Int:
 	calls += 1
 	return selected
 
-fn replacement(log: String, var events: List[Int]) Door:
+fn replacement(move log: String,var events: List[Int]) Door:
 	events.append(2)
 	return Door(9, log)
 
@@ -50,7 +50,7 @@ test "resource replacement closes and changes the same selected owner":
 	expect_equal(calls, 1)?
 	expect_equal(logged(log), "1,2,9,")?
 
-fn ordered(log: String, var events: List[Int]) Void:
+fn ordered(move log: String,var events: List[Int]) Void:
 	var rows = [[Door(1, log.clone())]]
 	rows[select(events)].set(0, replacement(log, events))
 
@@ -74,7 +74,7 @@ test "resource map clear retains its selection across entry cleanup":
 	expect_equal(calls, 1)?
 	expect_equal(logged(log), "1,2,")?
 
-fn remove_and_splice(log: String, var calls: Int) Void:
+fn remove_and_splice(move log: String, var calls: Int) Void:
 	var rows = [[Door(1, log.clone()), Door(3, log.clone())], [Door(2, log.clone())]]
 	rows[next(calls)].remove(0)
 	rows[next(calls)].splice(0, 1, [Door(9, log)])
@@ -87,7 +87,7 @@ test "resource remove and splice each select the owner once":
 	expect_equal(calls, 2)?
 	expect_equal(logged(log), "1,2,9,3,")?
 
-fn add_and_remove(log: String, var calls: Int) Void:
+fn add_and_remove(move log: String,var calls: Int) Void:
 	var maps = [{"a": Door(1, log.clone())}, {"a": Door(2, log.clone())}]
 	maps[next(calls)].add("a", Door(9, log))
 	maps[next(calls)].remove("a")
@@ -104,7 +104,7 @@ fn failed_argument(var events: List[Int]) Int!:
 	events.append(2)
 	return error(Error("stop"))
 
-fn propagate(log: String, var events: List[Int]) Void!:
+fn propagate(move log: String,var events: List[Int]) Void!:
 	var rows = [[Door(1, log)]]
 	rows[select(events)].remove(failed_argument(events)?)
 
@@ -116,7 +116,7 @@ test "a propagated resource argument preserves receiver effects and cleanup":
 	expect_equal(events, [1, 2])?
 	expect_equal(logged(log), "1,")?
 
-fn failing_remove(log: String, var calls: Int) Void:
+fn failing_remove(move log: String,var calls: Int) Void:
 	var rows = [
 		[Door(1, log.clone(), fail: true), Door(2, log.clone())],
 		[Door(3, log)],

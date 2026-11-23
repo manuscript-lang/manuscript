@@ -6,7 +6,7 @@ type Pair:
 	left: String
 	right: List[Int]
 
-fn twice[T: Clonable](value: T) List[T]:
+fn twice[T: Clonable](move value: T) List[T]:
 	return [value.clone(), value]
 
 test "a Clonable bound allows clone on a type parameter":
