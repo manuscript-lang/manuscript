@@ -119,7 +119,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	)
 	body.metadata.status | expect_equal(201)?
 	(body.body.next() | expect_ok?).get() | expect_equal("hello".to_bytes())?
-	((body.body.next() | ((expect_ok?) == null)) | expect_true?
+	((body.body.next() | expect_ok?) == null) | expect_true?
 	client.close()?
 
 	_limited: Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
@@ -188,28 +188,45 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	)
 	send(client, request)?
 
-	reply := ((recv(client, 2.seconds())?) or Bytes([])
-	return ok((reply.decode_utf8() or "").split("\r\n").first().get_or(""))
+	reply := (recv(client, 2.seconds())?) or Bytes([])
+	return ok((reply.decode_utf8() or "").split("\r\n").first() or "")
 
 test "WebSocket client options bound messages and reject bad values":
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
-	server := serve(address: "127.0.0.1:0", handler: echo, options: options) | expect_ok?
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: echo,
+			options: options,
+		) | expect_ok?
+	)
 	url := f"ws://{server.address()}/ws"
-
 	var limited = web_socket(url, WebSocketOptions(max_message_bytes: 10)) | expect_ok?
 	over := limited.output.write(
-		WebSocketMessage(data: "x".repeat(11).to_bytes(), kind: WebSocketKind.Binary)
+		WebSocketMessage(
+			data: "x".repeat(11).to_bytes(),
+			kind: WebSocketKind.Binary,
+		)
 	)
 	expect_equal(over.err().kind, "EOVERFLOW")?
-	exact := WebSocketMessage(data: "y".repeat(10).to_bytes(), kind: WebSocketKind.Binary)
+
+	exact := WebSocketMessage(
+		data: "y".repeat(10).to_bytes(),
+		kind: WebSocketKind.Binary,
+	)
 	limited.output.write(exact) | expect_ok?
+
 	echoed := (limited.input.next() | expect_ok?).get()
 	expect_equal(echoed.data.length(), 10)?
 	void limited.close()
 
 	zero := web_socket(url, WebSocketOptions(max_message_bytes: 0))
 	expect_equal(zero.err().kind, "EINVAL")?
-	negative := web_socket(url, WebSocketOptions(timeout: 0.seconds().subtract(1.seconds())))
+
+	negative := web_socket(
+		url,
+		WebSocketOptions(timeout: 0.seconds().subtract(1.seconds())),
+	)
 	expect_equal(negative.err().kind, "EINVAL")?
 
 test "WebSocket upgrades need HTTP/1.1 and one key":
@@ -280,7 +297,8 @@ test "HTTP requests reject an empty method":
 		error(cause):
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
 
-// The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep instead of waiting it out.
+// The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep
+// instead of waiting it out.
 fn silent(var exchange: HttpExchange) Void!:
 	var _socket = (
 		http_result(

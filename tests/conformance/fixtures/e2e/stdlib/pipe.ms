@@ -60,7 +60,7 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
 
 	var seen: List[Int] = []
 	for i in 0..20:
-		seen.append(((input.next()?) or (-1))
+		seen.append((input.next()?) or (-1))
 	producer.wait()?
 	gate.close()?
 	expect_equal(

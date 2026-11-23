@@ -285,7 +285,7 @@ test "loggers on several threads never interleave a record":
 	b.wait() | expect_ok?
 	logger.flush()?
 
-	text := ((written(path)?) or ""
+	text := (written(path)?) or ""
 	expect_equal(text.split("\n").length(), 7)?
 
 	for line in text.split("\n"):
@@ -385,9 +385,9 @@ test "rotating transport moves a full file aside and keeps a bounded number of g
 	for index in 0..12: logger.info(f"record number {index}")?
 	logger.flush()?
 
-	current := ((written(path)?) or ""
-	first := ((written(f"{path}.1")?) or ""
-	second := ((written(f"{path}.2")?) or ""
+	current := (written(path)?) or ""
+	first := (written(f"{path}.1")?) or ""
+	second := (written(f"{path}.2")?) or ""
 	expect_true(current != "" and first != "" and second != "")?
 	expect_true(current.to_bytes().length() <= 80)?
 	expect_true(read_file(f"{path}.3").wait().is_error())?

@@ -85,7 +85,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	var handle = open(path, OpenMode.WriteRead, OpenOptions(permissions: 384))?
 	handle.write(data)?
 	expect_equal((handle.stat()?).size, 80000)?
-	expect_false(((handle.read()?) != null)?
+	expect_false((handle.read()?) != null)?
 	expect_equal((handle.read_at(80000)?).length(), 0)?
 	expect_equal((handle.read_at(0, 80000)?).length(), 65536)?
 	expect_equal((handle.read_file()?).length(), 0)?
@@ -118,7 +118,11 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 
 test "a handle keeps its own position across append writes, seeks and reads":
 	temporary := temporary("manuscript-position-")?
-	var handle = open(f"{temporary.path()}/log", OpenMode.AppendRead, OpenOptions(permissions: 384))?
+	var handle = open(
+		f"{temporary.path()}/log",
+		OpenMode.AppendRead,
+		OpenOptions(permissions: 384),
+	)?
 	handle.write("abc")?
 	expect_equal((handle.seek(0, Seek.Current)?), 3)?
 	handle.write("de")?
@@ -126,6 +130,7 @@ test "a handle keeps its own position across append writes, seeks and reads":
 	expect_equal((handle.read_file()?), "e".to_bytes())?
 	expect_equal((handle.seek(1, Seek.Start)?), 1)?
 	expect_equal((handle.read_file()?), "bcde".to_bytes())?
+
 	refused := expect_error(handle.seek(-9, Seek.Current))?
 	expect_equal(refused.kind, "EINVAL")?
 	handle.close()?

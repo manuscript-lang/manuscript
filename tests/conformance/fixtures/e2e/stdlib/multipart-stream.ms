@@ -223,7 +223,7 @@ test "fragmented multipart bodies keep binary bytes and delimiter prefixes":
 		else:
 			return fail(f"missing trailing part at chunk size {size}")
 
-		expect_equal(((parts.next()?) == null, true)?
+		expect_equal((parts.next()?) == null, true)?
 
 test "retrying an invalid fragmented multipart section retains the error":
 	body := "--XyZ\r\nnot-a-header\r\n\r\nvalue-value-value\r\n--XyZ".to_bytes()

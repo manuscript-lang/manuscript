@@ -157,7 +157,7 @@ test "continued reads after a record limit error keep only the consumed tail":
 		var rows = csv_rows(from_list(data), max_record_bytes: 3)
 		expect_equal(rows.next().err().kind, "EOVERFLOW")?
 		expect_equal((rows.next()?).get(), ["x"])?
-		expect_equal(((rows.next()?) == null, true)?
+		expect_equal((rows.next()?) == null, true)?
 
 	input := from_list(
 		["ab".to_bytes(), "cd".to_bytes(), "\n".to_bytes(), "x\n".to_bytes()]
@@ -166,7 +166,7 @@ test "continued reads after a record limit error keep only the consumed tail":
 	expect_equal(rows.next().err().kind, "EOVERFLOW")?
 	expect_equal(rows.next().err().kind, "EOVERFLOW")?
 	expect_equal((rows.next()?).get(), ["x"])?
-	expect_equal(((rows.next()?) == null, true)?
+	expect_equal((rows.next()?) == null, true)?
 
 test "the record budget does not depend on where chunks end":
 	for size in 1..12:
@@ -257,13 +257,13 @@ test "oversized EOF records stay rejected after a failed read":
 			)
 			expect_equal(rows.next().err().kind, "EOVERFLOW")?
 			expect_equal(rows.next().err().kind, "EOVERFLOW")?
-			expect_equal(((rows.next()?) == null, true)?
-			expect_equal(((rows.next()?) == null, true)?
+			expect_equal((rows.next()?) == null, true)?
+			expect_equal((rows.next()?) == null, true)?
 			expect_equal(read_rows(text, size, max_record_bytes: bytes)?, parse(text)?)?
 
 	var rows = csv_rows(from_list(["x\nabcd".to_bytes()]), max_record_bytes: 3)
 	expect_equal(rows.next().err().kind, "EOVERFLOW")?
 	expect_equal(rows.next().err().kind, "EOVERFLOW")?
-	expect_equal(((rows.next()?) == null, true)?
+	expect_equal((rows.next()?) == null, true)?
 	expect_equal((read_rows("", 1, max_record_bytes: 0)?).is_empty(), true)?
 	expect_equal(read_rows("\"\"", 1, max_record_bytes: 2)?, [[""]])?

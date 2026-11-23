@@ -45,7 +45,7 @@ test "TCP loopback writes reads half close and EOF":
 	expect_equal((within(server.input, 2.seconds())?).get(), "hello".to_bytes())?
 	expect_equal(server.info.peer_address, client.info.local_address)?
 	client.output.end()?
-	expect_true(((within(server.input, 2.seconds())?) == null)?
+	expect_true((within(server.input, 2.seconds())?) == null)?
 
 test "a read cancelled by its timeout leaves the stream closable":
 	listener := listen("127.0.0.1:0")?
@@ -86,7 +86,7 @@ test "closing the input leaves the output open and closing both ends the connect
 
 	// Closing the output too closes the socket: the peer sees the end of the stream.
 	client.output.end()?
-	expect_true(((within(server.input, 2.seconds())?) == null)?
+	expect_true((within(server.input, 2.seconds())?) == null)?
 
 test "host names resolve whatever their case":
 	listener := listen("127.0.0.1:0")?

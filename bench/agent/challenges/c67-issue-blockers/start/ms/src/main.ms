@@ -380,7 +380,7 @@ fn diff_fields(a: Fields, b: Fields) List[String]:
 	)
 	if (
 		opt_s(a.assignee) != opt_s(b.assignee)
-		or (a.assignee != null) != b.assignee != null
+		or (a.assignee != null) != (b.assignee != null)
 	):
 		out.append(f"assignee: {opt_s(a.assignee)} -> {opt_s(b.assignee)}")
 	if opt_i(a.points) != opt_i(b.points): out.append(
@@ -394,7 +394,7 @@ fn diff_fields(a: Fields, b: Fields) List[String]:
 	)
 	if (
 		opt_s(a.reporter) != opt_s(b.reporter)
-		or (a.reporter != null) != b.reporter != null
+		or (a.reporter != null) != (b.reporter != null)
 	):
 		out.append(f"reporter: {opt_s(a.reporter)} -> {opt_s(b.reporter)}")
 	return out
@@ -1510,7 +1510,7 @@ fn State.cmd_report(rest: String) String!:
 				if iss.f.assignee == null: unass += 1
 				if d := iss.f.due:
 					if d < self.today: overdue += 1
-				open_pts += iss.f.points or 0
+				open_pts += (iss.f.points or 0)
 
 		var lines = List[String]()
 		total := self.issues.length()

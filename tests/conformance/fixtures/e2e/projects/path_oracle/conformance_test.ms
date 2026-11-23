@@ -37,9 +37,17 @@ fn parts_of(token: String) PathParts:
 	)
 
 fn parts_text(parts: PathParts) String:
-	return [parts.root.clone(), parts.directory.clone(), parts.base.clone(), parts.extension.clone(), parts.name.clone()].map(
-		fn item: hex(item)
-	).join(" ")
+	return (
+		[
+			parts.root.clone(),
+			parts.directory.clone(),
+			parts.base.clone(),
+			parts.extension.clone(),
+			parts.name.clone(),
+		]
+		.map(fn item: hex(item))
+		.join(" ")
+	)
 
 fn result(outcome: String!) String:
 	if value := outcome: return f"ok {hex(value)}"
@@ -74,11 +82,8 @@ fn answer(rules: PathOperations, f: List[String]) String:
 	return f"unknown case {op}"
 
 test "path operations match the recorded corpus":
-	data := (
-		files().read("path.tsv", null)
-		| .get_or("".to_bytes())
-		| .decode_utf8() or ""
-	)
+	raw := files().read("path.tsv", null).get_or("".to_bytes())
+	data := raw.decode_utf8() or ""
 	var checked = 0
 	var failures = List[String]()
 

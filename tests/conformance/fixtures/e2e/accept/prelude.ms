@@ -21,7 +21,7 @@ test "prelude cases and optional methods need no imports":
 	expect_false((inferred == null) or (absent != null))?
 	expect_false(inferred.get() != 3 or qualified.get() != 5)?
 	expect_false(
-		((absent or 9) != 9 or (absent or return 11).get() != 11)
+		((absent or 9) != 9 or (absent or 11) != 11)
 	)?
 
 	value := success()?
