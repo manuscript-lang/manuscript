@@ -381,6 +381,9 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
   for (uint32_t at = 0; at < arm->bindings.len; at++) {
     const MsTy ty = concrete != MS_TY_NONE ? concrete : kase != NULL ? payload(body, scrutinee, kase, at) : bare_payload(body, arm, scrutinee);
     (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id, arm->pos);
+    if (state->literal && arm->bare) {
+      ms_local_list_last(&body->locals)->rejected = true; /* a literal match has no payload to bind: the name stays unbound */
+    }
   }
   body_block(body, arm->body);
   /* an arm whose value differs from the type the match has so far is a mismatch, reported at that value */
