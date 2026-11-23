@@ -729,7 +729,10 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   for (uint32_t at = 1; at < reserved.nparams; at++) {
     args[at] = values[at];
   }
-  const MirValue result = mir_b_call(&b, callee, args, reserved.nparams);
+  MirValue result = mir_b_call(&b, callee, args, reserved.nparams);
+  if (result != MIR_NONE && cx->module->funcs.ptr[callee].ret_borrowed && mir_needs_drop(cx->module, reserved.ret)) {
+    result = mir_b_emit(&b, MOP_Clone, &result, 1, (MirImm){0}, reserved.ret); /* the closure's result is its caller's to own */
+  }
   mir_b_ret(&b, reserved.ret == MIR_VOID ? MIR_NONE : result);
   MirFunc built;
   if (!mir_b_into_func(&b, &built)) {
