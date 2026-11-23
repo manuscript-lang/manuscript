@@ -1,5 +1,5 @@
 # A standard output that cannot be written (a full disk behind `ms doc > file`) fails the command instead of leaving a
-# truncated file behind a zero status: `cmake -DMS_C=<ms> -P cmake/StdoutFull.cmake`. Needs /dev/full, which Linux has.
+# truncated file behind a zero status: `cmake -DMS_C=<ms> -P cmake/StdoutFull.cmake`. Needs /dev/full, which Linux has; stdout_closed covers the other platforms.
 cmake_minimum_required(VERSION 3.25)
 foreach(command version doc "check --help")
   separate_arguments(words NATIVE_COMMAND "${command}")
