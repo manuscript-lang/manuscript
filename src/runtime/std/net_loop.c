@@ -4,6 +4,7 @@
 #include "runtime/std/net_loop.h"
 
 #include "base/alloc.h"
+#include "runtime/core/release.h"
 #include "runtime/core/task.h"
 
 static struct {
@@ -84,6 +85,7 @@ static atomic_bool loop_started;
 
 static void start_loop(void) {
   atomic_store(&loop_started, true);
+  ms_release_at_exit(ms_net_release_all);
   (void)uv_loop_init(&net.loop);
   (void)uv_mutex_init(&net.lock);
   (void)uv_async_init(&net.loop, &net.wake, drain);

@@ -1,10 +1,11 @@
-/* Unit test of the pure data structures of runtime/core: the timer heap, the unstarted-work queue, the frame tables and the record encoder. */
+/* Unit test of the pure data structures of runtime/core: the timer heap, the unstarted-work queue, the frame tables, the record encoder and the release registry. */
 #include <stdio.h>
 
 #include "abi/layout.h"
 #include "runtime/core/frames.h"
 #include "runtime/core/queue.h"
 #include "runtime/core/record.h"
+#include "runtime/core/release.h"
 #include "runtime/core/timers.h"
 
 static int failures = 0;
@@ -112,10 +113,27 @@ static void test_record(void) {
   CHECK(out[0] == 'M' && out[4] == 2 && out[5] == 7 && out[9] == MS_FAULT_KIND_DEADLOCK);
 }
 
+static int released[4];
+static int released_count = 0;
+
+static void release_first(void) { released[released_count++] = 1; }
+static void release_second(void) { released[released_count++] = 2; }
+
+static void test_release(void) {
+  ms_release_at_exit(release_first);
+  ms_release_at_exit(release_second);
+  ms_release_at_exit(release_first); /* already registered: not added again */
+  ms_release_run();
+  CHECK(released_count == 2 && released[0] == 2 && released[1] == 1); /* the newest first */
+  ms_release_run();
+  CHECK(released_count == 2); /* each runs once */
+}
+
 int main(void) {
   test_timers();
   test_queue();
   test_frames();
   test_record();
+  test_release();
   return failures == 0 ? 0 : 1;
 }

@@ -1,6 +1,8 @@
 /* runtime/std/http_client_abi.c: the HttpClient and response-body natives (http_client_abi.h). */
 #include "runtime/std/http_client_abi.h"
 
+#include <stdatomic.h>
+
 #include "base/alloc.h"
 #include "runtime/core/task.h"
 #include "runtime/core/isolate.h"
@@ -51,7 +53,10 @@ static BodyCell *body_of(const MsObj *object) {
   return (BodyCell *)(void *)(uintptr_t)object;
 }
 
+static void install_task_waiter(void);
+
 MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolicy *policy) {
+  install_task_waiter();
   ClientCell *cell = ms_alloc_zeroed(sizeof *cell);
   cell->header.drop = client_drop;
   cell->client = ms_http_client_retain(client);
@@ -100,10 +105,15 @@ static void token_end(uint64_t waiter) {
   (void)ms_token_free(waiter);
 }
 
-void ms_http_install_task_waiter(void) {
+/* A client made by a program waits on its task's token; the first one installs that, so a program that makes no client
+ * does not link the HTTP engine. */
+static void install_task_waiter(void) {
   static const MsHttpWaitOps ops = {
       .begin = token_begin, .wait = token_wait, .wake = token_wake, .end = token_end};
-  ms_http_set_wait_ops(&ops);
+  static atomic_flag installed = ATOMIC_FLAG_INIT;
+  if (!atomic_flag_test_and_set(&installed)) {
+    ms_http_set_wait_ops(&ops);
+  }
 }
 
 /* ---- the natives ---- */
