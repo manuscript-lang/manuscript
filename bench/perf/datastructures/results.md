@@ -17,7 +17,6 @@ Revision: this branch on top of `1d810acacb`, Release build of the C port, 4-CPU
 | Measure | Before | After |
 | --- | ---: | ---: |
 | Instructions, 100k enqueue and dequeue | 240.0M | 72.8M |
-| pq_int_enqueue_dequeue, ns/op (median of 3) | n/a | 80 |
 
 `List.swap` called `msrt_list_swap` for every element, which went through the descriptor and three `memcpy` calls (104M plus 57M in libc of the 240M). For an element that owns nothing it is now two checked indices (the runtime's `List.swap` fault, unchanged) and two reads and two stores in line, like `set`; elements that own something still use the runtime. `sift_up` and `sift_down` swap on every level.
 
