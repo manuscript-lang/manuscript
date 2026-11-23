@@ -224,6 +224,26 @@ void body_check_float_literal(Body *body, const MsExpr *number, MsTy ty) {
                              : "Float literal is outside finite binary64 range; use a smaller magnitude (about 1.8e308 at most)")));
 }
 
+void body_check_constant_index(Body *body, const MsExpr *expr, const MsExpr *list, const MsExpr *index) {
+  Range range = {0};
+  Wide value = 0;
+  if (!reporting(body) || list->kind != MS_E_LIST || !int_range(body, body_primitive(body, MS_BUILTIN_Int), &range) ||
+      !fold(body, index, range, &value)) {
+    return;
+  }
+  const Wide length = (Wide)list->u.list.len;
+  if (value < length && value >= -length) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "index ");
+  append_wide(&text, value);
+  ms_strbuild_append_text(&text, " is outside this list literal of ");
+  append_wide(&text, length);
+  ms_strbuild_append_text(&text, " element(s) and always faults");
+  report(body, expr, &text);
+}
+
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty) {
   Range range = {0};
   const MsBinaryOp op = (MsBinaryOp)expr->op;

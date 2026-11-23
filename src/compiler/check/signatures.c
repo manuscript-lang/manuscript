@@ -117,7 +117,10 @@ void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
     /* A single target is another name for that type, over the alias's own variables. */
     const size_t mark = resolver->names.len;
     resolver_enter_symbol(resolver, symbol);
+    const bool allowed = resolver->allow_type_set;
+    resolver->allow_type_set = true;
     symbol->ty = resolver_type(resolver, decl->u.alias.targets.ptr[0]);
+    resolver->allow_type_set = allowed;
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     symbol->alias_state = 2;
@@ -125,7 +128,10 @@ void resolver_resolve_alias(Resolver *resolver, MsSymbol *symbol) {
   }
   MsTyList members = {0};
   for (uint32_t index = 0; index < decl->u.alias.targets.len; index++) {
+    const bool allowed = resolver->allow_type_set;
+    resolver->allow_type_set = true;
     ms_ty_list_push(&members, resolver_type(resolver, decl->u.alias.targets.ptr[index]));
+    resolver->allow_type_set = allowed;
   }
   const MsTyDesc desc = {.name = decl->u.alias.name, .id = decl->u.alias.name, .kind = MS_TY_CONTRACT,
                          .builtin = MS_BUILTIN_TypeSet, .args = members.ptr, .arg_count = (uint32_t)members.len};
