@@ -1,5 +1,5 @@
 /* The @std/process natives for the running process: signals sent, identity, resource usage and title. libuv answers what
- * it wraps (memory, rusage, kill); the rest (umask, groups, identity, title) goes through src/runtime/sys. Nothing here
+ * it wraps (memory, rusage, kill); the rest (umask, groups, identity) goes through src/runtime/sys. Nothing here
  * blocks, so it all runs on the runtime thread. The working directory and the environment are in process_env.c. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
@@ -24,6 +24,7 @@ enum {
   MAX_ID = 2147483647,
   MAX_SIGNAL = 64,
   FIRST_PATH = 1024,
+  TITLE_LIMIT = 4096,
   MAX_UMASK = 0777,
   SIGNAL_INTERRUPT = 2,
   SIGNAL_TERMINATE = 15,
@@ -198,23 +199,19 @@ uint8_t msstd_process_set_identity(const MsString *kind, int64_t id, MsString *e
 /* ---- title ---- */
 
 uint8_t msstd_process_title(MsString *out, MsString *err) {
-  char *text = NULL;
-  size_t length = 0;
-  const int code = ms_sys_process_title(&text, &length);
+  char buffer[TITLE_LIMIT];
+  const int code = uv_get_process_title(buffer, sizeof buffer);
   if (code != 0) {
     return fail_host(code, "title", err);
   }
-  uint8_t status = MS_STATUS_OK;
-  if (!ms_utf8_is_valid((const uint8_t *)text, length)) {
+  const MsSpan text = ms_span_of_text(buffer);
+  if (!ms_utf8_is_valid(text.ptr, text.len)) {
     MsFail fail = ms_fail_new();
     ms_fail_status(&fail, MS_STATUS_UNSUPPORTED);
-    status = ms_fail_finish(&fail, err);
-  } else {
-    *out = ms_string_from_span(ms_span_of((const uint8_t *)text, length));
-    status = succeed(err);
+    return ms_fail_finish(&fail, err);
   }
-  ms_free(text);
-  return status;
+  *out = ms_string_from_span(text);
+  return succeed(err);
 }
 
 uint8_t msstd_process_set_title(const MsString *title, MsString *err) {
@@ -222,12 +219,11 @@ uint8_t msstd_process_set_title(const MsString *title, MsString *err) {
   if (has_byte(text, 0) || has_byte(text, '\n')) {
     return invalid(err);
   }
-  const int code = ms_sys_process_set_title((const char *)text.ptr, text.len);
-  if (code == UV_ENAMETOOLONG) {
-    MsFail fail = ms_fail_new();
-    ms_fail_text(&fail, "write: file name too long");
-    return ms_fail_finish(&fail, err);
-  }
+  char *copy = ms_alloc(text.len + 1);
+  __builtin_memcpy(copy, text.ptr, text.len);
+  copy[text.len] = '\0';
+  const int code = uv_set_process_title(copy);
+  ms_free(copy);
   return code != 0 ? fail_host(code, "set title", err) : succeed(err);
 }
 

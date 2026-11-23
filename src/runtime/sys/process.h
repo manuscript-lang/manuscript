@@ -23,11 +23,6 @@ MS_NODISCARD int ms_sys_process_set_identity(MsSysIdentity which, uint32_t id);
 /* The group ids of user `name` (its primary group included); UV_ENOENT for an unknown user. */
 MS_NODISCARD MS_NONNULL int ms_sys_process_user_groups(const char *name, int64_t **list, size_t *count);
 
-/* The process title: the short command name on Linux (/proc comm), the console title on Windows, unsupported
- * elsewhere. Text is not NUL-terminated. */
-MS_NODISCARD MS_NONNULL int ms_sys_process_title(char **text, size_t *length);
-MS_NODISCARD int ms_sys_process_set_title(const char *text, size_t length);
-
 /* ---- signals ---- */
 
 typedef struct MsSysSignals MsSysSignals;

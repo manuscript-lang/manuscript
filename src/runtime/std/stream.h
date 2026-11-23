@@ -5,11 +5,19 @@
 #ifndef MS_RUNTIME_STD_STREAM_H
 #define MS_RUNTIME_STD_STREAM_H
 
+#include <stdatomic.h>
 #include <uv.h>
 
 #include "base/bytes.h"
 #include "base/desc.h"
 #include "runtime/std/fail.h"
+
+/* The position of a regular file the runtime opened: kept here and passed to every uv_fs_read and uv_fs_write as the
+ * offset, because libuv has no seek. Shared by a stream and its duplicates, which is how they share one position. */
+typedef struct MsFilePosition {
+  _Atomic int64_t at;
+  _Atomic uint32_t references;
+} MsFilePosition;
 
 typedef struct MsStream {
   MsObj header; /* must be first: the runtime drops the handle through it */
@@ -20,7 +28,8 @@ typedef struct MsStream {
   bool no_read;  /* the open mode forbids reading or writing: invalid input on every host */
   bool no_write;
   bool append; /* the host ignores a positioned write's offset, so it is invalid input */
-  MsString name; /* the path, for error messages */
+  MsFilePosition *position; /* NULL: the descriptor's own position (a pipe, a terminal, a standard stream) */
+  MsString name;            /* the path, for error messages */
 } MsStream;
 
 typedef enum MsStreamAccess { MS_STREAM_ANY, MS_STREAM_READ, MS_STREAM_WRITE } MsStreamAccess;
@@ -31,6 +40,12 @@ MsStream *ms_stream_new(uv_file fd, bool owned, MsSpan name);
 MsStream *ms_stream_file(uv_file fd, int flags, MsSpan name);
 /* A second stream over a duplicate of the file's descriptor, closed on its own; it shares the file position. */
 bool ms_stream_duplicate(const MsStream *stream, MsStream **out, MsFail *fail);
+
+/* The offset for the next transfer of `stream`: its tracked position, or -1 for the descriptor's own. */
+int64_t ms_stream_offset(const MsStream *stream);
+/* Records that `count` bytes were transferred at `offset` (a no-op without a tracked position). A write to an append
+ * file lands at its end, wherever the position was, so the position becomes the file's size. */
+void ms_stream_advance(const MsStream *stream, int64_t offset, int64_t count, bool write);
 
 /* Admits an operation: a closed stream is MS_STATUS_CLOSED, a pending stop request fails, and the open mode must allow
  * `access` (invalid input otherwise). False with `fail` set. */

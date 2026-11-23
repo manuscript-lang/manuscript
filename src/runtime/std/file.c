@@ -214,6 +214,7 @@ uint8_t msstd_fs_file_write_at(MsObj *handle, int64_t offset, const MsBytes *dat
 /* Reads to the end of the file from the current position, failing past `max` bytes. */
 typedef struct ReadFileJob {
   uv_file fd;
+  int64_t at; /* the tracked position, or -1 */
   int64_t max;
   MsBytes data;
   MsFail fail;
@@ -223,7 +224,8 @@ static void read_file_job(void *data) {
   ReadFileJob *job = data;
   uv_stat_t stat;
   const bool have_stat = ms_fs_fstat(job->fd, &stat) == 0;
-  ms_fs_read_limited(job->fd, job->max, false, have_stat ? &stat : NULL, &job->data, &job->fail);
+  ms_fs_read_limited(job->fd, job->max, false, have_stat ? &stat : NULL, job->at < 0 ? NULL : &job->at, &job->data,
+                     &job->fail);
 }
 
 static bool read_to_end(MsStream *stream, int64_t max, MsBytes *out, MsFail *fail) {
@@ -231,11 +233,14 @@ static bool read_to_end(MsStream *stream, int64_t max, MsBytes *out, MsFail *fai
     return false;
   }
   if (!stream->waitable) {
-    ReadFileJob job = {.fd = stream->fd, .max = max, .fail = ms_fail_new()};
+    ReadFileJob job = {.fd = stream->fd, .at = ms_stream_offset(stream), .max = max, .fail = ms_fail_new()};
     if (ms_pool_on_thread()) {
       read_file_job(&job);
     } else if (ms_pool_run_shielded(read_file_job, &job) != MS_POOL_DONE) {
       ms_fail_text(&job.fail, "cancelled");
+    }
+    if (job.at >= 0) {
+      atomic_store(&stream->position->at, job.at);
     }
     if (ms_fail_failed(&job.fail)) {
       *fail = job.fail;
@@ -246,7 +251,11 @@ static bool read_to_end(MsStream *stream, int64_t max, MsBytes *out, MsFail *fai
   } else {
     uv_stat_t stat;
     const bool have_stat = ms_fs_fstat(stream->fd, &stat) == 0;
-    ms_fs_read_limited(stream->fd, max, true, have_stat ? &stat : NULL, out, fail);
+    int64_t at = ms_stream_offset(stream);
+    ms_fs_read_limited(stream->fd, max, true, have_stat ? &stat : NULL, at < 0 ? NULL : &at, out, fail);
+    if (at >= 0) {
+      atomic_store(&stream->position->at, at);
+    }
     if (ms_fail_failed(fail)) {
       return false;
     }
@@ -344,12 +353,13 @@ uint8_t msstd_fs_file_read_vectors(MsObj *handle, const MsList *sizes, int64_t o
  * between steps otherwise. */
 typedef struct WriteJob {
   uv_file fd;
+  int64_t at; /* the tracked position, advanced by what was written; -1: the descriptor's own */
   const uint8_t *data;
   size_t length;
   int error;
 } WriteJob;
 
-static int write_steps(uv_file fd, const uint8_t *data, size_t length, bool cancellable, MsFail *fail) {
+static int write_steps(uv_file fd, const uint8_t *data, size_t length, int64_t *at, bool cancellable, MsFail *fail) {
   size_t done = 0;
   while (done < length) {
     if (cancellable && ms_fail_poll_cancel(fail)) {
@@ -358,7 +368,7 @@ static int write_steps(uv_file fd, const uint8_t *data, size_t length, bool canc
     const size_t step = length - done < FILE_CHUNK ? length - done : FILE_CHUNK;
     const uv_buf_t buffer = uv_buf_init((char *)(uintptr_t)(data + done), (unsigned)step);
     uv_fs_t request;
-    const int64_t count = uv_fs_write(NULL, &request, fd, &buffer, 1, -1, NULL);
+    const int64_t count = uv_fs_write(NULL, &request, fd, &buffer, 1, *at, NULL);
     uv_fs_req_cleanup(&request);
     if (count < 0) {
       return (int)count;
@@ -367,6 +377,9 @@ static int write_steps(uv_file fd, const uint8_t *data, size_t length, bool canc
       return UV_EIO;
     }
     done += (size_t)count;
+    if (*at >= 0) {
+      *at += count;
+    }
   }
   return 0;
 }
@@ -374,13 +387,15 @@ static int write_steps(uv_file fd, const uint8_t *data, size_t length, bool canc
 static void write_job(void *data) {
   WriteJob *job = data;
   MsFail unused = ms_fail_new();
-  job->error = write_steps(job->fd, job->data, job->length, false, &unused);
+  job->error = write_steps(job->fd, job->data, job->length, &job->at, false, &unused);
 }
 
 static bool write_at_position(const MsStream *stream, const uint8_t *data, size_t length, MsFail *fail) {
   int error = 0;
+  const int64_t start = ms_stream_offset(stream);
+  int64_t at = stream->append ? -1 : start;
   if (!stream->waitable) {
-    WriteJob job = {.fd = stream->fd, .data = data, .length = length};
+    WriteJob job = {.fd = stream->fd, .at = at, .data = data, .length = length};
     if (ms_pool_on_thread()) {
       write_job(&job);
     } else if (ms_pool_run_shielded(write_job, &job) != MS_POOL_DONE) {
@@ -388,9 +403,11 @@ static bool write_at_position(const MsStream *stream, const uint8_t *data, size_
       return false;
     }
     error = job.error;
+    at = job.at;
   } else {
-    error = write_steps(stream->fd, data, length, true, fail);
+    error = write_steps(stream->fd, data, length, &at, true, fail);
   }
+  ms_stream_advance(stream, start, stream->append ? 0 : at - start, true);
   if (ms_fail_failed(fail)) {
     return false;
   }
@@ -424,6 +441,30 @@ uint8_t msstd_fs_file_write_vectors(MsObj *handle, const MsList *buffers, int64_
 
 /* ---- position, size, metadata ---- */
 
+/* Moves the tracked position: `origin` is 0 (start), 1 (current) or 2 (end). A descriptor without one cannot seek. */
+static int seek_position(const MsStream *stream, int64_t offset, int origin, int64_t *out) {
+  if (stream->position == NULL) {
+    return UV_ESPIPE;
+  }
+  int64_t base = 0;
+  if (origin == 1) {
+    base = atomic_load(&stream->position->at);
+  } else if (origin == 2) {
+    uv_stat_t stat;
+    const int code = ms_fs_fstat(stream->fd, &stat);
+    if (code != 0) {
+      return code;
+    }
+    base = (int64_t)stat.st_size;
+  }
+  if ((offset > 0 && base > INT64_MAX - offset) || base + offset < 0) {
+    return UV_EINVAL;
+  }
+  *out = base + offset;
+  atomic_store(&stream->position->at, *out);
+  return 0;
+}
+
 uint8_t msstd_fs_file_seek(MsObj *handle, int64_t offset, int64_t origin, int64_t *out, MsString *err) {
   MsStream *stream = stream_of(handle);
   MsFail fail = ms_fail_new();
@@ -431,7 +472,7 @@ uint8_t msstd_fs_file_seek(MsObj *handle, int64_t offset, int64_t origin, int64_
     if (origin < 0 || origin > 2 || (offset < 0 && origin == 0)) {
       ms_fail_status(&fail, MS_STATUS_INVALID_INPUT);
     } else {
-      const int code = ms_sys_fs_seek(stream->fd, offset, (int)origin, out);
+      const int code = seek_position(stream, offset, (int)origin, out);
       if (code != 0) {
         fail_file(stream, &fail, "seek", code);
       }

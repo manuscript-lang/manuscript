@@ -345,7 +345,8 @@ export fn title() String!:
 	return msstd_process_title()
 
 // Sets the process title shown by tools such as `ps`. A title with NUL or newline
-// returns EINVAL, and platforms that cannot rename a process return ENOTSUP.
+// returns EINVAL, and platforms that cannot rename a process return ENOTSUP. On Linux
+// and macOS a title longer than the program's original command line is cut to fit.
 // ms: effect std.process.write
 export fn set_title(title: String) Void!:
 	return msstd_process_set_title(title)

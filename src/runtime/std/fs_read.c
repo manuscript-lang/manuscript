@@ -37,13 +37,14 @@ int ms_fs_fstat(uv_file fd, uv_stat_t *out) {
   return code;
 }
 
-/* A read or write of up to `size` bytes at the current position: the count, or a negative status. */
-static int64_t transfer(uv_file fd, uint8_t *bytes, size_t size, bool writing) {
+/* A read or write of up to `size` bytes at `at` (-1: the descriptor's own position): the count, or a negative
+ * status. */
+static int64_t transfer(uv_file fd, uint8_t *bytes, size_t size, bool writing, int64_t at) {
   const unsigned count = size > (size_t)INT_MAX ? (unsigned)INT_MAX : (unsigned)size;
   const uv_buf_t buffer = uv_buf_init((char *)bytes, count);
   uv_fs_t request;
   const int64_t done =
-      writing ? uv_fs_write(NULL, &request, fd, &buffer, 1, -1, NULL) : uv_fs_read(NULL, &request, fd, &buffer, 1, -1, NULL);
+      writing ? uv_fs_write(NULL, &request, fd, &buffer, 1, at, NULL) : uv_fs_read(NULL, &request, fd, &buffer, 1, at, NULL);
   uv_fs_req_cleanup(&request);
   return done;
 }
@@ -94,7 +95,8 @@ static size_t first_capacity(const uv_stat_t *stat, size_t max_size) {
   return first + 1;
 }
 
-void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat_t *stat, MsBytes *out, MsFail *fail) {
+void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat_t *stat, int64_t *at, MsBytes *out,
+                        MsFail *fail) {
   const size_t max_size = max > (int64_t)(SIZE_MAX / 2) ? SIZE_MAX / 2 : (size_t)max;
   size_t capacity = first_capacity(stat, max_size);
   uint8_t *buffer = ms_alloc(capacity);
@@ -120,7 +122,7 @@ void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat
     size_t room = capacity - filled;
     room = room < READ_LARGEST ? room : READ_LARGEST;
     const size_t want = remaining < (int64_t)room ? (size_t)remaining + 1 : room;
-    const int64_t count = transfer(fd, buffer + filled, want, false);
+    const int64_t count = transfer(fd, buffer + filled, want, false, at == NULL ? -1 : *at);
     if (count < 0) {
       ms_fail_status(fail, MS_STATUS_INVALID_DATA);
       break;
@@ -134,6 +136,9 @@ void ms_fs_read_limited(uv_file fd, int64_t max, bool cancellable, const uv_stat
       return;
     }
     filled += (size_t)count;
+    if (at != NULL) {
+      *at += count;
+    }
   }
   ms_free(buffer);
 }
@@ -171,7 +176,7 @@ static void read_whole_job(void *data) {
   if (!open_regular(job, UV_FS_O_RDONLY, &fd)) {
     return;
   }
-  ms_fs_read_limited(fd, job->number, false, NULL, &job->data, &job->fail);
+  ms_fs_read_limited(fd, job->number, false, NULL, NULL, &job->data, &job->fail);
   (void)close_file(fd);
 }
 
@@ -194,7 +199,7 @@ static void read_whole_here(MsFsJob *job) {
   if (have_stat && ms_fs_is_directory(&stat)) {
     ms_fail_status(&job->fail, MS_STATUS_INVALID_INPUT);
   } else {
-    ms_fs_read_limited(fd, job->number, true, have_stat ? &stat : NULL, &job->data, &job->fail);
+    ms_fs_read_limited(fd, job->number, true, have_stat ? &stat : NULL, NULL, &job->data, &job->fail);
   }
   (void)close_file(fd);
 }
@@ -231,7 +236,7 @@ static void write_all(uv_file fd, MsSpan data, MsSpan path, bool cancellable, Ms
       return;
     }
     const size_t end = data.len - done < step ? data.len - done : step;
-    const int64_t count = transfer(fd, (uint8_t *)(uintptr_t)data.ptr + done, end, true);
+    const int64_t count = transfer(fd, (uint8_t *)(uintptr_t)data.ptr + done, end, true, -1);
     if (count < 0) {
       ms_fail_uv(fail, (int)count, "write", path);
       return;

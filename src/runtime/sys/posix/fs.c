@@ -58,16 +58,6 @@ int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_na
   return result == 0 ? 0 : uv_translate_sys_error(errno);
 }
 
-int ms_sys_fs_seek(int fd, int64_t offset, int origin, int64_t *position) {
-  static const int whence[] = {SEEK_SET, SEEK_CUR, SEEK_END};
-  const off_t moved = lseek(fd, (off_t)offset, whence[origin]);
-  if (moved < 0) {
-    return uv_translate_sys_error(errno);
-  }
-  *position = (int64_t)moved;
-  return 0;
-}
-
 int ms_sys_fs_dup(int fd) {
   int copy = -1;
   do {
