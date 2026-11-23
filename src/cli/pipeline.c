@@ -4,7 +4,6 @@
 #include "cli/pipeline.h"
 
 #include <stdio.h>
-#include <uv.h>
 
 #include "base/env.h"
 #include "base/file.h"
@@ -17,6 +16,9 @@
 #include "cli/install_layout.h"
 #include "compiler/emit/emit.h"
 #include "ms_runtime_paths.h"
+
+/* Last: on Windows uv.h brings in windows.h, whose MK_ALT macro would break the MIR header. */
+#include <uv.h>
 
 #if defined(_WIN32)
 enum { LIST_SEPARATOR = ';' };
