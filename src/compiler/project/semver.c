@@ -148,15 +148,6 @@ static int compare_numbers(uint64_t a, uint64_t b) {
   return a < b ? -1 : a > b;
 }
 
-static int compare_spans(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return compare_numbers(a.len, b.len);
-}
-
 /* Numeric identifiers sort before the others and by value; the rest by bytes. A shorter list sorts first. */
 static int compare_pre(const MsSpan *a, size_t na, const MsSpan *b, size_t nb) {
   for (size_t i = 0; i < na && i < nb; i++) {
@@ -170,7 +161,7 @@ static int compare_pre(const MsSpan *a, size_t na, const MsSpan *b, size_t nb) {
     } else if (x_number != y_number) {
       order = x_number ? -1 : 1;
     } else {
-      order = compare_spans(a[i], b[i]);
+      order = ms_span_compare(a[i], b[i]);
     }
     if (order != 0) {
       return order;
@@ -222,8 +213,7 @@ static MsSpan requirement_error(MsArena *arena, MsSpan text, const char *why) {
   ms_strbuild_append(&message, ms_project_quote(arena, text));
   ms_strbuild_append_text(&message, " is not a version requirement: ");
   ms_strbuild_append_text(&message, why);
-  MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&message));
-  ms_strbuild_free(&message);
+  MsSpan copy = ms_message_take_builder(arena, &message);
   return copy;
 }
 

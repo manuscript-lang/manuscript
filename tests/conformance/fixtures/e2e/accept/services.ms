@@ -3,7 +3,6 @@
 // conform: origin=tests/e2e/testdata/accept/services.ms
 import expect_equal from "@std/test/test.ms"
 import BytesBuilder from "@std/bytes.ms"
-import StringBuilder from "@std/string_builder.ms"
 
 test "builders":
     var bytes = BytesBuilder()
@@ -13,7 +12,7 @@ test "builders":
     expected_text: String? := "AB"
     expect_equal(bytes.build().decode_utf8(), expected_text)?
 
-    var text = StringBuilder()
-    text.append("hello")
-    text.append(" world")
-    expect_equal(text.build(), "hello world")?
+    var text = ""
+    text += "hello"
+    text += " world"
+    expect_equal(text, "hello world")?

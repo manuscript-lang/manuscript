@@ -1,8 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-import StringBuilder from "@std/string_builder.ms"
 fn probe() String:
-    b := StringBuilder()
+    var b = List[String]()
     var i = 0
     while i < 321:
         b.append("x")

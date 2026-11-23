@@ -265,6 +265,17 @@ bool test_capturing(void) {
   return capture != NULL;
 }
 
+bool test_selection_valid(MsArena *arena, const MsTestOptions *options) {
+  TestFilters filters = {0};
+  MsSpan error = {0};
+  const bool valid = test_filters_compile(arena, options, &filters, &error);
+  test_filters_free(&filters);
+  if (!valid) {
+    test_print(stderr, ms_message_format(arena, "%S\n", error));
+  }
+  return valid;
+}
+
 void test_print(FILE *stream, MsSpan text) {
   if (stream == stdout && capture != NULL) {
     ms_strbuild_append(capture, text);

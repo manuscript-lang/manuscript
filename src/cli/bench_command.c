@@ -12,10 +12,10 @@
 #include "base/message.h"
 #include "base/path.h"
 #include "base/process.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/fault_record.h"
 #include "cli/invocation.h"
-#include "cli/json_value.h"
+#include "tooling/json_value.h"
 #include "cli/pipeline.h"
 #include "cli/test_document.h"
 #include "cli/test_options.h"
@@ -112,8 +112,7 @@ static MsSpan describe_stats(MsArena *arena, const MsJson *stats) {
     ms_strbuild_append_text(&out, " string clones per op");
   }
   ms_strbuild_append_byte(&out, ')');
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -259,28 +258,36 @@ static Outcome run_one(MsArena *arena, MsSpan executable, MsSpan working, const 
   return outcome;
 }
 
-/* Compares the work counters of every measured bench with the `--baseline` result and reports each one that rose by
- * more than `--fail-over` percent. `*regressed` says whether any did; false when the baseline cannot be read. */
-static bool check_baseline(MsArena *arena, const MsTestOptions *options, const DocumentCase *cases, size_t count,
-                           bool *regressed) {
-  const MsSpan path = options->baseline;
+/* The `benches` array of the `--baseline` result at `path`, or NULL with the reason on stderr. */
+static const MsJson *read_baseline(MsArena *arena, MsSpan path) {
   MsBytes bytes = {0};
   if (!ms_file_read(path, &bytes)) {
     test_print(stderr, ms_message_format(arena, "cannot read --baseline %S; check that the file exists and can be read\n", path,
                                          (MsSpan){0}));
-    return false;
+    return NULL;
   }
   const MsJson *baseline = ms_json_parse(arena, ms_arena_copy(arena, ms_bytes_span(&bytes)));
   ms_bytes_free(&bytes);
   if (baseline == NULL) {
     test_print(stderr, ms_message_format(arena, "--baseline %S is not the JSON that `ms bench --json` writes\n", path,
                                          (MsSpan){0}));
-    return false;
+    return NULL;
   }
   const MsJson *earlier = ms_json_member(baseline, "benches");
   if (earlier == NULL || earlier->kind != MS_JSON_ARRAY) {
     test_print(stderr, ms_message_format(arena, "--baseline %S has no benches; save `ms bench --json` output\n", path,
                                          (MsSpan){0}));
+    return NULL;
+  }
+  return earlier;
+}
+
+/* Compares the work counters of every measured bench with the `--baseline` result and reports each one that rose by
+ * more than `--fail-over` percent. `*regressed` says whether any did; false when the baseline cannot be read. */
+static bool check_baseline(MsArena *arena, const MsTestOptions *options, const DocumentCase *cases, size_t count,
+                           bool *regressed) {
+  const MsJson *earlier = read_baseline(arena, options->baseline);
+  if (earlier == NULL) {
     return false;
   }
   const double bound = options->fail_over;
@@ -533,18 +540,6 @@ static int bench_input(MsArena *arena, const MsInvocation *invocation) {
   return status;
 }
 
-/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
-static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
-  TestFilters filters = {0};
-  MsSpan error = {0};
-  const bool valid = test_filters_compile(arena, options, &filters, &error);
-  test_filters_free(&filters);
-  if (!valid) {
-    test_print(stderr, ms_message_format(arena, "%S\n", error));
-  }
-  return valid;
-}
-
 int ms_bench_command(int argc, char **argv) {
   MsArena arena = ms_arena_new();
   MsInvocation invocation = {0};
@@ -552,8 +547,10 @@ int ms_bench_command(int argc, char **argv) {
   MsTestOptions options;
   ms_test_options_parse(&invocation.arguments, &options);
   MsStrBuild captured = ms_strbuild_new();
-  if (status == 0 && !selection_valid(&arena, &options)) {
+  if (status == 0 && !test_selection_valid(&arena, &options)) {
     status = STATUS_USAGE;
+  } else if (status == 0 && options.baseline.len > 0 && read_baseline(&arena, options.baseline) == NULL) {
+    status = STATUS_USAGE; /* before the build and the run, which can take minutes */
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);
     status = bench_input(&arena, &invocation);

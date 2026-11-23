@@ -13,12 +13,12 @@
 
 /* ---- the program's handler ---- */
 
-/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Bool` takes the closure, then
- * the handle, which the handler now owns and drops, and answers whether the program's handler returned an error:
- * the wrapper releases that error itself. */
+/* A compiled closure: the header, then the code. The code of `fn(move NativeExchange) Int` takes the closure,
+ * then the handle, which the handler now owns and drops, and answers 0 when the request was handled and 1 when
+ * the program's handler failed. The handler's own result, and the Error in it, is released inside the closure. */
 typedef struct HandlerClosure {
   MsObj header;
-  uint8_t (*code)(void *closure, int64_t exchange); /* true when the handler returned an error (`native_handler`) */
+  int64_t (*code)(void *closure, int64_t exchange);
 } HandlerClosure;
 _Static_assert(offsetof(HandlerClosure, code) == 16, "the compiler puts a closure's code after its header");
 

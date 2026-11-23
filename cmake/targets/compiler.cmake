@@ -1,7 +1,7 @@
 ms_library(ms_mir compiler/mir
   SOURCES
     mir_pipeline.c mir_verify.c mir_verify_own.c mir_verify_types.c mir_verify_types_core.c mir_verify_types_data.c
-    mir_verify_types_ops.c mir_count_ops.c mir_depth.c mir_cancel_edges.c mir_unwind.c mir_unwind_closers.c
+    mir_verify_types_ops.c mir_count_ops.c mir_depth.c mir_cancel_edges.c mir_shed.c mir_unwind.c mir_unwind_closers.c
     mir_unwind_flow.c mir_unwind_hash.c mir_unwind_loops.c mir_unwind_own.c mir_unwind_slots.c mir_unwind_cells.c
     mir_unwind_walk.c mir_elab.c mir_elab_state.c mir_elab_tags.c mir_elab_emit.c mir_elab_edge.c mir_elab_block.c
     mir_elab_close.c mir_hash.c mir_persist.c mir_print.c mir_print_func.c mir_print_ty.c mir_lower_ops.c
@@ -92,7 +92,7 @@ ms_library(ms_opt compiler/opt
   SOURCES
     opt_appendfast.c opt_bytesfast.c opt_bytetake.c opt_copyelim.c opt_copyelim_local.c opt_copyelim_move.c
     opt_copyelim_unbox.c opt_exit_drops.c opt_ifconv.c opt_inline.c opt_inline_args.c opt_inline_closure.c
-    opt_fieldview.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_loopslot.c opt_optparam.c opt_pipeline.c opt_probe.c
+    opt_fuse.c opt_inline_dead.c opt_lastuse.c opt_lastuse_region.c opt_loopslot.c opt_optparam.c opt_pipeline.c opt_probe.c
     opt_range.c opt_range_eval.c opt_range_len.c opt_range_prove.c opt_range_refine.c opt_reserve.c opt_simplify.c
     opt_simplify_cfg.c opt_simplify_fold.c opt_simplify_mutate.c opt_simplify_phis.c opt_simplify_probes.c
     opt_sortgen.c opt_sortgen_drift.c opt_sortgen_emit.c opt_sortgen_merge.c opt_strfast.c opt_strfuse.c opt_util.c

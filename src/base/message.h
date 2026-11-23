@@ -21,6 +21,9 @@ MsSpan ms_message_byte(MsArena *arena, uint8_t byte);
 /* The text of the builder, copied into the arena. */
 MsSpan ms_message_from_builder(MsArena *arena, const MsStrBuild *builder);
 
+/* The same, then frees the builder. */
+MsSpan ms_message_take_builder(MsArena *arena, MsStrBuild *builder);
+
 /* `text` with its ASCII capitals lowered, copied into the arena. */
 MsSpan ms_message_lowered(MsArena *arena, MsSpan text);
 

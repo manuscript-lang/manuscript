@@ -338,6 +338,10 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                   expr->pos.line, expr->pos.column);
     return MIR_NONE;
   }
+  MirValue in_place = MIR_NONE;
+  if (late.kind != MS_REF_FIELD && !taking && fn_read_field_in_place(fn, expr, &in_place)) {
+    return in_place;
+  }
   const MirValue read = fn_expr(fn, expr->u.member.left, LW_BORROW);
   if (read == MIR_NONE) {
     return MIR_NONE;
@@ -940,8 +944,9 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   const bool moved_param = root_ref != NULL && root_ref->kind == MS_REF_PARAM &&
                            root_ref->local + (fn->lambda != NULL ? 1u : 0u) < fn->b.func.nparams &&
                            fn->b.func.params[root_ref->local + (fn->lambda != NULL ? 1u : 0u)].mode == MM_MOVE;
+  MirValue root_cell;
   const bool in_var_record = expr->kind == MS_E_MEMBER && !moved_param && root->kind == MS_E_NAME &&
-                             fn_owned_local(fn, root, &root_var);
+                             (fn_owned_local(fn, root, &root_var) || fn_closing_param(fn, root, &root_cell, &root_var));
   /* A field of a parameter taken by borrow is as much the caller's as the parameter. */
   const bool borrowed_root = expr->kind == MS_E_MEMBER && root_ref != NULL && root_ref->kind == MS_REF_PARAM && !moved_param &&
                              !in_var_record && root_ref->local + (fn->lambda != NULL ? 1u : 0u) < fn->b.func.nparams;

@@ -5,6 +5,8 @@ weight = 4
 
 # Rust toolchain
 
+> The Rust implementation is frozen at `660429d4`; the live compiler is the C code in `src/` (see [src/README.md](https://github.com/manuscript-lang/manuscript/blob/main/src/README.md)). This page covers building the frozen oracle only.
+
 Build the compiler, run its tests, and package native releases. `ms` is implemented in Rust; its native backends are Cranelift and LLVM. For application builds with an installed compiler, see [build levels](../developer-tooling/builds/build-levels.md) and [local tool setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup). Release tags publish six platform archives through [`rust-dist.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml).
 
 ## Build and run

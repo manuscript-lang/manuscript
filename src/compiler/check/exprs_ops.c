@@ -400,15 +400,10 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
   return left;
 }
 
-static bool names_none(Body *body, const MsExpr *expr) {
-  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
-}
-
 /* `x == none` and `x != none`: `none` takes its type from a target, and an operand is none. The other operand is
  * typed alone; it is reported unless it is itself wrong. */
 static MsTy none_comparison(Body *body, const MsExpr *expr) {
-  const MsExpr *other = names_none(body, expr->u.bin.left) ? expr->u.bin.right : expr->u.bin.left;
+  const MsExpr *other = body_is_none_name(body, expr->u.bin.left) ? expr->u.bin.right : expr->u.bin.left;
   const MsTy ty = body_expr(body, other, MS_TY_NONE);
   if (ty != MS_TY_NONE && !is_invalid(body, ty) && body_reports(body) && !body->quiet) {
     const bool optional = ms_ty_is(&body->program->types, ty, MS_BUILTIN_Optional);
@@ -433,7 +428,7 @@ static MsTy none_comparison(Body *body, const MsExpr *expr) {
 
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   const MsBinaryOp op = (MsBinaryOp)expr->op;
-  if ((op == MS_B_EQ || op == MS_B_NE) && (names_none(body, expr->u.bin.left) || names_none(body, expr->u.bin.right))) {
+  if ((op == MS_B_EQ || op == MS_B_NE) && (body_is_none_name(body, expr->u.bin.left) || body_is_none_name(body, expr->u.bin.right))) {
     const MsTy ty = none_comparison(body, expr);
     body_set_type(body, expr->id, ty);
     return ty;

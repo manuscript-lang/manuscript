@@ -256,13 +256,14 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   const MsTy source_ty = ms_ty_subst(&cx->program->types, ms_facts_type(fn.facts, lambda.expr->id), lambda.subst.vars,
                                      lambda.subst.args, lambda.subst.count);
   for (uint32_t at = 1; at < reserved.nparams; at++) {
-    if (mir_param_is_var(lambda_data->owned, at - 1) && fn.nvar_params < LOWER_MAX_VAR_PARAMS) {
+    if (mir_param_is_var(lambda_data->owned, at - 1)) {
       const MirTy held_ty = fn_type(&fn, ms_ty_params(&cx->program->types, source_ty)[at - 1].ty);
       const bool owns = mir_needs_drop(cx->module, held_ty);
       const MirImm of_type = {.tag = MI_TY, .a = held_ty};
       const MirValue held = mir_b_emit(&fn.b, owns ? MOP_Take : MOP_Load, &values[at], 1, of_type, held_ty);
       fn.param_vars[at - 1] = mir_b_declare_var(&fn.b, held_ty, owns ? MM_MOVE : MM_BORROW);
       mir_b_def_var(&fn.b, fn.param_vars[at - 1], held);
+      fn.var_params = fn_grow(&fn, fn.var_params, &fn.var_params_cap, fn.nvar_params, sizeof(LowerVarParam));
       fn.var_params[fn.nvar_params++] = (LowerVarParam){fn.param_vars[at - 1], values[at], held_ty};
       continue;
     }

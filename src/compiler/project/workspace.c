@@ -31,7 +31,7 @@ static bool canonical(MsArena *arena, MsSpan path, MsSpan *out, MsProjectError *
 static MsSpan joined(MsArena *arena, MsSpan base, MsSpan name) {
   MsStrBuild path = ms_strbuild_new();
   ms_path_append_joined(&path, base, name);
-  return ms_project_text(arena, &path);
+  return ms_message_take_builder(arena, &path);
 }
 
 /* Whether `dir` is `root` or below it. */
@@ -49,7 +49,7 @@ static MsSpan relative_or(MsArena *arena, MsSpan root, MsSpan dir) {
     ms_strbuild_free(&relative);
     return dir;
   }
-  return ms_project_text(arena, &relative);
+  return ms_message_take_builder(arena, &relative);
 }
 
 static bool member_error(MsArena *arena, MsProjectError *error, MsSpan pattern, const char *why) {

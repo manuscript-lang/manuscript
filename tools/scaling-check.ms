@@ -16,7 +16,6 @@ import (
 	arguments, working_directory from "@std/os/env.ms",
 	temporary, write_file from "@std/os/fs.ms",
 	RunOptions, run from "@std/os/process.ms",
-	StringBuilder from "@std/string_builder.ms",
 	monotonic, seconds from "@std/time.ms",
 
 	env, tool_ms from "./lib.ms",
@@ -24,72 +23,60 @@ import (
 
 // Source of `shape` with `n` units.
 fn generate(shape: String, n: Int) String:
-	var out = StringBuilder()
+	var out = ""
 
 	if shape == "long_function":
-		out.append("export fn main() Int:\n    var t = 0\n")
-		for i in 0..n: out.append(f"    t += {i}\n")
-		out.append("    return t % 256\n")
+		out += "export fn main() Int:\n    var t = 0\n"
+		for i in 0..n: out += f"    t += {i}\n"
+		out += "    return t % 256\n"
 	else if shape == "many_locals":
-		out.append("export fn main() Int:\n    a0 := 0\n")
-		for i in 1..n: out.append(f"    a{i} := a{i - 1} + 1\n")
-		out.append(f"    return a{n - 1} % 256\n")
+		out += "export fn main() Int:\n    a0 := 0\n"
+		for i in 1..n: out += f"    a{i} := a{i - 1} + 1\n"
+		out += f"    return a{n - 1} % 256\n"
 	else if shape == "long_interpolation":
-		out.append("export fn main() Int:\n    x := 1\n    s := f\"")
-		for i in 0..n: out.append("{x}a")
-		out.append("\"\n    return s.length() % 256\n")
+		out += "export fn main() Int:\n    x := 1\n    s := f\""
+		for i in 0..n: out += "{x}a"
+		out += "\"\n    return s.length() % 256\n"
 	else if shape == "many_impls":
 		for i in 0..n:
-			out.append(
-				f"type T{i}:\n\tv: Int\nfn T{i}.get() Int:\n\treturn self.v + {i}\n\n"
-			)
-		out.append("export fn main() Int:\n    return T0(1).get() % 256\n")
+			out += f"type T{i}:\n\tv: Int\nfn T{i}.get() Int:\n\treturn self.v + {i}\n\n"
+		out += "export fn main() Int:\n    return T0(1).get() % 256\n"
 	else if shape == "many_functions":
-		for i in 0..n: out.append(f"fn f{i}(x: Int) Int:\n    return x + {i}\n\n")
-		out.append("export fn main() Int:\n    return f0(1) % 256\n")
+		for i in 0..n: out += f"fn f{i}(x: Int) Int:\n    return x + {i}\n\n"
+		out += "export fn main() Int:\n    return f0(1) % 256\n"
 	else if shape == "many_branches":
-		out.append("export fn main() Int:\n    var t = 0\n    var x = 1\n")
-		for i in 0..n: out.append(
-			f"    if x > {i}:\n        t += 1\n    else:\n        t += 2\n"
-		)
-		out.append("    return t % 256\n")
+		out += "export fn main() Int:\n    var t = 0\n    var x = 1\n"
+		for i in 0..n: out += f"    if x > {i}:\n        t += 1\n    else:\n        t += 2\n"
+		out += "    return t % 256\n"
 	else if shape == "test_owners":
 		// Owners held across calls in one test: the unwind pass registers each once.
-		out.append(TEST_PRELUDE)
+		out += TEST_PRELUDE
 		for i in 0..n:
-			out.append(
-				f"    xs{i}: List[Int] := [{i}, 2]\n    run(fn(): sink(xs{i}.length()))\n"
-			)
+			out += f"    xs{i}: List[Int] := [{i}, 2]\n    run(fn(): sink(xs{i}.length()))\n"
 	else if shape == "test_branches":
 		// The same with a branch after every statement: registrations cross blocks.
-		out.append(TEST_PRELUDE)
+		out += TEST_PRELUDE
 		for i in 0..n:
-			out.append(
-				f"    xs{i}: List[Int] := [{i}, 2]\n    run(fn(): sink(xs{i}.length()))\n    if opaque({i}) > 1000000:\n        sink(1)\n"
-			)
+			out += f"    xs{i}: List[Int] := [{i}, 2]\n    run(fn(): sink(xs{i}.length()))\n    if opaque({i}) > 1000000:\n        sink(1)\n"
 	else if shape == "release_loopfree":
 		// A long loop-free function built with LLVM: its instruction selection must
 		// stay off the cubic path (#3928).
-		out.append(
-			"fn id[T](x: T) T:\n    return x\n\nfn opaque_text(a: Int) String:\n    if a > 1000000: return opaque_text(a - 1)\n    return \"x\"\n\nexport fn main() Int:\n    var t = 0\n"
-		)
+		out += "fn id[T](x: T) T:\n    return x\n\nfn opaque_text(a: Int) String:\n    if a > 1000000: return opaque_text(a - 1)\n    return \"x\"\n\nexport fn main() Int:\n    var t = 0\n"
 		for i in 0..n:
-			out.append(
-				f"    t += id({i})\n    if id(opaque_text({i})).length() > 100: t += 1\n"
-			)
-		out.append("    return t % 256\n")
+			out += f"    t += id({i})\n    if id(opaque_text({i})).length() > 100: t += 1\n"
+		out += "    return t % 256\n"
 	else if shape == "map_adds" or shape == "release_map_adds":
 		// One map changed by every statement: the builder's value lookups and the LLVM
 		// emitter's slot analysis must not scan the whole function per statement.
-		out.append("export fn main() Int:\n    var m = Map[String, Int]()\n")
-		for i in 0..n: out.append(f"    m.add(\"k{i}\", {i})\n")
-		out.append("    return m.length() % 256\n")
+		out += "export fn main() Int:\n    var m = Map[String, Int]()\n"
+		for i in 0..n: out += f"    m.add(\"k{i}\", {i})\n"
+		out += "    return m.length() % 256\n"
 	else if shape == "big_literal":
-		out.append("export fn main() Int:\n    xs := [0")
-		for i in 1..n: out.append(f", {i}")
-		out.append("]\n    return xs.length() % 256\n")
+		out += "export fn main() Int:\n    xs := [0"
+		for i in 1..n: out += f", {i}"
+		out += "]\n    return xs.length() % 256\n"
 
-	return out.build()
+	return out
 
 // The program every test shape starts with.
 TEST_PRELUDE := "fn sink(n: Int) Void:\n    if n > 1000000: sink(n - 1)\n\nfn opaque(a: Int) Int:\n    if a > 1000000: return opaque(a - 1)\n    return a % 7\n\nfn run(g: fn() Void) Void:\n    g()\n\ntest \"scaling\":\n"

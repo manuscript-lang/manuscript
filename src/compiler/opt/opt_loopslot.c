@@ -155,11 +155,6 @@ static uint32_t plan_param(MsArena *arena, const MirFunc *f, MirBlock l, uint32_
   return n;
 }
 
-static void remove_target_arg(MirTarget *t, uint32_t k) {
-  __builtin_memmove(&t->args[k], &t->args[k + 1], sizeof(MirValue) * (t->nargs - k - 1));
-  t->nargs--;
-}
-
 static void rewrite_pair(MirFunc *f, const SlotPair *pair, MirValue s) {
   MirBlockData *blk = &f->blocks.ptr[pair->block];
   const MirValue old = blk->insts.ptr[pair->slot].res;
@@ -191,7 +186,7 @@ static void apply_carry(MirModule *m, MirFunc *f, MirBlock l, uint32_t k, const 
         continue;
       }
       const MirValue a = target->args[k];
-      remove_target_arg(target, k);
+      mir_target_remove_arg(target, k);
       arg = back ? arg : a;
     }
     if (arg != MIR_NONE) {

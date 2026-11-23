@@ -3,6 +3,7 @@
  * directory, each checked on its own. A source with errors still lists its declarations; one that does not parse yields nothing. */
 #include "cli/search_project.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "base/dir.h"
@@ -11,7 +12,7 @@
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "compiler/project/project.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/check/std_cache.h"
 #include "tooling/doc_comment.h"
 #include "tooling/facts.h"
@@ -45,7 +46,10 @@ static bool equal_span_key(const MsSpan *a, const MsSpan *b) { return ms_span_eq
 MS_SET_DEFINE(PathSet, path_set, MsSpan, hash_span_key, equal_span_key)
 
 /* What the scan of the tree carries from file to file. */
+enum { BATCH_FILES = 64 }; /* files checked as one program: the standard library is checked once for all of them */
+
 typedef struct Scan {
+  MsSpanList pending; /* files the walk found that no analysis covers yet, checked in batches */
   MsSpan query, cwd;
   Candidates candidates;
   PathSet covered; /* the files an analysis loaded as modules */
@@ -63,10 +67,12 @@ static MsSpan shown_path(MsSpan path, MsSpan cwd) {
 /* ---- the analyses ---- */
 
 /* Loads `filename` into `analysis` (in `arena`); false when it has errors. */
-static bool load(MsArena *arena, const MsStdCache *std, MsSpan filename, Analysis *analysis) {
+static bool load_with(MsArena *arena, const MsStdCache *std, MsSpan filename, const MsSpan *more, size_t more_count,
+                      Analysis *analysis) {
   *analysis = (Analysis){0};
   analysis->checked.std_cache = std;
-  const MsLoadOptions options = {.tests = true, .project_sources = true, .recover = true};
+  const MsLoadOptions options = {.tests = true, .project_sources = true, .recover = true, .extra_files = more,
+                                 .extra_count = more_count};
   (void)ms_checked_input_load_with(arena, &analysis->checked, filename, MS_INPUT_ANALYSIS, &options);
   if (!analysis->checked.checked) { /* a source with errors still lists what it declares */
     ms_checked_input_free(&analysis->checked);
@@ -77,29 +83,65 @@ static bool load(MsArena *arena, const MsStdCache *std, MsSpan filename, Analysi
   return true;
 }
 
-static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a);
+static bool load(MsArena *arena, const MsStdCache *std, MsSpan filename, Analysis *analysis) {
+  return load_with(arena, std, filename, NULL, 0, analysis);
+}
 
-/* Scans one file's analysis for matches, then frees it: memory stays bounded by the matches, not the tree. */
-static void analyze(MsArena *arena, MsSpan filename, Scan *scan) {
+static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a, const MsSpan *roots);
+static MsSpan *batch_roots(MsArena *arena, const Analysis *a, MsSpan first, const MsSpan *more, size_t more_count);
+
+/* Scans the analysis of `filename` (with the standalone files `more` loaded beside it) for matches, then frees it:
+ * memory stays bounded by the matches, not the tree. */
+static void analyze_files(MsArena *arena, MsSpan filename, const MsSpan *more, size_t more_count, Scan *scan) {
   MsArena scratch = ms_arena_new();
   Analysis analysis;
-  if (load(&scratch, scan->std, filename, &analysis)) {
+  if (load_with(&scratch, scan->std, filename, more, more_count, &analysis)) {
     for (size_t m = 0; m < analysis.checked.graph.count; m++) {
       path_set_add(&scan->covered, ms_arena_copy(arena, analysis.checked.graph.modules[m].path));
     }
-    collect(arena, scan, filename, &analysis);
+    collect(arena, scan, filename, &analysis,
+            more_count > 0 ? batch_roots(&scratch, &analysis, filename, more, more_count) : NULL);
     ms_checked_input_free(&analysis.checked);
   }
   ms_arena_free(&scratch);
 }
 
-/* Every `.ms` file below `dir` that no analysis covers yet, each checked on its own: dot directories, `node_modules`
- * and `vendor` are skipped. */
-static void analyze_tree(MsArena *arena, MsSpan dir, Scan *scan) {
+static void analyze(MsArena *arena, MsSpan filename, Scan *scan) {
+  analyze_files(arena, filename, NULL, 0, scan);
+}
+
+/* Checks the pending files of the tree walk in batches: each batch is one program, so the standard library is
+ * checked once for BATCH_FILES files instead of once per file. */
+static void analyze_pending(MsArena *arena, Scan *scan) {
+  for (size_t at = 0; at < scan->pending.len; at += BATCH_FILES) {
+    const size_t end = at + BATCH_FILES < scan->pending.len ? at + BATCH_FILES : scan->pending.len;
+    analyze_files(arena, scan->pending.ptr[at], scan->pending.ptr + at + 1, end - at - 1, scan);
+  }
+  ms_span_list_free(&scan->pending);
+  scan->pending = (MsSpanList){0};
+}
+
+/* Every `.ms` file below `dir` that no analysis covers yet: dot directories, `node_modules` and `vendor` are skipped.
+ * The files are only listed here; `analyze_pending` checks them. */
+static int64_t entry_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
+  (void)env;
+  const MsDirEntry *left = (const MsDirEntry *)(const void *)a;
+  const MsDirEntry *right = (const MsDirEntry *)(const void *)b;
+  return ms_span_compare(ms_string_span(&left->name), ms_string_span(&right->name));
+}
+
+static void list_tree(MsArena *arena, MsSpan dir, Scan *scan) {
   MsDirEntryList entries = {0};
   if (!ms_dir_list(dir, &entries)) {
     return;
   }
+  /* A project's files resolve against its own manifest (aliases, source root), so they are checked apart from the
+   * loose files around them. */
+  const bool project = ms_path_kind(ms_message_format(arena, "%S/ms.toml", dir, (MsSpan){0})) == MS_PATH_FILE;
+  if (project) {
+    analyze_pending(arena, scan);
+  }
+  ms_sort((uint8_t *)entries.ptr, entries.len, sizeof(MsDirEntry), entry_order, NULL);
   for (size_t i = 0; i < entries.len; i++) {
     const MsSpan name = ms_string_span(&entries.ptr[i].name);
     if (name.len == 0 || name.ptr[0] == '.') {
@@ -108,14 +150,22 @@ static void analyze_tree(MsArena *arena, MsSpan dir, Scan *scan) {
     const MsSpan path = ms_message_format(arena, "%S/%S", dir, name);
     if (entries.ptr[i].kind == MS_PATH_DIRECTORY) {
       if (!ms_span_is_text(name, "node_modules") && !ms_span_is_text(name, "vendor")) {
-        analyze_tree(arena, path, scan);
+        list_tree(arena, path, scan);
       }
     } else if (entries.ptr[i].kind == MS_PATH_FILE && name.len > 3 && ms_span_ends_with(name, ms_span_of_text(".ms")) &&
                !path_set_contains(&scan->covered, path)) {
-      analyze(arena, path, scan);
+      ms_span_list_push(&scan->pending, path);
     }
   }
   ms_dir_entries_free(&entries);
+  if (project) {
+    analyze_pending(arena, scan);
+  }
+}
+
+static void analyze_tree(MsArena *arena, MsSpan dir, Scan *scan) {
+  list_tree(arena, dir, scan);
+  analyze_pending(arena, scan);
 }
 
 /* The directory of the nearest `ms.toml` at or above `dir`, or an empty span. */
@@ -195,7 +245,52 @@ static void classify(const MsCheckProgram *program, const MsOccurrence *entry, C
   }
 }
 
-static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a) {
+/* For each module of a batch, the first file of the batch (in walk order) whose imports reach it: the root a
+ * search of a single file would have used, so a match is described with the same uses. */
+static MsSpan *batch_roots(MsArena *arena, const Analysis *a, MsSpan first, const MsSpan *more, size_t more_count) {
+  const MsGraph *graph = &a->checked.graph;
+  MsSpan *roots = MS_ARENA_NEW_ARRAY(arena, MsSpan, graph->count + 1);
+  size_t *stack = MS_ARENA_NEW_ARRAY(arena, size_t, graph->count + 1);
+  for (size_t f = 0; f <= more_count; f++) {
+    const MsSpan file = f == 0 ? first : more[f - 1];
+    for (size_t m = 0; m < graph->count; m++) {
+      if (roots[m].len > 0 || !ms_span_equal(graph->modules[m].path, file)) {
+        continue;
+      }
+      size_t top = 0;
+      stack[top++] = m;
+      roots[m] = file;
+      while (top > 0) {
+        const MsGraphModule *module = &graph->modules[stack[--top]];
+        for (size_t i = 0; i < module->syntax.nimports; i++) {
+          const int32_t target = module->targets[i];
+          if (target != MS_NO_MODULE && roots[target].len == 0) {
+            roots[target] = file;
+            stack[top++] = (size_t)target;
+          }
+        }
+      }
+    }
+  }
+  return roots;
+}
+
+/* The root that describes module `module`: `roots` (from `batch_roots`) names it in a batch. */
+static MsSpan module_file(const Analysis *a, uint32_t module, const MsSpan *roots, MsSpan fallback) {
+  if (roots == NULL) {
+    return fallback;
+  }
+  const MsCheckProgram *program = &a->checked.program;
+  const MsSpan file = ms_names_span(program->names, program->modules.ptr[module].file);
+  for (size_t i = 0; i < a->checked.graph.count; i++) {
+    if (ms_span_equal(a->checked.graph.modules[i].name, file)) {
+      return roots[i].len > 0 ? roots[i] : fallback;
+    }
+  }
+  return fallback;
+}
+
+static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a, const MsSpan *roots) {
   const MsCheckProgram *program = &a->checked.program;
   for (size_t i = 0; i < a->index.len; i++) {
     const MsOccurrence *entry = &a->index.ptr[i];
@@ -206,7 +301,7 @@ static void collect(MsArena *arena, Scan *scan, MsSpan root, Analysis *a) {
     if (rank < 0) {
       continue;
     }
-    Candidate candidate = {.root = root, .name = ms_arena_copy(arena, entry->name), .entry = entry, .rank = rank,
+    Candidate candidate = {.root = ms_arena_copy(arena, module_file(a, entry->module, roots, root)), .name = ms_arena_copy(arena, entry->name), .entry = entry, .rank = rank,
                            .path = ms_arena_copy(arena, module_path(a, entry->module, scan->cwd))};
     ms_source_position(program->modules.ptr[entry->module].source, entry->offset, &candidate.line, &candidate.column);
     classify(program, entry, &candidate);
@@ -330,8 +425,7 @@ static MsSpan effects_of(MsArena *arena, const Candidate *c) {
         ms_strbuild_append(&out, entity->permits.ptr[p]);
       }
     }
-    const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-    ms_strbuild_free(&out);
+    const MsSpan text = ms_message_take_builder(arena, &out);
     return text;
   }
   return (MsSpan){0};

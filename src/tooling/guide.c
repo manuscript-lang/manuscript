@@ -1,4 +1,5 @@
 /* Owns the snapshot half of guide.h: reads the bundled standard sources and documents each importable module. */
+#include "abi/prelude.h"
 #include "tooling/guide.h"
 
 #include "base/message.h"
@@ -44,11 +45,6 @@ typedef struct Guide {
   size_t nfiles;
   Symbols symbols;
 } Guide;
-
-static const char *const PRIMITIVES[] = {"Bool", "Int", "Float", "Int8", "Int16", "Int32", "Int64", "UInt8",
-                                         "UInt16", "UInt32", "UInt64", "Float32", "Float64", "String", "Void", "Never"};
-static const char *const PRELUDE_NAMES[] = {"Equal", "Stringable", "Comparable", "Hashable", "Clonable", "Optional", "Result",
-                                            "Error", "List", "Map", "Set", "ListEntry", "MapEntry"};
 
 static MsSpan primitive_documentation(MsSpan id) {
   static const struct {
@@ -392,8 +388,8 @@ static Symbol *resolve_receiver(const Guide *g, const StdFile *file, MsSpan name
   if (primitive != NULL) {
     return primitive;
   }
-  for (size_t i = 0; i < sizeof PRELUDE_NAMES / sizeof PRELUDE_NAMES[0]; i++) {
-    if (ms_span_is_text(name, PRELUDE_NAMES[i])) {
+  for (size_t i = 0; i < MS_PRELUDE_TYPE_COUNT; i++) {
+    if (ms_span_is_text(name, MS_PRELUDE_TYPES[i])) {
       for (size_t f = 0; f < g->nfiles; f++) {
         Symbol *found = find_symbol(g, &g->files[f], name, true);
         if (found != NULL && found->decl->is_exported) {
@@ -406,9 +402,9 @@ static Symbol *resolve_receiver(const Guide *g, const StdFile *file, MsSpan name
 }
 
 static void collect_symbols(Guide *g) {
-  for (size_t p = 0; p < sizeof PRIMITIVES / sizeof PRIMITIVES[0]; p++) {
+  for (size_t p = 0; p < MS_PRIMITIVE_TYPE_COUNT; p++) {
     Symbol *s = MS_ARENA_NEW(g->arena, Symbol);
-    s->name = ms_span_of_text(PRIMITIVES[p]);
+    s->name = ms_span_of_text(MS_PRIMITIVE_TYPES[p]);
     symbols_push(g->arena, &g->symbols, s);
   }
   for (size_t f = 0; f < g->nfiles; f++) {
@@ -859,14 +855,14 @@ void ms_guide_build(MsArena *arena, MsNames *names, MsGuide *out) {
   }
   MsApiModule *prelude = &modules[count];
   prelude->path = ms_span_of_text("prelude");
-  for (size_t p = 0; p < sizeof PRIMITIVES / sizeof PRIMITIVES[0]; p++) {
-    Symbol *s = find_symbol(&g, NULL, ms_span_of_text(PRIMITIVES[p]), true);
+  for (size_t p = 0; p < MS_PRIMITIVE_TYPE_COUNT; p++) {
+    Symbol *s = find_symbol(&g, NULL, ms_span_of_text(MS_PRIMITIVE_TYPES[p]), true);
     document_symbol(&g, s);
     ms_api_decls_push(arena, &prelude->decls, s->api);
   }
-  for (size_t p = 0; p < sizeof PRELUDE_NAMES / sizeof PRELUDE_NAMES[0]; p++) {
+  for (size_t p = 0; p < MS_PRELUDE_TYPE_COUNT; p++) {
     for (size_t f = 0; f < g.nfiles; f++) {
-      Symbol *s = find_symbol(&g, &g.files[f], ms_span_of_text(PRELUDE_NAMES[p]), true);
+      Symbol *s = find_symbol(&g, &g.files[f], ms_span_of_text(MS_PRELUDE_TYPES[p]), true);
       if (s != NULL && exported(s)) {
         document_symbol(&g, s);
         ms_api_decls_push(arena, &prelude->decls, s->api);

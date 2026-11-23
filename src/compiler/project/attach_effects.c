@@ -51,7 +51,7 @@ static MsSpan debug_list(MsArena *arena, const MsSpan *items, size_t count) {
     ms_strbuild_append(&text, ms_project_quote(arena, items[i]));
   }
   ms_strbuild_append_byte(&text, ']');
-  return ms_project_text(arena, &text);
+  return ms_message_take_builder(arena, &text);
 }
 
 bool attach_check_effects(MsArena *arena, const MsManifest *scope, MsSpan alias, MsSpan id, MsSpan asker,

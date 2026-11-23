@@ -4,6 +4,7 @@
 #include "base/list.h"
 #include "base/sort.h"
 #include "base/strbuild.h"
+#include "base/message.h"
 #include "compiler/syntax/walk.h"
 
 enum { MAX_PARAMS = 64 };
@@ -136,8 +137,7 @@ MsSpan ms_drop_redundant_labels(MsArena *arena, const MsCheckProgram *program, u
     cursor = scan.cuts.ptr[i].to;
   }
   ms_strbuild_append(&edited, ms_span_of(source.ptr + cursor, source.len - cursor));
-  const MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&edited));
-  ms_strbuild_free(&edited);
+  const MsSpan result = ms_message_take_builder(arena, &edited);
   cut_list_free(&scan.cuts);
   return result;
 }

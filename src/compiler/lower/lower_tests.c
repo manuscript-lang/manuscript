@@ -94,6 +94,7 @@ static uint32_t lower_test(TestRun *run, uint32_t module_index, const MsDecl *de
     const MirValue held = mir_b_emit(&fn.b, owns ? MOP_Take : MOP_Load, &values[1], 1, of_type, held_ty);
     fn.param_vars[0] = mir_b_declare_var(&fn.b, held_ty, owns ? MM_MOVE : MM_BORROW);
     mir_b_def_var(&fn.b, fn.param_vars[0], held);
+    fn.var_params = fn_grow(&fn, fn.var_params, &fn.var_params_cap, fn.nvar_params, sizeof(LowerVarParam));
     fn.var_params[fn.nvar_params++] = (LowerVarParam){fn.param_vars[0], values[1], held_ty};
   }
   fn.nvars = fn.facts->local_counts != NULL ? fn.facts->local_counts[decl->id] : 0;

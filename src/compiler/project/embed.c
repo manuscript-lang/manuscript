@@ -8,6 +8,7 @@
 #include "base/path.h"
 #include "base/sort.h"
 #include "base/utf8.h"
+#include "base/message.h"
 #include "compiler/project/manifest.h"
 
 enum { MAX_FILE_MIB = 16, MAX_TOTAL_MIB = 64, MIB = 1024 * 1024 };
@@ -37,7 +38,7 @@ typedef struct Walk {
 } Walk;
 
 static bool walk_failure(Walk *w, MsStrBuild *text) {
-  ms_project_error_message(w->error, ms_project_text(w->arena, text));
+  ms_project_error_message(w->error, ms_message_take_builder(w->arena, text));
   return false;
 }
 
@@ -59,7 +60,7 @@ static int64_t entry_order(uint8_t *env, const uint8_t *a, const uint8_t *b) {
 static MsSpan joined(Walk *w, MsSpan left, MsSpan right) {
   MsStrBuild text = ms_strbuild_new();
   ms_path_append_joined(&text, left, right);
-  return ms_project_text(w->arena, &text);
+  return ms_message_take_builder(w->arena, &text);
 }
 
 static bool walk_directory(Walk *w, MsSpan root, MsSpan relative);
@@ -310,7 +311,7 @@ bool ms_project_embed_generate(MsArena *arena, MsSpan name, MsSpan directory, Ms
       ms_strbuild_append_text(&text, "\".split(\"\\n\"):\n        directories.add(path)\n");
     }
     ms_strbuild_append_text(&text, "    return embedded_tree(indexes, directories, load)\n");
-    *source = ms_project_text(arena, &text);
+    *source = ms_message_take_builder(arena, &text);
   }
   ms_strbuild_free(&emit.loads);
   ms_strbuild_free(&emit.paths);
@@ -326,7 +327,7 @@ MsSpan ms_project_embed_module_path(MsArena *arena, MsSpan root, MsSpan name) {
   ms_strbuild_append(&text, ms_span_of(name.ptr + (name.len > 0 && name.ptr[0] == '@' ? 1 : 0),
                                        name.len - (name.len > 0 && name.ptr[0] == '@' ? 1 : 0)));
   ms_strbuild_append_text(&text, ".ms");
-  return ms_project_text(arena, &text);
+  return ms_message_take_builder(arena, &text);
 }
 
 bool ms_project_embed_of(MsArena *arena, const struct MsManifest *manifest, MsSpan canonical, MsSpan *name,

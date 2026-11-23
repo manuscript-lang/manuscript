@@ -8,6 +8,11 @@
 /* The bytes of live blocks (base/alloc counts them) and the bytes the heap has committed from the system. */
 void ms_core_heap_stats(int64_t *used, int64_t *committed);
 
+/* Prints the allocator's statistics now when MIMALLOC_SHOW_STATS asks for them, and turns the exit-time print off. The
+ * allocator prints at exit by itself, but not when other threads are still running as the process ends on Windows, so
+ * a leak check cannot rely on that. A no-op when the option is off. */
+void ms_core_heap_report(void);
+
 /* The heap of compiled programs: blocks of the allocator base/alloc uses (mimalloc). Out of memory is a fault, so
  * a returned block is never null; `msrt_free(NULL)` is allowed. */
 

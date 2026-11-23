@@ -10,15 +10,6 @@
 
 /* ---- paths ---- */
 
-static bool has_byte(MsSpan s, uint8_t b) {
-  for (size_t i = 0; i < s.len; i++) {
-    if (s.ptr[i] == b) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool components_valid(MsSpan s) {
   size_t start = 0;
   for (size_t i = 0; i <= s.len; i++) {
@@ -35,8 +26,8 @@ static bool components_valid(MsSpan s) {
 }
 
 static bool path_valid(MsSpan s, bool directory) {
-  if (s.len == 0 || !ms_utf8_is_valid(s.ptr, s.len) || has_byte(s, '\\') || has_byte(s, ':') ||
-      has_byte(s, 0) || s.ptr[0] == '/') {
+  if (s.len == 0 || !ms_utf8_is_valid(s.ptr, s.len) || ms_span_has_byte(s, '\\') || ms_span_has_byte(s, ':') ||
+      ms_span_has_byte(s, 0) || s.ptr[0] == '/') {
     return false;
   }
   const bool slash = s.ptr[s.len - 1] == '/';

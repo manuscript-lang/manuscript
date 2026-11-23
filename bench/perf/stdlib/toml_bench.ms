@@ -1,13 +1,10 @@
-import (
-	parse from "@std/data/toml.ms",
-	StringBuilder from "@std/string_builder.ms",
-)
+import parse from "@std/data/toml.ms"
 
 fn toml_doc(count: Int) String:
-	var sb = StringBuilder()
+	var sb = ""
 	for i in 0..count:
-		sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
-	return sb.build()
+		sb += f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n"
+	return sb
 
 type BenchData:
 	toml: String

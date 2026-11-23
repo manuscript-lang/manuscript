@@ -107,8 +107,7 @@ static MsSpan block_text(MsArena *arena, const MsSpan *lines, size_t count) {
     }
     ms_strbuild_append(&out, rows.ptr[i]);
   }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 
@@ -175,8 +174,7 @@ static MsSpan comments_above(MsArena *arena, MsSpan source, size_t line_start, s
     }
     ms_strbuild_append(&out, blocks.ptr[i - 1]);
   }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
 }
 

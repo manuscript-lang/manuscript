@@ -9,19 +9,19 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "unterminated delimiter '[' opened at line 5:15; add the matching ']' before the end of the file",
+        "message": "unterminated delimiter '[' opened at line 4:15; add the matching ']' before the end of the file",
         "position": {
           "file": "golden-0815.ms",
-          "line": 5,
+          "line": 4,
           "column": 16,
-          "offset": 135
+          "offset": 84
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0815.ms:5:16: parse: unterminated delimiter '[' opened at line 5:15; add the matching ']' before the end of the file\n   |\n 5 |     values := [\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0815.ms:4:16: parse: unterminated delimiter '[' opened at line 4:15; add the matching ']' before the end of the file\n   |\n 4 |     values := [\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

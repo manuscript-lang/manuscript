@@ -3,7 +3,6 @@
 import (
 	Bytes, BytesBuilder, values from "@std/bytes.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
@@ -98,10 +97,10 @@ test "String slice uses byte offsets with relative bounds and clamps out-of-rang
 	expect_equal(text.slice(1, 3), "é")?
 
 test "string and bytes builders freeze":
-	var text = StringBuilder()
-	text.append("é")
-	text.append("🙂")
-	expect_equal(text.build(), "é🙂")?
+	var text = ""
+	text += "é"
+	text += "🙂"
+	expect_equal(text, "é🙂")?
 
 	var bytes = BytesBuilder()
 	bytes.append(0)
@@ -173,38 +172,38 @@ test "offsets and slicing in long mixed-width text agree with the scalar walk":
 	expect_equal(text.slice(7, 8), "")?
 
 test "builder appends literals of every short length across growth":
-	var sb = StringBuilder()
+	var sb = ""
 
 	for i in 0..40:
-		sb.append("a")
-		sb.append("bc")
-		sb.append("def")
-		sb.append("ghij")
-		sb.append("klmno")
-		sb.append("pqrstuv")
-		sb.append("wxyzABCD")
-		sb.append("EFGHIJKLMNOPQRS")
-		sb.append("0123456789abcdef")
-		sb.append("é€")
+		sb += "a"
+		sb += "bc"
+		sb += "def"
+		sb += "ghij"
+		sb += "klmno"
+		sb += "pqrstuv"
+		sb += "wxyzABCD"
+		sb += "EFGHIJKLMNOPQRS"
+		sb += "0123456789abcdef"
+		sb += "é€"
 
 	one := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRS0123456789abcdefé€"
-	var want = StringBuilder()
+	var want = ""
 	for i in 0..40:
-		want.append(one)
-	expect_equal(sb.build(), want.build())?
+		want += one
+	expect_equal(sb, want)?
 
 test "builder appends variable text of every length across growth":
 	base := "0123456789abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz"
-	var sb = StringBuilder()
+	var sb = ""
 	var want = 0
 
 	for round in 0..3:
 		for n in 0..70:
 			piece := base.slice(0, n)
-			sb.append(piece)
+			sb += piece
 			want += n
 
-	built := sb.build()
+	built := sb
 	expect_equal(built.length(), want)?
 	expect_equal(built.slice(0, 10), "0010120123")?
 
