@@ -13,7 +13,7 @@
 #include "cli/lsp_internal.h"
 #include "compiler/syntax/diag.h"
 
-LspDoc *lsp_doc_find(LspDocList *docs, MsSpan uri) {
+LspDoc *lsp_doc_find(const LspDocList *docs, MsSpan uri) {
   for (size_t i = 0; i < docs->len; i++) {
     if (ms_span_equal(ms_string_span(&docs->ptr[i].uri), uri)) return &docs->ptr[i];
   }
@@ -49,13 +49,81 @@ void lsp_doc_remove(LspDocList *docs, MsSpan uri) {
   }
 }
 
-static MsSpan absolute_file(MsArena *arena, MsSpan source_root, MsSpan file) {
+MsSpan lsp_absolute_file(MsArena *arena, MsSpan source_root, MsSpan file) {
   if (ms_path_is_absolute(file) || source_root.len == 0) return file;
   MsStrBuild joined = ms_strbuild_new();
   ms_path_append_joined(&joined, source_root, file);
   const MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
   return result;
+}
+
+void lsp_analyze(const LspDocList *docs, const LspDoc *doc, LspAnalysis *out) {
+  lsp_analyze_changed(docs, doc, NULL, 0, out);
+}
+
+void lsp_analyze_changed(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
+                         LspAnalysis *out) {
+  *out = (LspAnalysis){.arena = ms_arena_new()};
+  MsOverlayFile *files = malloc((docs->len + count + 1) * sizeof *files);
+  size_t total = 0;
+  for (size_t i = 0; i < docs->len; i++) {
+    files[total] = (MsOverlayFile){ms_string_span(&docs->ptr[i].path), ms_string_span(&docs->ptr[i].text)};
+    for (size_t c = 0; c < count; c++) {
+      if (ms_span_equal(changed[c].path, files[total].path)) files[total].text = changed[c].text;
+    }
+    total++;
+  }
+  for (size_t c = 0; c < count; c++) {
+    bool open = false;
+    for (size_t i = 0; i < docs->len; i++) open |= ms_span_equal(changed[c].path, ms_string_span(&docs->ptr[i].path));
+    if (!open) files[total++] = changed[c];
+  }
+  out->overlay = files;
+  const MsOverlay overlay = {files, total};
+  const MsLoadOptions options = {.overlay = &overlay};
+  (void)ms_checked_input_load_with(&out->arena, &out->checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
+  if (!out->checked.checked) return;
+  const MsCheckProgram *program = &out->checked.program;
+  out->resolved = true;
+  out->index = ms_occurrence_index(&out->arena, &out->checked.program);
+  out->paths = MS_ARENA_NEW_ARRAY(&out->arena, MsSpan, program->user_modules == 0 ? 1 : program->user_modules);
+  for (uint32_t m = 0; m < program->user_modules; m++) {
+    const MsSpan name = ms_names_span(program->names, program->modules.ptr[m].file);
+    out->paths[m] = lsp_absolute_file(&out->arena, out->checked.graph.source_root, name);
+    for (size_t g = 0; g < out->checked.graph.count; g++) {
+      if (ms_span_equal(out->checked.graph.modules[g].name, name)) out->paths[m] = out->checked.graph.modules[g].path;
+    }
+  }
+}
+
+bool lsp_rename_stays_checked(const LspDocList *docs, const LspDoc *doc, const MsOverlayFile *changed, size_t count,
+                              MsStrBuild *error) {
+  LspAnalysis before;
+  lsp_analyze(docs, doc, &before);
+  const bool clean = before.resolved && before.checked.findings.len == 0;
+  lsp_analysis_release(&before);
+  if (!clean) {
+    ms_strbuild_printf(error, "rename requires a clean workspace: %.*s", (int)ms_string_length(&doc->path), (const char *)ms_string_span(&doc->path).ptr);
+    return false;
+  }
+  LspAnalysis after;
+  lsp_analyze_changed(docs, doc, changed, count, &after);
+  const bool kept = after.resolved && after.checked.findings.len == 0;
+  if (!kept) {
+    const MsSpan message = after.checked.findings.len > 0 ? after.checked.findings.ptr[0].diag.message
+                                                         : ms_span_of_text("unknown checking failure");
+    ms_strbuild_printf(error, "rename would break %.*s: %.*s", (int)ms_string_length(&doc->path), (const char *)ms_string_span(&doc->path).ptr,
+                       (int)message.len, (const char *)message.ptr);
+  }
+  lsp_analysis_release(&after);
+  return kept;
+}
+
+void lsp_analysis_release(LspAnalysis *analysis) {
+  ms_checked_input_free(&analysis->checked);
+  ms_arena_free(&analysis->arena);
+  free(analysis->overlay);
 }
 
 static void append_diagnostic(MsStrBuild *out, bool *first, MsSpan source, const Finding *finding) {
@@ -72,22 +140,19 @@ static void append_diagnostic(MsStrBuild *out, bool *first, MsSpan source, const
 }
 
 /* The diagnostics of `doc` as the elements of a JSON array. */
-static MsString diagnostics_of(const LspDoc *doc, const MsOverlay *overlay) {
-  MsArena arena = ms_arena_new();
-  MsCheckedInput checked = {0};
-  const MsLoadOptions options = {.overlay = overlay};
-  (void)ms_checked_input_load_with(&arena, &checked, ms_string_span(&doc->path), MS_INPUT_ANALYSIS, &options);
+static MsString diagnostics_of(const LspDoc *doc, const LspDocList *docs) {
+  LspAnalysis analysis;
+  lsp_analyze(docs, doc, &analysis);
   MsStrBuild out = ms_strbuild_new();
   bool first = true;
   const MsSpan source = ms_string_span(&doc->text);
-  for (size_t i = 0; i < checked.findings.len; i++) {
-    const Finding *finding = &checked.findings.ptr[i];
-    const MsSpan file = absolute_file(&arena, checked.graph.source_root, finding->file);
+  for (size_t i = 0; i < analysis.checked.findings.len; i++) {
+    const Finding *finding = &analysis.checked.findings.ptr[i];
+    const MsSpan file = lsp_absolute_file(&analysis.arena, analysis.checked.graph.source_root, finding->file);
     if (!ms_span_equal(file, ms_string_span(&doc->path))) continue;
     append_diagnostic(&out, &first, source, finding);
   }
-  ms_checked_input_free(&checked);
-  ms_arena_free(&arena);
+  lsp_analysis_release(&analysis);
   return ms_strbuild_finish(&out);
 }
 
@@ -113,21 +178,15 @@ static int compare_uri(const void *left, const void *right) {
 }
 
 void lsp_publish_diagnostics(LspDocList *docs, void (*send)(MsStrBuild *message)) {
-  MsOverlayFile *files = docs->len == 0 ? NULL : malloc(docs->len * sizeof *files);
   LspDoc **order = docs->len == 0 ? NULL : malloc(docs->len * sizeof *order);
-  for (size_t i = 0; i < docs->len; i++) {
-    files[i] = (MsOverlayFile){ms_string_span(&docs->ptr[i].path), ms_string_span(&docs->ptr[i].text)};
-    order[i] = &docs->ptr[i];
-  }
+  for (size_t i = 0; i < docs->len; i++) order[i] = &docs->ptr[i];
   if (docs->len > 1) qsort(order, docs->len, sizeof *order, compare_uri);
-  const MsOverlay overlay = {files, docs->len};
   for (size_t i = 0; i < docs->len; i++) {
     LspDoc *doc = order[i];
     const bool library = lsp_uri_is_standard_library(ms_string_span(&doc->uri));
-    MsString diagnostics = library ? ms_string_from_span(ms_span_of_text("")) : diagnostics_of(doc, &overlay);
+    MsString diagnostics = library ? ms_string_from_span(ms_span_of_text("")) : diagnostics_of(doc, docs);
     /* A changed document always republishes (its version moved); the others only when their findings changed. */
-    const bool changed = !ms_string_equal(&diagnostics, &doc->published);
-    if (changed || doc->dirty) {
+    if (doc->dirty || !ms_string_equal(&diagnostics, &doc->published)) {
       send_diagnostics(ms_string_span(&doc->uri), doc->version, true, ms_string_span(&diagnostics), send);
       ms_string_release(&doc->published);
       doc->published = diagnostics;
@@ -136,7 +195,6 @@ void lsp_publish_diagnostics(LspDocList *docs, void (*send)(MsStrBuild *message)
       ms_string_release(&diagnostics);
     }
   }
-  free(files);
   free(order);
 }
 

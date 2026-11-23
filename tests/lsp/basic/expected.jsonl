@@ -1,4 +1,4 @@
-{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"textDocumentSync":2,"positionEncoding":"utf-16"},"serverInfo":{"name":"manuscript","version":"$VERSION"}}}
+{"jsonrpc":"2.0","id":1,"result":{"capabilities":{"textDocumentSync":2,"renameProvider":{"prepareProvider":true},"referencesProvider":true,"documentHighlightProvider":true,"definitionProvider":true,"positionEncoding":"utf-16"},"serverInfo":{"name":"manuscript","version":"$VERSION"}}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"$ROOT_URI/main.ms","version":1,"diagnostics":[{"range":{"start":{"line":1,"character":6},"end":{"line":1,"character":18}},"severity":1,"source":"manuscript","code":"MS2001","message":"unknown binding missing_name; declare it with 'missing_name := ...' before use, define 'fn missing_name(...) T:', or import it from a module"}]}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"$ROOT_URI/main.ms","version":2,"diagnostics":[]}}
 {"jsonrpc":"2.0","id":2,"error":{"code":-32601,"message":"method not supported"}}

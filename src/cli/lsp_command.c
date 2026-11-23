@@ -12,6 +12,7 @@
 #include "cli/json_value.h"
 #include "cli/lsp_analysis.h"
 #include "cli/lsp_internal.h"
+#include "cli/lsp_nav.h"
 
 enum { ERROR_PARSE = -32700, ERROR_INVALID_REQUEST = -32600, ERROR_NOT_FOUND = -32601, ERROR_INVALID_PARAMS = -32602,
        ERROR_NOT_INITIALIZED = -32002 };
@@ -99,7 +100,7 @@ static void handle_initialize(Session *session, const MsJson *id, const MsJson *
     ms_strbuild_free(&path);
   }
   MsStrBuild result = ms_strbuild_new();
-  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"positionEncoding\":\"utf-16\"},");
+  ms_strbuild_append_text(&result, "{\"capabilities\":{\"textDocumentSync\":2,\"renameProvider\":{\"prepareProvider\":true},\"referencesProvider\":true,\"documentHighlightProvider\":true,\"definitionProvider\":true,\"positionEncoding\":\"utf-16\"},");
   ms_strbuild_append_text(&result, "\"serverInfo\":{\"name\":\"manuscript\",\"version\":\"" MS_VERSION "\"}}");
   reply_result(id, ms_strbuild_span(&result));
   ms_strbuild_free(&result);
@@ -176,6 +177,72 @@ static void handle_close(Session *session, const MsJson *params) {
   lsp_publish_empty(uri->text, send);
 }
 
+/* The textDocument requests that read one document at a position. Returns false for a method it does not serve. */
+static bool handle_document_request(Session *session, const MsJson *id, MsSpan method, const MsJson *params) {
+  static const char *const SERVED[] = {"definition", "references", "documentHighlight", "prepareRename", "rename"};
+  bool served = false;
+  for (size_t i = 0; i < sizeof SERVED / sizeof SERVED[0]; i++) {
+    MsStrBuild name = ms_strbuild_new();
+    ms_strbuild_append_text(&name, "textDocument/");
+    ms_strbuild_append_text(&name, SERVED[i]);
+    served |= ms_span_equal(ms_strbuild_span(&name), method);
+    ms_strbuild_free(&name);
+  }
+  if (!served) return false;
+  const MsJson *document = member_kind(params, "textDocument", MS_JSON_OBJECT);
+  const MsJson *uri = member_kind(document, "uri", MS_JSON_STRING);
+  LspPosition position;
+  if (uri == NULL || !json_position(ms_json_member(params, "position"), &position)) {
+    if (id != NULL) reply_error(id, ERROR_INVALID_PARAMS, "invalid parameters");
+    return true;
+  }
+  const LspDoc *doc = lsp_doc_find(&session->docs, uri->text);
+  if (id == NULL) return true;
+  const MsSpan kind = ms_span_of(method.ptr + 13, method.len - 13);
+  MsStrBuild result = ms_strbuild_new();
+  if (doc == NULL || lsp_uri_is_standard_library(uri->text)) {
+    const bool list = !ms_span_is_text(kind, "definition") && !ms_span_is_text(kind, "prepareRename") && !ms_span_is_text(kind, "rename");
+    if (ms_span_is_text(kind, "prepareRename") || ms_span_is_text(kind, "rename")) {
+      reply_error(id, ERROR_INVALID_PARAMS, "select a name that refers to a source declaration");
+    } else {
+      reply_result(id, ms_span_of_text(list ? "[]" : "null"));
+    }
+    ms_strbuild_free(&result);
+    return true;
+  }
+  if (ms_span_is_text(kind, "definition")) {
+    lsp_nav_definition(&session->docs, doc, position, &result);
+  } else if (ms_span_is_text(kind, "references")) {
+    const MsJson *context = member_kind(params, "context", MS_JSON_OBJECT);
+    const MsJson *include = member_kind(context, "includeDeclaration", MS_JSON_BOOL);
+    lsp_nav_references(&session->docs, doc, position, include != NULL && ms_span_is_text(include->text, "true"), &result);
+  } else if (ms_span_is_text(kind, "documentHighlight")) {
+    lsp_nav_highlight(&session->docs, doc, position, &result);
+  } else {
+    const bool prepare = ms_span_is_text(kind, "prepareRename");
+    const MsJson *name = member_kind(params, "newName", MS_JSON_STRING);
+    const MsSpan new_name = prepare || name == NULL ? (MsSpan){0} : name->text;
+    MsStrBuild error = ms_strbuild_new();
+    if (!prepare && new_name.len == 0) {
+      reply_error(id, ERROR_INVALID_PARAMS, "new name is empty");
+    } else if (lsp_nav_rename(&session->docs, doc, position, new_name, &result, &error)) {
+      reply_result(id, ms_strbuild_span(&result));
+    } else {
+      MsStrBuild message = ms_strbuild_new();
+      ms_strbuild_append(&message, ms_strbuild_span(&error));
+      ms_strbuild_append_byte(&message, 0);
+      reply_error(id, ERROR_INVALID_PARAMS, (const char *)ms_strbuild_span(&message).ptr);
+      ms_strbuild_free(&message);
+    }
+    ms_strbuild_free(&error);
+    ms_strbuild_free(&result);
+    return true;
+  }
+  reply_result(id, ms_strbuild_span(&result));
+  ms_strbuild_free(&result);
+  return true;
+}
+
 /* One message. Returns -1 to continue, or the process status when the session ends. */
 static int handle_message(Session *session, MsSpan body) {
   MsArena arena = ms_arena_new();
@@ -232,6 +299,8 @@ static int handle_message(Session *session, MsSpan body) {
   } else if (ms_span_is_text(method->text, "textDocument/didClose")) {
     handle_close(session, params);
     if (id != NULL) reply_result(id, ms_span_of_text("null"));
+  } else if (handle_document_request(session, id, method->text, params)) {
+    /* answered */
   } else if (id != NULL) {
     if (ms_span_starts_with(method->text, ms_span_of_text("textDocument/"))) {
       reply_result(id, ms_span_of_text("null"));
