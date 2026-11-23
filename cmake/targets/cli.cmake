@@ -20,6 +20,11 @@ ms_package_runtime(ms ms_runtime)
 get_filename_component(MS_COMPILER_BIN "${CMAKE_C_COMPILER}" DIRECTORY)
 add_test(NAME smoke_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # The same program linked against musl (`--static`), the other Linux link path.
+  add_test(NAME smoke_run_static COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DRUN_FLAGS=--static
+    -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
+endif()
 
 # The folded-stack conversion of `ms profile`, without the compiler.
 ms_executable(profile_folded_unit cli SOURCES profile_folded_unit.c profile_folded.c LINK ms_base)
