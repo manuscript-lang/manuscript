@@ -325,7 +325,11 @@ static bool forward_round(Table *table, const uint8_t *text, size_t size) {
 static void copy_line(MsStrBuild *out, const Table *table, const Line *line) {
   for (size_t pos = line->at; pos < line->end;) {
     if (line->text[pos] != '%') {
-      ms_strbuild_append_byte(out, line->text[pos++]);
+      const size_t start = pos;
+      while (pos < line->end && line->text[pos] != '%') {
+        pos++;
+      }
+      ms_strbuild_append(out, ms_span_of(line->text + start, pos - start));
       continue;
     }
     const size_t length = name_end(line->text, pos + 1, line->end) - (pos + 1);
