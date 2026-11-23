@@ -123,6 +123,15 @@ static const MsParams *lifted_params(Body *body, const MsExpr *value, MsTy ty, u
     if (found.len == 1 && (ty == MS_TY_NONE || found.ptr[0].ty == ty) && found.ptr[0].entry != NULL) {
       ast = &found.ptr[0].entry->source->func.params;
       *module = found.ptr[0].entry->module;
+    }    if (found.len == 1 && (ty == MS_TY_NONE || found.ptr[0].ty == ty) && found.ptr[0].entry == NULL && found.ptr[0].operation != NULL &&
+        !found.ptr[0].native) {
+      /* An interface operation as a value keeps the interface's defaults. */
+      const MsMethod *declared = ms_check_operation_declaration(body->program, found.ptr[0].contract, found.ptr[0].operation);
+      const MsDef *home = found.ptr[0].contract != MS_TY_NONE ? body_def(body, found.ptr[0].contract) : NULL;
+      if (declared != NULL && home != NULL && home->symbol != 0) {
+        ast = &declared->func.params;
+        *module = body->program->symbols.ptr[home->symbol].module;
+      }
     }
     ms_method_match_list_free(&found);
     return ast;
@@ -321,6 +330,10 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
       }
       if (declared != NULL) { /* the parameter names come from the declaration: shapes shared by operations carry one set */
         target->names = &declared->func.params;
+        if (!match->native && home != NULL && home->symbol != 0) { /* an interface's own default is what an omitted argument takes */
+          target->ast = &declared->func.params;
+          target->ast_module = body->program->symbols.ptr[home->symbol].module;
+        }
       }
     }
   }

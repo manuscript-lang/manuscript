@@ -622,6 +622,16 @@ static void declaration(Body *body, const MsDecl *decl) {
                       ms_string_from_span(ms_span_of_text("an interface declares at least one operation; only the standard "
                                                           "library declares a property without operations, like `Data`")));
     }
+    /* An operation's default is what a call through the interface passes when it leaves the argument out. */
+    for (uint32_t index = 0; index < decl->u.iface.methods.len; index++) {
+      const MsParams params = decl->u.iface.methods.ptr[index]->func.params;
+      for (uint32_t at = 0; at < params.len; at++) {
+        if (params.ptr[at]->def != NULL) {
+          const MsTy declared = params.ptr[at]->ty != NULL ? resolver_type(&body->resolver, params.ptr[at]->ty) : MS_TY_NONE;
+          (void)body_default(body, params.ptr[at]->def, declared);
+        }
+      }
+    }
     break;
   case MS_D_ALIAS:
     break;
