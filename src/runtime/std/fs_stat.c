@@ -18,6 +18,12 @@ int ms_fs_stat_path(const char *path, bool follow, uv_stat_t *out) {
     *out = request.statbuf;
   }
   uv_fs_req_cleanup(&request);
+  /* A trailing separator names a directory: POSIX refuses `file/` with ENOTDIR, Windows resolves it to the file. */
+  const size_t length = strlen(path);
+  if (code == 0 && length > 0 && ms_path_is_separator((uint8_t)path[length - 1]) && !ms_fs_is_directory(out) &&
+      !ms_fs_is_link(out)) {
+    return UV_ENOTDIR;
+  }
   return code;
 }
 
