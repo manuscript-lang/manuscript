@@ -244,6 +244,8 @@ bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *t
 /* Whether `place` is an owning variable (or a path in one): a value a `var` call can change in place. */
 bool fn_place_owns(LowerFn *fn, const MsExpr *place);
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
+/* As `fn_place_changeable`, or a member path through the `?` of such a place (`n?.next`): the receiver of `n?.next?.change()`. */
+bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 /* Stores the owned `value` (held by no scope) into `place`. */
@@ -372,6 +374,7 @@ typedef struct VarSlot {
   bool in_place; /* `slot` is the address of a list element: nothing goes back */
   MirValue home; /* the address of the list element a `place?` receiver lies in, else MIR_NONE */
   MirTy optional; /* the optional `place` holds when `ty` is the payload a `place?` receiver changed, else MIR_NONE */
+  struct VarSlot *outer; /* `a?.b?.change()`: the slot of `a`'s payload, whose field `b` is this slot's home; it goes back after this one */
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
