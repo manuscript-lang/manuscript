@@ -44,122 +44,6 @@ const MsExpr *fn_written_arg(const MsExpr *call, MsNode node) {
   return callee->kind == MS_E_MEMBER && callee->u.member.left->id == node ? callee->u.member.left : NULL;
 }
 
-/* The parameter or field of declaration `decl` whose default expression is node `node`. */
-static const MsParam *declared_default(const MsDecl *decl, const MsParams *method, uint32_t case_index, MsNode node) {
-  const MsParams *list = method;
-  if (method != NULL) {
-    /* a method's parameters are its own */
-  } else if (decl != NULL && decl->kind == MS_D_FN) {
-    list = &decl->u.fn.params;
-  } else if (decl != NULL && decl->kind == MS_D_TYPE) {
-    list = &decl->u.type.fields;
-  } else if (decl != NULL && decl->kind == MS_D_ENUM && case_index < decl->u.enumeration.cases.len) {
-    list = &decl->u.enumeration.cases.ptr[case_index]->fields;
-  }
-  for (uint32_t index = 0; list != NULL && index < list->len; index++) {
-    if (list->ptr[index]->def != NULL && list->ptr[index]->def->id == node) {
-      return list->ptr[index];
-    }
-  }
-  return NULL;
-}
-
-/* Whether the default `expr`, written in module `module`, is the call `caller_site()` of `@std/test/test.ms`. */
-static bool is_caller_site(const LowerFn *fn, uint32_t module, const MsExpr *expr) {
-  const Lower *cx = fn->cx;
-  if (expr->kind != MS_E_CALL) {
-    return false;
-  }
-  const MsCall *call = fn_find_call(&cx->program->modules.ptr[module].facts, expr->id);
-  if (call == NULL || call->arg_count != 0) {
-    return false;
-  }
-  const MsSymbol *symbol = &cx->program->symbols.ptr[fn_symbol_at(cx, call->callee.decl)];
-  const MsSpan file = ms_names_span(cx->program->names, cx->program->modules.ptr[symbol->module].file);
-  return ms_span_is_text(ms_names_span(cx->program->names, symbol->name), "caller_site") &&
-         ms_span_ends_with(file, ms_span_of_text("test/test.ms"));
-}
-
-/* `caller_site()` as a default: the position (`file:line:col`) of the call that omitted the argument. */
-static MirValue caller_position(LowerFn *fn) {
-  const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
-  const MirLoc here = fn->stmt_loc.line != 0 ? fn->stmt_loc : fn->b.loc;
-  MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_printf(&text, "%.*s:%u:%u", (int)file.len, (const char *)file.ptr, here.line, here.col);
-  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_strbuild_span(&text))};
-  ms_strbuild_free(&text);
-  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
-}
-
-/* A default argument is written in the callee's module: its names and types come from that module's facts. */
-MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected) {
-  const MsFacts *saved_facts = fn->facts;
-  const uint32_t saved_file = fn->file;
-  const uint32_t saved_module = fn->module_index;
-  fn->facts = &fn->cx->program->modules.ptr[arg->node.module].facts;
-  fn->file = lower_file(fn->cx, arg->node.module);
-  fn->module_index = arg->node.module;
-  const MsMethodEntry *method = call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE
-                                    ? fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node)
-                                    : NULL;
-  const MsSymbolId callee_id = method != NULL ? 0 : fn_symbol_at(fn->cx, call->callee.decl);
-  const MsDecl *callee_decl = callee_id != 0 ? fn->cx->program->symbols.ptr[callee_id].decl : NULL;
-  const MsParam *param = declared_default(callee_decl, fn->default_params != NULL ? fn->default_params : method != NULL ? &method->source->func.params : NULL,
-                                          call->callee.index, arg->node.node);
-  if (param != NULL && is_caller_site(fn, arg->node.module, param->def)) {
-    fn->facts = saved_facts;
-    fn->file = saved_file;
-    fn->module_index = saved_module;
-    return caller_position(fn);
-  }
-  const MirTy saved_hint = fn->hint;
-  fn->hint = expected;
-  /* A default is written over the callee's type variables (`items: List[T?] = []`): this call's type arguments stand
-   * for them while it is lowered. */
-  const LowerSubst saved_subst = fn->subst;
-  MsTy *own_args = NULL;
-  const MsSymbol *owner = callee_id != 0 ? &fn->cx->program->symbols.ptr[callee_id] : NULL;
-  const MsTy *own_vars = owner != NULL ? fn->cx->program->symbol_vars.ptr + owner->var_at : NULL;
-  uint32_t own_count = owner != NULL ? owner->var_count : 0;
-  if (method != NULL && method->variables.len >= method->shared) { /* a method's own variables follow its receiver's */
-    own_vars = method->variables.ptr + method->shared;
-    own_count = (uint32_t)(method->variables.len - method->shared);
-  }
-  if (fn->default_params != NULL && fn->default_vars.count != 0) {
-    fn->subst = fn->default_vars; /* a method value: the variables it was bound with */
-  } else if (own_count != 0 && own_count == call->type_arg_count) {
-    own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, own_count);
-    for (uint32_t at = 0; at < own_count; at++) {
-      own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
-    }
-    fn->subst = (LowerSubst){own_vars, own_args, own_count};
-  }
-  /* The default's locals are numbered in the callee's function, so they get tables of their own: sharing the caller's
-   * would let the default's `var _resource` stand for a caller local with the same number. */
-  const LowerFnLocals saved_locals = fn_locals_save(fn);
-  const uint32_t counted = fn->facts->local_counts != NULL && call->callee.kind != MS_REF_LOCAL ? fn->facts->local_counts[call->callee.decl.node] : 0;
-  fn_locals_fresh(fn, counted > 16 ? counted : 16);
-  const MsParams *outer_params = fn->default_params; /* a call inside the default is an ordinary call */
-  fn->default_params = NULL;
-  /* The default runs as the callee's, so a fault in it shows the callee's frame, called from this line. */
-  const MsName callee_name = method != NULL ? lower_trace_name(fn->cx, method->receiver, method->name)
-                             : owner != NULL ? lower_trace_name(fn->cx, MS_TY_NONE, owner->name) : MS_NAME_EMPTY;
-  const uint32_t outer_scope = fn->b.loc.scope;
-  if (callee_name != MS_NAME_EMPTY) {
-    (void)mir_b_open_scope(&fn->b, callee_name, fn->file, fn->b.loc.line);
-  }
-  const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
-  mir_b_close_scope(&fn->b, outer_scope);
-  fn->default_params = outer_params;
-  fn_locals_restore(fn, &saved_locals);
-  fn->subst = saved_subst;
-  fn->hint = saved_hint;
-  fn->facts = saved_facts;
-  fn->file = saved_file;
-  fn->module_index = saved_module;
-  return value;
-}
-
 bool fn_is_text_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
 }
@@ -376,7 +260,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
     const uint32_t index = order[step % call->arg_count];
     const MsCallArg *arg = &call->args[index];
     const bool by_slot = arg->source == MS_ARG_WRITTEN && slots != NULL &&
-                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
+                         (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind == MS_REF_FUNCTION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
     /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
     const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
     const bool receiver_place = index == 0 && (call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE) && arg->source == MS_ARG_WRITTEN;
@@ -443,10 +327,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const size_t declared = ms_ty_param_count(types, call->callee_ty);
       const size_t at = index >= call->arg_count - declared ? index - (call->arg_count - declared) : 0;
       const bool outer_has_self = fn->default_has_self; /* an ordinary call inside a method value's default */
+      const LowerOuterEnv caller = fn_env_capture(fn);
       fn->default_has_self = false;
       fn->default_call = call;
       fn->default_args = out;
-      out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty));
+      out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty), &caller);
       fn->default_call = NULL;
       fn->default_args = NULL;
       fn->default_has_self = outer_has_self;

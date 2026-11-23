@@ -82,13 +82,13 @@ void fn_scope_var_released(LowerFn *fn, MirVar var, bool released) {
   }
 }
 
-/* The depth at which `scope` is open. */
+/* The depth at which `scope` is open; past every depth when it is not open (it ended on a path that returned). */
 static uint32_t scope_depth(const LowerFn *fn, uint32_t scope) {
   uint32_t depth = fn->nopen;
   while (depth > 0 && fn->open[depth - 1] != scope) {
     depth--;
   }
-  return depth > 0 ? depth - 1 : 0;
+  return depth > 0 ? depth - 1 : UINT32_MAX;
 }
 
 /* Ending a scope that closes a resource can leave the function when the close fails, and the `var` locals of the scopes
@@ -117,7 +117,7 @@ static void emit_end(LowerFn *fn, uint32_t scope, uint32_t keep) {
   for (uint32_t at = 0; at < fn->nowned_vars; at++) {
     LowerOwnedVar *entry = &fn->owned_vars[at];
     if (entry->pinned != MIR_NONE && scope_depth(fn, entry->scope) < keep) {
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &entry->pinned, 1, (MirImm){0}, MIR_NONE);
+      (void)mir_b_emit(&fn->b, MOP_ScopeUnpin, &entry->pinned, 1, (MirImm){0}, MIR_NONE);
       entry->pinned = MIR_NONE;
     }
   }

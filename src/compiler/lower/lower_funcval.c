@@ -227,13 +227,14 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     if (written == NULL && facts && bound_params != NULL && fact->args[index].source == MS_ARG_DEFAULT) {
       /* A method value keeps its parameters' defaults: the default is written in the call, over the arguments so far and
        * the receiver the value captured. */
+      const LowerOuterEnv caller = fn_env_capture(fn);
       fn->default_call = fact;
       fn->default_args = args + 1;
       fn->default_params = bound_params;
       fn->default_vars = bound_vars;
       fn->default_self = bound_receiver;
       fn->default_has_self = bound_receiver != MIR_NONE;
-      args[index + 1] = fn_default_argument(fn, fact, &fact->args[index], param_ty);
+      args[index + 1] = fn_default_argument(fn, fact, &fact->args[index], param_ty, &caller);
       fn->default_call = NULL;
       fn->default_args = NULL;
       fn->default_has_self = false;

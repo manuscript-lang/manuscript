@@ -355,7 +355,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   MirVar owner = 0;
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
                                         expr->u.member.left->kind == MS_E_CALL);
-  const bool moves = (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
+  const bool moves = ((taking && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) || taken_at_last) &&
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
@@ -714,32 +714,9 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
       return expr->op == MS_B_NE ? mir_b_emit(&fn->b, MOP_Not, &same, 1, (MirImm){0}, MIR_BOOL) : same;
     }
   }
-  const char *operation = expr->op == MS_B_ADD ? "add" : expr->op == MS_B_SUB ? "subtract" : expr->op == MS_B_MUL ? "multiply"
-                          : expr->op == MS_B_DIV ? "divide" : expr->op == MS_B_REM ? "remainder" : NULL;
-  if (operation != NULL && mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, left))->kind == MK_TYPE) {
-    /* A record that declares the operator's operation (`Duration.add`) is calculated by it. */
-    const MsTy checked = lower_source_type(fn->cx, mir_b_ty(&fn->b, left));
-    const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(fn->cx, checked, operation);
-    if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == 2 &&
-        fn->cx->module->funcs.ptr[method].params[1].ty == mir_b_ty(&fn->b, right)) {
-      const MirValue operands[2] = {left, right};
-      const MirValue answer = mir_b_call(&fn->b, method, operands, 2);
-      fn_own_result(fn, answer);
-      return answer;
-    }
-  }
-  if (expr->op == MS_B_LT || expr->op == MS_B_GT || expr->op == MS_B_LE || expr->op == MS_B_GE) {
-    /* A record that declares its own `compare` is ordered by it. */
-    const MirTy operand = mir_b_ty(&fn->b, left);
-    const MsTy checked = mir_ty_data(fn->cx->module, operand)->kind == MK_TYPE && operand == mir_b_ty(&fn->b, right)
-                             ? lower_source_type(fn->cx, operand)
-                             : MS_TY_NONE;
-    const uint32_t method = checked == MS_TY_NONE ? MIR_NONE : lower_named_method(fn->cx, checked, "compare");
-    if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == 2 && fn->cx->module->funcs.ptr[method].ret == MIR_INT) {
-      const MirValue operands[2] = {left, right};
-      const MirValue order = mir_b_call(&fn->b, method, operands, 2);
-      return order == MIR_NONE ? order : mir_b_icmp(&fn->b, ops.cc, order, mir_b_iconst(&fn->b, 0));
-    }
+  MirValue declared = MIR_NONE;
+  if (fn_record_operator(fn, (MsBinaryOp)expr->op, left, right, ops.cc, &declared)) {
+    return declared;
   }
   return fn_compare_values(fn, (MsBinaryOp)expr->op, left, right);
 }
@@ -868,8 +845,11 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
         mir_b_ty(&fn->b, temporary) != mir_b_ty(&fn->b, value)) {
       return MIR_NONE;
     }
+    /* The answer is the temporary itself: it is taken out first, then the temporary's owner steps aside. */
+    const MirValue answer = fn_emit(fn, MOP_MoveOut, &value, 1, (MirImm){0}, mir_b_ty(&fn->b, value));
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &temporary, 1, (MirImm){0}, MIR_NONE);
-    return value;
+    (void)mir_b_emit(&fn->b, MOP_Forget, &temporary, 1, (MirImm){0}, MIR_NONE);
+    return answer;
   }
   const MsExpr *receiver = fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
   const MsTyTable *types = &fn->cx->program->types;

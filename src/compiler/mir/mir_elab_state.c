@@ -225,6 +225,16 @@ static bool apply_disown(ElCx *cx, ElState *state, MirValue value) {
   return true;
 }
 
+/* A variable's value pinned to a scope for a close failure goes back to its variable. An owning block parameter is
+ * owned by the block it enters, not by the pin, so it stays owned: joins see it the same on every path. */
+static bool apply_unpin(ElCx *cx, ElState *state, MirValue value) {
+  ElSt kind = 0;
+  if (mh_has(&cx->param_owned, value) && el_get(state, value, &kind) && kind == EL_LIVE) {
+    return true;
+  }
+  return apply_disown(cx, state, value);
+}
+
 static bool apply_mark(ElCx *cx, ElState *state, const MirInst *inst) {
   const MirValue value = inst->args[0];
   const bool refill = inst->imm.tag == MI_INT && (inst->imm.i == 2 || inst->imm.i == 3);
@@ -310,6 +320,8 @@ bool el_apply(ElCx *cx, ElState *state, const MirInst *inst) {
   switch ((MirOp)inst->op) {
   case MOP_ScopeDisown:
     return apply_disown(cx, state, inst->args[0]);
+  case MOP_ScopeUnpin:
+    return apply_unpin(cx, state, inst->args[0]);
   case MOP_ScopeMark:
     return apply_mark(cx, state, inst);
   case MOP_ScopeOwn:

@@ -10,7 +10,7 @@ static bool is_raw(const MirFunc *func) {
     for (size_t i = 0; i < insts->len; i++) {
       const MirOp op = (MirOp)insts->ptr[i].op;
       if (op == MOP_ScopeBegin || op == MOP_ScopeOwn || op == MOP_ScopeEnd || op == MOP_ScopeDisown ||
-          op == MOP_ScopeMark) {
+          op == MOP_ScopeUnpin || op == MOP_ScopeMark) {
         return true;
       }
     }
@@ -156,7 +156,7 @@ static MirHash disowned_values(ElCx *cx, const MirFunc *func) {
   for (size_t b = 0; b < func->blocks.len; b++) {
     const MirInstList *insts = &func->blocks.ptr[b].insts;
     for (size_t i = 0; i < insts->len; i++) {
-      if (insts->ptr[i].op == MOP_ScopeDisown) {
+      if (insts->ptr[i].op == MOP_ScopeDisown || insts->ptr[i].op == MOP_ScopeUnpin) {
         (void)mh_put(cx->ma, &set, insts->ptr[i].args[0], 0);
       }
     }
@@ -170,6 +170,11 @@ static bool block_states(ElCx *cx, const MirBlock *order, uint32_t norder, ElSta
                          MirHash *flagged) {
   MirHash seen = {0};
   for (size_t b = 0; b < cx->f->blocks.len; b++) {
+    uint32_t nparams = 0;
+    const MirValue *params = el_own_params(cx, (uint32_t)b, &nparams);
+    for (uint32_t i = 0; i < nparams; i++) {
+      (void)mh_put(cx->ma, &cx->param_owned, params[i], 0);
+    }
     const MirInstList *insts = &cx->f->blocks.ptr[b].insts;
     for (size_t i = 0; i < insts->len; i++) {
       if (insts->ptr[i].op == MOP_ScopeOwn && !mh_put(cx->ma, &seen, insts->ptr[i].args[0], 0)) {
