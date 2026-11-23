@@ -856,9 +856,63 @@ static bool list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, Ms
   return true;
 }
 
+/* The list type `List[elem]`, built from any list type of the program. */
+static MsTy list_of(LowerFn *fn, MsTy elem) {
+  MsTyTable *types = &fn->cx->program->types;
+  for (size_t at = 1; at < types->rows.len; at++) {
+    const MsTyRow *row = &types->rows.ptr[at];
+    if (row->builtin == MS_BUILTIN_List && row->arg_count == 1) {
+      const MsTyDesc desc = {.name = row->name, .id = row->id, .kind = (MsTyKind)row->kind, .builtin = MS_BUILTIN_List,
+                             .def = row->def, .args = &elem, .arg_count = 1};
+      return ms_ty_intern(types, &desc);
+    }
+  }
+  return MS_TY_NONE;
+}
+
+/* A native that drops what it removes (`remove`, `splice`, a map's `add` over a key, `remove`, `clear`), on resources:
+ * the `_take` form moves the removed values out in a list, and the list closes where the scope ends, last first. */
+static bool closing_take(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+                         const MirValue *args, MirValue *out) {
+  MsTyTable *types = &fn->cx->program->types;
+  const bool is_list = ms_ty_is(types, owner, MS_BUILTIN_List);
+  const bool is_map = ms_ty_is(types, owner, MS_BUILTIN_Map);
+  const bool wanted = (is_list && ((ms_span_is_text(operation, "remove") && argc == 2) ||
+                                   (ms_span_is_text(operation, "splice") && argc == 4))) ||
+                      (is_map && ((ms_span_is_text(operation, "remove") && argc == 2) ||
+                                  (ms_span_is_text(operation, "add") && argc == 3) ||
+                                  (ms_span_is_text(operation, "clear") && argc == 1)));
+  if (!wanted || fn->closing == NULL || (!is_list && ms_ty_arg_count(types, owner) != 2)) {
+    return false;
+  }
+  const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[is_list ? 0 : 1], fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (!fn_temp_closes(fn, elem)) {
+    return false;
+  }
+  const MsTy removed = is_list ? owner : list_of(fn, elem);
+  if (removed == MS_TY_NONE) {
+    return false;
+  }
+  const MirTy taken_ty = fn_type(fn, ms_ty_subst(types, removed, fn->subst.vars, fn->subst.args, fn->subst.count));
+  const char *name = ms_span_is_text(operation, "remove") ? "remove_take"
+                     : ms_span_is_text(operation, "splice") ? "splice_take"
+                     : ms_span_is_text(operation, "add")    ? "add_take"
+                                                            : "clear_take";
+  MirValue taken = MIR_NONE;
+  if (!native_on(fn, place, slot, owner, ms_span_of_text(name), argc, args, taken_ty, &taken) || taken == MIR_NONE ||
+      !fn_close_replaced(fn, removed, taken)) {
+    return false;
+  }
+  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
+  return true;
+}
+
 static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                       const MirValue *args, MirTy ret, MirValue *out) {
   if (ms_span_is_text(operation, "set") && list_set_closing(fn, place, slot, owner, argc, args, out)) {
+    return true;
+  }
+  if (closing_take(fn, place, slot, owner, operation, argc, args, out)) {
     return true;
   }
   MsName name;

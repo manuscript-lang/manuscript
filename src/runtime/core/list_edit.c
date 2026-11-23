@@ -5,7 +5,8 @@
 #include "runtime/core/list_support.h"
 
 /* `splice(start, delete_count, replacement)`: the replacement is consumed and its buffer freed. */
-void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement) {
+static void splice_into(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement,
+                        MsList *taken) {
   const size_t length = v->len;
   if (start < 0 || (uint64_t)start > length) {
     msrt_splice_fault("start", start, length);
@@ -15,8 +16,17 @@ void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t cou
     msrt_splice_fault("delete_count", count, length - from);
   }
   const size_t removed = (size_t)count;
-  for (size_t i = from; i < from + removed; i++) {
-    ms_slot_drop(d, ms_list_slot(v, d, i));
+  if (taken != NULL) { /* the deleted elements move out, for the caller to close */
+    *taken = (MsList){0};
+    if (removed != 0) {
+      ms_list_reserve(taken, d->size, removed);
+      __builtin_memcpy(taken->ptr, ms_list_slot(v, d, from), removed * d->size);
+      taken->len = removed;
+    }
+  } else {
+    for (size_t i = from; i < from + removed; i++) {
+      ms_slot_drop(d, ms_list_slot(v, d, i));
+    }
   }
   const size_t new_len = msrt_list_checked_add(length - removed, replacement->len);
   if (new_len > v->cap) {
@@ -32,6 +42,16 @@ void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t cou
   }
   v->len = new_len;
   ms_list_free(replacement);
+}
+
+void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement) {
+  splice_into(v, d, start, count, replacement, NULL);
+}
+
+/* As `splice`, but the deleted elements move into `taken` instead of being dropped. */
+void msrt_list_splice_take(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement,
+                           MsList *taken) {
+  splice_into(v, d, start, count, replacement, taken);
 }
 
 /* `fill(value, start, end)`: `value` is borrowed and copied into each slot. */
