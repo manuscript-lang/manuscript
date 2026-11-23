@@ -499,7 +499,7 @@ bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value) {
   if (fn_closing_local(fn, place, &slot, &slot_ty)) {
     const MirValue stored[2] = {slot, value};
     if (mir_needs_drop(fn->cx->module, slot_ty)) {
-      const MirImm refill = {.tag = MI_INT, .i = 2};
+      const MirImm refill = {.tag = MI_INT, .i = 3}; /* the lent value comes back */
       (void)mir_b_emit(&fn->b, MOP_ScopeMark, &slot, 1, refill, MIR_NONE);
     }
     (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slot_ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);

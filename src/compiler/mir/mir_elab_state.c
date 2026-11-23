@@ -225,7 +225,7 @@ static bool apply_disown(ElCx *cx, ElState *state, MirValue value) {
 
 static bool apply_mark(ElCx *cx, ElState *state, const MirInst *inst) {
   const MirValue value = inst->args[0];
-  const bool refill = inst->imm.tag == MI_INT && inst->imm.i == 2;
+  const bool refill = inst->imm.tag == MI_INT && (inst->imm.i == 2 || inst->imm.i == 3);
   const ElSt next = inst->imm.tag == MI_INT && inst->imm.i == 1 ? EL_CLOSED : EL_LIVE;
   ElSt kind = 0;
   if (!el_get(state, value, &kind)) {
