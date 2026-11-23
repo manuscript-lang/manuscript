@@ -127,6 +127,9 @@ typedef struct MsShapeHook {
   /* The reverse for a parse: reads the node `id` of the document and writes the slot `out`; returns 0, or the
    * status of the failure. */
   uint8_t (*json_decode)(const void *doc, uint32_t id, void *out);
+  /* The constructor thunk of a MS_SHAPE_JSON_TREE alternative, which builds the case a parsed node is; with `desc`,
+   * it lets a parse read the untyped tree wherever the alternative sits. */
+  int64_t (*tree_ctor)(int64_t kind, uint8_t *payload, uint8_t *out);
 } MsShapeHook;
 
 /* What a generic native receives: the image, and the hook arrays when the type needs any. */

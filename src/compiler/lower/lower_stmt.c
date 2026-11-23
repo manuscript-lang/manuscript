@@ -150,7 +150,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
   MirVar read = 0;
   /* A name read as the owning `var`'s current value is not a new value, whatever op wrote the `var` last. */
-  const bool reads_var = kind == MS_E_NAME && fn_owned_local(fn, stmt->u.bind.value, &read) && var_owns(fn, read) &&
+  const bool reads_var = borrow && kind == MS_E_NAME && fn_owned_local(fn, stmt->u.bind.value, &read) && var_owns(fn, read) &&
                          mir_b_use_var(&fn->b, read) == value;
   const bool fresh = !reads_var && (fn_fresh_owner(fn, value) || is_empty_optional(fn, value));
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&

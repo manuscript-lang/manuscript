@@ -194,6 +194,8 @@ static MirTy lower_inline(Lower *cx, MsTy ty, uint32_t size) {
   cx->module->type_defs.ptr[id].fields = fields;
   cx->module->type_defs.ptr[id].nfields = words;
   cx->module->type_defs.ptr[id].native = true;
+  cx->module->type_defs.ptr[id].decimal = ms_ty_is(table, ty, MS_BUILTIN_Decimal);
+  lower_source_list_push(&cx->sources, (LowerSource){mir_ty_type(cx->module, id), ty}); /* its own `to_string` is found from it */
   return mir_ty_type(cx->module, id);
 }
 

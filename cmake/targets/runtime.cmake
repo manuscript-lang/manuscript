@@ -164,9 +164,9 @@ add_test(NAME core_unit COMMAND core_unit)
 
 # ld64 resolves archive members in any order, and CMake has no RESCAN link group for it.
 if(APPLE)
-  set(shape_libs ms_std_text ms_std_data ms_std_compress zlib ms_values ms_core ms_sys)
+  set(shape_libs ms_std_text ms_std_data ms_std_bignum ms_std_compress zlib ms_values ms_core ms_sys)
 else()
-  set(shape_libs "$<LINK_GROUP:RESCAN,ms_std_text,ms_std_data,ms_std_compress,zlib,ms_values,ms_core,ms_sys>")
+  set(shape_libs "$<LINK_GROUP:RESCAN,ms_std_text,ms_std_data,ms_std_bignum,ms_std_compress,zlib,ms_values,ms_core,ms_sys>")
 endif()
 ms_executable(shape_unit runtime/std SOURCES shape_unit.c LINK ${shape_libs} m)
 add_test(NAME std_shape COMMAND shape_unit)

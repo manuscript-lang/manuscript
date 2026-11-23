@@ -9,6 +9,8 @@
 #include "base/fatal.h"
 #include "base/map.h"
 #include "runtime/core/obj.h"
+#include "runtime/std/bigint.h"
+#include "runtime/std/decimal.h"
 #include "runtime/std/encoding.h"
 #include "runtime/std/json.h"
 #include "runtime/std/shape_json.h"
@@ -190,6 +192,27 @@ static bool decode_float(const Decode *state, const MsShape *shape, uint32_t id,
     memcpy(slot, &value, sizeof value);
   }
   return true;
+}
+
+/* A BigInt or Decimal reads the digits of a JSON number exactly; one that does not fit is a misfit. */
+static bool decode_digits(const Decode *state, const MsShape *shape, uint32_t id, uint8_t *slot) {
+  if (!expect_kind(state, id, KIND_NUMBER)) {
+    return false;
+  }
+  MsString text = ms_string_empty();
+  msstd_json_text(state->doc, id, &text);
+  uint8_t status = MS_STATUS_OK;
+  if (shape->kind == MS_SHAPE_DECIMAL) {
+    status = msstd_decimal_parse(&text, (MsDecimal *)(void *)slot);
+  } else {
+    MsBigCell *big = NULL;
+    status = msstd_bigint_parse(&text, 10, 0, 0, &big);
+    if (status == MS_STATUS_OK) {
+      memcpy(slot, &big, sizeof big);
+    }
+  }
+  ms_string_release(&text);
+  return status == MS_STATUS_OK || misfit(state, id, shape);
 }
 
 static bool decode_string(const Decode *state, uint32_t id, uint8_t *slot) {
@@ -513,6 +536,10 @@ static bool decode(Decode *state, uint32_t shape_index, uint32_t id, uint8_t *sl
   if ((shape->flags & MS_SHAPE_JSON_FORM) != 0 && hook != NULL && hook->json_decode != NULL) {
     return hook->json_decode(state->doc, id, slot) == 0 || misfit(state, id, shape);
   }
+  if ((shape->flags & MS_SHAPE_JSON_TREE) != 0 && hook != NULL && hook->tree_ctor != NULL && hook->desc != NULL) {
+    /* The untyped tree is read as it is, wherever it sits; it fits any node. The constructor writes the slot. */
+    return msstd_json_node_tree(state->doc, id, hook->desc, hook->tree_ctor, slot) == MS_STATUS_OK || misfit(state, id, shape);
+  }
   switch (shape->kind) {
   case MS_SHAPE_BOOL:
     if (!expect_kind(state, id, KIND_BOOL)) {
@@ -540,6 +567,9 @@ static bool decode(Decode *state, uint32_t shape_index, uint32_t id, uint8_t *sl
   case MS_SHAPE_RECORD:
   case MS_SHAPE_ALTERNATIVE:
     return decode_composite(state, shape, id, slot, depth);
+  case MS_SHAPE_BIGINT:
+  case MS_SHAPE_DECIMAL:
+    return decode_digits(state, shape, id, slot);
   case MS_SHAPE_OBJECT: {
     const MsObjectCodec *codec = ms_object_codec(ms_shape_text(state->table, shape->name));
     MsString text = ms_string_empty();
