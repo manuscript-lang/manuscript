@@ -5,6 +5,27 @@
 
 #include "base/fatal.h"
 
+#ifdef _WIN32
+#include <stdint.h>
+#include <stdio.h>
+#include <windows.h>
+/* PROBE (#6274): report who asks for a huge block */
+static void probe_huge(size_t size, const char *what) {
+  if (size < ((size_t)1 << 40)) {
+    return;
+  }
+  const unsigned long long base = (unsigned long long)(uintptr_t)GetModuleHandleA(NULL);
+  void **fp = (void **)__builtin_frame_address(0);
+  (void)fprintf(stderr, "probe-huge %s size=%llu\n", what, (unsigned long long)size);
+  for (int i = 0; i < 12 && fp != NULL && ((uintptr_t)fp & 7) == 0 && (uintptr_t)fp > 0x10000; i++) {
+    (void)fprintf(stderr, "probe-frame 0x%llx\n", (unsigned long long)(uintptr_t)fp[1] - base);
+    fp = (void **)fp[0];
+  }
+}
+#else
+static void probe_huge(size_t size, const char *what) { (void)size; (void)what; }
+#endif
+
 /* The one other mutable global of base besides the fatal handler: set once before threads. */
 static const MsAllocator *installed = NULL;
 
@@ -36,6 +57,7 @@ void ms_alloc_install(const MsAllocator *allocator) {
 }
 
 void *ms_alloc(size_t size) {
+  probe_huge(size, "alloc");
   return checked(current()->allocate(size));
 }
 
@@ -46,6 +68,7 @@ void *ms_alloc_zeroed(size_t size) {
 }
 
 void *ms_realloc(void *block, size_t size) {
+  probe_huge(size, "realloc");
   return checked(block == NULL ? current()->allocate(size) : current()->reallocate(block, size));
 }
 
