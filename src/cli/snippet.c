@@ -4,7 +4,7 @@
 
 #include "base/utf8.h"
 
-enum { TAB_WIDTH = 4 };
+enum { TAB_WIDTH = 4, LINE_LIMIT = 200, CONTEXT_BEFORE = 60, WINDOW = 160, MARK_LIMIT = 80 };
 
 static bool is_indent(uint32_t rune) {
   return rune == '\t' || rune == ' ';
@@ -74,6 +74,31 @@ static void append_expanded(MsStrBuild *out, MsSpan line) {
   }
 }
 
+/* The cells [first, first + limit) of `text`, cut on character boundaries; returns the cell the window really
+ * starts at and sets `*reached_end` when the whole remainder fits. */
+static size_t append_cells(MsStrBuild *out, MsSpan text, size_t first, size_t limit, bool *reached_end) {
+  size_t cells = 0;
+  size_t at = 0;
+  while (at < text.len && cells < first) {
+    const MsRune rune = ms_utf8_decode(text.ptr + at, text.len - at);
+    cells += cell_width(rune.rune);
+    at += rune.width;
+  }
+  const size_t from = cells;
+  while (at < text.len) {
+    const MsRune rune = ms_utf8_decode(text.ptr + at, text.len - at);
+    const size_t width = cell_width(rune.rune);
+    if (cells - from + width > limit) {
+      break;
+    }
+    ms_strbuild_append(out, ms_span_of(text.ptr + at, rune.width));
+    cells += width;
+    at += rune.width;
+  }
+  *reached_end = at >= text.len;
+  return from;
+}
+
 static void append_repeated(MsStrBuild *out, uint8_t byte, size_t count) {
   for (size_t i = 0; i < count; i++) {
     ms_strbuild_append_byte(out, byte);
@@ -128,11 +153,30 @@ void ms_snippet_excerpt(MsStrBuild *out, MsSpan source, MsPos pos, bool has_end,
   ms_strbuild_append_text(out, " |\n ");
   ms_strbuild_append(out, ms_strbuild_span(&number));
   ms_strbuild_append_text(out, " | ");
-  append_expanded(out, line);
+  size_t caret_indent = indent;
+  if (indent + marks <= LINE_LIMIT && text_width(line) <= LINE_LIMIT) {
+    append_expanded(out, line);
+  } else {
+    /* A long line (minified or generated code) shows a window around the span, with ellipses for the rest. */
+    MsStrBuild expanded = ms_strbuild_new();
+    append_expanded(&expanded, line);
+    const size_t first = indent > CONTEXT_BEFORE ? indent - CONTEXT_BEFORE : 0;
+    bool reached_end = false;
+    if (first > 0) {
+      ms_strbuild_append_utf8(out, 0x2026);
+    }
+    const size_t from = append_cells(out, ms_strbuild_span(&expanded), first, WINDOW, &reached_end);
+    if (!reached_end) {
+      ms_strbuild_append_utf8(out, 0x2026);
+    }
+    caret_indent = indent - from + (first > 0 ? 1 : 0);
+    marks = marks > MARK_LIMIT ? MARK_LIMIT : marks;
+    ms_strbuild_free(&expanded);
+  }
   ms_strbuild_append_text(out, "\n ");
   append_repeated(out, ' ', digits);
   ms_strbuild_append_text(out, " | ");
-  append_repeated(out, ' ', indent);
+  append_repeated(out, ' ', caret_indent);
   append_repeated(out, '^', marks);
   ms_strbuild_free(&number);
 }
