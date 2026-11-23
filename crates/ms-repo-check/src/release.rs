@@ -56,7 +56,7 @@ fn calendar_error(version: &str) -> Option<&'static str> {
 /// The CI workflow must run on every PR, whatever files it changes, and on the merge queue's combined
 /// commit: the ruleset on `main` requires its `Platform checks` job.
 pub fn workflow_triggers() -> Vec<String> {
-    let path = ".github/workflows/cicd.yml";
+    let path = ".github/workflows/ci.yml";
     match std::fs::read_to_string(path) {
         Ok(text) => triggers(&text)
             .map(|e| format!("{path}: {e}"))

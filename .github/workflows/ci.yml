@@ -1,12 +1,15 @@
 name: CI
 
-# Build ms with CMake, run the unit tests, lint, and replay the conformance corpus with the ms just built.
-#   pull request   the two Linux legs (amd64, arm64).
-#   main           every six hours, all six platforms; this also warms the caches pull requests restore.
+# Build ms with CMake, run the unit tests, lint, and replay the conformance corpus with the ms just built; build the
+# book and check the repository rules. Require `Platform checks`.
+#   pull request   the two Linux legs (amd64, arm64), the book and the repository checks, and the time budget.
+#   main           every six hours: all six platforms; this also warms the caches pull requests restore, and
+#                  publishes the book to Pages.
 #   manual         all six platforms, or the Linux two.
 on:
   pull_request:
-    paths: ['src/**', 'cmake/**', 'stdlib/**', 'tests/**', 'tools/**', 'CMakeLists.txt', 'CMakePresets.json', '.github/**']
+  merge_group:
+    types: [checks_requested]
   schedule:
     - cron: '21 */6 * * *'
   workflow_dispatch:
@@ -26,6 +29,7 @@ concurrency:
 
 env:
   CCACHE_DIR: ${{ github.workspace }}/.artifacts/ccache
+  PR: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 jobs:
   build:
@@ -39,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON((github.event_name == 'pull_request' || inputs.platforms == 'linux') && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel","shell":"bash"},{"os":"darwin","arch":"arm64","runner":"macos-15","shell":"bash"},{"os":"windows","arch":"amd64","runner":"windows-2025","shell":"msys2 {0}"},{"os":"windows","arch":"arm64","runner":"windows-11-arm","shell":"msys2 {0}"}]') }}
+        include: ${{ fromJSON((github.event_name == 'pull_request' || github.event_name == 'merge_group' || inputs.platforms == 'linux') && '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"}]' || '[{"os":"linux","arch":"amd64","runner":"ubuntu-24.04","shell":"bash"},{"os":"linux","arch":"arm64","runner":"ubuntu-24.04-arm","shell":"bash"},{"os":"darwin","arch":"amd64","runner":"macos-15-intel","shell":"bash"},{"os":"darwin","arch":"arm64","runner":"macos-15","shell":"bash"},{"os":"windows","arch":"amd64","runner":"windows-2025","shell":"msys2 {0}"},{"os":"windows","arch":"arm64","runner":"windows-11-arm","shell":"msys2 {0}"}]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
@@ -50,3 +54,112 @@ jobs:
       - run: cmake --build --preset debug --target conform
       - if: always()
         uses: ./.github/actions/save-caches
+
+  # The design book: the generated reference and the site, checked, and on main the artifact Pages publishes.
+  docs:
+    name: docs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.146.7'
+          extended: true
+      - run: make book-check
+      - run: make book
+      - run: node --test tests/docs/publication.test.cjs
+      # Older releases keep their own book: each version listed in website/data/docs_versions.toml has a
+      # manuscript-docs archive on its release (built by release.yml), unpacked here.
+      - if: env.PR != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for version in $(sed -n 's/^version = "\(.*\)"$/\1/p' website/data/docs_versions.toml); do
+            mkdir -p ".artifacts/book/versions/v${version}"
+            gh release download "v${version}" --repo "$GITHUB_REPOSITORY" --pattern "manuscript-docs-${version}.tar.gz" --output - | tar -xz -C ".artifacts/book/versions/v${version}"
+          done
+      - if: env.PR != 'true'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: .artifacts/book
+
+  # Repository rules, third-party licenses and the VS Code extension package.
+  checks:
+    name: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/vscode/package-lock.json
+      - run: make repo-check licenses-check
+      - working-directory: extensions/vscode
+        run: npm ci && npm run package -- --allow-missing-repository
+      - uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-vscode
+          path: extensions/vscode/*.vsix
+
+  # The pull request time budget (AGENTS.md, wiki/repository/pull-request-ci-has-a-ten-minute-budget.md): each
+  # Linux build job of a pull request finishes in under 10 minutes. `Platform checks` requires it, so an
+  # over-budget pull request cannot merge.
+  budget:
+    name: Time budget
+    needs: [build]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+    env:
+      BUDGET_SECONDS: '600'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          over=0
+          while read -r name seconds; do
+            echo "$name: ${seconds}s of ${BUDGET_SECONDS}s"
+            if [ "$seconds" -gt "$BUDGET_SECONDS" ]; then over=1; fi
+          done < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | select(.name | startswith("linux-")) | "\(.name | gsub(" "; "_")) \((.completed_at | fromdate) - (.started_at | fromdate))"')
+          if [ "$over" = 1 ]; then
+            echo "::error::A pull request job is over the ${BUDGET_SECONDS}s budget: cut a test or a step (see AGENTS.md)."
+            exit 1
+          fi
+
+  # The sum of the jobs above, one name for a ruleset to require.
+  platforms:
+    name: Platform checks
+    needs: [build, docs, checks, budget]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - run: |
+          echo '${{ toJSON(needs) }}' | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo '${{ toJSON(needs) }}' | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
+
+  pages:
+    name: Publish Pages docs
+    needs: [docs]
+    # Only main (the scheduled run, or a manual run on it) publishes.
+    if: ${{ !cancelled() && needs.docs.result == 'success' && github.event_name != 'pull_request' && github.event_name != 'merge_group' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/configure-pages@v6
+      - id: deploy
+        uses: actions/deploy-pages@v5
