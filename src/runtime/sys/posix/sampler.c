@@ -2,7 +2,9 @@
  * kernel hands the signal to a thread that does not block it, so every thread but the sampled one blocks it
  * (ms_sys_sampler_exclude_thread), and the handler reads the interrupted registers from the signal context. */
 #define _GNU_SOURCE
-#define _XOPEN_SOURCE 700 /* macOS declares ucontext_t only for a standard that asks for it */
+#ifdef __APPLE__
+#define _DARWIN_C_SOURCE /* macOS declares ucontext_t and the thread-state accessors only outside a strict standard */
+#endif
 
 #include <errno.h>
 #include <signal.h>
