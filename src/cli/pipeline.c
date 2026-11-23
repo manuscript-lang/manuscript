@@ -50,7 +50,8 @@ static MsSpan setting(const char *name, MsSpan fallback, MsString *storage) {
 
 /* The shared LLVM library to optimize and generate code with in-process, or empty for the opt and llc child processes.
  * `MS_LLVM` names a library (a library that does not load is an error) or `none` for the child processes. Unset, the
- * library installed beside ms is used when it loads, and the child processes otherwise. */
+ * library installed beside ms (a build tree: the one `make build` fetched, MS_BUILD_LLVM) is used when it loads, and the
+ * child processes otherwise. */
 static MsSpan choose_llvm(MsSpan installed, MsString *storage) {
   const MsSpan named = setting("MS_LLVM", ms_span_of_text(""), storage);
   if (ms_span_is_text(named, "none")) {
@@ -176,6 +177,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild llvm_installed = ms_strbuild_new();
   if (installed) {
     ms_install_llvm(root_span, &llvm_installed);
+  } else {
+    ms_strbuild_append_text(&llvm_installed, MS_BUILD_LLVM); /* a build tree: the library `make build` fetched */
   }
   const MsSpan llvm = choose_llvm(ms_strbuild_span(&llvm_installed), &llvm_storage);
   const MsSpan lld = setting("MS_LLD", lld_fallback, &lld_storage);
