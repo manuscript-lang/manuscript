@@ -18,8 +18,9 @@ static void report_text(Body *body, MsPos pos, size_t length, MsStrBuild *text) 
 }
 
 MsName target_param_name(const Body *body, const Target *target, size_t index) {
-  return target->ast != NULL && index < target->ast->len ? target->ast->ptr[index]->name
-                                                          : ms_ty_params(&body->program->types, target->sig)[index].name;
+  const MsParams *declared = target->ast != NULL ? target->ast : target->names;
+  return declared != NULL && index < declared->len ? declared->ptr[index]->name
+                                                   : ms_ty_params(&body->program->types, target->sig)[index].name;
 }
 
 /* Whether the callee is a local or parameter declared with a written function type, whose parameters carry no labels. */
