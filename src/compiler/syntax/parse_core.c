@@ -38,7 +38,7 @@ void parse_checkpoint_restore(Parser *p, const Checkpoint *c) {
   p->enter_failed = false;
 }
 
-MsSpan parse_fmt(Parser *p, const char *format, ...) {
+MsSpan parse_fmt_(Parser *p, const char *format, ...) {
   va_list arguments;
   va_start(arguments, format);
   MsSpan message = ms_message_vformat(p->arena, format, arguments);

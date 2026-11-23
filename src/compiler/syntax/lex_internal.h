@@ -80,9 +80,11 @@ void lex_emit(Scanner *s, MsTok kind, size_t lo, size_t hi, MsPos pos);
 void lex_emit_layout(Scanner *s, MsTok kind);
 bool lex_fail(Scanner *s, MsSpan message);
 bool lex_fail_at(Scanner *s, MsPos pos, MsSpan message);
-bool lex_fail_at_format(Scanner *s, MsPos pos, const char *format, ...);
+bool lex_fail_at_format_(Scanner *s, MsPos pos, const char *format, ...);
+#define lex_fail_at_format(s, pos, ...) lex_fail_at_format_((s), (pos), MS_FMT_ARGS(__VA_ARGS__))
 bool lex_fail_char(Scanner *s, MsSpan message, const char *replacement);
-bool lex_fail_format(Scanner *s, const char *format, ...);
+bool lex_fail_format_(Scanner *s, const char *format, ...);
+#define lex_fail_format(s, ...) lex_fail_format_((s), MS_FMT_ARGS(__VA_ARGS__))
 bool lex_fail_previous_byte(Scanner *s, MsSpan message);
 bool lex_is_debug_escaped(uint32_t scalar);
 bool lex_is_graphic(uint8_t byte);
