@@ -259,10 +259,13 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
   }
   mir_b_br(&fn->b, join, &success, 1);
   mir_b_switch_to(&fn->b, fail_block);
-  MirValue said = string_literal(fn, "");
+  MirValue said = MIR_NONE;
   if (has_err) {
     const MirImm of_type = {.tag = MI_TY, .a = MIR_STR};
     said = mir_b_emit(&fn->b, MOP_Take, &err_slot, 1, of_type, MIR_STR);
+  } else {
+    const MirValue empty = string_literal(fn, "");
+    said = mir_b_emit(&fn->b, MOP_Clone, &empty, 1, (MirImm){0}, MIR_STR); /* an owned one: the callee takes it */
   }
   const char *domain_text = sig->domain != NULL ? sig->domain : "runtime";
   const MirValue error_args[4] = {status, string_literal(fn, domain_text), said, status_words_text(fn, module)};

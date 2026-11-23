@@ -388,6 +388,19 @@ static bool mv_seen(const MirValue *list, uint32_t n, MirValue x) {
   return false;
 }
 
+/* The name of the operation that made `value`, for messages: "a parameter" when no instruction did. */
+static const char *mv_made_by(const Mv *v, MirValue value) {
+  const MirFunc *fn = v->cx.f;
+  for (uint32_t b = 0; b < fn->blocks.len; b++) {
+    for (uint32_t k = 0; k < fn->blocks.ptr[b].insts.len; k++) {
+      if (fn->blocks.ptr[b].insts.ptr[k].res == value) {
+        return mir_op_info[fn->blocks.ptr[b].insts.ptr[k].op].name;
+      }
+    }
+  }
+  return "a parameter";
+}
+
 /* The operands of `in` against the live set: uses of consumed values, borrows passed to a moving
  * position and values consumed twice. */
 static void mv_check_operands(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *live) {
@@ -405,8 +418,8 @@ static void mv_check_operands(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *l
     } else if (modes[k] != MM_MOVE) {
       continue;
     } else if (!o->owned_def[a]) {
-      mv_err(v, bi, "%s: moving position needs an owned value, %%%u is borrowed (retain it first)",
-         mv_op_name(in), a);
+      mv_err(v, bi, "%s: moving position needs an owned value, %%%u (made by %s) is borrowed (retain it first)",
+         mv_op_name(in), a, mv_made_by(v, a));
     } else if (mv_seen(consumed, nconsumed, a)) {
       mv_err(v, bi, "%s: %%%u consumed twice", mv_op_name(in), a);
     } else {
@@ -452,16 +465,7 @@ static void mv_own_ret(MvOwn *o, MirBlock bi, const MirTerm *t, MvSet *live) {
     }
   }
   if (live->count > 0) {
-    const char *made = "a block parameter";
-    const MirFunc *fn = v->cx.f;
-    for (uint32_t b = 0; b < fn->blocks.len; b++) {
-      for (uint32_t k = 0; k < fn->blocks.ptr[b].insts.len; k++) {
-        if (fn->blocks.ptr[b].insts.ptr[k].res == live->ids[0]) {
-          made = mir_op_info[fn->blocks.ptr[b].insts.ptr[k].op].name;
-        }
-      }
-    }
-    mv_err(v, bi, "ret: owned value %%%u (made by %s) is never released", live->ids[0], made);
+    mv_err(v, bi, "ret: owned value %%%u (made by %s) is never released", live->ids[0], mv_made_by(v, live->ids[0]));
   }
 }
 

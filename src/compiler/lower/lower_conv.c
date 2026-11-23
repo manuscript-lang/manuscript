@@ -266,7 +266,9 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   const MirTy to = fn_type(fn, conversion->to);
   /* A view of a binding that keeps its value does not own it; a fresh value or a moved one is the interface's. */
   const bool place = expr->kind == MS_E_NAME || expr->kind == MS_E_MEMBER;
-  const bool views = place && ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
+  const bool droppable = mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value));
+  const bool shared = place ? ms_facts_use(fn->facts, expr->id) != MS_USE_MOVE : !fn_fresh_owner(fn, value);
+  const bool views = shared && droppable; /* a literal or other borrowed value is viewed, never moved in */
   if (!views) {
     if (fn_fresh_owner(fn, value)) { /* the interface takes over what the scope owned */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
