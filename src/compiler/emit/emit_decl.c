@@ -105,6 +105,7 @@ static const char intrinsics[] =
     "declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1)\n"
     "declare void @llvm.memmove.p0.p0.i64(ptr, ptr, i64, i1)\n"
     "declare void @llvm.memset.p0.i64(ptr, i8, i64, i1)\n"
+    "declare void @llvm.dbg.value(metadata, metadata, metadata)\n"
     /* The sized form: LLVM 18 to 21 need it and the pinned LLVM upgrades it to the unsized one. */
     "declare void @llvm.lifetime.start.p0(i64 immarg, ptr nocapture)\n"
     "declare void @llvm.lifetime.end.p0(i64 immarg, ptr nocapture)\n"
