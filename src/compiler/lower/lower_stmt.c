@@ -51,6 +51,19 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
     if (data->kind != MK_LIST) {
       return fn_fail(fn, "a list pattern binds a list");
     }
+    /* The pattern binds as many names as the list has elements: any other length is a fault. */
+    const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &value, 1, (MirImm){0}, MIR_INT);
+    const MirValue names = mir_b_iconst(&fn->b, (int64_t)pattern->u.list.len);
+    const MirBlock good = mir_b_new_block(&fn->b);
+    const MirBlock bad = mir_b_new_block(&fn->b);
+    mir_b_br_if(&fn->b, mir_b_icmp(&fn->b, MCC_EQ, length, names), good, NULL, 0, bad, NULL, 0);
+    mir_b_seal_block(&fn->b, good);
+    mir_b_seal_block(&fn->b, bad);
+    mir_b_switch_to(&fn->b, bad);
+    const MirValue counts[2] = {names, length};
+    (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_destructure")), counts, 2, MIR_VOID);
+    mir_b_unreachable(&fn->b);
+    mir_b_switch_to(&fn->b, good);
     for (uint32_t at = 0; at < pattern->u.list.len; at++) {
       const MirValue args[2] = {value, mir_b_iconst(&fn->b, (int64_t)at)};
       const MirValue element = mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, data->elem);
