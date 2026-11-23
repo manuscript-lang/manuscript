@@ -18,6 +18,8 @@ Rules:
 
 - The cleanup stack lives in the task's header block (`Hdr.cleanups`: buffer pointer, length, capacity at offsets 24, 32, 40). Generated code pushes with a store pair and a length bump and discards with a length store, calling `msrt_cleanup_push` only when the buffer is full and `msrt_cleanup_discard` only when the entry below the handle was retired (a tombstone the runtime prunes). Both backends lower it (`cleanup_push`/`cleanup_discard` in `ms-clif`, `push_entry`/`discard_entries` in `ms-mir-llvm`); a handle is the entry count after the push. On a 3000-task benchmark the runtime calls drop from 2.95M to 0.45M instructions.
 
+C port (2026-11-23, #6716): `ms_fail_finish_at` still unwinds (`ms_cancelled`, noreturn) when a stop request is pending, so anything the native owns must be freed before it, never after. An fs native that freed its job after the finish leaked the whole buffer of every cancelled `read_file` (16 MB per cancel). `ms_fs_job_finish` frees the job and then finishes; a native with its own detail text checks `ms_fail_cancel_pending` first. The fixture `stdlib/cancelled-file-read-frees-buffer` runs under the leak check.
+
 Apply when: adding or changing a native that parks, waits, or polls for cancellation.
 Evidence: `crates/ms-rt/src/fault.rs` (`cancel_return`, `take_unwinding`), `crates/ms-repo-check/src/cancel_jumps.rs`.
 Verify: `cargo test -p ms-rt --lib guard`; `cargo run -p ms-repo-check`.
