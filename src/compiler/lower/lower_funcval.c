@@ -254,7 +254,8 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     const uint32_t index = order[step];
     const MirTy param_ty = data->args[index];
     const MsExpr *written = written_args[index];
-    if (written == NULL && facts && bound_params != NULL && fact->args[index].source == MS_ARG_DEFAULT) {
+    if (written == NULL && facts && fact->args[index].source == MS_ARG_DEFAULT &&
+        (bound_params != NULL || mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT)) {
       /* A method value keeps its parameters' defaults: the default is written in the call, over the arguments so far and
        * the receiver the value captured. */
       const LowerOuterEnv caller = fn_env_capture(fn);
@@ -286,8 +287,7 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       continue;
     }
     if (written == NULL) {
-      /* A parameter the call leaves out is none; one of an interface operation's with a default is the zero value, as in a
-       * direct call of the operation (the checker records no default expression for an operation). */
+      /* A parameter the call leaves out is none. */
       args[index + 1] = param_ty == MIR_VOID ? mir_b_unit(&fn->b) : fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
       continue;
     }

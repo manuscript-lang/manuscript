@@ -472,17 +472,8 @@ static void function_decl(Body *body, const MsSymbol *symbol) {
   ms_ty_list_truncate(&body->resolver.types, mark);
 }
 
-static const MsMethodEntry *find_entry(const MsCheckProgram *program, const MsMethod *method) {
-  for (size_t index = 0; index < program->methods.len; index++) {
-    if (program->methods.ptr[index].source == method) {
-      return &program->methods.ptr[index];
-    }
-  }
-  return NULL;
-}
-
 static void method_decl(Body *body, const MsMethod *method) {
-  const MsMethodEntry *entry = find_entry(body->program, method);
+  const MsMethodEntry *entry = ms_check_method_at(body->program, body->module, method->id);
   if (entry == NULL) {
     return;
   }
@@ -621,6 +612,16 @@ static void declaration(Body *body, const MsDecl *decl) {
       ms_check_report(body->program, body->module, decl->pos, MS_CHECK_TYPE,
                       ms_string_from_span(ms_span_of_text("an interface declares at least one operation; only the standard "
                                                           "library declares a property without operations, like `Data`")));
+    }
+    /* An operation's default is what a call through the interface passes when it leaves the argument out. */
+    for (uint32_t index = 0; index < decl->u.iface.methods.len; index++) {
+      const MsParams params = decl->u.iface.methods.ptr[index]->func.params;
+      for (uint32_t at = 0; at < params.len; at++) {
+        if (params.ptr[at]->def != NULL) {
+          const MsTy declared = params.ptr[at]->ty != NULL ? resolver_type(&body->resolver, params.ptr[at]->ty) : MS_TY_NONE;
+          (void)body_default(body, params.ptr[at]->def, declared);
+        }
+      }
     }
     break;
   case MS_D_ALIAS:

@@ -59,7 +59,7 @@ void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
   }
   fn_presolve_keys(fn, container);
   const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved)) {
     return;
   }
   const MirValue value = fn_expr(fn, key, LW_BORROW);

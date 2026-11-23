@@ -286,7 +286,7 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     }
     /* A name that closes is made in the scope outside the statement's own (`bind_scope`). */
     if (stmt->kind == MS_S_BIND && fn_temp_closes(fn, bound)) {
-      return scan.receiver;
+      return scan.receiver || scan.found;
     }
     /* An owned name that never changes moves to the scope outside the statement's own (`bind_scope`). */
     const bool outer = stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && !fn_temp_closes(fn, bound) &&

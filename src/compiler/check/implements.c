@@ -4,6 +4,7 @@
  * operation with the interface's exact signature, parameter names and `var`/`move` receiver mode. A type
  * variable satisfies the interfaces it is bounded by, a type set admits its members, and the built-in
  * scalars satisfy Comparable. Equal, Hashable, Clonable and Data are structural properties (properties.c). */
+#include "base/alloc.h"
 #include "compiler/check/methods.h"
 
 #include "compiler/check/program.h"
@@ -335,6 +336,50 @@ static bool builtin_comparable(const MsTyTable *types, MsTy ty) {
          builtin == MS_BUILTIN_Decimal || builtin == MS_BUILTIN_BigInt || builtin == MS_BUILTIN_Timestamp;
 }
 
+static size_t shape_slot(const MsPropertyMemo *memo, uint64_t key) {
+  size_t at = (size_t)(key * 0x9E3779B97F4A7C15ull >> 32) & (memo->shape_cap - 1);
+  while (memo->shapes[at].stamp != 0 && memo->shapes[at].key != key) {
+    at = (at + 1) & (memo->shape_cap - 1);
+  }
+  return at;
+}
+
+static void shape_grow(MsPropertyMemo *memo) {
+  MsShapeSlot *old = memo->shapes;
+  const size_t old_cap = memo->shape_cap;
+  memo->shape_cap = old_cap == 0 ? 256 : old_cap * 2;
+  memo->shapes = ms_alloc_zeroed(memo->shape_cap * sizeof *memo->shapes);
+  for (size_t index = 0; index < old_cap; index++) {
+    if (old[index].stamp != 0) {
+      memo->shapes[shape_slot(memo, old[index].key)] = old[index];
+    }
+  }
+  ms_free(old);
+}
+
+/* Whether `receiver` meets the shape of `contract`, remembered until the method table grows. */
+static bool shape_met(MsCheckProgram *program, MsTy receiver, MsTy contract) {
+  MsPropertyMemo *memo = &program->properties;
+  const uint64_t key = (uint64_t)receiver << 32 | contract;
+  const uint32_t stamp = (uint32_t)program->methods.len + 1;
+  if (memo->shape_cap != 0) {
+    const MsShapeSlot *slot = &memo->shapes[shape_slot(memo, key)];
+    if (slot->stamp == stamp && slot->key == key) {
+      return slot->result;
+    }
+  }
+  MsStrBuild why = ms_strbuild_new();
+  const bool met = ms_check_shape_gap(program, receiver, contract, &why);
+  ms_strbuild_free(&why);
+  if ((memo->shape_len + 1) * 2 > memo->shape_cap) {
+    shape_grow(memo);
+  }
+  MsShapeSlot *slot = &memo->shapes[shape_slot(memo, key)];
+  memo->shape_len += slot->stamp == 0;
+  *slot = (MsShapeSlot){.key = key, .stamp = stamp, .result = met};
+  return met;
+}
+
 bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract) {
   const MsTyTable *types = &program->types;
   if (ms_ty_row(types, receiver)->id == ms_ty_row(types, contract)->id) {
@@ -360,8 +405,5 @@ bool ms_check_implements(MsCheckProgram *program, MsTy receiver, MsTy contract) 
   if (builtin == MS_BUILTIN_Comparable && builtin_comparable(types, receiver)) {
     return true;
   }
-  MsStrBuild why = ms_strbuild_new();
-  const bool met = ms_check_shape_gap(program, receiver, contract, &why);
-  ms_strbuild_free(&why);
-  return met;
+  return shape_met(program, receiver, contract);
 }
