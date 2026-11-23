@@ -31,11 +31,9 @@ MirValue fn_list(LowerFn *fn, const MsExpr *expr) {
     if (!mir_needs_drop(fn->cx->module, data->elem)) {
       continue;
     }
-    if (fn_fresh_owner(fn, items[index])) {
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &items[index], 1, (MirImm){0}, MIR_NONE); /* the list owns it */
-    } else {
+    if (!fn_fresh_owner(fn, items[index])) {
       items[index] = fn_implicit_clone(fn, items[index], false);
-    }
+    } /* a fresh owner stays the scope's until `list.lit` consumes it: a later element may unwind */
   }
   mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
   return fn_emit(fn, MOP_ListLit, items, count, (MirImm){0}, list_ty);

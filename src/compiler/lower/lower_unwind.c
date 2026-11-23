@@ -6,6 +6,7 @@
 #include "compiler/mir/mir_pass.h"
 
 void fn_unwind_site(LowerFn *fn, MirValue result) {
+  (void)result;
   if (!fn->cx->unwind_exits || fn->terminated || fn->failed || fn->b.func.unwind_only) {
     return;
   }
@@ -13,10 +14,6 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
     fn->cx->unwinding = mir_extern_get(fn->cx->module, ms_span_of_text("msrt_unwinding"), NULL, 0, MIR_UINT8, true, MR_UNWINDING);
   }
   /* A fresh result is not owned by any scope yet: it is, for the exit, and the next branch disowns it again. */
-  const bool owns = result != MIR_NONE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, result)) && fn_fresh_owner(fn, result);
-  if (owns) {
-    fn_own(fn, fn_scope(fn), result);
-  }
   const MirValue byte = mir_b_emit(&fn->b, MOP_CallRt, NULL, 0, (MirImm){.tag = MI_EXT, .a = fn->cx->unwinding}, MIR_UINT8);
   const MirValue zero = mir_b_emit(&fn->b, MOP_IConst, NULL, 0, mir_imm_int(0), MIR_UINT8);
   const MirValue pair[2] = {byte, zero};
@@ -30,12 +27,8 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
   fn_scope_unwind(fn, 0);
   MirValue undef = MIR_NONE;
   if (fn->b.func.ret != MIR_VOID) {
-    undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->b.func.ret_borrowed ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);
+    undef = mir_b_emit(&fn->b, MOP_Undef, NULL, 0, fn->returns_borrow ? mir_imm_int(1) : mir_imm_none(), fn->b.func.ret);
   }
   mir_b_ret(&fn->b, undef);
   mir_b_switch_to(&fn->b, next);
-  if (owns) {
-    const MirImm none = {0};
-    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, none, MIR_NONE);
-  }
 }
