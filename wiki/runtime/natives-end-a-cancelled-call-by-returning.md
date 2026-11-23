@@ -20,6 +20,8 @@ Rules:
 
 C port (2026-11-23, #6716): `ms_fail_finish_at` still unwinds (`ms_cancelled`, noreturn) when a stop request is pending, so anything the native owns must be freed before it, never after. An fs native that freed its job after the finish leaked the whole buffer of every cancelled `read_file` (16 MB per cancel). `ms_fs_job_finish` frees the job and then finishes; a native with its own detail text checks `ms_fail_cancel_pending` first. The fixture `stdlib/cancelled-file-read-frees-buffer` runs under the leak check.
 
+C port (2026-11-23): a cancelled net wait (`ms_net_finish`) also jumps to the task's guard, past every C frame. Server C code that holds a block across a send or a join registers it (`ms_cleanup_push`, then `ms_cleanup_discard` on the normal return). A connection task whose join of the handler is cancelled must cancel the handler and join it under a shield before returning, or the handler outlives the exchange it uses (7 blocks per `server.close()` with a waiting handler; fixture `stdlib/http-close-cancels-waiting-handler`).
+
 Apply when: adding or changing a native that parks, waits, or polls for cancellation.
 Evidence: `crates/ms-rt/src/fault.rs` (`cancel_return`, `take_unwinding`), `crates/ms-repo-check/src/cancel_jumps.rs`.
 Verify: `cargo test -p ms-rt --lib guard`; `cargo run -p ms-repo-check`.

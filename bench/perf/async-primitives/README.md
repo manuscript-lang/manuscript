@@ -1,6 +1,6 @@
 # Promise, pipe and timer primitives
 
-A probe of the cost of one operation of the concurrency core, with Go and Rust (tokio) ports of the same program. It is a stress test of single primitives, not a headline benchmark; C has no task runtime to port it to. Each mode prints `mode total N ns/op X`.
+A probe of the cost of one operation of the concurrency core, with Go and Rust (tokio) ports of the same program. It is a stress test of single primitives, not a headline benchmark; C has no task runtime, so `c/main.c` is a floor for `inline` only: a row table, a locked queue and a heap closure, run by the caller. Each mode prints `mode total N ns/op X`.
 
 | mode | one operation |
 | --- | --- |
@@ -47,3 +47,18 @@ Controls, `bench/perf/promise-tree` (ms, median of 7, 1 / 2 / 4 threads, before 
 `fan 38 8` is eight `fib(38)` calls and no promise work to speak of; its one-thread row moves 5% with nothing but the program's layout changed, so the four-thread row is within that noise. A program that starts one promise and computes beside it still gets a second thread (four promises that sleep and then compute: about 45 ms before and after on four threads).
 
 Not done: tokio is still faster at one thread (`inline` 240 ns). What remains per promise is the result's heap block, two closure objects and the cleanup entry; see stage 2 of the proposal.
+
+### Later the same day: small results stay in the row
+
+Stage 2 of the proposal: a result of at most three words is stored in the promise row, so a start and wait allocates no result block. Same machine and method.
+
+| `inline` | ns at 1 / 4 threads | instructions |
+| --- | ---: | ---: |
+| before the change | 488 / 2,166 | 4,640 |
+| stage 1 | 305 / 297 | 2,896 |
+| stage 2 | 233 / 236 | 2,575 |
+| Go 1.24 | 455 / 532 | |
+| tokio | 240 / 648 | |
+| C floor (`c/main.c`) | 31 | 270 |
+
+The C floor has no cancellation, no fault report, no placement and no second thread; it is the cost of the row, the queue and the closure alone. What separates the two is mostly runtime calls per promise (create, start, wait, take, free are separate entries) and the closure objects the compiler builds per start.

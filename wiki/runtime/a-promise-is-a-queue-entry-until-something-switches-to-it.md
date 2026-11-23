@@ -8,7 +8,9 @@ Wake rule: a start wakes a thread only when no thread is looking for work (`ms_w
 
 A wait parks on the promise row with the task's wait word (`ms_task_park_word`), not a token; tokens remain for `wait_any`, groups and waits another thread ends.
 
-Decision (Chinmay, 2026-11-23): a fault report's `task started by:` names only the program line that started the work, as Go does. A start records 12 return addresses in the row with no allocation; walking and copying up to 64 frames was 30% of a deep fork tree. Fixture: `e2e/stdlib/promise-fault-started-line`.
+Decision (Chinmay, 2026-11-23): a fault report's `task started by:` names only the program line that started the work, as Go does. A start records 8 return addresses in the row with no allocation; walking and copying up to 64 frames was 30% of a deep fork tree. Fixture: `e2e/stdlib/promise-fault-started-line`.
+
+A result of at most three words stays in the row (`small`), so start and wait allocate no result block; larger results keep their block. Every exit that frees a row (taken, unread, dropped before start, cancel, fault, timeout) is in the fixture `e2e/stdlib/promise-result-cleanup`, which the leak check and cancel sweep run.
 
 A descriptor waiter that is not a promise: `ms_sched_fd_notify(kind, id, fd, events)` calls a function registered once per kind; use it where a `new`, `io_on_ready`, `fd_ready`, `drop` promise only watched a descriptor.
 

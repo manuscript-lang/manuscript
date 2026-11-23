@@ -90,6 +90,8 @@ static void date_line(MsStrBuild *out) {
   ms_strbuild_append_text(out, "\r\n");
 }
 
+void ms_serve_free_built(uint8_t *held) { ms_strbuild_free((MsStrBuild *)(void *)held); }
+
 void ms_serve_date_line(MsStrBuild *out) {
   date_line(out);
 }
@@ -147,7 +149,9 @@ static void refuse(MsServeConn *conn, uint16_t status, const char *message, bool
   MsStrBuild out = ms_strbuild_new();
   ms_serve_error_bytes(&out, status, message, true);
   MsString err = ms_string_empty();
+  const size_t held = ms_cleanup_push(ms_serve_free_built, (uint8_t *)(void *)&out);
   const uint8_t sent = ms_serve_send(conn, ms_strbuild_span(&out), MS_NO_DEADLINE, &err);
+  ms_cleanup_discard(held);
   ms_string_release(&err);
   ms_strbuild_free(&out);
   if (sent == MS_STATUS_OK && drain) {
@@ -340,12 +344,20 @@ static int run_handler(MsServeShared *shared, MsExchange *exchange, bool watchin
     ms_fault_text_free(&ignored_message);
   }
   if (joined != MS_TASK_OK || outcome == 2) {
-    ms_task_cancel(task); /* this task was stopped while waiting: the request ends with it */
+    /* This task was stopped while waiting: the request ends with it. The handler ends first, with this task's
+     * own cancellation held off, so nothing else uses the exchange when the caller finishes it. */
+    ms_task_cancel(task);
+    ms_shield_enter();
+    (void)ms_task_join(task, &outcome, &message);
+    ms_shield_exit();
+    ms_fault_text_free(&message);
     return 3;
   }
   ms_fault_text_free(&message);
   return exchange->failure;
 }
+
+static void release_exchange(uint8_t *held) { ms_exchange_release(*(MsExchange **)(void *)held); }
 
 /* Serves the request whose head was read; reports whether the connection can take another. */
 static Next serve_request(MsServeConn *conn, MsServeShared *shared, MsH1Request *head, int64_t started) {
@@ -373,7 +385,11 @@ static Next serve_request(MsServeConn *conn, MsServeShared *shared, MsH1Request 
   const bool upgrading = ms_headers_first(exchange->headers, ms_span_of_text("Upgrade"), &upgrade);
   const int failure = run_handler(shared, exchange, framing.kind == MS_H1_NO_BODY && !upgrading);
   atomic_fetch_sub(&shared->admitted, 1);
+  /* Finishing writes to the peer, and a cancelled write leaves by a jump to this task's guard: the exchange is
+   * released on that way out too. */
+  const size_t held = ms_cleanup_push(release_exchange, (uint8_t *)(void *)&exchange);
   const bool open = ms_exchange_finish(exchange, failure) && !conn->worker->closing;
+  ms_cleanup_discard(held);
   ms_exchange_release(exchange);
   return open ? NEXT_AGAIN : NEXT_CLOSE;
 }
