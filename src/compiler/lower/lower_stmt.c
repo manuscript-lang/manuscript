@@ -1,5 +1,6 @@
 /* compiler/lower/lower_stmt.c: statements: bindings, assignment, calls, return, if, while, break, continue. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/closers.h"
 #include "compiler/mir/mir_analysis.h"
 
 static MirValue take_value(LowerFn *fn, const MsExpr *expr) {
@@ -122,6 +123,15 @@ static bool is_empty_optional(const LowerFn *fn, MirValue value) {
   return insts->len != 0 && insts->ptr[insts->len - 1].res == value && insts->ptr[insts->len - 1].op == MOP_OptNone;
 }
 
+/* The parameters of the method a binding's value is, whose defaults a call through the name may leave out (a lambda applies
+ * its own defaults in its body). */
+static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
+  const bool member = value->kind == MS_E_MEMBER || (value->kind == MS_E_APPLY && value->u.apply.left->kind == MS_E_MEMBER);
+  const MsRef *ref = member ? ms_facts_ref(fn->facts, value->id) : NULL;
+  const MsMethodEntry *entry = ref != NULL && ref->kind == MS_REF_METHOD ? fn_method_entry(fn->cx, ref->decl.module, ref->decl.node) : NULL;
+  return entry != NULL ? &entry->source->func.params : NULL;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -156,8 +166,19 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     fn->hint = fn_type(fn, bound_ty);
   }
   fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
+  fn->has_last_receiver = false;
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   fn->moving_field = NULL;
+  const MsRef *bound_ref = value != MIR_NONE ? ms_facts_ref(fn->facts, pattern->id) : NULL;
+  const MsParams *bound_params = bound_ref != NULL ? bound_value_params(fn, stmt->u.bind.value) : NULL;
+  if (bound_params != NULL && fn->nbound_self < MS_COUNT_OF(fn->bound_self)) {
+    /* A lambda or method value keeps the defaults of its parameters; one that reads `self` reads the receiver it captured. */
+    fn->bound_self[fn->nbound_self].local = bound_ref->local;
+    fn->bound_self[fn->nbound_self].params = bound_params;
+    fn->bound_self[fn->nbound_self].vars = fn->has_last_receiver ? fn->last_vars : (LowerSubst){0};
+    fn->bound_self[fn->nbound_self++].receiver = fn->has_last_receiver ? fn->last_receiver : MIR_NONE;
+  }
+  fn->has_last_receiver = false;
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
     if (call_reads_temporary(fn->facts, stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
@@ -299,6 +320,14 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   }
   return fn_owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || closing_param(fn, place, &slot, &var) ||
          (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+}
+
+bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place) {
+  if (fn_place_changeable(fn, place)) {
+    return true;
+  }
+  const MsExpr *base = place != NULL && place->kind == MS_E_MEMBER ? place->u.member.left : NULL;
+  return base != NULL && base->kind == MS_E_UNARY && base->op == MS_U_TRY && fn_try_place_changeable(fn, base->u.bin.left);
 }
 
 bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
@@ -694,7 +723,8 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
   const MsName assigned = stmt->u.assign.target != NULL && stmt->u.assign.target->kind == MS_E_NAME ? stmt->u.assign.target->u.sym : stmt->u.assign.name;
   if (fn_closing_at(fn, ref, assigned) != UINT32_MAX) {
     const MirValue value = take_value(fn, stmt->u.assign.value);
-    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, value, &resource);
+    const uint32_t target_id = stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id;
+    return value != MIR_NONE && fn_closing_assign(fn, ref, assigned, ms_facts_type(fn->facts, target_id), value, &resource);
   }
   if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn->vars[ref->local] != 0) {
     var = fn->vars[ref->local] - 1;
@@ -720,7 +750,17 @@ static bool lower_assign(LowerFn *fn, const MsStmt *stmt) {
     for (uint32_t at = 0; at < fn->nmoved_names; at++) {
       handed_on |= fn->moved_names[at] == old;
     }
-    if (!handed_on) {
+    const uint32_t target_id = stmt->u.assign.target != NULL ? stmt->u.assign.target->id : stmt->id;
+    const MsTy checked = ms_facts_type(fn->facts, target_id);
+    if (handed_on) {
+      /* nothing is left to release */
+    } else if (checked != MS_TY_NONE && ms_own_closer_of(fn->cx->program, ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars,
+                                                                                         fn->subst.args, fn->subst.count),
+                                                         &(MsCloser){0})) {
+      if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
+        return false;
+      }
+    } else {
       (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
     }
   }

@@ -701,6 +701,15 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
     type_args = bound;
     ntype_args = target.nvariables;
   }
+  fn->last_vars = (LowerSubst){0};
+  if (ntype_args != 0) {
+    /* What a default of the method reads its variables as, once a call through the value leaves the parameter out. */
+    MsTy *concrete = MS_ARENA_NEW_ARRAY(&cx->program->arena, MsTy, ntype_args);
+    for (uint32_t at = 0; at < ntype_args; at++) {
+      concrete[at] = ms_ty_subst(&cx->program->types, bound[at], fn->subst.vars, fn->subst.args, fn->subst.count);
+    }
+    fn->last_vars = (LowerSubst){target.variables, concrete, ntype_args};
+  }
   const uint32_t callee = lower_instance(cx, &target, type_args, ntype_args, &fn->subst);
   if (callee == MIR_NONE) {
     return MIR_NONE;
@@ -710,6 +719,8 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
     return MIR_NONE;
   }
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
+  fn->last_receiver = changes ? MIR_NONE : receiver;
+  fn->has_last_receiver = !changes;
   const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
   bool borrowed = false;
   if (owns) {

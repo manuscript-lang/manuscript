@@ -623,6 +623,8 @@ fn List[T: Clonable].sorted_by_key[K: Comparable](key: fn(T) K) List[T]:
 // `[1, 2, 1, 2]`.
 fn List[T: Clonable].repeated(count: Int) List[T]:
 	var out = List[T]()
+	if self.is_empty(): return out
+
 	var round = 0
 
 	while round < count:

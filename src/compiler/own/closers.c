@@ -86,10 +86,16 @@ static void add_closer(Closers *pass, MsNode node, MsRefKind ref_kind, uint32_t 
 static void visit_stmt(void *ctx, const MsStmt *stmt) {
   Closers *pass = ctx;
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
-      !stmt->u.branch.is_mutable) { /* `if r := value:` owns the payload it binds */
+      (!stmt->u.branch.is_mutable || stmt->u.branch.cond->kind == MS_E_CALL)) {
+    /* `if r := value:` owns the payload it binds, and so does `if var r = call():`, whose result has no place to
+     * write back to. */
     const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
     if (bound != NULL && bound->kind == MS_REF_LOCAL) {
+      const size_t before = pass->facts->closers.len;
       add_closer(pass, stmt->u.branch.binding->id, MS_REF_LOCAL, bound->local, ms_facts_type(pass->facts, stmt->u.branch.binding->id));
+      if (stmt->u.branch.is_mutable && pass->facts->closers.len > before) {
+        pass->facts->closers.ptr[before].flags |= MS_CLOSER_VAR;
+      }
     }
     return;
   }

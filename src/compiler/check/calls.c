@@ -500,6 +500,13 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
     if (ms_check_instantiate(body->program, target->sig, target->vars.ptr, target->vars.len, name,
                              target->explicit_args.ptr, target->explicit_args.len, arg_tys, matched->count, order,
                              expected, &instance)) {
+      if (target->outer_vars.len != 0) { /* a default that names the receiver's arguments */
+        for (size_t at = 0; at < instance.args.len; at++) {
+          instance.args.ptr[at] = ms_ty_subst(&body->program->types, instance.args.ptr[at], target->outer_vars.ptr,
+                                              target->outer_args.ptr, target->outer_vars.len);
+        }
+        instance.ty = ms_ty_subst(&body->program->types, target->sig, target->vars.ptr, instance.args.ptr, instance.args.len);
+      }
       sig = instance.ty;
       wrap_to_expected(body, call, sig, arg_tys, matched);
     } else {

@@ -497,7 +497,7 @@ bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
 
 /* `place?` where `place` can be changed: the method changes the optional's payload in place. */
 static bool is_try_place(LowerFn *fn, const MsExpr *place) {
-  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left);
+  return place != NULL && place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_try_place_changeable(fn, place->u.bin.left);
 }
 
 /* `xs[i]` of a list held in place: whether `place` is one, and then `*addr` is the element's address (MIR_NONE
