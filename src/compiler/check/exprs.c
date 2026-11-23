@@ -219,6 +219,45 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   return MS_TY_NONE;
 }
 
+/* `Type.name` or `Type.name(...)` where the type cannot have the case written: an interface, Optional, or a type with no
+ * cases (the call form says it has no static members). Reports and returns true; false leaves the name to the caller. */
+bool body_report_type_member(Body *body, MsPos pos, MsTy owner, MsName name, bool call) {
+  const MsTyTable *types = &body->program->types;
+  const MsDef *def = body_def(body, owner);
+  const bool optional = ms_ty_is(types, owner, MS_BUILTIN_Optional);
+  const bool contract = ms_ty_kind(types, owner) == MS_TY_CONTRACT;
+  const bool bare = call && def != NULL && def->cases.len == 0 && !contract && !optional;
+  if (!optional && !contract && !bare) {
+    return false;
+  }
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return true;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  const MsSpan member = ms_names_span(body->program->names, name);
+  if (optional) {
+    ms_strbuild_append_text(&text, "Optional has no qualified cases; write none or the plain value where a T? is expected, and put the type on the binding, e.g. x: Int? := none");
+  } else if (contract) {
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, " is an interface, not an alternative; declare a concrete type with the methods ");
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, " lists, then construct that concrete type");
+  } else {
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, " has no cases or static members, so `");
+    ms_ty_show(&text, body->program->names, types, owner);
+    ms_strbuild_append_text(&text, ".");
+    ms_strbuild_append(&text, member);
+    ms_strbuild_append_text(&text, "(...)` does not exist; if ");
+    ms_strbuild_append(&text, member);
+    ms_strbuild_append_text(&text, " is a module function, import it and call ");
+    ms_strbuild_append(&text, member);
+    ms_strbuild_append_text(&text, "(...); if it is a method, call it on a value");
+  }
+  ms_check_report(body->program, body->module, pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  return true;
+}
+
 /* `Type.Case` or `Type.member` where the left side names a type; false when it does not. */
 /* `Type.name` where the type has no such case: an enum lists its cases, any other type has none to name. */
 static void report_unknown_case(Body *body, const MsExpr *expr, MsTy owner) {
@@ -267,6 +306,10 @@ static bool type_member(Body *body, const MsExpr *expr, MsTy *ty) {
   }
   body_set_ref(body, left->id, body_symbol_ref(body, symbol));
   body_set_type(body, left->id, owner);
+  if (body_report_type_member(body, expr->pos, owner, expr->u.member.name, false)) {
+    *ty = MS_TY_NONE;
+    return true;
+  }
   uint32_t index = 0;
   const MsTyCase *kase = body_case_of(body, owner, expr->u.member.name, &index);
   if (kase != NULL) {

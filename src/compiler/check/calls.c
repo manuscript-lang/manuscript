@@ -242,7 +242,8 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
       body_set_ref(body, left->u.apply.left->id, body_symbol_ref(body, symbol));
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+      return !body_report_type_member(body, callee->pos, symbol->ty, callee->u.member.name, true) &&
+             case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   if (left->kind == MS_E_NAME && body_find_local(body, left->u.sym) == NULL) {
@@ -250,7 +251,8 @@ static bool member_target(Body *body, const MsExpr *callee, Target *target) {
     if (symbol != NULL && symbol->kind == MS_SYMBOL_TYPE) {
       body_set_ref(body, left->id, body_symbol_ref(body, symbol));
       body_set_type(body, left->id, symbol->ty);
-      return case_target(body, callee, callee->u.member.name, symbol->ty, target);
+      return !body_report_type_member(body, callee->pos, symbol->ty, callee->u.member.name, true) &&
+             case_target(body, callee, callee->u.member.name, symbol->ty, target);
     }
   }
   const MsTy receiver = body_expr(body, left, MS_TY_NONE);

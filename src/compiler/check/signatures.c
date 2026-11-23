@@ -33,6 +33,43 @@ static void resolve_enum(Resolver *resolver, MsDef *def, const MsDecl *decl) {
   }
 }
 
+/* Whether the written type `type` mentions `Self` anywhere, including inside arguments and function types. */
+static bool mentions_self(const MsCheckProgram *program, const MsTypeRef *type) {
+  if (type == NULL) {
+    return false;
+  }
+  if (ms_span_is_text(ms_names_span(program->names, type->name), "Self")) {
+    return true;
+  }
+  for (uint32_t at = 0; at < type->args.len; at++) {
+    if (mentions_self(program, type->args.ptr[at])) {
+      return true;
+    }
+  }
+  for (uint32_t at = 0; at < type->params.len; at++) {
+    if (mentions_self(program, type->params.ptr[at]->ty)) {
+      return true;
+    }
+  }
+  return mentions_self(program, type->result);
+}
+
+/* `Self` is limited to whole parameter and result types, the positions where a call can substitute the implementing type. */
+static bool self_misplaced(const MsCheckProgram *program, const MsFunc *func) {
+  for (uint32_t at = 0; at < func->params.len; at++) {
+    const MsTypeRef *type = func->params.ptr[at]->ty;
+    const bool whole = type != NULL && type->args.len == 0 && type->params.len == 0 &&
+                       ms_span_is_text(ms_names_span(program->names, type->name), "Self");
+    if (!whole && mentions_self(program, type)) {
+      return true;
+    }
+  }
+  const MsTypeRef *result = func->result;
+  const bool whole = result != NULL && result->args.len == 0 && result->params.len == 0 &&
+                     ms_span_is_text(ms_names_span(program->names, result->name), "Self");
+  return !whole && mentions_self(program, result);
+}
+
 static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl, MsTy self) {
   resolver->self = self;
   for (uint32_t index = 0; index < decl->u.iface.methods.len; index++) {
@@ -61,6 +98,10 @@ static void resolve_interface(Resolver *resolver, MsDef *def, const MsDecl *decl
       }
     }
     const MsTy ty = resolver_function(resolver, method->func.params, method->func.result);
+    if (!decl->synthetic && self_misplaced(resolver->program, &method->func)) {
+      ms_check_report(resolver->program, resolver->module, method->pos, MS_CHECK_TYPE,
+                      ms_string_from_span(ms_span_of_text("Self can only be a whole parameter or result type of an interface operation; write 'other: Self', not 'List[Self]'")));
+    }
     ms_name_list_truncate(&resolver->names, mark);
     ms_ty_list_truncate(&resolver->types, mark);
     ms_operation_list_push(&def->operations, (MsOperation){.name = method->func.name, .ty = ty,
