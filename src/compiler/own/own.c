@@ -20,12 +20,14 @@ void ms_own_check(MsCheckProgram *program) {
       ms_check_diag_list_push(&program->diagnostics, program->ownership.ptr[at]);
     }
   }
-  ms_own_uses(program);
+  MsUsesSeen *seen = NULL;
+  ms_own_uses(program, &seen);
   for (int round = 0; round < 4 && ms_own_taken(program); round++) { /* a taken parameter moves the caller's argument */
-    ms_own_uses(program);
+    ms_own_uses(program, &seen);
   }
   ms_own_escapes(program);
-  ms_own_uses(program); /* a parameter an escaping closure keeps is taken now: its callers' arguments move */
+  ms_own_uses(program, &seen); /* a parameter an escaping closure keeps is taken now: its callers' arguments move */
+  ms_own_uses_seen_free(seen);
   ms_own_result_borrows(program);
   if (checked_clean) {
     ms_own_mixed_returns(program);
