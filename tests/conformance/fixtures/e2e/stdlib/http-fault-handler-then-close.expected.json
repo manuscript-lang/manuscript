@@ -1,0 +1,55 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "http-fault-handler-then-close.ms::closing a server whose handler faulted frees the worker once",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 1,
+        "selected": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN http-fault-handler-then-close.ms::closing a server whose handler faulted frees the worker once\nPASS http-fault-handler-then-close.ms::closing a server whose handler faulted frees the worker once\n1 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": "HTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\nHTTP stream handler fault: index 1000000 out of range for length 0; pass a default: get(index:, default: ...)\n  at http-fault-leak.ms:19 in faulting\n"
+  }
+}
