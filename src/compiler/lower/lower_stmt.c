@@ -99,10 +99,14 @@ static bool bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bo
 
 /* Whether a call reads a value that dies with the statement (`make().get()`): a result that borrows from it
  * cannot outlive the statement. */
-static bool call_reads_temporary(const MsExpr *call) {
+static bool call_reads_temporary(const MsFacts *facts, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
   if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_CALL) {
     return true;
+  }
+  if (callee->kind == MS_E_MEMBER && callee->u.member.left->kind == MS_E_NAME && facts != NULL &&
+      facts->last != NULL && facts->last[callee->u.member.left->id] != 0) {
+    return true; /* an owner at its last use dies with the call */
   }
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     if (call->u.call.args.ptr[index].value->kind == MS_E_CALL) {
@@ -153,7 +157,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
   fn->moving_field = NULL;
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
-    if (call_reads_temporary(stmt->u.bind.value) &&
+    if (call_reads_temporary(fn->facts, stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
       /* A temporary resource closes where its statement ends: a part kept past it is taken out of the temporary. */
       const MirValue owned = fn_take_from_temporary(fn, stmt->u.bind.value, value);

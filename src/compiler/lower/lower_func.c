@@ -2,6 +2,7 @@
  * function with a set of type arguments reserves one MIR function (an instance), and its body is lowered from
  * a work list until nothing is left. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/own/moves.h"
 #include "compiler/own/result_borrows.h"
 #include "compiler/own/taken.h"
 #include "compiler/syntax/walk.h"
@@ -438,6 +439,15 @@ static bool lower_body(Lower *cx, uint32_t index) {
   MsTy vars[16];
   if (instance.nargs > 0 && !decl_variables(cx, target, vars, instance.nargs)) {
     return false;
+  }
+  MsPos moved_at = {0};
+  MsName moved_name = 0;
+  if (instance.nargs > 0 && ms_own_moves_instance(cx->program, target->module, target->func, vars, instance.args,
+                                                 instance.nargs, &moved_at, &moved_name)) {
+    const MsSpan name = ms_names_span(cx->program->names, moved_name);
+    return lower_fail(cx,
+                      "`%.*s` (%u:%u) is borrowed and cannot be moved on once its type is a resource; declare the parameter `move`",
+                      (int)name.len, (const char *)name.ptr, moved_at.line, moved_at.column);
   }
   const MirFunc stub = cx->module->funcs.ptr[instance.func];
   const MirFunc *reserved = &stub;

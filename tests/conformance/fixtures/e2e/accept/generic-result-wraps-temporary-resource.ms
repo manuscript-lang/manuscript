@@ -13,10 +13,10 @@ type Resource:
 fn move Resource.close() Void!:
 	append_file(self.path, f"{self.id},").wait()?
 
-fn wrapped[T](value: T) Result[T, String]:
+fn wrapped[T](move value: T) Result[T, String]:
 	return ok(value)
 
-fn rejected[T](value: T) Result[Int, T]:
+fn rejected[T](move value: T) Result[Int, T]:
 	return error(value)
 
 fn log_text(path: String) String!:
