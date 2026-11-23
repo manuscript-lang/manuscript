@@ -16,7 +16,7 @@ domains:
       - "crates/ms-mir/**"
       - "crates/ms-lower/**"
       - "crates/ms-clif/**"
-      - "crates/ms-driver/**"
+      - "crates/ms-cli/**"
       - "crates/ms-build/**"
       - "crates/ms-native/**"
       - "documentation/contributing/compiler/**"
