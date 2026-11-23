@@ -1,6 +1,9 @@
 /* compiler/own/uses.c: fills the `uses` fact column (see uses.h). */
 #include "compiler/own/uses.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "compiler/check/methods.h"
 #include "compiler/check/properties.h"
 #include "compiler/own/bind.h"
@@ -11,6 +14,8 @@
 
 typedef struct Uses {
   MsCheckProgram *program;
+  uint32_t module;
+  bool report; /* the pass that only reports moves out of a borrowed call result: its markings are discarded */
   MsClassifier *classes;
   MsFacts *facts;
   const MsNames *names;
@@ -59,7 +64,7 @@ static bool is_view(const Uses *pass, const MsExpr *expr) {
 /* Whether `call` answers a new value: a function or method with a body whose result borrows none of its arguments. */
 static bool fresh_call(const Uses *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
-  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
+  if (!pass->report || fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
     return false;
   }
   const MsFunc *func = ms_own_find_func(pass->program, &fact->callee);
@@ -90,6 +95,35 @@ static bool stored_param(const Uses *pass, const MsExpr *expr) {
   return ty != MS_TY_NONE && ms_ty_kind(&pass->program->types, ty) == MS_TY_VARIABLE;
 }
 
+/* A field read of a call whose answer views another owner's value (`result.err().message`): the owner keeps the field,
+ * so handing it on needs `.clone()`. Reports it and answers true. */
+static bool moves_out_of_borrowed_result(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (expr->kind != MS_E_MEMBER || root->kind != MS_E_CALL) {
+    return false;
+  }
+  const MsCall *fact = ms_facts_call(pass->facts, root->id);
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD) || ty == MS_TY_NONE ||
+      ms_class_of(pass->classes, ty) == MS_CLASS_COPY ||
+      !ms_own_result_is_borrowed(pass->program, fact->callee.decl.module, fact->callee.decl.node)) {
+    return false;
+  }
+  /* A value the call borrows from a temporary dies with the statement, so the field leaves with it. */
+  const MsExpr *owner = root->u.call.callee->kind == MS_E_MEMBER && fact->callee.kind == MS_REF_METHOD
+                            ? root->u.call.callee->u.member.left
+                            : (root->u.call.args.len != 0 ? root->u.call.args.ptr[0].value : NULL);
+  if (owner != NULL && owner->kind == MS_E_CALL) {
+    return false;
+  }
+  ms_check_report(pass->program, pass->module, expr->pos, MS_CHECK_TYPE,
+                  ms_string_from_span(ms_span_of_text("this field belongs to a borrowed call result, which keeps owning it; end it with `.clone()` to take a copy")));
+  return true;
+}
+
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr == NULL) {
@@ -99,6 +133,9 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     if (expr->u.bin.left->kind == MS_E_NAME && place_root(pass, expr->u.bin.left)) {
       pass->facts->uses[expr->id] = MS_USE_MOVE;
     }
+    return;
+  }
+  if (moves_out_of_borrowed_result(pass, expr)) {
     return;
   }
   const bool temporary = expr->kind == MS_E_MEMBER && part_of_fresh_call(pass, expr);
@@ -196,6 +233,12 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   case MS_E_CALL:
     visit_call(pass, expr);
     return;
+  case MS_E_MATCH:
+    /* An arm over a call's result owns what it binds, so an arm that yields it hands it on. */
+    for (uint32_t arm = 0; expr->u.match.scrutinee->kind == MS_E_CALL && arm < expr->u.match.arms.len; arm++) {
+      mark_move(pass, expr->u.match.arms.ptr[arm]->value);
+    }
+    return;
   case MS_E_NAME:
   case MS_E_NUMBER:
   case MS_E_BOOL:
@@ -208,7 +251,6 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   case MS_E_UNARY:
   case MS_E_BINARY:
   case MS_E_LAMBDA:
-  case MS_E_MATCH:
     return;
   }
 }
@@ -451,10 +493,10 @@ static void mark_module(Uses *pass, const MsModule *tree) {
   }
 }
 
-void ms_own_uses(MsCheckProgram *program) {
+static void run_uses(MsCheckProgram *program, bool report) {
   MsClassifier classes = ms_class_new(program);
   for (uint32_t module = 0; module < program->modules.len; module++) {
-    Uses pass = {.program = program, .classes = &classes, .facts = &program->modules.ptr[module].facts,
+    Uses pass = {.program = program, .module = module, .report = report, .classes = &classes, .facts = &program->modules.ptr[module].facts,
                  .names = program->names};
     if (pass.facts->uses == NULL) {
       continue;
@@ -467,4 +509,38 @@ void ms_own_uses(MsCheckProgram *program) {
     ms_binding_list_free(&pass.swapped);
   }
   ms_class_free(&classes);
+}
+
+void ms_own_uses(MsCheckProgram *program) {
+  run_uses(program, false);
+}
+
+void ms_own_uses_report(MsCheckProgram *program) {
+  /* The borrowed-result masks exist only now, so the walk runs again with them; what it marks is already settled. */
+  size_t total = 0;
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    total += program->modules.ptr[module].facts.uses == NULL ? 0 : program->modules.ptr[module].facts.node_count;
+  }
+  uint8_t *saved = malloc(total == 0 ? 1 : total);
+  size_t at = 0;
+  for (uint32_t module = 0; saved != NULL && module < program->modules.len; module++) {
+    const MsFacts *facts = &program->modules.ptr[module].facts;
+    if (facts->uses != NULL) {
+      memcpy(saved + at, facts->uses, facts->node_count);
+      at += facts->node_count;
+    }
+  }
+  if (saved == NULL) {
+    return;
+  }
+  run_uses(program, true);
+  at = 0;
+  for (uint32_t module = 0; module < program->modules.len; module++) {
+    const MsFacts *facts = &program->modules.ptr[module].facts;
+    if (facts->uses != NULL) {
+      memcpy(facts->uses, saved + at, facts->node_count);
+      at += facts->node_count;
+    }
+  }
+  free(saved);
 }

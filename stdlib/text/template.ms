@@ -904,7 +904,7 @@ fn bind_row(
 			frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
 			frame.add(second.clone(), item)
 	else:
-		value := collection.get(keys[i]).get_or(JsonValue.Null).clone()
+		value := collection.get(keys[i]).clone().get_or(JsonValue.Null).clone()
 
 		if second.is_empty():
 			var pair = Map[String, JsonValue]()

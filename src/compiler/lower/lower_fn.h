@@ -15,6 +15,7 @@ typedef struct LowerOwnedVar {
   uint32_t scope;
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
+  bool released;  /* a return is handing the whole value on: the unwind it starts must not own it */
 } LowerOwnedVar;
 
 /* Where `break` and `continue` go, and how many scopes were open outside the loop. */
@@ -131,6 +132,7 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var);
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
 void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
+void fn_scope_var_released(LowerFn *fn, MirVar var, bool released);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
 bool fn_is_list(LowerFn *fn, const MsExpr *expr);
 MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
@@ -275,6 +277,8 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
 /* The shape table of `ty`, with the hooks its types declare built first. */
 MirValue fn_shape(LowerFn *fn, MirTy ty);
 bool fn_map_from_entries(LowerFn *fn, const MirValue *args, MirTy ret, MirValue *out);
+/* The runtime function of `operation` on `owner` called with `args`, or the value itself for a conversion to its own type. */
+MirValue fn_native_default(LowerFn *fn, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args, MirTy ret);
 MirValue fn_builtin_call(LowerFn *fn, const MsCall *call, const MirValue *args, MirTy ret);
 /* The runtime function a bodiless standard-library function `id` is, called with `arg_count` arguments. */
 MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const MirValue *args, MirTy ret);
@@ -303,6 +307,15 @@ MirValue fn_result_wrap(LowerFn *fn, MirValue value);
 MirValue fn_lambda(LowerFn *fn, const MsExpr *expr);
 /* Marks the locals of `body` that a lambda written in it changes: they live in slots the lambda borrows. */
 void fn_find_shared(LowerFn *fn, MsStmts body);
+
+/* The parameters and locals of `fn` that `lambda` reads (lower_captures.c); false when a capture is not lowered yet. */
+bool find_captures(LowerFn *fn, const MsExpr *lambda, LowerCapture **out, uint32_t *count);
+
+/* Whether `lambda` changes each of `captures`: `changed` gets one flag per capture. */
+bool capture_changes(LowerFn *fn, const MsExpr *lambda, const LowerCapture *captures, uint32_t count, bool *changed);
+
+/* Whether `sym` is a parameter of `lambda` itself rather than something it captures. */
+bool is_own_param(const LowerFn *fn, const MsExpr *lambda, MsName sym, const MsRef *ref);
 /* Reserves the closure function of function type `fn_ty` with `count` captures (their types in `captures`). */
 uint32_t lower_closure_func(Lower *cx, MirTy fn_ty, const LowerCapture *captures, uint32_t count);
 /* The position of the interface operation the member `callee` names (`index` when it is not a member). */

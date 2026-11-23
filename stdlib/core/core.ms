@@ -437,13 +437,14 @@ fn String.pad_end(target_length: Int, padding: String) String:
 fn padding_for(text: String, target_length: Int, padding: String) String:
 	missing := target_length - text.scalar_length()
 	if missing <= 0 or padding.is_empty(): return ""
+	// Repeating first makes an oversized request fault at the string limit instead of looping to it.
+	source := padding.repeat(missing / padding.scalar_length() + 1)
 	var filler = ""
 	var count = 0
-	while count < missing:
-		for scalar in padding.chars():
-			if count >= missing: break
-			filler += scalar
-			count += 1
+	for scalar in source.chars():
+		if count >= missing: break
+		filler += scalar
+		count += 1
 	return filler
 
 // Plain numbers and flags copy by value: their `clone` is the value itself.

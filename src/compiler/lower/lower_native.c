@@ -4,7 +4,7 @@
  * one MIR instruction are written out here: copying a string is `clone`, and joining two strings is the concat
  * function with its result fresh. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* `msrt_<receiver>_<operation>`: the receiver's type name lowercased. */
@@ -809,9 +809,11 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
   }
   if (sig == NULL) {
     /* An operation every value has (`to_string`) is done by the walker over its shape. */
-    if (argc == 0 || mir_is_scalar(fn->cx->module, mir_b_ty(&fn->b, args[0]))) {
-      return false; /* a scalar has its own forms of these */
+    if (argc == 0) {
+      return false;
     }
+    /* A scalar with no runtime function of its own for the operation (its hash) is walked by its shape like any value;
+     * when no walker exists for the operation the caller finds the scalar's own form. */
     *out = fn_value_operation(fn, operation, args, argc, ret);
     return *out != MIR_NONE;
   }
@@ -975,13 +977,17 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
   if (universal && standard_form(fn, args, call->arg_count, ret, &result)) {
     return result; /* the operation every value has, with no runtime function of its own */
   }
+  return fn_native_default(fn, owner, operation, call->arg_count, args, ret);
+}
+
+MirValue fn_native_default(LowerFn *fn, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args, MirTy ret) {
   const MsName runtime = runtime_name(fn, owner, operation);
   /* A conversion to the receiver's own scalar type (`Int.to_int()`) has no runtime function: it is the value. */
   const MsSpan conversion = ms_span_of_text("to_");
-  if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, runtime)) == NULL && call->arg_count == 1 &&
+  if (ms_native_sig_find(ms_names_span(&fn->cx->module->names, runtime)) == NULL && argc == 1 &&
       operation.len > conversion.len && __builtin_memcmp(operation.ptr, conversion.ptr, conversion.len) == 0 &&
       mir_b_ty(&fn->b, args[0]) == ret && mir_is_scalar(fn->cx->module, ret)) {
     return args[0];
   }
-  return fn_runtime_call(fn, runtime, args, call->arg_count, ret);
+  return fn_runtime_call(fn, runtime, args, argc, ret);
 }

@@ -373,7 +373,7 @@ static bool decode_optional(Decode *state, const MsShape *shape, uint32_t id, ui
     return true; /* the slot is zero: none */
   }
   const bool nullable = (shape->flags & MS_SHAPE_NULLABLE) != 0;
-  if (!decode(state, shape->elem, id, nullable ? slot : slot + shape->extra, depth + 1)) {
+  if (!decode(state, shape->elem, id, nullable ? slot : slot + (int32_t)shape->extra, depth + 1)) {
     return false;
   }
   if (!nullable) {

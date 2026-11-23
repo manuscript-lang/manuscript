@@ -3,7 +3,7 @@
  * an integer, which the join writes in decimal. At most six pieces go in one call; a longer text joins the
  * first group, then that result and the next pieces. */
 #include "compiler/lower/lower_fn.h"
-#include "compiler/lower/native_sigs.h"
+#include "compiler/natives/native_sigs.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_pass.h"
 

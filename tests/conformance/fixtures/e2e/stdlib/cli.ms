@@ -94,7 +94,7 @@ fn failure(argv: List[String]) String!:
 	result := app().parse(argv)
 	if result.is_ok(): return error(Error("accepted", kind: "EIO"))
 
-	return ok(result.err().message)
+	return ok(result.err().message.clone())
 
 test "nested command resolves path and typed options":
 	matches := (run(["serve", "site"]) | expect_ok?)
