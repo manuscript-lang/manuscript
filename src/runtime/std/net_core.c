@@ -17,6 +17,8 @@ MsNetCore *ms_net_core_new(MsNetKind kind, bool is_pipe) {
   atomic_init(&core->handles, 0);
   atomic_init(&core->ends, 1);
   atomic_init(&core->closed, false);
+  atomic_init(&core->stealable, false);
+  atomic_init(&core->steal_lock, 0);
   core->local = ms_string_empty();
   core->peer = ms_string_empty();
   return core;

@@ -480,8 +480,37 @@ void ms_promise_start(MsPromise id, MsObj *closure) {
   }
 }
 
+/* Sends the work of `id` to run as a task on `target`, as if that isolate had taken it from the queue: the row reads as
+ * queued work no queue holds, so its waiter finds it remote. False when the mail cannot be sent. */
+static bool send_work(MsPromise id, MsObj *closure, uint32_t target) {
+  const size_t row = promise_row_or_fault(id);
+  Cold *const cold = &promise_table.cold.ptr[row];
+  Hot *const hot = &promise_table.hot.ptr[row];
+  if (cold->closure != NULL || (hot->flags & (FLAG_DEFERRED | FLAG_REMOTE)) != 0) {
+    promise_fail("promise: already started");
+  }
+  MsMail *const mail = ms_alloc(sizeof *mail);
+  *mail = (MsMail){.kind = MS_MAIL_PROMISE, .a = MS_MAIL_START, .b = (uint64_t)id, .p = closure};
+  if (!ms_isolate_post(target, mail)) {
+    ms_free(mail);
+    return false;
+  }
+  cold->closure = closure;
+  cold->creator = ms_task_current();
+  cold->started_at = ms_cleanup_base();
+  capture_started(cold);
+  link_started(row);
+  hot->flags |= FLAG_DEFERRED | FLAG_QUEUED | FLAG_REMOTE_WAKE;
+  return true;
+}
+
 void ms_promise_start_spread(MsPromise id, MsObj *closure) {
-  if (!queue_work(id, closure, MS_WORKER_BEAT_NS)) {
+  const uint32_t target = ms_workers_spread_pick();
+  if (target == MS_NO_ISOLATE || target == ms_sched()->isolate) {
+    start_task(id, closure, false);
+    return;
+  }
+  if (!send_work(id, closure, target)) {
     start_task(id, closure, false);
   }
 }
@@ -730,6 +759,11 @@ static void promise_mail(MsMail *mail) {
   }
   if (op == MS_MAIL_SWITCH) {
     ms_cancel_serve(mail);
+    return;
+  }
+  if (op == MS_MAIL_START) {
+    (void)run_taken(id, mail->p);
+    ms_free(mail);
     return;
   }
   if (op == MS_MAIL_CANCEL_ID) {

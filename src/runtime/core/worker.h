@@ -45,6 +45,9 @@ bool ms_workers_stress(void);
 int64_t ms_workers_own_beat(void);
 /* Isolates the program may use (1 until configured). */
 uint32_t ms_workers_limit(void);
+/* The isolate a spread start runs on: the least loaded one, after starting a thread when fewer than the limit run;
+ * MS_NO_ISOLATE when only one thread is allowed. */
+uint32_t ms_workers_spread_pick(void);
 /* Work was queued: wakes a sleeping isolate, or starts a worker when none sleeps and the limit allows. */
 void ms_workers_nudge(void);
 /* Ends every worker and waits for them. Call from the main isolate before it ends. */
