@@ -276,8 +276,9 @@ fn main() Int:
 
 		if fences_only or path.ends_with(".md"):
 			converted = convert_fences(source)
-		else if code := convert(source):
-			converted = convert_fences(code)
+		else:
+			code := convert(source)
+			if code != null: converted = convert_fences(code)
 
 		if converted == source: continue
 

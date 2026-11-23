@@ -22,9 +22,11 @@ export fn cases(source: String, table: String) List[Case]!:
 
 			if str != null:
 				fields.add(entry.key.clone(), str.clone())
-			else if flag := entry.value.as_bool():
-				flags.add(entry.key.clone(), flag)
-			else if members := entry.value.as_map():
+			else if entry.value.as_bool() != null:
+				flags.add(entry.key.clone(), entry.value.as_bool() or false)
+			else if entry.value.as_map() != null:
+				members := entry.value.as_map() or Map[String, JsonValue]()
+
 				for member in members.entries():
 					var values: List[String] = []
 					for value in (member.value.as_list() or []):

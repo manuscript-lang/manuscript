@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
 fn f() Void:
-    a := none
+	a := null

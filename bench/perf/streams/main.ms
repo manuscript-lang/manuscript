@@ -44,7 +44,7 @@ type MapSource:
 
 fn var MapSource.next() Int?!:
 	step := self.up.next()?
-	if v := step: return ok(self.f(v))
+	if step != null: return ok(self.f(step))
 
 	return ok(null)
 
@@ -64,8 +64,8 @@ fn drain(source: Source[Int]) Int!:
 	while true:
 		step := s.next()?
 
-		if v := step:
-			total += v
+		if step != null:
+			total += step
 		else:
 			break
 
@@ -133,11 +133,11 @@ fn hand_lines(data: Bytes) Int!:
 	while true:
 		end := data.index_of_byte(10, at)
 
-		if stop := end:
-			line := data.slice(at, stop)?
-			if text := line.decode_utf8():
-				count += text.length()
-			at = stop + 1
+		if end != null:
+			line := data.slice(at, end)?
+			text := line.decode_utf8()
+			if text != null: count += text.length()
+			at = end + 1
 		else:
 			break
 

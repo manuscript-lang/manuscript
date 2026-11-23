@@ -79,7 +79,7 @@ export fn collect[T](input: ReadStream[T], max_items: Int?) List[T]!:
 export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 	var source = input
 	var all = BytesBuilder()
-	var first: Bytes? = none
+	var first: Bytes? = null
 	var total = 0
 
 	for chunk in source:
@@ -92,16 +92,19 @@ export fn read_all(input: ReadStream[Bytes], max_bytes: Int?) Bytes!:
 
 		// A stream that ends after one chunk (a file read in one piece) hands that
 		// chunk back uncopied.
-		if held := first:
+		held := first
+
+		if held != null:
 			all.append_bytes(held)
-			first = none
+			first = null
 
 		if total == chunk.length():
 			first = chunk
 		else:
 			all.append_bytes(chunk)
 
-	if one := first: return ok(one)
+	one := first
+	if one != null: return ok(one)
 
 	return ok(all.build())
 
