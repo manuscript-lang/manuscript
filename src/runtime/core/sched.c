@@ -142,6 +142,44 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
   ms_free(task);
 }
 
+/* A server task per request is the commonest short life: keeping a few finished records saves the allocation of the
+ * record and the regrowth of its three lists from empty. */
+enum { SPARE_TASKS = 64 };
+
+void ms_task_recycle(MsSched *sched, MsTask *task) {
+  if (sched->spare_count >= SPARE_TASKS || task->extra != NULL || (task->flags & MS_TASK_FLAG_THREAD) != 0) {
+    ms_task_destroy(sched, task);
+    return;
+  }
+  if (task->stack != NULL) {
+    ms_stacks_release(&sched->stacks, task->stack, task->stack_length);
+  }
+  ms_fault_text_free(&task->message);
+  MsCleanupList cleanups = task->unwind.hdr.cleanups;
+  MsGuardList guards = task->unwind.guards;
+  MsEqPairList eq_pairs = task->unwind.eq_pairs;
+  cleanups.len = 0;
+  guards.len = 0;
+  eq_pairs.len = 0;
+  *task = (MsTask){0};
+  task->unwind.hdr.cleanups = cleanups;
+  task->unwind.guards = guards;
+  task->unwind.eq_pairs = eq_pairs;
+  task->argument = sched->spare_tasks;
+  sched->spare_tasks = task;
+  sched->spare_count++;
+}
+
+void ms_task_spares_free(MsSched *sched) {
+  while (sched->spare_tasks != NULL) {
+    MsTask *const task = sched->spare_tasks;
+    sched->spare_tasks = task->argument;
+    task->argument = NULL;
+    ms_task_destroy(sched, task);
+  }
+  sched->spare_count = 0;
+}
+
 void ms_sched_teardown(void) {
   MsSched *const sched = ms_thread_sched;
   if (sched == NULL) {
@@ -162,6 +200,7 @@ void ms_sched_teardown(void) {
   if (sched->zombie_stack != NULL) {
     ms_stacks_release(&sched->stacks, sched->zombie_stack, sched->zombie_stack_length);
   }
+  ms_task_spares_free(sched);
   ms_park_free(sched);
   ms_token_free_all(sched);
   ms_stacks_destroy(&sched->stacks);

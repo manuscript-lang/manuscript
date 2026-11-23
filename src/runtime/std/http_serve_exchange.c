@@ -251,6 +251,8 @@ uint8_t ms_exchange_send_headers(MsExchange *exchange, int64_t status, const MsH
   return MS_STATUS_OK;
 }
 
+enum { STAGED_INLINE = 16 }; /* handler headers sorted without an allocation up to this many names */
+
 typedef struct Named {
   MsString name;
   size_t group;
@@ -268,7 +270,11 @@ static int by_name(const void *a, const void *b) {
  */
 static void append_staged(MsStrBuild *out, const MsHeaders *headers, bool *has_type, bool *has_date) {
   const size_t count = ms_headers_group_count(headers);
-  Named *names = ms_alloc_zeroed((count + 1) * sizeof *names);
+  if (count == 0) {
+    return;
+  }
+  Named names_inline[STAGED_INLINE] = {0};
+  Named *names = count <= STAGED_INLINE ? names_inline : ms_alloc_zeroed(count * sizeof *names);
   for (size_t g = 0; g < count; g++) {
     MsStrBuild canonical = ms_strbuild_new();
     ms_header_canonical(ms_headers_group_name(headers, g), &canonical);
@@ -285,13 +291,17 @@ static void append_staged(MsStrBuild *out, const MsHeaders *headers, bool *has_t
     }
     ms_string_release(&names[k].name);
   }
-  ms_free(names);
+  if (names != names_inline) {
+    ms_free(names);
+  }
 }
 
 /* Builds the head with the first body bytes; `length` is the whole body's size, or -1 to stream it chunked.
  */
 static uint8_t write_head(MsExchange *exchange, MsSpan first, int64_t length, MsString *err) {
-  MsStrBuild out = ms_strbuild_new();
+  MsStrBuild *const head = &exchange->conn->head;
+  ms_strbuild_clear(head);
+  MsStrBuild out = *head;
   bool has_type = false;
   bool has_date = false;
   ms_h1_status_line(&out, exchange->status);
@@ -322,7 +332,7 @@ static uint8_t write_head(MsExchange *exchange, MsSpan first, int64_t length, Ms
     ms_strbuild_append(&out, first);
   }
   const uint8_t status = send_bytes(exchange, ms_strbuild_span(&out), err);
-  ms_strbuild_free(&out);
+  *head = out; /* the buffer may have grown: the connection keeps it for the next response */
   return status;
 }
 

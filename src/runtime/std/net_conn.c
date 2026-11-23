@@ -1,17 +1,21 @@
 /* Connections: dialing, reading, writing and shutting down a TCP or Unix stream on the network loop (net_core.h). */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #ifdef _WIN32
 #include <winsock2.h>
 #else
+#include <sys/socket.h>
 #include <unistd.h>
 #endif
 
 #include "base/alloc.h"
 #include "base/bytes.h"
 #include "runtime/core/isolate.h"
+#include "runtime/core/task.h"
+#include "runtime/io/reactor.h"
 #include "runtime/std/net.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
@@ -410,7 +414,115 @@ static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
   return count;
 }
 
+static bool would_block(void) {
+#ifdef _WIN32
+  return WSAGetLastError() == WSAEWOULDBLOCK;
+#else
+  return errno == EAGAIN || errno == EWOULDBLOCK;
+#endif
+}
+
+void ms_net_conn_wake_readers(MsNetCore *core) {
+#ifndef _WIN32
+  uv_os_fd_t fd;
+  if (atomic_load(&core->edge_waiting) != 0 && uv_fileno((const uv_handle_t *)&core->h.handle, &fd) == 0) {
+    (void)shutdown((int)fd, SHUT_RD); /* an edge wakes the waiter, whose read then sees the end of the stream */
+  }
+#else
+  (void)core;
+#endif
+}
+
+/* A plain connection of a program with one scheduler thread has nobody to take it from this thread, and the network
+ * loop thread would only be a hand-off between the task and the socket. */
+static bool edge_reads(const MsNetCore *core) {
+  return core->kind == MS_NET_CONNECTION && !core->is_pipe && core->tls == NULL && ms_isolate_count() < 2 &&
+         ms_io_edge_supported();
+}
+
+/* Reads on the calling thread and, when the socket has nothing, waits for its next edge on this thread's poller: the
+ * descriptor stays registered between reads, so a wait costs no system call of its own and one epoll_wait reports
+ * every ready connection. An edge says "something changed", so a read that took less than it asked for is taken to
+ * have drained the socket (a TCP receive queue that still held bytes would have filled the buffer) and the next one
+ * waits first. False when the loop must serve the read (an error to report, a socket the loop owns): nothing was
+ * consumed. Otherwise *result is the call's status. */
+static bool read_edge(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err,
+                      uint8_t *result) {
+#ifdef _WIN32
+  (void)core;
+  (void)capacity;
+  (void)timeout_ns;
+  (void)out;
+  (void)err;
+  (void)result;
+  return false;
+#else
+  static _Thread_local uint8_t scratch[READ_DEFAULT];
+  uv_os_fd_t fd;
+  if (capacity == 0 || atomic_load(&core->reads_posted) != 0 ||
+      uv_fileno((const uv_handle_t *)&core->h.stream, &fd) != 0) {
+    return false;
+  }
+  const int64_t deadline = ms_sched_deadline_after(timeout_ns);
+  const size_t length = capacity < sizeof scratch ? capacity : sizeof scratch;
+  atomic_fetch_add(&core->direct, 1);
+  bool handled = false;
+  MsNetWait ended = MS_NET_WAIT_DONE;
+  for (;;) {
+    if (atomic_load(&core->closed) || atomic_load(&core->broken) || atomic_load(&core->reads_posted) != 0) {
+      break;
+    }
+    if (!core->drained || ms_io_edge_ready((int)fd, MS_IO_BIT_READ)) {
+      if (!ms_io_edge_reset((int)fd, core->id, MS_IO_BIT_READ)) {
+        break;
+      }
+      const ssize_t count = read((int)fd, scratch, length);
+      if (count > 0) {
+        core->drained = (size_t)count < length;
+        *out = ms_bytes_from_span(ms_span_of(scratch, (size_t)count));
+        *err = ms_string_empty();
+        *result = MS_STATUS_OK;
+        handled = true;
+        break;
+      }
+      if (count == 0) {
+        *err = ms_string_empty();
+        *result = MS_STATUS_NONE;
+        handled = true;
+        break;
+      }
+      if (!would_block()) {
+        break; /* an error to report where the loop reports it */
+      }
+      core->drained = true;
+    }
+    atomic_fetch_add(&core->edge_waiting, 1);
+    const bool open = !atomic_load(&core->closed);
+    const uint32_t waited = open ? ms_task_wait_fd_at((int)fd, MS_WAIT_READ | MS_WAIT_EDGE, deadline) : MS_WAIT_READ;
+    atomic_fetch_sub(&core->edge_waiting, 1);
+    if ((waited & MS_WAIT_FAILED) != 0) {
+      break;
+    }
+    if ((waited & (MS_WAIT_TIMEOUT | MS_WAIT_CANCELLED)) != 0) {
+      ended = (waited & MS_WAIT_CANCELLED) != 0 ? MS_NET_WAIT_CANCELLED : MS_NET_WAIT_TIMED_OUT;
+      handled = true;
+      break;
+    }
+    core->drained = false;
+  }
+  atomic_fetch_sub(&core->direct, 1);
+  if (ended != MS_NET_WAIT_DONE) {
+    *result = ms_net_finish(ended, 0, "read", err); /* a cancel unwinds here, after the fence is released */
+  }
+  return handled;
+#endif
+}
+
 uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err) {
+  uint8_t result = MS_STATUS_OK;
+  if (edge_reads(core) && read_edge(core, capacity, timeout_ns, out, err, &result)) {
+    return result;
+  }
   const ssize_t direct = read_direct(core, capacity, out);
   if (direct >= 0) {
     *err = ms_string_empty();
@@ -554,7 +666,8 @@ static ssize_t write_direct(MsNetCore *core, MsSpan data) {
    * 54k requests a second); with several the loop thread is the ceiling and the send spreads over them (four CPUs:
    * 98k against 150k). */
   if (core->kind != MS_NET_CONNECTION || core->is_pipe || core->tls != NULL || data.len == 0 ||
-      data.len > (size_t)INT32_MAX || atomic_load(&core->writing) != 0 || ms_isolate_count() < 2) {
+      data.len > (size_t)INT32_MAX || atomic_load(&core->writing) != 0 ||
+      (ms_isolate_count() < 2 && !edge_reads(core))) {
     return UV_EAGAIN;
   }
   atomic_fetch_add(&core->direct, 1);

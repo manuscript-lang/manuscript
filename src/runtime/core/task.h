@@ -37,6 +37,9 @@ typedef void (*MsTaskEntry)(void *);
 /* Request bit: keep the descriptor registered between waits. Only for a descriptor its owner drains before every
  * wait and keeps open for good. */
 #define MS_WAIT_KEEP 32u
+/* Request bit: the caller's system call on `fd` just found nothing more to take, so wait for the poller's next edge
+ * of the registration the caller made (ms_io_edge_reset) instead of asking whether the descriptor is ready now. */
+#define MS_WAIT_EDGE 256u
 /* Internal: marks a descriptor waiter that is a promise, not a task. */
 #define MS_WAIT_PROMISE 128u
 /* Internal: marks a descriptor waiter that is a notify function (ms_sched_fd_notify); its kind is in the bits at
@@ -186,7 +189,7 @@ enum { MS_FD_NOTIFY_KINDS = 8 };
  * functions are registered already. */
 int ms_sched_fd_notify_kind(MsFdNotify notify) MS_NONNULL;
 /* Waits for `fd` on behalf of (`kind`, `id`): MS_POLL_ARMED, MS_POLL_ALWAYS (ready at once, nothing registered) or
- * MS_POLL_FAILED. `events` are MS_WAIT_READ and MS_WAIT_WRITE, with any other bit (MS_WAIT_KEEP) passed on to the
+ * MS_POLL_FAILED. `events` are MS_WAIT_READ and MS_WAIT_WRITE, with MS_WAIT_KEEP or MS_WAIT_EDGE passed on to the
  * poller. */
 int ms_sched_fd_notify(int kind, uint64_t id, int fd, uint32_t events);
 /* Ends that wait if it is still registered. */

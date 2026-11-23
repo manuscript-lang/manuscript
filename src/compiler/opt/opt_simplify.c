@@ -593,6 +593,7 @@ static bool sm_rounds(MirModule *m, MirFunc *f) {
     c |= opt_simplify_map_probes(m, f);
     c |= opt_simplify_fuse_contains(m, f);
     c |= sm_dce(m, f);
+    c |= opt_simplify_dead_owned(m, f);
     if (!c) {
       break;
     }

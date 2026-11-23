@@ -8,6 +8,7 @@
 #include "base/alloc.h"
 #include "base/strbuild.h"
 #include "runtime/core/unwind.h"
+#include "runtime/sys/sys.h"
 #include "runtime/std/fail.h"
 #include "runtime/std/net_ip.h"
 
@@ -25,6 +26,9 @@ MsNetCore *ms_net_core_new(MsNetKind kind, bool is_pipe) {
   atomic_init(&core->reads_posted, 0);
   atomic_init(&core->broken, false);
   atomic_init(&core->direct, 0);
+  atomic_init(&core->edge_waiting, 0);
+  static atomic_uint_fast64_t next_id = 1;
+  core->id = atomic_fetch_add(&next_id, 1);
   core->local = ms_string_empty();
   core->peer = ms_string_empty();
   return core;
@@ -97,6 +101,7 @@ static void close_start(MsNetOp *op) {
   MsNetCore *core = ((CloseOp *)op)->core;
   if (!uv_is_closing(&core->h.handle)) {
     while (atomic_load(&core->direct) != 0) { /* a thread is inside a socket call of its own (`closed` is set, so no new one starts) */
+      ms_sys_yield(); /* it may be a task of a thread that needs this CPU to leave */
     }
     drain_unread(core);
     ms_net_conn_close_ops(core);
@@ -129,6 +134,7 @@ void ms_net_core_close(MsNetCore *core) {
   if (atomic_exchange(&core->closed, true)) {
     return;
   }
+  ms_net_conn_wake_readers(core);
   ms_net_post(&close_op(core, false)->op);
 }
 
@@ -137,6 +143,7 @@ static void core_close_released(MsNetCore *core) {
   if (atomic_exchange(&core->closed, true)) {
     return;
   }
+  ms_net_conn_wake_readers(core);
   CloseOp *op = close_op(core, true);
   if (ms_net_run(&op->op, -1) == MS_NET_WAIT_DONE) {
     ms_net_op_free(&op->op);

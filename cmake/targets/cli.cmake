@@ -36,7 +36,7 @@ set(MS_LEAK_FIXTURES accept/bind-collection-resource-read-in-place accept/interf
   accept/faulting-close-releases-parts.test stdlib/http-exchange-helpers.test
   stdlib/http-close-drains stdlib/http-fault-handler-frees-exchange-view stdlib/promise-closes-captured-pipe
   stdlib/cancelled-file-read-frees-buffer stdlib/cancelled-dns-query-frees-state
-  stdlib/cancelled-serve-start-frees-handler)
+  stdlib/cancelled-serve-start-frees-handler stdlib/cancelled-tls-handshake-frees-state)
 add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIXTURES=${CMAKE_SOURCE_DIR}/tests/conformance/fixtures/e2e
   "-DNAMES=${MS_LEAK_FIXTURES}" -DWORK=${CMAKE_BINARY_DIR}/src/cli/leak -P ${CMAKE_SOURCE_DIR}/cmake/LeakCheck.cmake)
 

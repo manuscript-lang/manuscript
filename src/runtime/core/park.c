@@ -80,7 +80,7 @@ static void unlink_node(MsSched *sched, MsFdQueue *queue, MsNode node) {
 static uint32_t combined_events(const MsSched *sched, const MsFdQueue *queue, uint32_t asked) {
   for (MsNode node = queue->oldest; node != 0; node = sched->waiters.ptr[node - 1].next) {
     const uint32_t other = sched->waiters.ptr[node - 1].events & ~WAITER_PRIVATE;
-    asked = ((asked | other) & ~MS_WAIT_KEEP) | (asked & other & MS_WAIT_KEEP);
+    asked = ((asked | other) & ~(MS_WAIT_KEEP | MS_WAIT_EDGE)) | (asked & other & (MS_WAIT_KEEP | MS_WAIT_EDGE));
   }
   return asked;
 }
@@ -88,7 +88,7 @@ static uint32_t combined_events(const MsSched *sched, const MsFdQueue *queue, ui
 void ms_park_rearm(MsSched *sched, int fd) {
   const MsFdQueue *const queue = &sched->fd_queues.ptr[fd];
   uint32_t asked = 0;
-  uint32_t keep = MS_WAIT_KEEP;
+  uint32_t keep = MS_WAIT_KEEP | MS_WAIT_EDGE;
   for (MsNode node = queue->oldest; node != 0; node = sched->waiters.ptr[node - 1].next) {
     const uint32_t events = sched->waiters.ptr[node - 1].events;
     if (events != 0) {

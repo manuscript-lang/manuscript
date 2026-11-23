@@ -833,6 +833,27 @@ static bool report_constant_call(Body *body, const MsExpr *call) {
   return true;
 }
 
+/* `some(value)`: an Optional has no `some` constructor; a plain value converts where a `T?` is expected. The
+ * arguments are read so their own errors still show. */
+static bool report_optional_some(Body *body, const MsExpr *call, const Target *target) {
+  const MsExpr *callee = call->u.call.callee;
+  if (target->ref.kind != MS_REF_CASE || callee->kind != MS_E_NAME ||
+      !ms_span_is_text(ms_names_span(body->program->names, callee->u.sym), "some") ||
+      !ms_ty_is(&body->program->types, target->ref.owner, MS_BUILTIN_Optional)) {
+    return false;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
+  }
+  if (body_reports(body) && !body->quiet) {
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
+                    ms_string_static(ms_span_of_text("there is no some(...); a plain value converts where a T? is "
+                                                     "expected, so pass it directly, or annotate the binding, e.g. "
+                                                     "x: Int? := 5")));
+  }
+  return true;
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -843,6 +864,10 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   target.name = ms_strbuild_span(&target.name_text);
   target.nargs = expr->u.call.args.len;
   if (body_resolve_target(body, callee, expected, &target)) {
+    if (report_optional_some(body, expr, &target)) {
+      body_target_free(&target);
+      return MS_TY_NONE;
+    }
     body_deny_opaque_build(body, expr, &target);
     const size_t count = ms_ty_param_count(&body->program->types, target.sig);
     Matched matched = {.slot = MS_ARENA_NEW_ARRAY(&body->program->arena, int32_t, count + 1),
