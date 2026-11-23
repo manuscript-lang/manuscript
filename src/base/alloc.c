@@ -91,6 +91,27 @@ void ms_alloc_track_live(void) {
   refresh_hooked();
 }
 
+#if defined(__linux__)
+/* mimalloc reads each of its ~60 options from the environment on first use, scanning every variable for each one:
+ * about 300K instructions in every process. Unless the environment names a MIMALLOC_ option, hide it while the
+ * options take their defaults, so no scan finds anything to compare. Runs before mimalloc's own constructor. */
+extern char **environ;
+__attribute__((constructor(101))) static void settle_allocator_options(void) {
+  char **const saved = environ;
+  for (char **entry = saved; entry != NULL && *entry != NULL; entry++) {
+    if (__builtin_strncmp(*entry, "MIMALLOC_", 9) == 0 || __builtin_strncmp(*entry, "mimalloc_", 9) == 0) {
+      return;
+    }
+  }
+  static char *none[1] = {NULL}; /* empty, not NULL: a NULL environment is an error that leaves each option pending */
+  environ = none;
+  for (int option = 0; option < _mi_option_last; option++) {
+    (void)mi_option_get((mi_option_t)option);
+  }
+  environ = saved;
+}
+#endif
+
 static void refresh_hooked(void) {
 #ifdef MS_STATS
   const bool on = true;
