@@ -31,6 +31,7 @@ static void declared(void *context, const MsBinding *binding, const MsBindingLis
   ms_strbuild_append_text(&text, " shadows an outer binding of the same name; rename one of them, or assign to the "
                                  "outer 'var'");
   ms_check_report(pass->program, pass->module, binding->decl, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  pass->program->diagnostics.ptr[pass->program->diagnostics.len - 1].anchor = binding->anchor;
 }
 
 /* The lone name of an arm may be a variant: some declared enum has a variant of that name. */

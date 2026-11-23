@@ -10,7 +10,7 @@ type Pending:
 
 fn counted(var counter: Counter) Counter:
 	counter.calls += 1
-	return counter
+	return counter.clone()
 
 fn require_value[T, E](cause: E, value: T?) T!E:
 	return value.ok_or(cause)
