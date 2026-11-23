@@ -17,7 +17,8 @@ static MirRole string_role(MsSpan name) {
                {"msrt_string_eq", MR_STRING_EQ},
                {"msrt_string_compare", MR_STRING_COMPARE},
                {"msrt_string_starts_with", MR_STRING_STARTS_WITH},
-               {"msrt_string_ends_with", MR_STRING_ENDS_WITH}};
+               {"msrt_string_ends_with", MR_STRING_ENDS_WITH},
+               {"msrt_string_slice", MR_STRING_SLICE}};
   for (size_t at = 0; at < sizeof table / sizeof table[0]; at++) {
     if (ms_span_is_text(name, table[at].name)) {
       return table[at].role;
