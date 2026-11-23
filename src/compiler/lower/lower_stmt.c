@@ -117,7 +117,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
     MsExpr *key = NULL;
     const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
     const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
-    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && ms_expr_index(stmt->u.bind.value, &container, &key) &&
+    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && fn_entry_read_parts(fn, stmt->u.bind.value, &container, &key) &&
         mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
       MirValue address = MIR_NONE;
       MirTy ty = MIR_VOID;
