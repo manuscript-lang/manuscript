@@ -143,6 +143,11 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   fn->cx->module->funcs.ptr[func].capture_closers = closers;
   fn->cx->module->funcs.ptr[func].ncapture_closers = nclosers;
   fn->cx->module->funcs.ptr[func].scoped = borrows;
+  /* An escaping closure of a function that keeps its closure arguments owns what it captured, and so keeps a
+   * closure into its caller's frame that it took: whoever builds it holds the same borrow (the promise's start). */
+  for (uint32_t index = 0; escapes && fn->keeps_scoped && index < count; index++) {
+    fn->cx->module->funcs.ptr[func].keeps_scoped |= mir_ty_data(fn->cx->module, captures[index].ty)->kind == MK_FN;
+  }
   /* A fault trace calls a lambda `<enclosing function>.closure`. */
   const MsName enclosing = fn->b.func.display != MS_NAME_EMPTY ? fn->b.func.display : fn->b.func.name;
   fn->cx->module->funcs.ptr[func].display = mir_name(
@@ -322,6 +327,7 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   built.capture_closers = reserved.capture_closers;
   built.ncapture_closers = reserved.ncapture_closers;
   built.display = reserved.display;
@@ -597,6 +603,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -649,6 +656,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
@@ -749,6 +757,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
+  built.keeps_scoped = reserved.keeps_scoped;
   mir_func_release(&cx->module->funcs.ptr[slot]);
   cx->module->funcs.ptr[slot] = built;
   const MirImm imm = {.tag = MI_FUNC, .a = slot};
