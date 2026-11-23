@@ -16,6 +16,7 @@ static atomic_flag installed = ATOMIC_FLAG_INIT;
 
 static LONG WINAPI on_exception(EXCEPTION_POINTERS *pointers) {
     const EXCEPTION_RECORD *const record = pointers->ExceptionRecord;
+    ms_sys_stderr_write(ms_span_of_text("P3 veh\n"));
     MsSysFaultFn const callback = atomic_load_explicit(&fault_callback, memory_order_acquire);
     if (callback == NULL) {
         return EXCEPTION_CONTINUE_SEARCH;

@@ -1,4 +1,5 @@
 /* The exported fault, cleanup, shield and guard entry points. See fault_abi.h. */
+#include "runtime/sys/sys.h"
 #include "runtime/core/fault_abi.h"
 
 #include "base/strbuild.h"
@@ -23,10 +24,12 @@ void msrt_panic(const MsString *message) {
 }
 
 void msrt_fault_depth(void) {
+  ms_sys_stderr_write(ms_span_of_text("P1 depth\n"));
   /* Cleanups run calls in the reserve, so the limit moves down before the report is built. */
   MsUnwind *const unwind = running();
   unwind->hdr.limit = unwind->stack_low == 0 ? 0 : unwind->stack_low + STACK_CLEANUP_RESERVE;
   ms_task_publish_limit();
+  ms_sys_stderr_write(ms_span_of_text("P2 limit\n"));
   ms_fault_text(MS_FAULT_KIND_STACK_OVERFLOW,
                 "stack overflow: call depth limit exceeded (recursion too deep or stack frames too large); check the "
                 "recursion for a missing base case, or iterate instead");
