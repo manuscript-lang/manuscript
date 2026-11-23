@@ -143,6 +143,7 @@ typedef struct MsCheckProgram {
   MsPendingDefaultList pending_defaults;
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
+  bool check_std; /* the bundled standard modules report their diagnostics too */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
 } MsCheckProgram;
 

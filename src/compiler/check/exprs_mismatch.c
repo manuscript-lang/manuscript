@@ -235,7 +235,7 @@ bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsT
   if (!operands_differ(body, op, left, right)) {
     return false;
   }
-  if (body->quiet || body->module >= body->program->user_modules) {
+  if (body->quiet || !body_reports(body)) {
     return true;
   }
   MsStrBuild text = ms_strbuild_new();
