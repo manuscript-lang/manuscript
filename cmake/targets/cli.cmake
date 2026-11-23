@@ -66,6 +66,10 @@ if(EXISTS /dev/full)
   add_test(NAME stdout_full COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -P ${CMAKE_SOURCE_DIR}/cmake/StdoutFull.cmake)
 endif()
 
+# The same on every platform with a pipe whose reader closes: the child exits nonzero (a write error, or SIGPIPE).
+add_test(NAME stdout_closed COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/stdout-closed-check.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+set_tests_properties(stdout_closed PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
+
 # Replays recorded language-server sessions (tests/lsp/<case>) over standard input and output.
 file(GLOB MS_LSP_CASES LIST_DIRECTORIES true ${CMAKE_SOURCE_DIR}/tests/lsp/*)
 foreach(case IN LISTS MS_LSP_CASES)
