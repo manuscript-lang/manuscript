@@ -1,0 +1,7 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/src/main.ms", "languageId": "manuscript", "version": 1, "text": "import x from \"@\"\nimport y from \"@lib/\"\nimport z from \"@math\"\nimport ad from \"@math.ms\"\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/src/main.ms"}, "position": {"line": 0, "character": 16}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/src/main.ms"}, "position": {"line": 1, "character": 20}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/src/two.ms", "languageId": "manuscript", "version": 1, "text": "import ad from \"@math\"\n"}}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/src/three.ms", "languageId": "manuscript", "version": 1, "text": "import pi from \"@lib/pick.ms\"\n"}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/src/three.ms"}, "position": {"line": 0, "character": 9}}}

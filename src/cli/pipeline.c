@@ -74,8 +74,9 @@ static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *
 
 static bool make_object(const MsLinkRequest *request, const BackendProgram *program, MsSpan ir, MsSpan directory,
                         MsSpan opt, MsSpan llc, MsSpan object, MsSpan *error) {
-  const bool speed = request->build_type != MS_BUILD_DEBUG;
-  const ObjectOptions options = {.opt = opt, .llc = llc, .directory = directory, .speed = speed, .vectorize = speed,
+  const bool debug = request->build_type == MS_BUILD_DEBUG;
+  const ObjectOptions options = {.opt = opt, .llc = llc, .directory = directory, .speed = true, .debug = debug,
+                                 .vectorize = !debug,
                                  .module = &program->module, .tables = &program->tables};
   MsStrBuild why = ms_strbuild_new();
   const bool ok = link_make_object(&options, ir, object, &why);
