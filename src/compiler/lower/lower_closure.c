@@ -62,9 +62,9 @@ static bool fn_capture_slot_owned(const LowerFn *fn, const LowerCapture *capture
 
 /* The values the closure takes, as the maker reads them (a droppable one is cloned: the closure owns its copy). */
 static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, MirValue *out, const bool *changed,
-                           bool escapes, bool *borrows) {
+                           bool escapes, bool *borrows, MirCaptureCloser *closers, uint32_t *nclosers) {
   for (uint32_t index = 0; index < count; index++) {
-    if (changed[index]) {
+    if (changed[index] && !escapes) {
       /* A variable the lambda changes stays in the maker's slot, which the closure borrows. */
       const uint32_t at = captures[index].kind == MS_REF_LOCAL ? captures[index].index : fn->nvars + captures[index].index;
       const bool in_range = captures[index].kind == MS_REF_LOCAL ? captures[index].index < fn->nvars
@@ -85,6 +85,11 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       return false;
     }
     captures[index].ty = mir_b_ty(&fn->b, value);
+    if (changed[index]) { /* an escaping closure keeps a variable it changes in its own environment */
+      captures[index].shared = true;
+      captures[index].cell = true;
+      captures[index].elem = captures[index].ty;
+    }
     if (mir_needs_drop(fn->cx->module, captures[index].ty)) {
       if (!escapes) {
         *borrows = true; /* a closure that stays in its maker reads the value where it lives */
@@ -98,6 +103,11 @@ static bool capture_values(LowerFn *fn, LowerCapture *captures, uint32_t count, 
       }
     }
     out[index] = value;
+    uint32_t silent = MIR_NONE;
+    if (escapes && captures[index].use != NULL && mir_needs_drop(fn->cx->module, captures[index].ty) &&
+        fn_capture_closer(fn, ms_facts_type(fn->facts, captures[index].use->id), captures[index].ty, &silent)) {
+      closers[(*nclosers)++] = (MirCaptureCloser){index, silent}; /* the closure closes what it owns when it is dropped */
+    }
   }
   return true;
 }
@@ -119,10 +129,14 @@ MirValue fn_lambda(LowerFn *fn, const MsExpr *expr) {
   const bool escapes = ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE;
 
   bool borrows = false;
-  if (!capture_values(fn, captures, count, values, changed, escapes, &borrows)) {
+  MirCaptureCloser *closers = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirCaptureCloser, (size_t)count + 1);
+  uint32_t nclosers = 0;
+  if (!capture_values(fn, captures, count, values, changed, escapes, &borrows, closers, &nclosers)) {
     return MIR_NONE;
   }
   const uint32_t func = lower_closure_func(fn->cx, fn_ty, captures, count);
+  fn->cx->module->funcs.ptr[func].capture_closers = closers;
+  fn->cx->module->funcs.ptr[func].ncapture_closers = nclosers;
   fn->cx->module->funcs.ptr[func].scoped = borrows;
   /* A fault trace calls a lambda `<enclosing function>.closure`. */
   const MsName enclosing = fn->b.func.display != MS_NAME_EMPTY ? fn->b.func.display : fn->b.func.name;
@@ -150,7 +164,8 @@ static bool bind_captures(LowerFn *fn, const LowerLambda *lambda, MirValue env) 
   for (uint32_t index = 0; index < lambda->ncaptures; index++) {
     const LowerCapture *capture = &lambda->captures[index];
     const MirImm imm = {.tag = MI_IDX, .a = index};
-    const MirValue value = mir_b_emit(&fn->b, MOP_ClosureCap, &env, 1, imm, capture->ty);
+    const MirValue value = capture->cell ? mir_b_emit(&fn->b, MOP_ClosureCapAddr, &env, 1, imm, MIR_PTR)
+                                         : mir_b_emit(&fn->b, MOP_ClosureCap, &env, 1, imm, capture->ty);
     if (capture->shared && capture->kind == MS_REF_LOCAL && capture->index < fn->nvars) {
       fn->closing[capture->index] = value;
       fn->closing_var[capture->index] = true;
@@ -302,7 +317,8 @@ static bool lower_lambda_body(Lower *cx, uint32_t index) {
   built.captures = reserved.captures;
   built.ncaptures = reserved.ncaptures;
   built.scoped = reserved.scoped;
-  built.scoped = reserved.scoped;
+  built.capture_closers = reserved.capture_closers;
+  built.ncapture_closers = reserved.ncapture_closers;
   built.display = reserved.display;
   mir_func_release(slot);
   *slot = built;

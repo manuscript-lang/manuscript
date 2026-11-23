@@ -294,6 +294,16 @@ static bool prepare(LowerFn *fn, MsTy checked, MirTy ty, bool fields_only, uint3
   return true;
 }
 
+bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent) {
+  const MsTy concrete = ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars, fn->subst.args, fn->subst.count);
+  MsCloser plain;
+  if (!ms_own_closer_of(fn->cx->program, concrete, &plain) || (plain.flags & MS_CLOSER_DROP) != 0 ||
+      ((plain.flags & MS_CLOSER_PARTS) != 0 && !lower_parts_supported(fn->cx, concrete))) {
+    return false;
+  }
+  return prepare(fn, checked, ty, false, silent);
+}
+
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   uint32_t silent = MIR_NONE;

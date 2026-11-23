@@ -56,6 +56,7 @@ typedef struct LowerCapture {
   MirTy ty;
   bool shared;  /* the lambda changes this local: it takes the address of the maker's slot, which holds a `elem` */
   MirTy elem;
+  bool cell;    /* with `shared`: an escaping closure keeps the variable itself, in its own environment */
 } LowerCapture;
 
 /* A lambda whose body is lowered after the function that makes it. */
