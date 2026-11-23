@@ -223,13 +223,8 @@ bool ms_own_consuming_method(const MsCheckProgram *program, const MsRef *callee)
   if (callee->kind != MS_REF_METHOD) {
     return false;
   }
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->module == callee->decl.module && entry->source->id == callee->decl.node) {
-      return entry->source->consuming;
-    }
-  }
-  return false;
+  const MsMethodEntry *entry = ms_check_method_at(program, callee->decl.module, callee->decl.node);
+  return entry != NULL && entry->source->consuming;
 }
 
 static void visit_call(Uses *pass, const MsExpr *call) {
