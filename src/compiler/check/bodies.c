@@ -683,3 +683,21 @@ void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source) {
   ms_local_list_free(&body.locals);
   ms_node_journal_free(&body.typed);
 }
+
+void ms_check_deferred_body(MsCheckProgram *program, uint32_t module, const MsDecl *decl, const MsMethod *method) {
+  MsModuleInfo *info = &program->modules.ptr[module];
+  Body body = {.program = program, .module = module, .facts = &info->facts, .source = (MsSpan){0}};
+  resolver_init(&body.resolver, program, module);
+  body.typed.len = 0;
+  body.next_local = 0;
+  if (method != NULL) {
+    method_decl(&body, method);
+  } else {
+    declaration(&body, decl);
+  }
+  body_scope_reset(&body, 0);
+  ms_facts_finish(&info->facts);
+  resolver_free(&body.resolver);
+  ms_local_list_free(&body.locals);
+  ms_node_journal_free(&body.typed);
+}

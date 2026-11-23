@@ -63,6 +63,8 @@ void ms_check_test_fixture(Body *body);
 
 /* Types every function, method, test and constant of `module`; fills its facts. */
 void ms_check_bodies(MsCheckProgram *program, uint32_t module, MsSpan source);
+/* Checks one function (`method` NULL) or method of a standard module whose body was set aside (lazy_std.c). */
+void ms_check_deferred_body(MsCheckProgram *program, uint32_t module, const MsDecl *decl, const MsMethod *method);
 
 void body_block(Body *body, MsStmts stmts); /* a nested scope */
 void body_statements(Body *body, MsStmts stmts); /* in the current scope: the locals stay visible to what follows */
