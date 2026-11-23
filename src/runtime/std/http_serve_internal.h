@@ -24,6 +24,9 @@ struct MsServeConn {
   MsTaskHandle task;
   size_t listed_at;  /* its place in the idle list while it waits for a request (http_serve_steal.c) */
   bool listed;
+  MsH2Conn *owner;   /* an HTTP/2 connection's state, once its task has made it */
+  MsH2 *session;     /* the HTTP/2 session a take moved here, for the task to continue with */
+  bool resumed;      /* taken from another thread's connection: its handshake is done */
   bool taken;        /* another thread took the connection: its task ends without closing it */
 };
 
@@ -103,12 +106,12 @@ bool ms_serve_admit(MsServeShared *shared);
 
 /* Serves `stream` (taken) and the request bytes already read from it, in a task of `worker` (a connection another
  * worker's thread took): closes the stream and returns false when the worker is closing. */
-bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, MsBytes first);
+bool ms_serve_worker_resume(MsServeWorker *worker, const MsWsTransport *stream, MsBytes first, MsH2 *session);
 
 /* ---- taking idle connections from a held-up thread (http_serve_steal.c) ---- */
 
 /* The idle list of `worker` (on the calling thread's isolate), registered so the watcher can send a resting worker
- * of the same server to take from it; NULL when the server cannot (TLS, one isolate). */
+ * of the same server to take from it; NULL when the server cannot (one isolate). */
 MsServeIdle *ms_serve_idle_open(MsServeWorker *worker);
 /* Unregisters and releases the list; takers that still hold it find no worker. */
 void ms_serve_idle_close(MsServeIdle *idle);
@@ -140,6 +143,8 @@ struct MsH2Conn {
   int refs; /* the pump, the writer and each stream */
   bool dead;
   bool writer_done;
+  _Atomic bool writer_parked; /* the writer waits with nothing to send (read by a thread that takes the connection) */
+  bool handed;                /* a take moved the session to another thread: the writer ends without touching it */
   uint64_t out_token; /* the writer parks here until output is queued */
   MsH2Stream **streams;
   size_t count;
@@ -149,6 +154,9 @@ struct MsH2Conn {
 /* Serves an HTTP/2 connection until it ends (the connection task's body). */
 void ms_serve_h2(MsServeConn *conn);
 void ms_h2_wake(uint64_t token);
+/* Whether another thread may take this connection while it waits for a frame: no stream, no output queued, and
+ * the writer parked (http_serve_steal.c). */
+bool ms_h2_movable(const MsH2Conn *owner);
 /* Queues output for the writer. */
 void ms_h2_flush(MsH2Conn *owner);
 

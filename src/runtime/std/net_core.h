@@ -31,6 +31,7 @@ typedef struct MsNetCore {
   atomic_uint handles;    /* the Manuscript handles alive; the last drop closes the socket */
   atomic_uint ends;       /* ends of the object still open (share / close_if_last) */
   atomic_bool closed;
+  atomic_uint generation; /* bumped when an upgrade (TLS) consumes the handles made before it */
   atomic_bool stealable; /* a server lets another thread take this connection's ready idle read (net_conn.c) */
   atomic_int steal_lock; /* a spin lock over `open_read` */
   void *open_read;       /* the idle read in flight, with a reference of its own; set under steal_lock */
@@ -52,6 +53,7 @@ typedef struct MsNetCore {
 typedef struct MsNetHandle {
   MsObj header;
   MsNetCore *core;
+  unsigned generation; /* the core's generation when this handle was made; a later one means it was consumed */
 } MsNetHandle;
 
 /* A core of `kind` with one reference (the libuv handle's), not yet initialised on the loop. */
@@ -60,6 +62,9 @@ void ms_net_core_unref(MsNetCore *core);
 /* A handle holding a new reference on `core`. */
 MsObj *ms_net_handle_new(MsNetCore *core);
 MsNetCore *ms_net_handle_core(const MsObj *handle);
+/* A new handle on the core of `handle` that consumes every handle made on it so far: they find a closed connection
+ * from now on (an upgrade to TLS in place). */
+MsObj *ms_net_handle_upgraded(const MsObj *handle);
 /* Closes the socket once (ends operations in flight, closes the libuv handle). Safe from any thread. */
 void ms_net_core_close(MsNetCore *core);
 /* Loop thread: records the socket's own and peer address as text, from the libuv handle. */

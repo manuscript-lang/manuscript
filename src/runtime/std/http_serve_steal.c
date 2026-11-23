@@ -3,7 +3,9 @@
  * server can take it: a connection task that waits for the first byte of a request lists itself; the watcher
  * (core/watch.h) finds a thread that stopped turning, and a resting thread of the same server takes the listed
  * connections whose read has finished, and serves them in tasks of its own. A task never moves; the task that waited
- * ends without closing the socket. Plain connections only. */
+ * ends without closing the socket. A TLS connection moves with its session: the take claims the bytes the net layer
+ * already decrypted, and the new task skips the handshake. An HTTP/2 connection with no stream open moves with its
+ * session (see ms_h2_movable). */
 #include <stdatomic.h>
 
 #include "base/alloc.h"
@@ -64,6 +66,7 @@ static void registry_unlock(void) { atomic_store_explicit(&registry.lock, 0, mem
 typedef struct Taken {
   MsWsTransport io;
   MsBytes first;
+  MsH2 *session; /* an HTTP/2 connection's session, which moves with it */
 } Taken;
 
 typedef struct Take {
@@ -84,13 +87,13 @@ static void take_entry(void *argument) {
   for (size_t i = 0; i < from->count;) {
     MsServeConn *conn = from->listed[i];
     MsBytes first = {0};
-    if (!conn->io.steal_read(conn->io.context, &first)) {
+    if ((conn->h2 && !ms_h2_movable(conn->owner)) || !conn->io.steal_read(conn->io.context, &first)) {
       i++;
       continue;
     }
     conn->taken = true;
     conn->listed = false;
-    batch[found++] = (Taken){.io = conn->io, .first = first};
+    batch[found++] = (Taken){.io = conn->io, .first = first, .session = conn->h2 ? conn->owner->h2 : NULL};
     from->count--;
     if (i < from->count) {
       from->listed[i] = from->listed[from->count]; /* the last takes its place; look at it next */
@@ -106,8 +109,11 @@ static void take_entry(void *argument) {
   MsServeWorker *worker = to->worker;
   unlock(to);
   for (size_t i = 0; i < found; i++) {
-    if (worker == NULL || !ms_serve_worker_resume(worker, &batch[i].io, batch[i].first)) {
+    if (worker == NULL || !ms_serve_worker_resume(worker, &batch[i].io, batch[i].first, batch[i].session)) {
       ms_bytes_free(&batch[i].first);
+      if (batch[i].session != NULL) {
+        ms_h2_free(batch[i].session);
+      }
       if (batch[i].io.close != NULL) {
         batch[i].io.close(batch[i].io.context);
       }
@@ -208,7 +214,7 @@ static void install(void) {
 
 MsServeIdle *ms_serve_idle_open(MsServeWorker *worker) {
   const uint32_t isolate = ms_isolate_self();
-  if (worker->shared->secure != NULL || isolate >= MS_MAX_ISOLATES) {
+  if (isolate >= MS_MAX_ISOLATES) {
     return NULL;
   }
   install();
@@ -248,7 +254,7 @@ void ms_serve_idle_close(MsServeIdle *idle) {
 
 void ms_serve_idle_list(MsServeConn *conn) {
   MsServeIdle *idle = conn->worker->idle;
-  if (idle == NULL || conn->io.steal_read == NULL || conn->h2 || conn->listed) {
+  if (idle == NULL || conn->io.steal_read == NULL || conn->listed) {
     return;
   }
   lock(idle);

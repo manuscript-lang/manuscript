@@ -9,6 +9,8 @@ typedef struct Changes {
   uint32_t module;
   MsSpan source;
   const MsScopeSite *site; /* where the visited node sits */
+  const MsExpr *closure;      /* the last lambda reported as changing a capture */
+  const MsBinding *captured;  /* ... and the binding it changed */
 } Changes;
 
 /* The local name a place expression (`b`, `b.f`, `b.xs[i]`) is rooted at, or false. */
@@ -42,7 +44,7 @@ static bool parameter_fix(MsPos decl, MsVarFix *fix) {
 }
 
 /* Reports `place` changed through a binding that does not allow it; the first line of the oracle's wording. */
-static void report(Changes *pass, const MsExpr *place, const MsExpr *root, const MsBinding *binding) {
+static void report(Changes *pass, const MsExpr *place, const MsExpr *root, const MsBinding *binding, MsPos at) {
   const size_t start = root->pos.offset < place->pos.offset ? root->pos.offset : place->pos.offset; /* the written place */
   const size_t length = place->end.offset > start ? place->end.offset - start : 0;
   if (place->end.offset > pass->source.len) {
@@ -55,8 +57,8 @@ static void report(Changes *pass, const MsExpr *place, const MsExpr *root, const
   const bool parameter = binding->kind == MS_BK_PARAM;
   const bool receiver = binding->kind == MS_BK_SELF;
   const MsMethod *method = NULL; /* the method whose receiver it is */
-  for (uint32_t at = 0; receiver && pass->site != NULL && pass->site->impl != NULL && at < pass->site->impl->u.impl.methods.len; at++) {
-    const MsMethod *candidate = pass->site->impl->u.impl.methods.ptr[at];
+  for (uint32_t each = 0; receiver && pass->site != NULL && pass->site->impl != NULL && each < pass->site->impl->u.impl.methods.len; each++) {
+    const MsMethod *candidate = pass->site->impl->u.impl.methods.ptr[each];
     method = candidate->pos.offset == binding->decl.offset ? candidate : method;
   }
   if (receiver) {
@@ -77,7 +79,7 @@ static void report(Changes *pass, const MsExpr *place, const MsExpr *root, const
   MsVarFix fix = {0};
   const bool has_fix = receiver ? (method != NULL && parameter_fix(method->var_at, &fix))
                        : parameter ? parameter_fix(binding->decl, &fix) : ms_var_fix(pass->source, binding->decl, &fix);
-  ms_check_report(pass->program, pass->module, place->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  ms_check_report(pass->program, pass->module, at, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   if (has_fix) {
     ms_check_attach_fix(pass->program, fix.pos, fix.end, fix.replacement);
   }
@@ -100,7 +102,14 @@ static void check_place(Changes *pass, const MsExpr *place, const MsBindingList 
   }
   const MsBinding *binding = ms_scope_lookup(scope, root->u.sym);
   if (binding != NULL && refuses_change(binding, by_argument)) {
-    report(pass, place, root, binding);
+    report(pass, place, root, binding, place->pos);
+    const MsExpr *lambda = pass->site != NULL ? pass->site->lambda : NULL;
+    const bool captured = lambda != NULL && (size_t)(binding - scope->ptr) < pass->site->lambda_scope;
+    if (captured && binding->kind == MS_BK_PARAM && (pass->closure != lambda || pass->captured != binding)) {
+      pass->closure = lambda; /* the closure itself changes what it captured */
+      pass->captured = binding;
+      report(pass, root, root, binding, lambda->pos);
+    }
   }
 }
 

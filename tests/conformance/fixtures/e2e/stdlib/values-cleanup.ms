@@ -36,7 +36,7 @@ fn leave(move dir: String) Int:
 	return 42
 
 fn propagate(result: Int!) Int!:
-	found := result?
+	found := result.clone()?
 	return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":

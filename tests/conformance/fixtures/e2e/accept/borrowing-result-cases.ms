@@ -2,11 +2,10 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-// A function that relays the error of a borrowed Result but builds its own ok payload
-// returns a borrowing result: the error case borrows the argument (no copy), the ok
-// case is owned.
+// A function that relays the error of a borrowed Result copies it with `.clone()`: the
+// argument stays with its owner and the result is owned.
 fn grow(value: String!String) String!String:
-	output := value?
+	output := value.clone()?
 	return ok(output + "x")
 
 fn heap(label: String, n: Int) String:

@@ -339,7 +339,13 @@ static MsTy apply(Resolver *resolver, MsTy base, const MsTypeRef *type) {
     report_arity(resolver, type, base, type->args.len, arity, required);
   }
   /* A wrong count keeps the bare type: a value of the applied type then differs from it, as the oracle says. */
-  const MsTy applied = args.len == arity ? resolver_apply(resolver->program, base, args.ptr, args.len) : base;
+  MsTy applied = args.len == arity ? resolver_apply(resolver->program, base, args.ptr, args.len) : base;
+  if (args.len != arity) {
+    const MsTyRow row = *ms_ty_row(&program->types, base);
+    const MsTyDesc bare = {.name = row.name, .id = row.id, .kind = (MsTyKind)row.kind, .builtin = (MsBuiltin)row.builtin,
+                           .def = row.def, .args = NULL, .arg_count = 0};
+    applied = ms_ty_intern(&program->types, &bare); /* written with no arguments: it is no instance of the type */
+  }
   if (resolver->report && args.len == arity && arity != 0) {
     if (program->stage == MS_STAGE_DECLARATIONS) { /* signatures resolve before the methods that satisfy bounds */
       ms_pending_bound_list_push(&program->pending_bounds, (MsPendingBound){resolver->module, type->pos, applied});

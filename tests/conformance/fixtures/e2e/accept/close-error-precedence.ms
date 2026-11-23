@@ -151,7 +151,7 @@ fn forward_ok(log: String, payload: String, fail: Bool) String!:
 	return borrowed_ok(log, payload, fail)
 
 fn mixed_error(source: Int!) String!:
-	_number := source?
+	_number := source.clone()?
 	return ok("fresh success")
 
 fn forward_error(log: String, source: Int!) String!:

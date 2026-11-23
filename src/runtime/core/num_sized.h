@@ -71,21 +71,77 @@ DECLARE_RANGE(uint64, uint8)
 DECLARE_RANGE(uint64, uint32)
 
 /* The natives the macros above declare, as the signature table reads them. */
-/* ms-sig: msrt_int16_to_int8(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int32_to_int8(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int32_to_int16(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_uint16_to_uint8(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_uint32_to_int32(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_int8(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_int16(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_int32(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_uint8(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_uint16(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_uint32(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_int_to_uint64(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_uint64_to_int(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_uint64_to_uint8(v: i64, out: *mut i64) -> u8 @end */
-/* ms-sig: msrt_uint64_to_uint32(v: i64, out: *mut i64) -> u8 @end */
+/* ms-sig: msrt_int8_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_int16_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_int32_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_int64_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_uint8_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_uint16_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_uint32_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_uint64_compare(a: i64, b: i64) -> i64 @op=icompare */
+/* ms-sig: msrt_int_sign(v: i64) -> i64 @op=isign */
+/* ms-sig: msrt_int8_sign(v: i64) -> i64 @op=isign */
+/* ms-sig: msrt_int16_sign(v: i64) -> i64 @op=isign */
+/* ms-sig: msrt_int32_sign(v: i64) -> i64 @op=isign */
+/* ms-sig: msrt_int64_sign(v: i64) -> i64 @op=isign */
+/* ms-sig: msrt_int_abs(v: i64) -> i64 @op=iabs */
+/* ms-sig: msrt_int64_abs(v: i64) -> i64 @op=iabs */
+/* ms-sig: msrt_int8_abs(v: i64) -> i64 @op=sized_abs */
+/* ms-sig: msrt_int16_abs(v: i64) -> i64 @op=sized_abs */
+/* ms-sig: msrt_int32_abs(v: i64) -> i64 @op=sized_abs */
+/* ms-sig: msrt_int_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int8_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int8_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int16_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int16_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int32_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int32_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int64_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int64_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_uint8_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_uint8_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_uint16_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_uint16_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_uint32_to_float(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_uint32_to_float32(v: i64) -> f64 @op=to_float */
+/* ms-sig: msrt_int8_to_int16(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int8_to_int32(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int8_to_int64(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int8_to_int(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int16_to_int64(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int16_to_int(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int32_to_int64(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int32_to_int(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_uint8_to_int(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_uint16_to_int(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_uint32_to_int64(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_uint32_to_int(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_int_to_int64(v: i64) -> i64 @op=widen */
+/* ms-sig: msrt_float32_is_nan(v: f64) -> u8 @op=fis_nan */
+/* ms-sig: msrt_float32_is_finite(v: f64) -> u8 @op=fis_finite */
+/* ms-sig: msrt_float32_compare(a: f64, b: f64) -> i64 @op=fcompare */
+/* ms-sig: msrt_float32_abs(v: f64) -> f64 @op=fabs */
+/* ms-sig: msrt_float32_sign(v: f64) -> f64 @op=fsign */
+/* ms-sig: msrt_float32_to_float(v: f64) -> f64 @op=float_widen */
+/* ms-sig: msrt_float32_to_float64(v: f64) -> f64 @op=float_widen */
+/* ms-sig: msrt_float_abs(v: f64) -> f64 @op=fabs */
+/* ms-sig: msrt_float_sign(v: f64) -> f64 @op=fsign */
+/* ms-sig: msrt_int16_to_int8(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int32_to_int8(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int32_to_int16(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_uint16_to_uint8(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_uint32_to_int32(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_int8(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_int16(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_int32(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_uint8(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_uint16(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_uint32(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_int_to_uint64(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_uint64_to_int(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_uint64_to_uint8(v: i64, out: *mut i64) -> u8 @op=narrow */
+/* ms-sig: msrt_uint64_to_uint32(v: i64, out: *mut i64) -> u8 @op=narrow */
 /* ms-sig: msrt_int8_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @end */
 /* ms-sig: msrt_int16_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @end */
 /* ms-sig: msrt_int32_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @end */
@@ -94,7 +150,7 @@ DECLARE_RANGE(uint64, uint32)
 /* ms-sig: msrt_uint16_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @end */
 /* ms-sig: msrt_uint32_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @end */
 /* ms-sig: msrt_uint64_to_string_radix(v: i64, radix: i64, out: *mut StrVal) -> u8 @end */
-/* ms-sig: msrt_float32_truncate_to_int(v: f64, out: *mut i64) -> u8 @end */
+/* ms-sig: msrt_float32_truncate_to_int(v: f64, out: *mut i64) -> u8 @op=ftruncate_int */
 
 uint8_t msrt_float32_is_nan(double v);
 uint8_t msrt_float32_is_finite(double v);

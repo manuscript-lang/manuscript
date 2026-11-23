@@ -79,6 +79,8 @@ void ms_h2_event_release(MsH2Event *event);
 void ms_h2_take_output(MsH2 *h2, MsBytes *out);
 bool ms_h2_failed(const MsH2 *h2);
 const char *ms_h2_error_text(const MsH2 *h2);
+/* Whether output is waiting for ms_h2_take_output. */
+bool ms_h2_wants_write(const MsH2 *h2);
 /* Streams in flight (opened and not yet closed). */
 size_t ms_h2_open_streams(const MsH2 *h2);
 /* Bytes ms_h2_send_data would take now on stream `id`. */

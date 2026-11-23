@@ -113,7 +113,10 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     /* `if r := value:` owns the payload it binds, and so does `if var r = call():`, whose result has no place to
      * write back to. */
     const MsRef *bound = ms_facts_ref(pass->facts, stmt->u.branch.binding->id);
-    if (bound != NULL && bound->kind == MS_REF_LOCAL) {
+    /* A read that answers a part of its receiver in place (`m.get(k)`) lends the payload: its owner closes it. */
+    const bool lent = !stmt->u.branch.is_mutable && stmt->u.branch.cond->kind == MS_E_CALL &&
+                      ms_own_native_get(pass->program, pass->facts, stmt->u.branch.cond) != MS_NATIVE_GET_NONE;
+    if (bound != NULL && bound->kind == MS_REF_LOCAL && !lent) {
       const size_t before = pass->facts->closers.len;
       add_closer(pass, stmt->u.branch.binding->id, MS_REF_LOCAL, bound->local, ms_facts_type(pass->facts, stmt->u.branch.binding->id));
       if (stmt->u.branch.is_mutable && pass->facts->closers.len > before) {

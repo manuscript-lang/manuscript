@@ -66,7 +66,7 @@ test "a moved outer consumed across parks":
 fn take_inner(var o: Outer) Inner!:
 	tick()?
 
-	var inner = o.inner
+	var inner = o.inner.clone()
 	inner.tags.append("taken")
 	tick()?
 	return ok(inner)

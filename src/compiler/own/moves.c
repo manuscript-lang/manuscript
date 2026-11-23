@@ -3,6 +3,7 @@
 
 #include "compiler/check/methods.h"
 #include "compiler/own/bind.h"
+#include "compiler/own/expr_text.h"
 #include "compiler/own/class.h"
 #include "compiler/own/live.h"
 #include "compiler/own/result_borrows.h"
@@ -521,6 +522,35 @@ static bool fresh_value(const MsExpr *value) {
   return value->kind == MS_E_CALL || value->kind == MS_E_LIST || value->kind == MS_E_MAP;
 }
 
+/* `var x = o.inner`, where `o` is a parameter: the caller keeps `o.inner`, and a `var` is a value of its own, so the copy
+ * must be written. */
+static void note_var_borrow(Moves *pass, const MsStmt *stmt) {
+  const MsExpr *value = stmt->u.bind.value;
+  const MsExpr *root = value;
+  while (value != NULL && root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  uint32_t binding = 0;
+  const MsTy ty = value != NULL ? ms_facts_type(pass->facts, value->id) : MS_TY_NONE;
+  if (pass->instance || pass->depth != 0 || value == NULL || value->kind != MS_E_MEMBER || root->kind != MS_E_NAME ||
+      !ms_bind_of(pass->facts, root->id, &binding) ||
+      !(contains(&pass->varparams, binding) || contains(&pass->plainparams, binding)) || ty == MS_TY_NONE ||
+      ms_class_of(pass->classes, ty) == MS_CLASS_COPY || ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "`var ");
+  ms_strbuild_append(&text, ms_names_span(pass->program->names, stmt->u.bind.pattern->u.name));
+  ms_strbuild_append_text(&text, "` cannot take `");
+  ms_strbuild_append(&text, place_text(pass, value));
+  ms_strbuild_append_text(&text, "`: the caller keeps it, and a `var` is a value of its own; copy it with `");
+  ms_strbuild_append(&text, place_text(pass, value));
+  ms_strbuild_append_text(&text, ".clone()`, or change it in place through `");
+  ms_strbuild_append(&text, ms_names_span(pass->program->names, root->u.sym));
+  ms_strbuild_append_text(&text, "`");
+  ms_check_report(pass->program, pass->module, value->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 static void note_var(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
@@ -531,6 +561,17 @@ static void note_var(void *ctx, const MsStmt *stmt) {
   }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     ms_binding_list_push(&pass->vars, stmt->u.bind.pattern->id);
+    note_var_borrow(pass, stmt);
+  }
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
+      stmt->u.branch.is_mutable && !pass->instance && !mark_last_use(pass, stmt->u.branch.cond)) {
+    /* `if var x = name` moves `name` into `x` at its last use; anywhere else there is no entry in place to lend. */
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");
+    ms_own_expr_text(&text, pass->program->names, stmt->u.branch.cond);
+    ms_strbuild_append_text(&text, "` is not one; read the payload with `if x := value:`, then use `var copy = x.clone()` for an "
+                                   "independent mutable copy, or write the changed value back");
+    ms_check_report(pass->program, pass->module, stmt->u.branch.binding->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
       !stmt->u.branch.is_mutable) {
