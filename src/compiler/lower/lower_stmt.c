@@ -201,6 +201,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
   const bool in_cell = stmt->u.bind.is_mutable && fn->closing != NULL && local < fn->nvars &&
+                       fn->holds_value != NULL && !fn->holds_value[local] &&
                        mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE && mir_needs_drop(fn->cx->module, ty) && fresh;
   if (shared || in_cell || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
