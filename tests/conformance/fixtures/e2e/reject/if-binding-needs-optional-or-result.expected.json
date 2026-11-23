@@ -1,0 +1,27 @@
+{
+  "format": 1,
+  "phase": "check",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "format": 1,
+    "diagnostics": [
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "an if binding requires an Optional or Result, found Int; use 'if' for a Bool condition or 'match' for other alternatives",
+        "position": {
+          "file": "if-binding-needs-optional-or-result.ms",
+          "line": 6,
+          "column": 22,
+          "offset": 223
+        }
+      }
+    ],
+    "text": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "<DIR>/if-binding-needs-optional-or-result.ms:6:22: type: an if binding requires an Optional or Result, found Int; use 'if' for a Bool condition or 'match' for other alternatives\n   |\n 6 |     if item := items.get(0):\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+    }
+  }
+}
