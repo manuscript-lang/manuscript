@@ -820,6 +820,10 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       fn_list_set(fn, place, slot, args, out)) {
     return true;
   }
+  if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_swap") && argc == 3 &&
+      fn_list_swap(fn, place, slot, args, out)) {
+    return true;
+  }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_append") && argc == 2 &&
       fn_list_append(fn, place, slot, args, out)) {
     return true;
