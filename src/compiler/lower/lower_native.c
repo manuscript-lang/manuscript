@@ -646,12 +646,19 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
   fn->native_moves = taken;
   const MirTy ty = mir_b_ty(&fn->b, owned);
   const MirImm of_type = {.tag = MI_TY, .a = ty};
-  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
-  const MirValue stored[2] = {slot, owned};
-  (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  /* While the value is out of its place, a fault in the native closes the resources it holds. */
+  const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, place->id), fn->subst.vars, fn->subst.args,
+                                   fn->subst.count);
+  const MirValue guarded = checked != MS_TY_NONE && mir_needs_drop(fn->cx->module, ty) ? fn_pending_own(fn, checked, owned) : MIR_NONE;
+  MirValue slot = guarded;
+  if (guarded == MIR_NONE) {
+    slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
+    const MirValue stored[2] = {slot, owned};
+    (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
+  }
   wanted[0] = slot;
   const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
-  const MirValue updated = mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
+  const MirValue updated = guarded != MIR_NONE ? fn_pending_take(fn, guarded, ty) : mir_b_emit(&fn->b, MOP_Take, &slot, 1, of_type, ty);
   if (in_place ? !fn_put_field(fn, place, record, updated) : !fn_put_place(fn, place, updated)) {
     return MIR_NONE;
   }
@@ -965,7 +972,11 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
                      fn_closing_at(fn, receiver_ref, receiver->u.sym) != UINT32_MAX && !via_bound &&
                      fn_native_changes_receiver(fn, owner, operation, ret);
   MirValue through = MIR_NONE;
-  if (taken) {
+  const MirValue eager = fn->receiver_slot; /* the fresh receiver is already in a closing slot */
+  fn->receiver_slot = MIR_NONE;
+  if (eager != MIR_NONE && !via_bound && fn_native_changes_receiver(fn, owner, operation, ret)) {
+    through = eager;
+  } else if (taken) {
     const MirTy receiver_ty = mir_b_ty(&fn->b, args[0]);
     const MirImm of_type = {.tag = MI_TY, .a = receiver_ty};
     through = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
@@ -973,7 +984,7 @@ MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, con
     const MirValue stored[2] = {through, args[0]};
     (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
   }
-  const bool done = taken ? fn_native_through(fn, through, owner, operation, call->arg_count, args, ret, &result)
+  const bool done = taken || through != MIR_NONE ? fn_native_through(fn, through, owner, operation, call->arg_count, args, ret, &result)
                           : fn_native_on(fn, receiver, owner, operation, call->arg_count, args, ret, &result);
   fn->native_arg_moves = 0;
   if (done) {
