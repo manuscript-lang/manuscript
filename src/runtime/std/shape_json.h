@@ -9,6 +9,16 @@
 
 #include "abi/shape.h"
 
+/* A native handle that is written and read as a string (an IP address, a CIDR range), found by the runtime's name
+ * for it in the shape of an object. `text` fills `out` from the handle; `parse` builds the handle from the text. */
+typedef struct MsObjectCodec {
+  const char *name;
+  void (*text)(const MsObj *object, MsString *out);
+  uint8_t (*parse)(const MsString *text, MsObj **out);
+} MsObjectCodec;
+
+const MsObjectCodec *ms_object_codec(const char *name);
+
 /* ms-sig: msstd_json_w_value(handle w: *mut ObjCell<Writer>, shape: *const ShapeTable, value: *const u8) -> u8 @leaf */
 uint8_t msstd_json_w_value(void *writer, const MsShapeTable *table, const void *slot);
 /* ms-sig: msstd_json_stringify(shape: *const ShapeTable, value: *const u8, has_max_bytes: HasRaw, max_bytes:

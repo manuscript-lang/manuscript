@@ -263,6 +263,7 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
     uint32_t text = 0, json = 0;
     hook_functions(build, index, &text, &json);
     shape.flags |= (text != 0 ? MS_SHAPE_TEXT_FORM : 0) | (json != 0 ? MS_SHAPE_JSON_FORM : 0);
+    shape.name = add_mir_name(build, data->name);
   }
   (void)layouts;
   build->shapes.ptr[index] = shape;
