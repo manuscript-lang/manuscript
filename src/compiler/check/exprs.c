@@ -639,6 +639,10 @@ static void report_uninferred_callback(Body *body, const MsParam *param) {
  * written result, the expected one, or the first returned value's type. */
 static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTyTable *types = &body->program->types;
+  if (expected != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) && ms_ty_arg_count(types, expected) == 1 &&
+      ms_ty_kind(types, ms_ty_args(types, expected)[0]) == MS_TY_FUNCTION) {
+    expected = ms_ty_args(types, expected)[0]; /* a function literal where an optional function is wanted */
+  }
   bool shaped = expected != MS_TY_NONE && ms_ty_kind(types, expected) == MS_TY_FUNCTION;
   bool miscounted = false;
   if (shaped && ms_ty_param_count(types, expected) != expr->u.lambda.params.len) {
