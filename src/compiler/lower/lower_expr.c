@@ -341,8 +341,10 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   /* A field moves out of a narrowed local: the payload is taken whole, and the rest closes with it. */
   const MsExpr *left = expr->u.member.left;
   const bool narrowed = left->kind == MS_E_NAME && fn_read_type(fn, left) != ms_facts_type(fn->facts, left->id);
+  const MsTy member_ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args,
+                                    fn->subst.count);
   const bool leaves = narrowed && fn->placing_member != expr && taking && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE &&
-                      mir_needs_drop(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, expr->id)));
+                      (mir_needs_drop(fn->cx->module, fn_type(fn, member_ty)) || ms_check_holds_resource(fn->cx->program, member_ty));
   fn->narrow_take = leaves ? left : NULL;
   const MirValue read = fn_expr(fn, left, leaves ? LW_MOVE : LW_BORROW);
   fn->narrow_take = NULL;
@@ -363,7 +365,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
   const bool taken_at_last = taking && ((fn->facts->last != NULL && fn->facts->last[expr->id] != 0) ||
                                         expr->u.member.left->kind == MS_E_CALL);
   const bool moves = fn->placing_member != expr && (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || taken_at_last) &&
-                     mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
+                     (leaves || mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field)));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
   if (moves && !leaves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
     fn_scope_var_moved(fn, owner, ref->index, ms_facts_type(fn->facts, expr->u.member.left->id));

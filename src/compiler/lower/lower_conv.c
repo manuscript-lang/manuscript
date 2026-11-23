@@ -384,6 +384,9 @@ static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConver
         /* The binding gave its payload up: it holds an empty optional, which the scope's end closes as nothing. */
         mir_b_def_var(&fn->b, owner, mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, mir_b_ty(&fn->b, value)));
       }
+      if (fn->narrow_take == expr) { /* a field leaves it: the payload is an owner of its own, closed but for that field */
+        fn_own(fn, fn_scope(fn), unboxed);
+      }
       return unboxed;
     }
     return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
