@@ -43,11 +43,15 @@ import (
 	msstd_crypto_verify from "@std/internal/crypto.ms",
 )
 
+// A runtime hash state that `update` feeds and `finish` completes; the hash types wrap
+// it.
 export extern type NativeHasher
 
+// Feeds `data` into the running hash.
 fn NativeHasher.update(data: Bytes) Void:
 	msstd_crypto_hasher_update(self, data)
 
+// Returns the digest of everything fed so far.
 fn NativeHasher.finish() Bytes:
 	return msstd_crypto_hasher_finish(self)
 

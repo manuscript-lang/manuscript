@@ -9,7 +9,7 @@
 // `use` text, and `ms check --fix` rewrites the snippet so the text appears and `ms check`
 // passes. `none:` is for a removal no mechanical edit can carry. Add a snippet in the
 // same change that removes or renames a spelling. MS names the ms to run (default
-// target/release/ms). Usage: ms run tools/removed-check.ms
+// .artifacts/build/ci/src/cli/ms). Usage: ms run tools/removed-check.ms
 import (
 	working_directory from "@std/os/env.ms",
 	GlobOptions, glob, read_file, temporary, write_file from "@std/os/fs.ms",

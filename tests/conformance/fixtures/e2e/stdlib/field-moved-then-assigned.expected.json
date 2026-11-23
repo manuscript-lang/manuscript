@@ -1,0 +1,65 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 1,
+    "report": {
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [],
+      "summary": {
+        "available": 0,
+        "selected": 0,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": false,
+      "exit_code": 1,
+      "reason": "compile_error",
+      "stdout": "",
+      "diagnostics": [
+        {
+          "code": "MS3000",
+          "phase": "type",
+          "message": "cannot change `self.items` while `old` borrows it (binding of a part of it, at 10:5); finish using `old` before this, or give `old` its own value by ending its initializer with `.clone()`",
+          "position": {
+            "file": "field-moved-then-assigned.ms",
+            "line": 11,
+            "column": 10,
+            "offset": 225
+          }
+        }
+      ]
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "diagnostics[].code",
+      "diagnostics[].message",
+      "diagnostics[].phase",
+      "diagnostics[].position",
+      "diagnostics[].position.column",
+      "diagnostics[].position.file",
+      "diagnostics[].position.line",
+      "diagnostics[].position.offset",
+      "exit_code",
+      "format",
+      "reason",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests"
+    ],
+    "stderr": ""
+  }
+}

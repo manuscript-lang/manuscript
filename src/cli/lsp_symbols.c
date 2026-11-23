@@ -105,7 +105,7 @@ static void write_declaration(const Outline *outline, MsStrBuild *out, uint32_t 
     const MsSymbol *symbol = symbol_of(outline, module, decl, declared);
     if (symbol != NULL && (decl->kind == MS_D_FN || decl->kind == MS_D_CONST) && symbol->ty != MS_TY_NONE &&
         !ms_ty_is_invalid(&outline->program->types, symbol->ty)) {
-      ms_ty_show(&detail, outline->program->names, &outline->program->types, symbol->ty);
+      ms_ty_show_plain(&detail, outline->program->names, &outline->program->types, symbol->ty);
     }
     if (decl->kind == MS_D_CONST) kind = KIND_CONSTANT;
   }
@@ -219,6 +219,8 @@ bool lsp_format_document(const LspDoc *doc, MsStrBuild *out, MsStrBuild *error) 
   const MsSpan source = ms_string_span(&doc->text);
   const bool ok = ms_format(&arena, source, &formatted, &diag);
   if (!ok) {
+    ms_strbuild_append(error, ms_string_span(&doc->path));
+    ms_strbuild_printf(error, ":%u:%u: parse: ", diag.pos.line, diag.pos.column);
     ms_strbuild_append(error, diag.message);
   } else {
     ms_strbuild_append_text(out, "[{\"range\":");

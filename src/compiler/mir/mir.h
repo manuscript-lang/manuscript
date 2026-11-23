@@ -90,7 +90,10 @@ typedef enum MirImmKind {
 } MirImmKind;
 
 enum {
-  MIR_E_READS = 1, MIR_E_WRITES = 2, MIR_E_FAULTS = 4, MIR_E_OWNERSHIP = 8, MIR_E_ALLOC = 16, MIR_E_IO = 32
+  MIR_E_READS = 1, MIR_E_WRITES = 2, MIR_E_FAULTS = 4, MIR_E_OWNERSHIP = 8, MIR_E_ALLOC = 16, MIR_E_IO = 32,
+  /* with MIR_E_FAULTS: the only fault is a refused allocation, which leaves every place the operands came from
+   * holding its value, so a cleanup entry for such a place need not be retired around the instruction */
+  MIR_E_OOM = 64
 };
 
 typedef enum MirOp {
@@ -361,7 +364,7 @@ typedef enum MirRole {
   MR_SHIELD_EXIT, MR_UNWINDING, MR_MAP_PROBE_INT, MR_MAP_PROBE_STR, MR_SET_PROBE_INT, MR_STRING_SLICE,
   MR_BYTES_READ_WORD, MR_BYTES_INDEX_OF_BYTE, MR_STRING_PARSE_INT, MR_STRING_CONTAINS,
   MR_STRING_STARTS_WITH, MR_STRING_ENDS_WITH, MR_STRING_COMPARE, MR_STRING_SCALAR_STEP,
-  MR_STRING_SCALAR_AT
+  MR_STRING_SCALAR_AT, MR_SET_PROBE_STR
 } MirRole;
 
 typedef struct MirExtern {

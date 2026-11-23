@@ -44,6 +44,7 @@ typedef struct MsNetCore {
   bool broken;              /* loop thread: a write was abandoned, so the stream is torn */
   void *reading;            /* loop thread: the read or receive in progress */
   void *accepting;          /* loop thread: accept operations waiting, oldest first */
+  struct MsNetOp *close_wait; /* loop thread: the explicit close that waits for libuv to release the descriptor */
   void *ready;              /* loop thread: accepted connections nobody took yet, oldest first */
   MsNetTls *tls;            /* loop thread: the session of a TLS connection, NULL for plain */
   MsNetTlsCtx *tls_ctx;     /* a TLS listener's context, shared by the connections it accepts */

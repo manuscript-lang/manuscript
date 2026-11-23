@@ -12,7 +12,7 @@ static size_t probe(const MsNames *names, MsSpan text, uint64_t hash) {
   const size_t mask = names->table_size - 1;
   size_t slot = (size_t)hash & mask;
   while (names->table[slot] != 0) {
-    const MsName id = names->table[slot] - 1;
+    const size_t id = names->table[slot] - 1;
     if (names->hashes.ptr[id] == hash && ms_span_equal(names->spans.ptr[id], text)) {
       return slot;
     }
@@ -26,7 +26,7 @@ static void rebuild_table(MsNames *names, size_t table_size) {
   names->table = ms_alloc_zeroed(table_size * sizeof(uint32_t));
   names->table_size = table_size;
   const size_t mask = table_size - 1;
-  for (size_t id = 0; id < names->spans.len; id++) {
+  for (size_t id = 0; id < names->spans.len; id++) { /* own indices */
     size_t slot = (size_t)names->hashes.ptr[id] & mask;
     while (names->table[slot] != 0) {
       slot = (slot + 1) & mask;
@@ -36,12 +36,17 @@ static void rebuild_table(MsNames *names, size_t table_size) {
 }
 
 static MsName add_name(MsNames *names, MsSpan text, uint64_t hash) {
-  if (names->spans.len >= UINT32_MAX - 1) {
+  if (names->base_len + names->spans.len >= UINT32_MAX - 1) {
     ms_fatal(MS_FATAL_OVERFLOW, "too many names");
   }
   ms_span_list_push(&names->spans, ms_arena_copy(&names->bytes, text));
   ms_hash_list_push(&names->hashes, hash);
-  return (MsName)(names->spans.len - 1);
+  return names->base_len + (MsName)(names->spans.len - 1);
+}
+
+void ms_names_init_over(MsNames *names, const MsNames *base) {
+  *names = (MsNames){.bytes = ms_arena_new(), .base = base, .base_len = (uint32_t)ms_names_count(base)};
+  rebuild_table(names, MS_NAMES_INITIAL_TABLE);
 }
 
 void ms_names_init(MsNames *names) {
@@ -55,33 +60,46 @@ void ms_names_init(MsNames *names) {
 
 MsName ms_names_intern(MsNames *names, MsSpan text) {
   const uint64_t hash = ms_hash_span(text);
+  if (names->base != NULL) {
+    const size_t inherited = probe(names->base, text, hash);
+    if (names->base->table[inherited] != 0) {
+      return names->base->table[inherited] - 1;
+    }
+  }
   size_t slot = probe(names, text, hash);
   if (names->table[slot] != 0) {
-    return names->table[slot] - 1;
+    return names->base_len + names->table[slot] - 1;
   }
   const MsName id = add_name(names, text, hash);
   if (names->spans.len * 2 > names->table_size) { /* keep the load under one half */
     rebuild_table(names, names->table_size * 2);
   } else {
-    names->table[slot] = id + 1;
+    names->table[slot] = id - names->base_len + 1;
   }
   return id;
 }
 
 bool ms_names_find(const MsNames *names, MsSpan text, MsName *out) {
-  const size_t slot = probe(names, text, ms_hash_span(text));
+  const uint64_t hash = ms_hash_span(text);
+  if (names->base != NULL && ms_names_find(names->base, text, out)) {
+    return true;
+  }
+  const size_t slot = probe(names, text, hash);
   if (names->table[slot] == 0) {
     return false;
   }
-  *out = names->table[slot] - 1;
+  *out = names->base_len + names->table[slot] - 1;
   return true;
 }
 
 MsSpan ms_names_span(const MsNames *names, MsName name) {
-  if (name >= names->spans.len) {
+  if (name < names->base_len) {
+    return ms_names_span(names->base, name);
+  }
+  if (name - names->base_len >= names->spans.len) {
     ms_fatal(MS_FATAL_OUT_OF_RANGE, "name id out of range");
   }
-  return names->spans.ptr[name];
+  return names->spans.ptr[name - names->base_len];
 }
 
 void ms_names_free(MsNames *names) {

@@ -370,7 +370,9 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
      * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
     const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
-    const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
+    uint32_t released = ref->index < 32 ? UINT32_C(1) << ref->index : 0;
+    released |= fn_close_rest(fn, expr, base, data->id, ref->index);
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = released};
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &base, 1, (MirImm){0}, MIR_NONE);
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &base, 1, mask, MIR_NONE);
     return taken;
@@ -841,7 +843,8 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   /* A name read for the last time dies with the call too: its payload leaves it. */
   const MsExpr *dying = payload && !whole && fn_call_callee(expr)->kind == MS_E_MEMBER ? fn_call_callee(expr)->u.member.left : NULL;
   const MsRef *dying_ref = dying != NULL && dying->kind == MS_E_NAME ? ms_facts_ref(fn->facts, dying->id) : NULL;
-  const bool name_dies = dying_ref != NULL && dying_ref->kind == MS_REF_LOCAL && leaves_binding(fn, dying);
+  const bool name_dies = dying_ref != NULL && (dying_ref->kind == MS_REF_LOCAL || dying_ref->kind == MS_REF_PARAM) &&
+                         leaves_binding(fn, dying);
   if (!name_dies && !fn_fresh_owner(fn, last->args[position])) {
     return MIR_NONE;
   }

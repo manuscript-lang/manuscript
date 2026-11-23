@@ -19,10 +19,6 @@ ms-driver = { path = "../ms-driver" }
 name = "ms-tooling-dev"
 path = "src/bin/ms-tooling-dev.rs"
 
-[[bin]]
-name = "ms-docgen"
-path = "src/bin/ms-docgen.rs"
-
 [[test]]
 name = "it"
 path = "tests/main.rs"

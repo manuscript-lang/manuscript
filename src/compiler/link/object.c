@@ -7,6 +7,7 @@
 #include "base/bytes.h"
 #include "compiler/emit/emit.h"
 #include "compiler/link/asm_tables.h"
+#include "compiler/link/llvm_inproc.h"
 
 /* Runs `argv` with its output in `log`; on failure `why` names `what` and holds the output. */
 static bool run_tool(MsSpan what, const MsSpan *argv, size_t argc, MsSpan log, MsStrBuild *why) {
@@ -20,21 +21,38 @@ static MsString in_directory(MsSpan directory, const char *name) {
   return ms_strbuild_finish(&path);
 }
 
+/* A Debug build optimizes lightly: SROA, early CSE, instruction combining and CFG simplification keep frames as small
+ * as `default<O2>` does (measured on a 30 MB program: 0.2% apart) for about a fifth of the optimizer's time; `llc`
+ * pairs it with -O1, the basic register allocator and no machine scheduler, which cost no frame size. FastISel is
+ * not used: it changes the line a fault trace reports. */
+static const char debug_pipeline[] = "-passes=function(sroa,early-cse,simplifycfg,instcombine<no-verify-fixpoint>,sroa,simplifycfg)";
+
+/* DSE's default memory-walk limit makes one huge generated function (60k lines in the YAML parser) cost 4 s of a
+ * 15 s optimizer run; 10 takes 15% off the module's optimizer time and leaves the suite's binaries unchanged. */
+#define DSE_WALK_LIMIT "-dse-memoryssa-walklimit=10"
+
 /* `opt` over `input`, writing the bitcode to `bitcode`. */
 static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan bitcode, MsSpan log,
                      MsStrBuild *why) {
-  MsSpan argv[10];
+  MsSpan argv[14];
   size_t argc = 0;
   argv[argc++] = options->opt;
   if (!options->vectorize) {
     argv[argc++] = ms_span_of_text("-vectorize-loops=false");
     argv[argc++] = ms_span_of_text("-vectorize-slp=false");
   }
+  /* Dead-store elimination walks the memory defs of a block; on a function of thousands of statements, one block of
+   * tens of thousands of stores and calls, that was half of `opt`'s time (html: 6.9 s of 12.8 s) and removed one line
+   * of 239000 more than the limits do. */
+  argv[argc++] = ms_span_of_text("-dse-memoryssa-defs-per-block-limit=500");
+  argv[argc++] = ms_span_of_text("-dse-memoryssa-walklimit=20");
+  argv[argc++] = ms_span_of_text("-dse-memoryssa-scanlimit=50");
   if (options->verify) {
     argv[argc++] = ms_span_of_text("-verify-each");
   }
+  argv[argc++] = ms_span_of_text(DSE_WALK_LIMIT);
   argv[argc++] = triple_flag;
-  argv[argc++] = ms_span_of_text(options->debug ? "-passes=default<O2>" : "-passes=default<O3>");
+  argv[argc++] = ms_span_of_text(options->debug ? debug_pipeline : "-passes=default<O3>");
   argv[argc++] = input;
   argv[argc++] = ms_span_of_text("-o");
   argv[argc++] = bitcode;
@@ -44,10 +62,14 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
 /* `llc` over `input`, writing the object. */
 static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
                      const char *filetype, MsStrBuild *why) {
-  MsSpan argv[12];
+  MsSpan argv[14];
   size_t argc = 0;
   argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O2" : "-O3") : "-O0");
+  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O1" : "-O3") : "-O0");
+  if (options->debug && options->speed) {
+    argv[argc++] = ms_span_of_text("-regalloc=basic");
+    argv[argc++] = ms_span_of_text("-enable-misched=0");
+  }
   argv[argc++] = ms_span_of_text(filetype);
   argv[argc++] = ms_span_of_text("-relocation-model=pic");
   argv[argc++] = triple_flag;
@@ -76,7 +98,12 @@ static void wrap_assembly(MsSpan triple, MsSpan text, MsStrBuild *ir) {
     for (size_t at = start; at < end; at++) {
       uint8_t byte = text.ptr[at];
       if (byte >= 0x20 && byte < 0x7f && byte != '"' && byte != '\\') {
-        ms_strbuild_append_byte(ir, byte);
+        const size_t run = at;
+        while (at + 1 < end && text.ptr[at + 1] >= 0x20 && text.ptr[at + 1] < 0x7f && text.ptr[at + 1] != '"' &&
+               text.ptr[at + 1] != '\\') {
+          at++;
+        }
+        ms_strbuild_append(ir, ms_span_of(text.ptr + run, at + 1 - run));
         continue;
       }
       ms_strbuild_append_byte(ir, '\\');
@@ -122,11 +149,50 @@ static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSp
   return ok;
 }
 
+/* The in-process path: the same steps as the child processes, through the loaded libLLVM. */
+static bool inproc_object(const ObjectOptions *options, MsSpan triple, MsSpan ir, MsSpan object, MsStrBuild *why) {
+  LlvmSettings settings = {.library = options->llvm, .triple = triple,
+                           .pipeline = !options->speed ? NULL : options->debug ? debug_pipeline + sizeof("-passes=") - 1 : "default<O3>",
+                           .vectorize = options->vectorize, .verify = options->verify,
+                           .codegen_level = options->speed ? (options->debug ? 1 : 3) : 0,
+                           .fast_codegen = options->debug,
+                           .assembly = options->tables != NULL};
+  LlvmBuffer first = {0};
+  bool ok = llvm_compile(&settings, ir, &first, why);
+  if (ok && options->tables == NULL) {
+    ok = ms_file_write(object, ms_span_of((const uint8_t *)first.data, first.size)) ||
+         (ms_strbuild_append_text(why, "cannot write the object"), false);
+  } else if (ok) {
+    MsArena arena = ms_arena_new();
+    MsStrBuild text = ms_strbuild_new();
+    MsStrBuild wrapped = ms_strbuild_new();
+    ok = link_asm_tables(&arena, options->module, options->tables,
+                         ms_span_of((const uint8_t *)first.data, first.size), &text, why);
+    LlvmBuffer second = {0};
+    if (ok) {
+      wrap_assembly(triple, ms_strbuild_span(&text), &wrapped);
+      LlvmSettings plain = {.library = options->llvm, .triple = triple};
+      ok = llvm_compile(&plain, ms_strbuild_span(&wrapped), &second, why) &&
+           (ms_file_write(object, ms_span_of((const uint8_t *)second.data, second.size)) ||
+            (ms_strbuild_append_text(why, "cannot write the object"), false));
+    }
+    llvm_buffer_free(&second);
+    ms_strbuild_free(&wrapped);
+    ms_strbuild_free(&text);
+    ms_arena_free(&arena);
+  }
+  llvm_buffer_free(&first);
+  return ok;
+}
+
 bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, MsStrBuild *why) {
   MsSpan triple = emit_host_triple();
   if (triple.len == 0) {
     ms_strbuild_append_text(why, "native builds are not supported on this host");
     return false;
+  }
+  if (options->llvm.len != 0) {
+    return inproc_object(options, triple, ir, object, why);
   }
   MsStrBuild flag = ms_strbuild_new();
   ms_strbuild_append_text(&flag, "-mtriple=");

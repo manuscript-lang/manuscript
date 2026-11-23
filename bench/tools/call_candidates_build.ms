@@ -35,7 +35,7 @@ fn measure(
 				if filter != "" and not file.ends_with(f"/{filter}"): continue
 
 				for label in order:
-					binary := if label == "before": before else: after
+					binary := if label == "before": before.clone() else: after.clone()
 					prefix := f"{directory}/round-{round}-{label}-{mode}-{count}"
 					command := [
 						"60",

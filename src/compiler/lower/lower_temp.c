@@ -47,6 +47,37 @@ static bool callee_consumes(LowerFn *fn, const MsCall *call, uint32_t index) {
   return state.found;
 }
 
+/* Whether the call `call` answers a part of a place that outlives the statement: a result that borrows from an argument
+ * that is a place, or from a call that answers a part of one. */
+static bool part_of_place(LowerFn *fn, const MsExpr *call, uint32_t depth) {
+  const MsCall *fact = depth < 8 ? ms_facts_call(fn->facts, call->id) : NULL;
+  if (fact == NULL || (fact->callee.kind != MS_REF_METHOD && fact->callee.kind != MS_REF_NATIVE && fact->callee.kind != MS_REF_FUNCTION)) {
+    return false;
+  }
+  const MsFunc *declared = ms_own_find_func(fn->cx->program, &fact->callee);
+  if (declared != NULL && declared->result_moves) {
+    return false; /* a `move` result is a value of its own */
+  }
+  const MsExpr *callee = call->u.call.callee;
+  const bool has_receiver = callee->kind == MS_E_MEMBER && fact->callee.kind != MS_REF_FUNCTION;
+  for (uint32_t position = 0; position <= call->u.call.args.len + (has_receiver ? 1u : 0u); position++) {
+    if (!ms_own_call_borrows(fn->cx->program, fact, position)) {
+      continue;
+    }
+    const uint32_t arg = position - (has_receiver ? 1u : 0u);
+    const MsExpr *source = has_receiver && position == 0 ? callee->u.member.left
+                           : arg < call->u.call.args.len ? call->u.call.args.ptr[arg].value
+                                                         : NULL;
+    if (source == NULL) {
+      continue;
+    }
+    if (source->kind != MS_E_CALL || part_of_place(fn, source, depth + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* The type the borrowed argument `index` (written as `written`) has once the callee gets it: the Optional it is
  * converted to, else its own. False when the argument is not a borrowed call result, or the call may hand a part of it
  * on in its result (it then owns what it took). */
@@ -55,7 +86,8 @@ static bool temp_type(LowerFn *fn, const MsExpr *expr, uint32_t index, const MsE
   MsTyTable *types = &fn->cx->program->types;
   if (call == NULL || written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) ||
       callee_consumes(fn, call, index) ||
-      ms_own_native_get(fn->cx->program, fn->facts, written) == MS_NATIVE_GET_MAP) { /* `m.get(k)` views the entry: its map closes it */
+      ms_own_native_get(fn->cx->program, fn->facts, written) == MS_NATIVE_GET_MAP ||  /* `m.get(k)` views the entry: its map closes it */
+      part_of_place(fn, written, 0)) {                                                 /* `xs.first().get()` is a part of `xs`, which closes it */
     return false;
   }
   const MsTy result = ms_ty_subst(types, ms_facts_type(fn->facts, expr->id), fn->subst.vars, fn->subst.args, fn->subst.count);
@@ -116,7 +148,12 @@ static bool member_temp_type(LowerFn *fn, const MsExpr *member, MsTy *checked) {
                                : NULL;
     const MsNativeGet view = source != NULL && source->kind == MS_E_CALL ? ms_own_native_get(fn->cx->program, fn->facts, source) : MS_NATIVE_GET_NONE;
     if (source != NULL && source->kind == MS_E_CALL && view != MS_NATIVE_GET_LIST && view != MS_NATIVE_GET_MAP) {
-      borrows_temporary = true;
+      /* A call that is itself a part of a place (`xs.first().get()`) keeps its owner: only a fresh value is a temporary. */
+      if (part_of_place(fn, source, 0)) {
+        borrows_place = true;
+      } else {
+        borrows_temporary = true;
+      }
     } else {
       borrows_place = true;
     }
@@ -190,6 +227,15 @@ static bool drops_resources(LowerFn *fn, const MsExpr *callee) {
   return fn_temp_closes(fn, elem);
 }
 
+/* A closure a call builds and the callee only borrows (`xs.ok_or_else(make())`): its captures close with the statement. */
+static bool closure_temp(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
+  if (written->kind != MS_E_CALL || fn_arg_moves(fn, expr, call, index, written) || callee_consumes(fn, call, index)) {
+    return false;
+  }
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  return ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, ty) == MS_TY_FUNCTION && mir_needs_drop(fn->cx->module, fn_type(fn, ty));
+}
+
 typedef struct TempScan {
   LowerFn *fn;
   uint32_t skip; /* open expressions whose parts run conditionally, or in another function */
@@ -222,7 +268,7 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
   for (uint32_t index = 0; call != NULL && !scan->found && index < call->arg_count; index++) {
     const MsExpr *written = call->args[index].source == MS_ARG_WRITTEN ? fn_written_arg(expr, call->args[index].node.node) : NULL;
     MsTy checked = MS_TY_NONE;
-    scan->found = written != NULL && temp_type(scan->fn, expr, index, written, &checked);
+    scan->found = written != NULL && (temp_type(scan->fn, expr, index, written, &checked) || closure_temp(scan->fn, expr, call, index, written));
   }
 }
 
@@ -306,4 +352,32 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
     }
   }
   return scan.found || scan.receiver;
+}
+
+/* The record `base` loses the field `moved` to its new owner: the resources its other fields hold close with the
+ * statement, last field first, instead of being released unclosed. Returns the mask of the fields taken out. */
+uint32_t fn_close_rest(LowerFn *fn, const MsExpr *member, MirValue base, uint32_t type_id, uint32_t moved) {
+  MsCheckProgram *program = fn->cx->program;
+  const MsTy owner = ms_ty_subst(&program->types, ms_facts_type(fn->facts, member->u.member.left->id), fn->subst.vars, fn->subst.args,
+                                 fn->subst.count);
+  const MsDef *def = owner != MS_TY_NONE ? ms_check_def_of(program, owner) : NULL;
+  const MirTypeDef *record = &fn->cx->module->type_defs.ptr[type_id];
+  uint32_t taken = 0;
+  for (uint32_t at = 0; def != NULL && at < record->nfields && at < 32 && at < def->fields.len; at++) {
+    const MirTy field_ty = record->fields[at].ty;
+    if (at == moved || !mir_needs_drop(fn->cx->module, field_ty)) {
+      continue;
+    }
+    const MsTy checked = ms_check_part_type(program, owner, def, def->fields.ptr[at].ty);
+    if (!fn_temp_closes(fn, checked)) {
+      continue;
+    }
+    const MirImm imm = {.tag = MI_FIELD, .a = type_id, .b = at};
+    const MirValue field = mir_b_emit(&fn->b, MOP_TypeGet, &base, 1, imm, field_ty);
+    const MirValue out = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+    if (fn_pending_own(fn, checked, out) != MIR_NONE) {
+      taken |= UINT32_C(1) << at;
+    }
+  }
+  return taken;
 }

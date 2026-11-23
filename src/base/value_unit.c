@@ -100,11 +100,41 @@ static void test_names(void) {
   ms_names_free(&names);
 }
 
+/* A table layered over a frozen base keeps the base's ids, numbers new texts after them, and leaves the base alone. */
+static void test_names_over(void) {
+  MsNames base;
+  ms_names_init(&base);
+  const MsName alpha = ms_names_intern(&base, ms_span_of_text("alpha"));
+  const size_t base_count = ms_names_count(&base);
+  MsNames over;
+  ms_names_init_over(&over, &base);
+  CHECK(ms_names_intern(&over, ms_span_of_text("alpha")) == alpha);
+  CHECK(ms_names_intern(&over, ms_span_of_text("")) == MS_NAME_EMPTY);
+  const MsName beta = ms_names_intern(&over, ms_span_of_text("beta"));
+  CHECK(beta == base_count);
+  for (uint64_t i = 0; i < 1000; i++) { /* growth rebuilds the table */
+    MsStrBuild builder = ms_strbuild_new();
+    ms_strbuild_append_u64(&builder, i);
+    CHECK(ms_names_intern(&over, ms_strbuild_span(&builder)) == base_count + 1 + i);
+    ms_strbuild_free(&builder);
+  }
+  MsName found = 0;
+  CHECK(ms_names_intern(&over, ms_span_of_text("beta")) == beta);
+  CHECK(ms_names_find(&over, ms_span_of_text("beta"), &found) && found == beta);
+  CHECK(ms_names_find(&over, ms_span_of_text("alpha"), &found) && found == alpha);
+  CHECK(ms_span_is_text(ms_names_span(&over, alpha), "alpha") && ms_span_is_text(ms_names_span(&over, beta), "beta"));
+  CHECK(ms_names_count(&over) == base_count + 1001);
+  CHECK(ms_names_count(&base) == base_count && !ms_names_find(&base, ms_span_of_text("beta"), &found));
+  ms_names_free(&over);
+  ms_names_free(&base);
+}
+
 int main(void) {
   test_strings();
   test_builder();
   test_list();
   test_arena();
   test_names();
+  test_names_over();
   return failures == 0 ? 0 : 1;
 }

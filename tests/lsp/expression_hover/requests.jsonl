@@ -1,0 +1,11 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "import twice from \"./util.ms\"\n\nfn compute(value: Int) Int:\n    return twice(value) + 123\n\nfn flag() Bool:\n    return true\n"}}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 3, "character": 26}}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 3, "character": 24}}}
+{"jsonrpc": "2.0", "id": 4, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 6, "character": 12}}}
+{"jsonrpc": "2.0", "id": 5, "method": "textDocument/hover", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 4, "character": 0}}}
+{"jsonrpc": "2.0", "id": 6, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 0, "character": 24}}}
+{"jsonrpc": "2.0", "id": 7, "method": "textDocument/definition", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 0, "character": 3}}}
+{"jsonrpc": "2.0", "id": 8, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}

@@ -451,6 +451,7 @@ fn String.to_string() String:
 fn String.pad_start(target_length: Int, padding: String) String:
 	return padding_for(self, target_length, padding) + self
 
+// Pads on the right until the scalar length reaches `target_length`; see `pad_start`.
 fn String.pad_end(target_length: Int, padding: String) String:
 	return self + padding_for(self, target_length, padding)
 
@@ -476,32 +477,42 @@ fn padding_for(text: String, target_length: Int, padding: String) String:
 fn Int.clone() Int:
 	return self
 
+// Returns the value itself: a Bool copies by value.
 fn Bool.clone() Bool:
 	return self
 
+// Returns the value itself: a Float copies by value.
 fn Float.clone() Float:
 	return self
 
+// Returns the value itself: a Float32 copies by value.
 fn Float32.clone() Float32:
 	return self
 
+// Returns the value itself: a Int8 copies by value.
 fn Int8.clone() Int8:
 	return self
 
+// Returns the value itself: a Int16 copies by value.
 fn Int16.clone() Int16:
 	return self
 
+// Returns the value itself: a Int32 copies by value.
 fn Int32.clone() Int32:
 	return self
 
+// Returns the value itself: a UInt8 copies by value.
 fn UInt8.clone() UInt8:
 	return self
 
+// Returns the value itself: a UInt16 copies by value.
 fn UInt16.clone() UInt16:
 	return self
 
+// Returns the value itself: a UInt32 copies by value.
 fn UInt32.clone() UInt32:
 	return self
 
+// Returns the value itself: a UInt64 copies by value.
 fn UInt64.clone() UInt64:
 	return self

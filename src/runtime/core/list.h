@@ -73,7 +73,7 @@ void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8
 /* ms-sig: msrt_list_insert_copy(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection
  * */
 void msrt_list_insert_copy(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
-/* ms-sig: msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @end */
+/* ms-sig: msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @inline=list_pop @end */
 uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out);
 /* ms-sig: msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @inline=list_set */
 void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
@@ -82,7 +82,7 @@ void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t 
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out);
 /* ms-sig: msrt_list_remove_take(v: *mut VecVal, d: ElemDesc, index: i64, out: *mut VecVal) @domain=collection */
 void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList *taken);
-/* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @end */
+/* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @inline=list_swap @end */
 void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j);
 /* ms-sig: msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @domain=collection @end */
 void msrt_list_remove(MsList *v, const MsTypeDesc *d, int64_t index);
@@ -125,7 +125,7 @@ void msrt_list_pieces(const MsList *v, const MsTypeDesc *d, const MsTypeDesc *od
  * @domain=collection @end */
 void msrt_list_concat(const MsList *a, const MsList *b, const MsTypeDesc *d, MsList *out);
 /* ms-sig: msrt_list_repeat(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection
- * */
+ * @method=List.repeated */
 void msrt_list_repeat(const MsList *v, const MsTypeDesc *d, int64_t count, MsList *out);
 /* ms-sig: msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *const VecVal) @domain=collection @end */
 void msrt_list_extend(MsList *v, const MsTypeDesc *d, const MsList *other);

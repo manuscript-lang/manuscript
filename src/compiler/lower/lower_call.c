@@ -48,176 +48,6 @@ bool fn_is_text_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
 }
 
-void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
-  while (place->kind == MS_E_MEMBER || (place->kind == MS_E_UNARY && place->op == MS_U_TRY)) {
-    place = place->kind == MS_E_MEMBER ? place->u.member.left : place->u.bin.left;
-  }
-  MsExpr *container = NULL;
-  MsExpr *key = NULL;
-  if (!ms_expr_index(place, &container, &key)) {
-    return;
-  }
-  fn_presolve_keys(fn, container);
-  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved)) {
-    return;
-  }
-  const MirValue value = fn_expr(fn, key, LW_BORROW);
-  if (value == MIR_NONE) {
-    return;
-  }
-  fn->presolved[fn->npresolved].expr = key;
-  fn->presolved[fn->npresolved++].value = value;
-  MirValue element = MIR_NONE; /* a list element that is not there faults now, before a later argument runs */
-  (void)fn_list_element_addr(fn, place, &element);
-}
-
-/* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
-/* Moves the value of `place` into a new slot and returns the slot's address. */
-MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier) {
-  MirValue owned;
-  if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_try_place_changeable(fn, place->u.bin.left)) {
-    return fn_try_var_slot(fn, place, out);
-  }
-  MirValue element;
-  const MsRef *named = place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
-  if (named != NULL && named->kind == MS_REF_PARAM && fn->param_vars == NULL && fn->default_base != MIR_NONE &&
-      fn->default_call == NULL) {
-    /* A field default passes an earlier field of the record under construction on as `var`: the callee changes it in place. */
-    const MirTyData *data = mir_ty_data(fn->cx->module, fn->default_record_ty);
-    if (data->kind != MK_TYPE || named->local >= fn->cx->module->type_defs.ptr[data->id].nfields) {
-      (void)fn_fail(fn, "a field default reads a field its record does not have");
-      return MIR_NONE;
-    }
-    const MirImm field = {.tag = MI_FIELD, .a = data->id, .b = named->local};
-    element = mir_b_emit(&fn->b, MOP_PtrField, &fn->default_base, 1, field, MIR_PTR);
-    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
-    return element;
-  }
-  if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
-    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
-    return element;
-  }
-  if (fn_list_element_addr(fn, place, &element)) {
-    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
-    return element;
-  }
-  if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &element)) { /* a field of a closing local changes where it lies */
-    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
-    return element;
-  }
-  MsExpr *indexed = NULL;
-  MsExpr *index_key = NULL;
-  /* `xs[i]` with a name for `i` parses as a type application, so ask for the index form, not the node kind. */
-  const bool is_place = place->kind == MS_E_NAME || place->kind == MS_E_MEMBER || ms_expr_index(place, &indexed, &index_key);
-  MirValue record = MIR_NONE;
-  bool shared = false;
-  if (is_place) {
-    /* A field of an owning record is taken out of it, not copied; `fn_put_field` stores it back. */
-    /* Another field of a variable an earlier argument already took: it is read from that record, which goes back once. */
-    for (uint32_t at = 0; at < nearlier && !shared; at++) {
-      if (earlier[at].record != MIR_NONE && earlier[at].place != NULL && fn_same_field_root(fn, earlier[at].place, place) &&
-          fn_read_field(fn, place, earlier[at].record, &owned)) {
-        record = earlier[at].record;
-        shared = true;
-      }
-    }
-    if (!shared && !fn_take_field(fn, place, &record, &owned) && !fn_take_place(fn, place, &owned)) {
-      return MIR_NONE;
-    }
-  } else {
-    /* A temporary: the callee changes it and what is left is dropped after the call. */
-    owned = fn_expr(fn, place, LW_MOVE);
-    /* A resource: it waits in a closing slot the callee changes in place, and the slot closes what is left. */
-    const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, place->id), fn->subst.vars,
-                                     fn->subst.args, fn->subst.count);
-    if (owned != MIR_NONE && fn->temps && checked != MS_TY_NONE) {
-      const MirValue kept = fn_pending_own(fn, checked, owned);
-      if (kept != MIR_NONE) {
-        *out = (VarSlot){NULL, kept, mir_b_ty(&fn->b, owned), MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
-        return kept;
-      }
-    }
-    if (owned != MIR_NONE && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
-      (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &owned, 1, (MirImm){0}, MIR_NONE);
-    }
-  }
-  if (owned == MIR_NONE) {
-    return MIR_NONE;
-  }
-  if (shared && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, owned))) {
-    /* The field leaves the record an earlier argument took; `fn_put_field_chain` fills it again. */
-    owned = mir_b_emit(&fn->b, MOP_MoveOut, &owned, 1, (MirImm){0}, mir_b_ty(&fn->b, owned));
-  }
-  const MirTy ty = mir_b_ty(&fn->b, owned);
-  const MirImm of_type = {.tag = MI_TY, .a = ty};
-  const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
-  const MirValue stored[2] = {slot, owned};
-  (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, false, MIR_NONE, MIR_NONE, NULL};
-  return slot;
-}
-
-/* Stores slot `at`'s value into its place. A field's record carries the change on to the later fields of the same root. */
-static bool put_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at, MirValue value) {
-  if (slots[at].record == MIR_NONE) {
-    return fn_put_place(fn, slots[at].place, value);
-  }
-  const MirValue old = slots[at].record;
-  MirValue record = old;
-  bool shared = false; /* a later field of the same record changes it again: the record is stored once, by the last */
-  for (uint32_t later = at + 1; later < count; later++) {
-    shared = shared || slots[later].record == old;
-  }
-  if (!fn_put_field_chain(fn, slots[at].place, old, value, &record, !shared)) {
-    return false;
-  }
-  for (uint32_t later = at + 1; later < count; later++) {
-    if (slots[later].record == old) {
-      slots[later].record = record;
-    }
-  }
-  return true;
-}
-
-/* After the call: slot `at`'s value goes back into the place it came from. */
-static bool slot_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at) {
-  if (slots[at].in_place) {
-    return true;
-  }
-  const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
-  const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
-                                      &slots[at].slot, 1, of_type, slots[at].ty);
-  if (slots[at].optional != MIR_NONE) {
-    const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
-    if (slots[at].home != MIR_NONE) {
-      const MirValue stored[2] = {slots[at].home, wrapped};
-      (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-      return true;
-    }
-    return put_back(fn, slots, count, at, wrapped);
-  }
-  if (slots[at].place == NULL) {
-    if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
-      (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
-    }
-    return true;
-  }
-  return put_back(fn, slots, count, at, updated);
-}
-
-bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count) {
-  for (uint32_t at = 0; at < count; at++) {
-    if (!slot_back(fn, slots, count, at)) {
-      return false;
-    }
-    if (slots[at].outer != NULL && !fn_var_slots_back(fn, slots[at].outer, 1)) { /* `a?.b?.f()`: `a` takes its changed payload back */
-      return false;
-    }
-  }
-  return true;
-}
-
 /* Whether the method called is declared `move fn`: it takes its receiver. */
 static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
   const MsMethodEntry *entry = fn_method_entry(fn->cx, call->callee.decl.module, call->callee.decl.node);
@@ -278,6 +108,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
   const bool big = call->arg_count > LOWER_MAX_ARGS;
   uint32_t *order = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint32_t, call->arg_count) : order_small;
   MirValue *pending = big ? MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirValue, call->arg_count) : pending_small;
+  MirValue receiver_slot = MIR_NONE; /* a fresh list literal receiver that closes its resources: registered before the arguments */
   for (uint32_t at = 0; at < call->arg_count; at++) {
     out[at] = MIR_NONE;
     pending[at] = MIR_NONE;
@@ -355,6 +186,18 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
+      if (index == 0 && native && call->callee.kind == MS_REF_NATIVE && call->arg_count > 1 && want == LW_BORROW && written != NULL &&
+          written->kind == MS_E_LIST && out[index] != MIR_NONE && fn_fresh_owner(fn, out[index])) {
+        /* The receiver closes after the arguments that follow it, so its slot is registered first: a fault in the call
+         * closes the incoming operands before it. */
+        const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
+                                         fn->subst.args, fn->subst.count);
+        receiver_slot = fn_pending_own(fn, checked, out[index]);
+        if (receiver_slot != MIR_NONE) {
+          const MirTy held_ty = mir_b_ty(&fn->b, out[index]);
+          out[index] = fn_emit(fn, MOP_Load, &receiver_slot, 1, (MirImm){.tag = MI_TY, .a = held_ty}, held_ty);
+        }
+      }
       if (want == LW_MOVE && out[index] != MIR_NONE && written != NULL &&
           (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
           (step + 1 < call->arg_count || held_across(call, native))) {
@@ -378,7 +221,10 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       fn->default_has_self = false;
       fn->default_call = call;
       fn->default_args = out;
+      const DefaultExit *saved_exit = fn->default_exit;
+      fn->default_exit = fn->call_exit != NULL ? fn->call_exit : saved_exit;
       out[index] = fn_default_argument(fn, call, arg, fn_type(fn, ms_ty_params(types, call->callee_ty)[at].ty), &caller);
+      fn->default_exit = saved_exit;
       fn->default_call = NULL;
       fn->default_args = NULL;
       fn->default_has_self = outer_has_self;
@@ -412,6 +258,7 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       return fn_fail(fn, "argument %u of the call at %u:%u has no value (callee kind %d)", index + 1, expr->pos.line, expr->pos.column, (int)call->callee.kind);
     }
   }
+  fn->receiver_slot = receiver_slot;
   for (uint32_t at = 0; at < call->arg_count; at++) {
     if (pending[at] != MIR_NONE && held_across(call, native)) {
       held[at] = pending[at];
@@ -913,14 +760,54 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
     bufs.held[at] = MIR_NONE;
   }
   const uint32_t lent = fn->nwritebacks; /* the `var` arguments' slots, lent for this call only */
-  const MirValue result = call_body(fn, expr, &bufs);
+  /* A `?` in a default the call omits leaves the call, not the caller: the call is a scope of its own, and its failed
+   * Result and its result meet at a join. */
+  const bool exits = found != NULL && fn_call_default_tries(fn, found);
+  DefaultExit exit = {.keep = fn->nopen};
+  const DefaultExit *saved_call = fn->call_exit;
+  const DefaultExit *saved_default = fn->default_exit;
+  fn->call_exit = NULL;
+  MirValue joined = MIR_NONE;
+  if (exits) {
+    exit.ret = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+    exit.join = mir_b_new_block(&fn->b);
+    joined = mir_b_add_block_param(&fn->b, exit.join, exit.ret, MM_MOVE);
+    (void)fn_scope_begin(fn);
+    fn->call_exit = &exit;
+  }
+  fn->receiver_slot = MIR_NONE;
+  MirValue result = call_body(fn, expr, &bufs);
+  fn->receiver_slot = MIR_NONE;
+  fn->call_exit = saved_call;
+  fn->default_exit = saved_default;
   fn->nwritebacks = lent;
   for (uint32_t at = 0; at < count && !fn->terminated; at++) {
     if (bufs.held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &bufs.held[at], 1, (MirImm){0}, MIR_NONE);
     }
   }
-  return result;
+  if (!exits) {
+    return result;
+  }
+  if (result == MIR_NONE || fn->terminated || fn->failed) {
+    return MIR_NONE;
+  }
+  if (mir_b_ty(&fn->b, result) != exit.ret) {
+    (void)fn_fail(fn, "a call whose default uses `?` must return a Result");
+    return MIR_NONE;
+  }
+  if (mir_needs_drop(fn->cx->module, exit.ret)) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &result, 1, (MirImm){0}, MIR_NONE);
+  }
+  fn_scope_unwind(fn, exit.keep);
+  mir_b_br(&fn->b, exit.join, &result, 1);
+  mir_b_seal_block(&fn->b, exit.join);
+  mir_b_switch_to(&fn->b, exit.join);
+  fn_scope_pop(fn);
+  if (mir_needs_drop(fn->cx->module, exit.ret)) {
+    fn_own(fn, fn_scope(fn), joined);
+  }
+  return joined;
 }
 
 /* A call typed `Never` does not return: the block ends there, so a match arm that panics adds no edge to the join. */

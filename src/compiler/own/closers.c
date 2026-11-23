@@ -360,13 +360,26 @@ static bool names_param(const Closers *pass, const MsExpr *place) {
 }
 
 static void flag_taken_by(Closers *pass, const MsExpr *call) {
+  /* `value.get()` handed on takes the payload out of `value` at that call, which lowering does on the path that
+   * reaches it: the paths that do not still close `value`. */
+  if (ms_facts_use(pass->facts, call->id) == MS_USE_MOVE &&
+      ms_own_native_get(pass->program, pass->facts, call) == MS_NATIVE_GET_PAYLOAD) {
+    return;
+  }
   const MsTy result = ms_facts_type(pass->facts, call->id);
   if (result == MS_TY_NONE ||
       !(ms_ty_has_variable(&pass->program->types, result) || ms_check_holds_resource(pass->program, result))) {
     return;
   }
+  /* A constructor (`error(cause)`, `Pair(a, b)`) stores each argument whole: no part of one leaves it, and the use that
+   * moves a name flags it moved. */
+  const MsRef *callee = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const bool constructor = callee != NULL && (callee->kind == MS_REF_TYPE || callee->kind == MS_REF_CASE);
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *arg = call->u.call.args.ptr[index].value;
+    if (constructor && arg->kind == MS_E_NAME) {
+      continue;
+    }
     const MsTy arg_ty = ms_facts_type(pass->facts, arg->id);
     /* An argument that holds no resource has none to hand to the result. */
     if (arg_ty != MS_TY_NONE && !ms_ty_has_variable(&pass->program->types, arg_ty) &&
@@ -483,7 +496,11 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (pass->lambdas != 0) {
     /* A local a lambda that outlives the statement captures moves into it, on the paths that build the lambda, and its
      * scope closes it on the others; any other capture leaves the ownership to the closure. */
-    flag(pass, ref, pass->escaping != 0 && ref->kind == MS_REF_LOCAL ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
+    if (pass->escaping != 0 && ref->kind == MS_REF_LOCAL) {
+      flag(pass, ref, MS_CLOSER_MOVED);
+    } else if (pass->escaping != 0 || ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
+      flag(pass, ref, MS_CLOSER_PARTIAL);
+    } /* a lambda that stays in its maker only reads the capture in place: the scope still closes it */
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
     const MsRef *member = expr->kind == MS_E_MEMBER ? ms_facts_ref(pass->facts, expr->id) : NULL;
     /* A method value that leaves its maker carries its receiver along: the whole binding moves into the closure. */

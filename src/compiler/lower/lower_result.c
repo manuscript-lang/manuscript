@@ -162,7 +162,9 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
   uint32_t alt = 0;
   const MirAltDef *def = result_def(fn, mir_b_ty(&fn->b, value), &alt);
   uint32_t ret_alt = 0;
-  if (def == NULL || result_def(fn, fn->ret, &ret_alt) == NULL || def->cases[ERR_CASE].nfields == 0) {
+  const DefaultExit *leaves = fn->default_exit; /* a `?` in a default leaves the call that omitted it */
+  const MirTy ret = leaves != NULL ? leaves->ret : fn->ret;
+  if (def == NULL || result_def(fn, ret, &ret_alt) == NULL || def->cases[ERR_CASE].nfields == 0) {
     return fn_fail(fn, "`try` needs a Result operand in a function that returns a Result");
   }
   const MirTy err_ty = def->cases[ERR_CASE].fields[0].ty;
@@ -180,9 +182,14 @@ bool fn_return_error(LowerFn *fn, MirValue value) {
   if (drops && !owned) {
     err = fn_implicit_clone(fn, err, false); /* a Result something else owns (a borrowed parameter) keeps its error: the relay copies it */
   }
-  const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, fn->ret);
+  const MirValue failed = build_case(fn, ret_alt, ERR_CASE, err, ret);
   const MirImm none = {0};
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &failed, 1, none, MIR_NONE);
+  if (leaves != NULL) {
+    fn_scope_unwind(fn, leaves->keep);
+    mir_b_br(&fn->b, leaves->join, &failed, 1);
+    return true;
+  }
   fn_scope_unwind(fn, 0);
   mir_b_ret(&fn->b, failed);
   return true;

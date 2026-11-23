@@ -68,13 +68,13 @@ else()
 endif()
 ms_library(ms_link compiler/link
   SOURCES
-    link.c link_job.c object.c asm_scan.c asm_tables.c ${link_os}
+    link.c link_job.c object.c llvm_inproc.c asm_scan.c asm_tables.c ${link_os}
   LINK ms_emit ms_base)
 
 ms_library(ms_check compiler/check
   SOURCES
     import_errors.c import_fix.c suggest.c scope_walk.c names.c names_hint.c names_habit.c std_exports.c mutate.c
-    mutate_fix.c fallthrough.c message_fixes.c shadow.c effects_scan.c lazy_std.c returns.c fallthrough_type.c constants.c
+    mutate_fix.c fallthrough.c message_fixes.c shadow.c effects_scan.c dispatch_targets.c lazy_std.c std_cache.c returns.c fallthrough_type.c constants.c
     exports.c symbol_text.c effects_directives.c effects_paths.c effects_reach.c builtins.c check.c declare.c
     imports.c resolve.c signatures.c methods.c implements.c properties.c bounds.c instantiate.c typevars.c types.c
     type_ops.c facts.c bodies.c exprs.c exprs_ops.c conversions.c calls.c call_target.c call_report.c match.c
@@ -101,8 +101,8 @@ ms_library(ms_opt compiler/opt
 
 ms_library(ms_lower compiler/lower
   SOURCES
-    lower_types.c lower_scope.c lower_func.c lower_expr.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_native.c
-    lower_native_list.c lower_scalar_ops.c lower_object.c lower_extern.c lower_conv.c lower_for.c lower_close.c lower_parts.c
+    lower_types.c lower_scope.c lower_func.c lower_expr.c lower_stmt.c lower_destructure.c lower_field.c lower_call.c lower_var_slot.c lower_native.c
+    lower_native_list.c lower_native_roles.c lower_scalar_ops.c lower_object.c lower_extern.c lower_conv.c lower_for.c lower_close.c lower_parts.c
     lower_temp.c lower_text.c lower_match.c lower_list.c lower_iflet.c lower_closure.c lower_captures.c
     lower_funcval.c lower_default.c lower_glue.c lower_hooks.c lower_result.c lower_tests.c lower_entry.c
   LINK ms_base ms_syntax ms_check ms_own ms_mir ms_native_sigs)

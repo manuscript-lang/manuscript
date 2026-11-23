@@ -95,13 +95,43 @@ bool em_register(ElEm *em, uint32_t at, MirValue value) {
   return true;
 }
 
+/* Whether `value`'s entry was cancelled earlier in block `at` and nothing since can leave the function except by
+ * a refused allocation: the entry then stays registered across the gap, and the cancel and the new entry go. */
+static bool cancelled_then_quiet(const ElEm *em, uint32_t at, MirValue value) {
+  if (em->cancelled.value != value || em->cancelled.block != at) {
+    return false;
+  }
+  const MirInstList *insts = &em->f->blocks.ptr[at].insts;
+  const size_t was = em->cancelled.index;
+  if (was >= insts->len || insts->ptr[was].op != MOP_CallRt || insts->ptr[was].nargs != 1 ||
+      insts->ptr[was].args[0] != em->cancelled.handle) {
+    return false;
+  }
+  for (size_t i = em->cancelled.index + 1; i < insts->len; i++) {
+    const uint8_t fx = mir_op_info[insts->ptr[i].op].effects;
+    if ((fx & (MIR_E_FAULTS | MIR_E_IO)) != 0 && (fx & MIR_E_OOM) == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* Registers a new cleanup entry for the refilled slot owner `value`; returns its handle. */
 bool em_reregister(ElEm *em, uint32_t at, MirValue value, MirValue key, MirValue *handle) {
   uint32_t close = 0;
   if (!em_closer(em, value, &close)) {
     return false;
   }
-  *handle = em_push(em, at, MOP_CleanupPush, &value, 1, em_imm_func(close), MIR_INT);
+  if (cancelled_then_quiet(em, at, value)) {
+    *handle = em->cancelled.handle;
+    MirInstList *insts = &em->f->blocks.ptr[at].insts;
+    __builtin_memmove(&insts->ptr[em->cancelled.index], &insts->ptr[em->cancelled.index + 1],
+                      (insts->len - em->cancelled.index - 1) * sizeof insts->ptr[0]);
+    insts->len--;
+  } else {
+    *handle = em_push(em, at, MOP_CleanupPush, &value, 1, em_imm_func(close), MIR_INT);
+  }
+  em->cancelled.value = MIR_NONE;
   if (key != MIR_NONE) {
     (void)mh_put(em->cx->ma, &em->flags, key, *handle);
   }
@@ -116,6 +146,10 @@ void em_cancel(ElEm *em, uint32_t at, MirValue value) {
                     em_flag_of(&em->handles, value, &handle);
   if (live && em->cx->cancel != MIR_NONE) {
     em_push(em, at, MOP_CallRt, &handle, 1, mir_imm_ext(em->cx->cancel), MIR_VOID);
+    em->cancelled.value = value;
+    em->cancelled.handle = handle;
+    em->cancelled.block = at;
+    em->cancelled.index = em->f->blocks.ptr[at].insts.len - 1;
   }
   if (mh_has(&em->flagged, value)) {
     (void)mh_put(em->cx->ma, &em->flags, value, em_bconst(em, at, false));
