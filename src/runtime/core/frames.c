@@ -440,6 +440,10 @@ static void visit_native(uintptr_t anchor, MsFrameVisit visit, void *context) {
   uintptr_t high = 0;
   ms_sys_stack_bounds(&low, &high);
   uintptr_t pc = start.pc;
+  /* The frame register at the start is the one the system unwinder restored: generated code may not keep it (a
+   * frameless function leaves an outer frame's value there), so the first record is found from the stack
+   * pointer. Each later register value comes from a record this walk located. */
+  start.fp = 0;
   for (size_t step = 0; step < start.budget; step++) {
     if (ms_frames_find_function(tables, pc) == NULL || !visit(pc, context)) {
       return;
