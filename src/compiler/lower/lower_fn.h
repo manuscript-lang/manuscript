@@ -72,11 +72,13 @@ typedef struct LowerFn {
   MirVar *param_vars; /* by parameter index */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
   const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
+  LowerSubst default_vars; /* ... and the method's type variables as the value was bound */
   const MsParams *default_params; /* a call of a lambda or method value: the parameters whose defaults it leaves out */
   bool default_has_self; /* a call of a method value: `default_self` is the receiver a default reads as `self` (the call's arguments omit it) */
   MirValue default_self;
-  struct { uint32_t local; MirValue receiver; const MsParams *params; } bound_self[8]; /* locals bound to a lambda or method value: its parameters, and the receiver it captured (MIR_NONE: none) */
+  struct { uint32_t local; MirValue receiver; const MsParams *params; LowerSubst vars; } bound_self[8]; /* locals bound to a lambda or method value: its parameters, and the receiver it captured (MIR_NONE: none) */
   uint32_t nbound_self;
+  LowerSubst last_vars; /* the type variables of the method value just lowered, bound */
   MirValue last_receiver; /* the receiver of the method value just lowered */
   bool has_last_receiver;
   MirTy ret;

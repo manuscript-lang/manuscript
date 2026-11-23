@@ -125,7 +125,9 @@ MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *a
     own_vars = method->variables.ptr + method->shared;
     own_count = (uint32_t)(method->variables.len - method->shared);
   }
-  if (own_count != 0 && own_count == call->type_arg_count) {
+  if (fn->default_params != NULL && fn->default_vars.count != 0) {
+    fn->subst = fn->default_vars; /* a method value: the variables it was bound with */
+  } else if (own_count != 0 && own_count == call->type_arg_count) {
     own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, own_count);
     for (uint32_t at = 0; at < own_count; at++) {
       own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
