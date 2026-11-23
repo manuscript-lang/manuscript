@@ -70,6 +70,16 @@ static bool fastpaths_step(MirModule *m) {
   return changed && opt_inline(m);
 }
 
+/* Fused loops leave dead values and merge blocks, so the simplifier cleans up after them. */
+static bool opt_fuse_step(MirModule *m) {
+  bool changed = false;
+  while (opt_fuse(m)) {
+    changed = true;
+    (void)opt_simplify(m);
+  }
+  return changed;
+}
+
 static const Step early_steps[] = {
     {"simplify", opt_simplify},
     {"copyelim", opt_copyelim},
@@ -81,6 +91,7 @@ static const Step early_steps[] = {
 };
 
 static const Step late_steps[] = {
+    {"fuse", opt_fuse_step},
     {"fieldview", opt_fieldview},
     {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
