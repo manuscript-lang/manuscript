@@ -1,0 +1,3 @@
+# A predecessor that knows a join's branch skips the join
+
+The late `thread` pass gives a predecessor that passes a known `alt.new`, `opt.some`/`none` or constant to a pure join its own copy of the join and the chosen successor, so alt folding removes the tag read, field read and drop (`r = if c: make(a) else: make(b); if v := r` no longer allocates on the ok path). It must run after `lastuse`: while the drop sits in a shared merge block, it uses the join's parameter and the successor cannot be copied. What the join defines may be used only in the join, the chosen successor and a one-predecessor other target. The error arm still allocates its Error then drops it; removing that needs dead-allocation elimination for fresh calls.
