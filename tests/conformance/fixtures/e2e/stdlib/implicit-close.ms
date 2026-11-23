@@ -27,7 +27,7 @@ fn returns_early(move dir: String, early: Bool) Int:
 
 	return r.id
 
-fn propagates(dir: String) Int!Error:
+fn propagates(move dir: String) Int!Error:
 	r := Resource(dir, 3)
 	failed: Int!Error := error(Error("boom"))
 	v := failed?
@@ -44,7 +44,7 @@ fn breaks_out(dir: String) Int:
 
 	return i
 
-fn closes_by_hand_too(dir: String) Int:
+fn closes_by_hand_too(move dir: String) Int:
 	var r = Resource(dir, 20)
 	id := r.id
 	void r.close()
@@ -78,7 +78,7 @@ test "closing by hand does not stop the scope's own close":
 	expect_equal(closes_by_hand_too(dir.clone()), 20)?
 	expect_true(closed(dir, 20))?
 
-fn reassigns(dir: String) Int:
+fn reassigns(move dir: String) Int:
 	var r = Resource(dir.clone(), 30)
 	r = Resource(dir, 31)
 	return r.id
@@ -90,10 +90,10 @@ test "reassigning a resource closes the value it replaces":
 	expect_true(closed(dir, 30))?
 	expect_true(closed(dir, 31))?
 
-fn open_resource(dir: String, id: Int) Resource:
+fn open_resource(move dir: String, id: Int) Resource:
 	return Resource(dir, id)
 
-fn temporary_id(dir: String) Int:
+fn temporary_id(move dir: String) Int:
 	return open_resource(dir, 40).id
 
 test "an unbound resource temporary is closed at the end of its statement":
@@ -102,7 +102,7 @@ test "an unbound resource temporary is closed at the end of its statement":
 	expect_equal(temporary_id(dir.clone()), 40)?
 	expect_true(closed(dir, 40))?
 
-fn pops_and_discards(dir: String) Int:
+fn pops_and_discards(move dir: String) Int:
 	var rs = [Resource(dir.clone(), 50), Resource(dir, 51)]
 	rs.pop()
 	return rs.length()

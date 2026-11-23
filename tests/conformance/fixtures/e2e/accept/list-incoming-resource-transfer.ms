@@ -129,7 +129,7 @@ test "field and closure-slot receivers retain cleanup on fault":
 	expect_contains((expect_fault(fn: slot(other))?), "index")?
 	expect_equal((events(other)?), "2,1,")?
 
-fn optional(move log: String,index: Int) Void:
+fn optional(move log: String, index: Int) Void:
 	var items: List[Door?] = [Door(1, log.clone())]
 	items.set(index, Door(2, log))
 
@@ -177,7 +177,7 @@ fn move PanicDoor.close() Void!:
 		append_file(self.log, f"{self.id},").wait()?
 		if self.fail: panic("capture close panic")
 
-fn captured(log: String, id: Int, fail: Bool) fn() Int:
+fn captured(move log: String, id: Int, fail: Bool) fn() Int:
 	door := PanicDoor(id, log, fail)
 	return fn: door.id
 
@@ -206,7 +206,7 @@ test "faulting captured close during detached old drop preserves new list owner"
 type EnvelopeHolder:
 	items: List[Envelope]
 
-fn callback_places(log: String, kind: Int) Void:
+fn callback_places(move log: String, kind: Int) Void:
 	if kind == 0:
 		var holder = EnvelopeHolder(
 			[Envelope(1, log.clone(), captured(log.clone(), 3, true))]
@@ -233,7 +233,7 @@ test "old capture drop fault observes updated field indexed slot and computed re
 		expect_contains(message, "capture close panic")?
 		expect_equal((events(log)?), "1,3,2,")?
 
-fn owned_named(move log: String,index: Int) Void:
+fn owned_named(move log: String, index: Int) Void:
 	var items = [Door(1, log.clone())]
 	next := Door(2, log)
 	items.insert(index, next)
@@ -270,7 +270,7 @@ fn after_pop(var items: List[Door]) Int:
 	_removed := items.pop()
 	return 0
 
-fn changed_length(log: String) Void:
+fn changed_length(move log: String) Void:
 	var items = [Door(1, log.clone())]
 	items.set(value: Door(2, log), index: after_pop(items))
 
@@ -286,7 +286,7 @@ fn optional_list(move log: String) List[Door?]:
 fn computed_absent(move log: String) Void:
 	optional_list(log).set(0, none)
 
-fn computed_arg_fault(log: String) Void:
+fn computed_arg_fault(move log: String) Void:
 	optional_list(log).append(panic("incoming failed"))
 
 test "computed receiver closes when payload absent or construction faults":
