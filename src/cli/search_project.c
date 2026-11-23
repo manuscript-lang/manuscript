@@ -12,7 +12,7 @@
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "compiler/project/project.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/check/std_cache.h"
 #include "tooling/doc_comment.h"
 #include "tooling/facts.h"

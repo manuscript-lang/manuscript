@@ -11,7 +11,7 @@
 #include "base/path.h"
 #include "base/strbuild.h"
 #include "compiler/syntax/diag_json.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
 

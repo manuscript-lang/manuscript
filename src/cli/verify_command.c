@@ -13,7 +13,7 @@
 #include "base/process.h"
 #include "base/strbuild.h"
 #include "compiler/syntax/diag_json.h"
-#include "cli/json_value.h"
+#include "tooling/json_value.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, FINDING_LIMIT = 8, MAX_STEPS = 4 };
 
