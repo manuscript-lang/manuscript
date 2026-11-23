@@ -109,9 +109,17 @@ static bool is_plain_enum(const MirModule *module, MirTy ty) {
   return alt->ncases > 0;
 }
 
-/* A plain enum handed to a native that takes a number: its case index. */
+/* A plain enum or a record of one Int (`Duration`) handed to a native that takes a number: its case index, or
+ * that Int. */
 MirValue fn_native_scalar(LowerFn *fn, MirValue operand) {
-  if (!is_plain_enum(fn->cx->module, mir_b_ty(&fn->b, operand))) {
+  const MirTy ty = mir_b_ty(&fn->b, operand);
+  const MirTyData *data = mir_ty_data(fn->cx->module, ty);
+  const MirTypeDef *def = data->kind == MK_TYPE ? &fn->cx->module->type_defs.ptr[data->id] : NULL;
+  if (def != NULL && def->nfields == 1 && def->fields[0].ty == MIR_INT) {
+    const MirImm field = {.tag = MI_FIELD, .a = data->id, .b = 0};
+    return mir_b_emit(&fn->b, MOP_TypeGet, &operand, 1, field, MIR_INT);
+  }
+  if (!is_plain_enum(fn->cx->module, ty)) {
     return operand;
   }
   return mir_b_emit(&fn->b, MOP_AltTag, &operand, 1, (MirImm){0}, MIR_INT);
