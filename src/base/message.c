@@ -7,6 +7,12 @@ MsSpan ms_message_from_builder(MsArena *arena, const MsStrBuild *builder) {
   return ms_arena_copy(arena, ms_strbuild_span(builder));
 }
 
+MsSpan ms_message_take_builder(MsArena *arena, MsStrBuild *builder) {
+  const MsSpan text = ms_message_from_builder(arena, builder);
+  ms_strbuild_free(builder);
+  return text;
+}
+
 MsSpan ms_message_join(MsArena *arena, const MsSpan *parts, size_t count) {
   MsStrBuild builder = ms_strbuild_new();
   for (size_t index = 0; index < count; index++) {

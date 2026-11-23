@@ -61,8 +61,7 @@ void lsp_workspace_files(MsArena *arena, MsSpan file, MsSpanList *out) {
   if (ms_span_starts_with(ms_path_base(file), ms_span_of_text(LSP_BUNDLED_PREFIX))) return;
   MsStrBuild dir = ms_strbuild_new();
   ms_path_dir(file, &dir);
-  const MsSpan start = ms_arena_copy(arena, ms_strbuild_span(&dir));
-  ms_strbuild_free(&dir);
+  const MsSpan start = ms_message_take_builder(arena, &dir);
   const size_t first = out->len;
   walk(arena, lsp_project_root(arena, start), out);
   if (out->len - first > 1) qsort(out->ptr + first, out->len - first, sizeof(MsSpan), compare_path);

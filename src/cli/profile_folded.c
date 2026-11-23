@@ -3,6 +3,7 @@
 
 #include "base/alloc.h"
 #include "base/sort.h"
+#include "base/message.h"
 
 /* ---- reading ---- */
 
@@ -45,8 +46,7 @@ static MsSpan line_error(MsArena *arena, size_t number, const char *what, MsSpan
   ms_strbuild_append_text(&text, " \"");
   ms_strbuild_append(&text, line);
   ms_strbuild_append_text(&text, "\"");
-  const MsSpan copy = ms_arena_copy(arena, ms_strbuild_span(&text));
-  ms_strbuild_free(&text);
+  const MsSpan copy = ms_message_take_builder(arena, &text);
   return copy;
 }
 

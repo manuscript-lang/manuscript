@@ -789,8 +789,7 @@ static MsSpan module_summary(MsArena *arena, const Module *m) {
     ms_strbuild_append_text(&out, ", ");
     ms_strbuild_append(&out, plural(arena, m->types, "type"));
   }
-  const MsSpan summary = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan summary = ms_message_take_builder(arena, &out);
   return summary;
 }
 

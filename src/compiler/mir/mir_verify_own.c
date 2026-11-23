@@ -9,6 +9,7 @@
 #include <stdarg.h>
 
 #include "compiler/mir/mir_verify_internal.h"
+#include "base/message.h"
 
 /* ---- sets of values: sorted, ascending, no duplicates ---- */
 
@@ -99,8 +100,7 @@ MsSpan mvs_difference_text(MsArena *arena, const MvSet *a, const MvSet *b) {
     }
     ms_strbuild_printf(&text, ms_strbuild_length(&text) == 0 ? "%%%u" : ", %%%u", id);
   }
-  MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&text));
-  ms_strbuild_free(&text);
+  MsSpan result = ms_message_take_builder(arena, &text);
   return result;
 }
 

@@ -2,6 +2,7 @@
 #include "tooling/review.h"
 
 #include "base/sort.h"
+#include "base/message.h"
 
 const char *const MS_TIER_CONTRACT = "CONTRACT";
 const char *const MS_TIER_EFFECT = "EFFECT+";
@@ -53,8 +54,7 @@ static MsSpan join(MsArena *arena, const MsSpans *list, const char *sep) {
     ms_strbuild_append_text(&out, i == 0 ? "" : sep);
     ms_strbuild_append(&out, list->ptr[i]);
   }
-  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan joined = ms_message_take_builder(arena, &out);
   return joined;
 }
 

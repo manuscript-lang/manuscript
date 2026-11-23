@@ -176,8 +176,7 @@ MsSpan ms_checked_input_diagnostics_json(MsArena *arena, const MsCheckedInput *c
     ms_strbuild_append_text(&out, i == 0 ? "" : ",\n");
     ms_json_diag(&out, checked->findings.ptr[i].file, checked->findings.ptr[i].phase, &checked->findings.ptr[i].diag);
   }
-  const MsSpan entries = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan entries = ms_message_take_builder(arena, &out);
   return entries;
 }
 

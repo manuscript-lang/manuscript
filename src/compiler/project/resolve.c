@@ -3,6 +3,7 @@
 
 #include "base/file.h"
 #include "base/path.h"
+#include "base/message.h"
 #include "compiler/project/manifest.h"
 #include "compiler/project/project_internal.h"
 
@@ -19,7 +20,7 @@ static bool span_less(MsSpan a, MsSpan b) {
 }
 
 static bool message(MsArena *arena, MsProjectError *error, MsStrBuild *text) {
-  ms_project_error_message(error, ms_project_text(arena, text));
+  ms_project_error_message(error, ms_message_take_builder(arena, text));
   return false;
 }
 
@@ -61,7 +62,7 @@ static bool relative_target(MsArena *arena, MsSpan importer, MsSpan path, MsSpan
   ms_path_append_joined(&joined, directory_of(importer), path);
   ms_path_clean(&text, ms_strbuild_span(&joined));
   ms_strbuild_free(&joined);
-  *target = ms_project_text(arena, &text);
+  *target = ms_message_take_builder(arena, &text);
   return true;
 }
 
@@ -126,7 +127,7 @@ static bool alias_target(MsArena *arena, MsSpan alias, MsSpan base, MsSpan remai
     MsStrBuild cleaned = ms_strbuild_new();
     ms_path_clean(&cleaned, ms_strbuild_span(&text));
     ms_strbuild_free(&text);
-    *target = ms_project_text(arena, &cleaned);
+    *target = ms_message_take_builder(arena, &cleaned);
     return true;
   }
   if (!ms_file_is_regular(base)) {
@@ -252,7 +253,7 @@ static bool overlay_path(MsArena *arena, MsSpan path, const MsOverlay *overlay, 
   MsStrBuild joined = ms_strbuild_new();
   ms_path_append_joined(&joined, ms_string_span(&parent), ms_path_file_name(path));
   ms_string_release(&parent);
-  *canonical = ms_project_text(arena, &joined);
+  *canonical = ms_message_take_builder(arena, &joined);
   return overlay_has(overlay, path) || overlay_has(overlay, *canonical);
 }
 
@@ -280,7 +281,7 @@ bool ms_project_source_path(MsArena *arena, MsSpan root, MsSpan path, const MsOv
   } else {
     ms_path_append_joined(&joined, root, path);
   }
-  const MsSpan full = ms_project_text(arena, &joined);
+  const MsSpan full = ms_message_take_builder(arena, &joined);
   MsString real = ms_string_empty();
   if (ms_file_real_path(full, &real)) {
     *canonical = ms_arena_copy(arena, ms_string_span(&real));
@@ -309,7 +310,7 @@ static MsSpan relative_to_cwd(MsArena *arena, MsSpan path) {
     ms_strbuild_free(&relative);
     return path;
   }
-  return ms_project_text(arena, &relative);
+  return ms_message_take_builder(arena, &relative);
 }
 
 static MsSpan explain(MsArena *arena, const MsProjectError *error, MsSpan import_path, bool relative) {
@@ -338,7 +339,7 @@ static MsSpan explain(MsArena *arena, const MsProjectError *error, MsSpan import
     ms_strbuild_free(&text);
     return ms_project_error_text(arena, error);
   }
-  return ms_project_text(arena, &text);
+  return ms_message_take_builder(arena, &text);
 }
 
 MsSpan ms_project_explain(MsArena *arena, const MsProjectError *error, MsSpan import_path) {

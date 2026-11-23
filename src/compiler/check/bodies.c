@@ -63,6 +63,11 @@ const MsLocal *body_find_local(const Body *body, MsName name) {
   return local != NULL && local->rejected ? NULL : local;
 }
 
+bool body_is_none_name(const Body *body, const MsExpr *expr) {
+  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
+         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "none");
+}
+
 /* The type a loop variable takes from the iterated type: a list's element, a set's member, or what the
  * iterator's `next` yields. */
 /* Whether a diagnostic of this module already sits inside `value`. */
