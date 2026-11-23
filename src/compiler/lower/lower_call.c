@@ -102,6 +102,12 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
   }
+  MirTy local_ty = MIR_VOID;
+  if (place->kind == MS_E_NAME && fn_closing_local(fn, place, &element, &local_ty)) {
+    /* A `var` resource local is lent in place, as one of its fields is: its slot keeps closing it if the callee faults. */
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
+    return element;
+  }
   if (place->kind == MS_E_MEMBER && fn_field_address(fn, place, &element)) { /* a field of a closing local changes where it lies */
     *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
