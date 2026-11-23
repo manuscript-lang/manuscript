@@ -392,6 +392,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
    * to the variable when the loop ends. */
   const bool on_variable = fn_place_changeable(fn, iter);
   VarSlot held = {0};
+  bool lent = false; /* registered a writeback that the loop's end pops */
   MirValue slot = MIR_NONE;
   const MsRef *iter_ref = iter->kind == MS_E_NAME ? ms_facts_ref(fn->facts, iter->id) : NULL;
   const uint32_t closing_at = fn_closing_at(fn, iter_ref, iter->kind == MS_E_NAME ? iter->u.sym : 0);
@@ -400,6 +401,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     slot = fn->closing[closing_at];
     held = (VarSlot){NULL, slot, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
   } else if (on_variable) {
+    lent = true;
     slot = fn_var_slot(fn, iter, &held, NULL, 0);
     if (slot == MIR_NONE || !fn_lend_writeback(fn, &held)) {
       return false;
@@ -545,7 +547,9 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   mir_b_seal_block(&fn->b, exit);
   enter(fn, exit);
   if (on_variable) {
-    fn_probe_end(fn, false);
+    if (lent) {
+      fn_probe_end(fn, false);
+    }
     if (!fn_var_slots_back(fn, &held, 1)) {
       return false;
     }
