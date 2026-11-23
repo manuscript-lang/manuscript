@@ -214,6 +214,9 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+/* Whether a copy no `.clone()` asked for is still allowed (see `fn_implicit_clone`): code that builds closure bodies without a
+ * LowerFn asks before it copies. */
+bool lower_hidden_copies_allowed(void);
 /* The value of a parameter the call leaves to its default (lower_call.c). */
 MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected);
 
