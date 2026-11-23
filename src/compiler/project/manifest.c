@@ -296,8 +296,8 @@ static bool check_aliases(Reader *r) {
     MsProjectError cause = {0};
     if (!resolve(r, alias->target, &alias->target, &cause)) {
       return manifest_fail_at(r, entry->value_at,
-                     manifest_formatted(r, "alias %a target cannot be resolved: %b; external Manuscript dependency projects are "
-                                  "unsupported, so copy the sources inside this project root and point the alias at that copy",
+                     manifest_formatted(r, "alias %a target cannot be resolved: %b; an alias points at a file or directory inside "
+                                  "this project root; to use code from another repository, add it under [dependencies]",
                                alias->name, ms_project_error_text(r->arena, &cause)));
     }
   }

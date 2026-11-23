@@ -89,7 +89,7 @@ static bool store(MsArena *arena, MsSpan cache, MsSpan hash, MsSpan index, MsSpa
   const MsSpan staged = ms_message_format(arena, "%S.staged", index_file);
   const MsSpan destination = joined(arena, cache, hash);
   if (!ms_file_write(staged, index) || !ms_file_rename(staged, index_file)) {
-    *error = ms_message_format(arena, "write %S: cannot write it", index_file);
+    *error = ms_message_format(arena, "cannot write %S; check that the cache directory is writable", index_file);
     return false;
   }
   if (ms_path_kind(destination) != MS_PATH_MISSING) {
@@ -209,7 +209,7 @@ static bool download(MsGitRemote *remote, MsArena *arena, Download *d, MsLockEnt
   d->arena = arena;
   d->cache = ms_lock_cache_dir(arena);
   if (!ms_dir_make_all(d->cache)) {
-    *error = ms_message_format(arena, "create %S: cannot make it", d->cache);
+    *error = ms_message_format(arena, "cannot create the cache directory %S; check that its parent is writable", d->cache);
     return false;
   }
   MsString temporary = ms_string_empty();

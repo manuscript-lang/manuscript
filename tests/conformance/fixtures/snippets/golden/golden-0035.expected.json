@@ -20,7 +20,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 6,
@@ -81,7 +81,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 45,
@@ -98,7 +98,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found name 'Long'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found name 'Long'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 46,
@@ -132,7 +132,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 48,
@@ -149,7 +149,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 49,
@@ -166,7 +166,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0035.ms",
           "line": 50,
@@ -184,7 +184,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0035.ms:4:8: parse: indentation must be a multiple of four spaces, found 7; use 4 or 8\n   |\n 4 |        ms help [command]\n   |        ^\n<DIR>/golden-0035.ms:6:1: parse: expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | Manuscript checks, builds, and runs .ms source and ms.toml projects.\n   | ^^^^^^^^^^\n<DIR>/golden-0035.ms:9:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n   |\n 9 |   check          Parse and type-check without executing\n   |   ^\n<DIR>/golden-0035.ms:33:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 33 |   -h, --help  Show help\n    |   ^\n<DIR>/golden-0035.ms:37:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 37 |   --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>\n    |   ^\n<DIR>/golden-0035.ms:41:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 41 |   ms init hello\n    |   ^\n<DIR>/golden-0035.ms:45:1: parse: expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 45 | Bare ms prints this help and exits successfully.\n    | ^^^^\n<DIR>/golden-0035.ms:46:1: parse: expected a module declaration or import, found name 'Long'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 46 | Long options that take values also accept --flag=value.\n    | ^^^^\n<DIR>/golden-0035.ms:47:5: parse: unexpected source character '\\''; text uses double quotes, e.g. \"text\"\n    |\n 47 | Run 'ms help <command>' or 'ms <command> --help' for usage and examples.\n    |     ^\n<DIR>/golden-0035.ms:48:1: parse: expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 48 | The Go toolchain is embedded and cannot be replaced by external tools.\n    | ^^^\n<DIR>/golden-0035.ms:49:1: parse: expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 49 | MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains\n    | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/golden-0035.ms:50:1: parse: expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 50 | and standalone run/test/debug/profile artifacts.\n    | ^^^\n12 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0035.ms:4:8: parse: indentation must be a multiple of four spaces, found 7; use 4 or 8\n   |\n 4 |        ms help [command]\n   |        ^\n<DIR>/golden-0035.ms:6:1: parse: expected a module declaration or import, found name 'Manuscript'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | Manuscript checks, builds, and runs .ms source and ms.toml projects.\n   | ^^^^^^^^^^\n<DIR>/golden-0035.ms:9:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n   |\n 9 |   check          Parse and type-check without executing\n   |   ^\n<DIR>/golden-0035.ms:33:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 33 |   -h, --help  Show help\n    |   ^\n<DIR>/golden-0035.ms:37:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 37 |   --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>\n    |   ^\n<DIR>/golden-0035.ms:41:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4\n    |\n 41 |   ms init hello\n    |   ^\n<DIR>/golden-0035.ms:45:1: parse: expected a module declaration or import, found name 'Bare'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 45 | Bare ms prints this help and exits successfully.\n    | ^^^^\n<DIR>/golden-0035.ms:46:1: parse: expected a module declaration or import, found name 'Long'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 46 | Long options that take values also accept --flag=value.\n    | ^^^^\n<DIR>/golden-0035.ms:47:5: parse: unexpected source character '\\''; text uses double quotes, e.g. \"text\"\n    |\n 47 | Run 'ms help <command>' or 'ms <command> --help' for usage and examples.\n    |     ^\n<DIR>/golden-0035.ms:48:1: parse: expected a module declaration or import, found name 'The'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 48 | The Go toolchain is embedded and cannot be replaced by external tools.\n    | ^^^\n<DIR>/golden-0035.ms:49:1: parse: expected a module declaration or import, found name 'MANUSCRIPT_CACHE_DIR'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 49 | MANUSCRIPT_CACHE_DIR selects the user cache for bundled toolchains\n    | ^^^^^^^^^^^^^^^^^^^^\n<DIR>/golden-0035.ms:50:1: parse: expected a module declaration or import, found 'and'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n    |\n 50 | and standalone run/test/debug/profile artifacts.\n    | ^^^\n12 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

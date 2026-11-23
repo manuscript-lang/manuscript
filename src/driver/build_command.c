@@ -166,7 +166,7 @@ static int link_program(const BuildReport *report, MsCheckedInput *checked) {
                                  .static_libc = invocation->static_libc};
   if (!ms_dir_make_all(ms_path_parent(report->output))) {
     return fail(report, "build",
-                ms_message_format(report->arena, "cannot create %S: cannot make it", ms_path_parent(report->output)));
+                ms_message_format(report->arena, "cannot create the output directory %S; check that its parent is writable", ms_path_parent(report->output)));
   }
   if (!ms_pipeline_link(&request, &error)) {
     return fail(report, "build", error);
@@ -174,8 +174,8 @@ static int link_program(const BuildReport *report, MsCheckedInput *checked) {
   if (!write_metadata(report)) {
     return fail(report, "build",
                 ms_message_format(report->arena,
-                                  "cannot write build metadata %S.ms-build.json: cannot write it; choose an output path "
-                                  "whose .ms-build.json file can be written",
+                                  "cannot write build metadata %S.ms-build.json; choose an output path "
+                                  "whose directory is writable",
                                   report->output, (MsSpan){0}));
   }
   return 0;

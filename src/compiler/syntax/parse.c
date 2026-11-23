@@ -138,8 +138,8 @@ MS_NODISCARD static bool parse_module(Parser *p, ImportList *imports, DeclList *
     if (exported && (d->kind == MS_D_IMPL || d->kind == MS_D_TEST)) {
       parse_fail(
           p, export_tok,
-          ms_span_of_text("only types, interfaces, and named functions can be exported; remove 'export' "
-                          "before this method, impl, test, or bench (a method is exported with its type)"));
+          ms_span_of_text("only types, enums, interfaces, and named functions can be exported; remove "
+                          "'export' before this method, test, or bench (a method is exported with its type)"));
       return false;
     }
     d->is_exported = exported;

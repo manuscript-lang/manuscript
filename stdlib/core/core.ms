@@ -229,7 +229,7 @@ fn Optional[T].get() T:
 	match self:
 		value: return value
 		none: panic(
-			"called Optional.get() on none; check is_some first, or pass a default: get(default: ...)"
+			"called Optional.get() on none; check is_some first, or use get_or(default)"
 		)
 
 // Returns the payload, or `default` when this is `none`. The default is always
@@ -309,7 +309,7 @@ fn Result[T, E].get() T:
 	match self:
 		ok(value): return value
 		error(cause): panic(
-			f"called Result.get() on error: {cause}; check is_ok first, or pass a default: get(default: ...)"
+			f"called Result.get() on error: {cause}; check is_ok first, or use get_or(default)"
 		)
 
 // Returns the successful payload, or `default` when this is an error. The default is

@@ -2623,7 +2623,7 @@ mod tests {
                 STATUS_OUT_OF_RANGE
             );
             testutil::assert_fault(
-                "index 9 out of range for length 4; pass a default: get(index:, default: ...)",
+                "index 9 out of range for length 4; use get_or(index, default) to avoid the fault",
                 || msrt_list_at(&v, d, 9, core::ptr::null()),
             );
             testutil::assert_fault(

@@ -49,6 +49,9 @@ static bool symbol_target(Body *body, const MsSymbol *symbol, Target *target) {
   if (symbol->kind == MS_SYMBOL_TYPE) {
     const MsDef *def = body_def(body, symbol->ty);
     const MsTyKind kind = ms_ty_kind(&body->program->types, symbol->ty);
+    if (def != NULL && kind == MS_TY_CONTRACT) {
+      target->nominal = symbol->ty; /* the call is reported: an interface is not constructed */
+    }
     if (def == NULL || (kind != MS_TY_TYPE && kind != MS_TY_NATIVE)) {
       return false;
     }
@@ -265,7 +268,7 @@ static bool report_ambiguous(Body *body, const MsExpr *callee, MsTy receiver, co
   ms_strbuild_append(&text, ms_names_span(body->program->names, callee->u.member.name));
   ms_strbuild_append_text(&text, " on ");
   ms_ty_show(&text, body->program->names, &body->program->types, receiver);
-  ms_strbuild_append_text(&text, "; more than one implementation provides it");
+  ms_strbuild_append_text(&text, "; more than one method provides it");
   ms_check_report(body->program, body->module, callee->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
   return true;
 }

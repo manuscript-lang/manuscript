@@ -133,6 +133,7 @@ void fn_locals_fresh(LowerFn *fn, uint32_t nvars);
 void fn_locals_restore(LowerFn *fn, const LowerFnLocals *saved);
 
 #define fn_fail(fn, ...) ((fn)->failed = true, lower_fail((fn)->cx, __VA_ARGS__))
+#define fn_user_fail(fn, ...) ((fn)->failed = true, lower_user_fail((fn)->cx, __VA_ARGS__))
 
 /* ---- scopes (lower_scope.c) ---- */
 

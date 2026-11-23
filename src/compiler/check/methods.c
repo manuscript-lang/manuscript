@@ -257,7 +257,7 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
     for (size_t at = 0; at < context->resolver.names.len; at++) {
       if (context->resolver.names.ptr[at] == param->name) {
         report(context, param->pos, "type parameter ", param->name,
-               " shadows a type parameter of the impl; choose a different name");
+               " shadows a type parameter of the receiver type; choose a different name");
         break;
       }
     }
@@ -296,8 +296,6 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
     const FormRelation relation = earlier_form(program, receiver, method->func.name, context->module);
     if (relation == FORM_SAME) {
       report(context, method->pos, "duplicate operation ", method->func.name, "; rename or remove one of them");
-      report(context, method->pos, "duplicate implementation operation ", method->func.name,
-             "; define each operation once per impl");
     } else if (relation == FORM_OVERLAP) {
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append_text(&text, "duplicate or overlapping implementation of ");

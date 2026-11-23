@@ -143,6 +143,9 @@ MsName lower_trace_name(Lower *cx, MsTy receiver, MsName declared_name) {
       break;
     }
   }
+  if (head.len > 0 && head.ptr[head.len - 1] == '?') { /* `T?` is the Optional type */
+    head = ms_span_of_text("Optional");
+  }
   MsStrBuild full = ms_strbuild_new();
   ms_strbuild_append(&full, head);
   ms_strbuild_append_byte(&full, '.');
@@ -472,9 +475,11 @@ static bool lower_body(Lower *cx, uint32_t index) {
   if (instance.nargs > 0 && ms_own_moves_instance(cx->program, target->module, target->func, vars, instance.args,
                                                  instance.nargs, &moved_at, &moved_name)) {
     const MsSpan name = ms_names_span(cx->program->names, moved_name);
-    return lower_fail(cx,
-                      "`%.*s` (%u:%u) is borrowed and cannot be moved on once its type is a resource; declare the parameter `move`",
-                      (int)name.len, (const char *)name.ptr, moved_at.line, moved_at.column);
+    const MsSpan file = cx->module->files.ptr[lower_file(cx, target->module)];
+    return lower_user_fail(cx,
+                           "%.*s:%u:%u: `%.*s` is moved here, but its parameter only borrows it, and a resource cannot be moved out of a borrow; declare the parameter `move`",
+                           (int)file.len, (const char *)file.ptr, moved_at.line, moved_at.column, (int)name.len,
+                           (const char *)name.ptr);
   }
   const MirFunc stub = cx->module->funcs.ptr[instance.func];
   const MirFunc *reserved = &stub;
@@ -567,7 +572,7 @@ bool ms_lower_program(MsCheckProgram *program, uint32_t entry_module, MirModule 
   if (ms_names_find(program->names, ms_span_of_text("main"), &main_name)) {
     found = ms_scope_get(&program->modules.ptr[entry_module].scope, main_name);
   }
-  bool ok = found != NULL || lower_fail(&cx, "the program has no `main` function");
+  bool ok = found != NULL || lower_user_fail(&cx, "the entry file has no `main` function; declare `fn main()`");
   if (ok) {
     /* The module is named for the entry file's stem (`src/main.ms` is `main`). */
     MsSpan stem = ms_names_span(program->names, program->modules.ptr[entry_module].file);

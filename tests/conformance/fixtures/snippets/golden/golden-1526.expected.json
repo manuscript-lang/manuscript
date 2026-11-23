@@ -26,7 +26,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected a module declaration or import, found '%'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn",
+        "message": "expected a module declaration or import, found '%'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-1526.ms",
           "line": 6,
@@ -44,7 +44,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1526.ms:3:6: parse: expected text in double quotes, found '%'\n   |\n 3 | test %q:\n   |      ^\n<DIR>/golden-1526.ms:6:1: parse: expected a module declaration or import, found '%'; top level holds only import, constants (NAME := value), fn, type, enum, interface, impl, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | %s\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1526.ms:3:6: parse: expected text in double quotes, found '%'\n   |\n 3 | test %q:\n   |      ^\n<DIR>/golden-1526.ms:6:1: parse: expected a module declaration or import, found '%'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 | %s\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

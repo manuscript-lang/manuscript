@@ -58,14 +58,16 @@ void ms_check_graph(MsCheckProgram *program, MsNames *names, const MsGraph *grap
     ms_check_returns(program, index);
     program->stage = MS_STAGE_DECLARATIONS;
   }
-  ms_check_finite_types(program);
   program->stage = MS_STAGE_WALK;
   for (uint32_t index = 0; index < program->modules.len; index++) {
     ms_check_bodies(program, index, index < program->user_modules ? graph->modules[index].source : (MsSpan){0});
   }
   ms_check_release_rest(program);
   ms_check_flush_pending_bounds(program);
+  program->stage = MS_STAGE_FINAL; /* found once every body was walked: listed after them */
+  ms_check_finite_types(program);
   ms_check_finite_functions(program);
+  program->stage = MS_STAGE_WALK;
   for (uint32_t index = 0; index < program->user_modules; index++) {
     const MsModule *tree = program->modules.ptr[index].tree;
     for (uint32_t at = 0; at < tree->ndecls; at++) {

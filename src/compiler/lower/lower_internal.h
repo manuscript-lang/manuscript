@@ -121,7 +121,11 @@ typedef struct Lower {
   MirIdList files; /* checker module index -> MIR file id, MIR_NONE until first used */
 } Lower;
 
-#define lower_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), ms_strbuild_append_byte((cx)->error, '\n'), false)
+/* A failure the checker should have made impossible: a compiler bug, labelled so (see backend.c). */
+#define lower_fail(cx, ...) \
+  (ms_strbuild_append_text((cx)->error, "internal compiler error: "), lower_user_fail(cx, __VA_ARGS__))
+/* A failure a program can cause: reported as written. */
+#define lower_user_fail(cx, ...) (ms_strbuild_printf((cx)->error, __VA_ARGS__), ms_strbuild_append_byte((cx)->error, '\n'), false)
 
 /* ---- instances and the driver (lower_func.c) ---- */
 
