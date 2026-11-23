@@ -726,11 +726,15 @@ fn unit_count(operation: String, n: Int, scale: Int) Int:
 	)
 	return n
 
+// Returns a Duration of this many milliseconds; a count that overflows nanoseconds
+// faults.
 fn Int.milliseconds() Duration:
 	return milliseconds(unit_count("Int.milliseconds", self, 1000000))
 
+// Returns a Duration of this many seconds; a count that overflows nanoseconds faults.
 fn Int.seconds() Duration:
 	return seconds(unit_count("Int.seconds", self, 1000000000))
 
+// Returns a Duration of this many minutes; a count that overflows nanoseconds faults.
 fn Int.minutes() Duration:
 	return minutes(unit_count("Int.minutes", self, 60000000000))

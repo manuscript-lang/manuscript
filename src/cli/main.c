@@ -26,6 +26,7 @@
 #include "cli/phases.h"
 #include "cli/profile_command.h"
 #include "cli/review_command.h"
+#include "cli/doc_command.h"
 #include "cli/search_symbol_command.h"
 #include "cli/run_command.h"
 #include "cli/test_command.h"
@@ -38,7 +39,7 @@ static const char *const COMMANDS[] = {
     "build",   "run",     "test",    "bench",   "emit",    "check",
     "lint",    "fmt",     "inspect", "diagram", "review",  "profile",
     "verify",  "init",    "install", "add",     "remove",  "explain",
-    "search_symbol", "lsp", "help",  "version",
+    "search_symbol", "doc", "lsp", "help",  "version",
 };
 
 static bool is_command(const char *word) {
@@ -78,6 +79,7 @@ int main(int argc, char **argv) {
   if (ms_cstr_equal(argv[1], "bench")) return ms_bench_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "profile")) return ms_profile_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "fmt")) return ms_fmt_command(argc - 2, argv + 2);
+  if (ms_cstr_equal(argv[1], "doc")) return ms_doc_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "search_symbol")) return ms_search_symbol_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "review")) return ms_review_command(argc - 2, argv + 2);
   if (ms_cstr_equal(argv[1], "inspect")) return ms_inspect_command(argc - 2, argv + 2);

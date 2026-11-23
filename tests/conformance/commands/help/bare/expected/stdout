@@ -23,6 +23,7 @@ Commands:
   remove         Remove a dependency from ms.toml and ms.lock
   lsp            Serve the language server on stdin/stdout
   search_symbol  Find a project or standard-library symbol: definition, type, uses
+  doc            Emit the standard library's documentation snapshot as JSON
   explain        Explain diagnostic codes and their usual repairs
   help           Show help for a command
   version        Print the compiler version
