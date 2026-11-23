@@ -160,6 +160,8 @@ void body_check_try(Body *body, const MsExpr *expr, MsTy operand);
 bool body_opaque_denied(Body *body, MsPos pos, MsTy ty, MsSpan what);
 void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value);
 void body_check_logical(Body *body, const MsExpr *expr, MsTy left, MsTy right);
+/* A constant index outside a list literal always faults. */
+void body_check_constant_index(Body *body, const MsExpr *expr, const MsExpr *list, const MsExpr *index);
 void body_check_constant_arithmetic(Body *body, const MsExpr *expr, MsTy ty);
 bool body_report_operand_mismatch(Body *body, const MsExpr *expr, MsTy left, MsTy right);
 

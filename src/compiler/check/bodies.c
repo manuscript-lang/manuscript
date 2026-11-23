@@ -6,6 +6,7 @@
  * expression, pattern and parameter node; the reference of each name, binding and loop variable; the number of
  * locals of each function. */
 #include "compiler/check/body.h"
+#include "compiler/check/call_internal.h"
 #include "compiler/syntax/walk.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/suggest.h"
@@ -325,9 +326,37 @@ static MsTy body_default(Body *body, const MsExpr *value, MsTy declared) {
   return declared == MS_TY_NONE ? body_expr(body, value, declared) : body_expect(body, value, declared, (MsSpan){0});
 }
 
+/* Each required parameter or field that follows an optional one; a `T?` parameter or field defaults to none. */
+static void report_optionals_last(Body *body, MsParams params) {
+  uint32_t first = 0;
+  while (first < params.len && !body_param_omittable(body, params.ptr[first])) {
+    first++;
+  }
+  if (first == params.len || body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  const MsParam *optional = params.ptr[first];
+  const bool by_type = optional->ty != NULL && optional->ty->kind == MS_TYPE_NAMED && optional->ty->args.len == 1 &&
+                       ms_span_is_text(ms_names_span(body->program->names, optional->ty->name), "Optional");
+  for (uint32_t index = first + 1; index < params.len; index++) {
+    if (body_param_omittable(body, params.ptr[index])) {
+      continue;
+    }
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "required ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, params.ptr[index]->name));
+    ms_strbuild_append_text(&text, " follows optional ");
+    ms_strbuild_append(&text, ms_names_span(body->program->names, optional->name));
+    ms_strbuild_append_text(&text, by_type ? " (a `T?` parameter or field defaults to none, so it counts as optional)" : "");
+    ms_strbuild_append_text(&text, "; put optional parameters and fields last");
+    ms_check_report(body->program, body->module, params.ptr[index]->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+}
+
 /* Declares the parameters in order and checks each default before its own parameter is in scope, so a default sees
  * the parameters before it and a function of the same name as its own parameter (`headers: H = headers()`). */
 static void declare_params(Body *body, MsParams params, MsTy fn_ty, uint32_t first) {
+  report_optionals_last(body, params);
   const MsTyTable *types = &body->program->types;
   const size_t count = ms_ty_param_count(types, fn_ty);
   for (uint32_t index = 0; index < params.len; index++) {
@@ -481,6 +510,7 @@ static void declaration(Body *body, const MsDecl *decl) {
     break;
   }
   case MS_D_TYPE:
+    report_optionals_last(body, decl->u.type.fields);
     field_defaults(body, decl->u.type.fields, symbol_of(body->program, body->module, decl));
     break;
   case MS_D_ENUM:

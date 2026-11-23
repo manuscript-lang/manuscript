@@ -755,6 +755,48 @@ static void append_callee_name(const Body *body, MsStrBuild *out, const MsExpr *
   }
 }
 
+/* `Int("1")`: a primitive type is built from a literal or a standard function, not called. */
+static bool report_builtin_constructor(Body *body, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind != MS_E_NAME || body_find_local(body, callee->u.sym) != NULL) {
+    return false;
+  }
+  if (body_find_symbol(body, callee->u.sym) != NULL ||
+      ms_builtin_primitive(ms_names_span(body->program->names, callee->u.sym)) == MS_BUILTIN_NONE) {
+    return false;
+  }
+  const MsSpan name = ms_names_span(body->program->names, callee->u.sym);
+  for (size_t index = 0; index < body->program->diagnostics.len; index++) { /* a declaration reusing the name is rejected */
+    const MsCheckDiag *diag = &body->program->diagnostics.ptr[index];
+    const MsSpan message = ms_string_span(&diag->message);
+    MsStrBuild reused = ms_strbuild_new();
+    ms_strbuild_append_text(&reused, "duplicate or intrinsic name ");
+    ms_strbuild_append(&reused, name);
+    ms_strbuild_append_text(&reused, ";");
+    const bool match = diag->module == body->module && ms_span_starts_with(message, ms_strbuild_span(&reused));
+    ms_strbuild_free(&reused);
+    if (match) {
+      return true;
+    }
+  }
+  if (body->module < body->program->user_modules && !body->quiet) {
+    MsStrBuild text = ms_strbuild_new();
+    ms_strbuild_append_text(&text, "this type has no source constructor: ");
+    ms_strbuild_append(&text, name);
+    ms_strbuild_append_text(&text, " is built in; write a literal or call a standard function that returns it");
+    if (ms_span_is_text(name, "String")) {
+      ms_strbuild_append_text(&text, "; make text with interpolation f\"{value}\" or value.to_string()");
+    } else if (ms_span_is_text(name, "Int")) {
+      ms_strbuild_append_text(&text, "; parse text with text.parse_int() (Int?); Float has truncate_to_int()");
+    } else if (ms_span_is_text(name, "Float")) {
+      ms_strbuild_append_text(&text, "; convert an Int with value.to_float(); parse text with parse_float (import parse_float "
+                                     "from \"@std/math/math.ms\")");
+    }
+    ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+  }
+  return true;
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -782,8 +824,11 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     MsTy hint[16] = {0};
     result_hint(body, &target, expected, hint);
     type_args(body, &target, expr, &matched, arg_tys, bound, hint);
+    matched.bound = bound;
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
+  } else if (report_builtin_constructor(body, expr)) {
+    /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {
     const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
     body->quiet = true;
