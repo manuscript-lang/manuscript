@@ -242,11 +242,6 @@ static bool written_before(const MsExpr *call, const MsCall *fact, uint32_t a, u
   return from.line != to.line ? from.line < to.line : from.column < to.column;
 }
 
-/* Whether the call builds a record or an alternative from its arguments. */
-static bool owning_constructor(const MsCall *call) {
-  return call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
-}
-
 /* A runtime operation hands a fresh resource argument on only once it succeeds (a list's bad index faults first), so the
  * argument stays in its closing slot across the call; `held` gets that slot. */
 static bool held_across(const MsCall *call, bool native) {
@@ -334,8 +329,8 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       if (want == LW_BORROW && out[index] != MIR_NONE && written != NULL) {
         out[index] = fn_closing_temporary(fn, expr, index, written, out[index]);
       }
-      if (want == LW_MOVE && (owning_constructor(call) || (held_across(call, native) && index > 0)) && out[index] != MIR_NONE &&
-          written != NULL && (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
+      if (want == LW_MOVE && out[index] != MIR_NONE && written != NULL &&
+          (written->kind == MS_E_CALL || (written->kind == MS_E_NAME && ms_facts_use(fn->facts, written->id) == MS_USE_MOVE)) &&
           (step + 1 < call->arg_count || held_across(call, native))) {
         MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, written->id), fn->subst.vars,
                                    fn->subst.args, fn->subst.count);
