@@ -240,7 +240,7 @@ static bool read_to_end(MsStream *stream, int64_t max, MsBytes *out, MsFail *fai
       ms_fail_text(&job.fail, "cancelled");
     }
     if (job.at >= 0) {
-      atomic_store(&stream->position->at, job.at);
+      atomic_store(&stream->file->at, job.at);
     }
     if (ms_fail_failed(&job.fail)) {
       *fail = job.fail;
@@ -254,7 +254,7 @@ static bool read_to_end(MsStream *stream, int64_t max, MsBytes *out, MsFail *fai
     int64_t at = ms_stream_offset(stream);
     ms_fs_read_limited(stream->fd, max, true, have_stat ? &stat : NULL, at < 0 ? NULL : &at, out, fail);
     if (at >= 0) {
-      atomic_store(&stream->position->at, at);
+      atomic_store(&stream->file->at, at);
     }
     if (ms_fail_failed(fail)) {
       return false;
@@ -443,12 +443,12 @@ uint8_t msstd_fs_file_write_vectors(MsObj *handle, const MsList *buffers, int64_
 
 /* Moves the tracked position: `origin` is 0 (start), 1 (current) or 2 (end). A descriptor without one cannot seek. */
 static int seek_position(const MsStream *stream, int64_t offset, int origin, int64_t *out) {
-  if (stream->position == NULL) {
+  if (!ms_stream_tracked(stream)) {
     return UV_ESPIPE;
   }
   int64_t base = 0;
   if (origin == 1) {
-    base = atomic_load(&stream->position->at);
+    base = atomic_load(&stream->file->at);
   } else if (origin == 2) {
     uv_stat_t stat;
     const int code = ms_fs_fstat(stream->fd, &stat);
@@ -461,7 +461,7 @@ static int seek_position(const MsStream *stream, int64_t offset, int origin, int
     return UV_EINVAL;
   }
   *out = base + offset;
-  atomic_store(&stream->position->at, *out);
+  atomic_store(&stream->file->at, *out);
   return 0;
 }
 

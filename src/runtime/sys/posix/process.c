@@ -159,12 +159,12 @@ MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle) {
 }
 
 void ms_sys_group_signal(MsSysGroup *group, bool force) {
-  if (force || kill(-group->pid, SIGTERM) != 0) {
-    (void)kill(-group->pid, SIGKILL);
+  if (force || uv_kill(-(int)group->pid, SIGTERM) != 0) {
+    (void)uv_kill(-(int)group->pid, SIGKILL);
   }
 }
 
-void ms_sys_group_kill(MsSysGroup *group) { (void)kill(-group->pid, SIGKILL); }
+void ms_sys_group_kill(MsSysGroup *group) { (void)uv_kill(-(int)group->pid, SIGKILL); }
 
 int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int signal) {
   (void)group;

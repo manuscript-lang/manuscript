@@ -12,12 +12,14 @@
 #include "base/desc.h"
 #include "runtime/std/fail.h"
 
-/* The position of a regular file the runtime opened: kept here and passed to every uv_fs_read and uv_fs_write as the
- * offset, because libuv has no seek. Shared by a stream and its duplicates, which is how they share one position. */
-typedef struct MsFilePosition {
+/* What a file stream and its duplicates share: the count of streams still open on the descriptor (the last to close
+ * closes it) and, for a regular file, the position. libuv has no seek and no dup, so the position is kept here and passed
+ * to every uv_fs_read and uv_fs_write as the offset, and a duplicate is another stream over the same descriptor. */
+typedef struct MsOpenFile {
   _Atomic int64_t at;
   _Atomic uint32_t references;
-} MsFilePosition;
+  bool tracked; /* a regular file: `at` is its position */
+} MsOpenFile;
 
 typedef struct MsStream {
   MsObj header; /* must be first: the runtime drops the handle through it */
@@ -28,8 +30,8 @@ typedef struct MsStream {
   bool no_read;  /* the open mode forbids reading or writing: invalid input on every host */
   bool no_write;
   bool append; /* the host ignores a positioned write's offset, so it is invalid input */
-  MsFilePosition *position; /* NULL: the descriptor's own position (a pipe, a terminal, a standard stream) */
-  MsString name;            /* the path, for error messages */
+  MsOpenFile *file; /* NULL for a descriptor not opened as a file: its own position and no duplicates */
+  MsString name;    /* the path, for error messages */
 } MsStream;
 
 typedef enum MsStreamAccess { MS_STREAM_ANY, MS_STREAM_READ, MS_STREAM_WRITE } MsStreamAccess;
@@ -38,9 +40,12 @@ typedef enum MsStreamAccess { MS_STREAM_ANY, MS_STREAM_READ, MS_STREAM_WRITE } M
 MsStream *ms_stream_new(uv_file fd, bool owned, MsSpan name);
 /* A stream over a file opened with the libuv `flags` (UV_FS_O_*). */
 MsStream *ms_stream_file(uv_file fd, int flags, MsSpan name);
-/* A second stream over a duplicate of the file's descriptor, closed on its own; it shares the file position. */
+/* A second stream over the file's descriptor, closed on its own (the descriptor closes with the last); it shares the
+ * file position. */
 bool ms_stream_duplicate(const MsStream *stream, MsStream **out, MsFail *fail);
 
+/* Whether `stream` keeps the position of a regular file. */
+bool ms_stream_tracked(const MsStream *stream);
 /* The offset for the next transfer of `stream`: its tracked position, or -1 for the descriptor's own. */
 int64_t ms_stream_offset(const MsStream *stream);
 /* Records that `count` bytes were transferred at `offset` (a no-op without a tracked position). A write to an append

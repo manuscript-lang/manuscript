@@ -36,11 +36,6 @@ int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_na
   return code;
 }
 
-int ms_sys_fs_dup(int fd) {
-  const int copy = _dup(fd);
-  return copy < 0 ? uv_translate_sys_error(errno) : copy;
-}
-
 int ms_sys_fs_try_lock(int fd, bool exclusive, bool *taken) {
   const HANDLE handle = (HANDLE)uv_get_osfhandle(fd);
   if (handle == INVALID_HANDLE_VALUE) {

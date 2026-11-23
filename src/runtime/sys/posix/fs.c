@@ -58,14 +58,6 @@ int ms_sys_fs_set_times_fd(int fd, int64_t accessed_seconds, int64_t accessed_na
   return result == 0 ? 0 : uv_translate_sys_error(errno);
 }
 
-int ms_sys_fs_dup(int fd) {
-  int copy = -1;
-  do {
-    copy = fcntl(fd, F_DUPFD_CLOEXEC, 0);
-  } while (copy < 0 && errno == EINTR);
-  return copy < 0 ? uv_translate_sys_error(errno) : copy;
-}
-
 int ms_sys_fs_try_lock(int fd, bool exclusive, bool *taken) {
   int result = -1;
   do {
