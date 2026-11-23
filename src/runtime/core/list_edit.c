@@ -4,17 +4,23 @@
 #include "base/alloc.h"
 #include "runtime/core/list_support.h"
 
+/* The argument check of `splice`, apart from the native: lowering calls it first, so a bad range faults while the
+ * caller still owns the replacement. */
+void msrt_list_check_splice(int64_t length, int64_t start, int64_t count) {
+  if (start < 0 || start > length) {
+    msrt_splice_fault("start", start, (size_t)length);
+  }
+  if (count < 0 || count > length - start) {
+    msrt_splice_fault("delete_count", count, (size_t)(length - start));
+  }
+}
+
 /* `splice(start, delete_count, replacement)`: the replacement is consumed and its buffer freed. */
 static void splice_into(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement,
                         MsList *taken) {
   const size_t length = v->len;
-  if (start < 0 || (uint64_t)start > length) {
-    msrt_splice_fault("start", start, length);
-  }
+  msrt_list_check_splice((int64_t)length, start, count);
   const size_t from = (size_t)start;
-  if (count < 0 || (uint64_t)count > length - from) {
-    msrt_splice_fault("delete_count", count, length - from);
-  }
   const size_t removed = (size_t)count;
   if (taken != NULL) { /* the deleted elements move out, for the caller to close */
     *taken = (MsList){0};
@@ -54,13 +60,26 @@ void msrt_list_splice_take(MsList *v, const MsTypeDesc *d, int64_t start, int64_
   splice_into(v, d, start, count, replacement, taken);
 }
 
-/* `fill(value, start, end)`: `value` is borrowed and copied into each slot. */
-void msrt_list_fill(MsList *v, const MsTypeDesc *d, const uint8_t *value, int64_t start, int64_t end) {
-  msrt_check_bounds("List.fill", v->len, start, end);
+/* The argument check of `fill`, apart from the native (see `msrt_list_check_splice`). */
+void msrt_list_check_fill(int64_t length, int64_t start, int64_t end) {
+  msrt_check_bounds("List.fill", (size_t)length, start, end);
+}
+
+/* `fill(value, start, end)`: `value` is consumed, copied into each slot but the last, which takes it. */
+void msrt_list_fill(MsList *v, const MsTypeDesc *d, uint8_t *value, int64_t start, int64_t end) {
+  msrt_list_check_fill((int64_t)v->len, start, end);
+  if (start == end) {
+    ms_slot_drop(d, value);
+    return;
+  }
   for (size_t i = (size_t)start; i < (size_t)end; i++) {
     uint8_t *slot = ms_list_slot(v, d, i);
     ms_slot_drop(d, slot);
-    ms_slot_copy(d, value, slot);
+    if (i + 1 == (size_t)end) {
+      __builtin_memcpy(slot, value, d->size);
+    } else {
+      ms_slot_copy(d, value, slot);
+    }
   }
 }
 

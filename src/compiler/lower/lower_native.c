@@ -776,7 +776,6 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_String)) {
     operation = ms_span_of_text("split_view");
   }
-  fn_list_precheck_index(fn, owner, operation, argc, args);
   if (ms_span_is_text(operation, "set") && fn_list_set_closing(fn, place, slot, owner, argc, args, out)) {
     return true;
   }
@@ -785,6 +784,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
   }
   MsName name;
   const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
+  fn_native_precheck(fn, sig, owner, argc, args);
   const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
   if (op != NULL && fn_inline_scalar_op(fn, op, args, argc, ret, out)) {
     return true;
