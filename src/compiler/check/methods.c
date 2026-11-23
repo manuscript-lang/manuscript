@@ -283,7 +283,33 @@ static void add_methods(Context *context, const MsDecl *decl, MsTy receiver) {
   }
 }
 
-/* `fn Ordered.min(...)` over a type set `type Ordered = Int | Float`: the method exists on every member. */
+/* The variable a type-set method's receiver is: `fn Ordered.min(...)` over `type Ordered = Int | Float | ...` reads
+ * as `fn[Self: Ordered] Self.min(...)`, so one body serves every member and lowering binds `Self` per call. It is
+ * bounded by the set and by each standard interface all the members implement. */
+static MsTy set_receiver(Context *context, MsTy set, const MsTyList *members) {
+  MsCheckProgram *program = context->program;
+  const MsTy self = ms_ty_variable_new(&program->types, ms_names_intern(program->names, ms_span_of_text("Self")),
+                                       ms_check_unique_id(program, "var"));
+  ms_ty_list_push(&context->fresh, self);
+  ms_ty_list_push(&context->open, self);
+  MsTyVariable *record = ms_ty_variable(&program->types, self);
+  ms_ty_list_push(&record->bounds, set);
+  static const char *const contracts[] = {"Comparable", "Equal", "Hashable", "Clonable", "Data"};
+  for (size_t index = 0; index < MS_COUNT_OF(contracts); index++) {
+    const MsSymbolId symbol =
+        resolver_prelude_symbol(program, ms_names_intern(program->names, ms_span_of_text(contracts[index])));
+    bool all = symbol != 0 && program->symbols.ptr[symbol].ty != MS_TY_NONE;
+    for (size_t at = 0; all && at < members->len; at++) {
+      all = ms_check_implements(program, members->ptr[at], program->symbols.ptr[symbol].ty);
+    }
+    if (all) {
+      ms_ty_list_push(&record->bounds, program->symbols.ptr[symbol].ty);
+    }
+  }
+  return self;
+}
+
+/* `fn Ordered.min(...)` over a type set: the method exists on every member. */
 static bool add_set_block(Context *context, const MsDecl *decl) {
   MsCheckProgram *program = context->program;
   const MsSymbolId *own = ms_scope_get(&program->modules.ptr[context->module].scope, decl->u.impl.receiver->name);
@@ -294,16 +320,22 @@ static bool add_set_block(Context *context, const MsDecl *decl) {
   if (alias->u.alias.type_params.len != 0 || alias->u.alias.targets.len < 2) {
     return false;
   }
+  ms_name_list_truncate(&context->resolver.names, 0);
+  ms_ty_list_truncate(&context->resolver.types, 0);
+  ms_ty_list_truncate(&context->fresh, 0);
+  ms_ty_list_truncate(&context->open, 0);
+  MsTyList members = {0};
   for (uint32_t index = 0; index < alias->u.alias.targets.len; index++) {
-    ms_name_list_truncate(&context->resolver.names, 0);
-    ms_ty_list_truncate(&context->resolver.types, 0);
-    ms_ty_list_truncate(&context->fresh, 0);
-    ms_ty_list_truncate(&context->open, 0);
     const MsTy member = resolver_type(&context->resolver, alias->u.alias.targets.ptr[index]);
     if (member != MS_TY_NONE) {
-      add_methods(context, decl, member);
+      ms_ty_list_push(&members, member);
     }
   }
+  const MsTy set = resolver_type(&context->resolver, decl->u.impl.receiver);
+  if (set != MS_TY_NONE && ms_ty_is(&program->types, set, MS_BUILTIN_TypeSet) && members.len != 0) {
+    add_methods(context, decl, set_receiver(context, set, &members));
+  }
+  ms_ty_list_free(&members);
   return true;
 }
 
@@ -430,7 +462,7 @@ bool ms_check_unify(const MsTyTable *types, MsTy pattern, MsTy actual, const MsT
 }
 
 /* Whether each of `variables` holds an argument that meets the variable's bounds. */
-static bool bounds_satisfied(MsCheckProgram *program, const MsTy *variables, size_t count, const MsTy *bound) {
+bool ms_check_bounds_satisfied(MsCheckProgram *program, const MsTy *variables, size_t count, const MsTy *bound) {
   for (size_t index = 0; index < count; index++) {
     if (bound[index] == MS_TY_NONE) {
       return false;
@@ -490,7 +522,7 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     }
     const bool fits = ms_check_unify(&program->types, entry->receiver, receiver, entry->variables.ptr, entry->shared,
                                      bound.ptr) &&
-                      bounds_satisfied(program, entry->variables.ptr, entry->shared, bound.ptr);
+                      ms_check_bounds_satisfied(program, entry->variables.ptr, entry->shared, bound.ptr);
     if (fits) {
       ms_method_match_list_push(out, (MsMethodMatch){
           .ty = ms_ty_subst(&program->types, entry->ty, entry->variables.ptr, bound.ptr, entry->shared),

@@ -87,7 +87,7 @@ type BoundedResultCleanup:
 fn move BoundedResultCleanup.close() Void!:
     self.visits.append(7)
 
-fn cleanup(visits: List[Int]) Int:
+fn cleanup(move visits: List[Int]) Int:
     _resource := BoundedResultCleanup(visits)
     return total(true)
 

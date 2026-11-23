@@ -20,7 +20,7 @@ fn doubled(value: Int) Int!Problem:
     return ok(accepted * 2)
 
 fn summarize(outcome: Int!Problem) Int:
-    return outcome.get_or(-1)
+    return outcome.clone().get_or(-1)
 
 test "unchanged propagated error":
     expect_equal(summarize(doubled(3)), 6)?

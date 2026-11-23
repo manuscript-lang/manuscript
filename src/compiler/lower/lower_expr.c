@@ -162,18 +162,44 @@ static MirValue lower_constant(LowerFn *fn, const MsRef *ref) {
   return value;
 }
 
-/* A parameter named by a default argument: the value the call passes for it, which must already be known. */
-static MirValue default_param(LowerFn *fn, const MsRef *ref) {
+/* The position, among the call's arguments, of the callee parameter `ref` a default argument names. */
+static uint32_t default_position(const LowerFn *fn, const MsRef *ref) {
   const MsCall *call = fn->default_call;
   const size_t declared = ms_ty_param_count(&fn->cx->program->types, call->callee_ty);
-  const uint32_t at = ref->local + (uint32_t)(call->arg_count - declared);
-  if (at >= call->arg_count || (call->args[at].flags & MS_PARAM_VAR) != 0) {
-    (void)fn_fail(fn, "a default argument that reads a `var` parameter is not lowered yet");
+  return ref->local + (uint32_t)(call->arg_count - declared);
+}
+
+bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot) {
+  const MsRef *ref = fn->default_call != NULL && place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_PARAM) {
+    return false;
+  }
+  const uint32_t at = default_position(fn, ref);
+  if (at >= fn->default_call->arg_count || (fn->default_call->args[at].flags & MS_PARAM_VAR) == 0) {
+    return false;
+  }
+  *slot = fn->default_args[at];
+  return *slot != MIR_NONE;
+}
+
+/* A parameter named by a default argument: the value the call passes for it, which must already be known. A `var`
+ * parameter is read from the slot the callee changes it in. */
+static MirValue default_param(LowerFn *fn, const MsRef *ref) {
+  const MsCall *call = fn->default_call;
+  const uint32_t at = default_position(fn, ref);
+  if (at >= call->arg_count) {
+    (void)fn_fail(fn, "a default argument reads a parameter that has no value yet");
     return MIR_NONE;
   }
   const MirValue value = fn->default_args[at];
   if (value == MIR_NONE) {
     (void)fn_fail(fn, "a default argument reads a parameter that has no value yet");
+    return MIR_NONE;
+  }
+  if ((call->args[at].flags & MS_PARAM_VAR) != 0) {
+    const MsTyTable *types = &fn->cx->program->types;
+    const MirTy ty = fn_type(fn, ms_ty_params(types, call->callee_ty)[ref->local].ty);
+    return mir_b_emit(&fn->b, MOP_Load, &value, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
   }
   return value;
 }
@@ -808,7 +834,12 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
   /* A binding that only views another owner's value (a borrowed loop element, a name bound to a place) copies it. */
   const bool view_local = ref != NULL && ref->kind == MS_REF_LOCAL && expr->kind == MS_E_NAME && fn->local_owns != NULL &&
                           ref->local < fn->nvars && fn->local_owns[ref->local] == 2;
-  if (!borrowed_param && !in_var_record && !view_local && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+  /* A field of a call's answer that views another owner's value stays there; the move out of it copies. */
+  const MsCall *root_call = expr->kind == MS_E_MEMBER && root->kind == MS_E_CALL ? ms_facts_call(fn->facts, root->id) : NULL;
+  const bool in_call_result = root_call != NULL &&
+                              (root_call->callee.kind == MS_REF_FUNCTION || root_call->callee.kind == MS_REF_METHOD) &&
+                              ms_own_result_is_borrowed(fn->cx->program, root_call->callee.decl.module, root_call->callee.decl.node);
+  if (!borrowed_param && !in_var_record && !view_local && !in_call_result && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
     if (expr->kind == MS_E_NAME && fn->nmoved_names < 8) {
       fn->moved_names[fn->nmoved_names++] = value;
     }

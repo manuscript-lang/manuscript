@@ -743,6 +743,9 @@ static bool lower_if(LowerFn *fn, const MsStmt *stmt) {
       const MirValue taken = fn_take_from_temporary(fn, stmt->u.branch.cond, tested);
       owns = taken != MIR_NONE;
       tested = owns ? taken : tested;
+      if (owns && mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, tested))) {
+        fn_own(fn, fn_scope(fn), tested); /* the payload taken from the temporary is the scope's until the branch binds it */
+      }
     }
     if (owns && stmt->u.branch.cond->kind == MS_E_NAME && tested != MIR_NONE) {
       fn_own_result(fn, tested); /* the payload leaves the taken value in the branch that binds it */

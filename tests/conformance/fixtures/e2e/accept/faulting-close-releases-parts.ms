@@ -20,11 +20,11 @@ fn move Holder.close() Void!:
 	if self.breaks:
 		panic("close fault")
 
-fn hold_then_break(label: String) Void:
+fn hold_then_break(move label: String) Void:
 	holder := Holder(label, true)
 	void holder.breaks
 
-fn hold_fault_and_break(label: String) Void:
+fn hold_fault_and_break(move label: String) Void:
 	holder := Holder(label, true)
 	panic("body fault")
 

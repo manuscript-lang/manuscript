@@ -28,7 +28,7 @@ fn var Chunks.next() Bytes?!:
 fn move Chunks.close() Void!:
 	return ok()
 
-fn chunked(data: Bytes, size: Int) ReadStream[Bytes]:
+fn chunked(move data: Bytes, size: Int) ReadStream[Bytes]:
 	return ReadStream[Bytes](Chunks(data, size, 0))
 
 test "stream checksums match the whole-value functions under every chunk size":
