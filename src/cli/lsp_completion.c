@@ -159,7 +159,9 @@ static void add_case(Completer *c, const MsTyCase *entry, MsTy owner, int priori
 static void add_members(Completer *c, MsTy receiver) {
   MsCheckProgram *program = c->program;
   if (receiver == MS_TY_NONE || ms_ty_is_invalid(&program->types, receiver)) return;
-  const uint32_t def_index = ms_ty_row(&program->types, receiver)->def;
+  /* A type variable's row holds an index into the variables, not into the definitions. */
+  const MsTyRow *row = ms_ty_row(&program->types, receiver);
+  const uint32_t def_index = row->kind == MS_TY_VARIABLE ? 0 : row->def;
   const MsDef *def = def_index == 0 ? NULL : ms_defs_get(&program->defs, def_index);
   if (def != NULL && ms_ty_kind(&program->types, receiver) == MS_TY_TYPE) {
     for (size_t i = 0; i < def->fields.len; i++) {

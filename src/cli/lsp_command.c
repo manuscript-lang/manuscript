@@ -174,12 +174,24 @@ static bool handle_document_request(Session *session, const MsJson *id, MsSpan m
   if (id == NULL) return true;
   const MsSpan kind = ms_span_of(method.ptr + 13, method.len - 13);
   MsStrBuild result = ms_strbuild_new();
-  if (doc == NULL || lsp_uri_is_standard_library(uri->text)) {
+  if (doc == NULL) {
     const bool list = ms_span_is_text(kind, "documentSymbol");
     if (ms_span_is_text(kind, "prepareRename") || ms_span_is_text(kind, "rename")) {
       reply_error(id, ERROR_INVALID_PARAMS, "select a name that refers to a source declaration");
     } else {
       reply_result(id, ms_span_of_text(list ? "[]" : "null"));
+    }
+    ms_strbuild_free(&result);
+    return true;
+  }
+  if (lsp_uri_is_standard_library(uri->text) &&
+      (ms_span_is_text(kind, "codeAction") || ms_span_is_text(kind, "formatting") || ms_span_is_text(kind, "prepareRename") ||
+       ms_span_is_text(kind, "rename"))) {
+    /* A bundled module is read-only: nothing to fix, format or rename. */
+    if (ms_span_is_text(kind, "prepareRename") || ms_span_is_text(kind, "rename")) {
+      reply_error(id, ERROR_INVALID_PARAMS, "select a name that refers to a source declaration");
+    } else {
+      reply_result(id, ms_span_of_text("[]"));
     }
     ms_strbuild_free(&result);
     return true;

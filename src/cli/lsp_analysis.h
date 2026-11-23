@@ -10,6 +10,9 @@
 #include "tooling/occurrence.h"
 #include "base/strbuild.h"
 
+/* The file name prefix of the stand-in a bundled module is checked as (in the temporary directory). */
+#define LSP_BUNDLED_PREFIX "ms-stdlib-"
+
 typedef struct LspDoc {
   MsString uri, path, text;
   int64_t version;

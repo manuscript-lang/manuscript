@@ -57,6 +57,8 @@ MsSpan lsp_project_root(MsArena *arena, MsSpan dir) {
 }
 
 void lsp_workspace_files(MsArena *arena, MsSpan file, MsSpanList *out) {
+  /* A bundled module's stand-in file sits in the temporary directory, which is no project. */
+  if (ms_span_starts_with(ms_path_base(file), ms_span_of_text(LSP_BUNDLED_PREFIX))) return;
   MsStrBuild dir = ms_strbuild_new();
   ms_path_dir(file, &dir);
   const MsSpan start = ms_arena_copy(arena, ms_strbuild_span(&dir));
