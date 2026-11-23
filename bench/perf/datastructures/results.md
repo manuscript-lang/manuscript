@@ -10,6 +10,22 @@ accounting: the producers retain their existing nonzero-total observability
 guards, but do not emit per-operation checksums to prove equivalent results.
 The dated measurements below predate this accounting validation.
 
+## 2026-11-23 (C runtime: inline list push, inline scheduler lookup, cleanup stack reuse)
+
+Revision: this branch on top of `17ecd65877`, Release build of the C port, 4-CPU shared VM; `ms run bench/perf/datastructures/ms/src/main.ms`, before from one run on main and after the median of three. Callgrind on 1M `BytesBuilder.append` calls.
+
+| Measure | Before | After |
+| --- | ---: | ---: |
+| Instructions, 1M `BytesBuilder.append` | 213M | 99M |
+| bytes_append, ns/op | 29.0 | 10.7 |
+| string_build_split_join_replace, ns/op | 132.5 | 72.4 |
+| map_int_put_get, ns/op | 80.4 | 61.7 |
+| list_append, ns/op | 7.3 | 5.3 |
+| list_sort_cmp, ns/op | 264.3 | 232.1 |
+| sorted_map_add_contains, ns/op | 197.1 | 170.3 |
+
+`ms_list_push` and `ms_list_extend` are inline: a list that owns a buffer with room takes no call and a constant element size becomes a plain store (the call and the `memcpy` were 85 of the 213 instructions per append). `ms_sched`, `ms_sched_if_any` and `ms_task_running` read the thread-local scheduler in line, which the cleanup, shield and guard calls each repeat. `ms_cleanup_cancel` of the innermost entry pops it instead of leaving a no-op entry, so a loop that cancels and registers a cleanup each pass keeps one slot (it grew 16 bytes per iteration until the loop ended). What remains per append is the cleanup registration the unwind pass wraps around every native that can fault.
+
 ## 2026-11-12 (Deque and Queue slot moves)
 
 Revision: this branch on top of `b6717db6`; callgrind on 1M iterations of two `push_back` and one `pop_front` on a `Deque[Int]`, then a drain (3M pushes and pops).

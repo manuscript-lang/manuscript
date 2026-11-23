@@ -7,19 +7,17 @@
 
 enum { MIN_TIMER_LIMIT = 1024 };
 
-static _Thread_local MsSched *thread_sched; /* this thread's scheduler: per-thread state the design names */
+_Thread_local MsSched *ms_thread_sched; /* this thread's scheduler: per-thread state the design names */
 
-MsSched *ms_sched_if_any(void) { return thread_sched; }
-
-MsSched *ms_sched(void) {
-  if (thread_sched == NULL) {
+MsSched *ms_sched_create(void) {
+  if (ms_thread_sched == NULL) {
     MsSched *const created = ms_alloc_zeroed(sizeof *created);
     created->timer_limit = MIN_TIMER_LIMIT;
     created->kill_limit = MIN_TIMER_LIMIT;
     created->external_limit = MIN_TIMER_LIMIT;
-    thread_sched = created;
+    ms_thread_sched = created;
   }
-  return thread_sched;
+  return ms_thread_sched;
 }
 
 void ms_sched_set_hooks(const MsSchedHooks *hooks, const MsPollOps *poll) {
@@ -45,7 +43,7 @@ void ms_sched_post_completion(uint64_t id, int32_t result, uint32_t kind) {
 }
 
 uint8_t ms_sched_stop_request(void) {
-  return thread_sched == NULL ? 0 : atomic_load_explicit(&thread_sched->stop_request, memory_order_relaxed);
+  return ms_thread_sched == NULL ? 0 : atomic_load_explicit(&ms_thread_sched->stop_request, memory_order_relaxed);
 }
 
 /* Raises the cancel flag of `hdr` to at least `signal`, unless a shield holds the stop back. */
@@ -142,7 +140,7 @@ void ms_task_destroy(MsSched *sched, MsTask *task) {
 }
 
 void ms_sched_teardown(void) {
-  MsSched *const sched = thread_sched;
+  MsSched *const sched = ms_thread_sched;
   if (sched == NULL) {
     return;
   }
@@ -167,6 +165,6 @@ void ms_sched_teardown(void) {
   ms_slot_list_free(&sched->slots);
   ms_index_list_free(&sched->free_slots);
   ms_free(sched->ready);
-  thread_sched = NULL;
+  ms_thread_sched = NULL;
   ms_free(sched);
 }

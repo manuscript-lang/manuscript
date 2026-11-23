@@ -169,12 +169,26 @@ typedef struct MsSched {
   MsFaultText guard_message; /* the fault message ms_guard_leave hands to the landing of ms_guard_call */
 } MsSched;
 
-/* This thread's scheduler, created on first use. */
-MsSched *ms_sched(void) MS_RETURNS_NONNULL;
+/* This thread's scheduler; NULL until the first ms_sched. Read through ms_sched, which creates it. */
+extern _Thread_local MsSched *ms_thread_sched;
+/* Creates this thread's scheduler. */
+MsSched *ms_sched_create(void) MS_RETURNS_NONNULL;
+/* The running task of `sched`, creating the record of the thread's own flow on first use. */
+MsTask *ms_task_running_slow(MsSched *sched) MS_RETURNS_NONNULL;
+
+/* This thread's scheduler, created on first use. Inline: every cleanup, shield and guard call starts here. */
+MS_RETURNS_NONNULL static inline MsSched *ms_sched(void) {
+  MsSched *const sched = ms_thread_sched;
+  return sched != NULL ? sched : ms_sched_create();
+}
 /* This thread's scheduler if one exists, else NULL. */
-MsSched *ms_sched_if_any(void);
+static inline MsSched *ms_sched_if_any(void) { return ms_thread_sched; }
 /* The running task; creates the record of the thread's own flow on first use. */
-MsTask *ms_task_running(void) MS_RETURNS_NONNULL;
+MS_RETURNS_NONNULL static inline MsTask *ms_task_running(void) {
+  MsSched *const sched = ms_sched();
+  MsTask *const current = sched->current;
+  return current != NULL ? current : ms_task_running_slow(sched);
+}
 /* Frees a record, its segments and buffers; its stacks go to the pool. The slot is the caller's to clear. */
 void ms_task_destroy(MsSched *sched, MsTask *task) MS_NONNULL;
 /* The record behind `handle`, or NULL. */

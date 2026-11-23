@@ -49,15 +49,11 @@ void ms_list_reserve(MsList *list, size_t element_size, size_t extra) {
   list->cap = capacity;
 }
 
-void *ms_list_extend(MsList *list, size_t element_size, size_t count) {
+void *ms_list_extend_grow(MsList *list, size_t element_size, size_t count) {
   ms_list_reserve(list, element_size, count);
   uint8_t *first = list->ptr + list->len * element_size;
   list->len += count;
   return first;
-}
-
-void ms_list_push(MsList *list, size_t element_size, const void *element) {
-  __builtin_memcpy(ms_list_extend(list, element_size, 1), element, element_size);
 }
 
 void ms_list_free(MsList *list) {
