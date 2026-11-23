@@ -155,6 +155,13 @@ void emit_zero_leaf(EmitCx *cx, MirValue dst, uint32_t index, MirLeaf leaf) {
 static void emit_load(EmitCx *cx, const MirInst *inst) {
   char base[24];
   emit_pointer(cx, inst->args[0], base, sizeof base);
+  char cell[24];
+  if (emit_wide_result(cx, inst->res, cell, sizeof cell)) {
+    /* A held value is one copy into its cell, not a register per leaf that the register allocator then spills. */
+    ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", cell, base,
+                       emit_slot_bytes(cx, emit_value_type(cx, inst->res)));
+    return;
+  }
   emit_leaves_at(cx, inst->res, base, true);
 }
 
@@ -162,6 +169,12 @@ static void emit_load(EmitCx *cx, const MirInst *inst) {
 static void emit_store(EmitCx *cx, const MirInst *inst) {
   char base[24];
   emit_pointer(cx, inst->args[0], base, sizeof base);
+  char cell[24];
+  if (emit_wide_address(cx, inst->args[1], cell, sizeof cell)) {
+    ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", base, cell,
+                       emit_slot_bytes(cx, emit_value_type(cx, inst->args[1])));
+    return;
+  }
   emit_leaves_at(cx, inst->args[1], base, false);
 }
 
