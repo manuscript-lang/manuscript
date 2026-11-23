@@ -1,0 +1,62 @@
+name: LLVM route benchmark
+
+# Manual runs only: builds `ms` natively on each platform, fetches the pinned LLVM library and the same release's
+# opt and llc (toolchain/llvm-lib.lock), and prints the compile time of tools/llvm-route-bench.ms (the in-process
+# route against the opt and llc subprocess route, Debug and Release), so that the route can be judged on Linux,
+# macOS and Windows before it becomes the default.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.artifacts/ccache
+
+jobs:
+  route:
+    name: route ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-amd64, runner: ubuntu-24.04, shell: bash }
+          - { name: linux-arm64, runner: ubuntu-24.04-arm, shell: bash }
+          - { name: darwin-arm64, runner: macos-15, shell: bash }
+          - { name: darwin-amd64, runner: macos-15-intel, shell: bash }
+          - { name: windows-amd64, runner: windows-2025, shell: 'msys2 {0}' }
+          - { name: windows-arm64, runner: windows-11-arm, shell: 'msys2 {0}' }
+    # Windows runs inside the MSYS2 shell that the toolchain step installs.
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - run: cmake --preset ci
+      - run: cmake --build --preset ci
+      - run: cmake --build --preset ci --target llvm-lib
+      - name: Fetch the matching opt and llc
+        run: |
+          ms=.artifacts/build/ci/src/cli/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          "$PWD/$ms" run tools/fetch-llvm-lib.ms -- tools
+      - name: Record the CPU
+        run: |
+          case "$RUNNER_OS" in
+            Linux) lscpu | grep -E 'Model name' | cut -c1-200 ;;
+            macOS) sysctl -n machdep.cpu.brand_string ;;
+            Windows) powershell -NoProfile -Command "(Get-CimInstance Win32_Processor).Name" ;;
+          esac
+      - name: Time the two routes
+        run: |
+          ms=.artifacts/build/ci/src/cli/ms
+          if [ "$RUNNER_OS" = Windows ]; then ms="$ms.exe"; fi
+          MS="$PWD/$ms" RUNS=7 "$PWD/$ms" run tools/llvm-route-bench.ms | tee route-${{ matrix.name }}.md
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: route-${{ matrix.name }}
+          path: route-${{ matrix.name }}.md

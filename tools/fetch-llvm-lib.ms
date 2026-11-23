@@ -3,10 +3,12 @@
 // manuscript-lang/llvm-bundle into .artifacts/llvm-lib (LLVM_LIB_WORK overrides it) and
 // prints the absolute path of the library, which is what `MS_LLVM` takes. When
 // GITHUB_ENV is set it also appends `MS_LLVM=<path>` there, so the later steps of a CI
-// job use the library. Does nothing but print when the library is already there. Usage:
-// ms run tools/fetch-llvm-lib.ms
+// job use the library. Does nothing but print when the library is already there. With
+// `tools` it fetches the same release's opt and llc instead (`llvm-tools`), prints their
+// paths and exports MS_OPT and MS_LLC, so the process route can be timed against the
+// library. Usage: ms run tools/fetch-llvm-lib.ms [-- tools]
 import (
-	working_directory from "@std/os/env.ms",
+	arguments, working_directory from "@std/os/env.ms",
 	append_file,
 	canonicalize,
 	create_directory,
@@ -18,6 +20,7 @@ import (
 	dist_arch,
 	dist_os,
 	env,
+	exe,
 	file_sha256,
 	note,
 	run_program,
@@ -60,7 +63,9 @@ fn main() Int:
 	version := lock_value(lock, "version")
 	target_os := dist_os()
 	target_arch := dist_arch()
-	asset := f"llvm-lib-{version}-{target_os}-{target_arch}.tar.gz"
+	tools := arguments().contains("tools")
+	kind := if tools: "llvm-tools" else: "llvm-lib"
+	asset := f"{kind}-{version}-{target_os}-{target_arch}.tar.gz"
 	want := lock_digest(lock, asset)
 
 	if want == "":
@@ -68,8 +73,8 @@ fn main() Int:
 		return 1
 
 	work := env("LLVM_LIB_WORK", f"{root}/.artifacts/llvm-lib")
-	here := f"{work}/{tag}-{target_os}-{target_arch}"
-	library := f"{here}/{library_path(target_os)}"
+	here := f"{work}/{tag}-{if tools: "tools-" else: ""}{target_os}-{target_arch}"
+	library := if tools: f"{here}/bin/opt{exe()}" else: f"{here}/{library_path(target_os)}"
 
 	if not exists(library).get_or(false):
 		partial := f"{here}.tmp"
@@ -109,6 +114,13 @@ fn main() Int:
 	path := canonicalize(library).get()
 	print(path)
 
+	var exports = f"MS_LLVM={path}\n"
+
+	if tools:
+		llc := f"{path.slice(0, path.length() - f"opt{exe()}".length())}llc{exe()}"
+		print(llc)
+		exports = f"MS_OPT={path}\nMS_LLC={llc}\n"
+
 	github_env := env("GITHUB_ENV", "")
-	if github_env != "": append_file(github_env, f"MS_LLVM={path}\n").wait().get()
+	if github_env != "": append_file(github_env, exports).wait().get()
 	return 0

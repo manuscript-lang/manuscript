@@ -525,6 +525,13 @@ MirValue fn_function_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   return fn_emit(fn, MOP_ClosureNew, NULL, 0, imm, fn_ty);
 }
 
+/* Whether a bound-method closure must take the receiver `written` (of MIR type `ty`): it has parts to free, or it is a
+ * resource of plain memory with a `close`. */
+static bool fn_receiver_owned(LowerFn *fn, const MsExpr *written, MirTy ty) {
+  uint32_t silent = MIR_NONE;
+  return mir_needs_drop(fn->cx->module, ty) || fn_capture_closer(fn, ms_facts_type(fn->facts, written->id), ty, &silent);
+}
+
 /* The receiver a bound-method closure keeps: a dying temporary moves into the closure; a value some binding still owns
  * is a hidden copy. */
 static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue receiver, bool *borrowed, bool escapes,
@@ -556,10 +563,14 @@ static MirValue fn_closure_owns(LowerFn *fn, const MsExpr *written, MirValue rec
     }
     return receiver;
   }
-  if (!fn_fresh_owner(fn, receiver)) {
+  /* A call's result of plain memory is no scope's owner, but it is still a fresh value the closure must close. */
+  const bool plain_call = written->kind == MS_E_CALL && !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, receiver));
+  if (!plain_call && !fn_fresh_owner(fn, receiver)) {
     return fn_implicit_clone(fn, receiver, true);
   }
-  (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &receiver, 1, (MirImm){0}, MIR_NONE);
+  if (!plain_call) {
+    (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &receiver, 1, (MirImm){0}, MIR_NONE);
+  }
   uint32_t silent = MIR_NONE;
   if (fn_capture_closer(fn, ms_facts_type(fn->facts, written->id), mir_b_ty(&fn->b, receiver), &silent)) {
     *closer = (MirCaptureCloser){0, silent}; /* the closure closes the resource it took when it is dropped */
@@ -612,7 +623,7 @@ static MirValue bound_native_method(LowerFn *fn, const MsExpr *expr, MirTy fn_ty
   bool borrowed = false;
   MirCaptureCloser *closer = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirCaptureCloser, 1);
   uint32_t nclosers = 0;
-  if (!changes && mir_needs_drop(cx->module, receiver_ty)) {
+  if (!changes && fn_receiver_owned(fn, expr->u.member.left, receiver_ty)) {
     receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed, ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE,
                                closer, &nclosers);
   }
@@ -699,7 +710,7 @@ static MirValue bound_operation(LowerFn *fn, const MsExpr *expr, const MsRef *re
   bool borrowed = false;
   MirCaptureCloser *closer = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirCaptureCloser, 1);
   uint32_t nclosers = 0;
-  if (mir_needs_drop(cx->module, receiver_ty)) {
+  if (fn_receiver_owned(fn, expr->u.member.left, receiver_ty)) {
     receiver = fn_closure_owns(fn, expr->u.member.left, receiver, &borrowed, ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE,
                                closer, &nclosers);
   }
@@ -809,7 +820,7 @@ MirValue fn_bound_method(LowerFn *fn, const MsExpr *expr, const MsRef *ref, cons
   const MirTy receiver_ty = mir_b_ty(&fn->b, receiver);
   fn->last_receiver = changes ? MIR_NONE : receiver;
   fn->has_last_receiver = !changes;
-  const bool owns = !changes && mir_needs_drop(cx->module, receiver_ty);
+  const bool owns = !changes && fn_receiver_owned(fn, expr->u.member.left, receiver_ty);
   bool borrowed = false;
   MirCaptureCloser *closer = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirCaptureCloser, 1);
   uint32_t nclosers = 0;
