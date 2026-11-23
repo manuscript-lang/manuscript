@@ -160,15 +160,7 @@ void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
   if (!ms_expr_index(place, &container, &key)) {
     return;
   }
-  MsExpr *inner_container = NULL;
-  MsExpr *inner_key = NULL;
-  const MsExpr *below = container;
-  while (below->kind == MS_E_MEMBER) {
-    below = below->u.member.left;
-  }
-  if (ms_expr_index(below, &inner_container, &inner_key)) {
-    return; /* an earlier index faults before a later key runs, so a chain keeps its own order */
-  }
+  fn_presolve_keys(fn, container);
   const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
   if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
     return;

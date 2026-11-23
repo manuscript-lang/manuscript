@@ -135,11 +135,15 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       args[index + 1] = fn_var_slot(fn, written, &slots[nslots], slots, nslots);
       nslots++;
     } else {
-      args[index + 1] = fn_expr(fn, written, mir_owns(data->owned, index) ? LW_MOVE : LW_BORROW);
+      const bool moves = mir_owns(data->owned, index);
+      args[index + 1] = fn_expr(fn, written, moves ? LW_MOVE : LW_BORROW);
+      if (!moves && args[index + 1] != MIR_NONE) { /* a resource temporary the function only borrows closes with the statement */
+        args[index + 1] = fn_closing_temporary(fn, expr, index, written, args[index + 1]);
+      }
       const MirTyData *param = mir_ty_data(fn->cx->module, param_ty);
       if (args[index + 1] != MIR_NONE && param->kind == MK_OPT && mir_b_ty(&fn->b, args[index + 1]) == param->elem) {
         /* A supplied argument of a parameter the function type made optional. */
-        args[index + 1] = fn_emit(fn, MOP_OptSome, &args[index + 1], 1, (MirImm){0}, param_ty);
+        args[index + 1] = fn_emit(fn, moves ? MOP_OptSome : MOP_OptView, &args[index + 1], 1, (MirImm){0}, param_ty);
       }
     }
     if (args[index + 1] == MIR_NONE) {

@@ -103,6 +103,29 @@ MirValue fn_closing_temporary(LowerFn *fn, const MsExpr *expr, uint32_t index, c
   return fn_own_temporary(fn, checked, value);
 }
 
+/* `xs.remove(i)`, `xs.splice(..)`, `m.add(k, v)`, `m.remove(k)`, `m.clear()` over resources: the natives drop what they
+ * take out of the collection, so the values come out and close where the statement ends. */
+static bool drops_resources(LowerFn *fn, const MsExpr *callee) {
+  MsTyTable *types = &fn->cx->program->types;
+  const MsSpan name = ms_names_span(fn->cx->program->names, callee->u.member.name);
+  if (!ms_span_is_text(name, "remove") && !ms_span_is_text(name, "splice") && !ms_span_is_text(name, "add") &&
+      !ms_span_is_text(name, "clear")) {
+    return false;
+  }
+  const MsTy owner = ms_ty_subst(types, ms_facts_type(fn->facts, callee->u.member.left->id), fn->subst.vars, fn->subst.args,
+                                 fn->subst.count);
+  if (owner == MS_TY_NONE) {
+    return false;
+  }
+  const bool list = ms_ty_is(types, owner, MS_BUILTIN_List) && ms_ty_arg_count(types, owner) == 1;
+  const bool map = ms_ty_is(types, owner, MS_BUILTIN_Map) && ms_ty_arg_count(types, owner) == 2;
+  if (!list && !map) {
+    return false;
+  }
+  const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[list ? 0 : 1], fn->subst.vars, fn->subst.args, fn->subst.count);
+  return fn_temp_closes(fn, elem);
+}
+
 typedef struct TempScan {
   LowerFn *fn;
   uint32_t skip; /* open expressions whose parts run conditionally, or in another function */
@@ -130,6 +153,7 @@ static void scan_enter(void *ctx, const MsExpr *expr) {
                                     scan->fn->subst.vars, scan->fn->subst.args, scan->fn->subst.count);
     scan->receiver |= listed != MS_TY_NONE && fn_temp_closes(scan->fn, listed);
   }
+  scan->found |= callee != NULL && callee->kind == MS_E_MEMBER && drops_resources(scan->fn, callee);
   for (uint32_t index = 0; call != NULL && !scan->found && index < call->arg_count; index++) {
     const MsExpr *written = call->args[index].source == MS_ARG_WRITTEN ? fn_written_arg(expr, call->args[index].node.node) : NULL;
     MsTy checked = MS_TY_NONE;

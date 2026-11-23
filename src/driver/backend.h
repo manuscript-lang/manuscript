@@ -7,8 +7,8 @@
 #include "compiler/emit/emit_tables.h"
 
 typedef struct BackendOptions {
-  bool optimize; /* the full optimiser pipeline instead of the small one */
-  bool verify;   /* verify the module after every pass */
+  bool optimize; /* run the MIR optimiser; only `ms emit` leaves it off, to show the MIR before it */
+  bool verify;   /* verify the module after the pipeline's passes */
   bool tests;    /* start at the test entry (ms_lower_tests) instead of `main` */
   bool bench;    /* with `tests`: the program's `bench` blocks run as the tests (ms_lower_benches) */
   bool count_ops; /* each block counts its operations (`ms bench --ops`) */
