@@ -92,6 +92,16 @@ typedef struct MsPendingBound {
 
 MS_LIST_DEFINE(MsPendingBoundList, ms_pending_bound_list, MsPendingBound)
 
+/* A type parameter's default awaiting the check that it meets the parameter's bounds. */
+typedef struct MsPendingDefault {
+  uint32_t module;
+  MsPos pos;
+  MsTy variable; /* the resolved default */
+  MsTy owner;    /* the type parameter */
+} MsPendingDefault;
+
+MS_LIST_DEFINE(MsPendingDefaultList, ms_pending_default_list, MsPendingDefault)
+
 typedef enum MsCheckPhase { MS_CHECK_RESOLUTION, MS_CHECK_TYPE } MsCheckPhase;
 
 /* Where in the oracle's order a diagnostic is found: imports, then the declaration passes, then each body. The
@@ -129,6 +139,7 @@ typedef struct MsCheckProgram {
   MsLocalRecordList bindings; /* every local, parameter and loop or match variable the bodies declared */
   MsTypeRefRecordList type_refs; /* every written type of the user's modules, as resolved */
   MsPendingBoundList pending_bounds;
+  MsPendingDefaultList pending_defaults;
   uint8_t stage;       /* the MsCheckStage the driver is in; stamps what is reported next */
   uint32_t serial; /* counter behind unique symbol ids */
   uint32_t user_modules; /* the first modules are the graph's; the rest are bundled standard modules */
@@ -192,6 +203,9 @@ void ms_check_finite_functions(MsCheckProgram *program);
 void ms_check_report_imports(MsCheckProgram *program, uint32_t module, MsSpan source);
 
 /* Binds each import of `module` to the exported symbol it names (declare must have run on every module). */
+/* Whether `symbol` is a prelude declaration, which every module sees under its own name. */
+bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol);
+
 void ms_check_bind_imports(MsCheckProgram *program, uint32_t module);
 
 

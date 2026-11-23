@@ -818,6 +818,27 @@ static bool report_builtin_constructor(Body *body, const MsExpr *call) {
   return true;
 }
 
+/* A call whose callee is a value that is not a function. */
+static void report_not_callable(Body *body, const MsExpr *call, const Target *target) {
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
+  }
+  if (body->module >= body->program->user_modules || body->quiet) {
+    return;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  if (target->name.len != 0) {
+    ms_strbuild_append(&text, target->name);
+    ms_strbuild_append_text(&text, " is not a function");
+  } else {
+    ms_strbuild_append_text(&text, "callee is not a function");
+  }
+  ms_strbuild_append_text(&text, " (it has type ");
+  ms_ty_show(&text, body->program->names, &body->program->types, target->sig);
+  ms_strbuild_append_text(&text, "); only functions and methods can be called, so remove the (...) or call a function instead");
+  ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+}
+
 MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   Target target = {0};
   MsTy result = MS_TY_NONE;
@@ -858,6 +879,9 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
         ms_ty_is(&body->program->types, expected, MS_BUILTIN_Result) && !ms_ty_has_variable(&body->program->types, expected)) {
       result = expected;
     }
+  } else if (target.sig != MS_TY_NONE && !ms_ty_is_invalid(&body->program->types, target.sig) &&
+             ms_ty_kind(&body->program->types, target.sig) != MS_TY_FUNCTION) {
+    report_not_callable(body, expr, &target);
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {
