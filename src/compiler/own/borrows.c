@@ -267,13 +267,22 @@ static const MsExpr *kept_call(const MsExpr *expr) {
   return expr->kind == MS_E_CALL ? expr : NULL;
 }
 
+/* A place that starts at `self`: a method's receiver is not a local that a view could outlive. */
+static bool rooted_at_self(const Borrows *pass, const MsExpr *place) {
+  while (place != NULL && place->kind == MS_E_MEMBER) {
+    place = place->u.member.left;
+  }
+  return place != NULL && place->kind == MS_E_NAME &&
+         ms_span_is_text(ms_names_span(pass->program->names, place->u.sym), "self");
+}
+
 static void note_keep(Borrows *pass, const MsExpr *kept) {
   if (!owns_memory(pass, kept)) {
     return; /* a scalar is copied out of the result, so nothing is kept */
   }
   const MsExpr *call = kept_call(kept);
   Keep keep = {.kept = call};
-  if (call != NULL && origin_of_arg(pass, call, &keep.source)) {
+  if (call != NULL && origin_of_arg(pass, call, &keep.source) && !rooted_at_self(pass, keep.source.place)) {
     keep_list_push(&pass->keeps, keep);
   }
 }
@@ -407,8 +416,9 @@ static void note_if_var(Borrows *pass, const MsStmt *stmt) {
     root = root->kind == MS_E_MEMBER ? root->u.member.left : left;
   }
   uint32_t binding = 0;
-  if (cond->kind == MS_E_PROBE || root->kind != MS_E_NAME || !local_of(pass->facts, root->id, &binding)) {
-    return;
+  if (cond->kind == MS_E_PROBE || root->kind != MS_E_NAME || !local_of(pass->facts, root->id, &binding) ||
+      cond->kind == MS_E_NAME) {
+    return; /* a name at its last use moves into the binding (checked with the moves) */
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "`if var` borrows an entry written as `place[key]?` or `map.get(key)`, but `");

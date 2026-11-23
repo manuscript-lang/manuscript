@@ -12,7 +12,7 @@ fn checked(value: Int) Int!ValidationError:
     return ok(value)
 
 fn relay[T, E](outcome: T!E) T!E:
-    value := outcome?
+    value := outcome.clone()?
     return ok(value)
 
 fn actual(cause: ValidationError) Int:
