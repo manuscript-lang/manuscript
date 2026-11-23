@@ -12,6 +12,7 @@
 #include "compiler/mir/mir_print.h"
 #include "cli/backend.h"
 #include "tooling/checked_input.h"
+#include "base/env.h"
 #include "compiler/opt/opt.h"
 #include "cli/invocation.h"
 
@@ -22,6 +23,14 @@ static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, Ms
   MirModule module;
   mir_module_init(&module);
   bool ok = ms_lower_program(program, entry, &module, why);
+  MsString raw = ms_string_empty();
+  if (ok && ms_env_get("MS_EMIT_RAW", &raw) && ms_string_span(&raw).len != 0) {
+    mir_print_module(&module, out); /* what lowering made, before elaboration: its scope markers and unwind exits */
+    ms_string_release(&raw);
+    mir_module_free(&module);
+    return true;
+  }
+  ms_string_release(&raw);
   const MirPipelineOptions pipeline = {.verify = true, .checks = true};
   ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
   ok = ok && (!optimize || mir_optimize(&module, false, true, why));

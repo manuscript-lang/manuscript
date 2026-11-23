@@ -833,9 +833,8 @@ MirValue fn_take_from_temporary(LowerFn *fn, const MsExpr *expr, MirValue value)
   ms_walk_block(&visitor, callee->body);
   const bool whole = counts.returns != 0 && counts.returns == counts.params && counts.same;
   const bool payload = counts.returns != 0 && counts.returns == counts.payload_returns && call->callee.kind == MS_REF_METHOD;
-  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
-  const MirInst *last = insts->len == 0 ? NULL : &insts->ptr[insts->len - 1];
-  if (last == NULL || last->res != value) {
+  const MirInst *last = fn_just_made(fn, value);
+  if (last == NULL) {
     return MIR_NONE;
   }
   const uint32_t position = whole ? counts.local + (call->callee.kind == MS_REF_METHOD ? 1u : 0u) : 0;

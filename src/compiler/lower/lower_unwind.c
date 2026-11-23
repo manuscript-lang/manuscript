@@ -5,8 +5,36 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_pass.h"
 
+const MirInst *fn_just_made(const LowerFn *fn, MirValue value) {
+  if (value == MIR_NONE) {
+    return NULL;
+  }
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  if (insts->len > 0 && insts->ptr[insts->len - 1].res == value) {
+    return &insts->ptr[insts->len - 1];
+  }
+  if (fn->site_value == value && fn->site_block < fn->b.func.blocks.len) {
+    const MirInstList *made = &fn->b.func.blocks.ptr[fn->site_block].insts;
+    return fn->site_index < made->len && made->ptr[fn->site_index].res == value ? &made->ptr[fn->site_index] : NULL;
+  }
+  return NULL;
+}
+
 void fn_unwind_site(LowerFn *fn, MirValue result) {
-  (void)result;
+  const MirInstList *before = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  size_t at = before->len;
+  while (result != MIR_NONE && at > 0 && before->ptr[at - 1].res != result && before->ptr[at - 1].res == MIR_NONE) {
+    at--; /* ownership markers follow the instruction that made the result */
+  }
+  const bool made = result != MIR_NONE && at > 0 && before->ptr[at - 1].res == result;
+  const uint32_t made_at = made ? (uint32_t)at - 1 : 0;
+  const MirBlock made_in = fn->b.cur;
+  if (made) { /* a constructor builds a value and calls nothing: it can neither fault nor park */
+    const MirOp op = (MirOp)before->ptr[made_at].op;
+    if (op == MOP_TypeNew || op == MOP_IfaceNew || op == MOP_AltNew || op == MOP_OptSome) {
+      return;
+    }
+  }
   if (!fn->cx->unwind_exits || fn->terminated || fn->failed || fn->b.func.unwind_only) {
     return;
   }
@@ -31,4 +59,7 @@ void fn_unwind_site(LowerFn *fn, MirValue result) {
   }
   mir_b_ret(&fn->b, undef);
   mir_b_switch_to(&fn->b, next);
+  fn->site_value = made ? result : MIR_NONE;
+  fn->site_block = made_in;
+  fn->site_index = made_at;
 }

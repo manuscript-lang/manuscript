@@ -154,6 +154,11 @@ typedef struct LowerFn {
   MirTy hint; /* the type a default expression is wanted as, for an expression the checker left untyped */
   bool decl_void; /* declared to return Void, though the MIR function returns an Int status (the entry) */
   bool terminated;
+  /* The result the last unwind site followed and where its instruction is, so that a later look at "the value just
+   * made" still finds it behind the site's test. */
+  MirValue site_value;
+  MirBlock site_block;
+  uint32_t site_index;
   MirValue receiver_slot; /* a native call's fresh receiver, in the closing slot its arguments were evaluated after (MIR_NONE: none) */
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
@@ -366,6 +371,8 @@ bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 /* After a call: test the unwinding byte and leave through the scope exit when it is set (lower_unwind.c). */
+/* The instruction that made `value` when nothing but unwind-site tests came after it, else NULL. */
+const MirInst *fn_just_made(const LowerFn *fn, MirValue value);
 void fn_unwind_site(LowerFn *fn, MirValue result);
 MirValue fn_missing_value(LowerFn *fn, MsPos at);
 bool fn_entry_read_parts(LowerFn *fn, const MsExpr *place, MsExpr **container, MsExpr **key);

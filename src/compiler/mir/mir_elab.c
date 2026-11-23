@@ -2,6 +2,7 @@
  * mir_elab.h). This file reads the scope markers, runs the move-state dataflow and drives the emitter. */
 #include "compiler/mir/mir_elab.h"
 
+#include "base/env.h"
 #include "base/sort.h"
 
 static bool is_raw(const MirFunc *func) {
@@ -245,6 +246,12 @@ static bool function_blocks(ElCx *cx, MirFunc *func, ElEm *em) {
 }
 
 static bool elaborate_function(ElCx *cx, MirModule *module, MirFunc *func) {
+  MsString implicit = ms_string_empty();
+  const bool own_all = ms_env_get("MS_UNWIND_EXITS", &implicit) && ms_string_span(&implicit).len != 0;
+  ms_string_release(&implicit);
+  if (own_all && !el_own_implicit(module, func, cx->ma)) {
+    return false;
+  }
   cx->f = func;
   el_tags(cx);
   ElEm em = {.cx = cx, .m = module, .f = func, .pending = MIR_NONE, .cancelled = {.value = MIR_NONE}};

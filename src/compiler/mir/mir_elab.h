@@ -13,6 +13,9 @@
 #include "compiler/mir/mir_pass.h"
 #include "compiler/mir/mir_persist.h"
 
+/* Gives every owned result no marker names to the innermost open scope (mir_elab_implicit.c). */
+bool el_own_implicit(MirModule *module, MirFunc *func, MsArena *ma);
+
 /* Runs the pass over every Raw function. On failure the error text names the function. */
 bool mir_elaborate(MirModule *module, MsStrBuild *error);
 
