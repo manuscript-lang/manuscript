@@ -20,6 +20,12 @@ static MsString in_directory(MsSpan directory, const char *name) {
   return ms_strbuild_finish(&path);
 }
 
+/* A Debug build optimizes lightly: SROA, early CSE, instruction combining and CFG simplification keep frames as small
+ * as `default<O2>` does (measured on a 30 MB program: 0.2% apart) for about a fifth of the optimizer's time; `llc`
+ * pairs it with -O1, the basic register allocator and no machine scheduler, which cost no frame size. FastISel is
+ * not used: it changes the line a fault trace reports. */
+static const char debug_pipeline[] = "-passes=function(sroa,early-cse,simplifycfg,instcombine<no-verify-fixpoint>,sroa,simplifycfg)";
+
 /* `opt` over `input`, writing the bitcode to `bitcode`. */
 static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan bitcode, MsSpan log,
                      MsStrBuild *why) {
@@ -34,7 +40,7 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
     argv[argc++] = ms_span_of_text("-verify-each");
   }
   argv[argc++] = triple_flag;
-  argv[argc++] = ms_span_of_text(options->debug ? "-passes=default<O2>" : "-passes=default<O3>");
+  argv[argc++] = ms_span_of_text(options->debug ? debug_pipeline : "-passes=default<O3>");
   argv[argc++] = input;
   argv[argc++] = ms_span_of_text("-o");
   argv[argc++] = bitcode;
@@ -44,10 +50,14 @@ static bool optimize(const ObjectOptions *options, MsSpan triple_flag, MsSpan in
 /* `llc` over `input`, writing the object. */
 static bool generate(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
                      const char *filetype, MsStrBuild *why) {
-  MsSpan argv[12];
+  MsSpan argv[14];
   size_t argc = 0;
   argv[argc++] = options->llc;
-  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O2" : "-O3") : "-O0");
+  argv[argc++] = ms_span_of_text(options->speed ? (options->debug ? "-O1" : "-O3") : "-O0");
+  if (options->debug && options->speed) {
+    argv[argc++] = ms_span_of_text("-regalloc=basic");
+    argv[argc++] = ms_span_of_text("-enable-misched=0");
+  }
   argv[argc++] = ms_span_of_text(filetype);
   argv[argc++] = ms_span_of_text("-relocation-model=pic");
   argv[argc++] = triple_flag;
