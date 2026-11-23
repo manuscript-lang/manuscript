@@ -46,6 +46,11 @@ static bool temps_shared(const EmitCx *cx, const MirInst *inst) {
     result = cx->module->externs.ptr[inst->imm.a].ret;
   } else if (inst->res != MIR_NONE) {
     result = value_type(cx, inst->res);
+    /* A function whose result is not a view of an argument leaves nothing pointing into the copies. */
+    if ((MirOp)inst->op == MOP_Call && inst->imm.tag == MI_FUNC && inst->imm.a < cx->module->funcs.len &&
+        !cx->module->funcs.ptr[inst->imm.a].ret_borrowed) {
+      return true;
+    }
   } else {
     return true;
   }
@@ -70,9 +75,15 @@ bool emit_rt_scalar_option(EmitCx *cx, MirTy type) {
   return mir_ty_data(cx->module, type)->kind == MK_OPT && emit_rt_direct(cx, type) && emit_leaves(cx, type).len == 2;
 }
 
+/* A call's result area is written by the callee and read leaf by leaf right after the call, so every call shares one
+ * area, as large as the largest. */
+static void note_result_area(uint32_t *area, uint32_t bytes) {
+  *area = bytes > *area ? bytes : *area;
+}
+
 /* The frame slots one runtime call needs: a copy of each argument that does not pass directly, and the result
  * area when the result does not. */
-static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared) {
+static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared, uint32_t *area) {
   const MirExtern *def = &cx->module->externs.ptr[inst->imm.a];
   const bool share = temps_shared(cx, inst);
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
@@ -87,20 +98,18 @@ static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
     }
   }
   if (!emit_rt_direct(cx, def->ret)) {
-    ms_strbuild_printf(cx->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", block, index,
-                       emit_slot_bytes(cx, def->ret));
+    note_result_area(area, emit_slot_bytes(cx, def->ret));
   } else if (emit_rt_scalar_option(cx, def->ret)) {
-    ms_strbuild_printf(cx->out, "  %%r%u_%u = alloca [8 x i8], align 8\n", block, index);
+    note_result_area(area, 8);
   }
 }
 
 /* The frame slots a call of a MIR function needs: the result area when the result has several leaves, and a
  * copy of each argument that passes by address. */
-static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared) {
+static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared, uint32_t *area) {
   const bool share = temps_shared(cx, inst);
   if (inst->res != MIR_NONE && emit_value_leaves(cx, inst->res).len > 1) {
-    ms_strbuild_printf(cx->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", block, index,
-                       emit_slot_bytes(cx, value_type(cx, inst->res)));
+    note_result_area(area, emit_slot_bytes(cx, value_type(cx, inst->res)));
   }
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     MirTy type = value_type(cx, inst->args[arg]);
@@ -120,6 +129,7 @@ void emit_frame_slots(EmitCx *cx) {
   const MirFunc *func = cx->func;
   uint32_t shared_x[SHARED_ARGS] = {0};
   uint32_t shared_p[SHARED_ARGS] = {0};
+  uint32_t result_area = 0;
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
     for (uint32_t index = 0; index < data->insts.len; index++) {
@@ -137,7 +147,7 @@ void emit_frame_slots(EmitCx *cx) {
       case MOP_Call:
       case MOP_CallInd:
       case MOP_CallMethod:
-        frame_call(cx, inst, block, index, shared_x);
+        frame_call(cx, inst, block, index, shared_x, &result_area);
         break;
       case MOP_ClosureNew:
         if (cx->framed != NULL && cx->framed[inst->res]) {
@@ -155,12 +165,15 @@ void emit_frame_slots(EmitCx *cx) {
         ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", block, index);
         break;
       case MOP_CallRt:
-        frame_rt_call(cx, inst, block, index, shared_p);
+        frame_rt_call(cx, inst, block, index, shared_p, &result_area);
         break;
       default:
         break;
       }
     }
+  }
+  if (result_area != 0) {
+    ms_strbuild_printf(cx->out, "  %%R = alloca [%u x i8], align 8\n", result_area);
   }
   for (uint32_t arg = 0; arg < SHARED_ARGS; arg++) {
     if (shared_x[arg] != 0) {
@@ -223,8 +236,7 @@ void emit_call_to(EmitCx *cx, const MirInst *inst, const EmitSite *site, const c
   MsStrBuild *out = cx->out;
   spill_arguments(cx, inst, block, index);
   uint32_t result_leaves = inst->res == MIR_NONE ? 0 : (uint32_t)emit_value_leaves(cx, inst->res).len;
-  char area[48];
-  slot_name(area, 'r', block, index, MIR_NONE);
+  const char *area = "%R";
   if (result_leaves == 1) {
     ms_strbuild_printf(out, "  %%v%u = call %s ", inst->res, emit_value_register_type(cx, inst->res));
   } else {
@@ -348,7 +360,9 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
     ms_strbuild_free(&args);
     return false;
   }
-  slot_name(area, 'r', block, index, MIR_NONE);
+  area[0] = '%';
+  area[1] = 'R';
+  area[2] = 0; /* the area every call shares */
   if (!direct || option) {
     ms_strbuild_printf(&args, "%sptr %s", ms_strbuild_length(&args) > 0 ? ", " : "", area);
   }

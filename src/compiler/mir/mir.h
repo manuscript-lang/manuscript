@@ -257,6 +257,7 @@ typedef struct MirFunc {
   bool has_slot_result;
   uint32_t slot_result;
   bool has_close_exit;
+  bool recursive; /* in a cycle of direct calls: every level of the recursion holds a frame of this function */
   uint32_t close_exit[2];
   /* Set by lowering: a closure function whose environment owns resources lists the capture index and the
    * function that closes it; a cleanup thunk that closes a value in place names the type of that value. */
