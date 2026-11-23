@@ -6,6 +6,7 @@
 #include "cli/lsp_analysis.h"
 #include "cli/lsp_internal.h"
 
+void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
 void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out);
 void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool include_declaration,
                         MsStrBuild *out);
