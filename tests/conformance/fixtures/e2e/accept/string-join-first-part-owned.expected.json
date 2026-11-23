@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "d: failed\nown\nd: seen\nd: a: x\nd: a\n",
+    "stderr": ""
+  }
+}

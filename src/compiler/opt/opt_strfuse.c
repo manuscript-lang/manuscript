@@ -78,7 +78,7 @@ static uint32_t fuse_extern(MirModule *m, const MirFunc *f, const MirInst *inst,
     params[k] = (MirParam){mir_value_ty(f, inst->args[k]), k == 0 ? MM_MOVE : MM_BORROW};
   }
   MirExtern def = {0};
-  def.name = mir_name(m, ms_span_of_text(s->join ? "msrt_string_join" : "msrt_string_append"));
+  def.name = mir_name(m, ms_span_of_text(s->join ? "msrt_string_join_grow" : "msrt_string_append"));
   def.params = params;
   def.nparams = inst->nargs;
   def.ret = MIR_STR;
