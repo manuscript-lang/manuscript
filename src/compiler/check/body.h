@@ -38,6 +38,7 @@ typedef struct Body {
   MsTy self_ty; /* the receiver type in a method, else MS_TY_NONE */
   MsSpan source;  /* the module's text, for repairing edits; empty for a bundled module */
   bool quiet;      /* type without reporting (constant initializers have their own diagnostics) */
+  const MsExpr *statement_match; /* the match being checked as a statement */
   bool saw_return; /* a return statement appeared in the current lambda body */
   MsTy hint;     /* a lambda's expected result that still names open variables: guides inference, not enforced */
   MsTy fixture_ty; /* the type `make_fixture` returns, or MS_TY_NONE: tests of the module see it as `fixture` */

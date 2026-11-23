@@ -347,6 +347,11 @@ static void match_args(const Body *body, const Target *target, const MsExpr *cal
     while (cursor < nparams && matched->slot[cursor] >= 0) {
       cursor++;
     }
+    const bool named_only = target->nominal != MS_TY_NONE && /* `reserve` of a List is named-only */
+                            ms_ty_is(types, target->nominal, MS_BUILTIN_List);
+    if (named_only) {
+      cursor = nparams;
+    }
     matched->state[at] = cursor < nparams ? ARG_MATCHED : ARG_EXTRA;
     if (cursor < nparams) {
       matched->slot[cursor] = (int32_t)at;
@@ -402,6 +407,10 @@ static void result_hint(Body *body, const Target *target, MsTy expected, MsTy *h
   const MsTyTable *types = &body->program->types;
   const size_t count = target->vars.len;
   const MsTy result = target->sig == MS_TY_NONE ? MS_TY_NONE : ms_ty_result(types, target->sig);
+  if (expected != MS_TY_NONE && result != MS_TY_NONE && ms_ty_is(types, expected, MS_BUILTIN_Optional) &&
+      ms_ty_arg_count(types, expected) == 1 && !ms_ty_is(types, result, MS_BUILTIN_Optional)) {
+    expected = ms_ty_args(types, expected)[0]; /* a value wrapped as an optional is typed as its payload */
+  }
   if (expected == MS_TY_NONE || ms_ty_is_invalid(types, expected) || count == 0 || count > 16 || result == MS_TY_NONE ||
       !ms_ty_has_variable(types, result) || ms_ty_has_variable(types, expected)) {
     return;
@@ -502,6 +511,16 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
   return true;
 }
 
+/* The type the expected result gives the callee's own variable `variable`, or MS_TY_NONE. */
+static MsTy hint_for(const Target *target, MsTy variable, const MsTy *hint) {
+  for (size_t at = 0; at < target->vars.len && at < 16; at++) {
+    if (target->vars.ptr[at] == variable) {
+      return hint[at];
+    }
+  }
+  return MS_TY_NONE;
+}
+
 /* Types the written arguments in parameter order; returns the type of each parameter's argument. */
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound, const MsTy *hint) {
@@ -527,7 +546,7 @@ static void type_args(Body *body, const Target *target, const MsExpr *call, cons
     MsTy wanted = expected_param(body, target, param, bound);
     bool open = mentions_vars(types, wanted, &target->vars);
     bool by_hint = false; /* only the call's expected result closes the parameter: a function argument is judged later */
-    if (open && !is_own_variable(target, wanted)) {
+    if (open && (!is_own_variable(target, wanted) || (target->constructor && ms_ty_is(types, ms_ty_result(types, target->sig), MS_BUILTIN_Result) && hint_for(target, wanted, hint) != MS_TY_NONE))) {
       MsTy known[16] = {0};
       for (size_t at = 0; at < target->vars.len && at < 16; at++) {
         known[at] = bound[at] != MS_TY_NONE ? bound[at] : hint[at];
@@ -827,6 +846,12 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
     matched.bound = bound;
     body_report_arguments(body, &target, expr, &matched);
     result = finish_call(body, expr, &target, arg_tys, &matched, expected, diagnostics_before);
+    /* an argument that already disagreed with the expected result's type is the one error: the call has that type */
+    if (target.constructor && expected != MS_TY_NONE && body->program->diagnostics.len > diagnostics_before &&
+        result != MS_TY_NONE && ms_ty_is(&body->program->types, result, MS_BUILTIN_Result) &&
+        ms_ty_is(&body->program->types, expected, MS_BUILTIN_Result) && !ms_ty_has_variable(&body->program->types, expected)) {
+      result = expected;
+    }
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {

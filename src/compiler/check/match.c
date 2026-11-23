@@ -44,6 +44,7 @@ typedef struct ArmState {
   bool literal;      /* an Int, String or Bool scrutinee: literal arms */
   bool report;       /* a user module that is not quiet */
   bool wildcard;
+  bool discarded;    /* a statement: arm values are dropped, so they need not agree */
   bool unknown_case;
   uint32_t index;    /* the arm being visited */
   MsName *seen;      /* case names, or literal spellings interned as names */
@@ -323,7 +324,11 @@ static MsTy arm_value(Body *body, const MsArm *arm, MsTy scrutinee, MsTy expecte
     (void)body_declare(body, arm->bindings.ptr[at].name, ty, MS_REF_LOCAL, false, arm->id, arm->pos);
   }
   body_block(body, arm->body);
-  const MsTy value = arm->value != NULL ? body_expr(body, arm->value, expected) : MS_TY_NONE;
+  /* an arm whose value differs from the type the match has so far is a mismatch, reported at that value */
+  const bool settled = expected != MS_TY_NONE && !state->discarded && !body_has_foreign_variable(body, expected);
+  const MsTy value = arm->value == NULL ? MS_TY_NONE
+                     : settled          ? body_expect(body, arm->value, expected, (MsSpan){0})
+                                        : body_expr(body, arm->value, expected);
   body_scope_reset(body, mark);
   return value;
 }
@@ -373,6 +378,14 @@ static void check_exhaustive(Body *body, const MsExpr *expr, MsTy scrutinee) {
     if (arm->path != NULL && arm->path->kind == MS_E_NAME &&
         ms_span_is_text(ms_names_span(program->names, arm->path->u.sym), "_")) {
       return;
+    }
+    if (arm->bare && ms_ty_is(&program->types, scrutinee, MS_BUILTIN_Optional)) { /* a lone name binds the payload */
+      for (uint32_t kase = 0; kase < def->cases.len; kase++) {
+        if (ms_span_is_text(ms_names_span(program->names, def->cases.ptr[kase].name), "some")) {
+          seen[kase] = 1;
+        }
+      }
+      continue;
     }
     if (arm_case(body, arm->path, scrutinee, &at) == NULL) {
       return;
@@ -426,6 +439,7 @@ MsTy body_match(Body *body, const MsExpr *expr, MsTy expected) {
                                                            ms_ty_is(types, scrutinee, MS_BUILTIN_String) ||
                                                            ms_ty_is(types, scrutinee, MS_BUILTIN_Bool)),
                     .case_count = def == NULL ? 0 : (uint32_t)def->cases.len};
+  state.discarded = body->statement_match == expr;
   state.report = !body->quiet && body->module < body->program->user_modules && (state.literal || def != NULL);
   state.seen = MS_ARENA_NEW_ARRAY(&body->program->arena, MsName, expr->u.match.arms.len + 1);
   /* An expected type that still names an open variable guides the arms but is not the result: the arms decide it. */
