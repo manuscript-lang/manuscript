@@ -88,3 +88,19 @@ MsI128 ms_i128_div(MsI128 numerator, MsI128 divisor) {
   const MsU128 q = ms_u128_div(n, d);
   return negative ? (MsI128)((MsU128)0 - q) : (MsI128)q;
 }
+
+bool ms_i128_mul(MsI128 a, MsI128 b, MsI128 *out) {
+  const bool negative = (a < 0) != (b < 0);
+  const MsU128 ua = a < 0 ? -(MsU128)a : (MsU128)a;
+  const MsU128 ub = b < 0 ? -(MsU128)b : (MsU128)b;
+  MsU128 product;
+  if (__builtin_mul_overflow(ua, ub, &product)) {
+    return false;
+  }
+  const MsU128 limit = (MsU128)1 << 127;
+  if (product > limit || (product == limit && !negative)) {
+    return false;
+  }
+  *out = negative ? (MsI128)(0 - product) : (MsI128)product;
+  return true;
+}

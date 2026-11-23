@@ -22,4 +22,9 @@ MsU128 ms_u128_mod(MsU128 numerator, MsU128 divisor);
 /* numerator / divisor, truncated toward zero. */
 MsI128 ms_i128_div(MsI128 numerator, MsI128 divisor);
 
+/* a * b into *out; false when the product does not fit 128 bits (true on success). `__builtin_mul_overflow` on __int128 calls
+ * `__muloti4` on aarch64, which neither glibc nor the runtime carries; this goes through the unsigned builtin, which
+ * expands inline everywhere. */
+bool ms_i128_mul(MsI128 a, MsI128 b, MsI128 *out);
+
 #endif
