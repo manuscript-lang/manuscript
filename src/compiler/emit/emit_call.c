@@ -257,13 +257,8 @@ void emit_frame_slots(EmitCx *cx) {
         if (cx->pool != NULL && cx->pool[inst->res] != UINT32_MAX) {
           break; /* in a shared cell */
         }
-        /* Zeroed, so padding bytes compare equal when a descriptor compares a slot as bytes. */
-        ms_strbuild_printf(cx->out,
-                           "  %%s%u = alloca [%u x i8], align 8\n"
-                           "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 0, i64 %u, i1 false)\n"
-                           "  %%v%u = ptrtoint ptr %%s%u to i64\n",
-                           inst->res, emit_slot_bytes(cx, inst->imm.a), inst->res, emit_slot_bytes(cx, inst->imm.a),
-                           inst->res, inst->res);
+        /* Zeroed where the instruction is, after the stack check: a frame this big may already reach the guard page. */
+        ms_strbuild_printf(cx->out, "  %%s%u = alloca [%u x i8], align 8\n", inst->res, emit_slot_bytes(cx, inst->imm.a));
         break;
       case MOP_Call:
       case MOP_CallInd:
