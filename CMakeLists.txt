@@ -67,10 +67,12 @@ add_custom_target(llvm-lib
   USES_TERMINAL
 )
 
-# Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms).
+# Formatting, nested matches, release pins, workflow triggers and the license inventory (tools/repo-check.ms). The tool
+# lists the files with git, which the MSYS2 shell of the Windows runners does not have on PATH: Git for Windows is.
+find_program(MS_GIT git PATHS "$ENV{ProgramFiles}/Git/cmd")
 add_custom_target(repo-check
-  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/repo-check.ms
-  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/repo-check.ms -- licenses --check
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" "GIT=${MS_GIT}" $<TARGET_FILE:ms> run tools/repo-check.ms
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" "GIT=${MS_GIT}" $<TARGET_FILE:ms> run tools/repo-check.ms -- licenses --check
   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
   DEPENDS ms
   USES_TERMINAL
