@@ -179,8 +179,8 @@ static void emit_header(EmitCx *cx, uint32_t index, const char *tier, uint32_t s
   }
   /* Every function that calls another keeps a frame pointer: the fault walker follows the chain, and a
    * frameless wrapper would drop its caller's frame from the trace. */
-  ms_strbuild_append_text(out, cx->noinline ? ") nounwind noinline" : ") nounwind");
-  ms_strbuild_append_text(out, " \"frame-pointer\"=\"non-leaf\"");
+  ms_strbuild_append_text(out, ") nounwind noinline");
+  ms_strbuild_append_text(out, " \"frame-pointer\"=\"non-leaf\" \"disable-tail-calls\"=\"true\"");
   ms_strbuild_append_text(out, tier);
   if (cx->pure) {
     ms_strbuild_append_text(out, " willreturn nofree nosync memory(none)");
