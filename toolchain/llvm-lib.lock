@@ -1,11 +1,11 @@
 # The shared LLVM library ms loads in-process (manuscript-lang/llvm-bundle, built from LLVM 23.1.1 on each platform).
 # tools/fetch-llvm-lib.ms downloads the archive for the host and checks it against these digests; they are the
 # release's SHA256SUMS. Update the tag and every digest together.
-tag llvm-23.1.1-r5
+tag llvm-23.1.1-r6
 version 23.1.1
-a04ad696a140913b7cd1e642548193ff863e99cde36f7c1ea86763c26e234b9c  llvm-lib-23.1.1-darwin-amd64.tar.gz
-1e007dc5c81fa6f259e13d7b81aa0d817dbabec6257009f093353a4cfeed83c7  llvm-lib-23.1.1-darwin-arm64.tar.gz
-9c162370553fa8824a194a990a68f50685ac79287fb85d65ff2d7e4e60a69982  llvm-lib-23.1.1-linux-amd64.tar.gz
-8ca5b81611086164e7aaaa0492fba499bd5a5d45789314b93f2efe0e3685606a  llvm-lib-23.1.1-linux-arm64.tar.gz
-96da479a7dd4b93bd4dca07d16b8c2580541ff02d0e20a00ce67be3581333c4d  llvm-lib-23.1.1-windows-amd64.tar.gz
-355c36500bdcd233b913abccb5f5ee5c064b6f57bc50866b8852dcbe01e0e3b9  llvm-lib-23.1.1-windows-arm64.tar.gz
+81a1ff4473f28c9d7c8b945b00fc23dfd51c5a1f2cba199633f613af45ca67c7  llvm-lib-23.1.1-darwin-amd64.tar.gz
+a8cc583ca12317494198fe884afea46740db81b4a348cc4214d3aaf31fb033f8  llvm-lib-23.1.1-darwin-arm64.tar.gz
+7a624ecc4294c4da8b03523dd196c1f9ea288c691209d96e14127fbb8c9f5b03  llvm-lib-23.1.1-linux-amd64.tar.gz
+ab04591cb87af10f763e12c51afba94aa8ebbbb46f9a460cad14498febb0af53  llvm-lib-23.1.1-linux-arm64.tar.gz
+1cf1fde0f57c153a97826a7d7f3a1813017f1ebc46321289a98986552fcdf713  llvm-lib-23.1.1-windows-amd64.tar.gz
+4110218ae19b334f2aec5cccef8733a332d29251c30dde7de866485450714272  llvm-lib-23.1.1-windows-arm64.tar.gz

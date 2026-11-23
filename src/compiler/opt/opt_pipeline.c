@@ -4,6 +4,7 @@
  * visited. */
 #include "compiler/mir/mir_pass.h"
 #include "compiler/mir/mir_verify.h"
+#include "compiler/opt/opt_inline.h"
 #include "compiler/opt/opt_pass.h"
 
 /* Rounds of the per-function passes. */
@@ -80,6 +81,7 @@ static const Step early_steps[] = {
 };
 
 static const Step late_steps[] = {
+    {"fieldview", opt_fieldview},
     {"exit_drops", opt_exit_drops},
     {"reserve", opt_reserve},
     {"lastuse", opt_lastuse},
@@ -94,7 +96,8 @@ static void run_steps(MirModule *m, const Step *steps, size_t count) {
   }
 }
 
-bool mir_optimize(MirModule *m, bool verify, MsStrBuild *error) {
+bool mir_optimize(MirModule *m, bool compact, bool verify, MsStrBuild *error) {
+  m->inline_base = compact ? OPT_INLINE_COMPACT_THRESHOLD : OPT_INLINE_BASE_THRESHOLD;
   run_steps(m, early_steps, sizeof early_steps / sizeof early_steps[0]);
   /* These passes read the module but rewrite only their own function. */
   function_passes(m);

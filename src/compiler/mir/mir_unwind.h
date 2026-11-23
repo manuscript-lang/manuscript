@@ -61,6 +61,7 @@ typedef struct UwCx {
   uint32_t *targets; /* the functions a `closure.new` makes callable, ascending */
   uint32_t ntargets;
   uint32_t discard;
+  uint32_t cancel; /* `msrt_cleanup_cancel`: an entry made a no-op, the newer ones stay */
   UwHash cells;    /* slot -> the type it holds */
   UwHash closers, with_closers, slot_droppers, raw_closers, partial_closers, box_closers;
   UwHash raw_values;
@@ -181,10 +182,21 @@ typedef struct UwStacks {
 #define UW_ROOT 0u
 #define UW_INF UINT32_MAX
 
+/* A registration whose owner died but whose entry stays on the stack, cancelled, because registering the live
+ * entries above it again would cost more. The tag carries this bit from then on. */
+#define UW_TAG_DEAD (UINT64_C(1) << 63)
+
+/* How to bring a stack to a set of owners: either discard from `cut` and register what lives above it again
+ * (`added`), or, when that is more than the dead owners, cancel their entries (`cancel`) and rebuild the chain
+ * above `keep` with those entries marked dead (`rebuilt`), then register `added`. */
 typedef struct UwPlan {
   bool has_cut;
   uint32_t cut, keep;
   uint32_t *added, nadded;
+  uint32_t ncancel, nrebuilt;
+  uint64_t *cancel;       /* the tags of the entries to cancel */
+  uint32_t *rebuilt;      /* owners of the entries above `keep`, bottom first */
+  uint64_t *rebuilt_tags; /* their tags, with UW_TAG_DEAD on the dead */
 } UwPlan;
 
 typedef struct UwFlow {
@@ -196,6 +208,8 @@ void uws_init(UwStacks *s, MsArena *a);
 uint32_t uws_depth(const UwStacks *s, uint32_t stack);
 uint64_t uws_tag_at(const UwStacks *s, uint32_t stack, uint32_t depth);
 UwPlan uws_plan(UwStacks *s, uint32_t stack, const OwnerSet *target);
+/* Applies a plan's rebuilt entries and then `plan->nadded` new ones, tagged `tags`. */
+uint32_t uws_commit(UwStacks *s, const UwPlan *plan, const uint64_t *tags, const OwnerSet *target);
 uint32_t uws_extend(UwStacks *s, uint32_t stack, const uint32_t *owners, const uint64_t *tags,
           uint32_t n, const OwnerSet *target);
 bool uw_plan_flow(UwCx *cx, const MirFunc *f, const UwWalk *walk, UwStacks *stacks, UwFlow *out);

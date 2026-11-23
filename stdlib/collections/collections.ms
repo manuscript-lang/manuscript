@@ -822,9 +822,8 @@ fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move initial: U,
 	change: fn(U) U
 ) Void:
-	var base = initial
-	if self.contains(key): base = self[key]
-	self.add(key, change(base))
+	next := change(self.get_or(key, initial))
+	self.add(key, next)
 
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.

@@ -16,10 +16,17 @@
 #include "compiler/mir/mir_layout.h"
 
 #define EMIT_DIRECT_BYTES 16
+/* The frame slot an inline string's two words are written to so its bytes have an address. */
+#define STR_DATA_BYTES 16u
 
 typedef struct EmitDebug EmitDebug;
 typedef struct EmitTemps EmitTemps;
 typedef struct EmitWide EmitWide;
+
+/* A fill: `bytes` of `cell` after instruction `index` of `block`. */
+typedef struct EmitPoison {
+  uint32_t block, index, cell, bytes;
+} EmitPoison;
 
 typedef struct EmitCx {
   const MirModule *module;
@@ -39,6 +46,9 @@ typedef struct EmitCx {
   const uint32_t *cell_bytes; /* the shared cells of `func`: bytes of each */
   const bool *cell_escape;    /* per cell: holds a value, so its address is hidden from LLVM's promotion to registers */
   uint32_t ncells;
+  bool poison_slots;          /* MS_POISON_SLOTS: write 0xDD over a cell where its occupant is last read */
+  const EmitPoison *poison;   /* the fills of `func`, from emit_slot_pool; NULL when none */
+  uint32_t npoison;
   bool volatile_loads;     /* the loads being written must stay where they are (the leaves of a held value) */
   const char *tbaa;        /* `, !tbaa !N` for the list element access being written, or NULL */
   EmitDebug *debug;        /* source places for the fault tables, or NULL */
@@ -50,7 +60,6 @@ typedef struct EmitCx {
   bool noinline;           /* `func` is glue at the top of a deep chain of glue calls */
   bool pure;               /* `func` reads and writes no memory, cannot fault and always returns */
   bool slot_scopes;        /* mark where each one-block slot starts and stops living */
-  bool poison_slots;       /* fill each one-block slot with a pattern where its block ends */
 } EmitCx;
 
 /* ---- leaves and names (emit_leaf.c) ---- */
@@ -165,6 +174,7 @@ bool emit_wide_return(EmitCx *cx, MirValue value);
 bool emit_wide_held(const EmitCx *cx, MirValue value);
 bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity);
 bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capacity);
+bool emit_wide_same_cell(const EmitCx *cx, MirValue first, MirValue second);
 
 
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */

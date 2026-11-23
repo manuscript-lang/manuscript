@@ -286,6 +286,12 @@ bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capac
   return true;
 }
 
+/* Whether two held values share one cell (a value that arrived as an address has a cell of its own). */
+bool emit_wide_same_cell(const EmitCx *cx, MirValue first, MirValue second) {
+  return cx->wide != NULL && cx->wide->held[first] && cx->wide->held[second] && !cx->wide->incoming[first] &&
+         !cx->wide->incoming[second] && cx->pool[first] == cx->pool[second];
+}
+
 /* A call that returns a held value writes it straight to its cell: the name of the area to pass; false when it has none. */
 bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity) {
   if (cx->wide == NULL || value == MIR_NONE || !cx->wide->held[value] || cx->wide->incoming[value]) {

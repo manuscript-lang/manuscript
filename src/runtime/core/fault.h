@@ -18,6 +18,7 @@
 #include "abi/fault.h"
 #include "base/list.h"
 #include "base/safe.h"
+#include "base/strbuild.h"
 #include "runtime/core/frames.h"
 #include "runtime/core/record.h"
 
@@ -60,6 +61,8 @@ void ms_fault_text_add_started(MsFaultText *text, const uintptr_t *addresses, si
 
 /* Raises a fault of `kind` with `message` (copied before the call returns control to the unwinder). */
 MS_NORETURN void ms_fault(MsFaultKind kind, MsSpan message);
+/* The same with a message built in `message`, which the fault releases: it never returns, so the caller cannot. */
+MS_NORETURN void ms_fault_built(MsFaultKind kind, MsStrBuild *message) MS_NONNULL;
 
 /* Raises a plain fault with a C string literal as the message. */
 MS_NORETURN void ms_fault_text(MsFaultKind kind, const char *message);

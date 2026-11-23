@@ -259,5 +259,5 @@ int64_t msrt_string_scalar_at(const MsString *s, int64_t offset, uint8_t has_def
   ms_strbuild_append_text(&message, " does not start a scalar of the ");
   ms_strbuild_append_u64(&message, text.len);
   ms_strbuild_append_text(&message, " byte text; pass a default");
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }

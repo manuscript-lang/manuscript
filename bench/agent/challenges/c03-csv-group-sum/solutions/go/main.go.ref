@@ -39,7 +39,7 @@ func parseAmount(s string) (int64, bool) {
 }
 
 func parse(line string) (string, int64, bool) {
-	cat, amt string
+	var cat, amt string
 	if strings.HasPrefix(line, `"`) {
 		end := strings.Index(line[1:], `"`)
 		if end < 0 {

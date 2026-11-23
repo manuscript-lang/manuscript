@@ -131,7 +131,14 @@ static const Signature AFTER_MP4[] = {
 };
 
 static const char *find_signature(MsSpan data, const Signature *table, size_t count) {
+  if (data.len == 0) {
+    return NULL;
+  }
   for (size_t i = 0; i < count; i++) {
+    const uint8_t first_mask = table[i].mask == NULL ? 0xff : (uint8_t)table[i].mask[0];
+    if ((data.ptr[0] & first_mask) != (uint8_t)table[i].pattern[0]) {
+      continue; /* most signatures differ in the first byte */
+    }
     if (masked(data, table[i].pattern, table[i].mask, table[i].length, false)) {
       return table[i].type;
     }
@@ -153,13 +160,16 @@ static bool is_embedded_font(MsSpan data) {
 }
 
 static const char *early_type(MsSpan data) {
-  for (size_t i = 0; i < sizeof HTML_TAGS / sizeof HTML_TAGS[0]; i++) {
-    if (html_tag(data, HTML_TAGS[i])) {
-      return "text/html; charset=utf-8";
+  const MsSpan body = skip_space(data);
+  if (body.len > 0 && body.ptr[0] == '<') { /* every tag and the XML prolog start with it */
+    for (size_t i = 0; i < sizeof HTML_TAGS / sizeof HTML_TAGS[0]; i++) {
+      if (html_tag(body, HTML_TAGS[i])) {
+        return "text/html; charset=utf-8";
+      }
     }
-  }
-  if (masked(data, "<?xml", "\xff\xff\xff\xff\xff", 5, true)) {
-    return "text/xml; charset=utf-8";
+    if (masked(body, "<?xml", "\xff\xff\xff\xff\xff", 5, false)) {
+      return "text/xml; charset=utf-8";
+    }
   }
   if (exact(data, "%PDF-", 5)) {
     return "application/pdf";

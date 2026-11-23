@@ -205,7 +205,7 @@ MS_NORETURN static void fault_view_bounds(int64_t start, int64_t end) {
   ms_strbuild_append_text(&message, "..");
   ms_strbuild_append_i64(&message, end);
   ms_strbuild_append_text(&message, " are outside the text or inside a scalar");
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 /* `String.view(start, end)`: the bytes [start, end) borrowed from the receiver, nothing allocated. A bound

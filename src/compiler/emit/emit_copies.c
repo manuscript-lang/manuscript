@@ -19,7 +19,8 @@ typedef enum Kind {
   KIND_COPY,    /* equals `value`, always */
   KIND_ADDRESS, /* `ptrtoint ptr %value to i64`: kept, but an `inttoptr` of it is `value` */
   KIND_CAST,    /* `inttoptr i64 %value to ptr`: equals the address `value` was made from, when it was made */
-  KIND_PHI      /* a `phi`: equals its one incoming value, when there is only one */
+  KIND_PHI,     /* a `phi`: equals its one incoming value, when there is only one */
+  KIND_OFFSET   /* `add i64 %value, <second>`: an address plus a constant, when `value` is an address */
 } Kind;
 
 typedef struct Copy {
@@ -29,6 +30,11 @@ typedef struct Copy {
   Kind kind;
   bool constant;
   bool resolved; /* a cast or phi that is forwarded: its line is dropped */
+  size_t second, second_len; /* an offset's other operand: a register name (`second_reg`) or a number */
+  bool second_reg;
+  bool gep; /* a cast of an address plus constants: written as `getelementptr i8, ptr %gep_base, i64 gep_offset` */
+  size_t gep_base, gep_base_len;
+  int64_t gep_offset;
 } Copy;
 
 typedef struct Table {
@@ -41,6 +47,7 @@ typedef struct Table {
 typedef struct Line {
   const uint8_t *text;
   size_t at, end;
+  size_t full; /* the end including a `, !dbg !N` suffix that debug info adds to an instruction */
 } Line;
 
 static bool is_name_byte(uint8_t byte) {
@@ -119,6 +126,19 @@ static bool parse_copy(const Line *line, Copy *copy) {
         continue;
       }
       const size_t stop = read_first(line, at + ms_span_of_text(head).len, copy);
+      if (operation == 1 && copy->constant && copy->value_len == 1 && line->text[copy->value] == '0' &&
+          has(line, stop, ", ")) {
+        /* `add i64 0, 8` writes the constant 8 as well (an offset the emitter added to an address). */
+        size_t end = stop + 2;
+        while (end < line->end && (is_name_byte(line->text[end]) || line->text[end] == '-')) {
+          end++;
+        }
+        if (end == line->end && is_integer(line->text, stop + 2, end - stop - 2)) {
+          copy->value = stop + 2;
+          copy->value_len = end - stop - 2;
+          return true;
+        }
+      }
       if (copy->value_len == 0 || !second_is(line, stop, "0")) {
         return false;
       }
@@ -183,12 +203,50 @@ static bool parse_other(const Line *line, Copy *copy) {
     copy->kind = KIND_PHI;
     return true;
   }
+  if (copy->name_len != 0 && has(line, at, " = add i64 %")) {
+    copy->kind = KIND_OFFSET;
+    copy->value = at + 12;
+    copy->value_len = name_end(line->text, copy->value, line->end) - copy->value;
+    size_t stop = copy->value + copy->value_len;
+    if (copy->value_len == 0 || !has(line, stop, ", ")) {
+      return false;
+    }
+    stop += 2;
+    copy->second_reg = stop < line->end && line->text[stop] == '%';
+    copy->second = copy->second_reg ? stop + 1 : stop;
+    size_t end = copy->second;
+    while (end < line->end && (is_name_byte(line->text[end]) || line->text[end] == '-')) {
+      end++;
+    }
+    copy->second_len = end - copy->second;
+    return copy->second_len != 0 && end == line->end;
+  }
   return false;
 }
 
 static size_t line_end(const uint8_t *text, size_t at, size_t limit) {
   const uint8_t *newline = __builtin_memchr(text + at, '\n', limit - at);
   return newline == NULL ? limit : (size_t)(newline - text);
+}
+
+/* The line at `at`: `end` is before a trailing `, !dbg !<digits>`, so a line with debug info reads as one without. */
+static Line line_at(const uint8_t *text, size_t at, size_t limit) {
+  Line line = {text, at, line_end(text, at, limit), 0};
+  line.full = line.end;
+  size_t digits = line.end;
+  while (digits > at && text[digits - 1] >= '0' && text[digits - 1] <= '9') {
+    digits--;
+  }
+  static const char suffix[] = ", !dbg !";
+  const size_t size = sizeof suffix - 1;
+  if (digits < line.end && digits >= at + size && __builtin_memcmp(text + digits - size, suffix, size) == 0) {
+    line.end = digits - size;
+  }
+  return line;
+}
+
+static void append_tail(MsStrBuild *out, const Line *line) {
+  ms_strbuild_append(out, ms_span_of(line->text + line->end, line->full - line->end));
 }
 
 /* Whether the line is `  %name = <operation> ...` for an operation that starts with one of `o a f p i` (or, add, fadd,
@@ -305,12 +363,62 @@ static bool single_incoming(const Table *table, const Line *line, Copy *self) {
   return true;
 }
 
+static bool parse_offset(const uint8_t *text, size_t at, size_t length, int64_t *out) {
+  if (!is_integer(text, at, length)) {
+    return false;
+  }
+  int64_t value = 0;
+  const bool negative = text[at] == '-';
+  for (size_t index = negative ? 1 : 0; index < length; index++) {
+    if (value > INT64_MAX / 10 - 1) {
+      return false;
+    }
+    value = value * 10 + (text[at + index] - '0');
+  }
+  *out = negative ? -value : value;
+  return true;
+}
+
+/* Follows `add` lines of constants down to the address of a slot: the register the address was made from and the
+ * bytes added. */
+static bool address_plus(const Table *table, const uint8_t *text, Copy *cast) {
+  Copy at = resolve(table, text, cast->value, cast->value_len);
+  int64_t total = 0;
+  for (int hops = 0; hops < 16 && !at.constant; hops++) {
+    const Copy *entry = find_entry(table, text, at.value, at.value_len);
+    if (entry == NULL) {
+      return false;
+    }
+    if (entry->kind == KIND_ADDRESS) {
+      cast->gep_base = entry->value;
+      cast->gep_base_len = entry->value_len;
+      cast->gep_offset = total;
+      return true;
+    }
+    if (entry->kind != KIND_OFFSET) {
+      return false;
+    }
+    int64_t step = 0;
+    if (entry->second_reg) {
+      const Copy second = resolve(table, text, entry->second, entry->second_len);
+      if (!second.constant || !parse_offset(text, second.value, second.value_len, &step)) {
+        return false;
+      }
+    } else if (!parse_offset(text, entry->second, entry->second_len, &step)) {
+      return false;
+    }
+    total += step;
+    at = resolve(table, text, entry->value, entry->value_len);
+  }
+  return false;
+}
+
 /* One round over the casts and phis: true when one more was forwarded. */
 static bool forward_round(Table *table, const uint8_t *text, size_t size) {
   bool changed = false;
   for (size_t entry = 0; entry < table->len; entry++) {
     Copy *copy = &table->copies[entry];
-    if (copy->resolved || copy->kind == KIND_COPY || copy->kind == KIND_ADDRESS) {
+    if (copy->resolved || copy->kind == KIND_COPY || copy->kind == KIND_ADDRESS || copy->kind == KIND_OFFSET) {
       continue;
     }
     if (copy->kind == KIND_CAST) {
@@ -320,10 +428,12 @@ static bool forward_round(Table *table, const uint8_t *text, size_t size) {
         copy->value = address->value;
         copy->value_len = address->value_len;
         copy->resolved = changed = true;
+      } else if (!copy->gep && address_plus(table, text, copy)) {
+        copy->gep = true; /* the line stays, written as an address of the slot so LLVM sees what it points into */
       }
       continue;
     }
-    const Line line = {text, copy->line, line_end(text, copy->line, size)};
+    const Line line = line_at(text, copy->line, size);
     Copy single = *copy;
     if (single_incoming(table, &line, &single)) {
       copy->value = single.value;
@@ -353,6 +463,7 @@ static void copy_line(MsStrBuild *out, const Table *table, const Line *line) {
     ms_strbuild_append(out, ms_span_of(line->text + target.value, target.value_len));
     pos += 1 + length;
   }
+  append_tail(out, line);
   ms_strbuild_append_byte(out, '\n');
 }
 
@@ -365,6 +476,25 @@ static bool is_forwarded(const Table *table, const Line *line) {
   const size_t length = name_end(line->text, name, line->end) - name;
   const Copy *copy = find_entry(table, line->text, name, length);
   return copy != NULL && copy->line == line->at && copy->kind != KIND_ADDRESS && copy->resolved;
+}
+
+/* The cast this line writes, when it is one made into an address of a slot plus constants. */
+static const Copy *written_as_address(const Table *table, const Line *line) {
+  if (!may_define(line)) {
+    return NULL;
+  }
+  const size_t name = line->at + 3;
+  const size_t length = name_end(line->text, name, line->end) - name;
+  const Copy *copy = find_entry(table, line->text, name, length);
+  return copy != NULL && copy->line == line->at && copy->kind == KIND_CAST && copy->gep ? copy : NULL;
+}
+
+static void write_address(MsStrBuild *out, const Table *table, const uint8_t *text, const Copy *cast, const Line *line) {
+  const Copy base = resolve(table, text, cast->gep_base, cast->gep_base_len);
+  ms_strbuild_printf(out, "  %%%.*s = getelementptr i8, ptr %%%.*s, i64 %lld", (int)cast->name_len, text + cast->name,
+                     (int)base.value_len, text + base.value, (long long)cast->gep_offset);
+  append_tail(out, line);
+  ms_strbuild_append_byte(out, '\n');
 }
 
 void emit_forward_copies(MsStrBuild *body) {
@@ -385,22 +515,27 @@ void emit_forward_copies(MsStrBuild *body) {
   }
   table.mask -= 1;
   for (size_t at = 0; at < span.len;) {
-    const Line line = {text, at, line_end(text, at, span.len)};
-    Copy copy;
+    const Line line = line_at(text, at, span.len);
+    Copy copy = {0};
     if (may_define(&line) && (parse_copy(&line, &copy) || parse_other(&line, &copy))) {
       insert(&table, text, &copy);
     }
-    at = line.end + 1;
+    at = line.full + 1;
   }
   for (int round = 0; round < 16 && forward_round(&table, text, span.len); round++) {
   }
   MsStrBuild out = ms_strbuild_new();
   for (size_t at = 0; at < span.len;) {
-    const Line line = {text, at, line_end(text, at, span.len)};
+    const Line line = line_at(text, at, span.len);
     if (!is_forwarded(&table, &line)) {
-      copy_line(&out, &table, &line);
+      const Copy *cast = written_as_address(&table, &line);
+      if (cast != NULL) {
+        write_address(&out, &table, text, cast, &line);
+      } else {
+        copy_line(&out, &table, &line);
+      }
     }
-    at = line.end + 1;
+    at = line.full + 1;
   }
   ms_strbuild_free(body);
   *body = out;

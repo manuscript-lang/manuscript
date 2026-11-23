@@ -39,9 +39,10 @@ $(TOOLS): build
 	HUGO="$(HUGO)" $(MS) run tools/$@.ms
 
 # The corpus with every dead statement slot poisoned (MS_POISON_SLOTS=1), under the default backend and Cranelift.
+# The corpus with dead stack cells filled with 0xDD (the compiler reads MS_POISON_SLOTS): a view that outlives its slot
+# prints garbage in every build.
 poison-check: build
-	MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
-	CONFORM_FAST=1 MS_BACKEND=cranelift MS_POISON_SLOTS=1 $(MS) run tools/conform.ms
+	MS_POISON_SLOTS=1 cmake --build --preset ci --target conform
 
 # Random ownership programs; SEED and COUNT pick the run. Nightly on main.
 ownership-fuzz: build
