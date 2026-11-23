@@ -12,6 +12,7 @@ import (
 	read_file, write_file from "@std/os/fs.ms",
 
 	capture, file_sha256, note, run_program, tool_ms from "./lib.ms",
+	stdlib_issues from "./stdlib-rules.ms",
 )
 
 // Paths whose sources are not ours to rewrite, or are negative fixtures on purpose.
@@ -308,6 +309,7 @@ fn main() Int:
 	)
 
 	var issues = release_pins()
+	issues = issues.concat(stdlib_issues(files.clone()))
 	issues = issues.concat(workflow_triggers())
 	for issue in issues:
 		note(issue.clone())
