@@ -171,6 +171,8 @@ bool fn_fresh_owner(LowerFn *fn, MirValue value);
 /* Whether lowering closes a binding with this closer (NULL for none), of checker type `checked`: a `move fn close`
  * that no use closes by hand, changes in place or splits. */
 bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
+/* As `fn_closer_for` for a parameter, whose slot an assignment into its fields takes from and puts back into. */
+bool fn_param_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
 /* The helper `fn(move holder)` that closes the resources a holder without a close of its own holds, or MIR_NONE
  * when some part cannot be closed this way; and whether it exists. */
 uint32_t lower_close_parts(Lower *cx, MsTy ty);

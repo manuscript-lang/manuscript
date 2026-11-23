@@ -284,7 +284,8 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
   if (ms_expr_index(place, &container, &key)) { /* an element of a changeable place changes with it */
     return fn_place_changeable(fn, container);
   }
-  return fn_owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
+  return fn_owned_local(fn, place, &var) || closing_local(fn, place, &slot, &ty) || closing_param(fn, place, &slot, &var) ||
+         (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
 bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
