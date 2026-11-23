@@ -6,6 +6,7 @@
 #include "compiler/syntax/parse.h"
 #include "compiler/check/body.h"
 #include "compiler/check/bounds.h"
+#include "compiler/check/call_internal.h"
 #include "compiler/check/methods.h"
 #include "compiler/check/suggest.h"
 
@@ -333,6 +334,17 @@ void body_report_unknown_member(Body *body, const MsExpr *member, MsTy receiver)
   }
   if ((name.len != 0 && name.ptr[0] == '[') || (variable != NULL && variable->bounds.len != 0) ||
       (!unmet && ms_ty_kind(types, receiver) != MS_TY_PRIMITIVE && ms_check_standard_operation(body->program, member->u.member.name, receiver))) {
+    return;
+  }
+  const char *removed = ms_ty_is(types, receiver, MS_BUILTIN_Optional) ? body_removed_nullable_method(name) : NULL;
+  if (removed != NULL) {
+    MsStrBuild gone = ms_strbuild_new();
+    ms_strbuild_append_text(&gone, "a nullable has no method `");
+    ms_strbuild_append(&gone, name);
+    ms_strbuild_append_text(&gone, "`; write `");
+    ms_strbuild_append_text(&gone, removed);
+    ms_strbuild_append_text(&gone, "`");
+    ms_check_report(body->program, body->module, member->pos, MS_CHECK_TYPE, ms_strbuild_finish(&gone));
     return;
   }
   MsStrBuild text = ms_strbuild_new();

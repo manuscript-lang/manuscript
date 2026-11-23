@@ -486,6 +486,9 @@ MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   } else if (op == MS_B_OR && !is_invalid(body, left) && left != MS_TY_NONE && left == right &&
              !ms_ty_is(&body->program->types, left, MS_BUILTIN_Bool) && body_redundant_or(body, expr)) {
     ty = left;
+  } else if (op == MS_B_OR && (is_invalid(body, left) || left == MS_TY_NONE) && right != MS_TY_NONE &&
+             ms_ty_is(&body->program->types, right, MS_BUILTIN_Never)) {
+    ty = MS_TY_NONE; /* `bad or panic(..)`: the left side already failed, and the right never gives a value */
   } else if (is_logical(op)) {
     body_check_logical(body, expr, left, right);
     ty = body_primitive(body, MS_BUILTIN_Bool);

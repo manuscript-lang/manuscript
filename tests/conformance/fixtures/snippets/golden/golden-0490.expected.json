@@ -9,30 +9,19 @@
       {
         "code": "MS3000",
         "phase": "type",
-        "message": "callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest",
+        "message": "a nullable has no method `ok_or_else`; write `if x != null:` and use `x`",
         "position": {
           "file": "golden-0490.ms",
           "line": 4,
-          "column": 61,
-          "offset": 150
-        }
-      },
-      {
-        "code": "MS3001",
-        "phase": "type",
-        "message": "expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)",
-        "position": {
-          "file": "golden-0490.ms",
-          "line": 4,
-          "column": 61,
-          "offset": 150
+          "column": 50,
+          "offset": 139
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0490.ms:4:61: type: callback mismatch: the function takes 1 parameter but this position expects 0; pass a function with 0 parameters, or wrap it in a closure that supplies the rest\n   |\n 4 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   |                                                             ^\n<DIR>/golden-0490.ms:4:61: type: expected fn() String, found fn(Int) String (in argument 'create' of value.ok_or_else)\n   |\n 4 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   |                                                             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0490.ms:4:50: type: a nullable has no method `ok_or_else`; write `if x != null:` and use `x`\n   |\n 4 | fn wrong(value: Int?) Result[Int, String]: value.ok_or_else(cause)\n   |                                                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

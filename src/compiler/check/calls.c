@@ -919,6 +919,7 @@ MsTy body_call(Body *body, const MsExpr *expr, MsTy expected) {
   } else if (report_builtin_constructor(body, expr)) {
     /* a built-in type has no source constructor: reported, and the arguments are left alone */
   } else {
+    body_fix_removed_nullable_call(body, expr);
     const bool quiet = body->quiet; /* an unknown callee gives its arguments no context to report against */
     for (uint32_t index = 0; index < expr->u.call.args.len; index++) {
       const MsExpr *value = expr->u.call.args.ptr[index].value;

@@ -41,6 +41,8 @@ bool body_resolve_target(Body *body, const MsExpr *callee, MsTy expected, Target
 void body_target_free(Target *target);
 /* A method of a nullable that `==`, `!=` and `or` replaced is reported with its rewrite as the fix. */
 void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *target);
+const char *body_removed_nullable_method(MsSpan name);
+void body_fix_removed_nullable_call(Body *body, const MsExpr *call);
 /* `v.get()` on a local `v != null` shows present reads `v`; the fix says so. */
 bool body_present_get(Body *body, const MsExpr *call, MsTy *result);
 /* `l or d` where `l` is a plain value never falls back; the fix keeps `l`. */

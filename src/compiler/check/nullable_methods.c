@@ -22,7 +22,7 @@ static Removed removed_kind(MsSpan name, size_t nargs) {
   if ((ms_span_is_text(name, "get_or_else") || ms_span_is_text(name, "or_else")) && nargs == 1) {
     return REMOVED_OR_CALL;
   }
-  if ((ms_span_is_text(name, "map") || ms_span_is_text(name, "and_then")) && nargs == 1) {
+  if ((ms_span_is_text(name, "map") || ms_span_is_text(name, "and_then") || ms_span_is_text(name, "ok_or_else")) && nargs == 1) {
     return REMOVED_UNWRAP;
   }
   if (ms_span_is_text(name, "get") && nargs == 0) {
@@ -192,6 +192,40 @@ static bool fix_text(const Body *body, const MsExpr *call, Removed kind, const M
   return true;
 }
 
+static const char *write_text(Removed kind) {
+  return kind == REMOVED_UNWRAP ? "if x != null:` and use `x"
+         : kind == REMOVED_GET  ? "if x != null:` and use `x`, or `x or panic(\"...\")"
+         : kind == REMOVED_OK_OR ? "ok_or(x, cause)"
+         : kind == REMOVED_IS_NULL ? "x == null"
+         : kind == REMOVED_IS_PRESENT ? "x != null"
+         : kind == REMOVED_OR ? "x or d"
+                              : "x or compute()";
+}
+
+/* The rewrite for a method a nullable once had, by name alone (the call is not resolved), or NULL when it never had one. */
+const char *body_removed_nullable_method(MsSpan name) {
+  for (size_t nargs = 0; nargs < 3; nargs++) {
+    const Removed kind = removed_kind(name, nargs);
+    if (kind != REMOVED_NONE) {
+      return write_text(kind);
+    }
+  }
+  return NULL;
+}
+
+static void attach_removed_fix(Body *body, const MsExpr *call, Removed kind, const MsExpr *receiver, MsSpan name) {
+  MsSpan receiver_text = {0};
+  MsPos start = {0};
+  bool atomic = false;
+  MsStrBuild fix = ms_strbuild_new();
+  if (kind != REMOVED_UNWRAP && written_receiver(body, receiver, name, &receiver_text, &start, &atomic) &&
+      fix_text(body, call, kind, receiver, start, receiver_text, atomic, &fix)) {
+    ms_check_attach_fix(body->program, start, call->end, ms_strbuild_finish(&fix));
+  } else {
+    ms_strbuild_free(&fix);
+  }
+}
+
 void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *target) {
   const MsExpr *callee = call->u.call.callee;
   if (callee->kind != MS_E_MEMBER || target->receiver == NULL || !body_reports(body) || body->quiet) {
@@ -207,7 +241,7 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   if (kind == REMOVED_NONE) {
     return;
   }
-  const char *write = kind == REMOVED_UNWRAP ? "if x != null:` and use `x" : kind == REMOVED_GET ? "if x != null:` and use `x`, or `x or panic(\"...\")" : kind == REMOVED_OK_OR ? "ok_or(x, cause)" : kind == REMOVED_IS_NULL ? "x == null" : kind == REMOVED_IS_PRESENT ? "x != null" : kind == REMOVED_OR ? "x or d" : "x or compute()";
+  const char *write = write_text(kind);
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "a nullable has no method `");
   ms_strbuild_append(&text, name);
@@ -215,15 +249,25 @@ void body_reject_nullable_method(Body *body, const MsExpr *call, const Target *t
   ms_strbuild_append_text(&text, write);
   ms_strbuild_append_text(&text, "`");
   ms_check_report(body->program, body->module, callee->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
-  MsSpan receiver_text = {0};
-  MsPos start = {0};
-  bool atomic = false;
-  MsStrBuild fix = ms_strbuild_new();
-  if (kind != REMOVED_UNWRAP && written_receiver(body, target->receiver, name, &receiver_text, &start, &atomic) &&
-      fix_text(body, call, kind, target->receiver, start, receiver_text, atomic, &fix)) {
-    ms_check_attach_fix(body->program, start, call->end, ms_strbuild_finish(&fix));
-  } else {
-    ms_strbuild_free(&fix);
+  attach_removed_fix(body, call, kind, target->receiver, name);
+}
+
+/* A call of a removed method that did not resolve: the unknown-member report already stands, and gains the same fix. */
+void body_fix_removed_nullable_call(Body *body, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind != MS_E_MEMBER || !body_reports(body) || body->quiet) {
+    return;
+  }
+  const MsSpan name = ms_names_span(body->program->names, callee->u.member.name);
+  const Removed kind = removed_kind(name, call->u.call.args.len);
+  if (kind == REMOVED_NONE) {
+    return;
+  }
+  body->quiet = true;
+  const MsTy receiver = body_expr(body, callee->u.member.left, MS_TY_NONE);
+  body->quiet = false;
+  if (receiver != MS_TY_NONE && ms_ty_is(&body->program->types, receiver, MS_BUILTIN_Optional)) {
+    attach_removed_fix(body, call, kind, callee->u.member.left, name);
   }
 }
 
