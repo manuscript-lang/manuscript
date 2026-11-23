@@ -19,6 +19,10 @@ set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
 if(WIN32)
   set(MI_EXTRA_CPPDEFS "MI_MINGW_UCRT64" CACHE STRING "" FORCE)
 endif()
+# mimalloc links libatomic when it finds one, which adds a shared library to ms that glibc does not ship (its
+# atomics are all word-sized and inline); an empty library path makes it skip the library.
+set(mi_has_libatomic FALSE CACHE INTERNAL "")
+set(MI_LIBPATH_atomic "" CACHE INTERNAL "")
 add_subdirectory(${MS_TP}/mimalloc EXCLUDE_FROM_ALL)
 # The project builds with CMAKE_C_EXTENSIONS OFF; mimalloc needs GNU extensions (syscall, madvise).
 set_target_properties(mimalloc-static PROPERTIES C_EXTENSIONS ON)
