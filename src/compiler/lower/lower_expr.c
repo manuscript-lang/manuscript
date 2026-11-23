@@ -268,7 +268,28 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   return MIR_NONE;
 }
 
+/* `__LINE__` and `__FILE__`: the position of the name itself, and the file it is written in. */
+static MirValue source_constant(LowerFn *fn, const MsExpr *expr) {
+  const MsSpan text = ms_names_span(fn->cx->program->names, expr->u.sym);
+  if (ms_span_is_text(text, "__LINE__")) {
+    return mir_b_iconst(&fn->b, (int64_t)expr->pos.line);
+  }
+  if (!ms_span_is_text(text, "__FILE__")) {
+    return MIR_NONE;
+  }
+  const MsSpan file = ms_names_span(fn->cx->program->names, fn->cx->program->modules.ptr[fn->module_index].file);
+  const MirImm imm = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, file)};
+  return fn_emit(fn, MOP_StrLit, NULL, 0, imm, MIR_STR);
+}
+
 static MirValue lower_name(LowerFn *fn, const MsExpr *expr) {
+  const MsRef *named = ms_facts_ref(fn->facts, expr->id);
+  if (named == NULL || named->kind == MS_REF_NONE) {
+    const MirValue constant = source_constant(fn, expr);
+    if (constant != MIR_NONE) {
+      return constant;
+    }
+  }
   return fn_name_ref(fn, expr, ms_facts_ref(fn->facts, expr->id));
 }
 
