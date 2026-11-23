@@ -410,3 +410,18 @@ After #6665 writes went straight to the socket, but every read still went throug
 | 4 (shared with load) | 95 (53–99) | 228 (206–235) |
 
 The two-CPU row had regressed in #6665 (two worker threads plus the loop thread on two CPUs); with the loop out of the read path it doubles. One CPU is unchanged because a single scheduler thread keeps the loop path (without the gate: 58 against 62 on the same runs). hyper at the same sizes is 120, 218–233 and 245–261 (2026-11-22 run).
+
+## 2026-11-23, request path: connection-owned buffers, task records reused, edge-triggered reads
+
+Per request the Manuscript server did 24.2k instructions, 27.5 allocations and 1.2 context switches (the loop thread did the reads and writes). Changes (proposal `web-request-path.md`): the response head, staging arrays and date line are built in per-connection buffers; plain request paths skip the decoder; the content-type sniff and authority check switch on the first byte; finished task records are kept (up to 64 per scheduler) with their cleanup buffers; and, at one scheduler thread, plain TCP connections register once with a per-thread edge-triggered epoll set (`io/edge.c`) and read and write on the owner thread (reset, try the syscall, wait for the next edge only after `EAGAIN` or a short read), so the loop thread is off the data path.
+
+`/health`, callgrind over `bench/perf/web/ms` at one scheduler thread, about 70k requests (instructions include the loop thread):
+
+| | Before (main 642ba74c) | After |
+| --- | ---: | ---: |
+| Instructions per request | 24.4k | 14.3k |
+| Allocations per request | 27.5 | 15 |
+| Context switches per request | 1.2 | 0 |
+| Syscalls per request | 2.4 (+0.3 poll/futex) | about 2.0 |
+
+Throughput on the shared 4-CPU VM (±25% run to run, so not a result): 1 CPU medians 61k before, 54k–72k after; 2 CPUs 167k–218k before, 170k–202k after (two scheduler threads keep the loop path). Kernel time per request depends on the request rate, so the instruction count is the measure; at 14.3k instructions the server is still 2.1x hyper's 6.7k. Not done: the 4.4k instructions of the per-request peer-hangup watcher task (a promise-based replacement cost more than the task, 14.9k, and was dropped; the tasks thread plans a lighter fd waiter), the multi-thread edge path, kqueue and Windows.
