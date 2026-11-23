@@ -405,8 +405,9 @@ static int64_t latest_first(uint8_t *env, const uint8_t *x, const uint8_t *y) {
   return (int64_t)b.pos - (int64_t)a.pos;
 }
 
-/* Closes or drops the owners of `scope`, last defined first. */
-static bool cleanup_scope(ElEm *em, uint32_t *at, ElState *state, int64_t scope, MirValue *outcome) {
+/* Closes or drops the owners of `scope`, last defined first, except `kept`: the value a failing close consumes in
+ * place of the function's own result (MIR_NONE: none). */
+static bool cleanup_scope(ElEm *em, uint32_t *at, ElState *state, int64_t scope, MirValue *outcome, MirValue kept) {
   const ElCx *cx = em->cx;
   if ((uint64_t)scope >= cx->nscopes) {
     return true;
@@ -425,6 +426,9 @@ static bool cleanup_scope(ElEm *em, uint32_t *at, ElState *state, int64_t scope,
   }
   for (uint32_t i = 0; i < count; i++) {
     el_remove(em->cx, state, owners[i].v);
+    if (owners[i].v == kept) {
+      continue;
+    }
     if (owners[i].s == EL_MOVED && !mh_has(&em->flagged, owners[i].v)) {
       /* A slot owner's cancelled entry leaves the stack now. */
       if (el_is_slot_owner(cx, owners[i].v)) {
@@ -502,7 +506,7 @@ static bool error_edge(ElEm *em, uint32_t at, ElState *state, int64_t scope, Mir
   MirValue outcome = first, ret = MIR_NONE;
   int64_t current = (uint64_t)scope < cx->nscopes && cx->has_parent[scope] ? cx->parent[scope] : -1;
   while (current >= 0) {
-    if (!cleanup_scope(em, &at, &rest, current, &outcome)) {
+    if (!cleanup_scope(em, &at, &rest, current, &outcome, by_result ? em->pending : MIR_NONE)) {
       return false;
     }
     current = (uint64_t)current < cx->nscopes && cx->has_parent[current] ? cx->parent[current] : -1;
@@ -518,7 +522,7 @@ static bool error_edge(ElEm *em, uint32_t at, ElState *state, int64_t scope, Mir
 /* The cleanup of `scope` at a `scope.end`. `*cur` becomes the block to continue in. */
 bool em_exit(ElEm *em, uint32_t *cur, ElState *state, int64_t scope) {
   MirValue first = MIR_NONE;
-  if (!cleanup_scope(em, cur, state, scope, &first)) {
+  if (!cleanup_scope(em, cur, state, scope, &first, MIR_NONE)) {
     return false;
   }
   if (first == MIR_NONE) {
