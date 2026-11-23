@@ -169,9 +169,9 @@ export fn must(what: String, ran: Ran) String!:
 	if ran.ok and ran.code == 0: return ok(ran.stdout.clone())
 	return invalid(f"{what} failed ({ran.code}): {ran.stderr}")
 
-// The `ms` binary: $MS, else target/release/ms, as an absolute path.
+// The `ms` binary: $MS, else .artifacts/build/release/src/cli/ms, as an absolute path.
 export fn ms_binary() String:
-	return absolute(env("MS", "target/release/ms"))
+	return absolute(env("MS", ".artifacts/build/release/src/cli/ms"))
 
 // Builds the Manuscript project in `dir` to `out` (a file name inside `dir`'s parent is
 // fine; pass an absolute path).

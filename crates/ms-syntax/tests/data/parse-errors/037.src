@@ -1,2 +1,0 @@
-import panic from "@std/core.ms"
-import range from

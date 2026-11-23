@@ -1,2 +1,0 @@
-export fn helper() Int:
-	return 1

@@ -1,4 +1,0 @@
-[project]
-name = "watch-inputs"
-source = "."
-entry = "main.ms"

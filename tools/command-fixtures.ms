@@ -1,7 +1,5 @@
 // Command fixtures: records and replays `ms` commands that the conformance corpus does
-// not cover (`lint`, `inspect`, `init`, ...). The Rust corpus runner knows four
-// commands; this runner is separate and is the one that carries over to the C
-// implementation.
+// not cover (`lint`, `inspect`, `init`, ...).
 //
 // A fixture is a directory tests/conformance/commands/<command>/<name>/ holding
 //   args        one argument per line (the command is the first line)
@@ -11,9 +9,9 @@
 //   expected/   stdout, stderr, status, and tree/ (every file in the working directory
 //               after the run)
 // The working directory prints as <DIR>. MS names the ms under test (default
-// .artifacts/build/ci/src/cli/ms). Recording runs the ms named by MS, normally the
-// frozen oracle. Usage: ms run tools/command-fixtures.ms -- record|check
-// [--only-missing] [name prefix ...] Prints `commands: passed/total` for `check`.
+// .artifacts/build/ci/src/cli/ms). Recording runs the ms named by MS. Usage: ms run
+// tools/command-fixtures.ms -- record|check [--only-missing] [name prefix ...] Prints
+// `commands: passed/total` for `check`.
 import (
 	Bytes from "@std/bytes.ms",
 	arguments, change_directory, working_directory from "@std/os/env.ms",
@@ -35,7 +33,7 @@ import (
 fn text_of(data: Bytes) String:
 	return data.decode_utf8().get_or("").clone()
 
-// Replaces the working directory, spelled as the oracle runtime names it or with
+// Replaces the working directory, spelled as the runtime names it or with
 // forward slashes as ms prints it on Windows, with <DIR> and the digits after
 // `"duration_ns": ` with 0, the only value that varies between runs.
 fn normalize(text: String, dir: String) String:

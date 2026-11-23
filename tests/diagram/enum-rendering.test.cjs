@@ -9,7 +9,7 @@ const {purePage, embeddedData} = require('./pure-page.cjs');
 const root = path.join(__dirname, '../..');
 const binary = process.env.MS_BIN
   ? path.resolve(root, process.env.MS_BIN)
-  : path.resolve(root, process.env.CARGO_TARGET_DIR || 'target', 'debug', process.platform === 'win32' ? 'ms.exe' : 'ms');
+  : path.resolve(root, '.artifacts/build/ci/src/cli', process.platform === 'win32' ? 'ms.exe' : 'ms');
 const empty = {f: [], m: [], e: []};
 
 test('enum is highlighted as a keyword', () => {

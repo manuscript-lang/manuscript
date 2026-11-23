@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const template = fs.readFileSync(path.join(__dirname, '../../crates/ms-tooling/src/page.html'), 'utf8');
+const template = fs.readFileSync(path.join(__dirname, '../../src/tooling/data/page.html'), 'utf8');
 
 function between(source, start, end) {
   const first = source.indexOf(start);

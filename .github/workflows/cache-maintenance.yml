@@ -35,7 +35,7 @@ jobs:
           # Newest first within each name (the key without its trailing lockfile hash and run id); keep the first.
           jq -r '
             def name: sub("-[0-9a-f]{16,}(-[0-9]+)?$"; "");
-            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-)"));
+            def dead: .ref != "refs/heads/main" or (.key | test("^(v0-rust-|lld-|cargo-rust-|sccache-)"));
             . as $all
             | [$all[] | select(dead)] as $dead
             | [$all[] | select(dead | not)] | sort_by(.createdAt) | reverse

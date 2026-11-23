@@ -1,1 +1,0 @@
-error parse 2:5:19 "'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with '[a, b] := value', and use 'var x = value' for a mutable binding"

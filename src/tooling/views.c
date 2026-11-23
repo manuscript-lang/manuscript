@@ -477,10 +477,6 @@ const char *ms_result_label(uint8_t ownership) {
   switch ((MsResultOwnership)ownership) {
   case MS_RESULT_OWNED: return "owned";
   case MS_RESULT_BORROW: return "borrow";
-  case MS_RESULT_VIEW: return "owned view";
-  case MS_RESULT_BORROWED_OK: return "owned; borrowed ok";
-  case MS_RESULT_BORROWED_ERROR: return "owned; borrowed error";
-  case MS_RESULT_BORROWED_BOTH: return "owned; borrowed ok and error";
   }
   return "owned";
 }
