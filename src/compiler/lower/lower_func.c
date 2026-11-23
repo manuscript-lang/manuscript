@@ -504,6 +504,20 @@ static bool cell_param(const LowerFn *fn, const LowerTarget *target, uint32_t in
   return writes.found && !writes.moves;
 }
 
+/* Records the source name of a by-value parameter for the debugger (`self` for the receiver). */
+static void note_param_name(LowerFn *fn, const LowerTarget *target, uint32_t index, MirValue value) {
+  const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
+  MsName name = MS_NAME_EMPTY;
+  if (index < offset) {
+    name = mir_name(fn->cx->module, ms_span_of_text("self"));
+  } else if (index - offset < target->func->params.len) {
+    name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, target->func->params.ptr[index - offset]->name));
+  }
+  if (name != MS_NAME_EMPTY) {
+    mir_named_value_list_push(&mir_b_func(&fn->b)->names, (MirNamedValue){value, name, true, 0});
+  }
+}
+
 /* Declares the parameters as variables and gives the function scope the owned ones. */
 static void bind_params(LowerFn *fn, const LowerTarget *target) {
   MsTyParam params[LOWER_MAX_PARAMS];
@@ -535,6 +549,7 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
       continue;
     }
     const MirTy ty = mir_b_ty(&fn->b, values[index]);
+    note_param_name(fn, target, index, values[index]);
     const uint32_t offset = target->receiver != MS_TY_NONE ? 1 : 0;
     const MsParam *declared = (params[index].flags & MS_PARAM_MOVE) != 0 && index >= offset && index - offset < target->func->params.len
                                   ? target->func->params.ptr[index - offset]
