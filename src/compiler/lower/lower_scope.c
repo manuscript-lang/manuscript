@@ -128,8 +128,13 @@ void fn_scope_end(LowerFn *fn) {
     return;
   }
   const uint32_t depth = fn->nopen - 1;
-  const uint32_t scope = fn->open[depth];
-  emit_end(fn, scope, depth);
+  emit_end(fn, fn->open[depth], depth);
+  fn_scope_pop(fn);
+}
+
+/* Forgets the innermost scope, whose end the paths that leave it have already emitted. */
+void fn_scope_pop(LowerFn *fn) {
+  const uint32_t scope = fn->open[fn->nopen - 1];
   fn->nopen--;
   while (fn->nowned_vars > 0 && fn->owned_vars[fn->nowned_vars - 1].scope == scope) {
     fn->nowned_vars--;
