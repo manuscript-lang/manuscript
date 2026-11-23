@@ -314,6 +314,9 @@ static void settle(View *v, MirValue first) {
  * at other offsets than the field's own cell, and a whole-field load would read the wrong bytes. */
 static bool field_aligned(const View *v, uint32_t field) {
   const MirTy ty = v->m->type_defs.ptr[v->def].fields[field].ty;
+  if (mir_ty_is_map_or_set(v->m, ty)) {
+    return false; /* a box: the record holds a word that points to it */
+  }
   if (mir_leaves(v->layouts, ty).len <= 1) {
     return true;
   }
@@ -571,13 +574,6 @@ static bool view_param(MirModule *m, MirLayouts *layouts, MirFunc *f, uint32_t i
   const MirTyData *data = mir_ty_data(m, record);
   if (data->kind != MK_TYPE || m->type_defs.ptr[data->id].indirect || m->type_defs.ptr[data->id].native) {
     return false;
-  }
-  /* A Map or Set field lives in a box, a word in the record: `ptr.field` offsets and loads do not see that. */
-  const MirTypeDef *def = &m->type_defs.ptr[data->id];
-  for (uint32_t k = 0; k < def->nfields; k++) {
-    if (mir_ty_is_map_or_set(m, def->fields[k].ty)) {
-      return false;
-    }
   }
   MsArena arena = ms_arena_new();
   const uint32_t *uses = mir_use_counts(&arena, f);
