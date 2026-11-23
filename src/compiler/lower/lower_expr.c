@@ -880,6 +880,11 @@ static MirValue take_ownership(LowerFn *fn, const MsExpr *expr, MirValue value, 
 }
 
 MirValue fn_expr(LowerFn *fn, const MsExpr *expr, LowerWant want) {
+  for (uint32_t at = 0; at < fn->npresolved; at++) {
+    if (fn->presolved[at].expr == expr) {
+      return fn->presolved[at].value;
+    }
+  }
   const MirValue value = take_ownership(fn, expr, expr_value(fn, expr, want), want);
   return fn_convert(fn, expr, value);
 }
