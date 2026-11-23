@@ -11,7 +11,7 @@ static void il_push_root(uint32_t *stack, uint32_t *n, uint32_t f) {
 static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
   size_t cap = (size_t)m->funcs.len + 1;
   for (uint32_t v = 0; v < m->vtables.len; v++) {
-    cap += m->vtables.ptr[v].nmethods;
+    cap += (size_t)m->vtables.ptr[v].nmethods + 1;
   }
   cap += 2 * (size_t)m->desc_glue.len;
   for (uint32_t t = 0; t < m->type_defs.len; t++) {
@@ -39,6 +39,9 @@ static bool il_mark_live(MsArena *arena, const MirModule *m, bool *live) {
   for (uint32_t v = 0; v < m->vtables.len; v++) {
     for (uint32_t k = 0; k < m->vtables.ptr[v].nmethods; k++) {
       il_push_root(stack, &n, m->vtables.ptr[v].methods[k]);
+    }
+    if (m->vtables.ptr[v].close_drop != 0) {
+      il_push_root(stack, &n, m->vtables.ptr[v].close_drop - 1);
     }
   }
   for (uint32_t g = 0; g < m->desc_glue.len; g++) {
@@ -119,6 +122,9 @@ static void il_renumber(MirModule *m, const uint32_t *map) {
   for (uint32_t v = 0; v < m->vtables.len; v++) {
     for (uint32_t k = 0; k < m->vtables.ptr[v].nmethods; k++) {
       m->vtables.ptr[v].methods[k] = map[m->vtables.ptr[v].methods[k]];
+    }
+    if (m->vtables.ptr[v].close_drop != 0) {
+      m->vtables.ptr[v].close_drop = map[m->vtables.ptr[v].close_drop - 1] + 1;
     }
   }
   for (uint32_t g = 0; g < m->desc_glue.len; g++) {
