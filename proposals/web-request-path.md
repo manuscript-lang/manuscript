@@ -8,7 +8,7 @@
 
 ## Status
 
-- Proposal, 2026-11-23, main at 642ba74c. Direction (Chinmay, 2026-11-23): beat the Rust ms and reach C speed, with better data structures and algorithms, no patch fixes.
+- Stages 1 and the Linux, one-thread part of 3 landed 2026-11-23 (24.4k to 14.3k instructions per request; `bench/perf/web/results.md`); stage 2's handler-in-connection-task, multi-thread edge reads, kqueue and Windows remain. Proposal, 2026-11-23, main at 642ba74c. Direction (Chinmay, 2026-11-23): beat the Rust ms and reach C speed, with better data structures and algorithms, no patch fixes.
 
 ## Problem
 
