@@ -15,7 +15,7 @@ static const char *const PRELUDE_TYPES[] = {"Equal", "Stringable", "Comparable",
 static const char *const PRELUDE_MODULES[] = {"@std/core.ms", "@std/collections/collections.ms"};
 
 void resolver_init(Resolver *resolver, MsCheckProgram *program, uint32_t module) {
-  *resolver = (Resolver){.program = program, .module = module, .report = module < program->user_modules};
+  *resolver = (Resolver){.program = program, .module = module, .report = module < program->user_modules || program->check_std};
 }
 
 void resolver_free(Resolver *resolver) {

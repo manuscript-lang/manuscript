@@ -169,7 +169,7 @@ static bool report_ambiguous(Body *body, const MsExpr *callee, MsTy receiver, co
   for (size_t index = 0; index < found->len; index++) {
     fitting += fits_arguments(body, &found->ptr[index], nargs) ? 1 : 0;
   }
-  if (fitting < 2 || body->module >= body->program->user_modules || body->quiet) {
+  if (fitting < 2 || !body_reports(body) || body->quiet) {
     return fitting >= 2;
   }
   MsStrBuild text = ms_strbuild_new();
@@ -502,7 +502,7 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
       ms_ty_param_count(types, param) == ms_ty_param_count(types, actual)) {
     return false;
   }
-  if (body->module < body->program->user_modules && !body->quiet) {
+  if (body_reports(body) && !body->quiet) {
     const size_t have = ms_ty_param_count(types, actual);
     const size_t want = ms_ty_param_count(types, param);
     MsStrBuild text = ms_strbuild_new();
@@ -694,7 +694,7 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
   size_t found = 0;
   const bool unmet_bound = ms_span_find(message, ms_span_of_text(" does not satisfy "), &found) ||
                            ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
-  if (body->module >= body->program->user_modules || body->quiet ||
+  if (!body_reports(body) || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
       !only_callback_diagnostics(body->program, before) || holds_invalid(types, body->result, 6) ||
       holds_invalid(types, callee, 6)) {
@@ -818,7 +818,7 @@ static bool report_builtin_constructor(Body *body, const MsExpr *call) {
       return true;
     }
   }
-  if (body->module < body->program->user_modules && !body->quiet) {
+  if (body_reports(body) && !body->quiet) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "this type has no source constructor: ");
     ms_strbuild_append(&text, name);
@@ -841,7 +841,7 @@ static void report_not_callable(Body *body, const MsExpr *call, const Target *ta
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     (void)body_expr(body, call->u.call.args.ptr[index].value, MS_TY_NONE);
   }
-  if (body->module >= body->program->user_modules || body->quiet) {
+  if (!body_reports(body) || body->quiet) {
     return;
   }
   MsStrBuild text = ms_strbuild_new();
