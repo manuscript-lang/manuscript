@@ -502,13 +502,14 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
       fn->closing_types[fn->nvars + index] = ty;
       continue;
     }
-    if ((params[index].flags & MS_PARAM_VAR) != 0 && fn->nvar_params < LOWER_MAX_VAR_PARAMS) {
+    if ((params[index].flags & MS_PARAM_VAR) != 0) {
       const MirTy ty = fn_type(fn, params[index].ty);
       const bool owns = mir_needs_drop(fn->cx->module, ty);
       const MirImm of_type = {.tag = MI_TY, .a = ty};
       const MirValue held = mir_b_emit(&fn->b, owns ? MOP_Take : MOP_Load, &values[index], 1, of_type, ty);
       fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, owns ? MM_MOVE : MM_BORROW);
       mir_b_def_var(&fn->b, fn->param_vars[index], held);
+      fn->var_params = fn_grow(fn, fn->var_params, &fn->var_params_cap, fn->nvar_params, sizeof(LowerVarParam));
       fn->var_params[fn->nvar_params++] = (LowerVarParam){fn->param_vars[index], values[index], ty};
       continue;
     }

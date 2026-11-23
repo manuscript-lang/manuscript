@@ -305,7 +305,7 @@ static void enter(LowerFn *fn, MirBlock block) {
 
 static bool for_body(LowerFn *fn, const MsStmt *stmt, const ForSource *src, MirVar index, MirValue one,
                      MirBlock step, MirBlock exit, uint32_t local) {
-  fn->loops[fn->nloops++] = (LowerLoop){exit, step, fn->nopen};
+  fn_loop_push(fn, exit, step);
   (void)fn_scope_begin(fn);
   const MirValue item = element(fn, src, mir_b_use_var(&fn->b, index), one);
   bool ok = item != MIR_NONE;
@@ -502,7 +502,7 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
   }
   mir_b_br(&fn->b, exit, NULL, 0);
   enter(fn, body);
-  fn->loops[fn->nloops++] = (LowerLoop){exit, head, fn->nopen};
+  fn_loop_push(fn, exit, head);
   (void)fn_scope_begin(fn);
   MirValue item = MIR_NONE;
   /* An item a resource closes at the end of its round, unless the body moves it on. */
@@ -563,9 +563,6 @@ bool fn_for(LowerFn *fn, const MsStmt *stmt) {
   const MsRef *binding = ms_facts_ref(fn->facts, stmt->id);
   if (binding == NULL || binding->kind != MS_REF_LOCAL) {
     return fn_fail(fn, "a `for` loop has no loop variable");
-  }
-  if (fn->nloops == LOWER_MAX_LOOPS) {
-    return fn_fail(fn, "loops nest too deeply");
   }
   const MsExpr *iter = stmt->u.each.iter;
   (void)fn_scope_begin(fn);
