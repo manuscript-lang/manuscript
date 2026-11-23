@@ -11,6 +11,7 @@ import (
 	environment, set_environment from "@std/os/env.ms",
 	cpu_usage from "@std/os/process.ms",
 	runtime_counts from "@std/os/system.ms",
+	msrt_bench_keep, msrt_bench_opaque from "@std/internal/test.ms",
 	fail from "@std/test/test.ms",
 	monotonic from "@std/time.ms",
 )
@@ -129,14 +130,16 @@ export fn run_bench_block(body: fn() Void!, operations: Int) Void!:
 
 	return measure(operations, body)
 
-// Consumes a bench's Int result so the work that computed it stays observable. Write
-// `keep(value)?` in the body. The smallest Int returns an error, so choose a different
-// checksum if that value is a valid result of your workload.
+// Consumes a bench's Int result so the work that computed it stays in the program: the value goes through a call
+// the compiler cannot see into, so it neither removes the work nor folds it to a constant. Write `keep(value)?`
+// in the body, and take the work's inputs from outside the body when it should not be computed at compile time.
 export fn keep(checksum: Int) Void!:
-	if checksum == -9223372036854775807 - 1:
-		return fail(
-			"bench result is the smallest Int; the workload is probably degenerate"
-		)
+	msrt_bench_keep(checksum)
+
+// Returns `value` unchanged through a call the compiler cannot see into. Pass a bench's constant inputs through it
+// (`n := opaque(1000)`) so the optimizer cannot evaluate the whole body at compile time; `keep` alone cannot stop that.
+export fn opaque(value: Int) Int:
+	return msrt_bench_opaque(value)
 
 fn settings() Settings:
 	environment := environment().get_or(Map[String, String]())
