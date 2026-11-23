@@ -1,6 +1,10 @@
 /* Owns the debug metadata of source places (see emit_debug.h). */
 #include "compiler/emit/emit_debug.h"
 
+#include <string.h>
+
+#include "base/alloc.h"
+
 enum { MD_UNIT = 0, MD_FILE = 1, MD_FLAGS = 2, MD_NO_TYPES = 3, MD_TYPE = 4, MD_FIRST = 5 };
 
 void emit_debug_init(EmitDebug *debug) {
@@ -10,9 +14,16 @@ void emit_debug_init(EmitDebug *debug) {
   debug->cached = 0;
   debug->cached_line = 0;
   debug->cached_column = 0;
+  debug->cached_scope = 0;
+  debug->file_nodes = NULL;
+  debug->block_nodes = NULL;
+  debug->nfiles = 0;
+  debug->func_file = MIR_NONE;
 }
 
 void emit_debug_free(EmitDebug *debug) {
+  ms_free(debug->file_nodes);
+  ms_free(debug->block_nodes);
   ms_strbuild_free(&debug->nodes);
 }
 
@@ -32,29 +43,70 @@ static void append_quoted(MsStrBuild *out, MsSpan text) {
   }
 }
 
+/* The DIFile node of module file `file`, made on first use. */
+static uint32_t file_node(const EmitCx *cx, uint32_t file) {
+  EmitDebug *debug = cx->debug;
+  if (file >= debug->nfiles) {
+    return MD_FILE;
+  }
+  if (debug->file_nodes[file] == 0) {
+    debug->file_nodes[file] = debug->next++;
+    ms_strbuild_printf(&debug->nodes, "!%u = !DIFile(filename: \"", debug->file_nodes[file]);
+    append_quoted(&debug->nodes, cx->module->files.ptr[file]);
+    ms_strbuild_append_text(&debug->nodes, "\", directory: \"\")\n");
+  }
+  return debug->file_nodes[file];
+}
+
+/* The scope that puts a line of module file `file` in the function being written: the subprogram itself for its
+ * own file, otherwise a block that names the other file. */
+static uint32_t scope_node(const EmitCx *cx, uint32_t file) {
+  EmitDebug *debug = cx->debug;
+  if (file >= debug->nfiles || file == debug->func_file) {
+    return debug->subprogram;
+  }
+  if (debug->block_nodes[file] == 0) {
+    debug->block_nodes[file] = debug->next++;
+    ms_strbuild_printf(&debug->nodes, "!%u = !DILexicalBlockFile(scope: !%u, file: !%u, discriminator: 0)\n",
+                       debug->block_nodes[file], debug->subprogram, file_node(cx, file));
+  }
+  return debug->block_nodes[file];
+}
+
 uint32_t emit_debug_subprogram(EmitCx *cx, uint32_t index) {
   EmitDebug *debug = cx->debug;
   const MirFunc *func = &cx->module->funcs.ptr[index];
+  if (debug->file_nodes == NULL) {
+    debug->nfiles = (uint32_t)cx->module->files.len;
+    debug->file_nodes = ms_realloc(NULL, (debug->nfiles + 1) * sizeof(uint32_t));
+    debug->block_nodes = ms_realloc(NULL, (debug->nfiles + 1) * sizeof(uint32_t));
+    memset(debug->file_nodes, 0, (debug->nfiles + 1) * sizeof(uint32_t));
+  }
+  memset(debug->block_nodes, 0, (debug->nfiles + 1) * sizeof(uint32_t));
   debug->subprogram = debug->next++;
   debug->cached = 0;
+  debug->func_file = func->loc.file;
+  const uint32_t file = file_node(cx, func->loc.file);
   ms_strbuild_printf(&debug->nodes, "!%u = distinct !DISubprogram(name: \"", debug->subprogram);
   append_quoted(&debug->nodes, ms_names_span(&cx->module->names, func->name));
   ms_strbuild_printf(&debug->nodes,
                      "\", scope: !%u, file: !%u, line: %u, type: !%u, scopeLine: %u, spFlags: DISPFlagDefinition, "
                      "unit: !%u)\n",
-                     MD_FILE, MD_FILE, func->loc.line, MD_TYPE, func->loc.line, MD_UNIT);
+                     file, file, func->loc.line, MD_TYPE, func->loc.line, MD_UNIT);
   return debug->subprogram;
 }
 
-static uint32_t location_node(EmitDebug *debug, uint32_t line, uint32_t column) {
-  if (debug->cached != 0 && debug->cached_line == line && debug->cached_column == column) {
+static uint32_t location_node(EmitDebug *debug, uint32_t line, uint32_t column, uint32_t scope) {
+  if (debug->cached != 0 && debug->cached_line == line && debug->cached_column == column &&
+      debug->cached_scope == scope) {
     return debug->cached;
   }
   debug->cached = debug->next++;
   debug->cached_line = line;
   debug->cached_column = column;
+  debug->cached_scope = scope;
   ms_strbuild_printf(&debug->nodes, "!%u = !DILocation(line: %u, column: %u, scope: !%u)\n", debug->cached, line,
-                     column, debug->subprogram);
+                     column, scope);
   return debug->cached;
 }
 
@@ -118,7 +170,8 @@ void emit_debug_place(EmitCx *cx, size_t from, MirLoc loc) {
   uint32_t line = known ? loc.line : body_line(cx);
   /* Scope 0 is the function itself; LLVM may inline it into another, so it gets a number of its own. */
   uint32_t scope = known && loc.scope != 0 ? cx->scope_base + loc.scope : cx->body_scope;
-  tag_text(cx->out, from, location_node(cx->debug, line, scope));
+  const uint32_t file = known && loc.file != MIR_NONE ? loc.file : cx->debug->func_file;
+  tag_text(cx->out, from, location_node(cx->debug, line, scope, scope_node(cx, file)));
 }
 
 void emit_debug_finish(const EmitCx *cx, MsSpan source) {

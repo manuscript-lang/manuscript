@@ -734,7 +734,7 @@ bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *t
 }
 
 LowerFnLocals fn_locals_save(const LowerFn *fn) {
-  return (LowerFnLocals){fn->vars, fn->local_owns, fn->closing, fn->closing_var, fn->shared, fn->closing_types, fn->nvars};
+  return (LowerFnLocals){fn->vars, fn->local_owns, fn->closing, fn->closing_var, fn->shared, fn->holds_value, fn->closing_types, fn->nvars};
 }
 
 void fn_locals_fresh(LowerFn *fn, uint32_t nvars) {
@@ -742,6 +742,7 @@ void fn_locals_fresh(LowerFn *fn, uint32_t nvars) {
   fn->vars = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirVar, (size_t)nvars + 1);
   fn->local_owns = NULL;
   fn->shared = NULL;
+  fn->holds_value = NULL;
   fn_init_closing(fn);
 }
 
@@ -751,6 +752,7 @@ void fn_locals_restore(LowerFn *fn, const LowerFnLocals *saved) {
   fn->closing = saved->closing;
   fn->closing_var = saved->closing_var;
   fn->shared = saved->shared;
+  fn->holds_value = saved->holds_value;
   fn->closing_types = saved->closing_types;
   fn->nvars = saved->nvars;
 }

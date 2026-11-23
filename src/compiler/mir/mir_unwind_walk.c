@@ -22,8 +22,19 @@ static bool uw_parks_at(const UwCx *cx, const MirInst *inst) {
   }
 }
 
+/* Whether `inst` discards or cancels cleanup entries: stack bookkeeping that neither parks nor
+ * faults, and that a window must not open at, since the discard would pop the window's own
+ * registrations before the instructions it covers. */
+static bool uw_is_bookkeeping(const UwCx *cx, const MirInst *inst) {
+  return inst->op == MOP_CallRt && inst->imm.tag == MI_EXT &&
+      (inst->imm.a == cx->discard || inst->imm.a == cx->cancel);
+}
+
 /* Whether `inst` can reach a cancellation point or fault. */
 bool uw_exits_at(const UwCx *cx, const MirInst *inst) {
+  if (uw_is_bookkeeping(cx, inst)) {
+    return false;
+  }
   if (uw_parks_at(cx, inst)) {
     return true;
   }
@@ -33,10 +44,24 @@ bool uw_exits_at(const UwCx *cx, const MirInst *inst) {
   return (mir_op_info[inst->op].effects & MIR_E_FAULTS) != 0;
 }
 
-uint32_t uw_hole_step(uint32_t open, MirOp op, const MirInst *next) {
-  switch (op) {
+/* The values calls and constructors make. A move-out of one takes a whole value, which no projection of an owner is
+ * left holding a hole for: nothing fills it back. */
+UwHash uw_call_defs(MsArena *a, const MirFunc *f) {
+  UwHash calls = {0};
+  UW_INSTS(f, b, i, inst) {
+    const bool whole = inst->op == MOP_Call || inst->op == MOP_CallRt || inst->op == MOP_TypeNew || inst->op == MOP_AltNew ||
+                       inst->op == MOP_Clone || inst->op == MOP_ListLit || inst->op == MOP_OptSome;
+    if (whole && inst->res != MIR_NONE) {
+      (void)uh_put(a, &calls, inst->res, 0);
+    }
+  }
+  return calls;
+}
+
+uint32_t uw_hole_step(uint32_t open, const MirInst *inst, const MirInst *next, const UwHash *calls) {
+  switch ((MirOp)inst->op) {
   case MOP_MoveOut:
-    if (next != NULL && next->op == MOP_TypeRelease) {
+    if ((next != NULL && next->op == MOP_TypeRelease) || (inst->nargs > 0 && uh_has(calls, inst->args[0]))) {
       return open;
     }
     return open + 1 < 8 ? open + 1 : 8;
@@ -60,6 +85,7 @@ static const MirInst *uw_next_inst(const MirBlockData *blk, uint32_t k) {
 uint32_t *uw_hole_states(UwCx *cx, const MirFunc *f) {
   uint32_t *at = MS_ARENA_NEW_ARRAY(&cx->fn, uint32_t, f->blocks.len);
   __builtin_memset(at, 0, sizeof(uint32_t) * f->blocks.len);
+  const UwHash calls = uw_call_defs(&cx->fn, f);
   for (bool changed = true; changed;) {
     changed = false;
     MirBlock *order = NULL;
@@ -68,7 +94,7 @@ uint32_t *uw_hole_states(UwCx *cx, const MirFunc *f) {
       const MirBlockData *blk = &f->blocks.ptr[order[oi]];
       uint32_t open = at[order[oi]];
       for (uint32_t k = 0; k < blk->insts.len; k++) {
-        open = uw_hole_step(open, (MirOp)blk->insts.ptr[k].op, uw_next_inst(blk, k));
+        open = uw_hole_step(open, &blk->insts.ptr[k], uw_next_inst(blk, k), &calls);
       }
       for (uint32_t t = 0; t < mir_term_ntargets(&blk->term); t++) {
         const MirBlock to = mir_term_target_const(&blk->term, t)->block;
@@ -131,7 +157,7 @@ static bool uw_hole_base(const UwHash *defs, const MirInst *inst, uint32_t *base
   return true;
 }
 
-static bool uw_hole_block(MsArena *a, const MirFunc *f, const UwHash *defs, uint32_t b,
+static bool uw_hole_block(MsArena *a, const MirFunc *f, const UwHash *defs, const UwHash *calls, uint32_t b,
              UwHoleIn *at) {
   const MirBlockData *blk = &f->blocks.ptr[b];
   UwHash named = uh_clone(a, &at[b].named);
@@ -139,7 +165,7 @@ static bool uw_hole_block(MsArena *a, const MirFunc *f, const UwHash *defs, uint
   uint32_t open = at[b].open;
   for (uint32_t k = 0; k < blk->insts.len; k++) {
     const uint32_t before = open;
-    open = uw_hole_step(open, (MirOp)blk->insts.ptr[k].op, uw_next_inst(blk, k));
+    open = uw_hole_step(open, &blk->insts.ptr[k], uw_next_inst(blk, k), calls);
     uint32_t base = 0;
     if (open > before) {
       if (uw_hole_base(defs, &blk->insts.ptr[k], &base)) {
@@ -180,12 +206,13 @@ static UwHoleIn *uw_hole_owners(UwCx *cx, const MirFunc *f) {
   UwHoleIn *at = MS_ARENA_NEW_ARRAY(a, UwHoleIn, f->blocks.len);
   __builtin_memset(at, 0, sizeof(UwHoleIn) * f->blocks.len);
   const UwHash defs = uw_field_defs(a, f);
+  const UwHash calls = uw_call_defs(a, f);
   for (bool changed = true; changed;) {
     changed = false;
     MirBlock *order = NULL;
     const uint32_t norder = mir_rpo(a, f, &order);
     for (uint32_t oi = 0; oi < norder; oi++) {
-      changed = uw_hole_block(a, f, &defs, order[oi], at) || changed;
+      changed = uw_hole_block(a, f, &defs, &calls, order[oi], at) || changed;
     }
   }
   return at;
@@ -201,11 +228,11 @@ typedef struct UwBlk {
   OwnerSet live;
   bool has_reach;
   OwnerSet reach;
-  bool opened_by_discard;
   uint32_t open;
   UwHash holed;
   bool unnamed;
   const UwHash *defs;
+  const UwHash *calls;
 } UwBlk;
 
 static MsArena *uw_an_arena(const UwBlk *s) { return &s->fa->cx->fn; }
@@ -326,7 +353,7 @@ static void uw_step_push(UwBlk *s, UwWindow *win, uint32_t at, const OwnerSet *t
 }
 
 /* Plans the registration around instruction `k`: extends the window that is open, or starts one. */
-static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k, bool discards) {
+static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k) {
   MsArena *a = uw_an_arena(s);
   OwnerSet under = s->live;
   if (s->open > 0) {
@@ -354,7 +381,7 @@ static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k, bool discard
   UwWindow *last = s->w->nplans[s->bi] ? &s->w->plans[s->bi][s->w->nplans[s->bi] - 1] : NULL;
   if (s->has_reach && last != NULL && owner_equal(&s->reach, &drops)) {
     last->last = k;
-  } else if (s->has_reach && last != NULL && !s->opened_by_discard) {
+  } else if (s->has_reach && last != NULL) {
     /* The live owners changed: the window follows them, so a value that died is discarded and
      * one born since is registered, and the owners that stay are not registered again. */
     last->last = k;
@@ -362,7 +389,6 @@ static void uw_an_window(UwBlk *s, const MirInst *inst, uint32_t k, bool discard
     s->reach = drops;
   } else {
     s->has_reach = false;
-    s->opened_by_discard = discards;
     if (!owner_is_empty(&drops)) {
       s->has_reach = true;
       s->reach = drops;
@@ -407,9 +433,7 @@ static void uw_an_births(UwBlk *s, const MirInst *inst) {
 
 static void uw_an_inst(UwBlk *s, uint32_t k) {
   const MirInst *inst = &s->blk->insts.ptr[k];
-  const bool discards = inst->op == MOP_CallRt && inst->imm.tag == MI_EXT &&
-             inst->imm.a == s->fa->cx->discard;
-  if (discards) {
+  if (inst->op == MOP_CallRt && inst->imm.tag == MI_EXT && inst->imm.a == s->fa->cx->discard) {
     s->has_reach = false; /* the discard may pop entries the window pushed */
   }
   uw_an_consume(s, inst);
@@ -421,9 +445,9 @@ static void uw_an_inst(UwBlk *s, uint32_t k) {
       uw_event_push(s, k, &target);
     }
   }
-  uw_an_window(s, inst, k, discards);
+  uw_an_window(s, inst, k);
   const uint32_t before = s->open;
-  s->open = uw_hole_step(s->open, (MirOp)inst->op, uw_next_inst(s->blk, k));
+  s->open = uw_hole_step(s->open, inst, uw_next_inst(s->blk, k), s->calls);
   if (s->open > before) {
     uw_an_open_hole(s, inst);
   }
@@ -518,10 +542,11 @@ UwWalk uw_analyze(const UwFacts *fa) {
   w.plain = uw_plain_blocks(cx, f, fa->holes);
   const UwHoleIn *hole_in = uw_hole_owners(cx, f);
   const UwHash defs = uw_field_defs(a, f);
+  const UwHash calls = uw_call_defs(a, f);
   MirBlock *order = NULL;
   const uint32_t norder = mir_rpo(a, f, &order);
   for (uint32_t oi = 0; oi < norder; oi++) {
-    UwBlk s = {.fa = fa, .w = &w, .bi = order[oi], .blk = &f->blocks.ptr[order[oi]], .defs = &defs};
+    UwBlk s = {.fa = fa, .w = &w, .bi = order[oi], .blk = &f->blocks.ptr[order[oi]], .defs = &defs, .calls = &calls};
     if (!uw_an_start(&s)) {
       continue;
     }

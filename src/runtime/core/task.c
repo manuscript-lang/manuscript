@@ -54,7 +54,14 @@ static MsTask *new_task(MsSched *sched) {
   size_t index = 0;
   uint32_t generation = 0;
   take_slot(sched, &index, &generation);
-  MsTask *const task = ms_alloc_zeroed(sizeof *task);
+  MsTask *task = sched->spare_tasks;
+  if (task != NULL) {
+    sched->spare_tasks = task->argument;
+    task->argument = NULL;
+    sched->spare_count--;
+  } else {
+    task = ms_alloc_zeroed(sizeof *task);
+  }
   task->handle = (uint64_t)generation << 32 | (uint64_t)(index + 1);
   task->state = MS_STATE_READY;
   task->wait_fd = -1;
@@ -72,7 +79,7 @@ static void free_task(MsSched *sched, MsTask *task) {
   const size_t index = (size_t)(task->handle & 0xffffffffu) - 1;
   sched->slots.ptr[index].task = NULL;
   ms_index_list_push(&sched->free_slots, (uint32_t)index);
-  ms_task_destroy(sched, task);
+  ms_task_recycle(sched, task);
   sched->live--;
   ms_isolate_set_load((uint32_t)(sched->live - sched->waiting_roots));
 }

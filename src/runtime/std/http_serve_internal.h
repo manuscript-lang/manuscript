@@ -3,6 +3,7 @@
 #ifndef MS_RUNTIME_STD_HTTP_SERVE_INTERNAL_H
 #define MS_RUNTIME_STD_HTTP_SERVE_INTERNAL_H
 
+#include "base/strbuild.h"
 #include "runtime/std/h2.h"
 #include "runtime/std/http_serve.h"
 
@@ -21,6 +22,7 @@ struct MsServeConn {
   bool idle; /* between requests: closing it loses nothing */
   bool eof;
   bool h2;
+  MsStrBuild head; /* the response head and first body bytes of the exchange in flight; its capacity lasts the connection */
   MsTaskHandle task;
   size_t listed_at;  /* its place in the idle list while it waits for a request (http_serve_steal.c) */
   bool listed;

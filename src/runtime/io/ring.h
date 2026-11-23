@@ -38,6 +38,8 @@ MS_NONNULL bool ms_io_ring_push(MsIoRing *ring, MsIoEvent event);
 /* Removes the oldest event into `*event`. False when the ring is empty and `*event` is untouched. */
 MS_NODISCARD MS_NONNULL bool ms_io_ring_pop(MsIoRing *ring, MsIoEvent *event);
 MS_NONNULL uint32_t ms_io_ring_length(const MsIoRing *ring);
+/* How many events the ring holds when full. */
+MS_NONNULL uint32_t ms_io_ring_capacity(const MsIoRing *ring);
 MS_NONNULL uint32_t ms_io_ring_dropped(const MsIoRing *ring);
 
 #endif

@@ -285,6 +285,17 @@ static void find_shared_method(SharedScan *scan, const MsExpr *expr) {
 static void find_shared_expr(void *ctx, const MsExpr *expr) {
   SharedScan *scan = ctx;
   LowerFn *fn = scan->fn;
+  if (expr->kind == MS_E_MEMBER && ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE) {
+    /* A field handed on leaves the record partly moved: only a variable keeps the mask of what is left to release. */
+    const MsExpr *root = expr;
+    while (root->kind == MS_E_MEMBER) {
+      root = root->u.member.left;
+    }
+    const MsRef *held = root->kind == MS_E_NAME ? ms_facts_ref(fn->facts, root->id) : NULL;
+    if (held != NULL && held->kind == MS_REF_LOCAL && held->local < fn->nvars) {
+      fn->holds_value[held->local] = true;
+    }
+  }
   if (expr->kind == MS_E_CALL) {
     scan->callee = expr->u.call.callee;
   } else if (expr->kind == MS_E_APPLY && expr->u.apply.types.len != 0) {
@@ -312,6 +323,7 @@ static void find_shared_expr(void *ctx, const MsExpr *expr) {
 
 void fn_find_shared(LowerFn *fn, MsStmts body) {
   fn->shared = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, uint8_t, (size_t)fn->nvars + 1);
+  fn->holds_value = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, bool, (size_t)fn->nvars + 1);
   SharedScan scan = {fn, NULL, NULL};
   const MsVisitor visitor = {.ctx = &scan, .expr = find_shared_expr};
   ms_walk_block(&visitor, body);

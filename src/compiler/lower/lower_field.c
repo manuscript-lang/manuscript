@@ -308,3 +308,23 @@ bool fn_late_field(LowerFn *fn, const MsExpr *expr, MsRef *out) {
   }
   return false;
 }
+
+bool fn_move_field(LowerFn *fn, const MsExpr *expr, uint32_t index) {
+  MirVar owner = 0;
+  const MsExpr *left = expr->u.member.left;
+  if (fn_owned_local(fn, left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
+    fn_scope_var_moved(fn, owner, index, ms_facts_type(fn->facts, left->id));
+    return true;
+  }
+  /* `name.field.part`: the part leaves the field, which keeps its other parts until the name's scope ends. */
+  const MsRef *outer = left->kind == MS_E_MEMBER ? ms_facts_ref(fn->facts, left->id) : NULL;
+  return outer != NULL && outer->kind == MS_REF_FIELD && fn_owned_local(fn, left->u.member.left, &owner) &&
+         fn->b.vars.ptr[owner].mode == MM_MOVE &&
+         fn_scope_var_moved_part(fn, owner, outer->index, index, ms_facts_type(fn->facts, left->u.member.left->id),
+                                 ms_facts_type(fn->facts, left->id));
+}
+
+bool fn_leaves_fields(const LowerFn *fn, uint32_t local, MirTy ty) {
+  return fn->holds_value != NULL && local < fn->nvars && fn->holds_value[local] &&
+         mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE;
+}

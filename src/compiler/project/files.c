@@ -2,6 +2,7 @@
  * a directory or an ms.toml stands for the project's modules, as `format_paths` in crates/ms-cli/src/fmt.rs. */
 #include <errno.h>
 
+#include "base/dir.h"
 #include "base/file.h"
 #include "base/path.h"
 #include "base/message.h"
@@ -103,6 +104,9 @@ bool ms_project_workspace_members(MsArena *arena, MsSpan target, MsSpanList *man
                                   MsProjectError *error) {
   *found = false;
   MsSpan absolute = {0};
+  if (ms_path_kind(target) == MS_PATH_DIRECTORY) { /* a directory stands for its manifest */
+    target = ms_message_format(arena, "%S/ms.toml", target, (MsSpan){0});
+  }
   if (!ms_span_is_text(ms_path_file_name(target), "ms.toml") || !ms_file_is_regular(target)) {
     return true;
   }

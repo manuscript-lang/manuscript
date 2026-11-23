@@ -469,11 +469,17 @@ static void note_param_move(void *ctx, const MsExpr *expr) {
       writes->found = true;
     }
   }
-  if (expr->kind != MS_E_MEMBER || expr->u.member.left->kind != MS_E_NAME ||
-      ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
+  if (expr->kind != MS_E_MEMBER || ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
     return;
   }
-  const MsRef *ref = ms_facts_ref(writes->facts, expr->u.member.left->id);
+  const MsExpr *base = expr->u.member.left;
+  while (base->kind == MS_E_MEMBER) { /* `param.field.part` leaves the parameter partly moved too */
+    base = base->u.member.left;
+  }
+  if (base->kind != MS_E_NAME) {
+    return;
+  }
+  const MsRef *ref = ms_facts_ref(writes->facts, base->id);
   if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
     writes->found = true;
     writes->moves = true;
@@ -558,7 +564,7 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
     mir_b_def_var(&fn->b, fn->param_vars[index], values[index]);
     if ((params[index].flags & MS_PARAM_MOVE) != 0 && mir_needs_drop(fn->cx->module, ty)) {
       if (assigns_into_param(fn, target, index)) {
-        (void)fn_scope_own_var(fn, fn->param_vars[index]); /* the variable owns what it holds */
+        (void)fn_scope_own_var(fn, fn->param_vars[index], checked); /* the variable owns what it holds */
       } else {
         fn_own(fn, fn_scope(fn), values[index]);
       }
