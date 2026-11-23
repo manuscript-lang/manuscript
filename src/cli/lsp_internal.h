@@ -58,6 +58,8 @@ typedef struct LspEditorToken {
 } LspEditorToken;
 MS_LIST_DEFINE(LspTokenList, lsp_token_list, LspEditorToken)
 void lsp_scan_tokens(MsSpan source, LspTokenList *tokens);
+/* Whether the string token ends with its closing quotes (an unfinished one runs to the end of the text). */
+bool lsp_literal_closed(MsSpan source, const LspEditorToken *token);
 
 /* The byte offset of `name` as a token on the line after `offset` (a newline exactly at `offset` is skipped): where a
  * header's declared name is, whatever precedes it. */
