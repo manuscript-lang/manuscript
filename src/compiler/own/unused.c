@@ -9,24 +9,17 @@ typedef struct Candidate {
   MsPos pos;
   int64_t reads;
   bool fed; /* read only to compute its own next value */
+  uint32_t feed_start, feed_end; /* the latest assignment to it: reads inside only feed it */
 } Candidate;
 
 MS_LIST_DEFINE(CandidateList, candidate_list, Candidate)
 MS_MAP_DEFINE(OffsetMap, offset_map, uint32_t, uint32_t, ms_hash_u32_key, ms_equal_u32_key)
-
-/* The source range of an assignment to a binding: reads of it inside only feed it. */
-typedef struct Feed {
-  uint32_t candidate, start, end;
-} Feed;
-
-MS_LIST_DEFINE(FeedList, feed_list, Feed)
 
 typedef struct Unused {
   MsCheckProgram *program;
   uint32_t module;
   CandidateList candidates;
   OffsetMap by_offset; /* declaration offset -> candidate index */
-  FeedList feeds;
 } Unused;
 
 static bool is_exempt(const Unused *pass, const MsBinding *binding) {
@@ -71,12 +64,10 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
   if (candidate == NULL) {
     return;
   }
-  for (size_t at = 0; at < pass->feeds.len; at++) {
-    const Feed *feed = &pass->feeds.ptr[at];
-    if (feed->candidate == index && expr->pos.offset >= feed->start && expr->pos.offset < feed->end) {
-      candidate->fed = true;
-      return;
-    }
+  /* An assignment's value is walked before the next assignment, so the latest one is the one a read is in. */
+  if (expr->pos.offset >= candidate->feed_start && expr->pos.offset < candidate->feed_end) {
+    candidate->fed = true;
+    return;
   }
   candidate->reads++;
 }
@@ -86,8 +77,10 @@ static void assign_name(void *context, const MsStmt *stmt, const MsBindingList *
   Unused *pass = context;
   const MsBinding *binding = ms_scope_lookup(scope, stmt->u.assign.name);
   uint32_t index = 0;
-  if (binding != NULL && candidate_of(pass, binding, &index) != NULL) {
-    feed_list_push(&pass->feeds, (Feed){.candidate = index, .start = stmt->pos.offset, .end = stmt->u.assign.value->end.offset});
+  Candidate *candidate = binding == NULL ? NULL : candidate_of(pass, binding, &index);
+  if (candidate != NULL) {
+    candidate->feed_start = stmt->pos.offset;
+    candidate->feed_end = stmt->u.assign.value->end.offset;
   }
 }
 
@@ -115,7 +108,6 @@ static void check_module(MsCheckProgram *program, uint32_t module) {
   }
   candidate_list_free(&pass.candidates);
   offset_map_free(&pass.by_offset);
-  feed_list_free(&pass.feeds);
 }
 
 void ms_own_unused(MsCheckProgram *program) {
