@@ -4,6 +4,7 @@
 #include "compiler/lower/lower_fn.h"
 #include "compiler/lower/lower.h"
 #include "compiler/mir/mir_analysis.h"
+#include "compiler/mir/mir_json_tree.h"
 
 static LowerFn begin(Lower *cx, const MirFunc *reserved) {
   LowerFn fn = {.cx = cx,
@@ -187,6 +188,10 @@ static void walk(Lower *cx, MirTy ty) {
   }
   cx->module->alts.ptr[id].text_fn1 = text_fn != MIR_NONE ? text_fn + 1 : 0;
   cx->module->alts.ptr[id].json_fn1 = json_fn != MIR_NONE ? json_fn + 1 : 0;
+  if (mir_json_tree_shape(cx->module, ty)) {
+    const uint32_t tree_fn = mir_json_tree_ctor(cx->module, ty); /* a parse reads the untyped tree wherever it sits */
+    cx->module->alts.ptr[id].tree_fn1 = tree_fn != MIR_NONE ? tree_fn + 1 : 0;
+  }
   for (uint32_t kase = 0; kase < cx->module->alts.ptr[id].ncases; kase++) {
     const MirCaseDef *def = &cx->module->alts.ptr[id].cases[kase];
     walk_fields(cx, def->fields, def->nfields);

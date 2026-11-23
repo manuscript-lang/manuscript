@@ -185,8 +185,8 @@ at compile time. The input, depth and value limits apply to the document before 
 - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
   the exact number text. A `null` Float, which `stringify` writes for `NaN` and infinities, returns
   `EBADMSG`.
-- `Timestamp` reads an RFC 3339 string, `Duration` integer nanoseconds, `Bytes` a standard base64
-  string, and `Url`, `IpAddress` and `Cidr` their string forms.
+- `Bytes` reads a standard base64 string, and `IpAddress` and `Cidr` their string forms. `Timestamp`,
+  `Duration` and `Url` are write-only: they are not standard JSON, so reading one is `EBADMSG`.
 - `Map[String, T]` reads an object when `T` is `Data`; `JsonValue` keeps its subtree as parsed.
 
 The record-or-document choice comes from `T`, not from the text: `parse[Request]` reads an object as a

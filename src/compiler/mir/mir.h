@@ -297,6 +297,7 @@ typedef struct MirTypeDef {
   bool indirect; /* one pointer to a heap block */
   bool opaque;   /* declared `opaque`: its text is the type name only */
   bool native;   /* an extern type the runtime reads and writes by address (`@repr=inline<N>`): words, no fields to name */
+  bool decimal;  /* the standard `Decimal`: its shape is a number written and read as digits */
   uint32_t text_fn1; /* 1 + the function `fn(slot, out)` that writes the type's own `to_string` text, for its shape; 0 for none */
   uint32_t json_fn1; /* 1 + the function `fn(slot, writer) -> u8` that writes its own `to_json` document; 0 for none */
 } MirTypeDef;
@@ -320,6 +321,7 @@ typedef struct MirAltDef {
   bool opaque; /* as for MirTypeDef */
   uint32_t text_fn1; /* as for MirTypeDef */
   uint32_t json_fn1;
+  uint32_t tree_fn1; /* 1 + the constructor thunk of the untyped tree (`JsonValue`) for its shape; 0 for none */
 } MirAltDef;
 
 MS_LIST_DEFINE(MirAltDefList, mir_alt_def_list, MirAltDef)

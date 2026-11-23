@@ -4,6 +4,7 @@
 #include "base/strbuild.h"
 #include "runtime/core/num.h"
 #include "runtime/core/string_text.h"
+#include "runtime/std/bigint.h"
 #include "runtime/std/shape_text.h"
 
 enum { MAX_DEPTH = 64 };
@@ -297,7 +298,13 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
   case MS_SHAPE_ALTERNATIVE:
     emit_alternative(text, shape, value, depth);
     return;
-  default: /* OPAQUE, and BIGINT or DECIMAL without a text hook, show the type name */
+  case MS_SHAPE_BIGINT: {
+    MsString digits = ms_string_empty();
+    msstd_bigint_to_string_radix(*(MsBigCell *const *)(const void *)slot, 10, &digits);
+    append_owned(text, &digits);
+    return;
+  }
+  default: /* OPAQUE, and DECIMAL without a text hook, show the type name */
     ms_strbuild_append_text(&text->out, ms_shape_text(text->table, shape->name));
     return;
   }
