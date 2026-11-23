@@ -161,12 +161,49 @@ static void record_new(EmitCx *cx, const MirInst *inst) {
   }
 }
 
+/* `type.get` of a field that is itself wide, out of a held record: the field's bytes copied from the record's cell
+ * to the result's, when the leaves sit the same distance apart in both (they are not loaded and stored one by one,
+ * which in a Debug build costs a volatile load per leaf). */
+static bool held_record_get(EmitCx *cx, const MirInst *inst, uint32_t start, uint32_t count) {
+  char from[24];
+  char to[24];
+  if (count == 0 || !emit_wide_held(cx, inst->res) || !emit_wide_address(cx, inst->args[0], from, sizeof from)) {
+    return false;
+  }
+  uint32_t *source = leaf_offsets(cx, inst->args[0]);
+  uint32_t *result = leaf_offsets(cx, inst->res);
+  bool same = source[start] >= result[0] && result[0] == 0;
+  for (uint32_t leaf = 1; leaf < count && same; leaf++) {
+    same = source[start + leaf] - source[start] == result[leaf] - result[0];
+  }
+  const uint32_t offset = source[start];
+  bool aligned = true;
+  const uint32_t bytes = packed_bytes(cx, inst->res, 0, &aligned);
+  same = same &&
+         emit_wide_result(cx, inst->res, to, sizeof to);
+  ms_free(source);
+  ms_free(result);
+  if (!same) {
+    return false;
+  }
+  if (offset != 0 || !emit_wide_same_cell(cx, inst->args[0], inst->res)) {
+    char at[24];
+    emit_register_name(at, sizeof at, "a", emit_address(cx, from, offset));
+    ms_strbuild_printf(cx->out, "  call void @llvm.memmove.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", to, at,
+                       bytes);
+  }
+  return true;
+}
+
 /* `type.get`: the leaves of one field. */
 static bool record_get(EmitCx *cx, const MirInst *inst) {
   uint32_t start = 0;
   uint32_t count = 0;
   if (!field_span(cx, value_type(cx, inst->args[0]), inst->imm.b, &start, &count)) {
     return false;
+  }
+  if (held_record_get(cx, inst, start, count)) {
+    return true;
   }
   for (uint32_t leaf = 0; leaf < count; leaf++) {
     emit_copy_leaf(cx, inst->res, leaf, inst->args[0], start + leaf);
