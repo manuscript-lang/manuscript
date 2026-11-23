@@ -634,15 +634,36 @@ static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue r
   return true;
 }
 
+/* The address of the list that `place` names when it is an element of a list lying in a variable, field or element
+ * (`rows[i].append(x)`), else MIR_NONE. */
+static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
+    return MIR_NONE;
+  }
+  const MirValue list = fn_expr(fn, container, LW_BORROW);
+  const MirValue at = list == MIR_NONE ? MIR_NONE : fn_expr(fn, key, LW_BORROW);
+  if (at == MIR_NONE) {
+    return MIR_NONE;
+  }
+  const MirValue operands[2] = {list, at};
+  return mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+}
+
 /* `list.append(value)`: the list grows in line (a full list calls the grow block) and the updated list goes back. */
 static bool list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out) {
   const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
   const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
   MirValue owned;
   MirValue record;
-  if (list->kind != MK_LIST || mir_b_ty(&fn->b, args[1]) != list->elem || !list_changeable(fn, place, slot) ||
-      (slot == MIR_NONE && place->kind != MS_E_NAME) ||
-      !list_take(fn, place, slot, list_ty, &owned, &record)) {
+  if (list->kind != MK_LIST || mir_b_ty(&fn->b, args[1]) != list->elem) {
+    return false;
+  }
+  if (slot == MIR_NONE) {
+    slot = list_element_slot(fn, place);
+  }
+  if (!list_changeable(fn, place, slot) || !list_take(fn, place, slot, list_ty, &owned, &record)) {
     return false;
   }
   const MirValue operands[2] = {owned, args[1]};
@@ -659,6 +680,9 @@ static bool list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirV
   const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
   if (list->kind != MK_LIST || mir_needs_drop(fn->cx->module, list->elem) || mir_b_ty(&fn->b, args[2]) != list->elem) {
     return false;
+  }
+  if (slot == MIR_NONE) {
+    slot = list_element_slot(fn, place);
   }
   if (!list_changeable(fn, place, slot)) {
     return false;
