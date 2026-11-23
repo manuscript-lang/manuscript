@@ -72,7 +72,7 @@ void msrt_fault_div_overflow(int64_t a, int64_t b) {
   ms_strbuild_append_text(&text, " and right ");
   ms_strbuild_append_i64(&text, b);
   ms_strbuild_append_text(&text, "; result must be between -9223372036854775808 and 9223372036854775807");
-  ms_fault(MS_FAULT_KIND_OVERFLOW, ms_strbuild_span(&text));
+  ms_fault_built(MS_FAULT_KIND_OVERFLOW, &text);
 }
 
 /* ---- cleanups ---- */

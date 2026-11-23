@@ -254,7 +254,8 @@ static size_t registry_take(void) {
   return index;
 }
 
-#ifdef MS_STATS
+/* Frees the tables of retired pipes (rings, chunks without a live pipe, the free list) that a process keeps for reuse, at
+ * the end of one that balances its books; a live pipe keeps its chunk, so a leaked pipe is still counted. */
 void ms_pipe_release_all(void) {
   bool kept_any = false;
   for (size_t chunk = 0; chunk < registry.count / PIPE_CHUNK + 1 && chunk < PIPE_CHUNKS; chunk++) {
@@ -285,7 +286,6 @@ void ms_pipe_release_all(void) {
     registry.free_count = registry.free_cap = registry.count = 0;
   }
 }
-#endif
 
 /* ---- the reader's side ---- */
 

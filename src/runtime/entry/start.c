@@ -24,10 +24,10 @@
 #include "runtime/core/fault.h"
 #include "runtime/core/obj.h"
 #include "runtime/core/pipe.h"
-#include "runtime/core/watch.h"
 #include "runtime/core/promise.h"
 #include "runtime/core/stats.h"
 #include "runtime/core/task.h"
+#include "runtime/core/watch.h"
 #include "runtime/core/unwind.h"
 #include "runtime/core/worker.h"
 #include "runtime/io/reactor.h"
@@ -35,6 +35,8 @@
 #include "runtime/io/stop.h"
 #include "runtime/std/http_client_abi.h"
 #include "runtime/std/http_serve_internal.h"
+#include "runtime/std/net_loop.h"
+#include "runtime/std/streams.h"
 #include "runtime/sys/sys.h"
 
 enum {
@@ -81,6 +83,20 @@ uint8_t msrt_exit_frees(void) {
   return 1;
 }
 
+/* Frees what the runtime keeps for the whole run, when the process asks for its books to balance (MS_FREE_AT_EXIT, for
+ * a leak check): the exit path of `main` and `finish_process` both call it, after the last user of these tables. */
+static void release_process_memory(void) {
+  if (msrt_exit_frees() == 0) {
+    return;
+  }
+  ms_watch_stop();
+  ms_serve_idle_release_registry();
+  ms_pipe_release_all();
+  ms_net_release_all();
+  ms_http_engine_release_all();
+  ms_streams_release_all();
+}
+
 /* ---- ending the process ---- */
 
 /* Flushes output, runs the exit hooks and ends the process. */
@@ -88,6 +104,7 @@ MS_NORETURN static void finish_process(int status) {
   ms_stdout_flush();
   ms_profile_finish();
   ms_process_run_exit_hooks();
+  release_process_memory();
   ms_sys_exit_now(status);
 }
 
@@ -260,9 +277,7 @@ static int64_t main_allocations, main_alloc_bytes; /* the runtime thread's count
 static void report_stats(void) {
   /* What the process keeps for its whole life is not a leak: the watcher and the tables of retired pipes and idle lists
    * go first, so a count left over is the program's. */
-  ms_watch_stop();
-  ms_pipe_release_all();
-  ms_serve_idle_release_registry();
+  release_process_memory();
   char line[512];
   if (getenv("MS_PARK_COUNT") != NULL) {
     (void)snprintf(line, sizeof line, "ms-rt parks: %llu\n", (unsigned long long)ms_stats_parks());
@@ -340,6 +355,9 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
   ms_stdout_flush();
   ms_profile_finish();
   ms_process_run_exit_hooks();
+#ifndef MS_STATS
+  release_process_memory(); /* the counting runtime released it before its report */
+#endif
   const int status = (int)main_result;
   const int32_t lost = ms_stdout_error();
   if (lost != 0 && status == 0) {

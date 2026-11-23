@@ -27,7 +27,7 @@ static void check_byte(const char *what, int64_t value) {
   ms_strbuild_append_text(&message, what);
   ms_strbuild_append_text(&message, ": value must be between 0 and 255, found ");
   ms_strbuild_append_i64(&message, value);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 void msrt_bytes_drop(MsBytes *b) {
@@ -137,7 +137,7 @@ static MS_NORETURN void view_bounds_fault(int64_t start, int64_t end, size_t len
   ms_strbuild_append_i64(&message, end);
   ms_strbuild_append_text(&message, " are outside a length of ");
   ms_strbuild_append_i64(&message, (int64_t)length);
-  ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
 }
 
 /* `view(start, end)`: borrows `[start, end)` of the receiver's storage (a view, `cap == 0`, never freed). */

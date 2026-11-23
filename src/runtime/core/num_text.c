@@ -119,14 +119,14 @@ static void precision_out(double v, uint8_t format, int64_t digits, int64_t mini
     ms_strbuild_append_i64(&message, minimum);
     ms_strbuild_append_text(&message, " and at most 100, found ");
     ms_strbuild_append_i64(&message, digits);
-    ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
   }
   uint8_t buffer[MS_FMT_PRECISION_CAPACITY];
   size_t length = 0;
   if (!ms_fmt_float_precision(v, format, digits, buffer, sizeof buffer, &length)) {
     ms_strbuild_append_text(&message, name);
     ms_strbuild_append_text(&message, ": formatting buffer too small");
-    ms_fault(MS_FAULT_KIND_FAULT, ms_strbuild_span(&message));
+    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
   }
   *out = msrt_string_make(ms_span_of(buffer, length));
 }
