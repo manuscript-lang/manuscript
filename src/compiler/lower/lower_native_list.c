@@ -306,3 +306,33 @@ uint32_t fn_sort_thunk(LowerFn *fn, MirTy elem, MirTy closure) {
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
+
+/* `fn(change, ptr) -> void` for the runtime `Map.update`: reads the value in the slot, calls the source `change` on it,
+ * and puts the result in its place (dropping the old value first). `change` runs while the slot still holds the old
+ * value, so a fault in it leaves the map whole. Marked like a sort comparator thunk so a known `change` is called
+ * directly. MIR_NONE when the build fails. */
+uint32_t fn_update_thunk(LowerFn *fn, MirTy value, MirTy closure) {
+  const MirParam params[2] = {{closure, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  MirBuilder b;
+  mir_b_init(&b, fn->cx->module, mir_name(fn->cx->module, ms_span_of_text("sort.cmp.update")), params, 2, MIR_VOID);
+  mir_b_func(&b)->sort = MSORT_GENERIC;
+  MirValue args[2];
+  mir_b_params(&b, args, 2);
+  const MirImm of_value = {.tag = MI_TY, .a = value};
+  const MirValue old = mir_b_emit(&b, MOP_Load, &args[1], 1, of_value, value);
+  const MirValue call[2] = {args[0], old};
+  const MirValue next = mir_b_emit(&b, MOP_CallInd, call, 2, (MirImm){0}, value);
+  const bool owns = mir_needs_drop(fn->cx->module, value);
+  if (owns) { /* the old value is released where it lies: it is borrowed here, not owned */
+    MirParam drop_params[2] = {{MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+    const MirExtern drop = {.name = mir_name(fn->cx->module, ms_span_of_text("msrt_slot_drop")), .params = drop_params,
+                            .nparams = 2, .ret = MIR_VOID};
+    const MirValue release[2] = {mir_b_emit(&b, MOP_TypeDesc, NULL, 0, of_value, MIR_PTR), args[1]};
+    (void)mir_b_call_rt(&b, mir_extern_intern(fn->cx->module, &drop), release, 2);
+  }
+  const MirValue stored[2] = {args[1], next};
+  (void)mir_b_emit(&b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  mir_b_ret(&b, mir_b_emit(&b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}

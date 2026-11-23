@@ -379,6 +379,8 @@ bool lists_in_place(LowerFn *fn, const MsExpr *expr);
 /* An operand in a slot of its own, for a native that reads or takes it by address; `lookup` only borrows it. */
 MirValue fn_operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup);
 uint32_t fn_sort_thunk(LowerFn *fn, MirTy elem, MirTy closure);
+/* The thunk the runtime `Map.update` calls for a `change` closure over values of type `value`. */
+uint32_t fn_update_thunk(LowerFn *fn, MirTy value, MirTy closure);
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);

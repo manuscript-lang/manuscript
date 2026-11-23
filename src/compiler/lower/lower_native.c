@@ -185,8 +185,12 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
         return false;
       }
     } else if (kind == NS_CMP_FN && next < nargs && next > 0 && at + 1 < params) {
-      const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
-      const uint32_t thunk = list->kind == MK_LIST ? fn_sort_thunk(fn, list->elem, mir_b_ty(&fn->b, args[next])) : MIR_NONE;
+      const MirTyData *receiver = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+      const MirTy closure = mir_b_ty(&fn->b, args[next]);
+      const bool map = receiver->kind == MK_OBJ && receiver->obj_class == MIR_OBJ_COLLECTION && receiver->nargs >= 2;
+      const uint32_t thunk = receiver->kind == MK_LIST ? fn_sort_thunk(fn, receiver->elem, closure)
+                             : map                     ? fn_update_thunk(fn, receiver->args[1], closure)
+                                                       : MIR_NONE;
       if (thunk == MIR_NONE) {
         return false;
       }
