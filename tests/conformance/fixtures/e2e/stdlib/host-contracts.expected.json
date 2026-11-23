@@ -23,19 +23,24 @@
           "index": 2,
           "name": "host-contracts.ms::full byte counts positions EOF and stream aliases retain their contracts",
           "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "host-contracts.ms::a handle keeps its own position across append writes, seeks and reads",
+          "status": "passed"
         }
       ],
       "summary": {
-        "available": 3,
-        "selected": 3,
-        "passed": 3,
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN host-contracts.ms::closed normalization forms reject spelling changes with their domain errors\nPASS host-contracts.ms::closed normalization forms reject spelling changes with their domain errors\nRUN host-contracts.ms::every open mode with and without exclusive creation opens\nPASS host-contracts.ms::every open mode with and without exclusive creation opens\nRUN host-contracts.ms::full byte counts positions EOF and stream aliases retain their contracts\nPASS host-contracts.ms::full byte counts positions EOF and stream aliases retain their contracts\n3 tests, 0 failed\n",
+      "stdout": "RUN host-contracts.ms::closed normalization forms reject spelling changes with their domain errors\nPASS host-contracts.ms::closed normalization forms reject spelling changes with their domain errors\nRUN host-contracts.ms::every open mode with and without exclusive creation opens\nPASS host-contracts.ms::every open mode with and without exclusive creation opens\nRUN host-contracts.ms::full byte counts positions EOF and stream aliases retain their contracts\nPASS host-contracts.ms::full byte counts positions EOF and stream aliases retain their contracts\nRUN host-contracts.ms::a handle keeps its own position across append writes, seeks and reads\nPASS host-contracts.ms::a handle keeps its own position across append writes, seeks and reads\n4 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
