@@ -41,9 +41,11 @@ void msrt_list_free_raw(MsList *v);
 void msrt_list_push(MsList *v, const MsTypeDesc *d, const uint8_t *e);
 /* ms-sig: msrt_list_reserve(v: *mut VecVal, d: ElemDesc, extra: i64) @domain=collection @end */
 void msrt_list_reserve(MsList *v, const MsTypeDesc *d, int64_t extra);
-/* ms-sig: msrt_list_length(v: *const VecVal) -> i64 @domain=collection @op=list_len */
+/* ms-sig: msrt_list_length(v: *const VecVal) -> i64 @domain=collection @end */
+/* ms-op: msrt_list_length list_len */
 int64_t msrt_list_length(const MsList *v);
-/* ms-sig: msrt_list_is_empty(v: *const VecVal) -> u8 @domain=collection @op=list_is_empty */
+/* ms-sig: msrt_list_is_empty(v: *const VecVal) -> u8 @domain=collection @end */
+/* ms-op: msrt_list_is_empty list_is_empty */
 uint8_t msrt_list_is_empty(const MsList *v);
 /* ms-sig: msrt_list_append(v: *mut VecVal, d: ElemDesc, e: *const u8) @domain=collection @op=list.push
  * @inline=list_append */

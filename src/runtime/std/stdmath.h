@@ -51,7 +51,7 @@ double msstd_math_atan2(double y, double x);
 double msstd_math_atanh(double v);
 /* ms-sig: msstd_math_cbrt(v: f64) -> f64 @domain=number @end */
 double msstd_math_cbrt(double v);
-/* ms-sig: msstd_math_ceil(v: f64) -> f64 @domain=number @op=fceil */
+/* ms-op: msstd_math_ceil fceil */
 double msstd_math_ceil(double v);
 /* ms-sig: msstd_math_copy_sign(value: f64, sign: f64) -> f64 @domain=number @end */
 double msstd_math_copy_sign(double value, double sign);
@@ -68,7 +68,7 @@ double msstd_math_exp(double v);
 double msstd_math_exp2(double v);
 /* ms-sig: msstd_math_expm1(v: f64) -> f64 @domain=number @end */
 double msstd_math_expm1(double v);
-/* ms-sig: msstd_math_floor(v: f64) -> f64 @domain=number @op=ffloor */
+/* ms-op: msstd_math_floor ffloor */
 double msstd_math_floor(double v);
 /* ms-sig: msstd_math_fma(left: f64, right: f64, addend: f64) -> f64 @domain=number @end */
 double msstd_math_fma(double left, double right, double addend);
@@ -117,7 +117,7 @@ uint8_t msstd_math_sign_bit(double value);
 double msstd_math_sin(double v);
 /* ms-sig: msstd_math_sinh(v: f64) -> f64 @domain=number @end */
 double msstd_math_sinh(double v);
-/* ms-sig: msstd_math_sqrt(v: f64) -> f64 @domain=number @op=fsqrt */
+/* ms-op: msstd_math_sqrt fsqrt */
 double msstd_math_sqrt(double v);
 /* ms-sig: msstd_math_subtract_with_borrow(left: u64, right: u64, borrow: u8, out: *mut WordDifferenceOut)
  * @domain=number @end */
@@ -126,7 +126,7 @@ void msstd_math_subtract_with_borrow(uint64_t left, uint64_t right, uint8_t borr
 double msstd_math_tan(double v);
 /* ms-sig: msstd_math_tanh(v: f64) -> f64 @domain=number @end */
 double msstd_math_tanh(double v);
-/* ms-sig: msstd_math_truncate(v: f64) -> f64 @domain=number @op=ftrunc */
+/* ms-op: msstd_math_truncate ftrunc */
 double msstd_math_truncate(double v);
 
 #endif
