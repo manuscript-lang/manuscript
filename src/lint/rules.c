@@ -26,11 +26,42 @@ void lint_report(Lint *lint, const char *path, size_t line, const char *rule, co
   lint->violations++;
 }
 
+enum { FUNCTION_NAME = 96 };
+
 typedef struct WordContext {
   Lint *lint;
   const char *path;
   size_t line;
+  bool at_margin;       /* the line starts a declaration: its first call-shaped word names the function */
+  char *function;       /* the function the line is in, FUNCTION_NAME bytes */
+  bool unwind_rule;     /* the file is under a directory where runtime C never unwinds past its caller */
+  bool unwind_home;     /* the file defines the unwind itself */
 } WordContext;
+
+/* Directories whose C returns a cancelled answer to its caller and never jumps over it, so nothing a frame holds
+ * is skipped. Only a program entry (msrt_*, msstd_*) ends a cancelled call. */
+static const char *const NO_UNWIND[] = {"src/runtime/core/", "src/runtime/entry/"};
+static const char *const UNWIND_HOME[] = {"src/runtime/core/unwind.c", "src/runtime/core/fault_abi.c",
+                                          "src/runtime/entry/start.c"};
+
+static bool word_is(const char *start, size_t length, const char *name) {
+  return lint_text_length(name) == length && lint_text_starts_with(start, name);
+}
+
+static void check_unwind(WordContext *context, const char *start, size_t length) {
+  if (!context->unwind_rule || context->unwind_home) return;
+  if (word_is(start, length, "ms_cancelled")) {
+    lint_report(context->lint, context->path, context->line, "unwind",
+                "runtime C does not unwind past its caller; return a cancelled answer");
+    return;
+  }
+  const bool entry = lint_text_starts_with(context->function, "msrt_") ||
+                     lint_text_starts_with(context->function, "msstd_");
+  if (word_is(start, length, "ms_sched_cancel_return") && !entry) {
+    lint_report(context->lint, context->path, context->line, "unwind",
+                "only a program entry (msrt_*, msstd_*) ends a cancelled call");
+  }
+}
 
 static void on_word(void *opaque, const char *start, size_t length, bool followed_by_call) {
   WordContext *context = opaque;
@@ -43,6 +74,12 @@ static void on_word(void *opaque, const char *start, size_t length, bool followe
     lint_report(context->lint, context->path, context->line, "banned-call", message);
     context->lint->banned_calls++;
   }
+  if (context->at_margin) {
+    context->at_margin = false;
+    (void)snprintf(context->function, FUNCTION_NAME, "%.*s", (int)length, start);
+    return;
+  }
+  check_unwind(context, start, length);
 }
 
 /* The layer whose directory is the longest prefix of `directory`, or NULL. */
@@ -96,6 +133,15 @@ static bool in_block_comment_line(const char *line) {
 static void check_source(Lint *lint, const char *path, FILE *file) {
   bool exempt = lint_text_equal(path, "src/base/cstr.c") || lint_text_equal(path, "src/lint/text.c");
   char line[LINE_LENGTH];
+  char function[FUNCTION_NAME] = "";
+  bool unwind_rule = false;
+  bool unwind_home = false;
+  for (size_t index = 0; index < sizeof NO_UNWIND / sizeof NO_UNWIND[0]; index++) {
+    unwind_rule = unwind_rule || lint_text_starts_with(path, NO_UNWIND[index]);
+  }
+  for (size_t index = 0; index < sizeof UNWIND_HOME / sizeof UNWIND_HOME[0]; index++) {
+    unwind_home = unwind_home || lint_text_equal(path, UNWIND_HOME[index]);
+  }
   size_t line_number = 0;
   while (fgets(line, sizeof line, file) != NULL) {
     line_number++;
@@ -106,7 +152,8 @@ static void check_source(Lint *lint, const char *path, FILE *file) {
                   "name a temporary program with MS_TEMP_PROGRAM (program.exe on Windows), not a literal");
     }
     if (exempt || in_block_comment_line(line)) continue;
-    WordContext context = {lint, path, line_number};
+    const bool at_margin = (line[0] >= 'a' && line[0] <= 'z') || (line[0] >= 'A' && line[0] <= 'Z') || line[0] == '_';
+    WordContext context = {lint, path, line_number, at_margin, function, unwind_rule, unwind_home};
     lint_scan_words(line, on_word, &context);
   }
   if (line_number > SIZE_HARD_LIMIT) {

@@ -138,7 +138,7 @@ int64_t ms_remote_wait(MsPromise id, int64_t timeout_ns) {
     (void)ms_token_free(token);
     if (status == MS_TOKEN_OK && result == MS_WAIT_CANCELLED) {
       (void)ms_remote_end(id);
-      ms_cancelled();
+      return MS_WAITER_CANCELLED;
     }
     if (status == MS_TOKEN_OK && result == MS_WAIT_TIMEOUT) {
       ms_remote_cancel(id);
