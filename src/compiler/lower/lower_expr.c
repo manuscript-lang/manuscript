@@ -370,7 +370,9 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
      * released with it. */
     const MirTy field_ty = mir_b_ty(&fn->b, field);
     const MirValue taken = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
-    const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = ref->index < 32 ? UINT32_C(1) << ref->index : 0};
+    uint32_t released = ref->index < 32 ? UINT32_C(1) << ref->index : 0;
+    released |= fn_close_rest(fn, expr, base, data->id, ref->index);
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = data->id, .b = released};
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &base, 1, (MirImm){0}, MIR_NONE);
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &base, 1, mask, MIR_NONE);
     return taken;
