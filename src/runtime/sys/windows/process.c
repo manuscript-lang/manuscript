@@ -5,12 +5,8 @@
 #include <windows.h>
 #include <psapi.h>
 
-#include <wchar.h>
-
 #include "base/alloc.h"
 #include "runtime/sys/process.h"
-
-static int last_error(void) { return uv_translate_sys_error((int)GetLastError()); }
 
 int64_t ms_sys_process_identity(MsSysIdentity which) {
   (void)which;
