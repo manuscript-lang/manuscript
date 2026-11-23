@@ -54,6 +54,24 @@ static bool ops_from_environment(void) {
   return set;
 }
 
+/* A value of more leaves than this lives in a stack cell in a Debug build, so recursion through a function with a big
+ * record holds the record once, not once per register it spreads over. `MS_WIDE_LEAVES` sets another number (0: never). */
+#define DEFAULT_WIDE_LEAVES 4u
+
+static uint32_t wide_leaves(bool debug) {
+  MsString value = ms_string_empty();
+  uint32_t number = debug ? DEFAULT_WIDE_LEAVES : 0;
+  if (ms_env_get("MS_WIDE_LEAVES", &value) && ms_string_span(&value).len != 0) {
+    const MsSpan text = ms_string_span(&value);
+    number = 0;
+    for (size_t at = 0; at < text.len && text.ptr[at] >= '0' && text.ptr[at] <= '9'; at++) {
+      number = number * 10 + (uint32_t)(text.ptr[at] - '0');
+    }
+  }
+  ms_string_release(&value);
+  return number;
+}
+
 /* The `MS_RUNTIME` archives followed by the request's own files. */
 static size_t collect_inputs(const MsLinkRequest *request, MsSpan list, MsSpan *inputs) {
   size_t count = 0;
@@ -92,7 +110,8 @@ bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild why = ms_strbuild_new();
   const BackendOptions backend = {.optimize = true, .verify = true,
                                   .tests = request->tests, .bench = request->bench,
-                                  .count_ops = request->count_ops || ops_from_environment()};
+                                  .count_ops = request->count_ops || ops_from_environment(),
+                                  .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG)};
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, &ir, &program, &why) ||
             fail(error, "", ms_strbuild_span(&why));

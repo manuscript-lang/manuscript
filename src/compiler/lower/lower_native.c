@@ -607,6 +607,13 @@ static MirValue call_changing(LowerFn *fn, const MsExpr *place, MsName name, Mir
     const MirValue result = call_native(fn, name, wanted, count, ret, result_slot);
     return fn_var_slots_back(fn, &var, 1) ? result : MIR_NONE;
   }
+  /* A resource local lives in its closing slot: the native changes it there, with no move out and back around the call. */
+  MirValue cell;
+  MirTy cell_ty;
+  if (fn_closing_local(fn, place, &cell, &cell_ty)) {
+    wanted[0] = cell;
+    return call_native(fn, name, wanted, count, ret, result_slot);
+  }
   MirValue owned;
   MirValue record = MIR_NONE;
   const uint32_t taken = fn->native_moves; /* reading the receiver's place builds runtime calls of its own */

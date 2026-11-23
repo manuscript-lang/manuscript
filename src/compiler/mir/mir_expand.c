@@ -13,8 +13,17 @@
 
 #include "compiler/mir/mir_pass.h"
 
-static bool expands(MirOp op) {
-  return op == MOP_ListGet || op == MOP_ListGetNn || op == MOP_ListSet || op == MOP_ListSetNn ||
+static bool is_join(const MirModule *module, const MirInst *inst) {
+  if (inst->op != MOP_CallRt || inst->imm.tag != MI_EXT) {
+    return false;
+  }
+  const uint8_t role = module->externs.ptr[inst->imm.a].role;
+  return role == MR_STRING_JOIN || role == MR_STRING_JOIN_GROW;
+}
+
+static bool expands(const MirModule *module, const MirInst *inst) {
+  const MirOp op = (MirOp)inst->op;
+  return is_join(module, inst) || op == MOP_ListGet || op == MOP_ListGetNn || op == MOP_ListSet || op == MOP_ListSetNn ||
          op == MOP_ListFill || op == MOP_ListAddr || op == MOP_ListPush || op == MOP_OptUnwrap;
 }
 
@@ -23,7 +32,9 @@ static uint32_t continuations(MirOp op, bool checks) {
   if (op == MOP_ListPush) {
     return 2;
   }
-  return expands(op) && checks ? 1 : 0;
+  return (op == MOP_CallRt || !checks) ? 0 : (op == MOP_ListGet || op == MOP_ListGetNn || op == MOP_ListSet ||
+                                              op == MOP_ListSetNn || op == MOP_ListFill || op == MOP_ListAddr ||
+                                              op == MOP_OptUnwrap) ? 1 : 0;
 }
 
 /* Rewrites one function. Blocks keep their order: a block that is split is followed by its continuations, and
@@ -34,6 +45,7 @@ typedef struct Expander {
   MirFunc *func;
   bool checks;
   uint32_t index_fault;
+  uint32_t join_open, join_extend, join_close, join_format; /* the string primitives, interned on first use */
   MirBlockList out;
   MirBlockList faults;
   uint32_t fault_base; /* the number of the first fault block: after every block built in order */
@@ -181,7 +193,90 @@ static void expand_push(Expander *e, const MirInst *inst, MirBlockData *cur) {
   *cur = next;
 }
 
+static uint32_t primitive(Expander *e, uint32_t *cached, const char *name, const MirTy *params, uint32_t count,
+                          MirTy ret) {
+  if (*cached == MIR_NONE) {
+    *cached = mir_extern_get(e->module, ms_span_of_text(name), params, count, ret, true, MR_NONE);
+  }
+  return *cached;
+}
+
+static MirValue emit_call(Expander *e, MirBlockData *cur, uint32_t external, const MirValue *args, uint32_t count,
+                          MirTy ret, MirLoc loc) {
+  return emit(e, cur, MOP_CallRt, args, count, mir_imm_ext(external), ret, loc);
+}
+
+static MirValue emit_slot(Expander *e, MirBlockData *cur, MirTy ty, MirLoc loc) {
+  return emit(e, cur, MOP_Slot, NULL, 0, (MirImm){.tag = MI_TY, .a = ty}, MIR_PTR, loc);
+}
+
+/* An f-string: the pieces are strings and Ints. The lengths are added up (an Int is written in decimal into a
+ * 24-byte frame first), the string is made or grown once, and each piece is copied after the last. A join that
+ * grows its first string works in a frame {text, block it left}: the block is released after the copies, so a piece
+ * that was a view into the old text is still readable while they happen. */
+static void expand_join(Expander *e, const MirInst *inst, MirBlockData *cur) {
+  const MirLoc loc = inst->loc;
+  const bool grow = e->module->externs.ptr[inst->imm.a].role == MR_STRING_JOIN_GROW;
+  const uint32_t first = grow ? 1 : 0;
+  const MirTy int_params[2] = {MIR_INT, MIR_PTR};
+  const uint32_t format = primitive(e, &e->join_format, "msrt_int_format", int_params, 2, MIR_INT);
+  MirValue *lens = MS_ARENA_NEW_ARRAY(&e->module->arena, MirValue, inst->nargs);
+  MirValue *data = MS_ARENA_NEW_ARRAY(&e->module->arena, MirValue, inst->nargs);
+  MirValue frame = MIR_NONE;
+  if (grow) {
+    frame = emit_slot(e, cur, MIR_BYTES, loc);
+    const MirValue stored[2] = {frame, inst->args[0]};
+    (void)emit(e, cur, MOP_Put, stored, 2, mir_imm_none(), MIR_NONE, loc);
+  }
+  MirValue total = MIR_NONE;
+  for (uint32_t at = first; at < inst->nargs; at++) {
+    const MirValue piece = inst->args[at];
+    if (mir_value_ty(e->func, piece) == MIR_INT) {
+      data[at] = emit_slot(e, cur, MIR_BYTES, loc);
+      const MirValue written[2] = {piece, data[at]};
+      lens[at] = emit_call(e, cur, format, written, 2, MIR_INT, loc);
+    } else {
+      lens[at] = emit(e, cur, MOP_StrBytes, &piece, 1, mir_imm_none(), MIR_INT, loc);
+      data[at] = emit(e, cur, MOP_StrData, &piece, 1, mir_imm_none(), MIR_PTR, loc);
+    }
+    total = total == MIR_NONE ? lens[at] : emit_pure2(e, cur, MOP_IAdd, total, lens[at], loc);
+  }
+  MirValue text = frame;
+  MirValue cursor = MIR_NONE;
+  if (grow) {
+    const MirTy params[2] = {MIR_PTR, MIR_INT};
+    const MirValue args[2] = {frame, total};
+    cursor = emit_call(e, cur, primitive(e, &e->join_extend, "msrt_string_extend", params, 2, MIR_PTR), args, 2,
+                       MIR_PTR, loc);
+  } else {
+    const MirTy params[2] = {MIR_INT, MIR_PTR};
+    text = emit_slot(e, cur, MIR_STR, loc);
+    const MirValue args[2] = {total, text};
+    cursor = emit_call(e, cur, primitive(e, &e->join_open, "msrt_string_open", params, 2, MIR_PTR), args, 2, MIR_PTR,
+                       loc);
+  }
+  for (uint32_t at = first; at < inst->nargs; at++) {
+    const MirValue copy[3] = {cursor, data[at], lens[at]};
+    (void)emit(e, cur, MOP_MemCopy, copy, 3, mir_imm_none(), MIR_NONE, loc);
+    if (at + 1 < inst->nargs) {
+      const MirValue step[2] = {cursor, lens[at]};
+      cursor = emit(e, cur, MOP_PtrAdd, step, 2, mir_imm_none(), MIR_PTR, loc);
+    }
+  }
+  if (grow) {
+    const MirTy params[1] = {MIR_PTR};
+    (void)emit_call(e, cur, primitive(e, &e->join_close, "msrt_string_close", params, 1, MIR_VOID), &frame, 1,
+                    MIR_VOID, loc);
+  }
+  MirValue *taken = mir_args_copy(e->module, &text, 1);
+  mir_inst_list_push(&cur->insts, mir_inst(MOP_Take, (MirImm){.tag = MI_TY, .a = MIR_STR}, inst->res, loc, taken, 1));
+}
+
 static void expand_inst(Expander *e, const MirInst *inst, MirBlockData *cur) {
+  if (is_join(e->module, inst)) {
+    expand_join(e, inst, cur);
+    return;
+  }
   switch ((MirOp)inst->op) {
   case MOP_ListPush: expand_push(e, inst, cur); break;
   case MOP_OptUnwrap: expand_unwrap(e, inst, cur); break;
@@ -225,7 +320,7 @@ static uint32_t block_continuations(const MirBlockData *block, bool checks) {
 static void expand_block(Expander *e, MirBlockData *old, MirBlockData *cur) {
   for (size_t index = 0; index < old->insts.len; index++) {
     const MirInst *inst = &old->insts.ptr[index];
-    if (expands((MirOp)inst->op)) {
+    if (expands(e->module, inst)) {
       expand_inst(e, inst, cur);
     } else {
       mir_inst_list_push(&cur->insts, *inst);
@@ -263,10 +358,10 @@ static void expand_func(Expander *e) {
   e->func->blocks = e->out;
 }
 
-static bool func_expands(const MirFunc *func) {
+static bool func_expands(const MirModule *module, const MirFunc *func) {
   for (size_t bi = 0; bi < func->blocks.len; bi++) {
     for (size_t ii = 0; ii < func->blocks.ptr[bi].insts.len; ii++) {
-      if (expands((MirOp)func->blocks.ptr[bi].insts.ptr[ii].op)) {
+      if (expands(module, &func->blocks.ptr[bi].insts.ptr[ii])) {
         return true;
       }
     }
@@ -285,13 +380,14 @@ bool mir_expand(MirModule *module, bool checks) {
   uint32_t index_fault = MIR_NONE;
   bool changed = false;
   for (size_t index = 0; index < module->funcs.len; index++) {
-    if (!func_expands(&module->funcs.ptr[index])) {
+    if (!func_expands(module, &module->funcs.ptr[index])) {
       continue;
     }
     if (index_fault == MIR_NONE) {
       index_fault = add_index_fault(module);
     }
-    Expander e = {.module = module, .func = &module->funcs.ptr[index], .checks = checks, .index_fault = index_fault};
+    Expander e = {.module = module, .func = &module->funcs.ptr[index], .checks = checks, .index_fault = index_fault,
+                  .join_open = MIR_NONE, .join_extend = MIR_NONE, .join_close = MIR_NONE, .join_format = MIR_NONE};
     expand_func(&e);
     changed = true;
   }

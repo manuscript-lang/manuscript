@@ -25,21 +25,6 @@ void msrt_string_free(const MsString *s);
 /* ms-sig: msrt_string_concat(a: *const StrVal, b: *const StrVal, out: *mut StrVal) @domain=string
  * */
 void msrt_string_concat(const MsString *a, const MsString *b, MsString *out);
-/* ms-sig: msrt_string_concat3(a: *const StrVal, b: *const StrVal, c: *const StrVal, out: *mut StrVal)
- * @domain=string @end */
-void msrt_string_concat3(const MsString *a, const MsString *b, const MsString *c, MsString *out);
-/* ms-sig: msrt_string_concat4(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, out:
- * *mut StrVal) @domain=string @end */
-void msrt_string_concat4(const MsString *a, const MsString *b, const MsString *c, const MsString *d,
-                         MsString *out);
-/* ms-sig: msrt_string_concat5(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e:
- * *const StrVal, out: *mut StrVal) @domain=string @end */
-void msrt_string_concat5(const MsString *a, const MsString *b, const MsString *c, const MsString *d,
-                         const MsString *e, MsString *out);
-/* ms-sig: msrt_string_concat6(a: *const StrVal, b: *const StrVal, c: *const StrVal, d: *const StrVal, e:
- * *const StrVal, f: *const StrVal, out: *mut StrVal) @domain=string @end */
-void msrt_string_concat6(const MsString *a, const MsString *b, const MsString *c, const MsString *d,
-                         const MsString *e, const MsString *f, MsString *out);
 /* ms-sig: msrt_string_append(a: *const StrVal, b: *const StrVal, out: *mut StrVal) @domain=string
  * */
 void msrt_string_append(const MsString *a, const MsString *b, MsString *out);

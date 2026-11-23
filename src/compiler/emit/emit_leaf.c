@@ -35,6 +35,9 @@ const char *emit_value_register_type(EmitCx *cx, MirValue value) {
 }
 
 void emit_name(MsStrBuild *out, MirValue value, uint32_t leaf) {
+  if (emit_wide_name(out, value, leaf)) {
+    return;
+  }
   ms_strbuild_printf(out, "%%v%u", value);
   if (leaf != 0) {
     ms_strbuild_printf(out, ".%u", leaf);

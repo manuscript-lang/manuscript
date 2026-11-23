@@ -56,7 +56,7 @@ static const MsParams *bound_value_params(LowerFn *fn, const MsExpr *value) {
 
 /* `b := m.get(k)` over a resource: an Optional that views the entry in place, `none` when the key is absent, so the
  * binding borrows what the map keeps instead of copying it. MIR_NONE (nothing emitted) for any other call. */
-static MirValue map_get_view(LowerFn *fn, const MsExpr *call) {
+MirValue fn_map_get_view(LowerFn *fn, const MsExpr *call) {
   if (ms_own_native_get(fn->cx->program, fn->facts, call) != MS_NATIVE_GET_MAP ||
       !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, call->id))) {
     return MIR_NONE;
@@ -154,7 +154,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   }
   fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
   fn->has_last_receiver = false;
-  MirValue value = from_call ? map_get_view(fn, stmt->u.bind.value) : MIR_NONE;
+  MirValue value = from_call ? fn_map_get_view(fn, stmt->u.bind.value) : MIR_NONE;
   if (value != MIR_NONE) {
     borrow = true;
   } else if (!fn->failed) {

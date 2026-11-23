@@ -19,6 +19,7 @@
 
 typedef struct EmitDebug EmitDebug;
 typedef struct EmitTemps EmitTemps;
+typedef struct EmitWide EmitWide;
 
 typedef struct EmitCx {
   const MirModule *module;
@@ -32,6 +33,12 @@ typedef struct EmitCx {
   const bool *framed;      /* per value: a closure object kept in the frame; NULL when none */
   const uint32_t *pool;    /* per value: the shared cell a one-block `slot` lives in, UINT32_MAX for any other value; NULL when none */
   const bool *borrowed;    /* per value: an `iface.borrow` kept in the frame; NULL when none */
+  uint32_t wide_leaves;    /* a value of more leaves than this lives in a stack cell (emit_wide.c); 0 for never */
+  EmitWide *wide;          /* the values of `func` that do; NULL when none */
+  const uint32_t *cell_bytes; /* the shared cells of `func`: bytes of each */
+  const bool *cell_escape;    /* per cell: holds a value, so its address is hidden from LLVM's promotion to registers */
+  uint32_t ncells;
+  bool volatile_loads;     /* the loads being written must stay where they are (the leaves of a held value) */
   const char *tbaa;        /* `, !tbaa !N` for the list element access being written, or NULL */
   EmitDebug *debug;        /* source places for the fault tables, or NULL */
   const EmitTemps *temps;  /* the stack slots of `func` that live in one block; NULL when none */
@@ -137,7 +144,27 @@ void emit_fault_if(EmitCx *cx, const EmitSite *site, const char *condition, cons
 void emit_frame_slots(EmitCx *cx);
 /* Gives each slot confined to its own block the cell of its rank among that block's confined slots, so blocks share
  * storage; per value, UINT32_MAX for the rest. NULL when no slot is confined. */
-const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx);
+const uint32_t *emit_slot_pool(MsArena *arena, EmitCx *cx, const bool *held);
+
+/* ---- values held in stack cells (emit_wide.c) ---- */
+
+/* Decides which values of the function are held; the result flags those that need a cell (NULL for none). */
+const bool *emit_wide_plan(EmitCx *cx, MsArena *arena);
+void emit_wide_end(EmitCx *cx);
+/* Writes the leaf name of a held value read outside the block that makes it; false for any other value. */
+bool emit_wide_name(MsStrBuild *out, MirValue value, uint32_t leaf);
+void emit_wide_start(EmitCx *cx, MirValue defining);
+/* After a value is made: writes it to its cell. */
+void emit_wide_store(EmitCx *cx, MirValue value);
+/* After an instruction is written: the loads of the leaves it read from cells, to go before it. */
+void emit_wide_loads(EmitCx *cx);
+bool emit_wide_edge_copies(const EmitCx *cx, const MirTerm *term, uint32_t index);
+void emit_wide_copy_edge(EmitCx *cx, const MirTerm *term, uint32_t index);
+bool emit_wide_return(EmitCx *cx, MirValue value);
+bool emit_wide_held(const EmitCx *cx, MirValue value);
+bool emit_wide_result(EmitCx *cx, MirValue value, char *out, size_t capacity);
+bool emit_wide_address(const EmitCx *cx, MirValue value, char *out, size_t capacity);
+
 
 /* The one-block shape: a branch on `condition`, the code of its side, a join. */
 typedef struct EmitIf {
