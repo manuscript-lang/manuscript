@@ -8,7 +8,7 @@ fn number(value: Int?) Int: value.get_or(-1)
 
 fn present[T](value: T?) T?: value
 
-fn nested(value: Int??) Bool: value.get().is_none()
+fn nested(value: Int??) Bool: value.is_none()
 
 fn list_size(value: List[Int]?) Int: value.get().length()
 

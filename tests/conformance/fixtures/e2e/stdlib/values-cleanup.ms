@@ -8,6 +8,7 @@ import (
 	expect_false,
 	expect_not_equal,
 	expect_ok,
+	expect_true,
 	fail from "@std/test/test.ms",
 )
 
@@ -47,7 +48,7 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
 	expect_equal(missing.or_else(create).get(), 42)?
 
 	nested: Int?? := missing
-	expect_false(nested.is_none() or nested.get().is_some())?
+	expect_true(nested.is_none())?
 
 test "Result propagation and Error views preserve concrete causes":
 	failed: Int! := error(Error("JSON: invalid data", kind: "EBADMSG"))

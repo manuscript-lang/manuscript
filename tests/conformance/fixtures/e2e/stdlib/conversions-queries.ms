@@ -103,12 +103,8 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	nested_none: Int? := none
 	nested: Int?? := nested_none
 	converted := nested.ok_or(Error("absent"))
-	(
-		(
-			not (converted.is_ok())
-			or not (converted.to_optional().get().is_none())
-		) | expect_false?
-	)
+	converted.is_error() | expect_true?
+	converted.to_optional().is_none() | expect_true?
 
 	false_value: Bool? := false
 	false_value.ok_or(Error("absent")).to_optional().get() | expect_false?

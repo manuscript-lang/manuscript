@@ -147,6 +147,7 @@ typedef struct LowerFn {
   bool terminated;
   MirValue receiver_slot; /* a native call's fresh receiver, in the closing slot its arguments were evaluated after (MIR_NONE: none) */
   uint32_t native_arg_moves; /* the source operands of the native call that its declaration takes (`move`) */
+  MirTy native_value_ty; /* the element or value type of the collection the native being called reads, else MIR_NONE */
   uint32_t native_moves; /* the operands of the runtime call being built that the runtime takes, by position */
   bool temps; /* a statement scope is open for the temporaries its calls borrow */
   const MsStmt *sink_stmt; /* a bench body's last statement: when it is a call, its value goes to the bench sink */
@@ -279,7 +280,8 @@ static inline const MsExpr *fn_call_callee(const MsExpr *call) {
              : callee;
 }
 bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
-bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
+bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirTy first_type_arg,
+                          MirValue *out);
 enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record constructor takes one per field */
 
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);

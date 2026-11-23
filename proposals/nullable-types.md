@@ -67,6 +67,13 @@ fn main() Void:
 - Stage 1 alone removes code (about 40 lines of nested flag handling) and a type; it delivers no measured speed or copy benefit. The borrowed-lookup benefit is stage 3 and lowering work. Stage 1 is therefore ordered with stage 3 in mind, not claimed as a win on its own.
 - Function-value adapters build nested optionals with special close and drop paths (#4211); collapse keeps them correct.
 
+## Stage 1 findings
+
+- Generic code is the cost. `T?` with `T = Int?` is `Int?`, so a generic that wraps `T` as `T?` is the identity, and one that unwraps `T?` to `T` returns the value itself. Lowering handles both at the wrap (`fn_convert`), `if v := x` and `match` sites, and `ms_check_unify` accepts `T = Int` and `T = Int?` for the same `T?` pattern.
+- A native that answers `T?` loses "present" when `T` is nullable. Map and List lookups hand back the stored value itself. Promise results cross as `Slot[T]` so a `none` result is not mistaken for a taken one. Stdlib generics that read a map value with `get(key).get()` use `self[key]` instead.
+- `next() T?` protocols (iterators, pipes) end at `null`, so a stream of a nullable `T` ends at its first null. Nothing in the stdlib relies on the old behaviour.
+- A `JSON` field of type `Int??` is just `Int?`: `null` is omitted, as a `none` field already is.
+
 ## Open questions
 
 - A written `Int??`: diagnostic with a fix (recommended, since it is almost always a mistake) or silently accepted.

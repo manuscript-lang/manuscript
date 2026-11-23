@@ -1,7 +1,7 @@
 // conform: tags=closures,control-flow,faults,generics,interfaces,lists,maps,match,modules,mutation,optional,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 // conform: phase=test
 // conform: origin=tests/e2e/testdata/accept/direct-collection-conversions.ms
-import expect_equal, expect_false from "@std/test/test.ms"
+import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
 fn append_generic[T](var values: List[T?], value: T) Void:
     values.append(value)
@@ -25,7 +25,7 @@ test "direct append preserves checked argument conversions":
     inner: Int? := none
     var nested: List[Int??] = []
     nested.append(inner)
-    expect_false((nested.get(0).is_none() or not nested.get(0).get().is_none()))?
+    expect_true(nested.get(0).is_none())?
 
     var callbacks: List[(fn(Int) Int)?] = []
     callbacks.append(fn value: value + 1)
@@ -50,9 +50,9 @@ test "direct keyed calls preserve optional keys and values":
 
     var entries = Map[Int?, Int?]()
     entries.add(7, 9)
-    expect_false(not entries.contains(7) or entries.get(7).get().get() != 9)?
+    expect_false(not entries.contains(7) or entries.get(7).get() != 9)?
     entries.add(value: 10, key: 8)
-    expect_equal(entries.get(8).get().get(), 10)?
+    expect_equal(entries.get(8).get(), 10)?
 
     var keys = Set[Int?]()
     keys.add(7)
@@ -89,7 +89,7 @@ test "direct calls capture receiver and arguments in written order":
         ) + 0
     )
     expect_false(
-        (entries.get(1).get().get() != 7 or entries.contains(2) or key != 2)
+        (entries.get(1).get() != 7 or entries.contains(2) or key != 2)
     )?
 
 fn present[T](value: T) T?:

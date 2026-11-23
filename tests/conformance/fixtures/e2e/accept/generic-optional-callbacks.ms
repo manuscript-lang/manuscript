@@ -57,25 +57,15 @@ test "generic callbacks preserve Optional inputs and present zero":
 		)
 	)?
 
-test "generic callbacks preserve both layers of nested Optional inputs":
+test "generic callbacks see a nested Optional input as one layer":
 	absent: Int?? := none
 	inner_absent: Int? := none
 	present_absent: Int?? := inner_absent
 	inner_zero: Int? := 0
 	present_zero: Int?? := inner_zero
 	expect_true(every([absent], fn value: value.is_none()))?
-	expect_true(
-		every(
-			[present_absent],
-			fn value: (value.is_some() and value.get().is_none())
-		)
-	)?
-	expect_true(
-		every(
-			[present_zero],
-			fn value: (value.is_some() and value.get().get() == 0)
-		)
-	)?
+	expect_true(every([present_absent], fn value: value.is_none()))?
+	expect_true(every([present_zero], fn value: (value.is_some() and value.get() == 0)))?
 
 test "generic callbacks keep Optional inputs through nested closures":
 	value: Int? := none

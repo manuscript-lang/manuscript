@@ -78,7 +78,7 @@ fn nested(log: String) Void!:
 	var popped: List[Int] = []
 
 	while not queue.is_empty():
-		item := queue.pop_front().get()
+		item := queue.pop_front()
 
 		if holder := item:
 			popped.append(holder.door.id)

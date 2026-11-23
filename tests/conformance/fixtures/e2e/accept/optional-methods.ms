@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	JsonOptions from "@std/data/json.ms",
-	expect_equal, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 type Counter:
@@ -47,8 +47,7 @@ test "Optional fallbacks distinguish eager and lazy evaluation":
 test "Optional methods retain generic payload and receiver identity":
 	inner: Int? := none
 	outer: Int?? := inner
-	expect_false(not (outer.is_some()))?
-	expect_false(not (outer.get().is_none()))?
+	expect_true(outer.is_none())? // `Int??` is `Int?`: a nullable of a nullable has no second layer
 
 	counter := Counter(3)
 	record: Counter? := counter.clone()

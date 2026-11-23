@@ -172,7 +172,7 @@ test "finite nested generic composition constructs and extracts values":
 
 	match optional:
 		Value(value):
-			expect_equal(value.get().get(), 4)?
+			expect_equal(value.get(), 4)?
 
 	result := NestedResult(ok(ok(5)))
 
@@ -190,4 +190,4 @@ test "finite nested generic composition constructs and extracts values":
 
 	inner_text: String? := "nested"
 	pair: Pair[Int?, String??] := Pair(first: 7, second: inner_text)
-	(pair.first.get() != 7 or pair.second.get().get() != "nested") | expect_false?
+	(pair.first.get() != 7 or pair.second.get() != "nested") | expect_false?

@@ -26,14 +26,13 @@ test "optional Result arguments supply constructor type context":
     optional_result(ok(4)) | expect_equal(4)?
     optional_result(error("missing")) | expect_equal(-1)?
 
-test "optional failure payloads and nested absence retain their layers":
+test "optional failure payloads collapse nested absence":
     absent: Int?? := null
     absent.is_none() | expect_true?
 
     inner: Int? := null
     present: Int?? := inner
-    present.is_some() | expect_true?
-    present.get().is_none() | expect_true?
+    present.is_none() | expect_true?
 
     failure: Result[Int, String?] := error(null)
     failure.is_error() | expect_true?

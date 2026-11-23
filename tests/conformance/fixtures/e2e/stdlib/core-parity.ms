@@ -3,7 +3,7 @@
 import (
 	panic from "@std/core.ms",
 	JsonOptions from "@std/data/json.ms",
-	expect_equal, expect_false from "@std/test/test.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
 type Counter:
@@ -171,7 +171,7 @@ test "Optional composition keeps nesting identity and lazy callback counts":
 	expect_equal(fallback.get().calls, 5)?
 
 	nested := present.clone().map(fn(unused: Counter) Int?: none)
-	expect_false(not (nested.is_some()) or not (nested.get().is_none()))?
+	expect_true(nested.is_none())?
 
 	expect_equal(mapped.clone().map(fn value: value.calls.to_string()).get(), "1")?
 	expect_false(not (missing.clone().and_then[String](fn unused: "unexpected").is_none()))?

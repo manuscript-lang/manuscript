@@ -175,34 +175,6 @@ test "a custom Iterator transfers each freshly produced resource":
 	plain(log)?
 	expect_equal(events(log), "body 1\nclose 1\nbody 2\nclose 2\n")?
 
-type OptionalTokens:
-	log: String
-	at: Int = 0
-
-fn var OptionalTokens.next() Token??!:
-	self.at += 1
-	if self.at > 1: return ok(null)
-
-	inner: Token? := Token(1, self.log.clone())
-	return ok(inner)
-
-fn move OptionalTokens.close() Void!:
-	return ok()
-
-fn optional_payload(log: String) Void!:
-	var input = ReadStream[Token?](OptionalTokens(log.clone()))
-
-	for item in input:
-		maybe := item
-		if token := maybe:
-			use_token(token)?
-
-test "a nested optional payload transfers its resource":
-	dir := temporary("resource-optional-") | expect_ok?
-	log := f"{dir.path()}/events"
-	optional_payload(log)?
-	expect_equal(events(log), "body 1\nclose 1\n")?
-
 type ResultTokens:
 	log: String
 	at: Int = 0

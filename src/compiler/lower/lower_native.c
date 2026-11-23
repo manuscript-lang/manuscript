@@ -39,6 +39,21 @@ static bool is_collection(const LowerFn *fn, MirTy type) {
   return data->kind == MK_LIST || (data->kind == MK_OBJ && data->obj_class == MIR_OBJ_COLLECTION);
 }
 
+/* Notes the element or value type of the first collection among `args`: a native that answers `T?` for a nullable `T`
+ * (`T??` is `T?`) then hands back the stored value itself, not a value inside an optional. */
+static void note_value_type(LowerFn *fn, const MirValue *args, uint32_t nargs) {
+  fn->native_value_ty = MIR_NONE;
+  for (uint32_t at = 0; at < nargs; at++) {
+    const MirTy type = mir_b_ty(&fn->b, args[at]);
+    if (!is_collection(fn, type)) {
+      continue;
+    }
+    const MirTyData *data = mir_ty_data(fn->cx->module, type);
+    fn->native_value_ty = collection_arg(fn, data, data->kind == MK_LIST ? 0 : 1);
+    return;
+  }
+}
+
 /* The descriptor argument `kind` asks for, from the first collection among `args`; false when there is none. */
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out) {
   for (uint32_t at = 0; at < nargs; at++) {
@@ -220,6 +235,7 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   const bool scalar = ret == MIR_INT || ret == MIR_BOOL || ret == MIR_FLOAT || ret == MIR_FLOAT32;
   const MirTyData *data = mir_ty_data(fn->cx->module, ret);
   const bool optional = data->kind == MK_OPT && sig->status; /* answers whether it filled the slot */
+  const bool whole_value = optional && fn->native_value_ty == ret; /* a nullable value: the slot holds all of it */
   const uint8_t last = sig->count > 0 ? sig->kinds[sig->count - 1] : NS_VALUE;
   const bool text = optional && data->elem == MIR_STR && last == NS_STR_MUT; /* `to_string_radix`: a flag and a String */
   /* An optional that is the whole value (`replace` on a list of optionals): the native writes all of it. */
@@ -228,7 +244,7 @@ static MirValue scalar_result_slot(LowerFn *fn, const MsNativeSig *sig, MirTy re
   if (!(scalar || optional || whole) || (last != NS_ADDR_MUT && last != NS_OUT_SCALAR && !text && !listed)) {
     return MIR_NONE;
   }
-  const MirImm of_type = {.tag = MI_TY, .a = optional ? data->elem : ret};
+  const MirImm of_type = {.tag = MI_TY, .a = optional && !whole_value ? data->elem : ret};
   const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   if (text) { /* the runtime writes the String over an empty one */
     const MirImm empty = {.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text(""))};
@@ -253,10 +269,11 @@ static MirValue optional_from_status(LowerFn *fn, MsName name, MirValue *wanted,
   mir_b_seal_block(&fn->b, some_block);
   mir_b_seal_block(&fn->b, none_block);
   mir_b_switch_to(&fn->b, some_block);
-  const MirTy payload = mir_ty_data(fn->cx->module, ret)->elem;
+  const bool whole = fn->native_value_ty == ret;
+  const MirTy payload = whole ? ret : mir_ty_data(fn->cx->module, ret)->elem;
   const MirImm of_type = {.tag = MI_TY, .a = payload};
   const MirValue value = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, payload) ? MOP_Take : MOP_Load, &slot, 1, of_type, payload);
-  const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
+  const MirValue some = whole ? value : mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, none_block);
   const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
@@ -741,6 +758,7 @@ MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const 
   const MsName name = mir_name(fn->cx->module, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  note_value_type(fn, args, arg_count);
   MirValue expanded;
   /* The runtime cannot read a record of the program's own type, so building a map from entries is expanded here. */
   if (sig == NULL && arg_count == 1 && ms_span_is_text(ms_names_span(fn->cx->program->names, symbol->name), "map_from_entries") &&
@@ -785,6 +803,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
     return true;
   }
   MsName name;
+  note_value_type(fn, args, argc);
   const MsNativeSig *sig = native_sig_of(fn, owner, operation, &name);
   const char *op = ms_native_op_find(ms_names_span(&fn->cx->module->names, name));
   if (op != NULL && fn_inline_scalar_op(fn, op, args, argc, ret, out)) {

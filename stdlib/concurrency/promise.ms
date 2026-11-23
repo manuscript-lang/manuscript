@@ -28,7 +28,8 @@ import (
 	msrt_promise_start_spread,
 	msrt_promise_take,
 	msrt_promise_wait,
-	msrt_promise_wait_any from "@std/internal/promises.ms",
+	msrt_promise_wait_any,
+	Slot from "@std/internal/promises.ms",
 )
 
 // Promises: operations whose results are taken once with `wait()`.
@@ -104,7 +105,7 @@ fn Promise[T].done() Bool:
 // result nobody took is dropped, which closes what it holds.
 fn move Promise[T].close() Void!:
 	if msrt_promise_end(self.id):
-		_leftover := msrt_promise_take[T](self.id)
+		_leftover := msrt_promise_take[Slot[T]](self.id)
 	msrt_promise_drop(self.id)
 
 // Which thread runs a promise's work.
@@ -211,8 +212,8 @@ export fn set_options[T](
 
 // Internal: the result in the slot of `id`, moved out; `EBADF` when it is gone.
 fn taken_result[V](id: Int) V!:
-	taken := msrt_promise_take[V](id)
-	if value := taken: return ok(value)
+	taken := msrt_promise_take[Slot[V]](id)
+	if slot := taken: return ok(slot.value)
 
 	return error(outcome(id, 4))
 
