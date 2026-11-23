@@ -448,6 +448,13 @@ MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);
 MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr);
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key, MirTy ty);
 MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key, MirTy *entry_ty);
+void fn_fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty);
+/* `cur = n.next` over a payload view of `cur` (lower_assign_take.c): the new value, or MIR_NONE when not that shape. */
+MirValue fn_take_field_of_old(LowerFn *fn, const MsStmt *stmt, MirVar var);
+bool fn_take_field_into_slot(LowerFn *fn, const MsStmt *stmt, const MsRef *ref, MsName name, bool *done);
+/* `x or d` over a nullable `x` (lower_or.c). */
+MirValue fn_lower_or_null(LowerFn *fn, const MsExpr *expr);
+MirValue fn_lower_logical(LowerFn *fn, const MsExpr *expr); /* `a && b`, `a || b` */
 /* A call recorded with a bodiless standard operation as its callee. */
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret);
 

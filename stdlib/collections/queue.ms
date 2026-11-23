@@ -159,6 +159,7 @@ fn var PriorityQueue[T].dequeue() T?:
 	top := self.heap.pop()
 	self.sift_down(0)
 	if top == null: return null
+
 	return top.value
 
 // Returns the next value by priority without removing it, or `null` when empty.
