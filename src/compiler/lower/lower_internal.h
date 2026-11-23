@@ -173,5 +173,8 @@ MirTy lower_type(Lower *cx, const LowerSubst *subst, MsTy ty);
 
 /* The source text of `ty` after substitution, as MIR names it (`Box[Int]`). */
 void lower_type_text(Lower *cx, const LowerSubst *subst, MsTy ty, MsStrBuild *out);
+/* What a fault trace calls a function: its declared name, behind the receiver type's name for a method
+ * (`Cell.bump`), without type arguments. `receiver` is MS_TY_NONE for a function. */
+MsName lower_trace_name(Lower *cx, MsTy receiver, MsName name);
 
 #endif

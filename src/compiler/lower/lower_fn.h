@@ -160,6 +160,10 @@ bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue fi
 bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record);
 bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field);
 bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b);
+bool fn_same_member_path(LowerFn *fn, const MsExpr *a, const MsExpr *b);
+/* The slot a closing `var` local or parameter lives in. */
+bool fn_closing_param(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirVar *var);
+bool fn_closing_local(const LowerFn *fn, const MsExpr *place, MirValue *slot, MirTy *ty);
 /* `value` as an owned copy the scope no longer owns (a clone unless it is fresh). */
 MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value);
 /* The payload of the optional `opt`, or `fallback` evaluated when it is none: the value of a parameter a function value
@@ -210,6 +214,9 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+/* Whether a copy no `.clone()` asked for is still allowed (see `fn_implicit_clone`): code that builds closure bodies without a
+ * LowerFn asks before it copies. */
+bool lower_hidden_copies_allowed(void);
 /* The value of a parameter the call leaves to its default (lower_call.c). */
 MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *arg, MirTy expected);
 
@@ -388,6 +395,7 @@ typedef struct VarSlot {
   struct VarSlot *outer; /* `a?.b?.change()`: the slot of `a`'s payload, whose field `b` is this slot's home; it goes back after this one */
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
+bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 /* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */
 void fn_presolve_keys(LowerFn *fn, const MsExpr *place);
@@ -434,7 +442,7 @@ static inline MirTy fn_type(LowerFn *fn, MsTy ty) {
 }
 
 static inline MirLoc fn_loc(const LowerFn *fn, MsPos pos) {
-  return (MirLoc){fn->file, pos.line, pos.column, 0};
+  return (MirLoc){fn->file, pos.line, pos.column, fn->b.loc.scope}; /* inside a default argument's scope, stays in it */
 }
 
 #endif

@@ -129,7 +129,9 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
   MirValue values[2] = {MIR_NONE, MIR_NONE};
   mir_b_params(&b, values, pending ? 2 : 1);
   const MirImm none = {0};
-  if (returns) {
+  /* A pending failure of another error type still wins: the close error has nowhere to go, but the body's does. */
+  const bool keeps_pending = pending && !returns && result_def(module, ret, &to) && to->cases[ERR_CASE].nfields > 0;
+  if (returns || keeps_pending) {
     if (pending) {
       const MirValue tag = mir_b_emit(&b, MOP_AltTag, &values[1], 1, none, MIR_INT);
       const MirValue is_error = mir_b_icmp(&b, MCC_EQ, tag, mir_b_iconst(&b, ERR_CASE));
@@ -144,10 +146,20 @@ static uint32_t add_exit(Lower *cx, MirTy ret, MirTy outcome_ty, bool pending) {
       mir_b_switch_to(&b, replace);
       (void)mir_b_emit(&b, MOP_Drop, &values[1], 1, none, MIR_NONE);
     }
+    if (keeps_pending) {
+      (void)mir_b_emit(&b, MOP_Drop, &values[0], 1, none, MIR_NONE);
+      const MirBlock block = b.cur;
+      mir_b_fault(&b, MF_MESSAGE);
+      b.func.blocks.ptr[block].term.fault_str = (uint32_t)ms_names_intern(&module->strings, ms_span_of_text(NO_ERROR_MESSAGE));
+      uint32_t built = MIR_NONE;
+      return mir_b_finish(&b, &built) ? built : MIR_NONE;
+    }
     mir_b_ret(&b, convert(&b, module, values[0], (uint32_t)(from - module->alts.ptr), ret, (uint32_t)(to - module->alts.ptr)));
   } else {
     for (uint32_t at = 0; at < (pending ? 2u : 1u); at++) {
-      (void)mir_b_emit(&b, MOP_Drop, &values[at], 1, none, MIR_NONE);
+      if (mir_needs_drop(module, params[at].ty)) {
+        (void)mir_b_emit(&b, MOP_Drop, &values[at], 1, none, MIR_NONE);
+      }
     }
     const MirBlock block = b.cur;
     mir_b_fault(&b, MF_MESSAGE);

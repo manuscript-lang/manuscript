@@ -169,6 +169,7 @@ static MirValue scalar_at(LowerFn *fn, const ForSource *src, MirValue index) {
   const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
   const MirValue args[2] = {src->text, index};
   const MirValue scalar = mir_b_call_rt(&fn->b, ext, args, 2);
+  fn_own_result(fn, scalar); /* a String like any other: the loop body's scope drops it */
   mir_b_def_var(&fn->b, src->width, emit(fn, MOP_StrBytes, &scalar, 1, (MirImm){0}, MIR_INT));
   return scalar;
 }
@@ -502,14 +503,15 @@ static bool for_iterator(LowerFn *fn, const MsStmt *stmt, const MsRef *binding) 
     if (mir_needs_drop(fn->cx->module, elem)) {
       fn_own(fn, fn_scope(fn), item);
     }
-  } else if (closes) {
-    const MirTyData *payload_data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
-    item = emit(fn, MOP_OptUnbox, &payload, 1, (MirImm){0}, payload_data->elem);
-    bound = fn_bind_closing(fn, binding->local, item_checked, item, false);
-  } else {
-    if (result_owned) {
-      fn_own(fn, fn_scope(fn), result);
+  } else if (result_owned) { /* the item leaves the owned Optional: the loop variable owns it */
+    MirTy elem = MIR_VOID;
+    item = fn_take_payload(fn, result, &elem);
+    if (closes) {
+      bound = fn_bind_closing(fn, binding->local, item_checked, item, false);
+    } else if (mir_needs_drop(fn->cx->module, elem)) {
+      fn_own(fn, fn_scope(fn), item);
     }
+  } else {
     const MirTyData *opt = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, payload));
     item = emit(fn, MOP_OptGet, &payload, 1, (MirImm){0}, opt->elem);
   }

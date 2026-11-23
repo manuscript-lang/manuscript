@@ -219,6 +219,11 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
     }
   }
   const MsTy result = ms_ty_result(types, callee);
+  if (expected_result != MS_TY_NONE && ms_ty_is(types, expected_result, MS_BUILTIN_Optional) &&
+      ms_ty_arg_count(types, expected_result) == 1 && ms_ty_kind(types, result) != MS_TY_VARIABLE &&
+      !ms_ty_is(types, result, MS_BUILTIN_Optional)) {
+    expected_result = ms_ty_args(types, expected_result)[0]; /* a value converts to the optional that is expected */
+  }
   MsTyList from_arguments = {0}; /* what the arguments bound, before the expected result is consulted */
   for (size_t at = 0; at < nvars; at++) {
     ms_ty_list_push(&from_arguments, bound[at]);

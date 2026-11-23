@@ -158,6 +158,10 @@ bool fn_is_borrowed_view(LowerFn *fn, MirValue value) {
  * the test sweep shows no loss. */
 static const bool implicit_clone_is_error = false;
 
+bool lower_hidden_copies_allowed(void) {
+  return !implicit_clone_is_error;
+}
+
 MirValue fn_implicit_clone(LowerFn *fn, MirValue value, bool own) {
   if (value == MIR_NONE) {
     return MIR_NONE;

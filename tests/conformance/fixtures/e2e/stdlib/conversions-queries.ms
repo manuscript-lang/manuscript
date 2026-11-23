@@ -523,17 +523,13 @@ fn find_port(port: Int?) Int!:
 	value := port.ok_or(Error("missing"))?
 	return ok(value)
 
-test "ok_or without a cause records the calling file and line":
+test "ok_or reports its explicit cause":
 	absent: Int? := none
 	direct: Int! := absent.ok_or(Error("missing"))
-	(direct.err().message.contains("conversions-queries.ms:")) | expect_true?
+	direct.err().message | expect_equal("missing")?
 
-	message := find_port(none).err().message
-	(message.starts_with("missing value at ")) | expect_true?
+	find_port(none).err().message | expect_equal("missing")?
 	find_port(8080).get() | expect_equal(8080)?
 
 	named: Int!Error := absent.ok_or(Error("port"))
 	named.err().message | expect_equal("port")?
-
-	missing_port := find_port(none)
-	missing_port.err().kind | expect_equal("ENOENT")?

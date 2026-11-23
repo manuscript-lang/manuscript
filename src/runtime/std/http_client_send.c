@@ -76,12 +76,15 @@ static uint8_t redirect_target(const MsHttpClient *client, const MsHttpRequest *
                                MsHttpResponse *response, MsHttpUrl **next, MsString *method, MsString *err) {
   *next = NULL;
   MsSpan location;
+  bool keep_body = false;
   if (!ms_http_redirect_method(ms_http_response_status(response), ms_string_span(&x->method), method,
-                               &x->keep_body) ||
+                               &keep_body) ||
       !ms_http_head_find(response, "Location", &location) ||
       (client->options.limit_redirects && client->options.max_redirects == 0)) {
     return MS_STATUS_OK;
   }
+  /* A body a hop dropped stays dropped: a later 307 cannot bring it back. */
+  x->keep_body = x->keep_body && keep_body;
   MsHttpUrl *target = ms_http_url_resolve(x->current, location);
   if (target == NULL) {
     MsStrBuild text = ms_strbuild_new();

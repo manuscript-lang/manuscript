@@ -141,7 +141,15 @@ MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *a
   fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MsParams *outer_params = fn->default_params; /* a call inside the default is an ordinary call */
   fn->default_params = NULL;
+  /* The default runs as the callee's, so a fault in it shows the callee's frame, called from this line. */
+  const MsName callee_name = method != NULL ? lower_trace_name(fn->cx, method->receiver, method->name)
+                             : owner != NULL ? lower_trace_name(fn->cx, MS_TY_NONE, owner->name) : MS_NAME_EMPTY;
+  const uint32_t outer_scope = fn->b.loc.scope;
+  if (callee_name != MS_NAME_EMPTY) {
+    (void)mir_b_open_scope(&fn->b, callee_name, fn->file, fn->b.loc.line);
+  }
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  mir_b_close_scope(&fn->b, outer_scope);
   fn->default_params = outer_params;
   fn_locals_restore(fn, &saved_locals);
   fn->subst = saved_subst;
@@ -464,10 +472,13 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
   for (uint32_t index = 0; index < count; index++) {
     mir_params[index] = (MirParam){fn_type(fn, params[index].ty), (uint8_t)((params[index].flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : MM_BORROW)};
   }
-  const MirExtern def = {.name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, symbol->name)),
+  const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, symbol->name));
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  const MirExtern def = {.name = name,
                          .params = mir_params,
                          .nparams = count,
-                         .ret = ret};
+                         .ret = ret,
+                         .role = (uint8_t)(sig != NULL && sig->spawns ? MR_SPAWNS_TASK : MR_NONE)};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
@@ -538,7 +549,7 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
                               fn->subst.vars, fn->subst.args, fn->subst.count);
   }
   const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten);
-  if (method != MIR_NONE) {
+  if (method != MIR_NONE && fn->cx->module->funcs.ptr[method].nparams == call->arg_count) { /* the operation's own arity */
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
     if (fn->cx->module->funcs.ptr[method].ret_borrowed && mir_needs_drop(fn->cx->module, ret)) {
@@ -624,7 +635,9 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
       const MirValue limit = mir_b_iconst(&fn->b, (int64_t)1 << 27);
       capacity = mir_b_select(&fn->b, mir_b_icmp(&fn->b, MCC_GT, capacity, limit), limit, capacity);
     }
-    return mir_b_list_new(&fn->b, data->elem, capacity);
+    const MirValue fresh = mir_b_list_new(&fn->b, data->elem, capacity);
+    fn_own_result(fn, fresh);
+    return fresh;
   }
   const MsExpr *written = expr->u.call.args.len == 1 ? expr->u.call.args.ptr[0].value : NULL;
   const bool empty_list = written != NULL && written->kind == MS_E_LIST && written->u.list.len == 0;

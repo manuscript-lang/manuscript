@@ -334,5 +334,12 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
     fn->terminated = true;
     return none;
   }
-  return match.has_result ? mir_b_use_var(&fn->b, match.result) : mir_b_unit(&fn->b);
+  if (!match.has_result) {
+    return mir_b_unit(&fn->b);
+  }
+  const MirValue joined = mir_b_use_var(&fn->b, match.result);
+  if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, joined))) {
+    fn_own(fn, fn_scope(fn), joined); /* the arms' values met in one owner: the enclosing scope drops it, or the one who takes it */
+  }
+  return joined;
 }
