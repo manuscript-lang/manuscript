@@ -20,6 +20,12 @@ typedef struct MsAllocator {
  * any other thread starts: blocks must be freed by the allocator that made them. */
 void ms_alloc_install(const MsAllocator *allocator);
 
+/* A function called with the size of every allocation and resize, on the thread that makes it (the allocation profiler,
+ * runtime/entry/profile.h); NULL, the default, makes none. Set before the first thread starts; the function must not
+ * allocate through ms_alloc. */
+typedef void (*MsAllocObserver)(size_t size);
+void ms_alloc_observe(MsAllocObserver observer);
+
 /* The allocations the calling thread has made and the bytes they asked for (a resize counts as one more). */
 void ms_alloc_counts(int64_t *allocations, int64_t *bytes);
 

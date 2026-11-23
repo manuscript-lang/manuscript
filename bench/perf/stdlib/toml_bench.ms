@@ -1,7 +1,6 @@
 import (
 	parse from "@std/data/toml.ms",
 	StringBuilder from "@std/string_builder.ms",
-	keep, measure from "@std/test/bench.ms",
 )
 
 fn toml_doc(count: Int) String:
@@ -10,11 +9,12 @@ fn toml_doc(count: Int) String:
 		sb.append(f"[item{i}]\nid = {i}\nname = \"user{i}\"\ntags = [\"a\", \"b\"]\n")
 	return sb.build()
 
-bench "toml.parse":
+type BenchData:
+	toml: String
+
+fn make_fixture() BenchData:
 	toml := toml_doc(2000)
+	return BenchData(toml: toml)
 
-	fn work() Result[Void, Error]:
-		if parse(toml).is_ok(): return keep(1)
-		return keep(0)
-
-	measure(2000, work)?
+bench "toml.parse" per 2000:
+	parse(fixture.toml).is_ok()

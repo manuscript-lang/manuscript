@@ -1,7 +1,6 @@
 import (
 	escape, parse, unescape from "@std/data/html.ms",
 	StringBuilder from "@std/string_builder.ms",
-	keep, measure from "@std/test/bench.ms",
 
 	words from "./src/harness.ms",
 )
@@ -14,15 +13,17 @@ fn html_doc(count: Int) String:
 	sb.append("</div>")
 	return sb.build()
 
-bench "html.parse":
+type BenchData:
+	html: String
+	text: String
+
+fn make_fixture() BenchData:
 	html := html_doc(2000)
-
-	fn work() Result[Void, Error]:
-		if parse(html).is_ok(): return keep(1)
-		return keep(0)
-
-	measure(2000, work)?
-
-bench "html.escape_unescape":
 	text := words(2000).join(" <&> ")
-	measure(2000, fn: keep(text | escape | unescape | .length()))?
+	return BenchData(html: html, text: text)
+
+bench "html.parse" per 2000:
+	parse(fixture.html).is_ok()
+
+bench "html.escape_unescape" per 2000:
+	fixture.text | escape | unescape | .length()

@@ -524,10 +524,24 @@ MS_NODISCARD bool parse_statement(Parser *p, bool allow_value, MsStmt **out) {
   return true;
 }
 
+/* Whether the statement at the cursor is the last of its suite: no further line before the suite ends. */
+static bool last_in_suite(const Parser *p) {
+  size_t n = 0;
+  while (parse_ahead(p, n).kind != MS_T_Newline && parse_ahead(p, n).kind != MS_T_Eof) {
+    n++;
+  }
+  while (parse_ahead(p, n).kind == MS_T_Newline) {
+    n++;
+  }
+  return parse_ahead(p, n).kind == MS_T_Dedent || parse_ahead(p, n).kind == MS_T_Eof;
+}
+
 /* Parses `: body`. `expression` marks a lambda body (an inline body is its value); `fn_body`
  * marks a function or method body (inline returns, may be empty). */
 MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bool fn_body, bool outer,
                                                bool outer_lambda, MsStmts *out) {
+  const bool bench_body = p->bench_suite;
+  p->bench_suite = false;
   if (!parse_need(p, MS_T_Colon))
     return false;
   MsStmts none = {NULL, 0};
@@ -599,7 +613,7 @@ MS_NODISCARD static bool statement_suite_inner(Parser *p, bool is_expression, bo
     if (parse_kind(p) == MS_T_Dedent || parse_kind(p) == MS_T_Eof) {
       break;
     }
-    if (!parse_statements(p, false))
+    if (!parse_statements(p, bench_body && last_in_suite(p)))
       return false;
   }
   if (!parse_need(p, MS_T_Dedent))

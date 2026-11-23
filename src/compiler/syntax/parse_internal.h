@@ -38,6 +38,7 @@ typedef struct Parser {
   const MsBounds *bounds;
   size_t source_origin;
   bool inline_statement, inline_return, block_lambda;
+  bool bench_suite;   /* the next suite is a bench body: its last statement may be a bare value */
   bool ellipsis_body; /* the last function suite was `: ...` */
   size_t depth;
   MsStmt **queued;
