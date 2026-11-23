@@ -8,11 +8,11 @@ runs:
       with:
         path: .artifacts/ccache
         key: ccache-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
-    - if: hashFiles('.artifacts/build/debug/src/third_party/openssl_build/libcrypto.a') != ''
+    - if: hashFiles('.artifacts/build/ci/src/third_party/openssl_build/libcrypto.a') != ''
       uses: actions/cache/save@v6
       continue-on-error: true
       with:
         path: |
-          .artifacts/build/debug/src/third_party/openssl_build*
-          .artifacts/build/debug/musl/src/third_party/openssl_build*
+          .artifacts/build/ci/src/third_party/openssl_build*
+          .artifacts/build/ci/musl/src/third_party/openssl_build*
         key: openssl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/third_party/c-libs.lock', 'src/third_party/cmake/openssl.cmake') }}

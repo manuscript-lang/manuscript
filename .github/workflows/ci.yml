@@ -47,11 +47,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
-      - run: cmake --preset debug
-      - run: cmake --build --preset debug
-      - run: ctest --preset debug
-      - run: cmake --build --preset debug --target lint
-      - run: cmake --build --preset debug --target conform
+      - run: cmake --preset ci
+      - run: cmake --build --preset ci
+      - run: ctest --preset ci
+      - run: cmake --build --preset ci --target lint
+      - run: cmake --build --preset ci --target conform
       - if: always()
         uses: ./.github/actions/save-caches
 
