@@ -717,13 +717,19 @@ static bool il_has_indirect_call(const MirFunc *f) {
 static bool il_strip_depth(MirModule *m, bool early) {
   MsArena arena = ms_arena_new();
   OptInlineGraph g = opt_inline_direct_graph(&arena, m);
-  uint32_t *itargets = MS_ARENA_NEW_ARRAY(&arena, uint32_t, m->funcs.len);
+  uint32_t *itargets = MS_ARENA_NEW_ARRAY(&arena, uint32_t, m->funcs.len + 2 * m->desc_glue.len);
   bool *indirect = MS_ARENA_NEW_ARRAY(&arena, bool, m->funcs.len);
   for (uint32_t i = 0; i < m->funcs.len; i++) {
     indirect[i] = il_has_indirect_call(&m->funcs.ptr[i]);
     if (m->funcs.ptr[i].kind != MFK_NORMAL) {
       itargets[g.nit++] = i;
     }
+  }
+  /* A descriptor's equality and hash functions are called by the runtime, which reaches them again through the
+   * descriptors of the fields: a recursive type recurses through them with no direct call. */
+  for (size_t k = 0; k < m->desc_glue.len; k++) {
+    itargets[g.nit++] = m->desc_glue.ptr[k].eq;
+    itargets[g.nit++] = m->desc_glue.ptr[k].hash;
   }
   g.indirect = indirect;
   g.itargets = itargets;

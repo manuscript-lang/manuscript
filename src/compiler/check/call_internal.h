@@ -1,4 +1,4 @@
-/* compiler/check/call_internal.h: the call being checked, shared by calls.c and call_report.c. */
+/* compiler/check/call_internal.h: the call being checked, shared by calls.c, call_target.c and call_report.c. */
 #ifndef MS_COMPILER_CHECK_CALL_INTERNAL_H
 #define MS_COMPILER_CHECK_CALL_INTERNAL_H
 
@@ -10,6 +10,7 @@ typedef struct Target {
   MsTyList vars;          /* owned: the type variables to infer, in declaration order */
   const MsParams *ast;    /* the declared parameters (for defaults), or NULL */
   uint32_t ast_module;
+  const MsParams *names;  /* a declaration that only names the parameters (an operation's): it adds no defaults */
   const MsExpr *receiver; /* the written receiver of a method call */
   uint8_t receiver_flags; /* MS_PARAM_VAR or MS_PARAM_MOVE: how the method takes its receiver */
   MsStrBuild name_text;   /* owned: the callee as written, `values.map` */
@@ -30,6 +31,13 @@ typedef struct Matched {
   size_t count;
   const MsTy *bound; /* the type arguments the arguments fixed so far, MS_TY_NONE for the rest; NULL when none */
 } Matched;
+
+/* The callee of a call (call_target.c): resolves `callee` into `target`, false when it is not a function. */
+bool body_resolve_target(Body *body, const MsExpr *callee, MsTy expected, Target *target);
+void body_target_free(Target *target);
+/* A constructor or case call of an opaque type outside its module is denied. */
+void body_deny_opaque_build(Body *body, const MsExpr *call, const Target *target);
+MsTy body_call_function_type(Body *body, const MsTyParamList *params, MsTy result);
 
 /* The written name of a parameter: the declaration's, since function types do not keep names in their identity. */
 MsName target_param_name(const Body *body, const Target *target, size_t index);

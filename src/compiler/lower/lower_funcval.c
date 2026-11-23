@@ -2,6 +2,7 @@
  * A parameter the function type lets a caller omit crosses it as an optional: a call fills a missing argument with
  * none, and the function takes a none to its default. */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/syntax/walk.h"
 #include "compiler/mir/mir_analysis.h"
 
 /* ---- parameters a function value may leave out ---- */
@@ -103,6 +104,12 @@ MirValue fn_adapt_function(LowerFn *fn, MirValue value, MirTy to_ty) {
   return fn_emit(fn, MOP_ClosureNew, &held, 1, imm, to_ty);
 }
 
+/* Whether `a` is written before `b` in the source. */
+static bool written_before_value(const MsExpr *a, const MsExpr *b) {
+  const MsPos from = ms_expr_start(a), to = ms_expr_start(b);
+  return from.line != to.line ? from.line < to.line : from.column < to.column;
+}
+
 /* ---- calling a function value ---- */
 
 MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
@@ -115,13 +122,41 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
     (void)fn_fail(fn, "a call of a function value does not match its type");
     return MIR_NONE;
   }
+  /* The arguments as the call wrote them, in the function type's parameter order: labels may reorder them. The
+   * checker's call fact says which written argument fills each parameter; without one they are positional. */
+  const MsCall *fact = fn_find_call(fn->facts, expr->id);
+  const bool facts = fact != NULL && fact->arg_count == data->nargs;
+  const MsExpr *written_args[16] = {0};
+  for (uint32_t index = 0; index < data->nargs; index++) {
+    if (facts) {
+      written_args[index] = fact->args[index].source == MS_ARG_WRITTEN ? fn_written_arg(expr, fact->args[index].node.node) : NULL;
+    } else {
+      written_args[index] = index < expr->u.call.args.len ? expr->u.call.args.ptr[index].value : NULL;
+    }
+  }
+  /* Evaluation follows the written order; a parameter nobody wrote is filled after them. */
+  uint32_t order[16];
+  for (uint32_t at = 0; at < data->nargs; at++) {
+    uint32_t place = at;
+    while (place > 0 && (written_args[order[place - 1]] == NULL ||
+                         (written_args[at] != NULL && written_before_value(written_args[at], written_args[order[place - 1]])))) {
+      if (written_args[order[place - 1]] != NULL && written_args[at] == NULL) {
+        break;
+      }
+      order[place] = order[place - 1];
+      place--;
+    }
+    order[place] = at;
+  }
   MirValue args[16];
   VarSlot slots[16];
   uint32_t nslots = 0;
   args[0] = callee;
-  for (uint32_t index = 0; index < data->nargs; index++) {
+  for (uint32_t step = 0; step < data->nargs; step++) {
+    const uint32_t index = order[step];
     const MirTy param_ty = data->args[index];
-    if (index >= expr->u.call.args.len) {
+    const MsExpr *written = written_args[index];
+    if (written == NULL) {
       /* A parameter the call leaves out is none. */
       if (mir_ty_data(fn->cx->module, param_ty)->kind != MK_OPT) {
         (void)fn_fail(fn, "a call of a function value leaves out a required argument");
@@ -130,7 +165,6 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       args[index + 1] = fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, param_ty);
       continue;
     }
-    const MsExpr *written = expr->u.call.args.ptr[index].value;
     if (mir_param_is_var(data->owned, index)) {
       args[index + 1] = fn_var_slot(fn, written, &slots[nslots], slots, nslots);
       nslots++;
