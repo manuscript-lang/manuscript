@@ -83,6 +83,7 @@ fn test_run(
 	threads: Int,
 ) List[Counted]:
 	var settings = Map[String, String]()
+	settings["MS_UNDER_TEST"] = ms.clone()
 	settings["MS_PARK_COUNT"] = "1"
 	if threads > 0: settings["MS_THREADS"] = f"{threads}"
 	if cancel_at > 0: settings["MS_CANCEL_AT_PARK"] = f"{cancel_at}"
