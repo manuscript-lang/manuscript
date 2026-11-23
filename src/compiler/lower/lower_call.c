@@ -125,7 +125,9 @@ MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *a
     own_vars = method->variables.ptr + method->shared;
     own_count = (uint32_t)(method->variables.len - method->shared);
   }
-  if (own_count != 0 && own_count == call->type_arg_count) {
+  if (fn->default_params != NULL && fn->default_vars.count != 0) {
+    fn->subst = fn->default_vars; /* a method value: the variables it was bound with */
+  } else if (own_count != 0 && own_count == call->type_arg_count) {
     own_args = MS_ARENA_NEW_ARRAY(&fn->cx->program->arena, MsTy, own_count);
     for (uint32_t at = 0; at < own_count; at++) {
       own_args[at] = ms_ty_subst(&fn->cx->program->types, call->type_args[at], saved_subst.vars, saved_subst.args, saved_subst.count);
@@ -182,16 +184,16 @@ void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
 /* Moves the value of `place` into a new slot and returns the slot's address. */
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier) {
   MirValue owned;
-  if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_place_changeable(fn, place->u.bin.left)) {
+  if (place->kind == MS_E_UNARY && place->op == MS_U_TRY && fn_try_place_changeable(fn, place->u.bin.left)) {
     return fn_try_var_slot(fn, place, out);
   }
   MirValue element;
   if (fn_default_var_slot(fn, place, &element)) { /* a default passing on a `var` parameter of its own call */
-    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    *out = (VarSlot){NULL, element, MIR_VOID, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
   }
   if (fn_list_element_addr(fn, place, &element)) {
-    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE};
+    *out = (VarSlot){place, element, MIR_NONE, MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
     return element;
   }
   MsExpr *indexed = NULL;
@@ -222,7 +224,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
     if (owned != MIR_NONE && fn->temps && checked != MS_TY_NONE) {
       const MirValue kept = fn_pending_own(fn, checked, owned);
       if (kept != MIR_NONE) {
-        *out = (VarSlot){NULL, kept, mir_b_ty(&fn->b, owned), MIR_NONE, true, MIR_NONE, MIR_NONE};
+        *out = (VarSlot){NULL, kept, mir_b_ty(&fn->b, owned), MIR_NONE, true, MIR_NONE, MIR_NONE, NULL};
         return kept;
       }
     }
@@ -242,7 +244,7 @@ MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSl
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, owned};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, false, MIR_NONE, MIR_NONE};
+  *out = (VarSlot){is_place ? place : NULL, slot, ty, record, false, MIR_NONE, MIR_NONE, NULL};
   return slot;
 }
 
@@ -264,30 +266,38 @@ static bool put_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at, M
   return true;
 }
 
-/* After the call: each slot's value goes back into the place it came from. */
+/* After the call: slot `at`'s value goes back into the place it came from. */
+static bool slot_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at) {
+  if (slots[at].in_place) {
+    return true;
+  }
+  const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
+  const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
+                                      &slots[at].slot, 1, of_type, slots[at].ty);
+  if (slots[at].optional != MIR_NONE) {
+    const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
+    if (slots[at].home != MIR_NONE) {
+      const MirValue stored[2] = {slots[at].home, wrapped};
+      (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+      return true;
+    }
+    return put_back(fn, slots, count, at, wrapped);
+  }
+  if (slots[at].place == NULL) {
+    if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
+      (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
+    }
+    return true;
+  }
+  return put_back(fn, slots, count, at, updated);
+}
+
 bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count) {
   for (uint32_t at = 0; at < count; at++) {
-    if (slots[at].in_place) {
-      continue;
+    if (!slot_back(fn, slots, count, at)) {
+      return false;
     }
-    const MirImm of_type = {.tag = MI_TY, .a = slots[at].ty};
-    const MirValue updated = mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].ty) ? MOP_Take : MOP_Load,
-                                        &slots[at].slot, 1, of_type, slots[at].ty);
-    if (slots[at].optional != MIR_NONE) {
-      const MirValue wrapped = fn_emit(fn, MOP_OptSome, &updated, 1, (MirImm){0}, slots[at].optional);
-      if (slots[at].home != MIR_NONE) {
-        const MirValue stored[2] = {slots[at].home, wrapped};
-        (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, slots[at].optional) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-        continue;
-      }
-      if (!put_back(fn, slots, count, at, wrapped)) {
-        return false;
-      }
-    } else if (slots[at].place == NULL) {
-      if (mir_needs_drop(fn->cx->module, slots[at].ty)) {
-        (void)mir_b_emit(&fn->b, MOP_Drop, &updated, 1, (MirImm){0}, MIR_NONE);
-      }
-    } else if (!put_back(fn, slots, count, at, updated)) {
+    if (slots[at].outer != NULL && !fn_var_slots_back(fn, slots[at].outer, 1)) { /* `a?.b?.f()`: `a` takes its changed payload back */
       return false;
     }
   }

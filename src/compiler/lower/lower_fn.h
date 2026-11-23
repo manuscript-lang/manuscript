@@ -72,11 +72,13 @@ typedef struct LowerFn {
   MirVar *param_vars; /* by parameter index */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
   const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
+  LowerSubst default_vars; /* ... and the method's type variables as the value was bound */
   const MsParams *default_params; /* a call of a lambda or method value: the parameters whose defaults it leaves out */
   bool default_has_self; /* a call of a method value: `default_self` is the receiver a default reads as `self` (the call's arguments omit it) */
   MirValue default_self;
-  struct { uint32_t local; MirValue receiver; const MsParams *params; } bound_self[8]; /* locals bound to a lambda or method value: its parameters, and the receiver it captured (MIR_NONE: none) */
+  struct { uint32_t local; MirValue receiver; const MsParams *params; LowerSubst vars; } bound_self[8]; /* locals bound to a lambda or method value: its parameters, and the receiver it captured (MIR_NONE: none) */
   uint32_t nbound_self;
+  LowerSubst last_vars; /* the type variables of the method value just lowered, bound */
   MirValue last_receiver; /* the receiver of the method value just lowered */
   bool has_last_receiver;
   MirTy ret;
@@ -253,6 +255,8 @@ bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *t
 /* Whether `place` is an owning variable (or a path in one): a value a `var` call can change in place. */
 bool fn_place_owns(LowerFn *fn, const MsExpr *place);
 bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
+/* As `fn_place_changeable`, or a member path through the `?` of such a place (`n?.next`): the receiver of `n?.next?.change()`. */
+bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
 /* Stores the owned `value` (held by no scope) into `place`. */
@@ -381,6 +385,7 @@ typedef struct VarSlot {
   bool in_place; /* `slot` is the address of a list element: nothing goes back */
   MirValue home; /* the address of the list element a `place?` receiver lies in, else MIR_NONE */
   MirTy optional; /* the optional `place` holds when `ty` is the payload a `place?` receiver changed, else MIR_NONE */
+  struct VarSlot *outer; /* `a?.b?.change()`: the slot of `a`'s payload, whose field `b` is this slot's home; it goes back after this one */
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);

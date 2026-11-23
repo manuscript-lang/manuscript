@@ -150,10 +150,12 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   }
   MirValue bound_receiver = MIR_NONE; /* a local bound to a method value: the receiver it captured */
   const MsParams *bound_params = NULL;
+  LowerSubst bound_vars = {0};
   for (uint32_t at = 0; ref != NULL && ref->kind == MS_REF_LOCAL && at < fn->nbound_self; at++) {
     if (fn->bound_self[at].local == ref->local) {
       bound_receiver = fn->bound_self[at].receiver;
       bound_params = fn->bound_self[at].params;
+      bound_vars = fn->bound_self[at].vars;
     }
   }
   MirValue args[16];
@@ -170,6 +172,7 @@ MirValue fn_call_value(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
       fn->default_call = fact;
       fn->default_args = args + 1;
       fn->default_params = bound_params;
+      fn->default_vars = bound_vars;
       fn->default_self = bound_receiver;
       fn->default_has_self = bound_receiver != MIR_NONE;
       args[index + 1] = fn_default_argument(fn, fact, &fact->args[index], param_ty);

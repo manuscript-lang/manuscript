@@ -91,7 +91,21 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   MirValue taken;
   MirValue record = MIR_NONE;
   MirValue home = MIR_NONE;
-  if (fn_list_element_addr(fn, place, &home)) { /* an optional element: taken out of its place in the list, put back there */
+  VarSlot *outer = NULL;
+  const MsExpr *base = place->kind == MS_E_MEMBER ? place->u.member.left : NULL;
+  if (base != NULL && base->kind == MS_E_UNARY && base->op == MS_U_TRY && !fn_place_changeable(fn, place)) {
+    /* `a?.b?.change()`: `a`'s payload moves into a slot, and the optional `b` is taken from the field there. */
+    outer = MS_ARENA_NEW(&fn->cx->module->arena, VarSlot);
+    const MirValue payload = fn_try_var_slot(fn, base, outer);
+    const MsRef *field = ms_facts_ref(fn->facts, place->id);
+    const MirTyData *owner = payload != MIR_NONE ? mir_ty_data(fn->cx->module, outer->ty) : NULL;
+    if (payload == MIR_NONE || field == NULL || owner == NULL || owner->kind != MK_TYPE) {
+      return MIR_NONE;
+    }
+    home = mir_b_emit(&fn->b, MOP_PtrField, &payload, 1, (MirImm){.tag = MI_FIELD, .a = owner->id, .b = field->index}, MIR_PTR);
+    const MirTy element = fn_type(fn, ms_facts_type(fn->facts, place->id));
+    taken = mir_b_emit(&fn->b, MOP_Take, &home, 1, (MirImm){.tag = MI_TY, .a = element}, element);
+  } else if (fn_list_element_addr(fn, place, &home)) { /* an optional element: taken out of its place in the list, put back there */
     if (home == MIR_NONE) {
       return MIR_NONE;
     }
@@ -119,6 +133,9 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   if (home != MIR_NONE) {
     const MirValue stored[2] = {home, taken};
     (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, opt_ty) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+    if (outer != NULL && !fn_var_slots_back(fn, outer, 1)) { /* `a`'s payload goes back before the function returns */
+      return MIR_NONE;
+    }
   } else if (!(record != MIR_NONE ? fn_put_field(fn, place, record, taken) : fn_put_place(fn, place, taken))) {
     return MIR_NONE;
   }
@@ -134,7 +151,7 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue stored[2] = {slot, payload};
   (void)mir_b_emit(&fn->b, mir_needs_drop(fn->cx->module, opt->elem) ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
-  *out = (VarSlot){place, slot, opt->elem, record, false, home, opt_ty};
+  *out = (VarSlot){place, slot, opt->elem, record, false, home, opt_ty, outer};
   return slot;
 }
 
