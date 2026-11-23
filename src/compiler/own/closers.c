@@ -459,7 +459,11 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
      * scope closes it on the others; any other capture leaves the ownership to the closure. */
     flag(pass, ref, pass->escaping != 0 && ref->kind == MS_REF_LOCAL ? MS_CLOSER_MOVED : MS_CLOSER_PARTIAL);
   } else if (ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE) {
-    flag(pass, ref, expr->kind != MS_E_NAME ? MS_CLOSER_PARTIAL : expr->id == pass->receiver ? MS_CLOSER_MOVED | MS_CLOSER_RECEIVER : MS_CLOSER_MOVED);
+    const MsRef *member = expr->kind == MS_E_MEMBER ? ms_facts_ref(pass->facts, expr->id) : NULL;
+    /* A method value that leaves its maker carries its receiver along: the whole binding moves into the closure. */
+    const bool method_value = member != NULL && (member->kind == MS_REF_METHOD || member->kind == MS_REF_NATIVE) &&
+                              expr->u.member.left->kind == MS_E_NAME;
+    flag(pass, ref, method_value ? MS_CLOSER_MOVED : expr->kind != MS_E_NAME ? MS_CLOSER_PARTIAL : expr->id == pass->receiver ? MS_CLOSER_MOVED | MS_CLOSER_RECEIVER : MS_CLOSER_MOVED);
   }
 }
 

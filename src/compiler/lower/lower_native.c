@@ -694,6 +694,9 @@ static MirValue bound_native(LowerFn *fn, const MsExpr *callee, const MsCall *ca
     fn_own_result(fn, result);
     return result;
   }
+  if (call->arg_count == 2 && ret == MIR_BOOL && ms_span_is_text(operation, "equals")) { /* structural equality */
+    return fn_compare_values(fn, MS_B_EQ, args[0], args[1]);
+  }
   MirValue standard;
   if (standard_form(fn, args, call->arg_count, ret, &standard)) {
     return standard;

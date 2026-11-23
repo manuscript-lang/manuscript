@@ -181,6 +181,18 @@ bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot)
   return *slot != MIR_NONE;
 }
 
+/* The argument position of a parameter (not `var`) a default argument names as a place it passes on as `var`, or false:
+ * the default changes the value the call passes for it, so the later reads and the call itself see the change. */
+bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at) {
+  const MsRef *ref = fn->default_call != NULL && place->kind == MS_E_NAME ? ms_facts_ref(fn->facts, place->id) : NULL;
+  if (ref == NULL || ref->kind != MS_REF_PARAM || (fn->default_has_self && ref->local == 0)) {
+    return false;
+  }
+  *at = default_position(fn, ref);
+  return *at < fn->default_call->arg_count && (fn->default_call->args[*at].flags & MS_PARAM_VAR) == 0 &&
+         fn->default_args[*at] != MIR_NONE;
+}
+
 /* A parameter named by a default argument: the value the call passes for it, which must already be known. A `var`
  * parameter is read from the slot the callee changes it in. */
 static MirValue default_param(LowerFn *fn, const MsRef *ref) {

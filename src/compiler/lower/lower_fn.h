@@ -52,7 +52,7 @@ typedef struct LowerOuterEnv {
   LowerSubst subst;
   LowerFnLocals locals;
   const MsCall *default_call;
-  const MirValue *default_args;
+  MirValue *default_args;
   const MsParams *default_params;
   bool default_has_self;
 } LowerOuterEnv;
@@ -97,7 +97,7 @@ typedef struct LowerFn {
   uint32_t nvars;
   MirVar *param_vars; /* by parameter index */
   const MsCall *default_call; /* while a default argument is lowered: the call, whose parameters the default may read */
-  const MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
+  MirValue *default_args; /* ... and the values of its arguments so far, by parameter index (MIR_NONE: not yet) */
   LowerSubst default_vars; /* ... and the method's type variables as the value was bound */
   const MsParams *default_params; /* a call of a lambda or method value: the parameters whose defaults it leaves out */
   bool default_has_self; /* a call of a method value: `default_self` is the receiver a default reads as `self` (the call's arguments omit it) */
@@ -305,6 +305,7 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place);
 bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place);
 /* The owned value of an owning `var` local or a member or element path, for a change that `fn_put_place` stores back. */
 bool fn_take_place(LowerFn *fn, const MsExpr *place, MirValue *out);
+bool fn_default_param_place(const LowerFn *fn, const MsExpr *place, uint32_t *at);
 /* Stores the owned `value` (held by no scope) into `place`. */
 bool fn_put_place(LowerFn *fn, const MsExpr *place, MirValue value);
 
