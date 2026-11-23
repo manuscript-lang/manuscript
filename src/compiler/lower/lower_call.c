@@ -141,7 +141,15 @@ MirValue fn_default_argument(LowerFn *fn, const MsCall *call, const MsCallArg *a
   fn_locals_fresh(fn, counted > 16 ? counted : 16);
   const MsParams *outer_params = fn->default_params; /* a call inside the default is an ordinary call */
   fn->default_params = NULL;
+  /* The default runs as the callee's, so a fault in it shows the callee's frame, called from this line. */
+  const MsName callee_name = method != NULL ? lower_trace_name(fn->cx, method->receiver, method->name)
+                             : owner != NULL ? lower_trace_name(fn->cx, MS_TY_NONE, owner->name) : MS_NAME_EMPTY;
+  const uint32_t outer_scope = fn->b.loc.scope;
+  if (callee_name != MS_NAME_EMPTY) {
+    (void)mir_b_open_scope(&fn->b, callee_name, fn->file, fn->b.loc.line);
+  }
   const MirValue value = param != NULL ? fn_expr(fn, param->def, LW_MOVE) : MIR_NONE;
+  mir_b_close_scope(&fn->b, outer_scope);
   fn->default_params = outer_params;
   fn_locals_restore(fn, &saved_locals);
   fn->subst = saved_subst;

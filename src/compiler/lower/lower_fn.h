@@ -442,7 +442,7 @@ static inline MirTy fn_type(LowerFn *fn, MsTy ty) {
 }
 
 static inline MirLoc fn_loc(const LowerFn *fn, MsPos pos) {
-  return (MirLoc){fn->file, pos.line, pos.column, 0};
+  return (MirLoc){fn->file, pos.line, pos.column, fn->b.loc.scope}; /* inside a default argument's scope, stays in it */
 }
 
 #endif

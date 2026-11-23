@@ -127,6 +127,32 @@ static MsName instance_name(Lower *cx, const LowerTarget *target, const MsTy *ar
   return name;
 }
 
+/* What a fault trace calls an instance: the declared name without type arguments, a method's behind its receiver
+ * type's name (`Cell.bump`). */
+MsName lower_trace_name(Lower *cx, MsTy receiver, MsName declared_name) {
+  const MsSpan declared = ms_names_span(cx->program->names, declared_name);
+  if (receiver == MS_TY_NONE) {
+    return mir_name(cx->module, declared);
+  }
+  MsStrBuild text = ms_strbuild_new();
+  lower_type_text(cx, NULL, receiver, &text);
+  MsSpan head = ms_strbuild_span(&text);
+  for (size_t index = 0; index < head.len; index++) {
+    if (head.ptr[index] == '[') {
+      head.len = index;
+      break;
+    }
+  }
+  MsStrBuild full = ms_strbuild_new();
+  ms_strbuild_append(&full, head);
+  ms_strbuild_append_byte(&full, '.');
+  ms_strbuild_append(&full, declared);
+  const MsName name = mir_name(cx->module, ms_strbuild_span(&full));
+  ms_strbuild_free(&full);
+  ms_strbuild_free(&text);
+  return name;
+}
+
 static MirMode param_mode(uint8_t flags) {
   return (flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : MM_BORROW;
 }
@@ -287,6 +313,7 @@ static uint32_t reserve(Lower *cx, const LowerTarget *target, const MsTy *args, 
   const MirTy ret = target->entry && declared == MIR_VOID ? MIR_INT : declared;
   MirFunc func;
   mir_func_init(cx->module, &func, instance_name(cx, target, args, nargs), mir_params, count, ret);
+  func.display = lower_trace_name(cx, target->receiver, target->name);
   func.ret_borrowed = borrows_result(cx, target, ret, mir_params, count);
   /* A function that takes a closure and keeps it (a promise's entry) holds what a closure into its maker's frame
    * borrows until the result is dropped. */
@@ -480,6 +507,7 @@ static bool lower_body(Lower *cx, uint32_t index) {
   built.linkage = slot->linkage;
   built.keeps_scoped = slot->keeps_scoped;
   built.ret_borrowed = slot->ret_borrowed;
+  built.display = slot->display;
   mir_func_release(slot);
   *slot = built;
   cx->instances.ptr[index].lowered = true;
