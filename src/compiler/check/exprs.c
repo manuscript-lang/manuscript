@@ -194,6 +194,16 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
   if (symbol != NULL) {
     const MsRef ref = body_symbol_ref(body, symbol);
     body_set_ref(body, expr->id, ref);
+    if (ref.kind != MS_REF_CONSTANT && symbol->kind == MS_SYMBOL_FN && symbol->var_count != 0 && expected == MS_TY_NONE) {
+      if (!body->quiet && body->module < body->program->user_modules) {
+        MsStrBuild text = ms_strbuild_new();
+        ms_strbuild_append_text(&text, "a generic function value requires explicit specialization; write ");
+        ms_strbuild_append(&text, ms_names_span(body->program->names, name));
+        ms_strbuild_append_text(&text, "[Type] or call it with arguments");
+        ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      }
+      return MS_TY_NONE;
+    }
     return ref.kind == MS_REF_CONSTANT ? body_constant_type(body, symbol) : generic_as_value(body, symbol, expected);
   }
   const MsSpan text = ms_names_span(body->program->names, name);
