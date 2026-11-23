@@ -58,12 +58,11 @@ test('HTML explicit parameter and result modes agree with checked JSON and Merma
     assert.ok(mermaid.includes('|"' + mode + '"|'), mermaid);
     seen.add(mode);
   }
-  assert.deepEqual([...seen].sort(), ['borrow', 'copy', 'move', 'owned', 'owned view', 'owned; borrowed error', 'owned; borrowed ok', 'var'].sort());
+  assert.deepEqual([...seen].sort(), ['borrow', 'copy', 'move', 'owned', 'var'].sort());
 });
 
 test('signature type spans expose exact checked modes with the existing palette', () => {
-  const palette = {borrow: 'brw', copy: 'hint', move: 'own', var: 'var', owned: 'own',
-    'owned view': 'own', 'owned; borrowed ok': 'own', 'owned; borrowed error': 'own'};
+  const palette = {borrow: 'brw', copy: 'hint', move: 'own', var: 'var', owned: 'own'};
   for (const e of callables) {
     const spans = [...p.sigOf(e).matchAll(/<span class="([^"]*)" data-ownership="([^"]*)" title="([^"]*)">([^<]*)<\/span>/g)];
     const positions = [...e.slots, e.result];

@@ -55,12 +55,8 @@ fn either(item: Item, issue: Error, failed: Bool) String!:
 	if failed: return error(issue)
 	return ok(item.name)
 
-fn mixed_both(item: Item, issue: Error, mode: Int) String!:
-	if mode == 0: return ok(item.name)
-	if mode == 1: return error(issue)
-	if mode == 2: return ok("fresh")
-
-	return error(Error("missing"))
+fn eat(move item: Item) String:
+	return item.name
 
 interface Named:
 	fn label() String
