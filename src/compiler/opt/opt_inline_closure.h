@@ -68,6 +68,7 @@ typedef struct IcSpecialize {
   uint32_t spent;
   const bool *cyc;
   uint32_t ncyc;
+  OptInlineGraph graph; /* the direct calls, to tell a function that only calls itself from a longer cycle */
 } IcSpecialize;
 
 enum { IC_SPECIALIZE_ROUNDS = 4 };

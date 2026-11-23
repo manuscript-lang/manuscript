@@ -16,6 +16,7 @@ import (
 	HttpMethod,
 	HttpServer,
 	HttpServerOptions,
+	NativeAccepted,
 	NativeServing,
 	NativeWorker,
 	NativeWorkerSpec,
@@ -734,7 +735,7 @@ fn move WorkerHandle.close() Void!:
 // cancelled or faults, ends the pipes so the workers drain side by side, then joins
 // them.
 type Accepting:
-	deals: List[WriteStream[Int]]
+	deals: List[WriteStream[NativeAccepted]]
 	workers: List[Promise[Void]]
 
 fn move Accepting.close() Void!:
@@ -757,7 +758,7 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 	var i = 0
 
 	while i < count:
-		queue := pipe[Int](1024)
+		queue := pipe[NativeAccepted](1024)
 		accepting.deals.append(queue.writer())
 
 		spec := msstd_http_serving_spec(listening.serving)
@@ -790,7 +791,10 @@ fn accept_loop(listening: ServingHandle, count: Int) Void!:
 // Starts one worker on the least loaded thread. A returned promise owns what it
 // captures, so the share of the serving and the pipe belong to the worker for as long
 // as it runs.
-fn start_worker(move spec: NativeWorkerSpec, move input: Pipe[Int]) Promise[Void]:
+fn start_worker(
+	move spec: NativeWorkerSpec,
+	move input: Pipe[NativeAccepted],
+) Promise[Void]:
 	return promise(
 		fn: serve_worker(spec, input),
 		options: PromiseOptions(placement: Placement.Spread)
@@ -798,7 +802,7 @@ fn start_worker(move spec: NativeWorkerSpec, move input: Pipe[Int]) Promise[Void
 
 // Runs one worker on the thread the runtime placed this promise on: it adopts each
 // connection it is dealt, and the poller drives them from there.
-fn serve_worker(spec: NativeWorkerSpec, input: Pipe[Int]) Void!:
+fn serve_worker(spec: NativeWorkerSpec, input: Pipe[NativeAccepted]) Void!:
 	engine := WorkerHandle(worker: msstd_http_serving_worker(spec)?)
 
 	while true:

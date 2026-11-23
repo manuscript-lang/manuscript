@@ -138,6 +138,11 @@ fn msstd_status_error(
 	overrides: String,
 ) Error:
 	number := status.to_int()
+
+	// A native never ends a cancelled task itself: it frees what it holds and returns a
+	// failure. The task ends here instead; the error built below is then never read.
+	msrt_native_failed(status)
+
 	kind := status_kind(number)
 	words := override_words(overrides, number) or status_words(number)
 	return status_error_text(words, kind, domain, said)
@@ -171,6 +176,10 @@ export fn panic(message: String) Never: ...
 // The process-wide output buffer; standard output is flushed at exit
 // (crates/ms-rt/src/io.rs).
 extern fn msrt_io_write_stdout(text: String) Void
+
+// Ends the calling task as cancelled when `status` is a cancelled wait or the task was
+// asked to stop.
+extern fn msrt_native_failed(status: UInt8) Void
 
 /*
 Writes `value` as text, followed by `end` (a newline unless given), to standard output. `print(chunk, end: "")` streams text without a newline.

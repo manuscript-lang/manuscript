@@ -4,6 +4,7 @@ import (
 	HttpHeaders,
 	HttpResponseMetadata,
 	HttpServerOptions,
+	NativeAccepted,
 	NativeExchange,
 	NativeHttpClient,
 	NativeResponseBody,
@@ -41,13 +42,19 @@ export extern fn msstd_http_serving_spec(serving: NativeServing) move NativeWork
 
 export extern fn msstd_http_serving_address(serving: NativeServing) move String
 
-export extern fn msstd_http_serving_accept(serving: NativeServing) Int!
+// The next connection, owned by the returned handle until a worker adopts it.
+export extern fn msstd_http_serving_accept(serving: NativeServing) move NativeAccepted!
 
 // A worker engine on the calling thread; it adopts connections and serves them from the
 // poller.
 export extern fn msstd_http_serving_worker(spec: NativeWorkerSpec) move NativeWorker!
 
-export extern fn msstd_http_worker_adopt(worker: NativeWorker, connection: Int) Void
+// Takes the connection out of `accepted`; a closed worker leaves it there to close with
+// the handle.
+export extern fn msstd_http_worker_adopt(
+	worker: NativeWorker,
+	accepted: NativeAccepted,
+) Void
 
 // Drains the worker's connections and ends it.
 export extern fn msstd_http_worker_close(worker: NativeWorker) Void

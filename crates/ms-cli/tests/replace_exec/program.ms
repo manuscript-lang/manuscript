@@ -1,8 +1,0 @@
-import replace from "@std/os/process.ms"
-
-export fn main() Int:
-    _outcome := replace(
-        program: "/bin/sh", arguments: ["sh", "-c", "echo replaced $MS_REPLACED"],
-        environment: {"MS_REPLACED": "yes"}
-    )
-    return 1

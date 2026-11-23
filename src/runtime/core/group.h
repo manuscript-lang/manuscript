@@ -25,7 +25,7 @@ int64_t ms_group_new(void);
 bool ms_group_add(int64_t group, MsPromise id, int64_t tag);
 /* Adds ids[from..count) tagged by their index, unless that was done; answers how they joined. */
 int64_t ms_group_join(int64_t group, const MsPromise *ids, size_t count, size_t from);
-/* Waits for a finished promise and answers its tag, or -1 when none is left. A cancel unwinds the caller. */
+/* Waits for a finished promise and answers its tag, or -1 when none is left, MS_WAITER_CANCELLED on a cancel. */
 int64_t ms_group_next(int64_t group);
 /* The tag of a finished promise not reported yet, or -1; never waits. */
 int64_t ms_group_poll(int64_t group);

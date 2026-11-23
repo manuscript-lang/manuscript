@@ -1,2 +1,0 @@
-fn f(data: List[Int]) Int:
-    return EXPR

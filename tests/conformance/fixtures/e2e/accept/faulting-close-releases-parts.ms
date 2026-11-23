@@ -137,3 +137,31 @@ fn insert_out_of_range(move label: String) Void:
 
 test "an index fault of insert releases the incoming element":
 	expect_true(faults(fn: insert_out_of_range("an insert label that needs a heap block")))?
+
+fn replace_out_of_range(move label: String) Void:
+	var items = [label.clone()]
+	void items.replace(5, label)
+
+test "an index fault of replace releases the incoming element":
+	expect_true(faults(fn: replace_out_of_range("a replace label that needs a heap block")))?
+
+fn splice_out_of_range(move label: String) Void:
+	var items = [label.clone()]
+	items.splice(5, 0, [label])
+
+test "a range fault of splice releases the replacement":
+	expect_true(faults(fn: splice_out_of_range("a splice label that needs a heap block")))?
+
+fn fill_out_of_range(move label: String) Void:
+	var items = [label.clone()]
+	items.fill(label, 0, 9)
+
+test "a range fault of fill releases the value":
+	expect_true(faults(fn: fill_out_of_range("a fill label that needs a heap block")))?
+
+fn fill_empty_range(move label: String) Void:
+	var items = [label.clone()]
+	items.fill(label, 0, 0)
+
+test "fill over an empty range releases the value":
+	expect_true(not faults(fn: fill_empty_range("a fill label that needs a heap block")))?

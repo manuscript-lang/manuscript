@@ -4,7 +4,7 @@
 
 Syntax, types, imports, removals, language decisions.
 
-Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](../compiler/index.md) and [ownership notes](../../crates/ms-check/OWNERSHIP.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
+Note on memory model: on 2026-10-19 the owner adopted value semantics for the Rust implementation (see [compiler.md](../compiler/index.md) and [ownership notes](../../documentation/contributing/ownership-rules.md)). Entries below that speak of shared references, aliasing, or `.clone()` record user decisions made under reference semantics; where they conflict with the ownership notes, the notes and the frozen conformance corpus win, and the conflict is flagged in the entry.
 
 - [Keywords are names after a dot and as field labels](keywords-are-names-after-a-dot-and-as-field-labels.md)
 - [`Void` is the nothing type and the `void` keyword](void-is-the-nothing-type-and-keyword.md): `Unit` was renamed; `void expr` drops a result.

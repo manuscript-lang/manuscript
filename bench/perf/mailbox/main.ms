@@ -30,8 +30,11 @@ fn main() Void:
 
 		while done < n:
 			var promises: List[Promise[Int]] = []
+
 			for i in 0..window:
-				promises.append(promise[Int](fn: work(done + i)))
+				value := done + i
+				promises.append(promise[Int](fn: work(value)))
+
 			for p in promises:
 				total += p.wait().get()
 			done += window

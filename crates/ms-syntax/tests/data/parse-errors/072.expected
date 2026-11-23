@@ -1,1 +1,0 @@
-error parse 2:14:28 "there is no arrow function; anonymous functions are written fn x: x + 1"

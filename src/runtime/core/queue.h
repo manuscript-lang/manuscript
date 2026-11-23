@@ -16,10 +16,11 @@
 
 /* Appends `id` (nonzero) with its `work`, queued at `now_ns`, to the queue of `isolate`; false for an id or an
  * isolate out of range. */
-MS_NODISCARD bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns);
-/* Removes `id` from `isolate`'s queue; true when it was there (it is the caller's to run), false when a thief took
- * it. */
-MS_NODISCARD bool ms_queue_remove(uint32_t isolate, uint64_t id);
+MS_NODISCARD bool ms_queue_push(uint32_t isolate, uint64_t id, void *work, int64_t now_ns, uint64_t *sequence)
+    MS_NONNULL_ARGS(5);
+/* Removes `id`, pushed with `sequence`, from `isolate`'s queue; true when it was there (it is the caller's to run),
+ * false when a thief took it. Constant time: the sequence gives the entry's place. */
+MS_NODISCARD bool ms_queue_remove(uint32_t isolate, uint64_t id, uint64_t sequence);
 /* Takes the oldest entry of `isolate` queued at or before `not_after_ns` into `*id` and `*work`. */
 MS_NODISCARD bool ms_queue_steal(uint32_t isolate, int64_t not_after_ns, uint64_t *id, void **work)
     MS_NONNULL_ARGS(3, 4);

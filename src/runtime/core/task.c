@@ -209,6 +209,12 @@ static void save_teb(MsTask *task) { ms_ctx_teb_stack(task->teb); }
 /* Gives timers, stop requests and descriptors their turn before the next switch, without paying for a clock
  * read or a system call when nothing needs one. */
 static void service(MsSched *sched) {
+  if (sched->starts_queued) {
+    sched->starts_queued = false;
+    if (sched->hooks.start_queued != NULL) {
+      sched->hooks.start_queued();
+    }
+  }
   if (ms_sched_stop_request() != 0) {
     (void)ms_park_cancel_all(sched);
   }
@@ -584,13 +590,20 @@ MsTaskStatus ms_task_run_main(MsTaskEntry entry, void *arg, uint32_t flags, uint
   return status;
 }
 
+/* The task of `handle`; the running task, the usual asker, needs no table lookup. */
+static MsTask *task_of(MsTaskHandle handle) {
+  MsSched *const sched = ms_sched();
+  MsTask *const running = sched->current;
+  return running != NULL && running->handle == handle ? running : ms_task_lookup(sched, handle);
+}
+
 uint32_t ms_task_started_head(MsTaskHandle handle) {
-  const MsTask *const task = ms_task_lookup(ms_sched(), handle);
+  const MsTask *const task = task_of(handle);
   return task == NULL ? 0 : task->started_head;
 }
 
 uint32_t ms_task_started_swap(MsTaskHandle handle, uint32_t head) {
-  MsTask *const task = ms_task_lookup(ms_sched(), handle);
+  MsTask *const task = task_of(handle);
   if (task == NULL) {
     return 0;
   }

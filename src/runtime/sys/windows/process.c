@@ -49,7 +49,12 @@ struct MsSysGroup {
 MsSysGroup *ms_sys_group_new(int64_t pid, void *process_handle) {
   (void)pid;
   MsSysGroup *group = ms_alloc(sizeof *group);
-  group->process = process_handle;
+  /* libuv closes its handle before the exit callback runs: a copy keeps the process queryable until the group is freed. */
+  group->process = NULL;
+  if (!DuplicateHandle(GetCurrentProcess(), process_handle, GetCurrentProcess(), &group->process, 0, FALSE,
+                       DUPLICATE_SAME_ACCESS)) {
+    group->process = NULL;
+  }
   group->terminated = false;
   group->job = CreateJobObjectW(NULL, NULL);
   if (group->job != NULL) {
@@ -68,7 +73,9 @@ void ms_sys_group_signal(MsSysGroup *group, bool force) {
   (void)force;
   group->terminated = true;
   ms_sys_group_kill(group);
-  (void)TerminateProcess(group->process, 1);
+  if (group->process != NULL) {
+    (void)TerminateProcess(group->process, 1);
+  }
 }
 
 int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int signal) {
@@ -76,14 +83,18 @@ int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t status, int sign
 }
 
 int64_t ms_sys_group_peak_resident(const MsSysGroup *group, bool exited) {
+  (void)exited;
   PROCESS_MEMORY_COUNTERS counters = {.cb = sizeof counters};
-  if (exited && GetProcessMemoryInfo(group->process, &counters, sizeof counters)) {
+  if (group->process != NULL && GetProcessMemoryInfo(group->process, &counters, sizeof counters)) {
     return (int64_t)counters.PeakWorkingSetSize;
   }
   return 0;
 }
 
 void ms_sys_group_free(MsSysGroup *group) {
+  if (group->process != NULL) {
+    (void)CloseHandle(group->process);
+  }
   if (group->job != NULL) {
     (void)CloseHandle(group->job);
   }
@@ -96,3 +107,5 @@ int ms_sys_process_exec(const char *file, char *const *argv, char *const *env) {
   (void)env;
   return UV_ENOTSUP;
 }
+
+bool ms_sys_process_can_exec(void) { return false; }

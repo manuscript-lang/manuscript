@@ -136,12 +136,12 @@ bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue
 
 /* `index` counted from the end when negative, checked against `length`: out of range faults with `kind` (the runtime's
  * `List` fault kind of the operation) and the code after it runs only for an index inside the list. */
-static MirValue checked_index_to(LowerFn *fn, MirValue index, MirValue length, int64_t kind, uint32_t upper) {
+static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int64_t kind) {
   const MirValue zero = mir_b_iconst(&fn->b, 0);
   const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, zero);
   const MirValue at = mir_b_select(&fn->b, negative, mir_b_binop(&fn->b, MOP_IAdd, index, length), index);
   const MirValue pair[2] = {at, length};
-  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = upper}, MIR_BOOL);
+  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
   const MirBlock hit = mir_b_new_block(&fn->b);
   const MirBlock miss = mir_b_new_block(&fn->b);
   mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
@@ -155,27 +155,29 @@ static MirValue checked_index_to(LowerFn *fn, MirValue index, MirValue length, i
   return at;
 }
 
-static MirValue checked_index(LowerFn *fn, MirValue index, MirValue length, int64_t kind) {
-  return checked_index_to(fn, index, length, kind, (uint32_t)MCC_LT);
-}
-
-/* `set` and `insert` take their element into the list before the runtime checks the index, so a fault there would
- * leave the element owned by no one. The index is checked here first, while the caller still covers the element; the
- * runtime's own check then never fires. A resource element is left alone: its closing slot covers it. */
-void fn_list_precheck_index(LowerFn *fn, MsTy owner, MsSpan operation, uint32_t argc, const MirValue *args) {
-  const bool set = ms_span_is_text(operation, "set"), insert = ms_span_is_text(operation, "insert");
+/* A list native that takes an owned argument and faults on a bad one (`@checks=`) would leave the argument owned by
+ * no one: the check runs first, in lowering, while the caller still covers it. The check is the native's own, called
+ * with the list's length and the call's integer arguments. A resource argument is left alone: its closing slot
+ * covers it, and a second drop would double close. */
+void fn_native_precheck(LowerFn *fn, const MsNativeSig *sig, MsTy owner, uint32_t argc, const MirValue *args) {
   MsTyTable *types = &fn->cx->program->types;
-  if (argc != 3 || (!set && !insert) || !ms_ty_is(types, owner, MS_BUILTIN_List) ||
-      !mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, args[2]))) {
+  if (sig == NULL || sig->checks == NULL || argc < 2 || !ms_ty_is(types, owner, MS_BUILTIN_List)) {
     return;
   }
-  /* A resource is covered by its closing slot until the runtime stores it, and the fault closes it there. */
   const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[0], fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (fn_temp_closes(fn, elem)) {
+  if (!mir_needs_drop(fn->cx->module, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]))->elem) ||
+      fn_temp_closes(fn, elem)) {
     return;
   }
-  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
-  (void)checked_index_to(fn, args[1], length, set ? 2 : 0, (uint32_t)(set ? MCC_LT : MCC_LE));
+  MirValue checked[4];
+  uint32_t count = 0;
+  checked[count++] = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
+  for (uint32_t at = 1; at < argc && count < 4; at++) {
+    if (mir_b_ty(&fn->b, args[at]) == MIR_INT) {
+      checked[count++] = args[at];
+    }
+  }
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(sig->checks)), checked, count, MIR_VOID);
 }
 
 /* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the

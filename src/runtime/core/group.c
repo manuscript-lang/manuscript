@@ -205,7 +205,7 @@ int64_t ms_group_next(int64_t group_id) {
     group_of(group_id)->token = 0;
     (void)ms_token_free(token);
     if (result == MS_WAIT_CANCELLED) {
-      ms_cancelled();
+      return MS_WAITER_CANCELLED;
     }
   }
 }

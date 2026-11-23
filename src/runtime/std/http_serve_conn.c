@@ -340,7 +340,13 @@ static int run_handler(MsServeShared *shared, MsExchange *exchange, bool watchin
     ms_fault_text_free(&ignored_message);
   }
   if (joined != MS_TASK_OK || outcome == 2) {
-    ms_task_cancel(task); /* this task was stopped while waiting: the request ends with it */
+    /* This task was stopped while waiting: the request ends with it. The handler ends first, with this task's
+     * own cancellation held off, so nothing else uses the exchange when the caller finishes it. */
+    ms_task_cancel(task);
+    ms_shield_enter();
+    (void)ms_task_join(task, &outcome, &message);
+    ms_shield_exit();
+    ms_fault_text_free(&message);
     return 3;
   }
   ms_fault_text_free(&message);
@@ -373,6 +379,8 @@ static Next serve_request(MsServeConn *conn, MsServeShared *shared, MsH1Request 
   const bool upgrading = ms_headers_first(exchange->headers, ms_span_of_text("Upgrade"), &upgrade);
   const int failure = run_handler(shared, exchange, framing.kind == MS_H1_NO_BODY && !upgrading);
   atomic_fetch_sub(&shared->admitted, 1);
+  /* Finishing writes to the peer, and a cancelled write leaves by a jump to this task's guard: the exchange is
+   * released on that way out too. */
   const bool open = ms_exchange_finish(exchange, failure) && !conn->worker->closing;
   ms_exchange_release(exchange);
   return open ? NEXT_AGAIN : NEXT_CLOSE;

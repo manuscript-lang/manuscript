@@ -72,6 +72,9 @@ MS_NONNULL int64_t ms_sys_group_exit_code(const MsSysGroup *group, int64_t statu
 MS_NONNULL int64_t ms_sys_group_peak_resident(const MsSysGroup *group, bool exited);
 MS_NONNULL void ms_sys_group_free(MsSysGroup *group);
 
+/* Whether the host can replace the process image (not Windows): where it cannot, `replace` reports unsupported
+ * whatever its arguments are. */
+bool ms_sys_process_can_exec(void);
 /* Replaces the process image; returns only on failure, as a libuv status (UV_ENOTSUP on Windows). `env` is the whole
  * environment. */
 MS_NONNULL int ms_sys_process_exec(const char *file, char *const *argv, char *const *env);

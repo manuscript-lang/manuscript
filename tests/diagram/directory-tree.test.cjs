@@ -7,10 +7,10 @@ const { after, test } = require('node:test');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const page = fs.readFileSync(path.join(root, 'crates/ms-tooling/src/page.html'), 'utf8');
+const page = fs.readFileSync(path.join(root, 'src/tooling/data/page.html'), 'utf8');
 const cli = process.env.MS_BIN
   ? path.resolve(root, process.env.MS_BIN)
-  : path.resolve(root, process.env.CARGO_TARGET_DIR || 'target', 'debug', process.platform === 'win32' ? 'ms.exe' : 'ms');
+  : path.resolve(root, '.artifacts/build/ci/src/cli', process.platform === 'win32' ? 'ms.exe' : 'ms');
 const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'ms-html-directories-'));
 after(() => fs.rmSync(fixture, { recursive: true, force: true }));
 

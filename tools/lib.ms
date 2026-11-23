@@ -93,15 +93,6 @@ export fn file_sha256(path: String) String:
 	data := read_file(path).wait().get()
 	return hex_encode(sha256(data))
 
-// The machine architecture as `uname -m` reports it (`x86_64`, `aarch64`); Windows
-// reports `x86_64` unless the build says otherwise.
-export fn rust_arch() String:
-	machine := capture("uname", ["-m"]).trim()
-	if machine == "arm64" or machine == "ARM64": return "aarch64"
-	if machine == "": return "x86_64"
-
-	return machine
-
 // Builds the counting runtime (`cmake --preset stats`: live blocks, parks and copies
 // printed on standard error at exit, see proposals/c-runtime-stats-variant.md) and
 // points MS at its ms, which the tools then run the programs with. Returns a nonzero

@@ -444,6 +444,10 @@ export extern type NativeWorkerSpec
 // without a task each.
 export extern type NativeWorker
 
+// An accepted connection that no worker has adopted yet. It owns the socket, so one
+// that is still queued when the server stops closes with the queue.
+export extern type NativeAccepted
+
 // A running HTTP server. Close it, or drop it, to stop accepting and drain.
 export type HttpServer:
 	// The accept loop, which owns the connection promises. It is declared first so it

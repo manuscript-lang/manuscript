@@ -48,8 +48,17 @@ uint32_t ms_workers_limit(void);
 /* The isolate a spread start runs on: the least loaded one, after starting a thread when fewer than the limit run;
  * MS_NO_ISOLATE when only one thread is allowed. */
 uint32_t ms_workers_spread_pick(void);
-/* Work was queued: wakes a sleeping isolate, or starts a worker when none sleeps and the limit allows. */
+/* Work was queued: unless an isolate is already looking for work, wakes a sleeping isolate, or starts a worker when
+ * none sleeps and the limit allows. */
 void ms_workers_nudge(void);
+/* An isolate took queued work and more is waiting: gets the next isolate looking, as ms_workers_nudge does when
+ * nobody looks. */
+void ms_workers_nudge_next(void);
+
+/* The longest a looking isolate rests between looks, and the looks it makes with every queue empty before it
+ * sleeps for good. A look that takes nothing doubles the rest from the beat up to this. */
+#define MS_WORKER_LOOK_MAX_NS (10 * MS_WORKER_BEAT_NS)
+#define MS_WORKER_EMPTY_LOOKS 20
 /* Ends every worker and waits for them. Call from the main isolate before it ends. */
 void ms_workers_shutdown(void);
 

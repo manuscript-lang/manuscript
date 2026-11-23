@@ -497,6 +497,28 @@ size_t ms_frames_capture(uintptr_t fp, uintptr_t anchor, MsStackWindow window, u
   if (capacity == 0) {
     return 0;
   }
+  if (ms_sys_frame_pointer_chain() && window.high != 0) {
+    /* The frames of the running code inside its current stack segment: read the chain directly. A chain that
+     * leaves the segment before `capacity` frames takes the general walk below. */
+    size_t count = 0;
+    uintptr_t at = fp;
+    const uintptr_t span = window.high - window.low;
+    while (at % sizeof(uintptr_t) == 0 && span >= 16 && at - window.low <= span - 16) {
+      // NOLINTNEXTLINE(performance-no-int-to-ptr): a frame record of the running stack, inside its segment
+      const uintptr_t *const record = (const uintptr_t *)at;
+      if (record[1] == 0) {
+        return count;
+      }
+      out[count++] = record[1];
+      if (count == capacity || record[0] == 0) {
+        return count;
+      }
+      if (record[0] <= at) {
+        break;
+      }
+      at = record[0];
+    }
+  }
   Capture capture = {.out = out, .capacity = capacity};
   ms_frames_visit(fp, anchor, window, capture_one, &capture);
   return capture.count;

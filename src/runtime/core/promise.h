@@ -37,6 +37,10 @@ enum {
   MS_PROMISE_FAILED = 5,
 };
 
+/* What a wait answers when the waiting task itself was cancelled. Runtime C never unwinds past its caller: each
+ * frame returns this, and the program's entry (msrt_*) ends the call with ms_sched_cancel_return. */
+#define MS_WAITER_CANCELLED INT64_MIN
+
 /* A native continuation of an I/O promise, registered with ms_promise_on_drop. The runtime calls it with the
  * promise, the state word, and the ready bits (MS_WAIT_READ, WRITE, HUP) when its descriptor is ready, MS_WAIT_TIMEOUT
  * when the limit passed, or MS_WAIT_CANCELLED when the promise ends before completing. It retries its system call
@@ -65,7 +69,7 @@ MS_NODISCARD bool ms_promise_take(MsPromise id, const MsTypeDesc *desc, uint8_t 
 /* Whether the promise has finished, in any way; a closed id reads as done. */
 bool ms_promise_done(MsPromise id);
 /* Waits up to `timeout_ns` (negative: no limit) and returns an outcome code. A cancel arriving while it waits ends
- * the promise and unwinds the caller. */
+ * the promise and answers MS_WAITER_CANCELLED. */
 int64_t ms_promise_wait(MsPromise id, int64_t timeout_ns);
 /* Makes the promise listen to the cancel switch `cancel`: when it fires the promise is cancelled. Call it once the work
  * has started. Replaces an earlier switch. */
@@ -108,7 +112,7 @@ void ms_promise_set_grouped(MsPromise id, bool grouped);
 /* Runs deferred work on the caller's stack, when `id` has some; true when it ran. */
 bool ms_promise_run_inline(MsPromise id);
 /* The index in `ids` of the first of `count` promises to finish, waiting up to `timeout_ns` (negative: no limit);
- * -1 on timeout. A cancel unwinds the caller. */
+ * -1 on timeout, MS_WAITER_CANCELLED on a cancel. */
 int64_t ms_promise_wait_any(const MsPromise *ids, size_t count, int64_t timeout_ns);
 
 /* ---- work ---- */
