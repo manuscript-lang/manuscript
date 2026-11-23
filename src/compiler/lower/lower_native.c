@@ -81,7 +81,7 @@ MirValue fn_move_out_of_scope(LowerFn *fn, MirValue value) {
 }
 
 /* A scalar operand a native reads through an address (`e: *const u8`): it goes into a stack slot. */
-static MirValue spill_scalar(LowerFn *fn, MirValue value) {
+static MirValue spill_scalar(LowerFn *fn, MirValue value, bool moved) {
   const MirTy ty = mir_b_ty(&fn->b, value);
   /* A closure or interface value is a pointer the runtime copies by address, as it does a scalar. */
   if (!mir_is_scalar(fn->cx->module, ty) && !spilled_by_address(fn, value)) {
@@ -90,7 +90,8 @@ static MirValue spill_scalar(LowerFn *fn, MirValue value) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = fn_emit(fn, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
-  (void)fn_emit(fn, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
+  /* An owned operand the native takes goes into the slot as a move: the slot holds it from here. */
+  (void)fn_emit(fn, moved && mir_needs_drop(fn->cx->module, ty) ? MOP_Put : MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
   return slot;
 }
 
@@ -199,7 +200,8 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
       if ((fn->native_moves >> used & 1u) != 0 && spilled_by_address(fn, operand)) {
         operand = fn_move_out_of_scope(fn, operand);
       }
-      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand)
+      const bool taken = used < 32 && (fn->native_moves >> used & 1u) != 0;
+      out[used++] = kind == NS_ADDR_IN || kind == NS_ADDR_MUT ? spill_scalar(fn, operand, taken)
                     : kind == NS_VALUE                         ? fn_native_scalar(fn, operand)
                                                                : operand;
       next++;

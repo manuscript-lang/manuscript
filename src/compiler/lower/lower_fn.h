@@ -163,7 +163,7 @@ MirValue fn_native_scalar(LowerFn *fn, MirValue operand);
 bool fn_descriptor_argument(LowerFn *fn, uint8_t kind, const MirValue *args, uint32_t nargs, MirValue *out);
 bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue *field);
 bool fn_put_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field);
-bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record);
+bool fn_put_field_chain(LowerFn *fn, const MsExpr *place, MirValue record, MirValue field, MirValue *updated_record, bool store);
 bool fn_read_field(LowerFn *fn, const MsExpr *place, MirValue record, MirValue *field);
 bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b);
 bool fn_same_member_path(LowerFn *fn, const MsExpr *a, const MsExpr *b);

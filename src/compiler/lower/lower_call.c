@@ -263,7 +263,11 @@ static bool put_back(LowerFn *fn, VarSlot *slots, uint32_t count, uint32_t at, M
   }
   const MirValue old = slots[at].record;
   MirValue record = old;
-  if (!fn_put_field_chain(fn, slots[at].place, old, value, &record)) {
+  bool shared = false; /* a later field of the same record changes it again: the record is stored once, by the last */
+  for (uint32_t later = at + 1; later < count; later++) {
+    shared = shared || slots[later].record == old;
+  }
+  if (!fn_put_field_chain(fn, slots[at].place, old, value, &record, !shared)) {
     return false;
   }
   for (uint32_t later = at + 1; later < count; later++) {
@@ -389,6 +393,11 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
       const MsExpr *place = fn_written_arg(expr, arg->node.node);
       out[index] = place != NULL ? fn_var_slot(fn, place, &slots[*nslots], slots, *nslots) : MIR_NONE;
       (*nslots) += place != NULL ? 1 : 0;
+      /* The variable's value is in the slot until the call returns: a later argument that leaves the function puts it back. */
+      if (out[index] != MIR_NONE && place != NULL && slots[*nslots - 1].record == MIR_NONE && !slots[*nslots - 1].in_place &&
+          !fn_lend_writeback(fn, &slots[*nslots - 1])) {
+        return false;
+      }
     } else if (arg->source == MS_ARG_WRITTEN) {
       const MsExpr *written = fn_written_arg(expr, arg->node.node);
       /* A constructor's fields own what they are given. */
@@ -934,7 +943,9 @@ static MirValue call_expr(LowerFn *fn, const MsExpr *expr) {
   for (uint32_t at = 0; at < LOWER_MAX_ARGS; at++) {
     held[at] = MIR_NONE;
   }
+  const uint32_t lent = fn->nwritebacks; /* the `var` arguments' slots, lent for this call only */
   const MirValue result = call_body(fn, expr, held);
+  fn->nwritebacks = lent;
   for (uint32_t at = 0; at < LOWER_MAX_ARGS && !fn->terminated; at++) {
     if (held[at] != MIR_NONE) { /* the operation took it: nothing is left to close */
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &held[at], 1, (MirImm){0}, MIR_NONE);

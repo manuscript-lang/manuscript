@@ -399,6 +399,21 @@ static void note_param_write(void *ctx, const MsStmt *stmt) {
  * variable tracks. */
 static void note_param_move(void *ctx, const MsExpr *expr) {
   ParamWrites *writes = ctx;
+  const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(writes->facts, expr->id) : NULL;
+  for (uint32_t at = 0; call != NULL && at < call->arg_count; at++) {
+    /* A field handed on as a `var` argument (`param.items.append(x)`) is changed in the parameter's own record. */
+    const MsExpr *written = (call->args[at].flags & MS_PARAM_VAR) != 0 && call->args[at].source == MS_ARG_WRITTEN
+                                ? fn_written_arg(expr, call->args[at].node.node)
+                                : NULL;
+    const MsExpr *root = written;
+    while (root != NULL && root->kind == MS_E_MEMBER) {
+      root = root->u.member.left;
+    }
+    const MsRef *ref = root != NULL && root != written && root->kind == MS_E_NAME ? ms_facts_ref(writes->facts, root->id) : NULL;
+    if (ref != NULL && ref->kind == MS_REF_PARAM && ref->local == writes->index) {
+      writes->found = true;
+    }
+  }
   if (expr->kind != MS_E_MEMBER || expr->u.member.left->kind != MS_E_NAME ||
       ms_facts_use(writes->facts, expr->id) != MS_USE_MOVE) {
     return;
