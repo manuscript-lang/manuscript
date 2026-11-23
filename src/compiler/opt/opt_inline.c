@@ -754,6 +754,8 @@ bool opt_inline(MirModule *m) {
   /* A recursive cycle keeps one check; the unchecked functions on it then inline like any other. */
   changed |= il_strip_depth(m, true);
   changed |= il_inline_calls(m);
+  /* A call that inlining just moved into its caller may now pass a closure the caller makes. */
+  changed |= opt_inline_specialize_closure_args(m);
   changed |= opt_inline_closures(m);
   changed |= il_strip_depth(m, false);
   changed |= opt_inline_remove_dead(m);

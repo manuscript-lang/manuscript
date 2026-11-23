@@ -15,6 +15,9 @@ typedef struct LowerOwnedVar {
   uint32_t scope;
   MirVar var;
   uint32_t moved; /* the fields of a record the variable has handed on, as a bit mask */
+  MsTy checked;   /* the record's checked type once a field moved, so the scope end can close the fields left */
+  MirVar mask;    /* the fields handed on along the path taken, as a bit mask; a record's variable only */
+  bool has_mask;
   bool released;  /* a return is handing the whole value on: the unwind it starts must not own it */
   MirValue pinned; /* the value an inner scope's end owns for it while a close failure may leave the function, else MIR_NONE */
 } LowerOwnedVar;
@@ -139,6 +142,7 @@ typedef struct LowerFn {
   LowerOuterEnv outer[LOWER_MAX_DEFAULT_DEPTH]; /* the environments of the calls whose defaults are being lowered, outermost first */
   uint32_t nouter;
   bool failed;
+  bool returns_view; /* the result is a view lender's owned box of an interface that borrows: a returned reference is boxed by `iface.own` */
   bool returns_borrow; /* the function's result borrows from a parameter: `return` hands back the reference, no copy */
   MirTy comparing[8]; /* the records and alternatives whose equality is being written out, innermost last */
   uint32_t ncomparing;
@@ -187,7 +191,13 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var);
 /* The variable a name place assigns to: a `var` local or a `var` parameter; false for any other place. */
 bool fn_owned_local(LowerFn *fn, const MsExpr *place, MirVar *out);
 /* The variable handed field `field` of its record on: its scope releases only the fields it still holds. */
-void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field);
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field, MsTy checked);
+/* Settles what the record `value` (of checked type `record`) still holds, last field first: a resource field closes,
+ * and a field that only owns memory drops when it is one of `maybe` (the fields handed on along some path, whose
+ * `flag` bit says whether this path did). `taken` fields are gone already. Returns `taken` with the fields handled
+ * added, which the record's release then skips. */
+uint32_t fn_close_left_fields(LowerFn *fn, MirValue value, MsTy record, uint32_t taken, const MirVar *owner, uint32_t maybe,
+                              MirValue flag);
 void fn_scope_var_released(LowerFn *fn, MirVar var, bool released);
 /* The descriptor a native's signature names (`kind` is NS_ELEM_DESC, NS_KEY_DESC or NS_VAL_DESC) of the first collection among `args`. */
 bool fn_is_list(LowerFn *fn, const MsExpr *expr);
@@ -250,6 +260,8 @@ uint32_t lower_vtable_close_drop(Lower *cx, MsTy receiver, MirTy data_ty);
  * slot of the innermost scope, and the result is the view the callee reads. */
 bool fn_temp_closes(LowerFn *fn, MsTy checked);
 MirValue fn_own_temporary(LowerFn *fn, MsTy checked, MirValue value);
+/* A call result a comparison reads: it closes with the statement. */
+MirValue fn_closing_operand(LowerFn *fn, const MsExpr *operand, MirValue value);
 MirValue fn_pending_own(LowerFn *fn, MsTy checked, MirValue value);
 /* The resources the other fields of record `base` hold, closed with the statement once field `moved` has left it; the mask of the fields taken out. */
 uint32_t fn_close_rest(LowerFn *fn, const MsExpr *member, MirValue base, uint32_t type_id, uint32_t moved);
@@ -367,6 +379,10 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
 bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                const MirValue *args, MirTy ret, MirValue *out);
 bool lists_in_place(LowerFn *fn, const MsExpr *expr);
+/* The `sort.cmp` thunk the runtime sort calls for comparator type `closure` over `elem`s; MIR_NONE on failure. */
+/* An operand in a slot of its own, for a native that reads or takes it by address; `lookup` only borrows it. */
+MirValue fn_operand_slot(LowerFn *fn, const MsExpr *expr, bool lookup);
+uint32_t fn_sort_thunk(LowerFn *fn, MirTy elem, MirTy closure);
 MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
 bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
 bool fn_list_pop(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirTy ret, MirValue *out);
@@ -415,6 +431,8 @@ MirValue fn_builtin_named(LowerFn *fn, MsSymbolId id, uint32_t arg_count, const 
 
 /* The expression's value after the conversion the checker recorded on it (an interface view, ...). */
 MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value);
+/* The checked type of `expr` as it is read: a local narrowed by `v != null` reads as its payload type. */
+MsTy fn_read_type(const LowerFn *fn, const MsExpr *expr);
 /* `for x in <list or range>` (lower_for.c) and interpolated text (lower_text.c). */
 bool fn_for(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_text(LowerFn *fn, const MsExpr *expr);

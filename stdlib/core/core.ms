@@ -280,6 +280,12 @@ fn move Optional[T].ok_or_else[E](create: fn() E) T!E:
 	if self == null: return error(create())
 	return ok(self)
 
+// Returns `ok` with the value, or `error` with `cause` when `value` is `null`. The
+// cause is built before the call whether or not it is used.
+export fn ok_or[T, E](move value: T?, move cause: E) move T!E:
+	if value == null: return error(cause)
+	return ok(value)
+
 // Holds either a successful value (`ok`) or an expected failure (`error`).
 export enum Result[T, E]:
 	// A successful result, retaining its payload without a deep copy.

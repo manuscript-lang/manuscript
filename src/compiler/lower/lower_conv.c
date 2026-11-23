@@ -4,6 +4,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_layout.h"
 
+/* The first conversion recorded for `node`; a node can carry several, in the order they apply. */
 static const MsConversion *find_conversion(const MsFacts *facts, MsNode node) {
   size_t lo = 0;
   size_t hi = facts->conversions.len;
@@ -330,11 +331,7 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   return view;
 }
 
-MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
-  const MsConversion *conversion = find_conversion(fn->facts, expr->id);
-  if (conversion == NULL || value == MIR_NONE) {
-    return value;
-  }
+static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConversion *conversion, MirValue value) {
   if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
     return view_as_interface(fn, expr, conversion, value);
   }
@@ -373,9 +370,41 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     }
     return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }
+  if (conversion->kind == MS_CONV_NARROW) {
+    /* A nullable local read where `v != null` holds: the payload of the same value, a view while the binding keeps it. */
+    const MirTy payload = fn_type(fn, conversion->to);
+    if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
+      return value;
+    }
+    if (ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && fn_fresh_owner(fn, value)) {
+      MirTy taken = payload;
+      return fn_take_payload(fn, value, &taken);
+    }
+    return mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
+  }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to), conversion->to);
   }
   (void)fn_fail(fn, "this conversion (kind %d) is not lowered yet", (int)conversion->kind);
   return MIR_NONE;
+}
+
+MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
+  const MsConversion *conversion = find_conversion(fn->facts, expr->id);
+  if (conversion == NULL || value == MIR_NONE) {
+    return value;
+  }
+  value = apply_conversion(fn, expr, conversion, value);
+  /* A narrowed read is then converted as the payload type it reads as: `return v` of a `T?` local narrowed to `T`. */
+  const MsConversion *next = conversion + 1;
+  const MsConversion *end = fn->facts->conversions.ptr + fn->facts->conversions.len;
+  if (conversion->kind == MS_CONV_NARROW && next < end && next->node == expr->id && value != MIR_NONE) {
+    value = apply_conversion(fn, expr, next, value);
+  }
+  return value;
+}
+
+MsTy fn_read_type(const LowerFn *fn, const MsExpr *expr) {
+  const MsConversion *conversion = find_conversion(fn->facts, expr->id);
+  return conversion != NULL && conversion->kind == MS_CONV_NARROW ? conversion->to : ms_facts_type(fn->facts, expr->id);
 }

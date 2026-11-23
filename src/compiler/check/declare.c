@@ -220,7 +220,7 @@ static void report_duplicate(MsCheckProgram *program, uint32_t module, const MsD
 
 static const char *const PRELUDE_NAMES[] = {"Equal",    "Stringable", "Comparable", "Hashable", "Clonable",
                                             "Optional", "Result",     "Error",      "List",     "Map",
-                                            "Set",      "ListEntry",  "MapEntry",   "print"};
+                                            "Set",      "ListEntry",  "MapEntry",   "print",     "ok_or"};
 
 /* Whether `name` is declared by the prelude, which every module sees under that name. */
 static bool is_prelude_name(const MsCheckProgram *program, MsName name) {

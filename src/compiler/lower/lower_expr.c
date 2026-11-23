@@ -359,7 +359,7 @@ static MirValue lower_member(LowerFn *fn, const MsExpr *expr) {
                      mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, field));
   /* Only a `var` the scope releases field by field has a moved mask; a name bound once is owned by its value. */
   if (moves && fn_owned_local(fn, expr->u.member.left, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
-    fn_scope_var_moved(fn, owner, ref->index);
+    fn_scope_var_moved(fn, owner, ref->index, ms_facts_type(fn->facts, expr->u.member.left->id));
     /* The field leaves its owner: the value is the owner's no more, and the scope releases the rest. */
     return fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, mir_b_ty(&fn->b, field));
   }
@@ -774,10 +774,14 @@ static MirValue lower_binary(LowerFn *fn, const MsExpr *expr) {
     (void)fn_fail(fn, "this binary operator is not lowered yet");
     return MIR_NONE;
   }
-  const MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
-  const MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
+  MirValue left = fn_expr(fn, expr->u.bin.left, LW_BORROW);
+  MirValue right = fn_expr(fn, expr->u.bin.right, LW_BORROW);
   if (left == MIR_NONE || right == MIR_NONE) {
     return MIR_NONE;
+  }
+  if (expr->op == MS_B_EQ || expr->op == MS_B_NE) {
+    left = fn_closing_operand(fn, expr->u.bin.left, left);
+    right = fn_closing_operand(fn, expr->u.bin.right, right);
   }
   if (expr->op == MS_B_ADD && mir_b_ty(&fn->b, left) == MIR_STR) {
     return fn_string_concat(fn, left, right);

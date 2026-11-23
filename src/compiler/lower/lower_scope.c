@@ -23,7 +23,8 @@ uint32_t fn_scope_begin(LowerFn *fn) {
   return id;
 }
 
-/* The scope owns what its `var` locals hold now, which only the end of the scope can know. */
+/* The scope owns what its `var` locals hold now, which only the end of the scope can know; a record that handed a field
+ * on is settled by `settle_moved_vars` once the scope's other owners are done. */
 static void own_vars(LowerFn *fn, uint32_t scope) {
   for (uint32_t at = fn->nowned_vars; at > 0; at--) {
     if (fn->owned_vars[at - 1].scope != scope) {
@@ -33,13 +34,28 @@ static void own_vars(LowerFn *fn, uint32_t scope) {
       continue; /* handed on, or already owned by the end of an inner scope */
     }
     const MirValue value = mir_b_use_var(&fn->b, fn->owned_vars[at - 1].var);
-    const uint32_t moved = fn->owned_vars[at - 1].moved;
-    if (moved == 0) {
+    if (fn->owned_vars[at - 1].moved == 0) {
       fn_own(fn, scope, value);
+    } else {
+      fn_disown(fn, value); /* an exit before the move owned it: the settle after the scope ends takes over */
+    }
+  }
+}
+
+/* A record that handed a field on closes the resources it still holds, last field first, and releases the rest. It does
+ * so after the scope's other owners ended: the record is declared before what it handed its field to. */
+static void settle_moved_vars(LowerFn *fn, uint32_t scope) {
+  for (uint32_t at = fn->nowned_vars; at > 0; at--) {
+    const LowerOwnedVar *entry = &fn->owned_vars[at - 1];
+    if (entry->scope != scope || entry->released || entry->pinned != MIR_NONE || entry->moved == 0) {
       continue;
     }
-    /* A record that handed a field on releases the fields it still holds. */
-    const MirImm mask = {.tag = MI_TYPEMASK, .a = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->id, .b = moved};
+    const MirValue value = mir_b_use_var(&fn->b, entry->var);
+    uint32_t handled = entry->moved;
+    if (entry->has_mask && entry->checked != MS_TY_NONE) {
+      handled |= fn_close_left_fields(fn, value, entry->checked, 0, NULL, entry->moved, mir_b_use_var(&fn->b, entry->mask));
+    }
+    const MirImm mask = {.tag = MI_TYPEMASK, .a = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, value))->id, .b = handled};
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, mask, MIR_NONE);
   }
 }
@@ -60,14 +76,26 @@ bool fn_scope_own_var(LowerFn *fn, MirVar var) {
       return fn_fail(fn, "too many mutable variables are open at once");
     }
   }
-  fn->owned_vars[fn->nowned_vars++] = (LowerOwnedVar){fn_scope(fn), var, 0, false, MIR_NONE};
+  LowerOwnedVar *entry = &fn->owned_vars[fn->nowned_vars++];
+  *entry = (LowerOwnedVar){.scope = fn_scope(fn), .var = var, .checked = MS_TY_NONE, .pinned = MIR_NONE};
+  if (mir_ty_data(fn->cx->module, fn->b.vars.ptr[var].ty)->kind == MK_TYPE) {
+    entry->mask = mir_b_declare_var(&fn->b, MIR_INT, MM_MOVE);
+    entry->has_mask = true;
+    mir_b_def_var(&fn->b, entry->mask, mir_b_iconst(&fn->b, 0));
+  }
   return true;
 }
 
-void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field) {
+void fn_scope_var_moved(LowerFn *fn, MirVar var, uint32_t field, MsTy checked) {
   for (uint32_t at = fn->nowned_vars; at > 0 && field < 32; at--) {
     if (fn->owned_vars[at - 1].var == var) {
       fn->owned_vars[at - 1].moved |= UINT32_C(1) << field;
+      fn->owned_vars[at - 1].checked = checked;
+      if (fn->owned_vars[at - 1].has_mask) { /* the path taken records the move: another path may keep the field */
+        const MirVar mask = fn->owned_vars[at - 1].mask;
+        const MirValue bit = mir_b_iconst(&fn->b, (int64_t)(UINT64_C(1) << field));
+        mir_b_def_var(&fn->b, mask, mir_b_binop(&fn->b, MOP_Or, mir_b_use_var(&fn->b, mask), bit));
+      }
       return;
     }
   }
@@ -114,6 +142,7 @@ static void emit_end(LowerFn *fn, uint32_t scope, uint32_t keep) {
   }
   const MirImm imm = {.tag = MI_SCOPE, .a = scope, .b = 0};
   (void)mir_b_emit(&fn->b, MOP_ScopeEnd, NULL, 0, imm, MIR_NONE);
+  settle_moved_vars(fn, scope);
   for (uint32_t at = 0; at < fn->nowned_vars; at++) {
     LowerOwnedVar *entry = &fn->owned_vars[at];
     if (entry->pinned != MIR_NONE && scope_depth(fn, entry->scope) < keep) {

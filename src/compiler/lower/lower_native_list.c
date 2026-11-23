@@ -288,3 +288,21 @@ bool fn_native_closing_take(LowerFn *fn, const MsExpr *place, MirValue slot, MsT
   *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
   return true;
 }
+
+/* `fn(comparator, ptr, ptr) -> int` for the runtime sort: loads the two element slots and calls the source comparator
+ * on them. `sort.cmp` is what `opt_inline_specialize_sort_thunks` and `opt_sortgen` recognise; a comparator the module
+ * knows is called directly there. MIR_NONE when the build fails. */
+uint32_t fn_sort_thunk(LowerFn *fn, MirTy elem, MirTy closure) {
+  const MirParam params[3] = {{closure, MM_BORROW}, {MIR_PTR, MM_BORROW}, {MIR_PTR, MM_BORROW}};
+  MirBuilder b;
+  mir_b_init(&b, fn->cx->module, mir_name(fn->cx->module, ms_span_of_text("sort.cmp")), params, 3, MIR_INT);
+  mir_b_func(&b)->sort = MSORT_GENERIC;
+  MirValue args[3];
+  mir_b_params(&b, args, 3);
+  const MirImm of_elem = {.tag = MI_TY, .a = elem};
+  const MirValue call[3] = {args[0], mir_b_emit(&b, MOP_Load, &args[1], 1, of_elem, elem),
+                            mir_b_emit(&b, MOP_Load, &args[2], 1, of_elem, elem)};
+  mir_b_ret(&b, mir_b_emit(&b, MOP_CallInd, call, 3, (MirImm){0}, MIR_INT));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}

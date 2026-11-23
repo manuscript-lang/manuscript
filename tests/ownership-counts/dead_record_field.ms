@@ -1,5 +1,5 @@
-// expect-debug: allocs=6 alloc_bytes=210
-// expect-release: allocs=6 alloc_bytes=210
+// expect-debug: allocs=6 alloc_bytes=226
+// expect-release: allocs=6 alloc_bytes=226
 // The caller's `p` is dead after the call, but `left_of` reads it borrowed, so its
 // clone still allocates. Passing a dead argument by move to a function that only clones
 // from it should lower both counts.

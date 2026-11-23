@@ -12,7 +12,7 @@ typedef struct Names {
 static const char *const ALWAYS_KNOWN[] = {"..", "_", "self",     "fixture",  "print",     "__LINE__", "__FILE__", "Equal",
                                            "Stringable", "Comparable", "Hashable", "Clonable", "Optional",
                                            "Result",   "Error",    "List",      "Map",      "Set",
-                                           "ListEntry", "MapEntry"};
+                                           "ListEntry", "MapEntry",  "ok_or"};
 
 static bool always_known(MsSpan text) {
   for (size_t index = 0; index < MS_COUNT_OF(ALWAYS_KNOWN); index++) {
