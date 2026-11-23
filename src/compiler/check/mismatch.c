@@ -103,7 +103,7 @@ static bool number_conversion_hint(const Body *body, MsStrBuild *out, MsTy actua
   if (to_float) {
     ms_strbuild_append_text(out, "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value");
   } else if (to_int) {
-    ms_strbuild_append_text(out, "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)");
+    ms_strbuild_append_text(out, "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get_or(0)");
   } else if (to_text) {
     show(body, out, actual);
     ms_strbuild_append_text(out, " does not convert to String implicitly; interpolate it into text, e.g. f\"{value}\"");

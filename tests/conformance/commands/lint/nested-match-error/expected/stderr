@@ -1,4 +1,4 @@
-<DIR>/main.ms:2:5: warning MSL108: Matching an Optional with only a payload arm and none; use 'if value := ...:' with 'else:', or an Optional method such as get(default) or map
+<DIR>/main.ms:2:5: warning MSL108: Matching an Optional with only a payload arm and none; use 'if value := ...:' with 'else:', or an Optional method such as get_or(default) or map
    |
  2 |     match a:
    |     ^
@@ -6,7 +6,7 @@
    |
  4 |             match b:
    |             ^
-<DIR>/main.ms:4:13: warning MSL108: Matching an Optional with only a payload arm and none; use 'if value := ...:' with 'else:', or an Optional method such as get(default) or map
+<DIR>/main.ms:4:13: warning MSL108: Matching an Optional with only a payload arm and none; use 'if value := ...:' with 'else:', or an Optional method such as get_or(default) or map
    |
  4 |             match b:
    |             ^

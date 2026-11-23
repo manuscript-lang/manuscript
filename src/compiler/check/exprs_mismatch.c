@@ -136,7 +136,7 @@ static void append_hint(const Body *body, MsStrBuild *text, MsBinaryOp op, MsTy 
         "convert the Int with value.to_float(), or the Float with value.truncate_to_int() (returns Int?)");
   } else if (op == MS_B_MUL && text_times_int(body, a, b)) {
     ms_strbuild_append_text(
-        text, "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)");
+        text, "to repeat text write text.repeat(count), which returns a String");
   } else {
     ms_strbuild_append_text(text, "convert one side so both have one type (e.g. interpolate into text with "
                                   "f\"{value}\", or convert between Int and Float)");

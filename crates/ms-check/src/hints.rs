@@ -381,7 +381,7 @@ pub fn promise_use_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> S
 pub fn number_conversion_hint(syms: ms_syntax::Names, actual: &Ty, expected: &Ty) -> String {
     match (syms.str(actual.id), syms.str(expected.id)) {
         ("Int", "Float") => "Int does not convert to Float implicitly; write a Float literal such as 3.0, or call to_float() on an Int value".to_string(),
-        ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get(0)".to_string(),
+        ("Float", "Int") => "Float does not convert to Int implicitly; truncate_to_int() returns Int?, so unwrap it, e.g. value.truncate_to_int().get_or(0)".to_string(),
         ("Int" | "Float" | "Bool", "String") => format!(
             "{actual_t} does not convert to String implicitly; interpolate it into text, e.g. f\"{{value}}\""
         , actual_t = actual.display(syms)),
@@ -1185,7 +1185,7 @@ pub fn text_repeat_hint(a: &Ty, b: &Ty) -> String {
     if (a.is(Builtin::String) && b.is(Builtin::Int))
         || (a.is(Builtin::Int) && b.is(Builtin::String))
     {
-        "to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)".to_string()
+        "to repeat text write text.repeat(count), which returns a String".to_string()
     } else {
         String::new()
     }

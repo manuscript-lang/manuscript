@@ -99,7 +99,7 @@ static bool write_lock(Install *in, MsSpan lock_root, const MsResolved *resolved
   const bool same = ms_file_read(path, &current) && ms_span_equal(ms_bytes_span(&current), text);
   ms_bytes_free(&current);
   if (!same && !ms_file_write(path, text)) {
-    *error = ms_message_format(in->arena, "write %S: cannot write it", path);
+    *error = ms_message_format(in->arena, "cannot write %S; check that it is writable", path);
     return false;
   }
   return true;
@@ -215,7 +215,7 @@ int ms_install_command(int argc, char **argv) {
         span_list_push(&update, ms_span_of_text(argv[++i]));
       }
     } else if (arg.len > 0 && arg.ptr[0] == '-') {
-      status = report("install", ms_message_format(&arena, "unknown option %S; see ms install --help", arg));
+      status = report("install", ms_message_format(&arena, "unknown option %S; run 'ms help install' for its options", arg));
     } else {
       manifest = absolute(&arena, arg);
     }
@@ -239,7 +239,7 @@ int ms_install_command(int argc, char **argv) {
 static bool read_text(MsArena *arena, MsSpan path, MsSpan *text, MsSpan *error) {
   MsBytes bytes = {0};
   if (!ms_file_read(path, &bytes)) {
-    *error = ms_message_format(arena, "read %S: cannot read it", path);
+    *error = ms_message_format(arena, "cannot read %S; check that it exists and is readable", path);
     return false;
   }
   *text = ms_arena_copy(arena, ms_bytes_span(&bytes));
@@ -249,7 +249,7 @@ static bool read_text(MsArena *arena, MsSpan path, MsSpan *text, MsSpan *error) 
 
 static bool write_text(MsArena *arena, MsSpan path, MsSpan text, MsSpan *error) {
   if (!ms_file_write(path, text)) {
-    *error = ms_message_format(arena, "write %S: cannot write it", path);
+    *error = ms_message_format(arena, "cannot write %S; check that it is writable", path);
     return false;
   }
   return true;
@@ -307,7 +307,7 @@ static bool parse_add(MsArena *arena, int argc, char **argv, AddOptions *o, MsSp
     } else if (ms_span_is_text(arg, "--allow")) {
       o->allow = true;
     } else if (arg.len > 0 && arg.ptr[0] == '-') {
-      *error = ms_message_format(arena, "unknown option %S; see ms add --help", arg);
+      *error = ms_message_format(arena, "unknown option %S; run 'ms help add' for its options", arg);
       ok = false;
     } else if (o->url.len == 0) {
       o->url = arg;
