@@ -1,4 +1,5 @@
 /* Owns test_run.h. */
+#include "cli/files.h"
 #include "cli/test_run.h"
 
 #include <stdio.h>
@@ -20,16 +21,6 @@ typedef struct Supervision {
   uint64_t limit_ms; /* 0: no limit */
   bool killed;
 } Supervision;
-
-static MsSpan read_text(MsArena *arena, MsSpan path) {
-  MsBytes bytes = {0};
-  MsSpan text = {0};
-  if (ms_file_read(path, &bytes)) {
-    text = ms_arena_copy(arena, ms_bytes_span(&bytes));
-  }
-  ms_bytes_free(&bytes);
-  return text;
-}
 
 /* Reads new records; true when a running test is past its limit, which stops the process. */
 static bool supervise(void *context) {
@@ -118,9 +109,9 @@ static void run_together(const TestJob *job, const size_t *indices, size_t count
     run->ended = ms_arena_copy(arena, ms_strbuild_span(&why));
   }
   run->crashed = !supervision.killed;
-  const MsSpan output = read_text(arena, printed);
+  const MsSpan output = ms_cli_read_text(arena, printed);
   (void)fwrite(output.ptr, 1, output.len, stdout);
-  test_records_read(&run->records, read_text(arena, results));
+  test_records_read(&run->records, ms_cli_read_text(arena, results));
   ms_path_remove_tree(folder);
   ms_string_release(&directory);
   ms_strbuild_free(&why);

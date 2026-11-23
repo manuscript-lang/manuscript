@@ -3,6 +3,7 @@
  * runtime wrote and reports it as text or as the versioned JSON document. Port of crates/ms-cli/src/profile.rs; the
  * conversion lives in profile_folded.c. `--allocs` also has the runtime sample allocations (MS_PROFILE_ALLOCS) and
  * reports which functions allocate. */
+#include "cli/files.h"
 #include "cli/profile_command.h"
 
 #include <stdio.h>
@@ -60,23 +61,6 @@ typedef struct Profile {
 } Profile;
 
 static void print_span(FILE *stream, MsSpan text) { (void)fwrite(text.ptr, 1, text.len, stream); }
-
-static MsSpan absolute(MsArena *arena, MsSpan path) {
-  MsString cwd = ms_string_empty();
-  MsStrBuild joined = ms_strbuild_new();
-  if (ms_path_is_absolute(path) || !ms_dir_current(&cwd)) {
-    ms_strbuild_append(&joined, path);
-  } else {
-    ms_path_append_joined(&joined, ms_string_span(&cwd), path);
-  }
-  ms_string_release(&cwd);
-  MsStrBuild cleaned = ms_strbuild_new();
-  ms_path_clean(&cleaned, ms_strbuild_span(&joined));
-  const MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&cleaned));
-  ms_strbuild_free(&joined);
-  ms_strbuild_free(&cleaned);
-  return result;
-}
 
 static void add_artifact(Profile *profile, const char *kind, MsSpan path, const char *state) {
   profile->artifacts[profile->artifact_count++] = (Artifact){.kind = kind, .path = path, .state = state};
@@ -591,7 +575,7 @@ static void print_text_report(const Profile *profile, const MsStrBuild *report) 
 static int build_and_profile(Profile *profile, MsCheckedInput *checked) {
   const MsInvocation *const invocation = profile->invocation;
   profile->display = invocation->output.len > 0 ? invocation->output : ms_span_of_text("profile");
-  profile->output = absolute(profile->arena, profile->display);
+  profile->output = ms_cli_absolute(profile->arena, profile->display);
   profile->program = bundle_file(profile, PROGRAM_NAME);
   profile->folded = bundle_file(profile, "profile.folded");
   profile->allocs = bundle_file(profile, "allocs.folded");

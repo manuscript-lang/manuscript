@@ -1,4 +1,5 @@
 /* Owns the selection of check inputs (check_selection.h). */
+#include "cli/files.h"
 #include "cli/check_selection.h"
 
 #include "base/dir.h"
@@ -9,14 +10,6 @@
 #include "cli/display.h"
 
 MS_LIST_DEFINE(PathList, path_list, MsSpan)
-
-static MsSpan joined(MsArena *arena, MsSpan left, MsSpan right) {
-  MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, left, right);
-  const MsSpan copy = ms_message_from_builder(arena, &path);
-  ms_strbuild_free(&path);
-  return copy;
-}
 
 static int64_t order_spans(uint8_t *env, const uint8_t *a, const uint8_t *b) {
   (void)env;
@@ -58,7 +51,7 @@ static void add_input(MsArena *arena, CheckSelection *out, MsSpan path) {
   if (ms_span_is_text(ms_path_file_name(path), "ms.toml")) {
     MsSpan parent = {0};
     if (ms_display_physical(arena, ms_path_parent(path), &parent)) {
-      canonical = joined(arena, parent, ms_span_of_text("ms.toml"));
+      canonical = ms_cli_joined(arena, parent, ms_span_of_text("ms.toml"));
     }
   }
   for (size_t i = 0; i < out->inputs.len; i++) {
@@ -81,9 +74,9 @@ static bool selectable(MsArena *arena, MsSpan directory, const MsDirEntry *entry
   *is_dir = entry->kind == MS_PATH_DIRECTORY;
   if (*is_dir) {
     return !skipped_directory(name) &&
-           ms_path_kind(joined(arena, joined(arena, directory, name), ms_span_of_text("ms.toml"))) == MS_PATH_MISSING;
+           ms_path_kind(ms_cli_joined(arena, ms_cli_joined(arena, directory, name), ms_span_of_text("ms.toml"))) == MS_PATH_MISSING;
   }
-  const bool linked_directory = entry->kind == MS_PATH_SYMLINK && ms_dir_exists(joined(arena, directory, name));
+  const bool linked_directory = entry->kind == MS_PATH_SYMLINK && ms_dir_exists(ms_cli_joined(arena, directory, name));
   return !linked_directory && ms_span_ends_with(name, ms_span_of_text(".ms"));
 }
 
@@ -117,7 +110,7 @@ static bool walk(MsArena *arena, MsSpan directory, PathList *files, MsSpan *erro
   ms_dir_entries_free(&entries);
   ms_sort((uint8_t *)chosen, count, sizeof(Walked), order_walked, NULL);
   for (size_t i = 0; i < count; i++) {
-    const MsSpan path = joined(arena, directory, chosen[i].name);
+    const MsSpan path = ms_cli_joined(arena, directory, chosen[i].name);
     if (!chosen[i].is_dir) {
       path_list_push(files, path);
     } else if (!walk(arena, path, files, error)) {
@@ -154,7 +147,7 @@ void check_select_inputs(MsArena *arena, const MsSpan *targets, size_t count, Ch
       add_input(arena, out, targets[i]);
       continue;
     }
-    const MsSpan manifest = joined(arena, targets[i], ms_span_of_text("ms.toml"));
+    const MsSpan manifest = ms_cli_joined(arena, targets[i], ms_span_of_text("ms.toml"));
     if (ms_path_kind(manifest) != MS_PATH_MISSING) {
       add_input(arena, out, manifest);
     } else {

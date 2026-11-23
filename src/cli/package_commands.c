@@ -1,5 +1,6 @@
 /* Owns the three package commands of package_commands.h: finding the project, installing into the lock, and editing
  * the manifest around it. */
+#include "cli/files.h"
 #include "cli/package_commands.h"
 
 #include <stdio.h>
@@ -32,21 +33,13 @@ static int report(const char *command, MsSpan message) {
   return 1;
 }
 
-static MsSpan joined(MsArena *arena, MsSpan left, MsSpan right) {
-  MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, left, right);
-  const MsSpan copy = ms_message_from_builder(arena, &path);
-  ms_strbuild_free(&path);
-  return copy;
-}
-
 /* `path` made absolute against the working directory. */
 static MsSpan absolute(MsArena *arena, MsSpan path) {
   MsString here = ms_string_empty();
   if (ms_path_is_absolute(path) || !ms_dir_current(&here)) {
     return path;
   }
-  const MsSpan full = joined(arena, ms_string_span(&here), path);
+  const MsSpan full = ms_cli_joined(arena, ms_string_span(&here), path);
   ms_string_release(&here);
   return full;
 }
@@ -60,7 +53,7 @@ static bool find_project(MsArena *arena, MsSpan *manifest) {
   MsSpan directory = ms_arena_copy(arena, ms_string_span(&here));
   ms_string_release(&here);
   for (;;) {
-    const MsSpan candidate = joined(arena, directory, ms_span_of_text("ms.toml"));
+    const MsSpan candidate = ms_cli_joined(arena, directory, ms_span_of_text("ms.toml"));
     if (ms_path_kind(candidate) != MS_PATH_MISSING) {
       *manifest = candidate;
       return true;
@@ -85,7 +78,7 @@ typedef struct Install {
 } Install;
 
 static bool write_lock(Install *in, MsSpan lock_root, const MsResolved *resolved, MsSpan *error) {
-  const MsSpan path = joined(in->arena, lock_root, ms_span_of_text("ms.lock"));
+  const MsSpan path = ms_cli_joined(in->arena, lock_root, ms_span_of_text("ms.lock"));
   if (resolved->ncopies == 0) {
     ms_path_remove(path);
     return true;
