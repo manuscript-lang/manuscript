@@ -230,6 +230,8 @@ void *ms_alloc_zeroed(size_t size) {
     count(size);
     void *fresh = checked(mi_zalloc(size));
     live_add(usable(fresh));
+    block_add(1);
+    trace_alloc(fresh);
     return fresh;
   }
   void *block = ms_alloc(size);

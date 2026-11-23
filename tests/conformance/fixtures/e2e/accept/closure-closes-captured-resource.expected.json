@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "after parameter call\nafter local call\nclose 3\nbound 6\nclose 2\nclose 1\n",
+    "stderr": ""
+  }
+}
