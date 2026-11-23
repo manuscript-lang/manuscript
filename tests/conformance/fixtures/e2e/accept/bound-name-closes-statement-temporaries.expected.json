@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "phase": "run",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "stdout": "closed pb\nclosed pa\n--field\nclosed l2\nclosed l1\n--index\npa l2\n",
+    "stderr": ""
+  }
+}
