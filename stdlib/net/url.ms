@@ -1,4 +1,6 @@
 import (
+	panic from "@std/core.ms",
+	JsonValue from "@std/data/json.ms",
 	msstd_url_decode_component,
 	msstd_url_encode_component,
 	msstd_url_format,
@@ -51,6 +53,11 @@ export fn decode_component(text: String) String!:
 // Percent-encodes one URL component using UTF-8 bytes.
 export fn encode_component(text: String) String:
 	return msstd_url_encode_component(text)
+
+// Writes the formatted URL as a JSON string; components `format` rejects fault.
+fn Url.to_json() JsonValue:
+	text := format(self).get_or_else(fn cause: panic(f"Url.to_json: {cause.message}"))
+	return JsonValue.StringValue(text)
 
 // Formats URL components as an absolute hierarchical URL. Missing or malformed schemes
 // and hostless relative paths return EINVAL, as do other invalid components.
