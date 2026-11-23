@@ -5,8 +5,10 @@
 
 #include <stdio.h>
 
+#include "base/arena.h"
 #include "base/list.h"
 #include "base/strbuild.h"
+#include "tooling/json_value.h"
 
 /* ---- framing ---- */
 
@@ -27,6 +29,9 @@ bool lsp_uri_is_standard_library(MsSpan uri);
 /* The module name of a `manuscript-stdlib:` URI. Both spellings name one module: the server writes
  * `manuscript-stdlib:///core.ms`, and a client that normalizes URIs (VS Code) sends back `manuscript-stdlib:/core.ms`. */
 bool lsp_uri_standard_module(MsSpan uri, MsSpan *name);
+/* Rewrites every `uri` member below `node` that names a bundled module to `manuscript-stdlib:///<module>`, the one
+ * spelling the server writes, so a request from a client that normalizes URIs reaches each handler in that form. */
+void lsp_normalize_uris(MsArena *arena, MsJson *node);
 /* A `file:` URI that does not decode to a path. */
 bool lsp_uri_is_malformed_file(MsSpan uri);
 /* The path of a `file:` URI; any other URI is its own name. Appended to `out`. */

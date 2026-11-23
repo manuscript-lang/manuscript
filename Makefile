@@ -25,6 +25,7 @@ TOOLS := doctor view-matrix scaling-check leak-check cancel-sweep perf-counts re
 build:
 	cmake --preset ci
 	cmake --build --preset ci
+	@$(MS) run tools/fetch-llvm-lib.ms >/dev/null || echo "warning: the shared LLVM library was not fetched; ms uses the opt and llc child processes (make llvm-lib retries)"
 
 # The conformance corpus replayed with the ms just built (tools/conform-run.ms).
 conform: build
