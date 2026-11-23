@@ -1,7 +1,7 @@
 // conform: tags=interfaces,scope-cleanup,tier-core
 // conform: phase=run
 // An interface value that owns a resource closes it where it drops, through its vtable: a bound value, a returned
-// one and the elements of a list.
+// one and the elements of a list, which close last to first like a list of plain resources.
 type Door:
 	name: String
 
@@ -22,7 +22,7 @@ export fn main() Int:
 	print(a.label())
 	b := make()
 	print(b.label())
-	xs: List[Labeled] := [Door("listed")]
+	xs: List[Labeled] := [Door("l1"), Door("l2")]
 	print(xs.length())
 	print("end")
 	return 0
