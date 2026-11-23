@@ -11,12 +11,12 @@
       "tests": [
         {
           "index": 0,
-          "name": "promise-owned-captures.ms::a promise owns the resource moved into it and closes it when it ends",
+          "name": "promise-owned-captures.ms::a promise that stays in its function reads the resource in place, and the scope closes it",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "promise-owned-captures.ms::a promise dropped before waiting still closes what it owns",
+          "name": "promise-owned-captures.ms::a promise dropped before waiting leaves the resource to its scope",
           "status": "passed"
         }
       ],
@@ -30,7 +30,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN promise-owned-captures.ms::a promise owns the resource moved into it and closes it when it ends\nPASS promise-owned-captures.ms::a promise owns the resource moved into it and closes it when it ends\nRUN promise-owned-captures.ms::a promise dropped before waiting still closes what it owns\nPASS promise-owned-captures.ms::a promise dropped before waiting still closes what it owns\n2 tests, 0 failed\n",
+      "stdout": "RUN promise-owned-captures.ms::a promise that stays in its function reads the resource in place, and the scope closes it\nPASS promise-owned-captures.ms::a promise that stays in its function reads the resource in place, and the scope closes it\nRUN promise-owned-captures.ms::a promise dropped before waiting leaves the resource to its scope\nPASS promise-owned-captures.ms::a promise dropped before waiting leaves the resource to its scope\n2 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [

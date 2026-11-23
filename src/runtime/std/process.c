@@ -327,26 +327,6 @@ uint8_t msstd_process_info(MsProcessInfo *out, MsString *err) {
   return status;
 }
 
-uint8_t msstd_process_memory_usage(MsProcessMemory *out, MsString *err) {
-  size_t resident = 0;
-  const int code = uv_resident_set_memory(&resident);
-  if (code != 0) {
-    return fail_host(code, "resident memory", err);
-  }
-  int64_t used = 0;
-  int64_t committed = 0;
-  ms_core_heap_stats(&used, &committed);
-  const int64_t total = counted(resident);
-  *out = (MsProcessMemory){
-    .heap_used = used,
-    .heap_total = committed,
-    .heap_system = committed,
-    .external = total > committed ? total - committed : 0,
-    .resident = total,
-  };
-  return succeed(err);
-}
-
 uint8_t msstd_process_runtime_counts(MsProcessCounts *out) {
   /* Allocations are the calling thread's; list and string copies are not counted; the executed operations come from an `--ops` build. */
   *out = (MsProcessCounts){.operations = ms_core_operations()};

@@ -47,8 +47,20 @@ bool lsp_hover_fallback(const MsNames *names, const MsModule *tree, size_t offse
   MsSpan text;
   (void)text_of(&finder, finder.best, &text);
   out->node = finder.best->id;
+  out->expr = finder.best;
   out->text = text;
   out->offset = finder.best->pos.offset;
   out->end = finder.best->pos.offset + text.len;
+  return true;
+}
+
+bool lsp_match_never(const MsExpr *expr) {
+  if (expr->kind != MS_E_MATCH || expr->u.match.arms.len == 0) return false;
+  for (uint32_t i = 0; i < expr->u.match.arms.len; i++) {
+    const MsArm *arm = expr->u.match.arms.ptr[i];
+    if (arm->value != NULL || arm->body.len == 0) return false;
+    const MsStmt *last = arm->body.ptr[arm->body.len - 1];
+    if (last->kind != MS_S_RETURN && last->kind != MS_S_BREAK && last->kind != MS_S_CONTINUE) return false;
+  }
   return true;
 }

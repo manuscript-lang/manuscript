@@ -20,19 +20,22 @@ fn size(door: Door) Int!:
 fn slow(door: Door) Int!:
 	return ok(door.name.length())
 
-test "a promise owns the resource moved into it and closes it when it ends":
-	dir := temporary_directory("promise-owned")?
-	log := dir + "/log"
+fn run_with_door(log: String) Int!:
 	door := Door(name: "front", log: log.clone())
 	p := promise(fn: size(door))
-	expect_equal(p.wait()?, 5)?
+	return p.wait()
+
+test "a promise that stays in its function reads the resource in place, and the scope closes it":
+	dir := temporary_directory("promise-owned")?
+	log := dir + "/log"
+	expect_equal(run_with_door(log.clone())?, 5)?
 
 	data := read_file(log, none).wait()?
 	text := data.decode_utf8().get_or("")
 	expect_equal(text, "closed front;")?
 	remove(dir, true)?
 
-test "a promise dropped before waiting still closes what it owns":
+test "a promise dropped before waiting leaves the resource to its scope":
 	dir := temporary_directory("promise-dropped")?
 	log := dir + "/log"
 
