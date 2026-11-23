@@ -11,7 +11,7 @@ test "optional members":
 	expect_true(((absent == null) and (absent == null)))?
 	expect_true(((present or 7) == 3))?
 	expect_true(((absent or 7) == 7))?
-	expect_true(((absent or fallback()) == 9))?
+	expect_true((absent or fallback()) == 9)?
 	expect_true((present.map(fn(value: Int) Int: value + 1).get() == 4))?
 
 	var items = List[Int]()

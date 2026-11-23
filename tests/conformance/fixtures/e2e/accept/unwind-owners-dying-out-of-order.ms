@@ -6,9 +6,10 @@ import (
 	expect_equal, expect_fault from "@std/test/test.ms",
 )
 
-// Owners die in a different order than they were registered while later calls can fault. Each
-// dead owner's cleanup entry is cancelled and the live ones stay registered, so every resource
-// closes exactly once whether the function returns or faults.
+// Owners die in a different order than they were registered while later calls can
+// fault. Each dead owner's cleanup entry is cancelled and the live ones stay
+// registered, so every resource closes exactly once whether the function returns or
+// faults.
 type Res:
 	id: Int
 	log: String
@@ -32,12 +33,13 @@ fn run(log: String, fail: Bool) Int:
 
 fn closed(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok((bytes.decode_utf8() or ""))
+	return ok(bytes.decode_utf8() or "")
 
 test "resources registered together close once when the function returns":
 	temp := temporary("unwind-order-")?
 	log := f"{temp.path()}/log"
 	expect_equal(run(log.clone(), false), 10)?
+
 	text := closed(log)?
 	expect_equal(text.length(), 8)?
 	for id in ["1,", "2,", "3,", "4,"]:
@@ -48,6 +50,7 @@ test "resources registered together close once when a later call faults":
 	log := f"{temp.path()}/log"
 	message := expect_fault(fn: void run(log.clone(), true))?
 	expect_equal(message, "touch failed")?
+
 	text := closed(log)?
 	expect_equal(text.length(), 8)?
 	for id in ["1,", "2,", "3,", "4,"]:
