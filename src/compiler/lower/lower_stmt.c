@@ -200,7 +200,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const bool fresh = !reads_var && (fn_fresh_owner(fn, value) || is_empty_optional(fn, value));
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
-  if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
+  const bool in_cell = stmt->u.bind.is_mutable && fn->closing != NULL && local < fn->nvars &&
+                       mir_ty_data(fn->cx->module, ty)->kind == MK_TYPE && mir_needs_drop(fn->cx->module, ty) && fresh;
+  if (shared || in_cell || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
                  (!mir_needs_drop(fn->cx->module, ty) || fresh))) {
     return fn_bind_closing_in(fn, fn->bind_scope != 0 ? fn->bind_scope - 1 : fn_scope(fn), local,
                               ms_facts_type(fn->facts, pattern->id), value, stmt->u.bind.is_mutable);
@@ -397,6 +399,10 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
   const MsExpr *base = place->u.member.left;
   if (ref == NULL || ref->kind != MS_REF_FIELD) {
     return fn_fail(fn, "this member is not a record field");
+  }
+  MirValue address = MIR_NONE;
+  if (fn_field_address(fn, place, &address)) {
+    return fn_store_field_in_place(fn, place, address, value);
   }
   MirValue record = MIR_NONE;
   if (!fn_take_place(fn, base, &record)) {

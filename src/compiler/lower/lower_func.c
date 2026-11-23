@@ -492,8 +492,9 @@ static void bind_params(LowerFn *fn, const LowerTarget *target) {
   mir_b_params(&fn->b, values, count);
   fn->param_vars = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirVar, (size_t)count + 1);
   for (uint32_t index = 0; index < count; index++) {
-    if ((params[index].flags & MS_PARAM_VAR) != 0 && index < 32 && (fn->shared_params >> index & 1u) != 0 &&
-        index < LOWER_MAX_CLOSING_PARAMS) {
+    if ((params[index].flags & MS_PARAM_VAR) != 0 && index < 32 && index < LOWER_MAX_CLOSING_PARAMS &&
+        ((fn->shared_params >> index & 1u) != 0 ||
+         mir_ty_data(fn->cx->module, fn_type(fn, params[index].ty))->kind == MK_TYPE)) {
       /* A lambda changes it: the value stays in the caller's slot, which the closure borrows. */
       const MirTy ty = fn_type(fn, params[index].ty);
       fn->param_vars[index] = mir_b_declare_var(&fn->b, ty, MM_BORROW);

@@ -486,6 +486,10 @@ typedef struct VarSlot {
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 /* A field of a closing local, as its address in the local's slot (lower_field.c). */
 bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr);
+/* Assigns `value` to the field at `address` where it lies: the old one is dropped or closed first. */
+bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address, MirValue value);
+/* Reads the field `expr` names where it lies, when its record stays in a cell. */
+bool fn_read_field_in_place(LowerFn *fn, const MsExpr *expr, MirValue *value);
 bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
 /* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */

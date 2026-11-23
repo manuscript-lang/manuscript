@@ -76,6 +76,45 @@ bool fn_take_field(LowerFn *fn, const MsExpr *place, MirValue *record, MirValue 
   return true;
 }
 
+/* Whether every leaf of `ty` is a whole word, whatever the layout later decides: a bool, a small number, an optional's
+ * tag, an alternative's tag and a value object each have a smaller leaf. */
+static bool word_leaves(const MirModule *module, MirTy ty, uint32_t depth) {
+  const MirTyData *data = mir_ty_data(module, ty);
+  switch ((MirTyKind)data->kind) {
+  case MK_INT: case MK_FLOAT: case MK_UINT64: case MK_STR: case MK_BYTES: case MK_PTR: case MK_LIST: case MK_FN: case MK_IFACE:
+    return true;
+  case MK_OBJ:
+    return data->obj_class == MIR_OBJ_HANDLE;
+  case MK_TYPE: {
+    const MirTypeDef *def = &module->type_defs.ptr[data->id];
+    for (uint32_t index = 0; index < def->nfields; index++) {
+      if (depth == 0 || !word_leaves(module, def->fields[index].ty, depth - 1)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  default:
+    return false;
+  }
+}
+
+/* Whether a field is laid out in its record as it is alone: the record keeps all its leaves in one run, so a field of
+ * several leaves that follows a smaller leaf (after a bool) starts off its own alignment and its leaves lie at other
+ * offsets than the field's own cell has. A single leaf, or a field after whole words only, is the same either way. */
+static bool field_cell_exact(const MirModule *module, uint32_t record, uint32_t field) {
+  const MirTypeDef *def = &module->type_defs.ptr[record];
+  if (mir_is_scalar(module, def->fields[field].ty)) {
+    return true;
+  }
+  for (uint32_t index = 0; index < field; index++) {
+    if (!word_leaves(module, def->fields[index].ty, 4)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* The address of the field `place` names inside a resource local that lives in its closing slot, for a callee that
  * changes it where it lies: the record stays in its slot, so the local's cleanup stays registered through a fault in
  * the call. False when `place` is not a field path rooted in such a local. */
@@ -85,7 +124,13 @@ bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr) {
   uint32_t count = 0;
   MirValue cell;
   MirTy record_ty;
-  if (!field_path(fn, place, fields, &count, &root) || !fn_closing_local(fn, root, &cell, &record_ty)) {
+  MirVar var;
+  if (!field_path(fn, place, fields, &count, &root)) {
+    return false;
+  }
+  if (fn_closing_param(fn, root, &cell, &var)) {
+    record_ty = fn->b.vars.ptr[var].ty;
+  } else if (!fn_closing_local(fn, root, &cell, &record_ty)) {
     return false;
   }
   MirValue at = cell;
@@ -95,6 +140,9 @@ bool fn_field_address(LowerFn *fn, const MsExpr *place, MirValue *addr) {
       return false;
     }
     const MsRef *ref = ms_facts_ref(fn->facts, fields[index]->id);
+    if (!field_cell_exact(fn->cx->module, data->id, ref->index)) {
+      return false;
+    }
     const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
     at = mir_b_emit(&fn->b, MOP_PtrField, &at, 1, imm, MIR_PTR);
     record_ty = fn_type(fn, ms_facts_type(fn->facts, fields[index]->id));
@@ -177,4 +225,57 @@ bool fn_same_member_path(LowerFn *fn, const MsExpr *a, const MsExpr *b) {
   const MsRef *ra = a->kind == MS_E_NAME ? ms_facts_ref(fn->facts, a->id) : NULL;
   const MsRef *rb = b->kind == MS_E_NAME ? ms_facts_ref(fn->facts, b->id) : NULL;
   return ra != NULL && rb != NULL && ra->kind == rb->kind && ra->local == rb->local;
+}
+
+/* A field assigned where it lies, in a record that stays in its cell: the old value leaves the field, is dropped or
+ * closed, and the new one is stored over it, with nothing between that can fault. */
+bool fn_store_field_in_place(LowerFn *fn, const MsExpr *place, MirValue address, MirValue value) {
+  const MirTy field_ty = fn_type(fn, ms_facts_type(fn->facts, place->id));
+  const bool owns = mir_needs_drop(fn->cx->module, field_ty);
+  bool moved_out = false; /* an earlier bind took the field: there is nothing to drop */
+  for (uint32_t at = 0; at < fn->nmoved_fields; at++) {
+    if (fn_same_member_path(fn, fn->moved_fields[at], place)) {
+      moved_out = true;
+      fn->moved_fields[at] = fn->moved_fields[--fn->nmoved_fields];
+      break;
+    }
+  }
+  if (!moved_out && owns) {
+    const MirValue view = mir_b_emit(&fn->b, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = field_ty}, field_ty);
+    const MirValue old = mir_b_emit(&fn->b, MOP_MoveOut, &view, 1, (MirImm){0}, field_ty);
+    const MsTy checked = ms_facts_type(fn->facts, place->id);
+    if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
+      if (!fn_close_replaced(fn, checked, old)) {
+        return false;
+      }
+    } else {
+      (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    }
+  }
+  const MirValue stored[2] = {address, value};
+  (void)mir_b_emit(&fn->b, owns ? MOP_Put : MOP_Store, stored, 2, (MirImm){0}, MIR_NONE);
+  return !fn->failed;
+}
+
+/* Whether `expr` is a field path rooted in a `var` parameter that stays in the caller's cell. */
+static bool field_of_param_cell(LowerFn *fn, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  MirValue slot;
+  MirVar var;
+  return fn_closing_param(fn, root, &slot, &var);
+}
+
+/* A field of a record that lies in its cell, read where it lies; a field moved out of the caller's record is read the
+ * same way (the move marks the hole). False when the field is read some other way. */
+bool fn_read_field_in_place(LowerFn *fn, const MsExpr *expr, MirValue *value) {
+  MirValue address = MIR_NONE;
+  if ((ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE && !field_of_param_cell(fn, expr)) || !fn_field_address(fn, expr, &address)) {
+    return false;
+  }
+  const MirTy ty = fn_type(fn, ms_facts_type(fn->facts, expr->id));
+  *value = fn_emit(fn, MOP_Load, &address, 1, (MirImm){.tag = MI_TY, .a = ty}, ty);
+  return true;
 }
