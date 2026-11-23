@@ -271,7 +271,9 @@ static void note_call_keeps(Borrows *pass, const MsExpr *call) {
   }
   if (fact != NULL && fact->arg_count != 0 && callee->kind == MS_E_MEMBER && fact->args[0].source == MS_ARG_WRITTEN &&
       fact->args[0].node.node == callee->u.member.left->id &&
-      ((fact->args[0].flags & MS_PARAM_MOVE) != 0 || ms_own_consuming_method(pass->program, &fact->callee))) {
+      ((fact->args[0].flags & MS_PARAM_MOVE) != 0 || ms_own_consuming_method(pass->program, &fact->callee)) &&
+      !ms_own_result_is_borrowed(pass->program, fact->callee.decl.module, fact->callee.decl.node)) {
+    /* A method that answers a view of its receiver (`get_or`) keeps nothing: whatever holds the view does. */
     note_keep(pass, callee->u.member.left);
   }
 }

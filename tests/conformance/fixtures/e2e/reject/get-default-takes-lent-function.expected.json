@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "`get` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place",
-        "position": {
-          "file": "get-default-takes-lent-function.ms",
-          "line": 7,
-          "column": 14,
-          "offset": 311
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/get-default-takes-lent-function.ms:7:14: type: `get` borrows `m`, which this position would keep; store `.clone()` of it, or use it in place\n   |\n 7 |     return m.get(7).get_or(fn: s + \"y\")()\n   |              ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked get-default-takes-lent-function.ms\n",
+      "stderr": ""
     }
   }
 }
