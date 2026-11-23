@@ -40,6 +40,9 @@ static void declare_pattern(Scan *scan, const MsPattern *pattern) {
   for (uint32_t index = 0; pattern->kind == MS_P_LIST && index < pattern->u.list.len; index++) {
     declare_pattern(scan, pattern->u.list.ptr[index]);
   }
+  for (uint32_t index = 0; pattern->kind == MS_P_TYPE && index < pattern->u.fields.len; index++) {
+    declare_pattern(scan, pattern->u.fields.ptr[index].pattern);
+  }
 }
 
 /* Notes that the lambda changes the captured variable `ref` names (`name`, 0 for a statement's own target). */

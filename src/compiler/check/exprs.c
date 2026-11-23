@@ -808,9 +808,11 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   const MsTy saved_hint = body->hint;
   body->hint = result == MS_TY_NONE && shaped ? ms_ty_result(types, expected) : MS_TY_NONE;
   const MsTy saved_returned = body->returned;
+  const MsExpr *const saved_returned_expr = body->returned_expr;
   const bool saved_saw = body->saw_return;
   body->result = result;
   body->returned = MS_TY_NONE;
+  body->returned_expr = NULL;
   body->saw_return = false;
   body_block(body, expr->u.lambda.body);
   const bool unknown_return = result == MS_TY_NONE && body->saw_return && body->returned == MS_TY_NONE;
@@ -819,6 +821,7 @@ static MsTy lambda_expr(Body *body, const MsExpr *expr, MsTy expected) {
   body->result = saved_result;
   body->hint = saved_hint;
   body->returned = saved_returned;
+  body->returned_expr = saved_returned_expr;
   body_scope_reset(body, mark);
   const MsName fn = intern(body, "fn");
   const MsTyDesc desc = {.name = fn, .id = fn, .kind = MS_TY_FUNCTION, .params = params.ptr,
