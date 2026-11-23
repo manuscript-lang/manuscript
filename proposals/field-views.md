@@ -8,7 +8,7 @@
 
 ## Status
 
-Proposal, 2026-11-23, checked against `e47e2b0d0b`. Review (skeptical subagent): revise; this text covers its findings (slot-parked chains, unwind of a half-updated record, spills, `MIR_E_OWNERSHIP` aliasing). The stdlib is frozen: no reshaping of `yaml.ms` (coordinator, 2026-11-23).
+Stages 1 and 2 implemented 2026-11-23 (`opt_fieldview.c`); proposal, 2026-11-23, checked against `e47e2b0d0b`. Review (skeptical subagent): revise; this text covers its findings (slot-parked chains, unwind of a half-updated record, spills, `MIR_E_OWNERSHIP` aliasing). The stdlib is frozen: no reshaping of `yaml.ms` (coordinator, 2026-11-23).
 
 ## Problem
 
