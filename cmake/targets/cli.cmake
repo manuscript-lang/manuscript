@@ -57,9 +57,9 @@ add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWO
 add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
 
-# `ms search_symbol` over more files than its budget answers from the first ones and says so.
-add_test(NAME search_budget COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-budget
-  -P ${CMAKE_SOURCE_DIR}/cmake/SearchBudget.cmake)
+# `ms search_symbol` over many files searches every one.
+add_test(NAME search_many COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-many
+  -P ${CMAKE_SOURCE_DIR}/cmake/SearchMany.cmake)
 
 # A command whose standard output cannot be written fails. Only Linux has /dev/full to write to.
 if(EXISTS /dev/full)
