@@ -24,6 +24,7 @@ enum {
 struct MsHttpClient {
   atomic_int refs;
   atomic_bool closed;
+  atomic_int handles; /* the HttpClient values (and the network's) that name it, apart from the references of its requests */
   MsHttpClientOptions options;
   MsString roots, certificate, key; /* the options' PEM text, owned */
   CURLM *multi;

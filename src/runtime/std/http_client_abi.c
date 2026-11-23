@@ -25,6 +25,7 @@ typedef struct BodyCell {
 
 static void client_drop(MsObj *object) {
   ClientCell *cell = (ClientCell *)(void *)object;
+  (void)ms_http_client_handle_remove(cell->client);
   ms_http_client_release(cell->client);
   if (cell->policy.release != NULL) {
     cell->policy.release(cell->policy.context);
@@ -54,6 +55,7 @@ MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolic
   ClientCell *cell = ms_alloc_zeroed(sizeof *cell);
   cell->header.drop = client_drop;
   cell->client = ms_http_client_retain(client);
+  ms_http_client_handle_add(client);
   if (policy != NULL) {
     cell->policy = *policy;
     if (policy->retain != NULL) {
@@ -67,8 +69,11 @@ MsObj *ms_http_client_handle(MsHttpClient *client) {
   return ms_http_client_handle_with_policy(client, NULL);
 }
 
+/* True when the client has ended, or when no handle but this one names it any longer: a value dropped without
+ * `close` (a cancelled call unwinding) leaves the network's handle as the client's last owner. */
 bool ms_http_client_handle_closed(const MsObj *handle) {
-  return ms_http_client_closed(client_of(handle)->client);
+  MsHttpClient *client = client_of(handle)->client;
+  return ms_http_client_closed(client) || ms_http_client_handle_count(client) <= 1;
 }
 
 /* ---- waiting through scheduler tokens ---- */

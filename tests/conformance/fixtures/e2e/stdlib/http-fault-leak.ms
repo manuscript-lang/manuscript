@@ -84,6 +84,10 @@ test "a fetch cancelled by its timeout frees the request state its frames own":
 		).wait()
 		if timed_out.is_ok(): return error(Error("a hanging handler answered"))
 
+	// The engine thread frees each cancelled fetch's client after the fetch returns, so
+	// let it drain its queue before measuring.
+	void sleep(500.milliseconds()).wait()
+
 	// The method, URLs, header vectors and pool key leaked about 340 bytes per
 	// cancelled fetch.
 	grown := (memory_usage() | expect_ok?).heap_used - before
