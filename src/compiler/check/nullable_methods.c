@@ -42,16 +42,9 @@ static bool blank(uint8_t c) {
 
 /* Whether the source text before `end` ends with `word`. */
 static bool ends_with(MsSpan source, size_t end, const char *word) {
-  const size_t length = strlen(word);
-  if (end < length) {
-    return false;
-  }
-  for (size_t index = 0; index < length; index++) {
-    if (source.ptr[end - length + index] != (uint8_t)word[index]) {
-      return false;
-    }
-  }
-  return true;
+  const MsSpan expected = ms_span_of_text(word);
+  return end >= expected.len && end <= source.len &&
+         ms_span_equal((MsSpan){source.ptr + end - expected.len, expected.len}, expected);
 }
 
 /* Whether the written call stands where a looser operator needs no parentheses: a statement, a condition, a binding or
