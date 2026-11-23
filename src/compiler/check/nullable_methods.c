@@ -61,7 +61,7 @@ static bool stands_alone(const Body *body, const MsExpr *call) {
     after++;
   }
   const bool open = before == 0 || source.ptr[before - 1] == '\n' || source.ptr[before - 1] == '(' ||
-                    source.ptr[before - 1] == ',' || source.ptr[before - 1] == ':' || (source.ptr[before - 1] == '=' && (before < 2 || source.ptr[before - 2] != '=')) ||
+                    source.ptr[before - 1] == ',' || source.ptr[before - 1] == ':' || (source.ptr[before - 1] == '=' && before >= 2 && (source.ptr[before - 2] == ':' || blank(source.ptr[before - 2]))) ||
                     ends_with(source, before, "if") || ends_with(source, before, "while") || ends_with(source, before, "return");
   const bool close = after >= source.len || source.ptr[after] == '\n' || source.ptr[after] == ':' ||
                      source.ptr[after] == ')' || source.ptr[after] == ',';

@@ -86,11 +86,8 @@ export fn read_cases(output: String) List[Bench]!:
 
 		if (stats.min_ns != null) and (stats.max_ns != null):
 			if not (
-				(
-					stats.min_ns
-					or 0.0
-				) <= stats.median_ns and stats.median_ns <= stats.max_ns
-				or 0.0
+				(stats.min_ns or 0.0) <= stats.median_ns
+				and stats.median_ns <= (stats.max_ns or 0.0)
 			):
 				return invalid(f"inconsistent timing range: {bench.name}")
 
