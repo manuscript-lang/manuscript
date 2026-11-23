@@ -223,6 +223,41 @@ static bool uw_every_method_safe(const UwBsv *s, uint32_t iface, uint32_t slot) 
   return true;
 }
 
+/* Whether the address of a field of the slot's record (`ptr.field`) is only read through, or written with a value that
+ * needs no drop: then the slot keeps its contents, as it does when it is only loaded from. */
+static bool uw_bsv_field_borrowed(const UwBsv *s, MirValue field) {
+  const MirFunc *f = s->f;
+  UW_INSTS(f, b, i, inst) {
+    for (uint32_t k = 0; k < inst->nargs; k++) {
+      if (inst->args[k] != field) {
+        continue;
+      }
+      const bool read = inst->op == MOP_Load && k == 0;
+      const bool scalar_write = inst->op == MOP_Store && k == 0 && inst->nargs > 1 &&
+                   !mir_needs_drop(s->m, mir_value_ty(f, inst->args[1]));
+      if (!read && !scalar_write) {
+        return false;
+      }
+    }
+  }
+  for (uint32_t b = 0; b < f->blocks.len; b++) {
+    const MirTerm *term = &f->blocks.ptr[b].term;
+    const bool has_value = term->kind == MT_CONDBR || term->kind == MT_SWITCH || term->kind == MT_RET;
+    if (has_value && term->value == field) {
+      return false;
+    }
+    for (uint32_t k = 0; k < mir_term_ntargets(term); k++) {
+      const MirTarget *t = mir_term_target_const(term, k);
+      for (uint32_t j = 0; j < t->nargs; j++) {
+        if (t->args[j] == field) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 /* Whether use `i` of the slot pointer or a local slot forwarding its value is one a borrower may
  * make: a take, a load, a put of the taken value, or a call whose callee only borrows. */
 static bool uw_bsv_slot_use_ok(const UwBsv *s, const MirInst *inst, uint32_t i, bool via_fwd) {
@@ -236,6 +271,9 @@ static bool uw_bsv_slot_use_ok(const UwBsv *s, const MirInst *inst, uint32_t i, 
   }
   if (inst->op == MOP_Take) {
     return i == 0;
+  }
+  if (inst->op == MOP_PtrField && !via_fwd) {
+    return i == 0 && uw_bsv_field_borrowed(s, inst->res);
   }
   if (via_fwd) {
     return false;
