@@ -19,6 +19,8 @@ typedef struct Uses {
   MsClassifier *classes;
   MsFacts *facts;
   const MsNames *names;
+  MsParams params; /* the callable being marked */
+  MsStmts body;
   uint32_t moving; /* the parameters of the callable being marked that it owns, by index */
   MsBindingList cand_locals, cand_nodes; /* `x := y` binds of a local `y` that nothing has read or assigned since */
   MsBindingList swapped; /* the reads that bind a local assigned while the binding lives (`old := a; a = b`) */
@@ -433,6 +435,53 @@ static void find_moved_loop_name(void *ctx, const MsExpr *expr) {
                                   moved->pass->facts->uses[expr->id] == MS_USE_MOVE);
 }
 
+/* The reads of one local: where the last one starts, and the furthest offset any expression of a scan ends at. */
+typedef struct LastRead {
+  const Uses *pass;
+  uint32_t local;
+  uint32_t last;
+  uint32_t end;
+} LastRead;
+
+static void note_last_read(void *ctx, const MsExpr *expr) {
+  LastRead *scan = ctx;
+  const MsRef *ref = expr->kind == MS_E_NAME ? ms_facts_ref(scan->pass->facts, expr->id) : NULL;
+  if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local == scan->local && ms_expr_start(expr).offset >= scan->last) {
+    scan->last = ms_expr_start(expr).offset;
+  }
+  if (expr->end.offset > scan->end) {
+    scan->end = expr->end.offset;
+  }
+}
+
+typedef struct Enclosing {
+  uint32_t at;
+  bool inside;
+  MsStmts body;
+} Enclosing;
+
+static void note_enclosing(void *ctx, const MsStmt *stmt) {
+  Enclosing *scan = ctx;
+  const MsStmts body = stmt->kind == MS_S_WHILE ? stmt->u.loop.body : stmt->kind == MS_S_FOR ? stmt->u.each.body : (MsStmts){0};
+  if (body.len == 0 || stmt->pos.offset >= scan->at) {
+    return;
+  }
+  LastRead extent = {0};
+  ms_walk_block(&(MsVisitor){.ctx = &extent, .expr = note_last_read}, body);
+  scan->inside = scan->inside || extent.end > scan->at;
+}
+
+/* Whether the name `iter` of a `for` is the last read of its local and the loop is not inside another loop: the loop
+ * is then the last owner of the list, so it takes the list's elements. */
+static bool last_use_outside_loops(const Uses *pass, MsParams params, MsStmts body, const MsStmt *loop, const MsExpr *iter) {
+  const MsRef *ref = ms_facts_ref(pass->facts, iter->id);
+  LastRead reads = {.pass = pass, .local = ref->local};
+  ms_walk_callable(&(MsVisitor){.ctx = &reads, .expr = note_last_read}, params, body);
+  Enclosing enclosing = {.at = loop->pos.offset};
+  ms_walk_callable(&(MsVisitor){.ctx = &enclosing, .stmt = note_enclosing}, params, body);
+  return reads.last == ms_expr_start(iter).offset && !enclosing.inside;
+}
+
 /* `for item in items:` over a local list of resources whose body moves `item` on: the loop owns the elements, so each
  * one is closed in its round unless the body moves it away. */
 static void consume_loops(void *ctx, const MsStmt *stmt) {
@@ -450,12 +499,14 @@ static void consume_loops(void *ctx, const MsStmt *stmt) {
   }
   Moved moved = {.pass = pass, .local = binding->local};
   ms_walk_block(&(MsVisitor){.ctx = &moved, .expr = find_moved_loop_name}, stmt->u.each.body);
-  if (moved.found) {
+  if (moved.found || last_use_outside_loops(pass, pass->params, pass->body, stmt, iter)) {
     pass->facts->uses[iter->id] = MS_USE_MOVE;
   }
 }
 
 static void mark_callable(Uses *pass, MsParams params, MsStmts body, bool consuming) {
+  pass->params = params;
+  pass->body = body;
   pass->arms.len = 0;
   pass->moved.len = 0;
   pass->cand_locals.len = 0;

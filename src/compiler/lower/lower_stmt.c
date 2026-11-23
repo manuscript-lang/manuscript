@@ -112,6 +112,12 @@ static bool call_reads_temporary(const MsExpr *call) {
   return false;
 }
 
+/* Whether `value` is the `none` just built: it holds nothing, so the binding that takes it owns all of it. */
+static bool is_empty_optional(const LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  return insts->len != 0 && insts->ptr[insts->len - 1].res == value && insts->ptr[insts->len - 1].op == MOP_OptNone;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -156,7 +162,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
-  const bool fresh = fn_fresh_owner(fn, value);
+  const bool fresh = fn_fresh_owner(fn, value) || is_empty_optional(fn, value);
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
   if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
@@ -471,7 +477,14 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
   const MirTy field_ty = fn_type(fn, ms_facts_type(fn->facts, place->id));
   if (mir_needs_drop(fn->cx->module, field_ty)) {
     const MirValue old = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
-    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    const MsTy checked = ms_facts_type(fn->facts, place->id);
+    if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
+      if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
+        return false;
+      }
+    } else {
+      (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    }
   }
   const MirValue operands[2] = {record, value};
   const MirValue updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, record));

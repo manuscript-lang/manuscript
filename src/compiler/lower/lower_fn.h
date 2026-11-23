@@ -172,6 +172,8 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
  * when some part cannot be closed this way; and whether it exists. */
 uint32_t lower_close_parts(Lower *cx, MsTy ty);
 bool lower_parts_supported(Lower *cx, MsTy ty);
+/* The function that closes a part of type `ty` taken out of its holder, or MIR_NONE when it holds no resource. */
+uint32_t lower_part_close(Lower *cx, MsTy ty);
 /* The function `fn(move value)` that closes an interface value through its `close` operation. */
 uint32_t lower_close_iface(Lower *cx, MsTy ty);
 /* Whether a temporary of the type `checked` closes where its statement ends, and its owner: the value goes into a
@@ -200,6 +202,8 @@ void lower_close_check(MirBuilder *b, MirValue result);
 void fn_init_closing(LowerFn *fn);
 /* The index in the closing tables of the `var` variable (local or parameter) `ref` names that lives in a slot, or UINT32_MAX. */
 uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
+/* A value an assignment replaced: the innermost scope closes it where it ends. */
+bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
 bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view);
@@ -207,7 +211,7 @@ bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view)
 bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
  * slot its scope closes; `var` is the variable the body reads it through. */
-bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
+bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only);
 /* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
 bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken);
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);
