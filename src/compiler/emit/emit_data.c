@@ -162,7 +162,7 @@ static bool is_runtime_desc(MsSpan name) {
   return false;
 }
 
-void emit_define_data(EmitCx *cx) {
+void emit_define_data(EmitCx *cx, bool define) {
   const MirData *data = cx->data;
   if (data == NULL) {
     return;
@@ -181,6 +181,11 @@ void emit_define_data(EmitCx *cx) {
   for (uint32_t index = 0; index < data->syms.len; index++) {
     const MirDataSym *sym = &data->syms.ptr[index];
     emit_symbol(cx->out, sym->name);
+    if (!define) {
+      ms_strbuild_printf(cx->out, " = external hidden %s [%u x i8], align %u\n", sym->writable ? "global" : "constant",
+                         sym->size, sym->align);
+      continue;
+    }
     ms_strbuild_printf(cx->out, " = hidden %s ", sym->writable ? "global" : "constant");
     if (sym->bytes.len == 0 && sym->nrelocs == 0) {
       ms_strbuild_printf(cx->out, "[%u x i8] zeroinitializer", sym->size);

@@ -24,8 +24,13 @@ typedef struct LlvmBuffer {
   void *handle;
 } LlvmBuffer;
 
-/* Loads the library (once) and compiles `ir`. On failure `why` holds the message. */
+/* Loads the library (once) and compiles `ir`. On failure `why` holds the message. Safe to call from several threads once
+ * `llvm_load` has loaded the library, as long as the compiles running at once use the same `codegen_level` and
+ * `fast_codegen`: the code generator's options are process-wide. */
 MS_NODISCARD MS_NONNULL bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why);
+
+/* Loads the library at `path` (once); on failure `why` holds the reason. Call it before compiling from several threads. */
+MS_NODISCARD MS_NONNULL bool llvm_load(MsSpan path, MsStrBuild *why);
 
 /* Whether the library at `path` loads and has the C API ms uses; the library stays loaded for llvm_compile. */
 MS_NODISCARD bool llvm_usable(MsSpan path);

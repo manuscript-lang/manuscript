@@ -5,6 +5,7 @@
 #include "base/ostext.h"
 #include "abi/fault.h"
 
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -123,6 +124,8 @@ static bool message_failure(char *message, const char *what, MsStrBuild *why) {
   return false;
 }
 
+bool llvm_load(MsSpan path, MsStrBuild *why) { return load(path, why); }
+
 bool llvm_usable(MsSpan path) {
   MsStrBuild why = ms_strbuild_new();
   const bool usable = load(path, &why);
@@ -130,20 +133,34 @@ bool llvm_usable(MsSpan path) {
   return usable;
 }
 
+/* LLVM's code generator reads its choices from process-wide options, and compiles of several modules may run at once:
+ * the options a compile needs are set under a lock, and only when they differ from the ones set last. */
+static void apply_options(const LlvmSettings *settings) {
+  static atomic_flag lock = ATOMIC_FLAG_INIT;
+  static int applied = -1;
+  const int wanted = settings->codegen_level * 2 + (settings->fast_codegen ? 1 : 0);
+  while (atomic_flag_test_and_set_explicit(&lock, memory_order_acquire)) {
+  }
+  if (applied != wanted) {
+    const char *options[4] = {"ms"};
+    int count = 1;
+    /* Level 0 takes only the fast register allocator. */
+    options[count++] = settings->codegen_level == 0 ? "-regalloc=fast"
+                       : settings->fast_codegen     ? "-regalloc=basic"
+                                                    : "-regalloc=greedy";
+    options[count++] = settings->fast_codegen ? "-enable-misched=0" : "-enable-misched=1";
+    options[count++] = "-dse-memoryssa-walklimit=10"; /* the same limit as the process route, see object.c */
+    api.LLVMParseCommandLineOptions(count, options, NULL);
+    applied = wanted;
+  }
+  atomic_flag_clear_explicit(&lock, memory_order_release);
+}
+
 bool llvm_compile(const LlvmSettings *settings, MsSpan ir, LlvmBuffer *out, MsStrBuild *why) {
   if (!load(settings->library, why)) {
     return false;
   }
-  /* LLVM's code generator reads these from process-wide options, so each compile states all of them. */
-  const char *options[4] = {"ms"};
-  int count = 1;
-  /* Level 0 takes only the fast register allocator. */
-  options[count++] = settings->codegen_level == 0 ? "-regalloc=fast"
-                     : settings->fast_codegen     ? "-regalloc=basic"
-                                                  : "-regalloc=greedy";
-  options[count++] = settings->fast_codegen ? "-enable-misched=0" : "-enable-misched=1";
-  options[count++] = "-dse-memoryssa-walklimit=10"; /* the same limit as the process route, see object.c */
-  api.LLVMParseCommandLineOptions(count, options, NULL);
+  apply_options(settings);
   MsOsText triple = ms_os_text_new(settings->triple);
   char *triple_text = triple.ptr;
   char *message = NULL;

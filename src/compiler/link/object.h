@@ -5,6 +5,7 @@
 
 #include "base/strbuild.h"
 #include "compiler/emit/emit_tables.h"
+#include "compiler/link/llvm_inproc.h"
 
 typedef struct ObjectOptions {
   MsSpan opt;       /* the `opt` executable */
@@ -17,10 +18,25 @@ typedef struct ObjectOptions {
   bool verify;      /* check the IR after every pass */
   const MirModule *module;        /* with `tables`: the renamed module (emit_name_symbols) */
   const EmitTableInfo *tables;    /* NULL for no fault tables; the program then needs emit_entry_main(tables=true) */
+  uint32_t unit, units;           /* this is module `unit` of a program written as `units` modules (see emit_module) */
 } ObjectOptions;
+
+/* What phase one of a module leaves for phase two: the assembly it generated (in-process; the child processes leave it
+ * in a file). */
+typedef struct ObjectCode {
+  LlvmBuffer first;
+} ObjectCode;
 
 /* Compiles `ir` to the object file `object`. On failure `why` gets the tool's name and its output. */
 MS_NODISCARD MS_NONNULL bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object,
                                               MsStrBuild *why);
+
+/* The same in two phases, so the modules of one program can run each phase at once on several threads. LLVM's code
+ * generator reads process-wide options (a different register allocator for each phase), so every module must finish
+ * link_generate before any starts link_finish. Without fault tables link_generate writes `object` and link_finish
+ * has nothing to do; with them link_generate stops at assembly, and link_finish adds the tables and writes `object`. */
+MS_NODISCARD MS_NONNULL bool link_generate(const ObjectOptions *options, MsSpan ir, MsSpan object, ObjectCode *code,
+                                           MsStrBuild *why);
+MS_NODISCARD MS_NONNULL bool link_finish(const ObjectOptions *options, MsSpan object, ObjectCode *code, MsStrBuild *why);
 
 #endif

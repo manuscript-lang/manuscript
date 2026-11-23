@@ -26,15 +26,16 @@ static bool run_passes(MirModule *module, const BackendOptions *options, MirGlue
 /* With `kept`, the fault tables are wanted: the table info is read before the functions are renamed, every
  * function is exported and every instruction carries its source place. */
 static bool emit_program(MirModule *module, const MirData *data, const MirGlue *glue, BackendProgram *kept,
-                         const BackendOptions *options, MsStrBuild *ir, MsStrBuild *why) {
+                         const BackendOptions *options, MsStrBuild *ir, uint32_t *units, MsStrBuild *why) {
   if (kept != NULL) {
     emit_table_info(&kept->arena, module, &kept->tables);
   }
   emit_name_symbols(module);
   const EmitOptions emit = {.export_all = kept != NULL, .places = kept != NULL,
                           .wide_leaves = options->wide_leaves, .wide_hide = options->wide_hide,
-                          .poison_slots = options->poison_slots};
-  if (!emit_module(module, data, glue, &emit, ir, why)) {
+                          .poison_slots = options->poison_slots, .units = options->units,
+                          .unit_bytes = options->unit_bytes};
+  if (!emit_module(module, data, glue, &emit, ir, units, why)) {
     return false;
   }
   emit_entry_main(module, kept != NULL, ir);
@@ -51,9 +52,10 @@ static void append_report_advice(MsStrBuild *why) {
 
 /* Runs the stages after lowering into a scratch buffer so a failure there is labelled as a compiler bug. */
 static bool compile_stages(MirModule *module, const BackendOptions *options, MirGlue *glue, MirData *data,
-                           BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
+                           BackendProgram *kept, MsStrBuild *ir, uint32_t *units, MsStrBuild *why) {
   MsStrBuild detail = ms_strbuild_new();
-  bool ok = run_passes(module, options, glue, data, &detail) && emit_program(module, data, glue, kept, options, ir, &detail);
+  bool ok = run_passes(module, options, glue, data, &detail) &&
+            emit_program(module, data, glue, kept, options, ir, units, &detail);
   if (!ok) {
     ms_strbuild_append_text(why, INTERNAL_PREFIX);
     ms_strbuild_append(why, ms_strbuild_span(&detail));
@@ -64,7 +66,7 @@ static bool compile_stages(MirModule *module, const BackendOptions *options, Mir
 }
 
 static bool compile(MsCheckProgram *program, uint32_t entry_module, const BackendOptions *options, MirModule *module,
-                    BackendProgram *kept, MsStrBuild *ir, MsStrBuild *why) {
+                    BackendProgram *kept, MsStrBuild *ir, uint32_t *units, MsStrBuild *why) {
   MirGlue glue = {0};
   MirData data = {0};
   bool ok = false;
@@ -81,7 +83,7 @@ static bool compile(MsCheckProgram *program, uint32_t entry_module, const Backen
       append_report_advice(why);
     }
   }
-  ok = ok && compile_stages(module, options, &glue, &data, kept, ir, why);
+  ok = ok && compile_stages(module, options, &glue, &data, kept, ir, units, why);
   mir_data_free(&data);
   mir_glue_free(&glue);
   return ok;
@@ -91,17 +93,21 @@ bool ms_backend_ir(MsCheckProgram *program, uint32_t entry_module, const Backend
                    MsStrBuild *why) {
   MirModule module;
   mir_module_init(&module);
-  const bool ok = compile(program, entry_module, options, &module, NULL, ir, why);
+  uint32_t units = 1;
+  BackendOptions one = *options; /* `ir` is one builder */
+  one.units = 1;
+  const bool ok = compile(program, entry_module, &one, &module, NULL, ir, &units, why);
   mir_module_free(&module);
   return ok;
 }
 
 bool ms_backend_compile(MsCheckProgram *program, uint32_t entry_module, const BackendOptions *options,
-                        MsStrBuild *ir, BackendProgram *out, MsStrBuild *why) {
+                        MsStrBuild *ir, uint32_t *units, BackendProgram *out, MsStrBuild *why) {
   mir_module_init(&out->module);
   out->arena = ms_arena_new();
   out->tables = (EmitTableInfo){0};
-  return compile(program, entry_module, options, &out->module, out, ir, why);
+  *units = 1;
+  return compile(program, entry_module, options, &out->module, out, ir, units, why);
 }
 
 void ms_backend_program_free(BackendProgram *program) {

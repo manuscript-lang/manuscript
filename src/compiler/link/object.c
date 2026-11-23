@@ -15,9 +15,18 @@ static bool run_tool(MsSpan what, const MsSpan *argv, size_t argc, MsSpan log, M
   return ms_process_run_logged(what, &spec, why);
 }
 
-static MsString in_directory(MsSpan directory, const char *name) {
+/* The scratch file `<stem><extension>` of this module in the options' directory; with several modules the stem
+ * carries the module's number so they do not overwrite one another. */
+static MsString scratch_file(const ObjectOptions *options, const char *stem, const char *extension) {
+  MsStrBuild name = ms_strbuild_new();
+  ms_strbuild_append_text(&name, stem);
+  if (options->units > 1) {
+    ms_strbuild_printf(&name, ".%u", options->unit);
+  }
+  ms_strbuild_append_text(&name, extension);
   MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, directory, ms_span_of_text(name));
+  ms_path_append_joined(&path, options->directory, ms_strbuild_span(&name));
+  ms_strbuild_free(&name);
   return ms_strbuild_finish(&path);
 }
 
@@ -117,20 +126,18 @@ static void wrap_assembly(MsSpan triple, MsSpan text, MsStrBuild *ir) {
   }
 }
 
-/* The object of a program with fault tables: `llc` writes the assembly, the tables are added to it, and `llc`
- * assembles the result. */
-static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSpan input, MsSpan object, MsSpan log,
-                          MsStrBuild *why) {
-  MsString assembly_path = in_directory(options->directory, "program.s");
-  MsString wrapped_path = in_directory(options->directory, "tables.ll");
-  bool ok = generate(options, triple_flag, input, ms_string_span(&assembly_path), log,
-                     "-filetype=asm", why);
+/* Phase two with fault tables, from the child processes' assembly: the tables are added to it and `llc` assembles the
+ * result. */
+static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSpan object, MsSpan log, MsStrBuild *why) {
+  MsString assembly_path = scratch_file(options, "program", ".s");
+  MsString wrapped_path = scratch_file(options, "tables", ".ll");
   MsBytes assembly = {0};
-  ok = ok && ms_file_read(ms_string_span(&assembly_path), &assembly);
+  bool ok = ms_file_read(ms_string_span(&assembly_path), &assembly);
   MsArena arena = ms_arena_new();
   MsStrBuild text = ms_strbuild_new();
   MsStrBuild ir = ms_strbuild_new();
-  ok = ok && link_asm_tables(&arena, options->module, options->tables, ms_bytes_span(&assembly), &text, why);
+  ok = ok && link_asm_tables(&arena, options->module, options->tables, ms_bytes_span(&assembly), options->unit,
+                             options->units, &text, why);
   if (ok) {
     wrap_assembly(ms_span_of(triple_flag.ptr + 9, triple_flag.len - 9), ms_strbuild_span(&text), &ir);
     ok = ms_file_write(ms_string_span(&wrapped_path), ms_strbuild_span(&ir));
@@ -149,58 +156,66 @@ static bool tables_object(const ObjectOptions *options, MsSpan triple_flag, MsSp
   return ok;
 }
 
-/* The in-process path: the same steps as the child processes, through the loaded libLLVM. */
-static bool inproc_object(const ObjectOptions *options, MsSpan triple, MsSpan ir, MsSpan object, MsStrBuild *why) {
+static bool write_object(MsSpan object, const LlvmBuffer *buffer, MsStrBuild *why) {
+  return ms_file_write(object, ms_span_of((const uint8_t *)buffer->data, buffer->size)) ||
+         (ms_strbuild_append_text(why, "cannot write the object"), false);
+}
+
+/* The in-process path: the same steps as the child processes, through the loaded libLLVM. Phase one. */
+static bool inproc_generate(const ObjectOptions *options, MsSpan triple, MsSpan ir, MsSpan object, ObjectCode *code,
+                            MsStrBuild *why) {
   LlvmSettings settings = {.library = options->llvm, .triple = triple,
                            .pipeline = !options->speed ? NULL : options->debug ? debug_pipeline + sizeof("-passes=") - 1 : "default<O3>",
                            .vectorize = options->vectorize, .verify = options->verify,
                            .codegen_level = options->speed ? (options->debug ? 1 : 3) : 0,
                            .fast_codegen = options->debug,
                            .assembly = options->tables != NULL};
-  LlvmBuffer first = {0};
-  bool ok = llvm_compile(&settings, ir, &first, why);
+  const bool ok = llvm_compile(&settings, ir, &code->first, why);
   if (ok && options->tables == NULL) {
-    ok = ms_file_write(object, ms_span_of((const uint8_t *)first.data, first.size)) ||
-         (ms_strbuild_append_text(why, "cannot write the object"), false);
-  } else if (ok) {
-    MsArena arena = ms_arena_new();
-    MsStrBuild text = ms_strbuild_new();
-    MsStrBuild wrapped = ms_strbuild_new();
-    ok = link_asm_tables(&arena, options->module, options->tables,
-                         ms_span_of((const uint8_t *)first.data, first.size), &text, why);
-    LlvmBuffer second = {0};
-    if (ok) {
-      wrap_assembly(triple, ms_strbuild_span(&text), &wrapped);
-      LlvmSettings plain = {.library = options->llvm, .triple = triple};
-      ok = llvm_compile(&plain, ms_strbuild_span(&wrapped), &second, why) &&
-           (ms_file_write(object, ms_span_of((const uint8_t *)second.data, second.size)) ||
-            (ms_strbuild_append_text(why, "cannot write the object"), false));
-    }
-    llvm_buffer_free(&second);
-    ms_strbuild_free(&wrapped);
-    ms_strbuild_free(&text);
-    ms_arena_free(&arena);
+    return write_object(object, &code->first, why);
   }
-  llvm_buffer_free(&first);
   return ok;
 }
 
-bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, MsStrBuild *why) {
+/* Phase two in-process: the tables are added to the assembly and the result is assembled. */
+static bool inproc_finish(const ObjectOptions *options, MsSpan triple, MsSpan object, ObjectCode *code, MsStrBuild *why) {
+  MsArena arena = ms_arena_new();
+  MsStrBuild text = ms_strbuild_new();
+  MsStrBuild wrapped = ms_strbuild_new();
+  bool ok = link_asm_tables(&arena, options->module, options->tables,
+                            ms_span_of((const uint8_t *)code->first.data, code->first.size), options->unit,
+                            options->units, &text, why);
+  LlvmBuffer second = {0};
+  if (ok) {
+    wrap_assembly(triple, ms_strbuild_span(&text), &wrapped);
+    LlvmSettings plain = {.library = options->llvm, .triple = triple};
+    ok = llvm_compile(&plain, ms_strbuild_span(&wrapped), &second, why) && write_object(object, &second, why);
+  }
+  llvm_buffer_free(&second);
+  ms_strbuild_free(&wrapped);
+  ms_strbuild_free(&text);
+  ms_arena_free(&arena);
+  return ok;
+}
+
+bool link_generate(const ObjectOptions *options, MsSpan ir, MsSpan object, ObjectCode *code, MsStrBuild *why) {
+  *code = (ObjectCode){0};
   MsSpan triple = emit_host_triple();
   if (triple.len == 0) {
     ms_strbuild_append_text(why, "native builds are not supported on this host");
     return false;
   }
   if (options->llvm.len != 0) {
-    return inproc_object(options, triple, ir, object, why);
+    return inproc_generate(options, triple, ir, object, code, why);
   }
   MsStrBuild flag = ms_strbuild_new();
   ms_strbuild_append_text(&flag, "-mtriple=");
   ms_strbuild_append(&flag, triple);
   MsString triple_flag = ms_strbuild_finish(&flag);
-  MsString text = in_directory(options->directory, "program.ll");
-  MsString bitcode = in_directory(options->directory, "program.bc");
-  MsString log = in_directory(options->directory, "tool.log");
+  MsString text = scratch_file(options, "program", ".ll");
+  MsString bitcode = scratch_file(options, "program", ".bc");
+  MsString assembly = scratch_file(options, "program", ".s");
+  MsString log = scratch_file(options, "tool", ".log");
   bool ok = ms_file_write(ms_string_span(&text), ir);
   if (!ok) {
     ms_strbuild_append_text(why, "cannot write ");
@@ -212,17 +227,48 @@ bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, Ms
     input = ms_string_span(&bitcode);
   }
   if (ok && options->tables != NULL) {
-    ok = tables_object(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), why);
+    ok = generate(options, ms_string_span(&triple_flag), input, ms_string_span(&assembly), ms_string_span(&log),
+                  "-filetype=asm", why);
   } else {
-    ok = ok && generate(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log),
-                        "-filetype=obj", why);
+    ok = ok && generate(options, ms_string_span(&triple_flag), input, object, ms_string_span(&log), "-filetype=obj", why);
   }
   ms_path_remove(ms_string_span(&text));
   ms_path_remove(ms_string_span(&bitcode));
+  if (!ok) {
+    ms_path_remove(ms_string_span(&assembly));
+  }
   ms_path_remove(ms_string_span(&log));
   ms_string_release(&text);
   ms_string_release(&bitcode);
+  ms_string_release(&assembly);
   ms_string_release(&log);
   ms_string_release(&triple_flag);
   return ok;
+}
+
+bool link_finish(const ObjectOptions *options, MsSpan object, ObjectCode *code, MsStrBuild *why) {
+  bool ok = true;
+  if (options->tables != NULL) {
+    MsSpan triple = emit_host_triple();
+    if (options->llvm.len != 0) {
+      ok = inproc_finish(options, triple, object, code, why);
+    } else {
+      MsStrBuild flag = ms_strbuild_new();
+      ms_strbuild_append_text(&flag, "-mtriple=");
+      ms_strbuild_append(&flag, triple);
+      MsString triple_flag = ms_strbuild_finish(&flag);
+      MsString log = scratch_file(options, "tool", ".log");
+      ok = tables_object(options, ms_string_span(&triple_flag), object, ms_string_span(&log), why);
+      ms_path_remove(ms_string_span(&log));
+      ms_string_release(&log);
+      ms_string_release(&triple_flag);
+    }
+  }
+  llvm_buffer_free(&code->first);
+  return ok;
+}
+
+bool link_make_object(const ObjectOptions *options, MsSpan ir, MsSpan object, MsStrBuild *why) {
+  ObjectCode code;
+  return link_generate(options, ir, object, &code, why) && link_finish(options, object, &code, why);
 }

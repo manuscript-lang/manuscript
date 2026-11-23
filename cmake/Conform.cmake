@@ -14,7 +14,7 @@ endforeach()
 # Runs one runner and returns its `<name>: passed/total` line in `counted`, printing the failures it listed.
 function(replay name)
   execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS}" CONFORM_BUILD_TYPE=Debug "${MS}" run ${ARGN}
+    COMMAND "${CMAKE_COMMAND}" -E env "MS=${MS}" CONFORM_BUILD_TYPE=Debug ${REPLAY_ENV} "${MS}" run ${ARGN}
     WORKING_DIRECTORY "${SOURCE_DIR}"
     OUTPUT_VARIABLE output
     ERROR_VARIABLE errors)
@@ -44,6 +44,18 @@ if(NOT ONLY STREQUAL "commands")
       set(all_match OFF)
     endif()
   endforeach()
+endif()
+
+# The fault fixtures again with each program written as three LLVM modules (large programs are; src/cli/pipeline.c), so a
+# trace that crosses modules is checked on every run, not only for a program big enough to split.
+if(NOT ONLY STREQUAL "commands")
+  set(REPLAY_ENV MS_UNITS=3)
+  replay(run tools/conform-run.ms -- --phase run --filter fault)
+  unset(REPLAY_ENV)
+  message("${counted} (three modules)")
+  if(NOT matches)
+    set(all_match OFF)
+  endif()
 endif()
 
 replay(commands tools/command-fixtures.ms -- check)
