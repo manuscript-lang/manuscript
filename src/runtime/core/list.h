@@ -125,7 +125,7 @@ void msrt_list_pieces(const MsList *v, const MsTypeDesc *d, const MsTypeDesc *od
  * @domain=collection @end */
 void msrt_list_concat(const MsList *a, const MsList *b, const MsTypeDesc *d, MsList *out);
 /* ms-sig: msrt_list_repeat(v: *const VecVal, d: ElemDesc, count: i64, out: *mut VecVal) @domain=collection
- * */
+ * @method=List.repeated */
 void msrt_list_repeat(const MsList *v, const MsTypeDesc *d, int64_t count, MsList *out);
 /* ms-sig: msrt_list_extend(v: *mut VecVal, d: ElemDesc, other: *const VecVal) @domain=collection @end */
 void msrt_list_extend(MsList *v, const MsTypeDesc *d, const MsList *other);
