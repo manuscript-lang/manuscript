@@ -139,6 +139,14 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     }
     return;
   }
+  if (expr->kind == MS_E_MATCH) { /* `if c: a else: b` hands on whichever arm it picks */
+    for (uint32_t at = 0; at < expr->u.match.arms.len; at++) {
+      if (expr->u.match.arms.ptr[at]->from_if && expr->u.match.arms.ptr[at]->value != NULL) {
+        mark_move(pass, expr->u.match.arms.ptr[at]->value);
+      }
+    }
+    return;
+  }
   if (moves_out_of_borrowed_result(pass, expr)) {
     return;
   }
@@ -302,6 +310,8 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
     mark_move(pass, stmt->u.bind.is_mutable          ? stmt->u.bind.value
                     : stmt->u.bind.value->kind == MS_E_MEMBER ? stmt->u.bind.value
                                                               : bound_local_source(pass, stmt->u.bind.value));
+  } else if (stmt->kind == MS_S_BIND && stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.value->kind == MS_E_MATCH) {
+    mark_move(pass, stmt->u.bind.value); /* `x := if c: a else: b` owns the arm it picks */
   } else if (stmt->kind == MS_S_ASSIGN && !stmt->u.assign.has_compound) {
     mark_move(pass, stmt->u.assign.value);
   } else if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.binding->kind == MS_P_NAME &&
