@@ -1,0 +1,9 @@
+{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
+{"jsonrpc": "2.0", "method": "initialized", "params": {}}
+{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "languageId": "manuscript", "version": 1, "text": "fn zqcount() Int:\n\treturn 1\n\nfn main() Int:\n\treturn zq\n"}}}
+{"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "version": 2}, "contentChanges": [{"range": {"start": {"line": 4, "character": 10}, "end": {"line": 4, "character": 10}}, "text": "c"}]}}
+{"jsonrpc": "2.0", "id": 2, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 4, "character": 11}}}
+{"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms", "version": 3}, "contentChanges": [{"range": {"start": {"line": 4, "character": 11}, "end": {"line": 4, "character": 11}}, "text": "o"}]}}
+{"jsonrpc": "2.0", "id": 3, "method": "textDocument/completion", "params": {"textDocument": {"uri": "$ROOT_URI/main.ms"}, "position": {"line": 4, "character": 12}}}
+{"jsonrpc": "2.0", "id": 4, "method": "shutdown"}
+{"jsonrpc": "2.0", "method": "exit"}

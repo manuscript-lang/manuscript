@@ -387,9 +387,9 @@ static int handle_message(Session *session, MsSpan body) {
       reply_error(id, ERROR_NOT_FOUND, "method not supported");
     }
   }
-  /* A run of edits is answered once, after the last. */
-  if (session->unpublished && !lsp_input_next_is_change(input_queue)) publish(session);
 done:
+  /* A run of edits is answered once, after the last, and a completion waiting behind an edit is answered first. */
+  if (session->unpublished && !lsp_input_next_defers_publish(input_queue)) publish(session);
   if (id != NULL && (id->kind == MS_JSON_STRING || id->kind == MS_JSON_NUMBER)) lsp_input_done(input_queue, id->kind == MS_JSON_STRING, id->text);
   current_request = NULL;
   ms_arena_free(&arena);
