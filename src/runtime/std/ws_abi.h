@@ -23,8 +23,8 @@ MsObj *ms_ws_handle_new(MsWsSession *session);
 
 /* ms-sig: msstd_websocket_close(handle s: *const ObjCell<SocketH>) @domain=WebSocket */
 void msstd_websocket_close(const MsObj *s);
-/* ms-sig: msstd_websocket_share(handle s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH> @handle
- * @domain=WebSocket */
+/* ms-sig: msstd_websocket_share(handle s: *const ObjCell<SocketH>) -> *mut ObjCell<SocketH>
+ * @domain=WebSocket @end */
 MsObj *msstd_websocket_share(const MsObj *s);
 /* Closes the session when `s` is its last handle. */
 /* ms-sig: msstd_websocket_close_if_last(handle s: *const ObjCell<SocketH>) @domain=WebSocket */

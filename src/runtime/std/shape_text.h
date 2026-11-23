@@ -13,15 +13,13 @@ void ms_shape_text_of(const MsShapeTable *table, const void *value, bool repr, M
 /* The same for the value of shape `shape` of the table, such as a map key. */
 void ms_shape_text_at(const MsShapeTable *table, uint32_t shape, const void *value, bool repr, MsString *out);
 
-/* ms-sig: msstd_test_repr(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=test @leaf */
+/* ms-sig: msstd_test_repr(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=test @end */
 void msstd_test_repr(const MsShapeTable *table, const void *value, MsString *out);
 
-/* ms-sig: msstd_value_text(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=string @leaf
- */
+/* ms-sig: msstd_value_text(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=string @end */
 void msstd_value_text(const MsShapeTable *table, const void *value, MsString *out);
 
-/* ms-sig: msstd_value_to_string(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=string @leaf
- */
+/* ms-sig: msstd_value_to_string(shape: *const ShapeTable, value: *const u8, out: *mut StrVal) @domain=string @end */
 void msstd_value_to_string(const MsShapeTable *table, const void *value, MsString *out);
 
 #endif
