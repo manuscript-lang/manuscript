@@ -11,6 +11,8 @@
 #include "base/path.h"
 #include "cli/lsp_nav_fallback.h"
 #include "cli/lsp_workspace.h"
+#include "compiler/check/std_cache.h"
+#include "compiler/project/project.h"
 #include "tooling/facts.h"
 #include "tooling/inspect.h"
 
@@ -450,6 +452,44 @@ static void workspace_places(LspAnalysis *analysis, const LspDocList *docs, cons
   ms_span_list_free(&paths);
 }
 
+/* The import clauses in the bundled modules that name the std symbol `selected`: the parsed-std cache holds every bundled
+ * module, so this reads trees already built and loads nothing. Uses inside those modules are not indexed. */
+static void std_import_places(LspAnalysis *analysis, const MsOccurrence *selected, PlaceList *places) {
+  StdDeclaration bundled;
+  const MsStdCache *cache = analysis->checked.std_cache;
+  if (cache == NULL || !std_declaration(analysis, selected, &bundled)) return;
+  MsStrBuild want = ms_strbuild_new();
+  ms_strbuild_append_text(&want, "@std/");
+  ms_strbuild_append(&want, bundled.file);
+  size_t count = 0;
+  const MsStdSource *sources = ms_std_sources(&count);
+  const MsNames *names = ms_std_cache_names(cache);
+  for (size_t i = 0; i < count; i++) {
+    MsStrBuild path = ms_strbuild_new();
+    ms_strbuild_append_text(&path, "@std/");
+    ms_strbuild_append(&path, sources[i].name);
+    MsName file;
+    const bool known = ms_names_find(names, ms_strbuild_span(&path), &file);
+    ms_strbuild_free(&path);
+    const MsModule *tree = known ? ms_std_cache_tree(cache, file) : NULL;
+    for (uint32_t n = 0; tree != NULL && n < tree->nimports; n++) {
+      const MsImport *import = &tree->imports[n];
+      if (!ms_span_equal(import->path, ms_strbuild_span(&want)) ||
+          !ms_span_equal(ms_names_span(names, import->name), selected->name))
+        continue;
+      MsStrBuild uri = ms_strbuild_new();
+      ms_strbuild_append_text(&uri, "manuscript-stdlib:///");
+      ms_strbuild_append(&uri, sources[i].name);
+      const MsSpan text = ms_arena_copy(analysis->arena, ms_strbuild_span(&uri));
+      ms_strbuild_free(&uri);
+      place_list_push(places, (Place){text,
+                                      {lsp_position(sources[i].text, import->name_pos.offset),
+                                       lsp_position(sources[i].text, import->name_pos.offset + selected->name.len)}});
+    }
+  }
+  ms_strbuild_free(&want);
+}
+
 void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition position, bool include_declaration,
                         MsStrBuild *out) {
   LspAnalysis analysis;
@@ -458,6 +498,7 @@ void lsp_nav_references(const LspDocList *docs, const LspDoc *doc, LspPosition p
   if (select(docs, doc, position, &analysis, &selected)) {
     collect_places(&analysis, docs, selected, include_declaration, false, doc, &places);
     if (crosses_files(&analysis, selected)) workspace_places(&analysis, docs, doc, selected, include_declaration, &places);
+    std_import_places(&analysis, selected, &places);
     if (places.len > 1) qsort(places.ptr, places.len, sizeof(Place), compare_place);
   }
   write_places(out, &places, NULL);
