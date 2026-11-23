@@ -253,8 +253,9 @@ fn List[T: Clonable].sorted(compare: fn(T, T) Int) List[T]: ...
 // Returns a new list of the values for which `predicate` is true, in their original
 // order.
 fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]:
-	var out = self.clone()
-	out.retain(predicate)
+	var out = List[T]()
+	for item in self:
+		if predicate(item): out.append(item.clone())
 	return out
 
 // Returns a copy of the first element for which `predicate` is true, or `null`.
@@ -364,14 +365,14 @@ Strings join as they are and numbers as decimal text. A record or alternative jo
 Example: `[1, 2, 3].join(",")` is `"1,2,3"`.
 */
 fn List[T].join(separator: String) String:
-	var out = StringBuilder()
+	var out = ""
 
 	for i in 0..self.length():
 		if i > 0:
-			out.append(separator)
-		out.append(f"{self[i]}")
+			out += separator
+		out += f"{self[i]}"
 
-	return out.build()
+	return out
 
 /*
 Returns a new list in ascending natural order; the receiver is unchanged. The sort is stable: equal elements keep their order.
@@ -735,16 +736,14 @@ fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
-// absent. The key is looked up once to read and once to store, `initial` is always
-// evaluated, and `change` runs once. Example: `counts.update(word, 0, fn n: n + 1)`
+// absent. The key is probed once, `initial` is always evaluated, and `change` runs
+// once and must not use this map. Example: `counts.update(word, 0, fn n: n + 1)`
 // counts occurrences.
 fn var Map[T: Hashable & Clonable, U: Clonable].update(
 	move key: T,
 	move initial: U,
 	change: fn(U) U
-) Void:
-	next := change(self.get_or(key, initial))
-	self.add(key, next)
+) Void: ...
 
 /*
 Keeps only the entries for which `keep(key, value)` is true, in place, like `List.retain`. The rest keep their insertion order.
@@ -1021,7 +1020,6 @@ fn reverse_span[T](var items: List[T], start: Int, end: Int) Void:
 
 import (
 	panic from "@std/core.ms",
-	StringBuilder from "@std/string_builder.ms",
 
 	msrt_list_distinct, msrt_list_range_by from "@std/internal/collections.ms",
 )

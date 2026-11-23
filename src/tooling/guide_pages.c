@@ -1,16 +1,14 @@
 /* Owns the page and search half of guide.h: bounded standard-library pages and the fuzzy lookup behind `ms search_symbol`. */
 #include "base/message.h"
+#include "base/utf8.h"
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "tooling/guide.h"
+#include "tooling/search_text.h"
 
 enum { PAGE_BUDGET = 3500, LINE_WIDTH = 150, MODULE_LINES = 45, INDEX_BUDGET = 3400, SEARCH_BUDGET = 3000 };
 
 /* ---- text helpers ---- */
-
-static bool is_blank(uint8_t c) {
-  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
 
 static MsSpan sub(MsSpan s, size_t from, size_t to) {
   return ms_span_of(s.ptr + from, to - from);
@@ -19,66 +17,13 @@ static MsSpan sub(MsSpan s, size_t from, size_t to) {
 static MsSpan trim(MsSpan s) {
   size_t from = 0;
   size_t to = s.len;
-  while (from < to && is_blank(s.ptr[from])) {
+  while (from < to && ms_text_is_blank(s.ptr[from])) {
     from++;
   }
-  while (to > from && is_blank(s.ptr[to - 1])) {
+  while (to > from && ms_text_is_blank(s.ptr[to - 1])) {
     to--;
   }
   return sub(s, from, to);
-}
-
-static size_t rune_count(MsSpan s) {
-  size_t n = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    n += (s.ptr[i] & 0xC0) != 0x80 ? 1 : 0;
-  }
-  return n;
-}
-
-/* The byte length of the first `runes` characters of `s`. */
-static size_t rune_prefix(MsSpan s, size_t runes) {
-  size_t seen = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    if ((s.ptr[i] & 0xC0) != 0x80) {
-      if (seen == runes) {
-        return i;
-      }
-      seen++;
-    }
-  }
-  return s.len;
-}
-
-/* The words of `s` joined by one space. */
-static MsSpan one_spaced(MsArena *arena, MsSpan s) {
-  MsStrBuild out = ms_strbuild_new();
-  size_t i = 0;
-  bool first = true;
-  while (i < s.len) {
-    while (i < s.len && is_blank(s.ptr[i])) {
-      i++;
-    }
-    size_t j = i;
-    while (j < s.len && !is_blank(s.ptr[j])) {
-      j++;
-    }
-    if (j > i) {
-      ms_strbuild_append_text(&out, first ? "" : " ");
-      ms_strbuild_append(&out, sub(s, i, j));
-      first = false;
-    }
-    i = j;
-  }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return text;
-}
-
-static MsSpan copy_of(MsArena *arena, MsStrBuild *b) {
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(b));
-  ms_strbuild_free(b);
-  return text;
 }
 
 static MsSpan short_name(MsSpan path) {
@@ -125,16 +70,16 @@ static MsSpan first_line(MsArena *arena, MsSpan doc, size_t limit) {
     while (end < doc.len && doc.ptr[end] != '\n') {
       end++;
     }
-    const MsSpan line = one_spaced(arena, sub(doc, at, end));
+    const MsSpan line = ms_text_one_spaced(arena, sub(doc, at, end));
     at = end + 1;
     if (line.len == 0) {
       continue;
     }
-    const size_t chars = rune_count(line);
+    const size_t chars = ms_utf8_count(line.ptr, line.len);
     if (chars <= limit) {
       return line;
     }
-    const MsSpan head = sub(line, 0, rune_prefix(line, limit - 1));
+    const MsSpan head = sub(line, 0, ms_utf8_offset_of(line.ptr, line.len, limit - 1));
     long cut = -1;
     for (size_t i = head.len; i > 0; i--) {
       if (head.ptr[i - 1] == ' ') {
@@ -147,25 +92,25 @@ static MsSpan first_line(MsArena *arena, MsSpan doc, size_t limit) {
     }
     size_t take = (size_t)cut < chars ? (size_t)cut : chars;
     MsStrBuild out = ms_strbuild_new();
-    ms_strbuild_append(&out, sub(line, 0, rune_prefix(line, take)));
+    ms_strbuild_append(&out, sub(line, 0, ms_utf8_offset_of(line.ptr, line.len, take)));
     ms_strbuild_append_text(&out, "\xE2\x80\xA6");
-    return copy_of(arena, &out);
+    return ms_message_take_builder(arena, &out);
   }
   return ms_span_of_text("");
 }
 
 /* Collapses a signature to one line of at most `limit` characters. */
 static MsSpan one_line(MsArena *arena, MsSpan text, size_t limit) {
-  MsSpan joined = one_spaced(arena, text);
+  MsSpan joined = ms_text_one_spaced(arena, text);
   if (joined.len > 0 && joined.ptr[joined.len - 1] == ':') {
     joined = sub(joined, 0, joined.len - 1);
   }
   joined = trim(joined);
-  if (rune_count(joined) > limit) {
+  if (ms_utf8_count(joined.ptr, joined.len) > limit) {
     MsStrBuild out = ms_strbuild_new();
-    ms_strbuild_append(&out, sub(joined, 0, rune_prefix(joined, limit - 1)));
+    ms_strbuild_append(&out, sub(joined, 0, ms_utf8_offset_of(joined.ptr, joined.len, limit - 1)));
     ms_strbuild_append_text(&out, "\xE2\x80\xA6");
-    return copy_of(arena, &out);
+    return ms_message_take_builder(arena, &out);
   }
   return joined;
 }
@@ -176,16 +121,16 @@ static MsSpan cap_doc(MsArena *arena, MsSpan doc, size_t limit) {
   if (doc.len <= limit) {
     return doc;
   }
-  size_t chars = rune_count(doc);
+  size_t chars = ms_utf8_count(doc.ptr, doc.len);
   size_t bytes = doc.len;
   while (bytes > limit) {
     chars = chars > 20 ? chars - 20 : 0;
-    bytes = rune_prefix(doc, chars);
+    bytes = ms_utf8_offset_of(doc.ptr, doc.len, chars);
   }
   MsStrBuild out = ms_strbuild_new();
   ms_strbuild_append(&out, sub(doc, 0, bytes));
   ms_strbuild_append_text(&out, "\xE2\x80\xA6");
-  return copy_of(arena, &out);
+  return ms_message_take_builder(arena, &out);
 }
 
 /* The text with lines beyond `limit` replaced by `...`. */
@@ -245,14 +190,14 @@ static MsSpan clip_text(MsArena *arena, MsSpan s, size_t limit) {
   append_lossy(&out, sub(s, 0, head));
   ms_strbuild_append(&out, ms_message_format(arena, "\n[... %z bytes omitted ...]\n", s.len - head - tail));
   append_lossy(&out, sub(s, s.len - tail, s.len));
-  return copy_of(arena, &out);
+  return ms_message_take_builder(arena, &out);
 }
 
 /* ---- the index and pages ---- */
 
 static void pad_to(MsStrBuild *out, MsSpan text, size_t width) {
   ms_strbuild_append(out, text);
-  for (size_t n = rune_count(text); n < width; n++) {
+  for (size_t n = ms_utf8_count(text.ptr, text.len); n < width; n++) {
     ms_strbuild_append_byte(out, ' ');
   }
 }
@@ -285,7 +230,7 @@ static MsSpan index_lines(MsArena *arena, const MsGuide *guide, size_t width) {
     ms_strbuild_append_byte(&b, '\n');
     ms_strbuild_free(&line);
   }
-  return copy_of(arena, &b);
+  return ms_message_take_builder(arena, &b);
 }
 
 MsSpan ms_guide_index(MsArena *arena, const MsGuide *guide) {
@@ -334,7 +279,7 @@ static MsSpan module_page(MsArena *arena, const MsApiModule *m) {
     ms_strbuild_append_byte(&b, '\n');
   }
   ms_strbuild_append(&b, ms_message_format(arena, "Details: ms search_symbol %S.<Name>\n", short_name(m->path), (MsSpan){0}));
-  return clip_text(arena, copy_of(arena, &b), PAGE_BUDGET);
+  return clip_text(arena, ms_message_take_builder(arena, &b), PAGE_BUDGET);
 }
 
 static MsSpan trim_newlines_end(MsSpan s) {
@@ -361,7 +306,7 @@ static MsSpan declaration_page(MsArena *arena, const MsApiModule *m, const MsApi
       ms_strbuild_append(&b, clip_lines(arena, trim_newlines_end(d->declaration), 12));
       ms_strbuild_append_byte(&b, '\n');
     }
-    return clip_text(arena, copy_of(arena, &b), PAGE_BUDGET);
+    return clip_text(arena, ms_message_take_builder(arena, &b), PAGE_BUDGET);
   }
   ms_strbuild_append(&b, ms_message_format(arena, "members (%z):\n", d->members.len));
   for (size_t i = 0; i < d->members.len; i++) {
@@ -374,7 +319,7 @@ static MsSpan declaration_page(MsArena *arena, const MsApiModule *m, const MsApi
     ms_strbuild_append(&b, line);
   }
   ms_strbuild_append(&b, ms_message_format(arena, "Details: ms search_symbol %S.%S.<member>\n", short_name(m->path), bare(d->name)));
-  return copy_of(arena, &b);
+  return ms_message_take_builder(arena, &b);
 }
 
 static bool member_page(MsArena *arena, const MsApiModule *m, const MsApiDecl *d, MsSpan name, MsSpan *page, MsSpan *error) {
@@ -402,7 +347,7 @@ static bool member_page(MsArena *arena, const MsApiModule *m, const MsApiDecl *d
                                bare(d->name));
     return false;
   }
-  *page = clip_text(arena, copy_of(arena, &b), PAGE_BUDGET);
+  *page = clip_text(arena, ms_message_take_builder(arena, &b), PAGE_BUDGET);
   return true;
 }
 
@@ -447,7 +392,7 @@ bool ms_guide_page(MsArena *arena, const MsGuide *guide, MsSpan path, MsSpan *pa
       ms_strbuild_append_text(&names, i > 0 ? ", " : "");
       ms_strbuild_append(&names, short_name(guide->modules[i].path));
     }
-    *error = ms_message_format(arena, "no standard module \"%S\"; modules: %S", parts[0], copy_of(arena, &names));
+    *error = ms_message_format(arena, "no standard module \"%S\"; modules: %S", parts[0], ms_message_take_builder(arena, &names));
     return false;
   }
   if (count == 1) {
@@ -498,18 +443,18 @@ static MsSpans split_words(MsArena *arena, MsSpan s) {
       const bool upper = c >= 'A' && c <= 'Z';
       const bool prev_lower = previous >= 'a' && previous <= 'z';
       if (upper && i > 0 && prev_lower && current.bytes.len > 0) {
-        ms_spans_push(arena, &words, copy_of(arena, &current));
+        ms_spans_push(arena, &words, ms_message_take_builder(arena, &current));
         current = ms_strbuild_new();
       }
       ms_strbuild_append_byte(&current, upper ? (uint8_t)(c + 32) : c);
     } else if (current.bytes.len > 0) {
-      ms_spans_push(arena, &words, copy_of(arena, &current));
+      ms_spans_push(arena, &words, ms_message_take_builder(arena, &current));
       current = ms_strbuild_new();
     }
     previous = c;
   }
   if (current.bytes.len > 0) {
-    ms_spans_push(arena, &words, copy_of(arena, &current));
+    ms_spans_push(arena, &words, ms_message_take_builder(arena, &current));
   }
   ms_strbuild_free(&current);
   return words;
@@ -589,48 +534,6 @@ static MsSpans significant_words(MsArena *arena, MsSpan query) {
   return kept.len == 0 ? all : kept;
 }
 
-static bool is_subsequence(MsSpan small, MsSpan large) {
-  size_t i = 0;
-  for (size_t k = 0; k < large.len; k++) {
-    if (i < small.len && small.ptr[i] == large.ptr[k]) {
-      i++;
-    }
-  }
-  return i == small.len;
-}
-
-/* The Damerau-Levenshtein distance with adjacent transpositions. */
-static size_t edit_distance(MsArena *arena, MsSpan a, MsSpan b) {
-  const size_t diff = a.len > b.len ? a.len - b.len : b.len - a.len;
-  if (diff > 2) {
-    return 3;
-  }
-  const size_t cols = b.len + 1;
-  size_t *d = MS_ARENA_NEW_ARRAY(arena, size_t, (a.len + 1) * cols);
-  for (size_t i = 0; i <= a.len; i++) {
-    d[i * cols] = i;
-  }
-  for (size_t j = 0; j <= b.len; j++) {
-    d[j] = j;
-  }
-  for (size_t i = 1; i <= a.len; i++) {
-    for (size_t j = 1; j <= b.len; j++) {
-      const size_t cost = a.ptr[i - 1] != b.ptr[j - 1] ? 1 : 0;
-      size_t best = d[(i - 1) * cols + j] + 1;
-      const size_t insert = d[i * cols + j - 1] + 1;
-      const size_t replace = d[(i - 1) * cols + j - 1] + cost;
-      best = insert < best ? insert : best;
-      best = replace < best ? replace : best;
-      if (i > 1 && j > 1 && a.ptr[i - 1] == b.ptr[j - 2] && a.ptr[i - 2] == b.ptr[j - 1]) {
-        const size_t swap = d[(i - 2) * cols + j - 2] + 1;
-        best = swap < best ? swap : best;
-      }
-      d[i * cols + j] = best;
-    }
-  }
-  return d[a.len * cols + b.len];
-}
-
 /* Scores one query word against a candidate word; `weight` scales the field. */
 static int64_t score_word(MsArena *arena, MsSpan token, MsSpan word, int64_t weight) {
   if (ms_span_equal(token, word)) {
@@ -646,10 +549,10 @@ static int64_t score_word(MsArena *arena, MsSpan token, MsSpan word, int64_t wei
   if (weight < 50) {
     return 0; /* prose matches must be exact words or prefixes */
   }
-  if (token.len >= 3 && word.len > 0 && token.ptr[0] == word.ptr[0] && is_subsequence(token, word)) {
+  if (token.len >= 3 && word.len > 0 && token.ptr[0] == word.ptr[0] && ms_text_is_subsequence(token, word)) {
     return weight * 3 / 10;
   }
-  if (token.len >= 5 && edit_distance(arena, token, word) <= (token.len >= 7 ? 2u : 1u)) {
+  if (token.len >= 5 && ms_text_edit_distance(arena, token, word, 2) <= (token.len >= 7 ? 2u : 1u)) {
     return weight * 4 / 10;
   }
   return 0;
@@ -696,20 +599,11 @@ static int64_t score_token(MsArena *arena, MsSpan token, const Entry *e) {
   return best;
 }
 
-static bool contains_span(const MsSpans *list, MsSpan item) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], item)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /* Rewards names whose own words the query spells out and penalizes names with extra words it never mentioned. */
 static int64_t name_coverage(const MsSpans *tokens, const Entry *e) {
   int64_t covered = 0;
   for (size_t i = 0; i < e->words.len; i++) {
-    covered += contains_span(tokens, e->words.ptr[i]) ? 1 : 0;
+    covered += ms_spans_contains(tokens, e->words.ptr[i]) ? 1 : 0;
   }
   return 15 * covered - 10 * ((int64_t)e->words.len - covered);
 }

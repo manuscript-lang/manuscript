@@ -1,24 +1,19 @@
 // Regular expressions over generated log text: find_all, captures, replace_all and
 // split.
-import (
-	compile from "@std/regex.ms",
-	StringBuilder from "@std/string_builder.ms",
-)
+import compile from "@std/regex.ms"
 
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
 fn make_text(lines: Int) String:
-	var sb = StringBuilder()
+	var sb = ""
 	var x = 9
 
 	for i in 0..lines:
 		x = lcg(x)
-		sb.append(
-			f"user{x % 5000}@host{x / 3 % 90}.com 10.{x % 256}.{x / 5 % 256}.{x / 7 % 256} GET /api/v{x % 4}/items/{x / 11 % 100000} {200 + x % 3 * 100} took {x % 900}ms\n"
-		)
+		sb += f"user{x % 5000}@host{x / 3 % 90}.com 10.{x % 256}.{x / 5 % 256}.{x / 7 % 256} GET /api/v{x % 4}/items/{x / 11 % 100000} {200 + x % 3 * 100} took {x % 900}ms\n"
 
-	return sb.build()
+	return sb
 
 fn main() Void:
 	text := make_text(120000)

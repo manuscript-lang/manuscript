@@ -1,6 +1,5 @@
 // String manipulation: interpolation, case, trim, replace, split and join, search,
 // padding, and sorting strings.
-import StringBuilder from "@std/string_builder.ms"
 
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
@@ -33,17 +32,17 @@ fn main() Void:
 	for i in 0..joined.length():
 		if i % 1000 == 0: sorted_sample += joined[i].length() + joined[i].scalar_at(5)
 
-	var sb = StringBuilder()
+	var sb = ""
 	var size = 0
 
 	for w in joined:
 		if size > 200000: break
 
-		sb.append(w)
-		sb.append(",")
+		sb += w
+		sb += ","
 		size += w.length() + 1
 
-	parts := sb.build().split(",")
+	parts := sb.split(",")
 	print(
 		f"upper {upper_len} replaced {replaced} found {found} padded {padded} sorted {sorted_sample} parts {parts.length()}"
 	)

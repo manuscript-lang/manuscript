@@ -6,7 +6,7 @@
 int ms_review_command(int argc, char **argv);
 
 #include "base/arena.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/invocation.h"
 #include "tooling/review.h"
 

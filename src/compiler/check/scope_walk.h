@@ -26,9 +26,22 @@ typedef struct MsBinding {
   MsBindingKind kind;
   uint32_t anchor; /* where the walk reaches it, when that is later than its position (an `if` binding: after the condition); else 0 */
   uint32_t depth; /* how many blocks, loops, arms and lambdas enclose it inside its function: 0 for parameters */
+  uint32_t shadowed; /* set by the list: the position + 1 of the earlier binding of this name, 0 for none */
 } MsBinding;
 
-MS_LIST_DEFINE(MsBindingList, ms_binding_list, MsBinding)
+/* The bindings in scope, innermost last, with the latest binding of each name indexed so that a lookup does not
+ * scan: a function with thousands of locals would otherwise cost a scan per name read. */
+typedef struct MsBindingList {
+  MsBinding *ptr;
+  size_t len, cap;
+  uint32_t *latest; /* per name: the position + 1 of its innermost binding, 0 for none */
+  size_t nlatest;
+} MsBindingList;
+
+void ms_binding_list_push(MsBindingList *list, MsBinding binding);
+/* Drops the bindings from position `len` on. */
+void ms_binding_list_truncate(MsBindingList *list, size_t len);
+void ms_binding_list_free(MsBindingList *list);
 
 /* Where a visited node sits: the `impl` declaration whose method holds it, or NULL. */
 typedef struct MsScopeSite {

@@ -7,8 +7,13 @@ static bool is_authority_byte(uint8_t b) {
   if ((b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')) {
     return true;
   }
-  size_t at = 0;
-  return b != 0 && ms_span_find(ms_span_of_text("-._~%!$&'()*+,;=:[]"), ms_span_of(&b, 1), &at);
+  switch (b) {
+    case '-': case '.': case '_': case '~': case '%': case '!': case '$': case '&': case '\'': case '(': case ')':
+    case '*': case '+': case ',': case ';': case '=': case ':': case '[': case ']':
+      return true;
+    default:
+      return false;
+  }
 }
 
 bool ms_http_valid_authority(MsSpan value) {
@@ -111,17 +116,13 @@ MsString ms_http_clean_path(MsSpan path) {
   return result;
 }
 
-static bool find_byte(MsSpan s, uint8_t b, size_t *at) {
-  return ms_span_find(s, ms_span_of(&b, 1), at);
-}
-
 /* `rest` without a fragment, split at the first `?`. */
 static void split_query(MsSpan rest, MsSpan *path, MsSpan *query) {
   size_t at = 0;
-  if (find_byte(rest, '#', &at)) {
+  if (ms_span_find_byte(rest, '#', &at)) {
     rest.len = at;
   }
-  if (find_byte(rest, '?', &at)) {
+  if (ms_span_find_byte(rest, '?', &at)) {
     *path = ms_span_of(rest.ptr, at);
     *query = ms_span_of(rest.ptr + at + 1, rest.len - at - 1);
     return;
@@ -147,7 +148,7 @@ static bool has_text_ci(MsSpan s, const char *needle_lower) {
 
 static bool has_nul(MsSpan s) {
   size_t at = 0;
-  return find_byte(s, 0, &at);
+  return ms_span_find_byte(s, 0, &at);
 }
 
 /* Strips an http:// or https:// prefix, recording the authority up to the first / or ?. */
@@ -174,7 +175,45 @@ static bool take_authority(MsSpan *rest, MsSpan *host, bool *has_host, const cha
   return true;
 }
 
+/* Whether decoding and cleaning `raw` would return it unchanged: rooted, no escape, no empty, "." or ".." segment.
+ * Almost every request path is, and one scan then replaces the decoder, the segment stack and two builders. */
+static bool is_plain_clean(MsSpan raw) {
+  if (raw.len == 0 || raw.ptr[0] != '/') {
+    return false;
+  }
+  size_t start = 1; /* the first byte of the current segment */
+  for (size_t i = 1; i <= raw.len; i++) {
+    if (i < raw.len && raw.ptr[i] == '%') {
+      return false;
+    }
+    if (i < raw.len && raw.ptr[i] != '/') {
+      continue;
+    }
+    const size_t length = i - start;
+    const bool last = i == raw.len;
+    if (length == 0 && !(last && i > 1)) { /* "//" in the path; the trailing slash of "/a/" is the one empty segment kept */
+      return i == 1 && last; /* "/" alone */
+    }
+    if (length == 1 && raw.ptr[start] == '.') {
+      return false;
+    }
+    if (length == 2 && raw.ptr[start] == '.' && raw.ptr[start + 1] == '.') {
+      return false;
+    }
+    start = i + 1;
+  }
+  return true;
+}
+
 static bool finish_path(MsSpan raw_path, MsString *path, const char **reason) {
+  if (is_plain_clean(raw_path)) {
+    if (!ms_utf8_is_valid(raw_path.ptr, raw_path.len)) {
+      *reason = "invalid UTF-8 URL";
+      return false;
+    }
+    *path = ms_string_from_span(raw_path);
+    return true;
+  }
   MsString decoded = ms_string_empty();
   if (!ms_http_unescape(raw_path, &decoded)) {
     *reason = "Bad Request";

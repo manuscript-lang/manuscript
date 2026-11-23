@@ -96,27 +96,6 @@ static MsSpan decl_id(Collect *c, MsSpan file, const MsDecl *decl) {
   return join_id(c, file, entity_kind(decl), decl->kind == MS_D_TEST ? decl->u.test.name : bound_name(c, decl));
 }
 
-/* Whether the declaration carries an implementation: a body, an `extern fn`, a constant, alias or test. */
-static bool decl_has_body(const MsDecl *decl) {
-  switch ((MsDeclKind)decl->kind) {
-  case MS_D_FN: return decl->u.fn.body.len > 0 || decl->u.fn.external;
-  case MS_D_CONST:
-  case MS_D_ALIAS: return true;
-  case MS_D_TEST: return decl->u.test.body.len > 0;
-  case MS_D_IMPL:
-    for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
-      if (decl->u.impl.methods.ptr[i]->func.body.len > 0) {
-        return true;
-      }
-    }
-    return false;
-  case MS_D_TYPE:
-  case MS_D_ENUM:
-  case MS_D_INTERFACE: return false;
-  }
-  return false;
-}
-
 /* Whether a file declares native operations (a bodiless inherent `impl`) and also has bodies: the Rust loader splits
  * it into a native half and a `+source` half, and ids name the half. */
 static bool is_mixed(const MsModule *tree) {
@@ -124,7 +103,7 @@ static bool is_mixed(const MsModule *tree) {
   bool body = false;
   for (uint32_t d = 0; d < tree->ndecls; d++) {
     const MsDecl *decl = tree->decls[d];
-    body = body || decl_has_body(decl);
+    body = body || ms_decl_has_body(decl);
     if (decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL) {
       for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
         native = native || decl->u.impl.methods.ptr[i]->func.body.len == 0;
@@ -138,7 +117,7 @@ static bool is_mixed(const MsModule *tree) {
 static MsSpan id_file(Collect *c, uint32_t module, const MsDecl *decl) {
   const MsModuleInfo *info = &c->program->modules.ptr[module];
   const MsSpan file = ms_names_span(c->program->names, info->file);
-  if (module < c->program->user_modules || !decl_has_body(decl) || !is_mixed(info->tree)) {
+  if (module < c->program->user_modules || !ms_decl_has_body(decl) || !is_mixed(info->tree)) {
     return file;
   }
   return ms_message_format(c->arena, "%S+source", file);
@@ -381,23 +360,14 @@ static void collect_methods(Collect *c) {
   }
 }
 
-static int64_t compare_text(MsSpan a, MsSpan b) {
-  const size_t common = a.len < b.len ? a.len : b.len;
-  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
-  if (order != 0) {
-    return order < 0 ? -1 : 1;
-  }
-  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
-}
-
 static int64_t compare_entity(uint8_t *env, const uint8_t *left, const uint8_t *right) {
   (void)env;
-  return compare_text(((const MsEntity *)(const void *)left)->id, ((const MsEntity *)(const void *)right)->id);
+  return ms_span_compare(((const MsEntity *)(const void *)left)->id, ((const MsEntity *)(const void *)right)->id);
 }
 
 static int64_t compare_site(uint8_t *env, const uint8_t *left, const uint8_t *right) {
   (void)env;
-  return compare_text(((const MsCallSite *)(const void *)left)->id, ((const MsCallSite *)(const void *)right)->id);
+  return ms_span_compare(((const MsCallSite *)(const void *)left)->id, ((const MsCallSite *)(const void *)right)->id);
 }
 
 void ms_inspect_collect(MsArena *arena, const MsCheckProgram *program, bool std, MsInspection *out) {

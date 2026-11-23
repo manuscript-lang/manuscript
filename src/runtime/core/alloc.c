@@ -13,6 +13,14 @@ void ms_core_heap_stats(int64_t *used, int64_t *committed) {
   *committed = (int64_t)current_commit;
 }
 
+void ms_core_heap_report(void) {
+  if (!mi_option_is_enabled(mi_option_show_stats)) {
+    return;
+  }
+  mi_stats_print(NULL);
+  mi_option_disable(mi_option_show_stats);
+}
+
 void *msrt_alloc(size_t size) {
   return ms_alloc(size);
 }

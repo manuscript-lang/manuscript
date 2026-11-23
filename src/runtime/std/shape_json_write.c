@@ -9,6 +9,7 @@
 #include "runtime/std/json_internal.h"
 #include "runtime/std/shape_json.h"
 #include "runtime/std/shape_text.h"
+#include "runtime/std/shape_slot.h"
 
 /* The walk is recursive and grows the task's stack; the writer refuses data nested past JSON_DEPTH_CEILING, and the
  * walk stops once it has. */
@@ -31,41 +32,15 @@ static int no_form(Encode *state) {
   return NO_FORM;
 }
 
-static int64_t read_signed(const MsShape *shape, const uint8_t *slot) {
-  switch (shape->size) {
-  case 1:
-    return *(const int8_t *)slot;
-  case 2:
-    return *AT(int16_t, slot);
-  case 4:
-    return *AT(int32_t, slot);
-  default:
-    return *AT(int64_t, slot);
-  }
-}
-
-static int64_t read_unsigned(const MsShape *shape, const uint8_t *slot) {
-  switch (shape->size) {
-  case 1:
-    return *slot;
-  case 2:
-    return *AT(uint16_t, slot);
-  case 4:
-    return *AT(uint32_t, slot);
-  default:
-    return (int64_t)*AT(uint64_t, slot);
-  }
-}
-
 /* Writes a number in a slot: 8-byte unsigned goes through the unsigned writer, smaller integers are widened.
  */
 static int encode_number(Encode *state, const MsShape *shape, const uint8_t *slot) {
   if (shape->kind == MS_SHAPE_UINT && shape->size == 8) {
-    msstd_json_w_uint(state->writer, read_unsigned(shape, slot));
+    msstd_json_w_uint(state->writer, (int64_t)ms_shape_read_unsigned(shape, slot));
   } else if (shape->kind == MS_SHAPE_UINT) {
-    msstd_json_w_int(state->writer, read_unsigned(shape, slot));
+    msstd_json_w_int(state->writer, (int64_t)ms_shape_read_unsigned(shape, slot));
   } else if (shape->kind == MS_SHAPE_INT) {
-    msstd_json_w_int(state->writer, read_signed(shape, slot));
+    msstd_json_w_int(state->writer, ms_shape_read_signed(shape, slot));
   } else if (shape->size == 4) {
     msstd_json_w_float32(state->writer, (double)*AT(float, slot));
   } else {

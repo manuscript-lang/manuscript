@@ -4,7 +4,6 @@ import (
 	escape from "@std/data/html.ms",
 	JsonValue, parse, stringify from "@std/data/json.ms",
 	WriteStream from "@std/io/io.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
@@ -139,7 +138,7 @@ fn Template.render(
 	frames.append(root_names(data))
 
 	var run = Run(
-		out: StringBuilder(),
+		out: "",
 		written: 0,
 		frames: frames,
 		partials: options.partials.clone(),
@@ -148,7 +147,7 @@ fn Template.render(
 		html: self.html,
 	)
 	run.nodes(self.nodes, 0)?
-	return ok(run.out.build())
+	return ok(run.out)
 
 type Token:
 	action: Bool
@@ -338,7 +337,7 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 			toks.append(Tok(kind: "sym", text: c.clone()))
 			i += 1
 		else if c == "\"":
-			var out = StringBuilder()
+			var out = ""
 			i += 1
 
 			var closed = false
@@ -351,17 +350,17 @@ fn lex(text: String, line: Int) List[Tok]!Error:
 
 				if chars[i] == "\\" and i + 1 < chars.length():
 					e := chars[i + 1]
-					out.append(if e == "n": "\n" else if e == "t": "\t" else: e.clone())
+					out += if e == "n": "\n" else if e == "t": "\t" else: e.clone()
 					i += 2
 				else:
-					out.append(chars[i])
+					out += chars[i]
 					i += 1
 
 			if not closed: return error(
 				syntax_error(line: line, reason: "unterminated string")
 			)
 
-			toks.append(Tok(kind: "str", text: out.build()))
+			toks.append(Tok(kind: "str", text: out))
 		else if (
 			is_digit(c)
 			or (
@@ -687,7 +686,7 @@ fn strip_filter(expr: TemplateExpr) TemplateExpr:
 // ---- rendering -----------------------------------------------------------------------------
 
 type Run:
-	out: StringBuilder
+	out: String
 	written: Int
 	frames: List[Map[String, JsonValue]]
 	partials: Map[String, Template]
@@ -701,7 +700,7 @@ fn var Run.write(text: String) Void!Error:
 		Error("template: output limit exceeded", kind: "EOVERFLOW")
 	)
 
-	self.out.append(text)
+	self.out += text
 
 fn Run.lookup(parts: List[String]) JsonValue?:
 	var i = self.frames.length() - 1
@@ -948,7 +947,7 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 	var i = left.length() - 1
 	var j = right.length() - 1
 	var carry = 0
-	var out = StringBuilder()
+	var out = ""
 
 	while i >= 0 or j >= 0:
 		x := if i >= 0: (left[i].parse_int() or 0) else: 0
@@ -963,12 +962,12 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 			digit -= 10
 			carry = 1
 
-		out.append(f"{digit}")
+		out += f"{digit}"
 		i -= 1
 		j -= 1
 
-	if carry > 0: out.append("1")
-	return unsigned_digits(out.build().reverse())
+	if carry > 0: out += "1"
+	return unsigned_digits(out.reverse())
 
 fn decimal_order(exponent: String, offset: Int) String:
 	if exponent == "0": return f"{offset}"

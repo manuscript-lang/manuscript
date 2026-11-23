@@ -4,7 +4,6 @@ import (
 	base64_encode from "@std/data/encoding.ms",
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
-	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -20,16 +19,16 @@ fn main() Int:
 
 	expected := bytes.build()
 	encoded := base64_encode(expected)
-	var json = StringBuilder()
-	json.append("[")
+	var json = ""
+	json += "["
 
 	for i in 0..count:
-		if i > 0: json.append(",")
-		json.append(f"\"{encoded}\"")
+		if i > 0: json += ","
+		json += f"\"{encoded}\""
 
-	json.append("]")
+	json += "]"
 
-	text := json.build()
+	text := json
 	var checksum = 0
 	start := monotonic()
 

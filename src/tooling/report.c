@@ -2,6 +2,7 @@
 #include "tooling/report.h"
 
 #include "base/sha256.h"
+#include "base/message.h"
 #include "compiler/check/effects_directives.h"
 #include "compiler/syntax/diag_json.h"
 #include "tooling/review.h"
@@ -10,20 +11,6 @@ enum { ROW_CAP = 5 };
 
 static MsSpan text(const char *literal) {
   return ms_span_of_text(literal);
-}
-
-static MsSpan effect_list(MsArena *arena, const MsSpans *effects) {
-  if (effects->len == 0) {
-    return text("none");
-  }
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < effects->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : "+");
-    ms_strbuild_append(&out, effects->ptr[i]);
-  }
-  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return joined;
 }
 
 /* A section of a table: the first ROW_CAP rows unless `all`. */
@@ -72,15 +59,6 @@ static MsSection import_map(MsArena *arena, const MsFactModel *head) {
   return lines_section("DEPENDENCIES", lines);
 }
 
-static bool seen(const MsSpans *list, MsSpan value) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], value)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static MsSpan number(MsArena *arena, size_t n) {
   return ms_message_format(arena, "%z", n);
 }
@@ -103,12 +81,12 @@ MsReport ms_project_report(MsArena *arena, const MsFactModel *head, MsReviewOpti
     exported += f->exported ? 1 : 0;
     tests += ms_span_is_text(f->kind, "test") ? 1 : 0;
     scopes += f->scopes > 0 ? 1 : 0;
-    if (!seen(&files, f->file)) {
+    if (!ms_spans_contains(&files, f->file)) {
       ms_spans_push(arena, &files, f->file);
     }
   }
   for (size_t i = 0; i < head->imports.len; i++) {
-    if (!seen(&files, head->imports.ptr[i].file)) {
+    if (!ms_spans_contains(&files, head->imports.ptr[i].file)) {
       ms_spans_push(arena, &files, head->imports.ptr[i].file);
     }
   }
@@ -136,7 +114,7 @@ MsReport ms_project_report(MsArena *arena, const MsFactModel *head, MsReviewOpti
     if ((ms_span_is_text(f->name, "main") && f->exported) || ms_span_is_text(f->kind, "test")) {
       ms_spans_push(arena, &entries, f->name);
       ms_spans_push(arena, &entries, f->kind);
-      ms_spans_push(arena, &entries, effect_list(arena, &f->effects));
+      ms_spans_push(arena, &entries, ms_effects_joined(arena, &f->effects));
       ms_spans_push(arena, &entries, at);
     }
     if (f->scopes > 0) {
@@ -195,17 +173,6 @@ MsReport ms_project_report(MsArena *arena, const MsFactModel *head, MsReviewOpti
 }
 
 /* ---- diff reports ---- */
-
-static MsSpan joined(MsArena *arena, const MsSpans *list, const char *sep) {
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < list->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : sep);
-    ms_strbuild_append(&out, list->ptr[i]);
-  }
-  const MsSpan span = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return span;
-}
 
 /* Whether an effect row of the finding (`permits: + std.fs.*`, `reaches: + std.net.connect`) lists `effect`, or a
  * listed name matches `effect` read as a pattern. */
@@ -288,7 +255,7 @@ static MsSection import_section(MsArena *arena, const MsFactModel *base, const M
     ms_spans_push(arena, &names, base->imports.ptr[i].file);
   }
   for (size_t i = 0; i < head->imports.len; i++) {
-    if (!seen(&names, head->imports.ptr[i].file)) {
+    if (!ms_spans_contains(&names, head->imports.ptr[i].file)) {
       ms_spans_push(arena, &names, head->imports.ptr[i].file);
     }
   }
@@ -305,14 +272,14 @@ static MsSection import_section(MsArena *arena, const MsFactModel *base, const M
     const MsImports *now = imports_of(head, names.ptr[n]);
     if (now != NULL) {
       for (size_t p = 0; p < now->paths.len; p++) {
-        if (old == NULL || !seen(&old->paths, now->paths.ptr[p])) {
+        if (old == NULL || !ms_spans_contains(&old->paths, now->paths.ptr[p])) {
           ms_spans_push(arena, &lines, ms_message_format(arena, "+ %S imports %S", names.ptr[n], now->paths.ptr[p]));
         }
       }
     }
     if (old != NULL) {
       for (size_t p = 0; p < old->paths.len; p++) {
-        if (now == NULL || !seen(&now->paths, old->paths.ptr[p])) {
+        if (now == NULL || !ms_spans_contains(&now->paths, old->paths.ptr[p])) {
           ms_spans_push(arena, &lines, ms_message_format(arena, "- %S imports %S", names.ptr[n], old->paths.ptr[p]));
         }
       }
@@ -326,7 +293,7 @@ static MsSection internal_section(MsArena *arena, const MsFindings *findings, Ms
   for (size_t i = 0; i < findings->len; i++) {
     const MsFinding *f = &findings->ptr[i];
     if (ms_span_is_text(f->tier, "INTERNAL")) {
-      ms_spans_push(arena, &lines, ms_message_format(arena, "%S (%S)", f->entity, joined(arena, &f->changes, "; ")));
+      ms_spans_push(arena, &lines, ms_message_format(arena, "%S (%S)", f->entity, ms_spans_joined(arena, &f->changes, "; ")));
     }
   }
   for (size_t i = 1; i < lines.len; i++) {
@@ -386,7 +353,7 @@ MsReport ms_diff_report(MsArena *arena, const MsFactModel *base, const MsFactMod
     ms_spans_push(arena, &rows, number(arena, row));
     ms_spans_push(arena, &rows, f->tier);
     ms_spans_push(arena, &rows, f->entity);
-    ms_spans_push(arena, &rows, joined(arena, &f->changes, "; "));
+    ms_spans_push(arena, &rows, ms_spans_joined(arena, &f->changes, "; "));
     ms_spans_push(arena, &rows, number(arena, f->reach));
     ms_spans_push(arena, &rows, f->location);
     ms_spans_push(arena, &rows, ms_message_format(arena, "%z", (size_t)f->score));
@@ -395,9 +362,9 @@ MsReport ms_diff_report(MsArena *arena, const MsFactModel *base, const MsFactMod
     for (size_t e = 0; e < f->evidence.len; e++) {
       ms_spans_push(arena, &detail, f->evidence.ptr[e]);
     }
-    ms_spans_push(arena, &detail, ms_message_format(arena, "score: %S", joined(arena, &f->terms, ", ")));
+    ms_spans_push(arena, &detail, ms_message_format(arena, "score: %S", ms_spans_joined(arena, &f->terms, ", ")));
     ms_spans_push(arena, &evidence, number(arena, row));
-    ms_spans_push(arena, &evidence, joined(arena, &detail, " | "));
+    ms_spans_push(arena, &evidence, ms_spans_joined(arena, &detail, " | "));
   }
   static const char *const LOOK[] = {"#", "TIER", "ENTITY", "CHANGE", "REACH", "WHERE", "SCORE"};
   static const char *const EVIDENCE[] = {"#", "DETAIL"};
@@ -747,12 +714,6 @@ static void body(MsArena *arena, const MsReport *report, bool markdown, MsStrBui
   ms_strbuild_free(&b);
 }
 
-static void indent(MsStrBuild *out, size_t depth) {
-  for (size_t i = 0; i < depth; i++) {
-    ms_strbuild_append_text(out, "  ");
-  }
-}
-
 static void json_strings(MsStrBuild *out, const MsSpan *items, size_t count, size_t depth) {
   if (count == 0) {
     ms_strbuild_append_text(out, "[]");
@@ -760,53 +721,53 @@ static void json_strings(MsStrBuild *out, const MsSpan *items, size_t count, siz
   }
   ms_strbuild_append_text(out, "[\n");
   for (size_t i = 0; i < count; i++) {
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_json_string(out, items[i]);
     ms_strbuild_append_text(out, i + 1 < count ? ",\n" : "\n");
   }
-  indent(out, depth);
+  ms_strbuild_append_indent(out, depth);
   ms_strbuild_append_text(out, "]");
 }
 
 static void json_section(MsStrBuild *out, const MsSection *s) {
-  indent(out, 2);
+  ms_strbuild_append_indent(out, 2);
   ms_strbuild_append_text(out, "{\n");
-  indent(out, 3);
+  ms_strbuild_append_indent(out, 3);
   ms_strbuild_append_text(out, "\"title\": ");
   ms_json_string(out, s->title);
   if (s->headers.len > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "\"headers\": ");
     json_strings(out, s->headers.ptr, s->headers.len, 3);
   }
   if (s->cells.len > 0) {
     const size_t columns = s->headers.len;
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "\"rows\": [\n");
     const size_t rows = s->cells.len / columns;
     for (size_t r = 0; r < rows; r++) {
-      indent(out, 4);
+      ms_strbuild_append_indent(out, 4);
       json_strings(out, s->cells.ptr + r * columns, columns, 4);
       ms_strbuild_append_text(out, r + 1 < rows ? ",\n" : "\n");
     }
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "]");
   }
   if (s->lines.len > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_append_text(out, "\"lines\": ");
     json_strings(out, s->lines.ptr, s->lines.len, 3);
   }
   if (s->more > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, 3);
+    ms_strbuild_append_indent(out, 3);
     ms_strbuild_printf(out, "\"more\": %zu", s->more);
   }
   ms_strbuild_append_text(out, "\n");
-  indent(out, 2);
+  ms_strbuild_append_indent(out, 2);
   ms_strbuild_append_text(out, "}");
 }
 
@@ -830,31 +791,31 @@ static void json_finding(MsStrBuild *out, const MsFinding *f, size_t number, siz
     MsSpan value;
   } head[] = {{"id", f->id}, {"tier", f->tier}, {"entity", f->entity}, {"where", f->location}};
   for (size_t i = 0; i < 4; i++) {
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_strbuild_printf(out, "\"%s\": ", head[i].key);
     ms_json_string(out, head[i].value);
     ms_strbuild_append_text(out, ",\n");
   }
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_append_text(out, "\"changes\": ");
   json_strings_or_null(out, &f->changes, depth + 1);
   ms_strbuild_append_text(out, ",\n");
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_printf(out, "\"reach\": %zu,\n", f->reach);
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_printf(out, "\"score\": %lld,\n", (long long)f->score);
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_append_text(out, "\"terms\": ");
   json_strings_or_null(out, &f->terms, depth + 1);
   if (f->evidence.len > 0) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_strbuild_append_text(out, "\"evidence\": ");
     json_strings(out, f->evidence.ptr, f->evidence.len, depth + 1);
   }
   if (with_number) {
     ms_strbuild_append_text(out, ",\n");
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     if (number == 0) {
       ms_strbuild_append_text(out, "\"number\": null");
     } else {
@@ -862,7 +823,7 @@ static void json_finding(MsStrBuild *out, const MsFinding *f, size_t number, siz
     }
   }
   ms_strbuild_append_text(out, "\n");
-  indent(out, depth);
+  ms_strbuild_append_indent(out, depth);
   ms_strbuild_append_text(out, "}");
 }
 
@@ -876,11 +837,11 @@ static void json_findings(MsStrBuild *out, const MsReport *report) {
   for (size_t i = 0; i < report->findings.len; i++) {
     const MsFinding *f = &report->findings.ptr[i];
     const size_t number = is_internal(f) ? 0 : ++rank;
-    indent(out, 2);
+    ms_strbuild_append_indent(out, 2);
     json_finding(out, f, number, 2, true);
     ms_strbuild_append_text(out, i + 1 < report->findings.len ? ",\n" : "\n");
   }
-  indent(out, 1);
+  ms_strbuild_append_indent(out, 1);
   ms_strbuild_append_text(out, "]");
 }
 

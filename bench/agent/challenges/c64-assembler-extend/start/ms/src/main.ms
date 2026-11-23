@@ -3,7 +3,6 @@ import (
 	read_all from "@std/io/streams.ms",
 	bit_and, bit_not, bit_or, bit_xor from "@std/math/math.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 fn wrap(x: Int) Int:
@@ -665,7 +664,7 @@ type Vm:
 	mem: List[Int]
 	input: List[Int]
 	pow2: List[Int]
-	out: StringBuilder
+	out: String
 	chars: List[String]
 	in_pos: Int = 0
 	pc: Int = 0
@@ -723,7 +722,7 @@ fn var Vm.pop() Int:
 	return v
 
 fn var Vm.emit(s: String, lastc: Int) Void:
-	self.out.append(s)
+	self.out += s
 	self.last = lastc
 	self.wrote = true
 
@@ -991,7 +990,7 @@ fn main() Void!:
 		mem: mem,
 		input: parse_input(inp_lines),
 		pow2: pow2,
-		out: StringBuilder(),
+		out: "",
 		chars: chars,
 	)
 	vm.pc = start
@@ -1024,7 +1023,7 @@ fn main() Void!:
 		steps += 1
 		if vm.halted: break
 
-	output := vm.out.build()
+	output := vm.out
 	print(output, end: "")
 	if vm.wrote and vm.last != 10: print("")
 

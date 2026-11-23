@@ -192,3 +192,8 @@ static MsClass class_in(MsClassifier *classifier, MsTy ty) {
 MsClass ms_class_of(MsClassifier *classifier, MsTy ty) {
   return class_in(classifier, ty);
 }
+
+bool ms_class_owns_memory(const MsFacts *facts, MsClassifier *classifier, const MsExpr *expr) {
+  const MsTy ty = ms_facts_type(facts, expr->id);
+  return ty != MS_TY_NONE && ms_class_of(classifier, ty) != MS_CLASS_COPY;
+}

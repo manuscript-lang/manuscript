@@ -1,6 +1,5 @@
 import (
 	Bytes from "@std/bytes.ms",
-	StringBuilder from "@std/string_builder.ms",
 
 	msstd_html_decode,
 	msstd_html_escape,
@@ -2965,12 +2964,10 @@ fn var Parser.after_body_im() Bool:
 
 // The whitespace of the current text token; the framesets keep only that.
 fn Parser.tok_whitespace_only() String:
-	var out = StringBuilder()
+	var out = ""
 	for c in self.tok_data.chars():
-		if c == " " or c == "\t" or c == "\n" or c == "\u{C}" or c == "\r": out.append(
-			c
-		)
-	return out.build()
+		if c == " " or c == "\t" or c == "\n" or c == "\u{C}" or c == "\r": out += c
+	return out
 
 fn var Parser.in_frameset_im() Bool:
 	if self.tok_ty == T_COMMENT:
@@ -3412,17 +3409,17 @@ fn lowered_text(src: Bytes, start: Int, end: Int) String:
 	text := src.decode_utf8_range(start, end) or ""
 	if not needs_ascii_lowering(src, start, end): return text
 
-	var out = StringBuilder()
+	var out = ""
 
 	for c in text.chars():
 		code := c.scalar_at(0)
 
 		if code >= 65 and code <= 90:
-			out.append(c.lower())
+			out += c.lower()
 		else:
-			out.append(c)
+			out += c
 
-	return out.build()
+	return out
 
 // The atom of the lower-cased name `src[start, end)`, or 0 when it is not a known tag
 // name.
@@ -3558,19 +3555,19 @@ QUIRKY_IDS := [
 // Lower-cases each scalar with its single-scalar mapping, as Go's `strings.ToLower`
 // does.
 fn go_lower(text: String) String:
-	var out = StringBuilder()
+	var out = ""
 
 	for c in text.chars():
 		lowered := c.lower()
 
 		if lowered.scalar_length() == 1:
-			out.append(lowered)
+			out += lowered
 		else if c == "\u{130}":
-			out.append("i")
+			out += "i"
 		else:
-			out.append(c)
+			out += c
 
-	return out.build()
+	return out
 
 fn is_html_whitespace(b: Int) Bool:
 	return is_space(b)

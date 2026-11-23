@@ -200,8 +200,12 @@ static bool signature_arguments(LowerFn *fn, const MsNativeSig *sig, const MirVa
         return false;
       }
     } else if (kind == NS_CMP_FN && next < nargs && next > 0 && at + 1 < params) {
-      const MirTyData *list = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
-      const uint32_t thunk = list->kind == MK_LIST ? fn_sort_thunk(fn, list->elem, mir_b_ty(&fn->b, args[next])) : MIR_NONE;
+      const MirTyData *receiver = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, args[0]));
+      const MirTy closure = mir_b_ty(&fn->b, args[next]);
+      const bool map = receiver->kind == MK_OBJ && receiver->obj_class == MIR_OBJ_COLLECTION && receiver->nargs >= 2;
+      const uint32_t thunk = receiver->kind == MK_LIST ? fn_sort_thunk(fn, receiver->elem, closure)
+                             : map                     ? fn_update_thunk(fn, receiver->args[1], closure)
+                                                       : MIR_NONE;
       if (thunk == MIR_NONE) {
         return false;
       }
@@ -311,7 +315,7 @@ static MirValue call_native(LowerFn *fn, MsName name, MirValue *wanted, uint32_t
   return fn_emit(fn, mir_needs_drop(fn->cx->module, ret) ? MOP_Take : MOP_Load, &slot, 1, of_type, ret);
 }
 
-uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
+static uint32_t runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, bool pure) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&fn->cx->module->arena, MirParam, (size_t)nargs + 1);
   for (uint32_t index = 0; index < nargs; index++) {
     params[index] = (MirParam){mir_b_ty(&fn->b, args[index]),
@@ -322,11 +326,23 @@ uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint3
   const MsNativeSig *sig = ms_native_sig_find(text);
   const bool views = sig != NULL && sig->borrows;
   const MirExtern def = {.name = name, .params = params, .nparams = nargs, .ret = ret,
-                         .fresh = !views && mir_needs_drop(fn->cx->module, ret),
+                         .fresh = !views && mir_needs_drop(fn->cx->module, ret), .pure = pure,
                          .role = (uint8_t)(views ? MR_VIEW_RESULT
                                            : sig != NULL && sig->spawns ? MR_SPAWNS_TASK
+                                           : sig != NULL && sig->keeps ? MR_KEEPS_SLOT
                                            : fn_native_role(fn->cx->module, text, nargs > 0 ? params[0].ty : MIR_VOID))};
   return mir_extern_intern(fn->cx->module, &def);
+}
+
+uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
+  return runtime_extern(fn, name, args, nargs, ret, false);
+}
+
+MirValue fn_empty_map(LowerFn *fn, MirTy ty) {
+  const MsName name = mir_name(fn->cx->module, ms_span_of_text("msrt_map_new"));
+  const MirValue result = mir_b_call_rt(&fn->b, runtime_extern(fn, name, NULL, 0, ty, true), NULL, 0);
+  fn_own_result(fn, result);
+  return result;
 }
 
 MirValue fn_runtime_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret) {
@@ -778,6 +794,7 @@ bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSp
       ms_ty_is(&fn->cx->program->types, owner, MS_BUILTIN_String)) {
     operation = ms_span_of_text("split_view");
   }
+  fn_list_precheck_index(fn, owner, operation, argc, args);
   if (ms_span_is_text(operation, "set") && fn_list_set_closing(fn, place, slot, owner, argc, args, out)) {
     return true;
   }

@@ -74,7 +74,7 @@ static MsSpan joined(MsArena *arena, MsSpan left, MsSpan right) {
   MsStrBuild cleaned = ms_strbuild_new();
   ms_path_clean(&cleaned, ms_strbuild_span(&path));
   ms_strbuild_free(&path);
-  return ms_project_text(arena, &cleaned);
+  return ms_message_take_builder(arena, &cleaned);
 }
 
 /* A manifest name from the directory: lowercase letters, digits, `-` and `_`, falling back to `app`. */
@@ -142,7 +142,7 @@ static MsSpan absolute_of(MsArena *arena, const char *directory) {
   MsStrBuild cleaned = ms_strbuild_new();
   ms_path_clean(&cleaned, ms_strbuild_span(&path));
   ms_strbuild_free(&path);
-  return ms_project_text(arena, &cleaned);
+  return ms_message_take_builder(arena, &cleaned);
 }
 
 /* Appends `addition` to the file at `path` unless a line passes `present`; creates the file when it is missing. */
@@ -220,7 +220,7 @@ static MsSpan shell_quote(MsArena *arena, MsSpan path) {
     ms_strbuild_append(&text, path.ptr[i] == '\'' ? ms_span_of_text("'\\''") : ms_span_of(path.ptr + i, 1));
   }
   ms_strbuild_append_byte(&text, '\'');
-  return ms_project_text(arena, &text);
+  return ms_message_take_builder(arena, &text);
 }
 
 static void print_next(MsArena *arena, const InitOptions *options, MsSpan directory) {

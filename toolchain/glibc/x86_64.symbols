@@ -536,7 +536,7 @@ libc.so.6 GLIBC_2.2.5 __xstat64 F
 libc.so.6 GLIBC_2.2.5 _authenticate F
 libc.so.6 GLIBC_2.2.5 _dl_mcount_wrapper F
 libc.so.6 GLIBC_2.2.5 _dl_mcount_wrapper_check F
-libc.so.6 GLIBC_2.2.5 _environ D 0x8
+libc.so.6 GLIBC_2.2.5 _environ D 0x8 __environ
 libc.so.6 GLIBC_2.2.5 _exit F
 libc.so.6 GLIBC_2.2.5 _flushlbf F
 libc.so.6 GLIBC_2.2.5 _libc_intl_domainname D 0x5
@@ -696,7 +696,7 @@ libc.so.6 GLIBC_2.2.5 ctime F
 libc.so.6 GLIBC_2.2.5 ctime_r F
 libc.so.6 GLIBC_2.2.5 cuserid F
 libc.so.6 GLIBC_2.2.5 daemon F
-libc.so.6 GLIBC_2.2.5 daylight D 0x4
+libc.so.6 GLIBC_2.2.5 daylight D 0x4 __daylight
 libc.so.6 GLIBC_2.2.5 dcgettext F
 libc.so.6 GLIBC_2.2.5 dcngettext F
 libc.so.6 GLIBC_2.2.5 delete_module F
@@ -737,7 +737,7 @@ libc.so.6 GLIBC_2.2.5 endttyent F
 libc.so.6 GLIBC_2.2.5 endusershell F
 libc.so.6 GLIBC_2.2.5 endutent F
 libc.so.6 GLIBC_2.2.5 endutxent F
-libc.so.6 GLIBC_2.2.5 environ D 0x8
+libc.so.6 GLIBC_2.2.5 environ D 0x8 __environ
 libc.so.6 GLIBC_2.2.5 envz_add F
 libc.so.6 GLIBC_2.2.5 envz_entry F
 libc.so.6 GLIBC_2.2.5 envz_get F
@@ -1452,8 +1452,8 @@ libc.so.6 GLIBC_2.13 prlimit64 F
 libc.so.6 GLIBC_2.15 process_vm_readv F
 libc.so.6 GLIBC_2.15 process_vm_writev F
 libc.so.6 GLIBC_2.2.5 profil F
-libc.so.6 GLIBC_2.2.5 program_invocation_name D 0x8
-libc.so.6 GLIBC_2.2.5 program_invocation_short_name D 0x8
+libc.so.6 GLIBC_2.2.5 program_invocation_name D 0x8 __progname_full
+libc.so.6 GLIBC_2.2.5 program_invocation_short_name D 0x8 __progname
 libc.so.6 GLIBC_2.2.5 pselect F
 libc.so.6 GLIBC_2.10 psiginfo F
 libc.so.6 GLIBC_2.2.5 psignal F
@@ -1873,10 +1873,10 @@ libc.so.6 GLIBC_2.4 symlinkat F
 libc.so.6 GLIBC_2.2.5 sync F
 libc.so.6 GLIBC_2.6 sync_file_range F
 libc.so.6 GLIBC_2.14 syncfs F
-libc.so.6 GLIBC_2.12 sys_errlist D 0x438
+libc.so.6 GLIBC_2.12 sys_errlist D 0x438 _sys_errlist
 libc.so.6 GLIBC_2.12 sys_nerr D 0x4
 libc.so.6 GLIBC_2.3.3 sys_sigabbrev D 0x208
-libc.so.6 GLIBC_2.3.3 sys_siglist D 0x208
+libc.so.6 GLIBC_2.3.3 sys_siglist D 0x208 _sys_siglist
 libc.so.6 GLIBC_2.2.5 syscall F
 libc.so.6 GLIBC_2.2.5 sysconf F
 libc.so.6 GLIBC_2.2.5 sysctl F
@@ -1912,7 +1912,7 @@ libc.so.6 GLIBC_2.8 timerfd_gettime F
 libc.so.6 GLIBC_2.8 timerfd_settime F
 libc.so.6 GLIBC_2.2.5 times F
 libc.so.6 GLIBC_2.16 timespec_get F
-libc.so.6 GLIBC_2.2.5 timezone D 0x8
+libc.so.6 GLIBC_2.2.5 timezone D 0x8 __timezone
 libc.so.6 GLIBC_2.2.5 tmpfile F
 libc.so.6 GLIBC_2.2.5 tmpfile64 F
 libc.so.6 GLIBC_2.2.5 tmpnam F
@@ -1936,7 +1936,7 @@ libc.so.6 GLIBC_2.2.5 ttyname F
 libc.so.6 GLIBC_2.2.5 ttyname_r F
 libc.so.6 GLIBC_2.2.5 ttyslot F
 libc.so.6 GLIBC_2.2.5 twalk F
-libc.so.6 GLIBC_2.2.5 tzname D 0x10
+libc.so.6 GLIBC_2.2.5 tzname D 0x10 __tzname
 libc.so.6 GLIBC_2.2.5 tzset F
 libc.so.6 GLIBC_2.2.5 ualarm F
 libc.so.6 GLIBC_2.2.5 ulckpwdf F

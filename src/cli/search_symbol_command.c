@@ -6,11 +6,13 @@
 
 #include "base/cstr.h"
 #include "base/message.h"
+#include "base/utf8.h"
 #include "base/sort.h"
 #include "base/strbuild.h"
 #include "cli/invocation_rules.h"
 #include "cli/search_project.h"
 #include "tooling/guide.h"
+#include "tooling/search_text.h"
 #include "compiler/syntax/diag_json.h"
 
 enum { DEFAULT_LIMIT = 5, MAX_LIMIT = 10, OUTPUT_BUDGET = 3500, USES_SHOWN = 5 };
@@ -19,60 +21,11 @@ typedef MsSymbolMatch Described;
 typedef MsSymbolMatches DescribedList;
 #define described_list_push ms_symbol_matches_push
 
-static bool is_blank(uint8_t c) {
-  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
-
-static MsSpan one_spaced(MsArena *arena, MsSpan s) {
-  MsStrBuild out = ms_strbuild_new();
-  size_t i = 0;
-  bool first = true;
-  while (i < s.len) {
-    while (i < s.len && is_blank(s.ptr[i])) {
-      i++;
-    }
-    size_t j = i;
-    while (j < s.len && !is_blank(s.ptr[j])) {
-      j++;
-    }
-    if (j > i) {
-      ms_strbuild_append_text(&out, first ? "" : " ");
-      ms_strbuild_append(&out, ms_span_of(s.ptr + i, j - i));
-      first = false;
-    }
-    i = j;
-  }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return text;
-}
-
-static size_t rune_prefix(MsSpan s, size_t runes) {
-  size_t seen = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    if ((s.ptr[i] & 0xC0) != 0x80) {
-      if (seen == runes) {
-        return i;
-      }
-      seen++;
-    }
-  }
-  return s.len;
-}
-
-static size_t rune_count(MsSpan s) {
-  size_t n = 0;
-  for (size_t i = 0; i < s.len; i++) {
-    n += (s.ptr[i] & 0xC0) != 0x80 ? 1 : 0;
-  }
-  return n;
-}
-
 static MsSpan clip(MsArena *arena, MsSpan text, size_t limit) {
-  if (rune_count(text) <= limit) {
+  if (ms_utf8_count(text.ptr, text.len) <= limit) {
     return text;
   }
-  return ms_message_format(arena, "%S\xE2\x80\xA6", ms_span_of(text.ptr, rune_prefix(text, limit - 1)), (MsSpan){0});
+  return ms_message_format(arena, "%S\xE2\x80\xA6", ms_span_of(text.ptr, ms_utf8_offset_of(text.ptr, text.len, limit - 1)), (MsSpan){0});
 }
 
 /* ---- name_rank: how well a name matches a query ---- */
@@ -86,49 +39,8 @@ static MsSpan fold(MsArena *arena, MsSpan s) {
     }
     ms_strbuild_append_byte(&out, c >= 'A' && c <= 'Z' ? (uint8_t)(c + 32) : c);
   }
-  const MsSpan text = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
+  const MsSpan text = ms_message_take_builder(arena, &out);
   return text;
-}
-
-static bool is_subsequence(MsSpan needle, MsSpan haystack) {
-  size_t i = 0;
-  for (size_t k = 0; k < haystack.len; k++) {
-    if (i < needle.len && needle.ptr[i] == haystack.ptr[k]) {
-      i++;
-    }
-  }
-  return i == needle.len;
-}
-
-static bool edit_distance_at_most(MsArena *arena, MsSpan a, MsSpan b, size_t limit) {
-  if ((a.len > b.len ? a.len - b.len : b.len - a.len) > limit) {
-    return false;
-  }
-  const size_t cols = b.len + 1;
-  size_t *d = MS_ARENA_NEW_ARRAY(arena, size_t, (a.len + 1) * cols);
-  for (size_t i = 0; i <= a.len; i++) {
-    d[i * cols] = i;
-  }
-  for (size_t j = 0; j <= b.len; j++) {
-    d[j] = j;
-  }
-  for (size_t i = 1; i <= a.len; i++) {
-    for (size_t j = 1; j <= b.len; j++) {
-      const size_t cost = a.ptr[i - 1] != b.ptr[j - 1] ? 1 : 0;
-      size_t best = d[(i - 1) * cols + j] + 1;
-      const size_t insert = d[i * cols + j - 1] + 1;
-      const size_t replace = d[(i - 1) * cols + j - 1] + cost;
-      best = insert < best ? insert : best;
-      best = replace < best ? replace : best;
-      if (i > 1 && j > 1 && a.ptr[i - 1] == b.ptr[j - 2] && a.ptr[i - 2] == b.ptr[j - 1]) {
-        const size_t swap = d[(i - 2) * cols + j - 2] + 1;
-        best = swap < best ? swap : best;
-      }
-      d[i * cols + j] = best;
-    }
-  }
-  return d[a.len * cols + b.len] <= limit;
 }
 
 static int loose_rank(MsArena *arena, MsSpan name, MsSpan query) {
@@ -145,11 +57,11 @@ static int loose_rank(MsArena *arena, MsSpan name, MsSpan query) {
   if (ms_span_find(name, query, &at)) {
     return 2;
   }
-  if (query.len >= 3 && name.len > 0 && name.ptr[0] == query.ptr[0] && is_subsequence(query, name)) {
+  if (query.len >= 3 && name.len > 0 && name.ptr[0] == query.ptr[0] && ms_text_is_subsequence(query, name)) {
     return 3;
   }
-  if (query.len >= 5 && (edit_distance_at_most(arena, name, query, 2) ||
-                         (name.len > query.len && edit_distance_at_most(arena, ms_span_of(name.ptr, query.len), query, 2)))) {
+  if (query.len >= 5 && (ms_text_edit_distance(arena, name, query, 2) <= 2 ||
+                         (name.len > query.len && ms_text_edit_distance(arena, ms_span_of(name.ptr, query.len), query, 2) <= 2))) {
     return 4;
   }
   return -1;
@@ -201,7 +113,7 @@ static DescribedList library_matches(MsArena *arena, const MsGuide *guide, MsSpa
     }
     described_list_push(arena, &library,
                         (Described){.name = m->path, .kind = m->kind, .definition = ms_message_format(arena, "std:%S", m->module, (MsSpan){0}),
-                                    .type = one_spaced(arena, m->signature), .doc = m->doc,
+                                    .type = ms_text_one_spaced(arena, m->signature), .doc = m->doc,
                                     .effects = ms_arena_copy(arena, ms_strbuild_span(&effects)), .rank = (size_t)rank});
     ms_strbuild_free(&effects);
   }
@@ -227,7 +139,7 @@ static DescribedList library_matches(MsArena *arena, const MsGuide *guide, MsSpa
       }
       described_list_push(arena, &library,
                           (Described){.name = m->path, .kind = m->kind, .definition = ms_message_format(arena, "std:%S", m->module, (MsSpan){0}),
-                                      .type = one_spaced(arena, m->signature), .doc = m->doc,
+                                      .type = ms_text_one_spaced(arena, m->signature), .doc = m->doc,
                                       .effects = ms_arena_copy(arena, ms_strbuild_span(&effects)), .rank = 5});
       ms_strbuild_free(&effects);
     }
@@ -260,7 +172,7 @@ static void print_text(MsArena *arena, const DescribedList *described, size_t pr
       ms_strbuild_append(&out, ms_message_format(arena, "  %S\n", clip(arena, m->type, 200), (MsSpan){0}));
     }
     if (m->doc.len > 0) {
-      ms_strbuild_append(&out, ms_message_format(arena, "  // %S\n", clip(arena, one_spaced(arena, m->doc), 160), (MsSpan){0}));
+      ms_strbuild_append(&out, ms_message_format(arena, "  // %S\n", clip(arena, ms_text_one_spaced(arena, m->doc), 160), (MsSpan){0}));
     }
     if (m->effects.len > 0) {
       ms_strbuild_append(&out, ms_message_format(arena, "  %S\n", m->effects, (MsSpan){0}));
@@ -396,7 +308,7 @@ int ms_search_symbol_command(int argc, char **argv) {
   for (size_t i = 0; i < names.len; i++) {
     MsSpan t = names.ptr[i];
     for (size_t k = 0; k < t.len; k++) {
-      blank = blank && is_blank(t.ptr[k]);
+      blank = blank && ms_text_is_blank(t.ptr[k]);
     }
     ms_strbuild_append_text(&joined, i > 0 ? " " : "");
     ms_strbuild_append(&joined, t);

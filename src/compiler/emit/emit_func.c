@@ -117,6 +117,7 @@ static void emit_entry(EmitCx *cx) {
     emit_register_name(from, sizeof from, "in", value);
     emit_leaves_at(cx, value, from, true);
   }
+  emit_debug_params(cx);
 }
 
 /* One block: its label, then its instructions. Each instruction is written first into a builder of its own, since the

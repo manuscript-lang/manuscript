@@ -5,6 +5,8 @@ weight = 4
 
 # Rust toolchain
 
+> The Rust implementation is frozen at `660429d4`; the live compiler is the C code in `src/` (see [src/README.md](https://github.com/manuscript-lang/manuscript/blob/main/src/README.md)). This page covers building the frozen oracle only.
+
 Build the compiler, run its tests, and package native releases. `ms` is implemented in Rust; its native backends are Cranelift and LLVM. For application builds with an installed compiler, see [build levels](../developer-tooling/builds/build-levels.md) and [local tool setup](../developer-tooling/how-it-works.md#build-tools-and-local-setup). Release tags publish six platform archives through [`rust-dist.yml`](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/rust-dist.yml).
 
 ## Build and run
@@ -45,17 +47,6 @@ cargo test --workspace --doc
 CI splits each platform into tests and conformance jobs. Pull requests run the Linux legs; scheduled and manual runs cover the full platform matrix. Documentation-only changes skip Rust steps. See [continuous integration](development.md#continuous-integration) for the current jobs and gates.
 
 The conformance corpus in `tests/conformance/` holds programs with frozen expected output. `make conform` replays it against the Rust binary (CI runs it on linux-amd64, darwin-arm64, and windows-amd64). See the [corpus guide](https://github.com/manuscript-lang/manuscript/blob/main/tests/conformance/README.md).
-
-Runtime and native-crate memory safety is checked under Miri, which needs a nightly toolchain. It is not part of pull request CI; the [nightly safety workflow](https://github.com/manuscript-lang/manuscript/blob/main/.github/workflows/nightly-safety.yml) runs it on `main` every night, with `make cancel-sweep`, `make drift-check` and `make stress-sched`:
-
-```sh
-rustup toolchain install nightly --profile minimal -c miri
-MIRIFLAGS=-Zmiri-ignore-leaks cargo +nightly miri test -p ms-rt --lib
-```
-
-The workflow runs one Miri job that goes through these crates in turn: `ms-rt`, `ms-rt-abi`, and the `ms-std-*` crates with unsafe code that need no real files, sockets or processes (`core`, `bigint`, `crypto`, `url`, `json`, `regex`, `archive`, `system`, `terminal`). `ms-rt-abi` adds `-Zmiri-disable-isolation`, because a test reads its header file.
-
-Under Miri the allocator takes its reservation from the heap in place of `mmap` (and is 64 MiB, not 256 GiB), `ms-rt` skips tests that need files, processes, signals or context-switching assembly, and `-Zmiri-ignore-leaks` forgives that reservation. `crates/ms-rt/src/model_tests.rs` runs the collections and strings against `Vec` and `String` models with a fixed seed, so a failure repeats.
 
 ## Crates
 

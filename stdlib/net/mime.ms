@@ -3,7 +3,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
 	ReadStream, through from "@std/io/io.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
@@ -59,10 +58,10 @@ fn Headers.get_all(name: String) List[String]:
 
 // Formats the block as `Name: value` lines, each ending in CRLF.
 fn Headers.to_string() String:
-	var out = StringBuilder()
+	var out = ""
 	for field in self.fields:
-		out.append(f"{field.name}: {field.value}\r\n")
-	return out.build()
+		out += f"{field.name}: {field.value}\r\n"
+	return out
 
 // One multipart part: its headers, the decoded `name` and `filename` from
 // Content-Disposition, and body bytes.
@@ -177,26 +176,27 @@ export fn format_media_type(media_type: MediaType) String:
 // Splits on `;` outside double quotes.
 fn split_params(text: String) List[String]:
 	var pieces = List[String]()
-	var current = StringBuilder()
+	var current = ""
 	var quoted = false
 	var escaped = false
 
 	for c in text.chars():
 		if escaped:
-			current.append(c)
+			current += c
 			escaped = false
 		else if quoted and c == "\\":
-			current.append(c)
+			current += c
 			escaped = true
 		else if c == "\"":
-			current.append(c)
+			current += c
 			quoted = not quoted
 		else if c == ";" and not quoted:
-			pieces.append(current.drain())
+			pieces.append(current)
+			current = ""
 		else:
-			current.append(c)
+			current += c
 
-	pieces.append(current.drain())
+	pieces.append(current)
 	return pieces
 
 // Returns the unquoted value, or null unless an unescaped quote closes it at the very
@@ -204,7 +204,7 @@ fn split_params(text: String) List[String]:
 fn unquote(raw: String) String?:
 	if not raw.starts_with("\""): return raw.clone()
 
-	var out = StringBuilder()
+	var out = ""
 	var escaped = false
 	var closed = false
 
@@ -212,18 +212,18 @@ fn unquote(raw: String) String?:
 		if closed: return null
 
 		if escaped:
-			out.append(c)
+			out += c
 			escaped = false
 		else if c == "\\":
 			escaped = true
 		else if c == "\"":
 			closed = true
 		else:
-			out.append(c)
+			out += c
 
 	if not closed: return null
 
-	return out.build()
+	return out
 
 fn is_token(value: String) Bool:
 	if value.is_empty(): return false

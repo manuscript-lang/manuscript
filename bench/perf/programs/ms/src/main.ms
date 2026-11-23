@@ -1,7 +1,6 @@
 import (
 	ReadStream, stdin, stdout from "@std/io/io.ms",
 	lines from "@std/io/steps.ms",
-	StringBuilder from "@std/string_builder.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 
@@ -59,14 +58,14 @@ fn area(s: Shape) Int:
 
 fn bench_string() Int:
 	t := monotonic()
-	var sb = StringBuilder()
+	var sb = ""
 	var i = 0
 
 	while i < 50000:
-		sb.append("x")
+		sb += "x"
 		i += 1
 
-	built := sb.build()
+	built := sb
 	report("string_append_50k", 50000, t)
 	return built.length()
 

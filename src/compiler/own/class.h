@@ -35,4 +35,7 @@ void ms_class_mark_closeable(MsClassifier *classifier, MsTy ty);
 
 MsClass ms_class_of(MsClassifier *classifier, MsTy ty);
 
+/* Whether the value of `expr` is something other than a plain copy: it has a known type that moves or is a resource. */
+bool ms_class_owns_memory(const MsFacts *facts, MsClassifier *classifier, const MsExpr *expr);
+
 #endif

@@ -10,7 +10,7 @@
 #include "base/file.h"
 #include "base/message.h"
 #include "base/path.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
@@ -23,14 +23,12 @@ enum { STATUS_FAILED = 1, STATUS_USAGE = 2, STATUS_NOT_IMPLEMENTED = 70 };
 
 typedef TestPlan Plan;
 
-#define print_text test_print
-
 static void print_line(MsArena *arena, const char *format, MsSpan a, MsSpan b) {
-  print_text(stdout, ms_message_format(arena, format, a, b));
+  test_print(stdout, ms_message_format(arena, format, a, b));
 }
 
 static void print_outcome(MsArena *arena, MsSpan name, const TestOutcome *outcome) {
-  print_text(stdout, outcome->output);
+  test_print(stdout, outcome->output);
   switch (outcome->kind) {
   case TEST_PASSED:
     print_line(arena, "PASS %S\n", name, (MsSpan){0});
@@ -79,7 +77,7 @@ static void print_summary(MsArena *arena, const Totals *t, bool filtered) {
     ms_strbuild_printf(&summary, ", %zu not run", t->not_run);
   }
   ms_strbuild_append_byte(&summary, '\n');
-  print_text(stdout, ms_strbuild_span(&summary));
+  test_print(stdout, ms_strbuild_span(&summary));
   ms_strbuild_free(&summary);
 }
 
@@ -132,11 +130,11 @@ static int run_plan(MsArena *arena, const TestJob *job, Plan *plan) {
   const MsTestOptions *options = job->options;
   if (options->shuffled) {
     test_plan_shuffle(plan, options->shuffle_seed);
-    print_text(stdout, ms_message_format(arena, "shuffle seed: %z\n", (size_t)options->shuffle_seed));
+    test_print(stdout, ms_message_format(arena, "shuffle seed: %z\n", (size_t)options->shuffle_seed));
   }
   const bool filtered = options->filter.len > 0 || options->names.len > 0 || options->matching.len > 0 || options->exclude.len > 0;
   if (plan->count == 0 && filtered) {
-    print_text(stdout, ms_message_format(arena, "no tests match selection (%z tests available); use --list to find full "
+    test_print(stdout, ms_message_format(arena, "no tests match selection (%z tests available); use --list to find full "
                                                 "module::name identities\n",
                                          (size_t)job->names->len));
     finish_unrun(job, plan, "no_match", STATUS_FAILED);
@@ -175,31 +173,6 @@ static bool build_tests(MsCheckedInput *checked, const MsInvocation *invocation,
   return ms_pipeline_link(&request, error);
 }
 
-static MsSpan working_directory(MsArena *arena, const MsCheckedInput *checked, MsSpan filename) {
-  MsSpan directory = checked->graph.project_root.len > 0 ? checked->graph.project_root : ms_path_parent(filename);
-  if (directory.len == 0) {
-    directory = ms_span_of_text(".");
-  }
-  return ms_arena_copy(arena, directory);
-}
-
-/* The absolute directory of the project, or of the file for a lone file. */
-static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan input) {
-  const MsSpan directory = working_directory(arena, checked, input);
-  if (ms_path_is_absolute(directory)) {
-    return directory;
-  }
-  MsString current = ms_string_empty();
-  if (!ms_dir_current(&current)) {
-    return directory;
-  }
-  const bool here = directory.len == 1 && directory.ptr[0] == '.';
-  const MsSpan absolute = here ? ms_arena_copy(arena, ms_string_span(&current))
-                               : ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
-  ms_string_release(&current);
-  return absolute;
-}
-
 /* Checks `input`, builds its tests and runs the plan. */
 static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input, const MsSpanList *extras,
                       MsSpanList *watched) {
@@ -213,7 +186,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
     if (!test_capturing()) {
       status = ms_checked_input_report(&checked);
     } else {
-      TestDocument document = {.source_root = source_root(arena, &checked, input), .exit_code = STATUS_FAILED,
+      TestDocument document = {.source_root = ms_checked_input_source_root(arena, &checked, input), .exit_code = STATUS_FAILED,
                                .reason = ms_span_of_text("compile_error"),
                                .diagnostics = ms_checked_input_diagnostics_json(arena, &checked)};
       test_document_finish(&document);
@@ -232,35 +205,35 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
   Plan plan = {0};
   MsSpan selection_error = {0};
   if (!test_plan_select(arena, &names, &options, "test", &plan, &selection_error)) {
-    print_text(stderr, ms_message_format(arena, "%S\n", selection_error));
+    test_print(stderr, ms_message_format(arena, "%S\n", selection_error));
     status = STATUS_FAILED;
     if (test_capturing()) {
       MsStrBuild entry = ms_strbuild_new();
       test_document_diagnostic(&entry, "execution", selection_error, ms_span_of_text(""), 0);
-      TestDocument document = {.source_root = source_root(arena, &checked, input),
+      TestDocument document = {.source_root = ms_checked_input_source_root(arena, &checked, input),
                                .exit_code = STATUS_FAILED, .reason = ms_span_of_text("no_match"),
                                .diagnostics = ms_arena_copy(arena, ms_strbuild_span(&entry))};
       ms_strbuild_free(&entry);
       test_document_finish(&document);
     }
   } else if (options.list || plan.count == 0) {
-    TestJob job = {.arena = arena, .names = &names, .options = &options, .source_root = source_root(arena, &checked, input)};
+    TestJob job = {.arena = arena, .names = &names, .options = &options, .source_root = ms_checked_input_source_root(arena, &checked, input)};
     status = run_plan(arena, &job, &plan);
   } else {
     const MsString temp = ms_temp_dir();
     MsString directory = ms_string_empty();
     MsSpan error = {0};
     if (!ms_dir_make_temp(ms_string_span(&temp), ms_span_of_text("manuscript-test-"), &directory)) {
-      return test_fail_early(arena, source_root(arena, &checked, input), input, false, "execution",
+      return test_fail_early(arena, ms_checked_input_source_root(arena, &checked, input), input, false, "execution",
                         ms_span_of_text("cannot create a temporary directory"));
     }
     const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
     const MsSpan executable = ms_message_format(arena, MS_TEMP_PROGRAM, folder, (MsSpan){0});
     if (!build_tests(&checked, invocation, executable, &error)) {
-      status = test_fail_early(arena, source_root(arena, &checked, input), input, false, "build", error);
+      status = test_fail_early(arena, ms_checked_input_source_root(arena, &checked, input), input, false, "build", error);
     } else {
-      TestJob job = {.arena = arena, .executable = executable, .working = working_directory(arena, &checked, input),
-                     .names = &names, .options = &options, .source_root = source_root(arena, &checked, input)};
+      TestJob job = {.arena = arena, .executable = executable, .working = ms_checked_input_working_directory(arena, &checked, input),
+                     .names = &names, .options = &options, .source_root = ms_checked_input_source_root(arena, &checked, input)};
       status = run_plan(arena, &job, &plan);
     }
     ms_path_remove_tree(folder);
@@ -290,7 +263,7 @@ static int test_targets(MsArena *arena, const MsInvocation *invocation, MsSpanLi
   int status = 0;
   for (size_t i = 0; i < targets->len; i++) {
     if (members) {
-      print_text(stderr, ms_message_format(arena, "ms: testing %S\n", targets->ptr[i], (MsSpan){0}));
+      test_print(stderr, ms_message_format(arena, "ms: testing %S\n", targets->ptr[i], (MsSpan){0}));
     }
     const int result = test_input(arena, invocation, targets->ptr[i], NULL, watched);
     status = result > status ? result : status;
@@ -298,23 +271,11 @@ static int test_targets(MsArena *arena, const MsInvocation *invocation, MsSpanLi
   return status;
 }
 
-/* False, with the message on stderr, when `--match` or `--exclude` is not a regular expression. */
-static bool selection_valid(MsArena *arena, const MsTestOptions *options) {
-  TestFilters filters = {0};
-  MsSpan error = {0};
-  const bool valid = test_filters_compile(arena, options, &filters, &error);
-  test_filters_free(&filters);
-  if (!valid) {
-    print_text(stderr, ms_message_format(arena, "%S\n", error));
-  }
-  return valid;
-}
-
 /* `--watch`: runs the tests, waits for a change, and runs them again; a failing run keeps watching. */
 static int watch_tests(const MsInvocation *invocation, const MsTestOptions *options) {
   for (;;) {
     MsArena arena = ms_arena_new();
-    if (!selection_valid(&arena, options)) {
+    if (!test_selection_valid(&arena, options)) {
       ms_arena_free(&arena);
       return STATUS_USAGE;
     }
@@ -325,7 +286,7 @@ static int watch_tests(const MsInvocation *invocation, const MsTestOptions *opti
     (void)test_targets(&arena, invocation, &watched);
     test_output_capture(NULL);
     ms_strbuild_free(&captured);
-    print_text(stderr, ms_span_of_text("ms: waiting for changes\n"));
+    test_print(stderr, ms_span_of_text("ms: waiting for changes\n"));
     (void)fflush(stdout);
     watch_wait(&watched, started);
     ms_span_list_free(&watched);
@@ -342,7 +303,7 @@ int ms_test_command(int argc, char **argv) {
   MsStrBuild captured = ms_strbuild_new();
   if (status == 0 && invocation.watch) {
     status = watch_tests(&invocation, &options);
-  } else if (status == 0 && !selection_valid(&arena, &options)) {
+  } else if (status == 0 && !test_selection_valid(&arena, &options)) {
     status = STATUS_USAGE;
   } else if (status == 0) {
     test_output_capture(invocation.json ? &captured : NULL);

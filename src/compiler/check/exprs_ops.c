@@ -313,11 +313,6 @@ static bool collection_literal(const MsExpr *expr) {
   return expr->kind == MS_E_LIST || expr->kind == MS_E_MAP;
 }
 
-static bool names_none(Body *body, const MsExpr *expr) {
-  return expr->kind == MS_E_NAME && body_find_local(body, expr->u.sym) == NULL &&
-         ms_span_is_text(ms_names_span(body->program->names, expr->u.sym), "null");
-}
-
 static bool is_nullable(const Body *body, MsTy ty) {
   const MsTyTable *types = &body->program->types;
   return ty != MS_TY_NONE && ms_ty_is(types, ty, MS_BUILTIN_Optional) && ms_ty_arg_count(types, ty) == 1;
@@ -354,7 +349,7 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
                        ms_ty_arg_count(&body->program->types, *left) == 1;
     const bool shaped = (op == MS_B_EQ || op == MS_B_NE) && collection_literal(r);
     if (op == MS_B_OR && is_nullable(body, *left)) {
-      *right = body_expr(body, r, names_none(body, r) ? *left : ms_ty_args(&body->program->types, *left)[0]);
+      *right = body_expr(body, r, body_is_none_name(body, r) ? *left : ms_ty_args(&body->program->types, *left)[0]);
       return;
     }
     const size_t narrow = body_narrow_mark(body);
@@ -448,7 +443,7 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
 /* `x == null` and `x != null`: the `null` side takes the nullable type of the other, and the comparison is Bool. Any
  * other operand is reported unless it is itself wrong. */
 static MsTy none_comparison(Body *body, const MsExpr *expr) {
-  const bool null_left = names_none(body, expr->u.bin.left);
+  const bool null_left = body_is_none_name(body, expr->u.bin.left);
   const MsExpr *other = null_left ? expr->u.bin.right : expr->u.bin.left;
   const MsExpr *nothing = null_left ? expr->u.bin.left : expr->u.bin.right;
   /* a narrowed local is read as the nullable it is stored as: the test is about presence, not the payload */
@@ -477,7 +472,7 @@ static MsTy none_comparison(Body *body, const MsExpr *expr) {
 
 MsTy body_binary(Body *body, const MsExpr *expr, MsTy expected) {
   const MsBinaryOp op = (MsBinaryOp)expr->op;
-  if ((op == MS_B_EQ || op == MS_B_NE) && (names_none(body, expr->u.bin.left) || names_none(body, expr->u.bin.right))) {
+  if ((op == MS_B_EQ || op == MS_B_NE) && (body_is_none_name(body, expr->u.bin.left) || body_is_none_name(body, expr->u.bin.right))) {
     const MsTy ty = none_comparison(body, expr);
     body_set_type(body, expr->id, ty);
     return ty;

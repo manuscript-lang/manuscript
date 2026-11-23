@@ -15,6 +15,7 @@ typedef struct Match {
   bool joined; /* an arm falls through to the join */
   bool consumed; /* the scrutinee is a name the match moves: its arms own the payload they bind */
   bool owned_resource; /* ... a scope-owned value holding a resource: only an arm that binds every field takes them */
+  const MsRef *last_ref; /* the name's reference when the match reads it for the last time: each arm takes it from its slot */
 } Match;
 
 static bool is_literal(const MsExpr *path) {
@@ -77,7 +78,7 @@ static bool closes_binding(LowerFn *fn, const MsArm *arm, uint32_t at, MsTy payl
 
 /* An arm over a consumed scrutinee owns the payload it binds: the scrutinee is released but for the bound fields,
  * which the arm drops unless it moves them on. */
-static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase) {
+static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint32_t kase, bool closes_rest) {
   const MirModule *module = fn->cx->module;
   const MsRef *ref = ms_facts_ref(fn->facts, arm->id);
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &match->scrutinee, 1, (MirImm){0}, MIR_NONE);
@@ -99,11 +100,16 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
   const MirCaseDef *def = &module->alts.ptr[id].cases[kase];
   uint32_t mask = 0;
   for (uint32_t at = 0; at < arm->bindings.len && at < def->nfields; at++) {
+    if (closes_rest && ms_span_is_text(ms_names_span(fn->cx->program->names, arm->bindings.ptr[at].name), "_")) {
+      continue; /* left out: closed below with the other fields the arm does not name */
+    }
     const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
     const MirValue field = mir_b_emit(&fn->b, MOP_AltTake, &match->scrutinee, 1, imm, def->fields[at].ty);
     const MsTy payload = payload_type(fn, match, kase, at);
     mask |= UINT32_C(1) << at;
-    if (closes_binding(fn, arm, at, payload)) {
+    const bool names_resource = closes_rest && payload != MS_TY_NONE && fn_temp_closes(fn, payload) &&
+                                lower_part_close(fn->cx, payload) != MIR_NONE;
+    if (names_resource || closes_binding(fn, arm, at, payload)) {
       (void)fn_bind_closing(fn, ref->local + at, payload, field, false); /* the arm closes it where it ends */
       continue;
     }
@@ -111,6 +117,18 @@ static void take_payload(LowerFn *fn, const Match *match, const MsArm *arm, uint
       fn_own(fn, fn_scope(fn), field);
     }
     mir_b_def_var(&fn->b, fn_local(fn, ref->local + at, def->fields[at].ty), field);
+  }
+  for (uint32_t index = def->nfields; closes_rest && index > 0; index--) { /* what the arm leaves out closes now, last field first */
+    const uint32_t at = index - 1;
+    const MsTy payload = payload_type(fn, match, kase, at);
+    if ((mask & (UINT32_C(1) << at)) != 0 || payload == MS_TY_NONE || !fn_temp_closes(fn, payload) ||
+        lower_part_close(fn->cx, payload) == MIR_NONE) {
+      continue;
+    }
+    const MirImm imm = {.tag = MI_ALTFIELD, .a = id, .b = kase, .c = at};
+    const MirValue field = mir_b_emit(&fn->b, MOP_AltTake, &match->scrutinee, 1, imm, def->fields[at].ty);
+    mask |= UINT32_C(1) << at;
+    lower_close_check(&fn->b, mir_b_call(&fn->b, lower_part_close(fn->cx, payload), &field, 1));
   }
   const MirImm taken = {.tag = MI_ALTMASK, .a = id, .b = kase, .c = mask};
   (void)mir_b_emit(&fn->b, MOP_AltRelease, &match->scrutinee, 1, taken, MIR_NONE);
@@ -176,15 +194,28 @@ static bool lower_arm(LowerFn *fn, Match *match, const MsArm *arm) {
   if (match->kind == MK_IFACE && is_type_arm(fn, arm)) {
     bind_concrete(fn, match, arm);
   }
-  if (named && arm->bindings.len > 0) {
+  const MirValue viewed = match->scrutinee;
+  MirValue owned = MIR_NONE;
+  const bool last = match->last_ref != NULL && fn_closing_take(fn, match->last_ref, viewed, &owned);
+  if (last) {
+    /* The last read of a resource-holding name: the arm takes the value from its slot and closes what it does not
+     * name, in this order, before its body runs. */
+    match->scrutinee = owned;
+    if (named && arm->bindings.len > 0 && !(match->kind == MK_OPT && kase != 1)) {
+      take_payload(fn, match, arm, kase, true);
+    } else {
+      lower_close_check(&fn->b, mir_b_call(&fn->b, lower_part_close(fn->cx, match->checked), &owned, 1));
+    }
+  } else if (named && arm->bindings.len > 0) {
     const bool takes_all = match->owned_resource && (match->kind == MK_OPT ||
                            arm->bindings.len == fn->cx->module->alts.ptr[mir_ty_data(fn->cx->module, match->ty)->id].cases[kase].nfields);
     if ((match->consumed || takes_all) && !(match->kind == MK_OPT && kase != 1)) {
-      take_payload(fn, match, arm, kase);
+      take_payload(fn, match, arm, kase, false);
     } else {
       bind_payload(fn, match, arm, kase);
     }
   }
+  match->scrutinee = viewed;
   bool ok = fn_stmts(fn, arm->body);
   if (!fn->terminated && arm->value != NULL) {
     const MirValue value = fn_expr(fn, arm->value, LW_MOVE);
@@ -303,6 +334,9 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
   }
   match.ty = mir_b_ty(&fn->b, match.scrutinee);
   match.checked = ms_facts_type(fn->facts, expr->u.match.scrutinee->id);
+  if (match.checked != MS_TY_NONE) { /* inside a generic instance the scrutinee's type names its variables: use the instance's */
+    match.checked = ms_ty_subst(&fn->cx->program->types, match.checked, fn->subst.vars, fn->subst.args, fn->subst.count);
+  }
   match.kind = mir_ty_data(fn->cx->module, match.ty)->kind;
   const MsExpr *subject = expr->u.match.scrutinee;
   match.consumed = ((subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE) ||
@@ -311,6 +345,11 @@ MirValue fn_match(LowerFn *fn, const MsExpr *expr) {
                    (subject->kind == MS_E_CALL || !ms_check_holds_resource(fn->cx->program, ms_facts_type(fn->facts, subject->id)));
   match.owned_resource = !match.consumed && subject->kind == MS_E_NAME && ms_facts_use(fn->facts, subject->id) == MS_USE_MOVE &&
                          (match.kind == MK_ALT || match.kind == MK_OPT);
+  if (!match.consumed && subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
+      fn->facts->last != NULL && fn->facts->last[subject->id] != 0 && match.checked != MS_TY_NONE &&
+      ms_check_holds_resource(fn->cx->program, match.checked) && lower_part_close(fn->cx, match.checked) != MIR_NONE) {
+    match.last_ref = ms_facts_ref(fn->facts, subject->id);
+  }
   MirValue taken = MIR_NONE;
   if (subject->kind == MS_E_NAME && (match.kind == MK_ALT || match.kind == MK_OPT) &&
       fn_closing_move(fn, subject, match.scrutinee, &taken)) {

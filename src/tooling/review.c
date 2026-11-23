@@ -2,6 +2,7 @@
 #include "tooling/review.h"
 
 #include "base/sort.h"
+#include "base/message.h"
 
 const char *const MS_TIER_CONTRACT = "CONTRACT";
 const char *const MS_TIER_EFFECT = "EFFECT+";
@@ -21,15 +22,6 @@ static size_t tier_rank(MsSpan tier) {
     }
   }
   return 0;
-}
-
-static bool contains(const MsSpans *list, MsSpan value) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], value)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 typedef struct Scorer {
@@ -56,22 +48,11 @@ static MsSpan tier_of(const Scorer *s) {
   return text(tiers[best]);
 }
 
-static MsSpan join(MsArena *arena, const MsSpans *list, const char *sep) {
-  MsStrBuild out = ms_strbuild_new();
-  for (size_t i = 0; i < list->len; i++) {
-    ms_strbuild_append_text(&out, i == 0 ? "" : sep);
-    ms_strbuild_append(&out, list->ptr[i]);
-  }
-  const MsSpan joined = ms_arena_copy(arena, ms_strbuild_span(&out));
-  ms_strbuild_free(&out);
-  return joined;
-}
-
 /* Entries of `head` that `base` lacks. */
 static MsSpans added(MsArena *arena, const MsSpans *head, const MsSpans *base) {
   MsSpans out = {0};
   for (size_t i = 0; i < head->len; i++) {
-    if (!contains(base, head->ptr[i])) {
+    if (!ms_spans_contains(base, head->ptr[i])) {
       ms_spans_push(arena, &out, head->ptr[i]);
     }
   }
@@ -100,11 +81,11 @@ static void compare(Scorer *s, const MsFact *h, const MsFact *b) {
   }
   const MsSpans permits = added(arena, &h->permits, &b->permits);
   if (permits.len > 0) {
-    add(s, "EFFECT+", ms_message_format(arena, "permits: + %S", join(arena, &permits, ", ")), "effect_permit", 7);
+    add(s, "EFFECT+", ms_message_format(arena, "permits: + %S", ms_spans_joined(arena, &permits, ", ")), "effect_permit", 7);
   }
   const MsSpans reach = added(arena, &h->reach, &b->reach);
   if (reach.len > 0) {
-    add(s, "EFFECT+", ms_message_format(arena, "reaches: + %S", join(arena, &reach, ", ")), "effect_reach", 6);
+    add(s, "EFFECT+", ms_message_format(arena, "reaches: + %S", ms_spans_joined(arena, &reach, ", ")), "effect_reach", 6);
   }
   if (!ms_span_equal(h->error, b->error)) {
     add(s, "ERROR", ms_message_format(arena, "error type: %S -> %S", or_none(b->error), or_none(h->error)), "error_flow", 5);
@@ -119,7 +100,7 @@ static void compare(Scorer *s, const MsFact *h, const MsFact *b) {
 
 static bool has_any(const MsSpans *have, const MsSpans *want) {
   for (size_t i = 0; i < want->len; i++) {
-    if (contains(have, want->ptr[i])) {
+    if (ms_spans_contains(have, want->ptr[i])) {
       return true;
     }
   }
@@ -137,7 +118,7 @@ static MsSpan effect_path(MsArena *arena, const MsFact *start, const MsSpans *ga
     const MsFact *next = NULL;
     for (size_t i = 0; i < current->calls.len && next == NULL; i++) {
       const MsFact *callee = ms_fact_find(head, current->calls.ptr[i]);
-      if (callee != NULL && !contains(&seen, current->calls.ptr[i]) && has_any(&callee->reach, gained)) {
+      if (callee != NULL && !ms_spans_contains(&seen, current->calls.ptr[i]) && has_any(&callee->reach, gained)) {
         next = callee;
       }
     }
@@ -151,7 +132,7 @@ static MsSpan effect_path(MsArena *arena, const MsFact *start, const MsSpans *ga
   if (current->external.len > 0) {
     ms_spans_push(arena, &path, current->external.ptr[0]);
   }
-  return ms_message_format(arena, "path: %S", join(arena, &path, " -> "));
+  return ms_message_format(arena, "path: %S", ms_spans_joined(arena, &path, " -> "));
 }
 
 /* Returns whether the change is scored (it has changes and a score above the `added` or `removed` base of 1). */
@@ -165,10 +146,10 @@ static bool classify(MsArena *arena, MsSpan key, const MsFact *h, const MsFact *
   if (h != NULL && b == NULL && base_checked) {
     add(&s, "INTERNAL", text("added"), "added", 1);
     if (h->permits.len > 0) {
-      add(&s, "EFFECT+", ms_message_format(arena, "permits: + %S", join(arena, &h->permits, ", ")), "effect_permit", 7);
+      add(&s, "EFFECT+", ms_message_format(arena, "permits: + %S", ms_spans_joined(arena, &h->permits, ", ")), "effect_permit", 7);
     }
     if (h->reach.len > 0) {
-      add(&s, "EFFECT+", ms_message_format(arena, "reaches: + %S", join(arena, &h->reach, ", ")), "effect_reach", 6);
+      add(&s, "EFFECT+", ms_message_format(arena, "reaches: + %S", ms_spans_joined(arena, &h->reach, ", ")), "effect_reach", 6);
     }
     if (h->exported) {
       add(&s, "CONTRACT", ms_message_format(arena, "added exported %S", h->kind), "contract", 8);
@@ -206,7 +187,7 @@ static size_t reach_count(const MsFactModel *head, MsSpan key) {
   for (size_t next = 0; next < seen.len; next++) {
     for (size_t i = 0; i < head->entities.len; i++) {
       const MsFact *caller = &head->entities.ptr[i];
-      if (contains(&caller->calls, seen.ptr[next]) && !contains(&seen, caller->key)) {
+      if (ms_spans_contains(&caller->calls, seen.ptr[next]) && !ms_spans_contains(&seen, caller->key)) {
         ms_spans_push(&scratch, &seen, caller->key);
       }
     }
@@ -249,17 +230,12 @@ static MsSpans touched_keys(MsArena *arena, const MsFactModel *head, const MsTou
           best = f;
         }
       }
-      if (best != NULL && !contains(&result, best->key)) {
+      if (best != NULL && !ms_spans_contains(&result, best->key)) {
         ms_spans_push(arena, &result, best->key);
       }
     }
   }
   return result;
-}
-
-static int64_t compare_keys(uint8_t *env, const uint8_t *left, const uint8_t *right) {
-  (void)env;
-  return ms_span_compare(*(const MsSpan *)(const void *)left, *(const MsSpan *)(const void *)right);
 }
 
 MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFactModel *head, const MsDiffInput *input) {
@@ -268,11 +244,11 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
     ms_spans_push(arena, &keys, head->entities.ptr[i].key);
   }
   for (size_t i = 0; i < base->entities.len; i++) {
-    if (!contains(&keys, base->entities.ptr[i].key)) {
+    if (!ms_spans_contains(&keys, base->entities.ptr[i].key)) {
       ms_spans_push(arena, &keys, base->entities.ptr[i].key);
     }
   }
-  ms_sort((uint8_t *)keys.ptr, keys.len, sizeof(MsSpan), compare_keys, NULL);
+  ms_sort((uint8_t *)keys.ptr, keys.len, sizeof(MsSpan), ms_sort_compare_spans, NULL);
   const MsSpans touched = touched_keys(arena, head, &input->touched);
   MsFindings findings = {0};
   MsSpans scored_keys = {0};
@@ -280,14 +256,14 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
     const MsSpan key = keys.ptr[k];
     const MsFact *h = ms_fact_find(head, key);
     const MsFact *b = ms_fact_find(base, key);
-    if (b != NULL && contains(&input->added, b->file)) {
+    if (b != NULL && ms_spans_contains(&input->added, b->file)) {
       b = NULL;
     }
     MsFinding f = {0};
     const bool scored = classify(arena, key, h, b, input->base_checked, head, &f);
     bool has_callers = false;
     for (size_t i = 0; i < head->entities.len && !has_callers; i++) {
-      has_callers = contains(&head->entities.ptr[i].calls, key);
+      has_callers = ms_spans_contains(&head->entities.ptr[i].calls, key);
     }
     if (scored && has_callers) {
       ms_spans_push(arena, &scored_keys, key);
@@ -295,7 +271,7 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
       ms_spans_push(arena, &f.terms, text("exported +3"));
       f.score += 3;
     }
-    if (f.changes.len == 0 && contains(&touched, key)) {
+    if (f.changes.len == 0 && ms_spans_contains(&touched, key)) {
       ms_spans_push(arena, &f.changes, text("body changed"));
     }
     if (f.changes.len == 0) {
@@ -305,7 +281,7 @@ MsFindings ms_compare_facts(MsArena *arena, const MsFactModel *base, const MsFac
   }
   for (size_t i = 0; i < findings.len; i++) {
     MsFinding *f = &findings.ptr[i];
-    if (!contains(&scored_keys, f->id)) {
+    if (!ms_spans_contains(&scored_keys, f->id)) {
       continue;
     }
     const size_t r = reach_count(head, f->id);

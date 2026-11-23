@@ -57,14 +57,6 @@ static uint8_t bind_client(const MsObj *net, MsHttpClient *client, MsObj **out, 
   return MS_STATUS_OK;
 }
 
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
-}
-
 /* ---- Network.http_client ---- */
 
 static bool options_valid(const MsHttpClientOptionsWire *o) {
@@ -96,11 +88,11 @@ uint8_t msstd_net_network_http_client(const MsObj *net, const MsHttpClientOption
   MsString text = ms_string_empty();
   MsHttpClient *client = ms_http_client_new(&options, &text);
   if (client == NULL) {
-    return finish(MS_STATUS_FAILED, &text, err);
+    return ms_fail_finish_with(MS_STATUS_FAILED, &text, err);
   }
   const uint8_t status = bind_client(net, client, out, NULL);
   ms_http_client_release(client);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 /* ---- Network.request ---- */
@@ -170,5 +162,5 @@ uint8_t msstd_net_network_request_bytes(const MsObj *net, const MsString *method
                                  .timeout_ns = timeout};
   MsString text = ms_string_empty();
   const uint8_t status = one_shot(net, &request, out, &text);
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }

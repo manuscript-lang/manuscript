@@ -6,6 +6,8 @@ Durable lessons for agents working on Manuscript. Read this page before implemen
 2. Open the domain index, read the pages whose titles apply.
 3. When a page is wrong or you learn a new lesson, fix the wiki in the same change.
 
+> The live implementation is C in `src/`; the Rust in `crates/` is frozen. Pages that name crates (`ms-check`, `ms-lower`, `ms-clif`, ...) record lessons from the Rust period: map them to the C layers in `src/layers.txt` and verify against `src/` before relying on them.
+
 | Domain | Covers |
 | --- | --- |
 | [Language](language/index.md) | Syntax, types, imports, removals, language decisions |

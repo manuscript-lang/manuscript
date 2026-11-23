@@ -1,10 +1,11 @@
 /* cli/diagram_command.c: `ms diagram`. Port of `diagram` in crates/ms-cli/src/engine/tooling.rs. */
+#include "cli/files.h"
 #include "cli/diagram_command.h"
 
 #include <stdio.h>
 
 #include "base/file.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/syntax/diag_json.h"
 #include "cli/invocation.h"
 #include "cli/review_command.h"
@@ -13,18 +14,6 @@
 #include "tooling/views.h"
 
 enum { STATUS_FAILED = 1, EXIT_USAGE = 2 };
-
-static int write_output(MsSpan output, MsSpan text) {
-  if (output.len == 0) {
-    (void)fwrite(text.ptr, 1, text.len, stdout);
-    return 0;
-  }
-  if (!ms_file_write(output, text)) {
-    (void)fprintf(stderr, "cannot write %.*s\n", (int)output.len, (const char *)output.ptr);
-    return STATUS_FAILED;
-  }
-  return 0;
-}
 
 static int call_graph(MsArena *arena, const MsCheckedInput *checked, const MsInvocation *invocation) {
   MsInspection inspection = {0};
@@ -35,7 +24,7 @@ static int call_graph(MsArena *arena, const MsCheckedInput *checked, const MsInv
   } else {
     ms_diagram_ascii(&inspection, arena, &text);
   }
-  const int status = write_output(invocation->output, ms_strbuild_span(&text));
+  const int status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   ms_inspection_free(&inspection);
   return status;
@@ -84,7 +73,7 @@ static int html_command(MsArena *arena, MsCheckedInput *checked, const MsInvocat
   const MsOccurrences index = ms_occurrence_index(arena, &checked->program);
   const MsTypeHints hints = ms_occurrence_type_hints(arena, &checked->program, &index);
   ms_html_page(arena, model, has_changes ? &findings : NULL, &hints, &text);
-  const int status = write_output(invocation->output, ms_strbuild_span(&text));
+  const int status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   ms_checked_input_free(&base);
   return status;
@@ -116,7 +105,7 @@ static int view_command(MsArena *arena, MsCheckedInput *checked, const MsInvocat
   }
   MsStrBuild text = ms_strbuild_new();
   render_view(arena, &model, invocation, view, tree, &text);
-  const int status = write_output(invocation->output, ms_strbuild_span(&text));
+  const int status = ms_cli_write_output(invocation->output, ms_strbuild_span(&text));
   ms_strbuild_free(&text);
   ms_checked_input_free(&base);
   return status;

@@ -98,8 +98,7 @@ uint8_t msstd_fs_open(const MsString *path, const MsString *mode_text, int64_t m
   if (job.found && !ms_fail_failed(&job.fail)) {
     *out = &ms_stream_file((uv_file)(intptr_t)job.handle, flags, job.path)->header;
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 

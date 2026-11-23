@@ -3,7 +3,6 @@ import (
 	ReadStream from "@std/io/io.ms",
 	parse_int from "@std/math/math.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
@@ -42,20 +41,20 @@ export fn quote_ascii(text: String) String:
 	return quote_with(text, true)
 
 fn quote_with(text: String, ascii_only: Bool) String:
-	var out = StringBuilder()
-	out.append("\"")
+	var out = ""
+	out += "\""
 
 	for c in text.scalar_values():
 		if c == 34:
-			out.append("\\\"")
+			out += "\\\""
 		else if c == 92:
-			out.append("\\\\")
+			out += "\\\\"
 		else if c == 10:
-			out.append("\\n")
+			out += "\\n"
 		else if c == 13:
-			out.append("\\r")
+			out += "\\r"
 		else if c == 9:
-			out.append("\\t")
+			out += "\\t"
 		else if (
 			c < 32
 			or (c >= 127 and c <= 159)
@@ -65,12 +64,12 @@ fn quote_with(text: String, ascii_only: Bool) String:
 			or (c >= 8294 and c <= 8297)
 			or (ascii_only and c > 127)
 		):
-			out.append("\\u{" + c.to_hex() + "}")
+			out += "\\u{" + c.to_hex() + "}"
 		else:
-			out.append(from_scalars([c]).get_or(""))
+			out += from_scalars([c]).get_or("")
 
-	out.append("\"")
-	return out.build()
+	out += "\""
+	return out
 
 /*
 Reverses `quote`: reads a double-quoted literal and returns its text.

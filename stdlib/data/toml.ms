@@ -6,7 +6,6 @@ import (
 	log, parse_float, parse_int, sqrt from "@std/math/math.ms",
 	Regex, compile from "@std/regex.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 // A TOML value. Date and time values retain their original TOML text.
@@ -259,7 +258,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
 	// Append through a builder: per-character concatenation is quadratic on long
 	// strings.
-	var result = StringBuilder()
+	var result = ""
 	var run = cursor(reader)
 
 	while true:
@@ -268,11 +267,11 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
 		if c == quote:
 			if not multiline:
-				result.append(slice_text(reader, run, reader.pos - 1))
-				return ok(result.build())
+				result += slice_text(reader, run, reader.pos - 1)
+				return ok(result)
 
 			if peek(reader) == quote and ahead(reader, 1) == quote:
-				result.append(slice_text(reader, run, reader.pos - 1))
+				result += slice_text(reader, run, reader.pos - 1)
 				advance(reader)
 				advance(reader)
 
@@ -280,10 +279,10 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
 				while peek(reader) == quote and extra < 2:
 					advance(reader)
-					result.append(quote_char(quote))
+					result += quote_char(quote)
 					extra += 1
 
-				return ok(result.build())
+				return ok(result)
 
 			continue
 
@@ -291,7 +290,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 			return error(invalid(reader, "control character in string"))
 		if c != BACKSLASH or quote == SINGLE_QUOTE: continue
 
-		result.append(slice_text(reader, run, reader.pos - 1))
+		result += slice_text(reader, run, reader.pos - 1)
 
 		if (
 			multiline
@@ -316,13 +315,13 @@ fn string_value(var reader: Reader, key: Bool) String!:
 
 		escaped := advance(reader)
 
-		if escaped == 98: result.append("\u{8}")
-		else if escaped == 116: result.append("\t")
-		else if escaped == 110: result.append("\n")
-		else if escaped == 102: result.append("\u{c}")
-		else if escaped == 114: result.append("\r")
-		else if escaped == DOUBLE_QUOTE: result.append("\"")
-		else if escaped == BACKSLASH: result.append("\\")
+		if escaped == 98: result += "\u{8}"
+		else if escaped == 116: result += "\t"
+		else if escaped == 110: result += "\n"
+		else if escaped == 102: result += "\u{c}"
+		else if escaped == 114: result += "\r"
+		else if escaped == DOUBLE_QUOTE: result += "\""
+		else if escaped == BACKSLASH: result += "\\"
 		else if escaped == 117 or escaped == 85:
 			var count = 4
 			if escaped == 85: count = 8
@@ -342,7 +341,7 @@ fn string_value(var reader: Reader, key: Bool) String!:
 			)
 
 			if text := from_scalars([parsed.get()]):
-				result.append(text)
+				result += text
 			else:
 				return error(invalid(reader, "invalid Unicode scalar"))
 		else:
@@ -1046,7 +1045,7 @@ export fn parse(text: String, options: TomlOptions = TomlOptions()) TomlValue!:
 	return materialize(reader.entries, reader.arrays, Node.TableNode(root), 1, budget)
 
 type Writer:
-	out: StringBuilder
+	out: String
 	started: Bool
 
 fn format_key(key: String) String:
@@ -1109,9 +1108,9 @@ fn dotted(path: List[String]) String:
 	return parts.join(".")
 
 fn emit_header(var writer: Writer, header: String) Void:
-	if writer.started: writer.out.append("\n")
-	writer.out.append(header)
-	writer.out.append("\n")
+	if writer.started: writer.out += "\n"
+	writer.out += header
+	writer.out += "\n"
 	writer.started = true
 
 fn all_tables(values: List[TomlValue]) Bool:
@@ -1147,14 +1146,9 @@ fn emit_table(
 	values: Map[String, TomlValue],
 ) Void:
 	for entry in values.entries():
-		if section_kind(entry.value) == 0: writer.out.append(
-			(
-				format_key(entry.key)
-				.concat(" = ")
-				.concat(inline_value(entry.value))
-				.concat("\n")
-			)
-		)
+		if section_kind(entry.value) == 0: writer.out += format_key(entry.key).concat(
+			" = "
+		).concat(inline_value(entry.value)).concat("\n")
 
 	for entry in values.entries():
 		var child = path.clone()
@@ -1207,10 +1201,10 @@ export fn stringify(value: TomlValue, max_bytes: Int? = null) String!:
 		Error("invalid TOML input", kind: "EINVAL")
 	)
 
-	var writer = Writer(StringBuilder(), started: false)
+	var writer = Writer("", started: false)
 	emit_table(writer, [], root)
 
-	text := writer.out.build()
+	text := writer.out
 	if not within(text.length(), max_bytes): return error(
 		Error("TOML limit exceeded", kind: "EOVERFLOW")
 	)

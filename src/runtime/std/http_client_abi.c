@@ -1,6 +1,8 @@
 /* runtime/std/http_client_abi.c: the HttpClient and response-body natives (http_client_abi.h). */
 #include "runtime/std/http_client_abi.h"
 
+#include <stdatomic.h>
+
 #include "base/alloc.h"
 #include "runtime/core/task.h"
 #include "runtime/core/isolate.h"
@@ -51,7 +53,10 @@ static BodyCell *body_of(const MsObj *object) {
   return (BodyCell *)(void *)(uintptr_t)object;
 }
 
+static void install_task_waiter(void);
+
 MsObj *ms_http_client_handle_with_policy(MsHttpClient *client, const MsHttpPolicy *policy) {
+  install_task_waiter();
   ClientCell *cell = ms_alloc_zeroed(sizeof *cell);
   cell->header.drop = client_drop;
   cell->client = ms_http_client_retain(client);
@@ -100,10 +105,15 @@ static void token_end(uint64_t waiter) {
   (void)ms_token_free(waiter);
 }
 
-void ms_http_install_task_waiter(void) {
+/* A client made by a program waits on its task's token; the first one installs that, so a program that makes no client
+ * does not link the HTTP engine. */
+static void install_task_waiter(void) {
   static const MsHttpWaitOps ops = {
       .begin = token_begin, .wait = token_wait, .wake = token_wake, .end = token_end};
-  ms_http_set_wait_ops(&ops);
+  static atomic_flag installed = ATOMIC_FLAG_INIT;
+  if (!atomic_flag_test_and_set(&installed)) {
+    ms_http_set_wait_ops(&ops);
+  }
 }
 
 /* ---- the natives ---- */
@@ -114,15 +124,6 @@ void msstd_http_client_close(const MsObj *c) {
 
 MsObj *msstd_http_client_share(const MsObj *c) {
   return ms_http_client_handle_with_policy(client_of(c)->client, &client_of(c)->policy);
-}
-
-/* Ends a native with the status of a call and the text it left. */
-static uint8_t finish(uint8_t status, MsString *text, MsString *err) {
-  MsFail fail = ms_fail_new();
-  fail.status = status;
-  fail.message = *text;
-  *text = ms_string_empty();
-  return ms_fail_finish(&fail, err);
 }
 
 static MsObj *body_new(MsHttpResponse *response) {
@@ -163,7 +164,7 @@ uint8_t msstd_http_client_request_bytes(const MsObj *c, const MsString *method, 
   if (status == MS_STATUS_OK) {
     *out = body_new(response);
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 void msstd_http_body_close(const MsObj *b) {
@@ -186,7 +187,7 @@ uint8_t msstd_http_body_read(const MsObj *b, uint8_t has_max, int64_t max, MsByt
   size_t limit = BODY_CHUNK;
   if (has_max != 0 && max <= 0) {
     MsString none = ms_string_empty();
-    return finish(MS_STATUS_INVALID_INPUT, &none, err);
+    return ms_fail_finish_with(MS_STATUS_INVALID_INPUT, &none, err);
   }
   if (has_max != 0 && (uint64_t)max < limit) {
     limit = (size_t)max;
@@ -200,7 +201,7 @@ uint8_t msstd_http_body_read(const MsObj *b, uint8_t has_max, int64_t max, MsByt
       status = MS_STATUS_NONE;
     }
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }
 
 uint8_t msstd_http_body_read_all(const MsObj *b, MsBytes *out, MsString *err) {
@@ -217,5 +218,5 @@ uint8_t msstd_http_body_read_all(const MsObj *b, MsBytes *out, MsString *err) {
   if (status != MS_STATUS_OK) {
     ms_bytes_free(out);
   }
-  return finish(status, &text, err);
+  return ms_fail_finish_with(status, &text, err);
 }

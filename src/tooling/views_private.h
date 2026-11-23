@@ -16,15 +16,6 @@ static inline bool one_of(MsSpan span, const char *a, const char *b, const char 
   return is(span, a) || (b != NULL && is(span, b)) || (c != NULL && is(span, c));
 }
 
-static inline bool contains(const MsSpans *list, MsSpan value) {
-  for (size_t i = 0; i < list->len; i++) {
-    if (ms_span_equal(list->ptr[i], value)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 typedef struct Roots {
   const MsFact **ptr;
   size_t len, cap;

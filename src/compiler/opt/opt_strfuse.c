@@ -4,29 +4,34 @@
  * no use of `s` in between, `string_append` takes `s` by move and grows it in place, so a loop
  * that builds a string stays linear even in an unoptimised build. A join whose first part is such
  * an `s` (`s += f"{k}={n};"`) takes `s` by move and becomes the role `MR_STRING_JOIN_GROW`, which `mir_expand` writes
- * out as growing `s` in place and copying the other parts after it. */
+ * out as growing `s` in place and copying the other parts after it. Bytes follow the same rule: a concat whose
+ * left side dies becomes `msrt_bytes_concat_grow`. */
 
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/opt/opt_pass.h"
 #include "base/safe.h"
 
-/* One call to rewrite, the drop of its grown string (the call's first argument), and whether the call is a join of
- * pieces rather than a concat of two strings. */
+/* One call to rewrite, the drop of its grown string or bytes (the call's first argument), and whether the call is a
+ * join of pieces rather than a concat of two strings or two byte buffers. */
 typedef struct FuseSite {
   MirBlock block;
   uint32_t call, drop;
-  bool join;
+  bool join, bytes;
 } FuseSite;
 
-/* Whether `inst` is a concat or join whose first argument is a string, and which. */
-static bool twin_position(const MirModule *m, const MirFunc *f, const MirInst *inst, bool *join) {
-  if (inst->op != MOP_CallRt || inst->imm.tag != MI_EXT || inst->nargs == 0 ||
-      mir_value_ty(f, inst->args[0]) != MIR_STR) {
+/* Whether `inst` is a concat or join whose first argument is a string, or a bytes concat, and which. */
+static bool twin_position(const MirModule *m, const MirFunc *f, const MirInst *inst, bool *join, bool *bytes) {
+  if (inst->op != MOP_CallRt || inst->imm.tag != MI_EXT || inst->nargs == 0) {
     return false;
   }
+  const MirTy first = mir_value_ty(f, inst->args[0]);
   const uint8_t role = m->externs.ptr[inst->imm.a].role;
-  *join = role == MR_STRING_JOIN;
-  return role == MR_STRING_CONCAT || *join;
+  *bytes = first == MIR_BYTES && role == MR_BYTES_CONCAT;
+  if (*bytes) {
+    return true;
+  }
+  *join = first == MIR_STR && role == MR_STRING_JOIN;
+  return first == MIR_STR && (role == MR_STRING_CONCAT || *join);
 }
 
 static uint32_t count_uses(const MirInst *inst, MirValue v) {
@@ -51,14 +56,14 @@ static uint32_t find_fuse_sites(MsArena *arena, const MirModule *m, const MirFun
     const MirBlockData *blk = &f->blocks.ptr[b];
     for (uint32_t i = (uint32_t)blk->insts.len; i-- > 0;) {
       const MirInst *inst = &blk->insts.ptr[i];
-      bool join = false;
-      if (twin_position(m, f, inst, &join)) {
+      bool join = false, bytes = false;
+      if (twin_position(m, f, inst, &join, &bytes)) {
         const MirValue a = inst->args[0];
         const uint32_t j = next_index[a];
-        if (mir_value_ty(f, a) == MIR_STR && mir_bits_test(&owned, a) &&
+        if (mir_bits_test(&owned, a) &&
           count_uses(inst, a) == 1 && next_block[a] == b &&
           blk->insts.ptr[j].op == MOP_Drop) {
-          sites[count++] = (FuseSite){b, i, j, join};
+          sites[count++] = (FuseSite){b, i, j, join, bytes};
         }
       }
       for (uint32_t k = 0; k < inst->nargs; k++) {
@@ -71,20 +76,22 @@ static uint32_t find_fuse_sites(MsArena *arena, const MirModule *m, const MirFun
   return count;
 }
 
-/* The growing twin of a call: `string_append` for a concat of two strings, a join that takes its first string. */
+/* The growing twin of a call: `string_append` for a concat of two strings, `bytes_concat_grow` for two byte buffers,
+ * a join that takes its first string. */
 static uint32_t fuse_extern(MirModule *m, const MirFunc *f, const MirInst *inst, const FuseSite *s) {
   MirParam *params = MS_ARENA_NEW_ARRAY(&m->arena, MirParam, inst->nargs);
   for (uint32_t k = 0; k < inst->nargs; k++) {
     params[k] = (MirParam){mir_value_ty(f, inst->args[k]), k == 0 ? MM_MOVE : MM_BORROW};
   }
   MirExtern def = {0};
-  def.name = mir_name(m, ms_span_of_text(s->join ? "msrt_string_join_grow" : "msrt_string_append"));
+  const char *name = s->bytes ? "msrt_bytes_concat_grow" : s->join ? "msrt_string_join_grow" : "msrt_string_append";
+  def.name = mir_name(m, ms_span_of_text(name));
   def.params = params;
   def.nparams = inst->nargs;
-  def.ret = MIR_STR;
+  def.ret = s->bytes ? MIR_BYTES : MIR_STR;
   def.fresh = true;
   def.leaf = true;
-  def.role = s->join ? MR_STRING_JOIN_GROW : MR_STRING_APPEND;
+  def.role = s->bytes ? MR_BYTES_CONCAT_GROW : s->join ? MR_STRING_JOIN_GROW : MR_STRING_APPEND;
   return mir_extern_intern(m, &def);
 }
 

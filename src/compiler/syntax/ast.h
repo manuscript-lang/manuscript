@@ -431,6 +431,27 @@ static inline bool ms_decl_is_inherent_impl(const MsDecl *decl) {
   return decl->kind == MS_D_IMPL && decl->u.impl.contract == NULL;
 }
 
+/* Whether the declaration carries an implementation: a body, an `extern fn`, a constant, alias or test. */
+static inline bool ms_decl_has_body(const MsDecl *decl) {
+  switch ((MsDeclKind)decl->kind) {
+  case MS_D_FN: return decl->u.fn.body.len > 0 || decl->u.fn.external;
+  case MS_D_CONST:
+  case MS_D_ALIAS: return true;
+  case MS_D_TEST: return decl->u.test.body.len > 0;
+  case MS_D_IMPL:
+    for (uint32_t i = 0; i < decl->u.impl.methods.len; i++) {
+      if (decl->u.impl.methods.ptr[i]->func.body.len > 0) {
+        return true;
+      }
+    }
+    return false;
+  case MS_D_TYPE:
+  case MS_D_ENUM:
+  case MS_D_INTERFACE: return false;
+  }
+  return false;
+}
+
 /* Whether every import of `module` is from the standard library (`@std/`). */
 static inline bool ms_module_only_std_imports(const MsModule *module) {
   for (uint32_t i = 0; i < module->nimports; i++) {

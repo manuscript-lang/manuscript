@@ -1,9 +1,9 @@
 // conform: tags=diagnostics
 // conform: phase=check
-    let b%d = StringBuilder()
+    let b%d = ""
     var i%d = 0
     while i%d < 321:
-        b%d.append(%q)
+        b%d += %q
         i%d += 1
     b%d.freeze()
     for x%d in values:

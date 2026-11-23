@@ -13,7 +13,7 @@
 #include "base/process.h"
 #include "base/strbuild.h"
 #include "compiler/syntax/diag_json.h"
-#include "cli/json_value.h"
+#include "tooling/json_value.h"
 
 enum { STATUS_FAILED = 1, STATUS_USAGE = 2, FINDING_LIMIT = 8, MAX_STEPS = 4 };
 
@@ -80,8 +80,7 @@ static MsSpan resolve_target(MsArena *arena, const char *target) {
   }
   MsStrBuild joined = ms_strbuild_new();
   ms_path_append_joined(&joined, path, ms_span_of_text("ms.toml"));
-  const MsSpan named = ms_arena_copy(arena, ms_strbuild_span(&joined));
-  ms_strbuild_free(&joined);
+  const MsSpan named = ms_message_take_builder(arena, &joined);
   MsBytes manifest = {0};
   const bool present = ms_file_read(named, &manifest);
   ms_bytes_free(&manifest);

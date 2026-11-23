@@ -40,14 +40,31 @@ static inline uint64_t ms_hash_short(size_t length, uint64_t low, uint64_t high)
   return ms_hash_fold(ms_hash_fold(seed ^ low, MS_HASH_K1) ^ high, MS_HASH_K0);
 }
 
+/* The little-endian words of `len <= 15` bytes padded with zeros, from overlapping loads: no copy of a variable
+ * length. The loads of a short run repeat bytes at the same positions, so ORing them is exact. */
+static inline void ms_hash_words(const uint8_t *p, size_t len, uint64_t *low, uint64_t *high) {
+  *high = 0;
+  if (len >= 8) {
+    *low = ms_load64(p);
+    if (len > 8) {
+      *high = ms_load64(p + len - 8) >> ((16 - len) * 8);
+    }
+  } else if (len >= 4) {
+    *low = (uint64_t)ms_load32(p) | ((uint64_t)ms_load32(p + len - 4) << ((len - 4) * 8));
+  } else if (len != 0) {
+    const size_t mid = len >> 1;
+    *low = (uint64_t)p[0] | ((uint64_t)p[mid] << (mid * 8)) | ((uint64_t)p[len - 1] << ((len - 1) * 8));
+  } else {
+    *low = 0;
+  }
+}
+
 /* The hash of a byte range. */
 static inline uint64_t ms_hash_span(MsSpan span) {
   if (span.len <= 15) {
-    uint8_t padded[16] = {0};
-    if (span.len != 0) {
-      __builtin_memcpy(padded, span.ptr, span.len);
-    }
-    return ms_hash_short(span.len, ms_load64(padded), ms_load64(padded + 8));
+    uint64_t low, high;
+    ms_hash_words(span.ptr, span.len, &low, &high);
+    return ms_hash_short(span.len, low, high);
   }
   uint64_t hash = MS_HASH_K0 ^ ((uint64_t)span.len * MS_HASH_K1);
   size_t offset = 0;

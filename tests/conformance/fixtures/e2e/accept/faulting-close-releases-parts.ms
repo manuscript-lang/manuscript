@@ -116,3 +116,24 @@ test "a faulting optional close during a pending fault releases the payload":
 			)
 		)
 	)?
+
+fn remove_out_of_range(move label: String) Void:
+	var items = [Envelope(label, fn: 1)]
+	items.remove(5)
+
+test "an index fault of an in-place list edit releases the list":
+	expect_true(faults(fn: remove_out_of_range("a remove label that needs a heap block")))?
+
+fn set_out_of_range(move label: String) Void:
+	var items = [Envelope(label.clone(), fn: 1)]
+	items.set(5, Envelope(label, fn: 2))
+
+test "an index fault of set releases the incoming element":
+	expect_true(faults(fn: set_out_of_range("a set label that needs a heap block")))?
+
+fn insert_out_of_range(move label: String) Void:
+	var items = [Envelope(label.clone(), fn: 1)]
+	items.insert(5, Envelope(label, fn: 2))
+
+test "an index fault of insert releases the incoming element":
+	expect_true(faults(fn: insert_out_of_range("an insert label that needs a heap block")))?

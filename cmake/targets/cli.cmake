@@ -1,13 +1,13 @@
 ms_executable(ms cli
   SOURCES
     install_layout.c pipeline.c backend.c emit_command.c diagram_command.c review_command.c search_symbol_command.c doc_command.c search_project.c
-    fault_record.c inspect_command.c main.c phases.c check_command.c verify_command.c json_value.c fmt_command.c
-    check_fix.c checked_input.c findings.c check_selection.c display.c fmt_targets.c fmt_labels.c init_command.c
+    fault_record.c inspect_command.c main.c phases.c check_command.c verify_command.c fmt_command.c
+    check_fix.c check_selection.c display.c files.c fmt_targets.c fmt_labels.c init_command.c
     invocation.c invocation_rules.c build_type.c build_command.c run_command.c test_command.c test_document.c
     bench_command.c profile_command.c profile_folded.c test_options.c test_records.c test_run.c watch.c package_cache.c
-    package_commands.c package_fetch.c package_git.c package_validate.c snippet.c help_command.c help_text.c
-    explain_command.c lsp_command.c lsp_analysis.c lsp_frame.c lsp_uri.c lsp_text.c lsp_nav.c lsp_nav_fallback.c lsp_symbols.c lsp_semantic.c lsp_signature.c lsp_actions.c lsp_completion.c lsp_completion_imports.c lsp_workspace.c lsp_input.c lsp_sync.c lsp_supervisor.c
-  LINK ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link ms_tooling ms_std_text)
+    package_commands.c package_fetch.c package_git.c package_validate.c help_command.c help_text.c
+    explain_command.c
+  LINK ms_base ms_syntax ms_project ms_check ms_own ms_lower ms_mir ms_opt ms_emit ms_link ms_tooling ms_lsp ms_std_text)
 file(STRINGS ${CMAKE_SOURCE_DIR}/.msversion MS_VERSION_TEXT LIMIT_COUNT 1)
 target_compile_definitions(ms PRIVATE MS_VERSION="${MS_VERSION_TEXT}")
 
@@ -26,13 +26,21 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     -DWORK=${CMAKE_BINARY_DIR}/src/cli/smoke-static -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/SmokeRun.cmake)
 endif()
 
+# A debugger stopped in a Debug build's function finds it by name and shows its parameters and the caller's line.
+add_test(NAME debug_info COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/debug-info
+  -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/DebugInfoCheck.cmake)
+
 # Fixtures that own resources, fault, recurse deeply or start threads leave nothing allocated at exit with the process-exit
 # frees kept (cmake/LeakCheck.cmake); a test that fails here found a leak, not a stale baseline.
 set(MS_LEAK_FIXTURES accept/bind-collection-resource-read-in-place accept/interface-box-freed-with-resource
   stdlib/net-close-releases-socket
   accept/call-depth.test accept/faulting-close-in-list-releases-buffer.test accept/pipe-flow.test
-  stdlib/promise-semantics.test accept/interface-views.test
-  stdlib/http-close-drains stdlib/http-fault-handler-frees-exchange-view stdlib/promise-closes-captured-pipe)
+  stdlib/promise-semantics.test accept/interface-views.test accept/recursive-types.test stdlib/tree.test
+  stdlib/collections.test stdlib/yaml-regressions.test accept/source-borrowed-wrapper-temporary-cleanup.test
+  accept/faulting-close-releases-parts.test stdlib/http-exchange-helpers.test
+  stdlib/http-close-drains stdlib/http-fault-handler-frees-exchange-view stdlib/promise-closes-captured-pipe
+  stdlib/cancelled-file-read-frees-buffer stdlib/cancelled-dns-query-frees-state
+  stdlib/cancelled-serve-start-frees-handler stdlib/cancelled-tls-handshake-frees-state)
 add_test(NAME leak_check COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DFIXTURES=${CMAKE_SOURCE_DIR}/tests/conformance/fixtures/e2e
   "-DNAMES=${MS_LEAK_FIXTURES}" -DWORK=${CMAKE_BINARY_DIR}/src/cli/leak -P ${CMAKE_SOURCE_DIR}/cmake/LeakCheck.cmake)
 
@@ -55,6 +63,19 @@ add_test(NAME profile_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWO
 # `ms bench` end to end: a real bench block is built and run, and the report's shape is checked.
 add_test(NAME bench_run COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/bench
   -DTOOL_DIR=${MS_COMPILER_BIN} -P ${CMAKE_SOURCE_DIR}/cmake/BenchRun.cmake)
+
+# `ms search_symbol` over many files searches every one.
+add_test(NAME search_many COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -DWORK=${CMAKE_BINARY_DIR}/src/cli/search-many
+  -P ${CMAKE_SOURCE_DIR}/cmake/SearchMany.cmake)
+
+# A command whose standard output cannot be written fails. Only Linux has /dev/full to write to.
+if(EXISTS /dev/full)
+  add_test(NAME stdout_full COMMAND ${CMAKE_COMMAND} -DMS_C=$<TARGET_FILE:ms> -P ${CMAKE_SOURCE_DIR}/cmake/StdoutFull.cmake)
+endif()
+
+# The same on every platform with a pipe whose reader closes: the child exits nonzero (a write error, or SIGPIPE).
+add_test(NAME stdout_closed COMMAND ms run ${CMAKE_SOURCE_DIR}/tools/stdout-closed-check.ms WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+set_tests_properties(stdout_closed PROPERTIES ENVIRONMENT "MS=$<TARGET_FILE:ms>")
 
 # Replays recorded language-server sessions (tests/lsp/<case>) over standard input and output.
 file(GLOB MS_LSP_CASES LIST_DIRECTORIES true ${CMAKE_SOURCE_DIR}/tests/lsp/*)

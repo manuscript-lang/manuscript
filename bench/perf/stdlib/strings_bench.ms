@@ -1,8 +1,4 @@
-import (
-	StringBuilder from "@std/string_builder.ms",
-
-	words from "./src/harness.ms",
-)
+import words from "./src/harness.ms"
 
 type BenchData:
 	text: String
@@ -29,10 +25,10 @@ fn make_fixture() BenchData:
 	)
 
 bench "string.append_builder" per 100000:
-	var sb = StringBuilder()
+	var sb = ""
 	for i in 0..100000:
-		sb.append("x")
-	sb.build().length()
+		sb += "x"
+	sb.length()
 
 bench "string.concat" per 20000:
 	var s = ""

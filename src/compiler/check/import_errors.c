@@ -5,24 +5,12 @@
  * every import is bound and explains each such import: an unknown standard module (with a rename, a
  * near-miss path, or the module that exports the name), a name the module lacks or keeps private, and a
  * namespace-style import. An import of a prelude declaration is redundant and carries an edit that removes it. */
+#include "abi/prelude.h"
 #include "compiler/check/import_fix.h"
 #include "compiler/check/std_cache.h"
 #include "compiler/check/program.h"
 #include "compiler/check/suggest.h"
 #include "compiler/syntax/parse.h"
-
-static const char *const PRELUDE_NAMES[] = {"Equal",  "Stringable", "Comparable", "Hashable", "Clonable",
-                                            "Optional", "Result",   "Error",      "List",     "Map",
-                                            "Set",    "ListEntry",  "MapEntry"};
-
-static bool is_prelude_name(MsSpan name) {
-  for (size_t index = 0; index < MS_COUNT_OF(PRELUDE_NAMES); index++) {
-    if (ms_span_is_text(name, PRELUDE_NAMES[index])) {
-      return true;
-    }
-  }
-  return false;
-}
 
 /* The public bundled modules, by name below `@std/`, in sorted order. */
 static void std_module_names(MsSpanList *out) {
@@ -98,7 +86,7 @@ static bool std_exports(MsCheckProgram *program, MsSpan module, MsName name) {
 
 /* The first bundled module that exports `name`, unless the name is a prelude declaration. */
 static bool exported_elsewhere(MsCheckProgram *program, MsSpan name, const MsSpanList *modules, MsSpan *found) {
-  if (is_prelude_name(name)) {
+  if (ms_is_prelude_type(name)) {
     return false;
   }
   const MsName interned = ms_names_intern(program->names, name);
@@ -282,7 +270,7 @@ static MsString export_message(const ImportView *view, uint32_t target) {
 
 bool ms_check_is_prelude_declaration(MsSpan file, MsSpan name) {
   const bool prelude_module = ms_span_is_text(file, "@std/core.ms") || ms_span_is_text(file, "@std/collections/collections.ms");
-  return prelude_module && is_prelude_name(name);
+  return prelude_module && ms_is_prelude_type(name);
 }
 
 bool ms_check_is_prelude_symbol(const MsCheckProgram *program, const MsSymbol *symbol) {

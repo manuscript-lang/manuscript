@@ -1,7 +1,4 @@
-import (
-	max from "@std/math/math.ms",
-	StringBuilder from "@std/string_builder.ms",
-)
+import max from "@std/math/math.ms"
 
 // Horizontal placement of a cell within its column's measured display width.
 // Example: `Table(columns: [Align.Left, Align.Right])`.
@@ -68,13 +65,13 @@ fn var Table.add(row: List[String]) Void!:
 
 // Lays out the rows added so far; the table is unchanged and can keep growing.
 fn Table.render() String:
-	var out = StringBuilder()
+	var out = ""
 	lead := "".pad_start(self.indent, " ")
 	gap := "".pad_start(self.padding, " ")
 
 	for index in 0..self.rows.length():
 		if index > 0:
-			out.append("\n")
+			out += "\n"
 
 		row := self.rows[index]
 		var last = row.length() - 1
@@ -82,20 +79,20 @@ fn Table.render() String:
 			last -= 1
 		if last < 0: continue
 
-		out.append(lead)
+		out += lead
 
 		for col in 0..last + 1:
 			if col > 0:
-				out.append(gap)
+				out += gap
 
 			spare := self.widths[col] - self.cell_widths[index][col]
 			before := self.before(col, spare)
-			out.append("".pad_start(before, " "))
-			out.append(row[col])
+			out += "".pad_start(before, " ")
+			out += row[col]
 			if col < last:
-				out.append("".pad_start(spare - before, " "))
+				out += "".pad_start(spare - before, " ")
 
-	return out.build()
+	return out
 
 // Spaces placed before a cell: all spare for Right, half for Center, null for Left.
 fn Table.before(col: Int, spare: Int) Int:

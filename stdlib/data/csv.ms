@@ -3,7 +3,6 @@
 import (
 	Bytes, join from "@std/bytes.ms",
 	ReadStream, WriteStream, through from "@std/io/io.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 // Delimiter and line ending for parsing or writing CSV, and the row and cell bounds
@@ -486,7 +485,7 @@ export fn stringify(
 	valid := check_options(options)
 	if valid.is_error(): return error(valid.err().clone())
 
-	var out = StringBuilder()
+	var out = ""
 	var used = 0
 	crlf := options.line_ending == "\r\n"
 	delimiter := options.delimiter.clone()
@@ -495,31 +494,31 @@ export fn stringify(
 
 	for row in rows:
 		if row.length() == 1 and row[0] == "":
-			out.append("\"\"")
+			out += "\"\""
 			used += 2
 		else:
 			var first = true
 
 			for field in row:
 				if not first:
-					out.append(delimiter)
+					out += delimiter
 					used += delimiter_size
 
 				first = false
 
 				if not needs_quotes(field, delimiter):
-					out.append(field)
+					out += field
 					used += field.length()
 				else:
 					quoted := quote_field(field, crlf)
-					out.append(quoted)
+					out += quoted
 					used += quoted.length()
 
-		out.append(options.line_ending)
+		out += options.line_ending
 		used += ending_size
 		if used > limit: return error(Error("CSV: limit exceeded", kind: "EOVERFLOW"))
 
-	return ok(out.build())
+	return ok(out)
 
 fn needs_quotes(field: String, delimiter: String) Bool:
 	if field.is_empty(): return false

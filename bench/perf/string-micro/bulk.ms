@@ -1,7 +1,4 @@
-import (
-	StringBuilder from "@std/string_builder.ms",
-	Instant, monotonic from "@std/time.ms",
-)
+import Instant, monotonic from "@std/time.ms"
 
 fn lcg(x: Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
@@ -44,9 +41,9 @@ fn main() Void:
 	report("append_lit", t, acc.length())
 	t = monotonic()
 
-	var sb = StringBuilder()
-	for w in words: sb.append(w)
-	report("sb_append", t, sb.build().length())
+	var sb = ""
+	for w in words: sb += w
+	report("sb_append", t, sb.length())
 	t = monotonic()
 	s = 0
 	for k in 0..200: s += text.index_of("w99999-976 w0") or (-1)

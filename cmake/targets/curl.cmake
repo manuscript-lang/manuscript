@@ -17,6 +17,8 @@ string(APPEND CURL_C_FLAGS " -isystem ${OPENSSL_BUILD}/include")
 string(APPEND CURL_C_FLAGS " -isystem ${MS_TP_BIN}/zlib -isystem ${MS_TP_BIN}/nghttp2/lib/includes")
 # nghttp2 is a static archive: without this its headers declare every symbol dllimport on Windows.
 string(APPEND CURL_C_FLAGS " -DNGHTTP2_STATICLIB")
+# libpsl is a static archive too: without this its header declares every symbol dllimport on Windows.
+string(APPEND CURL_C_FLAGS " -DPSL_STATIC")
 set(CURL_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -33,7 +35,8 @@ set(CURL_ARGS
   -DNGHTTP2_INCLUDE_DIR=${MS_TP}/nghttp2/lib/includes
   -DNGHTTP2_LIBRARY=$<TARGET_FILE:nghttp2_static>
   -DCURL_ZLIB=ON -DZLIB_INCLUDE_DIR=${MS_TP}/zlib -DZLIB_LIBRARY=$<TARGET_FILE:zlibstatic>
-  -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DENABLE_ARES=OFF -DUSE_LIBIDN2=OFF -DCURL_USE_LIBPSL=OFF -DCURL_USE_LIBSSH2=OFF
+  -DCURL_BROTLI=OFF -DCURL_ZSTD=OFF -DENABLE_ARES=OFF -DUSE_LIBIDN2=OFF -DCURL_USE_LIBPSL=ON -DCURL_USE_LIBSSH2=OFF
+  -DLIBPSL_INCLUDE_DIR=${PSL_GEN} -DLIBPSL_LIBRARY=$<TARGET_FILE:psl_static>
   -DENABLE_UNIX_SOCKETS=ON
   -DCURL_DISABLE_DICT=ON -DCURL_DISABLE_FILE=ON -DCURL_DISABLE_FTP=ON -DCURL_DISABLE_GOPHER=ON
   -DCURL_DISABLE_IMAP=ON -DCURL_DISABLE_LDAP=ON -DCURL_DISABLE_LDAPS=ON -DCURL_DISABLE_MQTT=ON
@@ -50,7 +53,7 @@ ExternalProject_Add(curl_build
   PREFIX ${MS_TP_BIN}/curl_build-prefix
   SOURCE_DIR ${CURL_DIR}
   BINARY_DIR ${CURL_BUILD}
-  DEPENDS openssl_build zlibstatic nghttp2_static
+  DEPENDS openssl_build zlibstatic nghttp2_static psl_static
   CMAKE_ARGS ${CURL_ARGS}
   BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target libcurl_static
   INSTALL_COMMAND ""
@@ -61,9 +64,13 @@ add_library(curl STATIC IMPORTED GLOBAL)
 set_target_properties(curl PROPERTIES IMPORTED_LOCATION ${CURL_LIB}
   INTERFACE_INCLUDE_DIRECTORIES ${CURL_DIR}/include INTERFACE_COMPILE_DEFINITIONS CURL_STATICLIB)
 add_dependencies(curl curl_build)
-target_link_libraries(curl INTERFACE zlib nghttp2 openssl_ssl)
+target_link_libraries(curl INTERFACE zlib nghttp2 psl_static openssl_ssl)
 if(WIN32)
   target_link_libraries(curl INTERFACE ws2_32 advapi32 crypt32 bcrypt iphlpapi)
 else()
   target_link_libraries(curl INTERFACE Threads::Threads)
+endif()
+if(APPLE)
+  # curl reads the system proxy settings (SCDynamicStoreCopyProxies) and releases CoreFoundation objects.
+  target_link_libraries(curl INTERFACE "-framework CoreFoundation" "-framework SystemConfiguration")
 endif()

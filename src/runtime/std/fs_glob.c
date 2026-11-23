@@ -99,17 +99,6 @@ static bool fail_at(GlobWalk *walk, int code, const char *operation, MsSpan path
   return false;
 }
 
-static int stat_bytes(MsSpan path, bool follow, uv_stat_t *out) {
-  size_t at = 0;
-  if (path.len == 0 || ms_span_find(path, ms_span_of((const uint8_t *)"\0", 1), &at)) {
-    return UV_EINVAL;
-  }
-  MsOsText text = ms_os_text_new(path);
-  const int code = ms_fs_stat_path(text.ptr, follow, out);
-  ms_os_text_free(&text);
-  return code;
-}
-
 /* The canonical form of an existing path, appended to `out`. */
 static int canonical_bytes(MsSpan path, MsStrBuild *out) {
   MsOsText text = ms_os_text_new(path);
@@ -332,7 +321,7 @@ static bool names_directory(const Visit *visit, MsSpan path) {
     return true;
   }
   uv_stat_t target;
-  return visit->symlink && stat_bytes(path, true, &target) == 0 && ms_fs_is_directory(&target);
+  return visit->symlink && ms_fs_stat_bytes(path, true, &target) == 0 && ms_fs_is_directory(&target);
 }
 
 /* Matches the visit against the exclusions and the patterns; `*excluded` and `*selected` are the answers. */
@@ -409,7 +398,7 @@ static bool enter_directory(GlobWalk *walk, MsSpan path, size_t depth) {
 static bool enterable(GlobWalk *walk, MsSpan path, uv_stat_t *info, bool *enter) {
   *enter = false;
   if (ms_fs_is_link(info) && walk->follow_links) {
-    const int code = stat_bytes(path, true, info);
+    const int code = ms_fs_stat_bytes(path, true, info);
     if (code == UV_ENOENT || code == UV_ELOOP) {
       return true;
     }
@@ -430,7 +419,7 @@ static bool visit_path(GlobWalk *walk, MsSpan path, size_t depth) {
   }
   walk->remaining -= 1;
   uv_stat_t info;
-  const int code = stat_bytes(path, false, &info);
+  const int code = ms_fs_stat_bytes(path, false, &info);
   if (code != 0) {
     return fail_at(walk, code, "lstat", path);
   }
@@ -511,7 +500,7 @@ static void collect_starts(GlobWalk *walk, const MsList *patterns, MsStrBuild *s
     MsStrBuild base = ms_strbuild_new();
     pattern_base(walk, ms_string_span(&items[i]), &base);
     uv_stat_t info;
-    const bool directory = stat_bytes(ms_strbuild_span(&base), false, &info) == 0 && ms_fs_is_directory(&info);
+    const bool directory = ms_fs_stat_bytes(ms_strbuild_span(&base), false, &info) == 0 && ms_fs_is_directory(&info);
     if (directory) {
       ms_fs_names_push(starts, ms_strbuild_span(&base));
     } else if (!ms_span_equal(ms_strbuild_span(&base), ms_strbuild_span(&walk->root))) {
@@ -653,7 +642,8 @@ uint8_t msstd_fs_glob_entries(const MsString *path, const MsList *patterns, cons
   if (!ms_fail_failed(&walk.fail)) {
     write_found(&walk, out);
   }
-  const uint8_t status = ms_fail_finish_at(&walk.fail, given, err);
+  MsFail fail = walk.fail; /* a stop request unwinds out of the finish, so the walk is freed before it */
+  walk.fail = ms_fail_new();
   walk_free(&walk);
-  return status;
+  return ms_fail_finish_at(&fail, given, err);
 }

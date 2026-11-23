@@ -1,7 +1,6 @@
 import (
 	stdout from "@std/io/io.ms",
 	parse_int from "@std/math/math.ms",
-	StringBuilder from "@std/string_builder.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -90,14 +89,14 @@ fn closures(n: Int) Int:
 	return total
 
 fn text_build_parse(n: Int) Int:
-	var b = StringBuilder()
+	var b = ""
 	var i = 0
 
 	while i < n:
-		b.append(f"{i * 31 % 1000},")
+		b += f"{i * 31 % 1000},"
 		i += 1
 
-	parts := b.build().split(",")
+	parts := b.split(",")
 	var total = 0
 	for p in parts:
 		total += p.parse_int() or 0

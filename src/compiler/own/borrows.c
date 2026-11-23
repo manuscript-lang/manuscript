@@ -101,11 +101,6 @@ static bool is_value_ref(MsRefKind kind) {
   return kind == MS_REF_FUNCTION || kind == MS_REF_METHOD || kind == MS_REF_NATIVE || kind == MS_REF_OPERATION;
 }
 
-static bool owns_memory(Borrows *pass, const MsExpr *expr) {
-  const MsTy ty = ms_facts_type(pass->facts, expr->id);
-  return ty != MS_TY_NONE && ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
-}
-
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out);
 
 /* The local an argument expression borrows from: a local, a field of one, or a borrowing call on one. */
@@ -122,7 +117,7 @@ static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
       break;
     }
   }
-  if (at->kind == MS_E_NAME && owns_memory(pass, arg)) {
+  if (at->kind == MS_E_NAME && ms_class_owns_memory(pass->facts, pass->classes, arg)) {
     out->place = arg;
     out->call = NULL;
     return local_of(pass->facts, at->id, &out->root);
@@ -164,7 +159,7 @@ static bool takes_payload(Borrows *pass, const MsExpr *call) {
 static bool origin_of_call(Borrows *pass, const MsExpr *call, Source *out) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
   if (fact == NULL || !is_value_ref(fact->callee.kind) || declares_move(pass->program, &fact->callee) ||
-      !owns_memory(pass, call)) {
+      !ms_class_owns_memory(pass->facts, pass->classes, call)) {
     return false;
   }
   const MsExpr *callee = call->u.call.callee;
@@ -299,7 +294,7 @@ static bool rooted_at_self(const Borrows *pass, const MsExpr *place) {
 }
 
 static void note_keep(Borrows *pass, const MsExpr *kept) {
-  if (!owns_memory(pass, kept)) {
+  if (!ms_class_owns_memory(pass->facts, pass->classes, kept)) {
     return; /* a scalar is copied out of the result, so nothing is kept */
   }
   const MsExpr *call = kept_call(kept);
@@ -309,20 +304,11 @@ static void note_keep(Borrows *pass, const MsExpr *kept) {
   }
 }
 
-static bool is_constructor(const Borrows *pass, const MsExpr *call) {
-  const MsExpr *callee = call->u.call.callee;
-  if (callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0) { /* `Box[Int](...)`: the type is applied first */
-    callee = callee->u.apply.left;
-  }
-  const MsRef *ref = ms_facts_ref(pass->facts, callee->id);
-  return ref != NULL && (ref->kind == MS_REF_TYPE || ref->kind == MS_REF_CASE);
-}
-
 /* The arguments of `call` that a new owner keeps: constructor arguments, `move` parameters, a taken receiver. */
 static void note_call_keeps(Borrows *pass, const MsExpr *call) {
   const MsCall *fact = ms_facts_call(pass->facts, call->id);
   const MsExpr *callee = call->u.call.callee;
-  const bool constructor = is_constructor(pass, call);
+  const bool constructor = ms_bind_is_constructor(pass->facts, call);
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *value = call->u.call.args.ptr[index].value;
     bool moves = constructor;

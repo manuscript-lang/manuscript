@@ -1,4 +1,5 @@
 /* compiler/check/names.c: the name-resolution pass over function bodies (see names.h). */
+#include "abi/prelude.h"
 #include "compiler/check/names.h"
 
 #include "compiler/check/names_hint.h"
@@ -9,18 +10,14 @@ typedef struct Names {
   const MsExpr *unknown; /* the last name read that was reported unknown */
 } Names;
 
-static const char *const ALWAYS_KNOWN[] = {"..", "_", "self",     "fixture",  "print",     "__LINE__", "__FILE__", "Equal",
-                                           "Stringable", "Comparable", "Hashable", "Clonable", "Optional",
-                                           "Result",   "Error",    "List",      "Map",      "Set",
-                                           "ListEntry", "MapEntry",  "ok_or"};
-
 static bool always_known(MsSpan text) {
-  for (size_t index = 0; index < MS_COUNT_OF(ALWAYS_KNOWN); index++) {
-    if (ms_span_is_text(text, ALWAYS_KNOWN[index])) {
+  static const char *const SPECIAL[] = {"..", "_", "self", "fixture", "print", "__LINE__", "__FILE__"};
+  for (size_t index = 0; index < MS_COUNT_OF(SPECIAL); index++) {
+    if (ms_span_is_text(text, SPECIAL[index])) {
       return true;
     }
   }
-  return false;
+  return ms_is_prelude_type(text);
 }
 
 /* Whether any enum of any loaded module has a case called `name` (a case is written without its type). */

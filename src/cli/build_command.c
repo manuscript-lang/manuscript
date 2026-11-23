@@ -1,5 +1,6 @@
 /* Owns `ms build` (build_command.h): checks the input, builds the executable through the pipeline and reports the
  * result as text or as the versioned JSON document. Port of crates/ms-cli/src/engine/build.rs. */
+#include "cli/files.h"
 #include "cli/build_command.h"
 
 #include <stdio.h>
@@ -10,7 +11,7 @@
 #include "base/path.h"
 #include "base/strbuild.h"
 #include "compiler/syntax/diag_json.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "cli/invocation.h"
 #include "cli/pipeline.h"
 
@@ -38,23 +39,6 @@ typedef struct BuildOutcome {
 
 static void print_span(FILE *stream, MsSpan text) {
   (void)fwrite(text.ptr, 1, text.len, stream);
-}
-
-static MsSpan absolute(MsArena *arena, MsSpan path) {
-  MsString cwd = ms_string_empty();
-  MsStrBuild joined = ms_strbuild_new();
-  if (ms_path_is_absolute(path) || !ms_dir_current(&cwd)) {
-    ms_strbuild_append(&joined, path);
-  } else {
-    ms_path_append_joined(&joined, ms_string_span(&cwd), path);
-  }
-  ms_string_release(&cwd);
-  MsStrBuild cleaned = ms_strbuild_new();
-  ms_path_clean(&cleaned, ms_strbuild_span(&joined));
-  const MsSpan result = ms_arena_copy(arena, ms_strbuild_span(&cleaned));
-  ms_strbuild_free(&joined);
-  ms_strbuild_free(&cleaned);
-  return result;
 }
 
 /* What the file system says of an artifact: built now, or the one a failed build left behind. */
@@ -136,11 +120,11 @@ static MsSpan protected_output(const BuildReport *report, MsSpan project_root) {
   }
   MsStrBuild manifest = ms_strbuild_new();
   ms_path_append_joined(&manifest, project_root, ms_span_of_text("ms.toml"));
-  const MsSpan candidates[2] = {absolute(report->arena, report->invocation->filename),
+  const MsSpan candidates[2] = {ms_cli_absolute(report->arena, report->invocation->filename),
                                 project_root.len > 0 ? ms_message_from_builder(report->arena, &manifest) : (MsSpan){0}};
   ms_strbuild_free(&manifest);
   for (size_t i = 0; i < 2; i++) {
-    if (candidates[i].len > 0 && ms_span_equal(absolute(report->arena, candidates[i]), report->output)) {
+    if (candidates[i].len > 0 && ms_span_equal(ms_cli_absolute(report->arena, candidates[i]), report->output)) {
       return ms_path_file_name(candidates[i]);
     }
   }
@@ -183,7 +167,7 @@ static int link_program(const BuildReport *report, MsCheckedInput *checked) {
 static int build(MsArena *arena, const MsInvocation *invocation) {
   BuildReport report = {.arena = arena, .invocation = invocation,
                         .display = invocation->output.len > 0 ? invocation->output : ms_span_of_text("program")};
-  report.output = absolute(arena, report.display);
+  report.output = ms_cli_absolute(arena, report.display);
   MsCheckedInput checked = {0};
   int status = 0;
   if (!ms_checked_input_load(arena, &checked, invocation->filename, MS_INPUT_PROGRAM)) {

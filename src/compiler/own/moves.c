@@ -126,15 +126,6 @@ static void find_use(void *ctx, const MsExpr *expr) {
   }
 }
 
-static bool contains(const MsBindingList *list, uint32_t binding) {
-  for (size_t index = 0; index < list->len; index++) {
-    if (list->ptr[index] == binding) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static void append_later(const Moves *pass, MsStrBuild *text, MsNode next) {
   const MsPos later = spot_of(pass, next);
   ms_strbuild_append_text(text, ", which is used again");
@@ -209,19 +200,19 @@ static void check_lambda(const Moves *pass, const MsExpr *lambda) {
       ms_strbuild_append_text(&changed, "`");
       ms_check_report(pass->program, pass->module, lambda->pos, MS_CHECK_TYPE, ms_strbuild_finish(&changed));
     }
-    if (!copy && contains(&pass->varparams, first.binding)) {
+    if (!copy && ms_binding_list_contains(&pass->varparams, first.binding)) {
       ms_strbuild_append_text(&text, "this closure outlives the statement but captures the `var` parameter `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "`, which the caller keeps; bind `own := ");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, ".clone()` before the closure and capture `own` instead, or take it by `move`");
-    } else if (!copy && contains(&pass->outer, first.binding)) {
+    } else if (!copy && ms_binding_list_contains(&pass->outer, first.binding)) {
       ms_strbuild_append_text(&text, "this closure outlives the statement but captures `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "`, which is borrowed, not owned; bind `own := ");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, ".clone()` before the closure and capture `own` instead");
-    } else if (again && copy && contains(&pass->vars, first.binding)) {
+    } else if (again && copy && ms_binding_list_contains(&pass->vars, first.binding)) {
       ms_strbuild_append_text(&text, "this closure outlives the statement but captures the `var` `");
       ms_strbuild_append(&text, name);
       ms_strbuild_append_text(&text, "`");
@@ -275,7 +266,7 @@ static void check_handed_on(Moves *pass, const MsExpr *value) {
                             ? ms_ty_subst(&pass->program->types, ty, pass->subst_vars, pass->subst_args, pass->nsubst)
                             : (pass->instance ? MS_TY_NONE : ty);
   if (pass->depth == 0 && value->kind == MS_E_NAME && ms_bind_of(pass->facts, value->id, &binding) &&
-      contains(&pass->borrowed, binding) && concrete != MS_TY_NONE && ms_check_holds_resource(pass->program, concrete)) {
+      ms_binding_list_contains(&pass->borrowed, binding) && concrete != MS_TY_NONE && ms_check_holds_resource(pass->program, concrete)) {
     report_borrowed(pass, value);
   }
 }
@@ -291,7 +282,7 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   /* Returning a plain parameter whole answers a view of it: the lowering gives the caller that borrowed result. */
   const bool whole_param = pass->instance && stmt->kind == MS_S_RETURN && stmt->u.expr != NULL &&
                            stmt->u.expr->kind == MS_E_NAME && ms_bind_of(pass->facts, stmt->u.expr->id, &returned) &&
-                           contains(&pass->plainparams, returned);
+                           ms_binding_list_contains(&pass->plainparams, returned);
   if (stmt->kind == MS_S_RETURN && stmt->u.expr != NULL && !whole_param) {
     check_handed_on(pass, stmt->u.expr);
   }
@@ -357,7 +348,7 @@ static void check_move_receiver(Moves *pass, const MsExpr *call) {
     }
     const MsTy field = ms_facts_type(pass->facts, receiver->id);
     if (root->kind == MS_E_NAME && ms_bind_of(pass->facts, root->id, &binding) &&
-        (element || contains(&pass->vars, binding) || contains(&pass->varparams, binding)) && field != MS_TY_NONE &&
+        (element || ms_binding_list_contains(&pass->vars, binding) || ms_binding_list_contains(&pass->varparams, binding)) && field != MS_TY_NONE &&
         ms_check_holds_resource(pass->program, field)) {
       MsStrBuild place = ms_strbuild_new();
       append_place_text(pass, &place, receiver);
@@ -390,7 +381,7 @@ static void check_move_receiver(Moves *pass, const MsExpr *call) {
     return;
   }
   const MsTy ty = ms_facts_type(pass->facts, receiver->id);
-  if (!ms_bind_of(pass->facts, receiver->id, &binding) || !contains(&pass->plainparams, binding) || ty == MS_TY_NONE ||
+  if (!ms_bind_of(pass->facts, receiver->id, &binding) || !ms_binding_list_contains(&pass->plainparams, binding) || ty == MS_TY_NONE ||
       !ms_check_holds_resource(pass->program, ty)) {
     return;
   }
@@ -425,7 +416,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     }
   }
   if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
-      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && contains(&pass->borrowed, binding)) {
+      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && ms_binding_list_contains(&pass->borrowed, binding)) {
     /* The payloads of a borrowed value are borrowed too. */
     for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
       const MsArm *one = expr->u.match.arms.ptr[arm];
@@ -455,7 +446,7 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
     return;
   }
   if (expr->kind == MS_E_MATCH && expr->u.match.scrutinee->kind == MS_E_NAME &&
-      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && contains(&pass->borrowed, binding)) {
+      ms_bind_of(pass->facts, expr->u.match.scrutinee->id, &binding) && ms_binding_list_contains(&pass->borrowed, binding)) {
     /* The payloads of a borrowed value are borrowed too. */
     for (uint32_t arm = 0; arm < expr->u.match.arms.len; arm++) {
       const MsArm *one = expr->u.match.arms.ptr[arm];
@@ -465,11 +456,11 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_NAME && ms_facts_use(pass->facts, expr->id) == MS_USE_BORROW) {
     (void)mark_last_use(pass, expr); /* an owner read for the last time is consumed by whatever takes it */
   }
-  if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || contains(&pass->reads, expr->id) ||
+  if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || ms_binding_list_contains(&pass->reads, expr->id) ||
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;
   }
-  if (!pass->instance && pass->depth == 0 && binding != pass->assigning && contains(&pass->varparams, binding)) {
+  if (!pass->instance && pass->depth == 0 && binding != pass->assigning && ms_binding_list_contains(&pass->varparams, binding)) {
     const MsTy held = ms_facts_type(pass->facts, expr->id);
     const bool resource = held != MS_TY_NONE && ms_check_holds_resource(pass->program, held);
     if (held != MS_TY_NONE && ms_class_of(pass->classes, held) != MS_CLASS_COPY &&
@@ -509,15 +500,15 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
 static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var) {
   uint32_t binding = 0;
   if (name->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->live == NULL ||
-      !ms_bind_of(pass->facts, name->id, &binding) || contains(&pass->outer, binding) || contains(&pass->borrowed, binding)) {
+      !ms_bind_of(pass->facts, name->id, &binding) || ms_binding_list_contains(&pass->outer, binding) || ms_binding_list_contains(&pass->borrowed, binding)) {
     return false;
   }
   const MsRef *ref = ms_facts_ref(pass->facts, name->id);
   const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(name->id, binding));
-  const bool owner = ref != NULL && (ref->kind == MS_REF_PARAM ? contains(&pass->moving, binding) || contains(&pass->taking, binding)
+  const bool owner = ref != NULL && (ref->kind == MS_REF_PARAM ? ms_binding_list_contains(&pass->moving, binding) || ms_binding_list_contains(&pass->taking, binding)
                                                                : ref->kind == MS_REF_LOCAL &&
-                                                                     (contains(&pass->owners, binding) ||
-                                                                      (allow_var && contains(&pass->vars, binding))));
+                                                                     (ms_binding_list_contains(&pass->owners, binding) ||
+                                                                      (allow_var && ms_binding_list_contains(&pass->vars, binding))));
   return owner && use != NULL && use->last;
 }
 
@@ -576,7 +567,7 @@ static void note_var_borrow(Moves *pass, const MsStmt *stmt) {
   const MsTy ty = value != NULL ? ms_facts_type(pass->facts, value->id) : MS_TY_NONE;
   if (pass->instance || pass->depth != 0 || value == NULL || value->kind != MS_E_MEMBER || root->kind != MS_E_NAME ||
       !ms_bind_of(pass->facts, root->id, &binding) ||
-      !(contains(&pass->varparams, binding) || contains(&pass->plainparams, binding)) || ty == MS_TY_NONE ||
+      !(ms_binding_list_contains(&pass->varparams, binding) || ms_binding_list_contains(&pass->plainparams, binding)) || ty == MS_TY_NONE ||
       ms_class_of(pass->classes, ty) == MS_CLASS_COPY || ms_ty_kind(&pass->program->types, ty) == MS_TY_FUNCTION) {
     return;
   }
@@ -597,7 +588,7 @@ static void note_var(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     note_view(pass, stmt);
-    if (fresh_value(stmt->u.bind.value) && !contains(&pass->borrowed, stmt->u.bind.pattern->id)) {
+    if (fresh_value(stmt->u.bind.value) && !ms_binding_list_contains(&pass->borrowed, stmt->u.bind.pattern->id)) {
       ms_binding_list_push(&pass->owners, stmt->u.bind.pattern->id);
     }
   }

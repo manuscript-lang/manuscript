@@ -1,5 +1,3 @@
-import StringBuilder from "@std/string_builder.ms"
-
 /*
 Compares text by edit distance, similarity, closest candidate, or a unified line diff.
 Strings are compared by Unicode scalar and lines by exact equality.
@@ -260,8 +258,8 @@ export fn unified_diff(
 
 	if not any_change: return ""
 
-	var out = StringBuilder()
-	out.append(f"--- {old_name}\n+++ {new_name}\n")
+	var out = ""
+	out += f"--- {old_name}\n+++ {new_name}\n"
 
 	var i = 0
 
@@ -283,9 +281,7 @@ export fn unified_diff(
 			if steps[j].kind != 1:
 				new_length += 1
 
-		out.append(
-			f"@@ -{hunk_range(steps[i].old_at, old_length)} +{hunk_range(steps[i].new_at, new_length)} @@\n"
-		)
+		out += f"@@ -{hunk_range(steps[i].old_at, old_length)} +{hunk_range(steps[i].new_at, new_length)} @@\n"
 
 		for j in i..end:
 			var mark = " "
@@ -295,8 +291,8 @@ export fn unified_diff(
 			else if steps[j].kind == 2:
 				mark = "+"
 
-			out.append(f"{mark}{steps[j].text}\n")
+			out += f"{mark}{steps[j].text}\n"
 
 		i = end
 
-	return out.build()
+	return out

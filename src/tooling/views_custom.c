@@ -4,12 +4,6 @@
 
 #include "compiler/syntax/diag_json.h"
 
-static void indent(MsStrBuild *out, size_t depth) {
-  for (size_t i = 0; i < depth; i++) {
-    ms_strbuild_append_text(out, "  ");
-  }
-}
-
 void ms_view_json(const MsViewNode *node, size_t depth, MsStrBuild *out) {
   ms_strbuild_append_text(out, "{\n");
   const struct {
@@ -17,30 +11,30 @@ void ms_view_json(const MsViewNode *node, size_t depth, MsStrBuild *out) {
     MsSpan value;
   } fields[] = {{"label", node->label}, {"kind", node->kind}, {"reference", node->reference}, {"file", node->file}};
   for (size_t i = 0; i < 4; i++) {
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_strbuild_printf(out, "\"%s\": ", fields[i].key);
     ms_json_string(out, fields[i].value);
     ms_strbuild_append_text(out, ",\n");
   }
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_printf(out, "\"line\": %zu,\n", node->line);
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_printf(out, "\"omitted\": %zu,\n", node->omitted);
-  indent(out, depth + 1);
+  ms_strbuild_append_indent(out, depth + 1);
   ms_strbuild_append_text(out, "\"children\": ");
   if (node->kids.len == 0) {
     ms_strbuild_append_text(out, "[]\n");
   } else {
     ms_strbuild_append_text(out, "[\n");
     for (size_t i = 0; i < node->kids.len; i++) {
-      indent(out, depth + 2);
+      ms_strbuild_append_indent(out, depth + 2);
       ms_view_json(node->kids.ptr[i], depth + 2, out);
       ms_strbuild_append_text(out, i + 1 < node->kids.len ? ",\n" : "\n");
     }
-    indent(out, depth + 1);
+    ms_strbuild_append_indent(out, depth + 1);
     ms_strbuild_append_text(out, "]\n");
   }
-  indent(out, depth);
+  ms_strbuild_append_indent(out, depth);
   ms_strbuild_append_text(out, "}");
 }
 
@@ -193,7 +187,7 @@ static void signature_lines(MsArena *arena, const MsFactModel *model, const MsFa
   ms_spans_push(arena, path, f->key);
   for (size_t i = 0; i < f->calls.len; i++) {
     const MsFact *callee = ms_views_fact_of(model, f->calls.ptr[i]);
-    if (callee == NULL || contains(path, f->calls.ptr[i]) || *lines >= MS_NODE_CAP) {
+    if (callee == NULL || ms_spans_contains(path, f->calls.ptr[i]) || *lines >= MS_NODE_CAP) {
       continue;
     }
     signature_lines(arena, model, callee, level + 1, depth, path, lines, out);
@@ -280,14 +274,14 @@ static bool class_diagram(MsArena *arena, const MsFactModel *model, MsSpan entit
   size_t next_id = 0;
   for (size_t i = 0; i < n; i++) {
     const MsSpan name = class_id(arena, all.ptr[i]);
-    if (!contains(&assigned, name)) {
+    if (!ms_spans_contains(&assigned, name)) {
       ms_spans_push(arena, &assigned, name);
       ids[i] = name;
       continue;
     }
     for (;;) {
       const MsSpan id = ms_message_format(arena, "__ms_type_%z", next_id++);
-      if (!contains(&reserved, id)) {
+      if (!ms_spans_contains(&reserved, id)) {
         ms_spans_push(arena, &reserved, id);
         ids[i] = id;
         break;
@@ -333,7 +327,7 @@ static bool class_diagram(MsArena *arena, const MsFactModel *model, MsSpan entit
 
 static MsSpan flow_type_node(MsArena *arena, MsStrBuild *out, MsSpans *declared, MsSpan ty) {
   const MsSpan id = ms_message_format(arena, "t_%S", ms_views_sanitize(arena, ty, false));
-  if (!contains(declared, id)) {
+  if (!ms_spans_contains(declared, id)) {
     MsStrBuild label = ms_strbuild_new();
     for (size_t i = 0; i < ty.len; i++) {
       ms_strbuild_append_byte(&label, ty.ptr[i] == '"' ? '\'' : ty.ptr[i]);
@@ -373,7 +367,7 @@ static void ownership_flow(MsArena *arena, const MsFactModel *model, MsSpan enti
     Roots next = {0};
     for (size_t i = 0; i < frontier.len; i++) {
       const MsFact *f = frontier.ptr[i];
-      if (contains(&done, f->key)) {
+      if (ms_spans_contains(&done, f->key)) {
         continue;
       }
       ms_spans_push(arena, &done, f->key);

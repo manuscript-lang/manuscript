@@ -1,11 +1,12 @@
 /* The text form of a value, walked through its shape table. See shape_text.h. */
 #include <string.h>
+#include <stdatomic.h>
 #include "base/map.h"
 #include "base/strbuild.h"
 #include "runtime/core/num.h"
 #include "runtime/core/string_text.h"
-#include "runtime/std/bigint.h"
 #include "runtime/std/shape_text.h"
+#include "runtime/std/shape_slot.h"
 
 enum { MAX_DEPTH = 64 };
 
@@ -18,6 +19,12 @@ typedef struct Text {
   bool repr;
 } Text;
 
+static _Atomic(MsShapeBigIntText) bigint_text;
+
+void ms_shape_text_set_bigint(MsShapeBigIntText text) {
+  atomic_store_explicit(&bigint_text, text, memory_order_release);
+}
+
 static void emit(Text *text, uint32_t shape, const uint8_t *slot, int depth, bool nested);
 
 static void append_owned(Text *text, MsString *piece) {
@@ -25,38 +32,12 @@ static void append_owned(Text *text, MsString *piece) {
   ms_string_release(piece);
 }
 
-static int64_t read_signed(const MsShape *shape, const uint8_t *slot) {
-  switch (shape->size) {
-  case 1:
-    return *(const int8_t *)slot;
-  case 2:
-    return *AT(int16_t, slot);
-  case 4:
-    return *AT(int32_t, slot);
-  default:
-    return *AT(int64_t, slot);
-  }
-}
-
-static uint64_t read_unsigned(const MsShape *shape, const uint8_t *slot) {
-  switch (shape->size) {
-  case 1:
-    return *slot;
-  case 2:
-    return *AT(uint16_t, slot);
-  case 4:
-    return *AT(uint32_t, slot);
-  default:
-    return *AT(uint64_t, slot);
-  }
-}
-
 static void append_number(Text *text, const MsShape *shape, const uint8_t *slot) {
   MsString piece = ms_string_empty();
   if (shape->kind == MS_SHAPE_UINT) {
-    msrt_uint_to_string((int64_t)read_unsigned(shape, slot), &piece);
+    msrt_uint_to_string((int64_t)ms_shape_read_unsigned(shape, slot), &piece);
   } else if (shape->kind == MS_SHAPE_INT) {
-    msrt_int_to_string(read_signed(shape, slot), &piece);
+    msrt_int_to_string(ms_shape_read_signed(shape, slot), &piece);
   } else if (shape->size == 4) {
     msrt_float32_to_string((double)*AT(float, slot), &piece);
   } else {
@@ -299,8 +280,12 @@ static void emit(Text *text, uint32_t shape_index, const uint8_t *slot, int dept
     emit_alternative(text, shape, value, depth);
     return;
   case MS_SHAPE_BIGINT: {
+    /* A BigInt exists only after the BigInt natives made one, and they installed this hook then. */
+    const MsShapeBigIntText digits_of = atomic_load_explicit(&bigint_text, memory_order_acquire);
     MsString digits = ms_string_empty();
-    msstd_bigint_to_string_radix(*(MsBigCell *const *)(const void *)slot, 10, &digits);
+    if (digits_of != NULL) {
+      digits_of(*(const void *const *)(const void *)slot, &digits);
+    }
     append_owned(text, &digits);
     return;
   }

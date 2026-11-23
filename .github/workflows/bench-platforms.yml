@@ -1,7 +1,7 @@
 name: Platform benchmarks
 
 # Manual runs only: builds `ms` with the C build natively on each platform, prints the bench/perf/strappend
-# table (StringBuilder and List growth against Rust) and three rounds of bench/perf/json (against Node and
+# table (String append and List growth against Rust) and three rounds of bench/perf/json (against Node and
 # serde_json), and the file, spawn and pipe timings of bench/tools/platform_io.ms, so that a runtime change
 # can be checked on Linux, macOS and Windows before and after merging.
 on:

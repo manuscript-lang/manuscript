@@ -1,5 +1,6 @@
 /* cli/emit_command.c: `ms emit <file.ms> [-o file] [--ir]`. A single file or a project entry: loaded, checked,
  * lowered, and printed as MIR text or as LLVM IR. Status 0 is printed, 1 a diagnostic or a back-end failure, 2 usage. */
+#include "cli/files.h"
 #include "cli/emit_command.h"
 
 #include <stdio.h>
@@ -10,7 +11,7 @@
 #include "compiler/mir/mir_pipeline.h"
 #include "compiler/mir/mir_print.h"
 #include "cli/backend.h"
-#include "cli/checked_input.h"
+#include "tooling/checked_input.h"
 #include "compiler/opt/opt.h"
 #include "cli/invocation.h"
 
@@ -31,19 +32,6 @@ static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, Ms
   return ok;
 }
 
-/* Writes the text to the file `-o` names, or to standard output. */
-static int write_output(MsSpan output, MsSpan text) {
-  if (output.len == 0) {
-    (void)fwrite(text.ptr, 1, text.len, stdout);
-    return 0;
-  }
-  if (!ms_file_write(output, text)) {
-    (void)fprintf(stderr, "cannot write %.*s\n", (int)output.len, (const char *)output.ptr);
-    return STATUS_FAILED;
-  }
-  return 0;
-}
-
 static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation, bool ir, bool optimize) {
   MsStrBuild out = ms_strbuild_new();
   MsStrBuild why = ms_strbuild_new();
@@ -52,7 +40,7 @@ static int emit_program(MsCheckedInput *checked, const MsInvocation *invocation,
                      : print_mir(&checked->program, checked->entry, optimize, &out, &why);
   int status = STATUS_FAILED;
   if (ok) {
-    status = write_output(invocation->output, ms_strbuild_span(&out));
+    status = ms_cli_write_output(invocation->output, ms_strbuild_span(&out));
   } else {
     const MsSpan text = ms_strbuild_span(&why);
     (void)fwrite(text.ptr, 1, text.len, stderr);

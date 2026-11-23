@@ -145,9 +145,9 @@ Use `Queue` from `@std/collections/queue.ms` for first-in, first-out work (`enqu
 
 Map `add_default` evaluates its argument and inserts only when the key is absent. `add_default_from` calls `create(key:)` once, only when the key is absent. Neither replaces an existing value or position. To leave the original map unchanged, bind `var copy = map.clone()` and call `copy.add_default(...)`.
 
-Builder mutations return Void, and `build` returns the sealed result. `StringBuilder` and `BytesBuilder` are owned values like `List`: declare them with `var` and pass them with `var`. `build` takes ownership of the builder, so using one after `build` is a move error.
+Build text with a `var` String and `+=`: `var text = ""` then `text += piece`. A string grows in place, so appending in a loop needs no builder. To hand the text over and start again, move it out and assign a new empty string: `pieces.append(text)` then `text = ""`.
 
-`drain` returns the content so far and leaves the builder empty. Use it for a builder held in a field, where `build` cannot move the builder out.
+Builder mutations return Void, and `build` returns the sealed result. `BytesBuilder` is an owned value like `List`: declare it with `var` and pass it with `var`. `build` takes ownership of the builder, so using one after `build` is a move error. `drain` returns the content so far and leaves the builder empty. Use it for a builder held in a field, where `build` cannot move the builder out.
 
 ## Other collections
 

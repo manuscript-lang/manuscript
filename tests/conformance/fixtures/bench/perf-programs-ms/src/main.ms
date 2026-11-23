@@ -1,9 +1,6 @@
-import (
-	panic from "@std/core.ms",
-	ReadStream, read_line, stdin, stdout from "@std/io/io.ms",
-	StringBuilder from "@std/string_builder.ms",
-	Instant, monotonic from "@std/time.ms",
-)
+import panic from "@std/core.ms"
+import stdout, stdin, read_line, ReadStream from "@std/io/io.ms"
+import Instant, monotonic from "@std/time.ms"
 
 interface Counter:
 	fn bump(by: Int) Int
@@ -58,17 +55,17 @@ fn area(s: Shape) Int:
 	return out
 
 fn bench_string() Int:
-	t := monotonic()
-	var sb = StringBuilder()
-	var i = 0
+    t := monotonic()
+    var sb = ""
+    var i = 0
 
-	while i < 50000:
-		sb.append("x")
-		i += 1
+    while i < 50000:
+        sb += "x"
+        i += 1
 
-	built := sb.build()
-	report("string_append_50k", 50000, t)
-	return built.length()
+    built := sb
+    report("string_append_50k", 50000, t)
+    return built.length()
 
 fn bench_read_line() Void:
 	t := monotonic()

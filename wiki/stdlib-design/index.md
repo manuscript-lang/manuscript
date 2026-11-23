@@ -4,6 +4,7 @@
 
 Stdlib API shape, failure modes, naming, construction.
 
+- [Strings grow in place, so there is no StringBuilder](strings-grow-in-place-so-there-is-no-string-builder.md): `+=` on a `var` String matches the builder's speed; `drain` is move-then-reassign; `BytesBuilder` stays; `Bytes.concat` onto a dying value grows in place.
 - [Stdlib effects are tagged by logical capability](stdlib-effects-are-tagged-by-logical-capability.md): tags follow what a function lets callers do, not which extern it calls; handles inherit; a golden lists every tag.
 - [Buffering, pipes and virtual file trees reuse existing primitives](buffering-pipes-and-virtual-file-trees-reuse-existing-primitives.md): `buffered.ms`, channel-backed pipes, `section`, and the `FileTree` interface with `MemoryTree` and `walk`; `embed` awaits a language decision.
 - [Calls that fail only on a programmer's constant return plain values; fixed-width codecs are methods](calls-that-fail-only-on-a-programmer-s-constant-return-plain.md): `String.pad_start/pad_end` and `Float.to_fixed/to_precision/to_exponential` return `String`.

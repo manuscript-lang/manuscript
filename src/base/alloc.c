@@ -3,16 +3,25 @@
 
 #include <mimalloc.h>
 #include <stdatomic.h>
+#include <stdlib.h>
 #ifdef MS_STATS
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #endif
 
 #include "base/fatal.h"
 
 /* The one other mutable global of base besides the fatal handler: set once before threads. */
 static const MsAllocator *installed = NULL;
+
+/* Whether any hook, observer or live-byte tracking is on. Without one the allocation functions are the counters and
+ * the mimalloc call: no indirect call, no atomic add of a zero delta. */
+#ifdef MS_STATS
+static _Atomic bool hooked = true; /* the counting runtime tracks live blocks from the first allocation */
+#else
+static _Atomic bool hooked = false;
+#endif
+static void refresh_hooked(void);
 
 static void *mimalloc_allocate(size_t size) {
   return mi_malloc(size);
@@ -39,6 +48,7 @@ static void *checked(void *block) {
 
 void ms_alloc_install(const MsAllocator *allocator) {
   installed = allocator;
+  refresh_hooked();
 }
 
 static _Thread_local int64_t counted_allocations, counted_bytes;
@@ -52,6 +62,7 @@ static MsAllocObserver observer = NULL;
 
 void ms_alloc_observe(MsAllocObserver function) {
   observer = function;
+  refresh_hooked();
 }
 
 static void count(size_t size) {
@@ -79,7 +90,35 @@ static _Atomic bool tracking = false;
 static _Atomic unsigned next_stripe;
 static _Thread_local LiveStripe *my_stripe = NULL;
 
-void ms_alloc_track_live(void) { atomic_store_explicit(&tracking, true, memory_order_relaxed); }
+void ms_alloc_track_live(void) {
+  atomic_store_explicit(&tracking, true, memory_order_relaxed);
+  refresh_hooked();
+}
+
+/* mimalloc is built with MI_NO_GETENV (cmake/targets/third_party.cmake): reading each of its ~60 options from the
+ * environment scanned every variable per option, about 500K instructions in every process. The two options a person
+ * sets to look at the allocator are read here, once, before the first allocation. */
+__attribute__((constructor(101))) static void read_allocator_environment(void) {
+  static const struct {
+    const char *name;
+    mi_option_t option;
+  } settable[] = {{"MIMALLOC_SHOW_STATS", mi_option_show_stats}, {"MIMALLOC_VERBOSE", mi_option_verbose}};
+  for (size_t i = 0; i < sizeof settable / sizeof settable[0]; i++) {
+    const char *value = getenv(settable[i].name); // NOLINT(concurrency-mt-unsafe): runs before main
+    if (value != NULL) {
+      mi_option_set(settable[i].option, value[0] == '0' ? 0 : 1);
+    }
+  }
+}
+
+static void refresh_hooked(void) {
+#ifdef MS_STATS
+  const bool on = true;
+#else
+  const bool on = installed != NULL || observer != NULL || atomic_load_explicit(&tracking, memory_order_relaxed);
+#endif
+  atomic_store_explicit(&hooked, on, memory_order_relaxed);
+}
 
 static LiveStripe *stripe(void) {
   if (my_stripe == NULL) {
@@ -216,6 +255,11 @@ int64_t ms_alloc_live_bytes(void) {
 }
 
 void *ms_alloc(size_t size) {
+  if (!atomic_load_explicit(&hooked, memory_order_relaxed)) {
+    counted_allocations++;
+    counted_bytes += (int64_t)size;
+    return checked(mi_malloc(size));
+  }
   count(size);
   void *block = checked(current()->allocate(size));
   live_add(usable(block));
@@ -255,6 +299,10 @@ void *ms_realloc(void *block, size_t size) {
 }
 
 void ms_free(void *block) {
+  if (!atomic_load_explicit(&hooked, memory_order_relaxed)) {
+    mi_free(block); /* accepts NULL */
+    return;
+  }
   if (block != NULL) {
     live_add(-usable(block));
     block_add(-1);

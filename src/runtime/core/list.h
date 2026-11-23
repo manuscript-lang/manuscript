@@ -68,40 +68,40 @@ uint8_t msrt_list_last_index_of(const MsList *v, const MsTypeDesc *d, const uint
 uint8_t msrt_list_contains(const MsList *v, const MsTypeDesc *d, const uint8_t *probe);
 /* ms-sig: msrt_list_prepend(v: *mut VecVal, d: ElemDesc, e: *const u8) @domain=collection @end */
 void msrt_list_prepend(MsList *v, const MsTypeDesc *d, const uint8_t *e);
-/* ms-sig: msrt_list_insert(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @end */
+/* ms-sig: msrt_list_insert(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @keeps @end */
 void msrt_list_insert(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
-/* ms-sig: msrt_list_insert_copy(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection
+/* ms-sig: msrt_list_insert_copy(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @keeps
  * */
 void msrt_list_insert_copy(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
 /* ms-sig: msrt_list_pop(v: *mut VecVal, d: ElemDesc, out: *mut u8) -> u8 @domain=collection @inline=list_pop @end */
 uint8_t msrt_list_pop(MsList *v, const MsTypeDesc *d, uint8_t *out);
-/* ms-sig: msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @inline=list_set */
+/* ms-sig: msrt_list_set(v: *mut VecVal, d: ElemDesc, index: i64, e: *const u8) @domain=collection @keeps @inline=list_set */
 void msrt_list_set(MsList *v, const MsTypeDesc *d, int64_t index, const uint8_t *e);
 /* ms-sig: msrt_list_replace(v: *mut VecVal, d: ElemDesc, index: i64, e: *mut u8, out: *mut u8)
- * @domain=collection @end */
+ * @domain=collection @keeps @end */
 void msrt_list_replace(MsList *v, const MsTypeDesc *d, int64_t index, uint8_t *e, uint8_t *out);
-/* ms-sig: msrt_list_remove_take(v: *mut VecVal, d: ElemDesc, index: i64, out: *mut VecVal) @domain=collection */
+/* ms-sig: msrt_list_remove_take(v: *mut VecVal, d: ElemDesc, index: i64, out: *mut VecVal) @domain=collection @keeps */
 void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList *taken);
-/* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @inline=list_swap @end */
+/* ms-sig: msrt_list_swap(v: *mut VecVal, d: ElemDesc, i: i64, j: i64) @domain=collection @keeps @inline=list_swap @end */
 void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j);
-/* ms-sig: msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @domain=collection @end */
+/* ms-sig: msrt_list_remove(v: *mut VecVal, d: ElemDesc, index: i64) @domain=collection @keeps @end */
 void msrt_list_remove(MsList *v, const MsTypeDesc *d, int64_t index);
 /* ms-sig: msrt_list_reverse(v: *mut VecVal, d: ElemDesc) @domain=collection @end */
 void msrt_list_reverse(MsList *v, const MsTypeDesc *d);
 /* ms-sig: msrt_list_reversed(v: *const VecVal, d: ElemDesc, out: *mut VecVal) @domain=collection @end */
 void msrt_list_reversed(const MsList *v, const MsTypeDesc *d, MsList *out);
 /* ms-sig: msrt_list_splice(v: *mut VecVal, d: ElemDesc, start: i64, count: i64, replacement: *mut VecVal)
- * @domain=collection @end */
+ * @domain=collection @keeps @end */
 void msrt_list_splice(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement);
 /* ms-sig: msrt_list_splice_take(v: *mut VecVal, d: ElemDesc, start: i64, count: i64, replacement: *mut VecVal,
- * out: *mut VecVal) @domain=collection */
+ * out: *mut VecVal) @domain=collection @keeps */
 void msrt_list_splice_take(MsList *v, const MsTypeDesc *d, int64_t start, int64_t count, MsList *replacement,
                            MsList *taken);
 /* ms-sig: msrt_list_fill(v: *mut VecVal, d: ElemDesc, value: *const u8, start: i64, end: i64)
  * @domain=collection @end */
 void msrt_list_fill(MsList *v, const MsTypeDesc *d, const uint8_t *value, int64_t start, int64_t end);
 /* ms-sig: msrt_list_copy_within(v: *mut VecVal, d: ElemDesc, target: i64, start: i64, end: i64)
- * @domain=collection @end */
+ * @domain=collection @keeps @end */
 void msrt_list_copy_within(MsList *v, const MsTypeDesc *d, int64_t target, int64_t start, int64_t end);
 /* ms-sig: msrt_list_slice(v: *const VecVal, d: ElemDesc, start: i64, end: i64, out: *mut VecVal, err:
  * ErrSlot) -> u8 @domain=collection @end */

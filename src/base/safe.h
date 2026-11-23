@@ -166,6 +166,16 @@ static inline bool ms_span_equal(MsSpan a, MsSpan b) {
   return a.len == b.len && (a.len == 0 || __builtin_memcmp(a.ptr, b.ptr, a.len) == 0);
 }
 
+/* Byte order of two texts: -1, 0 or 1. */
+static inline int ms_span_compare(MsSpan a, MsSpan b) {
+  const size_t common = a.len < b.len ? a.len : b.len;
+  const int order = common == 0 ? 0 : __builtin_memcmp(a.ptr, b.ptr, common);
+  if (order != 0) {
+    return order < 0 ? -1 : 1;
+  }
+  return a.len == b.len ? 0 : (a.len < b.len ? -1 : 1);
+}
+
 /* Whether `span` is exactly the C string `text`. This and ms_span_of_text are the only places a C string
  * becomes a span: the entry point of an OS or libc string. */
 static inline MsSpan ms_span_of_text(const char *text) {
@@ -183,6 +193,23 @@ static inline bool ms_span_starts_with(MsSpan span, MsSpan prefix) {
 static inline bool ms_span_ends_with(MsSpan span, MsSpan suffix) {
   return span.len >= suffix.len &&
          ms_span_equal(ms_span_of(span.ptr + (span.len - suffix.len), suffix.len), suffix);
+}
+
+/* The offset of the first `byte` in `text`; false when absent, `at` untouched. */
+MS_NODISCARD MS_NONNULL static inline bool ms_span_find_byte(MsSpan text, uint8_t byte, size_t *at) {
+  for (size_t i = 0; i < text.len; i++) {
+    if (text.ptr[i] == byte) {
+      *at = i;
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Whether `text` holds `byte`. */
+static inline bool ms_span_has_byte(MsSpan text, uint8_t byte) {
+  size_t at = 0;
+  return ms_span_find_byte(text, byte, &at);
 }
 
 /* The offset of the first occurrence of `needle` in `hay` (an empty needle matches at 0). False when absent,

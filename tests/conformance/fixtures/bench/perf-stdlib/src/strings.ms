@@ -1,5 +1,4 @@
 import (
-	StringBuilder from "@std/string_builder.ms",
 
 	bench, words from "./harness.ms",
 )
@@ -11,10 +10,10 @@ export fn bench_string() Void:
 		"string.append_builder",
 		100000,
 		fn() Int:
-			var sb = StringBuilder()
+			var sb = ""
 			for i in 0..100000:
-				sb.append("x")
-			return sb.build().length()
+				sb += "x"
+			return sb.length()
 	)
 
 	bench(

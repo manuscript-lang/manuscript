@@ -1,11 +1,8 @@
 // conform: tags=strings,numbers,lists,interpolation,tier-stdlib
 // conform: phase=run
 // conform: origin=perf fast paths: builder append fusion, chars, parse_int, sort
-import (
-	stdout from "@std/io/io.ms",
-	parse_int from "@std/math/math.ms",
-	StringBuilder from "@std/string_builder.ms",
-)
+import stdout from "@std/io/io.ms"
+import parse_int from "@std/math/math.ms"
 
 fn compare(left: Int, right: Int) Int:
 	if left < right: return -1
@@ -17,18 +14,18 @@ fn say(text: String) Void:
 	_ignored := stdout().write(text.clone())
 
 fn main() Void:
-	var b = StringBuilder()
-	var i = -3
+    var b = ""
+    var i = -3
 
-	while i < 4:
-		b.append(f"{i * 1000003},")
-		b.append(f"<{i}>")
-		i += 1
+    while i < 4:
+        b += f"{i * 1000003},"
+        b += f"<{i}>"
+        i += 1
 
-	b.append(f"{9223372036854775807}|{-9223372036854775807}|")
+    b += f"{9223372036854775807}|{-9223372036854775807}|"
 
-	joined := b.build()
-	say(f"{joined}\n")
+    joined := b
+    say(f"{joined}\n")
 
 	var total = 0
 

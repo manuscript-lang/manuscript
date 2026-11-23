@@ -67,7 +67,7 @@ typedef struct ElCx {
   uint32_t close;        /* the module's `close` function or MIR_NONE */
   uint32_t discard, cancel, shield_enter, shield_exit; /* extern ids or MIR_NONE */
   MirHash param_owned;   /* values that are owning block parameters */
-  MirHash disown_moves;  /* flagged owners a `scope.disown` ahead of the consuming op moves */
+  MirHash disown_moves;  /* flagged owners: they stay tracked as moved once an op consumes them */
   MirHash unpin_live;    /* owning results a `scope.unpin` hands back to their variable: still live after it */
   MirHash reowned;       /* owners a scope registers at more than one place (a variable at each exit): consumed, they stay moved */
   ElPart *parts;         /* interned partial-move states, id EL_PLAIN_KINDS + index */
@@ -90,6 +90,8 @@ void el_remove(ElCx *cx, ElState *state, MirValue value);
 bool el_position_of(const ElState *state, MirValue value, uint32_t *position);
 /* The owners in definition order: `*count` of them, in the context's arena. */
 ElOwner *el_owners(ElCx *cx, const ElState *state, uint32_t *count);
+/* Orders two ElOwner by definition position, for ms_sort. */
+int64_t el_owner_by_position(uint8_t *env, const uint8_t *x, const uint8_t *y);
 /* The owners a join left uncertain, in definition order. */
 ElOwner *el_odd(ElCx *cx, const ElState *state, uint32_t *count);
 bool el_state_equal(const ElState *x, const ElState *y);

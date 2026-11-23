@@ -1,7 +1,6 @@
 import (
 	parse_int from "@std/math/math.ms",
 	from_scalars from "@std/string.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 // An element with fewer attributes than this checks duplicate names by scanning them.
@@ -85,9 +84,9 @@ fn XmlNode.children() List[XmlNode]:
 
 // Returns all descendant text joined in document order, without comments.
 fn XmlNode.text() String:
-	var out = StringBuilder()
+	var out = ""
 	collect_text(self, out)
-	return out.build()
+	return out
 
 // Returns the first direct child element named `name`, or null. The result is an
 // owned copy.
@@ -111,9 +110,9 @@ fn XmlNode.find_all(name: String) List[XmlNode]:
 
 	return found
 
-fn collect_text(node: XmlNode, var out: StringBuilder) Void:
+fn collect_text(node: XmlNode, var out: String) Void:
 	match node:
-		XmlText(text): out.append(text)
+		XmlText(text): out += text
 		XmlElement(_, _, children):
 			for child in children:
 				collect_text(child, out)
@@ -171,9 +170,9 @@ fn Reader.looking_at(literal: String) Bool:
 fn Reader.span(start: Int, end: Int) String:
 	if self.ascii: return self.text.view(start, end).clone()
 
-	var out = StringBuilder()
-	for k in start..end: out.append(self.chars[k])
-	return out.build()
+	var out = ""
+	for k in start..end: out += self.chars[k]
+	return out
 
 fn Reader.done() Bool:
 	return self.at >= self.chars.length()
@@ -703,11 +702,11 @@ fn is_name_start(code: Int) Bool:
 fn decode(text: String, chars: List[String], start: Int) String!:
 	if not text.contains("&"): return ok(text.clone())
 
-	var out = StringBuilder()
+	var out = ""
 
 	// Every piece after the first starts right after an `&`, so each is scanned once.
 	pieces := text.split("&")
-	out.append(pieces[0])
+	out += pieces[0]
 
 	var index = 1
 
@@ -728,33 +727,21 @@ fn decode(text: String, chars: List[String], start: Int) String!:
 
 		entity := tail.view(0, end)
 
-		if entity == "lt": out.append("<")
-		else if entity == "gt": out.append(">")
-		else if entity == "amp": out.append("&")
-		else if entity == "quot": out.append("\"")
-		else if entity == "apos": out.append("'")
+		if entity == "lt": out += "<"
+		else if entity == "gt": out += ">"
+		else if entity == "amp": out += "&"
+		else if entity == "quot": out += "\""
+		else if entity == "apos": out += "'"
 		else if entity.starts_with("#x"):
-			out.append(
-				scalar(
-					chars,
-					here,
-					digits(entity.view(2, entity.length()), 16),
-				)?
-			)
+			out += scalar(chars, here, digits(entity.view(2, entity.length()), 16))?
 		else if entity.starts_with("#"):
-			out.append(
-				scalar(
-					chars,
-					here,
-					digits(entity.view(1, entity.length()), 10),
-				)?
-			)
+			out += scalar(chars, here, digits(entity.view(1, entity.length()), 10))?
 		else:
 			return error(invalid_at(chars, here, f"unknown entity `&{entity};`"))
 
-		out.append(tail.view((end) + 1, tail.length()))
+		out += tail.view((end) + 1, tail.length())
 
-	return ok(out.build())
+	return ok(out)
 
 // The value of a character reference's digits, or null for an empty run, a sign, or any
 // non-digit.
@@ -870,24 +857,24 @@ export fn escape_attribute(text: String) String:
 // its own line, except elements holding text, which stay on one line. An element with
 // no children is self-closing.
 export fn stringify(node: XmlNode, indent: String = "") String:
-	var out = StringBuilder()
+	var out = ""
 	write(node, indent, 0, out)
-	return out.build()
+	return out
 
-fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void:
+fn write(node: XmlNode, indent: String, level: Int, var out: String) Void:
 	pad := if indent.is_empty(): "" else: indent.repeat(level)
 	newline := if indent.is_empty(): "" else: "\n"
 
 	match node:
-		XmlText(text): out.append(escape_text(text))
-		XmlComment(text): out.append(f"{pad}<!--{text}-->{newline}")
+		XmlText(text): out += escape_text(text)
+		XmlComment(text): out += f"{pad}<!--{text}-->{newline}"
 		XmlElement(name, attributes, children):
-			out.append(f"{pad}<{name}")
+			out += f"{pad}<{name}"
 			for attribute in attributes:
-				out.append(f" {attribute.name}=\"{escape_attribute(attribute.value)}\"")
+				out += f" {attribute.name}=\"{escape_attribute(attribute.value)}\""
 
 			if children.is_empty():
-				out.append(f"/>{newline}")
+				out += f"/>{newline}"
 				return
 
 			var has_text = false
@@ -899,12 +886,12 @@ fn write(node: XmlNode, indent: String, level: Int, var out: StringBuilder) Void
 						break
 
 			if has_text or indent.is_empty():
-				out.append(">")
+				out += ">"
 				for child in children:
 					write(child, "", 0, out)
-				out.append(f"</{name}>{newline}")
+				out += f"</{name}>{newline}"
 			else:
-				out.append(f">{newline}")
+				out += f">{newline}"
 				for child in children:
 					write(child, indent, level + 1, out)
-				out.append(f"{pad}</{name}>{newline}")
+				out += f"{pad}</{name}>{newline}"

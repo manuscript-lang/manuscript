@@ -13,6 +13,16 @@
 
 MS_LIST_DEFINE(MsBindingList, ms_binding_list, uint32_t)
 
+/* Whether the list holds `binding`. */
+static inline bool ms_binding_list_contains(const MsBindingList *list, uint32_t binding) {
+  for (size_t index = 0; index < list->len; index++) {
+    if (list->ptr[index] == binding) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /* The binding `node` names; false when it resolves to anything but a local or a parameter. */
 bool ms_bind_of(const MsFacts *facts, MsNode node, uint32_t *binding);
 
@@ -22,6 +32,9 @@ bool ms_bind_field_chain(const MsFacts *facts, MsArena *arena, const MsExpr *exp
                          uint32_t *binding, MsLivePath *path);
 
 /* The bindings a lambda uses that are bound outside it, in order of first use. Owned by the caller. */
+/* Whether the call builds a value: its callee is a type or an enum case, maybe with type arguments applied. */
+bool ms_bind_is_constructor(const MsFacts *facts, const MsExpr *call);
+
 MsBindingList ms_bind_captures(const MsFacts *facts, const MsExpr *lambda);
 
 #endif

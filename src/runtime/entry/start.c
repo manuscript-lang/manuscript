@@ -25,6 +25,7 @@
 #include "runtime/core/obj.h"
 #include "runtime/core/pipe.h"
 #include "runtime/core/promise.h"
+#include "runtime/core/release.h"
 #include "runtime/core/stats.h"
 #include "runtime/core/task.h"
 #include "runtime/core/watch.h"
@@ -33,10 +34,6 @@
 #include "runtime/io/reactor.h"
 #include "runtime/io/stdout.h"
 #include "runtime/io/stop.h"
-#include "runtime/std/http_client_abi.h"
-#include "runtime/std/http_serve_internal.h"
-#include "runtime/std/net_loop.h"
-#include "runtime/std/streams.h"
 #include "runtime/sys/sys.h"
 
 enum {
@@ -90,11 +87,9 @@ static void release_process_memory(void) {
     return;
   }
   ms_watch_stop();
-  ms_serve_idle_release_registry();
   ms_pipe_release_all();
-  ms_net_release_all();
-  ms_http_engine_release_all();
-  ms_streams_release_all();
+  ms_release_run();
+  ms_core_heap_report();
 }
 
 /* ---- ending the process ---- */
@@ -332,7 +327,6 @@ int msrt_start(MsMainFn main_fn, const MsTables *tables, int argc, const char *c
   ms_profile_start(); /* first: the threads started below must not take the profiling signal */
   ms_fault_install_base_hook();
   ms_obj_install_bounded_drop();
-  ms_http_install_task_waiter();
   ms_frames_install(tables); /* without them a report simply has no source frames */
   /* libuv keeps a private copy of the arguments, which set_title may overwrite in place: read them from the copy. */
   argv = (const char *const *)uv_setup_args(argc, (char **)(uintptr_t)argv);

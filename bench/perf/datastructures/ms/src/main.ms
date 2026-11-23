@@ -3,7 +3,6 @@ import (
 	PriorityQueue from "@std/collections/queue.ms",
 	SortedMap from "@std/collections/sorted.ms",
 	stdout from "@std/io/io.ms",
-	StringBuilder from "@std/string_builder.ms",
 	Instant, monotonic from "@std/time.ms",
 )
 
@@ -130,13 +129,13 @@ fn bench_set(n: Int) Int:
 
 fn bench_string(n: Int) Int:
 	t := monotonic()
-	var sb = StringBuilder()
+	var sb = ""
 
 	for i in 0..n:
-		sb.append("word")
-		sb.append(" ")
+		sb += "word"
+		sb += " "
 
-	text := sb.build()
+	text := sb
 	parts := text.split(" ")
 	joined := parts.join("-")
 	replaced := joined.replace("word", "w")

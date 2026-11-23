@@ -1,7 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
 	base64_decode, base64_encode from "@std/data/encoding.ms",
-	StringBuilder from "@std/string_builder.ms",
 )
 
 /*
@@ -106,13 +105,13 @@ export fn parse(text: String) List[PemBlock]!:
 // Encodes one block with headers first, then the body in 64-character base64 lines,
 // ending with a newline.
 export fn encode_block(block: PemBlock) String:
-	var out = StringBuilder()
-	out.append(f"{BEGIN}{block.label}{DASHES}\n")
+	var out = ""
+	out += f"{BEGIN}{block.label}{DASHES}\n"
 
 	if not block.headers.is_empty():
 		for entry in block.headers.entries():
-			out.append(f"{entry.key}: {entry.value}\n")
-		out.append("\n")
+			out += f"{entry.key}: {entry.value}\n"
+		out += "\n"
 
 	body := base64_encode(block.data)
 	var at = 0
@@ -120,15 +119,15 @@ export fn encode_block(block: PemBlock) String:
 
 	while at < total:
 		stop := if at + 64 < total: at + 64 else: total
-		out.append(f"{body.slice(at, stop)}\n")
+		out += f"{body.slice(at, stop)}\n"
 		at = stop
 
-	out.append(f"{END}{block.label}{DASHES}\n")
-	return out.build()
+	out += f"{END}{block.label}{DASHES}\n"
+	return out
 
 // Encodes blocks in order into one PEM text; the result parses back to equal blocks.
 export fn encode_all(blocks: List[PemBlock]) String:
-	var out = StringBuilder()
+	var out = ""
 	for block in blocks:
-		out.append(encode_block(block))
-	return out.build()
+		out += encode_block(block)
+	return out

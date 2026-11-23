@@ -7,6 +7,7 @@
 #include <uv.h>
 
 #include "base/alloc.h"
+#include "runtime/core/release.h"
 #include "runtime/std/http_client_abi.h"
 #include "runtime/std/http_client_internal.h"
 
@@ -302,6 +303,7 @@ static bool engine_started;
 
 static void engine_init(void) {
   engine_started = true;
+  ms_release_at_exit(ms_http_engine_release_all);
   (void)uv_mutex_init(&engine.lock);
   (void)uv_loop_init(&engine.loop);
   (void)uv_async_init(&engine.loop, &engine.async, on_async);

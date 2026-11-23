@@ -1,7 +1,6 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
-	StringBuilder from "@std/string_builder.ms",
 	expect_contains, expect_fault, expect_true from "@std/test/test.ms",
 )
 
@@ -38,12 +37,12 @@ test "custom equality is kept for bound members":
 	mapped := a.map(transform: fn(value: Folded) Folded: return Folded(name: "z"))
 	(mapped.length() == 1) | expect_true?
 
-test "builder":
-	var sb = StringBuilder()
-	append := sb.append
+test "list append":
+	var names: List[String] = []
+	append := names.append
 	append("a")
 	append("é")
-	(sb.build() == "aé") | expect_true?
+	(names == ["a", "é"]) | expect_true?
 
 test "abs of the minimum overflows":
 	smallest := 0 - 9223372036854775807 - 1
