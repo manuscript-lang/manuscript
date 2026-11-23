@@ -361,9 +361,10 @@ fn move Result[T, E].and_then[U](transform: fn(move T) U!E) U!E:
 		error(cause): return error(cause)
 
 // Returns some with the original success payload, or none for an error.
-fn Result[T, E].to_optional() T?:
-	if self.is_error(): return none
-	return self.get()
+fn move Result[T, E].to_optional() T?:
+	match self:
+		ok(value): return value
+		error(_cause): return none
 
 // A type that can be compared for equality. Built-in data keeps its value
 // semantics; an explicit implementation chooses what counts as the same value.
