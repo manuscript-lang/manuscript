@@ -352,8 +352,15 @@ static void flag_taken_by(Closers *pass, const MsExpr *call) {
       !(ms_ty_has_variable(&pass->program->types, result) || ms_check_holds_resource(pass->program, result))) {
     return;
   }
+  /* A constructor (`error(cause)`, `Pair(a, b)`) stores each argument whole: no part of one leaves it, and the use that
+   * moves a name flags it moved. */
+  const MsRef *callee = ms_facts_ref(pass->facts, call->u.call.callee->id);
+  const bool constructor = callee != NULL && (callee->kind == MS_REF_TYPE || callee->kind == MS_REF_CASE);
   for (uint32_t index = 0; index < call->u.call.args.len; index++) {
     const MsExpr *arg = call->u.call.args.ptr[index].value;
+    if (constructor && arg->kind == MS_E_NAME) {
+      continue;
+    }
     const MsTy arg_ty = ms_facts_type(pass->facts, arg->id);
     /* An argument that holds no resource has none to hand to the result. */
     if (arg_ty != MS_TY_NONE && !ms_ty_has_variable(&pass->program->types, arg_ty) &&
