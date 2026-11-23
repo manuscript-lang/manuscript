@@ -71,3 +71,11 @@ add_custom_target(repo-check
   USES_TERMINAL
   COMMENT "Checking repository invariants")
 
+# Every standard declaration and member has a description that passes the structural checks (tools/docgen.ms).
+add_custom_target(docs-check
+  COMMAND ${CMAKE_COMMAND} -E env "MS=$<TARGET_FILE:ms>" $<TARGET_FILE:ms> run tools/docgen.ms -- --check
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+  DEPENDS ms
+  USES_TERMINAL
+  COMMENT "Checking standard-library descriptions")
+
