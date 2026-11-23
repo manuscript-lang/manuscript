@@ -286,6 +286,7 @@ int ms_fmt_command(int argc, char **argv) {
                     (const char *)targets.ptr[index].ptr);
     }
     (void)fputc('\n', stderr);
+    status = 1;
   }
   ms_sort((uint8_t *)outcomes, count, sizeof *outcomes, outcome_order, NULL);
   if (options.json) {

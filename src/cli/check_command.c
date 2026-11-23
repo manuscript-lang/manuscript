@@ -379,7 +379,7 @@ static int render(const Analysis *analysis, const CheckOptions *options, const M
   if (options->json) {
     write_document(document, &analysis->findings, options, out, err);
   }
-  return finding_fails(&analysis->findings, options->deny_warnings) ? STATUS_FAILED : 0;
+  return analysis->no_inputs || finding_fails(&analysis->findings, options->deny_warnings) ? STATUS_FAILED : 0;
 }
 
 static void free_analysis(Analysis *analysis) {
