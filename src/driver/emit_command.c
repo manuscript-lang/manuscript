@@ -26,7 +26,7 @@ static bool print_mir(MsCheckProgram *program, uint32_t entry, bool optimize, Ms
   const MirPipelineOptions pipeline = {.verify = getenv("MS_DBG_NOVERIFY") == NULL, .checks = true};
   ok = ok && mir_pipeline_prepare(&module, &pipeline, why);
   if (ok && getenv("MS_DBG_UNWIND")) { (void)mir_unwind(&module); }
-  ok = ok && (!optimize || mir_optimize(&module, MIR_OPT_SPEED, false, why));
+  ok = ok && (!optimize || mir_optimize(&module, false, why));
   if (ok) {
     mir_print_module(&module, out);
   }

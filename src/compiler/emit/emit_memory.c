@@ -174,11 +174,16 @@ static bool emit_ptr_field(EmitCx *cx, const MirInst *inst) {
   return true;
 }
 
-bool emit_memory_inst(EmitCx *cx, const MirInst *inst, bool *handled) {
+bool emit_memory_inst(EmitCx *cx, const MirInst *inst, const EmitSite *site, bool *handled) {
   *handled = true;
   switch ((MirOp)inst->op) {
   case MOP_Slot:
-    return true; /* allocated at the top of the entry block */
+    /* Allocated at the top of the entry block; a slot met again (inlined into a loop) starts zeroed each time. */
+    if (site->block != 0) {
+      ms_strbuild_printf(cx->out, "  call void @llvm.memset.p0.i64(ptr %%s%u, i8 0, i64 %u, i1 false)\n", inst->res,
+                         emit_slot_bytes(cx, inst->imm.a));
+    }
+    return true;
   case MOP_Load:
   case MOP_Take:
     emit_load(cx, inst);

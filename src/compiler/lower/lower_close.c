@@ -3,6 +3,7 @@
  * drop elaboration closes it on every path that still holds it. The thunks take the slot's address, so the same
  * close serves the scope end and an unwinding fault. A fallible close hands its Result to the function's close
  * exit, which returns the error, or faults when the function has no error to return. */
+#include <stdio.h>
 #include "compiler/lower/lower_fn.h"
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/check/properties.h"
@@ -466,7 +467,7 @@ bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view)
   return true;
 }
 
-bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done) {
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked, MirValue value, bool *done) {
   const MirValue slot = var_slot_of(fn, ref, name);
   *done = slot != MIR_NONE;
   if (slot == MIR_NONE) {
@@ -481,7 +482,16 @@ bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue valu
   if (kind == LOWER_SHARED_BORROWED && owns) {
     /* The slot belongs to the function that made the closure: what it holds is dropped here. */
     const MirValue old = mir_b_emit(&fn->b, MOP_Take, &slot, 1, imm_ty(ty), ty);
-    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    MsCloser closer;
+    const MsTy instance = checked == MS_TY_NONE ? checked : ms_ty_subst(&fn->cx->program->types, checked, fn->subst.vars,
+                                                                       fn->subst.args, fn->subst.count);
+    if (instance != MS_TY_NONE && ms_own_closer_of(fn->cx->program, instance, &closer)) {
+      if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
+        return false;
+      }
+    } else {
+      (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    }
   } else if (kind != LOWER_SHARED_PLAIN && kind != LOWER_SHARED_BORROWED) {
     /* The slot closes what it holds, and holds the new value from here. */
     const MirImm refill = {.tag = MI_INT, .i = 2};
@@ -506,15 +516,6 @@ bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *tak
   (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &slot, 1, (MirImm){0}, MIR_NONE);
   *taken = fn_emit(fn, mir_needs_drop(fn->cx->module, ty) ? MOP_Take : MOP_Load, &slot, 1, imm_ty(ty), ty);
   return true;
-}
-
-/* Whether the local or parameter `ref` names has a closing slot: its scope owns the value, so a part may leave it. */
-bool fn_closing_owns(const LowerFn *fn, const MsRef *ref) {
-  if (fn->closing == NULL || ref == NULL || (ref->kind != MS_REF_LOCAL && ref->kind != MS_REF_PARAM)) {
-    return false;
-  }
-  const uint32_t at = ref->kind == MS_REF_LOCAL ? ref->local : fn->nvars + ref->local;
-  return at < fn->nvars + LOWER_MAX_CLOSING_PARAMS && fn->closing[at] != MIR_NONE;
 }
 
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken) {

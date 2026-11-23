@@ -9,8 +9,14 @@
 
 #include "base/safe.h"
 
+typedef struct MsArenaChunk MsArenaChunk;
+
+/* A chain of chunks the arena bumps through. `head` is the chunk allocation continues in; `cursor` and `limit`
+ * are its free range. An empty arena has no chunk. */
 typedef struct MsArena {
-  void *heap; /* owned: a mimalloc heap, made on first use; NULL while empty */
+  MsArenaChunk *head;
+  uint8_t *cursor;
+  uint8_t *limit;
 } MsArena;
 
 static inline MsArena ms_arena_new(void) {
@@ -26,7 +32,8 @@ MS_RETURNS_NONNULL void *ms_arena_alloc_zeroed(MsArena *arena, size_t size, size
 /* A copy of `span` in the arena. */
 MsSpan ms_arena_copy(MsArena *arena, MsSpan span);
 
-/* Forgets everything; the arena is usable again (mimalloc keeps the pages for reuse). */
+/* Forgets everything; the arena is usable again and keeps its newest chunk, so a scratch arena reset between
+ * queries allocates nothing once it has grown to the size of its largest query. */
 void ms_arena_reset(MsArena *arena);
 
 void ms_arena_free(MsArena *arena);

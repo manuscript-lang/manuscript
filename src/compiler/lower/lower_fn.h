@@ -51,6 +51,9 @@ typedef struct LowerFn {
   MirBuilder b;
   const MsFacts *facts;
   const MsFunc *func;
+  /* Index keys of a `var` place evaluated early, in written order: the place's later uses read these, not the keys again. */
+  struct { const MsExpr *expr; MirValue value; } presolved[8];
+  uint32_t npresolved;
   bool keeps_scoped; /* this function keeps the closures it is given (the flag of its MIR function) */
   uint32_t module_index;
   uint32_t file; /* the MIR file id of the module */
@@ -77,6 +80,7 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
+  const MsExpr *taking_member; /* the member read whose value the consumer takes (LW_MOVE) */
   const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
   const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
   uint32_t nmoved_fields;
@@ -197,6 +201,14 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt);
 MirValue fn_closing_base(LowerFn *fn, const MsExpr *member, MirValue base);
 bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out);
 const MsExpr *fn_written_arg(const MsExpr *call, MsNode node);
+
+/* The callee of a call, with explicit type arguments set aside: `value.method[T](args)` calls `value.method`. */
+static inline const MsExpr *fn_call_callee(const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  return callee->kind == MS_E_APPLY && callee->u.apply.types.len != 0 && callee->u.apply.left->kind == MS_E_MEMBER
+             ? callee->u.apply.left
+             : callee;
+}
 bool fn_shape_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record constructor takes one per field */
@@ -218,12 +230,11 @@ bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, 
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
 bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view);
 /* `name = value` where `name` is a `var` resource: the value it holds is closed, then `value` takes its place. */
-bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done);
+bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MsTy checked, MirValue value, bool *done);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
  * slot its scope closes; `var` is the variable the body reads it through. */
 bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only);
 /* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
-bool fn_closing_owns(const LowerFn *fn, const MsRef *ref);
 bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken);
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);
 
@@ -263,6 +274,19 @@ bool fn_native_through(LowerFn *fn, MirValue slot, MsTy owner, MsSpan operation,
                        MirTy ret, MirValue *out);
 /* Whether the native `operation` of `owner` writes its receiver in place. */
 bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy ret);
+
+/* lower_native_list.c: natives on lists that edit an element in place or close what they replace. `native_on` is the
+ * dispatcher that calls them; `lists_in_place` says whether borrowing a list expression gives it where it lies. */
+bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+               const MirValue *args, MirTy ret, MirValue *out);
+bool lists_in_place(LowerFn *fn, const MsExpr *expr);
+MirValue fn_list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem);
+bool fn_list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out);
+bool fn_list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
+                         const MirValue *args, MirValue *out);
+bool fn_native_closing_take(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+                                const MirValue *args, MirValue *out);
 /* `left op right` over two values of one standard type (lower_expr.c). */
 MirValue fn_compare_values(LowerFn *fn, MsBinaryOp op, MirValue left, MirValue right);
 MirValue fn_set_from_list(LowerFn *fn, MirValue values, MirTy ty);
@@ -351,6 +375,8 @@ typedef struct VarSlot {
 } VarSlot;
 bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr);
 MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out);
+/* Evaluates the scalar index keys of `place` now, outermost first, so a later argument cannot run before them. */
+void fn_presolve_keys(LowerFn *fn, const MsExpr *place);
 MirValue fn_var_slot(LowerFn *fn, const MsExpr *place, VarSlot *out, const VarSlot *earlier, uint32_t nearlier);
 bool fn_default_var_slot(const LowerFn *fn, const MsExpr *place, MirValue *slot); /* a default argument passes the callee's own `var` parameter on */
 bool fn_var_slots_back(LowerFn *fn, VarSlot *slots, uint32_t count);

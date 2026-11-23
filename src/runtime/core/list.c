@@ -294,6 +294,21 @@ void msrt_list_swap(MsList *v, const MsTypeDesc *d, int64_t i, int64_t j) {
   }
 }
 
+/* As `remove`, but the element moves into the list `taken` instead of being dropped. */
+void msrt_list_remove_take(MsList *v, const MsTypeDesc *d, int64_t index, MsList *taken) {
+  size_t position = 0;
+  if (!ms_resolve_index(v->len, index, &position)) {
+    msrt_list_index_fault(1, index, (int64_t)v->len);
+  }
+  uint8_t *slot = ms_list_slot(v, d, position);
+  *taken = empty_list;
+  ms_list_reserve(taken, d->size, 1);
+  __builtin_memcpy(taken->ptr, slot, d->size);
+  taken->len = 1;
+  __builtin_memmove(slot, slot + d->size, (v->len - position - 1) * d->size);
+  v->len--;
+}
+
 void msrt_list_remove(MsList *v, const MsTypeDesc *d, int64_t index) {
   size_t position = 0;
   if (!ms_resolve_index(v->len, index, &position)) {

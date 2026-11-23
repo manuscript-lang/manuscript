@@ -122,7 +122,7 @@ fn HostTree.children(path: String, max_entries: Int?) List[DirectoryEntry]!:
 
 // Returns a tree over the directory `root` of the host filesystem.
 export fn host_tree(root: String) HostTree:
-	return HostTree(root)
+	return HostTree(root.clone())
 
 // A file tree held in memory: build it with `write_file` and `create_directory`, change
 // it with `remove`, and read it through `FileTree`.
@@ -197,7 +197,7 @@ fn var MemoryTree.write_file(path: String, data: Bytes) Void!:
 	if self.files.contains(parent): return error(fs_invalid_input())
 
 	self.create_directory(parent)?
-	self.files.add(inside.clone(), data)
+	self.files.add(inside.clone(), data.clone())
 	self.link(inside.clone())
 
 // Removes a file or an empty directory; `recursive` removes a directory with

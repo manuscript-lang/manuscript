@@ -1,5 +1,6 @@
 /* Owns calls: the stack slots a call needs, and the calls of MIR functions and runtime functions. */
 #include "compiler/emit/emit_cx.h"
+#include "compiler/mir/mir_analysis.h"
 
 
 static MirTy value_type(const EmitCx *cx, MirValue value) {
@@ -34,6 +35,32 @@ static void slot_name(char out[static 48], char prefix, uint32_t block, uint32_t
   out[at] = 0;
 }
 
+/* An argument copy is dead once its call returns unless the result can point into it (a short string's view
+ * does), so a call whose result is void or a number shares one copy slot per argument position, as large as
+ * the largest copy; any other call keeps a slot of its own. Positions past SHARED_ARGS keep one per site. */
+#define SHARED_ARGS 32u
+
+static bool temps_shared(const EmitCx *cx, const MirInst *inst) {
+  MirTy result = MIR_NONE;
+  if ((MirOp)inst->op == MOP_CallRt) {
+    result = cx->module->externs.ptr[inst->imm.a].ret;
+  } else if (inst->res != MIR_NONE) {
+    result = value_type(cx, inst->res);
+  } else {
+    return true;
+  }
+  return mir_ty_data(cx->module, result)->kind == MK_VOID || mir_is_scalar(cx->module, result);
+}
+
+static void arg_slot_name(const EmitCx *cx, const MirInst *inst, char out[static 48], char prefix, uint32_t block,
+                          uint32_t index, uint32_t arg) {
+  const bool shared = arg < SHARED_ARGS && temps_shared(cx, inst);
+  slot_name(out, prefix, shared ? 0 : block, shared ? 0 : index, arg);
+  if (shared) {
+    out[1] = (char)(prefix - 'a' + 'A');
+  }
+}
+
 bool emit_rt_direct(EmitCx *cx, MirTy type) {
   return mir_rt_direct(cx->module, cx->layouts, type);
 }
@@ -45,12 +72,18 @@ bool emit_rt_scalar_option(EmitCx *cx, MirTy type) {
 
 /* The frame slots one runtime call needs: a copy of each argument that does not pass directly, and the result
  * area when the result does not. */
-static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
+static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared) {
   const MirExtern *def = &cx->module->externs.ptr[inst->imm.a];
+  const bool share = temps_shared(cx, inst);
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
-    if (!emit_rt_direct(cx, def->params[arg].ty)) {
-      ms_strbuild_printf(cx->out, "  %%p%u_%u_%u = alloca [%u x i8], align 8\n", block, index, arg,
-                         emit_slot_bytes(cx, def->params[arg].ty));
+    if (emit_rt_direct(cx, def->params[arg].ty)) {
+      continue;
+    }
+    const uint32_t bytes = emit_slot_bytes(cx, def->params[arg].ty);
+    if (share && arg < SHARED_ARGS) {
+      shared[arg] = bytes > shared[arg] ? bytes : shared[arg];
+    } else {
+      ms_strbuild_printf(cx->out, "  %%p%u_%u_%u = alloca [%u x i8], align 8\n", block, index, arg, bytes);
     }
   }
   if (!emit_rt_direct(cx, def->ret)) {
@@ -63,22 +96,30 @@ static void frame_rt_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint3
 
 /* The frame slots a call of a MIR function needs: the result area when the result has several leaves, and a
  * copy of each argument that passes by address. */
-static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index) {
+static void frame_call(EmitCx *cx, const MirInst *inst, uint32_t block, uint32_t index, uint32_t *shared) {
+  const bool share = temps_shared(cx, inst);
   if (inst->res != MIR_NONE && emit_value_leaves(cx, inst->res).len > 1) {
     ms_strbuild_printf(cx->out, "  %%r%u_%u = alloca [%u x i8], align 8\n", block, index,
                        emit_slot_bytes(cx, value_type(cx, inst->res)));
   }
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     MirTy type = value_type(cx, inst->args[arg]);
-    if (emit_is_indirect(cx, type)) {
-      ms_strbuild_printf(cx->out, "  %%x%u_%u_%u = alloca [%u x i8], align 8\n", block, index, arg,
-                         emit_slot_bytes(cx, type));
+    if (!emit_is_indirect(cx, type)) {
+      continue;
+    }
+    const uint32_t bytes = emit_slot_bytes(cx, type);
+    if (share && arg < SHARED_ARGS) {
+      shared[arg] = bytes > shared[arg] ? bytes : shared[arg];
+    } else {
+      ms_strbuild_printf(cx->out, "  %%x%u_%u_%u = alloca [%u x i8], align 8\n", block, index, arg, bytes);
     }
   }
 }
 
 void emit_frame_slots(EmitCx *cx) {
   const MirFunc *func = cx->func;
+  uint32_t shared_x[SHARED_ARGS] = {0};
+  uint32_t shared_p[SHARED_ARGS] = {0};
   for (uint32_t block = 0; block < func->blocks.len; block++) {
     const MirBlockData *data = &func->blocks.ptr[block];
     for (uint32_t index = 0; index < data->insts.len; index++) {
@@ -96,7 +137,7 @@ void emit_frame_slots(EmitCx *cx) {
       case MOP_Call:
       case MOP_CallInd:
       case MOP_CallMethod:
-        frame_call(cx, inst, block, index);
+        frame_call(cx, inst, block, index, shared_x);
         break;
       case MOP_ClosureNew:
         if (cx->framed != NULL && cx->framed[inst->res]) {
@@ -114,11 +155,19 @@ void emit_frame_slots(EmitCx *cx) {
         ms_strbuild_printf(cx->out, "  %%y%u_%u = alloca [16 x i8], align 8\n", block, index);
         break;
       case MOP_CallRt:
-        frame_rt_call(cx, inst, block, index);
+        frame_rt_call(cx, inst, block, index, shared_p);
         break;
       default:
         break;
       }
+    }
+  }
+  for (uint32_t arg = 0; arg < SHARED_ARGS; arg++) {
+    if (shared_x[arg] != 0) {
+      ms_strbuild_printf(cx->out, "  %%X0_0_%u = alloca [%u x i8], align 8\n", arg, shared_x[arg]);
+    }
+    if (shared_p[arg] != 0) {
+      ms_strbuild_printf(cx->out, "  %%P0_0_%u = alloca [%u x i8], align 8\n", arg, shared_p[arg]);
     }
   }
 }
@@ -139,7 +188,9 @@ static void call_arguments(EmitCx *cx, const MirInst *inst, const char *result_a
   for (uint32_t arg = lead != NULL ? 1 : 0; arg < inst->nargs; arg++) {
     MirTy type = value_type(cx, inst->args[arg]);
     if (emit_is_indirect(cx, type)) {
-      ms_strbuild_printf(out, "%sptr %%x%u_%u_%u", first ? "" : ", ", block, index, arg);
+      char slot[48];
+      arg_slot_name(cx, inst, slot, 'x', block, index, arg);
+      ms_strbuild_printf(out, "%sptr %s", first ? "" : ", ", slot);
       first = false;
       continue;
     }
@@ -157,7 +208,7 @@ static void spill_arguments(EmitCx *cx, const MirInst *inst, uint32_t block, uin
   char slot[48];
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
     if (emit_is_indirect(cx, value_type(cx, inst->args[arg]))) {
-      slot_name(slot, 'x', block, index, arg);
+      arg_slot_name(cx, inst, slot, 'x', block, index, arg);
       emit_leaves_at(cx, inst->args[arg], slot, false);
     }
   }
@@ -286,7 +337,7 @@ static bool call_runtime(EmitCx *cx, const MirInst *inst, uint32_t block, uint32
   char area[48];
   bool is_c = emit_extern_is_c(cx, def);
   for (uint32_t arg = 0; arg < inst->nargs; arg++) {
-    slot_name(area, 'p', block, index, arg);
+    arg_slot_name(cx, inst, area, 'p', block, index, arg);
     rt_argument(cx, &args, def->params[arg].ty, inst->args[arg], area, is_c);
   }
   MsSpan result = emit_leaves(cx, def->ret);

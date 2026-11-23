@@ -35,9 +35,9 @@ import (
 fn text_of(data: Bytes) String:
 	return data.decode_utf8().get_or("").clone()
 
-// Replaces the working directory, spelled as the oracle runtime names it or with forward
-// slashes as ms prints it on Windows, with <DIR> and the digits after `"duration_ns": ` with
-// 0, the only value that varies between runs.
+// Replaces the working directory, spelled as the oracle runtime names it or with
+// forward slashes as ms prints it on Windows, with <DIR> and the digits after
+// `"duration_ns": ` with 0, the only value that varies between runs.
 fn normalize(text: String, dir: String) String:
 	marker := "\"duration_ns\": "
 	slashed := dir.replace("\\", "/")
@@ -67,8 +67,8 @@ fn tree_of(root: String, dir: String, ignored: List[String]) Map[String, String]
 		if found.entry.directory: continue
 		if ignored.contains(found.path): continue
 
-		// A macOS build writes the debug companion `<output>.dSYM/` beside an executable
-		// with debug info; the recorded Linux runs have none.
+		// A macOS build writes the debug companion `<output>.dSYM/` beside an
+		// executable with debug info; the recorded Linux runs have none.
 		if found.path.contains(".dSYM/"): continue
 
 		files.add(
@@ -154,6 +154,7 @@ fn expected_text(case_dir: String, name: String) String:
 fn brief(text: String) String:
 	flat := text.replace("\n", "\\n").replace("\r", "\\r")
 	if flat.length() <= 400: return flat
+
 	return flat.slice(0, 400) + "..."
 
 // A failure message naming the stream and showing both texts.
@@ -164,11 +165,17 @@ fn stream_difference(stream: String, expected: String, observed: String) String:
 fn difference(case_dir: String, outcome: Outcome) String:
 	stdout := expected_text(case_dir, "stdout")
 	if stdout != outcome.stdout:
-		return stream_difference("stdout", stdout, outcome.stdout) + f"\n  stderr: {brief(outcome.stderr)}"
+		return (
+			stream_difference("stdout", stdout, outcome.stdout)
+			+ f"\n  stderr: {brief(outcome.stderr)}"
+		)
 
 	stderr := expected_text(case_dir, "stderr")
-	if stderr != outcome.stderr: return stream_difference("stderr", stderr, outcome.stderr)
-
+	if stderr != outcome.stderr: return stream_difference(
+		"stderr",
+		stderr,
+		outcome.stderr,
+	)
 	if expected_text(case_dir, "status") != f"{outcome.status}\n": return f"status {outcome.status}"
 
 	tree := f"{case_dir}/expected/tree"
@@ -188,7 +195,9 @@ fn difference(case_dir: String, outcome: Outcome) String:
 	if recorded != outcome.files.length():
 		var extra = List[String]()
 		for item in outcome.files.entries():
-			if access(f"{tree}/{item.key}", 0).is_error(): extra.append(item.key.clone())
+			if access(f"{tree}/{item.key}", 0).is_error(): extra.append(
+				item.key.clone()
+			)
 		return f"extra files written: {extra.join(", ")}"
 
 	return ""

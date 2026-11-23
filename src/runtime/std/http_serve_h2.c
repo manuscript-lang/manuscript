@@ -282,8 +282,11 @@ static void pump_body(void *arg) {
   pump(arg);
 }
 
-/* Ends the connection: queue GOAWAY, stop every stream, wait for the tasks, let the writer flush. */
+/* Ends the connection: queue GOAWAY, stop every stream, wait for the tasks, let the writer flush. The wait is
+ * shielded: a cancelled task's sleep returns at once without yielding, so unshielded it would spin while the
+ * streams it waits for never run. */
 static void wind_down(MsH2Conn *owner) {
+  ms_shield_enter();
   ms_h2_shutdown(owner->h2, MS_H2_NO_ERROR);
   mark_dead(owner);
   for (size_t i = 0; i < owner->count; i++) {
@@ -298,6 +301,7 @@ static void wind_down(MsH2Conn *owner) {
     }
     ms_task_sleep(SETTLE_NS);
   }
+  ms_shield_exit();
 }
 
 void ms_serve_h2(MsServeConn *conn) {

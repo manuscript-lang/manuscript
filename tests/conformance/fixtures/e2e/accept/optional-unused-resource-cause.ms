@@ -41,12 +41,12 @@ fn lazy(log: String) Void!:
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,3,")?
 
 fn explicit_wrapped(log: String) Void!:
-	kept := present().ok_or[Marker](optional_marker(5, log.clone()))
+	kept := present().ok_or[Marker?](optional_marker(5, log.clone()))
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,3,5,")?
 	expect_equal(kept.get(), 7)?
 
 fn explicit_wrapped_transfer(log: String) Void!:
-	kept := absent().ok_or[Marker](optional_marker(6, log.clone()))
+	kept := absent().ok_or[Marker?](optional_marker(6, log.clone()))
 	expect_equal(read_file(log).wait().get().decode_utf8().get_or(""), "1,3,5,")?
 	expect_equal(kept.is_error(), true)?
 

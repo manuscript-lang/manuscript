@@ -15,8 +15,6 @@
 #define IL_CONST_ARG_BONUS 5u
 /* Largest self-recursive function unrolled once into itself. */
 #define IL_SELF_UNROLL_MAX_SIZE 40u
-/* Largest callee, in instructions, that an unoptimised build inlines. */
-#define IL_DEBUG_THRESHOLD 16u
 
 /* ---- graphs ---- */
 
@@ -433,7 +431,7 @@ typedef struct IlRun {
   uint32_t fi;
   const bool *cyc;
   const uint32_t *sites; /* call sites of each function in the module */
-  bool small, only_self, has_unroll;
+  bool only_self, has_unroll;
   MirFunc unroll; /* the body copied into its own recursive calls */
   uint32_t budget, grown;
   uint8_t *consts; /* values defined by a constant instruction */
@@ -500,12 +498,29 @@ static bool il_has_check(const MirFunc *f) {
   return f->blocks.len > 0 && f->blocks.ptr[0].insts.len > 0 && f->blocks.ptr[0].insts.ptr[0].op == MOP_DepthEnter;
 }
 
+/* Whether `f` needs no stack of its own: no slot and no call, whose argument copies live in the frame. Inlined
+ * into a recursive function anything else grows the frame of every level. */
+static bool il_frame_free(const MirFunc *f) {
+  for (size_t b = 0; b < f->blocks.len; b++) {
+    for (size_t i = 0; i < f->blocks.ptr[b].insts.len; i++) {
+      switch ((MirOp)f->blocks.ptr[b].insts.ptr[i].op) {
+      case MOP_Slot:
+      case MOP_Call:
+      case MOP_CallInd:
+      case MOP_CallMethod:
+      case MOP_CallRt:
+        return false;
+      default:
+        break;
+      }
+    }
+  }
+  return true;
+}
+
 /* Whether a small enough, auto-hinted callee at `inst` (in block `bi`) is worth inlining. */
 static bool il_auto_ok(IlRun *r, uint32_t bi, const MirInst *inst, const MirFunc *callee,
            uint32_t size) {
-  if (r->small) {
-    return size <= IL_DEBUG_THRESHOLD && !il_has_loop(callee) && r->grown + size <= r->budget;
-  }
   if (il_has_loop(callee)) {
     if (r->in_loop == NULL) {
       r->in_loop = opt_blocks_in_loops(r->arena, &r->m->funcs.ptr[r->fi]);
@@ -547,8 +562,8 @@ static bool il_choose(IlRun *r, uint32_t bi, const MirInst *inst) {
   const uint32_t size = mir_inst_count(callee);
   bool ok = false;
   if (callee->inline_hint == MINL_ALWAYS) {
-    ok = !r->small || size <= IL_DEBUG_THRESHOLD;
-  } else if (callee->inline_hint == MINL_AUTO) {
+    ok = true;
+  } else if (callee->inline_hint == MINL_AUTO && (!r->cyc[r->fi] || il_frame_free(callee))) {
     ok = il_auto_ok(r, bi, inst, callee, size);
   }
   if (ok) {
@@ -617,10 +632,10 @@ static bool il_unrollable(const MirModule *m, uint32_t fi) {
 /* Inlines the call sites of `fi` its heuristics choose; with `only_self`, only its own calls (the
  * unrolling). */
 static bool il_inline_sites(MirModule *m, MsArena *arena, uint32_t fi, const bool *cyc,
-              const uint32_t *sites, bool only_self, bool small) {
-  IlRun r = {.m = m, .arena = arena, .fi = fi, .cyc = cyc, .sites = sites, .small = small,
+              const uint32_t *sites, bool only_self) {
+  IlRun r = {.m = m, .arena = arena, .fi = fi, .cyc = cyc, .sites = sites,
        .only_self = only_self};
-  r.has_unroll = !small && il_unrollable(m, fi);
+  r.has_unroll = il_unrollable(m, fi);
   if (r.has_unroll) {
     opt_func_deep_clone(m, &m->funcs.ptr[fi], &r.unroll);
   }
@@ -637,16 +652,16 @@ static bool il_inline_sites(MirModule *m, MsArena *arena, uint32_t fi, const boo
 }
 
 static bool il_inline_into(MirModule *m, MsArena *arena, uint32_t fi, const bool *cyc,
-             const uint32_t *sites, bool small) {
-  bool changed = il_inline_sites(m, arena, fi, cyc, sites, false, small);
+             const uint32_t *sites) {
+  bool changed = il_inline_sites(m, arena, fi, cyc, sites, false);
   /* Inlining a sibling on the cycle can leave the function directly self-recursive and small. */
-  if (!small && m->funcs.ptr[fi].inline_hint == MINL_AUTO && il_unrollable(m, fi)) {
-    changed |= il_inline_sites(m, arena, fi, cyc, sites, true, false);
+  if (m->funcs.ptr[fi].inline_hint == MINL_AUTO && il_unrollable(m, fi)) {
+    changed |= il_inline_sites(m, arena, fi, cyc, sites, true);
   }
   return changed;
 }
 
-static bool il_inline_calls(MirModule *m, bool small) {
+static bool il_inline_calls(MirModule *m) {
   MsArena arena = ms_arena_new();
   const OptInlineGraph g = opt_inline_direct_graph(&arena, m);
   const bool *cyc = opt_inline_cyclic(&arena, &g);
@@ -657,7 +672,7 @@ static bool il_inline_calls(MirModule *m, bool small) {
   const IlSccs s = il_sccs(&arena, &g);
   bool changed = false;
   for (uint32_t j = 0; j < g.n; j++) {
-    changed |= il_inline_into(m, &arena, s.nodes[j], cyc, sites, small);
+    changed |= il_inline_into(m, &arena, s.nodes[j], cyc, sites);
   }
   ms_arena_free(&arena);
   return changed;
@@ -702,13 +717,19 @@ static bool il_has_indirect_call(const MirFunc *f) {
 static bool il_strip_depth(MirModule *m, bool early) {
   MsArena arena = ms_arena_new();
   OptInlineGraph g = opt_inline_direct_graph(&arena, m);
-  uint32_t *itargets = MS_ARENA_NEW_ARRAY(&arena, uint32_t, m->funcs.len);
+  uint32_t *itargets = MS_ARENA_NEW_ARRAY(&arena, uint32_t, m->funcs.len + 2 * m->desc_glue.len);
   bool *indirect = MS_ARENA_NEW_ARRAY(&arena, bool, m->funcs.len);
   for (uint32_t i = 0; i < m->funcs.len; i++) {
     indirect[i] = il_has_indirect_call(&m->funcs.ptr[i]);
     if (m->funcs.ptr[i].kind != MFK_NORMAL) {
       itargets[g.nit++] = i;
     }
+  }
+  /* A descriptor's equality and hash functions are called by the runtime, which reaches them again through the
+   * descriptors of the fields: a recursive type recurses through them with no direct call. */
+  for (size_t k = 0; k < m->desc_glue.len; k++) {
+    itargets[g.nit++] = m->desc_glue.ptr[k].eq;
+    itargets[g.nit++] = m->desc_glue.ptr[k].hash;
   }
   g.indirect = indirect;
   g.itargets = itargets;
@@ -726,20 +747,13 @@ static bool il_strip_depth(MirModule *m, bool early) {
 
 /* ---- entry points ---- */
 
-bool opt_inline_small(MirModule *m) {
-  bool changed = il_inline_calls(m, true);
-  changed |= opt_inline_closures(m);
-  changed |= opt_inline_remove_dead(m);
-  return changed;
-}
-
 bool opt_inline(MirModule *m) {
   bool changed = opt_inline_specialize_sort_thunks(m);
   changed |= opt_sortgen(m);
   changed |= opt_inline_specialize_closure_args(m);
   /* A recursive cycle keeps one check; the unchecked functions on it then inline like any other. */
   changed |= il_strip_depth(m, true);
-  changed |= il_inline_calls(m, false);
+  changed |= il_inline_calls(m);
   changed |= opt_inline_closures(m);
   changed |= il_strip_depth(m, false);
   changed |= opt_inline_remove_dead(m);

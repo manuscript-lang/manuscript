@@ -67,7 +67,7 @@ static bool assignable(Body *body, MsTy actual, MsTy expected) {
       assignable(body, actual, ms_ty_args(types, expected)[0])) {
     return true;
   }
-  return interface_assignable(body, actual, expected);
+  return body_reads_where_var_expected(types, actual, expected) || interface_assignable(body, actual, expected);
 }
 
 static void show(const Body *body, MsStrBuild *out, MsTy ty) {

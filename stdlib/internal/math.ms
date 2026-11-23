@@ -204,4 +204,8 @@ export extern fn msstd_bigint_to_string_radix(value: BigInt, radix: Int) move St
 
 export extern fn msstd_bigint_from_int(value: Int) move BigInt
 
-export extern fn msstd_bigint_parse(text: String, radix: Int, max_digits: Int?) move BigInt!
+export extern fn msstd_bigint_parse(
+	text: String,
+	radix: Int,
+	max_digits: Int?,
+) move BigInt!
