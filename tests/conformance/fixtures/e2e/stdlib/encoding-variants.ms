@@ -133,7 +133,7 @@ test "encoding variants honor zero exact exceeded absent and negative limits":
 
 test "encoding variants honor Bytes views and cross block boundaries":
 	var out = BytesBuilder()
-	for value in 0..256: out.append(value.to_uint8().get_or(0))
+	for value in 0..256: out.append(value.to_uint8() or 0)
 
 	all := out.build()
 
@@ -270,9 +270,20 @@ test "unpadded Base64 preserves byte budget precedence for invalid padding":
 	for url in [false, true]:
 		for text in ["AA==", "AAA=", "===="]:
 			for budget in 0..3:
-				expect_equal(base64_decode(text, url, padded: false, max_bytes: budget), limited)?
+				expect_equal(
+					base64_decode(
+						text,
+						url,
+						padded: false,
+						max_bytes: budget,
+					),
+					limited,
+				)?
 			expect_equal(base64_decode(text, url, padded: false, max_bytes: 3), invalid)?
-			expect_equal(base64_decode(text, url, padded: false, max_bytes: -1), negative)?
+			expect_equal(
+				base64_decode(text, url, padded: false, max_bytes: -1),
+				negative,
+			)?
 
 		expect_equal(base64_decode("A", url, padded: false, max_bytes: 0), invalid)?
 		expect_equal(base64_decode("!!!!", url, padded: false, max_bytes: 0), limited)?

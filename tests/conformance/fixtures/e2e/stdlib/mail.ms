@@ -40,7 +40,7 @@ test "messages split headers from body":
 	mail := parse_message(
 		"From: a@x.org\r\nSubject: Hi\r\n there\r\n\r\nBody line\r\nsecond"
 	).get()
-	expect_equal(mail.headers.get("subject").get_or(""), "Hi there")?
+	expect_equal(mail.headers.get("subject") or "", "Hi there")?
 	expect_equal(mail.body, "Body line\r\nsecond")?
 
 	lf := parse_message("To: b@y.org\n\nhello").get()
@@ -84,7 +84,7 @@ test "the first blank line ends the headers whatever its line ending":
 
 test "a blank line with a different ending from the line before it still ends the headers":
 	mixed := parse_message("Subject: hi\n\r\nbody").get()
-	expect_equal(mixed.headers.get("Subject").get_or(""), "hi")?
+	expect_equal(mixed.headers.get("Subject") or "", "hi")?
 	expect_equal(mixed.body, "body")?
 
 	lone := parse_message("\r\nbody").get()

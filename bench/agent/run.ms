@@ -85,7 +85,7 @@ fn reference_for(ch: Challenge, lang: Lang) String:
 // grading build mentions an internal error or a Rust panic.
 fn keep_ice(said: String, ws: String, g: Grade) Bool:
 	last := read_text(f"{ws}/.bench/build.out")
-	text := f"{said}\n{last}\n{g.error.get_or("")}"
+	text := f"{said}\n{last}\n{(g.error or "")}"
 	return (
 		text.contains("internal error")
 		or text.contains("internal compiler error")
@@ -119,11 +119,7 @@ fn run_one(
 			f"{ws}/{lang.solution.split("/").take(lang.solution.split("/").length() - 1).join("/")}",
 			recursive: true,
 		).get()
-		if size.is_some(): copy(
-			src,
-			f"{ws}/{lang.solution}",
-			CopyOptions(replace: true),
-		).get()
+		if size != null: copy(src, f"{ws}/{lang.solution}", CopyOptions(replace: true)).get()
 	else:
 		limit := if ch.agent_timeout_s > timeout_s: ch.agent_timeout_s else: timeout_s
 		agent = run_agent(h, prompt, ws, limit, transcript, model)

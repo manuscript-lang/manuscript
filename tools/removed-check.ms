@@ -52,7 +52,7 @@ fn main() Int:
 
 	for f in glob("tests/removed", GlobOptions(patterns: ["*.ms"])).get_or([]):
 		path := f"{root}/tests/removed/{f.path}"
-		source := read_file(path.clone()).wait().get().decode_utf8().get_or("")
+		source := read_file(path.clone()).wait().get().decode_utf8() or ""
 		old := header(source, "removed")
 		want := header(source, "use")
 		fixed := header(source, "fix")
@@ -66,7 +66,7 @@ fn main() Int:
 			continue
 
 		out := run(ms.clone(), ["check", path], RunOptions(timeout: seconds(60))).wait().get()
-		text := out.stderr.decode_utf8().get_or("")
+		text := out.stderr.decode_utf8() or ""
 
 		if out.exit_code == 0:
 			print(f"{f.path}: '{old}' is accepted; a removed spelling must be an error")
@@ -90,7 +90,7 @@ fn main() Int:
 				["check", "--fix", copy.clone()],
 				RunOptions(timeout: seconds(60)),
 			).wait().get()
-			result := read_file(copy).wait().get().decode_utf8().get_or("")
+			result := read_file(copy).wait().get().decode_utf8() or ""
 
 			if applied.exit_code != 0 or not result.contains(fixed):
 				print(

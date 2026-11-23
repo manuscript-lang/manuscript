@@ -116,7 +116,7 @@ TYPES := {
 // any case, or null when unknown. Text types include `charset=utf-8`, as in
 // `text/html; charset=utf-8`.
 export fn media_type_for_extension(extension: String) String?:
-	key := extension.lower().cut_prefix(".").get_or(extension.lower())
+	key := extension.lower().cut_prefix(".") or extension.lower()
 	return TYPES.get(key)
 
 // Returns the first extension, with its dot, registered for a media type (parameters
@@ -149,22 +149,20 @@ export fn parse_media_type(text: String) MediaType!:
 		if piece.is_empty(): continue
 
 		at := piece.index_of("=")
-		if at.is_none(): return error(
-			Error("MIME: invalid media type", kind: "EBADMSG")
-		)
+		if at == null: return error(Error("MIME: invalid media type", kind: "EBADMSG"))
 
-		name := piece.view(0, at.get_or(0)).trim().lower()
-		raw := piece.view(at.get_or(0) + 1, piece.length()).trim()
+		name := piece.view(0, at or 0).trim().lower()
+		raw := piece.view((at or 0) + 1, piece.length()).trim()
 		if name.is_empty(): return error(
 			Error("MIME: invalid media type", kind: "EBADMSG")
 		)
 
 		value := unquote(raw)
-		if value.is_none(): return error(
+		if value == null: return error(
 			Error("MIME: invalid media type", kind: "EBADMSG")
 		)
 
-		params.add(name, value.get_or(""))
+		params.add(name, value or "")
 
 	return ok(MediaType(essence: essence, params: params))
 
@@ -264,14 +262,14 @@ export fn parse_headers(text: String) Headers!:
 			continue
 
 		at := line.index_of(":")
-		if at.is_none() or at.get_or(0) == 0: return error(
+		if (at == null) or (at or 0) == 0: return error(
 			Error("MIME: invalid header", kind: "EBADMSG")
 		)
 
 		fields.append(
 			HeaderField(
-				name: line.view(0, at.get_or(0)).trim().clone(),
-				value: line.view(at.get_or(0) + 1, line.length()).trim(),
+				name: line.view(0, at or 0).trim().clone(),
+				value: line.view((at or 0) + 1, line.length()).trim(),
 			)
 		)
 
@@ -313,18 +311,18 @@ fn make_part(section: Bytes) Part!:
 	inner := framed.slice(2, framed.length())?
 	blank := if inner.starts_with(crlf): 0 else: inner.index_of(
 		"\r\n\r\n".to_bytes()
-	).get_or(-1)
+	) or (-1)
 
 	// Without a blank line the section is only headers (RFC 2046 makes the blank line
 	// and body optional): the last header line's break is the delimiter's own.
 	header_end := if blank < 0: inner.length() else: blank
 	data_start := if blank < 0: inner.length() else if blank == 0: 2 else: blank + 4
 	header_text := inner.decode_utf8_range(0, header_end)
-	if header_text.is_none(): return error(
+	if header_text == null: return error(
 		Error("MIME: invalid multipart body", kind: "EBADMSG")
 	)
 
-	headers := parse_headers(header_text.get_or(""))?
+	headers := parse_headers(header_text or "")?
 	var part = Part(
 		headers: headers,
 		data: inner.slice(data_start, inner.length()).clone().get_or(
@@ -334,7 +332,7 @@ fn make_part(section: Bytes) Part!:
 
 	if disposition := part.headers.get("Content-Disposition"):
 		media := parse_media_type(
-			f"x/x{disposition.view(disposition.index_of(";").get_or(disposition.length()), disposition.length())}"
+			f"x/x{disposition.view(disposition.index_of(";") or disposition.length(), disposition.length())}"
 		)
 
 		if media.is_ok():
@@ -398,7 +396,7 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 
 		at := self.buffer.index_of(self.delimiter)
 
-		if at.is_none():
+		if at == null:
 			if not self.in_part:
 				// Preamble text is ignored; keep only a tail that could start the
 				// delimiter.
@@ -424,7 +422,7 @@ fn var MultipartParts.step(move value: Bytes, var out: List[Part]) Void!:
 
 			break
 
-		end := at.get_or(0)
+		end := at or 0
 
 		if self.in_part:
 			if limit := self.max_part_bytes:

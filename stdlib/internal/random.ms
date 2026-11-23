@@ -56,7 +56,7 @@ fn draw_below(min: Int, width: Int) Int!:
 // An integer at least `min` and below `max_exclusive` (below the largest Int when
 // null).
 export fn draw_int(min: Int, max_exclusive: Int?) Int!:
-	max := max_exclusive.get_or(max_int)
+	max := max_exclusive or max_int
 	if min >= max: return error(invalid_input())
 
 	return draw_below(min, wrapping_subtract(max, min))

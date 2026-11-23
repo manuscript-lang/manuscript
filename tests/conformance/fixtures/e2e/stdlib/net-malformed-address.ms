@@ -7,16 +7,22 @@ import (
 
 // A missing or malformed port is invalid input (EINVAL), not an I/O failure (EIO).
 fn kind_of(e: Error) String:
-	return e.kind.get_or("")
+	return e.kind or ""
 
 test "malformed host and port text returns EINVAL":
-	for address in ["abc", "", "127.0.0.1:", "127.0.0.1:99999", "127.0.0.1:-1", "127.0.0.1:abc", "::1:0"]:
+	for address in [
+		"abc", "", "127.0.0.1:", "127.0.0.1:99999", "127.0.0.1:-1", "127.0.0.1:abc",
+		"::1:0"
+	]:
 		l := listen(address) | expect_error?
 		void expect_equal(kind_of(l), "EINVAL")?
+
 		d := bind_datagram(address) | expect_error?
 		void expect_equal(kind_of(d), "EINVAL")?
+
 		c := connect(address).wait() | expect_error?
 		void expect_equal(kind_of(c), "EINVAL")?
+
 	return ok()
 
 test "a datagram sent to a malformed address returns EINVAL":

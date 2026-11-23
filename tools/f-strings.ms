@@ -79,7 +79,7 @@ fn Scan.interpolates(multiline: Bool) Bool:
 
 		if c == 92:
 			if self.byte(i + 1) == 117 and self.byte(i + 2) == 123:
-				i = self.part(i, n).index_of("}").get_or(n - i) + i + 1
+				i = (self.part(i, n).index_of("}") or n - i) + i + 1
 			else:
 				i = self.past_escaped(i)
 
@@ -159,7 +159,7 @@ fn var Scan.code(stop_at_brace: Bool) String:
 		c := self.byte(self.at)
 
 		if self.starts("//"):
-			self.at = self.part(self.at, n).index_of("\n").get_or(n - self.at) + self.at
+			self.at = (self.part(self.at, n).index_of("\n") or n - self.at) + self.at
 		else if self.starts("/*"):
 			self.at = self.past("*/")
 		else if c == 114 and not self.after_name_byte() and self.starts("r\"\"\""):
@@ -241,9 +241,7 @@ fn convert_fences(source: String) String:
 
 		if body.trim() == "```" and lead == prefix:
 			if not block.is_empty():
-				converted := convert(block.join("\n")).get_or(
-					block.join("\n")
-				).split("\n")
+				converted := (convert(block.join("\n")) or block.join("\n")).split("\n")
 
 				for i in 0..converted.length():
 					if block[i] == "": out.append(originals[i].clone())
@@ -272,7 +270,7 @@ fn main() Int:
 			fences_only = true
 			continue
 
-		source := read_file(path).wait().get().decode_utf8().get_or("")
+		source := read_file(path).wait().get().decode_utf8() or ""
 		var converted = source.clone()
 
 		if fences_only or path.ends_with(".md"):

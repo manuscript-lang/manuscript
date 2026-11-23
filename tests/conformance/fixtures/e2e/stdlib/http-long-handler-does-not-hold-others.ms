@@ -35,7 +35,7 @@ fn answer(var conn: Connection) Bool:
 	while not text.ends_with("done\n"):
 		if chunk := recv(conn, nanoseconds(10000000000)):
 			if data := chunk:
-				text = f"{text}{data.decode_utf8().get_or("?")}"
+				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
 
 		return false

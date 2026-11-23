@@ -63,8 +63,8 @@ test "a native lend beside a none path still lends":
 	slots: List[Counter?] := [counter(8), null]
 	ring := Ring(slots: slots, size: 2)
 	if c := ring.at(0): c.read() | expect_equal(8)?
-	ring.at(1).is_none() | expect_true?
-	ring.at(5).is_none() | expect_true?
+	(ring.at(1) == null) | expect_true?
+	(ring.at(5) == null) | expect_true?
 
 test "a function value with defaults passes a supplied argument through":
 	alias := total

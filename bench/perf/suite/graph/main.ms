@@ -55,7 +55,7 @@ fn bfs(adj: List[List[Edge]], start: Int) Int:
 
 	while true:
 		next := queue.pop_front()
-		if next.is_none(): break
+		if next == null: break
 
 		u := next.get()
 		reached += 1
@@ -79,7 +79,7 @@ fn dijkstra(adj: List[List[Edge]], start: Int) Int:
 
 	while true:
 		next := pq.dequeue()
-		if next.is_none(): break
+		if next == null: break
 
 		it := next.get()
 		if it.dist > dist[it.node]: continue

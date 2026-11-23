@@ -211,7 +211,7 @@ fn code_key(code: Int) TerminalEvent?:
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
 fn first_number(part: String) Int:
 	head := part.split(":")[0].clone()
-	return head.parse_int().get_or(0)
+	return head.parse_int() or 0
 
 // The key a CSI sequence with parameters `params` and final byte `last` reports, if
 // any.
@@ -502,7 +502,7 @@ fn var TerminalEvents.next() move TerminalEvent?!:
 		waiting := self.decoder.partial()
 		ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
-		if ready.is_some():
+		if ready != null:
 			for event in self.decoder.decode(msstd_terminal_input_text()):
 				self.queue.append(event.clone())
 		else if waiting:

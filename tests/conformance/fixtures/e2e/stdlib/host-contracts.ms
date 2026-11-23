@@ -85,7 +85,7 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	var handle = open(path, OpenMode.WriteRead, OpenOptions(permissions: 384))?
 	handle.write(data)?
 	expect_equal((handle.stat()?).size, 80000)?
-	expect_false((handle.read()?).is_some())?
+	expect_false(((handle.read()?) != null)?
 	expect_equal((handle.read_at(80000)?).length(), 0)?
 	expect_equal((handle.read_at(0, 80000)?).length(), 65536)?
 	expect_equal((handle.read_file()?).length(), 0)?

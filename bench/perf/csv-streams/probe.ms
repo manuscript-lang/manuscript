@@ -42,11 +42,11 @@ fn read(item: Case) Int!:
 		return ok(item.data.length())
 
 	found := first?
-	if found.is_none(): return error(Error("missing row"))
+	if found == null: return error(Error("missing row"))
 
 	row := found.get()
 	if row.length() != 1 or row[0] != item.expected: return error(Error("wrong row"))
-	if (rows.next()?).is_some(): return error(Error("extra row"))
+	if ((rows.next()?) != null: return error(Error("extra row"))
 
 	return ok(row[0].length())
 

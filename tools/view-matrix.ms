@@ -169,7 +169,7 @@ fn main() Int:
 				if verdict.is_error() or verdict.get().exit_code != 0:
 					rejected += 1
 
-					why := verdict.get().stderr.decode_utf8().get_or("")
+					why := verdict.get().stderr.decode_utf8() or ""
 
 					// Only a checker rule may reject a combination; a program that does
 					// not parse is this tool's bug.
@@ -214,12 +214,12 @@ fn main() Int:
 						continue
 
 					child := ran.get()
-					have := child.stdout.decode_utf8().get_or("")
+					have := child.stdout.decode_utf8() or ""
 
 					if child.exit_code != 0 or have != want:
 						failures += 1
 
-						why := child.stderr.decode_utf8().get_or("")
+						why := child.stderr.decode_utf8() or ""
 						(
 							stdout()
 							.write(

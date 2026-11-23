@@ -77,7 +77,7 @@ fn HttpHeaders.get_all_bytes(name: String) List[Bytes]?:
 
 // Reports whether the name has any value, whatever its encoding.
 fn HttpHeaders.contains(name: String) Bool:
-	return msstd_http_headers_values(self, name).is_some()
+	return msstd_http_headers_values(self, name) != null
 
 // Returns the names in insertion order, each as spelled when first inserted.
 fn HttpHeaders.names() List[String]:

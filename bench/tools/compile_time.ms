@@ -83,7 +83,7 @@ fn main() Int:
 
 	for i in 0..3:
 		if args.length() > i:
-			v := args[i].parse_int().get_or(0)
+			v := args[i].parse_int() or 0
 			if v < 1: return usage("packages, files and fns must be positive integers")
 
 			dims[i] = v

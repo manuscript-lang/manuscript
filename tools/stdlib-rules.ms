@@ -19,7 +19,7 @@ banned_methods := ["next", "receive", "feed", "write_bytes"]
 type_words := ["type", "enum", "interface", "namespace"]
 
 fn text_of(path: String) String:
-	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("").replace(
+	if bytes := read_file(path).wait(): return (bytes.decode_utf8() or "").replace(
 		"\r\n",
 		"\n",
 	)
@@ -70,7 +70,7 @@ type Declared:
 // The parameters between the parentheses of `header`, split at top-level commas.
 fn parameters(header: String) List[String]:
 	var found = List[String]()
-	open := header.index_of("(").get_or(-1)
+	open := header.index_of("(") or (-1)
 	if open < 0: return found
 
 	var depth = 0
@@ -134,7 +134,7 @@ fn declared_of(
 	qualified := leading_name(after_fn)
 	var owner = owner_override.clone()
 	var name = qualified.clone()
-	dot := after_fn.index_of(".").get_or(-1)
+	dot := after_fn.index_of(".") or (-1)
 
 	if owner_override == "" and dot > 0 and dot == qualified.length():
 		owner = qualified.clone()
@@ -191,7 +191,7 @@ fn declarations(text: String) List[Declared]:
 			else if line.contains("extern fn ") or rest.starts_with("fn "):
 				after := without_words(
 					rest.slice(
-						rest.index_of("fn ").get_or(0) + 3,
+						(rest.index_of("fn ") or 0) + 3,
 						rest.length(),
 					),
 					["var", "move"],
@@ -258,11 +258,11 @@ fn shrinking(
 // ---- the four rules ----
 
 fn param_name(param: String) String:
-	colon := param.index_of(":").get_or(-1)
+	colon := param.index_of(":") or (-1)
 	if colon < 0: return param.trim()
 
 	words := param.slice(0, colon).trim().split(" ")
-	return words.last().get_or("").clone()
+	return (words.last() or "").clone()
 
 fn has_default(param: String) Bool:
 	return param.contains(" = ")
@@ -340,7 +340,7 @@ fn adjacency(path: String, text: String) List[String]:
 
 		method := without_words(rest.clone(), ["fn", "var", "move"])
 		owner := leading_name(method.clone())
-		dot := method.index_of(".").get_or(-1)
+		dot := method.index_of(".") or (-1)
 
 		if rest.starts_with("fn ") and dot > 0 and dot == owner.length():
 			if local.contains(owner) and previous != owner: issues.append(
@@ -358,7 +358,7 @@ fn contains_word(text: String, word: String) Bool:
 
 	while from <= text.length():
 		rest := text.slice(from, text.length())
-		at := rest.index_of(word).get_or(-1)
+		at := rest.index_of(word) or (-1)
 		if at < 0: return false
 
 		start := from + at
@@ -411,7 +411,7 @@ export fn stdlib_issues(files: List[String]) List[String]:
 	var stream_found = List[String]()
 	var issues = List[String]()
 	if sources.length() == 0: issues.append(
-		f"no stdlib/*.ms file was found among {files.length()} listed files (first: `{files.first().get_or("")}`)"
+		f"no stdlib/*.ms file was found among {files.length()} listed files (first: `{(files.first() or "")}`)"
 	)
 
 	for path in sources.keys():

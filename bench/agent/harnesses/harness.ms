@@ -45,7 +45,7 @@ export fn events(transcript: String) List[JsonValue]:
 	return out
 
 export fn int_at(doc: JsonValue, key: String) Int:
-	if value := doc.get(key): return value.as_int().get_or(0)
+	if value := doc.get(key): return value.as_int() or 0
 	return 0
 
 // Runs the agent in `workspace`, saves its output to `transcript` and returns the
@@ -70,7 +70,7 @@ export fn run_agent(
 			usage.tokens_in,
 			usage.tokens_cached,
 			usage.tokens_out,
-			model.get_or("default"),
+			model or "default",
 		)
 		usage.cost_source = "estimated"
 

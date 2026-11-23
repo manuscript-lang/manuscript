@@ -53,7 +53,7 @@ fn route(request: HttpRequest) HttpResponse:
 			body: "0123456789".to_bytes(),
 		)
 
-	label := request.headers.get_all("Content-Type").first().get_or("")
+	label := request.headers.get_all("Content-Type").first() or ""
 	return HttpResponse(
 		status: 200,
 		headers: headers(),

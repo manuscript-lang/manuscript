@@ -33,7 +33,7 @@ import (
 )
 
 fn text_of(data: Bytes) String:
-	return data.decode_utf8().get_or("").clone()
+	return (data.decode_utf8() or "").clone()
 
 // Replaces the working directory, spelled as the oracle runtime names it or with
 // forward slashes as ms prints it on Windows, with <DIR> and the digits after
@@ -189,7 +189,7 @@ fn difference(case_dir: String, outcome: Outcome) String:
 		recorded += 1
 
 		seen := outcome.files.get(found.path)
-		if seen.is_none(): return f"missing file {found.path}"
+		if seen == null: return f"missing file {found.path}"
 		if text_of(read_file(f"{tree}/{found.path}").wait().get()) != seen.get(): return f"file {found.path} differs"
 
 	if recorded != outcome.files.length():

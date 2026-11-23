@@ -256,9 +256,9 @@ fn tokenize(source: String) List[Token]!Error:
 
 			close := piece.index_of("}}")
 
-			if close.is_some():
-				chunks.append(piece.view(0, close.get_or(0)).clone())
-				tail = piece.view(close.get_or(0) + 2, piece.length()).clone()
+			if close != null:
+				chunks.append(piece.view(0, close or 0).clone())
+				tail = piece.view((close or 0) + 2, piece.length()).clone()
 				closed = true
 				break
 
@@ -627,11 +627,11 @@ fn var Builder.conditional(cond: String, line: Int, depth: Int) TemplateNode!Err
 
 fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
 	at := header.index_of(" in ")
-	if at.is_none(): return error(
+	if at == null: return error(
 		syntax_error(line: line, reason: "for needs `name in value`")
 	)
 
-	names := header.view(0, at.get_or(0)).split(",")
+	names := header.view(0, at or 0).split(",")
 	if names.length() > 2: return error(
 		syntax_error(line: line, reason: "for takes one or two names")
 	)
@@ -650,7 +650,7 @@ fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Err
 	):
 		return error(syntax_error(line: line, reason: "bad loop name"))
 
-	source := parse_expr(header.view(at.get_or(0) + 4, header.length()), line)?
+	source := parse_expr(header.view((at or 0) + 4, header.length()), line)?
 	body := self.block(depth + 1)?
 	var otherwise = List[TemplateNode]()
 
@@ -831,11 +831,12 @@ fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 	if depth > MAX_DEPTH: return error(partial_depth_error(name: key))
 
 	partial := self.partials.get(key).clone()
-	if partial.is_none(): return error(unknown_partial_error(name: key))
+	if partial == null: return error(unknown_partial_error(name: key))
 
 	return self.nodes(
-		partial.get_or(
-			Template(nodes: List[TemplateNode](), html: false)
+		(
+			partial
+			or Template(nodes: List[TemplateNode](), html: false)
 		).nodes.clone(),
 		depth + 1,
 	)
@@ -846,15 +847,15 @@ fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 // unused siblings.
 fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	first := member(root, parts[1])
-	if first.is_none(): return null
+	if first == null: return null
 
-	var value = first.get_or(JsonValue.Null)
+	var value = first or JsonValue.Null
 
 	for k in 2..parts.length():
 		next := member(value, parts[k]).clone()
-		if next.is_none(): return null
+		if next == null: return null
 
-		value = next.get_or(JsonValue.Null)
+		value = next or JsonValue.Null
 
 	return value
 
@@ -896,7 +897,7 @@ fn bind_row(
 	i: Int,
 ) Void:
 	if keys.is_empty():
-		item := items.pop().get_or(JsonValue.Null)
+		item := items.pop() or JsonValue.Null
 
 		if second.is_empty():
 			frame.add(first.clone(), item)
@@ -904,7 +905,7 @@ fn bind_row(
 			frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
 			frame.add(second.clone(), item)
 	else:
-		value := collection.get(keys[i]).clone().get_or(JsonValue.Null).clone()
+		value := (collection.get(keys[i]).clone() or JsonValue.Null).clone()
 
 		if second.is_empty():
 			var pair = Map[String, JsonValue]()
@@ -945,8 +946,8 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 	var out = StringBuilder()
 
 	while i >= 0 or j >= 0:
-		x := if i >= 0: left[i].parse_int().get_or(0) else: 0
-		y := if j >= 0: right[j].parse_int().get_or(0) else: 0
+		x := if i >= 0: (left[i].parse_int() or 0) else: 0
+		y := if j >= 0: (right[j].parse_int() or 0) else: 0
 		var digit = x + (if subtract: -y else: y) + carry
 		carry = 0
 
@@ -1106,7 +1107,7 @@ fn coefficient_text(number: ExactNumber) String:
 		end -= 1
 
 	// The lexical scan already validated ASCII; these byte ranges are UTF-8.
-	return number.coefficient.decode_utf8_range(number.first, end).get_or("").replace(
+	return (number.coefficient.decode_utf8_range(number.first, end) or "").replace(
 		".",
 		"",
 	)
@@ -1148,16 +1149,16 @@ fn number_text(value: JsonValue) String?:
 // never equal.
 fn kind_of(value: JsonValue) Int:
 	if value.is_null(): return 0
-	if value.as_bool().is_some(): return 1
-	if number_text(value).is_some(): return 2
-	if value.as_string().is_some(): return 3
-	if value.as_list().is_some(): return 4
+	if value.as_bool() != null: return 1
+	if number_text(value) != null: return 2
+	if value.as_string() != null: return 3
+	if value.as_list() != null: return 4
 
 	return 5
 
 fn equal(left: JsonValue, right: JsonValue) Bool:
 	if kind_of(left) != kind_of(right): return false
-	if number_text(left).is_some(): return compare_values(left, right) == 0
+	if number_text(left) != null: return compare_values(left, right) == 0
 
 	return to_text(left) == to_text(right) and left.is_null() == right.is_null()
 
@@ -1165,9 +1166,9 @@ fn equal(left: JsonValue, right: JsonValue) Bool:
 fn compare_values(left: JsonValue, right: JsonValue) Int:
 	if text := number_text(left):
 		other := number_text(right)
-		if other.is_none(): return 2
+		if other == null: return 2
 
-		right_text := other.get_or("")
+		right_text := other or ""
 		if integer := exact_integer(text):
 			if other_integer := exact_integer(right_text):
 				return if integer < other_integer: -1 else if integer > other_integer: 1 else: 0
@@ -1221,11 +1222,11 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 	if name == "truncate":
 		count := arg_text(name.clone(), args, 0)?
 		limit := count.parse_int()
-		if limit.is_none() or limit.get_or(0) < 0: return error(
+		if (limit == null) or (limit or 0) < 0: return error(
 			invalid(name.clone(), "needs a count")
 		)
 
-		return ok(text_value(truncated(text, limit.get_or(0))))
+		return ok(text_value(truncated(text, limit or 0)))
 
 	// `raw` and any other registered name pass through; unknown names fail at compile time.
 	return ok(input.clone())

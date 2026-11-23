@@ -277,7 +277,7 @@ fn run(args: List[String]) String!:
 		return ok("summaries written")
 
 	binaries := [absolute(args[1].clone()), absolute(args[2].clone())]
-	repeats := args[3].parse_int().get_or(0)
+	repeats := args[3].parse_int() or 0
 	if repeats < 1: return invalid("repeats must be positive")
 
 	ensure_directory(out)
@@ -337,7 +337,7 @@ fn run(args: List[String]) String!:
 		return ok("project controls passed")
 
 	for size_text in args[4].split(","):
-		size := size_text.parse_int().get_or(0)
+		size := size_text.parse_int() or 0
 		if size < 1: return invalid("size must be positive")
 
 		for mode in args[5].split(","):

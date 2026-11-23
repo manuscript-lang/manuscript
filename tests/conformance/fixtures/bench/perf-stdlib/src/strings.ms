@@ -103,7 +103,7 @@ export fn bench_string() Void:
 		fn() Int:
 			var n = 0
 			for i in 0..100000:
-				n += "12345".parse_int().get_or(0)
+				n += "12345".parse_int() or 0
 			return n
 	)
 

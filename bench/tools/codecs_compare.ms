@@ -248,10 +248,7 @@ fn main() Int:
 	parsed := options(args.slice(4, args.length()).get_or([]), ["pairs"], [])
 	if parsed.is_error(): return fail(parsed.err().message)
 
-	pairs := parsed.get_or(Map[String, String]()).get_or(
-		"pairs",
-		"9",
-	).parse_int().get_or(0)
+	pairs := parsed.get_or(Map[String, String]()).get_or("pairs", "9").parse_int() or 0
 	if pairs < 2: return fail("at least two pairs required")
 
 	before := absolute(args[1].clone())

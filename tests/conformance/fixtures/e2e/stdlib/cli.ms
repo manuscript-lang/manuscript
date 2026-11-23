@@ -66,9 +66,7 @@ fn remote_group() Command:
 		],
 		run: fn options: ok(
 			options.extra.length() + (if options.dry_run: 100 else: 0) + (
-				if options
-				.url
-				.is_some(): 10 else: 0
+				if options.url != null: 10 else: 0
 			)
 		)
 	)
@@ -199,8 +197,8 @@ test "float flags reject NaN and infinities":
 			(ratio.parse(["--ratio", text.clone()]) | expect_error?).message
 			| expect_equal(f"cli: flag ratio: {text} is not a number")?
 		)
-
 	void expect_ok(ratio.parse(["--ratio", "1e5"]))?
+
 	bad_default := Command(
 		name: "x",
 		flags: [Flag(name: "ratio", kind: FlagKind.Float, default: "NaN")],

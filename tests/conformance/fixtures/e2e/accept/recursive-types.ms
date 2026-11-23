@@ -82,7 +82,7 @@ test "recursive records clone into independent storage":
 		) | expect_false?
 	)
 	copy.next = null
-	root.next.is_none() | expect_false?
+	(root.next == null) | expect_false?
 
 test "recursive structural equality checks nested and unequal fields":
 	var left = Node(value: 1, next: null)
@@ -140,7 +140,7 @@ test "recursive defaults construct independent complete objects":
 	var first = DefaultNode(value: 1)
 	second := DefaultNode(value: 2)
 	first.next = first.clone()
-	(second.next.is_some() or first.next.get().value != 1) | expect_false?
+	((second.next != null) or first.next.get().value != 1) | expect_false?
 
 type Entry:
 	name: String

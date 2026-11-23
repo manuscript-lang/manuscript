@@ -52,7 +52,7 @@ test "serve ends a connection that trickles its request head":
 	if sent == 30: return error(Error("trickled request head was never cut off"))
 
 	if reply := recv(client, 3.seconds()):
-		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
+		text := (reply or Bytes([])).decode_utf8() or ""
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error(f"incomplete request was served: {text}")
 		)
@@ -73,7 +73,7 @@ test "close cancels a handler that outlives the grace period":
 	// An error here is the connection ending (a reset on macOS); only a served reply
 	// fails.
 	if reply := recv(client, 5.seconds()):
-		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
+		text := (reply or Bytes([])).decode_utf8() or ""
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error("handler finished instead of being cancelled")
 		)
@@ -101,14 +101,14 @@ test "close cancels a handler parked on a request body and releases its stream":
 	server.close()?
 
 	if reply := recv(client, 5.seconds()):
-		text := reply.get_or(Bytes([])).decode_utf8().get_or("")
+		text := (reply or Bytes([])).decode_utf8() or ""
 		if text.starts_with("HTTP/1.1 200"): return error(
 			Error("handler finished instead of being cancelled")
 		)
 
 fn expect_file_reply(var conn: Connection) Void!:
 	reply := recv(conn, 10.seconds()) | expect_ok?
-	text := reply.get_or(Bytes([])).decode_utf8().get_or("")
+	text := (reply or Bytes([])).decode_utf8() or ""
 	if not text.starts_with("HTTP/1.1 200"): return error(
 		Error(f"file handler failed: {text}")
 	)
@@ -168,7 +168,7 @@ test "serve answers 500 when a whole response exceeds max_response_bytes":
 	)
 
 	reply_bytes := recv(client, 3.seconds()) | expect_ok?
-	head := reply_bytes.get_or(Bytes([])).decode_utf8().get_or("")
+	head := (reply_bytes or Bytes([])).decode_utf8() or ""
 	if not head.starts_with("HTTP/1.1 500"): return error(
 		Error(f"expected a 500 reply, got: {head}")
 	)
@@ -178,7 +178,7 @@ fn raw_status(address: String, request: String) String!:
 	send(client, request) | expect_ok?
 
 	reply := recv(client, 2.seconds()) | expect_ok?
-	text := reply.get_or(Bytes([])).decode_utf8().get_or("")
+	text := (reply or Bytes([])).decode_utf8() or ""
 	return ok(text.split("\r\n")[0].clone())
 
 test "asterisk-form target is accepted only for OPTIONS":

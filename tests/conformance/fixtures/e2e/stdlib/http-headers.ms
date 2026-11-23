@@ -79,7 +79,9 @@ test "one header type preserves repeated values through buffered requests":
 	// received.
 	_appended := ((metadata.headers.append("x-dup", "third")) | expect_ok?)
 	metadata.headers.get_all("X-Dup") | expect_equal(["first", "second", "third"])?
-	expect_false(((response.metadata().headers.get_all("X-Dup")) != ["first", "second"]))?
+	expect_false(
+		((response.metadata().headers.get_all("X-Dup")) != ["first", "second"])
+	)?
 
 fn echo_headers(var exchange: HttpExchange) Void!:
 	received := exchange.headers()
@@ -107,7 +109,9 @@ test "streaming proxy uses the same byte-valued header type":
 			options: RequestOptions(headers: (repeated_headers()?)),
 		) | expect_ok?
 	)
-	expect_false(((response.metadata().headers.get_all("x-DUP")) != ["first", "second"]))?
+	expect_false(
+		((response.metadata().headers.get_all("x-DUP")) != ["first", "second"])
+	)?
 
 test "lookup returns membership and clone separates it":
 	var fields = (repeated_headers()?)
@@ -122,8 +126,8 @@ test "lookup returns membership and clone separates it":
 
 	_k := fields.append("K", "ASCII") | expect_ok?
 	(not fields.contains("K")) | expect_true?
-
 	fields.remove("X-DUP")
+
 	_new_field := fields.append("X-Dup", "new") | expect_ok?
 	(fields.get_all("x-dup").length() != 1) | expect_false?
 
@@ -144,7 +148,7 @@ test "string lookup leaves out values that are not UTF-8":
 test "empty options and an omitted request body use checked defaults":
 	client_options := HttpClientOptions()
 	(client_options.decompress or client_options.cookies) | expect_false?
-	(HttpServerOptions().tls.is_none()) | expect_true?
+	(HttpServerOptions().tls == null) | expect_true?
 
 	server := (
 		serve(

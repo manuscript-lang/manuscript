@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=issue 2181
 fn held() Int:
-    var m = Map[String, List[Int]]()
-    m.add("a", [1, 2, 3])
+	var m = Map[String, List[Int]]()
+	m.add("a", [1, 2, 3])
 
-    x := m.get("a")
-    m.remove("a")
-    return x.get_or([]).length()
+	x := m.get("a")
+	m.remove("a")
+	return (x or []).length()

@@ -12,14 +12,14 @@ fn var Node.insert(key: Int) Void:
 	if key == self.key: return
 
 	if key < self.key:
-		if self.left.is_none():
+		if self.left == null:
 			self.left = Node(key, null, null)
 			return
 
 		self.left?.insert(key)
 		return
 
-	if self.right.is_none():
+	if self.right == null:
 		self.right = Node(key, null, null)
 		return
 

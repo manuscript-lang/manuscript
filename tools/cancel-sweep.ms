@@ -65,11 +65,11 @@ fn counted(text: String) List[Counted]:
 				)
 			)
 		else if line.starts_with("ms-rt parks: "):
-			parks = line.slice(13, line.length()).trim().parse_int().get_or(0)
+			parks = line.slice(13, line.length()).trim().parse_int() or 0
 		else if line.starts_with("ms-rt rust heap at exit: blocks="):
-			heap = line.slice(32, line.length()).split(" ")[0].parse_int().get_or(0)
+			heap = line.slice(32, line.length()).split(" ")[0].parse_int() or 0
 		else if line.starts_with("ms-rt live blocks at exit: "):
-			live := line.slice(27, line.length()).trim().parse_int().get_or(0)
+			live := line.slice(27, line.length()).trim().parse_int() or 0
 			found.append(
 				Counted(
 					name: name.clone(),
@@ -104,9 +104,7 @@ fn test_run(
 		arguments,
 		RunOptions(timeout: seconds(120), env: settings),
 	).wait(): return counted(
-		out.stdout.decode_utf8().get_or("") + out.stderr.decode_utf8().get_or(
-			""
-		)
+		(out.stdout.decode_utf8() or "") + (out.stderr.decode_utf8() or "")
 	)
 
 	return List[Counted]()
@@ -119,7 +117,7 @@ fn test_names(ms: String, file: String) List[String]:
 		["test", file.clone(), "--list"],
 		RunOptions(timeout: seconds(120)),
 	).wait():
-		for line in out.stdout.decode_utf8().get_or("").split("\n"):
+		for line in (out.stdout.decode_utf8() or "").split("\n"):
 			if line.contains("::"): names.append(line.clone())
 	return names
 
@@ -263,7 +261,7 @@ fn main() Int:
 			GlobOptions(patterns: ["*.ms"]),
 		).get_or([]):
 			path := f"tests/conformance/fixtures/e2e/stdlib/{f.path}"
-			if has_tests(read_file(path.clone()).wait().get().decode_utf8().get_or("")): files.append(
+			if has_tests(read_file(path.clone()).wait().get().decode_utf8() or ""): files.append(
 				path.clone()
 			)
 

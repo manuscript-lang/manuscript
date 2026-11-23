@@ -134,4 +134,4 @@ test "a room owner pushes each line to every connected websocket":
 
 fn heard(var socket: WebSocket) String!:
 	message := (within(socket.input, 3.seconds())?).get()
-	return ok(message.data.decode_utf8().get_or(""))
+	return ok(message.data.decode_utf8() or "")

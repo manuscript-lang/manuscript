@@ -89,7 +89,7 @@ fn is_ws(c: String) Bool: c == " " or c == "\t" or c == "\r" or c == "\n"
 
 fn digit(c: String) Int:
 	if c.length() != 1: return -1
-	return "0123456789".index_of(c).get_or(-1)
+	return "0123456789".index_of(c) or (-1)
 
 fn is_lower(c: String) Bool: c.length() == 1 and c >= "a" and c <= "z"
 
@@ -129,9 +129,9 @@ fn valid_int(s: String) Bool:
 		if digit(c) < 0: return false
 	if s.length() > 1 and s.starts_with("0"): return false
 
-	return s.parse_int().get_or(2000000) <= 1000000
+	return (s.parse_int() or 2000000) <= 1000000
 
-fn to_int(s: String) Int: s.parse_int().get_or(0)
+fn to_int(s: String) Int: s.parse_int() or 0
 
 fn valid_date(s: String) Bool:
 	cs := s.chars()
@@ -239,7 +239,7 @@ fn prio_rank(s: String) Int:
 
 	return -1
 
-fn opt_s(x: String?) String: x.get_or("-")
+fn opt_s(x: String?) String: x or "-"
 
 fn opt_i(x: Int?) String:
 	if v := x: return f"{v}"
@@ -380,7 +380,7 @@ fn diff_fields(a: Fields, b: Fields) List[String]:
 	)
 	if (
 		opt_s(a.assignee) != opt_s(b.assignee)
-		or a.assignee.is_some() != b.assignee.is_some()
+		or (a.assignee != null) != b.assignee != null
 	):
 		out.append(f"assignee: {opt_s(a.assignee)} -> {opt_s(b.assignee)}")
 	if opt_i(a.points) != opt_i(b.points): out.append(
@@ -394,7 +394,7 @@ fn diff_fields(a: Fields, b: Fields) List[String]:
 	)
 	if (
 		opt_s(a.reporter) != opt_s(b.reporter)
-		or a.reporter.is_some() != b.reporter.is_some()
+		or (a.reporter != null) != b.reporter != null
 	):
 		out.append(f"reporter: {opt_s(a.reporter)} -> {opt_s(b.reporter)}")
 	return out
@@ -475,7 +475,7 @@ fn sort_field(s: String) Int:
 		"id", "created", "updated", "priority", "points", "state", "title", "assignee",
 		"reporter", "due"
 	]
-	return names.find_index(fn x: x == s).get_or(-1)
+	return names.find_index(fn x: x == s) or (-1)
 
 fn field_code(s: String) Int:
 	names := [
@@ -484,7 +484,7 @@ fn field_code(s: String) Int:
 	]
 	if s == "labels": return 11
 
-	return names.find_index(fn x: x == s).get_or(-1)
+	return names.find_index(fn x: x == s) or (-1)
 
 fn op_ok(field: Int, op: Int) Bool:
 	if field <= 3 or field == 9 or field == 10: return op <= 5
@@ -730,9 +730,9 @@ fn build_term(
 
 	if fc == 14:
 		q := st.views.get(value)
-		if q.is_none(): return error(Error(f"query: unknown view '{value}'"))
+		if q == null: return error(Error(f"query: unknown view '{value}'"))
 
-		qs := split_query(q.get_or(""))?
+		qs := split_query(q or "")?
 		root := parse_filter(st, qs.filter, nodes, refs)?
 		refs.append(value.clone())
 		return ok(add_node(nodes, Node(kind: 4, a: root)))
@@ -760,7 +760,7 @@ fn build_term(
 
 			vals.append(v.clone())
 		else if fc == 8:
-			if st.wf.states.find_index(fn x: x == v).is_none(): return error(
+			if st.wf.states.find_index(fn x: x == v) == null: return error(
 				Error(f"query: bad value '{v}' for field '{fname}'")
 			)
 
@@ -877,18 +877,18 @@ fn match_one(st: State, fc: Int, op: Int, v: String, iss: Issue) Bool:
 	if fc == 12:
 		if v == "open": return is_open(st, iss)
 		if v == "final": return not is_open(st, iss)
-		if v == "unassigned": return iss.f.assignee.is_none()
+		if v == "unassigned": return iss.f.assignee == null
 		if d := iss.f.due: return is_open(st, iss) and d < st.today
 
 		return false
 
-	if v == "assignee": return iss.f.assignee.is_some()
-	if v == "due": return iss.f.due.is_some()
-	if v == "points": return iss.f.points.is_some()
+	if v == "assignee": return iss.f.assignee != null
+	if v == "due": return iss.f.due != null
+	if v == "points": return iss.f.points != null
 	if v == "labels": return iss.f.labels.length() > 0
 	if v == "comments": return iss.comments.length() > 0
 
-	return iss.f.reporter.is_some()
+	return iss.f.reporter != null
 
 fn eval_node(st: State, nodes: List[Node], i: Int, iss: Issue) Bool:
 	if i < 0: return true
@@ -920,7 +920,7 @@ fn cmp_opt_int(a: Int?, b: Int?) Int:
 		if y := b: return cmp_int(x, y)
 		return -1
 
-	if b.is_some(): return 1
+	if b != null: return 1
 
 	return 0
 
@@ -932,7 +932,7 @@ fn cmp_opt_str(a: String?, b: String?, ci: Bool) Int:
 
 		return -1
 
-	if b.is_some(): return 1
+	if b != null: return 1
 
 	return 0
 
@@ -982,7 +982,7 @@ fn State.run_list(
 		sort_text = sort_override.clone()
 		limit = limit_override
 
-	keys := parse_sort(sort_text.get_or(""))?
+	keys := parse_sort(sort_text or "")?
 	idxs.sort(fn a, b: cmp_issue(keys, self.issues[a], self.issues[b]))
 
 	var lines = List[String]()
@@ -1003,7 +1003,7 @@ fn var State.emit(s: String) Void:
 	self.out.append(s.clone())
 
 fn State.find(id: Int) Int:
-	return self.issues.find_index(fn i: i.id == id).get_or(-1)
+	return self.issues.find_index(fn i: i.id == id) or (-1)
 
 fn State.id_arg(arg: String) Int!:
 	id := parse_id_syntax(arg)?
@@ -1080,7 +1080,7 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 	idx := self.find(id)
 	self.final_check(idx)?
 
-	ti := self.wf.states.find_index(fn x: x == target).get_or(-1)
+	ti := self.wf.states.find_index(fn x: x == target) or (-1)
 	if ti < 0: return error(Error(f"unknown state '{target}'"))
 
 	cur := self.issues[idx].state
@@ -1104,11 +1104,11 @@ fn var State.do_move(id: Int, target: String, comment: String) String!:
 	for g in self.wf.trans[found].guards:
 		var unmet = false
 
-		if g == "assignee": unmet = f.assignee.is_none()
-		else if g == "points": unmet = f.points.is_none()
-		else if g == "due": unmet = f.due.is_none()
+		if g == "assignee": unmet = f.assignee == null
+		else if g == "points": unmet = f.points == null
+		else if g == "due": unmet = f.due == null
 		else if g == "labels": unmet = f.labels.length() == 0
-		else: unmet = f.reporter.is_none()
+		else: unmet = f.reporter == null
 
 		if unmet: missing.append(g.clone())
 
@@ -1315,27 +1315,27 @@ fn var State.cmd_view(rest: String) String!:
 
 		var lines = List[String]()
 		for n in names:
-			lines.append(f"{n}: {self.views.get(n).get_or("")}")
+			lines.append(f"{n}: {(self.views.get(n) or "")}")
 		return ok(lines.join("\n"))
 
 	if sub == "show":
 		if ws.length() != 2: return error(Error("usage: view show NAME"))
 
 		q := self.views.get(ws[1])
-		if q.is_none(): return error(Error(f"unknown view '{ws[1]}'"))
+		if q == null: return error(Error(f"unknown view '{ws[1]}'"))
 
-		return ok(f"{ws[1]}: {q.get_or("")}")
+		return ok(f"{ws[1]}: {(q or "")}")
 
 	if sub == "delete":
 		if ws.length() != 2: return error(Error("usage: view delete NAME"))
 
 		name := ws[1]
-		if self.views.get(name).is_none(): return error(Error(f"unknown view '{name}'"))
+		if self.views.get(name) == null: return error(Error(f"unknown view '{name}'"))
 
 		for m in self.sorted_views():
 			if m == name: continue
 
-			refs := view_refs(self, m, self.views.get(m).get_or(""))
+			refs := view_refs(self, m, self.views.get(m) or "")
 			if refs.contains(name): return error(
 				Error(f"view '{name}' is used by '{m}'")
 			)
@@ -1350,9 +1350,9 @@ fn var State.cmd_view(rest: String) String!:
 
 		name := ws[1]
 		q := self.views.get(name)
-		if q.is_none(): return error(Error(f"unknown view '{name}'"))
+		if q == null: return error(Error(f"unknown view '{name}'"))
 
-		spec := split_query(q.get_or(""))?
+		spec := split_query(q or "")?
 		extra := split_query(rest_after(rest, 2))?
 		if extra.filter.trim() != "": return error(
 			Error(f"unexpected '{extra.filter.trim()}'")
@@ -1360,8 +1360,8 @@ fn var State.cmd_view(rest: String) String!:
 
 		var sort_t: String? = spec.sort.clone()
 		var lim: Int? = spec.limit
-		if extra.sort.is_some(): sort_t = extra.sort.clone()
-		if extra.limit.is_some(): lim = extra.limit
+		if extra.sort != null: sort_t = extra.sort.clone()
+		if extra.limit != null: lim = extra.limit
 		return self.run_list(QSpec(filter: spec.filter.clone()), sort_t, lim, true)
 
 	if sub == "save":
@@ -1378,7 +1378,7 @@ fn var State.cmd_view(rest: String) String!:
 		_root := parse_filter(self, spec.filter, nodes, refs)?
 		if s := spec.sort:
 			_keys := parse_sort(s)?
-		if refs.contains(name) and self.views.get(name).is_some():
+		if refs.contains(name) and (self.views.get(name) != null):
 			return error(Error(f"view '{name}' would reference itself"))
 
 		self.views[name.clone()] = query.clone()
@@ -1507,10 +1507,10 @@ fn State.cmd_report(rest: String) String!:
 
 			if is_open(self, iss):
 				open_n += 1
-				if iss.f.assignee.is_none(): unass += 1
+				if iss.f.assignee == null: unass += 1
 				if d := iss.f.due:
 					if d < self.today: overdue += 1
-				open_pts += iss.f.points.get_or(0)
+				open_pts += iss.f.points or 0
 
 		var lines = List[String]()
 		total := self.issues.length()
@@ -1542,11 +1542,11 @@ fn State.cmd_report(rest: String) String!:
 
 			any_open = true
 
-			pts := iss.f.points.get_or(0)
+			pts := iss.f.points or 0
 
 			if a := iss.f.assignee:
 				key := a.lower()
-				gi := groups.find_index(fn g: g.key == key).get_or(-1)
+				gi := groups.find_index(fn g: g.key == key) or (-1)
 
 				if gi < 0:
 					groups.append(Grp(a.clone(), key, 1, pts))
@@ -1575,7 +1575,7 @@ fn State.cmd_report(rest: String) String!:
 
 		for i in idxs:
 			for l in self.issues[i].f.labels:
-				gi := counts.find_index(fn c: c.name == l).get_or(-1)
+				gi := counts.find_index(fn c: c.name == l) or (-1)
 
 				if gi < 0:
 					counts.append(LC(l.clone(), 1))
@@ -1623,7 +1623,7 @@ fn lc_cmp(a: LC, b: LC) Int:
 // ---------- workflow ----------
 
 fn reg(var states: List[String], name: String) Int:
-	gi := states.find_index(fn x: x == name).get_or(-1)
+	gi := states.find_index(fn x: x == name) or (-1)
 	if gi >= 0: return gi
 
 	states.append(name.clone())
@@ -1657,7 +1657,7 @@ fn parse_workflow(block: List[String]) Wf!:
 
 				finals.append(reg(states, name))
 		else if line.contains("->"):
-			pos := line.index_of("->").get_or(0)
+			pos := line.index_of("->") or 0
 			src := line.slice(0, pos).trim()
 			if not valid_state_name(src): return error(
 				Error(f"workflow: bad state name '{src}'")
@@ -1793,7 +1793,7 @@ fn var State.exec(line: String) Void:
 // ms: allow_effect std.console.write
 fn main() Void!:
 	bytes := read_all(stdin(), null)?
-	text := bytes.decode_utf8().get_or("")
+	text := bytes.decode_utf8() or ""
 	lines := text.lines()
 	var st = State()
 	var i = 0

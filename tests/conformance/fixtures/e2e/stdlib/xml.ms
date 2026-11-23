@@ -27,13 +27,13 @@ test "parse reads elements attributes and text":
 		"<?xml version=\"1.0\"?>\n<!-- top --><feed a=\"1\" b='x &amp; y'><item id=\"7\">Hi &lt;there&gt; &#65;&#x42;</item><empty/></feed>\n"
 	).get()
 	expect_equal(doc.tag(), "feed")?
-	expect_equal(doc.attribute("b").get_or(""), "x & y")?
+	expect_equal(doc.attribute("b") or "", "x & y")?
 
 	item := doc.find("item").get()
-	expect_equal(item.attribute("id").get_or(""), "7")?
+	expect_equal(item.attribute("id") or "", "7")?
 	expect_equal(item.text(), "Hi <there> AB")?
 	expect_equal(doc.find_all("empty").length(), 1)?
-	expect_true(doc.find("missing").is_none())?
+	expect_true(doc.find("missing") == null)?
 
 test "CDATA and comments":
 	doc := parse("<a>x<![CDATA[<raw & text>]]><!--c-->y</a>").get()
@@ -226,7 +226,7 @@ test "CDATA terminators are forbidden only in literal character data":
 		expect_equal((parse(f"<a>{text}</a>")?).text(), "]]>")?
 
 	attribute := parse("<a v=']]>'/>")?
-	expect_equal(attribute.attribute("v").get_or(""), "]]>")?
+	expect_equal(attribute.attribute("v") or "", "]]>")?
 	expect_equal((parse("<a><![CDATA[]]]]><![CDATA[>]]></a>")?).text(), "]]>")?
 	for text in ["]]", "]>", "]"]:
 		expect_equal((parse(f"<a>{text}</a>")?).text(), text)?
@@ -244,7 +244,7 @@ test "XML name starts follow every XML 1.0 range boundary":
 			expect_equal(element.tag(), name)?
 
 			attribute := parse(f"<a {name}='value'/>")?
-			expect_equal(attribute.attribute(name).get_or(""), "value")?
+			expect_equal(attribute.attribute(name) or "", "value")?
 
 test "XML continuation-only scalars cannot start a name":
 	for code in [0x2d, 0x2e, 0x30, 0x39, 0xb7, 0x300, 0x36f, 0x203f, 0x2040]:
@@ -254,7 +254,7 @@ test "XML continuation-only scalars cannot start a name":
 
 		name := f"a{scalar}"
 		expect_equal((parse(f"<{name}></{name}>")?).tag(), name)?
-		expect_equal((parse(f"<a {name}='value'/>")?).attribute(name).get_or(""), "value")?
+		expect_equal((parse(f"<a {name}='value'/>")?).attribute(name) or "", "value")?
 
 test "XML names reject punctuation and excluded Unicode gaps":
 	for code in [
@@ -272,11 +272,11 @@ test "XML names reject punctuation and excluded Unicode gaps":
 test "line ends normalize to newline and attribute whitespace to spaces":
 	doc := parse("<a k=\"x\ny\tz\r\nw\">t\r\nu\rv<![CDATA[c\r\nd]]></a>").get()
 	expect_equal(doc.text(), "t\nu\nvc\nd")?
-	expect_equal(doc.attribute("k").get_or(""), "x y z w")?
+	expect_equal(doc.attribute("k") or "", "x y z w")?
 
 test "character references keep whitespace that normalization would change":
 	doc := parse("<a k=\"x&#10;y&#9;z&#13;\">&#13;&#10;</a>").get()
-	expect_equal(doc.attribute("k").get_or(""), "x\ny\tz\r")?
+	expect_equal(doc.attribute("k") or "", "x\ny\tz\r")?
 	expect_equal(doc.text(), "\r\n")?
 
 test "carriage returns survive a stringify and parse round trip":
@@ -286,7 +286,7 @@ test "carriage returns survive a stringify and parse round trip":
 
 	back := parse(text).get()
 	expect_equal(back.text(), "t\r\nu")?
-	expect_equal(back.attribute("k").get_or(""), "p\rq\nr\ts")?
+	expect_equal(back.attribute("k") or "", "p\rq\nr\ts")?
 
 test "DOCTYPE skipping honors quoted spans and prolog placement":
 	for accepted in [
@@ -332,10 +332,10 @@ test "elements with many attributes keep their order and reject duplicates at an
 		text += f" a{i}=\"{i}\""
 
 	doc := parse(text + "/>").get()
-	expect_equal(doc.attribute("a0").get_or(""), "0")?
-	expect_equal(doc.attribute("a39").get_or(""), "39")?
-	expect_equal(doc.attribute("a15").get_or(""), "15")?
-	expect_equal(doc.attribute("a16").get_or(""), "16")?
+	expect_equal(doc.attribute("a0") or "", "0")?
+	expect_equal(doc.attribute("a39") or "", "39")?
+	expect_equal(doc.attribute("a15") or "", "15")?
+	expect_equal(doc.attribute("a16") or "", "16")?
 
 	// The 16th attribute is the first one checked through the set, and its list-scanned
 	// predecessors count.

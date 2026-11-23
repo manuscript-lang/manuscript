@@ -6,8 +6,9 @@ import (
 	files from "@suite",
 )
 
-// JSONTestSuite (nst/JSONTestSuite, `test_parsing`): `y_` files must parse and `n_` files
-// must be rejected. The `i_` files are implementation-defined and not run. A case outside
+// JSONTestSuite (nst/JSONTestSuite, `test_parsing`): `y_` files must parse and `n_`
+// files must be rejected. The `i_` files are implementation-defined and not run. A case
+// outside
 // `expect-fail.txt` must behave as its prefix says; a listed case must still fail, so the
 // list only ever shrinks.
 
@@ -17,9 +18,9 @@ fn passes(tree: FileTree, name: String) Bool:
 	text := bytes.decode_utf8()
 
 	// A String cannot hold invalid UTF-8, so such a file cannot be accepted.
-	if text.is_none(): return name.starts_with("n_")
+	if text == null: return name.starts_with("n_")
 
-	parsed := parse[JsonValue](text.get_or(""))
+	parsed := parse[JsonValue](text or "")
 	if name.starts_with("n_"): return parsed.is_error()
 
 	return parsed.is_ok()
@@ -35,9 +36,10 @@ test "JSONTestSuite agrees with the parser except for the listed cases":
 		if not passes(tree, name): failing.append(name.clone())
 	failing.sort()
 
-	listed := tree.read("expect-fail.txt", null).get_or(
-		"".to_bytes()
-	).decode_utf8().get_or("")
+	listed := (
+		tree.read("expect-fail.txt", null).get_or("".to_bytes()).decode_utf8()
+		or ""
+	)
 	var expected: List[String] = []
 
 	for line in listed.split("\n"):

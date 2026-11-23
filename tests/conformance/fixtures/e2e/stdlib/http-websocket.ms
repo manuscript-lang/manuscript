@@ -119,7 +119,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	)
 	body.metadata.status | expect_equal(201)?
 	(body.body.next() | expect_ok?).get() | expect_equal("hello".to_bytes())?
-	((body.body.next() | expect_ok?).is_none()) | expect_true?
+	((body.body.next() | ((expect_ok?) == null)) | expect_true?
 	client.close()?
 
 	_limited: Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
@@ -188,8 +188,8 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	)
 	send(client, request)?
 
-	reply := (recv(client, 2.seconds())?).get_or(Bytes([]))
-	return ok(reply.decode_utf8().get_or("").split("\r\n").first().get_or(""))
+	reply := ((recv(client, 2.seconds())?) or Bytes([])
+	return ok((reply.decode_utf8() or "").split("\r\n").first().get_or(""))
 
 test "WebSocket client options bound messages and reject bad values":
 	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)

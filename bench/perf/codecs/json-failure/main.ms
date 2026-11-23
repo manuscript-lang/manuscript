@@ -53,8 +53,8 @@ fn main() Int:
 				if result.is_error(): return 2
 
 				parsed := result.get()
-				if not parsed.as_string().is_some(): return 7
-				if parsed.as_string().get_or("") != wanted: return 8
+				if not (parsed.as_string() != null): return 7
+				if (parsed.as_string() or "") != wanted: return 8
 			else:
 				if result.is_ok(): return 3
 				if result.err().kind != "EBADMSG": return 5

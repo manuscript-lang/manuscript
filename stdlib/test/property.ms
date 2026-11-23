@@ -303,11 +303,11 @@ export fn settings(runs: Int = 100) Settings:
 	var found = Settings(runs, 0, null)
 	environment := environment().get_or(Map[String, String]())
 	if text := environment.get("MS_TEST_RUNS"):
-		found.runs = text.parse_int().get_or(runs)
+		found.runs = text.parse_int() or runs
 	if text := environment.get("MS_TEST_SEED"):
 		found.seed = text.parse_int()
 	if text := environment.get("MS_TEST_FUZZ_MS"):
-		found.fuzz_milliseconds = text.parse_int().get_or(0)
+		found.fuzz_milliseconds = text.parse_int() or 0
 	return found
 
 // Internal: the result of running one case: the replayed source, and the failure when
@@ -364,7 +364,7 @@ fn attempt[T](
 	current: List[Int]
 ) List[Int]?:
 	outcome := replay(gen, property, candidate)
-	if outcome.failure.is_none(): return null
+	if outcome.failure == null: return null
 
 	used := outcome.source.choices.take(outcome.source.pos)
 	if not simpler(used, current): return null
@@ -439,7 +439,7 @@ export fn check[T](
 ) Void!:
 	config := settings(options.runs)
 	var chosen = options.seed
-	if chosen.is_none():
+	if chosen == null:
 		chosen = config.seed
 
 	var base = 0
@@ -510,7 +510,7 @@ fn report[T](
 	small := shrink(gen, property, used, 2000)
 	final := replay(gen, property, small)
 	{value: shown} := gen.make(Source(small.clone(), 0, 0, false, false))
-	reason := final.failure.clone().get_or(message.clone())
+	reason := final.failure.clone() or message.clone()
 
 	// The failure keeps the details of the assertion that failed, which name its source
 	// position.

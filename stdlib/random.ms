@@ -46,7 +46,7 @@ export fn ulid() String!:
 			bit_and(
 				shift_right_unsigned(millis, 8 * (5 - place)),
 				255,
-			).to_uint8().get_or(0)
+			).to_uint8() or 0
 		)
 	raw.append_bytes(noise)
 

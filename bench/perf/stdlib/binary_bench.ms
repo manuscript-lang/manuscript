@@ -9,7 +9,7 @@ import (
 fn build_packed() Bytes:
 	var bb = BytesBuilder()
 	for j in 0..25000:
-		bb.append_int32_le(j.to_int32().get_or(0))
+		bb.append_int32_le(j.to_int32() or 0)
 	return bb.build()
 
 // The size of `words(20000).join(",")`, which the encodings below report their time per
@@ -39,7 +39,7 @@ bench "crypto.sha256" per 157689:
 bench "bytes.builder" per 100000:
 	var bb = BytesBuilder()
 	for j in 0..100000:
-		bb.append((j % 256).to_uint8().get_or(0))
+		bb.append((j % 256).to_uint8() or 0)
 	bb.build().length()
 
 bench "bytes.read_int32_le" per 25000:
@@ -57,5 +57,5 @@ bench "bytes.read_uint32_le" per 25000:
 bench "bytes.append_int32_le" per 100000:
 	var bb = BytesBuilder()
 	for j in 0..100000:
-		bb.append_int32_le(j.to_int32().get_or(0))
+		bb.append_int32_le(j.to_int32() or 0)
 	bb.build().length()

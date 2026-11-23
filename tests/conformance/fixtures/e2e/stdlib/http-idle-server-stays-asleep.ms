@@ -32,7 +32,7 @@ fn warm(var conn: Connection) Bool!:
 	while not text.ends_with("done\n"):
 		if chunk := recv(conn, nanoseconds(10000000000)):
 			if data := chunk:
-				text = f"{text}{data.decode_utf8().get_or("?")}"
+				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
 
 		return ok(false)
@@ -40,9 +40,10 @@ fn warm(var conn: Connection) Bool!:
 	return ok(text.starts_with("HTTP/1.1 200 OK"))
 
 // Context switches are not counted on every platform (they read zero there), so the
-// bound on them can only be met. CPU time is counted in clock ticks on Windows (15.6 ms),
-// so the bound allows several ticks (main measured 3 there); a thread that polled would use
-// hundreds of ms in the window. The switch count is the sharp check elsewhere.
+// bound on them can only be met. CPU time is counted in clock ticks on Windows (15.6
+// ms), so the bound allows several ticks (main measured 3 there); a thread that polled
+// would use hundreds of ms in the window. The switch count is the sharp check
+// elsewhere.
 fn run() Bool!:
 	var server = serve(
 		address: "127.0.0.1:0",

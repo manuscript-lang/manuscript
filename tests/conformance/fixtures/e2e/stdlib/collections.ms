@@ -31,7 +31,7 @@ test "list search callbacks empty identities and folding":
 
 	empty: List[Int] := []
 	expect_false(empty.any(positive) or not empty.all(positive))?
-	expect_false(empty.first().is_some() or empty.last().is_some())?
+	expect_false((empty.first() != null) or (empty.last() != null))?
 
 	groups := ([1, 2, 3]).group_by(parity)
 	expect_false(groups.get(1) != [1, 3] or groups.get(0) != [2])?
@@ -84,7 +84,7 @@ test "maps preserve insertion order and overwrite duplicate keys":
 	var copy = map.clone()
 	copy.remove("a")
 	expect_false(copy.keys() != ["b"] or map.keys() != ["a", "b"])?
-	expect_false(map.get("missing").is_some())?
+	expect_false(map.get("missing") != null)?
 
 test "set algebra removes duplicates and preserves values":
 	left := ([1, 2, 2]).to_set()

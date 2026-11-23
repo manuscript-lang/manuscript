@@ -38,16 +38,14 @@ fn main() Int:
 
 	allow := ".artifacts/conform-expect-fail.txt"
 	var text = (
-		read_file("tests/conformance/expect-fail.txt")
-		.wait()
-		.get()
-		.decode_utf8()
-		.get_or("")
-		.clone()
+		read_file(
+			"tests/conformance/expect-fail.txt"
+		).wait().get().decode_utf8()
+		or "".clone()
 	)
 	host_list := f"tests/conformance/expect-fail.{host()}.txt"
 	if access(host_list, 0).is_ok():
-		text += read_file(host_list).wait().get().decode_utf8().get_or("")
+		text += read_file(host_list).wait().get().decode_utf8() or ""
 	write_file(allow, text, replace: true).wait().get()
 
 	conform := f"target/debug/ms-conform{exe()}"

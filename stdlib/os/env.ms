@@ -101,9 +101,9 @@ export fn set_environment(name: String, value: String?) Void!:
 export fn load_environment(path: String, max_bytes: Int? = null) Void!:
 	data := msstd_fs_read_file(path, max_bytes)?
 	text := data.decode_utf8()
-	if text.is_none(): return error(Error("environment: invalid data", kind: "EBADMSG"))
+	if text == null: return error(Error("environment: invalid data", kind: "EBADMSG"))
 
-	entries := parse_dotenv(text.get_or(""))?
+	entries := parse_dotenv(text or "")?
 
 	for entry in entries.entries():
 		if msstd_process_environment_is_set(entry.key): continue

@@ -87,7 +87,7 @@ fn generics(n: Int) Int:
 
 		if i % 3 == 2:
 			v := s.pop()
-			if v.is_some(): t += v.get()
+			if v != null: t += v.get()
 
 	return t + fold_with(s.items, 0, fn(a: Int, x: Int) Int: return a + x * 2)
 

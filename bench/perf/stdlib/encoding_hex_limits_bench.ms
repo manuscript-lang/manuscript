@@ -41,7 +41,7 @@ fn prep_decode(length: Int, limit: Int?, bad: Int = 0) Case:
 	if bad == 1: text = "z" + text.view(1, text.length())
 	if bad == 2: text = text.view(0, length - 1) + "z"
 
-	maximum := limit.get_or(9223372036854775807)
+	maximum := limit or 9223372036854775807
 	var expected: Bytes! = ok(Bytes([]))
 
 	if maximum < 0:

@@ -48,7 +48,7 @@ fn Offset.subtract(amount: Int, deduction: Int = self.value) Int: amount - deduc
 
 fn apply(callback: fn(Int, Int) Int, input: Int) Int: callback(input, 2)
 
-fn optional(value: Int?, fallback: Int = 0) Int: value.get_or(fallback)
+fn optional(value: Int?, fallback: Int = 0) Int: value or fallback
 
 fn required_before_default(second: Int, first: Int = 9) Int: first - second
 
@@ -76,8 +76,8 @@ test "positional labeled mixed and identifier calls":
 
 test "generic calls constructors and callback inference":
 	expect_false(first(3, 4) != 3 or first[Int](right: 4, 3) != 3)?
-	expect_equal(pick([1, 2], fn item: item > 1).get_or(0), 2)?
-	expect_equal(pick(keep: fn item: item > 1, [1, 2]).get_or(0), 2)?
+	expect_equal(pick([1, 2], fn item: item > 1) or 0, 2)?
+	expect_equal(pick(keep: fn item: item > 1, [1, 2]) or 0, 2)?
 
 	record := Record(3)
 	explicit := Record[Int](second: 4, 3)

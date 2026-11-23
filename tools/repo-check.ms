@@ -45,7 +45,7 @@ fn repository_files() List[String]:
 	return files
 
 fn text_of(path: String) String:
-	if bytes := read_file(path).wait(): return bytes.decode_utf8().get_or("").replace(
+	if bytes := read_file(path).wait(): return (bytes.decode_utf8() or "").replace(
 		"\r\n",
 		"\n",
 	)
@@ -102,7 +102,7 @@ fn calendar_error(version: String) String:
 	): return "each part is digits with no leading zero, so the version is valid semver"
 	if parts[0].length() != 4: return "the year has four digits"
 
-	month := parts[1].parse_int().get_or(0)
+	month := parts[1].parse_int() or 0
 	if month < 1 or month > 12: return "the month is 1 to 12"
 
 	return ""
@@ -110,11 +110,11 @@ fn calendar_error(version: String) String:
 // The first `"version": "..."` value in a package.json text.
 fn manifest_version(manifest: String) String:
 	marker := "\"version\": \""
-	at := manifest.index_of(marker).get_or(-1)
+	at := manifest.index_of(marker) or (-1)
 	if at < 0: return ""
 
 	rest := manifest.slice(at + marker.length(), manifest.length())
-	close := rest.index_of("\"").get_or(-1)
+	close := rest.index_of("\"") or (-1)
 	if close < 0: return ""
 
 	return rest.slice(0, close).clone()
@@ -171,7 +171,7 @@ fn block(lines: List[String], key: String, indent: Int) List[String]?:
 // requires it).
 fn trigger_error(text: String) String:
 	lines := text.split("\n")
-	on := block(lines, "on", 0).get_or([])
+	on := block(lines, "on", 0) or []
 	unfiltered := "required checks must run on every pull request without path filters"
 
 	if pull := block(on.clone(), "pull_request", 2):
@@ -180,7 +180,7 @@ fn trigger_error(text: String) String:
 	else:
 		return unfiltered
 
-	queue := block(on.clone(), "merge_group", 2).get_or([])
+	queue := block(on.clone(), "merge_group", 2) or []
 	var types = List[String]()
 
 	for line in queue:
@@ -226,7 +226,7 @@ fn field(line: String, key: String) String:
 // The license file a lock line vendors: the entry of `paths=` that names one.
 fn license_path(name: String, line: String) String:
 	for entry in field(line.clone(), "paths").split(","):
-		base := entry.split("/").last().get_or("")
+		base := entry.split("/").last() or ""
 		for stem in ["LICENSE", "LICENCE", "COPYING"]:
 			if base.starts_with(stem): return f"src/third_party/{name}/{entry}"
 
@@ -239,7 +239,7 @@ fn notices_under(files: List[String]) List[String]:
 		for root in notice_roots:
 			if not path.starts_with(f"{root}/"): continue
 
-			base := path.split("/").last().get_or("")
+			base := path.split("/").last() or ""
 			if notice_names.contains(base): found.append(path.clone())
 
 	return found

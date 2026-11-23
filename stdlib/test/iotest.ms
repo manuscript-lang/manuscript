@@ -138,7 +138,7 @@ export fn check_reader(make: fn() ReadStream[Bytes], expected: Bytes) Void!:
 		else: break
 
 	after_end := again.next()
-	if after_end.is_error() or after_end.get().is_some():
+	if after_end.is_error() or (after_end.get() != null):
 		return fail("check_reader: a read after end of input must return none again")
 	if total != expected.length():
 		return fail(

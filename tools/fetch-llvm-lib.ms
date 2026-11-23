@@ -44,11 +44,8 @@ fn library_path(target_os: String) String:
 fn main() Int:
 	root := working_directory().get()
 	lock := (
-		read_file(f"{root}/toolchain/llvm-lib.lock")
-		.wait()
-		.get()
-		.decode_utf8()
-		.get_or("")
+		read_file(f"{root}/toolchain/llvm-lib.lock").wait().get().decode_utf8()
+		or ""
 	)
 	tag := lock_value(lock, "tag")
 	version := lock_value(lock, "version")

@@ -51,7 +51,7 @@ fn transformed_then() Void:
 	_mapped: Int!Int := success(9).and_then(fn item: ok(item.id))
 
 fn optional_or_else() Void:
-	_kept := present(13).or_else(fn: null)
+	_kept := present(13) or null
 
 fn result_or_else() Void:
 	_kept := success(14).or_else(fn cause: error(cause))

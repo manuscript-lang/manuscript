@@ -66,4 +66,4 @@ test "ZIP unpack verifies a zero stored checksum":
 		null,
 	).get_or(Bytes([]))
 	failure := expect_error(unpack(forged, ArchiveFormat.Zip))?
-	expect_equal(failure.kind.clone().get_or(""), "EBADMSG")?
+	expect_equal(failure.kind.clone() or "", "EBADMSG")?

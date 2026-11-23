@@ -36,14 +36,14 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
 
 	if kind == 0:
 		for _flip in 0..1 + rng.next(4):
-			values[rng.next(n)] = rng.next(256).to_uint8().get_or(0)
+			values[rng.next(n)] = rng.next(256).to_uint8() or 0
 	else if kind == 1:
 		return data.slice(0, rng.next(n)).clone().get_or(Bytes([]))
 	else if kind == 2:
 		at := rng.next(n)
 		extremes := [0, 255, 127, 128, 1]
 		for i in 0..4:
-			if at + i < n: values[at + i] = extremes[rng.next(5)].to_uint8().get_or(0)
+			if at + i < n: values[at + i] = extremes[rng.next(5)].to_uint8() or 0
 	else if kind == 3:
 		// Drop a range.
 		from := rng.next(n)
@@ -67,7 +67,7 @@ fn mutate(data: Bytes, var rng: Rng) Bytes:
 		return Bytes(grown)
 	else:
 		// Header fields are the likeliest to be dangerous: hit the first 40 bytes.
-		values[rng.next(min_int(n, 40))] = rng.next(256).to_uint8().get_or(0)
+		values[rng.next(min_int(n, 40))] = rng.next(256).to_uint8() or 0
 
 	return Bytes(values)
 
@@ -90,10 +90,10 @@ fn fix_png_crcs(data: Bytes) Bytes:
 
 		crc := crc32(data.slice(at + 4, at + 8 + length).clone().get_or(Bytes([]))).to_int()
 		post := at + 8 + length
-		values[post] = (crc / 16777216 % 256).to_uint8().get_or(0)
-		values[post + 1] = (crc / 65536 % 256).to_uint8().get_or(0)
-		values[post + 2] = (crc / 256 % 256).to_uint8().get_or(0)
-		values[post + 3] = (crc % 256).to_uint8().get_or(0)
+		values[post] = (crc / 16777216 % 256).to_uint8() or 0
+		values[post + 1] = (crc / 65536 % 256).to_uint8() or 0
+		values[post + 2] = (crc / 256 % 256).to_uint8() or 0
+		values[post + 3] = (crc % 256).to_uint8() or 0
 		at = post + 4
 
 	return Bytes(values)

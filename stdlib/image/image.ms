@@ -235,7 +235,7 @@ fn Image.convert(target: ColorMode) Image:
 	var out = List[UInt8](reserve: count * m)
 
 	for i in 0..count:
-		c := self.pixel(i % self.width, i / self.width).get_or(Rgba(0, 0, 0, 255))
+		c := self.pixel(i % self.width, i / self.width) or Rgba(0, 0, 0, 255)
 		luma := (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
 
 		match target:

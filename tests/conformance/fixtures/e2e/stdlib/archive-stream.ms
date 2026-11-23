@@ -115,11 +115,7 @@ fn sample() List[ArchiveEntry]:
 	return [
 		ArchiveEntry("dir", "".to_bytes(), directory: true),
 		ArchiveEntry("dir/a.txt", "alpha".to_bytes(), directory: false),
-		ArchiveEntry(
-			"big.bin",
-			"x".repeat(1300).to_bytes(),
-			directory: false,
-		),
+		ArchiveEntry("big.bin", "x".repeat(1300).to_bytes(), directory: false),
 		ArchiveEntry("empty", "".to_bytes(), directory: false),
 	]
 
@@ -185,13 +181,7 @@ fn move HeaderThenFail.close() Void!:
 
 test "tar entries refuse an oversized member from its header":
 	archive := pack(
-		[
-			ArchiveEntry(
-				"f",
-				"x".repeat(4000).to_bytes(),
-				directory: false,
-			)
-		],
+		[ArchiveEntry("f", "x".repeat(4000).to_bytes(), directory: false)],
 		ArchiveFormat.Tar,
 	)?
 	header := archive.slice(0, 512)?
@@ -319,7 +309,7 @@ fn header(name: String, size: Int, flag: Int) Bytes:
 
 	var out = BytesBuilder()
 	for byte in block:
-		out.append(byte.to_uint8().get_or(0))
+		out.append(byte.to_uint8() or 0)
 	return out.build()
 
 // Zero-pads `data` to a whole 512-byte block.
@@ -351,7 +341,7 @@ test "tar entries frame members by a PAX size override as unpack does":
 fn with_byte(data: Bytes, at: Int, value: Int) Bytes:
 	var out = BytesBuilder()
 	out.append_bytes(data.slice(0, at).get_or("".to_bytes()))
-	out.append(value.to_uint8().get_or(0))
+	out.append(value.to_uint8() or 0)
 	out.append_bytes(data.slice(at + 1, data.length()).get_or("".to_bytes()))
 	return out.build()
 
@@ -391,7 +381,7 @@ test "gzip rejects reserved flags in whole and fragmented member headers":
 
 // "ok" with the entries' paths and sizes, or the error kind.
 fn outcome(entries: List[ArchiveEntry]!) String:
-	if entries.is_error(): return entries.err().kind.clone().get_or("none")
+	if entries.is_error(): return entries.err().kind.clone() or "none"
 
 	var text = "ok"
 	for entry in entries.get():

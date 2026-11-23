@@ -43,7 +43,7 @@ fn ask(address: String, text: String) String!:
 
 	reply := recv(client, 2.seconds())?
 	void client.close()
-	if data := reply: return ok(data.decode_utf8().get_or(""))
+	if data := reply: return ok(data.decode_utf8() or "")
 
 	return ok("")
 
@@ -73,7 +73,7 @@ test "a pending connection adopts once and closing it unadopted closes the socke
 	var second = connect(listener.address(), timeout: 2.seconds()).wait()?
 	var dropped = listener.accept_pending(2.seconds()).wait()?
 	dropped.close()?
-	expect_true((recv(second, 2.seconds())?).is_none())?
+	expect_true(((recv(second, 2.seconds())?) == null)?
 	client.close()?
 
 test "accepting a pending connection on a closed listener reports it":

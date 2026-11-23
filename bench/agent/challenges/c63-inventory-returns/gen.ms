@@ -18,14 +18,14 @@ fn c13_inputs() List[JsonValue]:
 	doc := parse(
 		read_text(f"{root()}/challenges/c13-inventory-orders/hidden/cases.json")
 	).get_or(JsonValue.Null)
-	return doc.as_list().get_or([])
+	return doc.as_list() or []
 
 export fn gen_c63() Void:
 	var cs = Cases(build_oracle("c63-inventory-returns"))
 
 	for entry in c13_inputs():
-		name := entry.get("name").get_or(JsonValue.Null).as_string().get_or("")
-		stdin := entry.get("stdin").get_or(JsonValue.Null).as_string().get_or("")
+		name := (entry.get("name") or JsonValue.Null).as_string() or ""
+		stdin := (entry.get("stdin") or JsonValue.Null).as_string() or ""
 		add(cs, f"kept-{name}", stdin)
 
 	setup := "stock A 100\nstock B 50\nprice A 250\nprice B 1999\n"

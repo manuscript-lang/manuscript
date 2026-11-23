@@ -68,7 +68,7 @@ fn canon(value: JsonValue) String:
 	match value:
 		Null: return "n"
 		BoolValue(flag): return if flag: "t" else: "f"
-		NumberValue(text): return f"N{text.parse_float().get_or(0.0)}"
+		NumberValue(text): return f"N{(text.parse_float() or 0.0)}"
 		StringValue(text): return f"s{text.length()}:{text}"
 		ArrayValue(items):
 			var parts: List[String] = []

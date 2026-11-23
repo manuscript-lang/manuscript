@@ -7,8 +7,9 @@ import (
 	expect_equal, expect_fault from "@std/test/test.ms",
 )
 
-// A body fault closes a collection of resources while unwinding. A close that fails there
-// faults again, and the cleanup that owns the collection must still free every part exactly
+// A body fault closes a collection of resources while unwinding. A close that fails
+// there faults again, and the cleanup that owns the collection must still free every
+// part exactly
 // once: the optional that holds the failing resource is whole again when the fault starts.
 type Item:
 	id: Int
@@ -21,7 +22,7 @@ fn move Item.close() Void!:
 
 fn events(log: String) String!:
 	bytes := read_file(log).wait()?
-	return ok(bytes.decode_utf8().get_or(""))
+	return ok(bytes.decode_utf8() or "")
 
 fn deque_then_fault(log: String) Void:
 	var queue = Deque[Item]()
@@ -30,9 +31,12 @@ fn deque_then_fault(log: String) Void:
 	panic("body fault")
 
 fn list_then_fault(move log: String) Void:
-	var items: List[Item?] = [Item(1, log.clone(), true), null, Item(2, log.clone(), false)]
+	var items: List[Item?] = [
+		Item(1, log.clone(), true),
+		null,
+		Item(2, log.clone(), false),
+	]
 	panic("body fault")
-
 	void items.length()
 
 test "a failed close of a deque element while unwinding keeps the body fault":

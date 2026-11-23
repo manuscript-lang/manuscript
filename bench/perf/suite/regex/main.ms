@@ -29,11 +29,11 @@ fn main() Void:
 	email_count := emails.find_all(text, null).get().length()
 	var octet_total = 0
 	for m in ips.capture_all(text, null).get():
-		octet_total += m[4].parse_int().get_or(0)
+		octet_total += m[4].parse_int() or 0
 
 	var took_total = 0
 	for m in times.capture_all(text, null).get():
-		took_total += m[1].parse_int().get_or(0)
+		took_total += m[1].parse_int() or 0
 
 	masked := ips.replace_all(text, "x.x.x.x", null).get()
 	versions_found := versions.find_all(text, null).get().length()

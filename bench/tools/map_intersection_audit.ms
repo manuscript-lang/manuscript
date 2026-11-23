@@ -34,8 +34,8 @@ fn run(args: List[String]) String!:
 	)
 
 	out := args[2]
-	pairs := args[3].parse_int().get_or(0)
-	work := args[4].parse_int().get_or(0)
+	pairs := args[3].parse_int() or 0
+	work := args[4].parse_int() or 0
 	if pairs < 1 or work < 1: return invalid("positive pairs and work required")
 
 	ensure_directory(out)
@@ -81,8 +81,8 @@ fn run(args: List[String]) String!:
 							"invalid producer output"
 						)
 
-						elapsed := parts[0].parse_int().get_or(0)
-						actual := parts[1].parse_int().get_or(-1)
+						elapsed := parts[0].parse_int() or 0
+						actual := parts[1].parse_int() or (-1)
 						if elapsed <= 0 or actual != want: return invalid(
 							f"invalid timing or checksum: {mode} {pattern} {n}"
 						)

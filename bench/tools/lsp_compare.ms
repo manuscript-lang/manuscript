@@ -113,9 +113,9 @@ fn run_harness(binary: String, c: Case, rounds: Int, cpu: String) Run!:
 
 	for i in 4..8:
 		v := fields[i].parse_int()
-		if v.is_none(): return invalid(f"not an integer: {fields[i]}")
+		if v == null: return invalid(f"not an integer: {fields[i]}")
 
-		n.append(v.get_or(0))
+		n.append(v or 0)
 
 	return ok(Run(n[0], n[1], n[2], n[3]))
 
@@ -208,7 +208,7 @@ fn main() Int:
 
 	opts := parsed.get_or(Map[String, String]())
 	default_samples := if args[0] == "hover": 9 else: 10
-	samples := opts.get_or("samples", f"{default_samples}").parse_int().get_or(0)
+	samples := opts.get_or("samples", f"{default_samples}").parse_int() or 0
 	if samples < 5: return fail("--samples must be at least 5")
 
 	result := compare(

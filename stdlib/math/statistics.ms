@@ -277,7 +277,7 @@ export fn percentile(values: List[Float], percent: Float) Float?:
 // an earlier rounding of `percent / 100`.
 fn percentile_sorted(ordered: List[Float], percent: Float) Float:
 	position := percent * (ordered.length() - 1).to_float() / 100.0
-	below := position.truncate_to_int().get_or(0)
+	below := position.truncate_to_int() or 0
 	return interpolate_sorted(ordered, below, position - below.to_float())
 
 // Blends the neighbours at `below` and `below + 1` by `fraction` in 0 through 1.
@@ -340,8 +340,8 @@ Example: `if bins := bin_counts([1.0, 2.0, 2.0, 3.0], 2): print(bins.counts)` pr
 export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 	if bins < 1 or values.is_empty(): return null
 
-	low := values.min().get_or(0.0)
-	high := values.max().get_or(0.0)
+	low := values.min() or 0.0
+	high := values.max() or 0.0
 
 	// A range beyond the Float maximum (or an infinite end) is measured in halves so
 	// the width stays finite where it can.
@@ -374,7 +374,7 @@ export fn bin_counts(values: List[Float], bins: Int) BinCounts?:
 			bin = bins - 1
 		else if width > 0.0 and width.is_finite():
 			scaled := if halved: value / 2.0 else: value
-			bin = ((scaled - origin) / width).truncate_to_int().get_or(0)
+			bin = ((scaled - origin) / width).truncate_to_int() or 0
 
 		if bin >= bins:
 			bin = bins - 1
@@ -398,7 +398,7 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
 				position := finite_bin_rat(value).subtract(origin).multiply(multiplier)
 
 				// An index too large for Int belongs in the last bin.
-				bin = position.floor().to_int().get_or(bins - 1)
+				bin = position.floor().to_int() or bins - 1
 
 			counts.set(bin, counts[bin] + 1)
 
@@ -407,7 +407,7 @@ fn exact_bin_counts(values: List[Float], low: Float, high: Float, bins: Int) Lis
 	return counts
 
 fn finite_bin_rat(value: Float) BigRat:
-	return rat_of_float(value).get_or_else(fn: rat_of_int(0))
+	return rat_of_float(value) or rat_of_int(0)
 
 // The sums of deviation products (`xy`) and squares (`xx`, `yy`) of two paired lists,
 // with each list's mean.
@@ -423,8 +423,8 @@ type Spread:
 fn spread(xs: List[Float], ys: List[Float]) Spread?:
 	if xs.length() != ys.length() or xs.length() < 2: return null
 
-	mean_x := mean(xs).get_or(0.0)
-	mean_y := mean(ys).get_or(0.0)
+	mean_x := mean(xs) or 0.0
+	mean_y := mean(ys) or 0.0
 	var xy = 0.0
 	var xx = 0.0
 	var yy = 0.0
@@ -557,8 +557,8 @@ fn finite_regression(
 ) Regression?:
 	x := centered(xs, x_exponent)
 	y := centered(ys, y_exponent)
-	x_unit := unit_exponent(x.deviations).get_or(0)
-	y_unit := unit_exponent(y.deviations).get_or(0)
+	x_unit := unit_exponent(x.deviations) or 0
+	y_unit := unit_exponent(y.deviations) or 0
 	var xx = DeviationSum()
 	var xy = DeviationSum()
 

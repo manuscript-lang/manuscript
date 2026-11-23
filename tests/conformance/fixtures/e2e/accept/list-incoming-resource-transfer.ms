@@ -19,7 +19,7 @@ fn move Door.close() Void!:
 		if self.fail: return error(Error("close failed"))
 
 fn events(log: String) String!:
-	return ok((read_file(log).wait()?).decode_utf8().get_or(""))
+	return ok((read_file(log).wait()?).decode_utf8() or "")
 
 fn named(move log: String, op: Int, index: Int, fail: Bool = false) Void:
 	var items = [Door(1, log.clone(), fail: fail)]

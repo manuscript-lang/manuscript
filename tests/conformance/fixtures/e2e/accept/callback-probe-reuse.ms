@@ -33,7 +33,7 @@ test "callback inference retains captures and contextual metadata":
 	expect_equal(optional(value: 5, transform: fn item: item + offset), 12)?
 
 	missing := choose(first: fn: null, second: fn() Int?: 3)
-	expect_false(missing.is_some())?
+	expect_false(missing != null)?
 
 	failure := with_result(
 		fn:
@@ -63,7 +63,7 @@ test "later returns repair incomplete and convertible evidence":
 			return one
 	)
 
-	expect_false(value.is_some())?
+	expect_false(value != null)?
 
 	cause := from_callback(
 		fn:

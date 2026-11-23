@@ -11,8 +11,8 @@ test "reading through get leaves the map entry intact":
 	m.add(key: "a", value: Item(name: "x", tags: ["p", "q"]))
 	expect_equal(m.get("a").get().name, "x")?
 	expect_equal(m.get("a").get().tags.length(), 2)?
-	expect_true(m.get("a").is_some())?
-	expect_true(m.get("zz").is_none())?
+	expect_true(m.get("a") != null)?
+	expect_true(m.get("zz") == null)?
 	expect_equal(m.get_or("zz", Item(name: "d", tags: [])).name, "d")?
 	expect_equal(m.get_or("a", Item(name: "d", tags: [])).name, "x")?
 	expect_equal(m.get("a").get().tags.length(), 2)?
@@ -32,4 +32,4 @@ test "get with a default on integer values":
 	counts.add(key: "k", value: 5)
 	expect_equal(counts.get_or("k", 0), 5)?
 	expect_equal(counts.get_or("none", 7), 7)?
-	expect_false(counts.get("none").is_some())?
+	expect_false(counts.get("none") != null)?

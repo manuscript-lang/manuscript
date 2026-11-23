@@ -100,7 +100,7 @@ fn text_build_parse(n: Int) Int:
 	parts := b.build().split(",")
 	var total = 0
 	for p in parts:
-		total += p.parse_int().get_or(0)
+		total += p.parse_int() or 0
 	return total
 
 fn word_map(n: Int) Int:
@@ -217,8 +217,8 @@ fn stack_ops(n: Int) Int:
 		s.append(i)
 
 		if i % 3 == 2:
-			total += s.pop().get_or(0)
-			total += s.pop().get_or(0)
+			total += s.pop() or 0
+			total += s.pop() or 0
 
 		i += 1
 

@@ -48,9 +48,9 @@ fn String.split_once(separator: String) SplitParts?:
 	if separator.is_empty(): return null
 
 	at := self.index_of(separator)
-	if at.is_none(): return null
+	if at == null: return null
 
-	cut := at.get_or(0)
+	cut := at or 0
 	return SplitParts(
 		before: self.view(0, cut).clone(),
 		after: self.view(cut + separator.length(), self.length()).clone(),
@@ -63,9 +63,9 @@ fn String.rsplit_once(separator: String) SplitParts?:
 	if separator.is_empty(): return null
 
 	at := self.last_index_of(separator)
-	if at.is_none(): return null
+	if at == null: return null
 
-	cut := at.get_or(0)
+	cut := at or 0
 	return SplitParts(
 		before: self.view(0, cut).clone(),
 		after: self.view(cut + separator.length(), self.length()).clone(),
@@ -215,7 +215,7 @@ fn String.trim_end_chars(set: String) String:
 
 // Reports whether any scalar of `set` occurs in the text.
 fn String.contains_any(set: String) Bool:
-	return self.index_any(set).is_some()
+	return self.index_any(set) != null
 
 // Returns the byte offset of the first scalar that occurs in `set`, or `null`.
 fn String.index_any(set: String) Int?:
@@ -374,7 +374,7 @@ fn title_scalar(c: String) String:
 	if greek_titlecase(code): return c.clone()
 
 	mapped := greek_titlecase_of(code)
-	if mapped > 0: return from_scalars([mapped]).get_or(c.clone())
+	if mapped > 0: return from_scalars([mapped]) or c.clone()
 
 	upper := c.upper()
 
@@ -445,7 +445,7 @@ fn String.replace_each(pairs: Map[String, String]) String:
 
 		for j in 0..count:
 			if nexts[j] < i:
-				nexts[j] = bytes.index_of_byte(keys[j].get(0), i).get_or(n)
+				nexts[j] = bytes.index_of_byte(keys[j].get(0), i) or n
 
 			if nexts[j] < at:
 				at = nexts[j]

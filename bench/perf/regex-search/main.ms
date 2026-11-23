@@ -4,7 +4,7 @@ import (
 )
 
 fn main() Void!:
-	data := (read_file("/tmp/regex-search-input.txt").wait()?).decode_utf8().get_or("")
+	data := (read_file("/tmp/regex-search-input.txt").wait()?).decode_utf8() or ""
 	re := compile("func\\s+\\w+\\(")?
 	all := re.find_all(data, null)?
 	spans := re.find_all_spans(data, null)?

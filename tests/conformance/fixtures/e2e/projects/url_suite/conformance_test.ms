@@ -20,7 +20,7 @@ import (
 // `by design:` is a permanent decision. Case ids are `<table>#<index>`.
 
 fn text(tree: FileTree, path: String) String:
-	return tree.read(path, null).get_or("".to_bytes()).decode_utf8().get_or("")
+	return tree.read(path, null).get_or("".to_bytes()).decode_utf8() or ""
 
 fn field(item: Case, key: String) String:
 	return item.fields.get_or(key, "")

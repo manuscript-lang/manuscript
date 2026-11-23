@@ -215,7 +215,7 @@ fn Complex.pow(exponent: Complex) Complex:
 	):
 		return integer_power(
 			self,
-			exponent.re.abs().truncate_to_int().get_or(0),
+			exponent.re.abs().truncate_to_int() or 0,
 			exponent.re < 0.0,
 		)
 

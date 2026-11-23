@@ -227,14 +227,14 @@ fn unc_root(text: String) String:
 	// A third leading separator makes the text a rooted path, not a UNC server.
 	if start < count and data.get_or(start, null).to_int() == 47: return ""
 
-	server_end := data.index_of_byte(47, start).get_or(count)
+	server_end := data.index_of_byte(47, start) or count
 	if server_end == count: return ""
 
 	var share_start = server_end + 1
 	while share_start < count and data.get_or(share_start, null).to_int() == 47: share_start += 1
 	if share_start >= count: return ""
 
-	share_end := data.index_of_byte(47, share_start).get_or(count)
+	share_end := data.index_of_byte(47, share_start) or count
 	if share_end == count: return text.clone()
 
 	return text_of(data, 0, share_end + 1)
@@ -297,7 +297,7 @@ fn is_clean(data: Bytes) Bool:
 	var start = if data.get_or(0, null).to_int() == 47: 1 else: 0
 
 	while start <= count:
-		end := data.index_of_byte(47, start).get_or(count)
+		end := data.index_of_byte(47, start) or count
 		size := end - start
 		if size == 0: return false
 		if size == 1 and data.get_or(start, null).to_int() == 46: return false
@@ -337,7 +337,7 @@ fn normalize_core(windows: Bool, text: String) String:
 	var start = root_bytes
 
 	while start <= count:
-		end := data.index_of_byte(47, start).get_or(count)
+		end := data.index_of_byte(47, start) or count
 		size := end - start
 		dot := size == 1 and data.get_or(start, null).to_int() == 46
 
@@ -406,7 +406,7 @@ fn normalize_core(windows: Bool, text: String) String:
 	// drive-relative path once the leading "." is removed.
 	if root.is_empty() and not stack.is_empty():
 		first := stack[0]
-		head := data.view(span_start(first), span_end(first)).decode_utf8().get_or("")
+		head := data.view(span_start(first), span_end(first)).decode_utf8() or ""
 		if root_of(true, head) != "": value = f"./{value}"
 
 	return native(true, value)
@@ -415,9 +415,9 @@ fn normalize_core(windows: Bool, text: String) String:
 // have null.
 fn extension_of_base(base: String) String:
 	dot := base.last_index_of(".")
-	if dot.is_none(): return ""
+	if dot == null: return ""
 
-	at := dot.get_or(0)
+	at := dot or 0
 	if at == 0 or base == "..": return ""
 
 	return base.view(at, base.length()).clone()
@@ -480,15 +480,15 @@ fn parse_core(windows: Bool, text: String, original: String) PathParts:
 // The text of bytes [start, end) of `data`.
 fn text_of(data: Bytes, start: Int, end: Int) String:
 	if start >= end: return ""
-	return data.view(start, end).decode_utf8().get_or("")
+	return data.view(start, end).decode_utf8() or ""
 
 fn extension_in(windows: Bool, text: String) String:
 	if windows: return parse_in(true, text).extension.clone()
 
 	trimmed := trim_end_slashes(text)
 	slash_at := trimmed.last_index_of("/")
-	base := if slash_at.is_none(): trimmed.clone() else: trimmed.view(
-		slash_at.get_or(0) + 1,
+	base := if slash_at == null: trimmed.clone() else: trimmed.view(
+		(slash_at or 0) + 1,
 		trimmed.length(),
 	)
 	return extension_of_base(base)
@@ -532,7 +532,7 @@ fn resolve_inner(windows: Bool, base: String, parts: List[String]) String?:
 			if part.is_empty(): continue
 
 			root := root_of(true, part)
-			part_device := root.cut_suffix("/").get_or(root.clone())
+			part_device := root.cut_suffix("/") or root.clone()
 
 			if not part_device.is_empty():
 				if not device.is_empty() and not equal_fold(device, part_device): continue
@@ -636,13 +636,13 @@ fn dirname_in(windows: Bool, original: String) String:
 	trimmed := trim_end_slashes(text)
 	at := trimmed.last_index_of("/")
 
-	if at.is_none():
+	if at == null:
 		if root.is_empty(): return "."
 		return original.view(0, root.length()).clone()
 
-	if at.get_or(0) < root.length(): return original.view(0, root.length()).clone()
+	if (at or 0) < root.length(): return original.view(0, root.length()).clone()
 
-	return original.view(0, at.get_or(0)).clone()
+	return original.view(0, at or 0).clone()
 
 fn join_in(windows: Bool, items: List[String]) String:
 	var first = ""
@@ -686,17 +686,15 @@ fn join_in(windows: Bool, items: List[String]) String:
 fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 	base_resolved := resolve_inner(windows, base_arg, [])
 	target_resolved := resolve_inner(windows, target_arg, [])
-	if base_resolved.is_none() or target_resolved.is_none(): return error(
+	if (base_resolved == null) or (target_resolved == null): return error(
 		invalid_input()
 	)
 
-	base := slash(windows, base_resolved.get_or(""))
-	target := slash(windows, target_resolved.clone().get_or(""))
+	base := slash(windows, base_resolved or "")
+	target := slash(windows, target_resolved.clone() or "")
 	base_root := root_of(windows, base)
 	target_root := root_of(windows, target)
-	if not same_text(windows, base_root, target_root): return ok(
-		target_resolved.get_or("")
-	)
+	if not same_text(windows, base_root, target_root): return ok(target_resolved or "")
 
 	// The components borrow `base` and `target` for the comparison; only the result
 	// copies.
@@ -719,8 +717,8 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 	var target_at = 0
 
 	while base_at < base_count and target_at < target_count:
-		base_end := base_data.index_of_byte(47, base_at).get_or(base_count)
-		target_end := target_data.index_of_byte(47, target_at).get_or(target_count)
+		base_end := base_data.index_of_byte(47, base_at) or base_count
+		target_end := target_data.index_of_byte(47, target_at) or target_count
 		if not same_text(
 			windows,
 			base_rest.view(base_at, base_end),
@@ -736,7 +734,7 @@ fn relative_in(windows: Bool, base_arg: String, target_arg: String) String!:
 
 	while scan < base_count:
 		climbs += 1
-		scan = base_data.index_of_byte(47, scan).get_or(base_count) + 1
+		scan = (base_data.index_of_byte(47, scan) or base_count) + 1
 
 	for step in 0..climbs:
 		if step > 0: out.append("/")
@@ -782,9 +780,9 @@ fn namespaced_in(windows: Bool, text: String) String:
 	): return text.clone()
 
 	resolved := resolve_inner(true, text, [])
-	if resolved.is_none(): return text.clone()
+	if resolved == null: return text.clone()
 
-	value := resolved.get_or("")
+	value := resolved or ""
 	if value.starts_with("\\\\"): return f"\\\\?\\UNC\\{value.view(2, value.length())}"
 
 	return f"\\\\?\\{value}"

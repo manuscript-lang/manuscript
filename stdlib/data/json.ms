@@ -360,7 +360,7 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 		else if byte == 34:
 			self.mode = 2
 
-	limit := self.options.max_bytes.get_or(-1)
+	limit := self.options.max_bytes or (-1)
 	if self.mode == 3 and is_space(byte): return ok(true)
 
 	self.size += 1
@@ -387,7 +387,7 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 
 	if byte == 123 or byte == 91:
 		self.depth += 1
-		if self.depth > self.options.max_depth.get_or(self.depth): return error(
+		if self.depth > (self.options.max_depth or self.depth): return error(
 			Error("JSON: limit exceeded", kind: "EOVERFLOW")
 		)
 
@@ -449,9 +449,9 @@ fn starts_value(byte: UInt8) Bool:
 // The error a negative limit reports on the first read, or null.
 fn invalid_limits(options: JsonOptions) Error?:
 	if (
-		options.max_bytes.get_or(0) < 0
-		or options.max_depth.get_or(0) < 0
-		or options.max_values.get_or(0) < 0
+		(options.max_bytes or 0) < 0
+		or (options.max_depth or 0) < 0
+		or (options.max_values or 0) < 0
 	):
 		return Error("JSON: invalid options", kind: "EINVAL")
 	return null

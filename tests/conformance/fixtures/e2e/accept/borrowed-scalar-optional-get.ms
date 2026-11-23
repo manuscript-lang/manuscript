@@ -12,7 +12,7 @@ fn move Marker.close() Void!: error(Error("scalar marker closed"))
 
 fn inspect(value: Marker?) Void:
 	_id := value.get().id
-	_still_present := value.is_some()
+	_still_present := value != null
 	panic("borrowed owner remains alive")
 
 fn collection(values: List[Marker]) Void:
@@ -52,7 +52,7 @@ fn move HeapMarker.close() Void!: error(Error("heap marker closed"))
 
 fn inspect_heap(value: HeapMarker?) Void:
 	_length := value.get().text.length()
-	_still_present := value.is_some()
+	_still_present := value != null
 	panic("heap owner remains alive")
 
 test "heap resource Optional getters retain their existing borrow":
@@ -197,5 +197,5 @@ test "labeled map keys retain their checked conversion":
 	var values = Map[String?, Int]()
 	values.add("present", 12)
 	expect_equal(values.get(key: "present").get(), 12)?
-	expect_equal(values.get(key: "absent").is_none(), true)?
+	expect_equal(values.get(key: "absent") == null, true)?
 	expect_equal(values.length(), 1)?

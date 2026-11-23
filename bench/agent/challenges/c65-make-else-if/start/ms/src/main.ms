@@ -149,7 +149,7 @@ fn pat_word(pat: String, rep: String, w: String) String:
 fn matches_any(pats: List[String], w: String) Bool:
 	for p in pats:
 		if p.contains("%"):
-			if stem_of(p, w, false).is_some(): return true
+			if stem_of(p, w, false) != null: return true
 		else if p == w: return true
 
 	return false
@@ -941,7 +941,7 @@ fn Ctx.resolve(t: String) Resolved:
 
 	if pi >= 0:
 		p := self.pats[pi]
-		st := stem_of(p.pat, t, true).get_or("")
+		st := stem_of(p.pat, t, true) or ""
 		var pre = List[String]()
 		var oo = List[String]()
 		for q in p.pre: pre.append(subst_pct(q, st))
@@ -966,7 +966,7 @@ fn var Ctx.simulate(cmd: String) Int:
 	if first == "false": return 1
 
 	if first == "exit":
-		if ws.length() > 1: return ws[1].parse_int().get_or(2)
+		if ws.length() > 1: return ws[1].parse_int() or 2
 		return 0
 
 	if first == "touch":
@@ -1237,7 +1237,7 @@ fn fmt_rule(name: String, pre: List[String], oo: List[String]) String:
 // ms: allow_effect std.console.write
 fn main() Void!:
 	b := read_all(stdin())?
-	text := b.decode_utf8().get_or("")
+	text := b.decode_utf8() or ""
 	all := text.lines()
 	var sec = 0
 	var mk = List[String]()

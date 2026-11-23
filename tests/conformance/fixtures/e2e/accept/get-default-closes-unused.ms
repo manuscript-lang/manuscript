@@ -15,24 +15,24 @@ fn move Door.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
 fn present(log: String) Int:
 	held: Door? := Door(1, log.clone())
-	door := held.get_or(Door(2, log.clone()))
+	door := held or Door(2, log.clone())
 	return door.id
 
 fn absent(log: String) Int:
 	held: Door? := null
-	door := held.get_or(Door(3, log.clone()))
+	door := held or Door(3, log.clone())
 	return door.id
 
 fn named(log: String) Int:
 	held: Door? := Door(4, log.clone())
 	spare := Door(5, log.clone())
-	door := held.get_or(spare)
+	door := held or spare
 	return door.id + 8
 
 test "an unused temporary default closes at once":

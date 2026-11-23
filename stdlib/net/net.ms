@@ -705,7 +705,7 @@ export fn serve(
 
 // The number of worker promises: `options.cores`, else one per core.
 fn workers_for(options: HttpServerOptions) Int:
-	return options.cores.get_or(msrt_runtime_limit())
+	return options.cores or msrt_runtime_limit()
 
 // The serving, which the accept loop owns and releases (and so closes the listener)
 // when it ends. Workers get a share of what they use, so the listener never leaves its

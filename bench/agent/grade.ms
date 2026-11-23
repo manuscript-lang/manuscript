@@ -37,7 +37,7 @@ fn main() Void:
 	cases := parse[List[Case]](must_read(args[0])).get_or([])
 	build := args[1].clone()
 	run := args[2].clone()
-	timeout := args[3].parse_int().get_or(5)
+	timeout := args[3].parse_int() or 5
 	suffix := if args.length() > 4: args[4].clone() else: ""
 	app := env("MSBENCH_APP", "/app")
 	out_dir := env("MSBENCH_VERIFIER", "/logs/verifier")

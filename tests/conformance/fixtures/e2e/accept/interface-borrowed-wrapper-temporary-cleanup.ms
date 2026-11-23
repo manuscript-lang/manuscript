@@ -29,16 +29,16 @@ type Reader:
 	tag: Int
 
 fn Reader.observe(first: Resource?, second: Resource?, tail: Int? = null) Bool:
-	return first.is_some() or second.is_some() or tail.get_or(0) > 0
+	return (first != null) or (second != null) or (tail or 0) > 0
 
 fn Reader.reject(value: Resource?) Void!:
-	if value.is_some(): return error(Error("expected"))
+	if value != null: return error(Error("expected"))
 
 fn Reader.broken(value: Resource?) Void:
-	if value.is_some(): _bad := [1].get(3)
+	if value != null: _bad := [1].get(3)
 
 fn Reader.create(path: String, value: Resource?) Resource:
-	if value.is_some(): return Resource(50, path.clone())
+	if value != null: return Resource(50, path.clone())
 	return Resource(51, path.clone())
 
 fn Reader.change(var value: Resource) Void:

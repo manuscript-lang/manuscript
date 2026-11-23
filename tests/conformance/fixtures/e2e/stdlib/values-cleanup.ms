@@ -44,11 +44,11 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
 	create := fn() Int?: 42
 	present: Int? := 0
 	missing: Int? := null
-	expect_equal(present.or_else(create).get(), 0)?
-	expect_equal(missing.or_else(create).get(), 42)?
+	expect_equal((present or create()).get(), 0)?
+	expect_equal((missing or create()).get(), 42)?
 
 	nested: Int?? := missing
-	expect_true(nested.is_none())?
+	expect_true(nested == null)?
 
 test "Result propagation and Error views preserve concrete causes":
 	failed: Int! := error(Error("JSON: invalid data", kind: "EBADMSG"))

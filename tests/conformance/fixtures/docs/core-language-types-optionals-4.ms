@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/types/optionals.md:63
 fn display_name(name: String?) String:
-	return name.get_or("Anonymous")
+	return name or "Anonymous"

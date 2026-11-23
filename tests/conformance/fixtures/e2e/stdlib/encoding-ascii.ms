@@ -12,7 +12,7 @@ test "ASCII decoding preserves every seven-bit byte including NUL":
 	var scalars = List[Int]()
 
 	for scalar in 0..128:
-		raw.append(scalar.to_uint8().get_or(0))
+		raw.append(scalar.to_uint8() or 0)
 		scalars.append(scalar)
 
 	expect_equal(ascii_decode(raw.build())?, from_scalars(scalars)?)?
@@ -27,7 +27,7 @@ test "ASCII decoding rejects every high byte at either end":
 	prefix := "ASCII\u{0}".to_bytes()
 
 	for byte in 128..256:
-		invalid := Bytes([byte.to_uint8().get_or(0)])
+		invalid := Bytes([(byte.to_uint8() or 0)])
 		expect_equal(ascii_decode(invalid), expected)?
 		expect_equal(ascii_decode(invalid.concat(prefix)), expected)?
 		expect_equal(ascii_decode(prefix.concat(invalid)), expected)?

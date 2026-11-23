@@ -27,7 +27,7 @@ fn files_under(dir: String) List[String]:
 
 // Statistics of one log file; runs on a worker.
 fn summarize(path: String) Stats:
-	text := read_file(path).wait().get().decode_utf8().get_or("")
+	text := read_file(path).wait().get().decode_utf8() or ""
 	var s = Stats(0, 0, 0, 0, 0, 0)
 
 	for line in text.split("\n"):
@@ -35,7 +35,7 @@ fn summarize(path: String) Stats:
 
 		f := line.split(" ")
 		s.lines += 1
-		s.latency += f[5].parse_int().get_or(0)
+		s.latency += f[5].parse_int() or 0
 
 		first := f[4].scalar_at(0)
 

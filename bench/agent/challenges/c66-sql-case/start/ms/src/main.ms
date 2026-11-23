@@ -62,7 +62,7 @@ fn is_alpha(c: Int) Bool: (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c =
 
 fn is_digit(c: Int) Bool: c >= 48 and c <= 57
 
-fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b).get_or("")
+fn sub(src: Bytes, a: Int, b: Int) String: src.decode_utf8_range(a, b) or ""
 
 fn lex(src: Bytes) List[Chunk]:
 	kws := keywords()

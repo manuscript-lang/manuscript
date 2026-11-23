@@ -81,11 +81,11 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 			hashes.add(fields[2].clone(), fields[5].clone())
 
 		if fields[1] == "before":
-			if before.get(key).is_some(): return invalid("duplicate before sample")
+			if before.get(key) != null: return invalid("duplicate before sample")
 
 			before.add(key, value)
 		else:
-			if after.get(key).is_some(): return invalid("duplicate after sample")
+			if after.get(key) != null: return invalid("duplicate after sample")
 
 			after.add(key, value)
 
@@ -94,7 +94,7 @@ export fn summarize(text: String, swap: Bool = false, cpu: Bool = false) String!
 	var groups = Map[String, List[Float]]()
 
 	for key in before.keys():
-		if not after.get(key).is_some(): return invalid("incomplete pair")
+		if not (after.get(key) != null): return invalid("incomplete pair")
 
 		parts := key.split("\t")
 		if parts[1] == "0": continue

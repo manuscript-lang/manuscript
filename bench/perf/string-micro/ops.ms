@@ -27,7 +27,7 @@ fn main() Void:
 
 	var t = monotonic()
 	var s = 0
-	for w in nums: s += w.parse_int().get_or(0)
+	for w in nums: s += w.parse_int() or 0
 	report("parse_int", t, n, s)
 	t = monotonic()
 	s = 0
@@ -92,7 +92,11 @@ fn main() Void:
 	report("float_to_string", t, n, s)
 	t = monotonic()
 	s = 0
-	for i in 0..n: s += (i.to_float() * 1.37).to_string().parse_float().get_or(
-		0.0
-	).truncate_to_int().get_or(0)
+	for i in 0..n: s += (
+		(
+			(i.to_float() * 1.37).to_string().parse_float()
+			or 0.0
+		).truncate_to_int()
+		or 0
+	)
 	report("float_parse", t, n, s)

@@ -24,8 +24,9 @@ fn done_command() Command:
 					Arg("weight", kind: FlagKind.Float),
 				],
 				run: fn options: ok(
-					options.id + options.weight.truncate_to_int().get_or(
-						0
+					options.id + (
+						options.weight.truncate_to_int()
+						or 0
 					)
 				)
 			)

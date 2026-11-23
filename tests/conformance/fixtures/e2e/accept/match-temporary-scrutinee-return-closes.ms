@@ -15,7 +15,7 @@ fn move Door.close() Void!:
 
 fn logged(path: String) String:
 	read := read_file(path).wait()
-	if bytes := read: return bytes.decode_utf8().get_or("")
+	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
@@ -47,7 +47,7 @@ test "a payload moved out of the arm is not closed by the match":
 	log := f"{tmp.path()}/log"
 	kept := hand_on(log.clone())
 	logged(log.clone()) | expect_equal("")?
-	if kept.is_some():
+	if kept != null:
 		logged(log.clone()) | expect_equal("")?
 
 test "return from an arm closes the temporary scrutinee once":

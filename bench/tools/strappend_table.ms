@@ -13,10 +13,10 @@ export fn case_names() List[String]:
 
 export fn checksum(name: String) Int:
 	if name.starts_with("append"):
-		size := name.slice(6, name.length()).parse_int().get_or(1)
+		size := name.slice(6, name.length()).parse_int() or 1
 		return 40 * size * (1000000 / size)
 
-	return 40 * name.slice(4, name.length()).parse_int().get_or(0)
+	return 40 * (name.slice(4, name.length()).parse_int() or 0)
 
 export fn summarize(lines: List[String], repeats: Int) String!:
 	if repeats < 1: return invalid("repeats must be positive")
@@ -34,25 +34,25 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		trial := f[0].parse_int()
 		elapsed := f[3].parse_int()
 		check := f[5].parse_int()
-		if trial.is_none() or elapsed.is_none() or check.is_none():
+		if (trial == null) or (elapsed == null) or (check == null):
 			return invalid(f"invalid sample: {line.trim()}")
 
 		version := f[1].clone()
 		name := f[2].clone()
 		if (
-			trial.get_or(-1) < 0
-			or trial.get_or(-1) >= repeats
+			(trial or (-1)) < 0
+			or (trial or (-1)) >= repeats
 			or not (version == "ms" or version == "rust")
 			or not names.contains(name)
 		):
 			return invalid(f"unknown sample: {line.trim()}")
 
-		key := f"{trial.get_or(0)} {version}"
+		key := f"{(trial or 0)} {version}"
 		var cases = seen.get_or(key, Set[String]())
 		if (
 			cases.contains(name)
-			or check.get_or(0) != checksum(name)
-			or elapsed.get_or(0) <= 0
+			or (check or 0) != checksum(name)
+			or (elapsed or 0) <= 0
 		):
 			return invalid(f"duplicate or invalid measurement: {line.trim()}")
 
@@ -62,14 +62,9 @@ export fn summarize(lines: List[String], repeats: Int) String!:
 		id := f"{name} {version}"
 
 		if prior := best.get(id):
-			best.add(
-				id.clone(),
-				if elapsed.get_or(0) < prior: elapsed.get_or(
-					0
-				) else: prior,
-			)
+			best.add(id.clone(), if (elapsed or 0) < prior: (elapsed or 0) else: prior)
 		else:
-			best.add(id.clone(), elapsed.get_or(0))
+			best.add(id.clone(), elapsed or 0)
 
 	if (
 		seen.length() != repeats * 2

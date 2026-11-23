@@ -19,7 +19,7 @@ interface Observer:
 type Reader:
 	tag: Int
 
-fn Reader.observe(value: Resource?) Bool: value.is_some()
+fn Reader.observe(value: Resource?) Bool: value != null
 
 fn log_text(path: String) String!:
 	bytes := read_file(path).wait()?

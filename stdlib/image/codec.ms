@@ -33,10 +33,10 @@ export fn too_big(message: String) Error:
 
 // Clamps `value` to 0 through 255 as a byte.
 export fn byte(value: Int) UInt8:
-	if value <= 0: return 0.to_uint8().get_or(0)
-	if value >= 255: return 255.to_uint8().get_or(0)
+	if value <= 0: return 0.to_uint8() or 0
+	if value >= 255: return 255.to_uint8() or 0
 
-	return value.to_uint8().get_or(0)
+	return value.to_uint8() or 0
 
 // Checks dimensions against `max_pixels` and the 2^30 hard ceiling; returns the pixel
 // count or `EBADMSG` or `EOVERFLOW`.
@@ -55,7 +55,7 @@ export fn pixel_count(width: Int, height: Int, max_pixels: Int?) Int!:
 
 // Returns `count` zero bytes.
 export fn zeroed(count: Int) List[UInt8]:
-	return [0.to_uint8().get_or(0)].repeated(count)
+	return [(0.to_uint8() or 0)].repeated(count)
 
 // Returns the larger of `a` and `b`.
 export fn max_of(a: Int, b: Int) Int:

@@ -100,7 +100,7 @@ fn main() Int:
 	var tests = List[String]()
 
 	for path in files:
-		source := read_file(path.clone()).wait().get().decode_utf8().get_or("")
+		source := read_file(path.clone()).wait().get().decode_utf8() or ""
 		if has_tests(source): tests.append(path.clone())
 
 	ms := tool_ms(root)

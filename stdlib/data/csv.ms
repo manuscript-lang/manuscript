@@ -30,7 +30,7 @@ fn invalid_at(bytes: Bytes, at: Int, reason: String) Error:
 			line += 1
 			start = i + 1
 
-	before := bytes.decode_utf8_range(start, at).get_or("")
+	before := bytes.decode_utf8_range(start, at) or ""
 	column := before.scalar_length() + 1
 	return Error(
 		f"CSV {line}:{column}: {reason}",
@@ -54,9 +54,7 @@ fn open_reader(text: String, options: CsvOptions) Reader!:
 			text: text.clone(),
 			bytes: bytes,
 			total: total,
-			delimiter: options.delimiter.scalar_values()[
-				0
-			].to_uint8().get_or(0),
+			delimiter: options.delimiter.scalar_values()[0].to_uint8() or 0,
 			delimiter_text: options.delimiter.clone(),
 			at: 0,
 			quote: -1,
@@ -95,7 +93,7 @@ export fn parse(text: String, options: CsvOptions = CsvOptions()) List[List[Stri
 		if record.is_error(): return error(record.err().clone())
 
 		found := record.get()
-		if found.is_none(): break
+		if found == null: break
 		if rows.length() >= rows_budget or row.length() > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -130,9 +128,9 @@ export fn each_cell(
 		if record.is_error(): return error(record.err().clone())
 
 		found := record.get()
-		if found.is_none(): break
+		if found == null: break
 
-		count := found.get_or(0)
+		count := found or 0
 		if rows >= rows_budget or count > cells_budget - cells: return error(
 			Error("CSV: limit exceeded", kind: "EOVERFLOW")
 		)
@@ -180,21 +178,20 @@ type Reader:
 	line_at: Int
 
 fn var Reader.next_quote(from: Int) Int:
-	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from).get_or(
-		self.total
-	)
+	if self.quote < from: self.quote = self.bytes.index_of_byte(34, from) or self.total
 	return self.quote
 
 fn var Reader.next_delimiter(from: Int) Int:
-	if self.delimiter_at < from: self.delimiter_at = self.bytes.index_of_byte(
-		self.delimiter,
-		from,
-	).get_or(self.total)
+	if self.delimiter_at < from: self.delimiter_at = (
+		self.bytes.index_of_byte(self.delimiter, from)
+		or self.total
+	)
 	return self.delimiter_at
 
 fn var Reader.next_line(from: Int) Int:
-	if self.line_at < from: self.line_at = self.bytes.index_of_byte(10, from).get_or(
-		self.total
+	if self.line_at < from: self.line_at = (
+		self.bytes.index_of_byte(10, from)
+		or self.total
 	)
 	return self.line_at
 
@@ -356,8 +353,8 @@ fn var CsvRows.boundary(data: Bytes) Int:
 	var previous = self.pending_size
 	self.longest = 0
 
-	var quote = data.index_of_byte(34, pos).get_or(total)
-	var line = data.index_of_byte(10, pos).get_or(total)
+	var quote = data.index_of_byte(34, pos) or total
+	var line = data.index_of_byte(10, pos) or total
 
 	while pos < total:
 		if self.quoted:
@@ -365,11 +362,11 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 			self.quoted = false
 			pos = quote + 1
-			quote = data.index_of_byte(34, pos).get_or(total)
+			quote = data.index_of_byte(34, pos) or total
 			continue
 
-		if line < pos: line = data.index_of_byte(10, pos).get_or(total)
-		if quote < pos: quote = data.index_of_byte(34, pos).get_or(total)
+		if line < pos: line = data.index_of_byte(10, pos) or total
+		if quote < pos: quote = data.index_of_byte(34, pos) or total
 
 		if line < quote:
 			size := previous + line - cut
@@ -383,7 +380,7 @@ fn var CsvRows.boundary(data: Bytes) Int:
 
 		self.quoted = true
 		pos = quote + 1
-		quote = data.index_of_byte(34, pos).get_or(total)
+		quote = data.index_of_byte(34, pos) or total
 
 	return cut
 
@@ -417,9 +414,9 @@ fn var CsvRows.step(move value: Bytes, var out: List[List[String]]) Void!:
 	self.check_size(size)?
 
 	decoded := data.decode_utf8_range(0, end)
-	if decoded.is_none(): return invalid_text()
+	if decoded == null: return invalid_text()
 
-	text := decoded.get_or("")
+	text := decoded or ""
 	return write_rows(parse(text, self.options)?, out)
 
 fn var CsvRows.finish(var out: List[List[String]]) Void!:
@@ -431,9 +428,9 @@ fn var CsvRows.finish(var out: List[List[String]]) Void!:
 	self.check_size(data.length())?
 
 	decoded := data.decode_utf8()
-	if decoded.is_none(): return invalid_text()
+	if decoded == null: return invalid_text()
 
-	text := decoded.get_or("")
+	text := decoded or ""
 	return write_rows(parse(text, self.options)?, out)
 
 fn invalid_text() Void!:

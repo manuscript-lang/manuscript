@@ -21,33 +21,33 @@ fn increment(value: Int) Int: value + 1
 test "Optional presence and extraction preserve false and zero":
 	present: Int? := 0
 	missing: Int? := null
-	expect_false(not (present.is_some()))?
-	expect_false(present.is_none())?
-	expect_false(missing.is_some())?
-	expect_false(not (missing.is_none()))?
+	expect_false(not (present != null))?
+	expect_false(present == null)?
+	expect_false(missing != null)?
+	expect_false(not (missing == null))?
 	expect_equal(present.get(), 0)?
 
 	flag: Bool? := false
 	expect_false(flag.get())?
 	expect_equal(value_or(7, missing), 7)?
 	expect_equal(value_or(7, present), 0)?
-	expect_false(missing.is_some())?
+	expect_false(missing != null)?
 
 test "Optional fallbacks distinguish eager and lazy evaluation":
 	present: Int? := 0
 	missing: Int? := null
 	var counter = Counter(0)
-	expect_equal(present.get_or(fallback(counter)), 0)?
+	expect_equal(present or fallback(counter), 0)?
 	expect_equal(counter.calls, 1)?
 
 	create := fn() Int?: 42
-	expect_equal(present.or_else(create).get(), 0)?
-	expect_equal(missing.or_else(create).get(), 42)?
+	expect_equal((present or create()).get(), 0)?
+	expect_equal((missing or create()).get(), 42)?
 
 test "Optional methods retain generic payload and receiver identity":
 	inner: Int? := null
 	outer: Int?? := inner
-	expect_true(outer.is_none())? // `Int??` is `Int?`: a nullable of a nullable has no second layer
+	expect_true(outer == null)?  // `Int??` is `Int?`: a nullable of a nullable has no second layer
 
 	counter := Counter(3)
 	record: Counter? := counter.clone()
@@ -65,9 +65,9 @@ test "Optional methods retain generic payload and receiver identity":
 test "Optional fallbacks preserve standard option records":
 	limits := JsonOptions(max_bytes: -1)
 	missing: JsonOptions? := null
-	var extracted = missing.get_or(limits).clone()
+	var extracted = (missing or limits).clone()
 	expect_equal(extracted.max_bytes.get(), -1)?
-	expect_false(not (extracted.max_depth.is_none()))?
+	expect_false(not (extracted.max_depth == null))?
 	extracted.max_values = 7
 	expect_equal(extracted.max_values.get(), 7)?
 

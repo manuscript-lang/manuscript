@@ -77,10 +77,7 @@ fn load(text: String) Map[String, Rate]:
 		f := line.split("\t")
 		if f.length() != 4: continue
 
-		rows.add(
-			f"{f[0]}\t{f[1]}",
-			Rate(f[2].parse_int().get_or(1), f[3].parse_int().get_or(0)),
-		)
+		rows.add(f"{f[0]}\t{f[1]}", Rate(f[2].parse_int() or 1, f[3].parse_int() or 0))
 
 	return rows
 

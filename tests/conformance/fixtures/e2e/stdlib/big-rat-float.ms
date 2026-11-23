@@ -66,13 +66,13 @@ test "rational rounding power and formatting":
 	expect_equal((parse_rat("1/3")?).to_fixed(3)?, "0.333")?
 
 test "rationals convert exactly from and to floats":
-	tenth := rat_of_float(0.1).get_or(rat_of_int(0))
+	tenth := rat_of_float(0.1) or rat_of_int(0)
 	expect_equal(tenth.to_string(), "3602879701896397/36028797018963968")?
 	expect_equal(tenth.to_float(), 0.1)?
-	expect_true(rat_of_float(1.0 / 0.0).is_none())?
-	expect_equal(rat_of_float(-2.5).get_or(rat_of_int(0)).to_string(), "-5/2")?
+	expect_true(rat_of_float(1.0 / 0.0) == null)?
+	expect_equal((rat_of_float(-2.5) or rat_of_int(0)).to_string(), "-5/2")?
 	expect_equal((parse_rat("1/3")?).to_float(), 1.0 / 3.0)?
-	expect_equal(rat_of_float(1e300).get_or(rat_of_int(0)).to_float(), 1e300)?
+	expect_equal((rat_of_float(1e300) or rat_of_int(0)).to_float(), 1e300)?
 
 test "big floats round once at their precision":
 	two := big_float_of_int(2, 200)
@@ -103,7 +103,10 @@ test "big floats add, subtract and compare across magnitudes":
 	expect_equal(huge.negate().add(tiny).compare(huge.negate()), 0)?
 	expect_equal(huge.compare(tiny), 1)?
 	expect_equal(big_float_of_int(5, 64).subtract(big_float_of_int(5, 64)).sign(), 0)?
-	expect_equal(big_float_of_float(0.5, 53).get_or(tiny.clone()).add(tiny).to_float(), 1.5)?
+	expect_equal(
+		(big_float_of_float(0.5, 53) or tiny.clone()).add(tiny).to_float(),
+		1.5,
+	)?
 	expect_equal(
 		big_float_of_int(-7, 64).divide(big_float_of_int(2, 64)).get_or(
 			tiny
@@ -122,7 +125,7 @@ test "big float errors":
 
 	limit: BigFloat! := error(Error("bigfloat: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse_big_float("1e999999", 64), limit)?
-	expect_true(big_float_of_float(0.0 / 0.0, 64).is_none())?
+	expect_true(big_float_of_float(0.0 / 0.0, 64) == null)?
 
 test "decimal text rejects a sign anywhere but the front of the digits and the exponent":
 	bad: BigRat! := error(Error("bigrat: invalid data", kind: "EBADMSG"))
@@ -165,6 +168,9 @@ test "to_float rounds once, onto the subnormal grid":
 	expect_equal(rat_of_binary(big_int_of_int(1), -1074).to_float(), tiny)?
 
 	// Normal values and the boundary are unchanged.
-	expect_equal(rat_of_binary(big_int_of_int(1), -1022).to_float(), 2.2250738585072014e-308)?
+	expect_equal(
+		rat_of_binary(big_int_of_int(1), -1022).to_float(),
+		2.2250738585072014e-308,
+	)?
 	expect_equal(rat_of_int(3).to_float(), 3.0)?
 	expect_equal(rat_of_binary(big_int_of_int(1), 1024).to_float(), null)?

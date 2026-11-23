@@ -1029,7 +1029,7 @@ export type SearchResult:
 // Clonable. A negative `count` or `max_items` returns `EINVAL`, and a `count` above
 // `max_items` or the allocation limit returns `EOVERFLOW`.
 export fn filled[T: Clonable](value: T, count: Int, max_items: Int?) List[T]!:
-	limit := max_items.get_or(9223372036854775807)
+	limit := max_items or 9223372036854775807
 	if count < 0 or limit < 0: return error(
 		Error("collection: invalid input", kind: "EINVAL")
 	)

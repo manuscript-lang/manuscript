@@ -15,7 +15,7 @@ fn move Door.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
 fn events(log: String) String!:
-	return ok((read_file(log).wait()?).decode_utf8().get_or(""))
+	return ok((read_file(log).wait()?).decode_utf8() or "")
 
 // A nonzero start is required to exercise the old copying growth path.
 fn grow(log: String, front: Bool, wrapped: Bool) Void!:
@@ -142,6 +142,6 @@ test "wrapped growth leaves opaque native file handles usable":
 		while not q.is_empty():
 			var handle = q.pop_front().get()
 			content := handle.read_file()?
-			expect_equal(content.decode_utf8().get_or(""), "still open")?
+			expect_equal(content.decode_utf8() or "", "still open")?
 			handle.sync()?
 			handle.close()?

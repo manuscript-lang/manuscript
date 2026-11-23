@@ -2,6 +2,7 @@ import (
 	Closeable from "@std/core.ms",
 	Duration from "@std/time.ms",
 
+	Slot,
 	msrt_cancel_fire,
 	msrt_cancel_fired,
 	msrt_cancel_free,
@@ -28,8 +29,7 @@ import (
 	msrt_promise_start_spread,
 	msrt_promise_take,
 	msrt_promise_wait,
-	msrt_promise_wait_any,
-	Slot from "@std/internal/promises.ms",
+	msrt_promise_wait_any from "@std/internal/promises.ms",
 )
 
 // Promises: operations whose results are taken once with `wait()`.
@@ -196,7 +196,7 @@ fn outcome(id: Int, code: Int) Error:
 
 // Internal: applies `options` to the promise `id`.
 fn limit(id: Int, options: PromiseOptions) Void:
-	if options.timeout.is_some():
+	if options.timeout != null:
 		msrt_promise_limit(id, nanos(options.timeout))
 	if signal := options.cancel:
 		msrt_promise_on_cancel(id, signal.id)
