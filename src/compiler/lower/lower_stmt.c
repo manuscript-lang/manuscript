@@ -148,6 +148,31 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
            bind_parts(fn, pattern, source, !stmt->u.bind.is_mutable && (from_var || fn_fresh_owner(fn, source)),
                       from_var ? &owner : NULL, stmt->u.bind.is_mutable);
   }
+  if (stmt->u.bind.is_mutable && fn->closing != NULL) {
+    /* `var x = xs[i]` and `var x = m[k]` borrow the entry exclusively, unless it is a number: `x` names the entry, so what is
+     * changed through `x` changes the entry, whatever happens to the index or key afterwards. */
+    MsExpr *container = NULL;
+    MsExpr *key = NULL;
+    const MsRef *ref = ms_facts_ref(fn->facts, pattern->id);
+    const MirTy entry = fn_type(fn, ms_facts_type(fn->facts, pattern->id));
+    if (ref != NULL && ref->kind == MS_REF_LOCAL && ref->local < fn->nvars && ms_expr_index(stmt->u.bind.value, &container, &key) &&
+        mir_ty_data(fn->cx->module, entry)->kind != MK_VOID && !mir_is_scalar(fn->cx->module, entry)) {
+      MirValue address = MIR_NONE;
+      MirTy ty = MIR_VOID;
+      if (fn_place_address(fn, stmt->u.bind.value, &address, &ty)) {
+        fn->closing[ref->local] = address;
+        fn->closing_var[ref->local] = true;
+        fn->closing_types[ref->local] = ty;
+        if (fn->shared != NULL) {
+          fn->shared[ref->local] = LOWER_SHARED_BORROWED; /* the entry's owner holds it: a change here replaces it there */
+        }
+        return !fn->failed;
+      }
+      if (fn->failed) {
+        return false;
+      }
+    }
+  }
   /* A name bound to another name borrows it unless the checker marked the read a move (the source is assigned while
    * the binding lives); anything else, and every `var`, is a new owner. */
   const MsExprKind kind = (MsExprKind)stmt->u.bind.value->kind;

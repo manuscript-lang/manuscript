@@ -390,6 +390,20 @@ MirValue fn_map_literal(LowerFn *fn, const MsExpr *expr) {
   return fn_emit(fn, MOP_Take, &map, 1, of_map, ty);
 }
 
+/* Ends the current block with the fault of a missing map key: `key` is the slot holding the key of type `key_ty`. */
+static void fault_missing_key(LowerFn *fn, MirValue key, MirTy key_ty) {
+  const MirImm of_key = {.tag = MI_TY, .a = key_ty};
+  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, of_key, key_ty);
+  const MirValue text = fn_value_repr(fn, missing, key_ty);
+  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
+                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
+                                         MIR_STR);
+  const MirValue parts[2] = {prefix_lit, text};
+  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
+  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
+  mir_b_unreachable(&fn->b);
+}
+
 /* `map[key]`: an owned copy of the value; a missing key faults with the key's text. */
 MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy ty) {
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
@@ -411,15 +425,7 @@ MirValue fn_map_index(LowerFn *fn, MirValue map, const MsExpr *key_expr, MirTy t
   mir_b_seal_block(&fn->b, hit);
   mir_b_seal_block(&fn->b, miss);
   mir_b_switch_to(&fn->b, miss);
-  const MirValue missing = mir_b_emit(&fn->b, MOP_Load, &key, 1, key_ty, data->args[0]);
-  const MirValue text = fn_value_repr(fn, missing, data->args[0]);
-  const MirValue prefix_lit = mir_b_emit(&fn->b, MOP_StrLit, NULL, 0,
-                                         (MirImm){.tag = MI_STR, .a = mir_add_string(fn->cx->module, ms_span_of_text("map key not found: "))},
-                                         MIR_STR);
-  const MirValue parts[2] = {prefix_lit, text};
-  const MirValue message = fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_string_concat")), parts, 2, MIR_STR);
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_fault_string")), &message, 1, MIR_VOID);
-  mir_b_unreachable(&fn->b);
+  fault_missing_key(fn, key, data->args[0]);
   mir_b_switch_to(&fn->b, hit);
   return mir_b_emit(&fn->b, owns_value ? MOP_Take : MOP_Load, &out, 1, value_ty, data->args[1]);
 }
@@ -518,6 +524,60 @@ bool fn_list_element_addr(LowerFn *fn, const MsExpr *place, MirValue *addr) {
     const MirValue operands[2] = {list, at};
     *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
   }
+  return true;
+}
+
+/* The address of the element or entry `place` (`xs[i]`, `m[k]`, `m[a][b]`) names, found once: a list index out of range or a
+ * missing map key faults as a read does. A map in an element is reached through the address of its element, so the entry
+ * lies where the owner holds it. `*ty` is the element's type. False when `place` is not such an index of a changeable place. */
+bool fn_place_address(LowerFn *fn, const MsExpr *place, MirValue *addr, MirTy *ty) {
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (!ms_expr_index(place, &container, &key) || !fn_place_changeable(fn, container)) {
+    return false;
+  }
+  MirValue holder = MIR_NONE;
+  MsExpr *outer = NULL;
+  MsExpr *outer_key = NULL;
+  if (ms_expr_index(container, &outer, &outer_key)) {
+    MirValue held = MIR_NONE;
+    MirTy held_ty = MIR_VOID;
+    if (!fn_place_address(fn, container, &held, &held_ty)) {
+      return false;
+    }
+    holder = mir_b_emit(&fn->b, MOP_Load, &held, 1, (MirImm){.tag = MI_TY, .a = held_ty}, held_ty);
+  } else {
+    holder = fn_expr(fn, container, LW_BORROW);
+  }
+  if (holder == MIR_NONE) {
+    return false;
+  }
+  const MirTyData *data = mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder));
+  if (data->kind == MK_LIST) {
+    const MirValue at = fn_expr(fn, key, LW_BORROW);
+    if (at == MIR_NONE) {
+      return false;
+    }
+    const MirValue operands[2] = {holder, at};
+    *addr = mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
+    *ty = data->elem;
+    return true;
+  }
+  const MirValue address = fn_entry_address(fn, holder, key, ty);
+  if (address == MIR_NONE) {
+    return false;
+  }
+  const MirValue absent = mir_b_emit(&fn->b, MOP_PtrIsNull, &address, 1, (MirImm){0}, MIR_BOOL);
+  const MirBlock miss = mir_b_new_block(&fn->b);
+  const MirBlock hit = mir_b_new_block(&fn->b);
+  mir_b_br_if(&fn->b, absent, miss, NULL, 0, hit, NULL, 0);
+  mir_b_seal_block(&fn->b, miss);
+  mir_b_seal_block(&fn->b, hit);
+  mir_b_switch_to(&fn->b, miss);
+  const MirValue key_slot = operand_slot(fn, key, true); /* the key again, for the fault text only */
+  fault_missing_key(fn, key_slot, mir_ty_data(fn->cx->module, mir_b_ty(&fn->b, holder))->args[0]);
+  mir_b_switch_to(&fn->b, hit);
+  *addr = address;
   return true;
 }
 
