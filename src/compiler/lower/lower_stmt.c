@@ -322,6 +322,14 @@ bool fn_place_changeable(LowerFn *fn, const MsExpr *place) {
          (place->kind == MS_E_MEMBER && fn_place_changeable(fn, place->u.member.left));
 }
 
+bool fn_try_place_changeable(LowerFn *fn, const MsExpr *place) {
+  if (fn_place_changeable(fn, place)) {
+    return true;
+  }
+  const MsExpr *base = place != NULL && place->kind == MS_E_MEMBER ? place->u.member.left : NULL;
+  return base != NULL && base->kind == MS_E_UNARY && base->op == MS_U_TRY && fn_try_place_changeable(fn, base->u.bin.left);
+}
+
 bool fn_place_owns(LowerFn *fn, const MsExpr *place) {
   MirVar var;
   MirValue slot;
