@@ -471,8 +471,16 @@ void resolver_params(Resolver *resolver, MsParams params, MsTyParamList *out) {
   }
 }
 
+/* The most parameters a function declares: the lowerer indexes the moves and shared `var` parameters of one function
+ * with 32-bit masks. A receiver comes on top (`LOWER_MAX_PARAMS` is one more). */
+enum { MAX_DECLARED_PARAMS = 32 };
+
 MsTy resolver_function(Resolver *resolver, MsParams params, const MsTypeRef *result) {
   MsCheckProgram *program = resolver->program;
+  if (resolver->report && params.len > MAX_DECLARED_PARAMS) {
+    ms_check_report(program, resolver->module, params.ptr[MAX_DECLARED_PARAMS]->pos, MS_CHECK_TYPE,
+                    ms_string_static(ms_span_of_text("a function takes at most 32 parameters; pass a record instead")));
+  }
   MsTyParamList list = {0};
   resolver_params(resolver, params, &list);
   const MsTy returns =
