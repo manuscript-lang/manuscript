@@ -167,7 +167,8 @@ static MirValue scalar_at(LowerFn *fn, const ForSource *src, MirValue index) {
   wanted[0] = (MirParam){MIR_STR, (uint8_t)MM_BORROW};
   wanted[1] = (MirParam){MIR_INT, (uint8_t)MM_BORROW};
   const MirExtern def = {.name = mir_name(fn->cx->module, ms_span_of_text("msrt_string_scalar_text")),
-                         .params = wanted, .nparams = 2, .ret = MIR_STR, .leaf = true};
+                         .params = wanted, .nparams = 2, .ret = MIR_STR, .leaf = true,
+                         .role = MR_STRING_SCALAR_TEXT};
   const uint32_t ext = mir_extern_intern(fn->cx->module, &def);
   const MirValue args[2] = {src->text, index};
   const MirValue scalar = mir_b_call_rt(&fn->b, ext, args, 2);
