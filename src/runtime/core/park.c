@@ -7,6 +7,7 @@
 #include "base/alloc.h"
 #include "runtime/core/isolate.h"
 #include "runtime/core/scheduler.h"
+#include "runtime/core/stats.h"
 #include "runtime/core/watch.h"
 
 enum {
@@ -481,7 +482,7 @@ void ms_park_idle(MsSched *sched) {
 uint32_t ms_task_wait_fd_at(int fd, uint32_t events, int64_t at_ns) {
   MsSched *const sched = ms_sched();
   MsTask *const task = ms_task_running();
-  if (ms_cancel_flag() != 0) {
+  if (ms_cancel_flag() != 0 || ms_stats_park()) {
     return MS_WAIT_CANCELLED;
   }
   if (fd >= 0) {

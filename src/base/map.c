@@ -96,8 +96,46 @@ void ms_map_reserve(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, 
   }
 }
 
+/* A key or value slot is usually one to three words: copying those as words avoids a call per slot. */
+static inline void copy_slot_bytes(uint8_t *to, const uint8_t *from, size_t size) {
+  if (size == 8) {
+    ms_store64(to, ms_load64(from));
+  } else if (size == 16) {
+    ms_store64(to, ms_load64(from));
+    ms_store64(to + 8, ms_load64(from + 8));
+  } else if (size == 24) {
+    ms_store64(to, ms_load64(from));
+    ms_store64(to + 8, ms_load64(from + 8));
+    ms_store64(to + 16, ms_load64(from + 16));
+  } else {
+    __builtin_memcpy(to, from, size);
+  }
+}
+
+/* An `Int` key with an eight-byte plain value, the commonest map: the layout is constant, so the probe,
+ * the copies and the publish compile to a few instructions with no descriptor reads. */
+static void insert_int_word(MsMap *map, const uint8_t *key_slot, const uint8_t *value_slot) {
+  static const MsMapLayout layout = {.key_offset = 8, .value_offset = 16, .stride = 24, .key_size = 8, .value_size = 8};
+  const uint64_t hash = ms_table_hash(&int_keys, NULL, key_slot);
+  const size_t found = ms_table_find(&int_keys, NULL, map, &layout, key_slot, hash);
+  if (found != MS_MAP_NO_ENTRY) {
+    ms_store64(ms_table_entry(map, &layout, found) + layout.value_offset, ms_load64(value_slot));
+    return;
+  }
+  uint8_t *entry = ms_table_next_entry(map, &layout);
+  ms_store64(entry, hash);
+  ms_store64(entry + layout.key_offset, ms_load64(key_slot));
+  ms_store64(entry + layout.value_offset, ms_load64(value_slot));
+  ms_table_publish(map, hash);
+}
+
 void ms_map_insert(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, uint8_t *key_slot,
                    uint8_t *value_slot) {
+  if (key->kind == MS_KIND_INT && value != NULL && value->size == 8 && value->align <= 8 &&
+      (value->kind == MS_KIND_INT || value->kind == MS_KIND_FLOAT)) {
+    insert_int_word(map, key_slot, value_slot);
+    return;
+  }
   const MsMapLayout layout = ms_map_layout(key, value);
   const MsMapProbe probe = ms_map_probe(map, key, &layout, key_slot);
   if (probe.entry != MS_MAP_NO_ENTRY) { /* the key exists: the new key is dropped and the value replaced */
@@ -111,9 +149,9 @@ void ms_map_insert(MsMap *map, const MsTypeDesc *key, const MsTypeDesc *value, u
   }
   uint8_t *entry = ms_table_next_entry(map, &layout);
   ms_store64(entry, probe.hash);
-  __builtin_memcpy(entry + layout.key_offset, key_slot, layout.key_size);
+  copy_slot_bytes(entry + layout.key_offset, key_slot, layout.key_size);
   if (value != NULL) {
-    __builtin_memcpy(entry + layout.value_offset, value_slot, layout.value_size);
+    copy_slot_bytes(entry + layout.value_offset, value_slot, layout.value_size);
   }
   ms_table_publish(map, probe.hash);
 }

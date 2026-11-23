@@ -215,17 +215,17 @@ fn var Gen.step() Void:
 		self.emit(f"if q := {o}:\n\t\tprint(q)")
 	else if pick < 26 and l != "":
 		h1 := self.moved()
-		self.emit(f"grow(var {l}, {h1})")
+		self.emit(f"grow({l}, {h1})")
 	else if pick < 27 and p != "":
 		h1 := self.moved()
-		self.emit(f"rename(var {p}, {h1})")
+		self.emit(f"rename({p}, {h1})")
 	else if pick < 28 and p != "":
 		v := self.fresh("w")
 		self.emit(f"var {v} = wrap({p})")
 		self.wrappers.append(v)
 	else if pick < 29 and w != "":
 		h1 := self.moved()
-		self.emit(f"upd(var {w}, {h1})")
+		self.emit(f"upd({w}, {h1})")
 	else if pick < 30 and s != "":
 		v := self.fresh("c")
 		self.emit(f"{v} := fn(): {s}.length()\n\tprint(f\"\{{v}()\}\")")
