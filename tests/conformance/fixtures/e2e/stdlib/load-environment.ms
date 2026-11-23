@@ -26,7 +26,7 @@ test "load_environment errors change nothing":
 	path := join([dir.path(), "b.env"])
 	write_file(path, "MS_LOAD_C=1\nexport  =bad\n").wait()?
 	set_environment("MS_LOAD_C", none)?
-	expect_equal(load_environment(path).err().kind.get_or(""), "EBADMSG")?
+	expect_equal(load_environment(path).err().kind.clone().get_or(""), "EBADMSG")?
 	expect_false((environment()?).contains("MS_LOAD_C"))?
-	expect_equal(load_environment(path, 3).err().kind.get_or(""), "EOVERFLOW")?
-	expect_equal(load_environment(dir.path()).err().kind.get_or(""), "EINVAL")?
+	expect_equal(load_environment(path, 3).err().kind.clone().get_or(""), "EOVERFLOW")?
+	expect_equal(load_environment(dir.path()).err().kind.clone().get_or(""), "EINVAL")?
