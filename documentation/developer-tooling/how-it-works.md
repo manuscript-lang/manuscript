@@ -41,11 +41,11 @@ Built my-app
 Arguments: 2
 ```
 
-On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. `ms build` defaults to optimized `Release`, while `ms run` and `ms test` default to `Debug`, which builds with Cranelift. Choose [a build level](builds/build-levels.md) for unoptimized debugging or a smaller executable.
+On Windows, name the output `my-app.exe` and run `.\my-app.exe first second`. `ms build` defaults to optimized `Release`, while `ms run` and `ms test` default to `Debug`, which optimizes lightly and builds faster. Choose [a build level](builds/build-levels.md) for unoptimized debugging or a smaller executable.
 
 Share the executable only with the platform you built it on. On Linux, the default target uses glibc 2.28 or newer. Use `ms build ms.toml --static -o my-app` for a self-contained musl executable; see [platform linking](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#platform-linking) for supported targets. Files your program opens by path remain external: distribute them with the program, or [embed assets](builds/project-configuration.md#embedded-files) in the executable.
 
-The adjacent `my-app.ms-build.json` holds the compiler version, build level and backend; it is not needed to run the executable. Its `backend` is `llvm` when LLVM compiled the program's functions, or `cranelift` otherwise. Keep the source and debug artifacts if you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
+The adjacent `my-app.ms-build.json` holds the compiler version, build level and backend (`llvm`); it is not needed to run the executable. Keep the source and debug artifacts if you want to [investigate a profile or debug source lines](debugging/debugger-integration.md).
 
 ## Check a change before sharing it {#one-binary}
 
@@ -76,7 +76,7 @@ Native builds use `lld` to link the executable. Optimized builds also use LLVM t
 | Linker | `MS_LLD`: path to a compatible `lld` executable | `<cache>/ms/lld/` |
 | LLVM optimization | `MS_LLVM_TOOLS`: directory containing `opt`, `llc` and `llvm-link` | `<cache>/ms/llvm/` |
 
-To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. `MS_BACKEND=cranelift` skips LLVM optimization; a working linker is still required. If the LLVM download fails, the build falls back to Cranelift. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
+To avoid these tool downloads, provision the local tools or populate the matching caches beforehand. If the linker is missing and cannot be downloaded, linking fails with guidance to set `MS_LLD`.
 
 See [cache locations](builds/incremental-compilation.md) and [platform linking details](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#differences-users-can-see). Compiling `ms` itself has separate [source-build prerequisites](https://github.com/manuscript-lang/manuscript/blob/main/documentation/contributing/rust-toolchain.md#build-and-run).
 

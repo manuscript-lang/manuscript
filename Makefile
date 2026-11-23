@@ -38,7 +38,7 @@ verify-full: verify conform removed-check book-check dist-check
 $(TOOLS): build
 	HUGO="$(HUGO)" $(MS) run tools/$@.ms
 
-# The corpus with every dead statement slot poisoned (MS_POISON_SLOTS=1), under the default backend and Cranelift.
+# The corpus with every dead statement slot poisoned (MS_POISON_SLOTS=1), under the default build type.
 # The corpus with dead stack cells filled with 0xDD (the compiler reads MS_POISON_SLOTS): a view that outlives its slot
 # prints garbage in every build.
 poison-check: build
