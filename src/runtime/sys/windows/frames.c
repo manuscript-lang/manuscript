@@ -45,6 +45,8 @@ bool ms_sys_native_start(uintptr_t anchor_pc, bool (*is_source)(uintptr_t, const
   uintptr_t anchor_image = 0;
   void *const anchor = RtlLookupFunctionEntry(anchor_pc, &anchor_image, NULL);
   if (anchor == NULL) {
+    static const char note[] = "probe: anchor has no unwind entry\n";
+    ms_sys_stderr_write(ms_span_of_text(note));
     return false;
   }
   uintptr_t low = 0;

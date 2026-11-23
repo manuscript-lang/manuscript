@@ -428,14 +428,36 @@ static bool is_native_address(uintptr_t pc, const void *unused) {
   return ms_sys_has_unwind_data(pc);
 }
 
+
+/* PROBE (fault frames on Windows): one line to standard error. */
+static void probe(const char *what, uintptr_t a, uintptr_t b) {
+  char text[128];
+  size_t n = 0;
+  for (const char *c = what; *c != 0 && n < 60; c++) text[n++] = *c;
+  text[n++] = ' ';
+  for (int k = 0; k < 2; k++) {
+    uintptr_t v = k == 0 ? a : b;
+    for (int shift = 60; shift >= 0; shift -= 4) text[n++] = "0123456789abcdef"[(v >> shift) & 15];
+    text[n++] = ' ';
+  }
+  text[n++] = '\n';
+  ms_sys_stderr_write(ms_span_of((const uint8_t *)text, n));
+}
+
 /* Windows: the system's unwind data leads from the runtime's frames to the first frame of generated code; from
  * there each frame's record is found by scanning, since the frame register does not point at it. */
 static void visit_native(uintptr_t anchor, MsFrameVisit visit, void *context) {
   const MsTables *const tables = ms_frames_tables();
   MsSysNativeStart start = {0};
-  if (tables == NULL || !ms_sys_native_start(anchor, is_source_address, tables, MS_FRAMES_WALK_MAX, &start)) {
+  if (tables == NULL) {
+    probe("probe: no tables", anchor, 0);
     return;
   }
+  if (!ms_sys_native_start(anchor, is_source_address, tables, MS_FRAMES_WALK_MAX, &start)) {
+    probe("probe: native_start failed anchor/funcs", anchor, tables->func_count);
+    return;
+  }
+  probe("probe: start pc/sp", start.pc, start.sp);
   uintptr_t low = 0;
   uintptr_t high = 0;
   ms_sys_stack_bounds(&low, &high);
@@ -447,6 +469,7 @@ static void visit_native(uintptr_t anchor, MsFrameVisit visit, void *context) {
     const uintptr_t at = ms_frames_scan_record(start.sp, start.fp, low, high, is_source_address, is_native_address,
                            tables);
     if (at == 0) {
+      probe("probe: no record sp/fp", start.sp, start.fp);
       return;
     }
     uintptr_t record[2] = {0};
