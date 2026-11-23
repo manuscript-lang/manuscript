@@ -60,6 +60,15 @@ static MirValue sf_byte_of_text(MirBuilder *b, MirValue text, MirValue at) {
   return mir_b_emit(b, MOP_StrByte, args, 2, (MirImm){0}, MIR_INT);
 }
 
+/* The answer `v` in the function's own result type: a runtime `u8` that lowering declares as `uint8` or as `bool`. */
+static MirValue sf_flag(MirBuilder *b, bool v) {
+  if (b->func.ret == MIR_BOOL) {
+    return mir_b_bconst(b, v);
+  }
+  const MirValue n = mir_b_iconst(b, v ? 1 : 0);
+  return mir_b_emit(b, MOP_Conv, &n, 1, (MirImm){0}, b->func.ret);
+}
+
 static void sf_call_slow(MirBuilder *b, uint32_t slow_ext, const MirValue *args, uint32_t nargs) {
   mir_b_ret(b, mir_b_call_rt(b, slow_ext, args, nargs));
 }
@@ -112,7 +121,7 @@ static void sf_parse_int(MirBuilder *b, uint32_t slow_ext) {
   mir_b_seal_block(b, header);
   mir_b_seal_block(b, fail);
   mir_b_switch_to(b, fail);
-  mir_b_ret(b, mir_b_bconst(b, false));
+  mir_b_ret(b, sf_flag(b, false));
   mir_b_switch_to(b, slow);
   const MirValue rest[2] = {text, out};
   sf_call_slow(b, slow_ext, rest, 2);
@@ -121,7 +130,7 @@ static void sf_parse_int(MirBuilder *b, uint32_t slow_ext) {
   const MirValue negated = mir_b_emit(b, MOP_INeg, &magnitude, 1, (MirImm){0}, MIR_INT);
   const MirValue pair[2] = {out, mir_b_select(b, minus, negated, magnitude)};
   (void)mir_b_emit(b, MOP_Store, pair, 2, (MirImm){0}, MIR_NONE);
-  mir_b_ret(b, yes);
+  mir_b_ret(b, sf_flag(b, true));
 }
 
 /* ---- contains ---- */
@@ -153,9 +162,9 @@ static void sf_contains(MirBuilder *b, uint32_t slow_ext) {
   mir_b_br(b, header, NULL, 0);
   mir_b_seal_block(b, header);
   mir_b_switch_to(b, hit);
-  mir_b_ret(b, mir_b_bconst(b, true));
+  mir_b_ret(b, sf_flag(b, true));
   mir_b_switch_to(b, miss);
-  mir_b_ret(b, mir_b_bconst(b, false));
+  mir_b_ret(b, sf_flag(b, false));
   mir_b_switch_to(b, slow);
   const MirValue rest[2] = {hay, needle};
   sf_call_slow(b, slow_ext, rest, 2);
@@ -501,7 +510,8 @@ static const SfKind sf_kinds[] = {
 static const SfKind *sf_kind_of(const MirExtern *e) {
   for (uint32_t k = 0; k < sizeof sf_kinds / sizeof *sf_kinds; k++) {
     const SfKind *kind = &sf_kinds[k];
-    if (kind->role != e->role || kind->nparams != e->nparams || kind->ret != e->ret) {
+    const bool flag = kind->ret == MIR_BOOL && e->ret == MIR_UINT8; /* a `u8` answer declared as uint8 */
+    if (kind->role != e->role || kind->nparams != e->nparams || (kind->ret != e->ret && !flag)) {
       continue;
     }
     bool same = true;
@@ -513,13 +523,13 @@ static const SfKind *sf_kind_of(const MirExtern *e) {
   return NULL;
 }
 
-static uint32_t sf_build(MirModule *m, const SfKind *kind, uint32_t slow_ext) {
+static uint32_t sf_build(MirModule *m, const SfKind *kind, uint32_t slow_ext, MirTy ret) {
   MirParam params[4];
   for (uint32_t p = 0; p < kind->nparams; p++) {
     params[p] = (MirParam){kind->params[p], MM_BORROW};
   }
   MirBuilder b;
-  mir_b_init_fast_path(&b, m, mir_name(m, ms_span_of_text(kind->name)), params, kind->nparams, kind->ret);
+  mir_b_init_fast_path(&b, m, mir_name(m, ms_span_of_text(kind->name)), params, kind->nparams, ret);
   kind->build(&b, slow_ext);
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
@@ -542,7 +552,7 @@ bool opt_strfast(MirModule *m) {
         }
         uint32_t *helper = &helpers[kind - sf_kinds];
         if (*helper == MIR_NONE) {
-          *helper = sf_build(m, kind, inst->imm.a);
+          *helper = sf_build(m, kind, inst->imm.a, m->externs.ptr[inst->imm.a].ret);
           inst = &m->funcs.ptr[fi].blocks.ptr[bi].insts.ptr[ii]; /* the function array may have moved */
         }
         if (*helper == MIR_NONE) {

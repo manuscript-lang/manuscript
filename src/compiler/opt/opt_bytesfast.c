@@ -31,6 +31,15 @@ static MirValue bf_memory(MirBuilder *b, MirValue bytes, MirTy ty) {
   return slot;
 }
 
+/* The constant `v` as a status of type `ty`: the runtime answers `u8`, which lowering may declare as bool, uint8 or int. */
+static MirValue bf_status(MirBuilder *b, MirTy ty, int64_t v) {
+  if (ty == MIR_BOOL) {
+    return mir_b_bconst(b, v != 0);
+  }
+  const MirValue n = mir_b_iconst(b, v);
+  return ty == MIR_INT ? n : mir_b_emit(b, MOP_Conv, &n, 1, (MirImm){0}, ty);
+}
+
 /* `read_word`: the parameters are those of the runtime function, in order. */
 static uint32_t bf_build_read_word(MirModule *m, uint32_t slow_ext, const MirExtern *e) {
   MirBuilder b;
@@ -75,12 +84,12 @@ static uint32_t bf_build_read_word(MirModule *m, uint32_t slow_ext, const MirExt
   mir_b_switch_to(&b, store);
   const MirValue pair[2] = {out, loaded};
   (void)mir_b_emit(&b, MOP_Store, pair, 2, (MirImm){0}, MIR_NONE);
-  mir_b_ret(&b, mir_b_iconst(&b, 0));
+  mir_b_ret(&b, bf_status(&b, e->ret, 0));
   mir_b_switch_to(&b, slow);
   const MirValue args[5] = {bytes, at, width, little, out};
   mir_b_ret(&b, mir_b_call_rt(&b, slow_ext, args, 5));
   mir_b_switch_to(&b, fail);
-  mir_b_ret(&b, mir_b_iconst(&b, BF_ERANGE));
+  mir_b_ret(&b, bf_status(&b, e->ret, BF_ERANGE));
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
@@ -138,11 +147,32 @@ static uint32_t bf_build_index_of_byte(MirModule *m, uint32_t slow_ext, const Mi
   mir_b_switch_to(&b, found);
   const MirValue pair[2] = {out, at};
   (void)mir_b_emit(&b, MOP_Store, pair, 2, (MirImm){0}, MIR_NONE);
-  mir_b_ret(&b, mir_b_bconst(&b, true));
+  mir_b_ret(&b, bf_status(&b, e->ret, 1));
   mir_b_seal_block(&b, slow);
   mir_b_switch_to(&b, slow); /* the runtime takes over from the end of the window, or from `start` when none */
   const MirValue args[4] = {bytes, ps[1], resume, out};
   mir_b_ret(&b, mir_b_call_rt(&b, slow_ext, args, 4));
+  uint32_t id = MIR_NONE;
+  return mir_b_finish(&b, &id) ? id : MIR_NONE;
+}
+
+/* `bytes_append(builder, value)`: a byte and room in the builder store in line (`bytes.push`); a value that is not a
+ * byte, or a full builder, calls the runtime, which faults or grows. */
+static uint32_t bf_build_append(MirModule *m, uint32_t slow_ext, const MirExtern *e) {
+  MirBuilder b;
+  mir_b_init_fast_path(&b, m, mir_name(m, ms_span_of_text("bytes_append")), e->params, 2, e->ret);
+  MirValue ps[2];
+  mir_b_params(&b, ps, 2);
+  const MirBlock done = mir_b_new_block(&b), slow = mir_b_new_block(&b);
+  const MirValue pushed = mir_b_emit(&b, MOP_BytesPush, ps, 2, (MirImm){0}, MIR_BOOL);
+  mir_b_br_if(&b, pushed, done, NULL, 0, slow, NULL, 0);
+  mir_b_seal_block(&b, done);
+  mir_b_seal_block(&b, slow);
+  mir_b_switch_to(&b, done);
+  mir_b_ret(&b, MIR_NONE);
+  mir_b_switch_to(&b, slow);
+  (void)mir_b_call_rt(&b, slow_ext, ps, 2);
+  mir_b_ret(&b, MIR_NONE);
   uint32_t id = MIR_NONE;
   return mir_b_finish(&b, &id) ? id : MIR_NONE;
 }
@@ -153,12 +183,15 @@ static bool bf_is_bytes(MirTy t) { return t == MIR_BYTES || t == MIR_PTR; }
 
 static bool bf_shape(const MirExtern *e) {
   if (e->role == MR_BYTES_READ_WORD) {
-    return e->nparams == 5 && e->ret == MIR_INT && bf_is_bytes(e->params[0].ty) && e->params[1].ty == MIR_INT &&
+    return e->nparams == 5 && (e->ret == MIR_INT || e->ret == MIR_UINT8) && bf_is_bytes(e->params[0].ty) && e->params[1].ty == MIR_INT &&
        e->params[2].ty == MIR_INT && e->params[3].ty == MIR_BOOL && e->params[4].ty == MIR_PTR;
   }
   if (e->role == MR_BYTES_INDEX_OF_BYTE) {
-    return e->nparams == 4 && e->ret == MIR_BOOL && bf_is_bytes(e->params[0].ty) && bf_is_int(e->params[1].ty) &&
+    return e->nparams == 4 && (e->ret == MIR_BOOL || e->ret == MIR_UINT8) && bf_is_bytes(e->params[0].ty) && bf_is_int(e->params[1].ty) &&
        e->params[2].ty == MIR_INT && e->params[3].ty == MIR_PTR;
+  }
+  if (e->role == MR_BYTES_APPEND) {
+    return e->nparams == 2 && e->ret == MIR_VOID && e->params[0].ty == MIR_PTR && bf_is_int(e->params[1].ty);
   }
   return false;
 }
@@ -192,8 +225,9 @@ bool opt_bytesfast(MirModule *m) {
           }
         }
         if (helper == MIR_NONE) {
-          helper = role == MR_BYTES_READ_WORD ? bf_build_read_word(m, inst->imm.a, e)
-                            : bf_build_index_of_byte(m, inst->imm.a, e);
+          helper = role == MR_BYTES_READ_WORD  ? bf_build_read_word(m, inst->imm.a, e)
+                   : role == MR_BYTES_APPEND ? bf_build_append(m, inst->imm.a, e)
+                                             : bf_build_index_of_byte(m, inst->imm.a, e);
           if (helper == MIR_NONE) {
             continue;
           }
