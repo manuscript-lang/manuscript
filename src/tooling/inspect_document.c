@@ -175,6 +175,10 @@ static int64_t compare_sources(uint8_t *env, const uint8_t *left, const uint8_t 
   return order != 0 ? order : (int64_t)a.len - (int64_t)b.len;
 }
 
+/* The document describes the user's modules only: the standard library's entities, sites and hashes change with every
+ * stdlib edit, and nothing of the user's program depends on listing them (a call's target names the library function). */
+static bool is_user(const Doc *d, uint32_t module) { return module < d->program->user_modules; }
+
 static void write_document(Doc *d, Json *j, MsSpan build_id, const Local *locals, size_t local_count,
                            const SourceRow *sources, size_t source_count) {
   const MsInspection *in = &d->inspection;
@@ -209,6 +213,9 @@ static void write_document(Doc *d, Json *j, MsSpan build_id, const Local *locals
   open(j, '[');
   for (size_t i = 0; i < in->entities.len; i++) {
     const MsEntity *e = &in->entities.ptr[i];
+    if (!is_user(d, module_of(d, e->file))) {
+      continue;
+    }
     member(j);
     open(j, '{');
     text_member(j, "id", e->id);
@@ -237,6 +244,9 @@ static void write_document(Doc *d, Json *j, MsSpan build_id, const Local *locals
   open(j, '[');
   for (size_t i = 0; i < in->calls.len; i++) {
     const MsCallSite *s = &in->calls.ptr[i];
+    if (!is_user(d, module_of(d, s->file))) {
+      continue;
+    }
     member(j);
     open(j, '{');
     text_member(j, "id", s->id);
@@ -251,6 +261,9 @@ static void write_document(Doc *d, Json *j, MsSpan build_id, const Local *locals
   open(j, '[');
   for (size_t i = 0; i < in->statements.len; i++) {
     const MsStatementSite *s = &in->statements.ptr[i];
+    if (!is_user(d, s->module)) {
+      continue;
+    }
     member(j);
     open(j, '{');
     text_member(j, "file", file_of(d, s->module));
@@ -269,19 +282,20 @@ void ms_inspect_document(MsArena *arena, const MsCheckProgram *program, MsStrBui
   ms_inspect_collect(arena, program, true, &d.inspection);
   size_t local_count = 0;
   const Local *locals = collect_locals(&d, &local_count);
-  SourceRow *sources = MS_ARENA_NEW_ARRAY(arena, SourceRow, program->modules.len + 1);
-  for (uint32_t m = 0; m < program->modules.len; m++) {
+  const size_t source_count = program->user_modules;
+  SourceRow *sources = MS_ARENA_NEW_ARRAY(arena, SourceRow, source_count + 1);
+  for (uint32_t m = 0; m < source_count; m++) {
     sources[m] = (SourceRow){.file = file_of(&d, m), .module = m};
   }
-  ms_sort((uint8_t *)sources, program->modules.len, sizeof(SourceRow), compare_sources, NULL);
+  ms_sort((uint8_t *)sources, source_count, sizeof(SourceRow), compare_sources, NULL);
   MsStrBuild compact = ms_strbuild_new();
   Json digest = {.out = &compact};
-  write_document(&d, &digest, ms_span_of_text(""), locals, local_count, sources, program->modules.len);
+  write_document(&d, &digest, ms_span_of_text(""), locals, local_count, sources, source_count);
   uint8_t build_id[MS_SHA256_HEX_LEN];
   ms_sha256_hex(ms_strbuild_span(&compact), build_id);
   ms_strbuild_free(&compact);
   Json pretty = {.out = out, .pretty = true};
-  write_document(&d, &pretty, ms_span_of(build_id, MS_SHA256_HEX_LEN), locals, local_count, sources, program->modules.len);
+  write_document(&d, &pretty, ms_span_of(build_id, MS_SHA256_HEX_LEN), locals, local_count, sources, source_count);
   ms_strbuild_append_byte(out, '\n');
   ms_inspection_free(&d.inspection);
 }
