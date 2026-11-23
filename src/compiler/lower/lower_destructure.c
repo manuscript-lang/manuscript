@@ -107,11 +107,12 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
       return false;
     }
   }
-  /* A resource the pattern leaves out is taken from the record too, and closes where the scope ends. */
+  /* A resource the pattern leaves out is taken from the record too, and closes at the statement. */
   const MsDef *record = owned && checked_record != MS_TY_NONE ? ms_check_def_of(fn->cx->program, checked_record) : NULL;
-  for (uint32_t index = 0; record != NULL && index < def->nfields && index < record->fields.len && index < 32; index++) {
+  for (uint32_t at = 0; record != NULL && at < def->nfields && at < record->fields.len && at < 32; at++) {
+    const uint32_t index = def->nfields - 1 - at; /* the last field closes first */
     const MsTy left = ms_check_part_type(fn->cx->program, checked_record, record, record->fields.ptr[index].ty);
-    if ((taken & (UINT32_C(1) << index)) != 0 || !fn_temp_closes(fn, left)) {
+    if ((taken & (UINT32_C(1) << index)) != 0 || !fn_temp_closes(fn, left) || lower_part_close(fn->cx, left) == MIR_NONE) {
       continue;
     }
     MirValue part = mir_b_emit(&fn->b, MOP_TypeGet, &value, 1, (MirImm){.tag = MI_FIELD, .a = data->id, .b = index},
@@ -123,9 +124,11 @@ bool fn_bind_parts(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
     if (owner != NULL) {
       fn_scope_var_moved(fn, *owner, index);
     }
-    if (!fn_close_replaced(fn, left, part)) {
-      return false;
+    const uint32_t close = lower_part_close(fn->cx, left);
+    if (close == MIR_NONE) {
+      return fn_fail(fn, "a resource part the pattern leaves out has no close");
     }
+    lower_close_check(&fn->b, mir_b_call(&fn->b, close, &part, 1));
   }
   if (taken != 0 && owner == NULL) {
     (void)mir_b_emit(&fn->b, MOP_TypeRelease, &value, 1, (MirImm){.tag = MI_TYPEMASK, .a = data->id, .b = taken}, MIR_NONE);
