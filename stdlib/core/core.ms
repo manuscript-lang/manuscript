@@ -462,6 +462,12 @@ fn padding_for(text: String, target_length: Int, padding: String) String:
 	// Repeating first makes an oversized request fault at the string limit instead of
 	// looping to it.
 	source := padding.repeat(missing / padding.scalar_length() + 1)
+
+	// ASCII padding: a byte is a scalar, so the filler is one copy of the first bytes.
+	if padding.length() == padding.scalar_length():
+		filler := source.view(0, missing).clone()
+		return filler
+
 	var filler = ""
 	var count = 0
 
