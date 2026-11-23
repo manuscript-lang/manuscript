@@ -5,6 +5,7 @@
 #include "runtime/std/fs_job.h"
 
 #include "base/utf8.h"
+#include "runtime/core/task.h"
 #include "runtime/core/unwind.h"
 #include "runtime/io/pool.h"
 
@@ -20,7 +21,9 @@ void ms_fs_job_free(MsFsJob *job) {
 }
 
 void ms_fs_run(MsFsJob *job, void (*run)(void *job)) {
-  if (ms_pool_on_thread()) {
+  /* The only task has nothing to keep running while the call blocks, and handing the job to the pool and back
+   * costs two thread wake-ups (about 50 microseconds, most of a small file read). */
+  if (ms_pool_on_thread() || ms_task_count() <= 1) {
     run(job);
     return;
   }

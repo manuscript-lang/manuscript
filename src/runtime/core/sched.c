@@ -2,6 +2,7 @@
 #include "runtime/core/scheduler.h"
 
 #include "base/alloc.h"
+#include "runtime/core/drop_queue.h"
 #include "runtime/core/isolate.h"
 #include "runtime/sys/sys.h"
 
@@ -165,6 +166,7 @@ void ms_sched_teardown(void) {
   ms_slot_list_free(&sched->slots);
   ms_index_list_free(&sched->free_slots);
   ms_free(sched->ready);
+  ms_drop_queue_release();
   ms_thread_sched = NULL;
   ms_free(sched);
 }

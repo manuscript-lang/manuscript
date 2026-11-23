@@ -529,7 +529,7 @@ static bool il_auto_ok(IlRun *r, uint32_t bi, const MirInst *inst, const MirFunc
       return false;
     }
   }
-  uint32_t limit = OPT_INLINE_BASE_THRESHOLD;
+  uint32_t limit = r->m->inline_base != 0 ? r->m->inline_base : OPT_INLINE_BASE_THRESHOLD;
   if (r->sites[inst->imm.a] == 1) {
     limit += IL_SINGLE_CALLER_BONUS;
   }

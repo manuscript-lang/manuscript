@@ -16,8 +16,12 @@ set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
 set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
+# Arenas commit lazily: with eager commit (the default where the OS overcommits) a program's first large
+# allocations cost about 1.5 ms more than the same code a second time, which was most of `map_put_get_8k`
+# (92 ns per op against 33) and half of `string_append_50k` in bench/perf/programs.
+set(MI_EXTRA_CPPDEFS "MI_DEFAULT_ARENA_EAGER_COMMIT=0" CACHE STRING "" FORCE)
 if(WIN32)
-  set(MI_EXTRA_CPPDEFS "MI_MINGW_UCRT64" CACHE STRING "" FORCE)
+  set(MI_EXTRA_CPPDEFS "MI_MINGW_UCRT64;MI_DEFAULT_ARENA_EAGER_COMMIT=0" CACHE STRING "" FORCE)
 endif()
 add_subdirectory(${MS_TP}/mimalloc EXCLUDE_FROM_ALL)
 # The project builds with CMAKE_C_EXTENSIONS OFF; mimalloc needs GNU extensions (syscall, madvise).

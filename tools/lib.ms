@@ -4,10 +4,10 @@ import (
 	sha256 from "@std/crypto/crypto.ms",
 	hex_encode from "@std/data/encoding.ms",
 	stderr from "@std/io/io.ms",
-	environment, set_environment from "@std/os/env.ms",
+	environment, set_environment, working_directory from "@std/os/env.ms",
 	canonicalize, read_file from "@std/os/fs.ms",
 	SpawnOptions, Stdio, run, spawn from "@std/os/process.ms",
-	Os, os from "@std/os/system.ms",
+	Os, os, system_info from "@std/os/system.ms",
 )
 
 // `linux`, `macos` or `windows`.
@@ -28,11 +28,11 @@ export fn dist_os() String:
 	if host() == "macos": return "darwin"
 	return host()
 
-// The distribution architecture name: `amd64` or `arm64`.
+// The distribution architecture name: `amd64` or `arm64`. The runtime reports the
+// architecture ms was built for; `uname -m` in an MSYS2 shell on Windows arm64 runs as
+// an emulated x86-64 process and says `x86_64`.
 export fn dist_arch() String:
-	machine := capture("uname", ["-m"]).trim()
-	if machine == "aarch64" or machine == "arm64" or machine == "ARM64": return "arm64"
-
+	if system_info().architecture == "arm64": return "arm64"
 	return "amd64"
 
 // Prints `message` and a newline to standard error.
@@ -55,6 +55,12 @@ export fn status(code: Int) Int:
 // searched. A program that cannot start, or one that ends with a status above 125,
 // reports 125.
 export fn run_program(program: String, arguments: List[String]) Int:
+	return run_program_in(program, arguments, null)
+
+// `run_program` in the directory `cwd` (the caller's when none). A path with a drive
+// letter in an argument reads as `host:file` to GNU tar, so a caller on Windows names
+// files relative to `cwd` instead.
+export fn run_program_in(program: String, arguments: List[String], cwd: String?) Int:
 	if child := spawn(
 		program,
 		arguments,
@@ -62,6 +68,7 @@ export fn run_program(program: String, arguments: List[String]) Int:
 			stdin: Stdio.Null,
 			stdout: Stdio.Inherit,
 			stderr: Stdio.Inherit,
+			cwd: cwd,
 		),
 	):
 		return status(child.wait().clone().get_or(125))
@@ -94,46 +101,25 @@ export fn rust_arch() String:
 
 	return machine
 
-// Builds the native runtime with allocation counters (`ms-rt` feature `stats`) for the
-// target the programs link against (glibc on Linux, mingw-w64 on Windows) and points
-// MS_RT_LIB at it. The caller's
-// `ms` is the release build (`make build`). Returns a nonzero status when a build fails. LEAK_TARGET_DIR overrides the directory.
+// Builds the counting runtime (`cmake --preset stats`: live blocks, parks and copies
+// printed on standard error at exit, see proposals/c-runtime-stats-variant.md) and
+// points MS at its ms, which the tools then run the programs with. Returns a nonzero
+// status when a build fails.
 export fn use_stats_runtime() Int:
-	stats_target := env("LEAK_TARGET_DIR", "target/leak-stats")
-	var release = "release"
-	var target = ""
-	arch := rust_arch()
+	for step in [["--preset", "stats"], ["--build", "--preset", "stats"]]:
+		out := run("cmake", step.clone()).wait()
 
-	if host() == "linux":
-		target = f"{arch}-unknown-linux-gnu"
-		release = f"{target}/release"
-	else if host() == "windows":
-		target = f"{arch}-pc-windows-gnullvm"
-		release = f"{target}/release"
+		if out.is_error() or out.get().exit_code != 0:
+			note("cmake " + step.join(" ") + " failed")
+			if out.is_ok(): note(
+				out.get().stderr.decode_utf8().get_or(
+					""
+				) + out.get().stdout.decode_utf8().get_or("")
+			)
+			return 1
 
-		mingw := env("MS_MINGW", "target/llvm-bundle/mingw")
-		set_environment(
-			f"CC_{target.replace("-", "_")}",
-			f"{mingw}/bin/{arch}-w64-mingw32-clang",
-		).get()
-
-	set_environment("CARGO_TARGET_DIR", stats_target).get()
-
-	var build = [
-		"build", "--release", "--locked", "-q", "-p", "ms-native", "--features",
-		"ms-rt/stats,ms-native/entry"
-	]
-	if target != "": build = build.concat(["--target", target.clone()])
-
-	var code = run_program("cargo", build)
-	set_environment("CARGO_TARGET_DIR", null).get()
-	if code != 0: return code
-
-	code = run_program("cargo", ["xtask", "runtime"])
-	if code != 0: return code
-
-	lib := canonicalize(f"{stats_target}/{release}/libms_native.a").get()
-	set_environment("MS_RT_LIB", lib).get()
+	root := working_directory().get()
+	set_environment("MS", f"{root}/.artifacts/build/stats/src/cli/ms{exe()}").get()
 	return 0
 
 // The ms that runs the programs under test: `MS` (resolved against `root` when

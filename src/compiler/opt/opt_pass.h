@@ -7,6 +7,7 @@
 bool opt_bytetake(MirModule *m);  /* a result of a dying value reuses its storage */
 bool opt_strfuse(MirModule *m);   /* `s = s + piece` grows `s` in place */
 bool opt_loopslot(MirModule *m);  /* a loop-carried owned value lives in one slot */
+bool opt_fieldview(MirModule *m); /* a `var` record stays in its parameter pointer instead of a chain of cells */
 bool opt_optparam(MirModule *m);  /* an optional scalar block parameter becomes flag and value */
 bool opt_optparam_func(MirModule *m, MirFunc *f);
 bool opt_ifconv(MirModule *m);    /* small pure diamonds become `select` */

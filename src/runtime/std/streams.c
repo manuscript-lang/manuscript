@@ -416,3 +416,16 @@ void msrt_streams_close(int64_t stream) {
   entry_clear_error(entry);
   entry_unlock();
 }
+
+void ms_streams_release_all(void) {
+  ms_spin_lock(&table.lock);
+  for (size_t slot = 0; slot < table.count; slot++) {
+    ms_free(table.entries[slot].out);
+    ms_string_release(&table.entries[slot].error);
+  }
+  ms_free(table.entries);
+  table.entries = NULL;
+  table.count = 0;
+  table.cap = 0;
+  ms_spin_unlock(&table.lock);
+}

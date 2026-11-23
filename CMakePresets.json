@@ -31,6 +31,12 @@
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
     },
     {
+      "name": "stats",
+      "inherits": "ci",
+      "description": "The ci build with the runtime's counters (live blocks, parks, copies) for the leak, cancel and count gates (proposals/c-runtime-stats-variant.md).",
+      "cacheVariables": { "MS_STATS": "ON" }
+    },
+    {
       "name": "sanitize",
       "inherits": "base",
       "cacheVariables": {
@@ -43,12 +49,14 @@
     { "name": "debug", "configurePreset": "debug" },
     { "name": "ci", "configurePreset": "ci" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "stats", "configurePreset": "stats" },
     { "name": "sanitize", "configurePreset": "sanitize" }
   ],
   "testPresets": [
     { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
     { "name": "ci", "configurePreset": "ci", "output": { "outputOnFailure": true } },
     { "name": "release", "configurePreset": "release", "output": { "outputOnFailure": true } },
+    { "name": "stats", "configurePreset": "stats", "output": { "outputOnFailure": true } },
     { "name": "sanitize", "configurePreset": "sanitize", "output": { "outputOnFailure": true } }
   ]
 }

@@ -54,6 +54,10 @@ void ms_net_op_done(MsNetOp *op, int status);
 /* The loop, for handle initialisation on the loop thread. */
 uv_loop_t *ms_net_loop(void);
 
+/* Ends the loop thread and frees the loop, for a process that ends with balanced books (MS_FREE_AT_EXIT); a no-op when no
+ * operation ever ran. No operation may start afterwards. */
+void ms_net_release_all(void);
+
 /* The relative timeout of a native's optional timeout argument; negative for none. */
 int64_t ms_net_timeout(uint8_t has_timeout, int64_t timeout);
 

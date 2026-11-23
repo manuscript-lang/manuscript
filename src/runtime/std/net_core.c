@@ -21,6 +21,8 @@ MsNetCore *ms_net_core_new(MsNetKind kind, bool is_pipe) {
   atomic_init(&core->closed, false);
   atomic_init(&core->stealable, false);
   atomic_init(&core->steal_lock, 0);
+  atomic_init(&core->writing, 0);
+  atomic_init(&core->direct, 0);
   core->local = ms_string_empty();
   core->peer = ms_string_empty();
   return core;
@@ -92,6 +94,8 @@ static void drain_unread(MsNetCore *core) {
 static void close_start(MsNetOp *op) {
   MsNetCore *core = ((CloseOp *)op)->core;
   if (!uv_is_closing(&core->h.handle)) {
+    while (atomic_load(&core->direct) != 0) { /* a thread is inside a socket call of its own (`closed` is set, so no new one starts) */
+    }
     drain_unread(core);
     ms_net_conn_close_ops(core);
     ms_net_listen_close_ops(core);

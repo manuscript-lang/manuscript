@@ -40,5 +40,7 @@ void msrt_streams_error(int64_t stream, MsString *out);
 /* Drains what is buffered, closes an owned descriptor and frees the entry; a gone id does nothing. */
 /* ms-sig: msrt_streams_close(stream: i64) */
 void msrt_streams_close(int64_t stream);
+/* Frees the table and any entry still open, at the process's end. */
+void ms_streams_release_all(void);
 
 #endif

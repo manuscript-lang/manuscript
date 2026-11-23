@@ -18,7 +18,7 @@ type Holder:
 	items: List[Int]
 
 fn mutate(var holder: Holder) Void:
-	var alias = holder.items
+	var alias = holder.items.clone()
 	alias.append(9)
 
 fn conditional(flag: Bool) Void:

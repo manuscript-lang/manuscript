@@ -72,14 +72,20 @@ bool mir_extern_pins_argument(const MirExtern *external);
  * A value kept in a cell is made where it is defined, and a block parameter where each predecessor ends. An object
  * with `shareable` false (a slot whose address is stored, returned, passed to a block or kept by the runtime)
  * keeps its place for the whole function. False when `func` has no object or is too large to analyse. */
+typedef struct MirCellDeath {
+  uint32_t block, index, object; /* the instruction after which `object` is not read again on any path out of the block */
+} MirCellDeath;
+
 typedef struct MirCellMap {
   uint32_t nobjects, words;
   const uint32_t *value, *ordinal;
   const uint64_t *conflict;
   const bool *shareable;
+  const MirCellDeath *deaths; /* filled when the caller asks (MS_POISON_SLOTS), else NULL */
+  uint32_t ndeaths;
 } MirCellMap;
 
 bool mir_cell_conflicts(MsArena *arena, const MirModule *module, const MirFunc *func, const bool *values,
-                        MirCellMap *map);
+                        bool want_deaths, MirCellMap *map);
 
 #endif

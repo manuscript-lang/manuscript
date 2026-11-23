@@ -8,6 +8,17 @@
 #include "compiler/mir/mir_pass.h"
 
 /* A checked operation on a sized integer also faults when its result leaves the type's range. */
+/* MS_POISON_SLOTS: a volatile fill of 0xDD over each shared cell whose occupant `index` of `block` reads last. */
+static void emit_poison_fills(EmitCx *cx, uint32_t block, uint32_t index) {
+  for (uint32_t at = 0; at < cx->npoison; at++) {
+    const EmitPoison *fill = &cx->poison[at];
+    if (fill->block == block && fill->index == index) {
+      ms_strbuild_printf(cx->out, "  call void @llvm.memset.p0.i64(ptr %%cell%u, i8 -35, i64 %u, i1 true)\n", fill->cell,
+                         fill->bytes);
+    }
+  }
+}
+
 static bool emit_instruction(EmitCx *cx, const MirInst *inst, const EmitSite *site) {
   bool handled = false;
   bool ok = emit_scalar_op(cx, inst, site, &handled);
@@ -140,6 +151,7 @@ static bool emit_block(EmitCx *cx, uint32_t block, const uint32_t *last) {
       ok = emit_instruction(cx, inst, &site);
       if (ok) {
         emit_wide_store(cx, inst->res);
+        emit_poison_fills(cx, block, index);
       }
     }
     cx->out = &text;
