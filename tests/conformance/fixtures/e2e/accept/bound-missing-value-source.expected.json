@@ -11,17 +11,17 @@
       "tests": [
         {
           "index": 0,
-          "name": "bound-missing-value-source.ms::bound Error defaults use each invocation line",
+          "name": "bound-missing-value-source.ms::bound ok_or takes its cause at each call",
           "status": "passed"
         },
         {
           "index": 1,
-          "name": "bound-missing-value-source.ms::immutable copies and captured native values keep invocation defaults",
+          "name": "bound-missing-value-source.ms::immutable copies and captured native values keep their receiver",
           "status": "passed"
         },
         {
           "index": 2,
-          "name": "bound-missing-value-source.ms::generic callers and direct calls keep their invocation lines",
+          "name": "bound-missing-value-source.ms::generic callers and direct calls supply their cause",
           "status": "passed"
         },
         {
@@ -31,12 +31,12 @@
         },
         {
           "index": 4,
-          "name": "bound-missing-value-source.ms::required joins preserve native and source behavior with supplied none",
+          "name": "bound-missing-value-source.ms::required joins preserve native behavior",
           "status": "passed"
         },
         {
           "index": 5,
-          "name": "bound-missing-value-source.ms::supplied none remains supplied and nested Optional errors remain intact",
+          "name": "bound-missing-value-source.ms::nested Optional errors remain intact",
           "status": "passed"
         }
       ],
@@ -50,7 +50,7 @@
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN bound-missing-value-source.ms::bound Error defaults use each invocation line\nPASS bound-missing-value-source.ms::bound Error defaults use each invocation line\nRUN bound-missing-value-source.ms::immutable copies and captured native values keep invocation defaults\nPASS bound-missing-value-source.ms::immutable copies and captured native values keep invocation defaults\nRUN bound-missing-value-source.ms::generic callers and direct calls keep their invocation lines\nPASS bound-missing-value-source.ms::generic callers and direct calls keep their invocation lines\nRUN bound-missing-value-source.ms::ordinary callable and inherited defaults receive none\nPASS bound-missing-value-source.ms::ordinary callable and inherited defaults receive none\nRUN bound-missing-value-source.ms::required joins preserve native and source behavior with supplied none\nPASS bound-missing-value-source.ms::required joins preserve native and source behavior with supplied none\nRUN bound-missing-value-source.ms::supplied none remains supplied and nested Optional errors remain intact\nPASS bound-missing-value-source.ms::supplied none remains supplied and nested Optional errors remain intact\n6 tests, 0 failed\n",
+      "stdout": "RUN bound-missing-value-source.ms::bound ok_or takes its cause at each call\nPASS bound-missing-value-source.ms::bound ok_or takes its cause at each call\nRUN bound-missing-value-source.ms::immutable copies and captured native values keep their receiver\nPASS bound-missing-value-source.ms::immutable copies and captured native values keep their receiver\nRUN bound-missing-value-source.ms::generic callers and direct calls supply their cause\nPASS bound-missing-value-source.ms::generic callers and direct calls supply their cause\nRUN bound-missing-value-source.ms::ordinary callable and inherited defaults receive none\nPASS bound-missing-value-source.ms::ordinary callable and inherited defaults receive none\nRUN bound-missing-value-source.ms::required joins preserve native behavior\nPASS bound-missing-value-source.ms::required joins preserve native behavior\nRUN bound-missing-value-source.ms::nested Optional errors remain intact\nPASS bound-missing-value-source.ms::nested Optional errors remain intact\n6 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
