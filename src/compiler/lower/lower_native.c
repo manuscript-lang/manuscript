@@ -256,7 +256,7 @@ static MirValue optional_from_status(LowerFn *fn, MsName name, MirValue *wanted,
   const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, none_block);
-  const MirValue none = mir_b_emit(&fn->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ret);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &none, 1);
   mir_b_seal_block(&fn->b, join);
   mir_b_switch_to(&fn->b, join);

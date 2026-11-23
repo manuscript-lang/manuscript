@@ -71,7 +71,7 @@ static MirValue try_optional(LowerFn *fn, const MsExpr *expr, MirValue value) {
   mir_b_seal_block(&fn->b, some_block);
   mir_b_seal_block(&fn->b, none_block);
   mir_b_switch_to(&fn->b, none_block);
-  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
+  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
   if (absent != MIR_NONE) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &absent, 1, (MirImm){0}, MIR_NONE);
   }
@@ -122,7 +122,7 @@ MirValue fn_try_var_slot(LowerFn *fn, const MsExpr *expr, VarSlot *out) {
   } else if (!(record != MIR_NONE ? fn_put_field(fn, place, record, taken) : fn_put_place(fn, place, taken))) {
     return MIR_NONE;
   }
-  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
+  MirValue absent = ret->kind == MK_OPT ? mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, fn->ret) : fn_default_result(fn);
   if (absent != MIR_NONE) {
     (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &absent, 1, (MirImm){0}, MIR_NONE);
   }

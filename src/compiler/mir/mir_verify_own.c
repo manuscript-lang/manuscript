@@ -226,6 +226,7 @@ void mv_scoped_closures(Mv *v) {
 typedef struct MvOwn {
   Mv *v;
   bool *owned_def;        /* the value is defined owned */
+  bool *vacuous;          /* the value is a `none`: it holds nothing, so it fits a moving position or a return as it is */
   MirValue *owner_of;     /* the owned value a borrow points into, or MIR_NONE */
   bool *views;            /* the value points into its operands */
   MirValue *pointer_owner; /* the owner a pointer from a runtime lookup points into */
@@ -276,6 +277,7 @@ static void mv_own_init(Mv *v, MvOwn *o) {
   o->v = v;
   o->owned_def = mv_flags(v, (uint32_t)f->values.len);
   o->views = mv_flags(v, (uint32_t)f->values.len);
+  o->vacuous = mv_flags(v, (uint32_t)f->values.len);
   o->watched = mv_flags(v, (uint32_t)f->values.len);
   o->owner_of = mv_values_none(v, (uint32_t)f->values.len);
   o->pointer_owner = mv_values_none(v, (uint32_t)f->values.len);
@@ -303,6 +305,7 @@ static void mv_own_init(Mv *v, MvOwn *o) {
       if (mir_result_mode(m, f, in, &mode) && mode == MM_MOVE) {
         o->owned_def[in->res] = true;
       }
+      o->vacuous[in->res == MIR_NONE ? 0 : in->res] |= in->op == MOP_OptNone && in->res != MIR_NONE;
     }
   }
 }
@@ -418,8 +421,10 @@ static void mv_check_operands(MvOwn *o, MirBlock bi, const MirInst *in, MvSet *l
     } else if (modes[k] != MM_MOVE) {
       continue;
     } else if (!o->owned_def[a]) {
-      mv_err(v, bi, "%s: moving position needs an owned value, %%%u (made by %s) is borrowed (retain it first)",
-         mv_op_name(in), a, mv_made_by(v, a));
+      if (!o->vacuous[a]) {
+        mv_err(v, bi, "%s: moving position needs an owned value, %%%u (made by %s) is borrowed (retain it first)",
+           mv_op_name(in), a, mv_made_by(v, a));
+      }
     } else if (mv_seen(consumed, nconsumed, a)) {
       mv_err(v, bi, "%s: %%%u consumed twice", mv_op_name(in), a);
     } else {
@@ -459,7 +464,9 @@ static void mv_own_ret(MvOwn *o, MirBlock bi, const MirTerm *t, MvSet *live) {
         mv_err(v, bi, "ret: %%%u is owned, but this function returns a borrow; it would leak", x);
       }
     } else if (!o->owned_def[x]) {
-      mv_err(v, bi, "ret: %%%u is borrowed; return an owned value (retain it first)", x);
+      if (!o->vacuous[x]) {
+        mv_err(v, bi, "ret: %%%u is borrowed; return an owned value (retain it first)", x);
+      }
     } else if (!mvs_remove(live, x)) {
       mv_err(v, bi, "ret: %%%u used after it was consumed", x);
     }
@@ -488,8 +495,10 @@ static MvSet mv_edge_live(MvOwn *o, MirBlock bi, const MirTarget *t, const MvSet
     } else if (dest->params.ptr[k].mode != MM_MOVE) {
       continue;
     } else if (!o->owned_def[a]) {
-      mv_err(v, bi, "branch to b%u: parameter %%%u takes ownership but %%%u is borrowed",
-         t->block, dest->params.ptr[k].value, a);
+      if (!o->vacuous[a]) {
+        mv_err(v, bi, "branch to b%u: parameter %%%u takes ownership but %%%u is borrowed",
+           t->block, dest->params.ptr[k].value, a);
+      }
     } else if (mv_seen(seen, nseen, a)) {
       mv_err(v, bi, "branch to b%u: %%%u passed to two owning parameters", t->block, a);
     } else {

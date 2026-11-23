@@ -247,7 +247,7 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   if (checked == MS_TY_NONE && fn->hint != MIR_VOID && mir_ty_data(fn->cx->module, fn->hint)->kind == MK_OPT &&
       (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
     /* A default value the checker did not type: `none` for an optional parameter or field. */
-    return fn_emit(fn, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, fn->hint);
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, fn->hint);
   }
   if (checked == MS_TY_NONE || (ref != NULL && ref->kind != MS_REF_NONE && ref->kind != MS_REF_CASE)) {
     (void)fn_fail(fn, "a name does not refer to a parameter, a local or a function (at %u:%u, reference kind %d, type %s)", expr->pos.line,
@@ -257,7 +257,7 @@ MirValue fn_name_ref(LowerFn *fn, const MsExpr *expr, const MsRef *ref) {
   const MirTy ty = fn_type(fn, checked);
   const MirTyData *data = mir_ty_data(fn->cx->module, ty);
   if (data->kind == MK_OPT && (ref == NULL || ref->kind == MS_REF_NONE || ref->kind == MS_REF_CASE)) {
-    return fn_emit(fn, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ty); /* `none` */
+    return fn_emit(fn, MOP_OptNone, NULL, 0, (MirImm){0}, ty); /* `none`: owned only where taken, below */
   }
   if (data->kind == MK_ALT && ref != NULL && ref->kind == MS_REF_CASE) {
     const MirImm imm = {.tag = MI_CASE, .a = data->id, .b = ref->index};

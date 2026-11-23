@@ -119,7 +119,7 @@ static bool is_empty_optional(const LowerFn *fn, MirValue value) {
     return false;
   }
   const MirOp op = (MirOp)insts->ptr[insts->len - 1].op;
-  return op == MOP_OptNone || op == MOP_OptNoneOwned;
+  return op == MOP_OptNone;
 }
 
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {

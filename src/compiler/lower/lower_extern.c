@@ -252,7 +252,7 @@ bool fn_status_call(LowerFn *fn, MsName name, uint32_t module, const MirValue *a
     const MirValue ok_some = build_result(fn, alt, 0, some, ret);
     mir_b_br(&fn->b, join, &ok_some, 1);
     mir_b_switch_to(&fn->b, none_block);
-    const MirValue none = mir_b_emit(&fn->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ok_ty);
+    const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ok_ty);
     success = build_result(fn, alt, 0, none, ret);
   } else {
     success = build_result(fn, alt, 0, value, ret);
@@ -407,7 +407,7 @@ bool fn_value_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32
   const MirValue some = mir_b_emit(&fn->b, MOP_OptSome, &value, 1, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &some, 1);
   mir_b_switch_to(&fn->b, none_block);
-  const MirValue none = mir_b_emit(&fn->b, MOP_OptNoneOwned, NULL, 0, (MirImm){0}, ret);
+  const MirValue none = mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, ret);
   mir_b_br(&fn->b, join, &none, 1);
   mir_b_seal_block(&fn->b, join);
   mir_b_switch_to(&fn->b, join);
