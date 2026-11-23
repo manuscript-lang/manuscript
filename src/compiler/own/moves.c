@@ -28,6 +28,7 @@ typedef struct Moves {
   MsBindingList reads;  /* `if p := name:` scrutinees that are not resources: the payload is a view, the name stays whole */
   MsBindingList moving; /* binding sites of `move` parameters of the body */
   MsBindingList borrowed; /* binding sites of names bound to a view of another value */
+  MsBindingList owners;   /* binding sites of locals that hold a value of their own: made by a call or literal, or a `var` */
   MsBindingList outer;  /* what the lambdas around the current expression capture: only borrowed inside them */
   uint32_t depth;       /* lambdas open around the current expression */
   bool instance;        /* checking one instance of a generic body: only a type variable that became a resource is reported */
@@ -271,25 +272,21 @@ static void visit_stmt(void *ctx, const MsStmt *stmt) {
   }
 }
 
-/* A field moved out of a name at that name's last use leaves nothing of the name to read afterwards. */
+static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var);
+static bool mark_last_use(Moves *pass, const MsExpr *name);
+
+/* A field read from a name that owns its value, at that name's last use, may leave the record: nothing of the name is
+ * read afterwards. The lowering moves it only where the consumer takes ownership. */
 static void note_last_field(Moves *pass, const MsExpr *expr) {
-  const MsExpr *root = expr;
-  uint32_t binding = 0;
-  while (root->kind == MS_E_MEMBER) {
-    root = root->u.member.left;
+  if (expr->u.member.left->kind == MS_E_NAME && expr->id < pass->facts->node_count) {
+    pass->facts->last[expr->id] = owner_at_last_use(pass, expr->u.member.left, false);
   }
-  if (root->kind != MS_E_NAME || !ms_bind_of(pass->facts, root->id, &binding) || expr->id >= pass->facts->node_count) {
-    return;
-  }
-  const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(root->id, binding));
-  pass->facts->last[expr->id] = use != NULL && use->last && pass->depth == 0;
 }
 
 static void visit_expr(void *ctx, const MsExpr *expr) {
   Moves *pass = ctx;
   uint32_t binding = 0;
-  if (!pass->instance && expr->kind == MS_E_MEMBER && ms_facts_use(pass->facts, expr->id) == MS_USE_MOVE &&
-      pass->facts->last != NULL) {
+  if (!pass->instance && expr->kind == MS_E_MEMBER && pass->facts->last != NULL) {
     note_last_field(pass, expr);
   }
   const MsCall *call = expr->kind == MS_E_CALL ? ms_facts_call(pass->facts, expr->id) : NULL;
@@ -335,6 +332,9 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
       ms_binding_list_push(&pass->borrowed, one->id);
     }
   }
+  if (expr->kind == MS_E_NAME && ms_facts_use(pass->facts, expr->id) == MS_USE_BORROW) {
+    (void)mark_last_use(pass, expr); /* an owner read for the last time is consumed by whatever takes it */
+  }
   if (expr->kind != MS_E_NAME || ms_facts_use(pass->facts, expr->id) != MS_USE_MOVE || contains(&pass->reads, expr->id) ||
       !ms_bind_of(pass->facts, expr->id, &binding)) {
     return;
@@ -347,24 +347,37 @@ static void visit_expr(void *ctx, const MsExpr *expr) {
 
 }
 
-/* A call `x.get()` whose receiver is an owned resource at its last use consumes it: what the call returns is taken
- * out of the receiver rather than copied. The lowering reads the mark on the receiver name. */
+/* Whether `name` is an owner read for the last time: whatever takes it may take it whole, with nothing left to read
+ * afterwards. A view, a plain parameter and a name read inside a closure are not owners. A `var` record's fields stay in
+ * the record the binding puts back, so only names (not fields) of `var`s count. */
+static bool owner_at_last_use(Moves *pass, const MsExpr *name, bool allow_var) {
+  uint32_t binding = 0;
+  if (name->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->depth != 0 || pass->live == NULL ||
+      !ms_bind_of(pass->facts, name->id, &binding) || contains(&pass->borrowed, binding)) {
+    return false;
+  }
+  const MsRef *ref = ms_facts_ref(pass->facts, name->id);
+  const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(name->id, binding));
+  const bool owner = ref != NULL && (ref->kind == MS_REF_PARAM ? contains(&pass->moving, binding)
+                                                               : ref->kind == MS_REF_LOCAL &&
+                                                                     (contains(&pass->owners, binding) ||
+                                                                      (allow_var && contains(&pass->vars, binding))));
+  return owner && use != NULL && use->last;
+}
+
+static bool mark_last_use(Moves *pass, const MsExpr *name) {
+  if (!owner_at_last_use(pass, name, true)) {
+    return false;
+  }
+  pass->facts->last[name->id] = 1;
+  return true;
+}
+
+/* A call `x.get()` whose receiver is an owner at its last use consumes it: what the call returns is taken out of the
+ * receiver rather than copied. The lowering reads the mark on the receiver name. */
 static bool last_use_receiver(Moves *pass, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
-  const MsExpr *receiver = callee->kind == MS_E_MEMBER ? callee->u.member.left : NULL;
-  uint32_t binding = 0;
-  if (receiver == NULL || receiver->kind != MS_E_NAME || pass->facts->last == NULL || pass->instance || pass->depth != 0 ||
-      pass->live == NULL || !ms_bind_of(pass->facts, receiver->id, &binding) || contains(&pass->borrowed, binding) ||
-      !ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, receiver->id))) {
-    return false;
-  }
-  const MsRef *ref = ms_facts_ref(pass->facts, receiver->id);
-  const MsUseLive *use = ms_live_map_get(&pass->live->uses, ms_live_key(receiver->id, binding));
-  if (ref == NULL || use == NULL || !use->last || (ref->kind == MS_REF_PARAM && !contains(&pass->moving, binding))) {
-    return false;
-  }
-  pass->facts->last[receiver->id] = 1;
-  return true;
+  return callee->kind == MS_E_MEMBER && mark_last_use(pass, callee->u.member.left);
 }
 
 /* A name bound to a call result that borrows (`secure := outcome.get()`) holds a view, not an owner. */
@@ -382,13 +395,30 @@ static void note_view(Moves *pass, const MsStmt *stmt) {
   }
 }
 
+/* Whether an expression makes a value of its own: a call, a literal, or a call's result unwrapped. */
+static bool fresh_value(const MsExpr *value) {
+  while (value->kind == MS_E_UNARY && value->op == MS_U_TRY) {
+    value = value->u.bin.left; /* a call's result unwrapped */
+  }
+  return value->kind == MS_E_CALL || value->kind == MS_E_LIST || value->kind == MS_E_MAP;
+}
+
 static void note_var(void *ctx, const MsStmt *stmt) {
   Moves *pass = ctx;
   if (stmt->kind == MS_S_BIND && !stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     note_view(pass, stmt);
+    if (fresh_value(stmt->u.bind.value) && !contains(&pass->borrowed, stmt->u.bind.pattern->id)) {
+      ms_binding_list_push(&pass->owners, stmt->u.bind.pattern->id);
+    }
   }
   if (stmt->kind == MS_S_BIND && stmt->u.bind.is_mutable && stmt->u.bind.pattern->kind == MS_P_NAME) {
     ms_binding_list_push(&pass->vars, stmt->u.bind.pattern->id);
+  }
+  if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
+      !stmt->u.branch.is_mutable) {
+    if (mark_last_use(pass, stmt->u.branch.cond) && stmt->u.branch.binding->kind == MS_P_NAME) {
+      ms_binding_list_push(&pass->owners, stmt->u.branch.binding->id); /* the payload leaves the name whole */
+    }
   }
   if (stmt->kind == MS_S_IF && stmt->u.branch.binding != NULL && stmt->u.branch.cond->kind == MS_E_NAME &&
       !ms_check_holds_resource(pass->program, ms_facts_type(pass->facts, stmt->u.branch.cond->id))) {
@@ -412,6 +442,7 @@ static void check_body(Moves *pass, MsArena *arena, MsStmts body, MsParams param
   ms_walk_callable(&(MsVisitor){.ctx = pass, .expr = visit_expr, .stmt = visit_stmt, .leave_expr = leave_expr}, params, body);
   spot_list_clear(&pass->spots);
   ms_binding_list_clear(&pass->vars);
+  ms_binding_list_clear(&pass->owners);
   ms_binding_list_clear(&pass->reads);
   ms_binding_list_clear(&pass->moving);
   ms_binding_list_clear(&pass->borrowed);
@@ -464,6 +495,7 @@ bool ms_own_moves_instance(MsCheckProgram *program, uint32_t module, const MsFun
   ms_binding_list_free(&pass.moving);
   ms_binding_list_free(&pass.outer);
   ms_binding_list_free(&pass.vars);
+  ms_binding_list_free(&pass.owners);
   spot_list_free(&pass.spots);
   ms_class_free(&classes);
   ms_arena_free(&arena);
@@ -482,6 +514,7 @@ void ms_own_moves(MsCheckProgram *program) {
     }
     spot_list_free(&pass.spots);
     ms_binding_list_free(&pass.vars);
+  ms_binding_list_free(&pass.owners);
     ms_binding_list_free(&pass.reads);
     ms_binding_list_free(&pass.moving);
     ms_binding_list_free(&pass.borrowed);

@@ -1067,7 +1067,7 @@ fn var Parser.alloc(kind: Int, atom: Int, data: String) Int:
 	id := self.kind.length()
 	self.kind.append(kind)
 	self.atom.append(atom)
-	self.data.append(data)
+	self.data.append(data.clone())
 	self.ns.append(0)
 	self.parent.append(-1)
 	self.first.append(-1)
@@ -3492,7 +3492,7 @@ fn trim_left_len(text: String) Int:
 
 // Removes a leading CR, then a leading LF, from `text` (each only if present).
 fn strip_leading_newline(text: String) String:
-	var d = text
+	var d = text.clone()
 	if d.starts_with("\r"): d = d.view(1, d.length()).clone()
 	if d.starts_with("\n"): d = d.view(1, d.length()).clone()
 	return d
