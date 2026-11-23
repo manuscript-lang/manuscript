@@ -1,4 +1,4 @@
-/* Process state on Windows: no user or group ids and no umask, so those report unsupported. Errors are libuv statuses. */
+/* Process state on Windows: no user or group ids, so those report unsupported. Errors are libuv statuses. */
 #include <uv.h>
 
 #define PSAPI_VERSION 2 /* GetProcessMemoryInfo from kernel32, so no extra library */
@@ -15,12 +15,6 @@ static int last_error(void) { return uv_translate_sys_error((int)GetLastError())
 int64_t ms_sys_process_identity(MsSysIdentity which) {
   (void)which;
   return -1;
-}
-
-int ms_sys_process_umask(uint32_t mask, uint32_t *previous) {
-  (void)mask;
-  (void)previous;
-  return UV_ENOTSUP;
 }
 
 int ms_sys_process_groups(int64_t **list, size_t *count) {

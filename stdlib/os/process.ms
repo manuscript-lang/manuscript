@@ -30,7 +30,6 @@ import (
 	msstd_process_subprocess_terminate,
 	msstd_process_subprocess_wait,
 	msstd_process_title,
-	msstd_process_umask,
 	msstd_process_watch_signals,
 	msstd_system_get_priority,
 	msstd_system_set_priority from "@std/internal/process.ms",
@@ -412,12 +411,6 @@ export fn groups() List[Int]!:
 // ms: effect std.process.read
 export fn resource_usage() ResourceUsage!:
 	return msstd_process_resource_usage()
-
-// Sets the file-creation mask to `mask`, from 0 through 511 (0777), and returns the
-// previous mask. Other values return EINVAL, and Windows returns ENOTSUP.
-// ms: effect std.process.write
-export fn umask(mask: Int) Int!:
-	return msstd_process_umask(mask)
 
 // Sets the real or effective user or group id to `id`, 0..2147483647; other ids return
 // EINVAL. Identity changes require OS permission and are ENOTSUP on Windows.

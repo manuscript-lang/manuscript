@@ -1,5 +1,5 @@
-/* sys/process.h: process state the OS layer owns and libuv does not wrap: the file-creation mask, user and group
- * identity, and the process title; and observing operating-system signals. Implemented per platform: posix/process.c,
+/* sys/process.h: process state the OS layer owns and libuv does not wrap: user and group
+ * identity; and observing operating-system signals. Implemented per platform: posix/process.c,
  * posix/signal.c and windows/process.c, windows/signal.c (which report UV_ENOTSUP for what the platform lacks).
  *
  * A function returns 0 or a negative libuv status (UV_E*), so the natives report it as they report libuv's own
@@ -14,8 +14,6 @@ typedef enum MsSysIdentity { MS_SYS_ID_UID, MS_SYS_ID_GID, MS_SYS_ID_EUID, MS_SY
 
 /* The process's user or group id, or -1 on a platform that has none. */
 int64_t ms_sys_process_identity(MsSysIdentity which);
-/* Sets the file-creation mask and reports the previous one. */
-MS_NODISCARD MS_NONNULL int ms_sys_process_umask(uint32_t mask, uint32_t *previous);
 /* The supplementary groups of the process. */
 MS_NODISCARD MS_NONNULL int ms_sys_process_groups(int64_t **list, size_t *count);
 MS_NODISCARD int ms_sys_process_set_groups(const int64_t *list, size_t count);

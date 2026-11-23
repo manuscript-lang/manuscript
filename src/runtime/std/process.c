@@ -1,5 +1,5 @@
 /* The @std/process natives for the running process: signals sent, identity, resource usage and title. libuv answers what
- * it wraps (memory, rusage, kill); the rest (umask, groups, identity) goes through src/runtime/sys. Nothing here
+ * it wraps (memory, rusage, kill); the rest (groups, identity) goes through src/runtime/sys. Nothing here
  * blocks, so it all runs on the runtime thread. The working directory and the environment are in process_env.c. */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
@@ -25,7 +25,6 @@ enum {
   MAX_SIGNAL = 64,
   FIRST_PATH = 1024,
   TITLE_LIMIT = 4096,
-  MAX_UMASK = 0777,
   SIGNAL_INTERRUPT = 2,
   SIGNAL_TERMINATE = 15,
   KILOBYTE = 1024,
@@ -163,19 +162,6 @@ uint8_t msstd_process_initialize_groups(const MsString *username, int64_t gid, M
   const uint8_t status = apply_groups(groups, total, err);
   ms_free(groups);
   return status;
-}
-
-uint8_t msstd_process_umask(int64_t mask, int64_t *out, MsString *err) {
-  if (mask < 0 || mask > MAX_UMASK) {
-    return invalid(err);
-  }
-  uint32_t previous = 0;
-  const int code = ms_sys_process_umask((uint32_t)mask, &previous);
-  if (code != 0) {
-    return fail_host(code, "umask", err);
-  }
-  *out = (int64_t)previous;
-  return succeed(err);
 }
 
 uint8_t msstd_process_set_identity(const MsString *kind, int64_t id, MsString *err) {

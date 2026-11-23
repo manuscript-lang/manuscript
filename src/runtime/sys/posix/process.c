@@ -1,4 +1,4 @@
-/* Process state on Linux and macOS: umask, groups and identity. Errors are libuv statuses. */
+/* Process state on Linux and macOS: groups and identity. Errors are libuv statuses. */
 #define _GNU_SOURCE
 
 #include <errno.h>
@@ -43,11 +43,6 @@ int64_t ms_sys_process_identity(MsSysIdentity which) {
       return (int64_t)getegid();
   }
   return -1;
-}
-
-int ms_sys_process_umask(uint32_t mask, uint32_t *previous) {
-  *previous = (uint32_t)umask((mode_t)mask);
-  return 0;
 }
 
 int ms_sys_process_groups(int64_t **list, size_t *count) {
