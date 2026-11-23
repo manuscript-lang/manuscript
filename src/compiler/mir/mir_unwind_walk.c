@@ -259,6 +259,11 @@ static void uw_an_consume(UwBlk *s, const MirInst *inst) {
     uh_get(&fa->cx->holes, (uint64_t)inst->args[0] << 32 | inst->imm.b, &p)) {
     (void)owner_remove(a, &s->live, (uint32_t)p);
   }
+  if (inst->op == MOP_AltTake && inst->nargs > 0) {
+    /* The payload left the value: dropping the shell whole would free it a second time, so the shell
+     * is not covered from here (it is only released, which an unwind may skip). */
+    (void)owner_remove(a, &s->live, inst->args[0]);
+  }
   if (inst->op == MOP_Take && inst->nargs > 0 && uw_is_cell(s, inst->args[0])) {
     (void)owner_remove(a, &s->live, inst->args[0]);
   }
