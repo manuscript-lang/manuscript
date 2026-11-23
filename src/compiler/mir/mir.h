@@ -368,6 +368,7 @@ typedef struct MirExtern {
   uint32_t nparams;
   MirTy ret;
   bool noreturn, pure, fresh, leaf, reads, retains;
+  bool handle; /* keeps its pointer arguments until the last use of its result (`msrt_cleanup_push` and its handle) */
   uint8_t role; /* a MirRole */
 } MirExtern;
 
