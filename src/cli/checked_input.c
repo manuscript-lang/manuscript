@@ -4,7 +4,9 @@
 
 #include <stdio.h>
 
+#include "base/file.h"
 #include "base/message.h"
+#include "base/path.h"
 #include "base/sort.h"
 #include "compiler/own/own.h"
 #include "compiler/syntax/diag_json.h"
@@ -204,4 +206,28 @@ void ms_checked_input_free(MsCheckedInput *checked) {
     ms_check_program_free(&checked->program);
   }
   ms_names_free(&checked->names);
+}
+
+MsSpan ms_checked_input_working_directory(MsArena *arena, const MsCheckedInput *checked, MsSpan filename) {
+  MsSpan directory = checked->graph.project_root.len > 0 ? checked->graph.project_root : ms_path_parent(filename);
+  if (directory.len == 0) {
+    directory = ms_span_of_text(".");
+  }
+  return ms_arena_copy(arena, directory);
+}
+
+MsSpan ms_checked_input_source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan input) {
+  const MsSpan directory = ms_checked_input_working_directory(arena, checked, input);
+  if (ms_path_is_absolute(directory)) {
+    return directory;
+  }
+  MsString current = ms_string_empty();
+  if (!ms_dir_current(&current)) {
+    return directory;
+  }
+  const bool here = directory.len == 1 && directory.ptr[0] == '.';
+  const MsSpan absolute = here ? ms_arena_copy(arena, ms_string_span(&current))
+                               : ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
+  ms_string_release(&current);
+  return absolute;
 }

@@ -53,6 +53,12 @@ MsSpan ms_checked_input_diagnostics_json(MsArena *arena, const MsCheckedInput *c
 
 int ms_checked_input_report_json(const MsCheckedInput *checked);
 
+/* The directory commands run the program in: the project root, else the directory of `filename`, else `.`. */
+MsSpan ms_checked_input_working_directory(MsArena *arena, const MsCheckedInput *checked, MsSpan filename);
+
+/* The absolute directory of the project, or of the file for a lone file. */
+MsSpan ms_checked_input_source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan input);
+
 void ms_checked_input_free(MsCheckedInput *checked);
 
 #endif

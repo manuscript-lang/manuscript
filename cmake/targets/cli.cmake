@@ -2,7 +2,7 @@ ms_executable(ms cli
   SOURCES
     install_layout.c pipeline.c backend.c emit_command.c diagram_command.c review_command.c search_symbol_command.c doc_command.c search_project.c
     fault_record.c inspect_command.c main.c phases.c check_command.c verify_command.c json_value.c fmt_command.c
-    check_fix.c checked_input.c findings.c check_selection.c display.c fmt_targets.c fmt_labels.c init_command.c
+    check_fix.c checked_input.c findings.c check_selection.c display.c files.c fmt_targets.c fmt_labels.c init_command.c
     invocation.c invocation_rules.c build_type.c build_command.c run_command.c test_command.c test_document.c
     bench_command.c profile_command.c profile_folded.c test_options.c test_records.c test_run.c watch.c package_cache.c
     package_commands.c package_fetch.c package_git.c package_validate.c snippet.c help_command.c help_text.c

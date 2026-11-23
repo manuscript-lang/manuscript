@@ -1,5 +1,6 @@
 /* Owns the git-backed remote (package_fetch.h): listing tags, downloading into a temporary directory, hashing, and
  * storing the verified package in the cache. */
+#include "cli/files.h"
 #include "cli/package_fetch.h"
 
 #include "cli/package_cache.h"
@@ -57,14 +58,6 @@ static bool remote_tags(void *self, MsArena *arena, MsSpan url, MsSpan **tags, s
 
 /* ---- the cache ---- */
 
-static MsSpan joined(MsArena *arena, MsSpan left, MsSpan right) {
-  MsStrBuild path = ms_strbuild_new();
-  ms_path_append_joined(&path, left, right);
-  const MsSpan copy = ms_message_from_builder(arena, &path);
-  ms_strbuild_free(&path);
-  return copy;
-}
-
 /* Whether the cache holds the package with `hash` exactly as it was stored: its index is the one the hash names and
  * its files are the ones the index lists. */
 static bool cached_intact(MsArena *arena, MsSpan cache, MsSpan hash) {
@@ -77,7 +70,7 @@ static bool cached_intact(MsArena *arena, MsSpan cache, MsSpan hash) {
   MsSpan found = {0};
   MsSpan error = {0};
   return ms_span_equal(ms_lock_hash_index(arena, index), hash) &&
-         ms_lock_index_tree(arena, joined(arena, cache, hash), &found, &error) && ms_span_equal(found, index);
+         ms_lock_index_tree(arena, ms_cli_joined(arena, cache, hash), &found, &error) && ms_span_equal(found, index);
 }
 
 static bool store(MsArena *arena, MsSpan cache, MsSpan hash, MsSpan index, MsSpan temporary, MsSpan *error) {
@@ -87,7 +80,7 @@ static bool store(MsArena *arena, MsSpan cache, MsSpan hash, MsSpan index, MsSpa
   /* The index goes first and atomically, so a directory that exists is complete beside its index. */
   const MsSpan index_file = ms_lock_index_path(arena, cache, hash);
   const MsSpan staged = ms_message_format(arena, "%S.staged", index_file);
-  const MsSpan destination = joined(arena, cache, hash);
+  const MsSpan destination = ms_cli_joined(arena, cache, hash);
   if (!ms_file_write(staged, index) || !ms_file_rename(staged, index_file)) {
     *error = ms_message_format(arena, "cannot write %S; check that the cache directory is writable", index_file);
     return false;
@@ -182,7 +175,7 @@ static bool download_into(Download *d, MsLockEntry *entry, MsSpan *error) {
   if (!prepare(d, error) || !resolve_commit(d, &commit, error) || !checkout(d, commit, error)) {
     return false;
   }
-  ms_path_remove_tree(joined(d->arena, d->temporary, ms_span_of_text(".git")));
+  ms_path_remove_tree(ms_cli_joined(d->arena, d->temporary, ms_span_of_text(".git")));
   MsSpan problem = {0};
   if (!ms_lock_index_tree(d->arena, d->temporary, &index, &problem)) {
     *error = ms_message_format(d->arena, "package %S: %S", d->key, problem);
@@ -239,7 +232,7 @@ static bool remote_fetch(void *self, MsArena *arena, MsSpan url, MsSpan referenc
     }
   }
   entry.spec = ms_message_format(arena, "%S#%S", url, reference);
-  const MsSpan manifest_path = joined(arena, joined(arena, cache, entry.sha256), ms_span_of_text("ms.toml"));
+  const MsSpan manifest_path = ms_cli_joined(arena, ms_cli_joined(arena, cache, entry.sha256), ms_span_of_text("ms.toml"));
   MsManifest *manifest = MS_ARENA_NEW(arena, MsManifest);
   MsProjectError problem = {0};
   if (!ms_manifest_read(arena, manifest_path, manifest, &problem)) {

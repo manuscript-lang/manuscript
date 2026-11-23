@@ -175,31 +175,6 @@ static bool build_tests(MsCheckedInput *checked, const MsInvocation *invocation,
   return ms_pipeline_link(&request, error);
 }
 
-static MsSpan working_directory(MsArena *arena, const MsCheckedInput *checked, MsSpan filename) {
-  MsSpan directory = checked->graph.project_root.len > 0 ? checked->graph.project_root : ms_path_parent(filename);
-  if (directory.len == 0) {
-    directory = ms_span_of_text(".");
-  }
-  return ms_arena_copy(arena, directory);
-}
-
-/* The absolute directory of the project, or of the file for a lone file. */
-static MsSpan source_root(MsArena *arena, const MsCheckedInput *checked, MsSpan input) {
-  const MsSpan directory = working_directory(arena, checked, input);
-  if (ms_path_is_absolute(directory)) {
-    return directory;
-  }
-  MsString current = ms_string_empty();
-  if (!ms_dir_current(&current)) {
-    return directory;
-  }
-  const bool here = directory.len == 1 && directory.ptr[0] == '.';
-  const MsSpan absolute = here ? ms_arena_copy(arena, ms_string_span(&current))
-                               : ms_message_format(arena, "%S/%S", ms_string_span(&current), directory);
-  ms_string_release(&current);
-  return absolute;
-}
-
 /* Checks `input`, builds its tests and runs the plan. */
 static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan input, const MsSpanList *extras,
                       MsSpanList *watched) {
@@ -213,7 +188,7 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
     if (!test_capturing()) {
       status = ms_checked_input_report(&checked);
     } else {
-      TestDocument document = {.source_root = source_root(arena, &checked, input), .exit_code = STATUS_FAILED,
+      TestDocument document = {.source_root = ms_checked_input_source_root(arena, &checked, input), .exit_code = STATUS_FAILED,
                                .reason = ms_span_of_text("compile_error"),
                                .diagnostics = ms_checked_input_diagnostics_json(arena, &checked)};
       test_document_finish(&document);
@@ -237,30 +212,30 @@ static int test_input(MsArena *arena, const MsInvocation *invocation, MsSpan inp
     if (test_capturing()) {
       MsStrBuild entry = ms_strbuild_new();
       test_document_diagnostic(&entry, "execution", selection_error, ms_span_of_text(""), 0);
-      TestDocument document = {.source_root = source_root(arena, &checked, input),
+      TestDocument document = {.source_root = ms_checked_input_source_root(arena, &checked, input),
                                .exit_code = STATUS_FAILED, .reason = ms_span_of_text("no_match"),
                                .diagnostics = ms_arena_copy(arena, ms_strbuild_span(&entry))};
       ms_strbuild_free(&entry);
       test_document_finish(&document);
     }
   } else if (options.list || plan.count == 0) {
-    TestJob job = {.arena = arena, .names = &names, .options = &options, .source_root = source_root(arena, &checked, input)};
+    TestJob job = {.arena = arena, .names = &names, .options = &options, .source_root = ms_checked_input_source_root(arena, &checked, input)};
     status = run_plan(arena, &job, &plan);
   } else {
     const MsString temp = ms_temp_dir();
     MsString directory = ms_string_empty();
     MsSpan error = {0};
     if (!ms_dir_make_temp(ms_string_span(&temp), ms_span_of_text("manuscript-test-"), &directory)) {
-      return test_fail_early(arena, source_root(arena, &checked, input), input, false, "execution",
+      return test_fail_early(arena, ms_checked_input_source_root(arena, &checked, input), input, false, "execution",
                         ms_span_of_text("cannot create a temporary directory"));
     }
     const MsSpan folder = ms_arena_copy(arena, ms_string_span(&directory));
     const MsSpan executable = ms_message_format(arena, MS_TEMP_PROGRAM, folder, (MsSpan){0});
     if (!build_tests(&checked, invocation, executable, &error)) {
-      status = test_fail_early(arena, source_root(arena, &checked, input), input, false, "build", error);
+      status = test_fail_early(arena, ms_checked_input_source_root(arena, &checked, input), input, false, "build", error);
     } else {
-      TestJob job = {.arena = arena, .executable = executable, .working = working_directory(arena, &checked, input),
-                     .names = &names, .options = &options, .source_root = source_root(arena, &checked, input)};
+      TestJob job = {.arena = arena, .executable = executable, .working = ms_checked_input_working_directory(arena, &checked, input),
+                     .names = &names, .options = &options, .source_root = ms_checked_input_source_root(arena, &checked, input)};
       status = run_plan(arena, &job, &plan);
     }
     ms_path_remove_tree(folder);
