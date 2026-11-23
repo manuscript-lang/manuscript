@@ -178,8 +178,10 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   TempScan scan = {.fn = fn};
   const MsVisitor visitor = {.ctx = &scan, .expr = scan_enter, .leave_expr = scan_leave};
   ms_walk_expr(&visitor, value);
-  if (stmt->kind == MS_S_BIND || stmt->kind == MS_S_RETURN) {
-    /* What the statement binds or returns outlives it, so only a value with nothing to own can leave. */
+  const MsPattern *target = stmt->kind == MS_S_BIND ? stmt->u.bind.pattern : NULL;
+  const bool discarded = target != NULL && target->kind == MS_P_NAME && ms_span_is_text(ms_names_span(fn->cx->program->names, target->u.name), "_");
+  if ((stmt->kind == MS_S_BIND && !discarded) || stmt->kind == MS_S_RETURN) {
+    /* What the statement binds or returns outlives it, so only a value with nothing to own can leave. `void value` drops it. */
     const MsNode node = stmt->kind == MS_S_BIND ? stmt->u.bind.pattern->id : value->id;
     const MsTy bound = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, node), fn->subst.vars,
                                    fn->subst.args, fn->subst.count);

@@ -7,7 +7,7 @@ if(MS_LIBC STREQUAL "musl")
 endif()
 add_subdirectory(compiler)
 add_subdirectory(tooling)
-add_subdirectory(driver)
+add_subdirectory(cli)
 add_subdirectory(lint)
 
 # `cmake --build <dir> --target conform-c`: the one progress number (plan rule 4).
