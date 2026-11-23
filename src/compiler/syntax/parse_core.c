@@ -234,7 +234,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
     if (fk == MS_T_Name && ms_span_is_text(found_text, "is")) {
       return ms_span_of_text(IS_HINT);
     }
-    return ms_span_of_text("; block headers (fn, if, else, for, while, match, type, enum, impl, test) end "
+    return ms_span_of_text("; block headers (fn, if, else, for, while, match, type, enum, interface, test) end "
                            "with ':' before their indented body");
   }
   if (kind_is(kd, ")"))
@@ -264,7 +264,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   if (kind_is(kd, "in"))
     return ms_span_of_text("; loops read: for item in items:");
   if (kind_is(kd, "=") && fk == MS_T_Newline) {
-    return ms_span_of_text("; every let/var binding needs an initial value, e.g. var count: Int = 0");
+    return ms_span_of_text("; every binding needs an initial value, e.g. var count: Int = 0");
   }
   if (kind_is(kd, ":=") && fk == MS_T_Newline) {
     return ms_span_of_text("; a binding needs a value: write name := value, or name: Type := value; closure "
@@ -453,7 +453,7 @@ static const char *end_hint(Parser *p, MsToken t) {
            "if statement";
   } else if (t.kind == MS_T_Question) {
     hint = "; '?' after a Result call propagates its error, and is not '?\?' or 'c ? a : b': unwrap an "
-           "Optional with 'if x := v:' or give it a default with 'v.get(default)', chain with 'a?.b', and "
+           "Optional with 'if x := v:' or give it a default with 'v.get_or(default)', chain with 'a?.b', and "
            "write a conditional as 'if c: a else: b'";
   } else if (t.kind == MS_T_Comma) {
     hint = "; commas separate items only inside (), [] or {}: put each field, case, or statement on its own "

@@ -301,14 +301,14 @@ static bool report_misplaced_member(Parser *p, MsToken token) {
   if (token.kind == MS_T_Enum && parse_kind(p) != MS_T_Name) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text("an enum contains only variants; write 'Name' or 'Name(field: Type)', use "
-                               "'type' for type fields, and put methods in an 'impl' block"));
+                               "'type' for type fields, and write methods after the enum as 'fn Name.method(...)'"));
     return true;
   }
   if (token.kind == MS_T_Interface && !at_move_fn(p) && parse_kind(p) != MS_T_Fn &&
       parse_kind(p) != MS_T_Var) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text("an interface contains only operation signatures; write 'fn name(...) Type' "
-                               "and put method bodies in an 'impl' block"));
+                               "and write each method body beside the type that provides it, as 'fn Type.name(...)'"));
     return true;
   }
   return false;
@@ -347,7 +347,7 @@ MS_NODISCARD static bool enum_variant(Parser *p) {
   if (parse_kind(p) == MS_T_Colon) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text("enum variants have no field or method bodies; write 'Name' or 'Name(field: "
-                               "Type)', use 'type' for type fields, and put methods in an 'impl' block"));
+                               "Type)', use 'type' for type fields, and write methods after the enum as 'fn Name.method(...)'"));
     return false;
   }
   if (parse_kind(p) == MS_T_Assign) {
