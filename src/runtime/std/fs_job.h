@@ -33,6 +33,11 @@ typedef struct MsFsJob {
 
 MsFsJob ms_fs_job(const MsString *path);
 void ms_fs_job_free(MsFsJob *job);
+/* Ends a native: frees the job, then returns its status with `err` filled (ms_fail_finish_at). A stop request is
+ * delivered by unwinding, which never returns, so the job is freed first; the caller must not touch it afterwards. */
+uint8_t ms_fs_job_finish(MsFsJob *job, MsSpan detail, MsString *err);
+/* The same for an operation on two paths: a status that names them reports `a -> b`. */
+uint8_t ms_fs_job_finish_pair(MsFsJob *job, MsString *err);
 
 /* Runs `run(job)` on the blocking pool (inline on a pool thread). The wait is shielded, so `job` may live on the
  * caller's stack; a stop request takes effect once the job is done and is reported as a failure of the job. */

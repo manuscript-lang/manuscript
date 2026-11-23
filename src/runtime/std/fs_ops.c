@@ -129,8 +129,7 @@ uint8_t msstd_fs_create_directory(const MsString *path, uint8_t recursive, MsStr
   MsFsJob job = ms_fs_job(path);
   job.flag = recursive;
   ms_fs_run(&job, create_directory_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -345,8 +344,7 @@ uint8_t msstd_fs_remove(const MsString *path, uint8_t recursive, MsString *err) 
   MsFsJob job = ms_fs_job(path);
   job.flag = recursive;
   ms_fs_run(&job, remove_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -406,23 +404,11 @@ static void hard_link_job(void *data) { pair_job(data, link_call, "link", false)
 /* The text reads `symlink <target> <path>`. */
 static void create_link_job(void *data) { pair_job(data, symlink_call, "symlink", true); }
 
-/* A pair operation's native: the status, with `a -> b` as the detail of a status that names the paths. */
-static uint8_t finish_pair(MsFsJob *job, MsString *err) {
-  MsStrBuild both = ms_strbuild_new();
-  ms_strbuild_append(&both, job->path);
-  ms_strbuild_append_text(&both, " -> ");
-  ms_strbuild_append(&both, job->other);
-  const uint8_t status = ms_fail_finish_at(&job->fail, ms_strbuild_span(&both), err);
-  ms_strbuild_free(&both);
-  return status;
-}
-
 uint8_t msstd_fs_rename(const MsString *source, const MsString *destination, MsString *err) {
   MsFsJob job = ms_fs_job(source);
   job.other = ms_string_span(destination);
   ms_fs_run(&job, rename_job);
-  const uint8_t status = finish_pair(&job, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish_pair(&job, err);
   return status;
 }
 
@@ -430,8 +416,7 @@ uint8_t msstd_fs_hard_link(const MsString *source, const MsString *destination, 
   MsFsJob job = ms_fs_job(source);
   job.other = ms_string_span(destination);
   ms_fs_run(&job, hard_link_job);
-  const uint8_t status = ms_fail_finish(&job.fail, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, ms_span_of(NULL, 0), err);
   return status;
 }
 
@@ -439,8 +424,7 @@ uint8_t msstd_fs_create_link(const MsString *path, const MsString *target, MsStr
   MsFsJob job = ms_fs_job(path);
   job.other = ms_string_span(target);
   ms_fs_run(&job, create_link_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -469,8 +453,7 @@ uint8_t msstd_fs_read_link(const MsString *path, MsString *out, MsString *err) {
   if (!ms_fail_failed(&job.fail)) {
     *out = ms_string_from_span(ms_strbuild_span(&job.text));
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -495,8 +478,7 @@ uint8_t msstd_fs_canonicalize(const MsString *path, MsString *out, MsString *err
   if (!ms_fail_failed(&job.fail)) {
     *out = ms_string_from_span(ms_strbuild_span(&job.text));
   }
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -650,8 +632,7 @@ uint8_t msstd_fs_chmod(const MsString *path, int64_t mode, uint8_t follow, MsStr
   job.number = mode;
   job.flag = follow;
   ms_fs_run(&job, chmod_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -678,8 +659,7 @@ uint8_t msstd_fs_access(const MsString *path, int64_t mode, MsString *err) {
   MsFsJob job = ms_fs_job(path);
   job.number = mode;
   ms_fs_run(&job, access_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -712,8 +692,7 @@ uint8_t msstd_fs_chown(const MsString *path, int64_t uid, int64_t gid, uint8_t f
   job.second_number = gid;
   job.flag = follow;
   ms_fs_run(&job, chown_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -747,8 +726,7 @@ uint8_t msstd_fs_truncate(const MsString *path, int64_t size, MsString *err) {
   MsFsJob job = ms_fs_job(path);
   job.number = size;
   ms_fs_run(&job, truncate_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
 
@@ -773,7 +751,6 @@ uint8_t msstd_fs_set_times(const MsString *path, const MsFsTimestamp *accessed, 
   job.times[1] = *modified;
   job.flag = follow;
   ms_fs_run(&job, set_times_job);
-  const uint8_t status = ms_fail_finish_at(&job.fail, job.path, err);
-  ms_fs_job_free(&job);
+  const uint8_t status = ms_fs_job_finish(&job, job.path, err);
   return status;
 }
