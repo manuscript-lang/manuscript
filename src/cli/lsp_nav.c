@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include "compiler/syntax/lex.h"
+#include "tooling/doc_comment.h"
+#include "tooling/inspect.h"
 
 typedef struct Place {
   MsSpan uri;
@@ -112,6 +114,86 @@ static bool select(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   if (!analysis->resolved || !lsp_offset(ms_string_span(&doc->text), position, false, &offset)) return false;
   *selected = occurrence_at(analysis, doc, offset);
   return *selected != NULL;
+}
+
+/* The declaration occurrence of the identity `selected` names, or NULL when its source is not in the graph. */
+static const MsOccurrence *declaration_of(const LspAnalysis *analysis, const MsOccurrence *selected) {
+  for (size_t i = 0; i < analysis->index.len; i++) {
+    const MsOccurrence *entry = &analysis->index.ptr[i];
+    if (entry->declaration && ms_span_equal(entry->key, selected->key)) return entry;
+  }
+  return NULL;
+}
+
+/* The effects hover shows for a function declared at `line` (1-based) of `module`: what it reaches, what it permits. */
+static void write_effects(MsStrBuild *out, const MsInspection *inspection, MsSpan file, size_t line, MsSpan name) {
+  for (size_t i = 0; i < inspection->entities.len; i++) {
+    const MsEntity *entity = &inspection->entities.ptr[i];
+    if (!ms_span_equal(entity->file, file) || entity->pos.line != line || !ms_span_ends_with(entity->name, name)) continue;
+    ms_strbuild_append_text(out, "\n\n");
+    if (entity->effects.len == 0) {
+      ms_strbuild_append_text(out, "effects: pure (ambient authority only)");
+    } else {
+      ms_strbuild_append_text(out, "effects: ");
+      for (size_t e = 0; e < entity->effects.len; e++) {
+        if (e > 0) ms_strbuild_append_text(out, ", ");
+        ms_strbuild_append(out, entity->effects.ptr[e]);
+      }
+    }
+    if (entity->permits.len > 0) {
+      ms_strbuild_append_text(out, "  \npermits: ");
+      for (size_t p = 0; p < entity->permits.len; p++) {
+        if (p > 0) ms_strbuild_append_text(out, ", ");
+        ms_strbuild_append(out, entity->permits.ptr[p]);
+      }
+    }
+    return;
+  }
+}
+
+void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out) {
+  LspAnalysis analysis;
+  const MsOccurrence *selected;
+  if (!select(docs, doc, position, &analysis, &selected)) goto none;
+  const MsCheckProgram *program = &analysis.checked.program;
+  if (selected->ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, selected->ty)) goto none;
+  MsStrBuild shown = ms_strbuild_new();
+  ms_ty_show(&shown, program->names, &program->types, selected->ty);
+  MsStrBuild value = ms_strbuild_new();
+  ms_strbuild_append_text(&value, "```manuscript\n");
+  ms_strbuild_append(&value, selected->name);
+  ms_strbuild_append_text(&value, ": ");
+  ms_strbuild_append(&value, ms_strbuild_span(&shown));
+  ms_strbuild_append_text(&value, "\n```");
+  const MsOccurrence *declaration = declaration_of(&analysis, selected);
+  if (declaration != NULL) {
+    const MsSpan source = source_of(&analysis, declaration);
+    const size_t line = lsp_position(source, declaration->offset).line + 1;
+    if (ms_span_starts_with(ms_strbuild_span(&shown), ms_span_of_text("fn("))) {
+      MsInspection inspection = {0};
+      ms_inspect_collect(&analysis.arena, program, false, &inspection);
+      write_effects(&value, &inspection,
+                    ms_names_span(program->names, program->modules.ptr[declaration->module].file), line, selected->name);
+    }
+    const MsSpan docs_text = ms_declaration_comment(&analysis.arena, source, declaration->offset, (uint32_t)line);
+    if (docs_text.len > 0) {
+      ms_strbuild_append_text(&value, "\n\n");
+      ms_strbuild_append(&value, docs_text);
+    }
+  }
+  const MsSpan text = source_of(&analysis, selected);
+  ms_strbuild_append_text(out, "{\"contents\":{\"kind\":\"markdown\",\"value\":");
+  lsp_json_string(out, ms_strbuild_span(&value));
+  ms_strbuild_append_text(out, "},\"range\":");
+  write_range(out, (LspRange){lsp_position(text, selected->offset), lsp_position(text, selected->end)});
+  ms_strbuild_append_byte(out, '}');
+  ms_strbuild_free(&shown);
+  ms_strbuild_free(&value);
+  lsp_analysis_release(&analysis);
+  return;
+none:
+  ms_strbuild_append_text(out, "null");
+  lsp_analysis_release(&analysis);
 }
 
 void lsp_nav_definition(const LspDocList *docs, const LspDoc *doc, LspPosition position, MsStrBuild *out) {
