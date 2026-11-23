@@ -56,6 +56,15 @@ uint8_t *msrt_map_slot_borrowed(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc
                             uint8_t *default_value);
 /* ms-sig: msrt_map_remove(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8) @domain=map @leaf */
 void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key);
+/* ms-sig: msrt_map_remove_take(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *const u8, out: *mut VecVal)
+ * @domain=map */
+void msrt_map_remove_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, MsList *taken);
+/* ms-sig: msrt_map_add_take(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, key: *mut u8, val: *mut u8,
+ * out: *mut VecVal) @domain=map */
+void msrt_map_add_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *val,
+                       MsList *taken);
+/* ms-sig: msrt_map_clear_take(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, out: *mut VecVal) @domain=map */
+void msrt_map_clear_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *taken);
 /* ms-sig: msrt_map_merge(m: *mut MapVal, other: *const MapVal, kd: KeyDesc, vd: ValDesc) @domain=map @leaf */
 void msrt_map_merge(MsMap *m, const MsMap *other, const MsTypeDesc *kd, const MsTypeDesc *vd);
 /* ms-sig: msrt_map_add_table(m: *mut MapVal, kd: KeyDesc, vd: ValDesc, table: *const StrVal) @domain=map

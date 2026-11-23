@@ -327,7 +327,9 @@ fn make_part(section: Bytes) Part!:
 	headers := parse_headers(header_text.get_or(""))?
 	var part = Part(
 		headers: headers,
-		data: inner.slice(data_start, inner.length()).clone().get_or("".to_bytes()),
+		data: inner.slice(data_start, inner.length()).clone().get_or(
+			"".to_bytes()
+		),
 	)
 
 	if disposition := part.headers.get("Content-Disposition"):
@@ -511,6 +513,6 @@ export fn form_part(
 	return Part(
 		headers: Headers(fields: fields),
 		name: name.clone(),
-		filename: filename,
+		filename: filename.clone(),
 		data: data,
 	)

@@ -14,8 +14,9 @@ interface ValueOperations:
 interface CloneOperations[T]:
 	fn clone() move T
 
-// The integer types that share the operations of `IntegerOperations` and `SignedIntegerOperations`; the checker adds
-// an interface's operations to each type its type parameter's bound lists.
+// The integer types that share the operations of `IntegerOperations` and
+// `SignedIntegerOperations`; the checker adds an interface's operations to each type
+// its type parameter's bound lists.
 type IntegerTypes = Int | Int8 | Int16 | Int32 | UInt8 | UInt16 | UInt32 | UInt64
 type SignedIntegerTypes = Int | Int8 | Int16 | Int32
 

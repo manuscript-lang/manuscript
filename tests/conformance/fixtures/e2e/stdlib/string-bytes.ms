@@ -23,7 +23,7 @@ test "Unicode scalar offsets differ from scalar count":
 	expect_equal(text.scalar_at(2, -1), -1)?
 	expect_equal(text.scalar_at(7, -1), -1)?
 	expect_equal((text.scalar_values() | from_scalars?), text)?
-	expect_equal((text.slice(1, 7)?), "é🙂")?
+	expect_equal(text.slice(1, 7), "é🙂")?
 	expect_equal(("é".normalize("NFC")?), "é")?
 
 test "repeat is plain text and clamps nonpositive counts":
@@ -83,19 +83,19 @@ test "Bytes values direct bound and free calls return independent lists":
 		Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
 	)?
 
-test "String slice uses byte offsets with relative bounds and OutOfRange errors":
+test "String slice uses byte offsets with relative bounds and clamps out-of-range ones":
 	text := "aé🙂z"
-	expect_equal((text.slice(-5, 8)?), "🙂z")?
-	expect_equal((text.slice(0, -1)?), "aé🙂")?
-	expect_equal((text.slice(8, 8)?), "")?
-	expect_failure(text.slice(-5, 10), "ERANGE", "string: value out of range: slice(")?
-	expect_failure(text.slice(-100, 8), "ERANGE", "string: value out of range: slice(")?
-	expect_failure(text.slice(3, 1), "ERANGE", "string: value out of range: slice(")?
+	expect_equal(text.slice(-5, 8), "🙂z")?
+	expect_equal(text.slice(0, -1), "aé🙂")?
+	expect_equal(text.slice(8, 8), "")?
+	expect_equal(text.slice(-5, 10), "🙂z")?
+	expect_equal(text.slice(-100, 8), "aé🙂z")?
+	expect_equal(text.slice(3, 1), "")?
 	expect_false(text.index_of("🙂") != 3 or text.last_index_of("") != 8)?
-	expect_failure(text.slice(2, 8), "ERANGE", "string: value out of range: slice(")?
-	expect_failure(text.slice(1, 5), "ERANGE", "string: value out of range: slice(")?
-	expect_failure(text.slice(0, 4), "ERANGE", "string: value out of range: slice(")?
-	expect_equal((text.slice(1, 3)?), "é")?
+	expect_equal(text.slice(2, 8), "🙂z")?
+	expect_equal(text.slice(1, 5), "é")?
+	expect_equal(text.slice(0, 4), "aé")?
+	expect_equal(text.slice(1, 3), "é")?
 
 test "string and bytes builders freeze":
 	var text = StringBuilder()
@@ -164,17 +164,13 @@ test "offsets and slicing in long mixed-width text agree with the scalar walk":
 			or text.scalar_at(5993, -1) != 8364
 		)
 	)?
-	expect_equal((text.slice(2996, 3006)?), "🙂aé€")?
-	expect_equal((text.slice(5990, 6000)?), block)?
-	expect_equal((text.slice(0, 10)?), block)?
-	expect_equal((text.slice(6, 6)?), "")?
-	expect_equal((text.slice(5996, 6000)?), "🙂")?
-	expect_failure(
-		text.slice(6000, 6001),
-		"ERANGE",
-		"string: value out of range: slice(",
-	)?
-	expect_failure(text.slice(7, 8), "ERANGE", "string: value out of range: slice(")?
+	expect_equal(text.slice(2996, 3006), "🙂aé€")?
+	expect_equal(text.slice(5990, 6000), block)?
+	expect_equal(text.slice(0, 10), block)?
+	expect_equal(text.slice(6, 6), "")?
+	expect_equal(text.slice(5996, 6000), "🙂")?
+	expect_equal(text.slice(6000, 6001), "")?
+	expect_equal(text.slice(7, 8), "")?
 
 test "builder appends literals of every short length across growth":
 	var sb = StringBuilder()
@@ -204,13 +200,13 @@ test "builder appends variable text of every length across growth":
 
 	for round in 0..3:
 		for n in 0..70:
-			piece := base.slice(0, n)?
+			piece := base.slice(0, n)
 			sb.append(piece)
 			want += n
 
 	built := sb.build()
 	expect_equal(built.length(), want)?
-	expect_equal((built.slice(0, 10)?), "0010120123")?
+	expect_equal(built.slice(0, 10), "0010120123")?
 
 test "search indexes are byte offsets for ascii, inline and unicode text":
 	long := "a".repeat(100).concat("!").concat("é").concat("!")
@@ -234,13 +230,7 @@ test "count matches split for nonempty parts and counts scalars plus one for an 
 	expect_equal("🙂x🙂".count("🙂"), 2)?
 	expect_equal("abc".count("abcd"), 0)?
 
-test "slice errors name the values that failed":
-	expect_failure(
-		"hello".slice(2, 10),
-		"ERANGE",
-		"string: value out of range: slice(2, 10) of a string with 5 bytes",
-	)?
-
+test "list slice errors name the values that failed":
 	items := [1, 2, 3]
 	r := items.slice(1, 10)
 	cause := r.err()

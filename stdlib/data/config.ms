@@ -91,7 +91,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 	var current = ""
 	var number = 0
 
-	for raw in text.cut_prefix("\u{feff}").get_or(text).lines():
+	for raw in text.cut_prefix("\u{feff}").get_or(text.clone()).lines():
 		number += 1
 
 		entry := raw.trim()

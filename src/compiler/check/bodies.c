@@ -203,6 +203,12 @@ static void stmt_bind(Body *body, const MsStmt *stmt) {
   if (stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.ty != NULL && stmt->u.bind.ty->kind == MS_TYPE_FN) {
     ms_local_list_last(&body->locals)->written_fn = true;
   }
+  const MsExprKind written = stmt->u.bind.value->kind; /* a function name bound to a local does not keep labels */
+  if (stmt->u.bind.pattern->kind == MS_P_NAME && stmt->u.bind.ty == NULL && !stmt->u.bind.is_mutable &&
+      (written == MS_E_LAMBDA || written == MS_E_MEMBER || written == MS_E_APPLY)) {
+    MsLocal *bound = ms_local_list_last(&body->locals);
+    bound->fn_params = body_function_params(body, stmt->u.bind.value, value, &bound->fn_module);
+  }
 }
 
 /* `x.field = ...` needs a field of a type value; a method, a case or an unknown member cannot be assigned. */

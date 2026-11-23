@@ -115,7 +115,7 @@ type Parsed:
 	event: TerminalEvent?
 
 fn key(name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
-	return TerminalEvent.Key(name, ctrl, alt, shift)
+	return TerminalEvent.Key(name.clone(), ctrl, alt, shift)
 
 fn plain(name: String) TerminalEvent:
 	return key(name, false, false, false)
@@ -244,7 +244,7 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 fn parsed(kind: Int, used: Int) Parsed:
 	return Parsed(kind: kind, event: none, used: used)
 
-fn decoded(event: TerminalEvent, used: Int) Parsed:
+fn decoded(move event: TerminalEvent, used: Int) Parsed:
 	return Parsed(kind: 1, event: event, used: used)
 
 // The scalar value of a one-scalar string.

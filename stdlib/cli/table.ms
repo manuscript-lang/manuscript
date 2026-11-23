@@ -64,7 +64,7 @@ fn var Table.add(row: List[String]) Void!:
 	for col in 0..count:
 		self.widths[col] = max(self.widths[col], measured[col])
 	self.cell_widths.append(measured)
-	self.rows.append(row)
+	self.rows.append(row.clone())
 
 // Lays out the rows added so far; the table is unchanged and can keep growing.
 fn Table.render() String:
