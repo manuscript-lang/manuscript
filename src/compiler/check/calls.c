@@ -6,6 +6,8 @@
  * arguments come from ms_check_instantiate. The MsCall fact lists one argument per parameter, the receiver
  * first for a method: written, defaulted, or omitted. */
 #include "compiler/check/call_internal.h"
+
+#include <string.h>
 #include "compiler/check/instantiate.h"
 #include "compiler/check/methods.h"
 #include "compiler/syntax/parse.h"
@@ -136,24 +138,48 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
          case_target(body, callee, callee->u.sym, owner, target);
 }
 
+/* Whether a call of `nargs` arguments fills the parameters of `match`. */
+static bool fits_arguments(const Body *body, const MsMethodMatch *match, size_t nargs) {
+  const size_t total = ms_ty_param_count(&body->program->types, match->ty);
+  size_t required = 0;
+  for (size_t at = 0; at < total; at++) {
+    const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
+    const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
+    const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
+                                                                       : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
+    required += defaulted ? 0 : 1;
+  }
+  return nargs >= required && nargs <= total;
+}
+
 /* The match whose parameters a call of `nargs` arguments fills; the first when none does. */
 static const MsMethodMatch *pick_overload(const Body *body, const MsMethodMatchList *found, size_t nargs) {
   for (size_t index = 0; index < found->len; index++) {
-    const MsMethodMatch *match = &found->ptr[index];
-    const size_t total = ms_ty_param_count(&body->program->types, match->ty);
-    size_t required = 0;
-    for (size_t at = 0; at < total; at++) {
-      const MsTyParam *param = &ms_ty_params(&body->program->types, match->ty)[at];
-      const MsParams *ast = match->entry != NULL ? &match->entry->source->func.params : NULL;
-      const bool defaulted = (param->flags & MS_PARAM_LIFTED) != 0 || (ast != NULL ? at < ast->len && body_param_omittable(body, ast->ptr[at])
-                                                                         : ms_ty_is(&body->program->types, param->ty, MS_BUILTIN_Optional));
-      required += defaulted ? 0 : 1;
-    }
-    if (nargs >= required && nargs <= total) {
-      return match;
+    if (fits_arguments(body, &found->ptr[index], nargs)) {
+      return &found->ptr[index];
     }
   }
   return &found->ptr[0];
+}
+
+/* More than one implementation provides the member for this many arguments: reports it and answers true. */
+static bool report_ambiguous(Body *body, const MsExpr *callee, MsTy receiver, const MsMethodMatchList *found,
+                             size_t nargs) {
+  size_t fitting = 0;
+  for (size_t index = 0; index < found->len; index++) {
+    fitting += fits_arguments(body, &found->ptr[index], nargs) ? 1 : 0;
+  }
+  if (fitting < 2 || body->module >= body->program->user_modules || body->quiet) {
+    return fitting >= 2;
+  }
+  MsStrBuild text = ms_strbuild_new();
+  ms_strbuild_append_text(&text, "ambiguous member ");
+  ms_strbuild_append(&text, ms_names_span(body->program->names, callee->u.member.name));
+  ms_strbuild_append_text(&text, " on ");
+  ms_ty_show(&text, body->program->names, &body->program->types, receiver);
+  ms_strbuild_append_text(&text, "; more than one implementation provides it");
+  ms_check_report(body->program, body->module, callee->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
+  return true;
 }
 
 /* The method a member name calls: `m[key] = value` is `m.add(key, value)` and `xs[i] = value` is `xs.set(i, value)`. */
@@ -171,6 +197,11 @@ static bool method_target(Body *body, const MsExpr *callee, MsTy receiver, Targe
   MsMethodMatchList found = {0};
   ms_check_find_method(body->program, receiver, called_name(body, callee, receiver), &found);
   bool ok = found.len != 0;
+  if (ok && report_ambiguous(body, callee, receiver, &found, target->nargs)) {
+    ms_method_match_list_free(&found);
+    body_set_ref(body, callee->id, target->ref);
+    return false;
+  }
   if (ok) {
     const MsMethodMatch *match = pick_overload(body, &found, target->nargs);
     target->sig = match->ty;
@@ -475,12 +506,17 @@ static bool report_callback_arity(Body *body, const Target *target, const MsExpr
 static void type_args(Body *body, const Target *target, const MsExpr *call, const Matched *matched, MsTy *arg_tys,
                       MsTy *bound, const MsTy *hint) {
   const MsTyTable *types = &body->program->types;
-  for (size_t index = 0; index < matched->count; index++) {
+  /* A function literal is typed after the other arguments, so the variables they fix are known to it. */
+  for (size_t round = 0; round < 2 * matched->count; round++) {
+    const size_t index = round % matched->count;
     if (matched->slot[index] < 0) {
       continue;
     }
     const MsTy param = ms_ty_params(types, target->sig)[index].ty;
     const MsArg *arg = &call->u.call.args.ptr[matched->slot[index]];
+    if ((arg->value->kind == MS_E_LAMBDA) != (round >= matched->count)) {
+      continue;
+    }
     MsStrBuild context = ms_strbuild_new();
     if (target->name.len != 0) {
       ms_strbuild_append_text(&context, "argument '");
@@ -611,6 +647,17 @@ static void wrap_to_expected(Body *body, const MsExpr *call, MsTy sig, const MsT
   }
 }
 
+/* Whether every diagnostic since `before` is an uninferred callback parameter, which the call's own failure explains. */
+static bool only_callback_diagnostics(const MsCheckProgram *program, size_t before) {
+  for (size_t index = before; index < program->diagnostics.len; index++) {
+    if (!ms_span_starts_with(ms_string_span(&program->diagnostics.ptr[index].message),
+                             ms_span_of_text("cannot infer callback parameter"))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /* An instantiation failure worth reporting: a type argument no argument determines, while every argument typed. */
 static bool uninferable(const Body *body, const MsInstance *instance, const MsTy *arg_tys, const Matched *matched,
                         size_t before, MsTy callee) {
@@ -622,9 +669,12 @@ static bool uninferable(const Body *body, const MsInstance *instance, const MsTy
                            ms_span_find(message, ms_span_of_text(" is not a member of the type set "), &found);
   if (body->module >= body->program->user_modules || body->quiet ||
       !(unmet_bound || ms_span_starts_with(message, ms_span_of_text("cannot infer type argument"))) ||
-      body->program->diagnostics.len != before || holds_invalid(types, body->result, 6) ||
+      !only_callback_diagnostics(body->program, before) || holds_invalid(types, body->result, 6) ||
       holds_invalid(types, callee, 6)) {
     return false;
+  }
+  if (body->program->diagnostics.len > before) {
+    return true; /* the callbacks that could not be typed explain every untyped argument */
   }
   for (size_t index = 0; index < count; index++) {
     if (matched->slot[index] >= 0 && holds_invalid(types, arg_tys[index], 6)) { /* an omitted argument has no type */
@@ -655,6 +705,14 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
   MsInstance instance = {0};
   MsTy sig = target->sig;
   bool instantiated = true;
+  MsTyList typed = {0};
+  if (body->program->diagnostics.len > diagnostics_before && only_callback_diagnostics(body->program, diagnostics_before)) {
+    /* a callback that could not be typed gives the call no evidence about its type arguments */
+    for (size_t index = 0; index < matched->count; index++) {
+      ms_ty_list_push(&typed, holds_invalid(&body->program->types, arg_tys[index], 6) ? MS_TY_NONE : arg_tys[index]);
+    }
+    arg_tys = typed.ptr;
+  }
   if (target->vars.len != 0) {
     const MsSpan name = target->name;
     if (ms_check_instantiate(body->program, target->sig, target->vars.ptr, target->vars.len, name,
@@ -666,12 +724,21 @@ static MsTy finish_call(Body *body, const MsExpr *call, Target *target, const Ms
       instantiated = false;
       if (uninferable(body, &instance, arg_tys, matched, diagnostics_before, target->sig)) {
         report_uninferred(body, call, target, &instance);
+        /* the call's failure comes before the callbacks it could not type */
+        MsCheckDiagList *list = &body->program->diagnostics;
+        if (list->len > diagnostics_before + 1) {
+          const MsCheckDiag last = list->ptr[list->len - 1];
+          memmove(list->ptr + diagnostics_before + 1, list->ptr + diagnostics_before,
+                  (list->len - 1 - diagnostics_before) * sizeof last);
+          list->ptr[diagnostics_before] = last;
+        }
       }
     }
   }
   MsTy result = record_call(body, call, target, sig, &instance.args, matched);
   body_set_type(body, call->u.call.callee->id, sig);
   ms_instance_free(&instance);
+  ms_ty_list_free(&typed);
   return instantiated ? result : MS_TY_NONE;
 }
 

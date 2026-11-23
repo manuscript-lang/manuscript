@@ -445,7 +445,13 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
   }
   const MsTy receiver = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                     fn->subst.vars, fn->subst.args, fn->subst.count);
-  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name);
+  MsTy written[16] = {0};
+  const uint32_t nwritten = expr->u.call.args.len < 16 ? (uint32_t)expr->u.call.args.len : 16;
+  for (uint32_t at = 0; at < nwritten; at++) {
+    written[at] = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, expr->u.call.args.ptr[at].value->id),
+                              fn->subst.vars, fn->subst.args, fn->subst.count);
+  }
+  const uint32_t method = lower_operation_method(fn->cx, receiver, callee->u.member.name, written, nwritten);
   if (method != MIR_NONE) {
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);

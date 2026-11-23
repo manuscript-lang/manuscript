@@ -112,6 +112,12 @@ static bool call_reads_temporary(const MsExpr *call) {
   return false;
 }
 
+/* Whether `value` is the `none` just built: it holds nothing, so the binding that takes it owns all of it. */
+static bool is_empty_optional(const LowerFn *fn, MirValue value) {
+  const MirInstList *insts = &fn->b.func.blocks.ptr[fn->b.cur].insts;
+  return insts->len != 0 && insts->ptr[insts->len - 1].res == value && insts->ptr[insts->len - 1].op == MOP_OptNone;
+}
+
 static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const MsPattern *pattern = stmt->u.bind.pattern;
   if (pattern->kind != MS_P_NAME) {
@@ -137,7 +143,9 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   if (kind == MS_E_NAME && bound_ty != MS_TY_NONE && ms_ty_kind(&fn->cx->program->types, bound_ty) == MS_TY_FUNCTION) {
     fn->hint = fn_type(fn, bound_ty);
   }
+  fn->moving_field = !borrow && !stmt->u.bind.is_mutable && kind == MS_E_MEMBER ? stmt->u.bind.value : NULL;
   MirValue value = borrow || from_call ? fn_expr(fn, stmt->u.bind.value, LW_BORROW) : take_value(fn, stmt->u.bind.value);
+  fn->moving_field = NULL;
   if (from_call && value != MIR_NONE && fn_is_borrowed_view(fn, value)) { /* a call whose result borrows */
     if (call_reads_temporary(stmt->u.bind.value) &&
         fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), ms_facts_type(fn->facts, pattern->id))) {
@@ -156,7 +164,7 @@ static bool lower_bind(LowerFn *fn, const MsStmt *stmt) {
   const uint32_t local = ms_facts_ref(fn->facts, pattern->id)->local;
   const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
   /* A name that converts to a new value (a type to its Optional) owns that value, though it reads another name. */
-  const bool fresh = fn_fresh_owner(fn, value);
+  const bool fresh = fn_fresh_owner(fn, value) || is_empty_optional(fn, value);
   const bool shared = stmt->u.bind.is_mutable && fn->shared != NULL && local < fn->nvars && fn->shared[local] != 0 &&
                       fn->closing != NULL;
   if (shared || ((!borrow || fresh) && fn_closer_for(fn, closer, ms_facts_type(fn->facts, pattern->id)) &&
@@ -450,6 +458,22 @@ bool fn_same_field_root(LowerFn *fn, const MsExpr *a, const MsExpr *b) {
   return ref_a != NULL && ref_b != NULL && ref_a->kind == ref_b->kind && ref_a->local == ref_b->local;
 }
 
+/* Whether two member paths name the same field of the same variable. */
+static bool fn_same_member_path(LowerFn *fn, const MsExpr *a, const MsExpr *b) {
+  while (a->kind == MS_E_MEMBER && b->kind == MS_E_MEMBER) {
+    const MsRef *ra = ms_facts_ref(fn->facts, a->id);
+    const MsRef *rb = ms_facts_ref(fn->facts, b->id);
+    if (ra == NULL || rb == NULL || ra->kind != MS_REF_FIELD || rb->kind != MS_REF_FIELD || ra->index != rb->index) {
+      return false;
+    }
+    a = a->u.member.left;
+    b = b->u.member.left;
+  }
+  const MsRef *ra = a->kind == MS_E_NAME ? ms_facts_ref(fn->facts, a->id) : NULL;
+  const MsRef *rb = b->kind == MS_E_NAME ? ms_facts_ref(fn->facts, b->id) : NULL;
+  return ra != NULL && rb != NULL && ra->kind == rb->kind && ra->local == rb->local;
+}
+
 /* `base.field = value` where `base` is an owning local or a member path: the record is taken out of its place
  * (a path's inner record is copied), the old field is dropped, `type.set` makes the updated record and that is
  * stored back into the place of `base`. `value` is owned and held by no scope. */
@@ -469,9 +493,24 @@ static bool set_member(LowerFn *fn, const MsExpr *place, MirValue value) {
   }
   const MirImm imm = {.tag = MI_FIELD, .a = data->id, .b = ref->index};
   const MirTy field_ty = fn_type(fn, ms_facts_type(fn->facts, place->id));
-  if (mir_needs_drop(fn->cx->module, field_ty)) {
+  bool moved_out = false; /* an earlier bind took the field: there is nothing to drop */
+  for (uint32_t at = 0; at < fn->nmoved_fields; at++) {
+    if (fn_same_member_path(fn, fn->moved_fields[at], place)) {
+      moved_out = true;
+      fn->moved_fields[at] = fn->moved_fields[--fn->nmoved_fields];
+      break;
+    }
+  }
+  if (!moved_out && mir_needs_drop(fn->cx->module, field_ty)) {
     const MirValue old = mir_b_emit(&fn->b, MOP_TypeGet, &record, 1, imm, field_ty);
-    (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    const MsTy checked = ms_facts_type(fn->facts, place->id);
+    if (fn_closer_for(fn, ms_facts_closer(fn->facts, place->id), checked)) {
+      if (!fn_close_replaced(fn, checked, old)) { /* a resource the assignment replaces closes, it is not dropped */
+        return false;
+      }
+    } else {
+      (void)mir_b_emit(&fn->b, MOP_Drop, &old, 1, (MirImm){0}, MIR_NONE);
+    }
   }
   const MirValue operands[2] = {record, value};
   const MirValue updated = mir_b_emit(&fn->b, MOP_TypeSet, operands, 2, imm, mir_b_ty(&fn->b, record));

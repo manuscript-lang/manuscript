@@ -128,6 +128,7 @@ typedef enum MsCloserFlags {
   MS_CLOSER_VAR = 8192,     /* a `var` binding: it lives in a slot, so a change in place goes through the slot */
   MS_CLOSER_RECEIVER = 4096, /* a call moves it as its receiver: the callee changes or consumes it through its place */
   MS_CLOSER_MUTATED = 2048, /* a member is assigned, or a `var` argument or mutating receiver changes it in place */
+  MS_CLOSER_FIELDS = 16384, /* the receiver of its own `close`: after the close ran, the resources its fields hold close */
   MS_CLOSER_DROP = 1024     /* a `var` of any type: its slot drops what it holds, so a move out of it leaves nothing to drop */
 } MsCloserFlags;
 

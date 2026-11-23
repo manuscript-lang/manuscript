@@ -244,9 +244,11 @@ export fn promise_when_idle[U](entry: fn() U!) Promise[U]:
 	return Promise[U](id: id)
 
 // Runs `entry` as a promise and returns the promise. The closure follows the capture
-// rules. A promise that is returned or kept owns what `entry` captures (bind a
-// `.clone()` first to keep a value). A promise that stays in the function reads its
-// captures in place, so they must outlive it and cannot change while it lives. A fault
+// rules. A promise that is returned owns what `entry` captures and closes or drops it
+// when its work ends (bind a `.clone()` first to keep a value). A promise that stays in
+// the function reads its captures in place, so they must outlive it and cannot change
+// while it lives; to give it a resource, move the resource into a helper that returns
+// the promise. A fault
 // inside ends only this promise, and `wait` reports it as `EIO`. `options.placement`
 // picks the thread.
 export fn promise[U](

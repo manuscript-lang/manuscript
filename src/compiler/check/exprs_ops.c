@@ -138,6 +138,7 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
     return body_std_type(body, "Decimal", NULL, 0);
   }
   if (kind == NUMBER_FLOAT) {
+    body_check_float_literal(body, expr, is_sized_float(body, expected) ? expected : MS_TY_NONE);
     return is_sized_float(body, expected) || numeric_variable(body, expected, false) ? expected
                                                                                    : body_primitive(body, MS_BUILTIN_Float);
   }
@@ -145,7 +146,11 @@ static MsTy number_type(Body *body, const MsExpr *expr, MsTy expected, bool nega
     body_check_literal_range(body, expr, negated, expected);
     return expected;
   }
-  return numeric_variable(body, expected, true) ? expected : body_primitive(body, MS_BUILTIN_Int);
+  if (!numeric_variable(body, expected, true)) {
+    body_check_int64_literal(body, expr, negated);
+    return body_primitive(body, MS_BUILTIN_Int);
+  }
+  return expected;
 }
 
 /* The decimal literals inside a constant's initializer, which the constants pass leaves unreported. */
@@ -299,6 +304,10 @@ static bool is_comparison(MsBinaryOp op) {
   return op >= MS_B_EQ && op <= MS_B_GE;
 }
 
+static bool collection_literal(const MsExpr *expr) {
+  return expr->kind == MS_E_LIST || expr->kind == MS_E_MAP;
+}
+
 /* Types the two operands. Literals beside a sized number take its type; arithmetic over literals alone takes the
  * expected sized type. */
 static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *left, MsTy *right) {
@@ -313,12 +322,16 @@ static void operand_types(Body *body, const MsExpr *expr, MsTy expected, MsTy *l
   } else if (literal_tree(body, l) == 2 && literal_tree(body, r) != 2) {
     *right = body_expr(body, r, MS_TY_NONE);
     *left = body_expr(body, l, literal_hint(body, l, *right));
+  } else if (collection_literal(l) && !collection_literal(r) && (op == MS_B_EQ || op == MS_B_NE)) {
+    *right = body_expr(body, r, MS_TY_NONE); /* a literal beside a typed collection takes its type */
+    *left = body_expr(body, l, *right);
   } else {
     *left = body_expr(body, l, MS_TY_NONE);
     const bool wraps = (op == MS_B_EQ || op == MS_B_NE) &&
                        ms_ty_is(&body->program->types, *left, MS_BUILTIN_Optional) &&
                        ms_ty_arg_count(&body->program->types, *left) == 1;
-    *right = body_expr(body, r, wraps ? *left : literal_hint(body, r, *left));
+    const bool shaped = (op == MS_B_EQ || op == MS_B_NE) && collection_literal(r);
+    *right = body_expr(body, r, wraps || shaped ? *left : literal_hint(body, r, *left));
   }
 }
 
@@ -349,6 +362,15 @@ static MsTy arithmetic_type(Body *body, const MsExpr *expr, MsBinaryOp op, MsTy 
                       ms_string_from_span(ms_span_of_text("arithmetic requires numeric operands")));
     }
     return left == right ? left : MS_TY_NONE;
+  }
+  const MsBuiltin builtin = ms_ty_builtin(&body->program->types, left);
+  if (op == MS_B_REM && (ms_builtin_is_float(builtin) || builtin == MS_BUILTIN_Decimal) && body->module < body->program->user_modules &&
+      !body->quiet) {
+    MsStrBuild message = ms_strbuild_new();
+    ms_strbuild_append_text(&message, "remainder requires integer operands, found ");
+    ms_ty_show(&message, body->program->names, &body->program->types, left);
+    ms_strbuild_append_text(&message, "; convert to Int or use math functions");
+    ms_check_report(body->program, body->module, expr->pos, MS_CHECK_TYPE, ms_strbuild_finish(&message));
   }
   return left;
 }

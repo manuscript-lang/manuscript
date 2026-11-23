@@ -12,33 +12,33 @@ type Marker:
 
 fn move Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
-fn optional_cause(log: String) Void:
+fn optional_cause(move log: String) Void:
 	value: Marker? := Marker(1, log)
 	_kept := value.ok_or("failure")
 
-fn optional_callback(log: String) Void:
+fn optional_callback(move log: String) Void:
 	value: Marker? := Marker(2, log)
 	_kept := value.ok_or_else(fn: "failure")
 
-fn result_error_map(log: String) Void:
+fn result_error_map(move log: String) Void:
 	value: Marker!Int := ok(Marker(3, log))
 	_kept := value.map_error(fn cause: cause + 1)
 
-fn result_optional(log: String) Void:
+fn result_optional(move log: String) Void:
 	value: Marker!Int := ok(Marker(4, log))
 	_kept := value.to_optional()
 
-fn result_map(log: String) Void:
+fn result_map(move log: String) Void:
 	value: Int!Marker := error(Marker(5, log))
 	_kept := value.map(fn item: item + 1)
 
-fn result_then(log: String) Void:
+fn result_then(move log: String) Void:
 	value: Int!Marker := error(Marker(6, log))
 	_kept := value.and_then(fn item: ok(item + 1))
 
-fn error_result(id: Int, log: String) Int!Marker: error(Marker(id, log))
+fn error_result(id: Int,move log: String) Int!Marker: error(Marker(id, log))
 
-fn discarded_error(log: String) Void:
+fn discarded_error(move log: String) Void:
 	_kept := error_result(7, log).to_optional()
 
 fn transformed_success(log: String) Void!:
@@ -131,7 +131,7 @@ fn specialized_optional[T](create: fn() Int, value: T?) T!Int:
 fn specialized_error[T](value: Int!T) String!T:
 	return value.map[String](fn item: f"{item}")
 
-fn specialized_transfers(log: String) Void:
+fn specialized_transfers(move log: String) Void:
 	present: Marker? := Marker(60, log.clone())
 	_first := specialized_optional(fn: 0, present)
 	failed: Int!Marker := error(Marker(61, log))

@@ -68,7 +68,7 @@ test "already Optional counter keys retain their representation":
 	expect_equal(values.get_or(1, 0), 2)?
 	expect_equal(values.length(), 1)?
 
-fn consume_text(key: String) Int:
+fn consume_text(move key: String) Int:
 	values := [key]
 	return values.length() + 4
 
@@ -90,7 +90,7 @@ test "a map add default retains its key while its source is consumed":
 	values.add_default(key.clone(), consume_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
-fn consume_keys(keys: List[String]) Int:
+fn consume_keys(move keys: List[String]) Int:
 	nested := [keys]
 	return nested.length() + 4
 

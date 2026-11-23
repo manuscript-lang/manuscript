@@ -76,6 +76,9 @@ typedef struct LowerFn {
   uint32_t nowned_vars;
   MirValue moved_names[8]; /* values a name read handed on, in the statement being lowered: an assignment does not drop them */
   uint32_t nmoved_names;
+  const MsExpr *moving_field; /* the field read of a `name := record.field` bind whose field the callable assigns next */
+  const MsExpr *moved_fields[4]; /* fields moved out of a `var` record and not yet assigned: the assignment drops nothing */
+  uint32_t nmoved_fields;
   LowerVarParam var_params[LOWER_MAX_VAR_PARAMS];
   uint32_t nvar_params;
   LowerWriteback writebacks[LOWER_MAX_WRITEBACKS];
@@ -172,6 +175,8 @@ bool fn_closer_for(LowerFn *fn, const MsCloser *closer, MsTy checked);
  * when some part cannot be closed this way; and whether it exists. */
 uint32_t lower_close_parts(Lower *cx, MsTy ty);
 bool lower_parts_supported(Lower *cx, MsTy ty);
+/* The function that closes a part of type `ty` taken out of its holder, or MIR_NONE when it holds no resource. */
+uint32_t lower_part_close(Lower *cx, MsTy ty);
 /* The function `fn(move value)` that closes an interface value through its `close` operation. */
 uint32_t lower_close_iface(Lower *cx, MsTy ty);
 /* Whether a temporary of the type `checked` closes where its statement ends, and its owner: the value goes into a
@@ -195,11 +200,15 @@ enum { LOWER_MAX_ARGS = 64 }; /* the most arguments a call lowers: a record cons
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written);
 /* After the close of a part returned `result`: faults when it is an error, else drops it. */
 void lower_close_check(MirBuilder *b, MirValue result);
+/* The close thunk of a type an escaping closure owns as a capture, when it has anything to close. */
+bool fn_capture_closer(LowerFn *fn, MsTy checked, MirTy ty, uint32_t *silent);
 /* Binds `local`, of checker type `checked`, to the fresh owned `value` in a slot its scope closes. */
 /* Allocates the slots of the locals that live in memory (resources, and variables a lambda changes). */
 void fn_init_closing(LowerFn *fn);
 /* The index in the closing tables of the `var` variable (local or parameter) `ref` names that lives in a slot, or UINT32_MAX. */
 uint32_t fn_closing_at(const LowerFn *fn, const MsRef *ref, MsName name);
+/* A value an assignment replaced: the innermost scope closes it where it ends. */
+bool fn_close_replaced(LowerFn *fn, MsTy checked, MirValue old);
 bool fn_bind_closing(LowerFn *fn, uint32_t local, MsTy checked, MirValue value, bool is_var);
 /* A read of the `var` resource `ref` names: the slot's current value, or false when it is not one. */
 bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view);
@@ -207,7 +216,7 @@ bool fn_closing_read(LowerFn *fn, const MsRef *ref, MsName name, MirValue *view)
 bool fn_closing_assign(LowerFn *fn, const MsRef *ref, MsName name, MirValue value, bool *done);
 /* Binds the `move` parameter `index` of checker type `checked`, whose incoming value `value` the function owns, in a
  * slot its scope closes; `var` is the variable the body reads it through. */
-bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var);
+bool fn_own_param(LowerFn *fn, uint32_t index, MsTy checked, MirValue value, MirVar var, bool fields_only);
 /* A moving read of the closed resource `name` (read as `view`): the slot is given up and its value taken. */
 bool fn_closing_take(LowerFn *fn, const MsRef *ref, MirValue view, MirValue *taken);
 bool fn_closing_move(LowerFn *fn, const MsExpr *name, MirValue view, MirValue *taken);

@@ -58,8 +58,9 @@ static uint32_t add_cursor_type(Lower *cx, MsName name, MirTy list_ty) {
   return id;
 }
 
-/* `fn close(cursor: ptr)`: releases the list from the first element the loop never took. */
-static uint32_t add_cursor_close(Lower *cx, MsName name, uint32_t type, MirTy list_ty) {
+/* `fn close(cursor: ptr)`: closes the elements the loop never took, first to last, when `part_close` is not none,
+ * and releases the list from the first element the loop never took. */
+static uint32_t add_cursor_close(Lower *cx, MsName name, uint32_t type, MirTy list_ty, uint32_t part_close) {
   MirBuilder b;
   const MirParam param = {MIR_PTR, (uint8_t)MM_BORROW};
   mir_b_init(&b, cx->module, name, &param, 1, MIR_VOID);
@@ -70,7 +71,31 @@ static uint32_t add_cursor_close(Lower *cx, MsName name, uint32_t type, MirTy li
   const MirValue next_at = mir_b_emit(&b, MOP_PtrField, &cursor, 1, imm_field(type, 1), MIR_PTR);
   const MirValue next = mir_b_emit(&b, MOP_Load, &next_at, 1, imm_ty(MIR_INT), MIR_INT);
   const MirValue list = mir_b_emit(&b, MOP_Take, &list_at, 1, imm_ty(list_ty), list_ty);
-  const MirValue release[2] = {list, next};
+  MirValue from = next;
+  if (part_close != MIR_NONE) {
+    const MirTy elem_ty = mir_ty_data(cx->module, list_ty)->elem;
+    const MirVar at = mir_b_declare_var(&b, MIR_INT, MM_BORROW);
+    mir_b_def_var(&b, at, next);
+    const MirBlock header = mir_b_new_block(&b);
+    const MirBlock body = mir_b_new_block(&b);
+    const MirBlock exit = mir_b_new_block(&b);
+    mir_b_br(&b, header, NULL, 0);
+    mir_b_switch_to(&b, header);
+    const MirValue length = mir_b_emit(&b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
+    mir_b_br_if(&b, mir_b_icmp(&b, MCC_LT, mir_b_use_var(&b, at), length), body, NULL, 0, exit, NULL, 0);
+    mir_b_seal_block(&b, body);
+    mir_b_seal_block(&b, exit);
+    mir_b_switch_to(&b, body);
+    const MirValue take[2] = {list, mir_b_use_var(&b, at)};
+    const MirValue item = mir_b_emit(&b, MOP_ListTake, take, 2, (MirImm){0}, elem_ty);
+    mir_b_def_var(&b, at, mir_b_binop(&b, MOP_IAdd, mir_b_use_var(&b, at), mir_b_iconst(&b, 1)));
+    lower_close_check(&b, mir_b_call(&b, part_close, &item, 1));
+    mir_b_br(&b, header, NULL, 0);
+    mir_b_seal_block(&b, header);
+    mir_b_switch_to(&b, exit);
+    from = mir_b_emit(&b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
+  }
+  const MirValue release[2] = {list, from};
   (void)mir_b_emit(&b, MOP_ListRelease, release, 2, (MirImm){0}, MIR_NONE);
   mir_b_ret(&b, mir_b_unit(&b));
   uint32_t id = MIR_NONE;
@@ -78,19 +103,20 @@ static uint32_t add_cursor_close(Lower *cx, MsName name, uint32_t type, MirTy li
 }
 
 /* The cursor type for `list_ty` and the function closing it, made on first use. */
-static bool cursor_for(LowerFn *fn, MirTy list_ty, uint32_t *type, uint32_t *close) {
+static bool cursor_for(LowerFn *fn, MirTy list_ty, uint32_t part_close, uint32_t *type, uint32_t *close) {
   Lower *cx = fn->cx;
+  const bool closes = part_close != MIR_NONE;
   for (uint32_t n = 0;; n++) {
-    const MsName name = numbered(cx, "ListCursor", n);
+    const MsName name = numbered(cx, closes ? "ListCursorClosing" : "ListCursor", n);
     const uint32_t found = mir_type_by_name(cx->module, name);
     if (found == MIR_NONE) {
       *type = add_cursor_type(cx, name, list_ty);
-      *close = add_cursor_close(cx, numbered(cx, "cursor.close", n), *type, list_ty);
+      *close = add_cursor_close(cx, numbered(cx, closes ? "cursor.close.parts" : "cursor.close", n), *type, list_ty, part_close);
       return *close != MIR_NONE || fn_fail(fn, "the loop cursor close function was not built");
     }
     if (cx->module->type_defs.ptr[found].fields[0].ty == list_ty) {
       *type = found;
-      *close = mir_func_by_name(cx->module, numbered(cx, "cursor.close", n));
+      *close = mir_func_by_name(cx->module, numbered(cx, closes ? "cursor.close.parts" : "cursor.close", n));
       return *close != MIR_NONE;
     }
   }
@@ -210,7 +236,13 @@ static bool source_list(LowerFn *fn, const MsExpr *iter, ForSource *src) {
       (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &list, 1, none, MIR_NONE);
     }
     uint32_t close = 0;
-    if (!cursor_for(fn, list_ty, &src->cursor_type, &close)) {
+    const MsTy checked = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, iter->id), fn->subst.vars, fn->subst.args,
+                                     fn->subst.count);
+    const MsTyTable *types = &fn->cx->program->types;
+    const uint32_t part_close = ms_ty_is(types, checked, MS_BUILTIN_List) && ms_ty_arg_count(types, checked) == 1
+                                    ? lower_part_close(fn->cx, ms_ty_args(types, checked)[0])
+                                    : MIR_NONE;
+    if (!cursor_for(fn, list_ty, part_close, &src->cursor_type, &close)) {
       return false;
     }
     const MirTy cursor_ty = mir_ty_type(fn->cx->module, src->cursor_type);

@@ -41,7 +41,7 @@ fn describe(text: String) String!Error:
 fn order(var log: List[String]) Int:
     return trace(log, "a") | add(trace(log, "b")) | double
 
-fn trace(var log: List[String], name: String) Int:
+fn trace(var log: List[String], move name: String) Int:
     log.append(name)
     return 1
 

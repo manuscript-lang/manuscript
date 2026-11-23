@@ -9,7 +9,7 @@ type Point:
 fn ident[T](x: T) T:
     return x
 
-fn pick[T](first: Bool, left: T, right: T) T:
+fn pick[T](first: Bool, move left: T, move right: T) T:
     chosen := if not first: right else: left
     return chosen
 

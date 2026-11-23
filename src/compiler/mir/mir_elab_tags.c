@@ -245,3 +245,30 @@ void el_tags(ElCx *cx) {
   }
   tag_params(cx, &idom);
 }
+
+/* A `drop.if` on an exit path the owner's definition does not dominate (an exit before the binding, in a loop whose
+ * flag travels round the back edge) can never find the owner live: a live owner reaching a block it does not
+ * dominate would travel in a block parameter. The drop is removed so every use is dominated. */
+void el_prune_undominated_drops(ElCx *cx) {
+  const MirFunc *func = cx->f;
+  const MirBlock *idom = NULL;
+  for (size_t b = 0; b < func->blocks.len; b++) {
+    MirInstList *insts = &((MirBlockData *)(uintptr_t)&func->blocks.ptr[b])->insts;
+    size_t kept = 0;
+    for (size_t i = 0; i < insts->len; i++) {
+      const MirInst *inst = &insts->ptr[i];
+      bool drop = false;
+      if (inst->op == MOP_DropIf && inst->nargs == 2) {
+        const MirBlock def = defining_block(func, inst->args[1]);
+        if (def != MIR_NONE && def != (MirBlock)b) {
+          ensure_idom(cx, &idom);
+          drop = !dominates(idom, def, (MirBlock)b);
+        }
+      }
+      if (!drop) {
+        insts->ptr[kept++] = insts->ptr[i];
+      }
+    }
+    insts->len = kept;
+  }
+}

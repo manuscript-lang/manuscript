@@ -28,6 +28,20 @@ bool target_positional(const Target *target, size_t index, const MsTyTable *type
   return value || (ms_ty_params(types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
 }
 
+/* Whether the callee is a local or parameter declared with a written function type, whose parameters carry no labels. */
+static bool written_fn_value(const Body *body, const Target *target) {
+  if (target->ref.kind != MS_REF_LOCAL && target->ref.kind != MS_REF_PARAM) {
+    return false;
+  }
+  for (size_t index = 0; index < body->locals.len; index++) {
+    const MsLocal *local = &body->locals.ptr[index];
+    if (local->site == target->ref.decl.node && local->kind == target->ref.kind) {
+      return local->written_fn;
+    }
+  }
+  return false;
+}
+
 static MsSpan param_name(const Body *body, const Target *target, size_t index) {
   return ms_names_span(body->program->names, target_param_name(body, target, index));
 }
@@ -182,10 +196,19 @@ void body_report_arguments(Body *body, const Target *target, const MsExpr *call,
     (void)body_expr(body, arg->value, MS_TY_NONE);
   }
   const MsTyTable *types = &body->program->types;
+  const bool written = written_fn_value(body, target);
   for (size_t index = 0; index < matched->count; index++) {
     const MsTyParam *param = &ms_ty_params(types, target->sig)[index];
     const MsTyKind kind = ms_ty_kind(types, param->ty);
-    if (report && matched->slot[index] < 0 && param->ty != MS_TY_NONE && kind != MS_TY_INVALID && !omittable(body, target, param, index)) {
+    /* a label that names the parameter counts as supplying it even when the label is rejected (function values) */
+    bool named = false;
+    for (uint32_t at = 0; !written && at < call->u.call.args.len; at++) {
+      named = call->u.call.args.ptr[at].has_name && call->u.call.args.ptr[at].name == target_param_name(body, target, index);
+      if (named) {
+        break;
+      }
+    }
+    if (report && !named && matched->slot[index] < 0 && param->ty != MS_TY_NONE && kind != MS_TY_INVALID && !omittable(body, target, param, index)) {
       report_missing(body, target, call, index);
     }
   }
