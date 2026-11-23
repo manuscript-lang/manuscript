@@ -138,7 +138,7 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
   const size_t nargs = ms_ty_arg_count(&cx->program->types, ty);
   const LowerSubst subst = {def->variables.ptr, ms_ty_args(&cx->program->types, ty),
                             def->variables.len < nargs ? def->variables.len : nargs};
-  MirMethodSig *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirMethodSig, def->operations.len + 1);
+  MirMethodSig *methods = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirMethodSig, def->operations.len + 2);
   for (size_t index = 0; index < def->operations.len; index++) {
     const MsOperation *operation = &def->operations.ptr[index];
     const MsTy fn = operation->ty;
@@ -155,8 +155,13 @@ static MirTy lower_iface(Lower *cx, MsTy ty) {
     methods[index].consumes = declared != NULL && declared->consuming;
     methods[index].ret = lower_type(cx, &subst, ms_ty_result(&cx->program->types, fn));
   }
+  /* The last slot is the text of the payload (`to_string`, `f"{value}"`), which every interface has. */
+  const size_t text = def->operations.len;
+  methods[text].name = mir_name(cx->module, ms_span_of_text("to_string"));
+  methods[text].params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirTy, 1);
+  methods[text].ret = MIR_STR;
   cx->module->ifaces.ptr[id].methods = methods;
-  cx->module->ifaces.ptr[id].nmethods = (uint32_t)def->operations.len;
+  cx->module->ifaces.ptr[id].nmethods = (uint32_t)text + 1;
   return result;
 }
 
