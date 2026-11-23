@@ -8,7 +8,7 @@
 
 ## Status
 
-Implemented 2026-11-23. A module with a size tier (`optnone`) is emitted again without held values, since llc -O0 gives each load a slot. Chinmay: "2.7KB is HUGE, what are we wasting this much stack on? these should be in hundreds of bytes" and "make sure you're not special casing this". The rule below is a leaf count on any type.
+Implemented 2026-11-23. Chinmay: "2.7KB is HUGE, what are we wasting this much stack on? these should be in hundreds of bytes" and "make sure you're not special casing this". The rule below is a leaf count on any type.
 
 ## Problem
 

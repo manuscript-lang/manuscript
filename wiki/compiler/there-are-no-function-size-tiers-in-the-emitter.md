@@ -1,0 +1,7 @@
+# There are no function-size tiers in the emitter
+
+- The emitter used to mark functions over 8000 loop-free lines, 25000 lines and 60000 lines `optnone`/`optsize`, and `object.c` then ran `llc -O0` on the whole module (#3928). One big function (toml `scalar.body`) gave every function in the module unshared spill slots, so deep recursion overflowed the stack under `ms test`.
+- The cause behind the tiers (cubic instruction selection on one huge block) no longer reproduces with the bundled LLVM: with all tiers off, `gen_shapes.py manyinst` builds 400, 800 and 2000 statements in 0.7, 0.8 and 1.5 s, 8000 in 7 s and 20000 in 29 s (Release, `ms build`); the toml 8083-line function takes 1 s in `opt` plus 1 s in `llc -O3`. The tiers, the `"ms-huge"` marker, the module-wide `-O0` switch and the held-value re-emit in `backend.c` are deleted.
+- If a generated input is slow again, find the pass with `opt -time-passes` / `llc -time-passes`, and fix it in MIR (split the straight-line run) rather than reintroducing a size switch. Known slow shape unrelated to tiers: a record with thousands of fields (`gen_flat.py record 4000` takes 45 s).
+- `[embed]` still emits data (per-file functions and string literals), not one giant function.
+- Handle slots (`cleanup.push` results) may share a cell only within one block and only when used; cleanups are popped in bulk by discarding an earlier handle, so a pushed slot must stay live until popped. Modeling bulk pops would let yaml `quoted` fall from 28 KB toward ~3 KB.

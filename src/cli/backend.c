@@ -36,15 +36,6 @@ static bool emit_program(MirModule *module, const MirData *data, const MirGlue *
   if (!emit_module(module, data, glue, &emit, ir, why)) {
     return false;
   }
-  /* A size tier (`optnone`) sends the whole module through llc -O0, which gives every load its own stack slot: held
-   * values then cost frames instead of saving them, so the module is emitted again with registers. */
-  if (wide_leaves != 0 && ms_span_find(ms_strbuild_span(ir), ms_span_of_text(" optnone"), &(size_t){0})) {
-    ms_strbuild_clear(ir);
-    const EmitOptions plain = {.export_all = emit.export_all, .places = emit.places, .wide_leaves = 0};
-    if (!emit_module(module, data, glue, &plain, ir, why)) {
-      return false;
-    }
-  }
   emit_entry_main(module, kept != NULL, ir);
   return true;
 }
