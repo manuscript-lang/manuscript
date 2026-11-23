@@ -193,9 +193,11 @@ static bool hover_expression(const LspAnalysis *analysis, const LspDoc *doc, siz
     LspHoverFallback found;
     if (!lsp_hover_fallback(program->names, program->modules.ptr[m].tree, offset, &found)) return false;
     const MsTy ty = ms_facts_type(&program->modules.ptr[m].facts, found.node);
-    if (ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, ty)) return false;
+    const bool never = ty == MS_TY_NONE && lsp_match_never(found.expr);
+    if (!never && (ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, ty))) return false;
     MsStrBuild shown = ms_strbuild_new();
-    ms_ty_show(&shown, program->names, &program->types, ty);
+    if (never) ms_strbuild_append_text(&shown, "Never");
+    else ms_ty_show_plain(&shown, program->names, &program->types, ty);
     MsStrBuild value = ms_strbuild_new();
     ms_strbuild_append_text(&value, "```manuscript\n");
     ms_strbuild_append(&value, found.text);
@@ -230,7 +232,7 @@ void lsp_nav_hover(const LspDocList *docs, const LspDoc *doc, LspPosition positi
   const MsCheckProgram *program = &analysis.checked.program;
   if (selected->ty == MS_TY_NONE || ms_ty_is_invalid(&program->types, selected->ty)) goto none;
   MsStrBuild shown = ms_strbuild_new();
-  ms_ty_show(&shown, program->names, &program->types, selected->ty);
+  ms_ty_show_plain(&shown, program->names, &program->types, selected->ty);
   MsStrBuild value = ms_strbuild_new();
   ms_strbuild_append_text(&value, "```manuscript\n");
   ms_strbuild_append(&value, selected->name);
@@ -317,6 +319,9 @@ static bool import_path_definition(LspAnalysis *analysis, const LspDocList *docs
       for (size_t g = 0; g < analysis->checked.graph.count && !found; g++) {
         const MsSpan target = analysis->checked.graph.modules[g].path;
         if (!ms_span_equal(target, ms_strbuild_span(&cleaned))) continue;
+        bool exists = analysis->checked.graph.modules[g].source.len > 0;
+        for (size_t d = 0; d < docs->len && !exists; d++) exists = ms_span_equal(target, ms_string_span(&docs->ptr[d].path));
+        if (!exists) continue; /* an import of a file that is not there stands for it with an empty module */
         found = true;
         ms_strbuild_append_text(out, "[{\"uri\":");
         lsp_json_string(out, uri_of(analysis, docs, target));
@@ -801,7 +806,7 @@ void lsp_nav_inlay_hints(const LspDocList *docs, const LspDoc *doc, LspRange ran
     if (!after_start || !before_end) continue;
     MsStrBuild label = ms_strbuild_new();
     ms_strbuild_append_text(&label, ": ");
-    ms_ty_show(&label, program->names, &program->types, entry->ty);
+    ms_ty_show_plain(&label, program->names, &program->types, entry->ty);
     hint_list_push(&hints, (Hint){at, ms_arena_copy(analysis.arena, ms_strbuild_span(&label))});
     ms_strbuild_free(&label);
   }

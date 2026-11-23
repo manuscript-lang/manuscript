@@ -3,54 +3,60 @@
 
 enum { SHOW_NODE_BUDGET = 64 };
 
-static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, int *budget);
+/* The node budget of one rendering, and whether parameters spell their `move`. */
+typedef struct Show {
+  int budget;
+  bool moves;
+} Show;
+
+static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, Show *show);
 
 static void show_function(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty,
-                          int *budget) {
+                          Show *show) {
   ms_strbuild_append_text(out, "fn(");
   const MsTyParam *params = ms_ty_params(table, ty);
   for (size_t index = 0; index < ms_ty_param_count(table, ty); index++) {
     if (index > 0) {
       ms_strbuild_append_text(out, ", ");
     }
-    ms_strbuild_append_text(out, (params[index].flags & MS_PARAM_MOVE) != 0 ? "move " : "");
+    ms_strbuild_append_text(out, show->moves && (params[index].flags & MS_PARAM_MOVE) != 0 ? "move " : "");
     ms_strbuild_append_text(out, (params[index].flags & MS_PARAM_VAR) != 0 ? "var " : "");
-    show_node(out, names, table, params[index].ty, budget);
+    show_node(out, names, table, params[index].ty, show);
   }
   ms_strbuild_append_text(out, ") ");
   if (ms_ty_result(table, ty) == MS_TY_NONE) {
     ms_strbuild_append_text(out, "<unknown>");
     return;
   }
-  show_node(out, names, table, ms_ty_result(table, ty), budget);
+  show_node(out, names, table, ms_ty_result(table, ty), show);
 }
 
 static void show_optional(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy inner,
-                          int *budget) {
+                          Show *show) {
   const bool wrap = ms_ty_kind(table, inner) == MS_TY_FUNCTION;
   ms_strbuild_append_text(out, wrap ? "(" : "");
-  show_node(out, names, table, inner, budget);
+  show_node(out, names, table, inner, show);
   ms_strbuild_append_text(out, wrap ? ")?" : "?");
 }
 
-static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, int *budget) {
-  if (*budget == 0) {
+static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty, Show *show) {
+  if (show->budget == 0) {
     ms_strbuild_append_utf8(out, 0x2026);
     return;
   }
-  (*budget)--;
+  show->budget--;
   if (ms_ty_kind(table, ty) == MS_TY_INVALID) {
     ms_strbuild_append_text(out, "<invalid>");
     return;
   }
   if (ms_ty_kind(table, ty) == MS_TY_FUNCTION) {
-    show_function(out, names, table, ty, budget);
+    show_function(out, names, table, ty, show);
     return;
   }
   const MsTy *args = ms_ty_args(table, ty);
   const size_t count = ms_ty_arg_count(table, ty);
   if (ms_ty_is(table, ty, MS_BUILTIN_Optional) && count == 1) {
-    show_optional(out, names, table, args[0], budget);
+    show_optional(out, names, table, args[0], show);
     return;
   }
   ms_strbuild_append(out, ms_names_span(names, ms_ty_row(table, ty)->name));
@@ -60,14 +66,19 @@ static void show_node(MsStrBuild *out, const MsNames *names, const MsTyTable *ta
   ms_strbuild_append_byte(out, '[');
   for (size_t index = 0; index < count; index++) {
     ms_strbuild_append_text(out, index > 0 ? ", " : "");
-    show_node(out, names, table, args[index], budget);
+    show_node(out, names, table, args[index], show);
   }
   ms_strbuild_append_byte(out, ']');
 }
 
 void ms_ty_show(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty) {
-  int budget = SHOW_NODE_BUDGET;
-  show_node(out, names, table, ty, &budget);
+  Show show = {SHOW_NODE_BUDGET, true};
+  show_node(out, names, table, ty, &show);
+}
+
+void ms_ty_show_plain(MsStrBuild *out, const MsNames *names, const MsTyTable *table, MsTy ty) {
+  Show show = {SHOW_NODE_BUDGET, false};
+  show_node(out, names, table, ty, &show);
 }
 
 typedef struct Binding {
