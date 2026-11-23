@@ -88,14 +88,6 @@ book-check: docs-check docs
 	"$(HUGO)" --source website --minify --panicOnWarning --cleanDestinationDir --destination "$(BOOK_CHECK_DIR)" --baseURL "https://example.org/manuscript/"
 	MANUSCRIPT_BOOK_DIR="$(BOOK_CHECK_DIR)" node --test tests/docs/publication.test.cjs
 
-dist: build
-	$(MS) run tools/package.ms
-
-# Extracts the archive for this host and runs the packaged binary on the hello example.
-dist-check: dist
-	$(MS) run tools/dist-check.ms
-
-# Type-checks every benchmark project and standalone bench source so the suites cannot rot unnoticed.
 bench-check: build
 	@for t in $$(find bench/perf -name ms.toml | sort); do \
 		(cd $$(dirname $$t) && "$(MS)" check ms.toml) || exit 1; \
