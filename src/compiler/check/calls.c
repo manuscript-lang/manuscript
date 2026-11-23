@@ -94,16 +94,56 @@ static bool case_target(Body *body, const MsExpr *callee, MsName name, MsTy owne
   return true;
 }
 
-MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
+/* The parameters of the function or method a value names, whose defaults a function value keeps. */
+static const MsParams *lifted_params(Body *body, const MsExpr *value, MsTy ty, uint32_t *module) {
+  *module = body->module;
+  if (value->kind == MS_E_APPLY) { /* `value.ok_or[Error]`: the specialization keeps the method's defaults */
+    return lifted_params(body, value->u.apply.left, MS_TY_NONE, module);
+  }
+  if (value->kind == MS_E_MEMBER) {
+    const bool quiet = body->quiet;
+    body->quiet = true;
+    const MsTy receiver = body_expr(body, value->u.member.left, MS_TY_NONE);
+    body->quiet = quiet;
+    MsMethodMatchList found = {0};
+    const MsParams *ast = NULL;
+    if (receiver != MS_TY_NONE) {
+      ms_check_find_method(body->program, receiver, value->u.member.name, &found);
+    }
+    if (found.len == 1 && (ty == MS_TY_NONE || found.ptr[0].ty == ty) && found.ptr[0].entry != NULL) {
+      ast = &found.ptr[0].entry->source->func.params;
+      *module = found.ptr[0].entry->module;
+    }
+    ms_method_match_list_free(&found);
+    return ast;
+  }
+  if (value->kind == MS_E_LAMBDA) {
+    return &value->u.lambda.params;
+  }
   const MsSymbol *symbol = value->kind == MS_E_NAME && body_find_local(body, value->u.sym) == NULL
                                ? body_find_symbol(body, value->u.sym)
                                : NULL;
+  if (symbol == NULL || symbol->decl == NULL || symbol->decl->kind != MS_D_FN || (ty != MS_TY_NONE && ty != symbol->ty)) {
+    return NULL;
+  }
+  *module = symbol->module;
+  return &symbol->decl->u.fn.params;
+}
+
+const MsParams *body_function_params(Body *body, const MsExpr *value, MsTy ty, uint32_t *module) {
   const MsTyTable *types = &body->program->types;
-  if (symbol == NULL || symbol->decl == NULL || symbol->decl->kind != MS_D_FN || ty != symbol->ty ||
-      ms_ty_kind(types, ty) != MS_TY_FUNCTION) {
+  return ty != MS_TY_NONE && ms_ty_kind(types, ty) == MS_TY_FUNCTION
+             ? lifted_params(body, value, value->kind == MS_E_APPLY ? MS_TY_NONE : ty, module)
+             : NULL;
+}
+
+MsTy body_lifted_function(Body *body, const MsExpr *value, MsTy ty) {
+  const MsTyTable *types = &body->program->types;
+  uint32_t module = 0;
+  const MsParams *ast = value->kind == MS_E_LAMBDA ? NULL : body_function_params(body, value, ty, &module);
+  if (ast == NULL) {
     return ty;
   }
-  const MsParams *ast = &symbol->decl->u.fn.params;
   MsTyParamList params = {0};
   bool lifted = false;
   for (size_t index = 0; index < ms_ty_param_count(types, ty); index++) {
@@ -125,6 +165,8 @@ static bool name_target(Body *body, const MsExpr *callee, MsTy expected, Target 
     target->ref = body_local_ref(body, local);
     body_set_ref(body, callee->id, target->ref); /* a call of a function value reads the local */
     target->sig = local->ty;
+    target->ast = local->fn_params;
+    target->ast_module = local->fn_module;
     return local->ty != MS_TY_NONE && ms_ty_kind(&body->program->types, local->ty) == MS_TY_FUNCTION;
   }
   const MsSymbol *symbol = body_find_symbol(body, callee->u.sym);
@@ -341,7 +383,7 @@ static void match_args(const Body *body, const Target *target, const MsExpr *cal
     const MsArg *arg = &call->u.call.args.ptr[at];
     size_t index = 0;
     if (arg->has_name) {
-      const bool found = param_index(body, target, arg->name, &index) && !target_positional(target, index, types);
+      const bool found = param_index(body, target, arg->name, &index) && !target_positional(body, target, index);
       matched->state[at] = !found ? ARG_UNKNOWN : matched->slot[index] >= 0 ? ARG_DUPLICATE : ARG_MATCHED;
       matched->slot[index] = matched->state[at] == ARG_MATCHED ? (int32_t)at : matched->slot[index];
       continue;

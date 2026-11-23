@@ -163,6 +163,15 @@ static void missing_message(MsCheckProgram *program, MsSpan name, const MsTy *va
   (void)fail(out, &text);
 }
 
+static bool is_own(const MsTy *variables, size_t count, MsTy ty) {
+  for (size_t index = 0; index < count; index++) {
+    if (variables[index] == ty) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, size_t nvars, MsSpan name,
                   const MsTy *explicit_args, size_t nexplicit, const MsTy *arg_tys, size_t nargs,
                   const size_t *order, MsTy expected_result, MsInstance *out, MsTy *bound) {
@@ -210,6 +219,10 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
     }
   }
   const MsTy result = ms_ty_result(types, callee);
+  MsTyList from_arguments = {0}; /* what the arguments bound, before the expected result is consulted */
+  for (size_t at = 0; at < nvars; at++) {
+    ms_ty_list_push(&from_arguments, bound[at]);
+  }
   if (expected_result != MS_TY_NONE && !ms_ty_is_invalid(types, expected_result) && nvars > 0 &&
       ms_ty_has_variable(types, result)) {
     if (!unify_commit(types, result, expected_result, variables, nvars, bound)) {
@@ -236,6 +249,16 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
       }
     }
   }
+  for (size_t at = 0; at < nvars; at++) {
+    /* An open variable of another call, offered only by the expected result, loses to the variable's own default. */
+    const MsTyVariable *record = ms_ty_variable(types, variables[at]);
+    if (from_arguments.ptr[at] == MS_TY_NONE && bound[at] != MS_TY_NONE && record != NULL &&
+        record->default_ty != MS_TY_NONE && ms_ty_kind(types, bound[at]) == MS_TY_VARIABLE &&
+        !is_own(variables, nvars, bound[at])) {
+      bound[at] = MS_TY_NONE;
+    }
+  }
+  ms_ty_list_free(&from_arguments);
   apply_defaults(program, variables, nvars, bound);
   for (size_t index = 0; index < nvars; index++) {
     if (bound[index] == MS_TY_NONE) {

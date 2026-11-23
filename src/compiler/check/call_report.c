@@ -22,12 +22,6 @@ MsName target_param_name(const Body *body, const Target *target, size_t index) {
                                                           : ms_ty_params(&body->program->types, target->sig)[index].name;
 }
 
-bool target_positional(const Target *target, size_t index, const MsTyTable *types) {
-  const bool value = target->ast == NULL && (target->ref.kind == MS_REF_LOCAL || target->ref.kind == MS_REF_PARAM ||
-                                             target->ref.kind == MS_REF_NONE);
-  return value || (ms_ty_params(types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
-}
-
 /* Whether the callee is a local or parameter declared with a written function type, whose parameters carry no labels. */
 static bool written_fn_value(const Body *body, const Target *target) {
   if (target->ref.kind != MS_REF_LOCAL && target->ref.kind != MS_REF_PARAM) {
@@ -40,6 +34,13 @@ static bool written_fn_value(const Body *body, const Target *target) {
     }
   }
   return false;
+}
+
+bool target_positional(const Body *body, const Target *target, size_t index) {
+  /* A lambda or method value keeps its parameters' names (the local's `ast`); any other function value has none. */
+  const bool value = target->ast == NULL && (target->ref.kind == MS_REF_LOCAL || target->ref.kind == MS_REF_PARAM ||
+                                             target->ref.kind == MS_REF_NONE);
+  return value || (ms_ty_params(&body->program->types, target->sig)[index].flags & MS_PARAM_POSITIONAL) != 0;
 }
 
 static MsSpan param_name(const Body *body, const Target *target, size_t index) {
@@ -70,7 +71,7 @@ static void unknown_hint(Body *body, const Target *target, MsSpan name, MsStrBui
   bool all_positional = count != 0;
   for (size_t index = 0; index < count; index++) {
     ms_span_list_push(&names, param_name(body, target, index));
-    all_positional = all_positional && target_positional(target, index, types);
+    all_positional = all_positional && target_positional(body, target, index);
   }
   if (all_positional) {
     ms_strbuild_append_text(out, "; function values take positional arguments (");
@@ -159,7 +160,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
   }
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "missing argument ");
-  const bool positional = target_positional(target, index, &body->program->types);
+  const bool positional = target_positional(body, target, index);
   if (positional) {
     ms_strbuild_printf(&text, "%zu", index + 1);
   } else {

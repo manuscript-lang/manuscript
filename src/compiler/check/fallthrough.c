@@ -69,11 +69,28 @@ static Reach call_reach(const Ctx *ctx, const MsExpr *call) {
   return ms_ty_is(&ctx->program->types, ty, MS_BUILTIN_Never) ? REACH_NO : REACH_YES;
 }
 
+/* A call whose receiver or argument never returns never runs, so what follows it is unreachable. */
+static bool operand_never_returns(const Ctx *ctx, const MsExpr *call) {
+  const MsExpr *callee = call->u.call.callee;
+  if (callee->kind == MS_E_MEMBER && expression_flow(ctx, callee->u.member.left).reach == REACH_NO) {
+    return true;
+  }
+  for (uint32_t index = 0; index < call->u.call.args.len; index++) {
+    if (expression_flow(ctx, call->u.call.args.ptr[index].value).reach == REACH_NO) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static Flow expression_flow(const Ctx *ctx, const MsExpr *expr) {
   if (expr->kind == MS_E_MATCH) {
     return match_flow(ctx, expr);
   }
-  return (Flow){.reach = expr->kind == MS_E_CALL ? call_reach(ctx, expr) : REACH_YES};
+  if (expr->kind != MS_E_CALL) {
+    return (Flow){.reach = REACH_YES};
+  }
+  return (Flow){.reach = operand_never_returns(ctx, expr) ? REACH_NO : call_reach(ctx, expr)};
 }
 
 /* A value that is bound or assigned stops the path only when it is known to have type Never. */
@@ -84,6 +101,9 @@ static Flow value_flow(const Ctx *ctx, const MsExpr *value) {
 }
 
 static Flow branch_flow(const Ctx *ctx, const MsStmt *stmt) {
+  if (stmt->u.branch.cond != NULL && expression_flow(ctx, stmt->u.branch.cond).reach == REACH_NO) {
+    return (Flow){.reach = REACH_NO}; /* the condition never completes: neither branch runs */
+  }
   const Flow then = block_flow(ctx, &stmt->u.branch.body);
   Flow other = {.reach = REACH_YES};
   if (stmt->u.branch.else_body.len != 0) {

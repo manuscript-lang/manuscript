@@ -35,7 +35,7 @@ typedef struct Matched {
 MsName target_param_name(const Body *body, const Target *target, size_t index);
 
 /* Whether a parameter takes no label: a function value's, or one declared positional. */
-bool target_positional(const Target *target, size_t index, const MsTyTable *types);
+bool target_positional(const Body *body, const Target *target, size_t index);
 
 /* Reports the arguments that match no parameter and the parameters left without an argument, and types the
  * unmatched arguments. */
