@@ -74,6 +74,10 @@ jobs:
         run: cmake --build --preset ci --target docs-check
       - if: ${{ !cancelled() }}
         run: cmake --build --preset ci --target conform
+      - if: ${{ always() && matrix.os == 'windows' }}
+        run: |
+          M=.artifacts/build/ci/src/cli/ms.exe
+          for f in thin fat; do echo "== $f"; "$M" run tests/probe/$f.ms; echo "exit=$?"; done
       - if: always()
         uses: ./.github/actions/save-caches
 
