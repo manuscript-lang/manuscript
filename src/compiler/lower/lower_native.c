@@ -479,7 +479,7 @@ MirValue fn_entry_address(LowerFn *fn, MirValue container, const MsExpr *key_exp
 
 /* Whether `expr` names a list through variables, fields and list elements only: borrowing it gives the list
  * where it lies, not a copy (a map element is read out as a copy). */
-static bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
+bool lists_in_place(LowerFn *fn, const MsExpr *expr) {
   MsExpr *container = NULL;
   MsExpr *key = NULL;
   if (expr->kind == MS_E_NAME) {
@@ -588,131 +588,6 @@ bool fn_inline_scalar_op(LowerFn *fn, const char *name, const MirValue *args, ui
     return true;
   }
   return false;
-}
-
-static MirValue list_get(LowerFn *fn, MirValue list, MirValue index, MirTy elem) {
-  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &list, 1, (MirImm){0}, MIR_INT);
-  const MirValue from_end = mir_b_binop(&fn->b, MOP_IAdd, index, length);
-  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, index, mir_b_iconst(&fn->b, 0));
-  const MirValue at = mir_b_select(&fn->b, negative, from_end, index);
-  const MirValue args[2] = {list, at};
-  return mir_b_emit(&fn->b, MOP_ListGet, args, 2, (MirImm){0}, elem);
-}
-
-/* A native that changes a list receiver in line: the list is taken out of its slot or place, and `list_put` puts
- * the updated list back. False when the receiver is neither (nothing is emitted then). */
-static bool list_changeable(LowerFn *fn, const MsExpr *place, MirValue slot) {
-  if (slot != MIR_NONE) {
-    return true;
-  }
-  /* An element of a list held in place changes where it lies (`call_changing`), not through a copy put back. */
-  MsExpr *container = NULL;
-  MsExpr *key = NULL;
-  if (place != NULL && ms_expr_index(place, &container, &key) && fn_is_list(fn, container) && lists_in_place(fn, container)) {
-    return false;
-  }
-  return place != NULL && fn_place_changeable(fn, place);
-}
-
-static bool list_take(LowerFn *fn, const MsExpr *place, MirValue slot, MirTy list_ty, MirValue *owned, MirValue *record) {
-  *record = MIR_NONE;
-  if (slot != MIR_NONE) {
-    *owned = mir_b_emit(&fn->b, MOP_Take, &slot, 1, (MirImm){.tag = MI_TY, .a = list_ty}, list_ty);
-    return true;
-  }
-  return fn_take_field(fn, place, record, owned) || fn_take_place(fn, place, owned);
-}
-
-static bool list_put(LowerFn *fn, const MsExpr *place, MirValue slot, MirValue record, MirValue updated) {
-  if (record != MIR_NONE) {
-    return fn_put_field(fn, place, record, updated);
-  }
-  if (slot == MIR_NONE) {
-    return fn_put_place(fn, place, updated);
-  }
-  const MirValue stored[2] = {slot, updated};
-  (void)mir_b_emit(&fn->b, MOP_Put, stored, 2, (MirImm){0}, MIR_NONE);
-  return true;
-}
-
-/* The address of the list that `place` names when it is an element of a list lying in a variable, field or element
- * (`rows[i].append(x)`), else MIR_NONE. */
-static MirValue list_element_slot(LowerFn *fn, const MsExpr *place) {
-  MsExpr *container = NULL;
-  MsExpr *key = NULL;
-  if (place == NULL || !ms_expr_index(place, &container, &key) || !fn_is_list(fn, container) || !lists_in_place(fn, container)) {
-    return MIR_NONE;
-  }
-  const MirValue list = fn_expr(fn, container, LW_BORROW);
-  const MirValue at = list == MIR_NONE ? MIR_NONE : fn_expr(fn, key, LW_BORROW);
-  if (at == MIR_NONE) {
-    return MIR_NONE;
-  }
-  const MirValue operands[2] = {list, at};
-  return mir_b_emit(&fn->b, MOP_ListAddr, operands, 2, (MirImm){0}, MIR_PTR);
-}
-
-/* `list.append(value)`: the list grows in line (a full list calls the grow block) and the updated list goes back. */
-static bool list_append(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out) {
-  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
-  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
-  MirValue owned;
-  MirValue record;
-  if (list->kind != MK_LIST || mir_b_ty(&fn->b, args[1]) != list->elem) {
-    return false;
-  }
-  if (slot == MIR_NONE) {
-    slot = list_element_slot(fn, place);
-  }
-  if (!list_changeable(fn, place, slot) || !list_take(fn, place, slot, list_ty, &owned, &record)) {
-    return false;
-  }
-  const MirValue operands[2] = {owned, args[1]};
-  const MirValue updated = mir_b_emit(&fn->b, MOP_ListPush, operands, 2, (MirImm){0}, list_ty);
-  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
-  return list_put(fn, place, slot, record, updated);
-}
-
-/* `list.set(index, value)` on a list of plain values (an element that owns something needs the runtime to drop the
- * old one): the receiver is taken out of its place or slot, the index is checked with the runtime's `List.set`
- * fault, the element is stored by `list.set.u`, and the updated list goes back. */
-static bool list_set(LowerFn *fn, const MsExpr *place, MirValue slot, const MirValue *args, MirValue *out) {
-  const MirTy list_ty = mir_b_ty(&fn->b, args[0]);
-  const MirTyData *list = mir_ty_data(fn->cx->module, list_ty);
-  if (list->kind != MK_LIST || mir_needs_drop(fn->cx->module, list->elem) || mir_b_ty(&fn->b, args[2]) != list->elem) {
-    return false;
-  }
-  if (slot == MIR_NONE) {
-    slot = list_element_slot(fn, place);
-  }
-  if (!list_changeable(fn, place, slot)) {
-    return false;
-  }
-  const MirValue length = mir_b_emit(&fn->b, MOP_ListLen, &args[0], 1, (MirImm){0}, MIR_INT);
-  const MirValue zero = mir_b_iconst(&fn->b, 0);
-  const MirValue negative = mir_b_icmp(&fn->b, MCC_LT, args[1], zero);
-  const MirValue at = mir_b_select(&fn->b, negative, mir_b_binop(&fn->b, MOP_IAdd, args[1], length), args[1]);
-  const MirValue pair[2] = {at, length};
-  const MirValue inside = mir_b_emit(&fn->b, MOP_UICmp, pair, 2, (MirImm){.tag = MI_CC, .a = (uint32_t)MCC_LT}, MIR_BOOL);
-  const MirBlock hit = mir_b_new_block(&fn->b);
-  const MirBlock miss = mir_b_new_block(&fn->b);
-  mir_b_br_if(&fn->b, inside, hit, NULL, 0, miss, NULL, 0);
-  mir_b_seal_block(&fn->b, hit);
-  mir_b_seal_block(&fn->b, miss);
-  mir_b_switch_to(&fn->b, miss);
-  const MirValue fault_args[3] = {mir_b_iconst(&fn->b, 2), args[1], length};
-  (void)fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text("msrt_list_index_fault")), fault_args, 3, MIR_VOID);
-  mir_b_unreachable(&fn->b);
-  mir_b_switch_to(&fn->b, hit);
-  MirValue owned;
-  MirValue record;
-  if (!list_take(fn, place, slot, list_ty, &owned, &record)) {
-    return false;
-  }
-  const MirValue operands[3] = {owned, at, args[2]};
-  const MirValue updated = mir_b_emit(&fn->b, MOP_ListSetU, operands, 3, (MirImm){0}, list_ty);
-  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
-  return list_put(fn, place, slot, record, updated);
 }
 
 /* `String.scalar_at(offset)`: the scalar at a byte offset is the byte itself when it is ASCII, so that case is read
@@ -833,33 +708,12 @@ bool fn_native_changes_receiver(LowerFn *fn, MsTy owner, MsSpan operation, MirTy
 
 /* `slot` is the address of the receiver's storage when the receiver is not a place of this function (a bound
  * method value): a native that changes its receiver writes through it. */
-static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
-                      const MirValue *args, MirTy ret, MirValue *out);
-
-/* `list.set(index, value)` on resources: the element it replaces closes, so the set is a `replace` whose old element
- * the scope closes (the incoming value is still held by its closing slot until the replace stored it). */
-static bool list_set_closing(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, uint32_t argc,
-                             const MirValue *args, MirValue *out) {
-  MsTyTable *types = &fn->cx->program->types;
-  if (argc != 3 || !ms_ty_is(types, owner, MS_BUILTIN_List) || fn->closing == NULL) {
-    return false;
-  }
-  const MsTy elem = ms_ty_subst(types, ms_ty_args(types, owner)[0], fn->subst.vars, fn->subst.args, fn->subst.count);
-  if (!fn_temp_closes(fn, elem)) {
-    return false;
-  }
-  MirValue old = MIR_NONE;
-  if (!native_on(fn, place, slot, owner, ms_span_of_text("replace"), argc, args, mir_b_ty(&fn->b, args[2]), &old) ||
-      old == MIR_NONE || !fn_close_replaced(fn, elem, old)) {
-    return false;
-  }
-  *out = mir_b_emit(&fn->b, MOP_VoidConst, NULL, 0, (MirImm){0}, MIR_VOID);
-  return true;
-}
-
-static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
+bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owner, MsSpan operation, uint32_t argc,
                       const MirValue *args, MirTy ret, MirValue *out) {
-  if (ms_span_is_text(operation, "set") && list_set_closing(fn, place, slot, owner, argc, args, out)) {
+  if (ms_span_is_text(operation, "set") && fn_list_set_closing(fn, place, slot, owner, argc, args, out)) {
+    return true;
+  }
+  if (fn_native_closing_take(fn, place, slot, owner, operation, argc, args, out)) {
     return true;
   }
   MsName name;
@@ -881,15 +735,15 @@ static bool native_on(LowerFn *fn, const MsExpr *place, MirValue slot, MsTy owne
     return true;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_get") && argc == 2) {
-    *out = list_get(fn, args[0], args[1], ret);
+    *out = fn_list_get(fn, args[0], args[1], ret);
     return true;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_set") && argc == 3 &&
-      list_set(fn, place, slot, args, out)) {
+      fn_list_set(fn, place, slot, args, out)) {
     return true;
   }
   if (sig->inline_op != NULL && ms_span_is_text(ms_span_of_text(sig->inline_op), "list_append") && argc == 2 &&
-      list_append(fn, place, slot, args, out)) {
+      fn_list_append(fn, place, slot, args, out)) {
     return true;
   }
   if (sig->status && mir_ty_data(fn->cx->module, ret)->kind == MK_ALT && slot == MIR_NONE &&
@@ -985,7 +839,7 @@ static bool is_universal_operation(const LowerFn *fn, MsTy receiver, MsSpan oper
 }
 
 MirValue fn_native_call(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsExpr *callee = expr->u.call.callee;
+  const MsExpr *callee = fn_call_callee(expr);
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
     (void)fn_fail(fn, "a standard operation is called through a receiver");
     return MIR_NONE;

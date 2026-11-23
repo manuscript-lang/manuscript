@@ -90,7 +90,12 @@ fn var Lines.next() move String?!:
 
 		if more := chunk:
 			if rest > 0:
-				self.pending.append(self.data.slice(self.start, self.data.length())?.clone())
+				self.pending.append(
+					self.data.slice(
+						self.start,
+						self.data.length(),
+					)?.clone()
+				)
 				self.pending_size += rest
 				self.pending_cr = cr
 
@@ -149,7 +154,7 @@ fn move Filtered[T].close() Void!:
 
 // Returns a stream of the items of `input` for which `keep` is true, in order.
 // Closing it closes `input`.
-export fn filter[T](move input: ReadStream[T], keep: fn(T) Bool) ReadStream[T]:
+export fn filter[T](move input: ReadStream[T], move keep: fn(T) Bool) ReadStream[T]:
 	return ReadStream[T](Filtered[T](input, keep))
 
 // Internal: the first `left` items of another stream; it never pulls past them.

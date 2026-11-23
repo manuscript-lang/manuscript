@@ -163,7 +163,7 @@ fn tree_size(value: YamlValue) Int:
 // copied.
 fn define_anchor(var context: Context, name: String, value: YamlValue) Void:
 	context.anchors.add(name.clone(), value.clone())
-	context.sizes.add(name, tree_size(value))
+	context.sizes.add(name.clone(), tree_size(value))
 
 // Counts an alias expansion against the value budget before the aliased value is
 // copied, so nested aliases cannot grow exponentially ahead of the limit.
@@ -2796,7 +2796,7 @@ fn valid_number(text: String) Bool:
 		at += 1
 
 	if integer and at > 1 or (integer and text.scalar_at(0) >= 48): return true
-	if parsed := parse(text): return parsed == YamlValue.NumberValue(text)
+	if parsed := parse(text): return parsed == YamlValue.NumberValue(text.clone())
 
 	return false
 
@@ -2809,7 +2809,7 @@ fn scalar_text(value: YamlValue) String!:
 			if not valid_number(text.clone()): return error(
 				Error("invalid YAML input", kind: "EINVAL")
 			)
-			return ok(text)
+			return ok(text.clone())
 		ArrayValue(values):
 			if values.is_empty(): return ok("[]")
 			return ok("")

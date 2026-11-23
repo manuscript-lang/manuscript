@@ -40,7 +40,7 @@ const MsExpr *fn_written_arg(const MsExpr *call, MsNode node) {
     }
   }
   /* The receiver of a method call is written before the dot. */
-  const MsExpr *callee = call->u.call.callee;
+  const MsExpr *callee = fn_call_callee(call);
   return callee->kind == MS_E_MEMBER && callee->u.member.left->id == node ? callee->u.member.left : NULL;
 }
 
@@ -149,6 +149,30 @@ static MirValue default_arg(LowerFn *fn, const MsCall *call, const MsCallArg *ar
 
 bool fn_is_text_literal(const MsExpr *expr) {
   return expr->kind == MS_E_TEXT && (expr->u.text.len == 0 || (expr->u.text.len == 1 && expr->u.text.ptr[0].expr == NULL));
+}
+
+void fn_presolve_keys(LowerFn *fn, const MsExpr *place) {
+  while (place->kind == MS_E_MEMBER || (place->kind == MS_E_UNARY && place->op == MS_U_TRY)) {
+    place = place->kind == MS_E_MEMBER ? place->u.member.left : place->u.bin.left;
+  }
+  MsExpr *container = NULL;
+  MsExpr *key = NULL;
+  if (!ms_expr_index(place, &container, &key)) {
+    return;
+  }
+  fn_presolve_keys(fn, container);
+  const MsTy ty = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, key->id), fn->subst.vars, fn->subst.args, fn->subst.count);
+  if (ty == MS_TY_NONE || fn->npresolved == MS_COUNT_OF(fn->presolved) || mir_needs_drop(fn->cx->module, fn_type(fn, ty))) {
+    return;
+  }
+  const MirValue value = fn_expr(fn, key, LW_BORROW);
+  if (value == MIR_NONE) {
+    return;
+  }
+  fn->presolved[fn->npresolved].expr = key;
+  fn->presolved[fn->npresolved++].value = value;
+  MirValue element = MIR_NONE; /* a list element that is not there faults now, before a later argument runs */
+  (void)fn_list_element_addr(fn, place, &element);
 }
 
 /* A `var` argument of a source function: the place it names, and the slot the callee changes it in. */
@@ -277,7 +301,7 @@ static bool consuming_receiver(LowerFn *fn, const MsCall *call) {
 bool fn_arg_moves(LowerFn *fn, const MsExpr *expr, const MsCall *call, uint32_t index, const MsExpr *written) {
   const bool owning = call->callee.kind == MS_REF_TYPE || call->callee.kind == MS_REF_CASE;
   const bool takes_receiver = index == 0 && call->callee.kind == MS_REF_METHOD &&
-                              written == expr->u.call.callee->u.member.left && consuming_receiver(fn, call);
+                              written == fn_call_callee(expr)->u.member.left && consuming_receiver(fn, call);
   return owning || takes_receiver || (call->args[index].flags & MS_PARAM_MOVE) != 0 ||
          ms_own_call_takes(fn->cx->program, call, index);
 }
@@ -330,6 +354,13 @@ static bool lower_args(LowerFn *fn, const MsExpr *expr, const MsCall *call, MirV
                          (((arg->flags & MS_PARAM_VAR) != 0 && (index > 0 || call->callee.kind != MS_REF_OPERATION)) || (index == 0 && receiver_var)) && *nslots < LOWER_MAX_ARGS;
     /* Phases: the written values, then the `var` slots, then the defaults, which may read a `var` parameter. */
     const uint32_t phase = by_slot ? 1 : (arg->source == MS_ARG_DEFAULT ? 2 : 0);
+    const bool receiver_place = index == 0 && (call->callee.kind == MS_REF_METHOD || call->callee.kind == MS_REF_NATIVE) && arg->source == MS_ARG_WRITTEN;
+    if ((by_slot || receiver_place) && step < call->arg_count) { /* the keys of its place run where it is written, once */
+      const MsExpr *written = fn_written_arg(expr, arg->node.node);
+      if (written != NULL) {
+        fn_presolve_keys(fn, written);
+      }
+    }
     if (phase != step / call->arg_count) {
       continue;
     }
@@ -480,7 +511,7 @@ bool fn_callee_target(LowerFn *fn, const MsCall *call, LowerTarget *out) {
  * instance knows the concrete receiver type, so the call is the method that type implements, or the structural
  * copy when it has none. */
 static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call, const MirValue *args, MirTy ret) {
-  const MsExpr *callee = expr->u.call.callee;
+  const MsExpr *callee = fn_call_callee(expr);
   if (callee->kind != MS_E_MEMBER || call->arg_count == 0) {
     (void)fn_fail(fn, "an interface operation needs an interface receiver");
     return MIR_NONE;
@@ -547,7 +578,7 @@ static MirValue call_operation(LowerFn *fn, const MsExpr *expr, const MsCall *ca
   if (data->kind != MK_IFACE) {
     return call_bound_operation(fn, expr, call, args, ret);
   }
-  const uint32_t index = fn_operation_index(fn, expr->u.call.callee, call->callee.index);
+  const uint32_t index = fn_operation_index(fn, fn_call_callee(expr), call->callee.index);
   const MirImm imm = {.tag = MI_METHOD, .a = data->id, .b = index};
   return fn_emit(fn, MOP_CallMethod, args, call->arg_count, imm, ret);
 }
@@ -623,7 +654,7 @@ static MirValue construct(LowerFn *fn, const MsExpr *expr, const MsCall *call, c
 /* Whether a native callee is an operation of a receiver (not an `extern fn`, which call_runtime handles). */
 static bool callee_is_operation(LowerFn *fn, const MsExpr *expr, const MsCall *call) {
   /* `value.to_string()` names an operation of its receiver, whatever declaration its recorded place matches. */
-  const MsExpr *callee = expr->u.call.callee;
+  const MsExpr *callee = fn_call_callee(expr);
   if (callee->kind == MS_E_MEMBER) {
     const MsRef *left = ms_facts_ref(fn->facts, callee->u.member.left->id);
     if (left == NULL || left->kind != MS_REF_MODULE) {
@@ -735,8 +766,55 @@ static MirValue call_runtime(LowerFn *fn, const MsExpr *expr, const MsCall *call
   return result;
 }
 
+/* `Self(fields...)` in a method of a type set: `Self` is a variable the call binds to the receiving member, so the checker
+ * could not record the constructor. Build the bound member's record from the arguments, matched to its fields by label or
+ * position and evaluated as written. */
+static MirValue construct_self(LowerFn *fn, const MsExpr *expr) {
+  const MsTyTable *types = &fn->cx->program->types;
+  MsTy member = MS_TY_NONE;
+  for (size_t at = 0; at < fn->subst.count; at++) {
+    if (ms_span_is_text(ms_names_span(fn->cx->program->names, ms_ty_row(types, fn->subst.vars[at])->name), "Self")) {
+      member = fn->subst.args[at];
+    }
+  }
+  const MirTy ty = member == MS_TY_NONE ? MIR_NONE : fn_type(fn, member);
+  const MirTyData *data = ty == MIR_NONE ? NULL : mir_ty_data(fn->cx->module, ty);
+  const MirTypeDef *def = data == NULL || data->kind != MK_TYPE ? NULL : &fn->cx->module->type_defs.ptr[data->id];
+  const size_t written = expr->u.call.args.len;
+  if (def == NULL || def->nfields == 0 || def->nfields > LOWER_MAX_ARGS || written != def->nfields) {
+    (void)fn_fail(fn, "`Self(...)` needs a record type that every argument fills");
+    return MIR_NONE;
+  }
+  MirValue values[LOWER_MAX_ARGS];
+  bool filled[LOWER_MAX_ARGS] = {false};
+  for (size_t at = 0; at < written; at++) {
+    const MsArg *arg = &expr->u.call.args.ptr[at];
+    size_t field = at;
+    for (size_t index = 0; arg->has_name && index < def->nfields; index++) {
+      const MsSpan label = ms_names_span(fn->cx->program->names, arg->name);
+      field = ms_span_equal(label, ms_names_span(&fn->cx->module->names, def->fields[index].name)) ? index : field;
+    }
+    if (filled[field]) {
+      (void)fn_fail(fn, "`Self(...)` fills a field twice");
+      return MIR_NONE;
+    }
+    filled[field] = true;
+    values[field] = fn_expr(fn, arg->value, LW_MOVE);
+    if (values[field] == MIR_NONE) {
+      return MIR_NONE;
+    }
+  }
+  mir_b_set_loc(&fn->b, fn_loc(fn, expr->pos));
+  const MirImm imm = {.tag = MI_TYPE, .a = data->id};
+  return fn_emit(fn, MOP_TypeNew, values, def->nfields, imm, ty);
+}
+
 static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
   const MsCall *call = fn_find_call(fn->facts, expr->id);
+  if (call == NULL && expr->u.call.callee->kind == MS_E_NAME &&
+      ms_span_is_text(ms_names_span(fn->cx->program->names, expr->u.call.callee->u.sym), "Self")) {
+    return construct_self(fn, expr);
+  }
   /* A callee that is a parameter, a local or a function-valued field, or any expression with no declaration behind it (`fs[i]()`), is a value. */
   const bool named = expr->u.call.callee->kind == MS_E_NAME;
   const bool value_callee = call == NULL || call->callee.kind == MS_REF_NONE || call->callee.kind == MS_REF_FIELD ||
@@ -756,8 +834,8 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
                       fn_callee_target(fn, call, &target);
   const bool receiver_var = source && call->callee.kind == MS_REF_METHOD && (target.receiver_flags & MS_PARAM_VAR) != 0;
   /* An interface operation takes its `var` arguments in slots too: the vtable's method changes them there. */
-  const bool dispatched = call->callee.kind == MS_REF_OPERATION && expr->u.call.callee->kind == MS_E_MEMBER &&
-                          mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, expr->u.call.callee->u.member.left->id)))->kind == MK_IFACE;
+  const bool dispatched = call->callee.kind == MS_REF_OPERATION && fn_call_callee(expr)->kind == MS_E_MEMBER &&
+                          mir_ty_data(fn->cx->module, fn_type(fn, ms_facts_type(fn->facts, fn_call_callee(expr)->u.member.left->id)))->kind == MK_IFACE;
   if (!lower_args(fn, expr, call, args, source || dispatched ? slots : NULL, &nslots, receiver_var, !source, held)) {
     return MIR_NONE;
   }
@@ -795,7 +873,7 @@ static MirValue call_body(LowerFn *fn, const MsExpr *expr, MirValue *held) {
       return MIR_NONE;
     }
     /* The receiver form binds the variables the signature does not mention (`List[T].join(separator)`). */
-    const MsExpr *callee = expr->u.call.callee;
+    const MsExpr *callee = fn_call_callee(expr);
     if (call->callee.kind == MS_REF_METHOD && target.receiver != MS_TY_NONE && callee->kind == MS_E_MEMBER) {
       const MsTy actual = ms_ty_subst(&fn->cx->program->types, ms_facts_type(fn->facts, callee->u.member.left->id),
                                       fn->subst.vars, fn->subst.args, fn->subst.count);

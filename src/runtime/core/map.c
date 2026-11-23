@@ -96,6 +96,71 @@ void msrt_map_remove(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const
   (void)ms_map_remove(m, ms_map_key_desc(m, kd), vd, key);
 }
 
+/* ---- changes whose dropped values move out ---- */
+
+/* A descriptor for a value slot of `vd`'s size that owns nothing: the map code moves or drops the stored value
+ * through it, so a value already moved into `taken` is not dropped again. */
+static MsTypeDesc moved_out(const MsTypeDesc *vd) {
+  return (MsTypeDesc){.size = vd->size, .align = vd->align, .kind = MS_KIND_POD};
+}
+
+static void take_value(MsList *taken, const MsTypeDesc *vd, const uint8_t *value) {
+  *taken = (MsList){0};
+  ms_list_reserve(taken, vd->size, 1);
+  __builtin_memcpy(taken->ptr, value, vd->size);
+  taken->len = 1;
+}
+
+/* As `remove`, but the value moves into the list `taken` (empty when the key is absent) instead of being dropped. */
+void msrt_map_remove_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, const uint8_t *key, MsList *taken) {
+  kd = ms_map_key_desc(m, kd);
+  *taken = (MsList){0};
+  if (m->len == 0) {
+    return;
+  }
+  const MsMapLayout layout = ms_map_layout(kd, vd);
+  const MsMapProbe probe = ms_map_probe(m, kd, &layout, key);
+  if (probe.entry == MS_MAP_NO_ENTRY) {
+    return;
+  }
+  take_value(taken, vd, ms_table_entry(m, &layout, probe.entry) + layout.value_offset);
+  const MsTypeDesc plain = moved_out(vd);
+  (void)ms_map_remove(m, kd, &plain, key);
+}
+
+/* As `add`, but the value an existing key held moves into the list `taken` instead of being dropped. */
+void msrt_map_add_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, uint8_t *key, uint8_t *val,
+                       MsList *taken) {
+  kd = ms_map_key_desc(m, kd);
+  *taken = (MsList){0};
+  const MsMapLayout layout = ms_map_layout(kd, vd);
+  const MsMapProbe probe = ms_map_probe(m, kd, &layout, key);
+  if (probe.entry != MS_MAP_NO_ENTRY) {
+    take_value(taken, vd, ms_table_entry(m, &layout, probe.entry) + layout.value_offset);
+  }
+  const MsTypeDesc plain = moved_out(vd);
+  ms_map_insert(m, kd, &plain, key, val);
+}
+
+/* As `clear`, but the values move into the list `taken`, oldest first, instead of being dropped. */
+void msrt_map_clear_take(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, MsList *taken) {
+  kd = ms_map_key_desc(m, kd);
+  *taken = (MsList){0};
+  const MsMapLayout layout = ms_map_layout(kd, vd);
+  if (m->len != 0) {
+    ms_list_reserve(taken, vd->size, m->len);
+  }
+  for (size_t number = 0; number < m->used; number++) {
+    const uint8_t *entry = ms_table_entry(m, &layout, number);
+    if (ms_table_entry_is_live(entry)) {
+      __builtin_memcpy(ms_list_slot(taken, vd, taken->len), entry + layout.value_offset, vd->size);
+      taken->len++;
+    }
+  }
+  const MsTypeDesc plain = moved_out(vd);
+  ms_map_drop(m, kd, &plain);
+}
+
 /* Appends an entry for a borrowed key: the entry owns a copy of the key, and `val` is moved in. Returns the
  * value slot. */
 static uint8_t *append_borrowed(MsMap *m, const MsMapLayout *layout, uint64_t hash, const MsTypeDesc *kd,

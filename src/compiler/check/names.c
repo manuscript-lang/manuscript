@@ -56,7 +56,7 @@ static void read_name(void *context, const MsExpr *expr, const MsBindingList *sc
   const MsName name = expr->u.sym;
   const MsSpan text = ms_names_span(pass->program->names, name);
   if (ms_scope_lookup(scope, name) != NULL || is_declared(pass, name) || always_known(text) || ms_builtin_primitive(text) != MS_BUILTIN_NONE ||
-      ms_check_is_case_name(pass->program, name)) {
+      ms_check_is_case_name(pass->program, name) || (site->impl != NULL && ms_span_is_text(text, "Self"))) {
     return;
   }
   /* A compound assignment's target is read again in its desugared value; the name is reported once. */

@@ -8,7 +8,10 @@ set(OPENSSL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/openssl)
 set(OPENSSL_BUILD ${CMAKE_CURRENT_BINARY_DIR}/openssl_build)
 set(OPENSSL_OPTIONS no-shared no-tests no-apps no-docs no-module no-engine no-dso no-legacy no-comp no-ssl3
   no-weak-ssl-ciphers no-autoload-config no-ui-console no-deprecated)
-set(OPENSSL_MAKE make)
+# make runs one job unless told otherwise, and OpenSSL's libraries are about a thousand objects: serial, they were
+# most of a Windows build (9.5 of 12 minutes). Ninja runs the rest of the build beside it.
+cmake_host_system_information(RESULT OPENSSL_JOBS QUERY NUMBER_OF_LOGICAL_CORES)
+set(OPENSSL_MAKE make -j${OPENSSL_JOBS})
 set(OPENSSL_LIB_SUFFIX .a)
 set(OPENSSL_LIB_PREFIX lib)
 set(OPENSSL_TOOLS)

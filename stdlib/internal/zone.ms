@@ -388,7 +388,7 @@ fn from_tzif(name: String, data: Bytes, whole: Bool) Zone!:
 	return ok(
 		Zone(
 			kind: 2,
-			name: name,
+			name: name.clone(),
 			fixed: 0,
 			data: data.clone(),
 			count: count,

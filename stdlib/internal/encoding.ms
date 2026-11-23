@@ -2,7 +2,10 @@ import Bytes from "@std/bytes.ms"
 
 export extern fn msstd_encoding_ascii85_encode(data: Bytes) move String
 
-export extern fn msstd_encoding_ascii85_decode(text: String, max_bytes: Int?) move Bytes!
+export extern fn msstd_encoding_ascii85_decode(
+	text: String,
+	max_bytes: Int?,
+) move Bytes!
 
 export extern fn msstd_encoding_base64_encode_unpadded(
 	data: Bytes,
