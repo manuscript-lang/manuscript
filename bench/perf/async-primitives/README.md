@@ -89,3 +89,14 @@ One promise of `fib(36)` beside the same call on the starting thread still gets 
 Tried and dropped: one runtime call for wait plus take, and one for end plus drop. No change in instructions; the cost is inside the calls, not between them.
 
 Not done. `inline` is still about six times the C floor. Where the 2,402 instructions go: recording the start site 205; the queue entry (push, claim, remove, started list) about 270; the row's life (new, put, take, end, drop) about 540; the second closure the standard library wraps around the work about 250; the guard around the inline run about 110; cleanup registrations and the shield in compiled code about 380; the `Int!` result, which is 12 words and is copied three times in the caller. The guard, the registrations and the result layout belong to the compiler's return-path work.
+
+### Later the same day: one closure per start
+
+The optimizer fuses the closure the standard library wraps around the work with the work's own closure (`opt_inline_capture.c`): one object per start, and the work inlines into the wrapper. Before is the section above; median of 9 interleaved runs, ns at 1 / 4 threads.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline` | 204 / 215 | 186 / 180 | 33 |
+| `batch` | 173 / 173 | 143 / 154 | 26 |
+
+Instructions for `inline` at one thread: 2,402 to 2,169. Allocations per start and wait: 2 to 1 (`tests/ownership-counts/promise_wrapper_closure.ms`).
