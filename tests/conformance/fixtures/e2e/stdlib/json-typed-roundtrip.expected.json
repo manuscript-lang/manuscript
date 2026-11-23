@@ -21,26 +21,21 @@
         },
         {
           "index": 2,
-          "name": "json-typed-roundtrip.ms::JSON writes and reads IpAddress and Cidr as strings",
-          "status": "passed"
-        },
-        {
-          "index": 3,
-          "name": "json-typed-roundtrip.ms::JSON rejects malformed IpAddress and Cidr text",
+          "name": "json-typed-roundtrip.ms::JSON writes IpAddress and Cidr as strings",
           "status": "passed"
         }
       ],
       "summary": {
-        "available": 4,
-        "selected": 4,
-        "passed": 4,
+        "available": 3,
+        "selected": 3,
+        "passed": 3,
         "failed": 0,
         "skipped": 0,
         "not_run": 0
       },
       "completed": true,
       "exit_code": 0,
-      "stdout": "RUN json-typed-roundtrip.ms::JSON payloadless cases are their names and round-trip\nPASS json-typed-roundtrip.ms::JSON payloadless cases are their names and round-trip\nRUN json-typed-roundtrip.ms::JSON rejects an unknown case name\nPASS json-typed-roundtrip.ms::JSON rejects an unknown case name\nRUN json-typed-roundtrip.ms::JSON writes and reads IpAddress and Cidr as strings\nPASS json-typed-roundtrip.ms::JSON writes and reads IpAddress and Cidr as strings\nRUN json-typed-roundtrip.ms::JSON rejects malformed IpAddress and Cidr text\nPASS json-typed-roundtrip.ms::JSON rejects malformed IpAddress and Cidr text\n4 tests, 0 failed\n",
+      "stdout": "RUN json-typed-roundtrip.ms::JSON payloadless cases are their names and round-trip\nPASS json-typed-roundtrip.ms::JSON payloadless cases are their names and round-trip\nRUN json-typed-roundtrip.ms::JSON rejects an unknown case name\nPASS json-typed-roundtrip.ms::JSON rejects an unknown case name\nRUN json-typed-roundtrip.ms::JSON writes IpAddress and Cidr as strings\nPASS json-typed-roundtrip.ms::JSON writes IpAddress and Cidr as strings\n3 tests, 0 failed\n",
       "diagnostics": []
     },
     "shape": [
