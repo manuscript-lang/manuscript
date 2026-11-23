@@ -96,6 +96,9 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
     const MirImm imm = {.tag = MI_ALTFIELD, .a = data->id, .b = OK_CASE, .c = 0};
     payload = mir_b_emit(&fn->b, MOP_AltGet, &value, 1, imm, ty);
   }
+  if (fn->local_owns != NULL && ref->local < fn->nvars && mir_needs_drop(module, ty)) {
+    fn->local_owns[ref->local] = 2; /* a view of a payload another owner keeps: moving it out copies it */
+  }
   mir_b_def_var(&fn->b, fn_local(fn, ref->local, ty), payload);
   return !fn->failed;
 }
