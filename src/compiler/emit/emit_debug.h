@@ -14,7 +14,11 @@ struct EmitDebug {
   uint32_t next;    /* the next free metadata number */
   uint32_t subprogram; /* the subprogram of the function being written */
   uint32_t cached;  /* the DILocation node of `cached_line`/`cached_column`, 0 when none */
-  uint32_t cached_line, cached_column;
+  uint32_t cached_line, cached_column, cached_scope;
+  uint32_t *file_nodes;  /* per module file: its DIFile node, 0 until first used */
+  uint32_t *block_nodes; /* per module file: the scope of the current function's lines from it, 0 until used */
+  uint32_t nfiles;
+  uint32_t func_file;    /* the module file of the function being written, MIR_NONE when unknown */
 };
 
 void emit_debug_init(EmitDebug *debug);
