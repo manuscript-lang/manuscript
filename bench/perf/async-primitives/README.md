@@ -62,3 +62,30 @@ Stage 2 of the proposal: a result of at most three words is stored in the promis
 | C floor (`c/main.c`) | 31 | 270 |
 
 The C floor has no cancellation, no fault report, no placement and no second thread; it is the cost of the row, the queue and the closure alone. What separates the two is mostly runtime calls per promise (create, start, wait, take, free are separate entries) and the closure objects the compiler builds per start.
+
+### Later the same day: the scheduling files inline, and a start reads no clock
+
+Before is main at 3b93082f; after adds two changes. The task, promise and queue files compile as one unit, so the calls between them inline. A queued start no longer reads the clock: an entry is dated by the first idle thread that sees it and may be taken a beat after that. Same machine; median of 9 interleaved runs, ns per operation at 1 / 4 threads.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline` | 246 / 260 | 204 / 214 | 33 |
+| `batch` | 213 / 238 | 169 / 188 | 26 |
+| `here` | 400 / 405 | 395 / 387 | |
+| `pingpong` | 330 / 336 | 303 / 331 | |
+
+Instructions for `inline` at one thread: 2,637 before, 2,402 after; the C floor is 270. (The stage 2 row above read 233 ns for the same code as this section's 246: the machine's load differs between sessions, so compare within a table.)
+
+Controls, `bench/perf/promise-tree` (ms, median of 7, 1 / 2 / 4 threads):
+
+| case | before | after |
+| --- | --- | --- |
+| `tree 36 15` | 79 / 46 / 26 | 68 / 44 / 24 |
+| `tree 36 10` | 224 / 161 / 94 | 197 / 136 / 88 |
+| `fan 38 8` | 1,226 / 612 / 314 | 1,187 / 626 / 310 |
+
+One promise of `fib(36)` beside the same call on the starting thread still gets a second thread: 74 to 94 ms before and after, against 116 to 158 ms at one thread.
+
+Tried and dropped: one runtime call for wait plus take, and one for end plus drop. No change in instructions; the cost is inside the calls, not between them.
+
+Not done. `inline` is still about six times the C floor. Where the 2,402 instructions go: recording the start site 205; the queue entry (push, claim, remove, started list) about 270; the row's life (new, put, take, end, drop) about 540; the second closure the standard library wraps around the work about 250; the guard around the inline run about 110; cleanup registrations and the shield in compiled code about 380; the `Int!` result, which is 12 words and is copied three times in the caller. The guard, the registrations and the result layout belong to the compiler's return-path work.

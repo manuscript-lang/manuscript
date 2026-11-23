@@ -439,18 +439,15 @@ static void start_task(MsPromise id, MsObj *closure, bool rooted) {
 
 /* Puts the work in this isolate's queue, where its waiter runs it inline or another isolate takes it once it is
  * `age_ns` old. False when workers are off or the queue has no room: the caller starts a task instead. */
-static bool queue_work(MsPromise id, MsObj *closure, int64_t age_ns) {
+static bool queue_work(MsPromise id, MsObj *closure) {
   const size_t row = promise_row_or_fault(id);
   Cold *const cold = &promise_table.cold.ptr[row];
   Hot *const hot = &promise_table.hot.ptr[row];
   if (cold->closure != NULL || (hot->flags & (FLAG_DEFERRED | FLAG_REMOTE)) != 0) {
     promise_fail("promise: already started");
   }
-  const int64_t now = ms_sched_now();
-  if (ms_workers_stress() && age_ns < MS_WORKER_BEAT_NS) {
-    age_ns = MS_WORKER_BEAT_NS; /* stress mode queues every start aged, so any idle isolate may take it */
-  }
-  if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, now - age_ns, &cold->queue_sequence)) {
+  /* Stress mode queues every start aged, so any idle isolate may take it. */
+  if (!ms_queue_push(ms_sched()->isolate, (uint64_t)id, closure, ms_workers_stress(), &cold->queue_sequence)) {
     return false;
   }
   cold->closure = closure;
@@ -476,7 +473,7 @@ void ms_promise_start_here(MsPromise id, MsObj *closure) { start_task(id, closur
 void ms_promise_start_detached(MsPromise id, MsObj *closure) { start_task(id, closure, true); }
 
 void ms_promise_start(MsPromise id, MsObj *closure) {
-  if (!queue_work(id, closure, 0)) {
+  if (!queue_work(id, closure)) {
     start_task(id, closure, false);
   }
 }
@@ -750,7 +747,7 @@ static bool idle_work(int64_t *wait_ns) {
     const int64_t beat = own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS;
     uint64_t id = 0;
     void *work = NULL;
-    if (ms_queue_steal(other, now - beat, &id, &work)) {
+    if (ms_queue_steal(other, now, beat, &id, &work)) {
       if (own ? run_own((MsPromise)id) : run_taken((MsPromise)id, work)) {
         look_stop();
         if (queues_hold_work(self)) {
@@ -760,7 +757,7 @@ static bool idle_work(int64_t *wait_ns) {
       }
       continue;
     }
-    const int64_t oldest = ms_queue_oldest(other);
+    const int64_t oldest = ms_queue_oldest(other, now);
     if (oldest != INT64_MAX) {
       const int64_t left = oldest + beat - now;
       wait = wait < 0 || left < wait ? left : wait;
@@ -810,7 +807,7 @@ static void start_queued(void) {
   const uint32_t self = ms_sched()->isolate;
   uint64_t id = 0;
   void *work = NULL;
-  while (ms_queue_steal(self, INT64_MAX, &id, &work)) {
+  while (ms_queue_steal(self, 0, -1, &id, &work)) {
     (void)run_own((MsPromise)id);
   }
 }
@@ -822,7 +819,7 @@ static bool work_pending(void) {
   for (uint32_t other = 0; other < MS_MAX_ISOLATES; other++) {
     const bool own = other == self;
     if ((own || ms_isolate_live(other)) && ms_queue_length(other) != 0 &&
-      ms_queue_oldest(other) <= now - (own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS)) {
+      ms_queue_oldest(other, now) <= now - (own ? ms_workers_own_beat() : MS_WORKER_BEAT_NS)) {
       return true;
     }
   }

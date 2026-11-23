@@ -6,6 +6,10 @@ Verified (2026-11-23, `proposals/fast-tasks-and-promises.md`, numbers in `bench/
 
 Wake rule: a start wakes a thread only when no thread is looking for work (`ms_workers_nudge`, the looking count in `isolate.c`). A thread woken for work that its waiter ran first keeps looking with a rest that doubles from 20 us to 200 us and sleeps after 20 empty looks; a thread that takes work stops looking and wakes the next one if more is queued. Waking on every start cost a `write` and an `epoll_pwait` per promise (2,300 ns at four threads against 320 ns). The push and the looker's last check are ordered by sequentially consistent accesses of the queue count and the looking count; do not relax either. Sleeping threads are one bit each in one word (`asleep`), so a start that finds nobody asleep does not visit every slot (that scan was 9% of a fork tree).
 
+A start reads no clock (2026-11-23). A queue entry has no push time: the first look that finds it (`ms_queue_steal` or `ms_queue_oldest`, by any thread) dates it, and it may be taken a beat after that. The clock read per start was about 40 ns of a 246 ns start and wait. Stress mode pushes entries already aged. Do not put a time back into `ms_queue_push`.
+
+The task, promise and queue files compile as one unit (`UNITY_GROUP scheduling` in `cmake/targets/runtime.cmake`), which inlines the calls between them (8% of the instructions of a start and wait). A file-local name in one of those files must not repeat in another; the other core files are outside the group. Merging two runtime entries into one (wait plus take, end plus drop) saved nothing: measure before adding an entry for speed.
+
 A wait parks on the promise row with the task's wait word (`ms_task_park_word`), not a token; tokens remain for `wait_any`, groups and waits another thread ends.
 
 Decision (Chinmay, 2026-11-23): a fault report's `task started by:` names only the program line that started the work, as Go does. A start records 8 return addresses in the row with no allocation; walking and copying up to 64 frames was 30% of a deep fork tree. Fixture: `e2e/stdlib/promise-fault-started-line`.

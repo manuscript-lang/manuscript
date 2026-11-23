@@ -59,25 +59,28 @@ static void test_queue(void) {
   uint64_t first = 0;
   uint64_t second = 0;
   uint64_t third = 0;
-  CHECK(!ms_queue_push(0, 0, &a, 1, &first));
-  CHECK(!ms_queue_push(MS_MAX_ISOLATES, 1, &a, 1, &first));
-  CHECK(ms_queue_push(1, 1, &a, 10, &first) && ms_queue_push(1, 2, &b, 20, &second) &&
-        ms_queue_push(1, 3, &c, 30, &third));
+  CHECK(!ms_queue_push(0, 0, &a, false, &first));
+  CHECK(!ms_queue_push(MS_MAX_ISOLATES, 1, &a, false, &first));
+  CHECK(ms_queue_push(1, 1, &a, false, &first) && ms_queue_push(1, 2, &b, false, &second));
+  CHECK(ms_queue_length(1) == 2 && ms_queue_oldest(1, 10) == 10); /* the first look dates both */
+  CHECK(ms_queue_push(1, 3, &c, false, &third));
   CHECK(second == first + 1 && third == first + 2);
-  CHECK(ms_queue_length(1) == 3 && ms_queue_oldest(1) == 10);
   CHECK(!ms_queue_remove(1, 2, third)); /* the sequence of another entry never matches */
   CHECK(ms_queue_remove(1, 2, second) && !ms_queue_remove(1, 2, second));
-  CHECK(!ms_queue_steal(1, 5, &id, &work));
-  CHECK(ms_queue_steal(1, 10, &id, &work) && id == 1 && work == &a);
+  CHECK(!ms_queue_steal(1, 14, 5, &id, &work)); /* seen 4 ago, the beat is 5 */
+  CHECK(ms_queue_steal(1, 15, 5, &id, &work) && id == 1 && work == &a);
   CHECK(!ms_queue_remove(1, 1, first)); /* taken: its sequence is behind the head now */
-  CHECK(ms_queue_oldest(1) == 30 && ms_queue_length(1) == 1);
+  CHECK(ms_queue_oldest(1, 30) == 14 && ms_queue_length(1) == 1); /* the third was first seen by the look at 14 */
   uint64_t sequence = 0;
   for (uint64_t i = 10; i < 60; i++) { /* past the first capacity */
-    CHECK(ms_queue_push(1, i, &a, 40, &sequence));
+    CHECK(ms_queue_push(1, i, &a, i == 10, &sequence));
   }
-  CHECK(ms_queue_remove(1, 59, sequence) && ms_queue_push(1, 59, &a, 40, &sequence)); /* found after a grow */
+  CHECK(ms_queue_remove(1, 59, sequence) && ms_queue_push(1, 59, &a, false, &sequence)); /* found after a grow */
+  CHECK(ms_queue_steal(1, 0, -1, &id, &work) && id == 3); /* any age */
+  CHECK(ms_queue_steal(1, 31, 1000, &id, &work) && id == 10); /* pushed aged: taken at its first look */
+  CHECK(!ms_queue_steal(1, 31, 1000, &id, &work));
   ms_queue_release(1, drop);
-  CHECK(dropped == 51 && ms_queue_length(1) == 0 && ms_queue_oldest(1) == INT64_MAX);
+  CHECK(dropped == 49 && ms_queue_length(1) == 0 && ms_queue_oldest(1, 40) == INT64_MAX);
 }
 
 static bool never(uintptr_t pc, const void *context) {
