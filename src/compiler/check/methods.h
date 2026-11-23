@@ -52,7 +52,7 @@ MS_NODISCARD bool ms_check_bounds_satisfied(MsCheckProgram *program, const MsTy 
 void ms_check_find_native(MsCheckProgram *program, MsTy receiver, MsName name, MsMethodMatchList *out);
 
 /* Appends the names of a primitive's built-in operations (native.c). */
-bool ms_check_standard_operation(const MsCheckProgram *program, MsName name);
+bool ms_check_standard_operation(MsCheckProgram *program, MsName name, MsTy receiver);
 void ms_check_native_names(MsCheckProgram *program, MsTy receiver, MsSpanList *out);
 
 /* Matches `pattern` against `actual`, binding each of the `count` variables `vars[i]` to `bound[i]` (a slot
