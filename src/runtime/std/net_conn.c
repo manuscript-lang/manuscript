@@ -1,6 +1,7 @@
 /* Connections: dialing, reading, writing and shutting down a TCP or Unix stream on the network loop (net_core.h). */
 #define _POSIX_C_SOURCE 200809L /* libuv's headers need the POSIX types under -std=c17 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #ifdef _WIN32
@@ -12,6 +13,8 @@
 #include "base/alloc.h"
 #include "base/bytes.h"
 #include "runtime/core/isolate.h"
+#include "runtime/core/promise.h"
+#include "runtime/core/unwind.h"
 #include "runtime/std/net.h"
 #include "runtime/std/net_conn.h"
 #include "runtime/std/net_core.h"
@@ -377,20 +380,29 @@ bool ms_net_core_steal_read(MsNetCore *core, MsBytes *out) {
   return true;
 }
 
-/* With one scheduler thread the loop thread's wait overlaps the thread's own work and wins (one CPU: 82k against 66k
- * requests a second); with several it is the ceiling. So with no read posted, the bytes already in the socket are
- * read on the calling thread, which keeps the loop thread (the one thread every connection shares) out of the common
- * case of a busy connection. Returns the byte count, 0 for the end of the stream, or -1 to use the loop (nothing yet,
- * an error to report there, or a case the loop owns). libuv's sockets are non-blocking on every platform, and on
+enum { DIRECT_BLOCKED = -1, DIRECT_LOOP = -2 };
+
+static bool would_block(void) {
+#ifdef _WIN32
+  return WSAGetLastError() == WSAEWOULDBLOCK;
+#else
+  return errno == EAGAIN || errno == EWOULDBLOCK;
+#endif
+}
+
+/* Reads what the socket already holds on the calling thread, which keeps the network loop thread (the one thread
+ * every connection shares) out of the common case of a busy connection. Needs no read posted on the connection.
+ * Returns the byte count, 0 for the end of the stream, DIRECT_BLOCKED when there is nothing yet, or DIRECT_LOOP for
+ * an error to report on the loop or a case the loop owns. libuv's sockets are non-blocking on every platform, and on
  * Windows its reads are zero-length overlapped ones that take no bytes, so a read here cannot lose any. */
 static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
   static _Thread_local uint8_t scratch[READ_DEFAULT];
   if (core->kind != MS_NET_CONNECTION || core->is_pipe || core->tls != NULL || capacity == 0 ||
-      atomic_load(&core->reads_posted) != 0 || ms_isolate_count() < 2) {
-    return -1;
+      atomic_load(&core->reads_posted) != 0) {
+    return DIRECT_LOOP;
   }
   atomic_fetch_add(&core->direct, 1);
-  ssize_t count = -1;
+  ssize_t count = DIRECT_LOOP;
   uv_os_fd_t fd;
   if (!atomic_load(&core->closed) && !atomic_load(&core->broken) && atomic_load(&core->reads_posted) == 0 &&
       uv_fileno((const uv_handle_t *)&core->h.stream, &fd) == 0) {
@@ -403,18 +415,64 @@ static ssize_t read_direct(MsNetCore *core, size_t capacity, MsBytes *out) {
     if (count > 0) {
       *out = ms_bytes_from_span(ms_span_of(scratch, (size_t)count));
     } else if (count < 0) {
-      count = -1; /* would block: wait on the loop; any other error is reported there */
+      count = would_block() ? DIRECT_BLOCKED : DIRECT_LOOP;
     }
   }
   atomic_fetch_sub(&core->direct, 1);
   return count;
 }
 
+/* The task leaves a wait on the scheduler's poller by a cancel: the close must stop waiting for it. */
+static void wait_left(uint8_t *argument) { atomic_fetch_sub(&((MsNetCore *)(void *)argument)->direct, 1); }
+
+/* With one scheduler thread there is nobody to take the connection from this thread, so a connection with nothing
+ * to read waits on the poller of this thread, as the Rust runtime did, instead of on the loop thread. The wait
+ * counts as a direct call: a close shuts the socket down to wake it and waits for it to leave. Returns
+ * MS_NET_WAIT_DONE when the descriptor is readable (or the connection closed) or MS_NET_WAIT_TIMED_OUT; a cancel
+ * unwinds. */
+static MsNetWait poller_wait_readable(MsNetCore *core, int64_t timeout_ns, bool *usable) {
+  uv_os_fd_t fd;
+  *usable = false;
+  atomic_fetch_add(&core->direct, 1);
+  if (atomic_load(&core->closed) || uv_fileno((const uv_handle_t *)&core->h.stream, &fd) != 0) {
+    atomic_fetch_sub(&core->direct, 1);
+    return MS_NET_WAIT_DONE;
+  }
+  const MsPromise ready = ms_promise_ready((int)(intptr_t)fd, MS_WAIT_READ | MS_WAIT_KEEP, -1);
+  if (ready < 0) {
+    atomic_fetch_sub(&core->direct, 1);
+    return MS_NET_WAIT_DONE;
+  }
+  *usable = true;
+  const size_t handle = ms_cleanup_push(wait_left, (uint8_t *)(void *)core);
+  const int64_t outcome = ms_promise_wait(ready, timeout_ns);
+  ms_cleanup_remove(handle);
+  atomic_fetch_sub(&core->direct, 1);
+  ms_promise_drop(ready);
+  return outcome == MS_PROMISE_TIMEOUT ? MS_NET_WAIT_TIMED_OUT : MS_NET_WAIT_DONE;
+}
+
 uint8_t ms_net_read(MsNetCore *core, size_t capacity, int64_t timeout_ns, MsBytes *out, MsString *err) {
-  const ssize_t direct = read_direct(core, capacity, out);
-  if (direct >= 0) {
-    *err = ms_string_empty();
-    return direct == 0 ? MS_STATUS_NONE : MS_STATUS_OK;
+  const bool inline_wait = ms_isolate_count() < 2;
+  const int64_t deadline = inline_wait ? ms_sched_deadline_after(timeout_ns) : 0;
+  for (;;) {
+    const ssize_t direct = read_direct(core, capacity, out);
+    if (direct >= 0) {
+      *err = ms_string_empty();
+      return direct == 0 ? MS_STATUS_NONE : MS_STATUS_OK;
+    }
+    if (direct != DIRECT_BLOCKED || !inline_wait) {
+      break;
+    }
+    bool usable = false;
+    const int64_t left = deadline == MS_NO_DEADLINE ? -1 : (deadline > ms_sched_now() ? deadline - ms_sched_now() : 0);
+    const MsNetWait waited = poller_wait_readable(core, left, &usable);
+    if (waited == MS_NET_WAIT_TIMED_OUT) {
+      return ms_net_finish(waited, 0, "read", err);
+    }
+    if (!usable) {
+      break;
+    }
   }
   ReadOp *read = ms_net_op_new(sizeof *read, read_start, read_abandon, read_release);
   atomic_fetch_add(&core->references, 1);

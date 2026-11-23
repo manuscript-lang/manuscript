@@ -93,9 +93,26 @@ static void drain_unread(MsNetCore *core) {
 #endif
 }
 
+/* A task may be waiting for the descriptor on its thread's poller (net_conn.c): shutting the socket down makes it
+ * readable and hung up, so the wait ends and the task sees the connection closed. */
+static void wake_pollers(MsNetCore *core) {
+  uv_os_fd_t fd;
+  if (core->kind != MS_NET_CONNECTION || core->is_pipe || uv_fileno(&core->h.handle, &fd) != 0) {
+    return;
+  }
+#ifdef _WIN32
+  (void)shutdown((SOCKET)fd, SD_BOTH);
+#else
+  (void)shutdown(fd, SHUT_RDWR);
+#endif
+}
+
 static void close_start(MsNetOp *op) {
   MsNetCore *core = ((CloseOp *)op)->core;
   if (!uv_is_closing(&core->h.handle)) {
+    if (atomic_load(&core->direct) != 0) {
+      wake_pollers(core);
+    }
     while (atomic_load(&core->direct) != 0) { /* a thread is inside a socket call of its own (`closed` is set, so no new one starts) */
     }
     drain_unread(core);
