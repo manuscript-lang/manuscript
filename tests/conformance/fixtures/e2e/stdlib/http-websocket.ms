@@ -3,6 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	PromiseOptions, promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	HttpClientOptions,
 	HttpExchange,
 	HttpMethod,
@@ -46,7 +47,10 @@ fn echo(var exchange: HttpExchange) Void!:
 				)
 			)?
 		)
-		message := (http_result(socket.input.next())?).get()
+		message := (
+			(http_result(socket.input.next())?)
+			or panic("called Optional.get() on null")
+		)
 		_sent := (
 			http_result(
 				socket.output.write(
@@ -118,7 +122,13 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 		| expect_ok?
 	)
 	body.metadata.status | expect_equal(201)?
-	(body.body.next() | expect_ok?).get() | expect_equal("hello".to_bytes())?
+	(
+		(
+			(body.body.next() | expect_ok?)
+			or panic("called Optional.get() on null")
+		)
+		| expect_equal("hello".to_bytes())?
+	)
 	((body.body.next() | expect_ok?) == null) | expect_true?
 	client.close()?
 
@@ -171,7 +181,10 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 		)
 		| expect_ok?
 	)
-	message := (socket.input.next() | expect_ok?).get()
+	message := (
+		(socket.input.next() | expect_ok?)
+		or panic("called Optional.get() on null")
+	)
 	(
 		(
 			message.kind != WebSocketKind.Text
@@ -216,7 +229,10 @@ test "WebSocket client options bound messages and reject bad values":
 	)
 	limited.output.write(exact) | expect_ok?
 
-	echoed := (limited.input.next() | expect_ok?).get()
+	echoed := (
+		(limited.input.next() | expect_ok?)
+		or panic("called Optional.get() on null")
+	)
 	expect_equal(echoed.data.length(), 10)?
 	void limited.close()
 
@@ -349,7 +365,10 @@ fn direct(var exchange: HttpExchange) Void!:
 			max_message_bytes: null,
 		)
 	)?
-	message := (http_result(socket.input.next())?).get()
+	message := (
+		(http_result(socket.input.next())?)
+		or panic("called Optional.get() on null")
+	)
 	_sent := http_result(socket.output.write(message))?
 
 test "HttpExchange.upgrade returns a WebSocket":
@@ -364,5 +383,8 @@ test "HttpExchange.upgrade returns a WebSocket":
 		)
 		| expect_ok?
 	)
-	message := (socket.input.next() | expect_ok?).get()
+	message := (
+		(socket.input.next() | expect_ok?)
+		or panic("called Optional.get() on null")
+	)
 	message.data | expect_equal("hi".to_bytes())?

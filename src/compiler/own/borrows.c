@@ -130,6 +130,10 @@ static bool origin_of_arg(Borrows *pass, const MsExpr *arg, Source *out) {
   if (arg->kind == MS_E_UNARY && arg->op == MS_U_TRY) {
     return origin_of_arg(pass, arg->u.bin.left, out);
   }
+  if (arg->kind == MS_E_BINARY && arg->op == MS_B_OR &&
+      ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, arg->u.bin.left->id), MS_BUILTIN_Optional)) {
+    return origin_of_arg(pass, arg->u.bin.left, out); /* `x or d` hands out the payload of `x` */
+  }
   return arg->kind == MS_E_CALL && origin_of_call(pass, arg, out);
 }
 
@@ -408,15 +412,18 @@ static bool describe_returned(Borrows *pass, const MsExpr *value, MsStrBuild *te
     ms_strbuild_append_text(text, "` keeps, and this position would own it too; store `.clone()` of it, or use it in place");
     return true;
   }
-  if (get == MS_NATIVE_GET_PAYLOAD && receiver->kind == MS_E_MEMBER && ms_class_of(pass->classes, ty) != MS_CLASS_COPY &&
-      !ms_check_property(pass->program, ty, MS_PROPERTY_CLONABLE)) {
+  const bool nullable_or = value->kind == MS_E_BINARY && value->op == MS_B_OR &&
+                           ms_ty_is(&pass->program->types, ms_facts_type(pass->facts, value->u.bin.left->id), MS_BUILTIN_Optional);
+  if (nullable_or) {
+    receiver = value->u.bin.left;
+  }
+  if ((get == MS_NATIVE_GET_PAYLOAD || nullable_or) && receiver->kind == MS_E_MEMBER &&
+      ms_class_of(pass->classes, ty) != MS_CLASS_COPY && !ms_check_property(pass->program, ty, MS_PROPERTY_CLONABLE)) {
     ms_strbuild_append_text(text, "cannot move `");
-    ms_own_expr_text(text, names, value);
-    ms_strbuild_append_text(text, "` out: it is read in place from `");
+    ms_own_expr_text(text, names, nullable_or ? receiver : value);
+    ms_strbuild_append_text(text, nullable_or ? " or ..` out: it is read in place from `" : "` out: it is read in place from `");
     ms_own_expr_text(text, names, receiver);
-    ms_strbuild_append_text(text, "`, which keeps it; it has one owner and no `clone`, so use it in place (`if value := ");
-    ms_own_expr_text(text, names, receiver);
-    ms_strbuild_append_text(text, ":`) or move `");
+    ms_strbuild_append_text(text, "`, which keeps it; it has one owner and no `clone`, so use it in place or move `");
     ms_own_expr_text(text, names, receiver);
     ms_strbuild_append_text(text, "` itself");
     return true;

@@ -1,13 +1,16 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 fn apply[T, U](value: T, transform: fn(T) U) U: transform(value)
 
 fn choose[T](first: fn() T, second: fn() T) T: first()
 
 fn optional[T, U](value: T, transform: (fn(T) U)?) U:
-	return transform.get()(value)
+	return (transform or panic("called Optional.get() on null"))(value)
 
 fn with_result[T](transform: fn() T!Error) T!Error: transform()
 

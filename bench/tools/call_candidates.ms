@@ -2,6 +2,7 @@
 // ms run bench/tools/call_candidates.ms -- BEFORE AFTER OUTPUT ROUNDS
 // Linux measurement host: taskset CPU 0; child peak RSS is retained.
 import (
+	panic from "@std/core.ms",
 	arguments from "@std/os/env.ms",
 
 	timed from "./call_candidates_process.ms",
@@ -121,6 +122,6 @@ export fn main() Void!:
 		absolute(args[0].clone()),
 		absolute(args[1].clone()),
 		absolute(args[2].clone()),
-		args[3].parse_int().get(),
+		args[3].parse_int() or panic("called Optional.get() on null"),
 		if args.length() == 5: args[4].clone() else: "",
 	)?

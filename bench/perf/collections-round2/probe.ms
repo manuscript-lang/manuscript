@@ -1,5 +1,6 @@
 import (
 	PriorityQueue from "@std/collections/queue.ms",
+	panic from "@std/core.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -108,7 +109,7 @@ fn l_pq() Int:
 
 	var t = 0
 	while q.length() > 0:
-		t += q.dequeue().get() % 7
+		t += (q.dequeue() or panic("called Optional.get() on null")) % 7
 	return t
 
 fn l_join_split() Int:

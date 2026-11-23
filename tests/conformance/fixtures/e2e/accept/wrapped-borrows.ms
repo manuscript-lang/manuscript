@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type Row:
 	name: String
@@ -34,9 +37,13 @@ test "wrapped parts are references into their arguments":
 	r := make(1)
 	o: String? := r.name
 	k: Row!Bad := ok(r.clone())
-	first_tag(r).get() | expect_equal("tag-1-with-a-heap-allocated-text")?
+	(
+		(first_tag(r) or panic("called Optional.get() on null")) | expect_equal(
+			"tag-1-with-a-heap-allocated-text"
+		)?
+	)
 	named(r).get() | expect_equal("row-1-with-a-heap-allocated-name")?
-	o.get() | expect_equal(r.name)?
+	(o or panic("called Optional.get() on null")) | expect_equal(r.name)?
 	k.get().tags.length() | expect_equal(1)?
 
 	good: Row!Bad := ok(make(2))

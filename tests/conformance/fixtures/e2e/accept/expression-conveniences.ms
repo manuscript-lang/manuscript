@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 )
@@ -204,7 +204,7 @@ test "contextual values infer from later arms":
 		null: null
 		value: value
 
-	optional.get() | expect_equal(5)?
+	(optional or panic("called Optional.get() on null")) | expect_equal(5)?
 
 	list := match present:
 		null: []
@@ -295,7 +295,12 @@ test "indexing preserves zero and nested optionals":
 	(numbers[0] != 0 or numbers.get_or(0, 99) != 0) | expect_false?
 
 	nested: List[Int?] := [null, 0]
-	((nested[0] != null) or nested[1].get() != 0) | expect_false?
+	(
+		(
+			(nested[0] != null)
+			or (nested[1] or panic("called Optional.get() on null")) != 0
+		) | expect_false?
+	)
 
 fn observed_optional(var counter: Counter) Int?:
 	counter.count += 1

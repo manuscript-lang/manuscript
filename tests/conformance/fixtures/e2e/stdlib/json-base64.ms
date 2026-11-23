@@ -2,13 +2,16 @@
 // conform: phase=test
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	parse, stringify from "@std/data/json.ms",
 	expect_equal, expect_error from "@std/test/test.ms",
 )
 
 test "typed JSON Base64 decodes every byte and preserves strict syntax":
 	var bytes = BytesBuilder()
-	for value in 0..256: bytes.append(value.to_uint8().get())
+	for value in 0..256: bytes.append(
+		value.to_uint8() or panic("called Optional.get() on null")
+	)
 
 	expected := [Bytes([]), Bytes([0]), Bytes([251, 255]), bytes.build()]
 	text := stringify(expected)?

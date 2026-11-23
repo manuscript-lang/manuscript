@@ -88,12 +88,12 @@ test "extrema use comparator signs without negating Int minimum":
 	expect_equal(max(low.clone(), high.clone()).rank, 2)?
 
 	for values in [[high.clone(), low.clone()], [low.clone(), high.clone()]]:
-		expect_equal(values.min().get().rank, 1)?
-		expect_equal(values.max().get().rank, 2)?
+		expect_equal((values.min() or panic("called Optional.get() on null")).rank, 1)?
+		expect_equal((values.max() or panic("called Optional.get() on null")).rank, 2)?
 
 	values := [high.clone(), low.clone(), Ranked(1), Ranked(2)]
-	var minimum = values.min().get().clone()
-	var maximum = values.max().get().clone()
+	var minimum = (values.min() or panic("called Optional.get() on null")).clone()
+	var maximum = (values.max() or panic("called Optional.get() on null")).clone()
 	minimum.rank = 0
 	maximum.rank = 3
 	expect_false(values[1].rank != 1 or values[2].rank != 1)?

@@ -2,6 +2,8 @@
 // conform: phase=run
 // A resource read from a list or map with `get`, `first` or `if value :=` is used in
 // place; the collection closes each resource exactly once.
+import panic from "@std/core.ms"
+
 type Handle:
 	id: Int
 
@@ -23,6 +25,6 @@ export fn main() Int:
 
 	found := by_key.get(7)
 	if found != null: print(found.id)
-	print(by_key.get(7).get().id)
+	print((by_key.get(7) or panic("called Optional.get() on null")).id)
 	print("end")
 	return 0

@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_false from "@std/test/test.ms",
+)
 
 fn replace[T](var values: List[T], value: T) Void:
 	values.set(1, value)
@@ -169,9 +172,18 @@ test "clone slice and nested values keep their own contracts":
 		not (
 			seen == [1, 1]
 			and child.value == 1
-			and clone.first().get().value == 1
-			and slice.first().get().value == 1
-			and values.first().get().value == 9
+			and (
+				clone.first()
+				or panic("called Optional.get() on null")
+			).value == 1
+			and (
+				slice.first()
+				or panic("called Optional.get() on null")
+			).value == 1
+			and (
+				values.first()
+				or panic("called Optional.get() on null")
+			).value == 9
 		)
 	)?
 
@@ -183,7 +195,15 @@ test "clone slice and nested values keep their own contracts":
 	)
 	for ignored in children.clone():
 		count += 1
-	expect_false(not (count == 2 and children.last().get().children.length() == 1))?
+	expect_false(
+		not (
+			count == 2
+			and (
+				children.last()
+				or panic("called Optional.get() on null")
+			).children.length() == 1
+		)
+	)?
 
 test "function values can replace later backing elements":
 	var seen: List[Int] = []

@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, fail from "@std/test/test.ms",
+)
 
 fn slice(values: List[Int]) List[Int]!: values.slice(0, 1).clone()
 
@@ -38,7 +41,12 @@ test "public collection support types retain their standard runtime identities":
 	found: MapEntry[String, Int]? := map.find(
 		fn(key: String, value: Int) Bool: (value == 3)
 	)
-	expect_false(pairs[0] != pair or found.get() != pair)?
+	expect_false(
+		pairs[0] != pair or (
+			found
+			or panic("called Optional.get() on null")
+		) != pair
+	)?
 
 	selected: List[Int]! := slice(values)
 	expect_equal(selected.get(), [3])?
@@ -51,7 +59,7 @@ test "public collection support types retain their standard runtime identities":
 	grouped: Map[Int, List[Int]] := group(values, fn(value: Int) Int: (value % 2))
 	distinct: Set[Int] := unique(values)
 	expect_false(grouped[1] != [3] or distinct.values() != [3, 4])?
-	expect_equal(index(values, 4).get(), 1)?
+	expect_equal(index(values, 4) or panic("called Optional.get() on null"), 1)?
 
 	absent: Int! := first([])
 	missing: Error := absent.err()

@@ -1,5 +1,5 @@
 // ms: allow_effect std.console.write
-
+import panic from "@std/core.ms"
 /*
 Command-line parsing for programs with nested subcommands, typed flags, positional arguments and generated help.
 
@@ -108,15 +108,15 @@ export type Matches:
 
 // Returns the text of a flag or argument.
 fn Matches.string(name: String) String:
-	return self.values.get(name).get()[0].clone()
+	return (self.values.get(name) or panic("called Optional.get() on null"))[0].clone()
 
 // Returns an Int flag or argument value.
 fn Matches.int(name: String) Int:
-	return self.string(name).parse_int().get()
+	return self.string(name).parse_int() or panic("called Optional.get() on null")
 
 // Returns a Float flag or argument value.
 fn Matches.float(name: String) Float:
-	return self.string(name).parse_float().get()
+	return self.string(name).parse_float() or panic("called Optional.get() on null")
 
 // Returns a Bool flag value; absent is false.
 fn Matches.bool(name: String) Bool:

@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+)
 
 // Lowering moves or lends a value with one owner where the program wrote no `.clone()`:
 // `pop` takes the element out of the list, `get` on an owned optional or result hands the
@@ -51,10 +54,10 @@ test "pop moves the element out of the list":
 	counters.length() | expect_equal(0)?
 
 test "get on an owned optional hands the payload over":
-	taken := maybe(6).get()
+	taken := maybe(6) or panic("called Optional.get() on null")
 	taken.read() | expect_equal(6)?
 
-	later := maybe(9).get()
+	later := maybe(9) or panic("called Optional.get() on null")
 	later.read() | expect_equal(9)?
 
 test "get on a borrowed result lends the payload":

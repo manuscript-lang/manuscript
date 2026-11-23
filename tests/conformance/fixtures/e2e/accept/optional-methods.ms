@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	JsonOptions from "@std/data/json.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
@@ -27,10 +28,10 @@ test "Optional presence and extraction preserve false and zero":
 	expect_false(present == null)?
 	expect_false(missing != null)?
 	expect_false(not (missing == null))?
-	expect_equal(present.get(), 0)?
+	expect_equal(present or panic("called Optional.get() on null"), 0)?
 
 	flag: Bool? := false
-	expect_false(flag.get())?
+	expect_false(flag or panic("called Optional.get() on null"))?
 	expect_equal(value_or(7, missing), 7)?
 	expect_equal(value_or(7, present), 0)?
 	expect_false(missing != null)?
@@ -45,8 +46,8 @@ test "the fallback of or runs only when the value is null":
 	expect_equal(counter.calls, 1)?
 
 	create := fn() Int?: 42
-	expect_equal((present or create()).get(), 0)?
-	expect_equal((missing or create()).get(), 42)?
+	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?
+	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
 
 test "Optional methods retain generic payload and receiver identity":
 	inner: Int? := null
@@ -55,13 +56,13 @@ test "Optional methods retain generic payload and receiver identity":
 
 	counter := Counter(3)
 	record: Counter? := counter.clone()
-	expect_equal(record.get().calls, 3)?
+	expect_equal((record or panic("called Optional.get() on null")).calls, 3)?
 
 	extract := record.get
 	expect_equal(extract().calls, 3)?
 
 	callback: (fn(Int) Int)? := increment
-	expect_equal(callback.get()(2), 3)?
+	expect_equal((callback or panic("called Optional.get() on null"))(2), 3)?
 
 	snapshot := outer.clone()
 	expect_equal(snapshot, outer)?
@@ -70,10 +71,10 @@ test "Optional fallbacks preserve standard option records":
 	limits := JsonOptions(max_bytes: -1)
 	missing: JsonOptions? := null
 	var extracted = (missing or limits).clone()
-	expect_equal(extracted.max_bytes.get(), -1)?
+	expect_equal(extracted.max_bytes or panic("called Optional.get() on null"), -1)?
 	expect_false(not (extracted.max_depth == null))?
 	extracted.max_values = 7
-	expect_equal(extracted.max_values.get(), 7)?
+	expect_equal(extracted.max_values or panic("called Optional.get() on null"), 7)?
 
 test "Optional methods work on inferred library return values":
 	values := [1, 2]

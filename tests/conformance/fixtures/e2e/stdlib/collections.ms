@@ -6,6 +6,7 @@ import (
 	flatten,
 	map_from_entries,
 	range_by from "@std/collections/collections.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
@@ -44,7 +45,7 @@ test "group_by keeps first-seen key order and element order across few and many 
 	var total = 0
 
 	for k in 0..3:
-		group := few.get(k).get()
+		group := few.get(k) or panic("called Optional.get() on null")
 		expect_equal(group.length(), 200)?
 
 		for j in 0..200:

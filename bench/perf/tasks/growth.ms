@@ -3,6 +3,7 @@
 // README.md.
 import (
 	Placement, PromiseOptions, promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	read_file from "@std/os/fs.ms",
 	monotonic from "@std/time.ms",
 )
@@ -18,7 +19,10 @@ fn loop_depth(n: Int, rounds: Int) Int:
 	return total
 
 fn status(label: String) Void:
-	text := read_file("/proc/self/status", null).wait().get().decode_utf8().get()
+	text := (
+		read_file("/proc/self/status", null).wait().get().decode_utf8()
+		or panic("called Optional.get() on null")
+	)
 	for line in text.lines():
 		if line.contains("VmRSS") or line.contains("VmPTE"):
 			print(label + " " + line)

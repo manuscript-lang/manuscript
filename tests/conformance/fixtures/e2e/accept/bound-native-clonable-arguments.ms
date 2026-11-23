@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	append_file, read_file, temporary from "@std/os/fs.ms",
 	expect_contains, expect_equal, expect_fault from "@std/test/test.ms",
 )
@@ -47,7 +48,7 @@ test "optional native adapter handles supplied and absent payloads":
 	set(0, null)
 	set(0, text.clone())
 	expect_equal(values[0], text)?
-	expect_equal(text.get(), "next-2")?
+	expect_equal(text or panic("called Optional.get() on null"), "next-2")?
 
 fn invalid(value: String, index: Int) Void:
 	var values = ["old"]
@@ -80,10 +81,17 @@ test "bound native arguments keep named effects and propagation":
 	tmp := temporary("bound-native-order-")?
 	log := f"{tmp.path()}/log"
 	expect_equal((ordered(log, false)?), ["supplied"])?
-	expect_equal((read_file(log).wait()?).decode_utf8().get(), "value,index,")?
+	expect_equal(
+		(read_file(log).wait()?).decode_utf8() or panic(
+			"called Optional.get() on null"
+		),
+		"value,index,",
+	)?
 	expect_equal(ordered(log, true).is_error(), true)?
 	expect_equal(
-		(read_file(log).wait()?).decode_utf8().get(),
+		(read_file(log).wait()?).decode_utf8() or panic(
+			"called Optional.get() on null"
+		),
 		"value,index,value,index,",
 	)?
 

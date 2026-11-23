@@ -404,6 +404,9 @@ static MsTy nullable_or_type(Body *body, const MsExpr *expr, MsTy left, MsTy rig
   if (right == payload || right == left) {
     return right;
   }
+  if (right != MS_TY_NONE && ms_ty_is(&body->program->types, right, MS_BUILTIN_Never)) {
+    return payload; /* `x or panic(..)`, `x or fail()`: the right side never gives a value */
+  }
   if (right != MS_TY_NONE && !is_invalid(body, right) && body_reports(body) && !body->quiet) {
     MsStrBuild text = ms_strbuild_new();
     ms_strbuild_append_text(&text, "`or` on ");

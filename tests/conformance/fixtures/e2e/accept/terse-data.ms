@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 fn subtract(amount: Int, deduction: Int = 1) Int: amount - deduction
 
@@ -8,7 +11,10 @@ fn first[T](left: T, right: T) T: left
 
 fn size(values: Map[String, Int]) Int: values.length()
 
-fn optional_size(values: Map[String, Int]?) Int: values.get().length()
+fn optional_size(values: Map[String, Int]?) Int: (
+	values
+	or panic("called Optional.get() on null")
+).length()
 
 fn mark(var log: List[Int], value: Int) Int:
 	log.append(value)

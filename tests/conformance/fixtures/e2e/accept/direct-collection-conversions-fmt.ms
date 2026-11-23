@@ -1,7 +1,10 @@
 // conform: tags=closures,control-flow,faults,formatter,generics,interfaces,lists,maps,match,modules,mutation,optional,parser,records,sets,stdlib-testing,strings,testing,tier-core,try-result
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/accept/direct-collection-conversions.ms
-import expect_equal, expect_false from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false from "@std/test/test.ms",
+)
 
 fn append_generic[T](var values: List[T?], value: T) Void:
 	values.append(value)
@@ -11,12 +14,22 @@ test "direct append preserves checked argument conversions":
 	values.append(7)
 	append_generic(values, 8)
 	values.append(null)
-	expect_false(values.get(0).get() != 7 or values.get(1).get() != 8)?
+	expect_false(
+		(values.get(0) or panic("called Optional.get() on null")) != 7 or (
+			values.get(1)
+			or panic("called Optional.get() on null")
+		) != 8
+	)?
 	expect_false(not (values.get(2) == null))?
 
 	var flags: List[Bool?] = []
 	flags.append(false)
-	expect_false((flags.get(0) == null) or flags.get(0).get())?
+	expect_false(
+		(flags.get(0) == null) or (
+			flags.get(0)
+			or panic("called Optional.get() on null")
+		)
+	)?
 
 	var units: List[Void?] = []
 	units.append(void)
@@ -25,11 +38,19 @@ test "direct append preserves checked argument conversions":
 	inner: Int? := null
 	var nested: List[Int??] = []
 	nested.append(inner)
-	expect_false(((nested.get(0) == null) or not nested.get(0).get().is_none()))?
+	expect_false(
+		(
+			(nested.get(0) == null)
+			or not (
+				nested.get(0)
+				or panic("called Optional.get() on null")
+			).is_none()
+		)
+	)?
 
 	var callbacks: List[(fn(Int) Int)?] = []
 	callbacks.append(fn value: value + 1)
-	expect_equal(callbacks.get(0).get()(7), 8)?
+	expect_equal((callbacks.get(0) or panic("called Optional.get() on null"))(7), 8)?
 
 	var errors: List[Error] = []
 	errors.append(Error("failure"))
@@ -39,7 +60,7 @@ test "direct append preserves checked argument conversions":
 	failed: Int! := error(Error("failure"))
 	results.append(failed)
 
-	widened := results.get(0).get()
+	widened := results.get(0) or panic("called Optional.get() on null")
 	expect_false(widened.is_ok())?
 	expect_equal(widened.err().message, "failure")?
 
@@ -50,9 +71,14 @@ test "direct keyed calls preserve optional keys and values":
 
 	var entries = Map[Int?, Int?]()
 	entries.add(7, 9)
-	expect_false(not entries.contains(7) or entries.get(7).get().get() != 9)?
+	expect_false(
+		not entries.contains(7) or (
+			entries.get(7)
+			or panic("called Optional.get() on null")
+		).get() != 9
+	)?
 	entries.add(value: 10, key: 8)
-	expect_equal(entries.get(8).get().get(), 10)?
+	expect_equal((entries.get(8) or panic("called Optional.get() on null")).get(), 10)?
 
 	var keys = Set[Int?]()
 	keys.add(7)
@@ -88,7 +114,16 @@ test "direct calls capture receiver and arguments in written order":
 				null: 0
 		) + 0,
 	)
-	expect_false((entries.get(1).get().get() != 7 or entries.contains(2) or key != 2))?
+	expect_false(
+		(
+			(
+				entries.get(1)
+				or panic("called Optional.get() on null")
+			).get() != 7
+			or entries.contains(2)
+			or key != 2
+		)
+	)?
 
 fn present[T](value: T) T?:
 	return value

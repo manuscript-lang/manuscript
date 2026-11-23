@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	RegexSpan, compile from "@std/regex.ms",
 	expect_equal, expect_false from "@std/test/test.ms",
 )
@@ -39,7 +40,10 @@ test "regex captures groups spans and splits":
 	expect_equal(date.capture("none"), [])?
 	expect_equal(date.capture_named("2026-10")["y"], "2026")?
 	expect_equal(date.capture_named("none").is_empty(), true)?
-	expect_equal(date.find_span("on 2026-10").get(), RegexSpan(3, 10))?
+	expect_equal(
+		date.find_span("on 2026-10") or panic("called Optional.get() on null"),
+		RegexSpan(3, 10),
+	)?
 	expect_equal(date.find_span("none") == null, true)?
 	expect_equal(
 		(date.capture_all("2026-10 2027-11")?),
@@ -111,8 +115,8 @@ test "regex named captures preserve unnamed gaps and absent groups":
 	found := re.capture_named("ce")
 	expect_equal(found.length(), 2)?
 	expect_equal(found.get("first") == null, true)?
-	expect_equal(found.get("empty").get(), "")?
-	expect_equal(found.get("last").get(), "e")?
+	expect_equal(found.get("empty") or panic("called Optional.get() on null"), "")?
+	expect_equal(found.get("last") or panic("called Optional.get() on null"), "e")?
 
 test "regex capture methods preserve whole match only patterns":
 	re := compile("\\bword\\b")?

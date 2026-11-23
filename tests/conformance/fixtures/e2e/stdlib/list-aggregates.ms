@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_true from "@std/test/test.ms",
+)
 
 type Version:
 	major: Int
@@ -85,12 +88,12 @@ test "min and max return the first of equal elements and none when empty":
 
 test "min and max over user Comparable types keep the first equal element":
 	versions := [Version(2, "b"), Version(1, "x"), Version(2, "a"), Version(1, "y")]
-	expect_equal(versions.min().get().label, "x")?
-	expect_equal(versions.max().get().label, "b")?
+	expect_equal((versions.min() or panic("called Optional.get() on null")).label, "x")?
+	expect_equal((versions.max() or panic("called Optional.get() on null")).label, "b")?
 
 test "min and max copy the element":
 	versions := [Version(1, "x")]
-	var copy = versions.max().get().clone()
+	var copy = (versions.max() or panic("called Optional.get() on null")).clone()
 	copy.major = 9
 	expect_equal(versions[0].major, 1)?
 

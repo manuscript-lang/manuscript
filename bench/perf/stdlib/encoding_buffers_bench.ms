@@ -1,5 +1,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	Base32Options,
 	ascii85_decode,
 	ascii85_encode,
@@ -14,7 +15,7 @@ fn sample(length: Int, zero: Bool = false) Bytes:
 
 	for index in 0..length:
 		value := if zero: 0 else: (index * 73 + 11) % 256
-		out.append(value.to_uint8().get())
+		out.append(value.to_uint8() or panic("called Optional.get() on null"))
 
 	return out.build()
 

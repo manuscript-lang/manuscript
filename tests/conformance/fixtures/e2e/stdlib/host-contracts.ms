@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	CompressOptions, CompressionFormat, compress, decompress from "@std/io/archive.ms",
 	OpenMode, OpenOptions, Seek, open, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_error, expect_false from "@std/test/test.ms",
@@ -90,7 +91,10 @@ test "full byte counts positions EOF and stream aliases retain their contracts":
 	expect_equal((handle.read_at(0, 80000)?).length(), 65536)?
 	expect_equal((handle.read_file()?).length(), 0)?
 	expect_equal((handle.seek(0, Seek.Start)?), 0)?
-	expect_equal((handle.read()?).get().length(), 65536)?
+	expect_equal(
+		((handle.read()?) or panic("called Optional.get() on null")).length(),
+		65536,
+	)?
 	expect_equal((handle.read_file()?).length(), 14464)?
 
 	_count := handle.seek(0, Seek.Start)?

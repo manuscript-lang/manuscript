@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true, fail from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
+)
 
 type Counter:
 	calls: Int
@@ -49,13 +52,19 @@ test "conversions and collection queries are callable":
 
 	entries: Map[String, Int] := {"b": 2, "a": 1}
 	expect_equal(entries.fold(0, fn acc, k, v: acc + v), 3)?
-	expect_equal(entries.find(fn k, v: v == 1).get().key, "a")?
+	expect_equal(
+		(
+			entries.find(fn k, v: v == 1)
+			or panic("called Optional.get() on null")
+		).key,
+		"a",
+	)?
 	expect_true((entries.any(fn k, v: v == 1)))?
 	expect_true((entries.all(fn k, v: v > 0)))?
 
 	values := Set[Int]([2, 1])
 	expect_equal(values.fold(0, fn acc, n: acc + n), 3)?
-	expect_equal(values.find(fn n: n == 1).get(), 1)?
+	expect_equal(values.find(fn n: n == 1) or panic("called Optional.get() on null"), 1)?
 	expect_true((values.any(fn n: n == 1)))?
 	expect_true((values.all(fn n: n > 0)))?
 
@@ -95,7 +104,7 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 
 	success: Counter!Error := ok(counter.clone())
 	extract := fn: success.clone().to_optional()
-	var extracted = extract().get().clone()
+	var extracted = (extract() or panic("called Optional.get() on null")).clone()
 	extracted.calls = 7
 	counter.calls | expect_equal(1)?
 
@@ -106,7 +115,13 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	(converted.to_optional() == null) | expect_true?
 
 	false_value: Bool? := false
-	ok_or(false_value, Error("absent")).to_optional().get() | expect_false?
+	(
+		(
+			ok_or(false_value, Error("absent")).to_optional()
+			or panic("called Optional.get() on null")
+		)
+		| expect_false?
+	)
 
 	unit_value: Void? := void
 	(ok_or(unit_value, Error("absent")).to_optional() != null) | expect_true?
@@ -114,10 +129,10 @@ test "conversions retain unconstrained payloads nesting and lazy counts":
 	nested_inner: Int!Error := error(Error("nested"))
 	nested_result: Int!Error? := nested_inner
 	(
-		ok_or(
-			nested_result,
-			Error("absent"),
-		).to_optional().get().err().message | expect_equal("nested")?
+		(
+			ok_or(nested_result, Error("absent")).to_optional()
+			or panic("called Optional.get() on null")
+		).err().message | expect_equal("nested")?
 	)
 
 test "Map fold uses ordered snapshots and returns independent accumulators":
@@ -175,27 +190,36 @@ test "Map find returns fresh entry shells with copied payloads":
 		"c": Counter(3)
 	}
 	var visits: List[String] = []
-	found := locate(
-		values.clone(),
-		fn k,
-		v:
-			visits.append(k.clone())
-			return k == "a"
-	).get()
+	found := (
+		locate(
+			values.clone(),
+			fn k,
+			v:
+				visits.append(k.clone())
+				return k == "a"
+		)
+		or panic("called Optional.get() on null")
+	)
 	(visits != ["b", "a"] or found.key != "a" or found.value.calls != 1) | expect_false?
 
 	var source = Map[String, Counter]()
 	source.add("b", counter.clone())
 
 	find := source.clone().find
-	var original = find(fn k, v: true).get().clone()
+	var original = (find(fn k, v: true) or panic("called Optional.get() on null")).clone()
 	var edited = original.value.clone()
 	edited.calls = 5
 	counter.calls | expect_equal(2)?
 	original.key = "other"
 	original.value = Counter(9)
 	(not (source.contains("b")) or source["b"].calls != 2) | expect_false?
-	expect_equal(source.find(fn k, v: true).get().key, "b")?
+	expect_equal(
+		(
+			source.find(fn k, v: true)
+			or panic("called Optional.get() on null")
+		).key,
+		"b",
+	)?
 	expect_true((source.find(fn k, v: false) == null))?
 
 	empty := Map[String, Counter]()
@@ -335,11 +359,14 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 
 	var seen: List[Int] = []
 	find := values.clone().find
-	var found = find(
-		fn v:
-			seen.append(v.id)
-			return v.id == 1
-	).get().clone()
+	var found = (
+		find(
+			fn v:
+				seen.append(v.id)
+				return v.id == 1
+		)
+		or panic("called Optional.get() on null")
+	).clone()
 	seen | expect_equal([2, 1])?
 	found.label = "found"
 	a.label | expect_equal("a")?
@@ -357,7 +384,7 @@ test "Set fold and find preserve ordered snapshots and copied payloads":
 	)?
 
 	flags := Set[Bool]([false])
-	expect_false(flags.find(fn v: true).get())?
+	expect_false(flags.find(fn v: true) or panic("called Optional.get() on null"))?
 	empty_calls.is_empty() | expect_true?
 
 test "Set predicates short circuit over snapshots and keep empty identities":

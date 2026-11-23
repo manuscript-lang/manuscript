@@ -10,6 +10,7 @@
 // string, whatever its spelling.
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	quote_text from "@std/data/quote.ms",
 	parse_int from "@std/math/math.ms",
 	from_scalars from "@std/string.ms",
@@ -434,19 +435,21 @@ fn numeric(text: String) Bool:
 	if exponent.length() > 2: return false
 
 	if exponent.length() == 2:
-		var power = exponent.last().get().clone()
+		var power = (exponent.last() or panic("called Optional.get() on null")).clone()
 		if power.starts_with("+") or power.starts_with("-"): power = power.slice(
 			1,
 			power.length(),
 		)
 		if not digit_text(power): return false
 
-	mantissa := exponent.first().get().split(".")
+	mantissa := (exponent.first() or panic("called Optional.get() on null")).split(".")
 	if mantissa.length() > 2: return false
-	if mantissa.length() == 1: return digit_text(mantissa.first().get())
+	if mantissa.length() == 1: return digit_text(
+		mantissa.first() or panic("called Optional.get() on null")
+	)
 
-	whole := mantissa.first().get()
-	fraction := mantissa.last().get()
+	whole := mantissa.first() or panic("called Optional.get() on null")
+	fraction := mantissa.last() or panic("called Optional.get() on null")
 	if whole == "" and fraction == "": return false
 
 	return (
@@ -1664,9 +1667,8 @@ fn block_string(
 
 		if (c == "+" or c == "-") and mode == "": mode = c
 		else if "123456789".contains(c) and explicit == 0: explicit = (
-			c
-			.parse_int()
-			.get()
+			c.parse_int()
+			or panic("called Optional.get() on null")
 		)
 		else: return error(
 			yaml_invalid(

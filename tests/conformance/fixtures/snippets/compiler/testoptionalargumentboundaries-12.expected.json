@@ -12,16 +12,16 @@
         "message": "cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter",
         "position": {
           "file": "testoptionalargumentboundaries-12.ms",
-          "line": 6,
+          "line": 8,
           "column": 26,
-          "offset": 238
+          "offset": 308
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testoptionalargumentboundaries-12.ms:6:26: type: cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 6 | fn call() Void: value := f(null)\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testoptionalargumentboundaries-12.ms:8:26: type: cannot infer type argument T for f; write f[T](...) with an explicit type for T; call arguments and the expected result must determine every type parameter\n   |\n 8 | fn call() Void: value := f(null)\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

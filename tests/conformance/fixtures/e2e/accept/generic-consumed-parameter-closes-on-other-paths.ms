@@ -1,6 +1,7 @@
 // conform: tags=generics,tier-io
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
@@ -13,7 +14,7 @@ fn move Marker.close() Void!: append_file(self.log, f"{self.id},").wait()
 
 fn keep_or_drop[T](drop: Bool, value: T?) T?:
 	if drop: return null
-	return value.get()
+	return value or panic("called Optional.get() on null")
 
 test "a generic parameter a path does not move is closed on that path":
 	tmp := temporary("generic-consumed-") | expect_ok?

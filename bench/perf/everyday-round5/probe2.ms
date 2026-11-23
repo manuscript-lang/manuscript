@@ -1,5 +1,6 @@
 import (
 	PriorityQueue from "@std/collections/queue.ms",
+	panic from "@std/core.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -170,7 +171,7 @@ fn x_dijkstra() Int:
 	pq.enqueue(Item(0, 0))
 
 	while not pq.is_empty():
-		it := pq.dequeue().get()
+		it := pq.dequeue() or panic("called Optional.get() on null")
 		if it.score > dist[it.id]: continue
 
 		x := it.id % n

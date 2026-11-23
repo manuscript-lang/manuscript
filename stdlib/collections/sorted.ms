@@ -1,4 +1,6 @@
 // One key-value pair of a SortedMap.
+import panic from "@std/core.ms"
+
 export type SortedEntry[K: Comparable & Clonable, V: Clonable]:
 	// The entry's key, which orders it within the map.
 	key: K
@@ -177,7 +179,7 @@ fn take_item[T](var items: List[T], at: Int) move T:
 		items.swap(i, i + 1)
 		i += 1
 
-	return items.pop().get()
+	return items.pop() or panic("called Optional.get() on null")
 
 // Internal: restores the chunk bookkeeping after an entry left position `at` of chunk
 // `c`.

@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	PriorityQueue, Queue from "@std/collections/queue.ms",
+	panic from "@std/core.ms",
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
@@ -36,7 +37,7 @@ test "priority queue sorts many values and copies are independent":
 	var previous = -1
 
 	while not queue.is_empty():
-		next := queue.dequeue().get()
+		next := queue.dequeue() or panic("called Optional.get() on null")
 		expect_false(next < previous)?
 		previous = next
 

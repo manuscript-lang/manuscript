@@ -2,7 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal,
 	expect_false,
@@ -44,8 +44,8 @@ test "Optional lazy fallbacks preserve nested absence and payload identity":
 	create := fn() Int?: 42
 	present: Int? := 0
 	missing: Int? := null
-	expect_equal((present or create()).get(), 0)?
-	expect_equal((missing or create()).get(), 42)?
+	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?
+	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
 
 	nested: Int?? := missing
 	expect_true(nested == null)?

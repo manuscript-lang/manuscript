@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	YamlOptions, YamlValue, parse, stringify from "@std/data/yaml.ms",
 	from_scalars from "@std/string.ms",
 	expect_equal,
@@ -28,7 +29,7 @@ type ScalarCase:
 	text: String
 	expected: String
 
-fn scalar(text: String,move expected: String) Void!:
+fn scalar(text: String, move expected: String) Void!:
 	root := (
 		parse(text: text)
 		| expect_ok?
@@ -163,10 +164,13 @@ test "YAML plain paragraphs retain boundaries and nested collections":
 	)
 	expect_false(
 		(
-			(items(root.get("a").get())?) != [
-				YamlValue.StringValue("x\ny"),
-				YamlValue.StringValue("z"),
-			]
+			(
+				items(
+					root.get("a") or panic(
+						"called Optional.get() on null"
+					)
+				)?
+			) != [YamlValue.StringValue("x\ny"), YamlValue.StringValue("z")]
 		)
 	)?
 	(scalar(text: "a: x\n\n# comment\nb: 1\n", expected: "x")?)
@@ -224,8 +228,14 @@ test "YAML blank line folding retains byte node and malformed input contracts":
 		cause.kind | expect_equal("EBADMSG")?
 		(
 			(
-				cause.details["line"].parse_int().get() < 1
-				or cause.details["column"].parse_int().get() < 1
+				(
+					cause.details["line"].parse_int()
+					or panic("called Optional.get() on null")
+				) < 1
+				or (
+					cause.details["column"].parse_int()
+					or panic("called Optional.get() on null")
+				) < 1
 				or cause.details["reason"] == ""
 			)
 			| expect_false?
@@ -253,7 +263,13 @@ test "YAML block mappings sequences exact scalars and core schema":
 	root["empty"] | expect_equal(YamlValue.Null)?
 	expect_false(
 		(
-			(items(root.get("values").get())?) != [
+			(
+				items(
+					root.get("values") or panic(
+						"called Optional.get() on null"
+					)
+				)?
+			) != [
 				YamlValue.Null,
 				YamlValue.BoolValue(false),
 				YamlValue.NumberValue("0xFF"),
@@ -261,24 +277,38 @@ test "YAML block mappings sequences exact scalars and core schema":
 		)
 	)?
 
-	people := (items(root.get("people").get())?)
+	people := (items(root.get("people") or panic("called Optional.get() on null"))?)
 	expect_false(
 		(
 			people.length() != 2
-			or (entries(people.first().get())?).get(
-				"age"
-			).get() != YamlValue.NumberValue("37")
+			or (
+				(
+					entries(
+						people.first() or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("age")
+				or panic("called Optional.get() on null")
+			) != YamlValue.NumberValue("37")
 		)
 	)?
 	expect_false(
 		(
 			(
-				items(
-					(entries(people.last().get())?).get(
-						"skills"
-					).get()
-				)?
-			).first().get() != YamlValue.StringValue("compilers")
+				(
+					items(
+						(
+							entries(
+								people.last() or panic(
+									"called Optional.get() on null"
+								)
+							)?
+						).get("skills") or panic("called Optional.get() on null")
+					)?
+				).first()
+				or panic("called Optional.get() on null")
+			) != YamlValue.StringValue("compilers")
 		)
 	)?
 
@@ -295,26 +325,49 @@ test "YAML flow collections quotes escapes comments and multiline values":
 	)
 	expect_false(
 		(
-			(entries(root.get("flow").get())?).get(
-				"name"
-			).get() != YamlValue.StringValue("it's # fine")
+			(
+				(
+					entries(
+						root.get("flow") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("name")
+				or panic("called Optional.get() on null")
+			) != YamlValue.StringValue("it's # fine")
 		)
 	)?
 	expect_false(
 		(
 			(
-				items(
-					(entries(root.get("flow").get())?).get(
-						"list"
-					).get()
-				)?
-			).last().get() != YamlValue.StringValue("é☺")
+				(
+					items(
+						(
+							entries(
+								root.get(
+									"flow"
+								) or panic("called Optional.get() on null")
+							)?
+						).get("list") or panic("called Optional.get() on null")
+					)?
+				).last()
+				or panic("called Optional.get() on null")
+			) != YamlValue.StringValue("é☺")
 		)
 	)?
 	expect_false(
 		(root["url"] != YamlValue.StringValue("https://example.org/#fragment"))
 	)?
-	(items(root.get("multiline").get())?).length() | expect_equal(3)?
+	(
+		(
+			items(
+				root.get("multiline") or panic(
+					"called Optional.get() on null"
+				)
+			)?
+		).length()
+		| expect_equal(3)?
+	)
 	root["text"] | expect_equal(YamlValue.StringValue("a long continued sentence"))?
 	(
 		parse(text: "'literal\\n'")
@@ -348,7 +401,7 @@ test "YAML anchors aliases merge keys and override precedence":
 	)
 	root["defaults"] | expect_equal(root["copy"])?
 
-	config := (entries(root.get("config").get())?)
+	config := (entries(root.get("config") or panic("called Optional.get() on null"))?)
 	expect_false(
 		(
 			config["retries"] != YamlValue.NumberValue("5")
@@ -363,12 +416,11 @@ test "YAML anchors aliases merge keys and override precedence":
 			(
 				parse(
 					text: "a: &a {x: 1}\nb: &b {x: 2, y: 3}\nc: {<<: [*a, *b], y: 4}\n"
-				)
-				| expect_ok?
+				) | expect_ok?
 			)
 		)?
 	)
-	c := (entries(merged.get("c").get())?)
+	c := (entries(merged.get("c") or panic("called Optional.get() on null"))?)
 	expect_false(
 		(
 			c["x"] != YamlValue.NumberValue("1")
@@ -415,16 +467,14 @@ test "YAML plain scalars cannot start with an indicator":
 		"a: %d\n"
 	]:
 		expect_true(parse(text: text).is_error())?
-
 	void expect_ok(parse(text: "a: -1\nb: -a\nc: ?x\nd: [-1, ?y, :z]\n"))?
 	void expect_ok(parse(text: "{? a : 1}\n"))?
 
 test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 	for text in [
-		"a: 1\na: 2", "{a: 1, a: 2}", "a:\n\tb: 1", "a: 1\n  b: 2",
-		"a:\n  b: 1\n c: 2", "[1,", "[1,,2]", "{a: 1 b: 2}", "\"\\uD800\"", "\"\\q\"",
-		"'unterminated", "*missing", "a: &loop [*loop]", "<<: 1",
-		"---\na: 1\n---\nb: 2", "a: |0\n  text"
+		"a: 1\na: 2", "{a: 1, a: 2}", "a:\n\tb: 1", "a: 1\n  b: 2", "a:\n  b: 1\n c: 2",
+		"[1,", "[1,,2]", "{a: 1 b: 2}", "\"\\uD800\"", "\"\\q\"", "'unterminated",
+		"*missing", "a: &loop [*loop]", "<<: 1", "---\na: 1\n---\nb: 2", "a: |0\n  text"
 	]:
 		cause := match parse(text: text):
 			ok(_): return fail(f"invalid YAML accepted: {text}")
@@ -433,8 +483,14 @@ test "YAML rejects duplicates invalid indentation malformed flow and aliases":
 		cause.kind | expect_equal("EBADMSG")?
 		(
 			(
-				cause.details["line"].parse_int().get() < 1
-				or cause.details["column"].parse_int().get() < 1
+				(
+					cause.details["line"].parse_int()
+					or panic("called Optional.get() on null")
+				) < 1
+				or (
+					cause.details["column"].parse_int()
+					or panic("called Optional.get() on null")
+				) < 1
 				or cause.details["reason"] == ""
 			)
 			| expect_false?
@@ -613,9 +669,16 @@ test "YAML scalars and anchors on their own line continue at the same indentatio
 	anchored["a"] | expect_equal(anchored["b"])?
 	expect_false(
 		(
-			(entries(anchored.get("b").get())?).get(
-				"k"
-			).get() != YamlValue.NumberValue("1")
+			(
+				(
+					entries(
+						anchored.get("b") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("k")
+				or panic("called Optional.get() on null")
+			) != YamlValue.NumberValue("1")
 		)
 	)?
 
@@ -653,9 +716,16 @@ test "YAML quoted merge key is an ordinary string key":
 	)
 	expect_false(
 		(
-			(entries(merged.get("m").get())?).get(
-				"x"
-			).get() != YamlValue.NumberValue("1")
+			(
+				(
+					entries(
+						merged.get("m") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("x")
+				or panic("called Optional.get() on null")
+			) != YamlValue.NumberValue("1")
 		)
 	)?
 
@@ -677,20 +747,33 @@ test "YAML plain scalars continued inside flow collections fold their line break
 	)
 	expect_false(
 		(
-			(items(root.get("a").get())?) != [
-				YamlValue.StringValue("x y"),
-				YamlValue.StringValue("z"),
-			]
+			(
+				items(
+					root.get("a") or panic(
+						"called Optional.get() on null"
+					)
+				)?
+			) != [YamlValue.StringValue("x y"), YamlValue.StringValue("z")]
 		)
 	)?
 	expect_false(
 		(
-			(entries(root.get("b").get())?).get(
-				"k"
-			).get() != YamlValue.StringValue("one two")
+			(
+				(
+					entries(
+						root.get("b") or panic(
+							"called Optional.get() on null"
+						)
+					)?
+				).get("k")
+				or panic("called Optional.get() on null")
+			) != YamlValue.StringValue("one two")
 		)
 	)?
-	(items(root.get("c").get())?) | expect_equal([YamlValue.StringValue("p q\nr")])?
+	(
+		(items(root.get("c") or panic("called Optional.get() on null"))?)
+		| expect_equal([YamlValue.StringValue("p q\nr")])?
+	)
 
 test "YAML document start marker accepts same-line content":
 	(
@@ -714,10 +797,13 @@ test "YAML compact mapping after a sequence marker follows the marker's spacing"
 	list := (items(root)?)
 	list.length() | expect_equal(3)?
 
-	first := (entries(list.first().get())?)
+	first := (entries(list.first() or panic("called Optional.get() on null"))?)
 	first["b"] | expect_equal(YamlValue.NumberValue("2"))?
 	(items(list.get(1).clone())?).length() | expect_equal(2)?
-	(entries(list.last().get())?)["d"] | expect_equal(YamlValue.NumberValue("4"))?
+	(
+		(entries(list.last() or panic("called Optional.get() on null"))?)["d"]
+		| expect_equal(YamlValue.NumberValue("4"))?
+	)
 
 fn repeated(text: String, count: Int) String:
 	if count <= 0: return ""
@@ -752,13 +838,13 @@ test "YAML flow mapping keys without a colon map to null":
 		| expect_ok?
 		| entries?
 	)
-	first := (entries(root.get("a").get())?)
+	first := (entries(root.get("a") or panic("called Optional.get() on null"))?)
 	first.length() | expect_equal(3)?
 	first["x"] | expect_equal(YamlValue.Null)?
 	first["y"] | expect_equal(YamlValue.NumberValue("1"))?
 	first["z"] | expect_equal(YamlValue.Null)?
 
-	second := (entries(root.get("b").get())?)
+	second := (entries(root.get("b") or panic("called Optional.get() on null"))?)
 	second["q"] | expect_equal(YamlValue.Null)?
 
 	match parse(text: "{x, x}"):
@@ -843,10 +929,19 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 	)
 	small.length() | expect_equal(3)?
 
-	first := (items(small.first().get())?)
+	first := (items(small.first() or panic("called Optional.get() on null"))?)
 	first.length() | expect_equal(2)?
-	(items(first.first().get())?).length() | expect_equal(2)?
-	first.last().get() | expect_equal(YamlValue.StringValue("z"))?
+	(
+		(
+			items(first.first() or panic("called Optional.get() on null"))?
+		).length()
+		| expect_equal(2)?
+	)
+	(
+		(first.last() or panic("called Optional.get() on null")) | expect_equal(
+			YamlValue.StringValue("z")
+		)?
+	)
 
 	depth := 3000
 	var source = f"{repeated(text: "- ", count: depth)}x\n"
@@ -856,7 +951,7 @@ test "YAML compact nested sequences resume each level and parse deep chains in l
 		inner := (items(root)?)
 		inner.length() | expect_equal(1)?
 
-		next := inner.first().get().clone()
+		next := (inner.first() or panic("called Optional.get() on null")).clone()
 		root = next
 
 	(items(root)?) | expect_equal([YamlValue.StringValue("x")])?

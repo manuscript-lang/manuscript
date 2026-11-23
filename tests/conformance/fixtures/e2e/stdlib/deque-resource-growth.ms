@@ -36,12 +36,18 @@ fn grow(log: String, front: Bool, wrapped: Bool) Void!:
 
 	expect_equal((events(log)?), before)?
 	expect_equal(queue.length(), 5)?
-	expect_equal(queue.front().get().id, if front: 5 else: (if wrapped: 1 else: 0))?
-	expect_equal(queue.back().get().id, if front: (if wrapped: 4 else: 3) else: 5)?
+	expect_equal(
+		(queue.front() or panic("called Optional.get() on null")).id,
+		if front: 5 else: (if wrapped: 1 else: 0),
+	)?
+	expect_equal(
+		(queue.back() or panic("called Optional.get() on null")).id,
+		if front: (if wrapped: 4 else: 3) else: 5,
+	)?
 
 	// Popped values remain owned by these bindings until the helper exits.
-	first := queue.pop_front().get()
-	last := queue.pop_back().get()
+	first := queue.pop_front() or panic("called Optional.get() on null")
+	last := queue.pop_back() or panic("called Optional.get() on null")
 	expect_equal((events(log)?), before)?
 	expect_equal(first.id, if front: 5 else: (if wrapped: 1 else: 0))?
 	expect_equal(last.id, if front: (if wrapped: 4 else: 3) else: 5)?
@@ -141,7 +147,7 @@ test "wrapped growth leaves opaque native file handles usable":
 			q.push_back(open(path, OpenMode.ReadWrite)?)
 
 		while not q.is_empty():
-			var handle = q.pop_front().get()
+			var handle = q.pop_front() or panic("called Optional.get() on null")
 			content := handle.read_file()?
 			expect_equal(content.decode_utf8() or "", "still open")?
 			handle.sync()?

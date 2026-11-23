@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f[T](value: T?) T: return value.get()\n\nfn call() Void: value := f(null)\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nfn f[T](value: T?) T: return value or panic(\"called Optional.get() on null\")\n\nfn call() Void: value := f(null)\n"
   }
 }

@@ -1,4 +1,5 @@
 import (
+	panic from "@std/core.ms",
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
 	StringBuilder from "@std/string_builder.ms",
@@ -9,8 +10,8 @@ extern fn codec_bench_cpu_ns() Int
 
 fn main() Int:
 	args := arguments()
-	size := args[0].parse_int().get()
-	rounds := args[1].parse_int().get()
+	size := args[0].parse_int() or panic("called Optional.get() on null")
+	rounds := args[1].parse_int() or panic("called Optional.get() on null")
 	shape := args[2]
 	valid := shape.ends_with("valid")
 	typed := shape.starts_with("typed")

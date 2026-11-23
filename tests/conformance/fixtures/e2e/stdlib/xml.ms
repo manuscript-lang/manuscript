@@ -1,6 +1,7 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
 import (
+	panic from "@std/core.ms",
 	XmlAttribute, XmlNode, escape_text, parse, stringify from "@std/data/xml.ms",
 	from_scalars from "@std/string.ms",
 	expect_equal, expect_error, expect_true from "@std/test/test.ms",
@@ -29,7 +30,7 @@ test "parse reads elements attributes and text":
 	expect_equal(doc.tag(), "feed")?
 	expect_equal(doc.attribute("b") or "", "x & y")?
 
-	item := doc.find("item").get()
+	item := doc.find("item") or panic("called Optional.get() on null")
 	expect_equal(item.attribute("id") or "", "7")?
 	expect_equal(item.text(), "Hi <there> AB")?
 	expect_equal(doc.find_all("empty").length(), 1)?
@@ -347,14 +348,22 @@ test "elements with many attributes keep their order and reject duplicates at an
 
 test "delimiter scans preserve empty spans Unicode and partial terminators":
 	expect_equal(parse("<a><![CDATA[]]></a>").get().text(), "")?
-	expect_equal(parse("<?p?><a k=''/>").get().attribute("k").get(), "")?
+	expect_equal(
+		parse("<?p?><a k=''/>").get().attribute("k") or panic(
+			"called Optional.get() on null"
+		),
+		"",
+	)?
 
 	text := "é日]]x?y".repeat(1000)
 	doc := parse(f"<a><![CDATA[{text}]]></a>").get()
 	expect_equal(doc.text(), text)?
 
 	attribute := parse(f"<a k='{text}'/>").get()
-	expect_equal(attribute.attribute("k").get(), text)?
+	expect_equal(
+		attribute.attribute("k") or panic("called Optional.get() on null"),
+		text,
+	)?
 	for source in ["<a><!--x--", "<a><![CDATA[]]", "<a k='x", "<?p x?"]:
 		expect_equal(parse(source).err().kind, "EBADMSG")?
 

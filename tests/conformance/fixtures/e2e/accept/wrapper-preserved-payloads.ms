@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_ok from "@std/test/test.ms",
 )
@@ -91,8 +91,8 @@ test "map takes a resource payload while reusable methods copy only retained dat
 
 	data: String!Int := ok("payload")
 	convert := fn: data.clone().to_optional()
-	expect_equal(convert().get(), "payload")?
-	expect_equal(convert().get(), "payload")?
+	expect_equal(convert() or panic("called Optional.get() on null"), "payload")?
+	expect_equal(convert() or panic("called Optional.get() on null"), "payload")?
 	expect_equal(data.get(), "payload")?
 
 test "empty and transformed branches do not manufacture retained payloads":

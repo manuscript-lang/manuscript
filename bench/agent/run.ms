@@ -3,6 +3,7 @@
 import (
 	Command, Flag, FlagKind, command from "@std/cli/command.ms",
 	Promise, promise, wait_all from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	uuid_v4 from "@std/data/uuid.ms",
 	stdout from "@std/io/io.ms",
 	arguments from "@std/os/env.ms",
@@ -212,7 +213,7 @@ type Job:
 
 // Runs every job in `items`, printing one verdict line each; returns how many failed.
 fn work(items: List[Job], harness: String, o: Options, tag: String) Int:
-	h := find(harness).get()
+	h := find(harness) or panic("called Optional.get() on null")
 	var bad = 0
 
 	for item in items:
@@ -264,7 +265,10 @@ fn cmd_run(opts: Options, oracle: Bool) Int!:
 
 	chs := load_challenges(split_ids(o.challenges))
 	langs := load_languages(split_ids(o.languages))
-	h := find(if oracle: "oracle" else: o.harness).get()
+	h := (
+		find(if oracle: "oracle" else: o.harness)
+		or panic("called Optional.get() on null")
+	)
 	var todo = List[Job]()
 
 	for ch in chs:

@@ -1,6 +1,9 @@
 // conform: tags=control-flow,lists,testing,tier-core
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type Node:
 	value: Int
@@ -24,7 +27,7 @@ fn sum_bound(head: Node?) Int:
 	var cur = head
 
 	while cur != null:
-		n := cur.get()
+		n := cur or panic("called Optional.get() on null")
 		total += n.value
 		cur = n.next
 
@@ -35,8 +38,8 @@ fn sum_chained(head: Node?) Int:
 	var cur = head
 
 	while cur != null:
-		total += cur.get().value
-		cur = cur.get().next
+		total += (cur or panic("called Optional.get() on null")).value
+		cur = (cur or panic("called Optional.get() on null")).next
 
 	return total
 
@@ -45,7 +48,7 @@ fn count_and_last(head: Node?) Int:
 	var last = 0
 
 	while cur != null:
-		n := cur.get()
+		n := cur or panic("called Optional.get() on null")
 		last = n.value
 		cur = n.next
 

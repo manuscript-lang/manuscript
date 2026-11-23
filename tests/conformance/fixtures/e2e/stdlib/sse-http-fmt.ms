@@ -2,6 +2,7 @@
 // conform: phase=parse
 // conform: origin=tests/e2e/testdata/stdlib/sse-http.ms
 import (
+	panic from "@std/core.ms",
 	HttpClientOptions,
 	HttpExchange,
 	HttpMethod,
@@ -33,8 +34,8 @@ test "HTTP response bodies decode as SSE and close with the reader":
 	{metadata: head, body: payload} := response
 	status := head.status
 	var events = sse_events(payload)
-	first := (events.next()?).get()
-	second := (events.next()?).get()
+	first := (events.next()?) or panic("called Optional.get() on null")
+	second := (events.next()?) or panic("called Optional.get() on null")
 	if first.event != "greet" or first.data != "h\u{e9}!": return fail(
 		f"first event {first.data}"
 	)

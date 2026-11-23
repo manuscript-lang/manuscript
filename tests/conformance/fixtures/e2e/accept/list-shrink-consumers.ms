@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal, expect_false, expect_true from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal, expect_false, expect_true from "@std/test/test.ms",
+)
 
 type Visits:
 	count: Int
@@ -61,7 +64,7 @@ fn observe[T: Clonable](
 	visits.count | expect_equal(3)?
 	return ok(seen)
 
-fn remaining[T: Clonable](mode: String,move items: List[T],move fill: List[T]) List[T]:
+fn remaining[T: Clonable](mode: String, move items: List[T], move fill: List[T]) List[T]:
 	var out = items
 	if mode == "remove": out.remove(0)
 	if mode == "splice": out.splice(
@@ -165,8 +168,18 @@ test "record consumers keep independent copies after shrink":
 			(
 				(
 					not (
-						seen.last().get().value == 3
-						and clone.last().get().value == 3
+						(
+							seen.last()
+							or panic(
+								"called Optional.get() on null"
+							)
+						).value == 3
+						and (
+							clone.last()
+							or panic(
+								"called Optional.get() on null"
+							)
+						).value == 3
 					)
 				)
 				| expect_false?
@@ -216,11 +229,32 @@ test "nested list consumers keep independent inner lists after shrink":
 			seen := (observe(values, mode, [[9]], callback)?)
 			var total = 0
 			var wanted = 0
-			for value in seen: total += value.first().get()
-			for value in clone: wanted += value.first().get()
+			for value in seen: total += (
+				value.first()
+				or panic("called Optional.get() on null")
+			)
+			for value in clone: wanted += (
+				value.first()
+				or panic("called Optional.get() on null")
+			)
 			(not (total == wanted and seen == clone and values == want)) | expect_false?
 			last.append(11)
-			expect_true((seen.last().get() == [3] and clone.last().get() == [3]))?
+			expect_true(
+				(
+					(
+						seen.last()
+						or panic(
+							"called Optional.get() on null"
+						)
+					) == [3]
+					and (
+						clone.last()
+						or panic(
+							"called Optional.get() on null"
+						)
+					) == [3]
+				)
+			)?
 
 test "map and folds consume snapshots of the live list":
 	var mapped = [1, 2, 3]
@@ -301,8 +335,18 @@ test "interface view consumers dispatch after shrink":
 			(
 				(
 					not (
-						seen.last().get().read() == 3
-						and clone.last().get().read() == 3
+						(
+							seen.last()
+							or panic(
+								"called Optional.get() on null"
+							)
+						).read() == 3
+						and (
+							clone.last()
+							or panic(
+								"called Optional.get() on null"
+							)
+						).read() == 3
 					)
 				)
 				| expect_false?
@@ -317,7 +361,12 @@ test "find returns the value passed to a mutating predicate":
 			return value == 1
 	)
 
-	(found.get() == 1 and forward == [2, 3]) | expect_true?
+	(
+		(
+			(found or panic("called Optional.get() on null")) == 1
+			and forward == [2, 3]
+		) | expect_true?
+	)
 
 	var replaced = [1, 2, 3]
 
@@ -331,7 +380,12 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(original.get() == 1 and replaced == [9, 2, 3]) | expect_true?
+	(
+		(
+			(original or panic("called Optional.get() on null")) == 1
+			and replaced == [9, 2, 3]
+		) | expect_true?
+	)
 
 	var reverse = [1, 2, 3]
 
@@ -345,7 +399,12 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(last.get() == 2 and reverse == [1, 3]) | expect_true?
+	(
+		(
+			(last or panic("called Optional.get() on null")) == 2
+			and reverse == [1, 3]
+		) | expect_true?
+	)
 
 	var last_replaced = [1, 2, 3]
 
@@ -359,7 +418,12 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(before.get() == 3 and last_replaced == [1, 2, 9]) | expect_true?
+	(
+		(
+			(before or panic("called Optional.get() on null")) == 3
+			and last_replaced == [1, 2, 9]
+		) | expect_true?
+	)
 
 	var indexes = [1, 2, 3]
 
@@ -385,27 +449,33 @@ test "find returns the value passed to a mutating predicate":
 		)
 	)
 
-	(index.get() == 0 and last_index.get() == 1) | expect_true?
+	(
+		(
+			(index or panic("called Optional.get() on null")) == 0
+			and (last_index or panic("called Optional.get() on null")) == 1
+		) | expect_true?
+	)
 
 	record := Payload(1)
 	var records = [record.clone(), Payload(2)]
 	retained := (
-		records
-		.clone()
-		.find(
+		records.clone().find(
 			fn value:
 				matches := value.value == 1
 				records.set(0, Payload(9))
 				return matches
 		)
-		.get()
+		or panic("called Optional.get() on null")
 	)
 	(
 		(
 			not (
 				retained.value == 1
 				and record.value == 1
-				and records.first().get().value == 9
+				and (
+					records.first()
+					or panic("called Optional.get() on null")
+				).value == 9
 			)
 		) | expect_false?
 	)
@@ -436,4 +506,12 @@ test "preferred List mutators and explicit reversed copy iterate snapshots":
 	shallow := children.reversed()
 	child.value = 7
 	children.remove(0)
-	(shallow.last().get().value == 1 and children.length() == 1) | expect_true?
+	(
+		(
+			(
+				shallow.last()
+				or panic("called Optional.get() on null")
+			).value == 1
+			and children.length() == 1
+		) | expect_true?
+	)

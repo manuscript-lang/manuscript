@@ -1,6 +1,9 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import expect_equal from "@std/test/test.ms"
+import (
+	panic from "@std/core.ms",
+	expect_equal from "@std/test/test.ms",
+)
 
 type Options:
 	harness: String
@@ -11,10 +14,16 @@ fn measure(name: String) Int?:
 
 fn owned_options(options: Options, oracle: Bool) Int:
 	var local = options.clone()
-	return measure(if oracle: "oracle" else: local.harness).get()
+	return (
+		measure(if oracle: "oracle" else: local.harness)
+		or panic("called Optional.get() on null")
+	)
 
 fn consumed_options(options: Options, oracle: Bool) Int:
-	return measure(if oracle: "oracle" else: options.harness).get()
+	return (
+		measure(if oracle: "oracle" else: options.harness)
+		or panic("called Optional.get() on null")
+	)
 
 test "a conditional with a literal arm and a field arm can be a call argument":
 	options := Options("abc", "t")

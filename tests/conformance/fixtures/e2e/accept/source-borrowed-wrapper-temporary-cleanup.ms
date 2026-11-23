@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-io
 // conform: phase=test
 import (
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	append_file, read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal, expect_fault, expect_some from "@std/test/test.ms",
 )
@@ -21,7 +21,6 @@ fn observed(value: Resource?) Bool: value != null
 // Reads the payload in place: `map` would take the resource.
 fn mapped(value: Resource?) Int?:
 	if value != null: return value.id
-
 	return null
 
 fn generic_map[T, U](transform: fn(T) U, value: T?) U?:
@@ -107,7 +106,10 @@ test "whole transfer keeps newer argument cleanups active until statement end":
 	transfer_first(path)?
 	expect_equal(log_text(path)?, "13,12,")?
 
-fn resource_path(value: Resource?) String: value.get().path.clone()
+fn resource_path(value: Resource?) String: (
+	value
+	or panic("called Optional.get() on null")
+).path.clone()
 
 test "borrowed parts are copied before their temporary owner closes":
 	directory := temporary("source-wrapper-")?
@@ -176,7 +178,7 @@ test "whole transferred locals retain their fault cleanup":
 	expect_equal(log_text(path)?, "40,")?
 
 fn fresh_owner(value: Resource?) Resource?:
-	return Resource(51, value.get().path.clone())
+	return Resource(51, (value or panic("called Optional.get() on null")).path.clone())
 
 fn fresh_then_faulted(path: String) Void:
 	held := fresh_owner(present(path, 50))

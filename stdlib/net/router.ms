@@ -1,7 +1,7 @@
 // Request routing and middleware over `HttpExchange`, implemented in Manuscript.
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	uuid_v4 from "@std/data/uuid.ms",
 	Logger from "@std/log.ms",
 	HttpExchange,
@@ -208,7 +208,7 @@ fn var Router.mount(prefix: String, routes: Router) Void!:
 	offset := self.groups.length()
 	var groups = drain(mounted.groups)
 	while not groups.is_empty():
-		self.groups.append(groups.pop().get())
+		self.groups.append(groups.pop() or panic("called Optional.get() on null"))
 
 	own := self.groups.length()
 	self.groups.append(in_order(mounted.middleware))
@@ -216,7 +216,7 @@ fn var Router.mount(prefix: String, routes: Router) Void!:
 	var sources = drain(mounted.routes)
 
 	while not sources.is_empty():
-		var route = sources.pop().get()
+		var route = sources.pop() or panic("called Optional.get() on null")
 		remount(route, base, own, offset)?
 		insert(self.routes, route)?
 
@@ -301,7 +301,7 @@ fn remount(var route: Route, base: String, own: Int, offset: Int) Void!:
 fn drain[T](var from: List[T]) List[T]:
 	var stack: List[T] = []
 	while not from.is_empty():
-		stack.append(from.pop().get())
+		stack.append(from.pop() or panic("called Optional.get() on null"))
 	return stack
 
 // Empties `from` into a new list in the same order.
@@ -919,7 +919,7 @@ fn new_slot[T](value: T) Int:
 fn take_slot[T](slot: Int) T:
 	read := msrt_pipe_read(slot)
 	_code := msrt_promise_wait(read, -1)
-	value := msrt_promise_take[T](read).get()
+	value := msrt_promise_take[T](read) or panic("called Optional.get() on null")
 	msrt_promise_drop(read)
 	return value
 

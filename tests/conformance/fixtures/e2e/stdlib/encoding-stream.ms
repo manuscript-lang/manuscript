@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes, join from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	base64_decode, base64_encode, hex_encode from "@std/data/encoding.ms",
 	base64_decoded,
 	base64_encoded,
@@ -167,7 +168,10 @@ test "base64 terminal padding survives a rejected read":
 	var later_chunk = base64_decoded(
 		ReadStream[String](Texts(["Zg==", "A", "", "", "AAA", "", ""], 0))
 	)
-	expect_equal((later_chunk.next()?).get(), "f".to_bytes())?
+	expect_equal(
+		(later_chunk.next()?) or panic("called Optional.get() on null"),
+		"f".to_bytes(),
+	)?
 	expect_equal(later_chunk.next().err().kind, "EBADMSG")?
 	expect_equal(later_chunk.next().err().kind, "EBADMSG")?
 	expect_equal(later_chunk.next()?, null)?

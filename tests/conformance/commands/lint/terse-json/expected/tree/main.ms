@@ -1,6 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
-	print from "@std/core.ms",
+	panic, print from "@std/core.ms",
 )
 
 fn empties(xs: List[Int], m: Map[String, Int], text: String) Bool:
@@ -15,7 +15,7 @@ fn first(xs: List[Int]) Int:
 fn counts(var m: Map[String, Int], k: String) Void:
 	var total = 0
 	total = m.get(k) or 0
-	m[k.clone()] = m.get(k).get() + 1
+	m[k.clone()] = (m.get(k) or panic("called Optional.get() on null")) + 1
 	print(total)
 
 fn pick(flag: Bool) Int:
