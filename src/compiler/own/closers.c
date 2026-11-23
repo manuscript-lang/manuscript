@@ -260,6 +260,13 @@ static bool result_views(const Closers *pass, const MsExpr *call, const MsExpr *
   return false;
 }
 
+/* A parameter the callable owns (`move`) hands its payload out through a view of it at its last use; a borrowed
+ * parameter has no closer, so flagging it changes nothing. */
+static bool names_param(const Closers *pass, const MsExpr *place) {
+  const MsRef *ref = place->kind == MS_E_NAME ? ms_facts_ref(pass->facts, place->id) : NULL;
+  return ref != NULL && ref->kind == MS_REF_PARAM;
+}
+
 static void flag_taken_by(Closers *pass, const MsExpr *call) {
   const MsTy result = ms_facts_type(pass->facts, call->id);
   if (result == MS_TY_NONE ||
@@ -274,11 +281,12 @@ static void flag_taken_by(Closers *pass, const MsExpr *call) {
         !ms_check_holds_resource(pass->program, arg_ty)) {
       continue;
     }
-    if (!result_views(pass, call, arg)) {
+    if (!result_views(pass, call, arg) || names_param(pass, arg)) {
       flag_root(pass, arg, MS_CLOSER_TAKEN);
     }
   }
-  if (call->u.call.callee->kind == MS_E_MEMBER && !result_views(pass, call, call->u.call.callee->u.member.left)) {
+  if (call->u.call.callee->kind == MS_E_MEMBER &&
+      (!result_views(pass, call, call->u.call.callee->u.member.left) || names_param(pass, call->u.call.callee->u.member.left))) {
     flag_root(pass, call->u.call.callee->u.member.left, MS_CLOSER_TAKEN);
   }
 }

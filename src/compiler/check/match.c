@@ -123,27 +123,27 @@ static void report_unknown_arm(Body *body, const MsArm *arm, MsName name, MsTy s
     ms_strbuild_append_text(&out, "'");
     ms_strbuild_append(&out, ms_names_span(program->names, arm->bindings.ptr[0].name));
     ms_strbuild_append_text(&out, "' is not a case of ");
-    ms_ty_show(&out, program->names, &program->types, scrutinee);
+    ms_strbuild_append(&out, ms_names_span(program->names, ms_ty_row(&program->types, scrutinee)->name)); /* the type's own name, as the oracle writes it */
     ms_strbuild_append_text(&out, "; a lone lowercase name binds an Optional's payload, but this is not an Optional; use "
                                   "'_' for a catch-all arm, or one of the cases: ");
     ms_suggest_list(&out, &names, 12);
   } else if (text.len == 0) {
     ms_strbuild_append_text(&out, "a literal pattern cannot match ");
-    ms_ty_show(&out, program->names, &program->types, scrutinee);
+    ms_strbuild_append(&out, ms_names_span(program->names, ms_ty_row(&program->types, scrutinee)->name)); /* the type's own name, as the oracle writes it */
     ms_strbuild_append_text(&out, "; literals match only Int, String or Bool, so match one of the cases: ");
     ms_suggest_list(&out, &names, 12);
   } else if (arm->bindings.len == 0 && !upper) {
     ms_strbuild_append_text(&out, "'");
     ms_strbuild_append(&out, text);
     ms_strbuild_append_text(&out, "' is not a case of ");
-    ms_ty_show(&out, program->names, &program->types, scrutinee);
+    ms_strbuild_append(&out, ms_names_span(program->names, ms_ty_row(&program->types, scrutinee)->name)); /* the type's own name, as the oracle writes it */
     ms_strbuild_append_text(&out, "; use '_' for a catch-all arm (it cannot bind a name); cases: ");
     ms_suggest_list(&out, &names, 12);
   } else {
     ms_strbuild_append_text(&out, "unknown case ");
     ms_strbuild_append(&out, text);
     ms_strbuild_append_text(&out, " of ");
-    ms_ty_show(&out, program->names, &program->types, scrutinee);
+    ms_strbuild_append(&out, ms_names_span(program->names, ms_ty_row(&program->types, scrutinee)->name)); /* the type's own name, as the oracle writes it */
     ms_strbuild_append_text(&out, "; cases: ");
     ms_suggest_list(&out, &names, 12);
     (void)ms_suggest_did_you_mean(&out, text, &names);

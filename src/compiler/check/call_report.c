@@ -53,7 +53,7 @@ static void append_param_type(Body *body, MsStrBuild *out, MsTy ty) {
   const MsSpan text = ms_strbuild_span(&shown);
   MsSpan rest = text;
   size_t at = 0;
-  while (ms_span_find(rest, ms_span_of_text("<invalid>"), &at)) {
+  while (ms_span_find(rest, ms_span_of_text("<invalid>"), &at) || ms_span_find(rest, ms_span_of_text("<unknown>"), &at)) {
     ms_strbuild_append(out, (MsSpan){rest.ptr, at});
     ms_strbuild_append_text(out, "_");
     rest = (MsSpan){rest.ptr + at + 9, rest.len - at - 9};
@@ -148,8 +148,12 @@ static bool omittable(const Body *body, const Target *target, const MsTyParam *p
                               : ms_ty_is(types, param->ty, MS_BUILTIN_Optional));
 }
 
-static void report_missing(Body *body, const Target *target, const MsExpr *call, size_t index) {
+static void report_missing(Body *body, const Target *target, const MsExpr *call, const Matched *matched, size_t index) {
   const MsTyParam *param = &ms_ty_params(&body->program->types, target->sig)[index];
+  /* the type as far as the other arguments fix it, a type argument nothing fixed yet written `_` */
+  const MsTy shown = matched->bound != NULL && target->vars.len != 0
+                         ? ms_ty_subst(&body->program->types, param->ty, target->vars.ptr, matched->bound, target->vars.len)
+                         : param->ty;
   MsStrBuild text = ms_strbuild_new();
   ms_strbuild_append_text(&text, "missing argument ");
   const bool positional = target_positional(target, index, &body->program->types);
@@ -159,7 +163,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
     ms_strbuild_append(&text, param_name(body, target, index));
   }
   ms_strbuild_append_text(&text, ": ");
-  append_param_type(body, &text, param->ty);
+  append_param_type(body, &text, shown);
   if (target->name.len != 0) {
     ms_strbuild_append_text(&text, " in call to ");
     ms_strbuild_append(&text, target->name);
@@ -170,7 +174,7 @@ static void report_missing(Body *body, const Target *target, const MsExpr *call,
     ms_strbuild_append_text(&text, "; add '");
     ms_strbuild_append(&text, param_name(body, target, index));
     ms_strbuild_append_text(&text, ": <");
-    append_param_type(body, &text, param->ty);
+    append_param_type(body, &text, shown);
     ms_strbuild_append_text(&text, ">'");
   }
   report_text(body, call->pos, 0, &text);
@@ -209,7 +213,7 @@ void body_report_arguments(Body *body, const Target *target, const MsExpr *call,
       }
     }
     if (report && !named && matched->slot[index] < 0 && param->ty != MS_TY_NONE && kind != MS_TY_INVALID && !omittable(body, target, param, index)) {
-      report_missing(body, target, call, index);
+      report_missing(body, target, call, matched, index);
     }
   }
 }

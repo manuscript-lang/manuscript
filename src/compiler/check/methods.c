@@ -120,7 +120,9 @@ static void enter_form_variables(Context *context, const MsSymbol *symbol, const
     for (uint32_t written = 0; written < decl->u.impl.bounds.len; written++) {
       const MsTypeParam *param = decl->u.impl.bounds.ptr[written];
       for (uint32_t bound = 0; param->name == params.ptr[index]->name && bound < param->bounds.len; bound++) {
+        context->resolver.allow_type_set = true;
         ms_ty_list_push(&record->bounds, resolver_type(&context->resolver, param->bounds.ptr[bound]));
+        context->resolver.allow_type_set = false;
       }
     }
   }
@@ -234,7 +236,9 @@ static void enter_own_variables(Context *context, const MsMethod *method, MsTyLi
     const MsTypeParam *param = method->func.type_params.ptr[index];
     MsTyVariable *record = ms_ty_variable(&program->types, own->ptr[index]);
     for (uint32_t bound = 0; bound < param->bounds.len; bound++) {
+      context->resolver.allow_type_set = true;
       ms_ty_list_push(&record->bounds, resolver_type(&context->resolver, param->bounds.ptr[bound]));
+      context->resolver.allow_type_set = false;
     }
     if (param->def != NULL) {
       record->default_ty = resolver_type(&context->resolver, param->def);
@@ -326,12 +330,16 @@ static bool add_set_block(Context *context, const MsDecl *decl) {
   ms_ty_list_truncate(&context->open, 0);
   MsTyList members = {0};
   for (uint32_t index = 0; index < alias->u.alias.targets.len; index++) {
+    context->resolver.allow_type_set = true;
     const MsTy member = resolver_type(&context->resolver, alias->u.alias.targets.ptr[index]);
+    context->resolver.allow_type_set = false;
     if (member != MS_TY_NONE) {
       ms_ty_list_push(&members, member);
     }
   }
+  context->resolver.allow_type_set = true;
   const MsTy set = resolver_type(&context->resolver, decl->u.impl.receiver);
+  context->resolver.allow_type_set = false;
   if (set != MS_TY_NONE && ms_ty_is(&program->types, set, MS_BUILTIN_TypeSet) && members.len != 0) {
     add_methods(context, decl, set_receiver(context, set, &members));
   }

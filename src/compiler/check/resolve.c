@@ -245,7 +245,20 @@ static MsTy alias_use(Resolver *resolver, const MsSymbol *alias, const MsTypeRef
   if (alias->ty == MS_TY_NONE && alias->module == resolver->module) { /* resolved on first use */
     resolver_resolve_alias(resolver, &program->symbols.ptr[alias - program->symbols.ptr]);
   }
-  if (alias->ty == MS_TY_NONE || ms_ty_builtin(&program->types, alias->ty) == MS_BUILTIN_TypeSet) {
+  if (alias->ty == MS_TY_NONE) {
+    return alias->ty;
+  }
+  if (ms_ty_builtin(&program->types, alias->ty) == MS_BUILTIN_TypeSet) {
+    if (!resolver->allow_type_set && resolver->report) {
+      MsStrBuild text = ms_strbuild_new();
+      const MsSpan name = ms_names_span(program->names, type->name);
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, " is a type set, which constrains a type parameter and has no values; write fn f[T: ");
+      ms_strbuild_append(&text, name);
+      ms_strbuild_append_text(&text, "](...) or use one of its members");
+      ms_check_report(program, resolver->module, type->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
+      return MS_TY_NONE;
+    }
     return alias->ty;
   }
   MsTyList args = {0};
@@ -261,6 +274,8 @@ static MsTy alias_use(Resolver *resolver, const MsSymbol *alias, const MsTypeRef
     ms_strbuild_printf(&text, "alias %.*s takes %u type arguments, found %zu",
                        (int)ms_names_span(program->names, type->name).len,
                        (const char *)ms_names_span(program->names, type->name).ptr, alias->var_count, args.len);
+    ms_strbuild_append_text(&text, "; write ");
+    append_sketch(&text, ms_names_span(program->names, type->name), alias->var_count);
     ms_check_report(program, resolver->module, type->pos, MS_CHECK_TYPE, ms_strbuild_finish(&text));
   }
   ms_ty_list_free(&args);
@@ -301,7 +316,10 @@ static MsTy named_type(Resolver *resolver, const MsTypeRef *type) {
 
 MsTy resolver_bound(Resolver *resolver, const MsTypeRef *bound) {
   MsCheckProgram *program = resolver->program;
+  const bool allowed = resolver->allow_type_set;
+  resolver->allow_type_set = true;
   const MsTy resolved = resolver_type(resolver, bound);
+  resolver->allow_type_set = allowed;
   const MsTyKind kind = resolved == MS_TY_NONE ? MS_TY_INVALID : ms_ty_kind(&program->types, resolved);
   if (kind == MS_TY_CONTRACT || resolved == MS_TY_NONE || !resolver->report) {
     return resolved;
