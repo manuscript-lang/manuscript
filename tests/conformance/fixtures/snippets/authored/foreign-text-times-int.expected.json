@@ -9,7 +9,7 @@
       {
         "code": "MS3001",
         "phase": "type",
-        "message": "operator operands require the same independently known type, found String * Int; to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)",
+        "message": "operator operands require the same independently known type, found String * Int; to repeat text write text.repeat(count), which returns a String",
         "position": {
           "file": "foreign-text-times-int.ms",
           "line": 5,
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/foreign-text-times-int.ms:5:17: type: operator operands require the same independently known type, found String * Int; to repeat text write text.repeat(count), which returns a Result (append '?' to propagate it)\n   |\n 5 |     line := \"-\" * 20\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/foreign-text-times-int.ms:5:17: type: operator operands require the same independently known type, found String * Int; to repeat text write text.repeat(count), which returns a String\n   |\n 5 |     line := \"-\" * 20\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }
