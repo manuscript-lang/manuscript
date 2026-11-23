@@ -63,9 +63,14 @@ static int refuse(const char *message, int status) {
 }
 
 static int parse_arguments(int argc, char **argv, CheckOptions *options) {
+  bool options_done = false; /* after `--`, every argument is an input, even one that starts with '-' */
   for (int index = 0; index < argc; index++) {
     const char *argument = argv[index];
-    if (is_option(argument, "--json")) {
+    if (!options_done && is_option(argument, "--")) {
+      options_done = true;
+    } else if (options_done && argument[0] != '\0') {
+      target_list_push(&options->targets, ms_span_of_text(argument));
+    } else if (is_option(argument, "--json")) {
       options->json = true;
     } else if (is_option(argument, "--with-text")) {
       options->with_text = true;
@@ -91,8 +96,8 @@ static int parse_arguments(int argc, char **argv, CheckOptions *options) {
       }
       options->deny_warnings = true;
     } else if (argument[0] == '-') {
-      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help %s' for its options\n", argument, options->name,
-                    options->name);
+      (void)fprintf(stderr, "unknown option %s for ms %s; run 'ms help %s' for its options (put -- before a file name that starts with '-')\n",
+                    argument, options->name, options->name);
       return STATUS_USAGE;
     } else if (argument[0] == '\0') {
       (void)fprintf(stderr, "ms %s: an input argument is empty; pass a .ms file, directory, or ms.toml\n", options->name);
