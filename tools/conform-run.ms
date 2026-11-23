@@ -247,9 +247,8 @@ fn default_timeout(phase: String) Int:
 	if phase == "check": return 60
 	if phase == "run": return 120
 
-	// A test fixture is built before it runs: a Debug build of the larger stdlib fixtures takes 15 to 30 s
-	// alone, and the runner builds several at once. A hang is a fixture that outlasts the run phase's limit.
-	return 120
+	// The slowest test fixture takes about 15 s (many-tasks); twice that is a hang.
+	return 30
 
 fn invoke(
 	ms: String,
