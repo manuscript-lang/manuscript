@@ -213,8 +213,10 @@ static MirTy lower_native(Lower *cx, MsTy ty) {
   for (size_t index = 0; index < count; index++) {
     args[index] = lower_type(cx, NULL, ms_ty_args(table, ty)[index]);
   }
-  return mir_ty_obj(cx->module, mir_name(cx->module, ms_names_span(cx->program->names, ms_ty_row(table, ty)->name)),
-                    args, (uint32_t)count);
+  const MirTy object = mir_ty_obj(cx->module, mir_name(cx->module, ms_names_span(cx->program->names, ms_ty_row(table, ty)->name)),
+                                  args, (uint32_t)count);
+  lower_source_list_push(&cx->sources, (LowerSource){object, ty}); /* its own `to_string` and `to_json` are found from it */
+  return object;
 }
 
 static MirTy lower_standard(Lower *cx, MsTy ty, MsBuiltin builtin) {
