@@ -464,10 +464,13 @@ static uint32_t runtime_function(LowerFn *fn, const MsSymbol *symbol, MirTy ret)
   for (uint32_t index = 0; index < count; index++) {
     mir_params[index] = (MirParam){fn_type(fn, params[index].ty), (uint8_t)((params[index].flags & MS_PARAM_MOVE) != 0 ? MM_MOVE : MM_BORROW)};
   }
-  const MirExtern def = {.name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, symbol->name)),
+  const MsName name = mir_name(fn->cx->module, ms_names_span(fn->cx->program->names, symbol->name));
+  const MsNativeSig *sig = ms_native_sig_find(ms_names_span(&fn->cx->module->names, name));
+  const MirExtern def = {.name = name,
                          .params = mir_params,
                          .nparams = count,
-                         .ret = ret};
+                         .ret = ret,
+                         .role = (uint8_t)(sig != NULL && sig->spawns ? MR_SPAWNS_TASK : MR_NONE)};
   return mir_extern_intern(fn->cx->module, &def);
 }
 
