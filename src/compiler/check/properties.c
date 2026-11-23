@@ -26,6 +26,8 @@ bool ms_property_of_builtin(MsBuiltin builtin, MsProperty *out) {
 void ms_property_memo_free(MsPropertyMemo *memo) {
   ms_property_key_list_free(&memo->active);
   ms_property_key_list_free(&memo->done);
+  ms_held_list_free(&memo->held);
+  ms_ty_list_free(&memo->shared_sets);
 }
 
 /* ---- the parts of a type ---- */
@@ -195,9 +197,18 @@ static bool holds_resource(MsCheckProgram *program, MsTy ty, MsTyList *seen) {
 }
 
 static bool holds_resource_anywhere(MsCheckProgram *program, MsTy ty) {
+  MsHeldList *held = &program->properties.held;
+  const uint32_t stamp = (uint32_t)program->methods.len + 1;
+  if (ty < held->len && held->ptr[ty].stamp == stamp) {
+    return held->ptr[ty].result;
+  }
   MsTyList seen = {0};
   const bool found = holds_resource(program, ty, &seen);
   ms_ty_list_free(&seen);
+  while (held->len <= ty) {
+    ms_held_list_push(held, (MsHeld){0});
+  }
+  held->ptr[ty] = (MsHeld){.stamp = stamp, .result = found};
   return found;
 }
 

@@ -63,7 +63,7 @@ void body_check_try(Body *body, const MsExpr *expr, MsTy operand) {
 /* An expression statement discards its value: a `?` must leave Void, and a Result must not be dropped silently. */
 void body_check_call_statement(Body *body, const MsStmt *stmt, MsTy value) {
   const MsTyTable *types = &body->program->types;
-  if (!body_reports(body) || body->quiet || value == MS_TY_NONE ||
+  if (!body_reports(body) || body->quiet || value == MS_TY_NONE || stmt == body->bench_last ||
       ms_ty_is_invalid(types, value)) {
     return;
   }

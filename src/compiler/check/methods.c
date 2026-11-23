@@ -6,6 +6,7 @@
  * type is reported and not registered; the standard modules may extend built-in scalars and native types. */
 #include "compiler/check/methods.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/alloc.h"
@@ -484,6 +485,52 @@ static void add_block(Context *context, const MsDecl *decl) {
   }
 }
 
+static int compare_keys(const void *left, const void *right) {
+  const MsMethodKey *a = left;
+  const MsMethodKey *b = right;
+  if (a->key != b->key) {
+    return a->key < b->key ? -1 : 1;
+  }
+  return a->entry < b->entry ? -1 : a->entry > b->entry;
+}
+
+static void fill_index(MsMethodKeyList *list, const MsMethodList *methods, bool by_name) {
+  ms_method_key_list_clear(list);
+  for (size_t index = 0; index < methods->len; index++) {
+    const MsMethodEntry *entry = &methods->ptr[index];
+    const uint64_t key = by_name ? entry->name : (uint64_t)entry->module << 32 | entry->source->id;
+    ms_method_key_list_push(list, (MsMethodKey){.key = key, .entry = (uint32_t)index});
+  }
+  qsort(list->ptr, list->len, sizeof *list->ptr, compare_keys);
+}
+
+static void index_methods(MsCheckProgram *program) {
+  fill_index(&program->method_index.by_name, &program->methods, true);
+  fill_index(&program->method_index.by_decl, &program->methods, false);
+}
+
+/* The first key at or after `key`. */
+static size_t lower_bound(const MsMethodKeyList *list, uint64_t key) {
+  size_t low = 0;
+  size_t high = list->len;
+  while (low < high) {
+    const size_t mid = low + (high - low) / 2;
+    if (list->ptr[mid].key < key) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+  return low;
+}
+
+const MsMethodEntry *ms_check_method_at(const MsCheckProgram *program, uint32_t module, uint32_t node) {
+  const MsMethodKeyList *list = &program->method_index.by_decl;
+  const uint64_t key = (uint64_t)module << 32 | node;
+  const size_t at = lower_bound(list, key);
+  return at < list->len && list->ptr[at].key == key ? &program->methods.ptr[list->ptr[at].entry] : NULL;
+}
+
 void ms_check_methods(MsCheckProgram *program, uint32_t module) {
   Context context = {.program = program, .module = module};
   resolver_init(&context.resolver, program, module);
@@ -496,6 +543,7 @@ void ms_check_methods(MsCheckProgram *program, uint32_t module) {
   ms_ty_list_free(&context.fresh);
   ms_ty_list_free(&context.open);
   resolver_free(&context.resolver);
+  index_methods(program);
 }
 
 /* ---- lookup ---- */
@@ -591,11 +639,9 @@ void ms_check_find_method(MsCheckProgram *program, MsTy receiver, MsName name, M
     ms_check_find_native(program, receiver, name, out);
     return;
   }
-  for (size_t index = 0; index < program->methods.len; index++) {
-    const MsMethodEntry *entry = &program->methods.ptr[index];
-    if (entry->name != name) {
-      continue;
-    }
+  const MsMethodKeyList *named = &program->method_index.by_name;
+  for (size_t slot = lower_bound(named, name); slot < named->len && named->ptr[slot].key == name; slot++) {
+    const MsMethodEntry *entry = &program->methods.ptr[named->ptr[slot].entry];
     MsTyList bound = {0};
     for (uint32_t at = 0; at < entry->shared; at++) {
       ms_ty_list_push(&bound, MS_TY_NONE);

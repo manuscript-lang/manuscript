@@ -156,7 +156,7 @@ static uint32_t method_thunk(Lower *cx, uint32_t method, MirTy data_ty, MsName n
 /* The interface-callable form of an operation a standard type implements natively (`compare` of an Int): it reads the
  * receiver from the address it is given and does the operation the way a call on that type would. */
 static uint32_t native_thunk(Lower *cx, MsTy receiver, MsName operation, const MirMethodSig *sig, MirTy data_ty,
-                             MsName name) {
+                             MsName name, MirTy iface_ty, uint32_t own) {
   const uint32_t nparams = sig->nparams + 1;
   MirParam *params = MS_ARENA_NEW_ARRAY(&cx->module->arena, MirParam, (size_t)nparams + 1);
   params[0] = (MirParam){MIR_PTR, (uint8_t)MM_BORROW};
@@ -176,6 +176,28 @@ static uint32_t native_thunk(Lower *cx, MsTy receiver, MsName operation, const M
   mir_b_params(&fn.b, args, nparams);
   const MirImm ty = {.tag = MI_TY, .a = data_ty};
   args[0] = mir_b_emit(&fn.b, MOP_Load, args, 1, ty, data_ty);
+  for (uint32_t index = 1; index < nparams; index++) {
+    if (params[index].ty != iface_ty) {
+      continue;
+    }
+    /* An argument the interface declares as itself (`other: Self`) arrives as an interface value: it is unwrapped
+     * when it holds this vtable's type, and otherwise the operation has no answer (`false`). */
+    const MirValue same = mir_b_emit(&fn.b, MOP_IfaceIs, &args[index], 1, (MirImm){.tag = MI_VTABLE, .a = own}, MIR_BOOL);
+    const MirBlock yes = mir_b_new_block(&fn.b);
+    const MirBlock no = mir_b_new_block(&fn.b);
+    mir_b_br_if(&fn.b, same, yes, NULL, 0, no, NULL, 0);
+    mir_b_seal_block(&fn.b, no);
+    mir_b_switch_to(&fn.b, no);
+    if (sig->ret == MIR_BOOL) {
+      mir_b_ret(&fn.b, mir_b_bconst(&fn.b, false));
+    } else {
+      mir_b_unreachable(&fn.b);
+    }
+    mir_b_seal_block(&fn.b, yes);
+    mir_b_switch_to(&fn.b, yes);
+    const MirValue data = mir_b_emit(&fn.b, MOP_IfaceData, &args[index], 1, (MirImm){0}, MIR_PTR);
+    args[index] = mir_b_emit(&fn.b, MOP_Load, &data, 1, ty, data_ty);
+  }
   MirValue result = MIR_NONE;
   const bool done = fn_native_on(&fn, NULL, receiver, ms_names_span(cx->program->names, operation), nparams, args,
                                  sig->ret, &result);
@@ -213,7 +235,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
   for (size_t index = 0; index <= def->operations.len; index++) { /* the last slot is the payload's text */
     const MsName operation = index < def->operations.len ? def->operations.ptr[index].name : text_name;
     const MsMethodEntry *entry = resolve_operation(cx, receiver, operation);
-    if (entry == NULL || entry->source->func.external) { /* the runtime implements it: no body to call */
+    if (entry == NULL || entry->source->func.external || entry->source->func.body.len == 0) { /* the runtime implements it: no body to call */
       MsStrBuild text = ms_strbuild_new();
       ms_strbuild_append(&text, ms_names_span(&cx->module->names, name));
       ms_strbuild_printf(&text, ".native.%zu", index);
@@ -221,7 +243,7 @@ static uint32_t build_vtable(Lower *cx, const LowerSubst *subst, MsTy receiver, 
       ms_strbuild_free(&text);
       const MirIfaceDef *shape = &cx->module->ifaces.ptr[mir_ty_data(cx->module, iface_ty)->id];
       methods[index] = native_thunk(cx, receiver, operation, &shape->methods[index],
-                                    lower_type(cx, subst, receiver), thunk);
+                                    lower_type(cx, subst, receiver), thunk, iface_ty, own);
       if (methods[index] == MIR_NONE) {
         return MIR_NONE;
       }
@@ -322,6 +344,10 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
       value = view_as_interface(fn, expr, &inner, value);
       if (value == MIR_NONE) {
         return MIR_NONE;
+      }
+      /* A view of a binding that keeps its value is shown as an optional, not owned by one. */
+      if (mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, value)) && !fn_fresh_owner(fn, value)) {
+        return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
       }
       return fn_emit(fn, MOP_OptSome, &value, 1, none, to);
     }

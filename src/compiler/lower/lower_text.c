@@ -75,14 +75,24 @@ static MirValue join_pieces(LowerFn *fn, const TextPiece *pieces, uint32_t count
 
 /* Any other value is written by the runtime's walker over the value's shape table: the value goes into a stack
  * slot (a borrow, so nothing is dropped) and the walker reads it through the table. */
-static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *function) {
+static MirValue value_shown_as(LowerFn *fn, MirValue value, MirTy ty, const char *function, MirTy ret) {
   const MirImm of_type = {.tag = MI_TY, .a = ty};
   const MirValue slot = mir_b_emit(&fn->b, MOP_Slot, NULL, 0, of_type, MIR_PTR);
   const MirValue store[2] = {slot, value};
   (void)mir_b_emit(&fn->b, MOP_Store, store, 2, (MirImm){0}, MIR_NONE);
   const MirValue table = fn_shape(fn, of_type.a);
   const MirValue args[2] = {table, slot};
-  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, MIR_STR);
+  return fn_runtime_call(fn, mir_name(fn->cx->module, ms_span_of_text(function)), args, 2, ret);
+}
+
+static MirValue value_shown(LowerFn *fn, MirValue value, MirTy ty, const char *function) {
+  return value_shown_as(fn, value, ty, function, MIR_STR);
+}
+
+/* A bench body's last value goes to the runtime's sink, which the compiler cannot see into: the work that computed
+ * it stays in the program. */
+void fn_bench_sink(LowerFn *fn, MirValue value) {
+  (void)value_shown_as(fn, value, mir_b_ty(&fn->b, value), "msstd_bench_sink", MIR_VOID);
 }
 
 /* An interface value is written by its payload's type: the vtable carries a text slot after the declared methods. */

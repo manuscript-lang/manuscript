@@ -207,8 +207,9 @@ ms bench ms.toml --filter "sum" --json
 
 - A project loads `bench.ms` and `*_bench.ms` files; a bench may also sit in any module the command loads. Benches take the same selection options as tests (`--filter`, `--match`, `--exclude`, `--bench`, `--list`, `--repeat`, `--fail-fast`, `--timeout`).
 - `--time` sets the target length of one sample, `--samples` the number of timed samples, and `--iterations` fixes the iteration count and skips calibration.
-- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation. `keep(value)` from `@std/test/bench.ms` takes a computed `Int` through a call the compiler cannot see into, so the work is not removed. When the inputs are constants, pass them through `opaque(value)` from the same module so the optimizer cannot compute the whole body at compile time.
-- To keep setup out of the timing, build the data first and time only the work: `measure(1000, fn: keep(data.sorted().length()))?` from `@std/test/bench.ms` runs the work repeatedly and reports per operation, here for 1000 operations per run. Everything before `measure` runs once, untimed.
+- `bench "name" per 1000:` declares that one iteration performs 1000 operations (a loop over 1000 items, say); every statistic is then per operation.
+- The whole body is timed, and the harness keeps the body's last statement: end it with a bare value (or a call, with `?` for a fallible one) and the work cannot be removed. The compiler can still fold a body whose inputs are constants, so read inputs from the fixture.
+- To keep setup out of the timing, use a fixture as in tests: `fn make_fixture() T` and the hooks `before_all`, `before_each`, `after_each` and `after_all`, read in the body as `fixture`. They run once per bench process, outside the timed region. Because each bench runs in its own process, `make_fixture` of a file runs once for every bench in it, so build only what the file's benches share.
 - Each bench runs in its own process. A body that returns an error, faults, or exceeds `--timeout` (default 10 minutes) fails that bench and the exit status is 1. Standard output written by a bench is discarded.
 - `--json` adds `stats` to each entry of `benches`: `iterations`, `operations`, `samples`, and `min_ns`, `median_ns`, `mean_ns`, `max_ns`, `stddev_ns` in nanoseconds per operation (per iteration when `operations` is 1), and `cpu_ns`, the process CPU time (user plus kernel) per operation, which ignores time spent waiting for a CPU.
 - `--json` also reports the runtime's work per operation from one extra counted run: `allocations`, `allocated_bytes`, `list_copies`, `list_copy_bytes`, `string_clones` and `string_clone_bytes`. Unlike times, these do not depend on machine load or on the host, so they can gate a build.
@@ -216,7 +217,7 @@ ms bench ms.toml --filter "sum" --json
   - Allocations count the calling thread and finished threads. Copies count the calling thread. Work done inside the Rust runtime (crypto, regex, image decoding) shows only as allocations and bytes, so also watch the time for those.
   - `ms bench --ops` also counts the MIR operations your own code executes (`mir_ops` in `--json`, `MIR ops` in the text). The build carries a counter and runs each bench once. The count is the same on every platform and backend, so a project such as a database driver can gate on its own code without depending on the runtime.
   - Times of an `--ops` run are not meaningful; run without `--ops` for times. `--baseline` compares `mir_ops` like the other counts.
-- Keep the measured work in the body and the setup outside it: a bench has no `fixture` and no hooks. Check a result with `?` so the compiler cannot discard the work; `ms bench` builds `Release` by default, which is what you want to measure.
+- Put the measured work in the body and the setup in the fixture. `ms bench` builds `Release` by default, which is what you want to measure.
 
 ## Profile application work
 

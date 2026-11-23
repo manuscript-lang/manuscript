@@ -22,11 +22,28 @@ enum { FMT_WIDTH = 88, FMT_FLOW_WIDTH = 50 };
 #define FMT_NONE SIZE_MAX
 
 /* One formatting run: where result strings live, the names the parser interns, and the first syntax error. */
+/* A text that parsed or lexed, with its result: the passes hand each other the same text, so each is read once. */
+typedef struct FmtParsed {
+  MsSpan text; /* a copy the result's spans point into */
+  MsModule module;
+  MsLexed lexed;
+  bool has_module;
+  bool has_lexed;
+} FmtParsed;
+
 typedef struct Fmt {
   MsArena *arena;
   MsNames *names;
   MsDiag diag;
+  MsArena memo;       /* owns the cached texts and their results, until the run ends */
+  FmtParsed *parsed;  /* the texts seen so far, a short list */
+  size_t nparsed;
+  size_t cap_parsed;
 } Fmt;
+
+/* The entry for `source`, added empty when new. */
+FmtParsed *fmt_parsed_entry(Fmt *f, MsSpan source);
+void fmt_memo_free(Fmt *f);
 
 MS_LIST_DEFINE(SpanList, span_list, MsSpan)
 MS_LIST_DEFINE(RangeList, range_list, MsByteRange)
@@ -242,11 +259,29 @@ static inline bool fmt_failed(Fmt *f) {
 
 /* Parses `source` into `module`, whose nodes live in `scratch`. False with f->diag filled on error. */
 static inline bool fmt_parse(Fmt *f, MsArena *scratch, MsSpan source, MsModule *module) {
-  return ms_parse(scratch, f->names, source, module, &f->diag) || fmt_failed(f);
+  (void)scratch; /* the result lives in f->memo, which outlives every pass; the module is read-only */
+  FmtParsed *entry = fmt_parsed_entry(f, source);
+  if (!entry->has_module) {
+    if (!ms_parse(&f->memo, f->names, entry->text, &entry->module, &f->diag)) {
+      return fmt_failed(f);
+    }
+    entry->has_module = true;
+  }
+  *module = entry->module;
+  return true;
 }
 
 static inline bool fmt_lex(Fmt *f, MsArena *scratch, MsSpan source, MsLexed *lexed) {
-  return ms_lex(scratch, source, lexed, &f->diag) || fmt_failed(f);
+  (void)scratch;
+  FmtParsed *entry = fmt_parsed_entry(f, source);
+  if (!entry->has_lexed) {
+    if (!ms_lex(&f->memo, entry->text, &entry->lexed, &f->diag)) {
+      return fmt_failed(f);
+    }
+    entry->has_lexed = true;
+  }
+  *lexed = entry->lexed;
+  return true;
 }
 
 /* ---- syntax helpers shared by the passes ---- */
