@@ -136,7 +136,9 @@ export fn run_plain_file(
 // Owns a file's fixture; closing it runs `after_each` when a test was running and then
 // `after_all`, so a fault in a test still tears the fixture down.
 type FixtureScope[F]:
-	fixture: F
+	// One element: a list element is lent in place, so a fault in a hook or test keeps this scope's
+	// cleanup registered. Workaround for #6556; hold `fixture: F` again once fields are lent in place.
+	held: List[F]
 	after_each: fn(var F) Void!
 	after_all: fn(var F) Void!
 	in_test: Bool
@@ -144,9 +146,9 @@ type FixtureScope[F]:
 fn move FixtureScope[F].close() Void!:
 	if self.in_test:
 		self.in_test = false
-		self.after_each(self.fixture)?
+		self.after_each(self.held[0])?
 
-	return self.after_all(self.fixture)
+	return self.after_all(self.held[0])
 
 // Runs a file's tests on one fixture: `make` and `before_all` once, `before_each` and
 // `after_each` around each test, then `after_all`. A hook's error fails (or, kind ESKIP,
@@ -164,7 +166,7 @@ export fn run_fixture_file[F](
 	results: String
 ) Void:
 	var scope = FixtureScope[F](
-		fixture: make(),
+		held: [make()],
 		after_each: after_each,
 		after_all: after_all,
 		in_test: false,
@@ -172,7 +174,7 @@ export fn run_fixture_file[F](
 	started := monotonic()
 	msrt_test_deadline(true)
 
-	setup := before_all(scope.fixture)
+	setup := before_all(scope.held[0])
 
 	for position in 0..tests.length():
 		index := indices[position]
@@ -187,12 +189,12 @@ export fn run_fixture_file[F](
 		began := monotonic()
 		scope.in_test = true
 
-		var outcome = before_each(scope.fixture)
+		var outcome = before_each(scope.held[0])
 		if not outcome.is_error():
-			outcome = tests[position](scope.fixture)
+			outcome = tests[position](scope.held[0])
 		scope.in_test = false
 
-		teardown := scope.after_each(scope.fixture)
+		teardown := scope.after_each(scope.held[0])
 		if teardown.is_error() and not outcome.is_error():
 			outcome = error(teardown.err().clone())
 		report(results, index, began, outcome)
