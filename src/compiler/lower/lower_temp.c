@@ -353,3 +353,31 @@ bool fn_stmt_has_temporary(LowerFn *fn, const MsStmt *stmt) {
   }
   return scan.found || scan.receiver;
 }
+
+/* The record `base` loses the field `moved` to its new owner: the resources its other fields hold close with the
+ * statement, last field first, instead of being released unclosed. Returns the mask of the fields taken out. */
+uint32_t fn_close_rest(LowerFn *fn, const MsExpr *member, MirValue base, uint32_t type_id, uint32_t moved) {
+  MsCheckProgram *program = fn->cx->program;
+  const MsTy owner = ms_ty_subst(&program->types, ms_facts_type(fn->facts, member->u.member.left->id), fn->subst.vars, fn->subst.args,
+                                 fn->subst.count);
+  const MsDef *def = owner != MS_TY_NONE ? ms_check_def_of(program, owner) : NULL;
+  const MirTypeDef *record = &fn->cx->module->type_defs.ptr[type_id];
+  uint32_t taken = 0;
+  for (uint32_t at = 0; def != NULL && at < record->nfields && at < 32 && at < def->fields.len; at++) {
+    const MirTy field_ty = record->fields[at].ty;
+    if (at == moved || !mir_needs_drop(fn->cx->module, field_ty)) {
+      continue;
+    }
+    const MsTy checked = ms_check_part_type(program, owner, def, def->fields.ptr[at].ty);
+    if (!fn_temp_closes(fn, checked)) {
+      continue;
+    }
+    const MirImm imm = {.tag = MI_FIELD, .a = type_id, .b = at};
+    const MirValue field = mir_b_emit(&fn->b, MOP_TypeGet, &base, 1, imm, field_ty);
+    const MirValue out = fn_emit(fn, MOP_MoveOut, &field, 1, (MirImm){0}, field_ty);
+    if (fn_pending_own(fn, checked, out) != MIR_NONE) {
+      taken |= UINT32_C(1) << at;
+    }
+  }
+  return taken;
+}
