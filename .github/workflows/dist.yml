@@ -1,0 +1,78 @@
+name: Distributions
+
+# Builds `ms` with CMake natively on a runner of each of the six release targets, assembles the archive
+# (cmake/MsPackage.cmake: `ms`, the runtime archives, the startup files and the pinned LLVM tools), unpacks it
+# alone and builds the hello example with it (cmake/PackageSmoke.cmake), and checks the Linux binary's glibc floor.
+# release.yml calls this workflow on a version tag and publishes its archives; there every target gates. Scheduled
+# runs on main cover the same six platforms in ci.yml; pull requests cover Linux.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CCACHE_DIR: ${{ github.workspace }}/.artifacts/ccache
+
+jobs:
+  package:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    # Windows runs inside the MSYS2 shell the toolchain step installs.
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: linux, arch: amd64, runner: ubuntu-24.04, shell: bash }
+          - { os: linux, arch: arm64, runner: ubuntu-24.04-arm, shell: bash }
+          - { os: darwin, arch: amd64, runner: macos-15-intel, shell: bash }
+          - { os: darwin, arch: arm64, runner: macos-15, shell: bash }
+          - { os: windows, arch: amd64, runner: windows-2025, shell: 'msys2 {0}' }
+          - { os: windows, arch: arm64, runner: windows-11-arm, shell: 'msys2 {0}' }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - name: Check release tag version
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: test "${RELEASE_TAG#v}" = "$(cat .msversion)"
+      - uses: ./.github/actions/toolchain
+      - run: cmake --preset release
+      - run: cmake --build --preset release
+      - name: Assemble the archive and build the hello example with it alone
+        run: cmake --build --preset release --target dist-smoke
+      # The shipped ms must run on glibc 2.28 (the floor of programs it builds, proposals/glibc-2-28-floor.md).
+      - name: Check the glibc floor of ms
+        if: matrix.os == 'linux'
+        run: sh toolchain/check-glibc-floor.sh .artifacts/build/release/src/cli/ms
+      - uses: actions/upload-artifact@v7
+        with:
+          name: manuscript-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            .artifacts/build/release/dist/manuscript-*
+          if-no-files-found: error
+      - if: always()
+        uses: ./.github/actions/save-caches
+
+  ok:
+    name: Distributions
+    needs: package
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every gating target
+        env:
+          RESULT: ${{ needs.package.result }}
+        run: |
+          case "$RESULT" in
+            success|skipped) ;;
+            *) exit 1 ;;
+          esac
