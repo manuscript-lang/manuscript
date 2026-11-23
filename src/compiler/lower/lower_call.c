@@ -494,6 +494,10 @@ static MirValue call_bound_operation(LowerFn *fn, const MsExpr *expr, const MsCa
   if (method != MIR_NONE) {
     const MirValue result = mir_b_call(&fn->b, method, args, call->arg_count);
     fn_own_result(fn, result);
+    if (fn->cx->module->funcs.ptr[method].ret_borrowed && mir_needs_drop(fn->cx->module, ret)) {
+      /* An operation answers an owner, as through the vtable: the implementation's view is copied here. */
+      return fn_emit(fn, MOP_Clone, &result, 1, (MirImm){0}, ret);
+    }
     return result;
   }
   const MsSpan operation = ms_names_span(fn->cx->program->names, callee->u.member.name);

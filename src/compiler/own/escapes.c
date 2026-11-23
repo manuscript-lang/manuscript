@@ -100,7 +100,7 @@ static bool keeps(const Escapes *pass, const MsCall *call, const MsCallArg *arg,
   if (kind == MS_REF_NATIVE) {
     return false;
   }
-  if (kind == MS_REF_LOCAL || kind == MS_REF_PARAM) {
+  if (kind == MS_REF_LOCAL || kind == MS_REF_PARAM || kind == MS_REF_NONE) {
     return false; /* a function type carries no `move` */
   }
   if (kind != MS_REF_FUNCTION && kind != MS_REF_METHOD) {
@@ -169,6 +169,19 @@ static void mark_elements_ok(Escapes *pass, const MsExpr *list) {
   }
 }
 
+static bool is_holder(const Module *module, const MsFacts *facts, const MsExpr *name) {
+  uint32_t binding = 0;
+  if (!ms_bind_of(facts, name->id, &binding)) {
+    return false;
+  }
+  for (size_t at = 0; at < module->stored.len; at++) {
+    if (module->stored.ptr[at].lambda == binding) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void visit_call(Escapes *pass, const MsExpr *call) {
   const MsExpr *callee = call->u.call.callee;
   if (callee->kind == MS_E_NAME || callee->kind == MS_E_LAMBDA) {
@@ -181,6 +194,10 @@ static void visit_call(Escapes *pass, const MsExpr *call) {
     const MsExpr *value = call->u.call.args.ptr[at].value;
     uint32_t index = 0;
     const MsCallArg *arg = fact == NULL ? NULL : arg_for(fact, value, &index);
+    if (arg != NULL && value->kind == MS_E_NAME && is_holder(module, facts, value) && joins(pass, fact, index)) {
+      mark_ok(pass, value); /* a collection of started promises handed to what only joins them stays in the function */
+      continue;
+    }
     if (arg != NULL && value->kind == MS_E_LIST && joins(pass, fact, index)) {
       mark_elements_ok(pass, value); /* promises started in a list literal only the callee joins stay in the function */
       continue;

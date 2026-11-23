@@ -99,7 +99,7 @@ fn generic_collection(values: List[Marker]) Void:
 	panic("generic owner remains alive")
 
 fn temporary_text() String:
-	return ["temporary payload"].first().get()
+	return ["temporary payload"].first().get().clone()
 
 test "an inline last lend leaves its scalar owner alive":
 	(

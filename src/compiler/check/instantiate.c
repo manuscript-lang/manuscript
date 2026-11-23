@@ -6,7 +6,7 @@ void ms_instance_free(MsInstance *instance) {
   ms_ty_list_free(&instance->args);
   ms_ty_list_free(&instance->unbound);
   ms_string_release(&instance->message);
-  *instance = (MsInstance){.message = ms_string_empty()};
+  *instance = (MsInstance){.message = ms_string_empty(), .conflict = SIZE_MAX};
 }
 
 static bool fail(MsInstance *out, MsStrBuild *text) {
@@ -54,15 +54,15 @@ static bool unify_argument(const MsTyTable *types, MsTy pattern, MsTy actual, co
          unify_commit(types, ms_ty_args(types, pattern)[0], actual, vars, count, bound);
 }
 
-static void conflict(MsCheckProgram *program, MsInstance *out, MsTy pattern, MsTy actual) {
+static void conflict(MsInstance *out, size_t param, const MsTy *bound, size_t count) {
   MsStrBuild text = ms_strbuild_new();
-  ms_strbuild_append_text(&text, "conflicting generic inference; argument of type ");
-  ms_ty_show(&text, program->names, &program->types, actual);
-  ms_strbuild_append_text(&text, " does not match ");
-  ms_ty_show(&text, program->names, &program->types, pattern);
-  ms_strbuild_append_text(&text, " under the types the other arguments imply, so make them the same type or give "
-                                 "type arguments explicitly, e.g. f[Int](...)");
+  ms_strbuild_append_text(&text, "conflicting generic inference; arguments imply different types for one type "
+                                 "parameter, so make them the same type or give type arguments explicitly, e.g. f[Int](...)");
   (void)fail(out, &text);
+  out->conflict = param;
+  for (size_t index = 0; index < count; index++) {
+    ms_ty_list_push(&out->args, bound[index]);
+  }
 }
 
 /* The default of each unbound variable, read with the bindings known so far. */
@@ -124,9 +124,9 @@ static void missing_message(MsCheckProgram *program, MsSpan name, const MsTy *va
 
 static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, size_t nvars, MsSpan name,
                   const MsTy *explicit_args, size_t nexplicit, const MsTy *arg_tys, size_t nargs,
-                  MsTy expected_result, MsInstance *out, MsTy *bound) {
+                  const size_t *order, MsTy expected_result, MsInstance *out, MsTy *bound) {
   MsTyTable *types = &program->types;
-  *out = (MsInstance){.ty = callee, .message = ms_string_empty()};
+  *out = (MsInstance){.ty = callee, .message = ms_string_empty(), .conflict = SIZE_MAX};
   if (nexplicit > nvars) {
     MsStrBuild text = ms_strbuild_new();
     if (nvars == 0) {
@@ -141,7 +141,8 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
     bound[index] = ms_ty_is_invalid(types, explicit_args[index]) ? MS_TY_NONE : explicit_args[index];
   }
   const size_t nparams = ms_ty_param_count(types, callee);
-  for (size_t index = 0; index < nargs && index < nparams && nvars > 0; index++) {
+  for (size_t position = 0; position < nargs && position < nparams && nvars > 0; position++) {
+    const size_t index = order != NULL ? order[position] : position;
     const MsTy pattern = ms_ty_params(types, callee)[index].ty;
     const MsTy actual = arg_tys[index];
     if (actual == MS_TY_NONE || ms_ty_is_invalid(types, actual) || !ms_ty_has_variable(types, pattern)) {
@@ -157,7 +158,7 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
     const bool alone = unify_argument(types, pattern, actual, variables, nvars, fresh.ptr);
     ms_ty_list_free(&fresh);
     if (alone) {
-      conflict(program, out, pattern, actual);
+      conflict(out, index, bound, nvars);
       return false;
     }
   }
@@ -212,13 +213,13 @@ static bool infer(MsCheckProgram *program, MsTy callee, const MsTy *variables, s
 
 bool ms_check_instantiate(MsCheckProgram *program, MsTy callee, const MsTy *variables, size_t nvars, MsSpan name,
                           const MsTy *explicit_args, size_t nexplicit, const MsTy *arg_tys, size_t nargs,
-                          MsTy expected_result, MsInstance *out) {
+                          const size_t *order, MsTy expected_result, MsInstance *out) {
   MsTyList bound = {0};
   for (size_t index = 0; index < nvars; index++) {
     ms_ty_list_push(&bound, MS_TY_NONE);
   }
   const bool ok = infer(program, callee, variables, nvars, name, explicit_args, nexplicit, arg_tys, nargs,
-                        expected_result, out, bound.ptr);
+                        order, expected_result, out, bound.ptr);
   ms_ty_list_free(&bound);
   return ok;
 }
