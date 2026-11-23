@@ -134,6 +134,29 @@ static bool moves_out_of_borrowed_result(const Uses *pass, const MsExpr *expr) {
   return true;
 }
 
+/* `cur = cur.get().next`: a field of a call on the local the statement assigns leaves that local, whose old value dies
+ * with the assignment, so the field moves. */
+static bool field_of_assigned_owner(const Uses *pass, const MsExpr *expr) {
+  const MsExpr *root = expr;
+  while (root->kind == MS_E_MEMBER) {
+    root = root->u.member.left;
+  }
+  if (expr->kind != MS_E_MEMBER || root->kind != MS_E_CALL || pass->assigned == UINT32_MAX) {
+    return false;
+  }
+  const MsCall *fact = ms_facts_call(pass->facts, root->id);
+  if (fact == NULL || (fact->callee.kind != MS_REF_FUNCTION && fact->callee.kind != MS_REF_METHOD)) {
+    return false;
+  }
+  const MsExpr *owner = root->u.call.callee->kind == MS_E_MEMBER && fact->callee.kind == MS_REF_METHOD
+                            ? root->u.call.callee->u.member.left
+                            : (root->u.call.args.len != 0 ? root->u.call.args.ptr[0].value : NULL);
+  const MsRef *owner_ref = owner != NULL && owner->kind == MS_E_NAME ? ms_facts_ref(pass->facts, owner->id) : NULL;
+  const MsTy ty = ms_facts_type(pass->facts, expr->id);
+  return owner_ref != NULL && owner_ref->kind == MS_REF_LOCAL && owner_ref->local == pass->assigned && ty != MS_TY_NONE &&
+         ms_class_of(pass->classes, ty) != MS_CLASS_COPY;
+}
+
 /* The operand hands its value to a new owner: a local or a field of one that is not Copy moves. */
 static void mark_move(Uses *pass, const MsExpr *expr) {
   if (expr == NULL) {
@@ -154,6 +177,10 @@ static void mark_move(Uses *pass, const MsExpr *expr) {
     return;
   }
   if (moves_out_of_borrowed_result(pass, expr)) {
+    return;
+  }
+  if (field_of_assigned_owner(pass, expr)) {
+    pass->facts->uses[expr->id] = MS_USE_MOVE;
     return;
   }
   const bool temporary = expr->kind == MS_E_MEMBER && part_of_fresh_call(pass, expr);
