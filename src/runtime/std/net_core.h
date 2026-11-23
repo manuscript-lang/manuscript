@@ -35,6 +35,7 @@ typedef struct MsNetCore {
   atomic_bool stealable; /* a server lets another thread take this connection's ready idle read (net_conn.c) */
   atomic_int steal_lock; /* a spin lock over `open_read` */
   atomic_uint writing;   /* write operations posted and not yet freed: a write goes straight to the socket only when none is */
+  atomic_uint reads_posted; /* read operations posted and not yet freed: a read goes straight to the socket only when none is */
   atomic_uint direct;    /* threads inside a direct socket call; the loop closes the handle only when none is (net_conn.c) */
   void *open_read;       /* the idle read in flight, with a reference of its own; set under steal_lock */
   MsString local; /* the addresses as text, set before the core is shared */
