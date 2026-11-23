@@ -69,8 +69,9 @@ bool fn_iflet_bind(LowerFn *fn, const MsPattern *pattern, MirValue value, bool o
   if (owns) {
     payload = fn_take_payload(fn, value, &ty);
     const MsTy checked = ms_facts_type(fn->facts, pattern->id);
-    if (fn_closer_for(fn, ms_facts_closer(fn->facts, pattern->id), checked)) {
-      return fn_bind_closing(fn, ref->local, checked, payload, false);
+    const MsCloser *closer = ms_facts_closer(fn->facts, pattern->id);
+    if (fn_closer_for(fn, closer, checked)) {
+      return fn_bind_closing(fn, ref->local, checked, payload, closer != NULL && (closer->flags & MS_CLOSER_VAR) != 0);
     }
     if (mir_needs_drop(module, ty)) {
       fn_own(fn, fn_scope(fn), payload);
