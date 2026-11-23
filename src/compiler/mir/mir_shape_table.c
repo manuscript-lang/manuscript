@@ -234,6 +234,27 @@ static void collection_shape(ShapeBuild *build, MirTy ty, const MirTyData *data,
 
 static void hook_functions(const ShapeBuild *build, size_t index, uint32_t *text, uint32_t *json);
 
+/* A flagged Optional inside a flagged Optional shares the outer's flat leaves, so its payload sits at the outer's offsets and
+ * not at the ones its own layout would give: each level gets its own copy of the inner shape with the payload offset
+ * relative to where that level starts. `k` is the leaf the level's presence byte is. */
+static uint32_t nested_optional(ShapeBuild *build, MirTy opt, uint32_t shape, const uint32_t *offsets, uint32_t leaves,
+                                uint32_t k) {
+  if (k + 1 >= leaves) {
+    return shape;
+  }
+  MsShape copy = build->shapes.ptr[shape];
+  copy.extra = offsets[k + 1] - offsets[k];
+  const MirTy inner = mir_ty_data(build->module, opt)->elem;
+  const MirTyData *inner_data = mir_ty_data(build->module, inner);
+  if (inner_data->kind == MK_OPT && mir_opt_has_flag(build->layouts, inner)) {
+    copy.elem = nested_optional(build, inner, copy.elem, offsets, leaves, k + 1);
+  }
+  const uint32_t index = (uint32_t)build->shapes.len;
+  shape_list_push(&build->shapes, copy);
+  mir_tylist_push(&build->types, mir_ty_unscoped(opt)); /* shape_of finds the first shape of the type, not this copy */
+  return index;
+}
+
 static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   const MirModule *module = build->module;
   const MirTyData *data = mir_ty_data(module, ty);
@@ -250,6 +271,15 @@ static uint32_t build_shape(ShapeBuild *build, MirTy ty, uint32_t index) {
   } else if (data->kind == MK_OPT) {
     optional_shape(build, ty, data, &shape);
     shape.elem = shape_of(build, data->elem);
+    const MirTyData *elem_data = mir_ty_data(module, data->elem);
+    if (mir_opt_has_flag(layouts, ty) && elem_data->kind == MK_OPT && mir_opt_has_flag(layouts, data->elem)) {
+      const MsSpan leaves = mir_leaves(layouts, ty);
+      uint32_t offsets[64] = {0};
+      if (leaves.len > 2 && leaves.len <= 64) {
+        (void)mir_mem_layout(leaves, offsets);
+        shape.elem = nested_optional(build, data->elem, shape.elem, offsets, (uint32_t)leaves.len, 1);
+      }
+    }
   } else if (data->kind == MK_TYPE) {
     record_shape(build, ty, data, &shape);
   } else if (data->kind == MK_ALT) {
