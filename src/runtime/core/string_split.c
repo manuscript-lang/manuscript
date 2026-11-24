@@ -21,12 +21,11 @@
 /* How a piece is made: a copy (owned or inline), or a view of the text (for texts that outlive it). */
 typedef enum PieceMode { PIECE_COPY, PIECE_VIEW } PieceMode;
 
-static MsString make_piece(PieceMode mode, MsSpan bytes) {
-  const bool short_ascii = bytes.len == 0 || (bytes.len == 1 && bytes.ptr[0] < 0x80);
-  if (mode == PIECE_VIEW && !short_ascii) {
-    return msrt_string_view_of(bytes);
+static MS_ALWAYS_INLINE MsString make_piece(PieceMode mode, MsSpan bytes) {
+  if (bytes.len <= MS_STRING_INLINE_MAX) {
+    return ms_string_make_inline(bytes); /* a short piece is its two words, copied or not */
   }
-  return msrt_string_make(bytes);
+  return mode == PIECE_VIEW ? ms_string_view(bytes) : msrt_string_make(bytes);
 }
 
 static MsSpan between(MsSpan text, size_t start, size_t end) {
@@ -84,17 +83,18 @@ void msrt_string_split_view(const MsString *s, const MsString *sep, MsList *out)
 static bool split_into_buffer(MsSpan text, uint8_t separator, MsString *buffer, size_t *count) {
   size_t start = 0;
   *count = 0;
-  for (size_t offset = 0; offset <= text.len; offset++) {
-    if (offset != text.len && text.ptr[offset] != separator) {
-      continue;
-    }
+  for (;;) {
+    const size_t hit = ms_find_byte(separator, text.ptr + start, text.len - start);
+    const size_t end = hit == SIZE_MAX ? text.len : start + hit;
     if (*count == SPLIT_FRAME_PIECES) {
       return false;
     }
-    buffer[(*count)++] = make_piece(PIECE_VIEW, between(text, start, offset));
-    start = offset + 1;
+    buffer[(*count)++] = make_piece(PIECE_VIEW, between(text, start, end));
+    if (hit == SIZE_MAX) {
+      return true;
+    }
+    start = end + 1;
   }
-  return true;
 }
 
 /* The view split into the caller's frame buffer when the text is short and has at most eight pieces at a

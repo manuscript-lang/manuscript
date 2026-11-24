@@ -400,6 +400,8 @@ MirValue fn_empty_map(LowerFn *fn, MirTy ty);
 bool fn_has_raw_pair(LowerFn *fn, MirValue optional, MirValue *out);
 bool fn_signature_extern_call(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret, MirValue *out);
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first);
+struct MsNativeSig;
+MirTwin fn_native_twin(const struct MsNativeSig *sig);
 uint32_t fn_runtime_extern(LowerFn *fn, MsName name, const MirValue *args, uint32_t nargs, MirTy ret);
 /* A map literal: an empty map the entries are added to through `msrt_map_add`. */
 /* A standard operation of the type `owner` as its runtime native; false when the runtime has none by that name. */

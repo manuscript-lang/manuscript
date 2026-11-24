@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "phase": "test",
+  "oracle": "Manuscript 2026.11.0",
+  "expected": {
+    "exit_code": 0,
+    "report": {
+      "repeat": 1,
+      "format": 1,
+      "source_root": "<DIR>",
+      "tests": [
+        {
+          "index": 0,
+          "name": "split-twins-first-and-frame.ms::the first piece of a split",
+          "status": "passed"
+        },
+        {
+          "index": 1,
+          "name": "split-twins-first-and-frame.ms::pieces in the frame and past it",
+          "status": "passed"
+        },
+        {
+          "index": 2,
+          "name": "split-twins-first-and-frame.ms::a list that leaves the function keeps its pieces",
+          "status": "passed"
+        },
+        {
+          "index": 3,
+          "name": "split-twins-first-and-frame.ms::a piece longer than a short string is read in the loop that made it",
+          "status": "passed"
+        }
+      ],
+      "summary": {
+        "available": 4,
+        "selected": 4,
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "not_run": 0
+      },
+      "completed": true,
+      "exit_code": 0,
+      "stdout": "RUN split-twins-first-and-frame.ms::the first piece of a split\nPASS split-twins-first-and-frame.ms::the first piece of a split\nRUN split-twins-first-and-frame.ms::pieces in the frame and past it\nPASS split-twins-first-and-frame.ms::pieces in the frame and past it\nRUN split-twins-first-and-frame.ms::a list that leaves the function keeps its pieces\nPASS split-twins-first-and-frame.ms::a list that leaves the function keeps its pieces\nRUN split-twins-first-and-frame.ms::a piece longer than a short string is read in the loop that made it\nPASS split-twins-first-and-frame.ms::a piece longer than a short string is read in the loop that made it\n4 tests, 0 failed\n",
+      "diagnostics": []
+    },
+    "shape": [
+      "completed",
+      "diagnostics",
+      "exit_code",
+      "format",
+      "repeat",
+      "source_root",
+      "stdout",
+      "summary",
+      "summary.available",
+      "summary.duration_ns",
+      "summary.failed",
+      "summary.not_run",
+      "summary.passed",
+      "summary.selected",
+      "summary.skipped",
+      "tests",
+      "tests[].duration_ns",
+      "tests[].index",
+      "tests[].name",
+      "tests[].status"
+    ],
+    "stderr": ""
+  }
+}

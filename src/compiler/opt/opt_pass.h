@@ -34,6 +34,7 @@ bool opt_sortgen(MirModule *m);   /* sorts by a known comparator run as generate
 bool opt_viewfast(MirModule *m);  /* `String.view`, `String.slice` and `Bytes.view` run inline for a range inside the text */
 bool opt_strfast(MirModule *m);   /* the common cases of the string runtime functions run inline */
 bool opt_bytesfast(MirModule *m); /* a fixed-width `Bytes` read and a byte search run inline in the common case */
+bool opt_splitview(MirModule *m); /* a split read only in place makes no heap list: first piece, or pieces in the frame */
 bool opt_probe(MirModule *m);     /* a map or set lookup of a fixed layout runs as a probe loop in the caller */
 bool opt_appendfast(MirModule *m);/* `string_append` on an owned string with room runs inline */
 bool opt_exit_drops(MirModule *m); /* the plain drops on the entry's return paths run only when `msrt_exit_frees` says so */

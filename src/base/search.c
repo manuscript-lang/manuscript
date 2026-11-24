@@ -302,7 +302,7 @@ MsNeedle ms_needle_for(MsSpan pattern, size_t text_len) {
 
 /* The search for a one-byte needle: matches are usually a few bytes apart, so the first NEAR bytes are
  * scanned as words before the call to memchr. */
-static size_t find_byte(uint8_t byte, const uint8_t *hay, size_t n) {
+static MS_ALWAYS_INLINE size_t find_byte(uint8_t byte, const uint8_t *hay, size_t n) {
   if (n < MS_SHORT_HAY) {
     return memchr_short(byte, hay, n);
   }
@@ -312,6 +312,10 @@ static size_t find_byte(uint8_t byte, const uint8_t *hay, size_t n) {
   }
   const uint8_t *hit = __builtin_memchr(hay + NEAR, byte, n - NEAR);
   return hit == NULL ? SIZE_MAX : (size_t)(hit - hay);
+}
+
+size_t ms_find_byte(uint8_t byte, const uint8_t *hay, size_t n) {
+  return find_byte(byte, hay, n);
 }
 
 size_t ms_needle_find(const MsNeedle *needle, MsSpan haystack) {

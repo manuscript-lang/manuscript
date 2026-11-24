@@ -368,6 +368,10 @@ typedef enum MirRole {
   MR_KEEPS_SLOT
 } MirRole;
 
+/* The family of borrowing twins an extern declares: other runtime functions that answer the same call without
+ * building its result (`opt_splitview`). */
+typedef enum MirTwin { MTW_NONE, MTW_SPLIT_VIEW } MirTwin;
+
 typedef struct MirExtern {
   MsName name;
   MirParam *params; /* in the module arena */
@@ -376,6 +380,7 @@ typedef struct MirExtern {
   bool noreturn, pure, fresh, leaf, reads, retains;
   bool handle; /* keeps its pointer arguments until the last use of its result (`msrt_cleanup_push` and its handle) */
   uint8_t role; /* a MirRole */
+  uint8_t twin; /* a MirTwin */
 } MirExtern;
 
 MS_LIST_DEFINE(MirExternList, mir_extern_list, MirExtern)
