@@ -35,6 +35,14 @@ jobs:
       - uses: ./.github/actions/toolchain
       - run: cmake --preset ci
       - run: cmake --build --preset ci
+      - if: failure() && runner.os == 'macOS'
+        run: |
+          which -a clang cc ar ranlib pkg-config pkgconf || true
+          cd .artifacts/build/ci/src/third_party/curl_build
+          grep -in "openssl" CMakeCache.txt | head -40
+          grep -n "ENGINE" lib/curl_config.h || true
+          ninja -t commands lib/CMakeFiles/libcurl_static.dir/vtls/openssl.c.o | tail -1
+          grep -n "OPENSSL\|OpenSSL" CMakeFiles/CMakeConfigureLog.yaml | head -20 || true
       - run: cmake --build --preset ci --target llvm-lib
       - name: Record the CPU
         run: |
