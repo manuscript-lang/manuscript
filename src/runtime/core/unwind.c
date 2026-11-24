@@ -13,19 +13,29 @@ static MsUnwind *running(void) { return &ms_task_running()->unwind; }
 
 /* ---- cancellation and shields ---- */
 
-/* Changes the shield depth. Only the task's own thread writes the depth (other threads read it), so a load and a
+/* Raises the shield depth by one. Only the task's own thread writes the depth (other threads read it), so a load and a
  * store do; an atomic add is a locked instruction on x86, about 9 ns each on the 2026-11-23 benchmark machine. */
-static void shield_add(MsUnwind *unwind, int by) {
-  atomic_store_explicit(&unwind->hdr.shield, atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) + (uint32_t)by,
+static void shield_raise(MsUnwind *unwind) {
+  atomic_store_explicit(&unwind->hdr.shield, atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) + 1,
                         memory_order_relaxed);
+}
+
+/* Lowers the shield depth by one. The store that opens the shield is sequentially consistent, as is the read of
+ * the stop request in unshielded_flag that follows it: a concurrent stop records its request and then reads the
+ * depth, so either that read sees the open shield or this task sees the request, and a stop is never lost. One
+ * store that is also the barrier is cheaper than a store and a fence. */
+static void shield_lower(MsUnwind *unwind) {
+  const uint32_t depth = atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) - 1;
+  if (depth == 0) {
+    atomic_store(&unwind->hdr.shield, 0);
+  } else {
+    atomic_store_explicit(&unwind->hdr.shield, depth, memory_order_relaxed);
+  }
 }
 
 /* The cancel flag a task has when no shield holds it: the larger of a stop request (unless a stop shield holds
  * it back) and a cancel aimed at the task. */
 static uint8_t unshielded_flag(const MsUnwind *unwind) {
-  /* The caller just lowered a shield depth. A concurrent stop records its request and then reads the depth; the
-   * fence makes either that read see the lowered depth or this one see the request, so a stop is never lost. */
-  atomic_thread_fence(memory_order_seq_cst);
   const bool stop_held = atomic_load_explicit(&unwind->hdr.stop_shield, memory_order_relaxed) > 0;
   const uint8_t stop = stop_held ? 0 : ms_sched_stop_request();
   return stop > unwind->task_cancel ? stop : unwind->task_cancel;
@@ -47,28 +57,28 @@ uint8_t ms_cancel_flag(void) { return atomic_load_explicit(&running()->hdr.cance
 
 void ms_shield_enter(void) {
   MsUnwind *const unwind = running();
-  shield_add(unwind, 1);
+  shield_raise(unwind);
   atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
 }
 
 void ms_shield_exit(void) {
   MsUnwind *const unwind = running();
   if (atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) > 0) {
-    shield_add(unwind, -1);
+    shield_lower(unwind);
   }
   refresh_flag(unwind);
 }
 
 void ms_stop_shield_enter(void) {
   MsUnwind *const unwind = running();
-  atomic_fetch_add_explicit(&unwind->hdr.stop_shield, 1, memory_order_relaxed);
+  atomic_fetch_add(&unwind->hdr.stop_shield, 1);
   refresh_flag(unwind);
 }
 
 void ms_stop_shield_exit(void) {
   MsUnwind *const unwind = running();
   if (atomic_load_explicit(&unwind->hdr.stop_shield, memory_order_relaxed) > 0) {
-    atomic_fetch_sub_explicit(&unwind->hdr.stop_shield, 1, memory_order_relaxed);
+    atomic_fetch_sub(&unwind->hdr.stop_shield, 1); /* sequentially consistent, as in shield_lower */
   }
   refresh_flag(unwind);
 }
@@ -119,10 +129,10 @@ static size_t guard_base(const MsUnwind *unwind) {
 
 /* Runs `function(argument)` with cancellation shielded: a cleanup is not cancelled half way. */
 static void run_shielded(MsUnwind *unwind, MsCleanupFn function, uint8_t *argument) {
-  shield_add(unwind, 1);
+  shield_raise(unwind);
   atomic_store_explicit(&unwind->hdr.cancel, 0, memory_order_relaxed);
   function(argument);
-  shield_add(unwind, -1);
+  shield_lower(unwind);
   if (atomic_load_explicit(&unwind->hdr.shield, memory_order_relaxed) == 0) {
     atomic_store_explicit(&unwind->hdr.cancel, unshielded_flag(unwind), memory_order_relaxed);
   }

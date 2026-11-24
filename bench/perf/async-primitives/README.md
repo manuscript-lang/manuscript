@@ -164,4 +164,16 @@ The sandbox moved to a slower host (Xeon 2.1 GHz, 4 cores): the same binaries re
 
 Instructions for `inline` at one thread: 1,706 to 1,323. On the first machine of this page that count was 121 ns at 1,626, so this should read under 100 ns there; it was not rerun there.
 
-Not done. Of the 1,323 instructions about 240 are three cleanup registrations (two in compiled code, one around the inline run), which go away when cancel exits replace the cleanup stack; 90 are the guard and 60 the shield. The two locked instructions left are the queue's: the store that publishes a push, ordered against a looker's last look, and the compare-and-swap that decides between the owner and a thief.
+### 2026-11-24: opening a shield is one store, not a store and a fence
+
+Same host and method. Before is the section above. Leaving a shield stored the depth and then ran a full fence (`mfence`) so a concurrent stop request is not lost; now the store that brings the depth to zero is itself sequentially consistent, as is the read of the stop request after it. One barrier does what two instructions did.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline`, 1 thread | 115 / 127 | 107 / 113 | 35 |
+| `inline`, 4 threads | 117 / 123 | 108 / 117 | 35 |
+| `batch`, 4 threads | 104 / 116 | 106 / 120 | |
+
+`batch` is within noise. Instructions for `inline` at one thread: 1,364; the merge of `main` at 38464d46 added about 40 in compiled code (`run_inline` and the work closure), the change itself removes one.
+
+Not done. About 240 instructions are three cleanup registrations (two in compiled code, one around the inline run), which go away when cancel exits replace the cleanup stack: about 15 ns here, which is what takes this under 100. 90 are the guard and 110 the shielded close of a promise whose result was already taken. Three barriers are left, about 9 ns each: the store that publishes a push, ordered against a looker's last look; the compare-and-swap that decides between the owner and a thief; and the store that opens the shield.
