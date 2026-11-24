@@ -238,8 +238,24 @@ static void set_terminal(MsFsWatcher *watcher, uint8_t status, const char *text)
   watcher_wake(watcher);
 }
 
+/* True when an unread event already says the same: a host that reports every level of a change (Windows: an added
+ * entry, then the parent modified, for each directory of a burst) must not fill the queue with repeats. */
+static bool queued_already(const MsFsWatcher *watcher, MsSpan path, bool rename) {
+  for (size_t i = 0; i < watcher->count; i++) {
+    const WatchEvent *event = &watcher->queue[(watcher->head + i) % watcher->capacity];
+    if (event->rename == rename && ms_span_equal(ms_string_span(&event->path), path)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static void queue_event(MsFsWatcher *watcher, MsSpan path, bool rename) {
   watcher_lock(watcher);
+  if (queued_already(watcher, path, rename)) {
+    watcher_unlock(watcher);
+    return;
+  }
   if (watcher->count >= watcher->capacity) {
     if (!watcher->ignore_overflow && watcher->terminal == MS_STATUS_OK) {
       watcher->terminal = MS_STATUS_LIMIT_EXCEEDED;
