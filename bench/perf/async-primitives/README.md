@@ -176,4 +176,16 @@ Same host and method. Before is the section above. Leaving a shield stored the d
 
 `batch` is within noise. Instructions for `inline` at one thread: 1,364; the merge of `main` at 38464d46 added about 40 in compiled code (`run_inline` and the work closure), the change itself removes one.
 
-Not done. About 240 instructions are three cleanup registrations (two in compiled code, one around the inline run), which go away when cancel exits replace the cleanup stack: about 15 ns here, which is what takes this under 100. 90 are the guard and 110 the shielded close of a promise whose result was already taken. Three barriers are left, about 9 ns each: the store that publishes a push, ordered against a looker's last look; the compare-and-swap that decides between the owner and a thief; and the store that opens the shield.
+### 2026-11-24, later: the cleanup stack is gone
+
+`main` at 49f49b50, after #6879 made faults and cancels leave by return and deleted the cleanup stack: a promise no longer registers and discards three cleanups. Before is the binary of the section above, rerun beside the new one (the host was faster and noisier in this session: the same binary read 107 ns in the morning). Minimum / median of 15 interleaved runs, two sessions.
+
+| mode | before | after | C floor |
+| --- | ---: | ---: | ---: |
+| `inline`, 1 thread | 73 to 86 / 95 | 55 / 69 to 72 | 24 to 26 |
+| `inline`, 4 threads | 78 to 91 / 102 to 109 | 59 to 61 / 73 to 79 | |
+| `batch`, 4 threads | 90 / 104 | 65 / 83 | |
+
+Instructions for `inline` at one thread: 1,364 to 1,040. The target of under 100 ns per start and wait is met: by the ratio to the before column, about 70 ns on the morning's scale.
+
+Not done. 90 instructions are the guard and 110 the shielded close of a promise whose result was already taken. Three barriers are left, about 9 ns each: the store that publishes a push, ordered against a looker's last look; the compare-and-swap that decides between the owner and a thief; and the store that opens the shield.
