@@ -2,12 +2,12 @@
 // expect-release: allocs=42 alloc_bytes=2436
 // Trimming through a function whose owned result is a trim of its parameter.
 type Line:
-	text: String
+	text String
 
-fn body(l: Line) String:
+fn body(l Line) String:
 	return l.text.trim()
 
-fn size(l: Line) Int:
+fn size(l Line) Int:
 	return body(l).length()
 
 export fn main() Int:

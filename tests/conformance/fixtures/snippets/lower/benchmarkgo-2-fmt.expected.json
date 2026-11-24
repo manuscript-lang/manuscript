@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work(a: Int, b: Int) Int: return (a + b) * (a - b)\n"
+    "fmt": "fn work(a Int, b Int) Int: return (a + b) * (a - b)\n"
   }
 }

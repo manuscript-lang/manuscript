@@ -1,12 +1,12 @@
 import words from "./src/harness.ms"
 
 type BenchData:
-	text: String
-	text_5: String
-	text_6: String
-	text_7: String
-	text_9: String
-	text_10: String
+	text String
+	text_5 String
+	text_6 String
+	text_7 String
+	text_9 String
+	text_10 String
 
 fn make_fixture() BenchData:
 	text := words(2000).join(" ")

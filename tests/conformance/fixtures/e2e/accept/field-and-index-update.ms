@@ -4,21 +4,21 @@
 import stdout from "@std/io/io.ms"
 
 type Reader:
-    entries: List[Map[String, Int]]
-    names: List[String]
-    depth: Int
+    entries List[Map[String, Int]]
+    names List[String]
+    depth Int
 
 type Holder:
-    reader: Reader
+    reader Reader
 
-fn put(var reader: Reader, id: Int, key: String, value: Int) Void:
+fn put(var reader Reader, id Int, key String, value Int) Void:
     reader.entries[id].add(key.clone(), value)
 
-fn grow(var holder: Holder, name: String) Void:
+fn grow(var holder Holder, name String) Void:
     holder.reader.names.append(name.clone())
     holder.reader.entries.append(Map[String, Int]())
 
-fn put_list(var maps: List[Map[String, Int]], id: Int) Void:
+fn put_list(var maps List[Map[String, Int]], id Int) Void:
     maps[id].add("k", 1)
 
 fn main() Void:

@@ -14,7 +14,7 @@ import (
 // starting `by design:` is a permanent decision.
 
 // Whether the parser agrees with the suite on one case.
-fn passes(tree: FileTree, kind: String, path: String) Bool:
+fn passes(tree FileTree, kind String, path String) Bool:
 	bytes := tree.read(path, null).get_or("".to_bytes())
 	text := bytes.decode_utf8()
 
@@ -27,13 +27,13 @@ fn passes(tree: FileTree, kind: String, path: String) Bool:
 
 	return parsed.is_ok()
 
-fn read(tree: FileTree, path: String) String:
+fn read(tree FileTree, path String) String:
 	return tree.read(path, null).get_or("".to_bytes()).decode_utf8() or ""
 
 test "the W3C XML suite agrees with the parser except for the listed cases":
 	tree := files()
 	var cases = 0
-	var failing: List[String] = []
+	var failing List[String] = []
 
 	for line in read(tree, "cases.txt").split("\n"):
 		parts := line.split(" ")
@@ -44,7 +44,7 @@ test "the W3C XML suite agrees with the parser except for the listed cases":
 
 	failing.sort()
 
-	var expected: List[String] = []
+	var expected List[String] = []
 	var by_design = 0
 
 	for line in read(tree, "expect-fail.txt").split("\n"):

@@ -5,8 +5,8 @@ interface I:
     fn n() Int
 
 type Pair[A, B]:
-    a: A
-    b: B
+    a A
+    b B
 
 fn Pair[A, A].n() Int:
     return 1

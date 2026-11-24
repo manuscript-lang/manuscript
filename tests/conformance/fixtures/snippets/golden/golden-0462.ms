@@ -4,6 +4,6 @@ enum Other:
     OutOfRange
 fn other() Other: Other.OutOfRange
 fn standard() CollectionError: CollectionError.OutOfRange
-fn recognize(value: Other) Int:
+fn recognize(value Other) Int:
     match value:
         OutOfRange: return 1

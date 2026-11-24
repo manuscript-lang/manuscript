@@ -1,17 +1,17 @@
 import Instant, monotonic from "@std/time.ms"
 
-fn lcg(x: Int) Int:
+fn lcg(x Int) Int:
 	return (x * 1103515245 + 12345) % 2147483648
 
-fn report(name: String, t0: Instant, sum: Int) Void:
+fn report(name String, t0 Instant, sum Int) Void:
 	ns := monotonic().difference(t0).to_nanoseconds()
 	print(f"{name} {ns / 1000000} ms {sum}")
 
 fn main() Void:
 	n := 1000000
 	var x = 7
-	var words: List[String] = []
-	var longs: List[String] = []
+	var words List[String] = []
+	var longs List[String] = []
 
 	for i in 0..n:
 		x = lcg(x)
@@ -25,14 +25,14 @@ fn main() Void:
 	// word frequency: string-keyed map, short (inline) keys
 	t = monotonic()
 
-	var freq: Map[String, Int] = Map[String, Int]()
+	var freq Map[String, Int] = Map[String, Int]()
 	for w in words: freq.update(w.clone(), 0, fn v: v + 1)
 	report("freq_short", t, freq.length())
 
 	// string-keyed map, heap keys
 	t = monotonic()
 
-	var freq2: Map[String, Int] = Map[String, Int]()
+	var freq2 Map[String, Int] = Map[String, Int]()
 	for w in longs: freq2.update(w.clone(), 0, fn v: v + 1)
 	report("freq_long", t, freq2.length())
 

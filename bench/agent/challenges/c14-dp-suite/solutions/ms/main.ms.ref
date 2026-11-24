@@ -2,11 +2,11 @@ import stdin from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-fn parse_num(s: String) Int?:
+fn parse_num(s String) Int?:
     if s.length() < 1 or s.length() > 6 or not s.scalar_values().all(fn c: c >= 48 and c <= 57): return none
     return s.parse_int().get()
 
-fn lcs(a: String, b: String) Int:
+fn lcs(a String, b String) Int:
     y := b.scalar_values()
     var prev = [0].repeated(y.length() + 1)
     for ch in a.scalar_values():
@@ -15,7 +15,7 @@ fn lcs(a: String, b: String) Int:
         prev = cur
     return prev[y.length()]
 
-fn edit(a: String, b: String) Int:
+fn edit(a String, b String) Int:
     x := a.scalar_values()
     y := b.scalar_values()
     var prev = (0..y.length() + 1)
@@ -25,7 +25,7 @@ fn edit(a: String, b: String) Int:
         prev = cur
     return prev[y.length()]
 
-fn knap(t: List[String]) String:
+fn knap(t List[String]) String:
     if t.length() < 2: return "error: bad command"
     cap := parse_num(t[1])
     if not cap.is_some(): return "error: bad command"
@@ -38,7 +38,7 @@ fn knap(t: List[String]) String:
         for c in (w..cap.get() + 1).reversed(): best[c] = best[c].max(best[c - w] + v)
     return f"{best[cap.get()]}"
 
-fn coins(t: List[String]) String:
+fn coins(t List[String]) String:
     if t.length() < 3: return "error: bad command"
     amount := parse_num(t[1])
     cs := t.slice(2, t.length()).get().map(fn s: parse_num(s).get_or(0))
@@ -48,7 +48,7 @@ fn coins(t: List[String]) String:
     for a in 1..amount.get() + 1: best.append(cs.filter(fn c: c <= a).map(fn c: best[a - c] + 1).fold(inf, fn m, x: m.min(x)))
     return if best[amount.get()] >= inf: "impossible" else: f"{best[amount.get()]}"
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String:
     t := line.split(" ")
     if t[0] == "lcs" or t[0] == "edit":
         if t.length() != 3 or t[1].is_empty() or t[2].is_empty(): return "error: bad command"

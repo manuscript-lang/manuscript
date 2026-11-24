@@ -3,30 +3,30 @@
 // conform: origin=tests/e2e/testdata/accept/inference-call-order.ms
 import expect_equal from "@std/test/test.ms"
 
-fn identity[T](move value: T) T: value
+fn identity[T](move value T) T: value
 
-fn first[T](move left: T, right: T) T: left
+fn first[T](move left T, right T) T: left
 
-fn optional[T](fallback: T, value: T?) T: value or fallback
+fn optional[T](fallback T, value T?) T: value or fallback
 
-fn describe[T](value: T, cause: Error) String: cause.message
+fn describe[T](value T, cause Error) String: cause.message
 
 type Events:
-	values: List[Int]
+	values List[Int]
 
 type Failure:
-	detail: String
+	detail String
 
-fn failure_error(cause: Failure) Error: Error(cause.detail.clone())
+fn failure_error(cause Failure) Error: Error(cause.detail.clone())
 
 type GenericFailure[T]:
-	detail: T
+	detail T
 
-fn generic_failure_error[T](cause: GenericFailure[T]) Error: Error(
+fn generic_failure_error[T](cause GenericFailure[T]) Error: Error(
 	cause.detail.to_string()
 )
 
-fn record(var events: Events, value: Int) Int:
+fn record(var events Events, value Int) Int:
 	events.values.append(value)
 	return value
 
@@ -53,5 +53,5 @@ test "reused inference preserves evaluation and argument conversions":
 	expect_equal(generic_message, "4")?
 
 	offset := 7
-	callback := identity(identity(fn(value: Int): offset + value))
+	callback := identity(identity(fn(value Int): offset + value))
 	expect_equal(callback(3), 10)?

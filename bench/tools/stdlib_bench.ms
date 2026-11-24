@@ -18,7 +18,7 @@ import (
 	Stats, case_labels, read_cases from "./stdlib_results.ms",
 )
 
-export fn stdlib_table(output: String) String!:
+export fn stdlib_table(output String) String!:
 	cases := read_cases(output)?
 	labels := case_labels(cases.map(fn c: c.name.clone()))
 	var width = 4

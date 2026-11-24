@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 fn example(
-    value: Int = choose(
+    value Int = choose(
         first: 1,
         second: 2
     )

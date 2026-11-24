@@ -3,7 +3,7 @@
 // A binding made from a bare name views that value; handing the name to a `move`
 // parameter ends the value, so the binding cannot be read afterwards. Clone it, or
 // finish with it first.
-fn eat(move text: String) Int:
+fn eat(move text String) Int:
 	return text.length()
 
 export fn main() Int:

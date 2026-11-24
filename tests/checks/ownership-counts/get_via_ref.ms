@@ -1,7 +1,7 @@
 // expect-debug: allocs=26 alloc_bytes=2026
 // expect-release: allocs=26 alloc_bytes=2026
 // Reading list elements through `get` without cloning: the floor for get_via_clone.ms.
-fn total(names: List[String]) Int:
+fn total(names List[String]) Int:
 	var n = 0
 
 	for i in 0..names.length():

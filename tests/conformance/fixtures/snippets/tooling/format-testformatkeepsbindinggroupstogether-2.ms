@@ -4,13 +4,13 @@
 fn helper() Int: 1
 
 A := 1
-B: Int := A + 1
+B Int := A + 1
 
 fn main() Void:
     x := 1
     var (
         _a = 10
-        b = fn(y: Int) Int:
+        b = fn(y Int) Int:
             return y + 1
     )
     c := 11

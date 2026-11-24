@@ -5,7 +5,7 @@ interface Crash:
     fn run() Int
 
 type Item:
-    value: Int
+    value Int
 
 fn Item.run() Int:
     return 1 / self.value

@@ -23,7 +23,7 @@ test "a queue with no room is always full":
 	var negative = Queue[Int](-3)
 	expect_equal(negative.enqueue(1), false)?
 
-fn always_fails(attempt: Int) Int!String:
+fn always_fails(attempt Int) Int!String:
 	return error(f"try {attempt}")
 
 test "retry runs the operation once when attempts is below one":

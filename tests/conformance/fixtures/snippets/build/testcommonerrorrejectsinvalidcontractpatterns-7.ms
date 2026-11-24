@@ -5,10 +5,10 @@ interface Diagnostic:
     fn message() String
 
 type LocalError:
-    detail: String
+    detail String
 
 fn LocalError.message() String:
     return self.detail.clone()
 
-fn wrong(value: LocalError) Diagnostic:
+fn wrong(value LocalError) Diagnostic:
     return value

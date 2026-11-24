@@ -18,13 +18,13 @@ fn private_key() String:
 	return "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIDAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAx\n-----END PRIVATE KEY-----\n"
 
 // Connects and upgrades to TLS against a peer that never answers the hello.
-fn upgrade_silent(address: String) Void!:
+fn upgrade_silent(address String) Void!:
 	var plain = connect(address, timeout: seconds(5)).wait()?
 	options := TlsOptions(server_name: "stdlib.test", roots_pem: certificate())
 	void start_tls(plain, options, seconds(30))?
 
 // Accepts a connection and waits for a hello that never comes.
-fn serve_silent(listener: Listener) Void!:
+fn serve_silent(listener Listener) Void!:
 	var plain = listener.accept(seconds(5)).wait()?
 	options := TlsOptions(certificate_pem: certificate(), private_key_pem: private_key())
 	void accept_tls(plain, options, seconds(30))?

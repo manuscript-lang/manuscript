@@ -6,37 +6,37 @@ import (
 )
 
 type Cell:
-	value: Int
+	value Int
 
 fn var Cell.bump() Void:
 	self.value += 1
 
 // Faults with its own message, so a test tells which fault came first.
 fn later() Int:
-	empty: List[Int] := []
+	empty List[Int] := []
 	return empty[3]
 
-fn bump_int(var x: Int) Void:
+fn bump_int(var x Int) Void:
 	x += 1
 
-fn index(var calls: Int) Int:
+fn index(var calls Int) Int:
 	calls += 1
 	return 0
 
 fn argument_place() Void:
-	var grid: List[List[Int]] = []
+	var grid List[List[Int]] = []
 	bump_int(grid[0][later()])
 
 fn assigned_place() Void:
-	var grid: List[List[Int]] = []
+	var grid List[List[Int]] = []
 	grid[0][later()] = 1
 
 fn map_place() Void:
-	var table: Map[String, List[Int]] = Map()
+	var table Map[String, List[Int]] = Map()
 	table["row"][later()] = 1
 
 fn field_place() Void:
-	var grid: List[List[Cell]] = []
+	var grid List[List[Cell]] = []
 	grid[0][later()].value = 1
 
 test "the receiver of a nested var argument faults before a later index runs":
@@ -66,29 +66,29 @@ test "a changing source receiver selects its element once":
 	expect_equal(cells[0].value, 2)?
 
 type Door:
-	id: Int
+	id Int
 
 fn move Door.close() Void!:
 	return ok()
 
-fn at(var events: List[Int]) Int:
+fn at(var events List[Int]) Int:
 	events.append(1)
 	return 0
 
-fn resource_argument(var events: List[Int]) Door:
+fn resource_argument(var events List[Int]) Door:
 	events.append(2)
 	return Door(9)
 
 test "a resource mutator selects its receiver once, before its arguments":
-	var events: List[Int] = []
-	var rows: List[List[Door]] = [[Door(0)]]
+	var events List[Int] = []
+	var rows List[List[Door]] = [[Door(0)]]
 	rows[at(events)].set(0, resource_argument(events))
 	expect_equal(rows[0][0].id, 9)?
 	expect_equal(events, [1, 2])?
 
 test "a map entry mutator selects its receiver once, before its arguments":
-	var events: List[Int] = []
-	var table: Map[String, List[Int]] = Map()
+	var events List[Int] = []
+	var table Map[String, List[Int]] = Map()
 	table.add("k", [1])
 	table["k"].set(at(events), resource_argument(events).id)
 	expect_equal(table["k"], [9])?

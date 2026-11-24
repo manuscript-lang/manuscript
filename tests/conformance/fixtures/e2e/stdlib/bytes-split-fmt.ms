@@ -52,16 +52,16 @@ test "Bytes split keeps empty parts and splits empty separators per byte":
 		[Bytes([1]), Bytes([0]), Bytes([2]), Bytes([0]), Bytes([3]), Bytes([0])],
 	)?
 
-fn split_then[T](data: Bytes, separator: Bytes, transform: fn(List[Bytes]) T) T:
+fn split_then[T](data Bytes, separator Bytes, transform fn(List[Bytes]) T) T:
 	return data.split(separator) | transform
 
-fn call_split(operation: fn(Bytes) List[Bytes]) List[Bytes]:
+fn call_split(operation fn(Bytes) List[Bytes]) List[Bytes]:
 	return operation(Bytes([0]))
 
 test "Bytes split bound methods and generic forwarding retain contracts":
 	var data = Bytes([1, 0, 2])
 	split := data.clone().split
-	typed: fn(Bytes) List[Bytes] := data.clone().split
+	typed fn(Bytes) List[Bytes] := data.clone().split
 	data = Bytes([9])
 	expect_equal(split(Bytes([0])), [Bytes([1]), Bytes([2])])?
 	expect_equal(call_split(typed), [Bytes([1]), Bytes([2])])?

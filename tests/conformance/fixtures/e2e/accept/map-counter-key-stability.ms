@@ -2,11 +2,11 @@
 // conform: phase=test
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn replace_text(var key: String) Int:
+fn replace_text(var key String) Int:
 	key = "long-dynamic-map-key-2"
 	return 5
 
-fn replace_number(var key: Int) Int:
+fn replace_number(var key Int) Int:
 	key = 2
 	return 5
 
@@ -33,7 +33,7 @@ test "a counter reads its old scalar key before the next operand":
 
 test "immutable dynamic keys keep counter arithmetic":
 	key := f"long-dynamic-map-key-{1}"
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	values.add(key.clone(), values.get_or(key, 3) + 2)
 	values.add(key.clone(), values.get_or(key, 0) * 4)
 	values.add(key.clone(), values.get_or(key, 0) - 1)
@@ -41,7 +41,7 @@ test "immutable dynamic keys keep counter arithmetic":
 
 test "immutable scalar and literal keys keep counter updates":
 	key := 1
-	var values: Map[Int, Int] = Map()
+	var values Map[Int, Int] = Map()
 	values.add(key, 2 + values.get_or(key, 3))
 	values.add(2, values.get_or(2, 4) * 3)
 	expect_equal(values[1], 5)?
@@ -62,13 +62,13 @@ test "counter keys apply their checked Optional conversion":
 	expect_equal(values.length(), 2)?
 
 test "already Optional counter keys retain their representation":
-	key: Int? := 1
+	key Int? := 1
 	var values = Map[Int?, Int]()
 	values.add(key, values.get_or(key, 0) + 2)
 	expect_equal(values.get_or(1, 0), 2)?
 	expect_equal(values.length(), 1)?
 
-fn consume_text(move key: String) Int:
+fn consume_text(move key String) Int:
 	values := [key]
 	return values.length() + 4
 
@@ -79,30 +79,30 @@ test "an immutable counter key can be consumed after its lookup":
 	expect_equal(values["long-dynamic-map-key-1"], 6)?
 
 test "a map add retains its cloned key while its source is consumed":
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	key := f"long-dynamic-map-key-{1}"
 	values.add(key.clone(), consume_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
 test "a map add default retains its key while its source is consumed":
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	key := f"long-dynamic-map-key-{1}"
 	values.add_default(key.clone(), consume_text(key))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
-fn consume_keys(move keys: List[String]) Int:
+fn consume_keys(move keys List[String]) Int:
 	nested := [keys]
 	return nested.length() + 4
 
 test "an indexed key clone survives consuming its container":
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	keys := [f"long-dynamic-map-key-{1}"]
 	values.add(keys[0].clone(), consume_keys(keys))
 	expect_equal(values["long-dynamic-map-key-1"], 5)?
 
 test "literal increments keep stable mutable-key counters":
 	var key = f"long-dynamic-map-key-{1}"
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	values.add(key.clone(), values.get_or(key, 0) + 1)
 	key = f"long-dynamic-map-key-{2}"
 	values.add(key.clone(), values.get_or(key, 0) + 1)
@@ -111,7 +111,7 @@ test "literal increments keep stable mutable-key counters":
 
 // Source methods named clone must run even when the arithmetic fits counter fusion.
 type CounterKey:
-	value: Int
+	value Int
 
 fn CounterKey.clone() CounterKey:
 	return CounterKey(self.value + 1)
@@ -123,18 +123,18 @@ test "counter updates call a source-defined clone method":
 	expect_equal(values[CounterKey(1)], 1)?
 	expect_equal(values[CounterKey(2)], 2)?
 
-fn successful_value(value: Int) Int!:
+fn successful_value(value Int) Int!:
 	return ok(value)
 
 fn failed_value() Int!:
 	return error(Error("expected map value failure"))
 
-fn add_failed_value(var values: Map[String, Int], key: String) Void!:
+fn add_failed_value(var values Map[String, Int], key String) Void!:
 	values.add(key.clone(), failed_value()?)
 
 test "an owned native argument transfers after a later try succeeds":
 	key := f"long-dynamic-map-key-{1}"
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 
 	// Referencing the owner prevents borrowed-key elision, as in TOML materialization.
 	values.add(key.clone(), successful_value(key.length())?)
@@ -143,18 +143,18 @@ test "an owned native argument transfers after a later try succeeds":
 
 test "a moved native argument survives a later try without rereading its source":
 	key := f"long-dynamic-map-key-{1}"
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	values.add(key, successful_value(7)?)
 	expect_equal(values["long-dynamic-map-key-1"], 7)?
 
 test "a later failing try leaves its map unchanged":
-	var values: Map[String, Int] = Map()
+	var values Map[String, Int] = Map()
 	result := add_failed_value(values, f"long-dynamic-map-key-{1}")
 	expect_equal(result.is_error(), true)?
 	expect_equal(values.length(), 0)?
 
 type FaultingCounterKey:
-	value: Int
+	value Int
 
 fn FaultingCounterKey.clone() FaultingCounterKey:
 	checked := self.value + 1

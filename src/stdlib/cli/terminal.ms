@@ -35,9 +35,9 @@ import (
 // Character columns and rows of a terminal window.
 export type TerminalSize:
 	// Width in character columns.
-	columns: Int
+	columns Int
 	// Height in character rows.
-	rows: Int
+	rows Int
 
 /*
 What the current process can do with its standard streams as a terminal.
@@ -46,17 +46,17 @@ What the current process can do with its standard streams as a terminal.
 */
 export type TerminalCapabilities:
 	// True when standard input is a terminal.
-	input_is_terminal: Bool
+	input_is_terminal Bool
 	// True when standard output is a terminal.
-	output_is_terminal: Bool
+	output_is_terminal Bool
 	// True when standard error is a terminal.
-	error_is_terminal: Bool
+	error_is_terminal Bool
 	// True when `raw_mode` can succeed on this host and the streams are terminals.
-	raw_mode: Bool
+	raw_mode Bool
 	// True when raw terminals deliver `Resize` events.
-	resize_events: Bool
+	resize_events Bool
 	// Supported color count, or 0 when color output should be avoided.
-	colors: Int
+	colors Int
 
 /*
 One decoded terminal input event. `Text` carries printable characters typed
@@ -70,30 +70,30 @@ export enum TerminalEvent:
 	// Printable characters typed together.
 	Text(
 		// The typed characters in order, as valid UTF-8 text.
-		text: String
+		text String
 	)
 	// A named or modified key press.
 	Key(
 		// The key name, such as `enter`, `up`, or a lowercase letter.
-		name: String,
+		name String,
 		// True when Control was held.
-		ctrl: Bool,
+		ctrl Bool,
 		// True when Alt was held.
-		alt: Bool,
+		alt Bool,
 		// True when Shift was held for a named key.
-		shift: Bool
+		shift Bool
 	)
 	// The terminal window changed size.
 	Resize(
 		// The new width in columns.
-		columns: Int,
+		columns Int,
 		// The new height in rows.
-		rows: Int
+		rows Int
 	)
 	// Text pasted through bracketed paste, delivered whole.
 	Paste(
 		// The pasted text with line breaks as `\n`.
-		text: String
+		text String
 	)
 
 // The part of the screen cleared by `RawTerminal.erase`.
@@ -109,18 +109,18 @@ export enum EraseRegion:
 // What one escape sequence in the input turned out to be.
 type Parsed:
 	// 0 incomplete, 1 decoded, 2 dropped, 3 overlong, 4 paste start.
-	kind: Int
+	kind Int
 	// Scalars consumed.
-	used: Int
-	event: TerminalEvent?
+	used Int
+	event TerminalEvent?
 
-fn key(name: String, ctrl: Bool, alt: Bool, shift: Bool) TerminalEvent:
+fn key(name String, ctrl Bool, alt Bool, shift Bool) TerminalEvent:
 	return TerminalEvent.Key(name.clone(), ctrl, alt, shift)
 
-fn plain(name: String) TerminalEvent:
+fn plain(name String) TerminalEvent:
 	return key(name, false, false, false)
 
-fn control(b: Int, alt: Bool) TerminalEvent:
+fn control(b Int, alt Bool) TerminalEvent:
 	if b == 13 or b == 10: return key("enter", false, alt, false)
 	if b == 9: return key("tab", false, alt, false)
 	if b == 127 or b == 8: return key("backspace", false, alt, false)
@@ -130,11 +130,11 @@ fn control(b: Int, alt: Bool) TerminalEvent:
 	return key(ascii_at(letters, b - 1, "?"), true, alt, false)
 
 // The character at byte `index` of the ASCII `table`, or `fallback` outside it.
-fn ascii_at(table: String, index: Int, fallback: String) String:
+fn ascii_at(table String, index Int, fallback String) String:
 	if index < 0 or index >= table.length(): return fallback.clone()
 	return table.view(index, index + 1).clone()
 
-fn tilde_key(n: Int) String:
+fn tilde_key(n Int) String:
 	var names = Map[Int, String]()
 	names[1] = "home"
 	names[7] = "home"
@@ -162,7 +162,7 @@ fn tilde_key(n: Int) String:
 
 	return ""
 
-fn letter_key(c: Int) String:
+fn letter_key(c Int) String:
 	if c == 65: return "up"
 	if c == 66: return "down"
 	if c == 67: return "right"
@@ -177,7 +177,7 @@ fn letter_key(c: Int) String:
 	return ""
 
 // Applies an xterm modifier parameter (1 plus shift 1, alt 2, ctrl 4) to a key event.
-fn with_modifiers(event: TerminalEvent, modifier: Int) TerminalEvent:
+fn with_modifiers(event TerminalEvent, modifier Int) TerminalEvent:
 	if modifier <= 1: return event.clone()
 
 	bits := modifier - 1
@@ -197,7 +197,7 @@ fn with_modifiers(event: TerminalEvent, modifier: Int) TerminalEvent:
 ascii := " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
 
 // The key a Unicode code point reported by `CSI u` or modifyOtherKeys names.
-fn code_key(code: Int) TerminalEvent?:
+fn code_key(code Int) TerminalEvent?:
 	if code == 13 or code == 57414: return plain("enter")
 	if code == 9: return plain("tab")
 	if code == 27: return plain("escape")
@@ -211,13 +211,13 @@ fn code_key(code: Int) TerminalEvent?:
 	return plain(ascii_at(ascii, code - 32, " "))
 
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
-fn first_number(part: String) Int:
+fn first_number(part String) Int:
 	head := part.split(":")[0].clone()
 	return head.parse_int() or 0
 
 // The key a CSI sequence with parameters `params` and final byte `last` reports, if
 // any.
-fn csi_key(params: String, last: Int) TerminalEvent?:
+fn csi_key(params String, last Int) TerminalEvent?:
 	numbers := params.split(";").map(first_number)
 	modifier := numbers.get_or(1, 1)
 
@@ -226,7 +226,7 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 		bits := if modifier > 1: modifier - 1 else: 0
 		return key("tab", bits / 4 % 2 == 1, bits / 2 % 2 == 1, true)
 
-	var event: TerminalEvent? = null
+	var event TerminalEvent? = null
 
 	if last == 117:
 		event = code_key(numbers[0])
@@ -244,19 +244,19 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 
 	return null
 
-fn parsed(kind: Int, used: Int) Parsed:
+fn parsed(kind Int, used Int) Parsed:
 	return Parsed(kind: kind, event: null, used: used)
 
-fn decoded(move event: TerminalEvent, used: Int) Parsed:
+fn decoded(move event TerminalEvent, used Int) Parsed:
 	return Parsed(kind: 1, event: event, used: used)
 
 // The scalar value of a one-scalar string.
-fn code_of(c: String) Int:
+fn code_of(c String) Int:
 	return c.scalar_at(0, -1)
 
 // Concatenates `parts` in order. Pairwise merging keeps the cost of a long paste close
 // to linear without a string builder, which would make this module import a cycle.
-fn concat_all(parts: List[String]) String:
+fn concat_all(parts List[String]) String:
 	var level = parts.clone()
 
 	while level.length() > 1:
@@ -275,7 +275,7 @@ fn concat_all(parts: List[String]) String:
 	return level[0].clone()
 
 // Reads the CSI sequence starting at `at` (`ESC [`).
-fn csi_at(buf: List[String], at: Int) Parsed:
+fn csi_at(buf List[String], at Int) Parsed:
 	start := at + 2
 	var j = start
 
@@ -300,7 +300,7 @@ fn csi_at(buf: List[String], at: Int) Parsed:
 	return parsed(0, 0)
 
 // Reads the escape sequence starting at `at`, which holds ESC.
-fn escape_at(buf: List[String], at: Int) Parsed:
+fn escape_at(buf List[String], at Int) Parsed:
 	if at + 1 >= buf.length(): return parsed(0, 0)
 
 	c := code_of(buf[at + 1])
@@ -325,7 +325,7 @@ paste_end := ["\u{1b}", "[", "2", "0", "1", "~"]
 max_paste := 16777216
 
 // Paste text with CRLF and lone CR line breaks turned into LF.
-fn normalise_paste(body: List[String]) String:
+fn normalise_paste(body List[String]) String:
 	var out = List[String](reserve: body.length())
 	var i = 0
 
@@ -350,13 +350,13 @@ from input; the event stream adds them.
 */
 export type TerminalDecoder:
 	// Characters of an escape sequence that is not complete yet.
-	pending: List[String]
+	pending List[String]
 	// True between the paste start and end markers.
-	pasting: Bool
+	pasting Bool
 	// Characters of the paste so far.
-	paste: List[String]
+	paste List[String]
 	// True while the rest of an overlong CSI sequence is being dropped.
-	discarding: Bool
+	discarding Bool
 
 // True when an escape sequence is waiting for more input.
 fn TerminalDecoder.partial() Bool:
@@ -374,9 +374,9 @@ fn var TerminalDecoder.flush() List[TerminalEvent]:
 
 // Takes pasted characters from `buf` at `at`; returns where ordinary input resumes.
 fn var TerminalDecoder.take_paste(
-	buf: List[String],
-	at: Int,
-	var out: List[TerminalEvent],
+	buf List[String],
+	at Int,
+	var out List[TerminalEvent],
 ) Int:
 	old := self.paste.length()
 	var taken = at
@@ -406,7 +406,7 @@ fn var TerminalDecoder.take_paste(
 	return buf.length()
 
 // Decodes input text into events.
-fn var TerminalDecoder.decode(text: String) List[TerminalEvent]:
+fn var TerminalDecoder.decode(text String) List[TerminalEvent]:
 	buf := self.pending.concat(text.chars())
 	self.pending = List[String]()
 
@@ -469,14 +469,14 @@ export fn terminal_decoder() TerminalDecoder:
 		discarding: false,
 	)
 
-fn read_size(handle: NativeRawTerminal) TerminalSize?:
+fn read_size(handle NativeRawTerminal) TerminalSize?:
 	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return null
 	return TerminalSize(
 		columns: msstd_terminal_raw_terminal_size_columns(handle),
 		rows: msstd_terminal_raw_terminal_size_rows(handle),
 	)
 
-fn resized(now: TerminalSize, before: TerminalSize?) Bool:
+fn resized(now TerminalSize, before TerminalSize?) Bool:
 	last := before
 	if last != null: return last.columns != now.columns or last.rows != now.rows
 
@@ -484,10 +484,10 @@ fn resized(now: TerminalSize, before: TerminalSize?) Bool:
 
 // Reads text from a raw terminal's native handle and decodes it into events.
 type TerminalEvents:
-	handle: RawHandle
-	decoder: TerminalDecoder
-	queue: List[TerminalEvent]
-	size: TerminalSize?
+	handle RawHandle
+	decoder TerminalDecoder
+	queue List[TerminalEvent]
+	size TerminalSize?
 
 fn var TerminalEvents.next() move TerminalEvent?!:
 	while true:
@@ -539,7 +539,7 @@ In raw mode, Ctrl-C arrives as a `c` key with `ctrl` set instead of cancelling.
 */
 export type RawTerminal:
 	// The runtime handle; the event stream holds another on the same terminal.
-	handle: RawHandle
+	handle RawHandle
 
 // Restores the terminal; closing again does nothing.
 fn move RawTerminal.close() Void!:
@@ -574,19 +574,19 @@ fn RawTerminal.size() TerminalSize!:
 
 // Writes text or escape sequences to the terminal, after any buffered program
 // output. Fails with `EBADF` after close.
-fn RawTerminal.write(text: String) Void!:
+fn RawTerminal.write(text String) Void!:
 	return msstd_terminal_raw_terminal_write(self.handle.native, text)
 
 // Moves the cursor to a zero-based row and column; negative or very large values
 // return `EINVAL`.
-fn RawTerminal.move_cursor(row: Int, column: Int) Void!:
+fn RawTerminal.move_cursor(row Int, column Int) Void!:
 	if row < 0 or column < 0 or row > max_position or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
 	return self.write(f"{esc}[{row + 1};{column + 1}H")
 
 // Moves the cursor down by `rows` and right by `columns`; negative values move up
 // and left. The cursor stops at the screen edge.
-fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
+fn RawTerminal.move_by(rows Int, columns Int) Void!:
 	var out = ""
 	if rows < 0: out = f"{out}{esc}[{0 - rows}A"
 	if rows > 0: out = f"{out}{esc}[{rows}B"
@@ -597,7 +597,7 @@ fn RawTerminal.move_by(rows: Int, columns: Int) Void!:
 	return self.write(out)
 
 // Moves the cursor to a zero-based column of its current row.
-fn RawTerminal.move_to_column(column: Int) Void!:
+fn RawTerminal.move_to_column(column Int) Void!:
 	if column < 0 or column > max_position:
 		return error(Error("terminal: position out of range", kind: "EINVAL"))
 	return self.write(f"{esc}[{column + 1}G")
@@ -611,11 +611,11 @@ fn RawTerminal.restore_cursor() Void!:
 	return self.write(f"{esc}8")
 
 // Shows or hides the cursor until the terminal is restored on close.
-fn RawTerminal.show_cursor(visible: Bool) Void!:
+fn RawTerminal.show_cursor(visible Bool) Void!:
 	return self.write(if visible: f"{esc}[?25h" else: f"{esc}[?25l")
 
 // Erases the selected screen region without moving the cursor.
-fn RawTerminal.erase(region: EraseRegion) Void!:
+fn RawTerminal.erase(region EraseRegion) Void!:
 	match region:
 		Screen: return self.write(f"{esc}[2J")
 		Line: return self.write(f"{esc}[2K")
@@ -631,14 +631,14 @@ fn RawTerminal.clear() Void!:
 
 // Sets the window title. BEL, ESC, and U+009C are removed first, so the text cannot end
 // the title early or start another escape sequence.
-fn RawTerminal.set_title(title: String) Void!:
+fn RawTerminal.set_title(title String) Void!:
 	clean := title.replace("\u{7}", "").replace(esc, "").replace("\u{9c}", "")
 	return self.write(f"{esc}]2;{clean}\u{7}")
 
 // What the native `raw_mode` returns: the runtime handle itself.
 export opaque type RawHandle:
 	// The runtime terminal handle.
-	native: NativeRawTerminal
+	native NativeRawTerminal
 
 // Reports terminal availability and color support without changing terminal state.
 // ms: effect std.console.read
@@ -668,7 +668,7 @@ export fn terminal_size() TerminalSize!:
 // streams are redirected.
 // ms: effect std.console.read
 // ms: effect std.console.write
-export fn raw_mode(alternate_screen: Bool = false) RawTerminal!:
+export fn raw_mode(alternate_screen Bool = false) RawTerminal!:
 	native := msstd_terminal_raw_mode()?
 	leave := if alternate_screen: f"{esc}[?1049l" else: ""
 	enter := if alternate_screen: f"{esc}[?1049h" else: ""

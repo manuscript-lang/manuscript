@@ -10,7 +10,7 @@ import (
 	build_ms, capture, env, finish, must, repeats, sample, usage from "./lib.ms",
 )
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error]:
 	copy(
 		"bench/perf/listloops/ms",
 		f"{work}/ms",

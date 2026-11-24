@@ -5,15 +5,15 @@
 import stdout from "@std/io/io.ms"
 
 type Item:
-	n: Int
+	n Int
 
 fn move Item.close() Void!:
 	void stdout().write(f"closed {self.n}\n")
 
 type Holder:
-	items: List[Item]
-	last: Item
-	tag: Int
+	items List[Item]
+	last Item
+	tag Int
 
 fn move Holder.close() Void!:
 	while not self.items.is_empty():

@@ -9,7 +9,7 @@ A function is pure unless a comment permits what it reaches. `ms lint` reports a
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn total(prices: List[Int]) Int:
+fn total(prices List[Int]) Int:
     print(f"summing {prices.length()} prices")
     sum := prices.sum()
     return sum
@@ -35,7 +35,7 @@ a.ms:2:5: warning MSL116: `total` reaches std.console.write: total -> print; per
 import read_file from "@std/os/fs.ms"
 import Bytes from "@std/bytes.ms"
 
-fn load(path: String) Bytes!:
+fn load(path String) Bytes!:
     return read_file(path).wait()
 
 fn main() Void:
@@ -60,16 +60,16 @@ A function that is handed an interface value does not need a permission to use i
 <!-- manuscript-example: {"mode":"run","stdout":"> summing 2 prices\n5\n"} -->
 ```manuscript
 interface Logger:
-    fn info(message: String) Void
+    fn info(message String) Void
 
 type ConsoleLogger:
-    prefix: String
+    prefix String
 
 // ms: allow_effect std.console.write
-fn ConsoleLogger.info(message: String) Void:
+fn ConsoleLogger.info(message String) Void:
     print(f"{self.prefix}{message}")
 
-fn total(log: Logger, prices: List[Int]) Int:
+fn total(log Logger, prices List[Int]) Int:
     log.info(f"summing {prices.length()} prices")
     sum := prices.sum()
     return sum
@@ -90,14 +90,14 @@ import write_file from "@std/os/fs.ms"
 
 // ms: effect db.write
 // ms: allow_effect std.fs.write
-fn save(order: String) Void!:
+fn save(order String) Void!:
     return write_file("orders.log", order).wait()
 
 // ms: allow_effect db.*
-fn checkout(total: Int) Void!:
+fn checkout(total Int) Void!:
     return save(f"order {total}")
 
-fn audit(total: Int) Void!:
+fn audit(total Int) Void!:
     return save(f"audit {total}")
 
 fn main() Void:

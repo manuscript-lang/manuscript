@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/control-flow/conditionals.md:59
 
-fn port(lookup: Result[Int, Error]) Int:
+fn port(lookup Result[Int, Error]) Int:
     if value := lookup:
         return value
 

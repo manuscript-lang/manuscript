@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn classify(value: Int) String:\n\tif value < 0:\n\t\treturn \"negative\"\n\telse if value == 0:\n\t\treturn \"zero\"\n\telse:\n\t\treturn \"positive\"\n"
+    "fmt": "fn classify(value Int) String:\n\tif value < 0:\n\t\treturn \"negative\"\n\telse if value == 0:\n\t\treturn \"zero\"\n\telse:\n\t\treturn \"positive\"\n"
   }
 }

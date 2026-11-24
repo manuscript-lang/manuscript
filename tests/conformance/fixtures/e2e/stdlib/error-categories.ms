@@ -10,7 +10,7 @@ import (
 // Standard failures are Error values whose kind callers compare, whatever package
 // raised them.
 
-fn is_missing(cause: Error) Bool:
+fn is_missing(cause Error) Bool:
 	return cause.kind == "ENOENT"
 
 test "failures of different packages share one kind vocabulary":

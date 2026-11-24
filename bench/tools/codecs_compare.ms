@@ -31,14 +31,14 @@ import (
 )
 
 type Decode:
-	size: Int
-	count: Int
-	rounds: Int
+	size Int
+	count Int
+	rounds Int
 
 type Failure:
-	size: Int
-	rounds: Int
-	shape: String
+	size Int
+	rounds Int
+	shape String
 
 fn decode_cases() List[Decode]:
 	return [
@@ -68,17 +68,17 @@ fn failure_cases() List[Failure]:
 			out.append(Failure(size, if size <= 16: 100000 else: 10000, shape.clone()))
 	return out
 
-fn stats_line(label: String, values: List[Float]) String:
-	low := values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
-	high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
+fn stats_line(label String, values List[Float]) String:
+	low := values.fold(values[0], fn(a Float, v Float) Float: if v < a: v else: a)
+	high := values.fold(values[0], fn(a Float, v Float) Float: if v > a: v else: a)
 	return f"{label} [{low.to_fixed(3)},{high.to_fixed(3)}] {median(values).to_fixed(3)}"
 
-fn triple(values: List[Float]) String:
-	low := values.fold(values[0], fn(a: Float, v: Float) Float: if v < a: v else: a)
-	high := values.fold(values[0], fn(a: Float, v: Float) Float: if v > a: v else: a)
+fn triple(values List[Float]) String:
+	low := values.fold(values[0], fn(a Float, v Float) Float: if v < a: v else: a)
+	high := values.fold(values[0], fn(a Float, v Float) Float: if v > a: v else: a)
 	return f"{low} {median(values)} {high}"
 
-fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, Error]:
+fn decode(before String, after String, out String, pairs Int) Result[Void, Error]:
 	fresh_directory(out)?
 
 	var paths = Map[String, String]()
@@ -144,12 +144,7 @@ fn decode(before: String, after: String, out: String, pairs: Int) Result[Void, E
 			.get()
 		)
 
-fn json_failure(
-	before: String,
-	after: String,
-	out: String,
-	pairs: Int,
-) Result[Void, Error]:
+fn json_failure(before String, after String, out String, pairs Int) Result[Void, Error]:
 	fresh_directory(out)?
 
 	var paths = Map[String, String]()

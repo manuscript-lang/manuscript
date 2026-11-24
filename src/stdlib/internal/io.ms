@@ -1,8 +1,8 @@
 import NativeRawTerminal from "@std/cli/terminal.ms"
 
-export extern fn msstd_io_redirect_null(which: Int) Void!
+export extern fn msstd_io_redirect_null(which Int) Void!
 
-export extern fn msstd_io_stdout_status(flush: Bool) Void!
+export extern fn msstd_io_stdout_status(flush Bool) Void!
 
 export extern fn msstd_terminal_raw_mode() move NativeRawTerminal!
 
@@ -24,33 +24,31 @@ export extern fn msstd_terminal_size_columns() Int
 
 export extern fn msstd_terminal_size_rows() Int
 
-export extern fn msstd_terminal_raw_terminal_close(handle: NativeRawTerminal) Void
+export extern fn msstd_terminal_raw_terminal_close(handle NativeRawTerminal) Void
 
 export extern fn msstd_terminal_raw_terminal_share(
-	handle: NativeRawTerminal
+	handle NativeRawTerminal
 ) move NativeRawTerminal
 
 export extern fn msstd_terminal_raw_terminal_read(
-	handle: NativeRawTerminal,
-	quick: Bool,
+	handle NativeRawTerminal,
+	quick Bool,
 ) Void?!
 
 export extern fn msstd_terminal_input_text() move String
 
 export extern fn msstd_terminal_raw_terminal_set_restore(
-	handle: NativeRawTerminal,
-	text: String,
+	handle NativeRawTerminal,
+	text String,
 ) Void
 
-export extern fn msstd_terminal_raw_terminal_size_status(
-	handle: NativeRawTerminal
-) Void!
+export extern fn msstd_terminal_raw_terminal_size_status(handle NativeRawTerminal) Void!
 
-export extern fn msstd_terminal_raw_terminal_size_columns(handle: NativeRawTerminal) Int
+export extern fn msstd_terminal_raw_terminal_size_columns(handle NativeRawTerminal) Int
 
-export extern fn msstd_terminal_raw_terminal_size_rows(handle: NativeRawTerminal) Int
+export extern fn msstd_terminal_raw_terminal_size_rows(handle NativeRawTerminal) Int
 
 export extern fn msstd_terminal_raw_terminal_write(
-	handle: NativeRawTerminal,
-	text: String,
+	handle NativeRawTerminal,
+	text String,
 ) Void!

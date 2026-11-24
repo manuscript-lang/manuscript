@@ -4,14 +4,14 @@
 // clone still allocates. Passing a dead argument by move to a function that only clones
 // from it should lower both counts.
 type Big:
-	name: String
-	items: List[Int]
+	name String
+	items List[Int]
 
 type Pair:
-	left: Big
-	right: Big
+	left Big
+	right Big
 
-fn left_of(p: Pair) Big:
+fn left_of(p Pair) Big:
 	l := p.left.clone()
 	return l
 

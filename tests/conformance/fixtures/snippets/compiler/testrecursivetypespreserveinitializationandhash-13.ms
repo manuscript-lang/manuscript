@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/recursive_types_test.go:34 TestRecursiveTypesPreserveInitializationAndHashing
 enum Expr:
-    Num(value: Int)
-    Add(left: Expr, right: Expr)
+    Num(value Int)
+    Add(left Expr, right Expr)
 
-fn value(expr: Expr) Int:
+fn value(expr Expr) Int:
     match expr:
         Num(value): return value

@@ -11,7 +11,7 @@ interface Counter:
 	fn count() Int
 
 type Box:
-	n: Int
+	n Int
 
 fn var Box.bump() Void:
 	self.n += 1
@@ -21,8 +21,8 @@ fn Box.count() Int:
 
 // Passes everything on to `inner` and counts the calls it saw.
 type Wrap:
-	inner: Counter
-	calls: Int
+	inner Counter
+	calls Int
 
 fn var Wrap.bump() Void:
 	self.inner.bump()
@@ -31,26 +31,26 @@ fn var Wrap.bump() Void:
 fn Wrap.count() Int:
 	return self.inner.count() * 10 + self.calls
 
-fn twice(var c: Counter) Void:
+fn twice(var c Counter) Void:
 	c.bump()
 	c.bump()
 
-fn wrapped(var c: Counter, next: fn(var Counter) Void) Void:
+fn wrapped(var c Counter, next fn(var Counter) Void) Void:
 	// The wrapper owns the counter it was handed and takes its place.
 	c = Wrap(inner: c, calls: 0)
 	next(c)
 
-fn rewrap(var xs: List[Int]) Void:
+fn rewrap(var xs List[Int]) Void:
 	xs = [xs.length(), xs[0]]
 
 test "a var parameter of an interface type is wrapped in place":
-	var b: Counter = Box(n: 0)
+	var b Counter = Box(n: 0)
 	twice(b)
 	wrapped(b, twice)
 	b.count() | expect_equal(42)?
 
 test "the concrete receiver is recovered by a contract type match":
-	var b: Counter = Box(n: 0)
+	var b Counter = Box(n: 0)
 	wrapped(b, twice)
 
 	match b:

@@ -163,6 +163,6 @@ test "a fault inside a property shrinks like an error":
 	expect_contains(cause.message, "counterexample: 100\n")?
 	expect_contains(cause.message, "fault:")?
 
-fn faults_at(n: Int, limit: Int) Void!:
+fn faults_at(n Int, limit Int) Void!:
 	if n >= limit:
 		panic("too big")

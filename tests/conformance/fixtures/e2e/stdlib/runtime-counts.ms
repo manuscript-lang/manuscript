@@ -7,7 +7,7 @@ import (
 
 test "runtime counts grow with the work a program does":
 	before := runtime_counts()?
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..1000:
 		xs.append(i)
 

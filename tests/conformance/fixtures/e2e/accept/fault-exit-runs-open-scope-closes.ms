@@ -4,7 +4,7 @@ import panic from "@std/core.ms"
 import stdout from "@std/io/io.ms"
 
 type Marker:
-	name: String
+	name String
 
 fn move Marker.close() Void!:
 	void stdout().write(f"closed {self.name}\n")

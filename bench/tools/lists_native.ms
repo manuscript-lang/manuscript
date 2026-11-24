@@ -28,17 +28,17 @@ import (
 )
 
 type Workload:
-	name: String
-	n: Int
+	name String
+	n Int
 
-fn body(w: Workload) String:
+fn body(w Workload) String:
 	last := (w.n - 1) * 7919 % 100003
 	var text = f"export fn main() Int:\n    values := build({w.n})\n    if values.length() != {w.n}: return 1\n    if values.first().get() != 0: return 2\n    if values.last().get() != {last}: return 3\n"
 	if w.name == "sort":
 		text += f"    result := sorted(values)\n    if result.length() != {w.n}: return 4\n    if result.first().get() != 0: return 5\n    if result.last().get() != 100002: return 6\n    if values.last().get() != {last}: return 7\n"
 	return text + "    return 0\n"
 
-fn run(opts: Map[String, String], runs: Int) Result[String, Error]:
+fn run(opts Map[String, String], runs Int) Result[String, Error]:
 	out := absolute(opts.get_or("output", ""))
 	ensure_directory(out)
 

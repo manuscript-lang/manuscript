@@ -29,7 +29,7 @@ static const ForeignKeyword FOREIGN_KEYWORDS[] = {
     {{"throw", "raise", "catch"}, FAILURES_ADVICE, NULL, true},
     {{"elseif"}, "'elseif' is not a keyword; write 'else if <condition>:' for a further branch", NULL, false},
     {{"elif"}, "there is no 'elif': write 'else if <condition>:' for a further branch", NULL, false},
-    {{"def"}, "there is no 'def': declare a function with 'fn name(a: Int) Int:'", NULL, false},
+    {{"def"}, "there is no 'def': declare a function with 'fn name(a Int) Int:'", NULL, false},
     {{"switch"},
      "'switch' is not a keyword; write 'match value:' with one arm per case of your own type, or 'if x == "
      "a:' with 'else if' for plain values",
@@ -224,7 +224,7 @@ static bool report_removed_binding(Parser *p, MsToken t) {
       starts_binding_target((MsTok)parse_ahead(p, 1).kind)) {
     report_removed_let(
         p, t,
-        ms_span_of_text("'let' was removed; bind with 'x := value' (or 'x: Type := value'), destructure with "
+        ms_span_of_text("'let' was removed; bind with 'x := value' (or 'x Type := value'), destructure with "
                         "'[a, b] := value', and use 'var x = value' for a mutable binding"));
     return true;
   }

@@ -3,10 +3,10 @@
 import expect_equal from "@std/test/test.ms"
 
 type Box:
-	items: List[String]
-	label: String
+	items List[String]
+	label String
 
-fn var Box.replace_items(next: List[String]) List[String]:
+fn var Box.replace_items(next List[String]) List[String]:
 	old := self.items
 	self.items = next
 	return old

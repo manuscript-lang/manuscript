@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/prelude_test.go:78 TestCollectionPreludeAndShadowing
 type Set[T]:
-    value: T
+    value T
 
-fn f(values: Set[Int]) Void:
+fn f(values Set[Int]) Void:
     values.add(1)

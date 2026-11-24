@@ -7,17 +7,17 @@ import (
 	parse_timestamp from "@std/time.ms",
 )
 
-fn unpacked_length(data: Bytes) Int:
+fn unpacked_length(data Bytes) Int:
 	if b := decompress(data, CompressionFormat.Gzip): return b.length()
 	return 0
 
 type BenchData:
-	rate: Decimal
-	text: String
-	blob: Bytes
+	rate Decimal
+	text String
+	blob Bytes
 
 fn make_fixture() BenchData:
-	rate: Decimal := 1.12345d
+	rate Decimal := 1.12345d
 	text := "2026-03-01T12:30:45." + "0".repeat(65536) + "Z"
 	blob := "the quick brown fox jumps over the lazy dog ".repeat(20000).to_bytes()
 	return BenchData(rate: rate, text: text, blob: blob)

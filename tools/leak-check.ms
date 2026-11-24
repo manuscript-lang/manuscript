@@ -20,7 +20,7 @@ import (
 // The live block counts the runtime printed on standard error; a program that starts
 // child processes prints one per process, and their sum is what leaked. Empty when none
 // was printed.
-fn live_blocks(text: String) List[Int]:
+fn live_blocks(text String) List[Int]:
 	var counts = List[Int]()
 
 	for line in text.split("\n"):
@@ -33,7 +33,7 @@ fn live_blocks(text: String) List[Int]:
 // The tests of one `ms test` run that left live blocks, as "name: count" lines: each
 // test prints RUN before it starts, and the runtime prints its count as the process
 // exits or after the test.
-fn leaking_tests(text: String) List[String]:
+fn leaking_tests(text String) List[String]:
 	var leaks = List[String]()
 	var current = ""
 
@@ -45,12 +45,12 @@ fn leaking_tests(text: String) List[String]:
 
 	return leaks
 
-fn has_tests(source: String) Bool:
+fn has_tests(source String) Bool:
 	return source.starts_with("test \"") or source.contains("\ntest \"")
 
 // Sweeps `files` and returns one line per swept program (`swept`), followed by one
 // report per leak that starts with `leak:`.
-fn sweep(ms: String, root: String, files: List[String]) List[String]:
+fn sweep(ms String, root String, files List[String]) List[String]:
 	var lines = List[String]()
 
 	for f in files:
@@ -84,7 +84,7 @@ fn sweep(ms: String, root: String, files: List[String]) List[String]:
 
 			lines.append("swept")
 
-			total := counts.fold(0, fn(a: Int, b: Int) Int: a + b)
+			total := counts.fold(0, fn(a Int, b Int) Int: a + b)
 			if total != 0: lines.append(f"leak: {absolute} left {total} live blocks")
 
 	return lines

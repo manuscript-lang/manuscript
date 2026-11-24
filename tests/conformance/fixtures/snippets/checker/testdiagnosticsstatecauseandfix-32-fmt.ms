@@ -2,10 +2,10 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/hints_test.go:51 TestDiagnosticsStateCauseAndFix
 enum Choice[T]:
-    Found(value: T)
+    Found(value T)
     Missing
 
-fn f(c: Choice[Int], o: Int?) Int:
+fn f(c Choice[Int], o Int?) Int:
     match o:
         Optional.some(n): return n
         Optional.null: return 0

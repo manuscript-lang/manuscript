@@ -13,27 +13,27 @@ import (
 // Set the bounds when the input is untrusted.
 export type JsonOptions:
 	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
-	max_bytes: Int? = null
+	max_bytes Int? = null
 	// Maximum container nesting; a root scalar has depth zero, and a root container
 	// depth one.
-	max_depth: Int? = null
+	max_depth Int? = null
 	// Maximum parsed containers and scalar values, excluding object keys; null adds no
 	// count budget.
-	max_values: Int? = null
+	max_values Int? = null
 	// True ignores object members that are not fields of `T`; false makes them return
 	// `EBADMSG`.
-	ignore_unknown_fields: Bool = true
+	ignore_unknown_fields Bool = true
 
 // Settings for `stringify`: an output byte budget, pretty-print indentation, and strict
 // rejection of values without a JSON form.
 export type StringifyOptions:
 	// Maximum encoded UTF-8 bytes; null adds no output budget.
-	max_bytes: Int? = null
+	max_bytes Int? = null
 	// Spaces per indentation level; null writes compact JSON.
-	indent: Int? = null
+	indent Int? = null
 	// True makes any value without a JSON form, anywhere in the document, return
 	// `EBADMSG`.
-	strict: Bool = false
+	strict Bool = false
 
 /*
 A JSON value. Number text is retained to avoid losing precision during parsing.
@@ -43,11 +43,11 @@ Each returns `null` on a mismatch. `get` and `get_index` borrow the selected par
 document alive and unchanged while you use it. `as_string`, `as_list` and `as_map` return clones.
 For nested reads, bind each level with `if value := ...`:
 
-<!-- manuscript-example: {"mode":"fragment","given":["doc: JsonValue"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["doc JsonValue"]} -->
 ```manuscript
 import JsonValue from "@std/data/json.ms"
 
-fn user_name(doc: JsonValue) String:
+fn user_name(doc JsonValue) String:
     if user := doc.get("user"):
         if name := user.get("name"):
             return name.as_string().get_or("")
@@ -64,34 +64,34 @@ export enum JsonValue:
 	// A JSON true or false value.
 	BoolValue(
 		// The decoded boolean: true for JSON true, false for JSON false.
-		value: Bool
+		value Bool
 	)
 	// An exact JSON number token; parsing does not coerce it into Float.
 	NumberValue(
 		// Original numeric token text; stringify validates its JSON number syntax.
-		text: String
+		text String
 	)
 	// A decoded JSON string, with escapes resolved into Unicode text.
 	StringValue(
 		// Decoded UTF-8 text, preserving scalar contents without normalization.
-		value: String
+		value String
 	)
 	// An ordered JSON array whose mutable list can be updated before serialization.
 	ArrayValue(
 		// Element values in source order; the array owns its elements.
-		values: List[JsonValue]
+		values List[JsonValue]
 	)
 	// A JSON object retaining insertion order and rejecting duplicate keys during
 	// parsing.
 	ObjectValue(
 		// String-keyed members in insertion order; stringify reads their current
 		// values.
-		values: Map[String, JsonValue]
+		values Map[String, JsonValue]
 	)
 
 // Returns the object member for `key`, or `null` for an absent key or a value that
 // is not an object. The result borrows from the receiver.
-fn JsonValue.get(key: String) JsonValue?:
+fn JsonValue.get(key String) JsonValue?:
 	match self:
 		ObjectValue(values): return values.get(key)
 		_: return null
@@ -101,13 +101,13 @@ Returns the value reached by reading each object member of `keys` in turn, or `n
 member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
 from the receiver.
 */
-fn JsonValue.get_in(keys: List[String]) JsonValue?:
+fn JsonValue.get_in(keys List[String]) JsonValue?:
 	return member_path(self, keys, 0)
 
 // Returns the array element at `index`, counting a negative index from the end. An
 // index out of range, or a value that is not an array, returns `null`. The result
 // borrows from the receiver.
-fn JsonValue.get_index(index: Int) JsonValue?:
+fn JsonValue.get_index(index Int) JsonValue?:
 	match self:
 		ArrayValue(values):
 			if index >= values.length() or index < 0 - values.length(): return null
@@ -192,10 +192,7 @@ at compile time. The input, depth and value limits apply to the document before 
 The record-or-document choice comes from `T`, not from the text: `parse[Request]` reads an object as a
 record and `parse[JsonValue]` keeps it as a document.
 */
-export fn parse[T: Data = JsonValue](
-	text: String,
-	options: JsonOptions = JsonOptions(),
-) T!:
+export fn parse[T Data = JsonValue](text String, options JsonOptions = JsonOptions()) T!:
 	limits := JsonLimits(
 		max_bytes: options.max_bytes,
 		max_depth: options.max_depth,
@@ -225,15 +222,15 @@ a common protocol shape:
 import JsonEncode, JsonValue from "@std/data/json.ms"
 
 enum Event:
-    Created(id: Int)
-    Deleted(id: Int)
+    Created(id Int)
+    Deleted(id Int)
 
 fn Event.to_json() JsonValue:
     match self:
         Created(id): return tagged("created", id)
         Deleted(id): return tagged("deleted", id)
 
-fn tagged(kind: String, id: Int) JsonValue:
+fn tagged(kind String, id Int) JsonValue:
     var fields = Map[String, JsonValue]()
     fields.add("type", JsonValue.StringValue(kind))
     fields.add("id", JsonValue.NumberValue(f"{id}"))
@@ -283,17 +280,17 @@ indentation included; exceeding it returns `EOVERFLOW`. A negative bound or inde
 import stringify from "@std/data/json.ms"
 
 type Request:
-    model: String
-    stream: Bool
-    user: String?
+    model String
+    stream Bool
+    user String?
 
 text := stringify(Request(model: "example", stream: true, user: null))?
 print(text)
 ```
 */
-export fn stringify[T: Data](
-	value: T,
-	options: StringifyOptions = StringifyOptions(),
+export fn stringify[T Data](
+	value T,
+	options StringifyOptions = StringifyOptions(),
 ) String!:
 	return msstd_json_stringify(
 		value,
@@ -303,7 +300,7 @@ export fn stringify[T: Data](
 	)
 
 // The member of `value` at `keys[from:]`, read one object level at a time.
-fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
+fn member_path(value JsonValue, keys List[String], from Int) JsonValue?:
 	if from >= keys.length(): return null
 	if from == keys.length() - 1: return value.get(keys[from])
 
@@ -314,16 +311,16 @@ fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
 
 // Incremental scanner state for `json_reader`. `mode` is 0 between values, 1 inside a
 // container, 2 inside a top-level string, and 3 inside a top-level scalar token.
-type JsonReading[T: Data]:
-	options: JsonOptions
-	pending: BytesBuilder
-	size: Int
-	depth: Int
-	mode: Int
-	in_string: Bool
-	escaped: Bool
-	finished: Bool
-	failure: Error?
+type JsonReading[T Data]:
+	options JsonOptions
+	pending BytesBuilder
+	size Int
+	depth Int
+	mode Int
+	in_string Bool
+	escaped Bool
+	finished Bool
+	failure Error?
 
 fn var JsonReading[T].reset() Void:
 	self.pending = BytesBuilder()
@@ -333,7 +330,7 @@ fn var JsonReading[T].reset() Void:
 	self.in_string = false
 	self.escaped = false
 
-fn var JsonReading[T].fail(cause: Error) Void!:
+fn var JsonReading[T].fail(cause Error) Void!:
 	// Dropping the partial value releases its buffered bytes.
 	self.reset()
 	self.failure = cause.clone()
@@ -350,7 +347,7 @@ fn var JsonReading[T].complete() move T!:
 	return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
 // Consumes one byte and reports whether it finished a value.
-fn var JsonReading[T].scan(byte: UInt8) Bool!:
+fn var JsonReading[T].scan(byte UInt8) Bool!:
 	if self.mode == 0:
 		if is_space(byte): return ok(false)
 		if not starts_value(byte): return error(
@@ -404,14 +401,14 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 	return ok(false)
 
 // Consumes one byte and returns the value it completes, if any.
-fn var JsonReading[T].advance(byte: UInt8) move T?!:
+fn var JsonReading[T].advance(byte UInt8) move T?!:
 	done := self.scan(byte)?
 	if not done: return ok(null)
 
 	value := self.complete()?
 	return ok(value)
 
-fn var JsonReading[T].step(move value: Bytes, var out: List[T]) Void!:
+fn var JsonReading[T].step(move value Bytes, var out List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
 
 	failure := self.failure
@@ -424,7 +421,7 @@ fn var JsonReading[T].step(move value: Bytes, var out: List[T]) Void!:
 		found := stepped.get_or(null)
 		if found != null: out.append(found)
 
-fn var JsonReading[T].finish(var out: List[T]) Void!:
+fn var JsonReading[T].finish(var out List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
 
 	failure := self.failure
@@ -439,10 +436,10 @@ fn var JsonReading[T].finish(var out: List[T]) Void!:
 
 	out.append(completed?)
 
-fn is_space(byte: UInt8) Bool:
+fn is_space(byte UInt8) Bool:
 	return (byte == 32 or byte == 9 or byte == 10 or byte == 13)
 
-fn starts_value(byte: UInt8) Bool:
+fn starts_value(byte UInt8) Bool:
 	// Object, array, string, minus sign, digits, and the first letters of the literals.
 	return (
 		byte == 123
@@ -456,7 +453,7 @@ fn starts_value(byte: UInt8) Bool:
 	)
 
 // The error a negative limit reports on the first read, or null.
-fn invalid_limits(options: JsonOptions) Error?:
+fn invalid_limits(options JsonOptions) Error?:
 	if (
 		(options.max_bytes or 0) < 0
 		or (options.max_depth or 0) < 0
@@ -478,9 +475,9 @@ trusted input, because an unterminated value is otherwise buffered without bound
 input fails the read with `EBADMSG`, and negative limits with `EINVAL`. Closing the result closes
 `input`.
 */
-export fn json_reader[T: Data = JsonValue](
-	move input: ReadStream[Bytes],
-	options: JsonOptions = JsonOptions(),
+export fn json_reader[T Data = JsonValue](
+	move input ReadStream[Bytes],
+	options JsonOptions = JsonOptions(),
 ) ReadStream[T]:
 	failure := invalid_limits(options)
 	return through[Bytes, T](
@@ -500,11 +497,11 @@ export fn json_reader[T: Data = JsonValue](
 
 // A sink that encodes each value as one line of JSON (JSON Lines) and puts the bytes
 // into `output`.
-type JsonLines[T: Data]:
-	output: WriteStream[Bytes]
-	max_bytes: Int?
+type JsonLines[T Data]:
+	output WriteStream[Bytes]
+	max_bytes Int?
 
-fn var JsonLines[T].write(move value: T) Void!:
+fn var JsonLines[T].write(move value T) Void!:
 	text := stringify[T](value, StringifyOptions(max_bytes: self.max_bytes))?
 	return self.output.write(f"{text}\n".to_bytes())
 
@@ -519,8 +516,8 @@ Writes values of type `T` to a byte stream as JSON Lines: each value is encoded 
 single line, and ends with a line feed. `max_bytes` bounds one encoded value and fails the write with
 `EOVERFLOW`. Writes delegate to `output`'s sink, which may wait. `flush().wait()` uses its completion condition; a pipe may retain up to capacity unread values. Closing closes `output`.
 */
-export fn json_writer[T: Data](
-	move output: WriteStream[Bytes],
-	max_bytes: Int? = null,
+export fn json_writer[T Data](
+	move output WriteStream[Bytes],
+	max_bytes Int? = null,
 ) WriteStream[T]:
 	return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

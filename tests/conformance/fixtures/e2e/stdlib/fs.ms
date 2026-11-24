@@ -23,7 +23,7 @@ import (
 	expect_equal, expect_false, expect_ok, fail from "@std/test/test.ms",
 )
 
-fn expect_fs_error[T](outcome: T!, expected: Error) Void!:
+fn expect_fs_error[T](outcome T!, expected Error) Void!:
 	match outcome:
 		ok(_): return error(Error("filesystem misuse succeeded"))
 		error(cause):
@@ -67,7 +67,7 @@ test "glob queries reuse patterns without changing hidden paths limits or callba
 			glob(
 				path: root,
 				options: options.clone(),
-				exclude: fn(entry: PathEntry) Bool: entry.path == "missing.txt"
+				exclude: fn(entry PathEntry) Bool: entry.path == "missing.txt"
 			)
 		)?
 	)
@@ -194,7 +194,7 @@ test "file handles positional I/O stream adapters and closed errors":
 	handle.close()?
 
 test "empty paths are rejected instead of resolving to the working directory":
-	invalid: Void! := error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
+	invalid Void! := error(cause: Error("filesystem: invalid input", kind: "EINVAL"))
 	remove(path: "", recursive: true) | expect_equal(invalid)?
 	create_directory(path: "", recursive: true) | expect_equal(invalid)?
 	write_file(path: "", data: "x", replace: true).wait() | expect_equal(invalid)?

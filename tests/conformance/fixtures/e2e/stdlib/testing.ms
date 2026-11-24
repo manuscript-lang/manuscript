@@ -15,7 +15,7 @@ import (
 	fail
 ) from "@std/test/test.ms"
 
-fn identity[T](value: T) T:
+fn identity[T](value T) T:
 	return value
 
 test "testing assertions":
@@ -28,13 +28,13 @@ test "testing assertions":
 	expect_close(1.01, 1.0, 0.02)?
 	"Manuscript" | expect_contains("script")?
 
-	present: Int? := 7
-	absent: Int? := null
+	present Int? := 7
+	absent Int? := null
 	((present | expect_some?)) | expect_equal(7)?
 	absent | expect_none?
 
-	success: Int!Error := ok(9)
-	failure: Int!Error := error(Error("bad"))
+	success Int!Error := ok(9)
+	failure Int!Error := error(Error("bad"))
 	((success | expect_ok?)) | expect_equal(9)?
 	((failure | expect_error?)) | expect_equal(Error("bad"))?
 
@@ -52,10 +52,10 @@ test "failure helpers return errors":
 	failed_cause.message | expect_contains("custom failure")?
 
 type Key:
-	id: Int
-	label: String
+	id Int
+	label String
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
 test "assertions preserve domain equality":

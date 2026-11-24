@@ -367,7 +367,7 @@ MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef
   if (parse_kind(p) == MS_T_Arrow) {
     parse_fail_fix(p, parse_peek(p),
                    ms_span_of_text("result types follow the parameter list without an arrow; remove '->', "
-                                   "e.g. fn (x: Int) Int: x + 1"),
+                                   "e.g. fn (x Int) Int: x + 1"),
                    ms_span_of_text(""));
     return false;
   }

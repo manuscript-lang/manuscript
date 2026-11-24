@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 fn grown() Int:
-	var o: List[String]? = ["a"]
+	var o List[String]? = ["a"]
 	l := o
 
 	if l != null:

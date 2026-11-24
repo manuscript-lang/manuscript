@@ -10,8 +10,8 @@ import (
 )
 
 type DoneOptions:
-	id: Int
-	weight: Float
+	id Int
+	weight Float
 
 fn done_command() Command:
 	return Command(

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(x: Int?) Int:\n\ty := match x:\n\t\tn: n\n\t\tnull: 0\n\n\treturn n\n"
+    "fmt": "fn f(x Int?) Int:\n\ty := match x:\n\t\tn: n\n\t\tnull: 0\n\n\treturn n\n"
   }
 }

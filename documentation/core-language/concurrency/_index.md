@@ -14,7 +14,7 @@ Values that arrive over time travel on [streams](streams.md), which are pulled l
 import promise, wait_all from "@std/concurrency/promise.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn square(n: Int) Int:
+fn square(n Int) Int:
     return n * n
 
 test "run work at once and collect it":

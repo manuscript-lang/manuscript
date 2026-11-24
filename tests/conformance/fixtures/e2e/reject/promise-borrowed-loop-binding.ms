@@ -4,7 +4,7 @@
 // round: `body` is a function value, which is shared, so the promise gets its own copy (#3845).
 import Placement, Promise, PromiseOptions, promise from "@std/concurrency/promise.ms"
 
-fn ten(k: Int) Int!:
+fn ten(k Int) Int!:
 	return ok(k * 10)
 
 fn main() Int:

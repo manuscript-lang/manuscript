@@ -12,10 +12,10 @@ Save this module as `pricing.ms`. It exports a type and the operation callers ne
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type Item:
-    price: Int
-    quantity: Int
+    price Int
+    quantity Int
 
-export fn total(items: List[Item]) Int:
+export fn total(items List[Item]) Int:
     var result = 0
     for item in items:
         result += item.price * item.quantity

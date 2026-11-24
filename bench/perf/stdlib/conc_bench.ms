@@ -1,7 +1,7 @@
 import Promise, promise, wait_all from "@std/concurrency/promise.ms"
 
 bench "promise.spawn_wait_all_1000" per 1000:
-	var running: List[Promise[Int]] = []
+	var running List[Promise[Int]] = []
 	for i in 0..1000:
 		running.append(promise(fn: ok(i * 2)))
 
@@ -18,7 +18,7 @@ bench "promise.spawn_wait_each_1000" per 1000:
 	n
 
 bench "promise.spawn_then_wait_5000" per 5000:
-	var running: List[Promise[Int]] = []
+	var running List[Promise[Int]] = []
 	for i in 0..5000:
 		running.append(promise(fn: ok(i)))
 

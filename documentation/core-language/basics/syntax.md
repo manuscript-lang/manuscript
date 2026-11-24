@@ -12,10 +12,10 @@ A `.ms` file is a module. Top level holds imports, types, functions, constants, 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 export type Customer:
-    name: String
-    active: Bool
+    name String
+    active Bool
 
-export fn welcome(customer: Customer) String:
+export fn welcome(customer Customer) String:
     if customer.active:
         return f"Welcome, {customer.name}!"
 
@@ -30,7 +30,7 @@ Calls take positional arguments, optional labels, or both; an unlabeled argument
 
 Expressions inside parentheses, brackets, or braces can span lines:
 
-<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name: String\n    active: Bool\n    email: String?","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"type Customer:\n    name String\n    active Bool\n    email String?","given":[]} -->
 ```manuscript
 customer := Customer(
     name: "Ada",
@@ -54,7 +54,7 @@ Manuscript is written tersely: one idea per line, the standard form for each tas
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn check(rows: List[String], limit: Int) String:
+fn check(rows List[String], limit Int) String:
     if rows.is_empty(): return "empty"
     if rows.any(fn r: r.length() > limit): return "too long"
     blanks := rows.count(fn r: r.is_empty())

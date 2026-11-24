@@ -15,12 +15,12 @@ Save as `settings.ms`. One small function per `match` keeps the flow flat. `pars
 ```manuscript
 import YamlValue, parse from "@std/data/yaml.ms"
 
-fn number_text(value: YamlValue) String:
+fn number_text(value YamlValue) String:
     match value:
         NumberValue(text): return text.clone()
         _: return "not a number"
 
-fn port_of(doc: YamlValue) String:
+fn port_of(doc YamlValue) String:
     match doc:
         ObjectValue(fields): return number_text(fields.get("port") or Null)
         _: return "not a mapping"

@@ -8,8 +8,8 @@ import (
 // A close that fails where its scope ends faults. The fault must still free the collection
 // that held the failing resource: the buffer and the elements the close never reached.
 type Item:
-	id: Int
-	label: String
+	id Int
+	label String
 
 fn move Item.close() Void!:
 	return error(Error("close failed"))
@@ -25,7 +25,7 @@ fn list_at_scope_end() Void:
 		items.append(Item(id, f"item-{id}-with-a-label-long-enough-to-allocate"))
 
 fn optionals_at_scope_end() Void:
-	var items: List[Item?] = []
+	var items List[Item?] = []
 	for id in 0..3:
 		items.append(Item(id, f"item-{id}-with-a-label-long-enough-to-allocate"))
 

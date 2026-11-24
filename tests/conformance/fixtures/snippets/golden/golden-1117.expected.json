@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-1117.ms",
           "line": 4,
-          "column": 18,
-          "offset": 82
+          "column": 17,
+          "offset": 81
         }
       },
       {
@@ -25,14 +25,14 @@
           "file": "golden-1117.ms",
           "line": 10,
           "column": 13,
-          "offset": 193
+          "offset": 192
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1117.ms:4:18: resolution: unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module\n   |\n 4 |     value: Int = choose(\n   |                  ^\n<DIR>/golden-1117.ms:10:13: resolution: unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module\n    |\n 10 |     next := choose(\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1117.ms:4:17: resolution: unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module\n   |\n 4 |     value Int = choose(\n   |                 ^\n<DIR>/golden-1117.ms:10:13: resolution: unknown binding choose; declare it with 'choose := ...' before use, define 'fn choose(...) T:', or import it from a module\n    |\n 10 |     next := choose(\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

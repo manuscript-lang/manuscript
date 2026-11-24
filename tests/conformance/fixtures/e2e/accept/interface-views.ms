@@ -6,8 +6,8 @@ import (
 )
 
 type Cause:
-	code: Int
-	text: String
+	code Int
+	text String
 
 // The interface the views convert to; `Reportable` is a plain record.
 interface Reportable:
@@ -16,81 +16,81 @@ interface Reportable:
 fn Cause.message() String: f"cause {self.code}: {self.text}"
 
 type Holder:
-	err: Reportable
-	cause: Cause
+	err Reportable
+	cause Cause
 
-fn first_error(cause: Cause) Reportable:
+fn first_error(cause Cause) Reportable:
 	return cause
 
-fn first_failure(cause: Cause) Int!Reportable:
+fn first_failure(cause Cause) Int!Reportable:
 	return error(cause)
 
-fn fresh(cause: Cause, make: Bool) Reportable:
+fn fresh(cause Cause, make Bool) Reportable:
 	if make: return Cause(9, "fresh and also heap allocated text")
 	return cause
 
-fn relay(e: Reportable) Reportable:
+fn relay(e Reportable) Reportable:
 	return e
 
-fn held(cause: Cause) String:
-	e: Reportable := cause
+fn held(cause Cause) String:
+	e Reportable := cause
 	return e.message()
 
-fn through(cause: Cause) Reportable:
+fn through(cause Cause) Reportable:
 	e := first_error(cause)
 	return e
 
-fn cond(cause: Cause, other: Cause, c: Bool) Reportable:
+fn cond(cause Cause, other Cause, c Bool) Reportable:
 	e := first_error(cause)
 	if c: return e
 
 	return other
 
-fn looped(cause: Cause) Reportable:
+fn looped(cause Cause) Reportable:
 	for i in 0..3:
-		e: Reportable := cause
+		e Reportable := cause
 		if i == 2: return e
 
 	return Cause(7, "fell through the loop with heap text")
 
-fn maybe(cause: Cause, b: Bool) Reportable?:
+fn maybe(cause Cause, b Bool) Reportable?:
 	if b: return cause
 	return null
 
-fn either(r: Holder, b: Bool) Reportable:
+fn either(r Holder, b Bool) Reportable:
 	if b: return r.err
 	return r.cause
 
-fn owned_copy(cause: Cause) List[Reportable]:
-	e: Reportable := cause.clone()
+fn owned_copy(cause Cause) List[Reportable]:
+	e Reportable := cause.clone()
 	return [e]
 
-fn through_result(cause: Cause) Int!Reportable:
-	r: Int!Reportable := error(cause)
+fn through_result(cause Cause) Int!Reportable:
+	r Int!Reportable := error(cause)
 	return r
 
-fn id[T](x: T) T:
+fn id[T](x T) T:
 	return x
 
-fn lend_then_relay(cause: Cause) Reportable:
+fn lend_then_relay(cause Cause) Reportable:
 	e := first_error(cause)
 	return relay(e)
 
-fn lend_id(cause: Cause) Reportable:
+fn lend_id(cause Cause) Reportable:
 	return id(first_error(cause))
 
-fn rebound(cause: Cause) Reportable:
-	e: Reportable := cause
+fn rebound(cause Cause) Reportable:
+	e Reportable := cause
 	e2 := e
 	return e2
 
-fn rebound_result(cause: Cause) Int!Reportable:
-	r: Int!Reportable := error(cause)
+fn rebound_result(cause Cause) Int!Reportable:
+	r Int!Reportable := error(cause)
 	r2 := r
 	return r2
 
-fn rebound_alias_relay(cause: Cause) Reportable:
-	e: Reportable := cause
+fn rebound_alias_relay(cause Cause) Reportable:
+	e Reportable := cause
 	e2 := e
 	return relay(e2)
 
@@ -103,7 +103,7 @@ test "interface values converted from borrowed values are views":
 	)
 	kept := owned_copy(c)
 	one := first_error(c)
-	owned: Reportable := c.clone()
+	owned Reportable := c.clone()
 	message := one.message()
 	(
 		first_failure(c).err().message() | expect_equal(

@@ -6,7 +6,7 @@ import (
 
 // The amount in cents, or none when `amt` is not digits with an optional fraction of
 // one or two digits.
-fn cents(amt: String) Int?:
+fn cents(amt String) Int?:
 	parts := amt.split(".")
 	if parts.length() > 2: return null
 
@@ -29,10 +29,10 @@ fn cents(amt: String) Int?:
 	)
 
 type Row:
-	category: String
-	cents: Int
+	category String
+	cents Int
 
-fn parse_line(line: String) Row?:
+fn parse_line(line String) Row?:
 	var cat = ""
 	var amt = ""
 
@@ -59,7 +59,7 @@ fn parse_line(line: String) Row?:
 
 	return null
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var totals = Map[String, Int]()
 	var order = List[String]()
 	var bad = 0
@@ -85,7 +85,7 @@ fn solve(s: String) String:
 	if bad > 0: out += f"skipped: {bad}\n"
 	return out
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
 
 export fn gen_c03() Void:
 	var rnd = seeded(3)

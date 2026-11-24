@@ -2,5 +2,5 @@
 // conform: phase=check
 import panic from "@std/faults.ms"
 type Override:
-    received: Bool
+    received Bool
 impl FileSystem for Override:

@@ -27,30 +27,30 @@ CATEGORIES := ["base", "docs", "reads", "build", "writes", "model output"]
 
 // One graded Harbor trial, as a line of `trials-*.jsonl`.
 type Trial:
-	trial: String
-	challenge: String
-	category: String
-	tier: Int
-	language: String
-	pass: Bool
-	errored: Bool
-	tokens_in: Int
-	tokens_cached: Int
-	tokens_out: Int
-	cost_usd: Float
-	turns: Int
-	wall_s: Float
-	input_by_source: JsonValue
-	started: String
-	agent: String?
-	model: String?
-	cases_passed: Int?
-	cases_total: Int?
-	first_build_ok: Bool?
-	code_tokens: Int?
-	builds: Int?
+	trial String
+	challenge String
+	category String
+	tier Int
+	language String
+	pass Bool
+	errored Bool
+	tokens_in Int
+	tokens_cached Int
+	tokens_out Int
+	cost_usd Float
+	turns Int
+	wall_s Float
+	input_by_source JsonValue
+	started String
+	agent String?
+	model String?
+	cases_passed Int?
+	cases_total Int?
+	first_build_ok Bool?
+	code_tokens Int?
+	builds Int?
 
-fn lang_name(id: String) String:
+fn lang_name(id String) String:
 	if id == "ts": return "TypeScript"
 	if id == "go": return "Go"
 	if id == "rust": return "Rust"
@@ -63,15 +63,15 @@ fn today() String:
 
 fn trials_file() String: f"{root()}/results/trials-{today()}.jsonl"
 
-fn text_at(doc: JsonValue, key: String) String:
+fn text_at(doc JsonValue, key String) String:
 	return (doc.get(key) or JsonValue.Null).as_string() or ""
 
-fn seconds_of(text: String) Float:
+fn seconds_of(text String) Float:
 	t := parse_timestamp(text).get()
 	return t.unix_seconds().to_float() + t.nanoseconds().to_float() / 1000000000.0
 
 // Which kind of content a step's tool results add to the context.
-fn categorize(step: JsonValue) String:
+fn categorize(step JsonValue) String:
 	calls := (step.get("tool_calls") or JsonValue.Null).as_list() or []
 	text := calls.map(
 		fn c: dumps(
@@ -99,7 +99,7 @@ fn categorize(step: JsonValue) String:
 
 	return "reads"
 
-fn metric(step: JsonValue, key: String) Float:
+fn metric(step JsonValue, key String) Float:
 	return (
 		(
 			(step.get("metrics") or JsonValue.Null).get(key)
@@ -115,11 +115,11 @@ fn metric(step: JsonValue, key: String) Float:
 // previous step, credit the growth to the previous step's tool category (and its
 // completion tokens to "model output"), and split every step's prompt tokens by the
 // running composition. The total equals the sum of prompt tokens over agent steps.
-fn breakdown(steps: List[JsonValue]) List[Float]:
+fn breakdown(steps List[JsonValue]) List[Float]:
 	var comp = CATEGORIES.map(fn _c: 0.0)
 	var out = CATEGORIES.map(fn _c: 0.0)
 	var prev_prompt = 0.0
-	var prev: JsonValue? = null
+	var prev JsonValue? = null
 
 	for st in steps:
 		if text_at(st, "source") != "agent" or (st.get("metrics") == null): continue
@@ -145,7 +145,7 @@ fn breakdown(steps: List[JsonValue]) List[Float]:
 
 	return out
 
-fn read_trial(dir: String) Trial?:
+fn read_trial(dir String) Trial?:
 	if not access(f"{dir}/result.json", 0).is_ok(): return null
 
 	r := parse(must_read(f"{dir}/result.json")).get_or(JsonValue.Null)
@@ -237,13 +237,13 @@ fn read_trial(dir: String) Trial?:
 		started: (r.get("started_at") or JsonValue.Null).as_string() or "",
 	)
 
-fn read_trials(path: String) List[Trial]:
+fn read_trials(path String) List[Trial]:
 	var rows = List[Trial]()
 	for line in nonblank_lines(read_text(path)):
 		rows.append(parse[Trial](line).get())
 	return rows
 
-fn collect(dirs: List[String]) Int:
+fn collect(dirs List[String]) Int:
 	var rows = read_trials(trials_file())
 
 	for jobs in dirs:
@@ -283,24 +283,24 @@ fn collect(dirs: List[String]) Int:
 
 // Aggregates of one group of trials; passing trials only for the averages.
 type Agg:
-	n: Int
-	pass: Float
-	fb: Float
-	tokens: Float?
-	turns: Float?
-	wall: Float?
-	cost: Float?
-	code: Float?
+	n Int
+	pass Float
+	fb Float
+	tokens Float?
+	turns Float?
+	wall Float?
+	cost Float?
+	code Float?
 
-fn mean_of(values: List[Float]) Float?:
+fn mean_of(values List[Float]) Float?:
 	if values.is_empty(): return null
 	return values.sum() / values.length().to_float()
 
-fn mean_scaled_opt(values: List[Float], scale: Float) Float?:
+fn mean_scaled_opt(values List[Float], scale Float) Float?:
 	if values.is_empty(): return null
 	return mean_scaled(values, scale)
 
-fn agg(rs: List[Trial]) Agg:
+fn agg(rs List[Trial]) Agg:
 	ok := rs.filter(fn r: r.pass)
 	coded := ok.filter(fn r: r.code_tokens != null)
 	return Agg(
@@ -316,7 +316,7 @@ fn agg(rs: List[Trial]) Agg:
 		mean_of(coded.map(fn r: ((r.code_tokens or 0).to_float()))),
 	)
 
-fn fmt(kind: String, v: Float?) String:
+fn fmt(kind String, v Float?) String:
 	if v == null: return if kind == "n0": "n/a" else: "-"
 
 	x := v
@@ -328,10 +328,10 @@ fn fmt(kind: String, v: Float?) String:
 	return fixed(x, 0)
 
 type Row:
-	key: String
-	stats: Agg
+	key String
+	stats Agg
 
-fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) String:
+fn table(title String, rs List[Trial], key fn(Trial) String, label String) String:
 	var lines = [f"### {title}", ""]
 	lines.append(
 		f"| rank | {label} | trials | pass | first build ok | agent tokens | solution size (tokens) | turns | wall s | cost |"
@@ -356,7 +356,7 @@ fn table(title: String, rs: List[Trial], key: fn(Trial) String, label: String) S
 
 // Higher pass rate first, then lower cost; trials without a passing run sort last, then
 // input order.
-fn order(a: Row, b: Row, ai: Int, bi: Int) Int:
+fn order(a Row, b Row, ai Int, bi Int) Int:
 	if a.stats.pass != b.stats.pass: return if a.stats.pass > b.stats.pass: -1 else: 1
 
 	ac := a.stats.cost or 1000000000.0
@@ -365,11 +365,11 @@ fn order(a: Row, b: Row, ai: Int, bi: Int) Int:
 
 	return ai - bi
 
-fn source_value(t: Trial, c: String) Float:
+fn source_value(t Trial, c String) Float:
 	return (t.input_by_source.get(c) or JsonValue.Null).as_float() or 0.0
 
 // Where input tokens go, per language, averaged over passing trials.
-fn source_table(rows: List[Trial]) String:
+fn source_table(rows List[Trial]) String:
 	var lines = ["### Where the input tokens go (passing trials, mean per trial)", ""]
 	lines.append(
 		"Input tokens include cache reads. `base` is the system prompt plus the task, re-sent on every step, so it scales with turns; `docs` is the Manuscript docs bundle when the agent reads it;"
@@ -412,7 +412,7 @@ fn source_table(rows: List[Trial]) String:
 
 	return lines.join("\n") + "\n"
 
-fn render(src_arg: String?) Int:
+fn render(src_arg String?) Int:
 	var src = src_arg or ""
 
 	if src == "":

@@ -3,7 +3,7 @@
 import stdout from "@std/io/io.ms"
 import panic from "@std/core.ms"
 
-fn checked(n: Int) Int:
+fn checked(n Int) Int:
 	if n > 1: panic(f"n too large: {n}")
 	return n
 

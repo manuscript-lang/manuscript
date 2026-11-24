@@ -17,7 +17,7 @@ test "List take and drop clamp positive counts and preserve empty boundaries":
 		)
 	)?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	expect_false(not (empty.take(0).is_empty()) or not (empty.drop(7).is_empty()))?
 
 test "List take and drop allocate independent outer storage":
@@ -36,7 +36,7 @@ test "List take and drop allocate independent outer storage":
 	expect_false(not (values.take(0).is_empty()) or not (values.drop(3).is_empty()))?
 
 type Box:
-	value: Int
+	value Int
 
 test "List take and drop copy payloads before changing them":
 	boxes := [Box(1), Box(2)]
@@ -59,19 +59,19 @@ test "List take and drop copy payloads before changing them":
 	copied.set(0, inner)
 	expect_false(nested != [1] or lists.get(0) != nested or copied.get(0) != [1, 2])?
 
-fn copy_window[T: Clonable](values: List[T], first: Int, skip: Int) List[T]:
+fn copy_window[T Clonable](values List[T], first Int, skip Int) List[T]:
 	return values.take(first).drop(skip)
 
 test "List take and drop support generic and nested values":
 	expect_equal(copy_window[String](["a", "b", "c"], 2, 1), ["b"])?
 
-	values: List[Int?!Error] := [ok(1), error(Error("cause"))]
+	values List[Int?!Error] := [ok(1), error(Error("cause"))]
 	expect_equal(copy_window(values, 2, 1).get(0).err().message, "cause")?
 
 test "List take and drop bound methods read the retained receiver":
 	var values = [1, 2, 3, 4]
 	take := values.clone().take
-	drop: fn(Int) List[Int] := values.clone().drop
+	drop fn(Int) List[Int] := values.clone().drop
 	expect_false(take(7) != [1, 2, 3, 4] or drop(2) != [3, 4])?
 
 	var first = take(2)

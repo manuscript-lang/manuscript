@@ -4,7 +4,7 @@ import lines from "@std/io/steps.ms"
 import flatten from "@std/collections/collections.ms"
 
 // Cells are scalar values: # = 35, . = 46, S = 83, E = 69.
-fn solve(rows: List[List[Int]]) String:
+fn solve(rows List[List[Int]]) String:
     for r in 0..rows.length():
         for c in 0..rows[r].length():
             if not [35, 46, 83, 69].contains(rows[r][c]): return f"error: bad character at {r + 1},{c + 1}"

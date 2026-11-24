@@ -22,12 +22,44 @@
           "column": 5,
           "offset": 136
         }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'value' and its type; write value Type",
+        "position": {
+          "file": "golden-1341.ms",
+          "line": 10,
+          "column": 13,
+          "offset": 203
+        },
+        "end": {
+          "file": "golden-1341.ms",
+          "line": 10,
+          "column": 14,
+          "offset": 204
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1341.ms",
+            "line": 10,
+            "column": 13,
+            "offset": 203
+          },
+          "end": {
+            "file": "golden-1341.ms",
+            "line": 10,
+            "column": 14,
+            "offset": 204
+          },
+          "replacement": ""
+        }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1341.ms:8:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 8 | impl Describe for State:\n   | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1341.ms:8:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n   |\n 8 | impl Describe for State:\n   | ^^^^\n<DIR>/golden-1341.ms:10:13: parse: remove the ':' between 'value' and its type; write value Type\n    |\n 10 | fn use(value: Describe) Int:\n    |             ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

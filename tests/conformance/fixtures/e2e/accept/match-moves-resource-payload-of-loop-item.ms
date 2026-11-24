@@ -6,11 +6,11 @@ import forward from "@std/io/forward.ms"
 import ReadStream, WriteStream, pipe from "@std/io/io.ms"
 
 enum Command:
-	Join(out: WriteStream[Int])
-	Say(text: String)
+	Join(out WriteStream[Int])
+	Say(text String)
 
-fn owner(var inbox: ReadStream[Command]) Void!:
-	var members: List[WriteStream[Int]] = []
+fn owner(var inbox ReadStream[Command]) Void!:
+	var members List[WriteStream[Int]] = []
 
 	for command in inbox:
 		match command:

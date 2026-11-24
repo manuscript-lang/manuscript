@@ -8,19 +8,19 @@ import (
 )
 
 type Marker:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Marker.close() Void!:
 	append_file(self.log, f"{self.id},").wait()?
 
-fn failed(id: Int, move log: String) Int!Marker:
+fn failed(id Int, move log String) Int!Marker:
 	return error(Marker(id, log))
 
-fn events(log: String) String:
+fn events(log String) String:
 	return read_file(log).wait().get().decode_utf8() or ""
 
-fn call_twice(log: String) Void!:
+fn call_twice(log String) Void!:
 	status := failed(1, log.clone()).is_error
 	expect_equal(status(), true)?
 	expect_equal(status(), true)?
@@ -32,7 +32,7 @@ test "a bound native method owns its temporary receiver and closes it once":
 	call_twice(log.clone())?
 	expect_equal(events(log), "1,")?
 
-fn named(log: String) Void!:
+fn named(log String) Void!:
 	held := failed(2, log.clone())
 	status := held.is_error
 	expect_equal(status(), true)?
@@ -47,16 +47,16 @@ test "a bound native method over a named receiver closes it once, not twice":
 // closes it. Its id names the file the close appends to, since it has nowhere to keep a
 // log path.
 type Tag:
-	id: Int
+	id Int
 
 // The host temp root, since a hard-coded /tmp does not exist on Windows.
-fn tag_log(id: Int) String!:
+fn tag_log(id Int) String!:
 	return ok(f"{ temporary_root()?}/ms-bound-native-tag-{id}")
 
 fn move Tag.close() Void!:
 	append_file(tag_log(self.id)?, "closed,").wait()?
 
-fn borrowed_status(result: Int!Tag) Bool:
+fn borrowed_status(result Int!Tag) Bool:
 	check := result.is_error
 	return check()
 
@@ -67,7 +67,7 @@ test "a method value over a borrowed scalar resource leaves the close to its own
 	expect_equal(events(log.clone()), "closed,")?
 	remove(log)?
 
-fn borrow_then_check(id: Int, log: String) Void!:
-	result: Int!Tag := error(Tag(id))
+fn borrow_then_check(id Int, log String) Void!:
+	result Int!Tag := error(Tag(id))
 	expect_equal(borrowed_status(result), true)?
 	expect_equal(read_file(log.clone()).wait().is_error(), true)?

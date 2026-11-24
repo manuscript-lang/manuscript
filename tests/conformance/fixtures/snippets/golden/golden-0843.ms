@@ -1,4 +1,4 @@
 // conform: tags=diagnostics
 // conform: phase=check
 interface Read:
-    fn read(limit: Int? = null) Int
+    fn read(limit Int? = null) Int

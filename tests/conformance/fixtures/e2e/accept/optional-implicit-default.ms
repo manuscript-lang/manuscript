@@ -3,10 +3,10 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Config:
-	name: String
-	limit: Int?
+	name String
+	limit Int?
 
-fn find(name: String, limit: Int?, tag: String?) Int:
+fn find(name String, limit Int?, tag String?) Int:
 	l := limit
 	if l != null: return l
 

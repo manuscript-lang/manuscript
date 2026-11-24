@@ -3,19 +3,19 @@
 // conform: origin=tests/e2e/testdata/accept/typed-alternative-lets-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
-fn halve(n: Int) Int?:
+fn halve(n Int) Int?:
     if n % 2 != 0:
         return null
 
     return (n / 2)
 
-fn parse(n: Int) Int!Error:
+fn parse(n Int) Int!Error:
     if n < 0:
         return error(cause: Error("negative"))
 
     return ok(value: n)
 
-fn matched(n: Int) Int:
+fn matched(n Int) Int:
     found := halve(n: n)
 
     match found:
@@ -24,7 +24,7 @@ fn matched(n: Int) Int:
         null:
             return 0 - 1
 
-fn twice(n: Int) Int:
+fn twice(n Int) Int:
     found := halve(n: n)
     var total = 0
 
@@ -42,7 +42,7 @@ fn twice(n: Int) Int:
 
     return total
 
-fn results(n: Int) String:
+fn results(n Int) String:
     parsed := parse(n: n)
 
     match parsed:
@@ -51,11 +51,11 @@ fn results(n: Int) String:
         error(cause):
             return cause.message
 
-fn formatted(n: Int) String:
+fn formatted(n Int) String:
     found := halve(n: n)
     return f"{found}"
 
-fn captured(n: Int) Int:
+fn captured(n Int) Int:
     found := halve(n: n)
     read := fn() Int:
         match found:

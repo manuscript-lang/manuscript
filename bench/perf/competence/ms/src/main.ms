@@ -8,15 +8,15 @@ interface Shape:
 	fn area() Int
 
 type Sq:
-	s: Int
+	s Int
 
 type Rect:
-	w: Int
-	h: Int
+	w Int
+	h Int
 
 type Tri:
-	b: Int
-	h: Int
+	b Int
+	h Int
 
 fn Sq.area() Int:
 	return self.s * self.s
@@ -28,27 +28,27 @@ fn Tri.area() Int:
 	return self.b * self.h / 2
 
 type Item:
-	key: Int
-	name: String
+	key Int
+	name String
 
 type Fail:
-	code: Int
+	code Int
 
 type P:
-	x: Int
-	y: Int
-	vx: Int
-	vy: Int
+	x Int
+	y Int
+	vx Int
+	vy Int
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
-fn fib(n: Int) Int:
+fn fib(n Int) Int:
 	if n < 2: return n
 	return fib(n - 1) + fib(n - 2)
 
-fn dispatch(n: Int) Int:
-	shapes: List[Shape] := [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
+fn dispatch(n Int) Int:
+	shapes List[Shape] := [Sq(3), Rect(2, 5), Tri(4, 6), Sq(7)]
 	var total = 0
 	var i = 0
 
@@ -58,14 +58,14 @@ fn dispatch(n: Int) Int:
 
 	return total
 
-fn compare(left: Int, right: Int) Int:
+fn compare(left Int, right Int) Int:
 	if left < right: return -1
 	if left > right: return 1
 
 	return 0
 
-fn sorting(n: Int) Int:
-	var v: List[Int] = []
+fn sorting(n Int) Int:
+	var v List[Int] = []
 	var i = 0
 
 	while i < n:
@@ -75,9 +75,9 @@ fn sorting(n: Int) Int:
 	s := v.sorted(compare)
 	return s.get(0) + s.get(n / 2) + s.get(n - 1)
 
-fn closures(n: Int) Int:
+fn closures(n Int) Int:
 	base := 3
-	f := fn(x: Int) Int:
+	f := fn(x Int) Int:
 		return x * base + 1
 	var total = 0
 	var i = 0
@@ -88,7 +88,7 @@ fn closures(n: Int) Int:
 
 	return total
 
-fn text_build_parse(n: Int) Int:
+fn text_build_parse(n Int) Int:
 	var b = ""
 	var i = 0
 
@@ -102,8 +102,8 @@ fn text_build_parse(n: Int) Int:
 		total += p.parse_int() or 0
 	return total
 
-fn word_map(n: Int) Int:
-	var words: List[String] = []
+fn word_map(n Int) Int:
+	var words List[String] = []
 	var i = 0
 
 	while i < 1000:
@@ -120,15 +120,15 @@ fn word_map(n: Int) Int:
 
 	return m.length() + m.get_or("word7", 0)
 
-fn check(i: Int) Result[Int, Fail]:
+fn check(i Int) Result[Int, Fail]:
 	if i % 1000 == 999: return error(Fail(i))
 	return ok(i)
 
-fn step(i: Int) Result[Int, Fail]:
+fn step(i Int) Result[Int, Fail]:
 	v := check(i)?
 	return ok(v + 1)
 
-fn errors(n: Int) Int:
+fn errors(n Int) Int:
 	var total = 0
 	var i = 0
 
@@ -142,8 +142,8 @@ fn errors(n: Int) Int:
 
 	return total
 
-fn records(n: Int) Int:
-	var items: List[Item] = []
+fn records(n Int) Int:
+	var items List[Item] = []
 	var i = 0
 
 	while i < n:
@@ -160,12 +160,12 @@ fn records(n: Int) Int:
 
 	return total
 
-fn grid2d(n: Int) Int:
-	var g: List[List[Int]] = []
+fn grid2d(n Int) Int:
+	var g List[List[Int]] = []
 	var i = 0
 
 	while i < n:
-		var row: List[Int] = []
+		var row List[Int] = []
 		var j = 0
 
 		while j < n:
@@ -194,10 +194,10 @@ fn grid2d(n: Int) Int:
 
 	return total
 
-fn bump(p: P) P:
+fn bump(p P) P:
 	return P(p.x + p.vx, p.y + p.vy, p.vx, p.vy)
 
-fn structs(n: Int) Int:
+fn structs(n Int) Int:
 	var p = P(0, 0, 1, 2)
 	var i = 0
 
@@ -207,8 +207,8 @@ fn structs(n: Int) Int:
 
 	return p.x + p.y
 
-fn stack_ops(n: Int) Int:
-	var s: List[Int] = []
+fn stack_ops(n Int) Int:
+	var s List[Int] = []
 	var total = 0
 	var i = 0
 
@@ -223,12 +223,12 @@ fn stack_ops(n: Int) Int:
 
 	return total + s.length()
 
-fn optionals(n: Int) Int:
+fn optionals(n Int) Int:
 	var total = 0
 	var i = 0
 
 	while i < n:
-		var o: Int? = null
+		var o Int? = null
 		if i % 5 != 0:
 			o = i
 
@@ -243,7 +243,7 @@ fn optionals(n: Int) Int:
 
 	return total
 
-fn sets(n: Int) Int:
+fn sets(n Int) Int:
 	var s = Set[Int]()
 	var i = 0
 
@@ -261,7 +261,7 @@ fn sets(n: Int) Int:
 
 	return hits + s.length()
 
-fn chars(n: Int) Int:
+fn chars(n Int) Int:
 	var text = "the quick brown fox jumps over the lazy dog "
 	var total = 0
 	var r = 0
@@ -274,7 +274,7 @@ fn chars(n: Int) Int:
 
 	return total
 
-fn timed(name: String, run: fn() Int) Void:
+fn timed(name String, run fn() Int) Void:
 	t := monotonic()
 	r := run()
 	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")

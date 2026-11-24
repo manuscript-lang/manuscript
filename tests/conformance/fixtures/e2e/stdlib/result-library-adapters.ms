@@ -7,22 +7,22 @@ import (
 )
 
 enum InputFailure:
-	Binary(cause: Error)
-	Time(cause: Error)
+	Binary(cause Error)
+	Time(cause Error)
 	MissingPrefix
-	MissingKey(value: Int)
+	MissingKey(value Int)
 
-fn read_number(data: Bytes) UInt64!InputFailure:
+fn read_number(data Bytes) UInt64!InputFailure:
 	decoded := data.uvarint(0).map_error(fn cause: InputFailure.Binary(cause.clone()))?
 	return ok(decoded.value)
 
-fn read_duration(text: String) Duration!InputFailure:
+fn read_duration(text String) Duration!InputFailure:
 	return parse_duration(text).map_error(fn cause: InputFailure.Time(cause.clone()))
 
-fn read_prefixed(text: String) String!InputFailure:
+fn read_prefixed(text String) String!InputFailure:
 	return ok_or(text.cut_prefix("name="), InputFailure.MissingPrefix)
 
-fn sorted_index(values: List[Int], target: Int) Int!InputFailure:
+fn sorted_index(values List[Int], target Int) Int!InputFailure:
 	position := values.binary_search(target)
 	if not position.found: return error(InputFailure.MissingKey(target))
 

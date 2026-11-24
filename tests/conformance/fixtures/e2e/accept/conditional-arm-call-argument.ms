@@ -6,20 +6,20 @@ import (
 )
 
 type Options:
-	harness: String
-	tag: String
+	harness String
+	tag String
 
-fn measure(name: String) Int?:
+fn measure(name String) Int?:
 	return name.length()
 
-fn owned_options(options: Options, oracle: Bool) Int:
+fn owned_options(options Options, oracle Bool) Int:
 	var local = options.clone()
 	return (
 		measure(if oracle: "oracle" else: local.harness)
 		or panic("called Optional.get() on null")
 	)
 
-fn consumed_options(options: Options, oracle: Bool) Int:
+fn consumed_options(options Options, oracle Bool) Int:
 	return (
 		measure(if oracle: "oracle" else: options.harness)
 		or panic("called Optional.get() on null")

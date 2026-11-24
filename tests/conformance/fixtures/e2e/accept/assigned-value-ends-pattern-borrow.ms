@@ -3,12 +3,12 @@
 import expect_equal from "@std/test/test.ms"
 
 enum State:
-	Name(text: String)
+	Name(text String)
 	Done
 
 // The payload `text` is last read inside the value assigned to `state`; the old value is only
 // released once that value is built, so the assignment does not conflict with the borrow.
-fn step(move start: String) String:
+fn step(move start String) String:
 	var state = State.Name(start)
 	match state:
 		Name(text):

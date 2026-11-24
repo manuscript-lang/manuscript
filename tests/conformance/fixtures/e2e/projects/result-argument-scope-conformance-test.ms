@@ -6,7 +6,7 @@ import second, second_generic from "./second.ms"
 import Cause from "./domain.ms"
 import expect_true, fail from "@std/test/test.ms"
 
-fn describe(r: Int!) String:
+fn describe(r Int!) String:
     match r:
         ok(_): return "unexpected success"
         error(cause):

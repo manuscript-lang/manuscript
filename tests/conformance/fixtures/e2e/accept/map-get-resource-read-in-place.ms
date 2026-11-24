@@ -3,19 +3,19 @@
 // `if found := m.get(k)` reads the element in place: the map keeps it, so the element closes once,
 // when the map does, not at the end of the `if`.
 type Handle:
-	id: Int
+	id Int
 
 fn move Handle.close() Void!:
 	print(f"closed {self.id}")
 
-fn read(m: Map[String, Handle]) Int:
+fn read(m Map[String, Handle]) Int:
 	found := m.get("a")
 	if found != null: return found.id
 
 	return 0
 
 export fn main() Int:
-	var m: Map[String, Handle] = {}
+	var m Map[String, Handle] = {}
 	m["a"] = Handle(1)
 
 	first := read(m)

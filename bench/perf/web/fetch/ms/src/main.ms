@@ -7,7 +7,7 @@ import (
 	monotonic, nanoseconds from "@std/time.ms",
 )
 
-fn worker(url: String, nanos: Int) Int:
+fn worker(url String, nanos Int) Int:
 	var f = fetcher(FetcherOptions(cookies: url.contains("/cookie"))).get()
 	started := monotonic()
 	var n = 0
@@ -29,7 +29,7 @@ fn main() Void:
 	conns := args.get(1).parse_int() or panic("called Optional.get() on null")
 	secs := args.get(2).parse_int() or panic("called Optional.get() on null")
 	var total = 0
-	var running: List[Promise[Int]] = []
+	var running List[Promise[Int]] = []
 	for i in 0..conns:
 		running.append(promise(fn: ok(worker(url.clone(), secs * 1000000000))))
 	for r in wait_all(running).get():

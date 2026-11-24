@@ -12,7 +12,7 @@
 import Closeable from "@std/core.ms"
 
 type Token:
-	id: Int
+	id Int
 
 fn move Token.close() Void!:
 	print(f"close {self.id}")
@@ -23,7 +23,7 @@ fn owned() Int!:
 	_second := Token(2)
 	return error(Error("original body", kind: "EBODY", details: {"id": "body"}))
 
-fn borrowed(cause: Error) Int!:
+fn borrowed(cause Error) Int!:
 	_resource := Token(3)
 	return error(cause)
 

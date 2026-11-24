@@ -8,12 +8,12 @@ import (
 )
 
 type Version:
-	major: Int
+	major Int
 
-fn Version.compare(other: Version) Int:
+fn Version.compare(other Version) Int:
 	return self.major - other.major
 
-fn larger[T: Comparable](left: T, right: T) T:
+fn larger[T Comparable](left T, right T) T:
 	return max(left, right)
 
 test "max and min over built-in types":
@@ -33,13 +33,13 @@ test "a source impl drives max, min, and generic bounds":
 	expect_true((larger(Version(5), Version(2)).major == 5))?
 
 test "compare through an explicit view":
-	left: Comparable := 1
+	left Comparable := 1
 	expect_true((left.compare(2) < 0))?
 	expect_true(((Version(3).compare(Version(3)) == 0)))?
 
 test "max and min over a list":
 	numbers := [3, 9, 2]
-	empty: List[Int] := []
+	empty List[Int] := []
 	expect_true((numbers.max() == 9 and numbers.min() == 2))?
 	expect_true(((empty.max() == null) and (empty.min() == null)))?
 	expect_true(([Version(4), Version(8)].max() == Version(8)))?

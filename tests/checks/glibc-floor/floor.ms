@@ -14,7 +14,7 @@ import (
 	nanoseconds, sleep from "@std/time.ms",
 )
 
-fn square(n: Int) Int:
+fn square(n Int) Int:
 	return n * n
 
 fn main() Void:

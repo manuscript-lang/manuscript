@@ -6,7 +6,7 @@ import Queue from "@std/queues.ms"
 interface Read:
     fn get() Int
 type Val:
-    val: Int
+    val Int
 impl Read for Val:
     fn get() Int:
         return self.val

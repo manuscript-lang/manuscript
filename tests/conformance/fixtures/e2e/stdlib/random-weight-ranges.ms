@@ -6,7 +6,7 @@ import (
 	expect_equal, expect_error, expect_none, expect_some from "@std/test/test.ms",
 )
 
-fn compare_draws(weights: List[Float], ordinary: List[Float]) Void!:
+fn compare_draws(weights List[Float], ordinary List[Float]) Void!:
 	var scaled = seeded(1)
 	var reference = seeded(1)
 	var draws = seeded(1)

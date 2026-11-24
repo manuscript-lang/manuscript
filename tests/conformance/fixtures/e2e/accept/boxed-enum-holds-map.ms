@@ -3,19 +3,19 @@
 import expect_equal from "@std/test/test.ms"
 
 type Index:
-	name: String
-	words: Map[String, Int]
+	name String
+	words Map[String, Int]
 
 // A self-containing enum keeps its payload in a heap block, so a map, a set and a record that
 // holds a map have to move between their memory and the block's slots in every backend.
 enum Tree:
-	Leaf(v: Int)
-	Node(left: Tree, right: Tree)
-	Named(m: Map[String, Tree])
-	Seen(s: Set[Int])
-	Held(index: Index)
+	Leaf(v Int)
+	Node(left Tree, right Tree)
+	Named(m Map[String, Tree])
+	Seen(s Set[Int])
+	Held(index Index)
 
-fn size(t: Tree) Int:
+fn size(t Tree) Int:
 	match t:
 		Leaf(v):
 			return v

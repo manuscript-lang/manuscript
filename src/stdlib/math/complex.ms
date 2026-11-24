@@ -23,28 +23,28 @@ import (
 // `Complex(re: 1.0, im: 2.0).multiply(complex(0.0, 1.0))` is `-2+1i`.
 export type Complex:
 	// The real part, a Float that may be infinite or NaN.
-	re: Float
+	re Float
 	// The imaginary part, a Float that may be infinite or NaN.
-	im: Float
+	im Float
 
 // Returns the sum, adding real and imaginary parts separately with Float rounding.
-fn Complex.add(other: Complex) Complex:
+fn Complex.add(other Complex) Complex:
 	return Complex(re: self.re + other.re, im: self.im + other.im)
 
 // Returns the difference, subtracting real and imaginary parts separately with
 // Float rounding.
-fn Complex.subtract(other: Complex) Complex:
+fn Complex.subtract(other Complex) Complex:
 	return Complex(re: self.re - other.re, im: self.im - other.im)
 
 // Returns the product `(a+bi)(c+di) = (ac-bd) + (ad+bc)i` with Float rounding.
-fn Complex.multiply(other: Complex) Complex:
+fn Complex.multiply(other Complex) Complex:
 	return Complex(
 		re: self.re * other.re - self.im * other.im,
 		im: self.re * other.im + self.im * other.re,
 	)
 
 // Returns the product with a real factor.
-fn Complex.scale(factor: Float) Complex:
+fn Complex.scale(factor Float) Complex:
 	return Complex(re: self.re * factor, im: self.im * factor)
 
 // Returns the quotient. Dividing by zero follows Float rules and gives infinities
@@ -53,7 +53,7 @@ fn Complex.scale(factor: Float) Complex:
 // squares. Finite operands whose parts are near the Float range limits are first
 // scaled by exact powers of two so the quotient keeps its precision. A numerator is
 // scaled only enough to stay in range, so its smaller part survives.
-fn Complex.divide(other: Complex) Complex:
+fn Complex.divide(other Complex) Complex:
 	sn := self.re.abs().max(self.im.abs())
 	sd := other.re.abs().max(other.im.abs())
 
@@ -200,7 +200,7 @@ fn Complex.sqrt() Complex:
 // 0 when the exponent's real part is positive, and infinity otherwise. A real integer
 // exponent of magnitude 100 or less multiplies out exactly; any other exponent uses
 // `exp(exponent * log(self))`.
-fn Complex.pow(exponent: Complex) Complex:
+fn Complex.pow(exponent Complex) Complex:
 	if self.re == 0.0 and self.im == 0.0:
 		if exponent.re == 0.0 and exponent.im == 0.0: return Complex(re: 1.0, im: 0.0)
 		if exponent.re > 0.0: return Complex(re: 0.0, im: 0.0)
@@ -401,12 +401,12 @@ fn Complex.to_string() String:
 	return f"{self.re}+{self.im}i"
 
 // Returns the complex number `re + im*i`.
-export fn complex(re: Float, im: Float) Complex:
+export fn complex(re Float, im Float) Complex:
 	return Complex(re: re, im: im)
 
 // Returns the number with magnitude `radius` and angle `theta` in radians.
 // `complex_polar(1.0, pi)` is about -1, with a tiny imaginary part from rounding.
-export fn complex_polar(radius: Float, theta: Float) Complex:
+export fn complex_polar(radius Float, theta Float) Complex:
 	return Complex(re: radius * cos(theta), im: radius * sin(theta))
 
 // Returns the imaginary unit `i`.
@@ -416,13 +416,13 @@ export fn imaginary_unit() Complex:
 // The magnitude and angle of a complex number, from `to_polar`.
 export type PolarParts:
 	// The magnitude, never negative.
-	radius: Float
+	radius Float
 	// The angle in radians, from -pi through pi.
-	theta: Float
+	theta Float
 
 // Raises `base` to the non-negative integer power `count` by repeated squaring, then
 // takes the reciprocal when `invert` is set.
-fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
+fn integer_power(base Complex, count Int, invert Bool) Complex:
 	var result = Complex(re: 1.0, im: 0.0)
 	var factor = base
 	var remaining = count
@@ -439,34 +439,34 @@ fn integer_power(base: Complex, count: Int, invert: Bool) Complex:
 // The special-value rows of C99 Annex G for inputs with an infinite or NaN part. Each
 // returns `null` when the general formula applies. Where the standard leaves a sign or
 // a zero unspecified, the result matches CPython's `cmath`.
-fn is_infinite_part(value: Float) Bool:
+fn is_infinite_part(value Float) Bool:
 	return not value.is_finite() and not value.is_nan()
 
-fn is_zero_or_nan_part(value: Float) Bool:
+fn is_zero_or_nan_part(value Float) Bool:
 	return value == 0.0 or value.is_nan()
 
-fn exp_special(z: Complex) Complex?:
+fn exp_special(z Complex) Complex?:
 	// exp(-inf + yi) is a zero, whatever the infinite or NaN phase.
 	if z.re == -infinity and not z.im.is_finite(): return Complex(re: 0.0, im: 0.0)
 	if z.re == infinity and z.im.is_nan(): return Complex(re: infinity, im: z.im)
 
 	return null
 
-fn sin_special(z: Complex) Complex?:
+fn sin_special(z Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
 	if z.re.is_nan() and (z.im == 0.0 or is_infinite_part(z.im)):
 		return Complex(re: z.re, im: z.im)
 
 	return null
 
-fn cos_special(z: Complex) Complex?:
+fn cos_special(z Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.im, im: 0.0)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: 0.0)
 	if z.re.is_nan() and is_infinite_part(z.im): return Complex(re: infinity, im: z.re)
 
 	return null
 
-fn tan_special(z: Complex) Complex?:
+fn tan_special(z Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
 
 	// tan(x + inf i) is `sign(b) i` for any x, even an infinite or NaN one.
@@ -475,21 +475,21 @@ fn tan_special(z: Complex) Complex?:
 
 	return null
 
-fn sinh_special(z: Complex) Complex?:
+fn sinh_special(z Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.re, im: z.im)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
 	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: infinity, im: z.im)
 
 	return null
 
-fn cosh_special(z: Complex) Complex?:
+fn cosh_special(z Complex) Complex?:
 	if z.re == 0.0 and z.im.is_nan(): return Complex(re: z.im, im: 0.0)
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: 0.0)
 	if is_infinite_part(z.re) and z.im.is_nan(): return Complex(re: infinity, im: z.im)
 
 	return null
 
-fn tanh_special(z: Complex) Complex?:
+fn tanh_special(z Complex) Complex?:
 	if z.re.is_nan() and z.im == 0.0: return Complex(re: z.re, im: z.im)
 
 	// tanh(inf + yi) is `sign(a)` for any y, even an infinite or NaN one.
@@ -498,7 +498,7 @@ fn tanh_special(z: Complex) Complex?:
 
 	return null
 
-fn asin_special(z: Complex) Complex?:
+fn asin_special(z Complex) Complex?:
 	half_pi := 1.5707963267948966
 	if z.re.is_finite() and is_infinite_part(z.im): return Complex(
 		re: copy_sign(0.0, z.re),
@@ -518,7 +518,7 @@ fn asin_special(z: Complex) Complex?:
 
 	return null
 
-fn acos_special(z: Complex) Complex?:
+fn acos_special(z Complex) Complex?:
 	half_pi := 1.5707963267948966
 	if z.re.is_finite() and is_infinite_part(z.im): return Complex(
 		re: half_pi,
@@ -539,7 +539,7 @@ fn acos_special(z: Complex) Complex?:
 
 	return null
 
-fn atan_special(z: Complex) Complex?:
+fn atan_special(z Complex) Complex?:
 	half_pi := 1.5707963267948966
 	if is_infinite_part(z.re) and not z.im.is_nan(): return Complex(
 		re: copy_sign(half_pi, z.re),
@@ -561,7 +561,7 @@ fn atan_special(z: Complex) Complex?:
 // Multiplies two factors where one may be an overflowed (infinite) trig or hyperbolic
 // value. An exact zero times such an infinity stays a signed zero, where plain `*`
 // would give NaN.
-fn product(left: Float, right: Float) Float:
+fn product(left Float, right Float) Float:
 	if left == 0.0 and not right.is_finite() and not right.is_nan():
 		return left * copy_sign(1.0, right)
 	if right == 0.0 and not left.is_finite() and not left.is_nan():
@@ -572,7 +572,7 @@ fn product(left: Float, right: Float) Float:
 // A finite sinh/cosh argument can overflow before a small trig factor is
 // applied. Grow that factor through exp(|argument|)/2 without materializing
 // the full exponential; its reciprocal term is negligible in this range.
-fn hyperbolic_product(factor: Float, argument: Float, value: Float) Float:
+fn hyperbolic_product(factor Float, argument Float, value Float) Float:
 	if value.is_finite() or value.is_nan() or not argument.is_finite():
 		return product(factor, value)
 
@@ -583,12 +583,12 @@ fn hyperbolic_product(factor: Float, argument: Float, value: Float) Float:
 	return product(result, quarter / 2.0) * copy_sign(1.0, value)
 
 // Computes sin(2*x) without overflowing a finite phase when doubling it.
-fn sin_double(phase: Float) Float:
+fn sin_double(phase Float) Float:
 	if phase.abs() > 8.988465674311579e307: return 2.0 * sin(phase) * cos(phase)
 	return sin(2.0 * phase)
 
 // Divides by the larger part of the divisor (Smith's algorithm).
-fn smith_divide(numerator: Complex, other: Complex) Complex:
+fn smith_divide(numerator Complex, other Complex) Complex:
 	abs_re := other.re.abs()
 	abs_im := other.im.abs()
 

@@ -4,8 +4,8 @@
 import promise from "@std/concurrency/promise.ms"
 
 type Door:
-	id: Int
-	opened: Bool
+	id Int
+	opened Bool
 
 fn move Door.close() Void!:
 	print("close door")

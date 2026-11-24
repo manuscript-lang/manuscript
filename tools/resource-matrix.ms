@@ -49,22 +49,22 @@ fn main() Void:
 // One standard operation: the receiver it runs on, its method, its arguments (`@V@` is
 // the resource argument) and what to do with a result.
 type Operation:
-	name: String
-	setup: String
-	receiver: String
-	method: String
-	arguments: String
-	binds: String
-	uses: String
+	name String
+	setup String
+	receiver String
+	method String
+	arguments String
+	binds String
+	uses String
 
 fn op(
-	move name: String,
-	move setup: String,
-	move receiver: String,
-	move method: String,
-	move arguments: String,
-	move binds: String,
-	move uses: String,
+	move name String,
+	move setup String,
+	move receiver String,
+	move method String,
+	move arguments String,
+	move binds String,
+	move uses String,
 ) Operation:
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
 
@@ -72,11 +72,11 @@ fn list_setup() String: return "var items = [mk(1)]"
 
 fn map_setup() String: return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
 
-fn optional_setup(present: Bool) String:
+fn optional_setup(present Bool) String:
 	if present: return "held: Marker? := mk(1)"
 	return "held: Marker? := none"
 
-fn result_setup(good: Bool) String:
+fn result_setup(good Bool) String:
 	if good: return "held: Marker!Error := ok(mk(1))"
 	return "held: Marker!Error := error(Error(\"x\"))"
 
@@ -258,14 +258,14 @@ fn exempt() List[String]:
 	]
 
 // The type parameters of the standard type `name`, as the declarations write them.
-fn type_parameters(name: String) List[String]:
+fn type_parameters(name String) List[String]:
 	if name == "Map": return ["T", "U"]
 	if name == "Result": return ["T", "E"]
 
 	return ["T"]
 
 // The words of a signature, split at the punctuation of types.
-fn words(text: String) List[String]:
+fn words(text String) List[String]:
 	var spaced = text.clone()
 	for mark in ["(", ")", "[", "]", ",", ":", "?", "!", "=", "&", "<", ">", ";"]:
 		spaced = spaced.replace(mark, " ")
@@ -277,7 +277,7 @@ fn words(text: String) List[String]:
 
 // Whether the declaration `signature` changes its receiver, or takes or returns one of
 // `names` outside a callback.
-fn mentions_parameter(signature: String, names: List[String]) Bool:
+fn mentions_parameter(signature String, names List[String]) Bool:
 	if signature.contains("var fn"): return true
 
 	parts := signature.split("fn ")
@@ -297,7 +297,7 @@ fn mentions_parameter(signature: String, names: List[String]) Bool:
 		if names.contains(word): return true
 	return false
 
-fn field(entry: JsonValue, key: String) String:
+fn field(entry JsonValue, key String) String:
 	value := entry.get(key)
 	if value != null: return (value.as_string() or "").clone()
 
@@ -305,7 +305,7 @@ fn field(entry: JsonValue, key: String) String:
 
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
-fn declared_operations(ms: String, name: String) List[String]!:
+fn declared_operations(ms String, name String) List[String]!:
 	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8() or "")?
 	var found = List[String]()
@@ -324,7 +324,7 @@ fn declared_operations(ms: String, name: String) List[String]!:
 
 // How many standard operations that mention a type parameter have neither a row nor a
 // reason.
-fn uncovered(ms: String, ops: List[Operation]) Int:
+fn uncovered(ms String, ops List[Operation]) Int:
 	var known = List[String]()
 	kinds := ["list", "map", "set", "optional", "result"]
 	titles := ["List", "Map", "Set", "Optional", "Result"]
@@ -367,7 +367,7 @@ fn uncovered(ms: String, ops: List[Operation]) Int:
 
 // The program for `o`, called as `call_form` (`direct` or `bound`), with its resource
 // argument made as `arg_form`.
-fn program(o: Operation, call_form: String, arg_form: String) String:
+fn program(o Operation, call_form String, arg_form String) String:
 	var lines = [o.setup.clone()]
 	var argument = ""
 
@@ -395,7 +395,7 @@ fn program(o: Operation, call_form: String, arg_form: String) String:
 	return f"{HEADER}\n{body}\n{FOOTER}\n"
 
 // How many times `prefix` + `id` appears as a line, for each id made.
-fn count(lines: List[String], prefix: String) Map[String, Int]:
+fn count(lines List[String], prefix String) Map[String, Int]:
 	var counts = Map[String, Int]()
 
 	for line in lines:

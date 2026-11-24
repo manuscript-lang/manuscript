@@ -7,7 +7,7 @@ import (
 )
 
 // Fails unless `result` is an error of `kind` whose message starts with `prefix`.
-fn expect_failure(result: String!, kind: String, prefix: String) Void!:
+fn expect_failure(result String!, kind String, prefix String) Void!:
 	if value := result: return error(Error(f"expected {kind}, got ok({value})"))
 
 	cause := result.err()
@@ -36,10 +36,10 @@ test "repeat is plain text and clamps nonpositive counts":
 	expect_equal("a,,b".split(","), ["a", "", "b"])?
 	expect_equal(" \té \n".trim(), "é")?
 
-	invalid: String! := error(Error("string: invalid input", kind: "EINVAL"))
+	invalid String! := error(Error("string: invalid input", kind: "EINVAL"))
 	expect_equal("a".normalize("invalid"), invalid)?
 
-	scalar_error: String! := error(Error("string: invalid input", kind: "EINVAL"))
+	scalar_error String! := error(Error("string: invalid input", kind: "EINVAL"))
 	expect_equal(from_scalars([55296]), scalar_error)?
 
 test "bytes copy slice search and UTF8 validation":
@@ -51,7 +51,7 @@ test "bytes copy slice search and UTF8 validation":
 	expect_equal(data.slice(1, 3).get(), Bytes([1, 255]))?
 	expect_equal(data.slice(-3, -1).get(), Bytes([1, 255]))?
 
-	byte_range: Bytes! := error(Error("binary: value out of range", kind: "ERANGE"))
+	byte_range Bytes! := error(Error("binary: value out of range", kind: "ERANGE"))
 	expect_equal(data.slice(1, 10), byte_range)?
 	expect_equal(data.slice(-10, 2), byte_range)?
 	expect_equal(data.reversed(), Bytes([1, 255, 1, 0]))?
@@ -62,11 +62,11 @@ test "bytes copy slice search and UTF8 validation":
 	expect_equal("é".to_bytes().decode_utf8(), "é")?
 
 test "Bytes values direct bound and free calls return independent lists":
-	var input: List[UInt8] = [0, 1, 255]
+	var input List[UInt8] = [0, 1, 255]
 	data := Bytes(input.clone())
 	input.set(0, 42)
 
-	extract: fn() List[UInt8] := data.values
+	extract fn() List[UInt8] := data.values
 	expect_false(data.values() != [0, 1, 255] or extract() != values(data))?
 
 	var direct = data.values()
@@ -77,7 +77,7 @@ test "Bytes values direct bound and free calls return independent lists":
 	free.reverse()
 	expect_false(data.values() != [0, 1, 255] or extract() != [0, 1, 255])?
 
-	empty: List[UInt8] := []
+	empty List[UInt8] := []
 	expect_false(
 		Bytes(empty.clone()).values() != empty or Bytes([255]).values() != [255]
 	)?
@@ -110,7 +110,7 @@ test "string and bytes builders freeze":
 test "empty text splits into one part and case mapping is full Unicode":
 	expect_equal("".split(","), [""])?
 
-	none_requested: List[String] := []
+	none_requested List[String] := []
 	expect_equal("".split(""), none_requested)?
 	expect_equal("ß".upper(), "SS")?
 	expect_equal("ﬁ".upper(), "FI")?

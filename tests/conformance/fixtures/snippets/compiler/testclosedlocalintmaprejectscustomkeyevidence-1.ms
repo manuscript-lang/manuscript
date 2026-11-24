@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/local_int_map_test.go:61 TestClosedLocalIntMapRejectsCustomKeyEvidence
 type Key:
-    value: Int
+    value Int
 
-fn Key.equals(other: Key) Bool: true
+fn Key.equals(other Key) Bool: true
 
 fn Key.hash() Int: 0
 

@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=documentation/core-language/modules/declarations.md:58
 export type CustomerId:
-    value: String
+    value String

@@ -3,7 +3,7 @@
 import expect_equal from "@std/test/test.ms"
 
 // Two arms that run the same checked stores on different operands.
-fn merge_sorted(left: List[Int], right: List[Int]) List[Int]:
+fn merge_sorted(left List[Int], right List[Int]) List[Int]:
 	var out = [0].repeated(left.length() + right.length())
 	var i = 0
 	var j = 0
@@ -27,14 +27,14 @@ fn merge_sorted(left: List[Int], right: List[Int]) List[Int]:
 	return out
 
 // Arms that own different strings stay separate branches.
-fn pick(flag: Bool, a: String, b: String) String:
+fn pick(flag Bool, a String, b String) String:
 	if flag:
 		return a + "!"
 	else:
 		return b + "?"
 
 // Arms that differ in a constant and in a value computed from the operands.
-fn clamp_count(x: Int, limit: Int) Int:
+fn clamp_count(x Int, limit Int) Int:
 	var count = 0
 	if x > limit:
 		count = count + limit + 1

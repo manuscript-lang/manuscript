@@ -28,18 +28,18 @@ import (
 )
 
 type Items:
-	items: List[Int?]
+	items List[Int?]
 
 type Payload:
-	count: Int
-	ok: Bool
-	nested: Items
-	level: Int
-	msg: String
-	time: Int
+	count Int
+	ok Bool
+	nested Items
+	level Int
+	msg String
+	time Int
 
 // The text a test's file sink received so far.
-fn written(path: String) String?!:
+fn written(path String) String?!:
 	data := read_file(path).wait()?
 	return ok(data.decode_utf8())
 
@@ -99,14 +99,14 @@ test "levels filter methods and function values":
 	logger.fatal("filtered")?
 	expect_equal((written(path)?), before)?
 
-	invalid: Void! := error(Error("logging: invalid input", kind: "EINVAL"))
+	invalid Void! := error(Error("logging: invalid input", kind: "EINVAL"))
 	expect_equal(logger.log(LogLevel.Silent, "invalid"), invalid)?
 
 type Service:
-	service: String
+	service String
 
 type Request:
-	request: Int
+	request Int
 
 test "child bindings snapshot values and merge without mutating inputs":
 	directory := temporary("manuscript-log-")?
@@ -135,7 +135,7 @@ test "limits and unencodable values reject before writing":
 	expect_equal((written(path)?), line)?
 
 	before := written(path)?
-	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(logger.info("xx"), limited)?
 
 	zero := create(
@@ -158,7 +158,7 @@ test "limits and unencodable values reject before writing":
 
 	unlimited := create(file_transport(path.clone())?, LoggerOptions(timestamp: false))?
 	bad := JsonValue.NumberValue("NaN")
-	invalid_data: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid_data Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	expect_equal(unlimited.info("bad", bad), invalid_data)?
 	expect_equal((written(path)?), before)?
 
@@ -192,13 +192,13 @@ test "stdout transport accepts records and leaves stdout open":
 	logger.flush()?
 
 type CaptureTransport:
-	path: String
-	suffix: String
+	path String
+	suffix String
 
-fn CaptureTransport.write(move data: String) Void!:
+fn CaptureTransport.write(move data String) Void!:
 	return self.write_bytes(data.to_bytes())
 
-fn CaptureTransport.write_bytes(move data: Bytes) Void!:
+fn CaptureTransport.write_bytes(move data Bytes) Void!:
 	if read_file(f"{self.path}{self.suffix}").wait().is_ok(): return error(
 		Error("logging: resource is closed", kind: "EBADF")
 	)
@@ -234,11 +234,11 @@ test "source transports receive complete records and close through their contrac
 	logger.close()?
 	expect_true(read_file(f"{path}.closed").wait().is_ok())?
 
-fn log_from_child(logger: Logger) Void!:
+fn log_from_child(logger Logger) Void!:
 	child := logger.child("worker")?
 	return child.info("from child")
 
-fn log_in_scope(path: String) Void!:
+fn log_in_scope(path String) Void!:
 	logger := create(
 		CaptureTransport(path.clone(), ".closed"),
 		LoggerOptions(timestamp: false),
@@ -258,7 +258,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
 	path := f"{directory.path()}/out.ndjson"
 	file := open(path, OpenMode.Write, OpenOptions(permissions: 420))?
 	logger := create(handle_transport(file), LoggerOptions(timestamp: false))?
-	invalid: Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
+	invalid Void! := error(Error("logging: invalid data", kind: "EBADMSG"))
 	nan := JsonValue.NumberValue("NaN")
 	expect_equal(logger.info("m", nan), invalid)?
 	expect_false(logger.child(nan).is_ok())?
@@ -269,7 +269,7 @@ test "unencodable fields are rejected and fields keep their shape under data":
 	expected := "{\"level\":30,\"msg\":\"m\",\"data\":{\"service\":\"a\"}}\n{\"level\":30,\"msg\":\"m\",\"data\":[1]}\n"
 	expect_equal((written(path)?), expected)?
 
-fn chatter(logger: Logger, name: String) Void!:
+fn chatter(logger Logger, name String) Void!:
 	for n in 0..3:
 		logger.info("m", name)?
 
@@ -295,12 +295,12 @@ test "loggers on several threads never interleave a record":
 
 // A transport that appends every record to a file.
 type Memory:
-	path: String
+	path String
 
-fn Memory.write(move data: String) Void!:
+fn Memory.write(move data String) Void!:
 	return append_file(self.path, data).wait()
 
-fn Memory.write_bytes(move data: Bytes) Void!:
+fn Memory.write_bytes(move data Bytes) Void!:
 	return self.write(data.decode_utf8() or "")
 
 fn Memory.flush() Void!:
@@ -312,7 +312,7 @@ fn Memory.duplicate() Transport!:
 fn move Memory.close() Void:
 	return
 
-fn recorded(path: String) String:
+fn recorded(path String) String:
 	return written(path).get_or(null) or ""
 
 test "messages are escaped and fields keep their shape under data":
@@ -371,7 +371,7 @@ test "the time field is a millisecond count and the size limit counts the newlin
 			max_bytes: plain.to_bytes().length() - 1,
 		),
 	)?
-	limited: Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
+	limited Void! := error(Error("logging: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(tight.info("ab"), limited)?
 	expect_equal(recorded(quiet.clone()), plain)?
 

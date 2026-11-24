@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn operator(c: String) Bool:
+fn operator(c String) Bool:
 	return "+-*/".contains(c)
 
 test "a one-byte needle in a short text":

@@ -6,7 +6,7 @@ interface Read:
     fn get() Int
 
 type Box:
-    value: Int  // 😀é
+    value Int  // 😀é
 
 fn Box.get() Int:
     return self.value

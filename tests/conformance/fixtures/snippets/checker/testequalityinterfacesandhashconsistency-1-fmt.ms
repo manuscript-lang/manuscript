@@ -2,8 +2,8 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/stdlib_revamp_test.go:15 TestEqualityInterfacesAndHashConsistency
 type Key:
-    id: Int
+    id Int
 
-fn Key.equals(other: Key) Bool: return true
+fn Key.equals(other Key) Bool: return true
 
 fn keys() Map[Key, Int]: return Map[Key, Int]()

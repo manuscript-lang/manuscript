@@ -78,7 +78,7 @@ test "combinations of every size keep their order":
 	expect_equal(combinations(values.clone(), 0), [[]])?
 	expect_equal(combinations(List[Int](), 0), [[]])?
 
-	var many: List[Int] = []
+	var many List[Int] = []
 	for i in 0..30: many.append(i)
 	expect_equal(combinations(many.clone(), 30), [many.clone()])?
 	expect_equal(combinations(many.clone(), 29).length(), 30)?
@@ -99,7 +99,7 @@ test "cycle empty input skips repetition":
 	expect_equal(cycle(["a", "b"], 2), ["a", "b", "a", "b"])?
 
 test "full-size combinations do not consume call depth":
-	var values: List[Int] = []
+	var values List[Int] = []
 	for i in 0..1000000:
 		values.append(i)
 
@@ -125,7 +125,7 @@ test "zero-size permutations preserve shape and out-of-range sizes are empty":
 	expect_equal(permutations(empty, 0), [List[Int]()])?
 	expect_equal(permutations([[1], [2]], 0), [List[List[Int]]()])?
 
-	var values: List[Int] = []
+	var values List[Int] = []
 	for i in 0..100000:
 		values.append(i)
 	expect_equal(permutations(values, 0), [List[Int]()])?

@@ -1,15 +1,15 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
 type Key:
-	id: Int
+	id Int
 
 type Other:
-	id: Int
+	id Int
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
-fn same[T: Equal](left: T, right: T) Bool:
+fn same[T Equal](left T, right T) Bool:
 	return left.equals(right)
 
 export fn main() Int:

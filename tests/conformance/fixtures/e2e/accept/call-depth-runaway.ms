@@ -3,10 +3,10 @@
 // Runaway recursion ends the program with the stack overflow report and its own exit status; it is not recoverable.
 
 type Walker:
-	step: Int
-	limit: Int
+	step Int
+	limit Int
 
-fn Walker.walk(n: Int) Int:
+fn Walker.walk(n Int) Int:
 	if n == self.limit:
 		return 0
 

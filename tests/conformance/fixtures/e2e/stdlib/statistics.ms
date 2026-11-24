@@ -235,8 +235,8 @@ test "median keeps ordinary tiny and nonfinite behavior":
 	expect_equal((expect_some(median([nan, nan]))?).is_nan(), true)?
 
 type MeanCase:
-	values: List[Float]
-	expected: Float
+	values List[Float]
+	expected Float
 
 test "mean recovers finite overflow using exact binary64 rational cases":
 	// Expected values are the rounded exact sum of the binary64 inputs divided by
@@ -364,8 +364,8 @@ test "subnormal bins match an exact integer grid across signs and shifted ranges
 		for offset in [-20, 0, 20]:
 			for span in [1, 2, 4, 7, 13]:
 				for bins in [1, 2, 3, 4, 7, 17]:
-					var values: List[Float] = []
-					var expected: List[Int] = []
+					var values List[Float] = []
+					var expected List[Int] = []
 					for index in 0..bins: expected.append(0)
 
 					for position in 0..span + 1:

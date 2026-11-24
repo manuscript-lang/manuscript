@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Void:\n\tuse(fn(value, other: Int): return value + other)\n"
+    "fmt": "fn f() Void:\n\tuse(fn(value, other Int): return value + other)\n"
   }
 }

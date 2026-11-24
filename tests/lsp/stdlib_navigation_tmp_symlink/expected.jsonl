@@ -3,9 +3,9 @@
 {"jsonrpc":"2.0","id":2,"result":[{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":74,"character":15},"end":{"line":74,"character":21}}}]}
 {"jsonrpc":"2.0","id":3,"result":[{"uri":"manuscript-stdlib:///bytes.ms","range":{"start":{"line":19,"character":19},"end":{"line":19,"character":24}}}]}
 {"jsonrpc":"2.0","id":4,"result":[{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":74,"character":3},"end":{"line":74,"character":14}}},{"uri":"manuscript-stdlib:///core.ms","range":{"start":{"line":145,"character":9},"end":{"line":145,"character":20}}}]}
-{"jsonrpc":"2.0","id":5,"result":{"contents":{"kind":"markdown","value":"```manuscript\nstatus_kind: fn(Int) String\n```\n\neffects: pure (ambient authority only)\n\nThe kind of the `Error` a runtime status stands for (see the rows above)."},"range":{"start":{"line":74,"character":3},"end":{"line":74,"character":14}}}}
+{"jsonrpc":"2.0","id":5,"result":{"contents":{"kind":"markdown","value":"```manuscript\nstatus_kind fn(Int) String\n```\n\neffects: pure (ambient authority only)\n\nThe kind of the `Error` a runtime status stands for (see the rows above)."},"range":{"start":{"line":74,"character":3},"end":{"line":74,"character":14}}}}
 {"jsonrpc":"2.0","method":"textDocument/publishDiagnostics","params":{"uri":"manuscript-stdlib:///bytes.ms","version":1,"diagnostics":[]}}
-{"jsonrpc":"2.0","id":6,"result":[{"uri":"manuscript-stdlib:///internal/bytes.ms","range":{"start":{"line":16,"character":17},"end":{"line":16,"character":35}}}]}
+{"jsonrpc":"2.0","id":6,"result":[{"uri":"manuscript-stdlib:///internal/bytes.ms","range":{"start":{"line":11,"character":17},"end":{"line":11,"character":35}}}]}
 {"jsonrpc":"2.0","id":7,"result":[{"uri":"manuscript-stdlib:///internal/math.ms","range":{"start":{"line":136,"character":17},"end":{"line":136,"character":37}}}]}
-{"jsonrpc":"2.0","id":8,"result":[{"uri":"manuscript-stdlib:///internal/bytes.ms","range":{"start":{"line":16,"character":17},"end":{"line":16,"character":35}}}]}
+{"jsonrpc":"2.0","id":8,"result":[{"uri":"manuscript-stdlib:///internal/bytes.ms","range":{"start":{"line":11,"character":17},"end":{"line":11,"character":35}}}]}
 {"jsonrpc":"2.0","id":9,"result":null}

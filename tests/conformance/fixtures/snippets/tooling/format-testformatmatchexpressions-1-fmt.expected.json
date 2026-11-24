@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn read(values: List[Int]) Int:\n\tresult := match values.first():\n\t\tnumber:\n\t\t\tdoubled := number * 2\n\t\t\tdoubled\n\t\tnull: return 0\n\n\treturn result\n"
+    "fmt": "fn read(values List[Int]) Int:\n\tresult := match values.first():\n\t\tnumber:\n\t\t\tdoubled := number * 2\n\t\t\tdoubled\n\t\tnull: return 0\n\n\treturn result\n"
   }
 }

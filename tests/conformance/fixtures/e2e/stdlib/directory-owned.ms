@@ -16,7 +16,7 @@ test "a temporary directory binding is removed when its scope ends":
 	path := leaves_a_temporary() | expect_ok?
 	expect_false(stat(path).is_ok())?
 
-fn counts_entries(path: String) Int!:
+fn counts_entries(path String) Int!:
 	cursor := open_directory(path)?
 	var seen = 0
 

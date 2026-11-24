@@ -15,18 +15,18 @@ test "big integers exceed machine range without losing precision":
 	expect_equal(big_int_of_int(5).bit_xor(big_int_of_int(3)).to_int(), 6)?
 
 test "big integers validate digits budgets and zero divisors":
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(1).divide(big_int_of_int(0)), invalid)?
 
-	limited: BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
+	limited BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(parse_big_int("123", 10, 2), limited)?
 
-	malformed: BigInt! := error(Error("big integer: invalid data", kind: "EBADMSG"))
+	malformed BigInt! := error(Error("big integer: invalid data", kind: "EBADMSG"))
 	expect_equal(parse_big_int("1_0", 10), malformed)?
 
 test "big integer budgets exclude at most one leading sign before validation":
-	limited: BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
-	malformed: BigInt! := error(Error("big integer: invalid data", kind: "EBADMSG"))
+	limited BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
+	malformed BigInt! := error(Error("big integer: invalid data", kind: "EBADMSG"))
 
 	for text in ["+-1", "-+1", "++1", "--1"]:
 		if parse_big_int(text, 10, 1) != limited: return fail(
@@ -58,11 +58,11 @@ test "big integers support sign pow shifts and conversion":
 		1180591620717411303424.0,
 	)?
 
-	invalid: BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
+	invalid BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(five.pow(-1), invalid)?
 	expect_equal(five.shift_left(-1), invalid)?
 
-	limited: BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
+	limited BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(big_int_of_int(2).pow(100000000), limited)?
 	expect_equal(five.shift_left(100000000), limited)?
 
@@ -74,8 +74,8 @@ test "power radix parsing keeps digit order leading zeros and strict budgets":
 	expect_equal((parse_big_int("-000Vv", 32)?).to_int(), -1023)?
 	expect_equal((parse_big_int("-000", 32)?).sign(), 0)?
 
-	limited: BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
-	malformed: BigInt! := error(Error("big integer: invalid data", kind: "EBADMSG"))
+	limited BigInt! := error(Error("big integer: limit exceeded", kind: "EOVERFLOW"))
+	malformed BigInt! := error(Error("big integer: invalid data", kind: "EBADMSG"))
 	expect_equal(parse_big_int("+000Ff", 16, 4), limited)?
 	expect_equal(parse_big_int("+0_1", 16, 2), limited)?
 	expect_equal(parse_big_int("+0_1", 16, 3), malformed)?

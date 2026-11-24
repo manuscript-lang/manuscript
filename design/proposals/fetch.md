@@ -26,7 +26,7 @@ Reuse the server's types. `HttpMethod`, `HttpHeaders`, `HttpError`, `Bytes` and 
 import fetch, FetchOptions, json_body from "@std/net/fetch.ms"
 
 type User:
-    name: String
+    name String
 
 fn load() Result[User, FetchError]:
     response := try fetch("https://example.com/user/1")

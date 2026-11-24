@@ -2,7 +2,7 @@
 // conform: phase=run
 // conform: origin=retire-ms-rt-hot
 // String equality of inline, heap, literal, built and non-ASCII text agrees on every backend.
-fn same(a: String, b: String) Bool:
+fn same(a String, b String) Bool:
     return a == b
 
 export fn main() Int:

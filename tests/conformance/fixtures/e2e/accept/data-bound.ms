@@ -7,12 +7,12 @@ import (
 )
 
 type Plain:
-	name: String
-	tags: List[String]
-	note: String?
+	name String
+	tags List[String]
+	note String?
 
 type Money:
-	cents: Int
+	cents Int
 
 fn Money.to_json() JsonValue:
 	return JsonValue.StringValue(f"usd:{self.cents}")
@@ -21,7 +21,7 @@ enum Mode:
 	Fast
 	Slow
 
-fn text[T: Data](value: T) String:
+fn text[T Data](value T) String:
 	return stringify(value).get_or("")
 
 test "Data accepts plain records, lists, codecs, and JSON documents":

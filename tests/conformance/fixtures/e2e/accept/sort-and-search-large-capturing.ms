@@ -9,12 +9,12 @@ import (
 // the insertion-sort size, and `binary_search` over every shape of list: results must
 // match a straightforward reference.
 type Row:
-	key: Int
-	id: Int
-	name: String
+	key Int
+	id Int
+	name String
 
-fn rows(count: Int) List[Row]:
-	var out: List[Row] = []
+fn rows(count Int) List[Row]:
+	var out List[Row] = []
 	var x = 11
 
 	for i in 0..count:
@@ -23,7 +23,7 @@ fn rows(count: Int) List[Row]:
 
 	return out
 
-fn ordered_stably(list: List[Row], weights: List[Int]) Bool:
+fn ordered_stably(list List[Row], weights List[Int]) Bool:
 	for i in 1..list.length():
 		a := list[i - 1]
 		b := list[i]
@@ -34,7 +34,7 @@ fn ordered_stably(list: List[Row], weights: List[Int]) Bool:
 	return true
 
 test "a captured list orders owning records stably":
-	var weights: List[Int] = []
+	var weights List[Int] = []
 	for i in 0..20:
 		weights.append(i % 5)
 
@@ -45,7 +45,7 @@ test "a captured list orders owning records stably":
 test "a captured scalar orders plain integers, and a counter it updates is visible":
 	var calls = 0
 	scale := 3
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..300:
 		xs.append((i * 7919) % 211)
 
@@ -70,7 +70,7 @@ test "sorted_by_key orders large lists by a captured key":
 		expect_equal(a <= b, true)?
 		if a == b: expect_equal(sorted[i - 1].id < sorted[i].id, true)?
 
-fn reference(xs: List[Int], value: Int) Int:
+fn reference(xs List[Int], value Int) Int:
 	var at = 0
 	while at < xs.length() and xs[at] < value:
 		at += 1
@@ -78,7 +78,7 @@ fn reference(xs: List[Int], value: Int) Int:
 
 test "binary_search agrees with a linear scan on every shape":
 	for size in 0..40:
-		var xs: List[Int] = []
+		var xs List[Int] = []
 		for i in 0..size:
 			xs.append(i / 3 * 2)
 
@@ -89,7 +89,7 @@ test "binary_search agrees with a linear scan on every shape":
 			expect_equal(found.found, at < xs.length() and xs[at] == value)?
 
 test "binary_search finds the first of equal elements in a large list":
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	for i in 0..5000:
 		xs.append(i / 7)
 	expect_equal(xs.binary_search(100).index, 700)?
@@ -106,18 +106,18 @@ test "binary_search works on strings":
 	expect_equal(words.binary_search("zebra").index, 4)?
 
 type Wide:
-	a: Int
-	b: Int
-	c: Int
-	d: Int
+	a Int
+	b Int
+	c Int
+	d Int
 
 test "reverse and reversed handle one to four word slots and owning slots":
 	for size in 0..9:
-		var ints: List[Int] = []
-		var pairs: List[Pair[Int, Int]] = []
-		var triples: List[Pair[Int, Pair[Int, Int]]] = []
-		var wides: List[Wide] = []
-		var names: List[String] = []
+		var ints List[Int] = []
+		var pairs List[Pair[Int, Int]] = []
+		var triples List[Pair[Int, Pair[Int, Int]]] = []
+		var wides List[Wide] = []
+		var names List[String] = []
 
 		for i in 0..size:
 			ints.append(i)

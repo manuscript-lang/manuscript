@@ -5,11 +5,11 @@ import (
 )
 
 export type PngVector:
-	name: String
-	width: Int
-	height: Int
-	png: String
-	rgba: List[Int]
+	name String
+	width Int
+	height Int
+	png String
+	rgba List[Int]
 
 export fn vectors() List[PngVector]:
 	return [

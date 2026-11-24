@@ -4,32 +4,32 @@
 import stdout from "@std/io/io.ms"
 
 type Pixel:
-	r: UInt8
-	g: UInt16
-	x: UInt32
+	r UInt8
+	g UInt16
+	x UInt32
 
-fn total(values: List[UInt8]) UInt8:
-	var sum: UInt8 = 0
+fn total(values List[UInt8]) UInt8:
+	var sum UInt8 = 0
 	for v in values:
 		sum += v
 	return sum
 
 fn main() Void:
-	low: UInt8 := 0
-	high: UInt8 := 255
-	mid: UInt16 := 65535
-	wide: UInt32 := 4000000000
+	low UInt8 := 0
+	high UInt8 := 255
+	mid UInt16 := 65535
+	wide UInt32 := 4000000000
 	void stdout().write(f"{low} {high} {mid} {wide}\n")
 
 	p := Pixel(r: 250, g: 60000, x: 3000000000)
 	void stdout().write(f"{p.r} {p.g} {p.x}\n")
 
-	l: List[UInt8] := [200, 1, 255, 3]
+	l List[UInt8] := [200, 1, 255, 3]
 	void stdout().write(f"{l.sorted()} {total([100, 20, 7])}\n")
 	void stdout().write(f"{high / 2} {high % 10} {low < high} {wide > 3000000000}\n")
 
-	opt: UInt8? := 255
-	big: Int := 300
+	opt UInt8? := 255
+	big Int := 300
 	void stdout().write(
 		f"{(opt or 0)} {big.to_uint8()} {big.to_uint16()} {wide.to_int32()} {wide.to_int64()}\n"
 	)

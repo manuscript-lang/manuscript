@@ -35,7 +35,7 @@ entry = "./src/main.ms"
 import Order from "@domain/orders.ms"
 import Config, open from "@pg/conn.ms"
 import helper from "./util.ms"
-export fn total(order: Order) Int: order.cents
+export fn total(order Order) Int: order.cents
 ```
 
 Always write the `.ms` extension; extensions and `index` files are never inferred. A name must be `export`ed to be imported: `export fn`, `export type`. `import Order, total from "@domain/orders.ms"`. No wildcard imports, no cycles, no absolute paths.

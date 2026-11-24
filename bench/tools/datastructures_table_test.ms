@@ -5,7 +5,7 @@ import (
 	repeats from "./lib.ms",
 )
 
-fn trial(version: String, per: Int) List[String]:
+fn trial(version String, per Int) List[String]:
 	var lines = List[String]()
 
 	for op in operations():
@@ -16,13 +16,13 @@ fn trial(version: String, per: Int) List[String]:
 	lines.append(f"{version} # end")
 	return lines
 
-fn trials(per: Int) List[String]:
+fn trials(per Int) List[String]:
 	var lines = List[String]()
 	for v in versions():
 		lines = lines.concat(trial(v, per))
 	return lines
 
-fn row(report: String, name: String) List[String]:
+fn row(report String, name String) List[String]:
 	for line in report.split("\n"):
 		if line.starts_with(name + " "):
 			parts := line.split(" ").filter(fn p: p != "")

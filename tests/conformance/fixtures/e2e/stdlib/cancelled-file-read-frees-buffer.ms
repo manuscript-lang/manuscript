@@ -9,7 +9,7 @@ import (
 	microseconds, sleep from "@std/time.ms",
 )
 
-fn read_many(path: String) Void!:
+fn read_many(path String) Void!:
 	for i in 0..20:
 		void read_file(path).wait()?
 

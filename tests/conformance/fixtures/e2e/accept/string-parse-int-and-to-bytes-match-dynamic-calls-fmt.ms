@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/string-parse-int-and-to-bytes-match-dynamic-calls.ms
 import expect_true from "@std/test/test.ms"
 
-fn parsed(text: String) Int:
+fn parsed(text String) Int:
     match text.parse_int():
         v:
             return v

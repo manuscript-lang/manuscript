@@ -211,7 +211,7 @@ static MsSpan need_name_hint(Parser *p, MsToken found) {
                            "parameter list and write self.field in the body");
   }
   if (fk == MS_T_LParen) {
-    return ms_span_of_text("; give it a name, e.g. fn add(a: Int, b: Int) Int:");
+    return ms_span_of_text("; give it a name, e.g. fn add(a Int, b Int) Int:");
   }
   if (ms_span_is_text(found_text, "_")) {
     return ms_span_of_text("; '_' is a reserved word and cannot be used as a name: loops, parameters and "
@@ -250,7 +250,7 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
     return ms_span_of_text("; close the brace, separating items with commas");
   if (kind_is(kd, "(")) {
     if (fk == MS_T_Lt) {
-      return ms_span_of_text("; type parameters use square brackets, e.g. fn identity[T](value: T) T:");
+      return ms_span_of_text("; type parameters use square brackets, e.g. fn identity[T](value T) T:");
     }
     return ms_span_of_text("; a call or parameter list starts with '('");
   }
@@ -264,11 +264,11 @@ static MsSpan need_hint(Parser *p, const char *kd, MsToken found) {
   if (kind_is(kd, "in"))
     return ms_span_of_text("; loops read: for item in items:");
   if (kind_is(kd, "=") && fk == MS_T_Newline) {
-    return ms_span_of_text("; every binding needs an initial value, e.g. var count: Int = 0");
+    return ms_span_of_text("; every binding needs an initial value, e.g. var count Int = 0");
   }
   if (kind_is(kd, ":=") && fk == MS_T_Newline) {
-    return ms_span_of_text("; a binding needs a value: write name := value, or name: Type := value; closure "
-                           "parameters with a type go in parentheses, as in fn(n: Int): n + 1");
+    return ms_span_of_text("; a binding needs a value: write name := value, or name Type := value; closure "
+                           "parameters with a type go in parentheses, as in fn(n Int): n + 1");
   }
   if (kind_is(kd, "NAME")) {
     return need_name_hint(p, found);
@@ -439,7 +439,7 @@ static const char *end_hint(Parser *p, MsToken t) {
   MsSpan prev_word = p->at > 0 ? parse_text(p, parse_previous(p)) : ms_span_of_text("");
   const char *hint;
   if (ms_span_is_text(prev_word, "def") && t.kind == MS_T_Name) {
-    hint = "; there is no 'def': declare a function with 'fn name(a: Int) Int:'";
+    hint = "; there is no 'def': declare a function with 'fn name(a Int) Int:'";
   } else if (ms_span_is_text(prev_word, "lambda")) {
     hint = "; there is no 'lambda': write an anonymous function as 'fn x: x + 1'";
   } else if (ms_span_is_text(prev_word, "elif")) {

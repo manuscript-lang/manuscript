@@ -2,11 +2,11 @@
 // conform: phase=check
 import TestHooks, expect_equal from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
-fn println(message: String) Void:
+fn println(message String) Void:
     written := stdout().write(f"{message}\n").get()
 
 type State:
-    value: Int
+    value Int
 fn make_fixture() State:
     println("FACTORY")
     return State(7)

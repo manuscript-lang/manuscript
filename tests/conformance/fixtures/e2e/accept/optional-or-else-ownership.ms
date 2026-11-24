@@ -5,16 +5,16 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn text(value: Int) String?: f"dynamic optional payload {value}"
+fn text(value Int) String?: f"dynamic optional payload {value}"
 
-fn texts(value: Int) List[String]?: [f"dynamic optional payload {value}"]
+fn texts(value Int) List[String]?: [f"dynamic optional payload {value}"]
 
 fn unexpected_text() String?: panic("present Optional must not call fallback")
 
 fn unexpected_texts() List[String]?: panic("present Optional must not call fallback")
 
 type Fallback:
-	calls: Int
+	calls Int
 
 fn var Fallback.create() String?:
 	self.calls += 1
@@ -68,7 +68,7 @@ test "or_else takes its receiver, so a caller that keeps a List Optional clones 
 
 test "or_else invokes a missing fallback once and skips a present fallback":
 	var fallback = Fallback(0)
-	missing: String? := null
+	missing String? := null
 	recovered := missing or fallback.create()
 	expect_equal(recovered or panic("called Optional.get() on null"), "fallback 1")?
 
@@ -80,13 +80,13 @@ test "or_else invokes a missing fallback once and skips a present fallback":
 	expect_equal(fallback.calls, 1)?
 
 test "or_else permits a fallback that stays absent":
-	missing: String? := null
+	missing String? := null
 	kept := missing or null
 	expect_equal(kept, null)?
 
 test "a closure over or_else copies its captured Optional for each call":
 	held := text(7)
-	bound := fn(fallback: fn() String?) String?: held.clone() or fallback()
+	bound := fn(fallback fn() String?) String?: held.clone() or fallback()
 	first := bound(unexpected_text)
 	second := bound(unexpected_text)
 	expect_equal(
@@ -98,7 +98,7 @@ test "a closure over or_else copies its captured Optional for each call":
 		"dynamic optional payload 7",
 	)?
 
-fn text_callback(fail: Bool) (fn() String?)!:
+fn text_callback(fail Bool) (fn() String?)!:
 	if fail: return error(Error("callback unavailable"))
 	return ok(unexpected_text)
 

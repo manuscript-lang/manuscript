@@ -6,12 +6,12 @@ import (
 )
 
 type Cursor:
-	data: Bytes
-	start: Int
-	stop: Int
-	label: String
-	seen: List[Int]
-	done: Bool
+	data Bytes
+	start Int
+	stop Int
+	label String
+	seen List[Int]
+	done Bool
 
 fn Cursor.peek() Int:
 	return self.data.get_or(self.start, 0).to_int()
@@ -25,12 +25,12 @@ fn var Cursor.advance() Int:
 	self.seen.append(at)
 	return self.data[at].to_int()
 
-fn var Cursor.reset(move label: String) Void:
+fn var Cursor.reset(move label String) Void:
 	self.start = 0
 	self.label = label
 	self.seen = []
 
-fn fill(var c: Cursor, n: Int) Int:
+fn fill(var c Cursor, n Int) Int:
 	var sum = 0
 	for step in 0..n:
 		if step < 0: return 0
@@ -39,7 +39,7 @@ fn fill(var c: Cursor, n: Int) Int:
 		sum += v
 	return sum
 
-fn replace_whole(var c: Cursor) Void:
+fn replace_whole(var c Cursor) Void:
 	c = Cursor("abc".to_bytes(), 1, 3, "swapped", [], false)
 
 test "bytes reads index, wrap negative and use defaults":

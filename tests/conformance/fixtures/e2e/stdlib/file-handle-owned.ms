@@ -8,7 +8,7 @@ import (
 )
 
 // `FileHandle` is a nominal type with `impl Closeable`, so a binding of one owns the file.
-fn view_of(path: String) ReadStream[Bytes]!:
+fn view_of(path String) ReadStream[Bytes]!:
 	file := open(path, OpenMode.Read)?
 	return ok(file.reader()?)
 

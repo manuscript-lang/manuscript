@@ -1,7 +1,7 @@
 // conform: tags=diagnostics,control-flow,tier-core
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
-fn f(x: Int) Int:
+fn f(x Int) Int:
     if x > 0:
         x := 2
         return x

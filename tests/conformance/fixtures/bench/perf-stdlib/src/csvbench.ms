@@ -2,7 +2,7 @@ import bench from "./harness.ms"
 import parse, stringify from "@std/data/csv.ms"
 
 export fn bench_csv() Void:
-    var rows: List[List[String]] = []
+    var rows List[List[String]] = []
     for i in 0..5000:
         rows.append([f"{i}", f"name {i}", "a,b", "quote\"d"])
 

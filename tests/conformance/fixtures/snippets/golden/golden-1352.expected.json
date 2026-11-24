@@ -14,20 +14,52 @@
           "file": "golden-1352.ms",
           "line": 15,
           "column": 1,
-          "offset": 242
+          "offset": 233
         },
         "end": {
           "file": "golden-1352.ms",
           "line": 15,
           "column": 5,
-          "offset": 246
+          "offset": 237
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "remove the ':' between 'map' and its type; write map Type",
+        "position": {
+          "file": "golden-1352.ms",
+          "line": 18,
+          "column": 11,
+          "offset": 337
+        },
+        "end": {
+          "file": "golden-1352.ms",
+          "line": 18,
+          "column": 12,
+          "offset": 338
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1352.ms",
+            "line": 18,
+            "column": 11,
+            "offset": 337
+          },
+          "end": {
+            "file": "golden-1352.ms",
+            "line": 18,
+            "column": 12,
+            "offset": 338
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1352.ms:15:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 15 | impl Adder for Counter:\n    | ^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1352.ms:15:1: parse: 'impl' was removed: declare each method beside its type as 'fn Type.name(...)' ('fn var Type.name(...)' when it changes self); a type satisfies an interface by having methods that match it, so nothing declares it\n    |\n 15 | impl Adder for Counter:\n    | ^^^^\n<DIR>/golden-1352.ms:18:11: parse: remove the ':' between 'map' and its type; write map Type\n    |\n 18 | fn use(map: Int, key: Int, y: Int, x: Int, counter: Counter) Int: ...\n    |           ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -3,17 +3,17 @@
 import expect_equal, expect_true from "@std/test/test.ms"
 
 type Order:
-	status: String
-	items: List[String]
+	status String
+	items List[String]
 
-fn count_placed(orders: Map[String, Order]) Int:
+fn count_placed(orders Map[String, Order]) Int:
 	var n = 0
 	for e in orders.entries():
 		if e.value.status == "placed":
 			n += e.value.items.length()
 	return n
 
-fn ship(var orders: Map[String, Order], id: String) Bool:
+fn ship(var orders Map[String, Order], id String) Bool:
 	if var o = orders[id]?:
 		o.status = "shipped"
 		o.items.append("label")

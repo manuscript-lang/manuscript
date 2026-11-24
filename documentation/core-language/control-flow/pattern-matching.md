@@ -12,11 +12,11 @@ weight = 3
 <!-- manuscript-example: {"mode":"run","stdout":"Paid: receipt-42\n"} -->
 ```manuscript
 enum Payment:
-    Paid(receipt: String)
-    Declined(reason: String)
-    Pending(reference: String)
+    Paid(receipt String)
+    Declined(reason String)
+    Pending(reference String)
 
-fn describe(payment: Payment) String:
+fn describe(payment Payment) String:
     match payment:
         Paid(receipt):
             return f"Paid: {receipt}"
@@ -50,7 +50,7 @@ A `match` on an `Int`, `String`, or `Bool` takes literal arms: number literals (
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn name(count: Int) String:
+fn name(count Int) String:
     match count:
         0: return "none"
         1: return "one"
@@ -66,10 +66,10 @@ An arm may hold statements then a final expression, which is its value; ending i
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Cents:
-    Valid(amount: Int)
+    Valid(amount Int)
     Invalid
 
-fn total(cents: Cents) Result[Int, Error]:
+fn total(cents Cents) Result[Int, Error]:
     amount := match cents:
         Valid(value):
             value
@@ -91,10 +91,10 @@ A lone lowercase arm binds a payload only when matching an `Optional`; on anothe
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 enum Position:
-    Point(x: Int, y: Int)
+    Point(x Int, y Int)
     Unknown
 
-fn horizontal(position: Position) Int:
+fn horizontal(position Position) Int:
     match position:
         Position.Point(horizontal_value, _):
             return horizontal_value
@@ -113,9 +113,9 @@ fn horizontal(position: Position) Int:
 
 Arms never fall through, and a missing case is a compile error. `_:` is the wildcard: allowed once, last, binds nothing, and covers the remaining cases. Rejected: duplicate or unknown cases (qualified and unqualified spellings of one case are duplicates), an arm after the wildcard, and a wildcard after every case is covered.
 
-<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt: String)\n    Declined(reason: String)","given":[]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"enum Payment:\n    Paid(receipt String)\n    Declined(reason String)","given":[]} -->
 ```manuscript
-fn paid(payment: Payment) Bool:
+fn paid(payment Payment) Bool:
     match payment:
         Paid(_):
             return true
@@ -139,11 +139,11 @@ interface Shape:
     fn area() Int
 
 type Square:
-    side: Int
+    side Int
 
 fn Square.area() Int: return self.side * self.side
 
-fn describe(shape: Shape) String:
+fn describe(shape Shape) String:
     match shape:
         Square(square): return f"square {square.side}"
         _:

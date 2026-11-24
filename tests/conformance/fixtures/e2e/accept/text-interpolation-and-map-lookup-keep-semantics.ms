@@ -4,16 +4,16 @@
 import expect_true, fail from "@std/test/test.ms"
 
 type Point:
-    x: Int
-    y: Int
+    x Int
+    y Int
 
-fn halve(n: Int) Int?:
+fn halve(n Int) Int?:
     if n % 2 != 0:
         return null
 
     return (n / 2)
 
-fn describe(key: Point, m: Map[Point, String]) String:
+fn describe(key Point, m Map[Point, String]) String:
     match m.get(key: key):
         v:
             return f"found {v}"

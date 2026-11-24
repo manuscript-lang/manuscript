@@ -10,9 +10,9 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn matched_paths(root: String, options: GlobOptions) List[String]!:
+fn matched_paths(root String, options GlobOptions) List[String]!:
 	entries := glob(root, options)?
-	return ok(entries.map(fn(entry: PathEntry) String: entry.path.clone()))
+	return ok(entries.map(fn(entry PathEntry) String: entry.path.clone()))
 
 test "glob following links skips dangling and looping links like any link without a directory":
 	directory := temporary("manuscript-glob-loop-")?

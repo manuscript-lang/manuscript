@@ -61,8 +61,8 @@ test "compare is normalized sign and scalar lexical order":
 	expect_equal(equal.compare(equal), 0)?
 
 type LineCase:
-	text: String
-	expected: List[String]
+	text String
+	expected List[String]
 
 test "lines preserve interior empties and recognize LF and CRLF only":
 	cases := [

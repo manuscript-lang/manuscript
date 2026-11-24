@@ -4,22 +4,22 @@ interface Show:
 	fn show() Int
 
 type Point:
-	x: Int
+	x Int
 
 fn Point.show() Int:
 	void append_file("x.txt", "hi")
 	return self.x
 
 type Door:
-	id: Int
+	id Int
 
 fn move Door.close() Void:
 	void append_file("door.txt", "closed")
 
-fn twice[T: Show](v: T) Int:
+fn twice[T Show](v T) Int:
 	return v.show()
 
-fn keep[T](v: T) Int:
+fn keep[T](v T) Int:
 	return 1
 
 fn bound() Int:

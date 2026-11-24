@@ -1,19 +1,19 @@
 // conform: tags=ownership,var-parameters
 // conform: phase=run
 type Cursor:
-	items: List[String]
-	pos: Int
-	seen: Int
+	items List[String]
+	pos Int
+	seen Int
 
-fn advance(var cursor: Cursor) String:
+fn advance(var cursor Cursor) String:
 	cursor.pos += 1
 	return cursor.items[cursor.pos - 1]
 
-fn skip_blank(var cursor: Cursor) Void:
+fn skip_blank(var cursor Cursor) Void:
 	while cursor.pos < cursor.items.length() and cursor.items[cursor.pos] == "":
 		cursor.pos += 1
 
-fn scan(var cursor: Cursor) String!:
+fn scan(var cursor Cursor) String!:
 	var out = ""
 	while cursor.pos < cursor.items.length():
 		skip_blank(cursor)

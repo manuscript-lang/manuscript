@@ -3,45 +3,45 @@ import stdout, stdin, read_line, ReadStream from "@std/io/io.ms"
 import Instant, monotonic from "@std/time.ms"
 
 interface Counter:
-	fn bump(by: Int) Int
+	fn bump(by Int) Int
 
 type Acc:
-	total: Int
+	total Int
 
-fn var Acc.bump(by: Int) Int:
+fn var Acc.bump(by Int) Int:
 	self.total += by
 	return self.total
 
 enum Shape:
-	Circle(r: Int)
-	Square(s: Int)
-	Tri(b: Int)
+	Circle(r Int)
+	Square(s Int)
+	Tri(b Int)
 
-fn got_line(input: ReadStream) Bool:
+fn got_line(input ReadStream) Bool:
 	if line := read_line(input): return line.is_some()
 	return false
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text)
 
-fn since(started: Instant) Int:
+fn since(started Instant) Int:
 	return monotonic().difference(started).to_nanoseconds()
 
-fn report(name: String, ops: Int, started: Instant) Void:
+fn report(name String, ops Int, started Instant) Void:
 	say(f"{name} {ops} {since(started)}\n")
 
-fn ident[T](x: T) T:
+fn ident[T](x T) T:
 	return x
 
-fn checked(n: Int) Int!Error:
+fn checked(n Int) Int!Error:
 	if n < 0: return error(Error("negative"))
 	return ok(n + 1)
 
-fn chain(n: Int) Int!Error:
+fn chain(n Int) Int!Error:
 	v := checked(n)?
 	return ok(v)
 
-fn area(s: Shape) Int:
+fn area(s Shape) Int:
 	var out = 0
 
 	match s:
@@ -167,7 +167,7 @@ fn bench_match() Int:
 	return ma
 
 fn bench_length() Int:
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	var i = 0
 
 	while i < 100:
@@ -187,7 +187,7 @@ fn bench_length() Int:
 	return ln
 
 fn bench_for_list() Int:
-	var big: List[Int] = []
+	var big List[Int] = []
 	var i = 0
 
 	while i < 1000000:

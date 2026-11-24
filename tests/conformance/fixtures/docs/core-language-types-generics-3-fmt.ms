@@ -2,12 +2,12 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/generics.md:49
 type Box[T]:
-    value: T
+    value T
 
-fn identity[T](value: T) T:
+fn identity[T](value T) T:
     return value
 
-fn same[T: Equal](left: T, right: T) Bool:
+fn same[T Equal](left T, right T) Bool:
     return left == right
 
 box := Box[Int](1)

@@ -4,27 +4,27 @@
 import stdout from "@std/io/io.ms"
 
 interface Parser[T]:
-	fn parse(s: String) T!
+	fn parse(s String) T!
 
 type IntP:
-	base: Int = 10
+	base Int = 10
 
-fn IntP.parse(s: String) Int!:
+fn IntP.parse(s String) Int!:
 	return ok_or(s.parse_int(), Error("missing"))
 
-fn run[T](p: Parser[T], s: String) T!:
+fn run[T](p Parser[T], s String) T!:
 	return p.parse(s)
 
-fn all[T: Clonable](p: Parser[T], xs: List[String]) List[T]!:
+fn all[T Clonable](p Parser[T], xs List[String]) List[T]!:
 	var out = List[T]()
 	for x in xs:
 		out.append(p.parse(x)?)
 	return ok(out)
 
 type Cb:
-	f: fn(Int) Int!
+	f fn(Int) Int!
 
-fn apply(c: Cb, x: Int) Int!:
+fn apply(c Cb, x Int) Int!:
 	return c.f(x)
 
 fn main() Void:

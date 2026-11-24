@@ -5,7 +5,7 @@ Desk-checked against the rules in [function-effects.md](function-effects.md) at 
 ## P1 Print in a helper (the basic catch)
 
 ```manuscript
-fn total(items: List[Item]) Decimal:
+fn total(items List[Item]) Decimal:
     print(items.length())                 // error: reaches console.write: total -> print -> msrt_io_write_stdout
     return items.map(fn(i): i.price).sum()
 ```
@@ -34,9 +34,9 @@ Verdict: ok. `tree.read` charges nothing (interface value); `host_tree` charged 
 
 ```manuscript
 type Router:
-    handle: fn(Request) Response!
+    handle fn(Request) Response!
 
-fn serve(r: Router, req: Request) Response!:   // no directive
+fn serve(r Router, req Request) Response!:   // no directive
     return r.handle(req)                        // charges nothing
 
 fn main() Unit!:
@@ -49,7 +49,7 @@ Verdict: ok; `serve` is pure in the ambient sense. Runtime I/O happens inside `s
 
 ```manuscript
 interface Store:
-    fn save(o: Order) Unit!
+    fn save(o Order) Unit!
 
 impl Store for DbStore:
     fn save(o: Order) Unit!: return db_exec(sql(o))   // reaches db.write
@@ -65,10 +65,10 @@ Verdict: ok in `main`; `checkout(DbStore(url), o)` inside a pure function is an 
 ## P5 Generic static dispatch
 
 ```manuscript
-fn run[T: Store](s: T, o: Order) Unit!:
+fn run[T Store](s T, o Order) Unit!:
     return s.save(o)                     // direct call on the instance
 
-fn pure_caller(o: Order) Unit!:
+fn pure_caller(o Order) Unit!:
     return run(DbStore(url), o)          // error: run[DbStore] reaches db.write
 ```
 Verdict: error, charged per instance. Sound; requires instance-level effect sets (today `p.effects` is per callable id: new work).
@@ -76,7 +76,7 @@ Verdict: error, charged per instance. Sound; requires instance-level effect sets
 ## P6 Higher-order stdlib calls
 
 ```manuscript
-fn names(xs: List[Item]) List[String]:
+fn names(xs List[Item]) List[String]:
     xs.each(print)                       // error: named function as a value charges console.write
     return xs.map(fn(x): x.name.clone())  // ok
 ```
@@ -85,7 +85,7 @@ Verdict: error on line 2, ok on line 3. Needs the value-reference rule (unverifi
 ## P7 Task created in `main`, waited elsewhere
 
 ```manuscript
-fn finish(p: Promise[Bytes]) Int!:        // pure
+fn finish(p Promise[Bytes]) Int!:        // pure
     return (try p.wait()).length()
 
 fn main() Unit!:
@@ -99,7 +99,7 @@ Verdict: ok. `wait` charges nothing. Sound (authority was obtained in `main`).
 ```manuscript
 HOME := home_directory()              // evaluated per use
 
-fn report(when: Timestamp = now()) String:   // default evaluated at the call site
+fn report(when Timestamp = now()) String:   // default evaluated at the call site
     return HOME + when.to_string()       // error: HOME use reaches env.read
 
 fn caller() String:
@@ -110,7 +110,7 @@ Verdict: both errors. Defaults must charge the caller, or a pure caller could hi
 ## P9 Logging in every layer (the friction case)
 
 ```manuscript
-fn price(item: Item) Decimal:
+fn price(item Item) Decimal:
     info(f"pricing {item.id}")            // error: log.ms reaches console.write
 ```
 Verdict: error, and every layer logs. Answer: `Logger` is an interface value made in `main` and passed down, so `price(log: Logger, item)` stays pure. Cost: a parameter per layer. Stage 0 counts how many functions log; if most do, the stdlib ships `Logger` first.
@@ -135,8 +135,8 @@ Verdict: ok. The chokepoint is the interface plus implicit deny; `contain_effect
 ## P11 Mutual recursion and a cycle through a closure
 
 ```manuscript
-fn a(n: Int) Int: return if n == 0: 0 else: b(n - 1)
-fn b(n: Int) Int:
+fn a(n Int) Int: return if n == 0: 0 else: b(n - 1)
+fn b(n Int) Int:
     print(n)                             // console.write reaches a and b
     return a(n)
 ```
@@ -159,7 +159,7 @@ Verdict: error. Rule added: implicit dispatch on a concrete type (`Equal`, `Hash
 
 ```manuscript
 // ms: effect fs.read
-fn run_plugin(input: Bytes) Bytes!: ...  // net.*, fs.write, process.* are errors
+fn run_plugin(input Bytes) Bytes!: ...  // net.*, fs.write, process.* are errors
 ```
 Verdict: ok; a stdlib effect added later is denied until listed. Sound.
 

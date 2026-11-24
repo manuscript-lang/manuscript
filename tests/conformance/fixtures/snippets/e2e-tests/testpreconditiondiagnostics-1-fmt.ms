@@ -5,4 +5,4 @@ import Bytes, BytesBuilder from "@std/bytes.ms"
 import PriorityQueue, Queue from "@std/collections/queue.ms"
 import big_int_of_int from "@std/math/math.ms"
 
-fn compare(left: Int, right: Int) Int: left - right
+fn compare(left Int, right Int) Int: left - right

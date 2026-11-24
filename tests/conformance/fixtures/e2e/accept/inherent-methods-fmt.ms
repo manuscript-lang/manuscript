@@ -7,22 +7,22 @@ interface Show:
     fn show() String
 
 type Counter:
-    value: Int
+    value Int
 
 type Box[T]:
-    item: T
+    item T
 
 enum Shape:
-    Circle(r: Int)
-    Square(s: Int)
+    Circle(r Int)
+    Square(s Int)
 
 fn Counter.double() Int:
     return self.value * 2
 
-fn Counter.bump(by: Int = 1) Counter:
+fn Counter.bump(by Int = 1) Counter:
     return Counter(value: self.value + by)
 
-fn Counter.depth(n: Int) Int:
+fn Counter.depth(n Int) Int:
     if n == 0:
         return self.value
 
@@ -42,7 +42,7 @@ fn Shape.area() Int:
         Circle(r): return r * r * 3
         Square(s): return s * s
 
-fn check(ok: Bool, name: String) Void:
+fn check(ok Bool, name String) Void:
     if not ok:
         return panic(message: name)
 

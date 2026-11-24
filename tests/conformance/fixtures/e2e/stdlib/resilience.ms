@@ -13,11 +13,11 @@ import (
 	Duration, milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
-fn flaky(attempt: Int) Int!String:
+fn flaky(attempt Int) Int!String:
 	if attempt < 3: return error("try again")
 	return ok(attempt)
 
-fn never_retry(failure: String) Bool:
+fn never_retry(failure String) Bool:
 	return false
 
 test "retry succeeds after failures":

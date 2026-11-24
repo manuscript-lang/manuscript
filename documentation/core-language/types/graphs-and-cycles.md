@@ -10,18 +10,18 @@ If you expect shared pointers, weak references, or reference counting, Manuscrip
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Node:
-    label: String
-    edges: List[Int]
-    parent: Int?
+    label String
+    edges List[Int]
+    parent Int?
 
 type Graph:
-    nodes: List[Node]
+    nodes List[Node]
 
-fn var Graph.add(label: String) Int:
+fn var Graph.add(label String) Int:
     self.nodes.append(Node(label: label, edges: [], parent: null))
     return self.nodes.length() - 1
 
-fn var Graph.link(a: Int, b: Int) Void:
+fn var Graph.link(a Int, b Int) Void:
     self.nodes[a].edges.append(b)
     self.nodes[b].edges.append(a)
 ```

@@ -7,18 +7,18 @@
       "span": {
         "file": "main.ms",
         "start": 10,
-        "end": 22,
+        "end": 21,
         "line": 1,
         "column": 11
       }
     }
   ],
   "format": 2,
-  "build_id": "faee47d973a5c9f4642323e29fdea8aebbee303999381609c52338a373381946",
+  "build_id": "8ba15893532a18db20daae637ea353caab94dfc3ab0cffa4b688da9009452ea5",
   "sources": [
     {
       "file": "main.ms",
-      "sha256": "7dd669e778300b049444906b8255ceeaf097fa3f92a8fc24f34688a2f13c42c3"
+      "sha256": "5644b5eb4d8aed2d6d57fbd9119f93958049064bc03d162178e97845e8cb57f1"
     }
   ],
   "entities": [
@@ -31,7 +31,7 @@
       "span": {
         "file": "main.ms",
         "start": 0,
-        "end": 22,
+        "end": 21,
         "line": 1,
         "column": 1
       },
@@ -45,8 +45,8 @@
       "type": "fn() Void",
       "span": {
         "file": "main.ms",
-        "start": 38,
-        "end": 53,
+        "start": 37,
+        "end": 52,
         "line": 4,
         "column": 1
       },
@@ -61,27 +61,27 @@
   ],
   "calls": [
     {
-      "id": "main.ms#call#55",
+      "id": "main.ms#call#54",
       "owner": "main.ms#fn#main",
       "target": "@std/core.ms#fn#print",
       "kind": "function",
       "span": {
         "file": "main.ms",
-        "start": 55,
-        "end": 77,
+        "start": 54,
+        "end": 76,
         "line": 5,
         "column": 5
       }
     },
     {
-      "id": "main.ms#call#64",
+      "id": "main.ms#call#63",
       "owner": "main.ms#fn#main",
       "target": "main.ms#fn#double",
       "kind": "function",
       "span": {
         "file": "main.ms",
-        "start": 64,
-        "end": 77,
+        "start": 63,
+        "end": 76,
         "line": 5,
         "column": 14
       }
@@ -90,15 +90,15 @@
   "statements": [
     {
       "file": "main.ms",
-      "start": 24,
-      "end": 36,
+      "start": 23,
+      "end": 35,
       "line": 2,
       "column": 5
     },
     {
       "file": "main.ms",
-      "start": 55,
-      "end": 77,
+      "start": 54,
+      "end": 76,
       "line": 5,
       "column": 5
     }

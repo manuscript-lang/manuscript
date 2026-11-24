@@ -15,7 +15,7 @@ import (
 	repr from "@std/test/test.ms",
 )
 
-fn site_of(failure: Error) String:
+fn site_of(failure Error) String:
 	return failure.details.get_or("site", "")
 
 fn good() Int!:
@@ -27,7 +27,7 @@ fn bad() Int!:
 fn nothing() String?:
 	return null
 
-fn wrapped(actual: Bool, site: String = caller_site()) Void!:
+fn wrapped(actual Bool, site String = caller_site()) Void!:
 	return expect_true(actual, site)
 
 test "a failed expectation names the line of its call":

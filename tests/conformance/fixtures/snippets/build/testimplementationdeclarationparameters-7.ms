@@ -5,7 +5,7 @@ interface Read:
     fn get() Int
 
 type Box[T]:
-    value: T
+    value T
 
 fn Box[Int].get() T:
     return self.value

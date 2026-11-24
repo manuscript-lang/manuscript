@@ -33,10 +33,10 @@ fn repeated_headers() HttpHeaders!:
 	_other := fields.append("set-cookie", "b=2") | expect_ok?
 	return ok(fields)
 
-fn header_failure(message: String) HttpResponse:
+fn header_failure(message String) HttpResponse:
 	return HttpResponse(status: 500, headers: headers(), body: message.to_bytes())
 
-fn handle_headers(request: HttpRequest) HttpResponse:
+fn handle_headers(request HttpRequest) HttpResponse:
 	if request.method != HttpMethod.Get: return header_failure("typed request method")
 
 	received := request.headers.get_all("X-DUP")
@@ -84,7 +84,7 @@ test "one header type preserves repeated values through buffered requests":
 		((response.metadata().headers.get_all("X-Dup")) != ["first", "second"])
 	)?
 
-fn echo_headers(var exchange: HttpExchange) Void!:
+fn echo_headers(var exchange HttpExchange) Void!:
 	received := exchange.headers()
 	if received.get_all("X-DUP") != ["first", "second"]: return error(
 		Error("HTTP: invalid data", kind: "EBADMSG")
@@ -175,7 +175,7 @@ test "empty options and an omitted request body use checked defaults":
 	)
 	response.metadata.status | expect_equal(200)?
 
-fn cookie_handler(var exchange: HttpExchange) Void!:
+fn cookie_handler(var exchange HttpExchange) Void!:
 	var fields = headers()
 
 	if exchange.path() == "/set":
@@ -197,7 +197,7 @@ fn cookie_handler(var exchange: HttpExchange) Void!:
 	cookie := exchange.headers().get_all("Cookie").join("; ")
 	return exchange.send(200, fields, cookie.to_bytes())
 
-fn echoed_cookie(client: HttpClient, url: String) String!:
+fn echoed_cookie(client HttpClient, url String) String!:
 	var response = client.request(HttpMethod.Get, url, headers(), timeout: 3.seconds())?
 	var text = ""
 	for chunk in response.body:

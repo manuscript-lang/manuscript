@@ -4,8 +4,8 @@ import (
 )
 
 type Counter:
-	at: Int
-	end: Int
+	at Int
+	end Int
 
 fn var Counter.next() Int?:
 	if self.at >= self.end: return null
@@ -14,7 +14,7 @@ fn var Counter.next() Int?:
 	return self.at - 1
 
 type Evens:
-	inner: Iterator[Int]
+	inner Iterator[Int]
 
 fn var Evens.next() Int?:
 	while true:
@@ -28,8 +28,8 @@ fn var Evens.next() Int?:
 	return null
 
 type Scaled:
-	inner: Iterator[Int]
-	k: Int
+	inner Iterator[Int]
+	k Int
 
 fn var Scaled.next() Int?:
 	v := self.inner.next()
@@ -38,12 +38,12 @@ fn var Scaled.next() Int?:
 	return null
 
 type Rec:
-	id: Int
-	score: Int
+	id Int
+	score Int
 
 type RecIter:
-	items: List[Rec]
-	at: Int
+	items List[Rec]
+	at Int
 
 fn var RecIter.next() Rec?:
 	if self.at >= self.items.length(): return null
@@ -51,7 +51,7 @@ fn var RecIter.next() Rec?:
 	self.at += 1
 	return self.items[self.at - 1].clone()
 
-fn stop(name: String, t0: Int, chk: Int) Void:
+fn stop(name String, t0 Int, chk Int) Void:
 	now := monotonic().tick
 	print(f"{name} {(now - t0) / 1000} {chk}")
 
@@ -78,7 +78,7 @@ fn w_adapter_chain() Int:
 	return t
 
 fn w_rec_iter() Int:
-	var xs: List[Rec] = []
+	var xs List[Rec] = []
 	for i in 0..1000000:
 		xs.append(Rec(i, i % 13))
 
@@ -88,7 +88,7 @@ fn w_rec_iter() Int:
 			t += v.score
 	return t
 
-fn run(name: String, f: fn() Int) Void:
+fn run(name String, f fn() Int) Void:
 	t0 := monotonic().tick
 	c := f()
 	stop(name, t0, c)

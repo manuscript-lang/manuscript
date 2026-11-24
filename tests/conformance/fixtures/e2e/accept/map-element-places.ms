@@ -3,8 +3,8 @@
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
 type Pile:
-	n: Int
-	tags: List[String]
+	n Int
+	tags List[String]
 
 test "a map entry takes a collection mutator in place":
 	var m = Map[String, List[String]]()

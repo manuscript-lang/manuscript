@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tCloseable from \"@std/core.ms\",\n\tWriteStream, stdout from \"@std/io/io.ms\",\n)\n\ntype Resource:\n\tlabel: String\n\toutput: WriteStream\n\nfn Resource.close() Void!:\n\t_ignored := self.output.write(f\"close {self.label}\\n\")\n\nfn main() Void:\n\toutput := stdout()\n\tvar _resource = Resource(\"parent\", output)\n\t_child := Resource(\"child\", output)\n\t_ignored := output.write(\"ready\\n\")\n\twhile true:\n\t\tcontinue\n\t_resource.close()\n"
+    "fmt": "import (\n\tCloseable from \"@std/core.ms\",\n\tWriteStream, stdout from \"@std/io/io.ms\",\n)\n\ntype Resource:\n\tlabel String\n\toutput WriteStream\n\nfn Resource.close() Void!:\n\t_ignored := self.output.write(f\"close {self.label}\\n\")\n\nfn main() Void:\n\toutput := stdout()\n\tvar _resource = Resource(\"parent\", output)\n\t_child := Resource(\"child\", output)\n\t_ignored := output.write(\"ready\\n\")\n\twhile true:\n\t\tcontinue\n\t_resource.close()\n"
   }
 }

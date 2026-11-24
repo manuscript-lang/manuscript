@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn error(value: Int) Int: value\n"
+    "fmt": "fn error(value Int) Int: value\n"
   }
 }

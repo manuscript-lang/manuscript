@@ -4,22 +4,22 @@
 // `List.slice` and `Map.keys`/`values` lend their receiver: used in place they copy nothing, and
 // a `.clone()` keeps an independent copy even when the receiver changes or dies afterwards.
 type Page:
-	rows: List[Int]
-	names: List[String]
+	rows List[Int]
+	names List[String]
 
-fn total(xs: List[Int]) Int:
+fn total(xs List[Int]) Int:
 	var s = 0
 	for x in xs:
 		s += x
 	return s
 
-fn window(xs: List[Int], a: Int, b: Int) Int:
+fn window(xs List[Int], a Int, b Int) Int:
 	return total(xs.slice(a, b).get())
 
-fn keep_window(xs: List[Int], a: Int, b: Int) List[Int]:
+fn keep_window(xs List[Int], a Int, b Int) List[Int]:
 	return xs.slice(a, b).get().clone()
 
-fn names_of(m: Map[String, Int]) List[String]:
+fn names_of(m Map[String, Int]) List[String]:
 	return m.keys().clone()
 
 export fn main() Int:

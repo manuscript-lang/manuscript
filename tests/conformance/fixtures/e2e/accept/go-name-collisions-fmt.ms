@@ -4,10 +4,10 @@
 import expect_equal, expect_false from "@std/test/test.ms"
 
 type Spelled:
-    x_: Int
-    x: Int
-    a_b: Int
-    aB: Int
+    x_ Int
+    x Int
+    a_b Int
+    aB Int
 
 interface Methods:
     fn foo_bar() Int
@@ -19,16 +19,16 @@ fn Spelled.foo_bar() Int:
 fn Spelled.fooBar() Int:
     return self.x
 
-fn string(value: Int) Int:
+fn string(value Int) Int:
     return value + 1
 
-fn int(value: Int) Int:
+fn int(value Int) Int:
     return value + 2
 
-fn float64(value: Int) Int:
+fn float64(value Int) Int:
     return value + 3
 
-fn nil(value: Int) Int:
+fn nil(value Int) Int:
     return value + 4
 
 test "field names that differ only in underscores stay distinct":
@@ -41,7 +41,7 @@ test "field names that differ only in underscores stay distinct":
     expect_equal(value, Spelled(1, 2, 3, 4))?
 
 test "operation names that differ only in underscores stay distinct":
-    methods: Methods := Spelled(1, 2, 3, 4)
+    methods Methods := Spelled(1, 2, 3, 4)
     expect_false(methods.foo_bar() != 1 or methods.fooBar() != 2)?
 
 test "functions named like Go predeclared identifiers still lower":
@@ -50,19 +50,19 @@ test "functions named like Go predeclared identifiers still lower":
     expect_false(text != "2345" or floats.length() != 2)?
 
 type Box[T]:
-    value: T
+    value T
 
 type Box_Int:
-    value: String
+    value String
 
 enum Shape:
-    Circle(radius: Int)
-    Square(side: Int)
+    Circle(radius Int)
+    Square(side Int)
 
 type Shape_Circle:
-    radius: String
+    radius String
 
-fn side(shape: Shape) Int:
+fn side(shape Shape) Int:
     match shape:
         Circle(radius): return radius
         Square(side): return side
@@ -78,21 +78,21 @@ interface Counter:
     fn count() Int
 
 type Tally:
-    total: Int
+    total Int
 
 fn Tally.count() Int:
     return self.total
 
 type Counter_Tally:
-    other: Int
+    other Int
 
-fn clone_Tally(tally: Tally) Int:
+fn clone_Tally(tally Tally) Int:
     return tally.total + 1
 
 test "view and helper names stay apart from declared names":
     tally := Tally(1)
     copy := tally.clone()
-    view: Counter := tally
+    view Counter := tally
     expect_false(view.count() != 1 or Counter_Tally(2).other != 2)?
     expect_false(copy.total != 1 or clone_Tally(tally) != 2)?
 
@@ -107,7 +107,7 @@ fn Tally.receiver() String:
     return f"receiver {self.total}"
 
 test "operations named like generated view methods stay callable":
-    reporter: Reporter := Tally(3)
+    reporter Reporter := Tally(3)
     expect_false(
         (
             reporter.describe() != "describe 3"

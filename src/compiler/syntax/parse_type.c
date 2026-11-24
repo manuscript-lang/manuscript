@@ -281,7 +281,14 @@ MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out) {
       return false;
     MsTypeRefs bounds = {NULL, 0};
     MsTypeRef *def = NULL;
-    if (parse_take(p, MS_T_Colon)) {
+    if (parse_kind(p) == MS_T_Colon && p->speculative == 0) {
+      MsSpan n = parse_text(p, name);
+      parse_fail_fix(p, parse_peek(p),
+                     parse_fmt(p, "a type parameter's bound follows its name without ':'; write %S Comparable", n),
+                     ms_span_of_text(""));
+      return false;
+    }
+    if (parse_kind(p) == MS_T_Name) {
       size_t bm = parse_mark(p);
       if (!parse_push_named_type(p))
         return false;
@@ -292,7 +299,7 @@ MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out) {
       bounds.ptr = parse_finish(p, bm, &bounds.len, sizeof(void *), _Alignof(void *));
       if (parse_kind(p) == MS_T_Plus || parse_kind(p) == MS_T_And) {
         parse_fail_fix(p, parse_peek(p),
-                       ms_span_of_text("combine bounds with '&', as in T: Comparable & Clonable"),
+                       ms_span_of_text("combine bounds with '&', as in T Comparable & Clonable"),
                        ms_span_of_text("&"));
         return false;
       }
@@ -322,32 +329,51 @@ MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out) {
   return true;
 }
 
-/* The colon after a parameter or field name; a missing one is usually a type written directly
- * after the name. */
-MS_NODISCARD bool parse_need_name_colon(Parser *p, MsToken name) {
+/* A parameter or field name. A contextual keyword (`type`, `return`, `continue`, ...) is a name here when a type
+ * follows it, as in `type String = "x"`; elsewhere the keyword has its own meaning. */
+MS_NODISCARD bool parse_member_name(Parser *p, MsToken *out) {
   MsToken t = parse_peek(p);
-  if (t.kind == MS_T_Name && p->speculative == 0) {
-    MsToken at = name;
-    at.pos = name.end;
-    at.end = name.end;
-    MsSpan n = parse_text(p, name);
-    parse_fail_fix(
-        p, at,
-        parse_fmt(p, "expected ':' between '%S' and its type; parameters and fields are written name: Type",
-                  n),
-        ms_span_of_text(":"));
-    return false;
+  if (ms_tok_is_contextual((MsTok)t.kind) && parse_type_starts((MsTok)parse_ahead(p, 1).kind) &&
+      parse_ahead(p, 1).pos.line == t.pos.line) {
+    p->at++;
+    *out = t;
+    return true;
   }
-  if ((t.kind == MS_T_Comma || t.kind == MS_T_RParen) && p->speculative == 0) {
+  return parse_need_token(p, MS_T_Name, out);
+}
+
+/* Whether a token can begin a type: a name, `fn`, or a parenthesis. */
+bool parse_type_starts(MsTok kind) {
+  return kind == MS_T_Name || kind == MS_T_Fn || kind == MS_T_LParen;
+}
+
+/* The type after a parameter or field name, written directly after it: `name Type`. */
+MS_NODISCARD bool parse_name_type(Parser *p, MsToken name, MsTypeRef **out) {
+  MsToken t = parse_peek(p);
+  if (p->speculative == 0) {
     MsSpan n = parse_text(p, name);
-    parse_fail(p, name,
-               parse_fmt(p, "parameter '%S' has no type; every parameter is written name: Type, e.g. %S: Int",
-                         n, n));
-    return false;
+    if (t.kind == MS_T_Colon) {
+      parse_fail_fix(p, t,
+                     parse_fmt(p, "remove the ':' between '%S' and its type; write %S Type", n, n),
+                     ms_span_of_text(""));
+      return false;
+    }
+    if (t.kind == MS_T_Var) {
+      parse_fail(p, t, parse_fmt(p, "'var' goes before the parameter name, not its type; write var %S Type", n));
+      return false;
+    }
+    if (t.kind == MS_T_Comma || t.kind == MS_T_RParen) {
+      parse_fail(p, name,
+                 parse_fmt(p, "parameter '%S' has no type; every parameter is written name Type, e.g. %S Int", n,
+                           n));
+      return false;
+    }
+    if (!parse_type_starts((MsTok)t.kind)) {
+      parse_fail(p, t, parse_fmt(p, "expected the type of '%S' after its name, e.g. %S Int", n, n));
+      return false;
+    }
   }
-  if (!parse_need(p, MS_T_Colon))
-    return false;
-  return true;
+  return parse_typ(p, out);
 }
 
 /* One parameter: `[move|var] name[: Type][= default]`; it is pushed onto the open scratch list. */
@@ -361,25 +387,22 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
     return false;
   }
   MsToken name = {0};
-  if (!parse_need_token(p, MS_T_Name, &name))
+  if (!parse_member_name(p, &name))
     return false;
   MsTypeRef *ty = NULL;
   MsExpr *def = NULL;
   bool implied = false;
-  if (parse_take(p, MS_T_Colon)) {
-    if (parse_kind(p) == MS_T_Var) {
-      MsToken t = parse_peek(p);
-      MsSpan n = parse_text(p, name);
-      MsSpan rep = parse_fmt(p, "var %S:", n);
-      parse_fail_fix_range(
-          p, name, t,
-          parse_fmt(p, "'var' goes before the parameter name, not its type; write var %S: Type", n), rep);
-      return false;
-    }
-    if (!parse_typ(p, &ty))
-      return false;
-  } else if (!inferred || parse_kind(p) == MS_T_Name) {
-    if (!parse_need_name_colon(p, name))
+  if (parse_text_is(p, name, "ref") && parse_kind(p) == MS_T_Name && parse_type_starts((MsTok)parse_ahead(p, 1).kind) &&
+      p->speculative == 0) {
+    MsToken next = parse_peek(p);
+    parse_fail_fix_range(p, name, next,
+                         ms_span_of_text("'ref' is not a parameter marker; a parameter is written name Type, so "
+                                         "remove 'ref'"),
+                         parse_text(p, next));
+    return false;
+  }
+  if (!inferred || parse_kind(p) == MS_T_Colon || parse_type_starts(parse_kind(p))) {
+    if (!parse_name_type(p, name, &ty))
       return false;
   }
   if (parse_take(p, MS_T_Assign)) {

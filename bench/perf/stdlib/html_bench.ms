@@ -4,7 +4,7 @@ import (
 	words from "./src/harness.ms",
 )
 
-fn html_doc(count: Int) String:
+fn html_doc(count Int) String:
 	var sb = ""
 	sb += "<div>"
 	for i in 0..count:
@@ -13,8 +13,8 @@ fn html_doc(count: Int) String:
 	return sb
 
 type BenchData:
-	html: String
-	text: String
+	html String
+	text String
 
 fn make_fixture() BenchData:
 	html := html_doc(2000)

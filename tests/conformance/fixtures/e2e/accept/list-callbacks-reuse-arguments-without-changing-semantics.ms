@@ -3,18 +3,18 @@
 // conform: origin=tests/e2e/testdata/accept/list-callbacks-reuse-arguments-without-changing-semantics.ms
 import expect_true from "@std/test/test.ms"
 
-fn keep(var list: List[fn() Int], value: Int) Void:
+fn keep(var list List[fn() Int], value Int) Void:
     list.append(value: fn() Int: value)
     return
 
-fn grow(var list: List[Int], value: Int) Int:
+fn grow(var list List[Int], value Int) Int:
     list.append(value: value)
     return value
 
-fn nested(items: List[Int]) List[Int]:
+fn nested(items List[Int]) List[Int]:
     return items.map(
-        fn(value: Int) Int: (
-            items.map(fn(inner: Int) Int: inner + value).length()
+        fn(value Int) Int: (
+            items.map(fn(inner Int) Int: inner + value).length()
             + value
         )
     )
@@ -27,34 +27,34 @@ test "list callbacks":
         items.append(value: i)
         i = i + 1
 
-    doubled := items.map(fn(value: Int) Int: value * 2)
+    doubled := items.map(fn(value Int) Int: value * 2)
     expect_true((doubled.get(index: 4) == 8))?
 
-    even := items.filter(fn(value: Int) Bool: value % 2 == 0)
+    even := items.filter(fn(value Int) Bool: value % 2 == 0)
     expect_true((even.length() == 3))?
     expect_true(
         (
             items.fold(
                 initial: 0,
-                step: fn(accumulator: Int, value: Int) Int: (
+                step: fn(accumulator Int, value Int) Int: (
                     accumulator
                     + value
                 )
             ) == 10
         )
     )?
-    expect_true((items.count(predicate: fn(value: Int) Bool: value > 1) == 3))?
+    expect_true((items.count(predicate: fn(value Int) Bool: value > 1) == 3))?
 
     var retained = List[fn() Int]()
     for value in items:
         keep(list: retained, value: value)
 
-    called := retained.map(fn(value: fn() Int) Int: value())
+    called := retained.map(fn(value fn() Int) Int: value())
     expect_true(
         (
             called.fold(
                 initial: 0,
-                step: fn(accumulator: Int, value: Int) Int: (
+                step: fn(accumulator Int, value Int) Int: (
                     accumulator
                     + value
                 )

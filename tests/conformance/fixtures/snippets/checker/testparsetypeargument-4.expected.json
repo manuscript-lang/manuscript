@@ -14,7 +14,7 @@
           "file": "testparsetypeargument-4.ms",
           "line": 8,
           "column": 16,
-          "offset": 242
+          "offset": 240
         },
         "fix": {
           "position": {

@@ -2,9 +2,9 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:30 TestPatternBindingAdvisory
 type Box[T]:
-    value: T
+    value T
 
-fn use[T](value: Box[T]?) T:
+fn use[T](value Box[T]?) T:
     match value:
         box: return Box.value
         null: return panic(message: "empty")

@@ -1,3 +1,3 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn boxed(value: SetBuilder[Int]) Void: return
+fn boxed(value SetBuilder[Int]) Void: return

@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/string-keyed-map-calls-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
-fn lookup(m: Map[String, Int], key: String) Int:
+fn lookup(m Map[String, Int], key String) Int:
     match m.get(key: key):
         v:
             return v

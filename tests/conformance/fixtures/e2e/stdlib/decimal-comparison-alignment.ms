@@ -6,8 +6,8 @@ import (
 )
 
 test "decimal comparison aligns every significant digit without losing signs":
-	base: Decimal := 1e33d
-	var step: Decimal = 1e33d
+	base Decimal := 1e33d
+	var step Decimal = 1e33d
 
 	for digits in 0..34:
 		larger := base + step

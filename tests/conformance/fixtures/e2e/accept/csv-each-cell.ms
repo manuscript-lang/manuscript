@@ -5,10 +5,10 @@ import (
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 
-fn visited(text: String, options: CsvOptions = CsvOptions()) List[List[String]]:
+fn visited(text String, options CsvOptions = CsvOptions()) List[List[String]]:
 	var rows = List[List[String]]()
 
-	add := fn(row: Int, col: Int, cell: String) Void:
+	add := fn(row Int, col Int, cell String) Void:
 		if col == 0: rows.append([])
 		rows[row].append(cell.clone())
 

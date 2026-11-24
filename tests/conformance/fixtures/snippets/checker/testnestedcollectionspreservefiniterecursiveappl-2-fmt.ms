@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/checker_test.go:91 TestNestedCollectionsPreserveFiniteRecursiveApplications
 type Growing[T]:
-    children: List[Growing[List[T]]]
+    children List[Growing[List[T]]]

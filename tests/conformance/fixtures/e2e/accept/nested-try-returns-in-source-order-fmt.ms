@@ -3,17 +3,17 @@
 // conform: origin=tests/e2e/testdata/accept/nested-try-returns-in-source-order.ms
 import expect_true from "@std/test/test.ms"
 
-fn step(var log: List[String], move name: String, n: Int) Int!Error:
+fn step(var log List[String], move name String, n Int) Int!Error:
     log.append(value: name.clone())
     if n < 0:
         return error(cause: Error(name))
 
     return ok(value: n)
 
-fn add(x: Int, y: Int) Int:
+fn add(x Int, y Int) Int:
     return x + y
 
-fn sum(var log: List[String], a: Int, b: Int) Int!Error:
+fn sum(var log List[String], a Int, b Int) Int!Error:
     v := (
         (step(log: log, name: "a", n: a)?)
         + (step(log: log, name: "b", n: b)?)
@@ -21,7 +21,7 @@ fn sum(var log: List[String], a: Int, b: Int) Int!Error:
     log.append(value: "done")
     return ok(value: v)
 
-fn arguments(var log: List[String], a: Int, b: Int) Int!Error:
+fn arguments(var log List[String], a Int, b Int) Int!Error:
     return ok(
         value: add(
             x: step(log: log, name: "x", n: a)?,
@@ -29,13 +29,13 @@ fn arguments(var log: List[String], a: Int, b: Int) Int!Error:
         )
     )
 
-fn effect_first(var log: List[String], a: Int) Int!Error:
+fn effect_first(var log List[String], a Int) Int!Error:
     log.append(value: "before")
 
     v := add(x: 1, y: step(log: log, name: "s", n: a)?)
     return ok(value: v)
 
-fn loop(var log: List[String], n: Int) Int!Error:
+fn loop(var log List[String], n Int) Int!Error:
     var total = 0
     var i = 0
 
@@ -45,12 +45,12 @@ fn loop(var log: List[String], n: Int) Int!Error:
 
     return ok(value: total)
 
-fn joined(var log: List[String]) String!Error:
+fn joined(var log List[String]) String!Error:
     return ok(
         value: f"{step(log: log, name: "p", n: 1)?}-{step(log: log, name: "q", n: -1)?}"
     )
 
-fn text(log: List[String]) String:
+fn text(log List[String]) String:
     return log.join(separator: ",")
 
 test "nested try":

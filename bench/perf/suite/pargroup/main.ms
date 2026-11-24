@@ -5,14 +5,14 @@ import (
 )
 
 type Stats:
-	lines: Int
-	latency: Int
-	c2: Int
-	c3: Int
-	c4: Int
-	c5: Int
+	lines Int
+	latency Int
+	c2 Int
+	c3 Int
+	c4 Int
+	c5 Int
 
-fn files_under(dir: String) List[String]:
+fn files_under(dir String) List[String]:
 	var out = List[String]()
 
 	for entry in list(dir).get():
@@ -26,7 +26,7 @@ fn files_under(dir: String) List[String]:
 	return out
 
 // Statistics of one log file; runs on a worker.
-fn summarize(path: String) Stats:
+fn summarize(path String) Stats:
 	text := read_file(path).wait().get().decode_utf8() or ""
 	var s = Stats(0, 0, 0, 0, 0, 0)
 

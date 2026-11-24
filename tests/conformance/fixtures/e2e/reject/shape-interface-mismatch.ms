@@ -3,7 +3,7 @@
 import Source from "@std/io/io.ms"
 
 type Counted:
-	log: String
+	log String
 
 // `next` returns Int?, not Int?!, so Counted is not a Source[Int].
 fn var Counted.next() Int?:
@@ -12,7 +12,7 @@ fn var Counted.next() Int?:
 fn move Counted.close() Void!:
 	return ok()
 
-fn drain(s: Source[Int]) Int:
+fn drain(s Source[Int]) Int:
 	return 1
 
 fn main() Void:

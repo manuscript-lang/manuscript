@@ -4,14 +4,14 @@ import expect_equal from "@std/test/test.ms"
 
 // `place[key] = value` consumes `key` at the store, after `value` ran, so `value` may read it.
 type Bag:
-	keys: List[String]
-	total: Int = 0
+	keys List[String]
+	total Int = 0
 
-fn var Bag.set(move key: String, value: Int) Void:
+fn var Bag.set(move key String, value Int) Void:
 	self.total += value
 	self.keys.append(key)
 
-fn count_words(words: List[String]) Map[String, Int]:
+fn count_words(words List[String]) Map[String, Int]:
 	var counts = Map[String, Int]()
 	for w in words:
 		key := w.clone()

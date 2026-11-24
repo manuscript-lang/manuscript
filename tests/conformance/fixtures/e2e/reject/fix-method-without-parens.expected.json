@@ -14,20 +14,20 @@
           "file": "fix-method-without-parens.ms",
           "line": 4,
           "column": 21,
-          "offset": 112
+          "offset": 111
         },
         "fix": {
           "position": {
             "file": "fix-method-without-parens.ms",
             "line": 4,
             "column": 8,
-            "offset": 99
+            "offset": 98
           },
           "end": {
             "file": "fix-method-without-parens.ms",
             "line": 4,
             "column": 20,
-            "offset": 111
+            "offset": 110
           },
           "replacement": "items.length()"
         }
@@ -40,20 +40,20 @@
           "file": "fix-method-without-parens.ms",
           "line": 5,
           "column": 22,
-          "offset": 132
+          "offset": 131
         },
         "fix": {
           "position": {
             "file": "fix-method-without-parens.ms",
             "line": 5,
             "column": 16,
-            "offset": 126
+            "offset": 125
           },
           "end": {
             "file": "fix-method-without-parens.ms",
             "line": 5,
             "column": 28,
-            "offset": 138
+            "offset": 137
           },
           "replacement": "items.length()"
         }

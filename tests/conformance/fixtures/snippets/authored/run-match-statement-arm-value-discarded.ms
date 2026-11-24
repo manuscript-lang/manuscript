@@ -2,17 +2,17 @@
 // conform: phase=run
 // A match used as a statement may end an arm in a call that returns a value; the value is dropped.
 enum Step:
-    Show(text: String)
-    Count(n: Int)
-    Check(n: Int)
+    Show(text String)
+    Count(n Int)
+    Check(n Int)
 
-fn double(n: Int) Int:
+fn double(n Int) Int:
     return n * 2
 
-fn checked(n: Int) Int!:
+fn checked(n Int) Int!:
     return ok(n + 1)
 
-fn run(step: Step) Void!:
+fn run(step Step) Void!:
     match step:
         Show(text):
             print(text)

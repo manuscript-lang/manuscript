@@ -14,20 +14,20 @@
           "file": "lsp-testexpectedgenericresulteditorconflict-1.ms",
           "line": 6,
           "column": 20,
-          "offset": 240
+          "offset": 239
         },
         "fix": {
           "position": {
             "file": "lsp-testexpectedgenericresulteditorconflict-1.ms",
             "line": 6,
             "column": 20,
-            "offset": 240
+            "offset": 239
           },
           "end": {
             "file": "lsp-testexpectedgenericresulteditorconflict-1.ms",
             "line": 6,
             "column": 31,
-            "offset": 251
+            "offset": 250
           },
           "replacement": "f\"{identity(1)}\""
         }

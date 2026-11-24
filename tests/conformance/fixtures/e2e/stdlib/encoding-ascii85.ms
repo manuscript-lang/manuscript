@@ -37,7 +37,7 @@ test "ASCII85 ignores every ASCII control and space including after complete gro
 	expect_equal(ascii85_decode("!" + spaces + "!")?, Bytes([0]))?
 
 test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
-	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	invalid Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	for text in [
 		"!", "u", "y", "v", "~", "!!z", "!z!!!", "<~z~>", "z~>", "z~", "é", "zé", "z!"
 	]:
@@ -47,13 +47,13 @@ test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
 	expect_equal(ascii85_decode(non_ascii), invalid)?
 
 test "ASCII85 rejects overflowing complete and padded partial groups":
-	invalid: Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
+	invalid Bytes! := error(Error("encoding: invalid data", kind: "EBADMSG"))
 	for text in ["s8W-\"", "s8W", "s8W-", "uu", "uuu", "uuuu", "uuuuu", "s8W-!uuuuu"]:
 		expect_equal(ascii85_decode(text), invalid)?
 
 test "ASCII85 decoded byte limits count expansions and partial groups exactly":
-	limited: Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
-	invalid: Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
+	limited Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
+	invalid Bytes! := error(Error("encoding: invalid input", kind: "EINVAL"))
 	expect_equal(ascii85_decode("", 0)?, Bytes([]))?
 	expect_equal(ascii85_decode("z", 3), limited)?
 	expect_equal(ascii85_decode("z", 4)?, Bytes([0, 0, 0, 0]))?

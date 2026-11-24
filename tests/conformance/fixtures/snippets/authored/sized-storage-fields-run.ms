@@ -4,39 +4,39 @@
 import stdout from "@std/io/io.ms"
 
 type Pix:
-	r: Int8
-	g: Int8
-	b: Int8
-	w: Int16
-	f: Float32
-	n: Int32
+	r Int8
+	g Int8
+	b Int8
+	w Int16
+	f Float32
+	n Int32
 
 enum Shape:
-	Dot(x: Int8)
-	Box(w: Int16, h: Float32, c: Int32)
-	Big(v: Int)
+	Dot(x Int8)
+	Box(w Int16, h Float32, c Int32)
+	Big(v Int)
 
-fn area(s: Shape) Int:
+fn area(s Shape) Int:
 	match s:
 		Dot(x): return x.to_int64()
 		Box(w, h, c): return (w.to_int64() + c.to_int64() + (h.truncate_to_int() or 0))
 		Big(v): return v
 
 fn main() Void:
-	var l: List[Int8] = []
+	var l List[Int8] = []
 	for i in 0..10:
 		l.append((i * 3 - 12).to_int8() or 0)
 	void stdout().write(f"{l} {l.length()} {l.contains(-3)}\n")
 
-	s: List[Float32] := [1.5, 0.1, -2.0]
+	s List[Float32] := [1.5, 0.1, -2.0]
 	void stdout().write(f"{s} {s.contains(0.1)}\n")
 
 	p := Pix(r: -5, g: 7, b: 127, w: -300, f: 2.5, n: -70000)
 	q := Pix(r: -5, g: 7, b: 127, w: -300, f: 2.5, n: -70000)
 	void stdout().write(f"{p.r} {p.g} {p.b} {p.w} {p.f} {p.n} {p == q}\n")
 
-	o: Int16? := -2
-	n: Int16? := null
+	o Int16? := -2
+	n Int16? := null
 	void stdout().write(f"{o == n} {o == o}\n")
 
 	var m = Map[Int8, Int16]()

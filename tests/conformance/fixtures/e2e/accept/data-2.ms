@@ -8,6 +8,6 @@ test "explicit byte conversion":
     expect_equal("é".length(), 2)?
     expect_equal("é".to_bytes().decode_utf8(), "é")?
 
-    invalid: String? := null
+    invalid String? := null
     expect_equal(Bytes([255]).decode_utf8(), invalid)?
     expect_equal("-007".parse_int(), -7)?

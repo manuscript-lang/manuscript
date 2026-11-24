@@ -12,10 +12,10 @@ import (
 	expect_ok from "@std/test/test.ms",
 )
 
-fn paths(found: List[WalkEntry]) List[String]:
+fn paths(found List[WalkEntry]) List[String]:
 	return found.map(fn e: if e.directory: f"{e.path}/" else: e.path.clone())
 
-fn total_size(tree: FileTree, names: List[String]) Int!:
+fn total_size(tree FileTree, names List[String]) Int!:
 	var total = 0
 	for name in names:
 		total += (tree.read(name, null)?).length()

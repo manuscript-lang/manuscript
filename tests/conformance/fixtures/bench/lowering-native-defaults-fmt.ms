@@ -8,15 +8,15 @@ import CommandOutput, RunOptions, run from "@std/os/process.ms"
 import Duration from "@std/time.ms"
 import write_file_bytes from "@std/os/fs.ms"
 
-fn direct_explicit(data: Bytes) String: base64_encode(data, false)
+fn direct_explicit(data Bytes) String: base64_encode(data, false)
 
-fn direct_omitted(data: Bytes) String: base64_encode(data)
+fn direct_omitted(data Bytes) String: base64_encode(data)
 
-fn bound_explicit(data: Bytes) String:
+fn bound_explicit(data Bytes) String:
     encode := base64_encode
     return encode(data, false)
 
-fn bound_omitted(data: Bytes) String:
+fn bound_omitted(data Bytes) String:
     encode := base64_encode
     return encode(data)
 
@@ -35,10 +35,10 @@ fn command_omitted() CommandOutput!:
 fn command_bind() fn(String, List[String], Bytes, Int?, Duration?) CommandOutput!:
     return run
 
-fn filesystem_explicit(data: Bytes) Void!:
+fn filesystem_explicit(data Bytes) Void!:
     return write_file_bytes("", data, false).wait()
 
-fn filesystem_omitted(data: Bytes) Void!:
+fn filesystem_omitted(data Bytes) Void!:
     return write_file_bytes("", data).wait()
 
 fn filesystem_bind() fn(String, Bytes, Bool) Void!:

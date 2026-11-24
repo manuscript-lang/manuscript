@@ -3,11 +3,11 @@
 import expect_equal from "@std/test/test.ms"
 
 type Stat:
-	count: Int
-	sum: Int
+	count Int
+	sum Int
 
 test "repeated entry updates read the current entry":
-	var stats: Map[Int, Stat] = {}
+	var stats Map[Int, Stat] = {}
 	for i in 0..3000:
 		k := i % 700
 		if not stats.contains(k): stats[k] = Stat(0, 0)
@@ -23,7 +23,7 @@ test "repeated entry updates read the current entry":
 	sum | expect_equal(4498500)?
 
 test "an insert between two lookups of one key does not reuse a stale entry":
-	var m: Map[Int, Stat] = {}
+	var m Map[Int, Stat] = {}
 	m[0] = Stat(1, 1)
 	m[0].count += 1
 	for i in 1..2000: m[i] = Stat(i, i)
@@ -32,14 +32,14 @@ test "an insert between two lookups of one key does not reuse a stale entry":
 	m[1999].sum | expect_equal(1999)?
 
 test "a removed key is gone after an update":
-	var m: Map[Int, Stat] = {}
+	var m Map[Int, Stat] = {}
 	m[1] = Stat(1, 1)
 	m[1].count += 1
 	m.remove(1)
 	m.contains(1) | expect_equal(false)?
 
 test "contains then update takes the present and absent paths with string keys":
-	var seen: Map[String, Stat] = {}
+	var seen Map[String, Stat] = {}
 	for i in 0..2000:
 		name := f"user-{i % 300}"
 		if not seen.contains(name): seen[name.clone()] = Stat(0, 0)
@@ -55,7 +55,7 @@ test "contains then update takes the present and absent paths with string keys":
 	sum | expect_equal(1999000)?
 
 test "contains guarding an update of a different key":
-	var m: Map[Int, Stat] = {}
+	var m Map[Int, Stat] = {}
 	m[1] = Stat(1, 1)
 	for i in 0..50:
 		if not m.contains(i): m[i] = Stat(0, 0)

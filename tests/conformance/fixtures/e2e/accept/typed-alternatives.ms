@@ -3,59 +3,59 @@
 // conform: origin=tests/e2e/testdata/accept/typed-alternatives.ms
 import expect_equal, expect_false, fail from "@std/test/test.ms"
 
-fn checked(n: Int) Int!Error:
+fn checked(n Int) Int!Error:
 	if n < 0: return error(Error("negative"))
 	return ok(n + 1)
 
-fn chain(n: Int) Int!Error:
+fn chain(n Int) Int!Error:
 	v := checked(n)?
 	return ok(v * 2)
 
-fn deeper(n: Int) Int!Error:
+fn deeper(n Int) Int!Error:
 	a := chain(n)?
 	b := chain(a)?
 	return ok(a + b)
 
-fn expression_try(n: Int) Int!Error:
+fn expression_try(n Int) Int!Error:
 	x := (checked(n)?) + 100
 	return ok(x)
 
-fn passthrough(n: Int) Int!Error:
+fn passthrough(n Int) Int!Error:
 	return checked(n)
 
-fn through_local(n: Int) Int!Error:
+fn through_local(n Int) Int!Error:
 	r := checked(n)
 	return r
 
-fn halve(n: Int) Int?:
+fn halve(n Int) Int?:
 	if n % 2 != 0: return null
 	return (n / 2)
 
-fn word(n: Int) String!Error:
+fn word(n Int) String!Error:
 	if n == 0: return error(Error("zero"))
 	return ok(f"w{n}")
 
-fn ratio(n: Int) Float!Error:
+fn ratio(n Int) Float!Error:
 	return ok(1.5)
 
-fn nothing(flag: Bool) Void!Error:
+fn nothing(flag Bool) Void!Error:
 	if flag: return ok()
 	return error(Error("no"))
 
-fn nested(n: Int) Int??:
+fn nested(n Int) Int??:
 	if n == 0: return null
 	return halve(n)
 
-fn matched_value(n: Int) Int:
+fn matched_value(n Int) Int:
 	return checked(n).get_or(-1)
 
-fn closure_return(n: Int) Int!Error:
+fn closure_return(n Int) Int!Error:
 	y := halve(n)
 	if y != null: return ok(y)
 
 	return error(Error("odd"))
 
-fn sum_all(count: Int) Int!Error:
+fn sum_all(count Int) Int!Error:
 	var total = 0
 
 	for i in 0..count:

@@ -16,7 +16,7 @@ import (
 
 // With several tasks alive, file-system calls run on the blocking pool; the results
 // must match the single-task behaviour.
-fn churn(root: String, name: String) Int:
+fn churn(root String, name String) Int:
 	dir := f"{root}/{name}"
 	made := create_directory(dir)
 	if made.is_error(): print(f"create_directory: {made.err()}")

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn add(value: Int) Int:\n\treturn value\n\nfn render() String:\n\treturn f\"héllo { add(value: 2) }\"\n"
+    "fmt": "fn add(value Int) Int:\n\treturn value\n\nfn render() String:\n\treturn f\"héllo { add(value: 2) }\"\n"
   }
 }

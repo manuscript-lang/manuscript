@@ -16,7 +16,7 @@ Save as `retry.ms`. `retry` calls the operation with the attempt number until it
 import RetryPolicy, retry from "@std/concurrency/resilience.ms"
 import milliseconds from "@std/time.ms"
 
-fn flaky(attempt: Int) Int!:
+fn flaky(attempt Int) Int!:
     print(f"attempt {attempt}")
     if attempt < 3:
         return error(Error("temporarily unavailable", kind: "EAGAIN"))

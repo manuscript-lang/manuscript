@@ -7,16 +7,16 @@ import (
 )
 
 type Rng:
-	state: Int
+	state Int
 
-fn var Rng.next(limit: Int) Int:
+fn var Rng.next(limit Int) Int:
 	self.state = (self.state * 1103515245 + 12345) % 2147483648
 	return (self.state / 65536) % limit
 
-fn save(dir: String, name: String, text: String) Void:
+fn save(dir String, name String, text String) Void:
 	write_file(f"{dir}/{name}", text, replace: true).wait().get()
 
-fn logs(n: Int, seed: Int) String:
+fn logs(n Int, seed Int) String:
 	var r = Rng(seed)
 	levels := ["DEBUG", "INFO", "INFO", "INFO", "WARN", "ERROR"]
 	methods := ["GET", "GET", "GET", "POST", "PUT", "DELETE"]
@@ -29,7 +29,7 @@ fn logs(n: Int, seed: Int) String:
 
 	return b
 
-fn csv(n: Int) String:
+fn csv(n Int) String:
 	var r = Rng(2)
 	regions := ["north", "south", "east", "west", "central", "overseas"]
 	var b = ""
@@ -41,7 +41,7 @@ fn csv(n: Int) String:
 
 	return b
 
-fn json(n: Int) String:
+fn json(n Int) String:
 	var r = Rng(3)
 	tags := ["red", "green", "blue", "fast", "slow", "new", "old"]
 	var b = ""
@@ -58,7 +58,7 @@ fn json(n: Int) String:
 	b += "]"
 	return b
 
-fn words(n: Int) String:
+fn words(n Int) String:
 	var r = Rng(4)
 	var b = ""
 
@@ -76,7 +76,7 @@ fn words(n: Int) String:
 
 	return b
 
-fn records(n: Int) String:
+fn records(n Int) String:
 	var r = Rng(5)
 	var b = ""
 	for i in 0..n:
@@ -84,7 +84,7 @@ fn records(n: Int) String:
 	return b
 
 // A tree of 20 directories with 100 log files each, 200 lines per file at scale 1.
-fn tree(dir: String, scale: Int) Void:
+fn tree(dir String, scale Int) Void:
 	for d in 0..20:
 		sub := f"{dir}/tree/d{d}"
 		create_directory(sub, recursive: true).get()

@@ -6,17 +6,17 @@ import (
 )
 
 enum Shape:
-	Circle(radius: Float)
+	Circle(radius Float)
 
 type Point:
-	x: Int
-	y: Int
+	x Int
+	y Int
 
-fn roll(i: Int) Int!Error: ok(i)
+fn roll(i Int) Int!Error: ok(i)
 
-fn count(values: List[String]) Int: values.length()
+fn count(values List[String]) Int: values.length()
 
-fn update[K: Hashable, V: Clonable](var values: Map[K, V], key: K, value: V) Map[K, V]:
+fn update[K Hashable, V Clonable](var values Map[K, V], key K, value V) Map[K, V]:
 	values.add(key, value)
 	return values.clone()
 
@@ -24,7 +24,7 @@ test "issue 187 programs need no collection imports":
 	shapes := [Shape.Circle(1.0)]
 	expect_false(shapes.length() != 1 or count(["/var", "log"]) != 2)?
 
-	var rolls: List[Int] = []
+	var rolls List[Int] = []
 
 	for i in 0..5:
 		if n := roll(i):
@@ -38,7 +38,7 @@ test "issue 187 programs need no collection imports":
 	points.add(Point(1, 2), 7)
 	expect_equal(points[Point(1, 2)], 7)?
 
-	nested: List[Map[String, List[Int]]] := [{}, {"a": []}]
+	nested List[Map[String, List[Int]]] := [{}, {"a": []}]
 	expect_equal(nested[1]["a"].length(), 0)?
 
 test "map add retains clones and insertion order":
@@ -123,5 +123,5 @@ test "map add captures receivers and arguments in written order":
 	)
 	expect_false(order != 2 or original[6] != 7)?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
 	return value

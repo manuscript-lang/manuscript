@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Choice[T]:\n\tFound(value: T)\n\tMissing\n\nfn f(c: Choice[Int]) Int:\n\tmatch c:\n\t\tChoice[String].Found(v): return 1\n\t\tChoice[String].Missing: return 0\n"
+    "fmt": "enum Choice[T]:\n\tFound(value T)\n\tMissing\n\nfn f(c Choice[Int]) Int:\n\tmatch c:\n\t\tChoice[String].Found(v): return 1\n\t\tChoice[String].Missing: return 0\n"
   }
 }

@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 export fn main() Int:
-    var x: Int = null
+    var x Int = null
     return x

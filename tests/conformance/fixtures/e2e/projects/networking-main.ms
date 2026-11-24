@@ -10,7 +10,7 @@ import HttpClientOptions from "@std/net/http.ms"
 import TlsOptions from "@std/net/tls.ms"
 import WebSocketOptions, WebSocketMessage, WebSocketKind from "@std/net/websocket.ms"
 
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void!:
     if exchange.path() == "/ws":
         var socket = upgrade(
             exchange, allowed_origins: [], subprotocols: ["echo"],

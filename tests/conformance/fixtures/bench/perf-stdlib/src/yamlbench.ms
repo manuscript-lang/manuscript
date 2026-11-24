@@ -1,13 +1,13 @@
 import bench from "./harness.ms"
 import parse, stringify, YamlValue from "@std/data/yaml.ms"
 
-fn yaml_doc(count: Int) String:
+fn yaml_doc(count Int) String:
     var sb = ""
     for i in 0..count:
         sb += f"- id: {i}\n  name: user{i}\n  tags: [a, b]\n  ok: true\n"
     return sb
 
-fn yaml_length(value: YamlValue) Int:
+fn yaml_length(value YamlValue) Int:
     if text := stringify(value):
         return text.length()
 

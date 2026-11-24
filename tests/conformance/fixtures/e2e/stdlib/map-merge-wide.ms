@@ -6,27 +6,27 @@ import (
 )
 
 type WideKey:
-	a: Int
-	b: Int
-	c: Int
-	d: Int
-	e: Int
-	f: Int
-	g: Int
-	h: Int
-	i: Int
-	j: Int
+	a Int
+	b Int
+	c Int
+	d Int
+	e Int
+	f Int
+	g Int
+	h Int
+	i Int
+	j Int
 
 type WideValue:
-	first: String
-	second: String
-	third: String
-	fourth: String
-	fifth: String
+	first String
+	second String
+	third String
+	fourth String
+	fifth String
 
-fn key(i: Int) WideKey: WideKey(i, i, i, i, i, i, i, i, i, i)
+fn key(i Int) WideKey: WideKey(i, i, i, i, i, i, i, i, i, i)
 
-fn value(i: Int) WideValue:
+fn value(i Int) WideValue:
 	text := "a long independently owned runtime value " + i.to_string()
 	return WideValue(text.clone(), text.clone(), text.clone(), text.clone(), text)
 
@@ -61,8 +61,8 @@ test "wide Map merge preserves order and owns values after the source drops":
 		expect_equal(found.fifth, text)?
 
 test "primitive Map merge preserves overwrite and empty-source behavior":
-	var target: Map[Int, Int] = {2: 99, -1: -1}
-	source: Map[Int, Int] := {0: 0, 1: 1, 2: 2}
+	var target Map[Int, Int] = {2: 99, -1: -1}
+	source Map[Int, Int] := {0: 0, 1: 1, 2: 2}
 	target.merge(source.clone())
 
 	empty := Map[Int, Int]()

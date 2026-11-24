@@ -4,8 +4,8 @@ interface Shape:
     fn area() Int
 
 type Rect:
-    w: Int
-    h: Int
+    w Int
+    h Int
 
 impl Shape for Rect:
     fn area() Int:

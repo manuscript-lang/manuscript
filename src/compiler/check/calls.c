@@ -849,7 +849,7 @@ static bool report_optional_some(Body *body, const MsExpr *call, const Target *t
     ms_check_report(body->program, body->module, call->pos, MS_CHECK_TYPE,
                     ms_string_static(ms_span_of_text("there is no some(...); a plain value converts where a T? is "
                                                      "expected, so pass it directly, or annotate the binding, e.g. "
-                                                     "x: Int? := 5")));
+                                                     "x Int? := 5")));
   }
   return true;
 }

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong(value: Map[String, Int]) Void:\n\toutput := value.filter(fn k, n: n)\n"
+    "fmt": "fn wrong(value Map[String, Int]) Void:\n\toutput := value.filter(fn k, n: n)\n"
   }
 }

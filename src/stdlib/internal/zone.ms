@@ -15,51 +15,51 @@ import (
 // The offset and abbreviation of a zone at one moment.
 export type ZoneAt:
 	// Seconds east of UTC.
-	offset: Int
+	offset Int
 	// The abbreviation, such as `EST`, or the fixed offset's own text.
-	abbreviation: String
+	abbreviation String
 
 // One yearly transition of a POSIX rule: `Mm.w.d` (kind 0), `Jn` (1) or `n` (2), at
 // `time` local seconds.
 type Rule:
-	kind: Int
-	month: Int
-	week: Int
-	day: Int
-	time: Int
+	kind Int
+	month Int
+	week Int
+	day Int
+	time Int
 
 // A resolved zone. A table zone keeps the TZif block and the byte positions of its
 // parts.
 // `kind` 0 is UTC, 1 a fixed offset and 2 a table zone; a table zone with no transitions follows its rule.
 export type Zone:
-	kind: Int
+	kind Int
 	// The zone name: the IANA name, or `""` when the data came from a file.
-	name: String
+	name String
 	// The fixed offset in seconds east of UTC.
-	fixed: Int
-	data: Bytes
-	count: Int
-	times: Int
-	time_size: Int
-	indexes: Int
-	types: Int
-	abbrevs: Int
-	abbrev_size: Int
-	has_footer: Bool
-	std_name: String
-	std_offset: Int
-	dst_name: String
-	dst_offset: Int
-	has_dst: Bool
-	start: Rule
-	end: Rule
+	fixed Int
+	data Bytes
+	count Int
+	times Int
+	time_size Int
+	indexes Int
+	types Int
+	abbrevs Int
+	abbrev_size Int
+	has_footer Bool
+	std_name String
+	std_offset Int
+	dst_name String
+	dst_offset Int
+	has_dst Bool
+	start Rule
+	end Rule
 
 // The transition time of entry `i`.
-fn Zone.time(i: Int) Int:
+fn Zone.time(i Int) Int:
 	return be_signed(self.data, self.times + i * self.time_size, self.time_size)
 
 // The offset and abbreviation of local time type `t`.
-fn Zone.type_at(t: Int) ZoneAt:
+fn Zone.type_at(t Int) ZoneAt:
 	at := self.types + t * 6
 	start := self.abbrevs + self.data.get(at + 5).to_int()
 	limit := self.abbrevs + self.abbrev_size
@@ -72,7 +72,7 @@ fn Zone.type_at(t: Int) ZoneAt:
 	)
 
 // The footer rule's offset and abbreviation at `unix`.
-fn Zone.rule_at(unix: Int) ZoneAt:
+fn Zone.rule_at(unix Int) ZoneAt:
 	if not self.has_dst: return ZoneAt(
 		offset: self.std_offset,
 		abbreviation: self.std_name.clone(),
@@ -96,7 +96,7 @@ fn Zone.rule_at(unix: Int) ZoneAt:
 	return ZoneAt(offset: self.std_offset, abbreviation: self.std_name.clone())
 
 // The offset (seconds east of UTC) and abbreviation of this zone at a Unix time.
-fn Zone.at(unix: Int) ZoneAt:
+fn Zone.at(unix Int) ZoneAt:
 	if self.kind == 0: return ZoneAt(offset: 0, abbreviation: "UTC")
 	if self.kind == 1: return ZoneAt(
 		offset: self.fixed,
@@ -126,7 +126,7 @@ fn Zone.at(unix: Int) ZoneAt:
 
 // The offset that local seconds `local` (the fields read as UTC) belong to; a time
 // skipped or repeated by a transition takes the offset before it.
-fn Zone.offset_for_local(local: Int) Int:
+fn Zone.offset_for_local(local Int) Int:
 	if self.kind != 2: return self.at(local).offset
 
 	before := self.at(local - 86400).offset
@@ -144,17 +144,17 @@ fn unknown_zone() Error:
 	return Error("time: unknown zone", kind: "EINVAL")
 
 // Division and remainder that round toward negative infinity.
-fn floor_div(a: Int, b: Int) Int:
+fn floor_div(a Int, b Int) Int:
 	q := a / b
 	if a % b != 0 and (a < 0) != (b < 0): return q - 1
 
 	return q
 
-fn floor_mod(a: Int, b: Int) Int:
+fn floor_mod(a Int, b Int) Int:
 	return a - floor_div(a, b) * b
 
 // Days since 1970-01-01 of a proleptic Gregorian date.
-fn days_from_civil(year: Int, month: Int, day: Int) Int:
+fn days_from_civil(year Int, month Int, day Int) Int:
 	y := if month <= 2: year - 1 else: year
 	era := floor_div(y, 400)
 	yoe := y - era * 400
@@ -164,7 +164,7 @@ fn days_from_civil(year: Int, month: Int, day: Int) Int:
 	return era * 146097 + doe - 719468
 
 // The year of a day count since 1970-01-01.
-fn year_of_days(days: Int) Int:
+fn year_of_days(days Int) Int:
 	z := days + 719468
 	era := floor_div(z, 146097)
 	doe := z - era * 146097
@@ -174,36 +174,36 @@ fn year_of_days(days: Int) Int:
 	month := if mp < 10: mp + 3 else: mp - 9
 	return yoe + era * 400 + (if month <= 2: 1 else: 0)
 
-fn is_leap(year: Int) Bool:
+fn is_leap(year Int) Bool:
 	return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 // An unsigned big-endian integer of `width` bytes.
-fn be(data: Bytes, at: Int, width: Int) Int:
+fn be(data Bytes, at Int, width Int) Int:
 	var n = 0
 	for i in 0..width:
 		n = n * 256 + data.get(at + i).to_int()
 	return n
 
-fn be_i32(data: Bytes, at: Int) Int:
+fn be_i32(data Bytes, at Int) Int:
 	n := be(data, at, 4)
 	return if n >= 2147483648: n - 4294967296 else: n
 
 // A signed big-endian integer of `width` bytes, 4 or 8.
-fn be_signed(data: Bytes, at: Int, width: Int) Int:
+fn be_signed(data Bytes, at Int, width Int) Int:
 	if width == 4: return be_i32(data, at)
 	return be_i32(data, at) * 4294967296 + be(data, at + 4, 4)
 
-fn is_alpha(c: Int) Bool:
+fn is_alpha(c Int) Bool:
 	return (c >= 65 and c <= 90) or (c >= 97 and c <= 122)
 
-fn is_digit(c: Int) Bool:
+fn is_digit(c Int) Bool:
 	return c >= 48 and c <= 57
 
 // A reader over the text of a POSIX TZ rule. A malformed rule sets `bad`.
 type Scan:
-	text: Bytes
-	pos: Int
-	bad: Bool
+	text Bytes
+	pos Int
+	bad Bool
 
 // The byte at the cursor, or -1 at the end.
 fn Scan.peek() Int:
@@ -215,7 +215,7 @@ fn var Scan.fail() Int:
 	return 0
 
 // Consumes `c` when it is next.
-fn var Scan.eat(c: Int) Bool:
+fn var Scan.eat(c Int) Bool:
 	if self.peek() != c: return false
 
 	self.pos += 1
@@ -300,14 +300,14 @@ fn var Scan.rule() Rule:
 
 // The POSIX rule of a footer: `std offset [dst [offset] , start , end]`.
 type Footer:
-	ok: Bool
-	std_name: String
-	std_offset: Int
-	dst_name: String
-	dst_offset: Int
-	has_dst: Bool
-	start: Rule
-	end: Rule
+	ok Bool
+	std_name String
+	std_offset Int
+	dst_name String
+	dst_offset Int
+	has_dst Bool
+	start Rule
+	end Rule
 
 fn no_rule() Rule:
 	return Rule(kind: 2, month: 0, week: 0, day: 0, time: 0)
@@ -324,7 +324,7 @@ fn bad_footer() Footer:
 		end: no_rule(),
 	)
 
-fn parse_rule(text: Bytes) Footer:
+fn parse_rule(text Bytes) Footer:
 	var scan = Scan(text: text.clone(), pos: 0, bad: false)
 	std_name := scan.name()
 	std_offset := -scan.clock()
@@ -363,7 +363,7 @@ fn parse_rule(text: Bytes) Footer:
 	)
 
 // A zone with no transition table.
-fn plain_zone(kind: Int, move name: String, fixed: Int) Zone:
+fn plain_zone(kind Int, move name String, fixed Int) Zone:
 	empty := no_rule()
 	return Zone(
 		kind: kind,
@@ -388,7 +388,7 @@ fn plain_zone(kind: Int, move name: String, fixed: Int) Zone:
 	)
 
 // A zone that is only a POSIX rule, such as `EST5EDT,M3.2.0,M11.1.0` from a TZ setting.
-fn rule_zone(footer: Footer) Zone:
+fn rule_zone(footer Footer) Zone:
 	return Zone(
 		kind: 2,
 		name: "",
@@ -413,7 +413,7 @@ fn rule_zone(footer: Footer) Zone:
 
 // The footer of a TZif block that ends at `size`, from the `\n` that follows the data
 // at `at`.
-fn read_footer(data: Bytes, at: Int) Footer!:
+fn read_footer(data Bytes, at Int) Footer!:
 	size := data.length()
 	if at >= size or data.get(at).to_int() != 10: return ok(bad_footer())
 
@@ -426,7 +426,7 @@ fn read_footer(data: Bytes, at: Int) Footer!:
 
 // Reads TZif data: the 64-bit block of the bundled database, or, when `whole` is set, a
 // whole file with its 32-bit block first (the system's own zone file).
-fn from_tzif(name: String, data: Bytes, whole: Bool) Zone!:
+fn from_tzif(name String, data Bytes, whole Bool) Zone!:
 	size := data.length()
 	if size < 44 or be(data, 0, 4) != 1415211366: return error(bad_zone())
 
@@ -494,7 +494,7 @@ fn from_tzif(name: String, data: Bytes, whole: Bool) Zone!:
 
 // Seconds since the epoch of a rule's transition in `year`, in the local time the rule
 // is written in.
-fn rule_seconds(rule: Rule, year: Int) Int:
+fn rule_seconds(rule Rule, year Int) Int:
 	var day = 0
 
 	if rule.kind == 0:
@@ -518,7 +518,7 @@ fn rule_seconds(rule: Rule, year: Int) Int:
 	return day * 86400 + rule.time
 
 // `[+-]hh:mm` as seconds east of UTC, or null.
-fn fixed_offset(text: String) Int?:
+fn fixed_offset(text String) Int?:
 	data := text.view_bytes()
 	if data.length() != 6 or data.get(3).to_int() != 58: return null
 
@@ -536,7 +536,7 @@ fn fixed_offset(text: String) Int?:
 	return if sign == 45: -seconds else: seconds
 
 // An IANA zone from the bundled database; `windows/` entries are not zones.
-fn named(name: String) Zone!:
+fn named(name String) Zone!:
 	if name.is_empty() or name.starts_with("windows/"): return error(unknown_zone())
 
 	data := msstd_time_zone_data(name)
@@ -580,7 +580,7 @@ fn host_zone() Zone:
 
 // Resolves `UTC`, the empty string, `Local`, a fixed offset such as `+05:30` or an IANA
 // name; any other name returns `EINVAL`.
-export fn load(name: String) Zone!:
+export fn load(name String) Zone!:
 	if name == "UTC" or name.is_empty(): return ok(plain_zone(0, "UTC", 0))
 	if name == "Local": return ok(host_zone())
 

@@ -8,16 +8,16 @@ For example, `itertools.pairwise([1, 2, 3])` pairs each item with the next one. 
 */
 
 // A run of consecutive items that share a key, as returned by `group_runs`.
-export type Run[K: Clonable, T: Clonable]:
+export type Run[K Clonable, T Clonable]:
 	// The key shared by every item in the run.
-	key: K
+	key K
 	// The items of the run in their original order.
-	items: List[T]
+	items List[T]
 
 // Pairs each item with the one after it; a list with fewer than two items gives an
 // empty list. Example: `pairwise([1, 2, 3])` holds the pairs `(1, 2)` and `(2, 3)`.
-export fn pairwise[T: Clonable](values: List[T]) List[Pair[T, T]]:
-	var out: List[Pair[T, T]] = []
+export fn pairwise[T Clonable](values List[T]) List[Pair[T, T]]:
+	var out List[Pair[T, T]] = []
 	for i in 1..values.length():
 		out.append(Pair(values[i - 1].clone(), values[i].clone()))
 	return out
@@ -27,8 +27,8 @@ Returns the running results of folding `step` over the items: the first item, th
 The result has as many items as the input, so an empty list gives an empty list.
 Example: `accumulate([1, 2, 3, 4], fn a, b: a + b)` is `[1, 3, 6, 10]`.
 */
-export fn accumulate[T: Clonable](values: List[T], step: fn(T, T) T) List[T]:
-	var out: List[T] = []
+export fn accumulate[T Clonable](values List[T], step fn(T, T) T) List[T]:
+	var out List[T] = []
 
 	for i in 0..values.length():
 		if i == 0:
@@ -40,23 +40,23 @@ export fn accumulate[T: Clonable](values: List[T], step: fn(T, T) T) List[T]:
 
 // Repeats the whole list `times` times, in order. A `times` of zero or below gives an
 // empty list. Example: `cycle([1, 2], 3)` is `[1, 2, 1, 2, 1, 2]`.
-export fn cycle[T: Clonable](values: List[T], times: Int) List[T]:
+export fn cycle[T Clonable](values List[T], times Int) List[T]:
 	count := if values.is_empty() or times < 0: 0 else: times
 	return values.repeated(count)
 
 // Pairs items by position and pads the shorter list with null, so the result is as long
 // as the longer list. Example: `zip_longest([1, 2, 3], ["a"])` pairs `(1, "a")`,
 // `(2, null)` and `(3, null)`.
-export fn zip_longest[A: Clonable, B: Clonable](
-	left: List[A],
-	right: List[B],
+export fn zip_longest[A Clonable, B Clonable](
+	left List[A],
+	right List[B],
 ) List[Pair[A?, B?]]:
-	var out: List[Pair[A?, B?]] = []
+	var out List[Pair[A?, B?]] = []
 	longest := left.length().max(right.length())
 
 	for i in 0..longest:
-		var first: A? = null
-		var second: B? = null
+		var first A? = null
+		var second B? = null
 		if i < left.length():
 			first = left[i].clone()
 		if i < right.length():
@@ -70,11 +70,11 @@ Splits the list into runs of consecutive items with equal keys. `key` is called 
 Items with the same key that are not adjacent form separate runs; sort first to gather them. An empty list gives an empty list.
 Example: `group_runs([1, 1, 2, 1], fn n: n)` has the runs `1 1`, `2` and `1`.
 */
-export fn group_runs[T: Clonable, K: Equal & Clonable](
-	values: List[T],
-	key: fn(T) K
+export fn group_runs[T Clonable, K Equal & Clonable](
+	values List[T],
+	key fn(T) K
 ) List[Run[K, T]]:
-	var out: List[Run[K, T]] = []
+	var out List[Run[K, T]] = []
 
 	for value in values:
 		k := key(value)
@@ -92,24 +92,24 @@ Returns every ordering of `size` items chosen from the list, in lexicographic or
 Omit `size` for full-length orderings. A `size` outside 0 through the list length has no orderings and gives an empty list.
 Example: `permutations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]`.
 */
-export fn permutations[T: Clonable](values: List[T], size: Int? = null) List[List[T]]:
+export fn permutations[T Clonable](values List[T], size Int? = null) List[List[T]]:
 	n := values.length()
 	k := size or n
 	if k == 0: return [[]]
 	if k < 0 or k > n: return []
 
-	var out: List[List[T]] = []
+	var out List[List[T]] = []
 	var used = [false].repeated(n)
-	var chosen: List[Int] = []
+	var chosen List[Int] = []
 	extend_permutations(values, k, used, chosen, out)
 	return out
 
-fn extend_permutations[T: Clonable](
-	values: List[T],
-	k: Int,
-	var used: List[Bool],
-	var chosen: List[Int],
-	var out: List[List[T]],
+fn extend_permutations[T Clonable](
+	values List[T],
+	k Int,
+	var used List[Bool],
+	var chosen List[Int],
+	var out List[List[T]],
 ) Void:
 	if chosen.length() == k:
 		out.append(chosen.map(fn i: values[i].clone()))
@@ -128,11 +128,11 @@ Returns every selection of `size` items, each in its original order, in lexicogr
 A `size` outside 0 through the list length has no selections and gives an empty list.
 Example: `combinations([1, 2, 3], 2)` is `[[1, 2], [1, 3], [2, 3]]`.
 */
-export fn combinations[T: Clonable](values: List[T], size: Int) List[List[T]]:
+export fn combinations[T Clonable](values List[T], size Int) List[List[T]]:
 	if size < 0 or size > values.length(): return []
 
-	var out: List[List[T]] = []
-	var chosen: List[Int] = []
+	var out List[List[T]] = []
+	var chosen List[Int] = []
 	for i in 0..size:
 		chosen.append(i)
 
@@ -154,15 +154,15 @@ Returns the Cartesian product: one list for each way of taking one item from eac
 No input lists gives one empty combination; any empty input list gives an empty result.
 Example: `product([[1, 2], [3, 4]])` is `[[1, 3], [1, 4], [2, 3], [2, 4]]`.
 */
-export fn product[T: Clonable](lists: List[List[T]]) List[List[T]]:
+export fn product[T Clonable](lists List[List[T]]) List[List[T]]:
 	// An empty factor empties the product, so no prefix is built before it is found.
 	for choices in lists:
 		if choices.is_empty(): return []
 
-	var out: List[List[T]] = [[]]
+	var out List[List[T]] = [[]]
 
 	for choices in lists:
-		var next: List[List[T]] = []
+		var next List[List[T]] = []
 
 		for prefix in out:
 			for item in choices:

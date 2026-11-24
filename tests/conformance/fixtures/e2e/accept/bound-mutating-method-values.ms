@@ -5,9 +5,9 @@ import (
 )
 
 type Counter:
-	n: Int
+	n Int
 
-fn var Counter.bump(by: Int = 1) Int:
+fn var Counter.bump(by Int = 1) Int:
 	self.n += by
 	return self.n
 
@@ -18,12 +18,12 @@ fn var Counter.step() Int:
 	self.n += 10
 	return self.n
 
-fn drain(var xs: List[Int]) Void:
+fn drain(var xs List[Int]) Void:
 	push := xs.append
 	push(7)
 	push(8)
 
-fn each(f: fn(move Int) Void) Void:
+fn each(f fn(move Int) Void) Void:
 	f(100)
 
 test "a method value that changes its receiver borrows the variable":
@@ -58,14 +58,14 @@ test "the variable is shared through calls and callbacks":
 
 test "an interface method value shares the underlying value":
 	var counter = Counter(n: 0)
-	var view: Stepper = counter
+	var view Stepper = counter
 	step := view.step
 	step()
 	step()
 	expect_equal(view.step(), 30)?
 
 test "a list method value appends to the list":
-	var names: List[String] = []
+	var names List[String] = []
 	append := names.append
 	append("a")
 	append("b")

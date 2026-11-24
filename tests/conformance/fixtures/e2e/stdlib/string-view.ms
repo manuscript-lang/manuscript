@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 
 // Whether `[a, b)` (negative bounds count from the end) lies inside the text on scalar
 // boundaries, so `view` accepts it and equals `slice`.
-fn whole_range(text: String, a: Int, b: Int) Bool:
+fn whole_range(text String, a Int, b Int) Bool:
 	n := text.length()
 	from := if a < 0: n + a else: a
 	to := if b < 0: n + b else: b

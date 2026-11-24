@@ -4,7 +4,7 @@
 fn p() Int!:
     return ok(1)
 
-fn f(x: Int?) Void!:
+fn f(x Int?) Void!:
     match x:
         n:
             p()?

@@ -4,33 +4,33 @@
 import stdout from "@std/io/io.ms"
 
 type Person:
-    name: String
-    tags: List[String]
+    name String
+    tags List[String]
 
 type Team:
-    members: List[Person]
-    label: String
+    members List[Person]
+    label String
 
 // Every path returns a part of an argument: the result is a reference into it.
-fn first_tag(p: Person) String:
+fn first_tag(p Person) String:
     return p.tags[0]
 
-fn pick(a: Person, b: Person, left: Bool) String:
+fn pick(a Person, b Person, left Bool) String:
     if left: return a.name
 
     return b.name
 
-fn head(rows: List[List[Int]]) List[Int]:
+fn head(rows List[List[Int]]) List[Int]:
     h := rows[0]
     return h
 
-fn deep(t: Team) String:
+fn deep(t Team) String:
     return first_tag(t.members[0])
 
-fn members(t: Team) List[Person]:
+fn members(t Team) List[Person]:
     return t.members
 
-fn recurse(value: String, count: Int) String:
+fn recurse(value String, count Int) String:
     if count == 0: return value
 
     return recurse(value: value, count: count - 1)
@@ -66,6 +66,6 @@ fn main() Void:
     )
 
     // Keeping a lent value is an explicit copy.
-    var names: List[String] = []
+    var names List[String] = []
     names.append(first_tag(team.members[0]).clone())
     print(f"{names.length()} {names[0]}")

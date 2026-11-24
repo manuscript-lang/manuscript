@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/compiler/field_defaults_test.go:15 TestFieldDefaultBoundaries
 type Box[T]:
-    value: T = 1
+    value T = 1

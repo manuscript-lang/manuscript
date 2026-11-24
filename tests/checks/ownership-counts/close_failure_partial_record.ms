@@ -9,15 +9,15 @@ import (
 )
 
 type Gate:
-	name: String
+	name String
 
 fn move Gate.close() Void!:
 	stdout().write("close gate\n").get()
 	return error(Error("gate"))
 
 type Message:
-	data: Bytes
-	kind: Int
+	data Bytes
+	kind Int
 
 fn make() Message:
 	return Message(data: Bytes(), kind: 1)

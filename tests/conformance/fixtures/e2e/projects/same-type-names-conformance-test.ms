@@ -6,7 +6,7 @@ import flip, shifted from "./other.ms"
 
 // The same type names in two modules lower to distinct Go types.
 type Point:
-    x: Int
+    x Int
 
 enum Mode:
     Off

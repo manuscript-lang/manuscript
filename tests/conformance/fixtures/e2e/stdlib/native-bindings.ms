@@ -26,13 +26,13 @@ import (
 	within from "./support/conn.ms",
 )
 
-fn expect_process_error[T](outcome: T!, expected: Error) Void!:
+fn expect_process_error[T](outcome T!, expected Error) Void!:
 	match outcome:
 		ok(_): return error(Error("process misuse succeeded"))
 		error(cause):
 			if cause.kind != expected.kind: return error(Error("wrong process error"))
 
-fn expect_fs_error[T](outcome: T!, expected: Error) Void!:
+fn expect_fs_error[T](outcome T!, expected Error) Void!:
 	match outcome:
 		ok(_): return error(Error("filesystem misuse succeeded"))
 		error(cause):
@@ -124,7 +124,7 @@ test "stat_filesystem describes the filesystem under a path":
 	)?
 
 // Reads events until one has `path` and `kind`, or `tries` events passed.
-fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
+fn saw(var events ReadStream[FileEvent], path String, kind String, tries Int) Bool!:
 	for attempt in 0..tries:
 		next := within(events, 2.seconds())?
 		event := next

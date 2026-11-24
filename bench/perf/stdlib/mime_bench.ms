@@ -6,7 +6,7 @@ import (
 
 // The input is built by the fixture; each operation includes the source's owned body
 // copy.
-fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Int!:
+fn consume(body Bytes, chunk Int, count Int, size Int) Int!:
 	var parts = multipart_parts(from_bytes(body.clone(), chunk), "XyZ", null)
 	var seen = 0
 	var bytes = 0
@@ -27,20 +27,20 @@ fn consume(body: Bytes, chunk: Int, count: Int, size: Int) Int!:
 
 	return ok(bytes)
 
-fn body(size: Int, count: Int = 1) Bytes:
+fn body(size Int, count Int = 1) Bytes:
 	payload := "x".repeat(size).to_bytes()
-	var parts: List[Part] = []
+	var parts List[Part] = []
 	for unused in 0..count:
 		parts.append(form_part("field", payload.clone()))
 	return encode_multipart(parts, "XyZ")
 
 type BenchData:
-	data: Bytes
-	data_2: Bytes
-	data_3: Bytes
-	data_4: Bytes
-	data_5: Bytes
-	data_6: Bytes
+	data Bytes
+	data_2 Bytes
+	data_3 Bytes
+	data_4 Bytes
+	data_5 Bytes
+	data_6 Bytes
 
 fn make_fixture() BenchData:
 	data := body(1048576)

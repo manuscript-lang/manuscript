@@ -4,8 +4,8 @@ import files from "@std/io/io.ms"
 import File from "@std/io/io.ms"
 import IoError from "@std/io/io.ms"
 type Holder:
-    file: File
-    label: String
+    file File
+    label String
 export fn main() Int:
     opened := files().open("data.txt")
     if opened.is_error():

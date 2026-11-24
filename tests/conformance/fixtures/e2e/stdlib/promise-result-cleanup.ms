@@ -11,32 +11,32 @@ import (
 )
 
 type Wide:
-	a: Int
-	b: Int
-	c: Int
-	d: Int
-	text: String
+	a Int
+	b Int
+	c Int
+	d Int
+	text String
 
-fn text(n: Int) String!:
+fn text(n Int) String!:
 	return ok("x".repeat(n))
 
-fn wide(n: Int) Wide!:
+fn wide(n Int) Wide!:
 	return ok(Wide(a: n, b: n, c: n, d: n, text: "y".repeat(n)))
 
 fn nothing() Void!:
 	return ok()
 
-fn slow(n: Int) String!:
+fn slow(n Int) String!:
 	held := "z".repeat(64)
 	sleep(milliseconds(n)).wait()?
 	return ok(held)
 
-fn boom(n: Int) String!:
+fn boom(n Int) String!:
 	held := "w".repeat(64)
-	xs: List[Int] := []
+	xs List[Int] := []
 	return ok(f"{held}{xs[n]}")
 
-fn nested(n: Int) String!:
+fn nested(n Int) String!:
 	inner := promise(fn: slow(n))
 	return inner.wait()
 

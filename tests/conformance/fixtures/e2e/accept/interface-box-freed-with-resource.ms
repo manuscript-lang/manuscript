@@ -7,7 +7,7 @@
 import Closeable from "@std/core.ms"
 
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	print(f"closed {self.name}")
@@ -18,10 +18,10 @@ interface Labeled:
 fn Door.label() String:
 	return self.name.clone()
 
-fn use(move c: Closeable) Int:
+fn use(move c Closeable) Int:
 	return 1
 
-fn show(l: Labeled) String:
+fn show(l Labeled) String:
 	return l.label()
 
 fn main() Void:

@@ -7,7 +7,7 @@ export enum Align:
 	Right  // Places unused column space before the cell.
 	Center  // Splits unused space, putting an odd extra space after the cell.
 
-fn table_invalid(message: String) Error:
+fn table_invalid(message String) Error:
 	return Error(f"table: {message}", kind: "EBADMSG")
 
 /*
@@ -33,21 +33,21 @@ added padding; a table without rows renders as "".
 */
 export type Table:
 	// One alignment per column; also fixes the number of cells every row must have.
-	columns: List[Align]
+	columns List[Align]
 	// Spaces between columns; negative counts as 0.
-	padding: Int = 2
+	padding Int = 2
 	// Spaces before each non-blank line.
-	indent: Int = 0
+	indent Int = 0
 	// Internal state: the added rows.
-	rows: List[List[String]] = []
+	rows List[List[String]] = []
 	// Internal state: the display width of every cell in `rows`.
-	cell_widths: List[List[Int]] = []
+	cell_widths List[List[Int]] = []
 	// Internal state: the widest cell of each column.
-	widths: List[Int] = []
+	widths List[Int] = []
 
 // Appends a row of exactly one cell per column. A wrong cell count or a cell with
 // controls returns EBADMSG.
-fn var Table.add(row: List[String]) Void!:
+fn var Table.add(row List[String]) Void!:
 	count := self.columns.length()
 	if row.length() != count:
 		return error(table_invalid(f"row has {row.length()} cells, expected {count}"))
@@ -95,7 +95,7 @@ fn Table.render() String:
 	return out
 
 // Spaces placed before a cell: all spare for Right, half for Center, null for Left.
-fn Table.before(col: Int, spare: Int) Int:
+fn Table.before(col Int, spare Int) Int:
 	match self.columns[col]:
 		Left: return 0
 		Right: return spare

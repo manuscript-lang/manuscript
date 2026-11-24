@@ -3,10 +3,10 @@
 // A function value never changes once made, so it is shared: a record that holds one
 // can be copied by `concat` and the copies run the same function.
 type Handler:
-	name: String
-	run: fn(Int) Int
+	name String
+	run fn(Int) Int
 
-fn pair(handlers: List[Handler]) List[Handler]:
+fn pair(handlers List[Handler]) List[Handler]:
 	return handlers.concat(handlers)
 
 export fn main() Int:

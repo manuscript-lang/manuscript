@@ -16,7 +16,7 @@ import (
 )
 
 // Paths whose sources are not ours to rewrite, or are negative fixtures on purpose.
-fn skipped(path: String) Bool:
+fn skipped(path String) Bool:
 	return (
 		path.starts_with("vendor/")
 		or path.starts_with("website/themes/")
@@ -44,7 +44,7 @@ fn repository_files() List[String]:
 
 	return files
 
-fn text_of(path: String) String:
+fn text_of(path String) String:
 	if bytes := read_file(path).wait(): return (bytes.decode_utf8() or "").replace(
 		"\r\n",
 		"\n",
@@ -54,7 +54,7 @@ fn text_of(path: String) String:
 // ---- formatting and nested matches ----
 
 // Runs `ms <command> <paths...>` in batches so the command line stays short.
-fn run_in_batches(ms: String, head: List[String], paths: List[String]) Int:
+fn run_in_batches(ms String, head List[String], paths List[String]) Int:
 	var failing = 0
 	var at = 0
 
@@ -70,7 +70,7 @@ fn run_in_batches(ms: String, head: List[String], paths: List[String]) Int:
 	return failing
 
 // The files with one of `extensions` that are ours.
-fn sources(files: List[String], extensions: List[String]) List[String]:
+fn sources(files List[String], extensions List[String]) List[String]:
 	var found = List[String]()
 
 	for path in files:
@@ -84,7 +84,7 @@ fn sources(files: List[String], extensions: List[String]) List[String]:
 // ---- release pins ----
 
 // `YYYY.M.PATCH`: a year, a month 1 to 12 and a patch, no leading zeros, so it is valid semver.
-fn plain_number(part: String) Bool:
+fn plain_number(part String) Bool:
 	if part == "0": return true
 	if part == "" or part.starts_with("0"): return false
 
@@ -92,7 +92,7 @@ fn plain_number(part: String) Bool:
 		if c < "0" or c > "9": return false
 	return true
 
-fn calendar_error(version: String) String:
+fn calendar_error(version String) String:
 	parts := version.split(".")
 	if parts.length() != 3: return "write YYYY.M.PATCH, for example 2026.11.0"
 	if not (
@@ -108,7 +108,7 @@ fn calendar_error(version: String) String:
 	return ""
 
 // The first `"version": "..."` value in a package.json text.
-fn manifest_version(manifest: String) String:
+fn manifest_version(manifest String) String:
 	marker := "\"version\": \""
 	at := manifest.index_of(marker) or (-1)
 	if at < 0: return ""
@@ -138,12 +138,12 @@ fn release_pins() List[String]:
 
 // ---- workflow triggers ----
 
-fn indent_of(line: String) Int:
+fn indent_of(line String) Int:
 	return line.length() - line.trim_start().length()
 
 // The child lines of `key:` at `indent`, up to the next sibling; empty when the key is
 // absent.
-fn block(lines: List[String], key: String, indent: Int) List[String]?:
+fn block(lines List[String], key String, indent Int) List[String]?:
 	head := f"{" ".repeat(indent)}{key}:"
 	var start = -1
 	var at = 0
@@ -169,7 +169,7 @@ fn block(lines: List[String], key: String, indent: Int) List[String]?:
 // A problem with the workflow's triggers, or empty: it must run on every pull request
 // whatever files change, and on the merge queue's combined commit (the ruleset on main
 // requires it).
-fn trigger_error(text: String) String:
+fn trigger_error(text String) String:
 	lines := text.split("\n")
 	on := block(lines, "on", 0) or []
 	unfiltered := "required checks must run on every pull request without path filters"
@@ -212,11 +212,11 @@ inventory := "documentation/contributing/dependency-licenses.json"
 notice_roots := ["website/themes/hugo-book", "skills"]
 notice_names := ["LICENSE", "COPYING", "PATENTS"]
 
-fn quoted(text: String) String:
+fn quoted(text String) String:
 	return f"\"{text.replace("\\", "\\\\").replace("\"", "\\\"")}\""
 
 // `key=value` field of a c-libs.lock line, or empty.
-fn field(line: String, key: String) String:
+fn field(line String, key String) String:
 	for part in line.split(" "):
 		if part.starts_with(f"{key}="): return part.slice(
 			key.length() + 1,
@@ -225,7 +225,7 @@ fn field(line: String, key: String) String:
 	return ""
 
 // The license file a lock line vendors: the entry of `paths=` that names one.
-fn license_path(name: String, line: String) String:
+fn license_path(name String, line String) String:
 	for entry in field(line.clone(), "paths").split(","):
 		base := entry.split("/").last() or ""
 		for stem in ["LICENSE", "LICENCE", "COPYING"]:
@@ -233,7 +233,7 @@ fn license_path(name: String, line: String) String:
 
 	return ""
 
-fn notices_under(files: List[String]) List[String]:
+fn notices_under(files List[String]) List[String]:
 	var found = List[String]()
 
 	for path in files:
@@ -245,7 +245,7 @@ fn notices_under(files: List[String]) List[String]:
 
 	return found
 
-fn libraries(lock: String) List[String]:
+fn libraries(lock String) List[String]:
 	var entries = List[String]()
 
 	for line in lock.split("\n"):
@@ -263,7 +263,7 @@ fn libraries(lock: String) List[String]:
 
 	return entries
 
-fn inventory_text(files: List[String]) String:
+fn inventory_text(files List[String]) String:
 	var notices = List[String]()
 
 	for path in notices_under(files):
@@ -279,7 +279,7 @@ fn inventory_text(files: List[String]) String:
 	listed := notices.join(separator)
 	return f"\{\n  \"libraries\": [\n{known}\n  ],\n  \"notices\": [\n{listed}\n  ]\n\}\n"
 
-fn licenses(check: Bool) Int:
+fn licenses(check Bool) Int:
 	files := repository_files()
 
 	if files.is_empty():

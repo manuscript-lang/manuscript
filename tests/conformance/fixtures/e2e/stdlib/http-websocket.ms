@@ -35,7 +35,7 @@ fn tls_options() TlsOptions:
 		require_client_certificate: false,
 	)
 
-fn echo(var exchange: HttpExchange) Void!:
+fn echo(var exchange HttpExchange) Void!:
 	if exchange.path() == "/ws":
 		var socket = (
 			http_result(
@@ -132,7 +132,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 	((body.body.next() | expect_ok?) == null) | expect_true?
 	client.close()?
 
-	_limited: Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
+	_limited Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
 
 	match request(
 		method: HttpMethod.Get,
@@ -192,7 +192,7 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 		) | expect_false?
 	)
 
-fn upgrade_status(address: String, version: String, extra: String) String!:
+fn upgrade_status(address String, version String, extra String) String!:
 	var client = connect(address, timeout: 2.seconds()).wait()?
 	key := "dGhlIHNhbXBsZSBub25jZQ=="
 	request := (
@@ -269,7 +269,7 @@ test "WebSocket upgrades need HTTP/1.1 and one key":
 		"HTTP/1.1 400 Bad Request",
 	)?
 
-fn report_host(var exchange: HttpExchange) Void!:
+fn report_host(var exchange HttpExchange) Void!:
 	hosts := exchange.headers().get_all("Host")
 	_started := exchange.send_headers(status: 200, headers: headers())?
 	_written := (http_result(exchange.write(hosts.join(",")))?)
@@ -315,7 +315,7 @@ test "HTTP requests reject an empty method":
 
 // The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep
 // instead of waiting it out.
-fn silent(var exchange: HttpExchange) Void!:
+fn silent(var exchange HttpExchange) Void!:
 	var _socket = (
 		http_result(
 			upgrade(
@@ -357,7 +357,7 @@ test "a promise cancelled while it owns a WebSocket closes it without ending the
 	).wait()
 	expect_true(read.is_error())?
 
-fn direct(var exchange: HttpExchange) Void!:
+fn direct(var exchange HttpExchange) Void!:
 	var socket = http_result(
 		exchange.upgrade(
 			allowed_origins: [],

@@ -5,12 +5,12 @@
 import Closeable, print from "@std/core.ms"
 
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!:
 	print("closed")
 
-fn Marker.finish(flag: Bool) Marker?:
+fn Marker.finish(flag Bool) Marker?:
 	if flag: return null
 	return self
 

@@ -3,7 +3,7 @@
 import TextError from "@std/errors.ms"
 import panic from "@std/faults.ms"
 type E1:
-    code: Int
+    code Int
 impl Error for E1:
     fn message() String: "e1"
 type E2:

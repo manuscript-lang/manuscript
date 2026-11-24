@@ -1,7 +1,7 @@
 import bench, words from "./harness.ms"
 import parse, escape, unescape from "@std/data/html.ms"
 
-fn html_doc(count: Int) String:
+fn html_doc(count Int) String:
     var sb = ""
     sb += "<div>"
     for i in 0..count:

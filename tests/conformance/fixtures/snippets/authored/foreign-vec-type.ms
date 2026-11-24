@@ -2,5 +2,5 @@
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
 fn main() Void:
-    xs: Vec[Int] := []
+    xs Vec[Int] := []
     print(xs.length())

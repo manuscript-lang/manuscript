@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn difference(values: List[Int]) Int:
+fn difference(values List[Int]) Int:
     [first, second] := values
     return first - second
 test "fault":

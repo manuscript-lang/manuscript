@@ -26,6 +26,38 @@
       {
         "code": "MS1000",
         "phase": "parse",
+        "message": "remove the ':' between 'x' and its type; write x Type",
+        "position": {
+          "file": "golden-0859.ms",
+          "line": 11,
+          "column": 17,
+          "offset": 148
+        },
+        "end": {
+          "file": "golden-0859.ms",
+          "line": 11,
+          "column": 18,
+          "offset": 149
+        },
+        "fix": {
+          "position": {
+            "file": "golden-0859.ms",
+            "line": 11,
+            "column": 17,
+            "offset": 148
+          },
+          "end": {
+            "file": "golden-0859.ms",
+            "line": 11,
+            "column": 18,
+            "offset": 149
+          },
+          "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
         "message": "argument labels use a colon; write c: value",
         "position": {
           "file": "golden-0859.ms",
@@ -61,7 +93,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0859.ms:3:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 3 | let (\n   | ^^^\n<DIR>/golden-0859.ms:15:11: parse: argument labels use a colon; write c: value\n    |\n 15 |         c = 11\n    |           ^\n<DIR>/golden-0859.ms:16:11: parse: argument labels use a colon; write d: value\n    |\n 16 |         d = \"Hi\"\n    |           ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0859.ms:3:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 3 | let (\n   | ^^^\n<DIR>/golden-0859.ms:11:17: parse: remove the ':' between 'x' and its type; write x Type\n    |\n 11 |         b = fn(x: Int) Int:\n    |                 ^\n<DIR>/golden-0859.ms:15:11: parse: argument labels use a colon; write c: value\n    |\n 15 |         c = 11\n    |           ^\n<DIR>/golden-0859.ms:16:11: parse: argument labels use a colon; write d: value\n    |\n 16 |         d = \"Hi\"\n    |           ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

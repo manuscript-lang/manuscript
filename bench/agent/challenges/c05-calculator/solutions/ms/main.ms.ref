@@ -3,16 +3,16 @@ import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
 type Parser:
-    s: List[Int]
-    pos: Int
-    div_zero: Bool
+    s List[Int]
+    pos Int
+    div_zero Bool
 
 // Skips blanks and returns the next character code, or 0 at the end of the line.
-fn peek(var p: Parser) Int:
+fn peek(var p Parser) Int:
     while p.pos < p.s.length() and (p.s[p.pos] == 32 or p.s[p.pos] == 9): p.pos += 1
     return p.s.get_or(p.pos, 0)
 
-fn atom(var p: Parser) Int!:
+fn atom(var p Parser) Int!:
     c := peek(p)
     if c >= 48 and c <= 57:
         var v = 0
@@ -27,12 +27,12 @@ fn atom(var p: Parser) Int!:
     p.pos += 1
     return ok(v)
 
-fn unary(var p: Parser) Int!:
+fn unary(var p Parser) Int!:
     if peek(p) != 45: return atom(p)
     p.pos += 1
     return ok(-(unary(p)?))
 
-fn term(var p: Parser) Int!:
+fn term(var p Parser) Int!:
     var v = unary(p)?
     while peek(p) == 42 or peek(p) == 47:
         op := peek(p)
@@ -45,7 +45,7 @@ fn term(var p: Parser) Int!:
         else: v /= r
     return ok(v)
 
-fn expr(var p: Parser) Int!:
+fn expr(var p Parser) Int!:
     var v = term(p)?
     while peek(p) == 43 or peek(p) == 45:
         op := peek(p)
@@ -54,7 +54,7 @@ fn expr(var p: Parser) Int!:
         v += if op == 43: r else: -r
     return ok(v)
 
-fn evaluate(line: String) String:
+fn evaluate(line String) String:
     var p = Parser(line.scalar_values(), 0, false)
     if v := expr(p):
         if peek(p) != 0: return "error: syntax"

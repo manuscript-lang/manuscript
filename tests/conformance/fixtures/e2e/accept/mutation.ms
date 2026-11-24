@@ -6,27 +6,27 @@ interface Counter:
 	var fn increment() Void
 
 type Val:
-	val: Int
+	val Int
 
 fn var Val.increment() Void:
 	self.val += 1
 
 type Box[T]:
-	value: T
-	child: Val
+	value T
+	child Val
 
-fn replace[T](var box: Box[T], value: T) Void:
+fn replace[T](var box Box[T], value T) Void:
 	box.value = value
 
-fn receiver(var log: List[Int], value: Val) Val:
+fn receiver(var log List[Int], value Val) Val:
 	log.append(1)
 	return value
 
-fn replacement(var log: List[Int]) Int:
+fn replacement(var log List[Int]) Int:
 	log.append(2)
 	return 7
 
-fn bump(var value: Val) Void:
+fn bump(var value Val) Void:
 	value.val += 1
 
 test "record fields mutate through methods views and var parameters":
@@ -34,7 +34,7 @@ test "record fields mutate through methods views and var parameters":
 	copy := counter.clone()
 	counter.increment()
 
-	var view: Counter = counter.clone()
+	var view Counter = counter.clone()
 	view.increment()
 
 	increment := counter.increment
@@ -50,7 +50,7 @@ test "record fields mutate through methods views and var parameters":
 	expect_equal(copied.value, "old")?
 	expect_equal(copied.child.val, 9)?
 
-	var log: List[Int] = []
+	var log List[Int] = []
 	var target = receiver(log, counter.clone())
 	target.val = replacement(log)
 	expect_false(not (log == [1, 2] and target.val == 7 and counter.val == 3))?
@@ -86,7 +86,7 @@ test "collection updates mutate in place and clone separates storage":
 
 test "for loop iterates a snapshot while the source changes":
 	var values = [1, 2, 3]
-	var seen: List[Int] = []
+	var seen List[Int] = []
 
 	for value in values.clone():
 		seen.append(value)
@@ -101,7 +101,7 @@ test "callbacks over a snapshot leave the source writable":
 	expect_false(not (result == [2, 3, 4] and values == [9, 9, 9]))?
 
 test "list growth and saved clone methods preserve current contents":
-	var values: List[Int] = []
+	var values List[Int] = []
 	for index in 0..2048:
 		values.append(index)
 
@@ -118,7 +118,7 @@ test "list growth and saved clone methods preserve current contents":
 		)
 	)?
 
-	empty: List[Int] := []
+	empty List[Int] := []
 	var empty_copy = empty.clone()
 	empty_copy.append(1)
 	expect_false(not (empty.is_empty() and empty_copy.length() == 1))?
@@ -183,7 +183,7 @@ test "map and set clear affect their owner while copies retain contents":
 	expect_false(not (values.is_empty() and set_copy.length() == 1))?
 
 enum Choice:
-	Present(value: Val)
+	Present(value Val)
 	Missing
 
 test "alternative clones retain tags and payloads":
@@ -207,8 +207,8 @@ test "alternative clones retain tags and payloads":
 	expect_equal(missing, Choice.Missing)?
 
 type Node:
-	value: Int
-	children: List[Node]
+	value Int
+	children List[Node]
 
 test "mutable recursive graphs compare and clone without recursion failures":
 	var left = Node(1, [])

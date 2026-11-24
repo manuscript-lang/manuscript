@@ -1,18 +1,18 @@
 // A stack bytecode VM running a nested-loop program: enum dispatch, a list as the
 // stack.
 enum Op:
-	Push(v: Int)
-	Load(slot: Int)
-	Store(slot: Int)
+	Push(v Int)
+	Load(slot Int)
+	Store(slot Int)
 	Add
 	Mul
 	Mod
 	Lt
-	Jz(to: Int)
-	Jmp(to: Int)
+	Jz(to Int)
+	Jmp(to Int)
 	Halt
 
-fn program(n: Int, m: Int) List[Op]:
+fn program(n Int, m Int) List[Op]:
 	// total = 0; i = 0; while i < n: j = 0; while j < m: total += (i * j) % 7; j += 1;
 	// i += 1
 	return [
@@ -52,7 +52,7 @@ fn program(n: Int, m: Int) List[Op]:
 		Op.Halt,
 	]
 
-fn run(code: List[Op]) Int:
+fn run(code List[Op]) Int:
 	var stack = List[Int]()
 	var vars = [0, 0, 0, 0]
 	var pc = 0

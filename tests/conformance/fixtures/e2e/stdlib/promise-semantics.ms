@@ -12,7 +12,7 @@ import (
 	milliseconds, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn report(reason: Error) String:
+fn report(reason Error) String:
 	if reason.kind == "EIO": return reason.details["report"].split("\n").get(0).clone()
 	return reason.message.clone()
 
@@ -28,8 +28,8 @@ test "a fault inside a promise ends only that promise":
 	report(reason) | expect_equal("promise fault")?
 	fine.wait() | expect_ok? | expect_equal(7)?
 
-fn fault_at(index: Int) Int!:
-	empty: List[Int] := []
+fn fault_at(index Int) Int!:
+	empty List[Int] := []
 	return ok(empty[index])
 
 // Faults on different scheduler threads leave their guards at the same moment. They
@@ -37,7 +37,7 @@ fn fault_at(index: Int) Int!:
 // and a string was released twice.
 test "promises faulting on several threads each report their own fault":
 	for round in 0..100:
-		var batch: List[Promise[Int]] = []
+		var batch List[Promise[Int]] = []
 		for i in 0..200:
 			batch.append(promise(fn: fault_at(round * 1000 + i + 1)))
 
@@ -189,10 +189,10 @@ test "a replacement cancel signal detaches the previous switch":
 	reason := slow.wait() | expect_error?
 	expect_equal(reason.kind, "ECANCELED")?
 
-fn ignore_inner(inner: Promise[Int]) Int!:
+fn ignore_inner(inner Promise[Int]) Int!:
 	return ok(1)
 
-fn nap(ms: Int) Int!:
+fn nap(ms Int) Int!:
 	void sleep(milliseconds(ms)).wait()
 	return ok(ms)
 
@@ -203,7 +203,7 @@ test "a promise that ends holding an unfinished promise cancels it instead of ha
 		expect_equal(outer.wait() | expect_ok?, 1)?
 
 test "waiting in creation, reverse and interleaved order returns every promise's own value":
-	var made: List[Promise[Int]] = []
+	var made List[Promise[Int]] = []
 	for i in 0..64:
 		made.append(promise(fn: ok(i * 3)))
 
@@ -232,12 +232,12 @@ test "waiting in creation, reverse and interleaved order returns every promise's
 			| expect_equal(i * 3)?
 		)
 
-fn nap_for(ms: Int) Int!:
+fn nap_for(ms Int) Int!:
 	sleep(milliseconds(ms)).wait()?
 	return ok(ms)
 
 test "wait_all over thousands of promises finishing at different times keeps list order":
-	var made: List[Promise[Int]] = []
+	var made List[Promise[Int]] = []
 	for i in 0..3000:
 		made.append(promise(fn: nap_for(1 + (i * 7) % 23)))
 
@@ -245,8 +245,8 @@ test "wait_all over thousands of promises finishing at different times keeps lis
 	for i in 0..3000:
 		expect_equal(values[i], 1 + (i * 7) % 23)?
 
-fn nap_all(count: Int, ms: Int) List[Int]!:
-	var made: List[Promise[Int]] = []
+fn nap_all(count Int, ms Int) List[Int]!:
+	var made List[Promise[Int]] = []
 	for i in 0..count:
 		made.append(promise(fn: nap_for(ms)))
 	return wait_all(made)
@@ -262,7 +262,7 @@ test "a wait_all cancelled by a timeout leaves later wait_all calls working":
 		reason := outer.wait() | expect_error?
 		expect_equal(reason.kind, "ETIMEDOUT")?
 
-	var quick: List[Promise[Int]] = []
+	var quick List[Promise[Int]] = []
 	for i in 0..20:
 		quick.append(promise(fn: nap_for(1)))
 	(

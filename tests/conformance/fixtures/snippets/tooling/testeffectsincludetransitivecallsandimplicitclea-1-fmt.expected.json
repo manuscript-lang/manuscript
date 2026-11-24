@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tQueue from \"@std/collections/queue.ms\",\n\tCloseable from \"@std/core.ms\",\n)\n\ntype Resource:\n\tstate: Queue[Int]\n\nfn move Resource.close() Void!:\n\tself.state.dequeue()\n\nfn pure() Int:\n\treturn 1\n\nfn direct(resource: Resource) Void:\n\t_item := resource\n\treturn\n\nfn transitive(resource: Resource) Void:\n\tdirect(resource: resource)\n\nfn nested(resource: Resource) Void:\n\tcallback := fn(item: Resource) Void:\n\t\t_held := item\n\t\treturn\n\n\tcallback(resource)\n\nfn indirect(callback: fn() Void) Void:\n\tcallback()\n"
+    "fmt": "import (\n\tQueue from \"@std/collections/queue.ms\",\n\tCloseable from \"@std/core.ms\",\n)\n\ntype Resource:\n\tstate Queue[Int]\n\nfn move Resource.close() Void!:\n\tself.state.dequeue()\n\nfn pure() Int:\n\treturn 1\n\nfn direct(resource Resource) Void:\n\t_item := resource\n\treturn\n\nfn transitive(resource Resource) Void:\n\tdirect(resource: resource)\n\nfn nested(resource Resource) Void:\n\tcallback := fn(item Resource) Void:\n\t\t_held := item\n\t\treturn\n\n\tcallback(resource)\n\nfn indirect(callback fn() Void) Void:\n\tcallback()\n"
   }
 }

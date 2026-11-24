@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/checker_test.go:55 TestContextualCallbackPreservesSourceAST
 type Callback:
-    value: fn(Int) Int
+    value fn(Int) Int
 
 fn example() Void:
     _callback := Callback(fn value: value + 1)

@@ -4,22 +4,22 @@
 import stdout from "@std/io/io.ms"
 
 type C:
-	n: Int
-	log: List[String]
+	n Int
+	log List[String]
 
 fn var C.bump() Int:
 	self.n += 1
 	return self.n
 
-fn var C.note(move s: String) Void:
+fn var C.note(move s String) Void:
 	self.log.append(s)
 
 fn C.get() Int: self.n
 
 type H:
-	c: C?
+	c C?
 
-fn show(x: Int?) Void:
+fn show(x Int?) Void:
 	v := x
 
 	if v != null:
@@ -27,16 +27,16 @@ fn show(x: Int?) Void:
 	else:
 		stdout().write("none\n").get()
 
-fn tick(var c: C?) Int?:
+fn tick(var c C?) Int?:
 	return c?.bump()
 
-fn leave_when_absent(var c: C?) Void:
+fn leave_when_absent(var c C?) Void:
 	c?.note("kept")
 	stdout().write("present\n").get()
 
 fn main() Void:
-	var c: C? = C(1, List[String]())
-	var none_c: C? = null
+	var c C? = C(1, List[String]())
+	var none_c C? = null
 	show(c?.bump())
 	show(c?.bump())
 	c?.note("hi")

@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn work(early: Int) Int:
+fn work(early Int) Int:
     result := subtract(
         try match 0:
             _value:

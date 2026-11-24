@@ -4,7 +4,7 @@ import expect_equal from "@std/test/test.ms"
 
 // A string built with `+=` of an f-string while a call that can fault is live stays linear: the variable lives in
 // a slot, and the append still grows it in place instead of copying it each time.
-fn build(n: Int) String:
+fn build(n Int) String:
 	var b = ""
 	for i in 0..n:
 		b += f"line {i} and more text\n"

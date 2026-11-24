@@ -6,8 +6,8 @@ import (
 )
 
 type Item:
-	name: String
-	tags: List[String]
+	name String
+	tags List[String]
 
 test "reading through get leaves the map entry intact":
 	var m = Map[String, Item]()

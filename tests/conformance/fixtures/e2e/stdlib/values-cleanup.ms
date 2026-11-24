@@ -13,17 +13,17 @@ import (
 )
 
 type Key:
-	id: Int
-	label: String
+	id Int
+	label String
 
-fn Key.equals(other: Key) Bool:
+fn Key.equals(other Key) Bool:
 	return self.id == other.id
 
 fn Key.hash() Int: self.id
 
 type Resource:
-	dir: String
-	id: Int
+	dir String
+	id Int
 
 // Resources own their state, so close records order through the filesystem:
 // resource 1 notes whether resource 2 had already closed.
@@ -31,34 +31,34 @@ fn move Resource.close() Void!:
 	inner_closed := read_file(f"{self.dir}/2").wait().is_ok()
 	void write_file(f"{self.dir}/{self.id}", f"{inner_closed}", true).wait()
 
-fn leave(move dir: String) Int:
+fn leave(move dir String) Int:
 	_outer := Resource(dir.clone(), 1)
 	_inner := Resource(dir, 2)
 	return 42
 
-fn propagate(result: Int!) Int!:
+fn propagate(result Int!) Int!:
 	found := result.clone()?
 	return ok(found + 1)
 
 test "Optional lazy fallbacks preserve nested absence and payload identity":
 	create := fn() Int?: 42
-	present: Int? := 0
-	missing: Int? := null
+	present Int? := 0
+	missing Int? := null
 	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?
 	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
 
-	nested: Int?? := missing
+	nested Int?? := missing
 	expect_true(nested == null)?
 
 test "Result propagation and Error views preserve concrete causes":
-	failed: Int! := error(Error("JSON: invalid data", kind: "EBADMSG"))
+	failed Int! := error(Error("JSON: invalid data", kind: "EBADMSG"))
 	expect_equal(propagate(failed), failed)?
 
-	success: Int! := ok(3)
-	expected: Int! := ok(4)
+	success Int! := ok(3)
+	expected Int! := ok(4)
 	expect_equal(propagate(success), expected)?
 
-	view: Error := Error("JSON: invalid data", kind: "EBADMSG")
+	view Error := Error("JSON: invalid data", kind: "EBADMSG")
 	expect_not_equal(view.message.length(), 0)?
 	expect_equal(view.kind, "EBADMSG")?
 

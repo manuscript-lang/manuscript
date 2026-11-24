@@ -10,7 +10,7 @@ import (
 
 // A line read answers `String?`: an empty line is present, and only the end of the
 // stream is none.
-fn present(var input: ReadStream[String]) Bool!:
+fn present(var input ReadStream[String]) Bool!:
 	line := input.next()?
 	return ok(line != null)
 

@@ -2,7 +2,7 @@
 // conform: phase=check
 import JsonError from "@std/data/json.ms"
 import hex_decode from "@std/data/encoding.ms"
-fn general(cause: JsonError) Error:
+fn general(cause JsonError) Error:
     return cause
 fn failed() Result[Void, JsonError]:
     return error(cause: JsonError.InvalidData)

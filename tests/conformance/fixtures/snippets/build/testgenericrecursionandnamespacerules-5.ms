@@ -2,7 +2,7 @@
 // conform: phase=check
 // conform: origin=pkg/build/compiler_test.go:260 TestGenericRecursionAndNamespaceRules
 type Data:
-    value: Int
+    value Int
 
 fn Data.compare() Void:
     return

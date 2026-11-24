@@ -5,12 +5,12 @@ import (
 )
 
 type Rec:
-	id: Int
-	user: String
-	score: Int
-	active: Bool
-	tags: List[String]
-	name: String
+	id Int
+	user String
+	score Int
+	active Bool
+	tags List[String]
+	name String
 
 fn main() Void:
 	data := read_all(stdin(), null).get().decode_utf8() or ""

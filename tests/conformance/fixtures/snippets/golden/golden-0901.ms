@@ -3,7 +3,7 @@
 fn before() Int: 0
 fn broken() Int:
     return apply(
-        op: fn(value: Int) Int:
+        op: fn(value Int) Int:
             return value + 1,
         times: 3
     )

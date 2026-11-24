@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/extern-default.ms:3:16: type: extern parameter value cannot have a default; the native symbol takes every argument\n   |\n 3 | extern fn labs(value: Int = 1) Int\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/extern-default.ms:3:16: type: extern parameter value cannot have a default; the native symbol takes every argument\n   |\n 3 | extern fn labs(value Int = 1) Int\n   |                ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

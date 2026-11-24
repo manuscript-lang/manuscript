@@ -6,7 +6,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn table(move text: String) TomlValue:
+fn table(move text String) TomlValue:
 	var fields = Map[String, TomlValue]()
 	fields.add("value", TomlValue.StringValue(text))
 	return TomlValue.TableValue(fields)

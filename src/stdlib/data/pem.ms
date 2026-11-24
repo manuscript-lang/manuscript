@@ -8,7 +8,7 @@ PEM (RFC 7468) text armor: `-----BEGIN LABEL-----`, base64 body, `-----END LABEL
 Certificates, keys and CSRs travel as PEM blocks; `parse` finds every block in a text and
 `encode_all` writes blocks back with 64-column lines.
 
-<!-- manuscript-example: {"mode":"fragment","given":["text: String"]} -->
+<!-- manuscript-example: {"mode":"fragment","given":["text String"]} -->
 ```manuscript
 import PemBlock, encode_all, parse from "@std/data/pem.ms"
 blocks := parse(text)?
@@ -21,11 +21,11 @@ print(encode_all([PemBlock(label: "NOTE", data: "hi".to_bytes())]))
 // One PEM block: its label, optional RFC 1421 style headers, and decoded body bytes.
 export type PemBlock:
 	// Text between `BEGIN ` and the closing dashes, such as `CERTIFICATE`.
-	label: String
+	label String
 	// Decoded body bytes; empty for a block with no body lines.
-	data: Bytes
+	data Bytes
 	// Header fields written before the body, in order; empty for modern PEM.
-	headers: Map[String, String] = Map[String, String]()
+	headers Map[String, String] = Map[String, String]()
 
 BEGIN := "-----BEGIN "
 END := "-----END "
@@ -34,7 +34,7 @@ DASHES := "-----"
 // Parses every PEM block in `text`. Text outside blocks is ignored, and a text without
 // blocks gives an empty list. Mismatched, nested or unterminated armor, or a body that
 // is not valid Base64, returns an `Error` with kind `EBADMSG`.
-export fn parse(text: String) List[PemBlock]!:
+export fn parse(text String) List[PemBlock]!:
 	var blocks = List[PemBlock]()
 	var label = ""
 	var open = false
@@ -104,7 +104,7 @@ export fn parse(text: String) List[PemBlock]!:
 
 // Encodes one block with headers first, then the body in 64-character base64 lines,
 // ending with a newline.
-export fn encode_block(block: PemBlock) String:
+export fn encode_block(block PemBlock) String:
 	var out = ""
 	out += f"{BEGIN}{block.label}{DASHES}\n"
 
@@ -126,7 +126,7 @@ export fn encode_block(block: PemBlock) String:
 	return out
 
 // Encodes blocks in order into one PEM text; the result parses back to equal blocks.
-export fn encode_all(blocks: List[PemBlock]) String:
+export fn encode_all(blocks List[PemBlock]) String:
 	var out = ""
 	for block in blocks:
 		out += encode_block(block)

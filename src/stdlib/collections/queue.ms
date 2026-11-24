@@ -4,16 +4,16 @@
 export type Queue[T]:
 	// Maximum number of items. Omitted or `null` means unbounded; a capacity of zero
 	// or below is always full.
-	capacity: Int?
+	capacity Int?
 	// Pending values from `head`; `null` marks consumed slots. Internal state: use the
 	// operations, not this field.
-	items: List[T?] = []
+	items List[T?] = []
 	// Index in `items` of the oldest value. Internal state.
-	head: Int = 0
+	head Int = 0
 
 // Adds a value and returns true, or returns false when a bounded queue is full. A
 // capacity of zero or below is always full.
-fn var Queue[T].enqueue(move value: T) Bool:
+fn var Queue[T].enqueue(move value T) Bool:
 	limit := self.capacity
 	if limit != null:
 		if self.length() >= limit: return false
@@ -21,7 +21,7 @@ fn var Queue[T].enqueue(move value: T) Bool:
 	count := self.items.length()
 
 	if self.head > 0 and self.head * 2 >= count:
-		var live: List[T?] = []
+		var live List[T?] = []
 		for index in self.head..count:
 			live.append(self.items.replace(index, null))
 		self.items = live
@@ -58,7 +58,7 @@ fn Queue[T].length() Int:
 
 // Returns the value `index` places after the oldest, or `null` when out of range;
 // negative indexes count from the newest, as `List.get` does.
-fn Queue[T].get(index: Int) T?:
+fn Queue[T].get(index Int) T?:
 	at := if index < 0: index + self.length() else: index
 	if at < 0 or at >= self.length(): return null
 
@@ -66,46 +66,46 @@ fn Queue[T].get(index: Int) T?:
 
 // Internal: orders two values: negative when `left` dequeues first, zero when equal
 // and positive when `right` dequeues first.
-fn order[T: Comparable](left: T, right: T) Int:
+fn order[T Comparable](left T, right T) Int:
 	return left.compare(right)
 
 // A waiting value and its enqueue sequence number.
 export type HeapEntry[T]:
 	// The waiting value. Internal state of `PriorityQueue`.
-	value: T
+	value T
 	// Enqueue sequence number; the smaller dequeues first among equal priorities.
 	// Internal state.
-	order: Int
+	order Int
 
 // A queue whose values dequeue in their `Comparable` order, smallest first; equal
 // priorities stay first in, first out. To order by something else, wrap the value in a
 // record that implements `Comparable`. Assigning a priority queue moves it; `.clone()`
 // makes an independent queue when its elements are Clonable.
-export type PriorityQueue[T: Comparable]:
+export type PriorityQueue[T Comparable]:
 	// Maximum number of items. Omitted or `null` means unbounded; a capacity of zero
 	// or below is always full.
-	capacity: Int?
+	capacity Int?
 	// Binary heap of waiting values, each with its enqueue sequence number (the smaller
 	// breaks ties between equal priorities). One list, so the two never fall out of
 	// step. Internal state: use the operations, not this field.
-	heap: List[HeapEntry[T]] = []
+	heap List[HeapEntry[T]] = []
 	// Next enqueue sequence number. Internal state.
-	next_order: Int = 0
+	next_order Int = 0
 
 // Reports whether the entry at `a` dequeues before the entry at `b`.
-fn PriorityQueue[T].before(a: Int, b: Int) Bool:
+fn PriorityQueue[T].before(a Int, b Int) Bool:
 	first := self.heap[a]
 	second := self.heap[b]
 	order := order(first.value, second.value)
 	return order < 0 or (order == 0 and first.order < second.order)
 
 // Exchanges the heap entries at `a` and `b`.
-fn var PriorityQueue[T].swap_entries(a: Int, b: Int) Void:
+fn var PriorityQueue[T].swap_entries(a Int, b Int) Void:
 	self.heap.swap(a, b)
 
 // Moves the entry at `start` up, but no higher than `floor`, while it dequeues
 // before its parent.
-fn var PriorityQueue[T].sift_up(start: Int, floor: Int) Void:
+fn var PriorityQueue[T].sift_up(start Int, floor Int) Void:
 	var at = start
 
 	while at > floor:
@@ -120,7 +120,7 @@ Moves the entry at `start` down the path of earlier children to the bottom, then
 one comparison per level on the way down instead of two, since a displaced last entry usually belongs near the bottom.
 The loop runs while the entry has a left child, and the guards on `at` let the compiler prove every index in range.
 */
-fn var PriorityQueue[T].sift_down(start: Int) Void:
+fn var PriorityQueue[T].sift_down(start Int) Void:
 	size := self.heap.length()
 	parents := size / 2
 	var at = start
@@ -140,7 +140,7 @@ fn var PriorityQueue[T].sift_down(start: Int) Void:
 
 // Adds a value and returns true, or returns false when a bounded queue is full. A
 // capacity of zero or below is always full.
-fn var PriorityQueue[T].enqueue(move value: T) Bool:
+fn var PriorityQueue[T].enqueue(move value T) Bool:
 	limit := self.capacity
 	if limit != null:
 		if self.heap.length() >= limit: return false
@@ -178,7 +178,7 @@ fn PriorityQueue[T].length() Int:
 // Returns the value at `index` in heap order, or `null` when out of range; only index
 // 0 is known to be the next to dequeue. Negative indexes count from the end of the heap
 // array.
-fn PriorityQueue[T].get(index: Int) T?:
+fn PriorityQueue[T].get(index Int) T?:
 	at := if index < 0: index + self.heap.length() else: index
 	if at < 0 or at >= self.heap.length(): return null
 

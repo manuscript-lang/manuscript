@@ -8,17 +8,17 @@ import stdout from "@std/io/io.ms"
 import Connection, connect, serve from "@std/net/net.ms"
 import nanoseconds, sleep from "@std/time.ms"
 
-fn send(var conn: Connection, text: String) Void!:
+fn send(var conn Connection, text String) Void!:
     conn.output.write(text.to_bytes())?
     return conn.output.flush()
 
 type Reporter:
-    name: String
+    name String
 
 fn move Reporter.close() Void!:
     _line := stdout().write(f"{self.name} cleanup ran\n")
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
     var _reporter = Reporter("handler")
     void sleep(nanoseconds(30000000000)).wait()
     void _reporter.close()

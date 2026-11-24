@@ -9,8 +9,8 @@ import (
 
 // An endless source that counts how many items were pulled.
 type Counting:
-	next_value: Int
-	pulled: Int
+	next_value Int
+	pulled Int
 
 fn var Counting.next() Int?!:
 	self.pulled += 1
@@ -50,7 +50,7 @@ test "stages compose over an endless stream":
 
 // Every odd read fails; successful reads yield 2, 4, 6, ... without ending.
 type Intermittent:
-	calls: Int = 0
+	calls Int = 0
 
 fn var Intermittent.next() Int?!:
 	self.calls += 1

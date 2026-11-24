@@ -4,13 +4,13 @@ import (
 )
 
 export type Door:
-	path: String
+	path String
 
 fn move Door.close() Void!:
 	write_file(self.path, "1", true).wait()?
 
 export type Node:
-	door: Door
+	door Door
 
-export fn make_inner(path: String) Node:
+export fn make_inner(path String) Node:
 	return Node(Door(path.clone().clone()))

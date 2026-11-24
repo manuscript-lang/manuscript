@@ -6,13 +6,13 @@ import (
 	Random, seeded from "../../lib/pyrandom.ms",
 )
 
-fn add(var cs: Cases, name: String, script: String) Void:
+fn add(var cs Cases, name String, script String) Void:
 	cs.push(name, script)
 
 // A registry of `n` packages p0..p{n-1}; package pI has `versions` releases and depends
 // on up to three lower-numbered packages with random constraints, so the search has to
 // backtrack. Ends with a `resolve` of the highest package.
-fn random_registry(seed: Int, n: Int, versions: Int) String:
+fn random_registry(seed Int, n Int, versions Int) String:
 	var rng = seeded(seed)
 	ops := ["^", "~", ">=", "<=", "", "<", ">"]
 	var out = ""

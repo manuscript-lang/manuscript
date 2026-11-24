@@ -7,8 +7,8 @@ import (
 	milliseconds, sleep from "@std/time.ms",
 )
 
-fn drain(var input: ReadStream[Int]) List[Int]!:
-	var seen: List[Int] = []
+fn drain(var input ReadStream[Int]) List[Int]!:
+	var seen List[Int] = []
 	for item in input:
 		seen.append(item)
 	return ok(seen)
@@ -36,12 +36,12 @@ test "each writer is its own end like dup: the reader ends after the last one cl
 	second.write("c")?
 	second.close()?
 
-	var seen: List[String] = []
+	var seen List[String] = []
 	for item in input:
 		seen.append(item)
 	expect_equal(seen, ["a", "b", "c"])?
 
-fn fill(p: Pipe[Int], count: Int) Void!:
+fn fill(p Pipe[Int], count Int) Void!:
 	var out = p.writer()
 	for i in 0..count:
 		out.write(i)?
@@ -58,7 +58,7 @@ test "a write waits while the pipe holds more than its capacity, so the reader s
 	sleep(milliseconds(50)).wait()?
 	expect_false(producer.done())?
 
-	var seen: List[Int] = []
+	var seen List[Int] = []
 	for i in 0..20:
 		seen.append((input.next()?) or (-1))
 	producer.wait()?
@@ -98,18 +98,18 @@ test "a promise that owns a pipe writes to it through a writer of its own":
 	gate.close()?
 	expect_equal(drain(input)?, [0, 1, 2, 3, 4])?
 
-fn produce(p: Pipe[Int], count: Int) Void!:
+fn produce(p Pipe[Int], count Int) Void!:
 	var out = p.writer()
 	for i in 0..count:
 		out.write(i)?
 	return out.close()
 
-fn send_range(var out: WriteStream[Int], base: Int) Void!:
+fn send_range(var out WriteStream[Int], base Int) Void!:
 	for i in 0..5:
 		out.write(base + i)?
 	return out.flush()
 
-fn send_from(move out: WriteStream[Int], base: Int) Promise[Void]:
+fn send_from(move out WriteStream[Int], base Int) Promise[Void]:
 	return promise(fn: send_range(out, base))
 
 test "several promises each move a writer of their own into a fan-in":
@@ -130,7 +130,7 @@ test "several promises each move a writer of their own into a fan-in":
 	expect_equal(seen[0], 0)?
 	expect_equal(seen[14], 204)?
 
-fn start_sender(p: Pipe[Int]) Promise[Void]:
+fn start_sender(p Pipe[Int]) Promise[Void]:
 	var w = p.writer()
 	return promise(fn: send_range(w, 0))
 
@@ -145,12 +145,12 @@ test "a promise keeps the writer it captured after its maker returns":
 	expect_equal(drain(input)?, [0, 1, 2, 3, 4])?
 	sender.wait()?
 
-fn send_many(var out: WriteStream[Int], from: Int, count: Int) Void!:
+fn send_many(var out WriteStream[Int], from Int, count Int) Void!:
 	for i in from..from + count:
 		out.write(i)?
 	return out.flush()
 
-fn send_many_from(move out: WriteStream[Int], from: Int, count: Int) Promise[Void]:
+fn send_many_from(move out WriteStream[Int], from Int, count Int) Promise[Void]:
 	return promise(fn: send_many(out, from, count))
 
 test "a reader takes queued values directly and still waits and ends in order":
@@ -174,14 +174,14 @@ test "a reader takes queued values directly and still waits and ends in order":
 	expect_equal(count, 10000)?
 	expect_equal(total, 49995000)?
 
-fn endless(var out: WriteStream[Int]) Void!:
+fn endless(var out WriteStream[Int]) Void!:
 	var i = 0
 
 	while true:
 		out.write(i)?
 		i += 1
 
-fn sum_mod(var input: ReadStream[Int]) Int!:
+fn sum_mod(var input ReadStream[Int]) Int!:
 	var n = 0
 	for v in input:
 		n += v % 3
@@ -200,12 +200,12 @@ test "a consumer that always finds a value queued still meets its timeout":
 	expect_true(cons.wait().is_error())?
 
 type Join:
-	id: Int
-	out: WriteStream[String]
+	id Int
+	out WriteStream[String]
 
 // The owner holds each member's output end and pushes to all of them.
-fn room(var inbox: ReadStream[Join]) Void!:
-	var members: List[Join] = []
+fn room(var inbox ReadStream[Join]) Void!:
+	var members List[Join] = []
 
 	for join in inbox:
 		newcomer := join.id
@@ -215,7 +215,7 @@ fn room(var inbox: ReadStream[Join]) Void!:
 
 	return ok()
 
-fn join_room(p: Pipe[Join], id: Int, replies: Pipe[String]) Void!:
+fn join_room(p Pipe[Join], id Int, replies Pipe[String]) Void!:
 	var cmds = p.writer()
 	cmds.write(Join(id, replies.writer()))?
 	return cmds.close()
@@ -232,8 +232,8 @@ test "a pipe carries a writer by move, so its owner can push to the sender":
 	owner.wait()?
 	expect_equal(drain_text(firstIn)?, ["1 sees 1"])?
 
-fn drain_text(var input: ReadStream[String]) List[String]!:
-	var seen: List[String] = []
+fn drain_text(var input ReadStream[String]) List[String]!:
+	var seen List[String] = []
 	for item in input:
 		seen.append(item)
 	return ok(seen)

@@ -15,8 +15,8 @@ import (
 	write_text from "./lib.ms",
 )
 
-fn source(count: Int, mode: String) String:
-	header := "type Counter:\n    value: Int\n\nfn Counter.next() Counter: Counter(self.value + 1)\n\n"
+fn source(count Int, mode String) String:
+	header := "type Counter:\n    value Int\n\nfn Counter.next() Counter: Counter(self.value + 1)\n\n"
 	if mode == "native-chain":
 		return (
 			"export fn main() Int:\n    result := [0]"
@@ -37,11 +37,11 @@ fn source(count: Int, mode: String) String:
 	return text + f"    print(step{count}.value)\n    return 0\n"
 
 fn measure(
-	before: String,
-	after: String,
-	directory: String,
-	rounds: Int,
-	filter: String,
+	before String,
+	after String,
+	directory String,
+	rounds Int,
+	filter String,
 ) Void!:
 	ensure_directory(directory)
 	ensure_directory(f"{directory}/inputs")

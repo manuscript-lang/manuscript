@@ -5,10 +5,10 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn total(xs: List[Int]) Int!:
+fn total(xs List[Int]) Int!:
 	return ok(xs.length())
 
-fn run(xs: List[Int], name: String) Int!:
+fn run(xs List[Int], name String) Int!:
 	p := promise(fn: total(xs))
 	q := promise(fn: ok(name.length()))
 	return ok(p.wait()? + q.wait()?)

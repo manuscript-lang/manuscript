@@ -2,4 +2,4 @@
 // conform: phase=check
 // conform: origin=pkg/checker/native_defaults_test.go:76 TestOpaqueNativeConstructorDefaultsStayBounded
 type Resource:
-    size: Int = 1
+    size Int = 1

@@ -2,9 +2,9 @@
 // conform: phase=check
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:27 TestDiagnosticFixes
 type K:
-    v: Float
+    v Float
 
-fn K.equals(other: K) Bool:
+fn K.equals(other K) Bool:
     return true
 
 fn f() Int:

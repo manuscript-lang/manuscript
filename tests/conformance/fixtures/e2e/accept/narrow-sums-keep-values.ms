@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn byte_sum(values: List[UInt8]) Int:
+fn byte_sum(values List[UInt8]) Int:
 	var total = 0
 	var i = 0
 
@@ -15,7 +15,7 @@ fn byte_sum(values: List[UInt8]) Int:
 
 	return total
 
-fn signed_sum(values: List[Int8]) Int:
+fn signed_sum(values List[Int8]) Int:
 	var total = 0
 	var i = 0
 

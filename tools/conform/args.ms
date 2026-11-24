@@ -2,17 +2,17 @@
 // switches.
 
 // Flags that take no value.
-SWITCHES: List[String] := [
+SWITCHES List[String] := [
 	"quiet", "no-stable-check", "prune", "only-missing", "help", "strict", "no-docs",
 	"no-tree", "no-twins"
 ]
 
 export type Args:
-	values: Map[String, List[String]]
-	positional: List[String]
-	problem: String
+	values Map[String, List[String]]
+	positional List[String]
+	problem String
 
-export fn parse_args(words: List[String]) Args:
+export fn parse_args(words List[String]) Args:
 	var args = Args(values: Map[String, List[String]](), positional: [], problem: "")
 	var at = 0
 
@@ -46,23 +46,23 @@ export fn parse_args(words: List[String]) Args:
 
 	return args
 
-export fn has(args: Args, flag: String) Bool:
+export fn has(args Args, flag String) Bool:
 	return args.values.get(flag) != null
 
 // The last value of `flag`, or `fallback`.
-export fn one(args: Args, flag: String, fallback: String) String:
+export fn one(args Args, flag String, fallback String) String:
 	held := args.values.get(flag)
 	if held != null:
 		if held.length() > 0: return held[held.length() - 1].clone()
 	return fallback.clone()
 
 // Every value of a repeatable flag; each value may be comma separated.
-export fn many(args: Args, flag: String) List[String]:
+export fn many(args Args, flag String) List[String]:
 	var out = List[String]()
 	for value in (args.values.get(flag) or List[String]()):
 		for part in value.split(","):
 			if part.trim() != "": out.append(part.trim().clone())
 	return out
 
-export fn number(args: Args, flag: String, fallback: Int) Int:
+export fn number(args Args, flag String, fallback Int) Int:
 	return one(args, flag, "").parse_int() or fallback

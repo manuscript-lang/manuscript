@@ -3,5 +3,5 @@
 // conform: origin=type-sets
 type Number = Int | Float
 
-fn f(x: Number) Int:
+fn f(x Number) Int:
     return 0

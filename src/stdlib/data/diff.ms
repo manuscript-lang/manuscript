@@ -7,17 +7,17 @@ Strings are compared by Unicode scalar and lines by exact equality.
 // Returns the number of single-scalar insertions, deletions and substitutions that turn
 // `left` into `right` (Levenshtein distance). Example:
 // `edit_distance("kitten", "sitting")` is `3`; equal strings give 0.
-export fn edit_distance(left: String, right: String) Int:
+export fn edit_distance(left String, right String) Int:
 	if left == right: return 0
 
 	a := left.chars()
 	b := right.chars()
-	var previous: List[Int] = []
+	var previous List[Int] = []
 	for j in 0..b.length() + 1:
 		previous.append(j)
 
 	for i in 1..a.length() + 1:
-		var current: List[Int] = [i]
+		var current List[Int] = [i]
 
 		for j in 1..b.length() + 1:
 			cost := if a[i - 1] == b[j - 1]: 0 else: 1
@@ -32,11 +32,11 @@ export fn edit_distance(left: String, right: String) Int:
 	return previous[b.length()]
 
 // Returns the length of the longest common subsequence of two lists of text.
-fn common_length(a: List[String], b: List[String]) Int:
+fn common_length(a List[String], b List[String]) Int:
 	var previous = [0].repeated(b.length() + 1)
 
 	for i in 1..a.length() + 1:
-		var current: List[Int] = [0]
+		var current List[Int] = [0]
 
 		for j in 1..b.length() + 1:
 			if a[i - 1] == b[j - 1]:
@@ -53,7 +53,7 @@ Returns how alike two strings are, from 0.0 (nothing shared) to 1.0 (equal): twi
 Two empty strings give 1.0. Use `close_matches` to rank a list of candidates by this score.
 Example: `similarity_ratio("abcd", "abd")` is about `0.857`.
 */
-export fn similarity_ratio(left: String, right: String) Float:
+export fn similarity_ratio(left String, right String) Float:
 	if left == right: return 1.0
 
 	a := left.chars()
@@ -65,29 +65,29 @@ export fn similarity_ratio(left: String, right: String) Float:
 
 // A candidate string with its similarity to the word searched for.
 type Scored:
-	text: String
-	score: Float
+	text String
+	score Float
 
 // Settings for `close_matches`.
 export type CloseMatchesOptions:
 	// Maximum candidates returned; zero or below returns null.
-	limit: Int = 3
+	limit Int = 3
 	// Minimum `similarity_ratio` from 0.0 to 1.0; at or below 0.0 keeps every candidate
 	// and above 1.0 keeps null.
-	cutoff: Float = 0.6
+	cutoff Float = 0.6
 
 /*
 Returns up to `options.limit` candidates whose `similarity_ratio` with `word` is at least `options.cutoff`, best match first; ties keep the candidates' order.
 Example: `close_matches("appel", ["ape", "apple", "peach"], CloseMatchesOptions(limit: 2))` is `["apple", "ape"]`.
 */
 export fn close_matches(
-	word: String,
-	candidates: List[String],
-	options: CloseMatchesOptions = CloseMatchesOptions(),
+	word String,
+	candidates List[String],
+	options CloseMatchesOptions = CloseMatchesOptions(),
 ) List[String]:
 	limit := options.limit
 	cutoff := options.cutoff
-	var scored: List[Scored] = []
+	var scored List[Scored] = []
 
 	for candidate in candidates:
 		score := similarity_ratio(word, candidate)
@@ -97,7 +97,7 @@ export fn close_matches(
 	ranked := scored.sorted(fn a, b: compare_scores(a.score, b.score))
 	return ranked.take(limit).map(fn s: s.text.clone())
 
-fn compare_scores(left: Float, right: Float) Int:
+fn compare_scores(left Float, right Float) Int:
 	if left > right: return -1
 	if left < right: return 1
 
@@ -106,16 +106,16 @@ fn compare_scores(left: Float, right: Float) Int:
 // One step of a line diff: a line kept (0), removed from the old text (1) or added in
 // the new text (2).
 type Step:
-	kind: Int
-	text: String
+	kind Int
+	text String
 	// Lines of the old text consumed before this step.
-	old_at: Int
+	old_at Int
 	// Lines of the new text consumed before this step.
-	new_at: Int
+	new_at Int
 
 // Walks the longest common subsequence table to list the steps that turn `old` into
 // `new`, deletions before insertions within a change.
-fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
+fn middle_steps(old List[String], new List[String], shift Int) List[Step]:
 	var table = (0..old.length() + 1).map(fn _row: [0].repeated(new.length() + 1))
 	var i = old.length() - 1
 
@@ -132,7 +132,7 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 
 		i -= 1
 
-	var steps: List[Step] = []
+	var steps List[Step] = []
 	var a = 0
 	var b = 0
 
@@ -176,7 +176,7 @@ fn middle_steps(old: List[String], new: List[String], shift: Int) List[Step]:
 
 // Lists the steps that turn `old` into `new`. Matches common leading and trailing lines
 // directly, so only the differing middle pays for the quadratic table.
-fn line_steps(old: List[String], new: List[String]) List[Step]:
+fn line_steps(old List[String], new List[String]) List[Step]:
 	var head = 0
 	while head < old.length() and head < new.length() and old[head] == new[head]:
 		head += 1
@@ -189,12 +189,12 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
 	):
 		tail += 1
 
-	var steps: List[Step] = []
+	var steps List[Step] = []
 	for i in 0..head:
 		steps.append(Step(kind: 0, text: old[i].clone(), old_at: i, new_at: i))
 
-	var old_middle: List[String] = []
-	var new_middle: List[String] = []
+	var old_middle List[String] = []
+	var new_middle List[String] = []
 	for i in head..old.length() - tail:
 		old_middle.append(old[i].clone())
 	for i in head..new.length() - tail:
@@ -210,7 +210,7 @@ fn line_steps(old: List[String], new: List[String]) List[Step]:
 
 // Formats a hunk range like unified diff: the 1-based start and length, with an empty
 // range counted from the line before it.
-fn hunk_range(start: Int, length: Int) String:
+fn hunk_range(start Int, length Int) String:
 	if length == 1: return f"{start + 1}"
 	if length == 0: return f"{start},0"
 
@@ -219,11 +219,11 @@ fn hunk_range(start: Int, length: Int) String:
 // Settings for `unified_diff`.
 export type UnifiedDiffOptions:
 	// Unchanged lines kept around each change; below zero counts as zero.
-	context: Int = 3
+	context Int = 3
 	// Label of the `---` header.
-	old_name: String = "a"
+	old_name String = "a"
 	// Label of the `+++` header.
-	new_name: String = "b"
+	new_name String = "b"
 
 /*
 Compares two lists of lines and returns the differences in unified diff format, or an empty string when the lists are equal.
@@ -231,9 +231,9 @@ Input lines carry no trailing newline. Each output line, including the last, end
 Example: `unified_diff(["a", "b"], ["a", "c"], UnifiedDiffOptions(context: 1))` is `"--- a\n+++ b\n@@ -1,2 +1,2 @@\n a\n-b\n+c\n"`.
 */
 export fn unified_diff(
-	old: List[String],
-	new: List[String],
-	options: UnifiedDiffOptions = UnifiedDiffOptions(),
+	old List[String],
+	new List[String],
+	options UnifiedDiffOptions = UnifiedDiffOptions(),
 ) String:
 	context := options.context.max(0)
 	old_name := options.old_name

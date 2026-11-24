@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=pkg/checker/layout_diagnostics_test.go:40 TestRecursiveDataAndFiniteTypeApplications
 type Grow[T]:
-    next: Grow[Int]
+    next Grow[Int]

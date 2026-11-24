@@ -1,6 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn f(xs: List[Int], o: Int?) Void:
+fn f(xs List[Int], o Int?) Void:
     var n = 0
     match o:
         v:

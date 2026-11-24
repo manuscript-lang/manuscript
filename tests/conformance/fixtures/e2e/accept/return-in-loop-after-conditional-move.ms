@@ -2,13 +2,13 @@
 // conform: phase=run
 // `r` moves into `get_or` only inside the `if`, so a join holds it flagged. Returning from inside the loop
 // after that move must still release it through its flag, and the unmoved path releases it at the end.
-fn make(n: Int) Map[String, String]!:
+fn make(n Int) Map[String, String]!:
 	var m = Map[String, String]()
 	m["PATH"] = "x"
 	if n == 0: return error(Error("none"))
 	return ok(m)
 
-fn found(n: Int, key: String) Bool:
+fn found(n Int, key String) Bool:
 	r := make(n)
 	if r.is_ok():
 		for entry in r.get_or(Map[String, String]()).entries():

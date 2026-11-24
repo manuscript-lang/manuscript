@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn hash[T: Hashable](value: T) Int: return value.hash()\n\nfn f(node: Node) Int: return hash(node)\n"
+    "fmt": "fn hash[T Hashable](value T) Int: return value.hash()\n\nfn f(node Node) Int: return hash(node)\n"
   }
 }

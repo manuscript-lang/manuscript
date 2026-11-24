@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/build/library_test.go:101 TestCommonErrorRejectsInvalidContractPatterns
 type Impostor:
-    detail: String
+    detail String
 
-fn wrong(value: Impostor) Error:
+fn wrong(value Impostor) Error:
     return Error(value: value)

@@ -46,7 +46,7 @@ test "spawn accepts cwd and env and reports the peak resident set after wait":
 	expect_true(child.max_resident_bytes() > 0)?
 
 test "bad cwd and variable names are rejected":
-	invalid: CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
+	invalid CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	expect_equal(
 		run(shell(), print_cwd(), RunOptions(env: {"A=B": "x"})).wait(),
 		invalid,

@@ -34,16 +34,16 @@ fn show(v: String) Void:
 // One view operation on the text `s` (always " ab cd "): the statements that bind the
 // view, the expression that prints it later and the text it must print.
 type Operation:
-	name: String
-	binds: String
-	shown: String
-	expected: String
+	name String
+	binds String
+	shown String
+	expected String
 
 fn op(
-	move name: String,
-	move binds: String,
-	move shown: String,
-	move expected: String,
+	move name String,
+	move binds String,
+	move shown String,
+	move expected String,
 ) Operation:
 	return Operation(name, binds, shown, expected)
 
@@ -65,10 +65,10 @@ fn operations() List[Operation]:
 
 // A way to hold the text: statements that define `s`, and the function it runs in.
 type Source:
-	name: String
-	setup: String
-	params: String
-	caller: String
+	name String
+	setup String
+	params String
+	caller String
 
 fn sources() List[Source]:
 	return [
@@ -84,9 +84,9 @@ fn sources() List[Source]:
 // Statements after the view that make short temporaries, each printed so none is
 // dropped, and the text they print.
 type Stomp:
-	name: String
-	lines: String
-	expected: List[String]
+	name String
+	lines String
+	expected List[String]
 
 fn stomps() List[Stomp]:
 	return [
@@ -120,7 +120,7 @@ fn stomps() List[Stomp]:
 		),
 	]
 
-fn program(o: Operation, source: Source, stomp: Stomp) String:
+fn program(o Operation, source Source, stomp Stomp) String:
 	var body = ""
 	if source.setup != "": body = f"    {source.setup}\n"
 
@@ -135,7 +135,7 @@ fn program(o: Operation, source: Source, stomp: Stomp) String:
 		f"{HEADER}fn run({source.params}) Void:\n{body}\nfn main() Void:\n    {source.caller}\n"
 	)
 
-fn expected(o: Operation, source: Source, stomp: Stomp) String:
+fn expected(o Operation, source Source, stomp Stomp) String:
 	var lines = List[String]()
 	for line in stomp.expected: lines.append(line.clone())
 	lines.append(o.expected.clone())

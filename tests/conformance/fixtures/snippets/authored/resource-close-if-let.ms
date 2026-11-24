@@ -6,22 +6,22 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-fn say(s: String) Void:
+fn say(s String) Void:
 	stdout().write(s + "\n").get()
 
 type Res:
-	name: String
+	name String
 
 fn move Res.close() Void!:
 	say(f"close {self.name}")
 
-fn maybe(name: String, present: Bool) Res?:
+fn maybe(name String, present Bool) Res?:
 	return if present: Res(name.clone()) else: null
 
-fn make(name: String) Res!Error:
+fn make(name String) Res!Error:
 	return ok(Res(name.clone()))
 
-fn keep(r: Res) Res:
+fn keep(r Res) Res:
 	return r
 
 fn early_return() Int:

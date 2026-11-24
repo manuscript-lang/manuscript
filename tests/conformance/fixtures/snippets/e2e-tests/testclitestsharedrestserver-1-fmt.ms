@@ -13,9 +13,9 @@ import (
 import RequestOptions, request, serve from "@std/net/net.ms"
 
 type ApiFixture:
-    server: HttpServer
+    server HttpServer
 
-fn handle(request: HttpRequest) HttpResponse:
+fn handle(request HttpRequest) HttpResponse:
     return HttpResponse(status: 200, headers: headers(), body: "shared".to_bytes())
 
 fn make_fixture() ApiFixture:

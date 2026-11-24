@@ -6,11 +6,11 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn append_generic[T](var values: List[T?], value: T) Void:
+fn append_generic[T](var values List[T?], value T) Void:
 	values.append(value)
 
 test "direct append preserves checked argument conversions":
-	var values: List[Int?] = []
+	var values List[Int?] = []
 	values.append(7)
 	append_generic(values, 8)
 	values.append(null)
@@ -22,7 +22,7 @@ test "direct append preserves checked argument conversions":
 	)?
 	expect_false(not (values.get(2) == null))?
 
-	var flags: List[Bool?] = []
+	var flags List[Bool?] = []
 	flags.append(false)
 	expect_false(
 		(flags.get(0) == null) or (
@@ -31,12 +31,12 @@ test "direct append preserves checked argument conversions":
 		)
 	)?
 
-	var units: List[Void?] = []
+	var units List[Void?] = []
 	units.append(void)
 	expect_false(units.get(0) == null)?
 
-	inner: Int? := null
-	var nested: List[Int??] = []
+	inner Int? := null
+	var nested List[Int??] = []
 	nested.append(inner)
 	expect_false(
 		(
@@ -48,16 +48,16 @@ test "direct append preserves checked argument conversions":
 		)
 	)?
 
-	var callbacks: List[(fn(Int) Int)?] = []
+	var callbacks List[(fn(Int) Int)?] = []
 	callbacks.append(fn value: value + 1)
 	expect_equal((callbacks.get(0) or panic("called Optional.get() on null"))(7), 8)?
 
-	var errors: List[Error] = []
+	var errors List[Error] = []
 	errors.append(Error("failure"))
 	expect_equal(errors.get(0).message, "failure")?
 
-	var results: List[Int!?] = []
-	failed: Int! := error(Error("failure"))
+	var results List[Int!?] = []
+	failed Int! := error(Error("failure"))
 	results.append(failed)
 
 	widened := results.get(0) or panic("called Optional.get() on null")
@@ -65,7 +65,7 @@ test "direct append preserves checked argument conversions":
 	expect_equal(widened.err().message, "failure")?
 
 test "direct keyed calls preserve optional keys and values":
-	var values: List[Int?] = []
+	var values List[Int?] = []
 	values.append(7)
 	expect_false(not values.contains(7) or values.contains(8))?
 
@@ -88,8 +88,8 @@ test "direct keyed calls preserve optional keys and values":
 	)?
 
 test "direct calls capture receiver and arguments in written order":
-	first: List[Int?] := []
-	second: List[Int?] := []
+	first List[Int?] := []
+	second List[Int?] := []
 	var receiver = first.clone()
 	receiver.append(
 		(
@@ -125,5 +125,5 @@ test "direct calls capture receiver and arguments in written order":
 		)
 	)?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
 	return value

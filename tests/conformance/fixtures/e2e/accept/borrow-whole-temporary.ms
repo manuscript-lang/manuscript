@@ -5,22 +5,22 @@
 import stdout from "@std/io/io.ms"
 
 type Big:
-    name: String
-    items: List[Int]
+    name String
+    items List[Int]
 
-fn mk(n: Int) Big:
+fn mk(n Int) Big:
     var xs = List[Int]()
     for i in 0..n:
         xs.append(i)
     return Big("a name that is long enough to live on the heap", xs)
 
-fn id(b: Big) Big: b
+fn id(b Big) Big: b
 
-fn pass[T](x: T) T: x
+fn pass[T](x T) T: x
 
 fn Big.me() Big: return self
 
-fn first_of(b: Big) Int:
+fn first_of(b Big) Int:
     return b.items[0]
 
 fn main() Void:

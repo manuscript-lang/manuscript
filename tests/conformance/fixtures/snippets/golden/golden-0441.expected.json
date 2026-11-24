@@ -14,13 +14,13 @@
           "file": "golden-0441.ms",
           "line": 23,
           "column": 1,
-          "offset": 705
+          "offset": 690
         },
         "end": {
           "file": "golden-0441.ms",
           "line": 23,
           "column": 5,
-          "offset": 709
+          "offset": 694
         }
       }
     ],

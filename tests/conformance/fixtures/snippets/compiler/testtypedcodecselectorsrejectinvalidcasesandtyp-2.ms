@@ -3,7 +3,7 @@
 // conform: origin=pkg/compiler/codec_selectors_test.go:14 TestTypedCodecSelectorsRejectInvalidCasesAndTypes
 import NormalizationForm from "@std/string.ms"
 
-fn choose(form: NormalizationForm) Void:
+fn choose(form NormalizationForm) Void:
     return
 
 fn wrong() Void:

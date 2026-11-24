@@ -1,10 +1,10 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-fn push(var values: List[Int], value: Int = 1) Void:
+fn push(var values List[Int], value Int = 1) Void:
 	values.append(value)
 
 export fn main() Int:
-	var values: List[Int] = []
+	var values List[Int] = []
 
 	// A function value fills defaults in a thunk that cannot also pass a var parameter.
 	change := push

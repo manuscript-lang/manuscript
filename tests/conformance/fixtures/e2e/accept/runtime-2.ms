@@ -4,12 +4,12 @@
 import expect_equal from "@std/test/test.ms"
 
 type Items:
-    count: Int
+    count Int
 
 enum Outcome:
-    Value(value: Int)
+    Value(value Int)
 
-fn compute(value: Int) Int:
+fn compute(value Int) Int:
     return value
 
 fn ordinary() Outcome:

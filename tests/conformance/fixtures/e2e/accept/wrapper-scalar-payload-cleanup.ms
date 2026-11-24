@@ -6,7 +6,7 @@ import (
 )
 
 type Marker:
-	id: Int
+	id Int
 
 fn move Marker.close() Void!: error(Error("scalar wrapper payload closed"))
 
@@ -41,7 +41,7 @@ fn transformed_error() Void:
 	_mapped := failure().map_error(fn item: item.id)
 
 fn transformed_then() Void:
-	_mapped: Int!Int := success().and_then(fn item: ok(item.id))
+	_mapped Int!Int := success().and_then(fn item: ok(item.id))
 
 test "scalar retained wrapper branches retain their cleanup duty":
 	(expect_fault(optional_cause)?) | expect_contains("resource could not be closed")?

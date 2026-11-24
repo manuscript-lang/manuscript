@@ -4,17 +4,17 @@
 import Closeable from "@std/core.ms"
 import expect_contains, expect_equal, expect_fault from "@std/test/test.ms"
 
-fn checked(n: Int) Int!Error:
+fn checked(n Int) Int!Error:
     if n < 0:
         return error(Error("negative"))
 
     return ok(n + 1)
 
-fn wrapped(n: Int) Int!Error:
+fn wrapped(n Int) Int!Error:
     value := checked(n)?
     return ok(value)
 
-fn total(positive: Bool) Int:
+fn total(positive Bool) Int:
     var sum = 0
     var i = -2
 
@@ -57,7 +57,7 @@ fn peer() Int:
 
     return sum
 
-fn hidden(n: Int) Int!Error:
+fn hidden(n Int) Int!Error:
     if n < 0:
         return error(
             Error(
@@ -82,20 +82,20 @@ fn hidden_success() Int:
     return sum
 
 type BoundedResultCleanup:
-    visits: List[Int]
+    visits List[Int]
 
 fn move BoundedResultCleanup.close() Void!:
     self.visits.append(7)
 
-fn cleanup(move visits: List[Int]) Int:
+fn cleanup(move visits List[Int]) Int:
     _resource := BoundedResultCleanup(visits)
     return total(true)
 
-fn argument(value: Int, var visits: List[Int]) Int:
+fn argument(value Int, var visits List[Int]) Int:
     visits.append(value)
     return value
 
-fn ordered(var visits: List[Int]) Int:
+fn ordered(var visits List[Int]) Int:
     var sum = 0
     var i = -1
 
@@ -127,10 +127,10 @@ test "hidden successful returns in error construction keep checks":
     )?
 
 test "Result bounds preserve argument effects and cleanup":
-    var visits: List[Int] = []
+    var visits List[Int] = []
     ordered(visits) | expect_equal(3)?
     visits | expect_equal([-1, 0, 1])?
     cleanup(visits) | expect_equal(500498)?
 
-fn present[T](value: T) T?:
+fn present[T](value T) T?:
     return value

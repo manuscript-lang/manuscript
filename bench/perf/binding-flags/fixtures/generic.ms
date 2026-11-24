@@ -1,21 +1,21 @@
 type Pair[A, B]:
-	first: A
-	second: B
+	first A
+	second B
 
 enum Choice[T]:
 	Empty
-	Value(value: T)
+	Value(value T)
 
-fn first[A, B](p: Pair[A, B]) A:
+fn first[A, B](p Pair[A, B]) A:
 	return p.first
 
-fn optional[T](value: T) T?:
+fn optional[T](value T) T?:
 	return value
 
-fn defaulted(value: Int = 17) Int:
+fn defaulted(value Int = 17) Int:
 	return value + 1
 
-fn required(amount: Int) Int:
+fn required(amount Int) Int:
 	return amount + 2
 
 fn main() Void:

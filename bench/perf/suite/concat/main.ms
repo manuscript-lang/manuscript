@@ -13,7 +13,7 @@ fn main() Void:
 	for i in 0..50000:
 		c += "item,"
 
-	var parts: List[String] = []
+	var parts List[String] = []
 	for i in 0..50000:
 		parts.append(f"p{i}")
 

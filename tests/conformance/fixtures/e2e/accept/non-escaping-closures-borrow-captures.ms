@@ -8,36 +8,36 @@ import (
 // A closure that does not outlive its maker reads what it captures in place; one that
 // is returned or stored owns a copy and keeps the value it was made with.
 type Matrix:
-	data: List[Int]
-	label: String
+	data List[Int]
+	label String
 
-fn total(m: Matrix, f: fn(Int) Int) Int:
+fn total(m Matrix, f fn(Int) Int) Int:
 	var sum = 0
 	for x in m.data:
 		sum += f(x)
 	return sum
 
-fn scaled(m: Matrix) Int:
+fn scaled(m Matrix) Int:
 	return total(m, fn x: x + m.data.length())
 
-fn nested(m: Matrix, names: List[String]) Int:
-	outer := fn(x: Int) Int:
-		inner := fn(y: Int) Int:
+fn nested(m Matrix, names List[String]) Int:
+	outer := fn(x Int) Int:
+		inner := fn(y Int) Int:
 			return y + m.data.length() + names.length()
 		return inner(x)
 
 	return total(m, outer)
 
-fn push(var out: List[Int], n: Int) Void:
+fn push(var out List[Int], n Int) Void:
 	out.append(n)
 
-fn each(f: fn(Int) Void) Void:
+fn each(f fn(Int) Void) Void:
 	f(1)
 	f(2)
 	f(3)
 
 fn collect() List[Int]:
-	var out: List[Int] = []
+	var out List[Int] = []
 	each(fn i: push(out, i))
 	return out
 
@@ -47,9 +47,9 @@ fn make_reader() fn() Int:
 	return fn: tags.length()
 
 type Box:
-	f: fn() Int
+	f fn() Int
 
-fn lit(text: String) Int:
+fn lit(text String) Int:
 	var t = 0
 
 	for p in text.split(",").clone():
@@ -58,14 +58,14 @@ fn lit(text: String) Int:
 
 	return t
 
-fn keep_rec(text: String) List[Box]:
-	var out: List[Box] = []
+fn keep_rec(text String) List[Box]:
+	var out List[Box] = []
 	for p in text.split(",").clone():
 		out.append(Box(f: fn() Int: return p.length()))
 	return out
 
-fn keep_map(text: String) Int:
-	var m: Map[Int, fn() Int] = {}
+fn keep_map(text String) Int:
+	var m Map[Int, fn() Int] = {}
 	var i = 0
 
 	for p in text.split(",").clone():
@@ -77,8 +77,8 @@ fn keep_map(text: String) Int:
 		t += (m.get(k) or panic("called Optional.get() on null"))()
 	return t
 
-fn keep_opt(text: String) Int:
-	var os: List[(fn() Int)?] = []
+fn keep_opt(text String) Int:
+	var os List[(fn() Int)?] = []
 	for p in text.split(",").clone():
 		os.append((fn() Int: return p.length()))
 
@@ -87,11 +87,11 @@ fn keep_opt(text: String) Int:
 		t += (o or panic("called Optional.get() on null"))()
 	return t
 
-fn store(var fs: List[fn() Int], move f: fn() Int) Void:
+fn store(var fs List[fn() Int], move f fn() Int) Void:
 	fs.append(f)
 
-fn keep_user(text: String) Int:
-	var fs: List[fn() Int] = []
+fn keep_user(text String) Int:
+	var fs List[fn() Int] = []
 	for p in text.split(",").clone():
 		store(fs, fn() Int: return p.length())
 
@@ -100,7 +100,7 @@ fn keep_user(text: String) Int:
 		t += f()
 	return t
 
-fn stored_total(text: String) Int:
+fn stored_total(text String) Int:
 	var t = lit(text)
 	for b in keep_rec(text):
 		t += b.f()
@@ -115,10 +115,10 @@ test "non-escaping closure reads its capture":
 	expect_equal(nested(m, ["x", "y"]), 21)?
 
 test "closure made in a loop sees each iteration":
-	var results: List[Int] = []
+	var results List[Int] = []
 
 	for i in [1, 2, 3]:
-		var names: List[String] = []
+		var names List[String] = []
 		for unused in 0..i:
 			names.append("n")
 

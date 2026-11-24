@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn row(width: Int, seed: Int) List[Int]:
+fn row(width Int, seed Int) List[Int]:
 	var cells = List[Int]()
 	cells.append(seed)
 
@@ -18,7 +18,7 @@ fn row(width: Int, seed: Int) List[Int]:
 
 	return cells
 
-fn table(n: Int) List[Int]:
+fn table(n Int) List[Int]:
 	var prev = List[Int]()
 	var j = 0
 

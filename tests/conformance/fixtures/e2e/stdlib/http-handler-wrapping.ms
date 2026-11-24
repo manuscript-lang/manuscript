@@ -11,7 +11,7 @@ import (
 	expect_ok from "@std/test/test.ms",
 )
 
-fn echo(request: HttpRequest) HttpResponse:
+fn echo(request HttpRequest) HttpResponse:
 	return HttpResponse(status: 200, headers: headers(), body: request.path.to_bytes())
 
 // A handler that answers one route itself and hands every other request to a buffered
@@ -19,7 +19,7 @@ fn echo(request: HttpRequest) HttpResponse:
 fn routed() fn(var HttpExchange) Void!:
 	inner := buffered(echo)
 
-	return fn(var exchange: HttpExchange) Void!:
+	return fn(var exchange HttpExchange) Void!:
 		if exchange.path() == "/health": return exchange.send(
 			200,
 			headers(),
@@ -27,7 +27,7 @@ fn routed() fn(var HttpExchange) Void!:
 		)
 		return inner(exchange)
 
-fn get(url: String) String!:
+fn get(url String) String!:
 	response := request(method: HttpMethod.Get, url: url) | expect_ok?
 	text := response.body.decode_utf8()
 	if text != null: return ok(text)

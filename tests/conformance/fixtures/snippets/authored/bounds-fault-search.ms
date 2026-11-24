@@ -3,7 +3,7 @@
 // conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
-fn search(a: List[Int], want: Int) Int:
+fn search(a List[Int], want Int) Int:
     var lo = 0
     var hi = a.length()
 

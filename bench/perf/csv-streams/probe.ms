@@ -6,9 +6,9 @@ import (
 )
 
 type Chunks:
-	data: Bytes
-	size: Int
-	at: Int = 0
+	data Bytes
+	size Int
+	at Int = 0
 
 fn var Chunks.next() Bytes?!:
 	if self.at >= self.data.length(): return ok(null)
@@ -24,14 +24,14 @@ fn move Chunks.close() Void!:
 	return ok()
 
 type Case:
-	name: String
-	data: Bytes
-	chunk: Int
-	expected: String
-	operations: Int = 4
-	malformed: Bool = false
+	name String
+	data Bytes
+	chunk Int
+	expected String
+	operations Int = 4
+	malformed Bool = false
 
-fn read(item: Case) Int!:
+fn read(item Case) Int!:
 	var rows = csv_rows(ReadStream[Bytes](Chunks(item.data.clone(), item.chunk)))
 	first := rows.next()
 
@@ -50,7 +50,7 @@ fn read(item: Case) Int!:
 
 	return ok(row[0].length())
 
-fn measure(item: Case) Void!:
+fn measure(item Case) Void!:
 	length := if item.malformed: item.data.length() else: item.expected.length()
 
 	for sample in 0..6:

@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type K:
-    v: Float
+    v Float
 impl Equal for K:
     fn equals(other: Equal) Bool:
         return true

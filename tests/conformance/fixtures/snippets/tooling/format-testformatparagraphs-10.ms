@@ -1,7 +1,7 @@
 // conform: tags=diagnostics,match,tier-core
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:138 TestFormatParagraphs
-fn choose(value: Choice) Int:
+fn choose(value Choice) Int:
     match value:
         first: return 1
         second: return 2

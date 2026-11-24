@@ -19,7 +19,7 @@ import ReadStream from "@std/io/io.ms"
 import Bytes from "@std/bytes.ms"
 import lines from "@std/io/steps.ms"
 
-fn count_errors(move input: ReadStream[Bytes]) Int!:
+fn count_errors(move input ReadStream[Bytes]) Int!:
     var errors = 0
     for line in input | lines:       // each step may wait for the source
         if line.contains("ERROR"):
@@ -42,7 +42,7 @@ fn count_errors(move input: ReadStream[Bytes]) Int!:
 ```manuscript
 import WriteStream from "@std/io/io.ms"
 
-fn dump(rows: List[String], var out: WriteStream[String]) Void!:
+fn dump(rows List[String], var out WriteStream[String]) Void!:
     for row in rows:
         out.write(f"{row}\n")?
     return out.flush()
@@ -60,7 +60,7 @@ import from_bytes, collect from "@std/io/streams.ms"
 import lines, filter, map from "@std/io/steps.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn line_lengths(move input: ReadStream[Bytes]) ReadStream[Int]:
+fn line_lengths(move input ReadStream[Bytes]) ReadStream[Int]:
     return input | lines | filter(fn line: line != "") | map(fn line: line.length())
 
 test "measure lines":
@@ -96,7 +96,7 @@ import pipe, WriteStream from "@std/io/io.ms"
 import promise from "@std/concurrency/promise.ms"
 import expect_equal from "@std/test/test.ms"
 
-fn send_numbers(var out: WriteStream[Int]) Void!:
+fn send_numbers(var out WriteStream[Int]) Void!:
     for n in [1, 2, 3]:
         out.write(n)?
 

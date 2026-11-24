@@ -4,19 +4,19 @@
 import expect_equal from "@std/test/test.ms"
 
 type Walker:
-    step: Int
-    limit: Int
+    step Int
+    limit Int
 
 interface Walk:
-    fn walk(n: Int) Int
+    fn walk(n Int) Int
 
-fn Walker.walk(n: Int) Int:
+fn Walker.walk(n Int) Int:
     if n == self.limit:
         return 0
 
     return 1 + self.walk(n: n + self.step)
 
-fn bounded(n: Int, limit: Int) Int:
+fn bounded(n Int, limit Int) Int:
     if n == limit:
         return 0
 

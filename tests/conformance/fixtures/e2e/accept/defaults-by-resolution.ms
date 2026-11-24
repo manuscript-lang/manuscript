@@ -7,10 +7,10 @@ import expect_equal, expect_true from "@std/test/test.ms"
 fn caller_site() Int:
 	return 5
 
-fn site(value: Int = caller_site()) Int:
+fn site(value Int = caller_site()) Int:
 	return value
 
-fn absent(value: Int? = null) Bool:
+fn absent(value Int? = null) Bool:
 	return value == null
 
 test "a default named caller_site calls the program's function":

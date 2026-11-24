@@ -13,8 +13,8 @@
         "position": {
           "file": "golden-0733.ms",
           "line": 4,
-          "column": 32,
-          "offset": 146
+          "column": 31,
+          "offset": 144
         }
       },
       {
@@ -24,15 +24,15 @@
         "position": {
           "file": "golden-0733.ms",
           "line": 4,
-          "column": 37,
-          "offset": 151
+          "column": 36,
+          "offset": 149
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0733.ms:4:32: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 4 | fn first(r: Result[Result[Int, E1], E2]) Void: nested(r)\n   |                                ^\n<DIR>/golden-0733.ms:4:37: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 4 | fn first(r: Result[Result[Int, E1], E2]) Void: nested(r)\n   |                                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0733.ms:4:31: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 4 | fn first(r Result[Result[Int, E1], E2]) Void: nested(r)\n   |                               ^\n<DIR>/golden-0733.ms:4:36: resolution: unknown type E2; declare it with 'type E2:' / 'enum E2:' / 'interface E2:', declare it as a type parameter, or import it\n   |\n 4 | fn first(r Result[Result[Int, E1], E2]) Void: nested(r)\n   |                                    ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

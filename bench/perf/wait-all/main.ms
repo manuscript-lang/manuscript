@@ -5,16 +5,16 @@ import (
 	milliseconds, monotonic, sleep from "@std/time.ms",
 )
 
-fn work(i: Int, jitter: Bool) Int!:
+fn work(i Int, jitter Bool) Int!:
 	if jitter:
 		sleep(milliseconds(i % 5)).wait()?
 	return ok(i)
 
 // The list-order implementation before #2915, retained only as a performance control.
 // Unlike wait_all it does not report a later input's error promptly.
-fn ordered_wait_all[T](promises: List[Promise[T]]) List[T]!:
+fn ordered_wait_all[T](promises List[Promise[T]]) List[T]!:
 	var pending = promises
-	var results: List[T] = []
+	var results List[T] = []
 	for index in 0..pending.length():
 		results.append(pending[index].wait()?)
 	return ok(results)
@@ -24,7 +24,7 @@ fn main() Int:
 	count := args[0].parse_int() or panic("called Optional.get() on null")
 	jitter := args[1] == "jitter"
 	before := monotonic()
-	var promises: List[Promise[Int]] = []
+	var promises List[Promise[Int]] = []
 	for i in 0..count:
 		promises.append(promise[Int](fn: work(i, jitter)))
 

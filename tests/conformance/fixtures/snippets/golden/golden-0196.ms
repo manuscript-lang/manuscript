@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type Failure:
-    code: Int
+    code Int
 impl Error for Failure:
     fn message() String: "failure"
 fn failing() Result[Int, Failure]: error(Failure(code: 1))

@@ -10,14 +10,14 @@ import (
 // `close` frees the socket, so its port can be bound again while the handle is still held and
 // after a cancelled `accept` or `read` ran its `with` cleanup.
 
-fn accept_one(address: String) Int:
+fn accept_one(address String) Int:
 	listener := listen(address).get()
 	accepted := listener.accept(nanoseconds(10000000000)).wait()
 	if accepted.is_ok(): return 1
 
 	return 0
 
-fn read_one(address: String) Int:
+fn read_one(address String) Int:
 	var client = connect(address, timeout: nanoseconds(2000000000)).wait().get()
 	got := client.input.next()
 
@@ -27,14 +27,14 @@ fn read_one(address: String) Int:
 			return -1
 		error(_): return -1
 
-fn receive_one(address: String) Int:
+fn receive_one(address String) Int:
 	var socket = bind_datagram(address).get()
 	got := socket.input.next()
 	if got.is_ok(): return 1
 
 	return 0
 
-fn rebound_datagram(address: String) Int:
+fn rebound_datagram(address String) Int:
 	match bind_datagram(address):
 		ok(bound):
 			var again = bound
@@ -42,7 +42,7 @@ fn rebound_datagram(address: String) Int:
 			return 1
 		error(_): return 0
 
-fn rebound(address: String) Int:
+fn rebound(address String) Int:
 	match listen(address):
 		ok(bound):
 			var again = bound
@@ -50,29 +50,29 @@ fn rebound(address: String) Int:
 			return 1
 		error(_): return 0
 
-fn cancel_accept(address: String) Void:
+fn cancel_accept(address String) Void:
 	work := promise(fn: ok(accept_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
-fn cancel_read(address: String) Void:
+fn cancel_read(address String) Void:
 	work := promise(fn: ok(read_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
-fn cancel_receive(address: String) Void:
+fn cancel_receive(address String) Void:
 	work := promise(fn: ok(receive_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
-fn cancel_receive_within(address: String, ns: Int) Void:
+fn cancel_receive_within(address String, ns Int) Void:
 	work := promise(fn: ok(receive_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(ns))).wait()
 
-fn cancel_accept_within(address: String, ns: Int) Void:
+fn cancel_accept_within(address String, ns Int) Void:
 	work := promise(fn: ok(accept_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(ns))).wait()
 
 // A limit short enough to pass while the work is still binding: the wait returns only
 // once the socket the work bound is closed, so the address binds again every time.
-fn rebinds_lost_to_early_cancels(address: String) Int:
+fn rebinds_lost_to_early_cancels(address String) Int:
 	var lost = 0
 
 	for round in 0..300:

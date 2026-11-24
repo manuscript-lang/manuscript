@@ -6,7 +6,7 @@ import Closeable from "@std/core.ms"
 // A temporary holding a resource that is only read closes it once, at the end of its
 // statement.
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	print(f"closed {self.name}")
@@ -18,10 +18,10 @@ fn Door.label() String:
 	return self.name.clone()
 
 type Pair:
-	a: Door
-	b: Door
+	a Door
+	b Door
 
-fn maybe(n: String) Door?:
+fn maybe(n String) Door?:
 	return Door(n.clone())
 
 fn doors() List[Door]:
@@ -30,7 +30,7 @@ fn doors() List[Door]:
 fn pair() Pair:
 	return Pair(Door("pa"), Door("pb"))
 
-fn show(l: Labeled) String:
+fn show(l Labeled) String:
 	return l.label()
 
 fn main() Void:

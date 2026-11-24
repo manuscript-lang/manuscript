@@ -29,19 +29,19 @@ export enum WebSocketKind:
 // One WebSocket message.
 export type WebSocketMessage:
 	// The payload bytes; for a text message they are the UTF-8 encoding of the text.
-	data: Bytes
+	data Bytes
 	// Whether the message is text, binary, or a ping.
-	kind: WebSocketKind
+	kind WebSocketKind
 
 // A message as the native layer reports it.
 export type RawWebSocketMessage:
 	// The payload bytes; for a text frame they are the UTF-8 encoding of the text.
-	data: Bytes
+	data Bytes
 	// True for a text frame, false for a binary frame.
-	text: Bool
+	text Bool
 
 type WebSocketSource:
-	native: NativeWebSocket
+	native NativeWebSocket
 
 // Waits for the next complete message; null once the peer closes normally. A message
 // over `max_message_bytes` is `EOVERFLOW` and a text message that is not valid UTF-8 is
@@ -60,11 +60,11 @@ fn move WebSocketSource.close() Void!:
 	msstd_websocket_close_if_last(self.native)
 
 type WebSocketSink:
-	native: NativeWebSocket
+	native NativeWebSocket
 
 // Sends one message. A text payload that is not valid UTF-8 returns EBADMSG, and a
 // payload over `max_message_bytes` returns EOVERFLOW.
-fn var WebSocketSink.write(move value: WebSocketMessage) Void!:
+fn var WebSocketSink.write(move value WebSocketMessage) Void!:
 	match value.kind:
 		Text: return msstd_websocket_send_bytes(self.native, value.data, true)
 		Binary: return msstd_websocket_send_bytes(self.native, value.data, false)
@@ -83,12 +83,12 @@ receive and send at once. The connection closes, after a normal-closure frame, w
 */
 export type WebSocket:
 	// Messages from the peer; null once the peer closes normally.
-	input: ReadStream[WebSocketMessage]
+	input ReadStream[WebSocketMessage]
 	// Messages to the peer.
-	output: WriteStream[WebSocketMessage]
+	output WriteStream[WebSocketMessage]
 	// The subprotocol the server selected during the handshake, or an empty string when
 	// none was negotiated.
-	subprotocol: String
+	subprotocol String
 
 // Closes both streams, and with them the connection.
 fn move WebSocket.close() Void!:
@@ -96,7 +96,7 @@ fn move WebSocket.close() Void!:
 	return self.output.close()
 
 // Wraps a native WebSocket into a `WebSocket`.
-export fn web_socket_from(move native: NativeWebSocket) WebSocket:
+export fn web_socket_from(move native NativeWebSocket) WebSocket:
 	subprotocol := msstd_websocket_subprotocol(native)
 	other := msstd_websocket_share(native)
 	return WebSocket(
@@ -110,27 +110,27 @@ export fn web_socket_from(move native: NativeWebSocket) WebSocket:
 export type WebSocketOptions:
 	// Extra handshake headers. `Upgrade`, `Connection`, `Host` and `Sec-WebSocket-*`
 	// cannot be set.
-	headers: HttpHeaders = headers()
+	headers HttpHeaders = headers()
 	// Subprotocols to offer, in preference order.
-	subprotocols: List[String] = []
+	subprotocols List[String] = []
 	// Largest message accepted or sent, in bytes. Must be positive; null sets no limit.
-	max_message_bytes: Int? = null
+	max_message_bytes Int? = null
 	// Time budget for connecting and completing the opening handshake. null waits
 	// indefinitely and a negative duration is rejected.
-	timeout: Duration? = null
+	timeout Duration? = null
 	// TLS settings for `wss` URLs: trusted roots, client identity, and protocols.
-	tls: TlsOptions = TlsOptions()
+	tls TlsOptions = TlsOptions()
 	// When True, offers per-message compression during the handshake; it applies only
 	// if the peer agrees.
-	compression: Bool = false
+	compression Bool = false
 
 // The part of `WebSocketOptions` the native handshake reads, in the native layout.
 export type WebSocketWire:
 	// The `tls` of the options.
-	tls: TlsOptions
+	tls TlsOptions
 	// The `compression` of the options.
-	compression: Bool
+	compression Bool
 	// The `max_message_bytes` of the options.
-	max_message_bytes: Int?
+	max_message_bytes Int?
 	// The `timeout` of the options.
-	timeout: Duration?
+	timeout Duration?

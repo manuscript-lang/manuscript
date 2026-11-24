@@ -13,8 +13,8 @@
         "position": {
           "file": "core-language-errors-results-4.ms",
           "line": 5,
-          "column": 37,
-          "offset": 220
+          "column": 36,
+          "offset": 219
         },
         "fix": {
           "position": {
@@ -39,8 +39,8 @@
         "position": {
           "file": "core-language-errors-results-4.ms",
           "line": 5,
-          "column": 54,
-          "offset": 237
+          "column": 53,
+          "offset": 236
         },
         "fix": {
           "position": {
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/core-language-errors-results-4.ms:5:37: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 5 | fn successful_price(outcome: Result[Decimal, Error]) Decimal?:\n   |                                     ^\n<DIR>/core-language-errors-results-4.ms:5:54: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 5 | fn successful_price(outcome: Result[Decimal, Error]) Decimal?:\n   |                                                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/core-language-errors-results-4.ms:5:36: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 5 | fn successful_price(outcome Result[Decimal, Error]) Decimal?:\n   |                                    ^\n<DIR>/core-language-errors-results-4.ms:5:53: resolution: unknown type Decimal; add: import Decimal from \"@std/math/decimal.ms\"\n   |\n 5 | fn successful_price(outcome Result[Decimal, Error]) Decimal?:\n   |                                                     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

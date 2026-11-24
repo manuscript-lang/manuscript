@@ -5,8 +5,8 @@ import expect_equal, expect_true from "@std/test/test.ms"
 fn fallback() Int: 9
 
 test "optional members":
-	present: Int? := 3
-	absent: Int? := null
+	present Int? := 3
+	absent Int? := null
 	expect_true(((present != null) and (present != null)))?
 	expect_true(((absent == null) and (absent == null)))?
 	expect_true(((present or 7) == 3))?

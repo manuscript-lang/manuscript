@@ -12,4 +12,4 @@ Reader for `var` (Chinmay, 2026-11-06: "you can go mutable to immutable, but not
 
 Apply when: changing calling conventions of function values, adding thunk kinds, or designing a stdlib callback that must change its argument (prefer `fn(var T)` over a handle with shared state).
 Evidence: `tests/conformance/fixtures/e2e/accept/reader-function-for-var-function.ms`, `tests/conformance/fixtures/e2e/reject/var-function-for-reader-function.ms`, [function values](../../../documentation/core-language/functions/function-values-and-closures.md#changing-parameters), `tests/conformance/fixtures/e2e/accept/fn-var-parameter-types.ms`, `tests/conformance/fixtures/snippets/authored/accept-var-param-function-value.ms`.
-Verify: `change: fn(var List[Int]) Void = push_one` then `change(var values)` changes `values`; `change(values)` is rejected naming argument 1 and the type.
+Verify: `change fn(var List[Int]) Void = push_one` then `change(var values)` changes `values`; `change(values)` is rejected naming argument 1 and the type.

@@ -7,13 +7,13 @@ Z := 1.96
 
 // A point estimate with the bounds of its 95% interval.
 export type Interval:
-	mid: Float
-	low: Float
-	high: Float
+	mid Float
+	low Float
+	high Float
 
 // The Wilson score interval for `ok` successes in `n` trials, as (low, high) fractions.
 // It stays inside [0, 1] and is honest for the small n a benchmark cell has.
-export fn wilson(ok: Int, n: Int) Interval:
+export fn wilson(ok Int, n Int) Interval:
 	if n == 0: return Interval(0.0, 0.0, 1.0)
 
 	p := ok.to_float() / n.to_float()
@@ -25,7 +25,7 @@ export fn wilson(ok: Int, n: Int) Interval:
 
 // The sample mean with its 95% interval (normal approximation; a zero-width interval
 // when there are fewer than two values).
-export fn mean_ci(values: List[Float]) Interval:
+export fn mean_ci(values List[Float]) Interval:
 	n := values.length()
 	if n == 0: return Interval(0.0, 0.0, 0.0)
 

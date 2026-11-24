@@ -7,19 +7,19 @@ import (
 )
 
 type Door:
-	id: Int
-	log: String
+	id Int
+	log String
 
 fn move Door.close() Void!:
 	void append_file(self.log, f"{self.id},").wait()
 
-fn logged(path: String) String:
+fn logged(path String) String:
 	read := read_file(path).wait()
 	if bytes := read: return bytes.decode_utf8() or ""
 
 	return ""
 
-fn keep_if(d: Door, keep: Bool) Door?:
+fn keep_if(d Door, keep Bool) Door?:
 	if keep: return d
 	return null
 

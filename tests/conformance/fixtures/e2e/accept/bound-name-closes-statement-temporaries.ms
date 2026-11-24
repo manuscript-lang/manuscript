@@ -3,7 +3,7 @@
 // A statement that binds a name closes the resources of its temporaries where it ends, whether it reads a resource
 // field in place or an element of a returned list.
 type Door:
-	name: String
+	name String
 
 fn move Door.close() Void!:
 	print(f"closed {self.name}")
@@ -12,8 +12,8 @@ fn Door.label() String:
 	return self.name.clone()
 
 type Pair:
-	a: Door
-	b: Door
+	a Door
+	b Door
 
 fn pair() Pair:
 	return Pair(Door("pa"), Door("pb"))

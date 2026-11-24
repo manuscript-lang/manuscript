@@ -4,7 +4,7 @@ import Closeable from "@std/core.ms"
 import promise from "@std/concurrency/promise.ms"
 
 type Door:
-    names: List[String]
+    names List[String]
 
 fn move Door.close() Void!:
     print("closed")
@@ -13,7 +13,7 @@ fn var Door.swing() Int:
     self.names.append("swung")
     return self.names.length()
 
-fn use(var door: Door) Int!:
+fn use(var door Door) Int!:
     return ok(door.swing())
 
 // A promise waited in the function borrows its captures, so the `var` door stays `main`'s: it closes once

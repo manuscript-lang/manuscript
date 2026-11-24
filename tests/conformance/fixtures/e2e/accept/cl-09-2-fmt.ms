@@ -5,4 +5,4 @@ fn absent[T]() T?:
     return null
 
 test "result context infers function arguments":
-    _value: Int? := absent()
+    _value Int? := absent()

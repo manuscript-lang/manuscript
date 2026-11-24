@@ -4,8 +4,8 @@ import promise, wait_first, PromiseOptions from "@std/concurrency/promise.ms"
 import milliseconds, sleep from "@std/time.ms"
 
 // Holds heap values across waits so a cancelled promise has something to release.
-fn hold(label: String) Int:
-    var parts: List[String] = []
+fn hold(label String) Int:
+    var parts List[String] = []
 
     for i in 0..600:
         parts.append(f"{label} {i}")

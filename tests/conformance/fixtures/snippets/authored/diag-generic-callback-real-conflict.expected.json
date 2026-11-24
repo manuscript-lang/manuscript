@@ -14,20 +14,20 @@
           "file": "diag-generic-callback-real-conflict.ms",
           "line": 8,
           "column": 34,
-          "offset": 271
+          "offset": 268
         },
         "fix": {
           "position": {
             "file": "diag-generic-callback-real-conflict.ms",
             "line": 8,
             "column": 34,
-            "offset": 271
+            "offset": 268
           },
           "end": {
             "file": "diag-generic-callback-real-conflict.ms",
             "line": 8,
             "column": 35,
-            "offset": 272
+            "offset": 269
           },
           "replacement": "\"3\""
         }

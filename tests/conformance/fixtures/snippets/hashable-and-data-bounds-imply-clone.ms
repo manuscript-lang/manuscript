@@ -4,27 +4,27 @@
 import stdout from "@std/io/io.ms"
 
 type Box[T]:
-    v: T
+    v T
 
-fn a[T: Clonable](xs: List[Box[T]]) List[Box[T]]: xs.concat(xs)
+fn a[T Clonable](xs List[Box[T]]) List[Box[T]]: xs.concat(xs)
 
-fn b[T: Clonable](xs: List[T]) List[T]: xs.take(1)
+fn b[T Clonable](xs List[T]) List[T]: xs.take(1)
 
-fn c[T: Clonable](xs: List[T]) T?: xs.first().clone()
+fn c[T Clonable](xs List[T]) T?: xs.first().clone()
 
-fn d[T](xs: List[T]) Int: xs.length()
+fn d[T](xs List[T]) Int: xs.length()
 
-fn e[T: Clonable](m: Map[String, T]) Map[String, T]: m.clone()
+fn e[T Clonable](m Map[String, T]) Map[String, T]: m.clone()
 
-fn f[T: Clonable](xs: List[T]) List[T]: xs.slice(0, 1).get_or([])
+fn f[T Clonable](xs List[T]) List[T]: xs.slice(0, 1).get_or([])
 
-fn g[T: Hashable](xs: List[T]) Set[T]:
+fn g[T Hashable](xs List[T]) Set[T]:
     var s = Set[T]()
     for x in xs:
         s.add(x.clone())
     return s
 
-fn h[T: Comparable & Clonable](xs: List[T]) List[T]: xs.sorted()
+fn h[T Comparable & Clonable](xs List[T]) List[T]: xs.sorted()
 
 fn main() Void:
     l := a([Box(1), Box(2)])

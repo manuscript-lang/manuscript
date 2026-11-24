@@ -1,10 +1,10 @@
 // conform: tags=diagnostics
 // conform: phase=check
 enum Shape:
-    Circle(r: Int)
-    Square(s: Int)
-    Tri(b: Int)
-fn area(s: Shape) Int:
+    Circle(r Int)
+    Square(s Int)
+    Tri(b Int)
+fn area(s Shape) Int:
     var out = 0
     match s:
         Circle(r):

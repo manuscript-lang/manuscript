@@ -3,10 +3,10 @@
 // conform: origin=thread/type-checker-bug-bash
 import stdout from "@std/io/io.ms"
 
-fn a(s: String) Int!:
+fn a(s String) Int!:
 	return ok_or(s.parse_int(), Error("missing"))
 
-fn b(s: String) Result[Int, Error]:
+fn b(s String) Result[Int, Error]:
 	return ok_or(s.parse_int(), Error("missing"))
 
 fn main() Void:

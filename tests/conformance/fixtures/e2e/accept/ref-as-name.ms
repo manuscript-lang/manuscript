@@ -3,9 +3,9 @@
 import expect_equal from "@std/test/test.ms"
 
 type Link:
-    ref: Int
+    ref Int
 
-fn follow(ref: Link) Int:
+fn follow(ref Link) Int:
     return ref.ref
 
 test "ref is an ordinary name":

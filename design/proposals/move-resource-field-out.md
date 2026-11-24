@@ -18,11 +18,11 @@ Verified on `6a9ca18f` with `ms check`:
 
 ```manuscript
 type Room:
-    door: Door
-    tag: String
+    door Door
+    tag String
 
-fn take(r: Room) List[Door]:
-    var xs: List[Door] = []
+fn take(r Room) List[Door]:
+    var xs List[Door] = []
     xs.append(r.door)    // error: cannot move the resource `r.door` out of `r`
     return xs
 ```
@@ -36,8 +36,8 @@ fn take(r: Room) List[Door]:
 **Rule:** a field place `b.f` (or `b.f.g`) of `Class::Resource` moves out of an owned `let` binding or by-value parameter `b` at its last use (same per-place liveness as #1997), provided no record along the path declares `close` itself. Everything else about #1997 stays: later use of the place or of `b` is "moved here but used again", a closure capture of `b` is rejected, a loop that moves without leaving is rejected.
 
 ```manuscript
-fn take(r: Room) List[Door]:
-    var xs: List[Door] = []
+fn take(r Room) List[Door]:
+    var xs List[Door] = []
     xs.append(r.door)    // accepted: r.door moves; r.tag still belongs to r
     return xs            // r closes nothing: it holds no other resource
 ```

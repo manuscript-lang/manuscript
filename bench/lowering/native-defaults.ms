@@ -9,15 +9,15 @@ import (
 	Duration from "@std/time.ms",
 )
 
-fn direct_explicit(data: Bytes) String: base64_encode(data, false)
+fn direct_explicit(data Bytes) String: base64_encode(data, false)
 
-fn direct_omitted(data: Bytes) String: base64_encode(data)
+fn direct_omitted(data Bytes) String: base64_encode(data)
 
-fn bound_explicit(data: Bytes) String:
+fn bound_explicit(data Bytes) String:
 	encode := base64_encode
 	return encode(data, false)
 
-fn bound_omitted(data: Bytes) String:
+fn bound_omitted(data Bytes) String:
 	encode := base64_encode
 	return encode(data)
 
@@ -36,10 +36,10 @@ fn command_omitted() Result[CommandOutput, Error]:
 fn command_bind() fn(String, List[String], RunOptions) Promise[CommandOutput]:
 	return run
 
-fn filesystem_explicit(data: Bytes) Result[Void, Error]:
+fn filesystem_explicit(data Bytes) Result[Void, Error]:
 	return write_file("", data, false).wait()
 
-fn filesystem_omitted(data: Bytes) Result[Void, Error]:
+fn filesystem_omitted(data Bytes) Result[Void, Error]:
 	return write_file("", data).wait()
 
 fn filesystem_bind() fn(String, Writable, Bool) Promise[Void]:

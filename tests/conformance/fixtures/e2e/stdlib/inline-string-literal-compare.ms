@@ -2,7 +2,7 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn pad(n: Int) String:
+fn pad(n Int) String:
 	return "x".repeat(n)
 
 test "a short literal equals the same text built at run time":
@@ -22,8 +22,8 @@ test "a short literal differs from a long string and matches at the inline limit
 test "a captured short literal is found in a list":
 	needle := "k2"
 	words := ["k1", "k2", "k3"]
-	expect_equal(words.any(fn(w: String) Bool: w == needle), true)?
-	expect_equal(words.find_index(fn(w: String) Bool: w == "k3") or (-1), 2)?
+	expect_equal(words.any(fn(w String) Bool: w == needle), true)?
+	expect_equal(words.find_index(fn(w String) Bool: w == "k3") or (-1), 2)?
 	expect_equal(words.contains("k1"), true)?
 	expect_equal(words.contains("k4"), false)?
 	expect_equal("héllo".scalar_length(), 5)?

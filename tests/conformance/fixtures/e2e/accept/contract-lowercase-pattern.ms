@@ -3,14 +3,14 @@
 import expect_equal from "@std/test/test.ms"
 
 type item:
-	n: Int
+	n Int
 
 interface Get:
 	fn get() Int
 
 fn item.get() Int: self.n
 
-fn read(value: Get) Int:
+fn read(value Get) Int:
 	match value:
 		item(receiver): return receiver.n
 		_: return 0

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn describe(payment: Payment) String:\n\tmatch payment:\n\t\tPaid(receipt):\n\t\t\treturn f\"Paid: {receipt}\"\n\t\tDeclined(reason):\n\t\t\treturn f\"Declined: {reason}\"\n\t\tPending(reference):\n\t\t\treturn f\"Pending: {reference}\"\n"
+    "fmt": "fn describe(payment Payment) String:\n\tmatch payment:\n\t\tPaid(receipt):\n\t\t\treturn f\"Paid: {receipt}\"\n\t\tDeclined(reason):\n\t\t\treturn f\"Declined: {reason}\"\n\t\tPending(reference):\n\t\t\treturn f\"Pending: {reference}\"\n"
   }
 }

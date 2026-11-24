@@ -7,13 +7,13 @@ import (
 )
 
 interface Src:
-	var fn read(max: Int) Int?!Error
+	var fn read(max Int) Int?!Error
 	move fn close() Void
 
 type Probe:
-	action: Int
+	action Int
 
-fn var Probe.read(max: Int) Int?!Error:
+fn var Probe.read(max Int) Int?!Error:
 	if self.action == 2: panic("source read failed")
 	return ok(null)
 
@@ -21,7 +21,7 @@ fn move Probe.close() Void:
 	return
 
 type Wrapper:
-	input: Src
+	input Src
 
 fn move Wrapper.close() Void!:
 	self.input.close()
@@ -29,7 +29,7 @@ fn move Wrapper.close() Void!:
 fn var Wrapper.read() Int?!Error:
 	return self.input.read(0)
 
-fn run_wrapped(action: Int) Int!:
+fn run_wrapped(action Int) Int!:
 	_first := Wrapper(Probe(0))
 	var last = Wrapper(Probe(action))
 	result := last.read()

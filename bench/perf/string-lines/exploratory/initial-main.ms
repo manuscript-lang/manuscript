@@ -3,14 +3,14 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn sum_lines(text: String) Int:
+fn sum_lines(text String) Int:
 	lines := text.lines()
 	var checksum = lines.length() * 17
 	for line in lines:
 		checksum += line.length()
 	return checksum
 
-fn measure(name: String, text: String, expected: Int, iterations: Int) Int:
+fn measure(name String, text String, expected Int, iterations Int) Int:
 	if sum_lines(text) != expected: return 1
 
 	var checksum = 0

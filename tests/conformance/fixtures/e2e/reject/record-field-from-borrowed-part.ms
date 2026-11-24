@@ -2,10 +2,10 @@
 // conform: phase=check
 // A record built from a part of a borrowed value would copy it behind the source's back: `.clone()` is the only copy.
 type Box:
-    items: List[Int]
+    items List[Int]
 
 type Holder:
-    rows: List[List[Int]]
+    rows List[List[Int]]
 
 fn Holder.first() Box:
     return Box(self.rows[0])

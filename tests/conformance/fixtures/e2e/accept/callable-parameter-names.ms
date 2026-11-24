@@ -2,15 +2,15 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn first(amount: Int) Int: amount + 1
+fn first(amount Int) Int: amount + 1
 
-fn second(value: Int) Int: value + 2
+fn second(value Int) Int: value + 2
 
-fn choose[T](left: T, right: T) T: left
+fn choose[T](left T, right T) T: left
 
 type Pair[T]:
-	left: T
-	right: T
+	left T
+	right T
 
 test "callable identity uses ordered types rather than parameter names":
 	selected := choose(first, second)
@@ -29,7 +29,7 @@ test "callable identity uses ordered types rather than parameter names":
 	callback = second
 	expect_equal(callback(3), 5)?
 
-	factory := fn(flag: Bool):
+	factory := fn(flag Bool):
 		if flag: return first
 		return second
 

@@ -65,10 +65,10 @@ import stdout from "@std/io/io.ms"
 import arguments from "@std/os/env.ms"
 
 type Greeting:
-    name: String
-    times: Int
+    name String
+    times Int
 
-fn greet(options: Greeting) Result[Int, Error]:
+fn greet(options Greeting) Result[Int, Error]:
     for round in 0..options.times:
         stdout().write(f"Hello, {options.name}!\n")?
     stdout().flush()?

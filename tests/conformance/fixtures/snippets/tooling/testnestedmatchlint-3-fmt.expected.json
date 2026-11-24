@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use(value: Int?) Int:\n\treturn match value:\n\t\t_value:\n\t\t\tcallback := fn() Int:\n\t\t\t\treturn match value:\n\t\t\t\t\tn: n\n\t\t\t\t\tnull: 0\n\t\t\tcallback()\n\t\tnull: 0\n"
+    "fmt": "fn use(value Int?) Int:\n\treturn match value:\n\t\t_value:\n\t\t\tcallback := fn() Int:\n\t\t\t\treturn match value:\n\t\t\t\t\tn: n\n\t\t\t\t\tnull: 0\n\t\t\tcallback()\n\t\tnull: 0\n"
   }
 }

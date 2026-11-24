@@ -15,17 +15,17 @@ import (
 // ns per item for stream pipelines against the loops they replace. One line per case:
 // `name ns checksum`.
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text)
 
-fn report(name: String, n: Int, start: Instant, sum: Int) Void:
+fn report(name String, n Int, start Instant, sum Int) Void:
 	ns := monotonic().difference(start).to_nanoseconds()
 	say(f"{name} {ns.to_float() / n.to_float()} {sum}\n")
 
 // A list as a `Source`, read by index.
 type ListSource:
-	items: List[Int]
-	at: Int
+	items List[Int]
+	at Int
 
 fn var ListSource.next() Int?!:
 	if self.at >= self.items.length(): return ok(null)
@@ -39,8 +39,8 @@ fn move ListSource.close() Void!:
 
 // `f` over another `Source`, called through the interface.
 type MapSource:
-	up: Source[Int]
-	f: fn(Int) Int
+	up Source[Int]
+	f fn(Int) Int
 
 fn var MapSource.next() Int?!:
 	step := self.up.next()?
@@ -51,13 +51,13 @@ fn var MapSource.next() Int?!:
 fn move MapSource.close() Void!:
 	return self.up.close()
 
-fn plain(xs: List[Int]) Int:
+fn plain(xs List[Int]) Int:
 	var total = 0
 	for x in xs:
 		total += x + 1
 	return total
 
-fn drain(source: Source[Int]) Int!:
+fn drain(source Source[Int]) Int!:
 	var s = source
 	var total = 0
 
@@ -71,13 +71,13 @@ fn drain(source: Source[Int]) Int!:
 
 	return ok(total)
 
-fn stdlib_map(xs: List[Int]) Int!:
+fn stdlib_map(xs List[Int]) Int!:
 	var total = 0
 	for item in from_list(xs) | map(fn x: x + 1):
 		total += item
 	return ok(total)
 
-fn stdlib_map3(xs: List[Int]) Int!:
+fn stdlib_map3(xs List[Int]) Int!:
 	var total = 0
 	for item in (
 		from_list(xs)
@@ -88,24 +88,24 @@ fn stdlib_map3(xs: List[Int]) Int!:
 		total += item
 	return ok(total)
 
-fn stdlib_collect(xs: List[Int]) Int!:
+fn stdlib_collect(xs List[Int]) Int!:
 	all := collect(from_list(xs) | map(fn x: x + 1), null)?
 	return ok(all.length())
 
-fn plain_filter(xs: List[Int]) Int:
+fn plain_filter(xs List[Int]) Int:
 	var total = 0
 	for x in xs:
 		if x % 2 == 0:
 			total += x
 	return total
 
-fn stdlib_filter(xs: List[Int]) Int!:
+fn stdlib_filter(xs List[Int]) Int!:
 	var total = 0
 	for item in from_list(xs) | filter(fn x: x % 2 == 0):
 		total += item
 	return ok(total)
 
-fn plain_take(xs: List[Int], count: Int) Int:
+fn plain_take(xs List[Int], count Int) Int:
 	var total = 0
 	var seen = 0
 
@@ -117,16 +117,16 @@ fn plain_take(xs: List[Int], count: Int) Int:
 
 	return total
 
-fn stdlib_take(xs: List[Int], count: Int) Int!:
+fn stdlib_take(xs List[Int], count Int) Int!:
 	var total = 0
 	for item in from_list(xs) | take(count):
 		total += item
 	return ok(total)
 
-fn stdlib_fold(xs: List[Int]) Int!:
+fn stdlib_fold(xs List[Int]) Int!:
 	return fold(from_list(xs), 0, fn total, x: total + x)
 
-fn hand_lines(data: Bytes) Int!:
+fn hand_lines(data Bytes) Int!:
 	var count = 0
 	var at = 0
 
@@ -143,7 +143,7 @@ fn hand_lines(data: Bytes) Int!:
 
 	return ok(count)
 
-fn stdlib_lines(data: Bytes) Int!:
+fn stdlib_lines(data Bytes) Int!:
 	var count = 0
 	for line in from_bytes(data) | lines:
 		count += line.length()

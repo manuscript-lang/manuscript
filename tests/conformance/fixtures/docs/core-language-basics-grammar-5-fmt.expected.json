@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn double(value: Int) Int: value * 2\n\nfn positive(value: Int) Bool:\n\tif value > 0: return true\n\telse: return false\n"
+    "fmt": "fn double(value Int) Int: value * 2\n\nfn positive(value Int) Bool:\n\tif value > 0: return true\n\telse: return false\n"
   }
 }

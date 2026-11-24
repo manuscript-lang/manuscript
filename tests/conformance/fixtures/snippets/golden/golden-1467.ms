@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn crash(key: String, value: Int) Bool:
+fn crash(key String, value Int) Bool:
     return 1 / value == 0
 export fn main() Int:
-    value: Map[String, Int] := {"a": 0}
+    value Map[String, Int] := {"a": 0}
     return value.filter(crash).length()

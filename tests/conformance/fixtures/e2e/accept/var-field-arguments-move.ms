@@ -9,10 +9,10 @@ import (
 // of it, change in the callee and move back, like a single `var` field. A native handle
 // has one owner, so a copy of a field faults.
 type Pair:
-	front: List[FileHandle] = []
-	back: List[FileHandle] = []
+	front List[FileHandle] = []
+	back List[FileHandle] = []
 
-fn shift(var from: List[FileHandle], var to: List[FileHandle]) Void:
+fn shift(var from List[FileHandle], var to List[FileHandle]) Void:
 	value := from.pop()
 	if value != null:
 		to.append(value)
@@ -21,21 +21,21 @@ fn var Pair.rebalance() Void:
 	shift(self.front, self.back)
 
 type Words:
-	a: List[String] = []
-	b: List[String] = []
-	count: Int = 0
-	c: List[String] = []
+	a List[String] = []
+	b List[String] = []
+	count Int = 0
+	c List[String] = []
 
-fn move_word(var from: List[String], var to: List[String]) Void:
+fn move_word(var from List[String], var to List[String]) Void:
 	value := from.pop()
 	if value != null:
 		to.append(value)
 
 fn tally(
-	var from: List[String],
-	var count: Int,
-	var to: List[String],
-	seen: List[String],
+	var from List[String],
+	var count Int,
+	var to List[String],
+	seen List[String],
 ) Void:
 	count += seen.length()
 

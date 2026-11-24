@@ -4,28 +4,28 @@ import (
 )
 
 type Body:
-	x: Float
-	y: Float
-	z: Float
-	vx: Float
-	vy: Float
-	vz: Float
-	mass: Float
+	x Float
+	y Float
+	z Float
+	vx Float
+	vy Float
+	vz Float
+	mass Float
 
 type Grid:
-	width: Int
-	height: Int
-	cells: List[Int]
+	width Int
+	height Int
+	cells List[Int]
 
 enum Tree:
 	Leaf
-	Node(left: Tree, right: Tree)
+	Node(left Tree, right Tree)
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
-fn sieve(n: Int) Int:
-	var flags: List[Bool] = List[Bool]()
+fn sieve(n Int) Int:
+	var flags List[Bool] = List[Bool]()
 	var i = 0
 
 	while i <= n:
@@ -49,7 +49,7 @@ fn sieve(n: Int) Int:
 
 	return count
 
-fn advance(var bodies: List[Body], steps: Int) Float:
+fn advance(var bodies List[Body], steps Int) Float:
 	n := bodies.length()
 	var s = 0
 
@@ -101,12 +101,12 @@ fn advance(var bodies: List[Body], steps: Int) Float:
 
 	return e
 
-fn cell(g: Grid, x: Int, y: Int) Int:
+fn cell(g Grid, x Int, y Int) Int:
 	wx := (x + g.width) % g.width
 	wy := (y + g.height) % g.height
 	return g.cells.get(wy * g.width + wx)
 
-fn neighbors(g: Grid, x: Int, y: Int) Int:
+fn neighbors(g Grid, x Int, y Int) Int:
 	var n = 0
 	var dy = -1
 
@@ -122,7 +122,7 @@ fn neighbors(g: Grid, x: Int, y: Int) Int:
 
 	return n
 
-fn step(g: Grid) Grid:
+fn step(g Grid) Grid:
 	var next = List[Int]()
 	var y = 0
 
@@ -144,7 +144,7 @@ fn step(g: Grid) Grid:
 
 	return Grid(g.width, g.height, next)
 
-fn life(gens: Int) Int:
+fn life(gens Int) Int:
 	var cells = List[Int]()
 	var i = 0
 
@@ -163,9 +163,9 @@ fn life(gens: Int) Int:
 		g = step(g)
 		n += 1
 
-	return g.cells.fold(0, fn(acc: Int, v: Int) Int: return acc + v)
+	return g.cells.fold(0, fn(acc Int, v Int) Int: return acc + v)
 
-fn matmul(n: Int) Float:
+fn matmul(n Int) Float:
 	var a = List[List[Float]]()
 	var b = List[List[Float]]()
 	var i = 0
@@ -205,18 +205,18 @@ fn matmul(n: Int) Float:
 
 	return total
 
-fn make(depth: Int) Tree:
+fn make(depth Int) Tree:
 	if depth == 0: return Leaf
 	return Node(make(depth - 1), make(depth - 1))
 
-fn check(t: Tree) Int:
+fn check(t Tree) Int:
 	match t:
 		Leaf:
 			return 1
 		Node(l, r):
 			return 1 + check(l) + check(r)
 
-fn trees(rounds: Int) Int:
+fn trees(rounds Int) Int:
 	var total = 0
 	var r = 0
 
@@ -226,7 +226,7 @@ fn trees(rounds: Int) Int:
 
 	return total
 
-fn collatz(limit: Int) Int:
+fn collatz(limit Int) Int:
 	var best = 0
 	var n = 1
 
@@ -248,7 +248,7 @@ fn collatz(limit: Int) Int:
 
 	return best
 
-fn wordfreq(n: Int) Int:
+fn wordfreq(n Int) Int:
 	var m = Map[Int, Int]()
 	var i = 0
 
@@ -260,19 +260,19 @@ fn wordfreq(n: Int) Int:
 	return m.length()
 
 type Cx:
-	re: Float
-	im: Float
+	re Float
+	im Float
 
-fn Cx.mul(o: Cx) Cx: Cx(
+fn Cx.mul(o Cx) Cx: Cx(
 	re: self.re * o.re - self.im * o.im,
 	im: self.re * o.im + self.im * o.re,
 )
 
-fn Cx.add(o: Cx) Cx: Cx(re: self.re + o.re, im: self.im + o.im)
+fn Cx.add(o Cx) Cx: Cx(re: self.re + o.re, im: self.im + o.im)
 
 fn Cx.norm2() Float: self.re * self.re + self.im * self.im
 
-fn mandel(n: Int) Int:
+fn mandel(n Int) Int:
 	var total = 0
 
 	for y in 0..n:
@@ -293,12 +293,12 @@ fn mandel(n: Int) Int:
 	return total
 
 type Particle:
-	x: Float
-	y: Float
-	vx: Float
-	vy: Float
+	x Float
+	y Float
+	vx Float
+	vy Float
 
-fn particles(n: Int, steps: Int) Float:
+fn particles(n Int, steps Int) Float:
 	var ps = List[Particle]()
 
 	for i in 0..n:
@@ -320,16 +320,16 @@ fn particles(n: Int, steps: Int) Float:
 	return e
 
 enum Op:
-	Push(n: Int)
+	Push(n Int)
 	Add
 	Mul
 	Dup
 	Swap
 	Pop
-	JmpNz(target: Int)
+	JmpNz(target Int)
 	Dec
 
-fn run_vm(code: List[Op], iters: Int) Int:
+fn run_vm(code List[Op], iters Int) Int:
 	var stack = List[Int]()
 	var pc = 0
 	var acc = 0
@@ -375,22 +375,22 @@ fn run_vm(code: List[Op], iters: Int) Int:
 
 	return acc
 
-fn vm(iters: Int) Int:
+fn vm(iters Int) Int:
 	code := [Op.Push(3), Op.Push(7), Op.Mul, Op.Pop, Op.Dec, Op.JmpNz(0), Op.Pop]
 	return run_vm(code, iters)
 
 enum Expr:
-	Num(n: Int)
-	Add(l: Expr, r: Expr)
-	Mul(l: Expr, r: Expr)
+	Num(n Int)
+	Add(l Expr, r Expr)
+	Mul(l Expr, r Expr)
 
-fn build(d: Int, s: Int) Expr:
+fn build(d Int, s Int) Expr:
 	if d == 0: return Expr.Num(s % 10)
 	if d % 2 == 0: return Expr.Add(build(d - 1, s * 3 + 1), build(d - 1, s * 7 + 2))
 
 	return Expr.Mul(build(d - 1, s + 1), build(d - 1, s + 3))
 
-fn eval(e: Expr) Int:
+fn eval(e Expr) Int:
 	match e:
 		Num(n):
 			return n
@@ -399,16 +399,16 @@ fn eval(e: Expr) Int:
 		Mul(l, r):
 			return eval(l) * eval(r) % 1000003
 
-fn exprs(d: Int, reps: Int) Int:
+fn exprs(d Int, reps Int) Int:
 	e := build(d, 1)
 	var t = 0
 	for _i in 0..reps:
 		t += eval(e)
 	return t
 
-fn closures(n: Int) Int:
+fn closures(n Int) Int:
 	k := 7
-	f := fn(x: Int) Int: x * k + 1
+	f := fn(x Int) Int: x * k + 1
 	var t = 0
 	for i in 0..n:
 		t += f(i) % 13
@@ -418,7 +418,7 @@ fn closures(n: Int) Int:
 		t += xs.map(fn x: x + k).filter(fn x: x % 3 == 0).sum()
 	return t
 
-fn stencil(n: Int, iters: Int) Int:
+fn stencil(n Int, iters Int) Int:
 	var a = [0].repeated(n * n)
 	var b = [0].repeated(n * n)
 	for i in 0..(n * n):
@@ -444,7 +444,7 @@ fn stencil(n: Int, iters: Int) Int:
 		s += v
 	return s
 
-fn timed(name: String, run: fn() Int) Void:
+fn timed(name String, run fn() Int) Void:
 	t := monotonic()
 	r := run()
 	say(f"{name} {monotonic().difference(t).to_nanoseconds() / 1000} {r}\n")

@@ -3,11 +3,11 @@
 import TestHooks, expect_equal, fail, skip from "@std/test/test.ms"
 import stdout from "@std/io/io.ms"
 import panic from "@std/faults.ms"
-fn println(message: String) Void:
+fn println(message String) Void:
     written := stdout().write(f"{message}\n").get()
 
 type State:
-    value: Int
+    value Int
 fn make_fixture() State:
     println("factory")
     return State(0)

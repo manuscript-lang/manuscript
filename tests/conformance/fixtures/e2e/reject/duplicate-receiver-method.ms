@@ -1,7 +1,7 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
 type T:
-	n: Int
+	n Int
 
 fn T.f() Int:
 	return 1

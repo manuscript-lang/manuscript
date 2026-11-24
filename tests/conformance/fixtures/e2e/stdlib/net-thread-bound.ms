@@ -8,7 +8,7 @@ import (
 	expect_contains, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-fn open_one(net: Network) String!:
+fn open_one(net Network) String!:
 	l := net.listen("127.0.0.1:0")?
 	return ok(l.address())
 

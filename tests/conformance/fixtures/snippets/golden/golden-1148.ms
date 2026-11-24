@@ -1,7 +1,7 @@
 // conform: tags=diagnostics
 // conform: phase=check
 type T:
-    a: Int
+    a Int
 
 impl T:
     fn f(self) Int:

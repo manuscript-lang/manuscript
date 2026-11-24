@@ -43,7 +43,7 @@ test "bmp round trip":
 		255,
 	)?
 
-fn expect_pixel(hex: String, red: Int, green: Int, blue: Int) Void!:
+fn expect_pixel(hex String, red Int, green Int, blue Int) Void!:
 	px := (
 		decode_image(hex_decode(hex, null).get()).get().pixel(0, 0)
 		or panic("called Optional.get() on null")

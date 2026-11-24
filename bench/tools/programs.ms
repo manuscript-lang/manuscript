@@ -25,7 +25,7 @@ fn orders() List[List[String]]:
 		["rust", "go", "rust-checked", "ms"],
 	]
 
-fn run(work: String, n: Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error]:
 	here := "bench/perf/programs"
 	for dir in ["go", "ms", "rust"]:
 		copy(

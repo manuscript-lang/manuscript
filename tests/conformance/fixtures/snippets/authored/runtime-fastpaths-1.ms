@@ -4,13 +4,13 @@
 import stdout from "@std/io/io.ms"
 import parse_int from "@std/math/math.ms"
 
-fn compare(left: Int, right: Int) Int:
+fn compare(left Int, right Int) Int:
 	if left < right: return -1
 	if left > right: return 1
 
 	return 0
 
-fn say(text: String) Void:
+fn say(text String) Void:
 	_ignored := stdout().write(text.clone())
 
 fn main() Void:
@@ -45,7 +45,7 @@ fn main() Void:
 			hits += 1
 	say(f"{hits} {"naïve".chars().length()} {"".chars().length()}\n")
 
-	var xs: List[Int] = []
+	var xs List[Int] = []
 	var k = 0
 
 	while k < 200:

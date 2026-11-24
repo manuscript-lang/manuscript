@@ -7,7 +7,7 @@ import (
 
 NUM := "[0-9]{1,6}"
 
-fn lcs(a: String, b: String) Int:
+fn lcs(a String, b String) Int:
 	ys := b.chars()
 	var prev = List[Int]()
 	for _j in 0..ys.length() + 1: prev.append(0)
@@ -24,7 +24,7 @@ fn lcs(a: String, b: String) Int:
 
 	return prev[prev.length() - 1]
 
-fn edit(a: String, b: String) Int:
+fn edit(a String, b String) Int:
 	ys := b.chars()
 	var prev = List[Int]()
 	for j in 0..ys.length() + 1: prev.append(j)
@@ -46,10 +46,10 @@ fn edit(a: String, b: String) Int:
 	return prev[prev.length() - 1]
 
 type Thing:
-	weight: Int
-	value: Int
+	weight Int
+	value Int
 
-fn knap(cap: Int, items: List[Thing]) Int:
+fn knap(cap Int, items List[Thing]) Int:
 	var best = List[Int]()
 	for _c in 0..cap + 1: best.append(0)
 
@@ -63,7 +63,7 @@ fn knap(cap: Int, items: List[Thing]) Int:
 
 	return best[cap]
 
-fn coins(amount: Int, cs: List[Int]) String:
+fn coins(amount Int, cs List[Int]) String:
 	inf := 1000000000
 	var best = [0]
 	for _a in 0..amount: best.append(inf)
@@ -72,7 +72,7 @@ fn coins(amount: Int, cs: List[Int]) String:
 			if c <= a and best[a - c] + 1 < best[a]: best[a] = best[a - c] + 1
 	return if best[amount] >= inf: "impossible" else: f"{best[amount]}"
 
-fn solve_line(line: String) String:
+fn solve_line(line String) String:
 	t := line.split(" ")
 	bad := "error: bad command"
 	cmd := t[0].clone()
@@ -112,16 +112,16 @@ fn solve_line(line: String) String:
 
 	return bad
 
-fn solve(s: String) String:
+fn solve(s String) String:
 	var lines = s.split("\n").clone()
 	if not lines.is_empty() and lines[lines.length() - 1] == "": lines.pop()
 	return lines.filter(fn l: l.replace(" ", "") != "").map(
 		fn l: solve_line(l) + "\n"
 	).join("")
 
-fn mk(name: String, s: String) GenCase: make_case(name, s, solve(s))
+fn mk(name String, s String) GenCase: make_case(name, s, solve(s))
 
-fn word(var rnd: Random, n: Int, alpha: List[String]) String:
+fn word(var rnd Random, n Int, alpha List[String]) String:
 	var out = ""
 	for _i in 0..n: out += rnd.choice(alpha)
 	return out

@@ -2,12 +2,12 @@
 // conform: phase=check
 // conform: origin=ms-check/tests/messages.rs
 interface Sink:
-    fn put(x: Int) Void
+    fn put(x Int) Void
 
 type Buf:
-    n: Int
+    n Int
 
-fn var Buf.put(x: Int) Void:
+fn var Buf.put(x Int) Void:
     self.n = x
 
 fn main() Void:

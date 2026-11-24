@@ -5,7 +5,7 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-fn and_then[T, U](value: T?, transform: fn(T) U?) U?:
+fn and_then[T, U](value T?, transform fn(T) U?) U?:
 	if value == null: return null
 	return transform(value)
 
@@ -13,7 +13,7 @@ fn doc() JsonValue:
 	text := "{\"user\":{\"name\":\"ada\",\"age\":36,\"score\":1.5,\"big\":1e3,\"admin\":true,\"tags\":[\"a\",\"b\",\"c\"]},\"none\":null}"
 	return parse(text).get()
 
-fn user_field(d: JsonValue, key: String) JsonValue?:
+fn user_field(d JsonValue, key String) JsonValue?:
 	user := d.get("user")
 
 	if user != null:
@@ -22,16 +22,16 @@ fn user_field(d: JsonValue, key: String) JsonValue?:
 
 	return null
 
-fn string_of(value: JsonValue) String?:
+fn string_of(value JsonValue) String?:
 	text := value.as_string()
 	if text != null: return text.clone()
 
 	return null
 
-fn has_map(value: JsonValue) Bool:
+fn has_map(value JsonValue) Bool:
 	return value.as_map() != null
 
-fn tag(d: JsonValue, index: Int) String?:
+fn tag(d JsonValue, index Int) String?:
 	tags := d.get("user")
 
 	if tags != null:
@@ -118,7 +118,7 @@ test "JSON is_null distinguishes null from absent and other values":
 	expect_true(d.get("missing") == null)?
 
 // `get_in` returns a clone of the member it reaches.
-fn user_name(d: JsonValue) String?:
+fn user_name(d JsonValue) String?:
 	name := d.get_in(["user", "name"])
 	if name != null: return name.as_string()
 

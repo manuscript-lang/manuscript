@@ -3,8 +3,8 @@
 import expect_equal from "@std/test/test.ms"
 
 type Label:
-	text: String
-	parts: List[String]
+	text String
+	parts List[String]
 
 fn Label.name() String:
 	return self.text
@@ -12,7 +12,7 @@ fn Label.name() String:
 fn Label.first() String:
 	return self.parts[0]
 
-fn Label.greeting(prefix: String = "hi") String:
+fn Label.greeting(prefix String = "hi") String:
 	return self.text
 
 test "a temporary receiver returns its borrowed string":

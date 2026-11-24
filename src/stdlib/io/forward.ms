@@ -10,10 +10,10 @@ import (
 // Internal: the writer `forward` returns. Writes go to a pipe; a task on the thread
 // that made it copies the pipe to the real stream, and closing waits for that copy.
 type Forwarder[T]:
-	inbox: WriteStream[T]
-	task: Promise[Int]
+	inbox WriteStream[T]
+	task Promise[Int]
 
-fn var Forwarder[T].write(move value: T) Void!:
+fn var Forwarder[T].write(move value T) Void!:
 	return self.inbox.write(value)
 
 fn var Forwarder[T].flush() Void!:
@@ -27,7 +27,7 @@ fn move Forwarder[T].close() Void!:
 	return ok()
 
 // Internal: moves every item of `mail` to `out`, then flushes it.
-fn pump[T](var mail: ReadStream[T], var out: WriteStream[T]) Int!:
+fn pump[T](var mail ReadStream[T], var out WriteStream[T]) Int!:
 	var count = 0
 
 	for item in mail:
@@ -42,7 +42,7 @@ fn pump[T](var mail: ReadStream[T], var out: WriteStream[T]) Int!:
 // `capacity` values, and a task on this thread copies them to `out`, so a state owner on
 // another thread can push to it. Closing the writer ends the copy and then closes
 // `out`.
-export fn forward[T](move out: WriteStream[T], capacity: Int = 16) WriteStream[T]:
+export fn forward[T](move out WriteStream[T], capacity Int = 16) WriteStream[T]:
 	var queue = pipe[T](capacity)
 	var mail = queue.reader()
 	inbox := queue.writer()

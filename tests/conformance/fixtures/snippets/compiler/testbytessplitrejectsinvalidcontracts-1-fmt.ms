@@ -1,6 +1,6 @@
 // conform: tags=formatter,lists,parser,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/bytes_split_test.go:13 TestBytesSplitRejectsInvalidContracts
-fn wrong(data: Bytes) List[Bytes]:
+fn wrong(data Bytes) List[Bytes]:
     split := data.split
     return split(value: Bytes([]))

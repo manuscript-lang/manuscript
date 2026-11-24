@@ -3,7 +3,7 @@
 // conform: origin=tests/e2e/testdata/accept/int-identities.ms
 import expect_equal, expect_true from "@std/test/test.ms"
 
-fn touch(var log: List[Int], value: Int) Int:
+fn touch(var log List[Int], value Int) Int:
     log.append(value)
     return value
 
@@ -20,7 +20,7 @@ test "identities keep boundaries":
         ((x % 1 == 0)) | expect_true?
 
 test "identities keep operand effects":
-    var log: List[Int] = []
+    var log List[Int] = []
     ((touch(log, 1) * 0 == 0)) | expect_true?
     ((0 * touch(log, 2) == 0)) | expect_true?
     ((touch(log, 3) * 1 == 3)) | expect_true?

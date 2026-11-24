@@ -83,12 +83,12 @@ Every value has a built-in `to_string() String`, needing no import or bound. A b
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-fn text[T](value: T) String:
+fn text[T](value T) String:
     return value.to_string()
 
 test "string conversion":
     count := 3
-    convert: fn() String := count.to_string
+    convert fn() String := count.to_string
     _direct := count.to_string()
     _bound := convert()
     _embedded := f"{count}"
@@ -103,7 +103,7 @@ A value of that type nested in a list, map, set, optional, record field or paylo
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 type Money:
-    cents: Int
+    cents Int
 
 fn Money.to_string() String:
     return f"{self.cents / 100}.{self.cents % 100}"
@@ -151,9 +151,9 @@ For example, `"draft draft".replace("draft", "ready")` produces `"ready ready"`,
 | Receiver or constructor | Signature/result |
 | --- | --- |
 | `String` | `to_bytes() Bytes`; `parse_int() Int?`; `parse_float() Float?` |
-| `Bytes(values: List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
-| `Bytes` | `length() Int`; `get(index: Int) UInt8`; `get_or(index: Int, default: UInt8?) UInt8`; `[index] UInt8`; `concat(other: Bytes) Bytes` |
-| `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start: Int, end: Int) String?` |
+| `Bytes(values List[UInt8])` | Immutable bytes; `Bytes([104, 105])` types its literals as `UInt8`, so a value outside 0–255 is a compile error |
+| `Bytes` | `length() Int`; `get(index Int) UInt8`; `get_or(index Int, default UInt8?) UInt8`; `[index] UInt8`; `concat(other Bytes) Bytes` |
+| `Bytes` | `decode_utf8() String?`; `decode_utf8_range(start Int, end Int) String?` |
 | `Bytes` | `values() List[UInt8]`; a fresh mutable list of the bytes, one byte per element |
 
 `to_bytes` encodes UTF-8. `Bytes.decode_utf8` succeeds exactly for valid UTF-8 and returns `null` otherwise. `get(index)`, `get_or(index, default)` and `data[index]` return the byte as `UInt8`; convert with `to_int()` for arithmetic. Negative indexes count from the end. `get` and `[]` fault when the index is out of range, while `get_or` returns its default. Bytes are immutable, so `data[i] = v` is rejected.
@@ -177,7 +177,7 @@ test "explicit byte conversion":
         return panic("check failed")
     if not ("é".to_bytes().decode_utf8() == "é"):
         return panic("check failed")
-    invalid: String? := null
+    invalid String? := null
     if not (Bytes([255]).decode_utf8() == invalid):
         return panic("check failed")
     if not ("-007".parse_int() == -7):
@@ -196,7 +196,7 @@ test "explicit byte conversion":
 ```manuscript
 import expect_equal from "@std/test/test.ms"
 
-fn row(name: String, amount: Float) String:
+fn row(name String, amount Float) String:
     return name.pad_end(8, " ") + amount.to_fixed(2).pad_start(8, " ")
 
 test "padding and fixed digits":
