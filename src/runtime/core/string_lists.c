@@ -146,7 +146,9 @@ uint8_t msrt_string_from_scalars(const MsList *values, MsString *out) {
     ms_strbuild_append_utf8(&text, (uint32_t)scalars[index]);
   }
   if (ms_strbuild_length(&text) > MSRT_STRING_LIMIT) {
-    msrt_string_limit_fault();
+    ms_strbuild_free(&text);
+    msrt_string_limit_post();
+    return MS_STATUS_OK; /* the posted fault ends the caller; `out` is not touched */
   }
   *out = msrt_string_make(ms_strbuild_span(&text));
   ms_strbuild_free(&text);
@@ -259,5 +261,6 @@ int64_t msrt_string_scalar_at(const MsString *s, int64_t offset, uint8_t has_def
   ms_strbuild_append_text(&message, " does not start a scalar of the ");
   ms_strbuild_append_u64(&message, text.len);
   ms_strbuild_append_text(&message, " byte text; pass a default");
-  ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+  ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
+  return 0;
 }

@@ -12,7 +12,8 @@
 /* UInt64./: the operands are bit patterns. */
 int64_t msrt_uint_div(int64_t a, int64_t b) {
   if (b == 0) {
-    ms_fault_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "division by zero; right must be nonzero, found 0");
+    ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "division by zero; right must be nonzero, found 0");
+    return 0;
   }
   return (int64_t)((uint64_t)a / (uint64_t)b);
 }
@@ -20,7 +21,8 @@ int64_t msrt_uint_div(int64_t a, int64_t b) {
 /* UInt64.%: the operands are bit patterns. */
 int64_t msrt_uint_rem(int64_t a, int64_t b) {
   if (b == 0) {
-    ms_fault_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "remainder by zero; right must be nonzero, found 0");
+    ms_fault_post_text(MS_FAULT_KIND_DIVISION_BY_ZERO, "remainder by zero; right must be nonzero, found 0");
+    return 0;
   }
   return (int64_t)((uint64_t)a % (uint64_t)b);
 }
@@ -49,7 +51,8 @@ void msrt_numbers_error_message(uint8_t status, MsString *out) {
 /* The capacities of base/fmt.h hold every valid argument, so a refusal is a bug in this runtime. */
 static void put_formatted(bool fitted, const uint8_t *buffer, size_t length, MsString *out) {
   if (!fitted) {
-    ms_fault_text(MS_FAULT_KIND_FAULT, "to_string: the text does not fit its buffer");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT, "to_string: the text does not fit its buffer");
+    return;
   }
   *out = msrt_string_make(ms_span_of(buffer, length));
 }
@@ -119,14 +122,16 @@ static void precision_out(double v, uint8_t format, int64_t digits, int64_t mini
     ms_strbuild_append_i64(&message, minimum);
     ms_strbuild_append_text(&message, " and at most 100, found ");
     ms_strbuild_append_i64(&message, digits);
-    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+    ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
+    return;
   }
   uint8_t buffer[MS_FMT_PRECISION_CAPACITY];
   size_t length = 0;
   if (!ms_fmt_float_precision(v, format, digits, buffer, sizeof buffer, &length)) {
     ms_strbuild_append_text(&message, name);
     ms_strbuild_append_text(&message, ": formatting buffer too small");
-    ms_fault_built(MS_FAULT_KIND_FAULT, &message);
+    ms_fault_post_built(MS_FAULT_KIND_FAULT, &message);
+    return;
   }
   *out = msrt_string_make(ms_span_of(buffer, length));
 }

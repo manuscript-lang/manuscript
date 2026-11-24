@@ -32,9 +32,10 @@ void msrt_list_range(int64_t start, int64_t end, MsList *out) {
   }
   const uint64_t count = (uint64_t)end - (uint64_t)start; /* exact: the difference of two Ints fits */
   if (count > MSRT_LIST_MAX_ITEMS) {
-    ms_fault_text(MS_FAULT_KIND_FAULT,
-                  "range: more than 268435456 items; iterate with 'for index in start..end' directly or "
-                  "bound the list with range_by(max_items:)");
+    ms_fault_post_text(MS_FAULT_KIND_FAULT,
+                       "range: more than 268435456 items; iterate with 'for index in start..end' directly or "
+                       "bound the list with range_by(max_items:)");
+    return;
   }
   *out = int_list((size_t)count, start, 1);
 }

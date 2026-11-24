@@ -10,39 +10,41 @@ typedef struct TableReader {
   MsSpan rest;
 } TableReader;
 
-static MS_NORETURN void bad_table_fault(void) {
-  ms_fault_text(MS_FAULT_KIND_FAULT, "runtime invariant: malformed map table");
+static bool bad_table(void) {
+  ms_fault_post_text(MS_FAULT_KIND_FAULT, "runtime invariant: malformed map table");
+  return false;
 }
 
 /* Decodes one item of a literal table into `out`, a slot of `size` bytes: tag 0 and an 8-byte word (an Int,
  * the bits of a Float, a Bool as 0 or 1), or tag 1, a u32 length and that many bytes (a String). The
  * compiler wrote the table, so a short one is a compiler bug. */
-static void read_item(TableReader *reader, uint8_t *out, size_t size) {
+static bool read_item(TableReader *reader, uint8_t *out, size_t size) {
   MsSpan rest = reader->rest;
   if (rest.len < 1) {
-    bad_table_fault();
+    return bad_table();
   }
   const uint8_t tag = rest.ptr[0];
   rest = ms_span_of(rest.ptr + 1, rest.len - 1);
   if (tag == 0) {
     if (rest.len < sizeof(uint64_t)) {
-      bad_table_fault();
+      return bad_table();
     }
     __builtin_memcpy(out, rest.ptr, size < sizeof(uint64_t) ? size : sizeof(uint64_t));
     reader->rest = ms_span_of(rest.ptr + sizeof(uint64_t), rest.len - sizeof(uint64_t));
-    return;
+    return true;
   }
   uint32_t length = 0;
   if (rest.len < sizeof length) {
-    bad_table_fault();
+    return bad_table();
   }
   __builtin_memcpy(&length, rest.ptr, sizeof length);
   if (length > rest.len - sizeof length || size != sizeof(MsString)) {
-    bad_table_fault();
+    return bad_table();
   }
   const uint8_t *bytes = rest.ptr + sizeof length;
   msrt_string_from_bytes(bytes, length, (MsString *)__builtin_assume_aligned(out, _Alignof(MsString)));
   reader->rest = ms_span_of(bytes + length, rest.len - sizeof length - length);
+  return true;
 }
 
 /* Adds the entries of a packed table of constants, in order, so a later entry replaces an earlier one with
@@ -53,8 +55,15 @@ void msrt_map_add_table(MsMap *m, const MsTypeDesc *kd, const MsTypeDesc *vd, co
   _Alignas(16) uint64_t key[2] = {0, 0};
   _Alignas(16) uint64_t value[2] = {0, 0};
   while (reader.rest.len > 0) {
-    read_item(&reader, (uint8_t *)key, kd->size);
-    read_item(&reader, (uint8_t *)value, vd != NULL ? vd->size : 0);
+    if (!read_item(&reader, (uint8_t *)key, kd->size)) {
+      return;
+    }
+    if (!read_item(&reader, (uint8_t *)value, vd != NULL ? vd->size : 0)) {
+      if (kd == &ms_desc_string) {
+        ms_string_release((MsString *)(void *)key); /* the key was read as an owned string */
+      }
+      return;
+    }
     ms_map_insert(m, kd, vd, (uint8_t *)key, (uint8_t *)value);
   }
 }
