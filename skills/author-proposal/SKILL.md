@@ -5,7 +5,7 @@ description: Write a Manuscript design proposal grounded in the existing languag
 
 # Author a proposal
 
-Use whenever you write or revise a design proposal. Store it in the repo as `design/proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
+Use whenever you write or revise a design proposal. Start from [TEMPLATE.md](../../design/proposals/TEMPLATE.md) (when a proposal is required: [README](../../design/proposals/README.md)). Store it in the repo as `design/proposals/<kebab-name>.md` (in the change's PR or its own); update it in place and record the decision in Status. This includes the short proposal AGENTS.md requires before a cross-package change. Follow [manuscript-change](../manuscript-change/SKILL.md) and [language-design](../language-design/SKILL.md).
 
 The default design is no new syntax, no new type, and no new keyword. Earn each addition.
 
@@ -44,7 +44,7 @@ Sections, in order. A small change uses Summary, Problem, Design, Components, Al
 7. **Stages**: one line per stage with its check; each lands green. Omit when there is one stage.
 8. **Open questions**: only where the language or user-visible behavior changes, each with a recommendation.
 
-Omit a section by leaving it out. Add nothing beyond these.
+Omit a section by leaving it out. The template adds optional sections (Fit with the language, Measured benefit, Compatibility, Future directions); use them only when they change the decision, and keep the template and this list in step.
 
 Cut on sight:
 - history of how the idea evolved, rejected syntax that nobody proposed, and restated context from other proposals (link instead);
