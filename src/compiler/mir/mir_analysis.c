@@ -182,16 +182,6 @@ bool mir_result_views(const MirModule *module, const MirFunc *func, const MirIns
 
 /* ---- terminators ---- */
 
-const MirTarget *mir_term_target_const(const MirTerm *term, uint32_t index) {
-  if (term->kind == MT_SWITCH && index < term->ncases) {
-    return &term->cases[index].target;
-  }
-  if (term->kind == MT_SWITCH) {
-    return &term->b; /* a switch keeps its default in `b`, even when it has no cases */
-  }
-  return index == 0 ? &term->a : &term->b;
-}
-
 static bool term_has_value(const MirTerm *term) {
   return (term->kind == MT_CONDBR || term->kind == MT_SWITCH || term->kind == MT_RET) && term->value != MIR_NONE;
 }

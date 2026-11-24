@@ -4,29 +4,42 @@
 #include "base/alloc.h"
 #include "base/fatal.h"
 
-uint32_t emit_address(EmitCx *cx, const char *base, uint32_t offset) {
+#include <string.h>
+
+EmitAddr emit_address(EmitCx *cx, const char *base, uint32_t offset) {
+  EmitAddr address;
+  if (offset == 0) {
+    const MsSpan name = ms_span_of_text(base);
+    if (name.len >= sizeof address.text) {
+      ms_fatal(MS_FATAL_OVERFLOW, "address name");
+    }
+    memcpy(address.text, name.ptr, name.len);
+    address.text[name.len] = '\0';
+    return address;
+  }
   uint32_t number = cx->next++;
   ms_strbuild_printf(cx->out, "  %%a%u = getelementptr i8, ptr %s, i64 %u\n", number, base, offset);
-  return number;
+  emit_register_name(address.text, sizeof address.text, "a", number);
+  return address;
 }
 
 static const char *tbaa_text(const EmitCx *cx) {
   return cx->tbaa != NULL ? cx->tbaa : "";
 }
 
-void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, uint32_t address) {
+void emit_load_leaf(EmitCx *cx, MirLeaf leaf, MirValue dst, uint32_t index, EmitAddr address) {
   MsStrBuild *out = cx->out;
   const EmitLeafKind *kind = emit_leaf_kind(leaf);
   if (kind->widen == EMIT_SAME) {
     ms_strbuild_append_text(out, "  ");
     emit_name(out, dst, index);
-    ms_strbuild_printf(out, " = load %s%s, ptr %%a%u%s\n", cx->volatile_loads ? "volatile " : "", kind->mem, address,
+    ms_strbuild_printf(out, " = load %s%s, ptr %s%s\n", cx->volatile_loads ? "volatile " : "", kind->mem, address.text,
                        tbaa_text(cx));
     return;
   }
   uint32_t number = cx->next++;
-  ms_strbuild_printf(out, "  %%l%u = load %s%s, ptr %%a%u%s\n  ", number, cx->volatile_loads ? "volatile " : "", kind->mem,
-                     address, tbaa_text(cx));
+  ms_strbuild_printf(out, "  %%l%u = load %s%s, ptr %s%s\n  ", number, cx->volatile_loads ? "volatile " : "", kind->mem,
+                     address.text, tbaa_text(cx));
   emit_name(out, dst, index);
   switch (kind->widen) {
   case EMIT_SEXT:
@@ -59,19 +72,19 @@ static const char *narrow_instruction(EmitWiden widen) {
   return "trunc i64 ";
 }
 
-void emit_store_leaf(EmitCx *cx, MirLeaf leaf, MirValue src, uint32_t index, uint32_t address) {
+void emit_store_leaf(EmitCx *cx, MirLeaf leaf, MirValue src, uint32_t index, EmitAddr address) {
   MsStrBuild *out = cx->out;
   const EmitLeafKind *kind = emit_leaf_kind(leaf);
   if (kind->widen == EMIT_SAME) {
     ms_strbuild_printf(out, "  store %s ", kind->mem);
     emit_name(out, src, index);
-    ms_strbuild_printf(out, ", ptr %%a%u%s\n", address, tbaa_text(cx));
+    ms_strbuild_printf(out, ", ptr %s%s\n", address.text, tbaa_text(cx));
     return;
   }
   uint32_t number = cx->next++;
   ms_strbuild_printf(out, "  %%t%u = %s", number, narrow_instruction(kind->widen));
   emit_name(out, src, index);
-  ms_strbuild_printf(out, " to %s\n  store %s %%t%u, ptr %%a%u%s\n", kind->mem, kind->mem, number, address,
+  ms_strbuild_printf(out, " to %s\n  store %s %%t%u, ptr %s%s\n", kind->mem, kind->mem, number, address.text,
                      tbaa_text(cx));
 }
 
@@ -84,7 +97,7 @@ void emit_leaves_at(EmitCx *cx, MirValue value, const char *base, bool load) {
   uint32_t *offsets = ms_alloc_zeroed(bytes);
   (void)mir_mem_layout(leaves, offsets);
   for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
-    uint32_t address = emit_address(cx, base, offsets[leaf]);
+    EmitAddr address = emit_address(cx, base, offsets[leaf]);
     if (load) {
       emit_load_leaf(cx, leaves.ptr[leaf], value, leaf, address);
     } else {

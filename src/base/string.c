@@ -16,17 +16,9 @@ static size_t checked_length(size_t length) {
   return length;
 }
 
-static MsString make_inline(MsSpan span) {
-  /* The bytes go into the two words from overlapping loads: no copy of a variable length. */
-  uint64_t low, high;
-  ms_hash_words(span.ptr, span.len, &low, &high);
-  return (MsString){.low_bits = low,
-                    .tagged = high | ((uint64_t)span.len << MS_STRING_INLINE_SHIFT) | (UINT64_C(1) << MS_STRING_TAG_SHIFT)};
-}
-
 MsString ms_string_from_span(MsSpan span) {
   if (span.len <= MS_STRING_INLINE_MAX) {
-    return make_inline(span);
+    return ms_string_make_inline(span);
   }
   uint8_t *copy = ms_alloc(checked_length(span.len));
   __builtin_memcpy(copy, span.ptr, span.len);

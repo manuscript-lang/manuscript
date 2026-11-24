@@ -137,8 +137,13 @@ static void listen_start(MsNetOp *op) {
   ms_net_op_done(op, 0);
 }
 
+/* A bind is not a place a cancel lands: it ends at once on the loop thread, and a task that left it early would return
+ * while the loop still held the bound socket, so the address stayed taken after the task had ended. The cancel waits
+ * for the task's next park, and the socket closes with the scope that owns it. */
 static uint8_t listen_finish(ListenOp *listen, MsObj **out, MsString *err) {
+  ms_shield_enter();
   const MsNetWait wait = ms_net_run(&listen->op, -1);
+  ms_shield_exit();
   const uint8_t status = ms_net_finish(wait, wait == MS_NET_WAIT_DONE ? listen->op.status : 0, "listen", err);
   if (wait == MS_NET_WAIT_DONE) {
     if (status == MS_STATUS_OK) {

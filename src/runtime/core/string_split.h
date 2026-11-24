@@ -10,7 +10,7 @@ typedef struct MsSplitIter MsSplitIter;
 
 /* ms-sig: msrt_string_split(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @domain=string @end */
 void msrt_string_split(const MsString *s, const MsString *sep, MsList *out);
-/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @borrows @domain=string @end */
+/* ms-sig: msrt_string_split_view(s: *const StrVal, sep: *const StrVal, out: *mut VecVal) @borrows @twin=split_view @domain=string @end */
 void msrt_string_split_view(const MsString *s, const MsString *sep, MsList *out);
 /* ms-sig: msrt_string_split_view_into(s: *const StrVal, sep: *const StrVal, buf: *mut FrameBuf<StrVal, 8>,
  * out: *mut VecVal) @borrows @domain=string @end */

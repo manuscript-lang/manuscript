@@ -62,6 +62,27 @@ fn cancel_receive(address: String) Void:
 	work := promise(fn: ok(receive_one(address.clone())))
 	void work.with(options: PromiseOptions(timeout: nanoseconds(2000000))).wait()
 
+fn cancel_receive_within(address: String, ns: Int) Void:
+	work := promise(fn: ok(receive_one(address.clone())))
+	void work.with(options: PromiseOptions(timeout: nanoseconds(ns))).wait()
+
+fn cancel_accept_within(address: String, ns: Int) Void:
+	work := promise(fn: ok(accept_one(address.clone())))
+	void work.with(options: PromiseOptions(timeout: nanoseconds(ns))).wait()
+
+// A limit short enough to pass while the work is still binding: the wait returns only
+// once the socket the work bound is closed, so the address binds again every time.
+fn rebinds_lost_to_early_cancels(address: String) Int:
+	var lost = 0
+
+	for round in 0..300:
+		cancel_receive_within(address.clone(), 1000 + round * 300)
+		if rebound_datagram(address.clone()) == 0: lost += 1
+		cancel_accept_within(address.clone(), 1000 + round * 300)
+		if rebound(address.clone()) == 0: lost += 1
+
+	return lost
+
 fn main() Void:
 	var first = listen("127.0.0.1:0").get()
 	address := first.address().clone()
@@ -98,4 +119,11 @@ fn main() Void:
 		stdout().write(
 			f"cancelled receive rebound: {rebound_datagram(udp_address.clone())}\n"
 		).get()
+	)
+	(
+		stdout()
+		.write(
+			f"rebinds lost to a cancel during the bind: {rebinds_lost_to_early_cancels(udp_address.clone())}\n"
+		)
+		.get()
 	)

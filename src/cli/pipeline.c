@@ -85,7 +85,7 @@ static bool ops_from_environment(void) {
  * module). A Debug build hides the cells from LLVM (volatile leaf loads) so frames stay small; an optimized build
  * leaves them to `sroa` and `memcpyopt`. `MS_WIDE_LEAVES` sets another number (0: never). */
 #define DEBUG_WIDE_LEAVES 4u
-#define RELEASE_WIDE_LEAVES 16u
+#define RELEASE_WIDE_LEAVES 8u
 
 static uint32_t wide_leaves(bool debug) {
   MsString value = ms_string_empty();
@@ -171,9 +171,9 @@ static void run_phase(UnitJob *jobs, uint32_t units, void (*phase)(void *)) {
 }
 
 /* How many modules a program may be written as: `MS_UNITS` (and exactly that many, however small the program), or
- * one per core. A module below UNIT_BYTES of function text is not worth a thread: it loses the calls LLVM inlines
- * across modules and parses the debug metadata again. */
-enum { UNIT_BYTES = 256 << 10 };
+ * one per core. A module below UNIT_BYTES of function text is not worth a thread: it parses the debug metadata again
+ * and loses the folding of loads from the first module's static data. */
+enum { UNIT_BYTES = 64 << 10 };
 
 static void unit_limits(BackendOptions *backend) {
   MsString value = ms_string_empty();
@@ -250,16 +250,20 @@ static bool make_objects(const MsLinkRequest *request, const BackendProgram *pro
   return ok;
 }
 
+BackendOptions ms_pipeline_backend_options(const MsLinkRequest *request) {
+  return (BackendOptions){.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG, .verify = true,
+                          .tests = request->tests, .bench = request->bench,
+                          .count_ops = request->count_ops || ops_from_environment(),
+                          .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
+                          .wide_hide = request->build_type == MS_BUILD_DEBUG,
+                          .poison_slots = poison_from_environment()};
+}
+
 bool ms_pipeline_link(const MsLinkRequest *request, MsSpan *error) {
   MsStrBuild ir[EMIT_MAX_UNITS] = {ms_strbuild_new()};
   uint32_t units = 1;
   MsStrBuild why = ms_strbuild_new();
-  BackendOptions backend = {.optimize = true, .compact = request->build_type == MS_BUILD_DEBUG, .verify = true,
-                                  .tests = request->tests, .bench = request->bench,
-                                  .count_ops = request->count_ops || ops_from_environment(),
-                                  .wide_leaves = wide_leaves(request->build_type == MS_BUILD_DEBUG),
-                                  .wide_hide = request->build_type == MS_BUILD_DEBUG,
-                                  .poison_slots = poison_from_environment()};
+  BackendOptions backend = ms_pipeline_backend_options(request);
   unit_limits(&backend);
   BackendProgram program;
   bool ok = ms_backend_compile(request->program, request->entry, &backend, ir, &units, &program, &why) ||

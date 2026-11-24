@@ -29,20 +29,18 @@ int64_t msrt_group_poll(int64_t group);
 /* ms-sig: msrt_group_join(group: i64, ids: *const VecVal, from: i64) -> i64 @domain=promise */
 int64_t msrt_group_join(int64_t group, const MsList *ids, int64_t from);
 
-/* ms-sig: msrt_promise_new() -> i64 @domain=promise */
-int64_t msrt_promise_new(void);
 /* ms-sig: msrt_promise_finished() -> i64 @domain=promise */
 int64_t msrt_promise_finished(void);
 /* ms-sig: msrt_promise_cancel(id: i64) @domain=promise */
 void msrt_promise_cancel(int64_t id);
-/* ms-sig: msrt_promise_defer(id: i64, work: *mut Closure) @domain=promise @end */
-void msrt_promise_defer(int64_t id, MsObj *work);
+/* ms-sig: msrt_promise_defer(work: *mut Closure) -> i64 @domain=promise @end */
+int64_t msrt_promise_defer(MsObj *work);
 /* ms-sig: msrt_promise_done(id: i64) -> u8 @domain=promise */
 uint8_t msrt_promise_done(int64_t id);
 /* ms-sig: msrt_promise_drop(id: i64) @domain=promise */
 void msrt_promise_drop(int64_t id);
-/* ms-sig: msrt_promise_end(id: i64) -> u8 @domain=promise */
-uint8_t msrt_promise_end(int64_t id);
+/* ms-sig: msrt_promise_close(id: i64) -> u8 @domain=promise */
+uint8_t msrt_promise_close(int64_t id);
 /* ms-sig: msrt_promise_fault_report(id: i64, out: *mut StrVal) @domain=promise */
 void msrt_promise_fault_report(int64_t id, MsString *out);
 /* ms-sig: msrt_promise_limit(id: i64, timeout_ns: i64) @domain=promise */
@@ -59,14 +57,14 @@ int64_t msrt_promise_ready(int64_t fd, int64_t events, int64_t timeout_ns);
 int64_t msrt_promise_run_watched(int64_t id, int64_t group, const MsList *ids, int64_t from);
 /* ms-sig: msrt_promise_sleep(ns: i64) -> i64 @domain=promise */
 int64_t msrt_promise_sleep(int64_t ns);
-/* ms-sig: msrt_promise_start(id: i64, work: *mut Closure, site: *const StrVal) @domain=promise @spawns */
-void msrt_promise_start(int64_t id, MsObj *work, const MsString *site);
-/* ms-sig: msrt_promise_start_here(id: i64, work: *mut Closure, site: *const StrVal) @domain=promise @spawns */
-void msrt_promise_start_here(int64_t id, MsObj *work, const MsString *site);
-/* ms-sig: msrt_promise_start_idle(id: i64, work: *mut Closure, site: *const StrVal) @domain=promise @spawns */
-void msrt_promise_start_idle(int64_t id, MsObj *work, const MsString *site);
-/* ms-sig: msrt_promise_start_spread(id: i64, work: *mut Closure, site: *const StrVal) @domain=promise @spawns */
-void msrt_promise_start_spread(int64_t id, MsObj *work, const MsString *site);
+/* ms-sig: msrt_promise_start(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+int64_t msrt_promise_start(MsObj *work, const MsString *site);
+/* ms-sig: msrt_promise_start_here(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+int64_t msrt_promise_start_here(MsObj *work, const MsString *site);
+/* ms-sig: msrt_promise_start_idle(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+int64_t msrt_promise_start_idle(MsObj *work, const MsString *site);
+/* ms-sig: msrt_promise_start_spread(work: *mut Closure, site: *const StrVal) -> i64 @domain=promise @spawns */
+int64_t msrt_promise_start_spread(MsObj *work, const MsString *site);
 /* ms-sig: msrt_promise_take(id: i64, d: ValueDesc, out: *mut u8) -> u8 @domain=promise */
 uint8_t msrt_promise_take(int64_t id, const MsTypeDesc *d, uint8_t *out);
 /* ms-sig: msrt_promise_wait(id: i64, timeout_ns: i64) -> i64 @domain=promise */

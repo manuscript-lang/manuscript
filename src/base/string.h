@@ -12,6 +12,7 @@
 #ifndef MS_BASE_STRING_H
 #define MS_BASE_STRING_H
 
+#include "base/hash.h"
 #include "base/safe.h"
 
 typedef struct MsString {
@@ -40,6 +41,15 @@ _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "inline strings assume
 /* The empty string (an inline string of length 0; all zero bits). */
 static inline MsString ms_string_empty(void) {
   return (MsString){.low_bits = 0, .tagged = UINT64_C(1) << MS_STRING_TAG_SHIFT};
+}
+
+/* An inline string holding the `span.len <= MS_STRING_INLINE_MAX` bytes of `span`. The bytes go into the two words
+ * from overlapping loads, so there is no copy of a variable length. */
+static inline MsString ms_string_make_inline(MsSpan span) {
+  uint64_t low, high;
+  ms_hash_words(span.ptr, span.len, &low, &high);
+  return (MsString){.low_bits = low,
+                    .tagged = high | ((uint64_t)span.len << MS_STRING_INLINE_SHIFT) | (UINT64_C(1) << MS_STRING_TAG_SHIFT)};
 }
 
 /* A new string holding a copy of `span`: inline when short, else an owned allocation. */

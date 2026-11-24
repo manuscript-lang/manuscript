@@ -1,6 +1,7 @@
 /* compiler/lower/lower_native_roles.c: the roles of runtime functions the optimiser rewrites in MIR: string and bytes
  * fast paths (`opt_strfast`, `opt_bytesfast`) and map and set probes (`opt_probe`). */
 #include "compiler/lower/lower_fn.h"
+#include "compiler/natives/native_sigs.h"
 
 /* The role of a runtime string function the optimiser answers inline for the common case (`opt_strfast`). */
 static MirRole string_role(MsSpan name) {
@@ -35,7 +36,8 @@ static MirRole string_role(MsSpan name) {
 static MirRole probe_role(const MirModule *module, MsSpan name, MirTy first) {
   const bool set = ms_span_is_text(name, "msrt_set_contains");
   const bool map = ms_span_is_text(name, "msrt_map_contains") || ms_span_is_text(name, "msrt_map_get") ||
-                   ms_span_is_text(name, "msrt_map_get_ptr");
+                   ms_span_is_text(name, "msrt_map_get_ptr") ||
+                   ms_span_is_text(name, "msrt_map_get_or");
   const MirTyData *data = mir_ty_data(module, first);
   if ((!set && !map) || data->kind != MK_OBJ || data->obj_class != MIR_OBJ_COLLECTION || data->nargs < (set ? 1u : 2u)) {
     return MR_NONE;
@@ -57,4 +59,9 @@ static MirRole probe_role(const MirModule *module, MsSpan name, MirTy first) {
 MirRole fn_native_role(const MirModule *module, MsSpan name, MirTy first) {
   const MirRole probe = probe_role(module, name, first);
   return probe != MR_NONE ? probe : string_role(name);
+}
+
+/* The family of borrowing twins the signature declares (`@twin=`). */
+MirTwin fn_native_twin(const struct MsNativeSig *sig) {
+  return sig != NULL && sig->twin != NULL && ms_span_is_text(ms_span_of_text(sig->twin), "split_view") ? MTW_SPLIT_VIEW : MTW_NONE;
 }
