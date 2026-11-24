@@ -28,6 +28,9 @@ typedef struct EmitPoison {
   uint32_t block, index, cell, bytes;
 } EmitPoison;
 
+/* The empty metadata node `!invariant.load` points to: a load marked so never changes while its function runs. */
+#define EMIT_METADATA_EMPTY 900005
+
 typedef struct EmitCx {
   const MirModule *module;
   const MirFunc *func;     /* the function being written; NULL for module-level text */

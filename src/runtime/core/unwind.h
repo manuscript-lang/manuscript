@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "abi/layout.h"
 #include "base/list.h"
 #include "base/safe.h"
 #include "runtime/core/fault.h"
@@ -33,7 +34,7 @@ typedef struct MsTaskHdr {
 } MsTaskHdr;
 
 _Static_assert(offsetof(MsTaskHdr, cancel) == 8, "ISOLATE_HDR_CANCEL");
-_Static_assert(offsetof(MsTaskHdr, unwinding) == 16, "ISOLATE_HDR_UNWINDING");
+_Static_assert(offsetof(MsTaskHdr, unwinding) == MS_HDR_UNWINDING, "ISOLATE_HDR_UNWINDING");
 
 /* The pair of objects an equality comparison is inside, to cut a cycle. */
 typedef struct MsEqPair {
