@@ -87,7 +87,7 @@ candidate archive. The same fresh compiler builds both producers. All 72 path
 cases and 79 URL controls pass warmup plus 24 fully balanced trials: **15,100
 producer invocations**. Native allocation controls separately pass **1,000
 observations across 125 cases**. All source/binary/archive hashes are retained in
-[identities.json](results/identities.json), headers and the lossless manifest.
+identities.json, headers and the lossless manifest.
 
 The retained path change avoids building all five parse fields for an extension,
 replaces a leading-dot basename's full dot count with its already-known extension

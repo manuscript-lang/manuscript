@@ -66,7 +66,7 @@ Evidence: type recursion pass, issues #490 and #491.
 Evidence: method registration and lookup, candidate regressions, editor queries.
 Evidence: inliner, constant-bonus regression.
 Evidence: dead-code elimination, dead-graph and unused-check regressions.
-Evidence: [borrow-returning accessor](../../../tests/conformance/fixtures/e2e/stdlib/json-accessors.ms), [borrowed results](../tests/conformance/fixtures/e2e/accept/ref-borrow-results.ms), ownership corpus, `json.navigate` in [the stdlib bench](../../../bench/perf/stdlib/json_bench.ms) (351 to 56 ns per three nested reads).
+Evidence: [borrow-returning accessor](../../../tests/conformance/fixtures/e2e/stdlib/json-accessors.ms), borrowed results, ownership corpus, `json.navigate` in [the stdlib bench](../../../bench/perf/stdlib/json_bench.ms) (351 to 56 ns per three nested reads).
 Evidence: generic recursion validation, finite DAG and ancestor-context regressions, cycle-prefix and differential regressions.
 Verify: generate inputs at N, 2N, 4N (chained declarations, long function bodies, many matches, deeply nested literals), time `ms check` and `ms build` separately, and profile any step that grows faster than 2x per doubling. Prefer a global memo or index over a per-query rescan, and keep cycle checks ahead of memo hits.
 Verify: the frontend-only candidate tests check constant-size buckets for unrelated methods, generic bounds, overlapping implementations, module-local extensions, ambiguity order and editor members.
