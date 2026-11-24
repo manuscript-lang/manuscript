@@ -377,6 +377,31 @@ MS_NODISCARD bool parse_name_type(Parser *p, MsToken name, MsTypeRef **out) {
 }
 
 /* One parameter: `[move|var] name[: Type][= default]`; it is pushed onto the open scratch list. */
+/* After a name: whether `, name, ... name Type` follows, so the names share the one type. */
+static bool group_ahead(const Parser *p) {
+  size_t j = 0;
+  while (parse_ahead(p, j).kind == MS_T_Comma && parse_ahead(p, j + 1).kind == MS_T_Name) {
+    j += 2;
+  }
+  return j > 0 && parse_ahead(p, j).kind != MS_T_Comma && parse_type_starts((MsTok)parse_ahead(p, j).kind);
+}
+
+/* Reads the names after the first of a `width, height Int` group into names[1..]; `*n` counts all of them. */
+MS_NODISCARD bool parse_group_names(Parser *p, MsToken *names, size_t *n) {
+  *n = 1;
+  if (!group_ahead(p)) {
+    return true;
+  }
+  while (parse_take(p, MS_T_Comma)) {
+    if (*n == MS_GROUP_MAX) {
+      parse_fail(p, parse_previous(p), ms_span_of_text("too many names share one type; split the group"));
+      return false;
+    }
+    names[(*n)++] = parse_next(p);
+  }
+  return true;
+}
+
 MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
   bool moving = parse_take_move(p, (const MsTok[]){MS_T_Var, MS_T_Name}, 2);
   bool is_mutable = parse_take(p, MS_T_Var);
@@ -401,10 +426,19 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
                          parse_text(p, next));
     return false;
   }
+  MsToken names[MS_GROUP_MAX];
+  names[0] = name;
+  size_t nnames = 1;
+  if (!inferred && !parse_group_names(p, names, &nnames))
+    return false;
+  const MsToken last = names[nnames - 1];
+  const size_t type_at = p->at;
   if (!inferred || parse_kind(p) == MS_T_Colon || parse_type_starts(parse_kind(p))) {
-    if (!parse_name_type(p, name, &ty))
+    if (!parse_name_type(p, last, &ty))
       return false;
   }
+  const size_t def_at = p->at;
+  const bool has_default = parse_kind(p) == MS_T_Assign;
   if (parse_take(p, MS_T_Assign)) {
     if (!defaults) {
       parse_fail(p, parse_previous(p),
@@ -418,6 +452,29 @@ MS_NODISCARD static bool parameter(Parser *p, bool defaults, bool inferred) {
     def = parse_implicit_none(p, ty);
     implied = def != NULL;
   }
+  const size_t end = p->at;
+  for (size_t i = 0; i + 1 < nnames; i++) {
+    /* `width, height Int = 0`: each earlier name reads the same type and default again. */
+    MsTypeRef *own_ty = NULL;
+    MsExpr *own_def = NULL;
+    bool own_implied = false;
+    p->at = type_at;
+    if (!parse_name_type(p, names[i], &own_ty))
+      return false;
+    if (has_default) {
+      p->at = def_at + 1;
+      if (!parse_expression(p, 0, &own_def))
+        return false;
+    } else if (defaults) {
+      own_def = parse_implicit_none(p, own_ty);
+      own_implied = own_def != NULL;
+    }
+    MsParam *earlier = parse_mk_param(p, names[i].pos, parse_sym(p, names[i]), own_ty, own_def, is_mutable, moving);
+    earlier->implied_default = own_implied;
+    parse_push_ptr(p, earlier);
+  }
+  p->at = end;
+  name = last;
   MsParam *param = parse_mk_param(p, name.pos, parse_sym(p, name), ty, def, is_mutable, moving);
   param->implied_default = implied;
   parse_push_ptr(p, param);

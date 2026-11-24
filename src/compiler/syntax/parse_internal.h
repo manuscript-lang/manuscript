@@ -140,6 +140,8 @@ MsExpr *parse_implicit_none(Parser *p, const MsTypeRef *t);
 MS_NODISCARD bool parse_type_params(Parser *p, MsTypeParams *out);
 bool parse_type_starts(MsTok kind);
 MS_NODISCARD bool parse_member_name(Parser *p, MsToken *out);
+enum { MS_GROUP_MAX = 32 };
+MS_NODISCARD bool parse_group_names(Parser *p, MsToken *names, size_t *n);
 MS_NODISCARD bool parse_name_type(Parser *p, MsToken name, MsTypeRef **out);
 MS_NODISCARD bool parse_parameters(Parser *p, bool defaults, bool inferred, MsParams *out);
 

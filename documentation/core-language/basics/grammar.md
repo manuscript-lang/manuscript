@@ -131,7 +131,7 @@ AliasDeclaration = "type", Name, [ TypeParameters ], "=", Type, { "|", Type }, N
 EnumDeclaration = [ "opaque" ], "enum", Name, [ TypeParameters ], ":", NEWLINE,
                   INDENT, AlternativeBody, DEDENT ;
 RecordBody    = { Field } ;
-Field         = Name, Type, [ "=", Expression ], NEWLINE ;
+Field         = Name, { ",", Name }, Type, [ "=", Expression ], NEWLINE ;
 AlternativeBody = VariantDeclaration, { VariantDeclaration } ;
 VariantDeclaration = Name, [ "(", Parameters, ")" ], NEWLINE ;
 InterfaceDeclaration = "interface", Name, [ TypeParameters ], ":",
@@ -159,7 +159,8 @@ TestDeclaration = "test", PlainStringLiteral, Suite ;
 BenchDeclaration = "bench", PlainStringLiteral, [ "per", PositiveInteger ], Suite ;
 (* `bench` is contextual: it starts a declaration only before a string literal. The body is one iteration (`per N` says it performs N operations, and `ms bench` then reports per operation), with a test body's result rules and no `fixture`; `ms bench` repeats and times it. *)
 Parameters    = Parameter, { ",", Parameter }, [ "," ] ;
-Parameter     = Name, Type ;
+Parameter     = Name, { ",", Name }, Type ;
+(* `width, height Int` declares two names of one type; the default of `FunctionParameter` and `Field` applies to each. *)
 FunctionParameters = FunctionParameter, { ",", FunctionParameter }, [ "," ] ;
 FunctionParameter = [ "var" ], Parameter, [ "=", Expression ] ;
 CallbackParameters = CallbackParameter, { ",", CallbackParameter }, [ "," ] ;
