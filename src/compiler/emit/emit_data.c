@@ -79,7 +79,11 @@ static bool global(EmitCx *cx, const MirInst *inst) {
   char base[24];
   emit_register_name(base, sizeof base, "g", number);
   bool get = inst->op == MOP_GlobalGet;
-  emit_leaves_at(cx, get ? inst->res : inst->args[0], base, get);
+  if (get) {
+    emit_load_value(cx, inst->res, base);
+  } else {
+    emit_store_value(cx, inst->args[0], base);
+  }
   return true;
 }
 

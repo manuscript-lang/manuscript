@@ -51,7 +51,7 @@ static void copy_list(EmitCx *cx, const MirInst *inst, MirValue from) {
 /* Writes `element` at `base`, an element address of `list`, tagged with the alias class of its elements. */
 static void store_element(EmitCx *cx, MirValue list, MirValue element, const char *base) {
   cx->tbaa = elem_tbaa(cx, list_elem(cx, value_type(cx, list)));
-  emit_leaves_at(cx, element, base, false);
+  emit_store_value(cx, element, base);
   cx->tbaa = NULL;
 }
 
@@ -95,7 +95,7 @@ static void list_lit(EmitCx *cx, const MirInst *inst, uint32_t size) {
                        arg * size, number, number);
     char base[24];
     emit_register_name(base, sizeof base, "p", number);
-    emit_leaves_at(cx, inst->args[arg], base, false);
+    emit_store_value(cx, inst->args[arg], base);
   }
   ms_strbuild_printf(out, "  %%v%u.1 = add i64 0, %u\n  %%v%u.2 = add i64 0, %u\n", inst->res, inst->nargs, inst->res,
                      inst->nargs);
@@ -163,7 +163,7 @@ static void list_read(EmitCx *cx, const MirInst *inst) {
     return;
   }
   cx->tbaa = elem_tbaa(cx, elem);
-  emit_leaves_at(cx, inst->res, at, true);
+  emit_load_value(cx, inst->res, at);
   cx->tbaa = NULL;
 }
 

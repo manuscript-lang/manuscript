@@ -197,6 +197,36 @@ void emit_wide_store(EmitCx *cx, MirValue value) {
   plan->moved = MIR_NONE;
 }
 
+/* A held value made by loading its leaves from memory at `from`: its cell is that memory's layout, so one copy fills
+ * it and nothing is stored after. False when the value is not held here. */
+bool emit_wide_fill(EmitCx *cx, MirValue value, const char *from, const uint32_t *at) {
+  EmitWide *plan = cx->wide;
+  if (plan == NULL || value == MIR_NONE || !plan->held[value] || plan->incoming[value] || plan->stored[value]) {
+    return false;
+  }
+  MsSpan leaves = emit_value_leaves(cx, value);
+  if (leaves.len < 4) {
+    return false;
+  }
+  uint32_t *layout = ms_alloc_zeroed(((size_t)leaves.len + 1) * sizeof *layout);
+  const uint32_t size = mir_mem_layout(leaves, layout).size;
+  bool same = true;
+  for (uint32_t leaf = 0; at != NULL && leaf < leaves.len && same; leaf++) {
+    same = at[leaf] - at[0] == layout[leaf];
+  }
+  ms_free(layout);
+  if (!same) {
+    return false;
+  }
+  char cell[24];
+  cell_name(cx, value, cell, sizeof cell);
+  const EmitAddr start = emit_address(cx, from, at == NULL ? 0 : at[0]);
+  ms_strbuild_printf(cx->out, "  call void @llvm.memcpy.p0.p0.i64(ptr %s, ptr %s, i64 %u, i1 false)\n", cell,
+                     start.text, size);
+  plan->stored[value] = true;
+  return true;
+}
+
 /* Copies `count` leaves of held `src`, from leaf `from`, over those of held `dst` from leaf `to` as one block, when
  * both have the same leaf types and byte distances. The caller skips those leaves; the rest of `dst` is stored by
  * emit_wide_store. False, with nothing written, when the leaves do not line up. */
