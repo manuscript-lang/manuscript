@@ -152,6 +152,7 @@ struct WatchRow {
   struct MsFsWatcher *owner;
   MsString path;
   bool is_directory;
+  bool rescan; /* a dropped batch asked for the directory to be read again */
 };
 
 typedef struct MsFsWatcher {
@@ -168,6 +169,7 @@ typedef struct MsFsWatcher {
   MsString terminal_text; /* the text of a MS_STATUS_FAILED terminal */
   uv_loop_t loop;
   uv_async_t stop;
+  uv_async_t rescan;
   uv_thread_t thread;
   WatchRow *rows; /* only the watching thread touches it while it runs */
   MsString root;
@@ -181,6 +183,7 @@ typedef struct MsFsWatcher {
   bool ignore_overflow;
   bool loop_ready;
   bool stop_ready;
+  bool rescan_ready;
   bool thread_started;
   bool ready; /* macOS: the event stream has seen the readiness file */
 } MsFsWatcher;
@@ -459,8 +462,11 @@ static void watch_event(uv_fs_event_t *handle, const char *filename, int events,
   if (dropped) {
     /* The host dropped a batch of changes: what happened is unknown, so report the directory and what it holds. */
     queue_event(watcher, ms_string_span(&row->path), false);
+    /* The directory is read again once libuv has queued its next read: a change between reading the directory here and
+     * that read would be in neither, and a created directory would never be reported. */
     if (watcher->recursive && row->is_directory) {
-      report_existing(watcher, ms_string_span(&row->path), 0);
+      row->rescan = true;
+      (void)uv_async_send(&watcher->rescan);
     }
     return;
   }
@@ -528,12 +534,28 @@ static void close_rows(MsFsWatcher *watcher) {
 
 static void stop_closed(uv_handle_t *handle) { (void)handle; }
 
+/* Reads again each directory that lost a batch of changes. Runs after the callback that asked, so after libuv has
+ * queued the next read of that directory. */
+static void rescan_requested(uv_async_t *handle) {
+  MsFsWatcher *watcher = handle->data;
+  for (WatchRow *row = watcher->rows; row != NULL; row = row->next) {
+    if (row->rescan) {
+      row->rescan = false;
+      report_existing(watcher, ms_string_span(&row->path), 0);
+    }
+  }
+}
+
 /* Ends the loop: closes every handle, so uv_run returns. */
 static void close_loop_handles(MsFsWatcher *watcher) {
   close_rows(watcher);
   if (watcher->stop_ready) {
     watcher->stop_ready = false;
     uv_close((uv_handle_t *)&watcher->stop, stop_closed);
+  }
+  if (watcher->rescan_ready) {
+    watcher->rescan_ready = false;
+    uv_close((uv_handle_t *)&watcher->rescan, stop_closed);
   }
 }
 
@@ -676,6 +698,12 @@ static void native_start(MsFsWatcher *watcher, MsSpan root, MsFail *fail) {
     return;
   }
   watcher->stop_ready = true;
+  watcher->rescan.data = watcher;
+  if (uv_async_init(&watcher->loop, &watcher->rescan, rescan_requested) != 0) {
+    ms_fail_text(fail, "watch: cannot create an event loop");
+    return;
+  }
+  watcher->rescan_ready = true;
   tree_add(watcher, root, 0, fail);
   if (ms_fail_failed(fail)) {
     return;
