@@ -9,39 +9,47 @@
 // last use; the rest of the record is still cleaned up exactly once.
 import stdout from "@std/io/io.ms"
 
-type Big:
+type Big {
 	name String
 	items List[Int]
+}
 
-type Wrap:
+type Wrap {
 	inner Big
 	tag Int
+}
 
-fn items_of(b Big) List[Int]:
+fn items_of(b Big) List[Int] {
 	return b.items
+}
 
-fn size(xs List[Int]) Int:
+fn size(xs List[Int]) Int {
 	ys := xs
 	return ys.length()
+}
 
-fn both(b Big) Int:
+fn both(b Big) Int {
 	n := size(b.items)
 	return n + b.name.length()
+}
 
-fn branch(b Big, flag Bool) Int:
-	if flag: return size(b.items)
+fn branch(b Big, flag Bool) Int {
+	if flag { return size(b.items) }
 	return b.name.length() + b.items.length()
+}
 
-fn reinit(b Big) Int:
+fn reinit(b Big) Int {
 	var c = b
 	n := size(c.items)
 	c.items = [n, n]
 	return c.items.length()
+}
 
-fn nested(w Wrap) List[Int]:
+fn nested(w Wrap) List[Int] {
 	return w.inner.items
+}
 
-fn main() Void:
+fn main() Void {
 	name := "a name that is long enough to live on the heap"
 	total := (
 		items_of(Big(name: name.clone(), items: [1, 2, 3])).length()
@@ -61,3 +69,4 @@ fn main() Void:
 		.get()
 	)
 	stdout().write(f"{reinit(Big(name: name.clone(), items: [7]))}\n").get()
+}

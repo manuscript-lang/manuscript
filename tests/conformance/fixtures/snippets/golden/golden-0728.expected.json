@@ -12,16 +12,16 @@
         "message": "unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it",
         "position": {
           "file": "golden-0728.ms",
-          "line": 4,
+          "line": 5,
           "column": 26,
-          "offset": 133
+          "offset": 134
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0728.ms:4:26: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 4 | fn first(r Result[Error, E1]) Void => bounded(r)\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0728.ms:5:26: resolution: unknown type E1; declare it with 'type E1:' / 'enum E1:' / 'interface E1:', declare it as a type parameter, or import it\n   |\n 5 | fn first(r Result[Error, E1]) Void => bounded(r)\n   |                          ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

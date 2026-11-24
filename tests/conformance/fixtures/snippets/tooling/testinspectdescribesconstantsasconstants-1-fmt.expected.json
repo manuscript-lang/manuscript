@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "LIMIT := 10\n\nfn size() Int:\n\treturn LIMIT\n"
+    "fmt": "LIMIT := 10\n\nfn size() Int {\n\treturn LIMIT\n}\n"
   }
 }

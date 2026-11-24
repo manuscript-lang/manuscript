@@ -12,16 +12,16 @@
         "message": "public signature exposes private type PrivateId; add 'export' to its declaration or keep the function private",
         "position": {
           "file": "cl-03-2.ms",
-          "line": 6,
+          "line": 7,
           "column": 8,
-          "offset": 97
+          "offset": 100
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/cl-03-2.ms:6:8: type: public signature exposes private type PrivateId; add 'export' to its declaration or keep the function private\n   |\n 6 | export type PublicRecord:\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/cl-03-2.ms:7:8: type: public signature exposes private type PrivateId; add 'export' to its declaration or keep the function private\n   |\n 7 | export type PublicRecord {\n   |        ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

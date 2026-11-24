@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Layer0[T]:\n\tvalue T\n"
+    "fmt": "type Layer0[T] {\n\tvalue T\n}\n"
   }
 }

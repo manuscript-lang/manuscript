@@ -14,14 +14,14 @@
           "file": "golden-0797.ms",
           "line": 4,
           "column": 5,
-          "offset": 69
+          "offset": 67
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0797.ms:4:5: type: local binding x is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 4 |     x := (1 +\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0797.ms:4:5: type: local binding x is never read; remove it, use it, or name it with a leading '_' to ignore it\n   |\n 4 |     x := (1 + 2)\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

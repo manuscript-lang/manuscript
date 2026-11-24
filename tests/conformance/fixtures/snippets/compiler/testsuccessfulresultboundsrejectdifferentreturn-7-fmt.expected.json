@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Cause:\n\ttext String\n\ninterface Named:\n\tfn name() String\n\nfn Cause.name() String => self.text.clone()\n"
+    "fmt": "type Cause {\n\ttext String\n}\n\ninterface Named {\n\tfn name() String\n}\n\nfn Cause.name() String => self.text.clone()\n"
   }
 }

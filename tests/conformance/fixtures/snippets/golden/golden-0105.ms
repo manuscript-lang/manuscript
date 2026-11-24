@@ -1,9 +1,13 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Read:
+interface Read {
     fn get() Int
-type Box[T]:
+}
+type Box[T] {
     value T
-impl Read for Box[Int]:
-    fn get() T:
+}
+impl Read for Box[Int] {
+    fn get() T {
         return self.value
+    }
+}

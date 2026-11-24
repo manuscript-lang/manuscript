@@ -1,10 +1,13 @@
 // conform: tags=faults,formatter,generics,match,optional,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/tooling/pattern_lint_test.go:30 TestPatternBindingAdvisory
-type Box[T]:
-    value T
+type Box[T] {
+	value T
+}
 
-fn use[T](value Box[T]?) T:
-    match value:
-        box => return Box.value
-        null => return panic(message: "empty")
+fn use[T](value Box[T]?) T {
+	match value {
+		box => return Box.value
+		null => return panic(message: "empty")
+	}
+}

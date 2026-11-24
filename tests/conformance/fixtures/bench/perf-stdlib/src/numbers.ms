@@ -9,28 +9,30 @@ import (
 	bench from "./harness.ms",
 )
 
-export fn bench_numbers() Void:
+export fn bench_numbers() Void {
 	rate Decimal := 1.12345d
 
 	bench(
 		"bigint.factorial_1000",
 		1000,
-		fn() Int:
+		fn() Int {
 			var acc = big_int_of_int(1)
-			for i in 1..1001:
+			for i in 1..1001 {
 				acc = acc.multiply(big_int_of_int(i))
-			return acc.to_string().length()
+			} return acc.to_string().length()
+		}
 	)
 
 	bench(
 		"decimal.add_round",
 		20000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..20000:
-				if d := (i.to_decimal() + rate).round(2):
+			for i in 0..20000 {
+				if d := (i.to_decimal() + rate).round(2) {
 					n += d.truncate_to_int() or 0
-			return n
+				} } return n
+		}
 	)
 
 	blob := "the quick brown fox jumps over the lazy dog ".repeat(20000).to_bytes()
@@ -38,58 +40,63 @@ export fn bench_numbers() Void:
 	bench(
 		"compress.gzip",
 		blob.length(),
-		fn() Int:
-			if b := compress(blob, "gzip", 6): return b.length()
-			return 0
+		fn() Int {
+			if b := compress(blob, "gzip", 6) { return b.length() } return 0
+		}
 	)
 
 	bench(
 		"compress.roundtrip",
 		blob.length(),
-		fn() Int:
-			if b := compress(blob, "gzip", 6): return unpacked_length(b)
-			return 0
+		fn() Int {
+			if b := compress(blob, "gzip", 6) { return unpacked_length(b) } return 0
+		}
 	)
 
 	bench(
 		"time.parse_timestamp",
 		20000,
-		fn() Int:
+		fn() Int {
 			var n = 0
-			for i in 0..20000:
-				if t := parse_timestamp("2026-03-01T12:30:45.123Z"):
+			for i in 0..20000 {
+				if t := parse_timestamp("2026-03-01T12:30:45.123Z") {
 					n += t.unix_seconds() % 7
-			return n
+				} } return n
+		}
 	)
 
 	bench(
 		"queue.enqueue_dequeue",
 		200000,
-		fn() Int:
+		fn() Int {
 			var q = Queue[Int]()
-			for i in 0..100000:
+			for i in 0..100000 {
 				q.enqueue(i)
 
-			var n = 0
-			while not q.is_empty():
+			} var n = 0
+			while not q.is_empty() {
 				n += q.dequeue() or 0
-			return n
+			} return n
+		}
 	)
 
 	bench(
 		"priority_queue.enqueue_dequeue",
 		100000,
-		fn() Int:
+		fn() Int {
 			var q = PriorityQueue[Int]()
-			for i in 0..50000:
+			for i in 0..50000 {
 				q.enqueue((i * 7919) % 10007)
 
-			var n = 0
-			while not q.is_empty():
+			} var n = 0
+			while not q.is_empty() {
 				n += q.dequeue() or 0
-			return n
+			} return n
+		}
 	)
+}
 
-fn unpacked_length(data Bytes) Int:
-	if b := decompress(data, "gzip"): return b.length()
+fn unpacked_length(data Bytes) Int {
+	if b := decompress(data, "gzip") { return b.length() }
 	return 0
+}

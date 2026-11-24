@@ -2,6 +2,6 @@
 // conform: phase=parse
 // conform: origin=pkg/parser/parser_test.go:155 TestNamedImports
 import (
-    ListEntry,  // first
-    MapEntry,
+	ListEntry,  // first
+	MapEntry,
 ) from "@std/collections/collections.ms"

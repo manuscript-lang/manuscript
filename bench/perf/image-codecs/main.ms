@@ -9,23 +9,25 @@ import (
 	monotonic from "@std/time.ms",
 )
 
-fn main() Void!:
+fn main() Void! {
 	w := 2048
 	h := 2048
 	var img = new_image(w, h, ColorMode.Rgb)?
 	var y = 0
 
-	while y < h:
+	while y < h {
 		var x = 0
 
-		while x < w:
+		while x < w {
 			at := (y * w + x) * 3
 			img.pixels[at] = ((x * 3 + y * 5 + (x * y) / 512) % 256).to_uint8() or 0
 			img.pixels[at + 1] = ((x + y * 2 + (x + y * 3) % 251) % 256).to_uint8() or 0
 			img.pixels[at + 2] = ((x * 7 + y + (x / 8) * (y / 8)) % 256).to_uint8() or 0
 			x += 1
+		}
 
 		y += 1
+	}
 
 	var t = monotonic()
 	png := encode_image(img, ImageFormat.Png)?
@@ -46,3 +48,4 @@ fn main() Void!:
 
 	jb := decode_image(jpg)?
 	print(f"jpeg decode {monotonic().difference(t).to_milliseconds()} ms {jb.width}")
+}

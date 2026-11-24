@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import panic from \"@std/core.ms\"\n\nfn positives(values List[Int]) List[Int]:\n\tvar result List[Int] = []\n\tfor value in values:\n\t\tif value > 0:\n\t\t\tresult.append(value)\n\treturn result\n\ntest \"dynamic mutable data and explicit copies\":\n\tif not (positives([3, -1, 2]) == [3, 2]): return panic(\"check failed\")\n\tif [1].get_or(5, -1) != -1: return panic(\"check failed\")\n\n\tvar original = Map[String, Int]()\n\toriginal.add(\"a\", 1)\n\n\tvar updated = original.clone()\n\tupdated.add(\"b\", 2)\n\tupdated.add(\"a\", 3)\n\tif not (original.get(\"a\") == 1): return panic(\"check failed\")\n\tif not (updated.get(\"a\") == 3): return panic(\"check failed\")\n"
+    "fmt": "import panic from \"@std/core.ms\"\n\nfn positives(values List[Int]) List[Int] {\n\tvar result List[Int] = []\n\tfor value in values {\n\t\tif value > 0 {\n\t\t\tresult.append(value)\n\t\t}\n\t}\n\treturn result\n}\n\ntest \"dynamic mutable data and explicit copies\" {\n\tif not (positives([3, -1, 2]) == [3, 2]) {\n\t\treturn panic(\"check failed\")\n\t}\n\tif [1].get_or(5, -1) != -1 {\n\t\treturn panic(\"check failed\")\n\t}\n\n\tvar original = Map[String, Int]()\n\toriginal.add(\"a\", 1)\n\n\tvar updated = original.clone()\n\tupdated.add(\"b\", 2)\n\tupdated.add(\"a\", 3)\n\tif not (original.get(\"a\") == 1) {\n\t\treturn panic(\"check failed\")\n\t}\n\tif not (updated.get(\"a\") == 3) {\n\t\treturn panic(\"check failed\")\n\t}\n}\n"
   }
 }

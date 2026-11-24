@@ -20,38 +20,43 @@ import (
 	norm from "./lib/text.ms",
 )
 
-test "norm ignores trailing whitespace only":
+test "norm ignores trailing whitespace only" {
 	expect_equal(norm("a  \nb\n\n"), norm("a\nb"))?
 	expect_false(norm("a\nb") == norm("b\na"))?
 	expect_equal(norm(""), norm("\n"))?
+}
 
-test "every challenge is complete":
+test "every challenge is complete" {
 	langs := load_languages([])
 	chs := load_challenges([])
 	expect_true(not chs.is_empty())?
 
-	for ch in chs:
+	for ch in chs {
 		expect_true(not ch.cases("examples").is_empty())?
 		expect_true(ch.cases("hidden").length() > ch.cases("examples").length() - 1)?
 
 		visible := ch.cases("examples").map(c => c.stdin.clone())
-		if not ch.cases("hidden").any(c => not visible.contains(c.stdin)): fail(
-			f"{ch.id}: hidden cases add nothing"
-		)?
+		if not ch.cases("hidden").any(c => not visible.contains(c.stdin)) {
+			fail(f"{ch.id}: hidden cases add nothing")?
+		}
 
-		if access(f"{ch.dir}/oracle", 0).is_ok():
+		if access(f"{ch.dir}/oracle", 0).is_ok() {
 			// Large challenges: Go oracle only, no per-language references.
 			if glob(f"{ch.dir}/oracle", GlobOptions(patterns: ["*.ref"])).get_or(
 				[]
-			).is_empty(): fail(f"{ch.id}: empty oracle")?
+			).is_empty() { fail(f"{ch.id}: empty oracle")? }
 			continue
+		}
 
-		for lang in langs:
-			if not access(f"{ch.solution(lang.template)}/{lang.reference()}", 0).is_ok(): fail(
-				f"{ch.id}: missing {lang.id} reference solution"
-			)?
+		for lang in langs {
+			if not access(f"{ch.solution(lang.template)}/{lang.reference()}", 0).is_ok() {
+				fail(f"{ch.id}: missing {lang.id} reference solution")?
+			}
+		}
+	}
+}
 
-test "claude code parse":
+test "claude code parse" {
 	lines := [
 		"{\"type\": \"assistant\"}",
 		"{\"type\": \"result\", \"num_turns\": 7, \"total_cost_usd\": 0.5, \"usage\": {\"input_tokens\": 10, \"output_tokens\": 20, \"cache_read_input_tokens\": 100, \"cache_creation_input_tokens\": 5}}"
@@ -63,23 +68,27 @@ test "claude code parse":
 	expect_equal(u.turns, 7)?
 	expect_close(u.cost_usd, 0.5, 0.0000001)?
 	expect_equal(u.cost_source, "harness")?
+}
 
-test "codex parse sums turns and splits cache":
+test "codex parse sums turns and splits cache" {
 	event := "{\"type\": \"turn.completed\", \"usage\": {\"input_tokens\": 100, \"cached_input_tokens\": 60, \"output_tokens\": 5}}"
 	u := Codex().parse([event.clone(), event.clone()].join("\n"))
 	expect_equal(u.tokens_in, 80)?
 	expect_equal(u.tokens_cached, 120)?
 	expect_equal(u.tokens_out, 10)?
 	expect_equal(u.turns, 2)?
+}
 
-test "cost estimate":
+test "cost estimate" {
 	expect_close(cost_from_tokens(1000000, 0, 0, "default"), 3.0, 0.0000001)?
+}
 
-test "code tokens skip comments":
+test "code tokens skip comments" {
 	expect_equal(count_text("a // c\nb /* x\ny */ c"), 3)?
 	expect_equal(count_text("f(\"a b\", 1.5)"), 6)?
+}
 
-test "random matches CPython's Mersenne Twister":
+test "random matches CPython's Mersenne Twister" {
 	var r = seeded(3)
 	expect_equal(r.randint(0, 999), 243)?
 	expect_equal(r.randint(0, 999), 606)?
@@ -87,23 +96,26 @@ test "random matches CPython's Mersenne Twister":
 
 	var s = seeded(3)
 	expect_equal(s.randrange(5, 50), 20)?
+}
 
-test "json layout matches json.dumps":
+test "json layout matches json.dumps" {
 	doc := parse("[{\"a\": \"é\\n\", \"b\": [], \"c\": {}}, 1]").get_or(JsonValue.Null)
 	expect_equal(
 		dumps(doc, 1),
 		"[\n {\n  \"a\": \"\\u00e9\\n\",\n  \"b\": [],\n  \"c\": {}\n },\n 1\n]",
 	)?
 	expect_equal(dumps(doc, 0), "[{\"a\": \"\\u00e9\\n\", \"b\": [], \"c\": {}}, 1]")?
+}
 
-test "number formats match CPython":
+test "number formats match CPython" {
 	expect_equal(fixed(17.25, 1), "17.2")?
 	expect_equal(fixed(0.35, 1), "0.3")?
 	expect_equal(fmt_g(981756.0, 3), "9.82e+05")?
 	expect_equal(fmt_g(0.026123, 3), "0.0261")?
 	expect_equal(pct0(0.125), "12%")?
+}
 
-test "wilson interval":
+test "wilson interval" {
 	w := wilson(5, 10)
 	expect_close(w.low, 0.2366, 0.001)?
 	expect_close(w.high, 0.7634, 0.001)?
@@ -111,8 +123,10 @@ test "wilson interval":
 	all := wilson(10, 10)
 	expect_close(all.high, 1.0, 0.0000001)?
 	expect_true(all.low > 0.69 and all.low < 0.73)?
+}
 
-test "mean interval":
+test "mean interval" {
 	m := mean_ci([1.0, 2.0, 3.0, 4.0])
 	expect_close(m.mid, 2.5, 0.0000001)?
 	expect_close(m.high - m.mid, 1.96 * 1.2909944 / 2.0, 0.0001)?
+}

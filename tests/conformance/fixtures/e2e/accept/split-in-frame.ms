@@ -2,13 +2,14 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-fn describe(text String, sep String) String:
+fn describe(text String, sep String) String {
 	f := text.split(sep)
 	var out = f"{f.length()}:"
-	for p in f: out += f"[{p}]"
+	for p in f { out += f"[{p}]" }
 	return out
+}
 
-test "a split read in place matches the list the heap builds":
+test "a split read in place matches the list the heap builds" {
 	expect_equal(describe("a b c", " "), "3:[a][b][c]")?
 	expect_equal(describe("", " "), "1:[]")?
 	expect_equal(describe(" a  b ", " "), "5:[][a][][b][]")?
@@ -20,8 +21,9 @@ test "a split read in place matches the list the heap builds":
 	expect_equal(describe("héllo wörld ünï", " "), "3:[héllo][wörld][ünï]")?
 	expect_equal(describe("aXXbXXc", "XX"), "3:[a][b][c]")?
 	expect_equal(describe("abc", ""), "3:[a][b][c]")?
+}
 
-test "long texts":
+test "long texts" {
 	long := "x ".repeat(100)
 	expect_equal(long.split(" ").length(), 101)?
 
@@ -30,3 +32,4 @@ test "long texts":
 		describe(wide, " "),
 		"2:[abcdefghijklmnopqrstuvwxyz][abcdefghijklmnopqrstuvwxyz]",
 	)?
+}

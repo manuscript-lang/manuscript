@@ -11,38 +11,49 @@ import (
 	expect_equal, expect_false, expect_true, fail from "@std/test/test.ms",
 )
 
-fn positive(value Int) Bool:
+fn positive(value Int) Bool {
 	return value > 0
+}
 
-fn negative(value Int) Bool:
+fn negative(value Int) Bool {
 	return value < 0
+}
 
-fn stringify(value Int) String:
+fn stringify(value Int) String {
 	return value.to_string()
+}
 
-fn expand(value Int) List[String]:
+fn expand(value Int) List[String] {
 	return [stringify(value: value), "x"]
+}
 
-fn total(accumulator Int, value Int) Int:
+fn total(accumulator Int, value Int) Int {
 	return accumulator + value
+}
 
-fn ordered(accumulator String, value Int) String:
+fn ordered(accumulator String, value Int) String {
 	return f"{accumulator}{value}"
+}
 
-fn compare(left Int, right Int) Int:
-	if left < right: return -1
-	if left > right: return 1
+fn compare(left Int, right Int) Int {
+	if left < right { return -1 }
+	if left > right { return 1 }
 
 	return 0
+}
 
-fn common_result[T](result T!) T!:
-	match result:
-		ok(value):
+fn common_result[T](result T!) T! {
+	match result {
+		ok(value) => {
 			return ok(value)
-		error(cause):
+		}
+		error(cause) => {
 			return error(cause)
+		}
+	}
+}
 
-fn checked_expansion() Void!:
+fn checked_expansion() Void! {
 	(
 		(
 			not (
@@ -91,8 +102,9 @@ fn checked_expansion() Void!:
 	(not ("é🙂".replace(old: "", new: "-") == "-é-🙂-")) | expect_false?
 	"é🙂".slice(start: 0, end: 2) | expect_equal("é")?
 	"é".repeat(count: 3) | expect_equal("ééé")?
+}
 
-test "list methods mutate explicit clones and remain typed":
+test "list methods mutate explicit clones and remain typed" {
 	original := [3, 1, 2, 1]
 	alias := original.clone()
 	original.get(index: -1) | expect_equal(1)?
@@ -150,8 +162,9 @@ test "list methods mutate explicit clones and remain typed":
 
 	var observed_original List[Int] = []
 	original.for_each(
-		fn(value) Void:
+		fn(value) Void {
 			observed_original.append(value)
+		}
 	)
 	observed_original | expect_equal(original)?
 	original.map(transform: stringify) | expect_equal(["3", "1", "2", "1"])?
@@ -205,8 +218,9 @@ test "list methods mutate explicit clones and remain typed":
 		[1, 2, 3],
 	)?
 	alias | expect_equal([3, 1, 2, 1])?
+}
 
-test "map enumeration, merge, and clear preserve insertion order":
+test "map enumeration, merge, and clear preserve insertion order" {
 	var original = Map[String, Int]()
 	original.add(key: "a", value: 1)
 	original.add(key: "b", value: 2)
@@ -250,10 +264,10 @@ test "map enumeration, merge, and clear preserve insertion order":
 	var observed_values List[Int] = []
 
 	merged.for_each(
-		fn key,
-		value:
+		(key, value) => {
 			observed_keys.append(key.clone())
 			observed_values.append(value)
+		}
 	)
 
 	observed_keys | expect_equal(merged.keys())?
@@ -267,8 +281,9 @@ test "map enumeration, merge, and clear preserve insertion order":
 	chain_1.length() | expect_equal(0)?
 	original.values() | expect_equal([1, 2])?
 	other.values() | expect_equal([3, 4])?
+}
 
-test "set algebra and enumeration preserve source values":
+test "set algebra and enumeration preserve source values" {
 	left := [1, 2, 3].to_set()
 	right := [3, 4].to_set()
 	left.union(other: right).values() | expect_equal([1, 2, 3, 4])?
@@ -289,8 +304,9 @@ test "set algebra and enumeration preserve source values":
 
 	var observed_left List[Int] = []
 	left.for_each(
-		fn(value) Void:
+		fn(value) Void {
 			observed_left.append(value)
+		}
 	)
 	observed_left | expect_equal(left.values())?
 
@@ -298,8 +314,9 @@ test "set algebra and enumeration preserve source values":
 	chain_8.clear()
 	chain_8 | expect_equal(empty)?
 	left.values() | expect_equal([1, 2, 3])?
+}
 
-test "string methods use Unicode scalars":
+test "string methods use Unicode scalars" {
 	"é🙂é".view(start: -2, end: 8) | expect_equal("é")?
 	"é🙂é".scalar_at(offset: 2) | expect_equal(128578)?
 
@@ -335,13 +352,17 @@ test "string methods use Unicode scalars":
 	strip := " hello ".trim
 	strip() | expect_equal("hello")?
 
-	match checked_expansion():
-		ok(_):
+	match checked_expansion() {
+		ok(_) => {
 			_completed := void
-		error(cause):
+		}
+		error(cause) => {
 			return fail(message: cause.message)
+		}
+	}
+}
 
-test "bytes have analogous immutable operations":
+test "bytes have analogous immutable operations" {
 	data := Bytes([1, 2, 3, 2])
 	data.get(index: -1) | expect_equal(2)?
 
@@ -363,8 +384,9 @@ test "bytes have analogous immutable operations":
 	1.5.to_string() | expect_equal("1.5")?
 	(1.5.is_finite()) | expect_true?
 	(not 1.5.is_nan()) | expect_true?
+}
 
-test "growth limits and invalid inputs return values":
+test "growth limits and invalid inputs return values" {
 	"abc".pad_start(target_length: 1, padding: "") | expect_equal("abc")?
 	"x".pad_start(target_length: -1, padding: " ") | expect_equal("x")?
 	"x".pad_end(target_length: 4, padding: "") | expect_equal("x")?
@@ -372,9 +394,7 @@ test "growth limits and invalid inputs return values":
 	list_limit List[Int]! := error(
 		Error("collection: limit exceeded", kind: "EOVERFLOW")
 	)
-	list_invalid List[Int]! := error(
-		Error("collection: invalid input", kind: "EINVAL")
-	)
+	list_invalid List[Int]! := error(Error("collection: invalid input", kind: "EINVAL"))
 	(
 		range_by(
 			start: 0,
@@ -392,15 +412,18 @@ test "growth limits and invalid inputs return values":
 		) | expect_equal(list_invalid)?
 	)
 	filled(value: 1, count: 2, max_items: 1) | expect_equal(list_limit)?
+}
 
-fn parity(value Int) Int:
+fn parity(value Int) Int {
 	return value % 2
+}
 
-fn default_value(key String) Int:
-	if key != "c": return -1
+fn default_value(key String) Int {
+	if key != "c" { return -1 }
 	return 3
+}
 
-test "grouping and lazy map defaults":
+test "grouping and lazy map defaults" {
 	grouped := [1, 2, 3, 4].group_by(key: parity)
 	grouped.keys() | expect_equal([1, 0])?
 	grouped.values() | expect_equal([[1, 3], [2, 4]])?
@@ -415,9 +438,10 @@ test "grouping and lazy map defaults":
 
 	var calls List[Int] = []
 
-	create := fn(key String):
+	create := fn(key String) {
 		calls.append(1)
 		return 0
+	}
 
 	original.add_default_from(key: "a", create: create)
 	original | expect_equal(original)?
@@ -431,8 +455,9 @@ test "grouping and lazy map defaults":
 	(not (chain_10.values() == [1, 3])) | expect_false?
 	original.values() | expect_equal([1])?
 	calls.length() | expect_equal(0)?
+}
 
-fn verify_text_and_numbers() Void!:
+fn verify_text_and_numbers() Void! {
 	(
 		(common_result(result: "é".normalize(form: "NFC", max_bytes: 2))?)
 		| expect_equal("é")?
@@ -461,13 +486,17 @@ fn verify_text_and_numbers() Void!:
 	1.5.to_precision(precision: 4) | expect_equal("1.500")?
 	12345.0.to_precision(precision: 3) | expect_equal("1.23e+4")?
 	0.000001.to_precision(precision: 2) | expect_equal("0.0000010")?
+}
 
-test "normalization, empty separators, and precision formatting":
-	match verify_text_and_numbers():
-		ok(_):
+test "normalization, empty separators, and precision formatting" {
+	match verify_text_and_numbers() {
+		ok(_) => {
 			_completed := void
-		error(cause):
+		}
+		error(cause) => {
 			return fail(message: cause.message)
+		}
+	}
 
 	"é🙂".split(separator: "") | expect_equal(["é", "🙂"])?
 
@@ -481,8 +510,9 @@ test "normalization, empty separators, and precision formatting":
 	limit String! := error(Error("string: limit exceeded", kind: "EOVERFLOW"))
 	"é".normalize(form: "invalid", max_bytes: 8) | expect_equal(invalid)?
 	"é".normalize(form: "NFD", max_bytes: 2) | expect_equal(limit)?
+}
 
-fn verify_bigint_and_regex() Void!:
+fn verify_bigint_and_regex() Void! {
 	a := big_int_of_int(value: 12)
 	b := big_int_of_int(value: 5)
 	a.add(other: b).to_string() | expect_equal("17")?
@@ -526,15 +556,20 @@ fn verify_bigint_and_regex() Void!:
 			)
 		) | expect_false?
 	)
+}
 
-test "BigInt and Regex share function implementations with methods":
-	match verify_bigint_and_regex():
-		ok(_):
+test "BigInt and Regex share function implementations with methods" {
+	match verify_bigint_and_regex() {
+		ok(_) => {
 			_completed := void
-		error(cause):
+		}
+		error(cause) => {
 			return fail(message: cause.message)
+		}
+	}
+}
 
-test "generic native methods accept omitted single-parameter labels":
+test "generic native methods accept omitted single-parameter labels" {
 	values := [1, 2]
 	values.map(stringify) | expect_equal(["1", "2"])?
 	values.map[String](stringify) | expect_equal(["1", "2"])?
@@ -546,7 +581,9 @@ test "generic native methods accept omitted single-parameter labels":
 
 	var observed_values List[Int] = []
 	values.for_each(
-		fn(value) Void:
+		fn(value) Void {
 			observed_values.append(value)
+		}
 	)
 	observed_values | expect_equal(values)?
+}

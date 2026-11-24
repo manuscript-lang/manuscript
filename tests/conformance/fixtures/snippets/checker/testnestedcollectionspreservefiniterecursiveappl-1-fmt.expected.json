@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Value:\n\tchildren Map[String, Value]\n\ntype Wrapper:\n\tentries Map[String, Node]\n\nenum Node:\n\tLeaf(value Value)\n\tChildren(values List[Wrapper])\n"
+    "fmt": "type Value {\n\tchildren Map[String, Value]\n}\n\ntype Wrapper {\n\tentries Map[String, Node]\n}\n\nenum Node {\n\tLeaf(value Value)\n\tChildren(values List[Wrapper])\n}\n"
   }
 }

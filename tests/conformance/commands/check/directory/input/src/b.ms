@@ -1,2 +1,3 @@
-fn b() Int:
+fn b() Int {
 	return "x"
+}

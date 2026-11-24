@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe() Int:\n\tshapes := [Shape.Circle(2)]\n\treturn area(shapes.get(2))\n\nexport fn main() Int:\n\treturn probe()\n"
+    "fmt": "fn probe() Int {\n\tshapes := [Shape.Circle(2)]\n\treturn area(shapes.get(2))\n}\n\nexport fn main() Int {\n\treturn probe()\n}\n"
   }
 }

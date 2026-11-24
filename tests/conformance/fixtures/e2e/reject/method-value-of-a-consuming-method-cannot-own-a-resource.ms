@@ -4,18 +4,22 @@
 // like any function value, and the receiver is handed over when it is made.
 import Closeable, print from "@std/core.ms"
 
-type Marker:
+type Marker {
 	id Int
+}
 
-fn move Marker.close() Void!:
+fn move Marker.close() Void! {
 	print("closed")
+}
 
-fn Marker.finish(flag Bool) Marker?:
-	if flag: return null
+fn Marker.finish(flag Bool) Marker? {
+	if flag { return null }
 	return self
+}
 
-fn run() Void:
+fn run() Void {
 	held := Marker(1)
 	f := held.finish
 	r := f(false)
 	print(f"{(r != null)}")
+}

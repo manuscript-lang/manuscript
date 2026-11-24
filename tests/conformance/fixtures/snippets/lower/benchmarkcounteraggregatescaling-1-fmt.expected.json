@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe() Int:\n\tvar sum = 0\n\tunrelated := 7\n"
+    "fmt": "fn probe() Int {\n\tvar sum = 0\n\tunrelated := 7\n}\n"
   }
 }

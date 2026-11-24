@@ -5,38 +5,45 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-type Counter:
+type Counter {
 	count Int
+}
 
-type Key:
+type Key {
 	id Int
 	label String
+}
 
-fn Key.equals(other Key) Bool:
+fn Key.equals(other Key) Bool {
 	return self.id == other.id
+}
 
 fn Key.hash() Int => 0
 
-fn map_values[K Hashable, V, W](values Map[K, V], transform fn(K, V) W) Map[K, W]:
+fn map_values[K Hashable, V, W](values Map[K, V], transform fn(K, V) W) Map[K, W] {
 	return values.map[W](transform)
+}
 
 fn map_keys[K Hashable, V Clonable, W Hashable](
 	values Map[K, V],
 	transform fn(K, V) W
-) Map[W, V]:
+) Map[W, V] {
 	return values.map_keys[W](transform)
+}
 
 fn reverse_map[K Hashable, V, A Clonable](
 	values Map[K, V],
 	initial A,
 	step fn(A, K, V) A
-) A:
+) A {
 	return values.fold_right[A](initial.clone(), step)
+}
 
-fn reverse_set[T Hashable, A Clonable](values Set[T], initial A, step fn(A, T) A) A:
+fn reverse_set[T Hashable, A Clonable](values Set[T], initial A, step fn(A, T) A) A {
 	return values.fold_right(initial.clone(), step)
+}
 
-test "Map transformations and directional queries are callable":
+test "Map transformations and directional queries are callable" {
 	source Map[String, Int] := {"b": 2, "a": 1}
 	mapped := source.map((k, v) => v.to_string())
 	mapped["b"] | expect_equal("2")?
@@ -58,8 +65,9 @@ test "Map transformations and directional queries are callable":
 		1,
 	)?
 	expect_equal(values.fold_right("", (acc, v) => acc + v.to_string()), "12")?
+}
 
-test "Map value transformation copies ordered snapshots and keeps independent values":
+test "Map value transformation copies ordered snapshots and keeps independent values" {
 	first := Key(2, "b")
 	second := Key(1, "a")
 	third := Key(3, "c")
@@ -72,10 +80,10 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 
 	var mapped = map_values(
 		source.clone(),
-		fn k,
-		v:
+		(k, v) => {
 			seen.append(k.label + v.count.to_string())
 			return v
+		}
 	)
 
 	seen | expect_equal(["b2", "a1", "c3"])?
@@ -92,8 +100,9 @@ test "Map value transformation copies ordered snapshots and keeps independent va
 			or source.contains(Key(5, "different"))
 		) | expect_false?
 	)
+}
 
-test "Map key transformation retains first equal keys and last values":
+test "Map key transformation retains first equal keys and last values" {
 	source Map[Int, Counter] := {
 		2: Counter(1),
 		1: Counter(2),
@@ -104,11 +113,11 @@ test "Map key transformation retains first equal keys and last values":
 
 	var mapped = map_keys(
 		source.clone(),
-		fn k,
-		v:
+		(k, v) => {
 			key := Key(k % 2, k.to_string())
 			created.append(key.clone())
 			return key
+		}
 	)
 
 	(created.length() != 4 or mapped.length() != 2) | expect_false?
@@ -125,17 +134,18 @@ test "Map key transformation retains first equal keys and last values":
 	mapped.clear()
 	mapped.add(Key(7, "fresh"), Counter(10))
 	source.length() | expect_equal(4)?
+}
 
-test "Map key transformation snapshots callbacks and keeps generic nesting":
+test "Map key transformation snapshots callbacks and keeps generic nesting" {
 	source Map[Int, Counter] := {2: Counter(2), 1: Counter(1), 3: Counter(3)}
 	var seen List[Int] = []
 	bound := source.clone().map_keys[String]
 
 	mapped := bound(
-		transform: fn k,
-		v:
+		transform: (k, v) => {
 			seen.append(k)
 			return k.to_string()
+		}
 	)
 
 	(seen != [2, 1, 3] or mapped.keys() != ["2", "1", "3"]) | expect_false?
@@ -147,17 +157,18 @@ test "Map key transformation snapshots callbacks and keeps generic nesting":
 
 	nested := values.map((k, v) => Result[Int, Error].error(Error("nested")))
 	nested["a"].err().message | expect_equal("nested")?
+}
 
-test "empty transformations skip callbacks and allocate independent storage":
+test "empty transformations skip callbacks and allocate independent storage" {
 	var empty_calls List[Int] = []
 	source := Map[String, Int]()
 
 	var mapped = source.map[Counter](
 		(
-			fn k,
-			v:
+			(k, v) => {
 				empty_calls.append(1)
 				return Counter(0)
+			}
 		)
 	)
 
@@ -166,30 +177,30 @@ test "empty transformations skip callbacks and allocate independent storage":
 
 	var keyed = source.map_keys[Key](
 		(
-			fn k,
-			v:
+			(k, v) => {
 				empty_calls.append(1)
 				return Key(0, "unused")
+			}
 		)
 	)
 
 	keyed.add(Key(1, "new"), 1)
 	(source.is_empty()) | expect_true?
 	empty_calls.is_empty() | expect_true?
+}
 
-test "Map reverse fold and last match retain ordered snapshots":
+test "Map reverse fold and last match retain ordered snapshots" {
 	source Map[String, Counter] := {"b": Counter(2), "a": Counter(1), "c": Counter(3)}
 	initial List[String] := []
 
 	var folded = reverse_map(
 		source.clone(),
 		initial.clone(),
-		fn acc,
-		k,
-		v:
+		(acc, k, v) => {
 			var next = acc.clone()
 			next.append(k + v.count.to_string())
 			return next
+		}
 	)
 
 	folded | expect_equal(["c3", "a1", "b2"])?
@@ -201,10 +212,10 @@ test "Map reverse fold and last match retain ordered snapshots":
 	var found = (
 		(
 			find(
-				predicate: fn k,
-				v:
+				predicate: (k, v) => {
 					seen.append(k.clone())
 					return k == "a"
+				}
 			)
 			or panic("called Optional.get() on null")
 		).clone()
@@ -216,8 +227,9 @@ test "Map reverse fold and last match retain ordered snapshots":
 	source["a"].count | expect_equal(1)?
 	found.key = "changed"
 	source.contains("changed") | expect_false?
+}
 
-test "Set reverse fold and last match preserve snapshots and callbacks":
+test "Set reverse fold and last match preserve snapshots and callbacks" {
 	b := Key(2, "b")
 	a := Key(1, "a")
 	c := Key(3, "c")
@@ -227,11 +239,11 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
 	var folded = reverse_set(
 		source.clone(),
 		initial.clone(),
-		fn acc,
-		v:
+		(acc, v) => {
 			var next = acc.clone()
 			next.append(v.label.clone())
 			return next
+		}
 	)
 
 	folded | expect_equal(["c", "a", "b"])?
@@ -242,17 +254,19 @@ test "Set reverse fold and last match preserve snapshots and callbacks":
 	find := source.clone().find_last
 	var found = (
 		find(
-			fn v:
+			v => {
 				seen.append(v.id)
 				return v.id == 1
+			}
 		)
 		or panic("called Optional.get() on null")
 	).clone()
 	seen | expect_equal([3, 1])?
 	found.label = "found"
 	a.label | expect_equal("a")?
+}
 
-test "empty and nonmatching reverse queries keep fold and predicate contracts":
+test "empty and nonmatching reverse queries keep fold and predicate contracts" {
 	var empty_calls List[Int] = []
 	initial List[Int] := []
 	empty_map := Map[String, Int]()
@@ -261,11 +275,10 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 
 	var map_result = map_fold(
 		step: (
-			fn acc,
-			k,
-			v:
+			(acc, k, v) => {
 				empty_calls.append(1)
 				return acc.clone()
+			}
 		),
 		initial: initial.clone(),
 	)
@@ -277,10 +290,10 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 	var set_result = set_fold(
 		initial.clone(),
 		(
-			fn acc,
-			v:
+			(acc, v) => {
 				empty_calls.append(1)
 				return acc.clone()
+			}
 		),
 	)
 
@@ -292,10 +305,10 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 		not (
 			empty_map.find_last(
 				(
-					fn k,
-					v:
+					(k, v) => {
 						empty_calls.append(1)
 						return false
+					}
 				)
 			) == null
 		)
@@ -304,9 +317,10 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 		not (
 			empty_set.find_last(
 				(
-					fn v:
+					v => {
 						empty_calls.append(1)
 						return false
+					}
 				)
 			) == null
 		)
@@ -318,10 +332,10 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 		(
 			not (
 				values.find_last(
-					fn k,
-					v:
+					(k, v) => {
 						seen_map.append(k.clone())
 						return false
+					}
 				) == null
 			)
 			or seen_map != ["c", "a", "b"]
@@ -334,12 +348,14 @@ test "empty and nonmatching reverse queries keep fold and predicate contracts":
 		(
 			not (
 				members.find_last(
-					fn v:
+					v => {
 						seen_set.append(v)
 						return false
+					}
 				) == null
 			)
 			or seen_set != [3, 1, 2]
 		)
 	)?
 	empty_calls.is_empty() | expect_true?
+}

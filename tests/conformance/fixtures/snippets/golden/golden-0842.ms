@@ -1,7 +1,10 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type Counter:
+type Counter {
     value Int
-impl Counter:
-    fn double() Int:
+}
+impl Counter {
+    fn double() Int {
         return self.value * 2
+    }
+}

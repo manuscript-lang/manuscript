@@ -4,6 +4,7 @@
 
 fn prepare() Result[Void, Error] => ok()
 
-fn ready_label() Result[String, Error]:
-    prepare()?
-    return ok("ready")
+fn ready_label() Result[String, Error] {
+	prepare()?
+	return ok("ready")
+}

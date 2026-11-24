@@ -12,16 +12,16 @@
         "message": "String does not satisfy Named; pass a type that already implements it",
         "position": {
           "file": "diag-failed-bound-reported-once.ms",
-          "line": 10,
+          "line": 11,
           "column": 17,
-          "offset": 252
+          "offset": 250
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/diag-failed-bound-reported-once.ms:10:17: type: String does not satisfy Named; pass a type that already implements it\n    |\n 10 |     _message := describe(\"missing\")\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/diag-failed-bound-reported-once.ms:11:17: type: String does not satisfy Named; pass a type that already implements it\n    |\n 11 |     _message := describe(\"missing\")\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

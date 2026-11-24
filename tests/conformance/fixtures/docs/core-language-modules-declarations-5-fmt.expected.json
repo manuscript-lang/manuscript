@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type PrivateToken:\n\tvalue String\n\n// Rejected: callers cannot name the internal result type.\nexport fn issue() PrivateToken:\n\treturn PrivateToken(\"token\")\n"
+    "fmt": "type PrivateToken {\n\tvalue String\n}\n\n// Rejected: callers cannot name the internal result type.\nexport fn issue() PrivateToken {\n\treturn PrivateToken(\"token\")\n}\n"
   }
 }

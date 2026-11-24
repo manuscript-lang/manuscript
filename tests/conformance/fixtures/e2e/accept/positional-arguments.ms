@@ -6,43 +6,53 @@ fn subtract(amount Int, deduction Int) Int => amount - deduction
 
 fn first[T](left T, right T) T => left
 
-fn pick[T](items List[T], keep fn(T) Bool) T?:
-	for item in items:
-		if keep(item): return item
+fn pick[T](items List[T], keep fn(T) Bool) T? {
+	for item in items {
+		if keep(item) { return item }
+	}
 	return null
+}
 
-type Counter:
+type Counter {
 	value Int = 0
+}
 
-fn mark(var counter Counter, value Int) Int:
+fn mark(var counter Counter, value Int) Int {
 	counter.value = counter.value * 10 + value
 	return value
+}
 
-fn chosen(var counter Counter) fn(Int, Int) Int:
+fn chosen(var counter Counter) fn(Int, Int) Int {
 	mark(counter, 1)
 	return subtract
+}
 
 fn ordered(
 	var counter Counter,
 	first Int = mark(counter, 3),
 	second Int = mark(counter, 4),
 	third Int = 0,
-) Int:
+) Int {
 	counter.value = counter.value * 10 + 5
 	return first + second + third
+}
 
-type Record[T]:
+type Record[T] {
 	first T
 	second T = first
+}
 
-enum Choice[T]:
+enum Choice[T] {
 	Pair(first T, second T)
+}
 
-interface Subtract:
+interface Subtract {
 	fn subtract(amount Int, deduction Int) Int
+}
 
-type Offset:
+type Offset {
 	value Int
+}
 
 fn Offset.subtract(amount Int, deduction Int = self.value) Int => amount - deduction
 
@@ -52,7 +62,7 @@ fn optional(value Int?, fallback Int = 0) Int => value or fallback
 
 fn required_before_default(second Int, first Int = 9) Int => first - second
 
-test "positional labeled mixed and identifier calls":
+test "positional labeled mixed and identifier calls" {
 	amount := 10
 	deduction := 3
 	expect_false(
@@ -73,8 +83,9 @@ test "positional labeled mixed and identifier calls":
 			or required_before_default(second: 2, 5) != 3
 		)
 	)?
+}
 
-test "generic calls constructors and callback inference":
+test "generic calls constructors and callback inference" {
 	expect_false(first(3, 4) != 3 or first[Int](right: 4, 3) != 3)?
 	expect_equal(pick([1, 2], item => item > 1) or 0, 2)?
 	expect_equal(pick(keep: item => item > 1, [1, 2]) or 0, 2)?
@@ -88,21 +99,26 @@ test "generic calls constructors and callback inference":
 	shorthand := Record(second, first)
 	expect_false(shorthand.first != 3 or shorthand.second != 4)?
 
-	match Choice.Pair(second: "right", "left"):
-		Pair(left, right):
+	match Choice.Pair(second: "right", "left") {
+		Pair(left, right) => {
 			expect_false(left != "left" or right != "right")?
+		}
+	}
 
-	match Choice[Int].Pair(3, 4):
-		Pair(left, right):
+	match Choice[Int].Pair(3, 4) {
+		Pair(left, right) => {
 			expect_false(left != 3 or right != 4)?
+		}
+	}
 
 	sum := [1, 2, 3].fold(0, (total, item) => total + item)
 	reordered_sum := [1, 2, 3].fold(step: (total, item) => total + item, 0)
 	explicit_sum := [1, 2, 3].fold[Int](0, (total, item) => total + item)
 	expect_false((sum != 6 or reordered_sum != 6 or explicit_sum != 6))?
 	expect_false(optional(4) != 4 or optional(null, 2) != 2)?
+}
 
-test "methods native APIs function values and contextual labels":
+test "methods native APIs function values and contextual labels" {
 	offset := Offset(3)
 	bound := offset.subtract
 	view Subtract := offset
@@ -135,8 +151,9 @@ test "methods native APIs function values and contextual labels":
 	add(value: 8, 2)
 	expect_false(memo[1] != 7 or memo[2] != 8)?
 	expect_equal("abcd".slice(1, 3), "bc")?
+}
 
-test "written order before omitted defaults and body":
+test "written order before omitted defaults and body" {
 	var counter = Counter()
 	total := ordered(counter, third: mark(counter, 1), mark(counter, 2))
 	expect_false(total != 7 or counter.value != 1245)?
@@ -152,11 +169,12 @@ test "written order before omitted defaults and body":
 	var early = 7
 	selected := first(
 		early,
-		match present(0):
-			_value:
+		match present(0) {
+			_value => {
 				early = 9
 				0
-			null => 0
+			} null => 0
+		}
 	)
 	expect_equal(selected, 7)?
 
@@ -165,18 +183,22 @@ test "written order before omitted defaults and body":
 
 	result := receiver.subtract(10)
 	expect_equal(result, 1)?
+}
 
-test "callable expression precedes positional arguments":
+test "callable expression precedes positional arguments" {
 	var counter = Counter()
 	result := chosen(counter)(mark(counter, 2), mark(counter, 3))
 	expect_false(result != -1 or counter.value != 123)?
+}
 
-test "a mutable callable value is called in place":
+test "a mutable callable value is called in place" {
 	var selected = subtract
 	selected = fn(amount Int, deduction Int) Int => (amount + deduction)
 
 	result := selected(10, 3)
 	expect_equal(result, 13)?
+}
 
-fn present[T](value T) T?:
+fn present[T](value T) T? {
 	return value
+}

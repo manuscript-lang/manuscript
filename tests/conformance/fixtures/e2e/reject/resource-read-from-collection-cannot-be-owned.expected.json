@@ -12,20 +12,9 @@
         "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 18,
-          "column": 20,
-          "offset": 505
-        }
-      },
-      {
-        "code": "MS3000",
-        "phase": "type",
-        "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
-        "position": {
-          "file": "resource-read-from-collection-cannot-be-owned.ms",
           "line": 21,
           "column": 20,
-          "offset": 585
+          "offset": 515
         }
       },
       {
@@ -34,9 +23,20 @@
         "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 26,
+          "line": 25,
+          "column": 20,
+          "offset": 598
+        }
+      },
+      {
+        "code": "MS3000",
+        "phase": "type",
+        "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
+        "position": {
+          "file": "resource-read-from-collection-cannot-be-owned.ms",
+          "line": 31,
           "column": 26,
-          "offset": 702
+          "offset": 718
         }
       },
       {
@@ -45,9 +45,9 @@
         "message": "`handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 28,
+          "line": 33,
           "column": 30,
-          "offset": 737
+          "offset": 753
         }
       },
       {
@@ -56,16 +56,16 @@
         "message": "`names.get(..)` reads an element that `names` keeps, and this position would own it too; store `.clone()` of it, or use it in place",
         "position": {
           "file": "resource-read-from-collection-cannot-be-owned.ms",
-          "line": 45,
+          "line": 51,
           "column": 22,
-          "offset": 1249
+          "offset": 1268
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/resource-read-from-collection-cannot-be-owned.ms:18:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 18 |     return handles.get(i)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:21:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 21 |     return handles.get(key)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:26:26: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 26 |     moved.append(handles.get(0))\n    |                          ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:28:30: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 28 |     holder := Holder(handles.get(1))\n    |                              ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:45:22: type: `names.get(..)` reads an element that `names` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 45 |     out.append(names.get(0))\n    |                      ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/resource-read-from-collection-cannot-be-owned.ms:21:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 21 |     return handles.get(i)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:25:20: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 25 |     return handles.get(key)\n    |                    ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:31:26: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 31 |     moved.append(handles.get(0))\n    |                          ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:33:30: type: `handles.get(..)` reads an element that `handles` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 33 |     holder := Holder(handles.get(1))\n    |                              ^\n<DIR>/resource-read-from-collection-cannot-be-owned.ms:51:22: type: `names.get(..)` reads an element that `names` keeps, and this position would own it too; store `.clone()` of it, or use it in place\n    |\n 51 |     out.append(names.get(0))\n    |                      ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -19,43 +19,50 @@ import (
 // supervisor report each worker's process id on standard error.
 
 // `body` with its `@URI@` replaced by the document's URI.
-fn at(body String, uri String) String:
+fn at(body String, uri String) String {
 	return body.replace("@URI@", uri)
+}
 
-fn frame(body String) Bytes:
+fn frame(body String) Bytes {
 	size := body.to_bytes().length()
 	return f"Content-Length: {size}\r\n\r\n{body}".to_bytes()
+}
 
 // Reads standard output until the text holds `needle`.
-fn wait_for(var output ReadStream[Bytes], seen String, needle String) String!:
+fn wait_for(var output ReadStream[Bytes], seen String, needle String) String! {
 	var text = seen.clone()
 
-	while not text.contains(needle):
+	while not text.contains(needle) {
 		chunk := within(output, 20.seconds())?
 		bytes := chunk
 
-		if bytes != null:
+		if bytes != null {
 			text += bytes.decode_utf8() or ""
-		else:
+		} else {
 			break
+		}
+	}
 
 	return ok(text)
+}
 
 // The process id in the next `ms-lsp: worker N started` line.
-fn worker_pid(var report ReadStream[String]) Int!:
+fn worker_pid(var report ReadStream[String]) Int! {
 	line := within(report, 20.seconds())?
 	text := line or ""
 	parts := text.split_once("worker ")
 	found := parts
 
-	if found != null:
+	if found != null {
 		number := found.after.split_once(" started")
 		rest := number
-		if rest != null: return parse_int(rest.before)
+		if rest != null { return parse_int(rest.before) }
+	}
 
 	return ok(0 - 1)
+}
 
-test "a killed worker is replaced and the open document is replayed":
+test "a killed worker is replaced and the open document is replayed" {
 	ms := environment()?.get("MS_UNDER_TEST") or "ms"
 	options := SpawnOptions(env: {"MS_LSP_LOG": "1"})
 	var child = spawn(ms, ["lsp"], options)?
@@ -63,7 +70,9 @@ test "a killed worker is replaced and the open document is replayed":
 	var output = child.stdout()
 	var input = child.stdin()
 	here := working_directory()?.replace("\\", "/")
-	uri := if here.starts_with("/"): f"file://{here}/main.ms" else: f"file:///{here}/main.ms"
+	uri := if here.starts_with(
+		"/"
+	) { f"file://{here}/main.ms" } else { f"file:///{here}/main.ms" }
 	first := worker_pid(report)?
 	expect_true(first > 0)?
 	input.write(
@@ -125,3 +134,4 @@ test "a killed worker is replaced and the open document is replayed":
 	input.write(frame(at("{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}", uri)))?
 	input.flush()?
 	expect_equal(child.wait(timeout: 20.seconds())?, 0)?
+}

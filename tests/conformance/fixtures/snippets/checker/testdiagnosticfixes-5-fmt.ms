@@ -1,6 +1,7 @@
 // conform: tags=formatter,numbers,parser,sets,tier-core
 // conform: phase=parse
 // conform: origin=pkg/checker/diagnostic_fixes_test.go:25 TestDiagnosticFixes
-fn f() Int:
-    s := Set[Float]()
-    return 0
+fn f() Int {
+	s := Set[Float]()
+	return 0
+}

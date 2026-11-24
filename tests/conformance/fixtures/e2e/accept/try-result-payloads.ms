@@ -6,63 +6,75 @@ import (
 	expect_equal, expect_false, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-type Failure:
+type Failure {
 	detail String
+}
 
-fn relay[T, E](result T!E, var visits List[Int]) T!E:
+fn relay[T, E](result T!E, var visits List[Int]) T!E {
 	value := result.clone()?
 	visits.append(1)
 	return ok(value)
+}
 
-fn text(result Int!Error) String!Error:
+fn text(result Int!Error) String!Error {
 	value := result.clone()?
 	return ok(value.to_string())
+}
 
-test "try preserves empty errors and skips success effects":
+test "try preserves empty errors and skips success effects" {
 	var visits List[Int] = []
 	relay(Result[Int, Error].error(Error("")), visits).is_error() | expect_true?
 	visits.length() | expect_equal(0)?
 	relay(Result[Int, Error].ok(0), visits).get() | expect_equal(0)?
 	visits.length() | expect_equal(1)?
+}
 
-test "try can change the success type":
+test "try can change the success type" {
 	(
 		text(Result[Int, Error].error(Error("failed"))).err().message
 		| expect_equal("failed")?
 	)
 	text(Result[Int, Error].ok(42)).get() | expect_equal("42")?
+}
 
-test "try retains aliases and error views":
+test "try retains aliases and error views" {
 	var visits List[Int] = []
 	original := Failure("before")
 	exact := relay(Result[Int, Failure].error(original.clone()), visits)
 	exact.err().detail | expect_equal("before")?
+}
 
-fn visit[T, E](result T!E, var visits List[Int]) T!E:
+fn visit[T, E](result T!E, var visits List[Int]) T!E {
 	visits.append(1)
 	return result
+}
 
-fn tail[T, E](result T!E, var visits List[Int]) T!E:
+fn tail[T, E](result T!E, var visits List[Int]) T!E {
 	value := visit(result, visits).clone()?
 	return ok(value)
+}
 
-type TailCleanup:
+type TailCleanup {
 	marker String
+}
 
 // Cleanup runs on a moved copy, so the marker file is the only way to observe it.
-fn move TailCleanup.close() Void!:
+fn move TailCleanup.close() Void! {
 	_written := write_file(self.marker, "closed", true).wait()
+}
 
-fn tail_cleanup(result Int!Error, var visits List[Int], marker String) Int!Error:
+fn tail_cleanup(result Int!Error, var visits List[Int], marker String) Int!Error {
 	_resource := TailCleanup(marker.clone())
 	value := visit(result, visits).clone()?
 	return ok(value)
+}
 
-fn function_tail(result (fn() Int)!Error) (fn() Int)!Error:
+fn function_tail(result (fn() Int)!Error) (fn() Int)!Error {
 	value := result.clone()?
 	return ok(value)
+}
 
-test "tail Results evaluate once and retain payload identity":
+test "tail Results evaluate once and retain payload identity" {
 	var visits List[Int] = []
 	original := Failure("before")
 	exact := tail(Result[Int, Failure].error(original), visits)
@@ -70,8 +82,9 @@ test "tail Results evaluate once and retain payload identity":
 	tail(Result[Int, Error].ok(42), visits).get() | expect_equal(42)?
 	tail(Result[Int, Error].error(Error("")), visits).is_error() | expect_true?
 	visits | expect_equal([1, 1, 1])?
+}
 
-test "tail Results preserve cleanup on success and failure":
+test "tail Results preserve cleanup on success and failure" {
 	var visits List[Int] = []
 	temporary := temporary("manuscript-tail-") | expect_ok?
 	first := f"{temporary.path()}/first"
@@ -93,9 +106,11 @@ test "tail Results preserve cleanup on success and failure":
 	)
 	visits | expect_equal([1, 1])?
 	read_file(second).wait().is_ok() | expect_true?
+}
 
-test "function Result payloads keep their calling convention":
+test "function Result payloads keep their calling convention" {
 	original := fn() Int => 42
 	wrapped := Result[fn() Int, Error].ok(original)
 	value := function_tail(wrapped)?
 	value() | expect_equal(42)?
+}

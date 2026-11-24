@@ -3,38 +3,44 @@
 // conform: origin=tests/e2e/match_bounds_test.go:32 TestBoundedMatchNative
 import Closeable from "@std/core.ms"
 
-type Count:
-    total Int
+type Count {
+	total Int
+}
 
-type Watch:
-    count Count
+type Watch {
+	count Count
+}
 
-fn move Watch.close() Void!:
-    self.count.total += 10
+fn move Watch.close() Void! {
+	self.count.total += 10
+}
 
-fn next(count Count) Int:
-    _watch := Watch(count)
-    count.total += 1
-    return 0
+fn next(count Count) Int {
+	_watch := Watch(count)
+	count.total += 1
+	return 0
+}
 
 fn unknown(s Shape) Int => return area(s)
 
-export fn main() Int:
-    shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
-    count := Count(0)
-    if area(shapes.get(next(count) * 0)) != 6: return 1
-    if count.total != 11: return 2
-    if area(shapes.get(next(count))) != 6: return 5
-    if count.total != 22: return 6
-    if unknown(Shape.Tri(4)) != 4: return 3
+export fn main() Int {
+	shapes := [Shape.Circle(2), Shape.Square(3), Shape.Tri(4)]
+	count := Count(0)
+	if area(shapes.get(next(count) * 0)) != 6 { return 1 }
+	if count.total != 11 { return 2 }
+	if area(shapes.get(next(count))) != 6 { return 5 }
+	if count.total != 22 { return 6 }
+	if unknown(Shape.Tri(4)) != 4 { return 3 }
 
-    var sum = 0
-    var i = 0
+	var sum = 0
+	var i = 0
 
-    while i < 321:
-        sum += area(shapes.get(i % 3))
-        i += 1
+	while i < 321 {
+		sum += area(shapes.get(i % 3))
+		i += 1
+	}
 
-    if sum != 2033: return 4
+	if sum != 2033 { return 4 }
 
-    return 0
+	return 0
+}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn id[T](x T) T:\n\treturn x\n\nfn f() Int:\n\tg := id\n\treturn g(1)\n"
+    "fmt": "fn id[T](x T) T {\n\treturn x\n}\n\nfn f() Int {\n\tg := id\n\treturn g(1)\n}\n"
   }
 }

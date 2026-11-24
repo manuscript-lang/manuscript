@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(value Int = 1) Int:\n\treturn value\n\nfn make() fn(Int) Int:\n\treturn f\n\nfn call() Int:\n\treturn make()()\n"
+    "fmt": "fn f(value Int = 1) Int {\n\treturn value\n}\n\nfn make() fn(Int) Int {\n\treturn f\n}\n\nfn call() Int {\n\treturn make()()\n}\n"
   }
 }

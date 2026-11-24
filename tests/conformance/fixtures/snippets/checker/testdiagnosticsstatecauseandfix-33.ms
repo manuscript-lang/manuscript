@@ -1,11 +1,14 @@
 // conform: tags=alternatives,diagnostics,generics,match,records,strings,tier-core
 // conform: phase=check
 // conform: origin=pkg/checker/hints_test.go:52 TestDiagnosticsStateCauseAndFix
-enum Choice[T]:
-    Found(value T)
-    Missing
+enum Choice[T] {
+	Found(value T)
+	Missing
+}
 
-fn f(c Choice[Int]) Int:
-    match c:
-        Choice[String].Found(v) => return 1
-        Choice[String].Missing => return 0
+fn f(c Choice[Int]) Int {
+	match c {
+		Choice[String].Found(v) => return 1
+		Choice[String].Missing => return 0
+	}
+}

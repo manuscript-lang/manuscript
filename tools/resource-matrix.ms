@@ -48,7 +48,7 @@ fn main() Void:
 
 // One standard operation: the receiver it runs on, its method, its arguments (`@V@` is
 // the resource argument) and what to do with a result.
-type Operation:
+type Operation {
 	name String
 	setup String
 	receiver String
@@ -56,6 +56,7 @@ type Operation:
 	arguments String
 	binds String
 	uses String
+}
 
 fn op(
 	move name String,
@@ -65,22 +66,25 @@ fn op(
 	move arguments String,
 	move binds String,
 	move uses String,
-) Operation:
+) Operation {
 	return Operation(name, setup, receiver, method, arguments, binds, uses)
+}
 
 fn list_setup() String => return "var items = [mk(1)]"
 
 fn map_setup() String => return "var items = Map[Int, Marker]()\n    items.add(1, mk(1))"
 
-fn optional_setup(present Bool) String:
-	if present: return "held: Marker? := mk(1)"
+fn optional_setup(present Bool) String {
+	if present { return "held: Marker? := mk(1)" }
 	return "held: Marker? := none"
+}
 
-fn result_setup(good Bool) String:
-	if good: return "held: Marker!Error := ok(mk(1))"
+fn result_setup(good Bool) String {
+	if good { return "held: Marker!Error := ok(mk(1))" }
 	return "held: Marker!Error := error(Error(\"x\"))"
+}
 
-fn operations() List[Operation]:
+fn operations() List[Operation] {
 	return [
 		op("list_append", list_setup(), "items", "append", "@V@", "", ""),
 		op("list_prepend", list_setup(), "items", "prepend", "@V@", "", ""),
@@ -234,11 +238,12 @@ fn operations() List[Operation]:
 			"print(f\"{r.is_some()}\")",
 		),
 	]
+}
 
 // Standard operations that mention a type parameter and need no matrix row, each with
 // the reason. An operation that returns, stores or discards a `T` does not belong here:
 // add a row to `operations()`.
-fn exempt() List[String]:
+fn exempt() List[String] {
 	return [
 		"List.max: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
 		"List.min: returns a copy of a Comparable and Clonable element, so a resource cannot reach it",
@@ -256,91 +261,105 @@ fn exempt() List[String]:
 		"Set.filter: gap: the matrix has no Hashable resource, so sets are not exercised yet",
 		"Set.find: gap: the matrix has no Hashable resource, so sets are not exercised yet"
 	]
+}
 
 // The type parameters of the standard type `name`, as the declarations write them.
-fn type_parameters(name String) List[String]:
-	if name == "Map": return ["T", "U"]
-	if name == "Result": return ["T", "E"]
+fn type_parameters(name String) List[String] {
+	if name == "Map" { return ["T", "U"] }
+	if name == "Result" { return ["T", "E"] }
 
 	return ["T"]
+}
 
 // The words of a signature, split at the punctuation of types.
-fn words(text String) List[String]:
+fn words(text String) List[String] {
 	var spaced = text.clone()
-	for mark in ["(", ")", "[", "]", ",", ":", "?", "!", "=", "&", "<", ">", ";"]:
+	for mark in ["(", ")", "[", "]", ",", ":", "?", "!", "=", "&", "<", ">", ";"] {
 		spaced = spaced.replace(mark, " ")
+	}
 
 	var found = List[String]()
-	for word in spaced.split(" "):
-		if word != "": found.append(word.clone())
+	for word in spaced.split(" ") {
+		if word != "" { found.append(word.clone()) }
+	}
 	return found
+}
 
 // Whether the declaration `signature` changes its receiver, or takes or returns one of
 // `names` outside a callback.
-fn mentions_parameter(signature String, names List[String]) Bool:
-	if signature.contains("var fn"): return true
+fn mentions_parameter(signature String, names List[String]) Bool {
+	if signature.contains("var fn") { return true }
 
 	parts := signature.split("fn ")
-	if parts.length() < 2: return false
+	if parts.length() < 2 { return false }
 
 	var depth = 0
 	var outside = ""
 	var result = ""
 
-	for c in parts[1].chars():
-		if c == "(": depth += 1
-		if depth == 0 and c != ")": result = f"{result}{c}"
-		if depth == 1 and c != "(": outside = f"{outside}{c}"
-		if c == ")": depth -= 1
+	for c in parts[1].chars() {
+		if c == "(" { depth += 1 }
+		if depth == 0 and c != ")" { result = f"{result}{c}" }
+		if depth == 1 and c != "(" { outside = f"{outside}{c}" }
+		if c == ")" { depth -= 1 }
+	}
 
-	for word in words(f"{outside} {result}"):
-		if names.contains(word): return true
+	for word in words(f"{outside} {result}") {
+		if names.contains(word) { return true }
+	}
 	return false
+}
 
-fn field(entry JsonValue, key String) String:
+fn field(entry JsonValue, key String) String {
 	value := entry.get(key)
-	if value != null: return (value.as_string() or "").clone()
+	if value != null { return (value.as_string() or "").clone() }
 
 	return ""
+}
 
 // Every `Type.operation` of the standard type whose declaration mentions a type
 // parameter.
-fn declared_operations(ms String, name String) List[String]!:
+fn declared_operations(ms String, name String) List[String]! {
 	ran := run(ms, ["search_symbol", f"prelude.{name}", "--json", "--limit", "300"]).wait()?
 	page := parse(ran.stdout.decode_utf8() or "")?
 	var found = List[String]()
 	names := type_parameters(name.clone())
 	all := page.get("matches")
 
-	if all != null:
-		for entry in (all.as_list() or []):
-			if field(entry, "kind") != "operation": continue
-			if not mentions_parameter(field(entry, "type"), names.clone()): continue
+	if all != null {
+		for entry in (all.as_list() or []) {
+			if field(entry, "kind") != "operation" { continue }
+			if not mentions_parameter(field(entry, "type"), names.clone()) { continue }
 
 			last := field(entry, "name").split(".")
 			found.append(f"{name}.{last[last.length() - 1]}")
+		}
+	}
 
 	return ok(found)
+}
 
 // How many standard operations that mention a type parameter have neither a row nor a
 // reason.
-fn uncovered(ms String, ops List[Operation]) Int:
+fn uncovered(ms String, ops List[Operation]) Int {
 	var known = List[String]()
 	kinds := ["list", "map", "set", "optional", "result"]
 	titles := ["List", "Map", "Set", "Optional", "Result"]
-	for o in ops:
-		for i in 0..kinds.length():
-			if o.name.starts_with(f"{kinds[i]}_"): known.append(
-				f"{titles[i]}.{o.method}"
-			)
-	for line in exempt(): known.append(line.split(":")[0].clone())
+	for o in ops {
+		for i in 0..kinds.length() {
+			if o.name.starts_with(f"{kinds[i]}_") {
+				known.append(f"{titles[i]}.{o.method}")
+			}
+		}
+	}
+	for line in exempt() { known.append(line.split(":")[0].clone()) }
 
 	var missing = 0
 
-	for title in titles:
+	for title in titles {
 		listed := declared_operations(ms.clone(), title.clone())
 
-		if listed.is_error():
+		if listed.is_error() {
 			missing += 1
 			(
 				stdout()
@@ -350,9 +369,10 @@ fn uncovered(ms String, ops List[Operation]) Int:
 				.get()
 			)
 			continue
+		}
 
-		for name in listed.get():
-			if known.contains(name): continue
+		for name in listed.get() {
+			if known.contains(name) { continue }
 
 			missing += 1
 			(
@@ -362,80 +382,91 @@ fn uncovered(ms String, ops List[Operation]) Int:
 				)
 				.get()
 			)
+		}
+	}
 
 	return missing
+}
 
 // The program for `o`, called as `call_form` (`direct` or `bound`), with its resource
 // argument made as `arg_form`.
-fn program(o Operation, call_form String, arg_form String) String:
+fn program(o Operation, call_form String, arg_form String) String {
 	var lines = [o.setup.clone()]
 	var argument = ""
 
-	if o.arguments.contains("@V@"):
+	if o.arguments.contains("@V@") {
 		var value = "mk(2)"
 
-		if arg_form == "named":
+		if arg_form == "named" {
 			lines.append("v := mk(2)")
 			value = "v"
+		}
 
 		argument = o.arguments.replace("@V@", value)
-	else:
+	} else {
 		argument = o.arguments.clone()
+	}
 
-	if call_form == "bound":
+	if call_form == "bound" {
 		lines.append(f"f := {o.receiver}.{o.method}")
 		lines.append(f"{o.binds}f({argument})")
-	else:
+	} else {
 		lines.append(f"{o.binds}{o.receiver}.{o.method}({argument})")
+	}
 
-	if o.uses != "": lines.append(o.uses.clone())
+	if o.uses != "" { lines.append(o.uses.clone()) }
 
 	var body = ""
-	for line in lines: body = f"{body}    {line}\n"
+	for line in lines { body = f"{body}    {line}\n" }
 	return f"{HEADER}\n{body}\n{FOOTER}\n"
+}
 
 // How many times `prefix` + `id` appears as a line, for each id made.
-fn count(lines List[String], prefix String) Map[String, Int]:
+fn count(lines List[String], prefix String) Map[String, Int] {
 	var counts = Map[String, Int]()
 
-	for line in lines:
-		if not line.starts_with(prefix): continue
+	for line in lines {
+		if not line.starts_with(prefix) { continue }
 
 		key := line.trim()
 		counts.add(key.clone(), counts.get_or(key.clone(), 0) + 1)
+	}
 
 	return counts
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root)
 	scratch := temporary("ms-matrix-").get()
 	var filter = ""
-	for a in arguments(): filter = a.clone()
+	for a in arguments() { filter = a.clone() }
 
 	var checked = 0
 	var rejected = 0
 	var failures = uncovered(ms.clone(), operations())
 
-	for o in operations():
-		for call_form in ["direct", "bound"]:
-			for arg_form in ["temporary", "named"]:
+	for o in operations() {
+		for call_form in ["direct", "bound"] {
+			for arg_form in ["temporary", "named"] {
 				name := f"{o.name}_{call_form}_{arg_form}"
-				if filter != "" and not name.contains(filter): continue
+				if filter != "" and not name.contains(
+					filter
+				) { continue }
 
 				file := f"{scratch.path()}/{name}.ms"
 				write_file(file, program(o, call_form, arg_form)).wait().get()
 
 				verdict := run(ms.clone(), ["check", file.clone()]).wait()
 
-				if verdict.is_error() or verdict.get().exit_code != 0:
+				if verdict.is_error() or verdict.get().exit_code != 0 {
 					rejected += 1
 
 					why := verdict.get().stderr.decode_utf8() or ""
 
 					// Only a checker rule may reject a combination; a program that does
 					// not parse is this tool's bug.
-					if why.contains(": parse:"):
+					if why.contains(": parse:") {
 						failures += 1
 						(
 							stdout()
@@ -444,12 +475,14 @@ fn main() Int:
 							)
 							.get()
 						)
-					else if filter != "":
+					} else if filter != "" {
 						print(f"rejected {name}: {why}")
+					}
 
 					continue
+				}
 
-				for build in ["debug", "release"]:
+				for build in ["debug", "release"] {
 					checked += 1
 
 					ran := run(
@@ -462,7 +495,7 @@ fn main() Int:
 						],
 					).wait()
 
-					if ran.is_error():
+					if ran.is_error() {
 						failures += 1
 						(
 							stdout()
@@ -472,11 +505,12 @@ fn main() Int:
 							.get()
 						)
 						continue
+					}
 
 					child := ran.get()
 					lines := (child.stdout.decode_utf8() or "").split("\n")
 
-					if child.exit_code != 0:
+					if child.exit_code != 0 {
 						failures += 1
 
 						why := child.stderr.decode_utf8() or ""
@@ -488,31 +522,33 @@ fn main() Int:
 							.get()
 						)
 						continue
+					}
 
 					var made = List[String]()
 					var closed = List[String]()
 
-					for line in lines:
-						if line.starts_with("made-"): made.append(
-							line.slice(
-								5,
-								line.length(),
-							).clone()
-						)
-						if line.starts_with("closed-"):
+					for line in lines {
+						if line.starts_with("made-") {
+							made.append(line.slice(5, line.length()).clone())
+						}
+						if line.starts_with("closed-") {
 							closed.append(line.slice(7, line.length()).clone())
+						}
+					}
 
 					made_counts := count(lines, "made-")
 					var wrong = made.length() != closed.length()
 
-					for id in made:
+					for id in made {
 						want := made_counts.get_or(f"made-{id}", 0)
 						var have = 0
-						for c in closed:
-							if c == id: have += 1
-						if want != have: wrong = true
+						for c in closed {
+							if c == id { have += 1 }
+						}
+						if want != have { wrong = true }
+					}
 
-					if wrong:
+					if wrong {
 						failures += 1
 						(
 							stdout()
@@ -521,6 +557,11 @@ fn main() Int:
 							)
 							.get()
 						)
+					}
+				}
+			}
+		}
+	}
 
 	(
 		stdout()
@@ -530,10 +571,12 @@ fn main() Int:
 		.get()
 	)
 
-	if checked == 0:
+	if checked == 0 {
 		print("no combination ran")
 		return 1
+	}
 
-	if failures > 0: return 1
+	if failures > 0 { return 1 }
 
 	return 0
+}

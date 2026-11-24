@@ -12,22 +12,22 @@
         "message": "'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step",
         "position": {
           "file": "fix-try-on-expression-has-no-fix.ms",
-          "line": 7,
+          "line": 8,
           "column": 10,
-          "offset": 115
+          "offset": 119
         },
         "end": {
           "file": "fix-try-on-expression-has-no-fix.ms",
-          "line": 7,
+          "line": 8,
           "column": 13,
-          "offset": 118
+          "offset": 122
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-try-on-expression-has-no-fix.ms:7:10: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 7 |     v := try load() + 1\n   |          ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-try-on-expression-has-no-fix.ms:8:10: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 8 |     v := try load() + 1\n   |          ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

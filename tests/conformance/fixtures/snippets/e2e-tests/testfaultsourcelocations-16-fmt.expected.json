@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn deep(l List[Int], i Int) Int:\n\treturn l.get(i)\n\nexport fn main() Int:\n\treturn deep(l: [1], i: 5)\n"
+    "fmt": "fn deep(l List[Int], i Int) Int {\n\treturn l.get(i)\n}\n\nexport fn main() Int {\n\treturn deep(l: [1], i: 5)\n}\n"
   }
 }

@@ -7,19 +7,23 @@ LOW := 1
 HIGH Int := LOW + 9
 export LABEL := f"range {LOW}..{HIGH}"
 
-test "a constant group declares each constant":
-    expect_false(not (HIGH == 10 and LABEL == "range 1..10"))?
+test "a constant group declares each constant" {
+	expect_false(not (HIGH == 10 and LABEL == "range 1..10"))?
+}
 
-test "a var group declares mutable locals":
-    var (
-        total = 0
-        step = fn(value Int) Int:
-            return value + 1
-    )
-    total = step(total)
-    expect_equal(total, 1)?
+test "a var group declares mutable locals" {
+	var (
+		total = 0
+		step = fn(value Int) Int {
+			return value + 1
+		}
+	)
+	total = step(total)
+	expect_equal(total, 1)?
+}
 
-test "a let group declares immutable locals":
-    name := "Ada"
-    [first, second] := [1, 2]
-    expect_false(not (name == "Ada" and first + second == 3))?
+test "a let group declares immutable locals" {
+	name := "Ada"
+	[first, second] := [1, 2]
+	expect_false(not (name == "Ada" and first + second == 3))?
+}

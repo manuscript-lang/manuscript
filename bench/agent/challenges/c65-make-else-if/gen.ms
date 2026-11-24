@@ -10,25 +10,28 @@ import (
 	read_text from "../../lib/text.ms",
 )
 
-fn add(var cs Cases, name String, script String) Void:
+fn add(var cs Cases, name String, script String) Void {
 	cs.push(name, script)
+}
 
 // The entries of c56-make-lite's hidden cases.
-fn c56_inputs() List[JsonValue]:
+fn c56_inputs() List[JsonValue] {
 	doc := parse(read_text(f"{root()}/challenges/c56-make-lite/hidden/cases.json")).get_or(
 		JsonValue.Null
 	)
 	return doc.as_list() or []
+}
 
 CHAIN := "ifeq ($(MODE),debug)\nX = debug\nelse ifeq ($(MODE),release)\nX = release\nelse ifdef FAST\nX = fast\nelse ifneq ($(Y),)\nX = y\nelse\nX = none\nendif\nall:\n\t@echo $(X)\n====\n====\n"
 
-export fn gen_c65() Void:
+export fn gen_c65() Void {
 	var cs = Cases(build_oracle("c65-make-else-if"))
 
-	for entry in c56_inputs():
+	for entry in c56_inputs() {
 		name := (entry.get("name") or JsonValue.Null).as_string() or ""
 		stdin := (entry.get("stdin") or JsonValue.Null).as_string() or ""
 		add(cs, f"kept-{name}", stdin)
+	}
 
 	add(
 		cs,
@@ -152,3 +155,4 @@ export fn gen_c65() Void:
 		),
 	]
 	write_cases("c65-make-else-if", examples, cs.list)
+}

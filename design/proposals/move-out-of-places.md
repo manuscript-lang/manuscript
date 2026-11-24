@@ -27,11 +27,12 @@ Cost is not measured yet. For `PriorityQueue[String]` each sift level allocates 
 
 ```manuscript
 // Prelude, from @std/core.ms
-fn replace[T](var place T, value T) T: ...
-fn swap[T](var a T, var b T) Unit: ...
+fn replace[T](var place T, value T) T { ... }
+fn swap[T](var a T, var b T) Unit { ... }
 
-impl List[T]:
+impl List[T] {
     var fn swap(i: Int, j: Int) Unit: ...
+}
 ```
 
 - `replace(var xs[i], none)` takes an `Optional` slot. `replace(var self.head, next)` moves a field. Both accept any place a `var` argument accepts today (`shift(var pts[i], dx)` is already in `lowering-element-places.ms`).
@@ -43,13 +44,15 @@ impl List[T]:
 Queue with the primitives (no clones):
 
 ```manuscript
-var fn dequeue() Optional[T]:
-    if self.head >= self.items.length():
+var fn dequeue() Optional[T] {
+    if self.head >= self.items.length() {
         return none
+    }
 
     value := replace(var self.items[self.head], none)
     self.head += 1
     return value
+}
 ```
 
 Binary heap: `dequeue` does `self.heap.swap(0, last)`, `pop()`, then sifts with `swap`. A swap-based sift moves three words per level where the hole technique moves one; both are memcpy and neither allocates, so the hole technique is not worth new language surface.

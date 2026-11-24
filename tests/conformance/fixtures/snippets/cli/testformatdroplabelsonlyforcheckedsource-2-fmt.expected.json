@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn total(left Int) Int:\n\treturn add(left: left)\n"
+    "fmt": "fn total(left Int) Int {\n\treturn add(left: left)\n}\n"
   }
 }

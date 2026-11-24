@@ -78,26 +78,26 @@
           "file": "fix-const-and-pass.ms",
           "line": 8,
           "column": 9,
-          "offset": 131
+          "offset": 133
         },
         "end": {
           "file": "fix-const-and-pass.ms",
           "line": 8,
           "column": 13,
-          "offset": 135
+          "offset": 137
         },
         "fix": {
           "position": {
             "file": "fix-const-and-pass.ms",
             "line": 8,
             "column": 9,
-            "offset": 131
+            "offset": 133
           },
           "end": {
             "file": "fix-const-and-pass.ms",
             "line": 8,
             "column": 13,
-            "offset": 135
+            "offset": 137
           },
           "replacement": "void"
         }

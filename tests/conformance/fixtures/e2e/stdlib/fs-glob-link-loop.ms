@@ -10,17 +10,20 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-fn matched_paths(root String, options GlobOptions) List[String]!:
+fn matched_paths(root String, options GlobOptions) List[String]! {
 	entries := glob(root, options)?
 	return ok(entries.map(fn(entry PathEntry) String => entry.path.clone()))
+}
 
-test "glob following links skips dangling and looping links like any link without a directory":
+test "glob following links skips dangling and looping links like any link without a directory" {
 	directory := temporary("manuscript-glob-loop-")?
 	root := directory.path()
 	write_file(f"{root}/a.txt", "file").wait()?
 	create_symlink(f"{root}/dangling", f"{root}/nowhere")?
 	create_symlink(f"{root}/loop", f"{root}/loop")?
 
-	for follow in [false, true]:
+	for follow in [false, true] {
 		options := GlobOptions(patterns: ["*"], follow_links: follow)
 		expect_equal(matched_paths(root, options)?, ["a.txt", "dangling", "loop"])?
+	}
+}

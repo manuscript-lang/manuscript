@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn call() Void:\n\t_value Int? := 4\n"
+    "fmt": "fn call() Void {\n\t_value Int? := 4\n}\n"
   }
 }

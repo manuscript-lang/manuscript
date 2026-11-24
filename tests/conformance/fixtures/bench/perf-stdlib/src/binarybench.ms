@@ -1,38 +1,46 @@
-import bench, words from "./harness.ms"
-import base64_encode, base64_decode, hex_encode from "@std/data/encoding.ms"
-import sha256 from "@std/crypto/crypto.ms"
-import BytesBuilder from "@std/bytes.ms"
+import (
+	BytesBuilder from "@std/bytes.ms",
+	sha256 from "@std/crypto/crypto.ms",
+	base64_decode, base64_encode, hex_encode from "@std/data/encoding.ms",
 
-export fn bench_binary() Void:
-    blob := words(20000).join(",").to_bytes()
-    bench(
-        "encoding.base64_encode", blob.length(),
-        fn() Int => return base64_encode(blob).length()
-    )
+	bench, words from "./harness.ms",
+)
 
-    b64 := base64_encode(blob)
+export fn bench_binary() Void {
+	blob := words(20000).join(",").to_bytes()
+	bench(
+		"encoding.base64_encode",
+		blob.length(),
+		fn() Int => return base64_encode(blob).length()
+	)
 
-    bench(
-        "encoding.base64_decode",
-        blob.length(),
-        fn() Int:
-            if b := base64_decode(b64):
-                return b.length()
+	b64 := base64_encode(blob)
 
-            return 0
-    )
+	bench(
+		"encoding.base64_decode",
+		blob.length(),
+		fn() Int {
+			if b := base64_decode(b64) {
+				return b.length()
+			} return 0
+		}
+	)
 
-    bench(
-        "encoding.hex_encode", blob.length(), fn() Int => return hex_encode(blob).length()
-    )
-    bench("crypto.sha256", blob.length(), fn() Int => return sha256(blob).length())
+	bench(
+		"encoding.hex_encode",
+		blob.length(),
+		fn() Int => return hex_encode(blob).length()
+	)
+	bench("crypto.sha256", blob.length(), fn() Int => return sha256(blob).length())
 
-    bench(
-        "bytes.builder",
-        100000,
-        fn() Int:
-            var bb = BytesBuilder()
-            for j in 0..100000:
-                bb.append(j % 256)
-            return bb.build().length()
-    )
+	bench(
+		"bytes.builder",
+		100000,
+		fn() Int {
+			var bb = BytesBuilder()
+			for j in 0..100000 {
+				bb.append(j % 256)
+			} return bb.build().length()
+		}
+	)
+}

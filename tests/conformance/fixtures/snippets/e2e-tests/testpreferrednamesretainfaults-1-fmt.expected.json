@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "test \"new set\":\n\t[1].set(1, 2)\n\ntest \"bound set\":\n\tvar items = [1]\n\tset := items.set\n\tset(-2, 2)\n\ntest \"new remove\":\n\t[1].remove(1)\n\ntest \"bound remove\":\n\tvar items = [1]\n\tremove := items.remove\n\tremove(-2)\n\ntest \"empty set\":\n\tvar items List[Int] = []\n\titems.set(0, 2)\n\ntest \"empty remove\":\n\tvar items List[Int] = []\n\titems.remove(0)\n\ntest \"continues\":\n\tvar result = [1]\n\tresult.set(0, 2)\n\tresult.remove(0)\n"
+    "fmt": "test \"new set\" {\n\t[1].set(1, 2)\n}\n\ntest \"bound set\" {\n\tvar items = [1]\n\tset := items.set\n\tset(-2, 2)\n}\n\ntest \"new remove\" {\n\t[1].remove(1)\n}\n\ntest \"bound remove\" {\n\tvar items = [1]\n\tremove := items.remove\n\tremove(-2)\n}\n\ntest \"empty set\" {\n\tvar items List[Int] = []\n\titems.set(0, 2)\n}\n\ntest \"empty remove\" {\n\tvar items List[Int] = []\n\titems.remove(0)\n}\n\ntest \"continues\" {\n\tvar result = [1]\n\tresult.set(0, 2)\n\tresult.remove(0)\n}\n"
   }
 }

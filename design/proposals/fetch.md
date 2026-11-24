@@ -25,19 +25,22 @@ Reuse the server's types. `HttpMethod`, `HttpHeaders`, `HttpError`, `Bytes` and 
 ```manuscript
 import fetch, FetchOptions, json_body from "@std/net/fetch.ms"
 
-type User:
+type User {
     name String
+}
 
-fn load() Result[User, FetchError]:
+fn load() Result[User, FetchError] {
     response := try fetch("https://example.com/user/1")
     return read_json[User](response)
+}
 
-fn create(user: User) Result[Int, FetchError]:
+fn create(user: User) Result[Int, FetchError] {
     response := try fetch(
         "https://example.com/users",
         FetchOptions(method: HttpMethod.Post, body: try json_body(user))
     )
     return ok(try response.error_for_status().status)
+}
 ```
 
 API (all in `@std/net/fetch.ms`):

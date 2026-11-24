@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=pkg/compiler/counter_aggregate_test.go:77 TestCounterAggregatePrivateCellSelection
-fn probe() Int:
-    cell := Cell(0)
+fn probe() Int {
+	cell := Cell(0)
+}

@@ -1,8 +1,11 @@
-fn work(n Int) Int:
+fn work(n Int) Int {
 	var total = 0
-	for i in 0..n:
+	for i in 0..n {
 		total += i
+	}
 	return total
+}
 
-bench "sum":
+bench "sum" {
 	work(1000)
+}

@@ -3,64 +3,79 @@
 // conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
-fn next_sum(a List[Int]) Int:
-    var t = 0
-    for i in 0..a.length() - 1:
-        t = t + a[i + 1]
-    return t
+fn next_sum(a List[Int]) Int {
+	var t = 0
+	for i in 0..a.length() - 1 {
+		t += a[i + 1]
+	}
+	return t
+}
 
-fn mirror(a List[Int]) Int:
-    var b = a.clone()
+fn mirror(a List[Int]) Int {
+	var b = a.clone()
 
-    for i in 0..b.length() / 2:
-        j := b.length() - 1 - i
-        t := b[i]
-        b[i] = b[j]
-        b[j] = t
+	for i in 0..b.length() / 2 {
+		j := b.length() - 1 - i
+		t := b[i]
+		b[i] = b[j]
+		b[j] = t
+	}
 
-    return b[0] * 100 + b[b.length() - 1]
+	return b[0] * 100 + b[b.length() - 1]
+}
 
-fn stride(a List[Int]) Int:
-    var t = 0
-    for i in 0..a.length() / 3:
-        t = t + a[i * 3] + a[i * 3 + 2]
-    return t
+fn stride(a List[Int]) Int {
+	var t = 0
+	for i in 0..a.length() / 3 {
+		t = t + a[i * 3] + a[i * 3 + 2]
+	}
+	return t
+}
 
-fn search(a List[Int], want Int) Int:
-    var lo = 0
-    var hi = a.length() - 1
+fn search(a List[Int], want Int) Int {
+	var lo = 0
+	var hi = a.length() - 1
 
-    while lo <= hi:
-        mid := lo + (hi - lo) / 2
-        if a[mid] == want:
-            return mid
+	while lo <= hi {
+		mid := lo + (hi - lo) / 2
+		if a[mid] == want {
+			return mid
+		}
 
-        if a[mid] < want:
-            lo = mid + 1
-        else:
-            hi = mid - 1
+		if a[mid] < want {
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
 
-    return -1
+	return -1
+}
 
-fn nested(g List[List[Int]]) Int:
-    var t = 0
-    for i in 0..g.length():
-        for j in 0..g[i].length():
-            t = t + g[i][j]
-    return t
+fn nested(g List[List[Int]]) Int {
+	var t = 0
+	for i in 0..g.length() {
+		for j in 0..g[i].length() {
+			t += g[i][j]
+		}
+	}
+	return t
+}
 
-fn checked(a List[Int], i Int) Int:
-    return a.get_or(index: i, -1)
+fn checked(a List[Int], i Int) Int {
+	return a.get_or(index: i, -1)
+}
 
-fn main() Void:
-    a := [3, 1, 4, 1, 5, 9, 2, 6]
-    void stdout().write(
-        f"{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
-    )
-    void stdout().write(
-        f"{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
-    )
-    void stdout().write(f"{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
-    void stdout().write(
-        f"{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
-    )
+fn main() Void {
+	a := [3, 1, 4, 1, 5, 9, 2, 6]
+	void stdout().write(
+		f"{next_sum(a.clone())} {mirror(a.clone())} {stride(a.clone())}\n"
+	)
+	void stdout().write(
+		f"{search([1, 3, 5, 7, 9, 11], 7)} {search([1, 3, 5, 7, 9, 11], 4)} {search([], 1)}\n"
+	)
+	void stdout().write(f"{nested([[1, 2, 3], [], [4, 5]])} {nested([])}\n")
+	void stdout().write(
+		f"{next_sum([])} {next_sum([5])} {stride([1, 2])} {checked(a.clone(), 7)}\n"
+	)
+}

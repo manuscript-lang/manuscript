@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
 // conform: origin=internal/cli/analysis_test.go:206 TestAnalysisCollectionRangesAndSymlinkConfinement
-export fn value() Int:
-    return missing
+export fn value() Int {
+	return missing
+}

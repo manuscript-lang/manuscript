@@ -12,16 +12,16 @@
         "message": "this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose",
         "position": {
           "file": "golden-1358.ms",
-          "line": 5,
+          "line": 6,
           "column": 5,
-          "offset": 118
+          "offset": 117
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1358.ms:5:5: type: this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose\n   |\n 5 |     operation()\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1358.ms:6:5: type: this statement discards Result[Void, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose\n   |\n 6 |     operation()\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -19,48 +19,58 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-type Token:
+type Token {
 	id Int
+}
 
-fn move Token.close() Void!:
+fn move Token.close() Void! {
 	return stdout().write(f"close {self.id}\n")
+}
 
-type Triple:
+type Triple {
 	first Token
 	second Token
 	third Token
+}
 
-type Nested:
+type Nested {
 	kept Token
 	omitted Triple
+}
 
-type NamedToken:
+type NamedToken {
 	id Int
 	name String
+}
 
-fn move NamedToken.close() Void!:
+fn move NamedToken.close() Void! {
 	return stdout().write(f"close {self.id}\n")
+}
 
-type NamedTriple:
+type NamedTriple {
 	first NamedToken
 	second NamedToken
 	third NamedToken
+}
 
-fn local() Void:
+fn local() Void {
 	tokens := Triple(Token(1), Token(2), Token(3))
 	{first: kept} := tokens
 	void kept.id
+}
 
-fn temporary() Void:
+fn temporary() Void {
 	{first: kept} := Triple(Token(4), Token(5), Token(6))
 	void kept.id
+}
 
-fn nested() Void:
+fn nested() Void {
 	tokens := Nested(Token(7), Triple(Token(8), Token(9), Token(10)))
 	{kept: kept} := tokens
 	void kept.id
+}
 
-fn with_storage() Void:
+fn with_storage() Void {
 	tokens := NamedTriple(
 		NamedToken(11, "first-heap-allocated-name"),
 		NamedToken(12, "second-heap-allocated-name"),
@@ -68,9 +78,11 @@ fn with_storage() Void:
 	)
 	{first: kept} := tokens
 	void kept.name.length()
+}
 
-fn main() Void:
+fn main() Void {
 	local()
 	temporary()
 	nested()
 	with_storage()
+}

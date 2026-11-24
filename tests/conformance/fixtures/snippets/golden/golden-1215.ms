@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Named:
+interface Named {
     fn name() String
-fn text(value Named) String:
+}
+fn text(value Named) String {
     return value.|
+}

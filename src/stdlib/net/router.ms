@@ -27,51 +27,60 @@ import (
 
 // The value of a slot while one holder works on it; it returns to the slot when the
 // scope ends, however it ends.
-type Held[T]:
+type Held[T] {
 	slot Int
 	// One item while held; moving it out through `pop` returns it to the slot.
 	items List[T]
 	held Bool
+}
 
-fn move Held[T].close() Void!:
-	if self.held:
+fn move Held[T].close() Void! {
+	if self.held {
 		self.held = false
 
 		value := self.items.pop()
-		if value != null:
+		if value != null {
 			put_slot(self.slot, value)
+		}
+	}
+}
 
 // Owns a slot: the scope that holds it releases the slot however the scope ends.
-type SlotOwner:
+type SlotOwner {
 	slot Int
+}
 
-fn move SlotOwner.close() Void!:
+fn move SlotOwner.close() Void! {
 	release_slot(self.slot)
 	return ok()
+}
 
 // The values a matched pattern captured, by name.
-export type RouteParams:
+export type RouteParams {
 	// Names in pattern order.
 	names List[String]
 	// The captured text for each name; a wildcard holds the remaining segments joined
 	// by `/`.
 	values List[String]
+}
 
 // Returns the text captured for `name`, or null when the pattern has no such
 // parameter.
-fn RouteParams.get(name String) String?:
+fn RouteParams.get(name String) String? {
 	index := self.names.index_of(name)
-	if index != null: return self.values[index].clone()
+	if index != null { return self.values[index].clone() }
 
 	return null
+}
 
 // Returns the text captured for `name`, or `fallback` when the pattern has no such
 // parameter.
-fn RouteParams.get_or(name String, fallback String) String:
+fn RouteParams.get_or(name String, fallback String) String {
 	return self.get(name) or fallback
+}
 
 // One segment of a route pattern.
-export enum Segment:
+export enum Segment {
 	// Matches exactly this text.
 	Literal(
 		// The exact text a request path segment must equal, case-sensitively.
@@ -87,10 +96,11 @@ export enum Segment:
 		// The name `RouteParams.get` finds the remaining path under.
 		name String
 	)
+}
 
 // A registered route: the method token and pattern it answers, and the handler that
 // runs on a match.
-export type Route:
+export type Route {
 	// The method token the route answers, such as `GET`.
 	method String
 	// The pattern text as registered.
@@ -102,6 +112,7 @@ export type Route:
 	around List[Int]
 	// Runs when the route matches, with the values the pattern captured.
 	handler fn(var HttpExchange, RouteParams) Void!
+}
 
 // Routes requests by method and path and wraps them in middleware.
 //
@@ -109,7 +120,7 @@ export type Route:
 // segment, and a final `*name` that matches the rest of the path (possibly nothing).
 // The first route registered that matches wins, and a trailing slash is part of the
 // path.
-export type Router:
+export type Router {
 	// Registered routes in registration order.
 	routes List[Route] = []
 	// Middleware in the order it wraps requests: the first one added runs outermost.
@@ -117,6 +128,7 @@ export type Router:
 	// The middleware of each mounted router, in mount order; a route names the groups
 	// around it.
 	groups List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]] = []
+}
 
 // Registers `handler` for `method` and `pattern`. A route also answers HEAD when
 // `method` is GET and no HEAD route matches. An invalid pattern returns `EINVAL`, and
@@ -125,7 +137,7 @@ fn var Router.route(
 	method HttpMethod,
 	pattern String,
 	handler fn(var HttpExchange, RouteParams) Void!
-) Void!:
+) Void! {
 	segments := parse_pattern(pattern.clone())?
 	return insert(
 		self.routes,
@@ -137,56 +149,70 @@ fn var Router.route(
 			handler: handler,
 		),
 	)
+}
 
 // Registers `handler` for GET requests to `pattern`; shorthand for
 // `route(HttpMethod.Get, pattern, handler)`.
-fn var Router.get(pattern String, handler fn(var HttpExchange, RouteParams) Void!) Void!:
+fn var Router.get(
+	pattern String,
+	handler fn(var HttpExchange, RouteParams) Void!
+) Void! {
 	return self.route(HttpMethod.Get, pattern, handler)
+}
 
 // Registers `handler` for HEAD requests to `pattern`; shorthand for
 // `route(HttpMethod.Head, pattern, handler)`.
 fn var Router.head(
 	pattern String,
 	handler fn(var HttpExchange, RouteParams) Void!
-) Void!:
+) Void! {
 	return self.route(HttpMethod.Head, pattern, handler)
+}
 
 // Registers `handler` for POST requests to `pattern`; shorthand for
 // `route(HttpMethod.Post, pattern, handler)`.
 fn var Router.post(
 	pattern String,
 	handler fn(var HttpExchange, RouteParams) Void!
-) Void!:
+) Void! {
 	return self.route(HttpMethod.Post, pattern, handler)
+}
 
 // Registers `handler` for PUT requests to `pattern`; shorthand for
 // `route(HttpMethod.Put, pattern, handler)`.
-fn var Router.put(pattern String, handler fn(var HttpExchange, RouteParams) Void!) Void!:
+fn var Router.put(
+	pattern String,
+	handler fn(var HttpExchange, RouteParams) Void!
+) Void! {
 	return self.route(HttpMethod.Put, pattern, handler)
+}
 
 // Registers `handler` for PATCH requests to `pattern`; shorthand for
 // `route(HttpMethod.Patch, pattern, handler)`.
 fn var Router.patch(
 	pattern String,
 	handler fn(var HttpExchange, RouteParams) Void!
-) Void!:
+) Void! {
 	return self.route(HttpMethod.Patch, pattern, handler)
+}
 
 // Registers `handler` for DELETE requests to `pattern`; shorthand for
 // `route(HttpMethod.Delete, pattern, handler)`.
 fn var Router.delete(
 	pattern String,
 	handler fn(var HttpExchange, RouteParams) Void!
-) Void!:
+) Void! {
 	return self.route(HttpMethod.Delete, pattern, handler)
+}
 
 // Registers `handler` for OPTIONS requests to `pattern`; shorthand for
 // `route(HttpMethod.Options, pattern, handler)`.
 fn var Router.options(
 	pattern String,
 	handler fn(var HttpExchange, RouteParams) Void!
-) Void!:
+) Void! {
 	return self.route(HttpMethod.Options, pattern, handler)
+}
 
 // Moves every route of `routes` under `prefix`, wrapped in that router's own
 // middleware. The prefix is `/` followed by segments with no trailing slash, and it
@@ -194,25 +220,30 @@ fn var Router.options(
 // router holds functions, which have one owner, so `routes` is taken: build it
 // again to mount it elsewhere. An invalid prefix returns `EINVAL`, and a route that
 // duplicates an existing method and pattern shape returns `EEXIST`.
-fn var Router.mount(prefix String, routes Router) Void!:
-	if prefix.ends_with("/") and prefix != "/": return error(invalid_pattern(prefix))
+fn var Router.mount(prefix String, routes Router) Void! {
+	if prefix.ends_with(
+		"/"
+	) and prefix != "/" { return error(invalid_pattern(prefix)) }
 
 	var mounted = routes
-	base := if prefix == "/": "" else: prefix.clone()
+	base := if prefix == "/" { "" } else { prefix.clone() }
 	offset := self.groups.length()
 	var groups = drain(mounted.groups)
-	while not groups.is_empty():
+	while not groups.is_empty() {
 		self.groups.append(groups.pop() or panic("called Optional.get() on null"))
+	}
 
 	own := self.groups.length()
 	self.groups.append(in_order(mounted.middleware))
 
 	var sources = drain(mounted.routes)
 
-	while not sources.is_empty():
+	while not sources.is_empty() {
 		var route = sources.pop() or panic("called Optional.get() on null")
 		remount(route, base, own, offset)?
 		insert(self.routes, route)?
+	}
+}
 
 // Adds middleware around every route and around the 404, 405 and OPTIONS answers.
 // It receives the exchange and a continuation that runs the rest of the chain with
@@ -220,25 +251,27 @@ fn var Router.mount(prefix String, routes Router) Void!:
 // `request_id` and `access_log`).
 fn var Router.use(
 	middleware fn(var HttpExchange, fn(var HttpExchange) Void!) Void!
-) Void:
+) Void {
 	self.middleware.append(middleware)
+}
 
 // Returns the function to pass to `serve`; it takes the router, so register every route
 // first. Unmatched paths answer 404. A path matched only under other methods answers
 // 405 with `Allow`, and OPTIONS on a known path answers 204 with `Allow`. `OPTIONS *`
 // answers 204 with the `Allow` of every registered method.
-fn Router.handler() fn(var HttpExchange) Void!:
+fn Router.handler() fn(var HttpExchange) Void! {
 	return fn(var exchange HttpExchange) => dispatch(
 		self.routes,
 		self.middleware,
 		self.groups,
 		exchange,
 	)
+}
 
 // Runs `request` through the router without a socket and returns the response it
 // produced. A handler error is returned as is; the server would answer it with a
 // 500. A handler that sends nothing answers 204.
-fn Router.call(request HttpRequest) HttpResponse!:
+fn Router.call(request HttpRequest) HttpResponse! {
 	owner := SlotOwner(
 		slot: new_slot(
 			TestState(
@@ -256,15 +289,16 @@ fn Router.call(request HttpRequest) HttpResponse!:
 	var exchange HttpExchange = TestExchange(request: request.clone(), state: state)
 	ran := dispatch(self.routes, self.middleware, self.groups, exchange)
 	outcome := finished(state)
-	if ran.is_error(): return error(ran.err().clone())
+	if ran.is_error() { return error(ran.err().clone()) }
 
 	return outcome
+}
 
 // Adds a route unless one with the same method and shape exists.
-fn insert(var routes List[Route], route Route) Void!:
+fn insert(var routes List[Route], route Route) Void! {
 	shape := shape_of(route.segments)
-	for existing in routes:
-		if existing.method == route.method and shape_of(existing.segments) == shape:
+	for existing in routes {
+		if existing.method == route.method and shape_of(existing.segments) == shape {
 			return error(
 				Error(
 					f"router: duplicate route {route.method} {route.pattern}",
@@ -275,121 +309,150 @@ fn insert(var routes List[Route], route Route) Void!:
 					},
 				)
 			)
+		}
+	}
 	routes.append(route.clone())
+}
 
 // Rewrites a route moved out of a mounted router: its pattern under `base`, the mounted
 // router's middleware group `own` outermost, and its own groups moved up by `offset`.
-fn remount(var route Route, base String, own Int, offset Int) Void!:
-	tail := if route.pattern == "/": "" else: route.pattern.clone()
-	pattern := if not (base + tail).is_empty(): base + tail else: "/"
+fn remount(var route Route, base String, own Int, offset Int) Void! {
+	tail := if route.pattern == "/" { "" } else { route.pattern.clone() }
+	pattern := if not (base + tail).is_empty() { base + tail } else { "/" }
 	route.segments = parse_pattern(pattern.clone())?
 	route.pattern = pattern
 
 	var around = [own]
-	for group in route.around:
+	for group in route.around {
 		around.append(group + offset)
+	}
 	route.around = around
+}
 
 // Empties `from` into a new list, last element first; popping the result walks `from`
 // in order.
-fn drain[T](var from List[T]) List[T]:
+fn drain[T](var from List[T]) List[T] {
 	var stack List[T] = []
-	while not from.is_empty():
+	while not from.is_empty() {
 		stack.append(from.pop() or panic("called Optional.get() on null"))
+	}
 	return stack
+}
 
 // Empties `from` into a new list in the same order.
-fn in_order[T](var from List[T]) List[T]:
+fn in_order[T](var from List[T]) List[T] {
 	var stack = drain(from)
 	return drain(stack)
+}
 
-fn invalid_pattern(pattern String) Error:
+fn invalid_pattern(pattern String) Error {
 	return Error(
 		f"router: invalid pattern {pattern}",
 		kind: "EINVAL",
 		details: {"pattern": pattern.clone()},
 	)
+}
 
 // Parses `pattern` into segments, rejecting empty or repeated names and a wildcard that
 // is not last.
-fn parse_pattern(pattern String) List[Segment]!:
-	if not pattern.starts_with("/"): return error(invalid_pattern(pattern))
+fn parse_pattern(pattern String) List[Segment]! {
+	if not pattern.starts_with(
+		"/"
+	) { return error(invalid_pattern(pattern)) }
 
 	var segments List[Segment] = []
 	var names List[String] = []
 	parts := split_path(pattern)
 
-	for entry in parts.entries():
+	for entry in parts.entries() {
 		segment := segment_of(entry.value)
 		last := entry.index == parts.length() - 1
-		if not valid_segment(segment, names, last):
+		if not valid_segment(segment, names, last) {
 			return error(invalid_pattern(pattern))
+		}
 
 		name := segment_name(segment)
-		if name != null: names.append(name)
+		if name != null { names.append(name) }
 		segments.append(segment)
+	}
 
 	return ok(segments)
+}
 
 // The segments of an absolute path; "/" has null.
-fn split_path(path String) List[String]:
-	if path == "/": return []
+fn split_path(path String) List[String] {
+	if path == "/" { return [] }
 	return path.view(1, path.length()).split("/").clone()
+}
 
-fn segment_of(part String) Segment:
-	if part.starts_with(":"): return Segment.Param(part.view(1, part.length()).clone())
-	if part.starts_with("*"): return Segment.Rest(part.view(1, part.length()).clone())
+fn segment_of(part String) Segment {
+	if part.starts_with(":") {
+		return Segment.Param(part.view(1, part.length()).clone())
+	}
+	if part.starts_with("*") {
+		return Segment.Rest(part.view(1, part.length()).clone())
+	}
 
 	return Segment.Literal(part.clone())
+}
 
-fn segment_name(segment Segment) String?:
-	match segment:
+fn segment_name(segment Segment) String? {
+	match segment {
 		Literal(_) => return null
 		Param(name) => return name.clone()
 		Rest(name) => return name.clone()
+	}
+}
 
-fn valid_segment(segment Segment, names List[String], last Bool) Bool:
-	match segment:
+fn valid_segment(segment Segment, names List[String], last Bool) Bool {
+	match segment {
 		Literal(text) => return not text.is_empty() or last
 		Param(name) => return not name.is_empty() and not names.contains(name)
 		Rest(name) => return (last and not name.is_empty() and not names.contains(name))
+	}
+}
 
 // Patterns with the same shape match the same paths, whatever their parameter names.
-fn shape_of(segments List[Segment]) String:
+fn shape_of(segments List[Segment]) String {
 	return segments.map(segment => shape_text(segment)).join("/")
+}
 
-fn shape_text(segment Segment) String:
-	match segment:
+fn shape_text(segment Segment) String {
+	match segment {
 		Literal(text) => return f"={text}"
 		Param(_) => return ":"
 		Rest(_) => return "*"
+	}
+}
 
 // What the routes say about one request path.
-type Lookup:
+type Lookup {
 	// Captures of that route.
 	params RouteParams
 	// Methods that have a route for the path, for `Allow`.
 	allow List[String]
 	// The matching route for the method, if any.
 	found Int?
+}
 
 // The lookup for a path that is not absolute (such as `*` or an empty path): no route
 // matches it.
-fn unrouted() Lookup:
+fn unrouted() Lookup {
 	return Lookup(params: RouteParams(names: [], values: []), allow: [], found: null)
+}
 
-fn lookup(routes List[Route], method String, parts List[String]) Lookup:
+fn lookup(routes List[Route], method String, parts List[String]) Lookup {
 	var found Int? = null
 	var fallback = false
 	var params = RouteParams(names: [], values: [])
 	var allow List[String] = []
 	var index = 0
 
-	while index < routes.length():
+	while index < routes.length() {
 		route := routes[index]
 		captured := capture(route.segments, parts)
 
-		if captured != null:
+		if captured != null {
 			allow.append(route.method.clone())
 
 			if (
@@ -398,67 +461,83 @@ fn lookup(routes List[Route], method String, parts List[String]) Lookup:
 					found == null
 					or (fallback and route.method == method)
 				)
-			):
+			) {
 				found = index
 				fallback = route.method != method
 				params = RouteParams(names: names_of(route.segments), values: captured)
+			}
+		}
 
 		index += 1
+	}
 
 	return Lookup(found: found, params: params, allow: allow)
+}
 
 // A GET route also serves HEAD.
-fn serves(registered String, requested String) Bool:
+fn serves(registered String, requested String) Bool {
 	return registered == requested or (registered == "GET" and requested == "HEAD")
+}
 
-fn names_of(segments List[Segment]) List[String]:
+fn names_of(segments List[Segment]) List[String] {
 	return segments.flat_map(segment => name_list(segment))
+}
 
-fn name_list(segment Segment) List[String]:
+fn name_list(segment Segment) List[String] {
 	name := segment_name(segment)
-	if name != null: return [name]
+	if name != null { return [name] }
 
 	return []
+}
 
 // The captured values when `parts` match `segments`.
-fn capture(segments List[Segment], parts List[String]) List[String]?:
+fn capture(segments List[Segment], parts List[String]) List[String]? {
 	var values List[String] = []
 
-	for entry in segments.entries():
-		if take_rest(entry.value):
+	for entry in segments.entries() {
+		if take_rest(entry.value) {
 			values.append(parts.drop(entry.index).join("/"))
 			return values
+		}
 
-		if entry.index >= parts.length(): return null
-		if not accepts(entry.value, parts[entry.index], values): return null
+		if entry.index >= parts.length() { return null }
+		if not accepts(entry.value, parts[entry.index], values) { return null }
+	}
 
-	if parts.length() != segments.length(): return null
+	if parts.length() != segments.length() { return null }
 
 	return values
+}
 
-fn take_rest(segment Segment) Bool:
-	match segment:
+fn take_rest(segment Segment) Bool {
+	match segment {
 		Rest(_) => return true
 		_ => return false
+	}
+}
 
 // Whether `segment` matches `part`; a parameter adds the text to `values`.
-fn accepts(segment Segment, part String, var values List[String]) Bool:
-	match segment:
+fn accepts(segment Segment, part String, var values List[String]) Bool {
+	match segment {
 		Literal(text) => return text == part
-		Param(_):
-			if part.is_empty(): return false
+		Param(_) => {
+			if part.is_empty() { return false }
 
 			values.append(part.clone())
 			return true
+		}
 		Rest(_) => return true
+	}
+}
 
 // What `finish` needs from the routes: the method, the lookup, and, for `OPTIONS *`,
 // the method of every registered route. These are copies of the little the request
 // uses, so the continuation handed to middleware owns it.
-type Target:
+type Target {
 	method String
 	found Lookup
 	every List[String]
+}
 
 // Runs one request through the router's middleware and into `finish`. The continuations
 // borrow the routing table: each is called once by the middleware before it and owns
@@ -468,16 +547,17 @@ fn dispatch(
 	middleware List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!],
 	groups List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]],
 	var exchange HttpExchange,
-) Void!:
+) Void! {
 	method := exchange.method().to_string()
-	found := if exchange.path().starts_with("/"): lookup(
-		routes,
-		method,
-		split_path(exchange.path()),
-	) else: unrouted()
+	found := if exchange.path().starts_with("/") {
+		lookup(routes, method, split_path(exchange.path()))
+	} else {
+		unrouted()
+	}
 	var every List[String] = []
-	if method == "OPTIONS" and exchange.path() == "*":
+	if method == "OPTIONS" and exchange.path() == "*" {
 		every = routes.map(route => route.method.clone())
+	}
 
 	target := Target(method: method, found: found, every: every)
 	return chain(
@@ -486,6 +566,7 @@ fn dispatch(
 		exchange,
 		fn(var last HttpExchange) => finish(routes, groups, target, last)
 	)
+}
 
 // Runs `middleware` from `at` on, then `last`.
 fn chain(
@@ -493,12 +574,13 @@ fn chain(
 	at Int,
 	var exchange HttpExchange,
 	last fn(var HttpExchange) Void!
-) Void!:
-	if at >= middleware.length(): return last(exchange)
+) Void! {
+	if at >= middleware.length() { return last(exchange) }
 	return middleware[at](
 		exchange,
 		fn(var next HttpExchange) => chain(middleware, at + 1, next, last)
 	)
+}
 
 // Runs the middleware groups `around` from `at` on, then `last`.
 fn chain_groups(
@@ -507,8 +589,8 @@ fn chain_groups(
 	at Int,
 	var exchange HttpExchange,
 	last fn(var HttpExchange) Void!
-) Void!:
-	if at >= around.length(): return last(exchange)
+) Void! {
+	if at >= around.length() { return last(exchange) }
 	return chain(
 		groups[around[at]],
 		0,
@@ -521,6 +603,7 @@ fn chain_groups(
 			last,
 		)
 	)
+}
 
 // Runs the matched route, or answers 404, 405 or the OPTIONS listing.
 fn finish(
@@ -528,12 +611,12 @@ fn finish(
 	groups List[List[fn(var HttpExchange, fn(var HttpExchange) Void!) Void!]],
 	target Target,
 	var exchange HttpExchange,
-) Void!:
+) Void! {
 	method := target.method
 	found := target.found
 	index := found.found
 
-	if index != null:
+	if index != null {
 		route := routes[index]
 		return chain_groups(
 			groups,
@@ -542,28 +625,32 @@ fn finish(
 			exchange,
 			fn(var last HttpExchange) => route.handler(last, found.params)
 		)
+	}
 
-	if method == "OPTIONS" and exchange.path() == "*":
+	if method == "OPTIONS" and exchange.path() == "*" {
 		var server_wide = text(204, "")
 		server_wide.headers.append("Allow", allow_text(target.every))?
 		return reply(exchange, server_wide)
+	}
 
-	if found.allow.is_empty(): return reply(exchange, text(404, "not found\n"))
+	if found.allow.is_empty() { return reply(exchange, text(404, "not found\n")) }
 
-	var response = text(if method != "OPTIONS": 405 else: 204, "")
+	var response = text(if method != "OPTIONS" { 405 } else { 204 }, "")
 	response.headers.append("Allow", allow_text(found.allow))?
 	return reply(exchange, response)
+}
 
 // Methods with a route for the path, sorted and without repeats; GET adds HEAD, and
 // OPTIONS is always answered.
-fn allow_text(methods List[String]) String:
+fn allow_text(methods List[String]) String {
 	var all = methods.clone()
-	if all.contains("GET"): all.append("HEAD")
+	if all.contains("GET") { all.append("HEAD") }
 	all.append("OPTIONS")
 	return all.distinct().sorted().join(", ")
+}
 
 // What an in-process handler has sent so far.
-type TestState:
+type TestState {
 	status Int
 	sent Bool
 	complete Bool
@@ -571,117 +658,134 @@ type TestState:
 	head HttpHeaders
 	body BytesBuilder
 	unread Bytes?
+}
 
-type TestExchange:
+type TestExchange {
 	request HttpRequest
 	state Int
+}
 
-fn var TestExchange.close() Void:
+fn var TestExchange.close() Void {
 	var guard = hold[TestState](self.state)
 	guard.items[0].closed = true
+}
 
-fn TestExchange.headers() HttpHeaders:
+fn TestExchange.headers() HttpHeaders {
 	return self.request.headers.clone()
+}
 
-fn TestExchange.method() HttpMethod:
+fn TestExchange.method() HttpMethod {
 	return self.request.method.clone()
+}
 
-fn TestExchange.path() String:
+fn TestExchange.path() String {
 	return self.request.path.clone()
+}
 
-fn TestExchange.protocol() String:
+fn TestExchange.protocol() String {
 	return self.request.protocol.clone()
+}
 
-fn TestExchange.query() String:
+fn TestExchange.query() String {
 	return self.request.query.clone()
+}
 
-fn var TestExchange.read(max_bytes Int?) Bytes?!:
+fn var TestExchange.read(max_bytes Int?) Bytes?! {
 	requested := max_bytes or 65536
-	if requested <= 0: return error(Error("I/O: invalid input", kind: "EINVAL"))
+	if requested <= 0 { return error(Error("I/O: invalid input", kind: "EINVAL")) }
 
-	max := if requested > 65536: 65536 else: requested
+	max := if requested > 65536 { 65536 } else { requested }
 	var guard = hold[TestState](self.state)
-	if guard.items[0].closed: return error(
-		Error("I/O: resource is closed", kind: "EBADF")
-	)
+	if guard.items[0].closed {
+		return error(Error("I/O: resource is closed", kind: "EBADF"))
+	}
 
 	chunk := guard.items[0].unread.clone()
 	guard.items[0].unread = null
 
 	bytes := chunk
 
-	if bytes != null:
-		if bytes.length() == 0: return ok(null)
+	if bytes != null {
+		if bytes.length() == 0 { return ok(null) }
 
-		n := if max < bytes.length(): max else: bytes.length()
-		if n < bytes.length():
+		n := if max < bytes.length() { max } else { bytes.length() }
+		if n < bytes.length() {
 			guard.items[0].unread = bytes.slice(n, bytes.length()).get()
+		}
 		return ok(bytes.slice(0, n).get())
+	}
 
 	return ok(null)
+}
 
-fn var TestExchange.send_headers(status Int, headers HttpHeaders) Void!:
-	if status < 200 or status > 599: return error(
-		Error("HTTP: invalid input", kind: "EINVAL")
-	)
-	if headers.contains("Content-Length"): return error(
-		Error("HTTP: invalid input", kind: "EINVAL")
-	)
-	if headers.contains("Transfer-Encoding"): return error(
-		Error("HTTP: invalid input", kind: "EINVAL")
-	)
-	if headers.contains("Connection"): return error(
-		Error("HTTP: invalid input", kind: "EINVAL")
-	)
+fn var TestExchange.send_headers(status Int, headers HttpHeaders) Void! {
+	if status < 200 or status > 599 {
+		return error(Error("HTTP: invalid input", kind: "EINVAL"))
+	}
+	if headers.contains(
+		"Content-Length"
+	) { return error(Error("HTTP: invalid input", kind: "EINVAL")) }
+	if headers.contains(
+		"Transfer-Encoding"
+	) { return error(Error("HTTP: invalid input", kind: "EINVAL")) }
+	if headers.contains(
+		"Connection"
+	) { return error(Error("HTTP: invalid input", kind: "EINVAL")) }
 
 	var guard = hold[TestState](self.state)
-	if guard.items[0].closed: return error(
-		Error("HTTP: resource is closed", kind: "EBADF")
-	)
-	if guard.items[0].sent: return error(Error("HTTP: invalid input", kind: "EINVAL"))
+	if guard.items[0].closed {
+		return error(Error("HTTP: resource is closed", kind: "EBADF"))
+	}
+	if guard.items[0].sent { return error(Error("HTTP: invalid input", kind: "EINVAL")) }
 
 	guard.items[0].status = status
 	guard.items[0].head = headers.clone()
 	guard.items[0].sent = true
+}
 
-fn var TestExchange.send(status Int, headers HttpHeaders, body Bytes) Void!:
+fn var TestExchange.send(status Int, headers HttpHeaders, body Bytes) Void! {
 	self.send_headers(status, headers)?
 
 	var guard = hold[TestState](self.state)
 	guard.items[0].complete = true
-	if self.request.method.to_string() == "HEAD" or not has_body(status): return ok()
+	if self.request.method.to_string() == "HEAD" or not has_body(status) { return ok() }
 
 	guard.items[0].body.append_bytes(body)
+}
 
 fn var TestExchange.upgrade(
 	allowed_origins List[String],
 	subprotocols List[String],
 	max_message_bytes Int?,
-) WebSocket!:
+) WebSocket! {
 	return error(Error("router: WebSocket upgrades need a server", kind: "ENOTSUP"))
+}
 
-fn var TestExchange.write(move data String) Void!:
+fn var TestExchange.write(move data String) Void! {
 	return self.write_bytes(data.to_bytes())
+}
 
-fn var TestExchange.write_bytes(move data Bytes) Void!:
+fn var TestExchange.write_bytes(move data Bytes) Void! {
 	var guard = hold[TestState](self.state)
-	if guard.items[0].closed: return error(
-		Error("I/O: resource is closed", kind: "EBADF")
-	)
-	if not guard.items[0].sent or guard.items[0].complete: return error(
-		Error("I/O: invalid input", kind: "EINVAL")
-	)
-	if not has_body(guard.items[0].status): return error(
-		Error("I/O: invalid input", kind: "EINVAL")
-	)
-	if self.request.method.to_string() == "HEAD": return ok()
+	if guard.items[0].closed {
+		return error(Error("I/O: resource is closed", kind: "EBADF"))
+	}
+	if not guard.items[0].sent or guard.items[0].complete {
+		return error(Error("I/O: invalid input", kind: "EINVAL"))
+	}
+	if not has_body(guard.items[0].status) {
+		return error(Error("I/O: invalid input", kind: "EINVAL"))
+	}
+	if self.request.method.to_string() == "HEAD" { return ok() }
 
 	guard.items[0].body.append_bytes(data)
+}
 
-fn finished(state Int) HttpResponse!:
+fn finished(state Int) HttpResponse! {
 	var guard = hold[TestState](state)
-	if not guard.items[0].sent:
+	if not guard.items[0].sent {
 		return ok(HttpResponse(status: 204, headers: headers(), body: "".to_bytes()))
+	}
 
 	return ok(
 		HttpResponse(
@@ -690,85 +794,104 @@ fn finished(state Int) HttpResponse!:
 			body: guard.items[0].body.drain(),
 		)
 	)
+}
 
 // Whether a response with this status may carry a body.
-fn has_body(status Int) Bool:
+fn has_body(status Int) Bool {
 	return status >= 200 and status != 204 and status != 304
+}
 
 // What a wrapped exchange has sent so far.
-type TapState:
+type TapState {
 	status Int
 	bytes Int
+}
 
 // An exchange that passes everything to `inner`, adds `extra` to the headers of its
 // response, and counts the status and body bytes sent.
-type Tap:
+type Tap {
 	inner HttpExchange
 	extra HttpHeaders
 	request HttpHeaders
 	state Int?
+}
 
 // The body bytes the exchange transmits: null for HEAD or a status that forbids a
 // body.
-fn Tap.sent_length(status Int, length Int) Int:
-	if self.inner.method() == HttpMethod.Head or not has_body(status): return 0
+fn Tap.sent_length(status Int, length Int) Int {
+	if self.inner.method() == HttpMethod.Head or not has_body(status) { return 0 }
 	return length
+}
 
 // The status the response headers went out with, or 200 before any are sent.
-fn Tap.status_so_far() Int:
+fn Tap.status_so_far() Int {
 	state := self.state
 
-	if state != null:
+	if state != null {
 		seen := snapshot(state).status
-		if seen != 0: return seen
+		if seen != 0 { return seen }
+	}
 
 	return 200
+}
 
-fn var Tap.close() Void:
+fn var Tap.close() Void {
 	self.inner.close()
+}
 
-fn Tap.headers() HttpHeaders:
+fn Tap.headers() HttpHeaders {
 	return self.request.clone()
+}
 
-fn Tap.method() HttpMethod:
+fn Tap.method() HttpMethod {
 	return self.inner.method()
+}
 
-fn Tap.path() String:
+fn Tap.path() String {
 	return self.inner.path()
+}
 
-fn Tap.protocol() String:
+fn Tap.protocol() String {
 	return self.inner.protocol()
+}
 
-fn Tap.query() String:
+fn Tap.query() String {
 	return self.inner.query()
+}
 
-fn var Tap.read(max_bytes Int?) Bytes?!:
+fn var Tap.read(max_bytes Int?) Bytes?! {
 	return self.inner.read(max_bytes)
+}
 
-fn var Tap.send_headers(status Int, headers HttpHeaders) Void!:
+fn var Tap.send_headers(status Int, headers HttpHeaders) Void! {
 	self.inner.send_headers(status, with_extra(headers, self.extra))?
 	counted(status, 0, self.state)
+}
 
-fn var Tap.send(status Int, headers HttpHeaders, body Bytes) Void!:
+fn var Tap.send(status Int, headers HttpHeaders, body Bytes) Void! {
 	self.inner.send(status, with_extra(headers, self.extra), body)?
 	counted(status, self.sent_length(status, body.length()), self.state)
+}
 
 fn var Tap.upgrade(
 	allowed_origins List[String],
 	subprotocols List[String],
 	max_message_bytes Int?,
-) WebSocket!:
+) WebSocket! {
 	return self.inner.upgrade(allowed_origins, subprotocols, max_message_bytes)
+}
 
-fn var Tap.write(move data String) Void!:
+fn var Tap.write(move data String) Void! {
 	sent := data.length()
 	self.inner.write(data)?
 	counted(0, self.sent_length(self.status_so_far(), sent), self.state)
+}
 
-fn var Tap.write_bytes(move data Bytes) Void!:
+fn var Tap.write_bytes(move data Bytes) Void! {
 	sent := data.length()
 	self.inner.write_bytes(data)?
 	counted(0, self.sent_length(self.status_so_far(), sent), self.state)
+}
 
 // `state` is a slot counting what is sent, which the caller made and reads afterwards.
 fn new_tap(
@@ -776,81 +899,96 @@ fn new_tap(
 	extra HttpHeaders,
 	request HttpHeaders,
 	state Int? = null,
-) Tap:
+) Tap {
 	return Tap(inner: inner, extra: extra, request: request, state: state)
+}
 
 // Replaces `exchange` with one whose `headers()` reports `request` and everything else
 // passes through. Middleware uses it to hand later layers changed request headers,
 // since a received header set is a copy.
-export fn with_request_headers(var exchange HttpExchange, request HttpHeaders) Void:
+export fn with_request_headers(var exchange HttpExchange, request HttpHeaders) Void {
 	exchange = new_tap(exchange, headers(), request)
+}
 
-fn counted(status Int, bytes Int, slot Int?) Void:
+fn counted(status Int, bytes Int, slot Int?) Void {
 	state := slot
 
-	if state != null:
+	if state != null {
 		var guard = hold[TapState](state)
-		if status != 0: guard.items[0].status = status
+		if status != 0 { guard.items[0].status = status }
 		guard.items[0].bytes += bytes
+	}
+}
 
-fn snapshot(state Int) TapState:
+fn snapshot(state Int) TapState {
 	var guard = hold[TapState](state)
 	return TapState(status: guard.items[0].status, bytes: guard.items[0].bytes)
+}
 
 // `sent` plus the `extra` headers it does not already have.
-fn with_extra(sent HttpHeaders, extra HttpHeaders) HttpHeaders:
+fn with_extra(sent HttpHeaders, extra HttpHeaders) HttpHeaders {
 	var all = sent.clone()
-	for name in extra.names():
-		if not all.contains(name):
-			for value in extra.get_all(name):
+	for name in extra.names() {
+		if not all.contains(name) {
+			for value in extra.get_all(name) {
 				void all.append(name, value)
+			}
+		}
+	}
 	return all
+}
 
 // Middleware that gives every request an id: the request's own `X-Request-Id` when it
 // is 1 to 128 visible ASCII characters (no spaces), otherwise a new UUID. The id is set
 // on the request headers the wrapped exchange reports, where handlers and later
 // middleware read it, and added to the response as `X-Request-Id`.
-export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
+export fn request_id() fn(var HttpExchange, fn(var HttpExchange) Void!) Void! {
 	return fn(
 		var exchange HttpExchange,
 		next fn(var HttpExchange) Void!
 	) => with_request_id(exchange, next)
+}
 
-fn with_request_id(var exchange HttpExchange, next fn(var HttpExchange) Void!) Void!:
+fn with_request_id(var exchange HttpExchange, next fn(var HttpExchange) Void!) Void! {
 	var request = exchange.headers()
 	var id = request.get("X-Request-Id") or ""
 
-	if not usable_id(id):
+	if not usable_id(id) {
 		id = new_id()?
 		request.remove("X-Request-Id")
 		request.append("X-Request-Id", id)?
+	}
 
 	var extra = headers()
 	extra.append("X-Request-Id", id)?
 	exchange = new_tap(exchange, extra, request)
 	return next(exchange)
+}
 
-fn usable_id(id String) Bool:
+fn usable_id(id String) Bool {
 	return (
 		id.length() >= 1
 		and id.length() <= 128
 		and id.scalar_values().all(c => (c > 32 and c < 127))
 	)
+}
 
-fn new_id() String!:
+fn new_id() String! {
 	made := uuid_v4()
-	if made.is_error(): return error(Error(made.err().message.clone(), kind: "EIO"))
+	if made.is_error() { return error(Error(made.err().message.clone(), kind: "EIO")) }
 
 	return ok(made.get().clone())
+}
 
 // One request as `access_log` writes it.
-type AccessEntry:
+type AccessEntry {
 	method String
 	path String
 	protocol String
 	status Int
 	bytes Int
 	duration_ms Int
+}
 
 // Middleware that writes one Info record named `request` to `logger` after each
 // request, with the method, path, protocol, response status, body bytes written and
@@ -858,17 +996,18 @@ type AccessEntry:
 // fails before sending as 500. A logging failure never fails the request.
 export fn access_log(
 	logger Logger
-) fn(var HttpExchange, fn(var HttpExchange) Void!) Void!:
+) fn(var HttpExchange, fn(var HttpExchange) Void!) Void! {
 	return fn(
 		var exchange HttpExchange,
 		next fn(var HttpExchange) Void!
 	) => with_access_log(logger, exchange, next)
+}
 
 fn with_access_log(
 	logger Logger,
 	var exchange HttpExchange,
 	next fn(var HttpExchange) Void!
-) Void!:
+) Void! {
 	started := monotonic()
 	method := exchange.method().to_string()
 	path := exchange.path()
@@ -891,12 +1030,14 @@ fn with_access_log(
 	)
 	void logger.info("request", entry)
 	return result
+}
 
-fn answered(status Int, succeeded Bool) Int:
-	if status != 0: return status
-	if succeeded: return 204
+fn answered(status Int, succeeded Bool) Int {
+	if status != 0 { return status }
+	if succeeded { return 204 }
 
 	return 500
+}
 
 // A value with one holder at a time, kept in a one-message in-memory pipe whose id is
 // the slot: `take_slot` moves it out (waiting while another holder has it) and
@@ -904,25 +1045,30 @@ fn answered(status Int, succeeded Bool) Int:
 // replaces the exchange with a wrapper of its own type, so the value that comes back
 // from a handler is not the one that was handed in; the slot is what both sides can
 // reach.
-fn new_slot[T](value T) Int:
+fn new_slot[T](value T) Int {
 	pipe := msrt_pipe_new(1)
 	_first := msrt_pipe_write(pipe, value)
 	return pipe
+}
 
-fn take_slot[T](slot Int) T:
+fn take_slot[T](slot Int) T {
 	read := msrt_pipe_read(slot)
 	_code := msrt_promise_wait(read, -1)
 	value := msrt_promise_take[T](read) or panic("called Optional.get() on null")
 	msrt_promise_drop(read)
 	return value
+}
 
-fn put_slot[T](slot Int, value T) Void:
+fn put_slot[T](slot Int, value T) Void {
 	_written := msrt_pipe_write(slot, value)
+}
 
 // Ends the pipe of `slot`; call it once, when the last holder is done.
-fn release_slot(slot Int) Void:
+fn release_slot(slot Int) Void {
 	msrt_pipe_close_writer(slot)
 	msrt_pipe_close_reader(slot)
+}
 
-fn hold[T](slot Int) Held[T]:
+fn hold[T](slot Int) Held[T] {
 	return Held[T](slot: slot, items: [take_slot[T](slot)], held: true)
+}

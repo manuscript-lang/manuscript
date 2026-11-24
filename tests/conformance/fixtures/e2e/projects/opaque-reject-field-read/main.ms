@@ -4,5 +4,6 @@ import (
 	Approved, Mode, approve, safe from "./gate.ms",
 )
 
-export fn main() Int:
+export fn main() Int {
 	return approve("u").nonce.length()
+}

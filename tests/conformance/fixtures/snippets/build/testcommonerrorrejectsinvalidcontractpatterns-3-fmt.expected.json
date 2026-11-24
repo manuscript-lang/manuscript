@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong() String!:\n\treturn Result[Int, Error].ok(value: 1)\n"
+    "fmt": "fn wrong() String! {\n\treturn Result[Int, Error].ok(value: 1)\n}\n"
   }
 }

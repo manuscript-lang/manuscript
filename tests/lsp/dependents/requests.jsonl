@@ -1,8 +1,8 @@
 {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"processId": null, "rootUri": "$ROOT_URI", "capabilities": {}}}
 {"jsonrpc": "2.0", "method": "initialized", "params": {}}
-{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/shared.ms", "languageId": "manuscript", "version": 1, "text": "export fn answer() Int:\n\treturn 42\n"}}}
-{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/user.ms", "languageId": "manuscript", "version": 1, "text": "import answer from \"./shared.ms\"\n\nfn main() Int:\n\treturn answer()\n"}}}
-{"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {"uri": "$ROOT_URI/alone.ms", "languageId": "manuscript", "version": 1, "text": "fn lonely() Int:\n\treturn 1\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/shared.ms","languageId":"manuscript","version":1,"text":"export fn answer() Int {\n\treturn 42\n}\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/user.ms","languageId":"manuscript","version":1,"text":"import answer from \"./shared.ms\"\n\nfn main() Int {\n\treturn answer()\n}\n"}}}
+{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"$ROOT_URI/alone.ms","languageId":"manuscript","version":1,"text":"fn lonely() Int {\n\treturn 1\n}\n"}}}
 {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": "$ROOT_URI/shared.ms", "version": 2}, "contentChanges": [{"range": {"start": {"line": 0, "character": 10}, "end": {"line": 0, "character": 16}}, "text": "reply"}]}}
 {"jsonrpc": "2.0", "id": 2, "method": "textDocument/documentSymbol", "params": {"textDocument": {"uri": "$ROOT_URI/alone.ms"}}}
 {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {"textDocument": {"uri": "$ROOT_URI/shared.ms", "version": 3}, "contentChanges": [{"range": {"start": {"line": 0, "character": 10}, "end": {"line": 0, "character": 15}}, "text": "answer"}]}}

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "enum Payment:\n\tPaid(receipt String)\n\tDeclined(reason String)\n\tPending(reference String)\n"
+    "fmt": "enum Payment {\n\tPaid(receipt String)\n\tDeclined(reason String)\n\tPending(reference String)\n}\n"
   }
 }

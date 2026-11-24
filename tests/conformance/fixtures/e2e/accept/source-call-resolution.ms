@@ -2,8 +2,9 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Counter:
+type Counter {
 	value Int
+}
 
 fn Counter.next(amount Int = 1) Counter => Counter(self.value + amount)
 
@@ -13,7 +14,7 @@ fn Counter.to_string(prefix String) String => f"{prefix}{self.value}"
 
 fn make(create fn() Int) Counter => Counter(create())
 
-test "source chains keep callbacks, defaults and bound methods":
+test "source chains keep callbacks, defaults and bound methods" {
 	start := 3
 	value := make(() => start).next().next(amount: 2).next().next()
 	expect_equal(value.value, 8)?
@@ -22,8 +23,10 @@ test "source chains keep callbacks, defaults and bound methods":
 	expect_equal(advance().value, 9)?
 	expect_equal(value.identity(7), 7)?
 	expect_equal(value.identity[String]("ok"), "ok")?
+}
 
-test "native arity fallback still selects the source method":
+test "native arity fallback still selects the source method" {
 	value := Counter(4)
 	expect_equal(value.to_string("count="), "count=4")?
 	expect_equal(value.to_string().is_empty(), false)?
+}

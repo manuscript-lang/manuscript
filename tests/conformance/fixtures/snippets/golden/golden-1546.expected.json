@@ -12,7 +12,7 @@
         "message": "division by zero always faults; guard the divisor or use a nonzero constant",
         "position": {
           "file": "golden-1546.ms",
-          "line": 8,
+          "line": 12,
           "column": 22,
           "offset": 252
         }
@@ -21,7 +21,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1546.ms:8:22: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 8 |     impossible := (1 / 0).minutes()\n   |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1546.ms:12:22: type: division by zero always faults; guard the divisor or use a nonzero constant\n    |\n 12 |     impossible := (1 / 0).minutes()\n    |                      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

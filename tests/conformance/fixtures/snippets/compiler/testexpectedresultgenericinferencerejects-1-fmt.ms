@@ -1,11 +1,13 @@
 // conform: tags=control-flow,formatter,interfaces,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/compiler/contextual_generics_test.go:80 TestExpectedResultGenericInferenceRejects
-interface Read:
-    fn get() Int
+interface Read {
+	fn get() Int
+}
 
-type Box:
-    value Int
+type Box {
+	value Int
+}
 
 fn Box.get() Int => self.value
 

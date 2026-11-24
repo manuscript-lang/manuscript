@@ -20,7 +20,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1504.ms",
           "line": 3,
@@ -31,23 +31,23 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module",
+        "message": "unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1504.ms",
-          "line": 5,
+          "line": 6,
           "column": 16,
-          "offset": 132
+          "offset": 131
         }
       },
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module",
+        "message": "unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-1504.ms",
-          "line": 6,
+          "line": 7,
           "column": 13,
-          "offset": 161
+          "offset": 157
         }
       },
       {
@@ -56,22 +56,22 @@
         "message": "unknown binding Shape; did you mean 'shapes'?",
         "position": {
           "file": "golden-1504.ms",
-          "line": 7,
+          "line": 8,
           "column": 20,
-          "offset": 200
+          "offset": 193
         },
         "fix": {
           "position": {
             "file": "golden-1504.ms",
-            "line": 7,
+            "line": 8,
             "column": 20,
-            "offset": 200
+            "offset": 193
           },
           "end": {
             "file": "golden-1504.ms",
-            "line": 7,
+            "line": 8,
             "column": 25,
-            "offset": 205
+            "offset": 198
           },
           "replacement": "shapes"
         }
@@ -80,7 +80,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1504.ms:3:14: resolution: unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 3 | fn unknown(s Shape) Int => return area(s)\n   |              ^\n<DIR>/golden-1504.ms:3:35: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 3 | fn unknown(s Shape) Int => return area(s)\n   |                                   ^\n<DIR>/golden-1504.ms:5:16: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T:', or import it from a module\n   |\n 5 |     shapes := [Shape.Circle(2)]\n   |                ^\n<DIR>/golden-1504.ms:6:13: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T:', or import it from a module\n   |\n 6 |     good := area(shapes.get(0))\n   |             ^\n<DIR>/golden-1504.ms:7:20: resolution: unknown binding Shape; did you mean 'shapes'?\n   |\n 7 |     return unknown(Shape.Square(9223372036854775807))\n   |                    ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1504.ms:3:14: resolution: unknown type Shape; declare it with 'type Shape:' / 'enum Shape:' / 'interface Shape:', declare it as a type parameter, or import it\n   |\n 3 | fn unknown(s Shape) Int => return area(s)\n   |              ^\n<DIR>/golden-1504.ms:3:35: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module\n   |\n 3 | fn unknown(s Shape) Int => return area(s)\n   |                                   ^\n<DIR>/golden-1504.ms:6:16: resolution: unknown binding Shape; declare it with 'Shape := ...' before use, define 'fn Shape(...) T { ... }', or import it from a module\n   |\n 6 |     shapes := [Shape.Circle(2)]\n   |                ^\n<DIR>/golden-1504.ms:7:13: resolution: unknown binding area; declare it with 'area := ...' before use, define 'fn area(...) T { ... }', or import it from a module\n   |\n 7 |     good := area(shapes.get(0))\n   |             ^\n<DIR>/golden-1504.ms:8:20: resolution: unknown binding Shape; did you mean 'shapes'?\n   |\n 8 |     return unknown(Shape.Square(9223372036854775807))\n   |                    ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

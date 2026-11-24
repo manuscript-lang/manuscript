@@ -2,65 +2,79 @@ import stdin from "@std/io/io.ms"
 import collect from "@std/io/streams.ms"
 import lines from "@std/io/steps.ms"
 
-type Parser:
+type Parser {
     s List[Int]
     pos Int
     div_zero Bool
+}
 
 // Skips blanks and returns the next character code, or 0 at the end of the line.
-fn peek(var p Parser) Int:
-    while p.pos < p.s.length() and (p.s[p.pos] == 32 or p.s[p.pos] == 9): p.pos += 1
+fn peek(var p Parser) Int {
+    while p.pos < p.s.length() and (p.s[p.pos] == 32 or p.s[p.pos] == 9) { p.pos += 1 }
     return p.s.get_or(p.pos, 0)
+}
 
-fn atom(var p Parser) Int!:
+fn atom(var p Parser) Int! {
     c := peek(p)
-    if c >= 48 and c <= 57:
+    if c >= 48 and c <= 57 {
         var v = 0
-        while p.pos < p.s.length() and p.s[p.pos] >= 48 and p.s[p.pos] <= 57:
+        while p.pos < p.s.length() and p.s[p.pos] >= 48 and p.s[p.pos] <= 57 {
             v = v * 10 + (p.s[p.pos] - 48)
             p.pos += 1
+        }
         return ok(v)
-    if c != 40: return error(Error("syntax"))
+    }
+    if c != 40 { return error(Error("syntax")) }
     p.pos += 1
     v := expr(p)?
-    if peek(p) != 41: return error(Error("syntax"))
+    if peek(p) != 41 { return error(Error("syntax")) }
     p.pos += 1
     return ok(v)
+}
 
-fn unary(var p Parser) Int!:
-    if peek(p) != 45: return atom(p)
+fn unary(var p Parser) Int! {
+    if peek(p) != 45 { return atom(p) }
     p.pos += 1
     return ok(-(unary(p)?))
+}
 
-fn term(var p Parser) Int!:
+fn term(var p Parser) Int! {
     var v = unary(p)?
-    while peek(p) == 42 or peek(p) == 47:
+    while peek(p) == 42 or peek(p) == 47 {
         op := peek(p)
         p.pos += 1
         r := unary(p)?
-        if op == 42: v *= r
-        else if r == 0:
+        if op == 42 { v *= r }
+        else if r == 0 {
             p.div_zero = true
             v = 0
-        else: v /= r
+        } else: v /= r
+    }
     return ok(v)
+}
 
-fn expr(var p Parser) Int!:
+fn expr(var p Parser) Int! {
     var v = term(p)?
-    while peek(p) == 43 or peek(p) == 45:
+    while peek(p) == 43 or peek(p) == 45 {
         op := peek(p)
         p.pos += 1
         r := term(p)?
         v += if op == 43: r else: -r
+    }
     return ok(v)
+}
 
-fn evaluate(line String) String:
+fn evaluate(line String) String {
     var p = Parser(line.scalar_values(), 0, false)
-    if v := expr(p):
-        if peek(p) != 0: return "error: syntax"
+    if v := expr(p) {
+        if peek(p) != 0 { return "error: syntax" }
         return if p.div_zero: "error: division by zero" else: f"{v}"
+    }
     return "error: syntax"
+}
 
-fn main() Void:
-    if ls := stdin() | lines | collect(none):
-        for l in ls.map(fn l: l.replace("\r", "")).filter(fn l: not l.trim().is_empty()): print(evaluate(l))
+fn main() Void {
+    if ls := stdin() | lines | collect(none) {
+        for l in ls.map(fn l: l.replace("\r", "")).filter(fn l: not l.trim().is_empty()) { print(evaluate(l)) }
+    }
+}

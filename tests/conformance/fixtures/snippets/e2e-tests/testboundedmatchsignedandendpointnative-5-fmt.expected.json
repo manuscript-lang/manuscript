@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n\tshapes := [Shape.Square(3037000500)]\n\treturn area(shapes.get(0))\n"
+    "fmt": "export fn main() Int {\n\tshapes := [Shape.Square(3037000500)]\n\treturn area(shapes.get(0))\n}\n"
   }
 }

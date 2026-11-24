@@ -3,25 +3,13 @@
   "phase": "check",
   "oracle": "Manuscript 2026.11.0",
   "expected": {
-    "exit_code": 1,
+    "exit_code": 0,
     "format": 1,
-    "diagnostics": [
-      {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 10; use 8 or 12; a line inside brackets is indented by fours too, so do not align it with the opening bracket",
-        "position": {
-          "file": "diag-bracket-alignment.ms",
-          "line": 5,
-          "column": 11,
-          "offset": 109
-        }
-      }
-    ],
+    "diagnostics": [],
     "text": {
-      "exit_code": 1,
-      "stdout": "",
-      "stderr": "<DIR>/diag-bracket-alignment.ms:5:11: parse: indentation must be a multiple of four spaces, found 10; use 8 or 12; a line inside brackets is indented by fours too, so do not align it with the opening bracket\n   |\n 5 |           2)\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "exit_code": 0,
+      "stdout": "Checked diag-bracket-alignment.ms\n",
+      "stderr": ""
     }
   }
 }

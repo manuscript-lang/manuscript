@@ -1,5 +1,6 @@
 // conform: tags=diagnostics,types,tier-core
 // conform: phase=check
 // conform: origin=foreign-syntax diagnostics
-fn f() Int?:
-    return None
+fn f() Int? {
+	return None
+}

@@ -1,27 +1,32 @@
 // conform: tags=control-flow,diagnostics,tier-core,scope-cleanup
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_paragraphs_test.go:101 TestFormatParagraphs
-fn work(enabled Bool) Int:
-    count := 2
+fn work(enabled Bool) Int {
+	count := 2
 
-    if enabled:
-        run(count)
-    else if count > 0: run(1)
-    else:
-        run(0)
+	if enabled {
+		run(count)
+	} else if count > 0 {
+		run(1)
+	} else {
+		run(0)
+	}
 
-    while enabled:
-        if count == 0: break
+	while enabled {
+		if count == 0 { break }
 
-        run(count)
-        break
+		run(count)
+		break
+	}
 
-    for item in [1, 2]:
-        if item == 1: continue
+	for item in [1, 2] {
+		if item == 1 { continue }
 
-        run(item)
+		run(item)
+	}
 
-    var resource = acquire()
-    run(resource)
-    resource.close()
-    return count
+	var resource = acquire()
+	run(resource)
+	resource.close()
+	return count
+}

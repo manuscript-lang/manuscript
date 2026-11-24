@@ -14,20 +14,20 @@
           "file": "for-each-changes-let-list.ms",
           "line": 5,
           "column": 5,
-          "offset": 90
+          "offset": 91
         },
         "fix": {
           "position": {
             "file": "for-each-changes-let-list.ms",
             "line": 4,
             "column": 5,
-            "offset": 76
+            "offset": 77
           },
           "end": {
             "file": "for-each-changes-let-list.ms",
             "line": 4,
             "column": 10,
-            "offset": 81
+            "offset": 82
           },
           "replacement": "var xs ="
         }

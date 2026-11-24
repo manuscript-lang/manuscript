@@ -14,65 +14,80 @@ export extern type Regex
 
 // Tests whether any match occurs; anchor the pattern explicitly to require a
 // whole-string match.
-fn Regex.matches(text String) Bool: ...
+fn Regex.matches(text String) Bool { ... }
 
 // Returns the text of each nonoverlapping match in order, without capture groups.
 // A supplied `max_matches` is a strict budget: more matches return an error rather
 // than a truncated list. Zero-width matches follow the engine's rules.
-fn Regex.find_all(text String, max_matches Int?) move List[String]!: ...
+fn Regex.find_all(text String, max_matches Int?) move List[String]! { ... }
 
 // Replaces every nonoverlapping match with `replacement`, used literally: `$` and
 // capture names are not expanded. `max_bytes` optionally bounds the UTF-8 output; a
 // negative bound returns `EINVAL` and exceeding it returns `EOVERFLOW`.
-fn Regex.replace_all(text String, replacement String, max_bytes Int?) move String!: ...
+fn Regex.replace_all(
+	text String,
+	replacement String,
+	max_bytes Int?,
+) move String! { ... }
 
 // Returns the first match as [whole, group1, ...]; groups that did not participate
 // are "". Empty list when nothing matches.
-fn Regex.capture(text String) List[String]:
+fn Regex.capture(text String) List[String] {
 	return msstd_regex_captures(self, text)
+}
 
 // Like capture for every nonoverlapping match, under find_all's match-count
 // budget.
-fn Regex.capture_all(text String, max_matches Int?) List[List[String]]!:
+fn Regex.capture_all(text String, max_matches Int?) List[List[String]]! {
 	return msstd_regex_captures_all(self, text, max_matches)
+}
 
 // Returns the first match's named groups that participated; empty map when nothing
 // matches.
-fn Regex.capture_named(text String) Map[String, String]:
+fn Regex.capture_named(text String) Map[String, String] {
 	pairs := msstd_regex_named_capture_pairs(self, text)
 	var named = Map[String, String]()
 	var at = 0
 
-	while at + 1 < pairs.length():
+	while at + 1 < pairs.length() {
 		named.add(pairs[at].clone(), pairs[at + 1].clone())
 		at += 2
+	}
 
 	return named
+}
 
 // Returns the UTF-8 byte range of the first match, or null when nothing matches.
-fn Regex.find_span(text String) RegexSpan?:
+fn Regex.find_span(text String) RegexSpan? {
 	raw := msstd_regex_find_span(self, text)
-	if raw != null: return RegexSpan(raw[0], raw[1])
+	if raw != null { return RegexSpan(raw[0], raw[1]) }
 
 	return null
+}
 
 // Splits text around every match, always returning at least one piece. max_pieces
 // is a strict budget like find_all's.
-fn Regex.split(text String, max_pieces Int?) List[String]!: ...
+fn Regex.split(text String, max_pieces Int?) List[String]! { ... }
 
 // Like `replace_all`, but expands `$1`, `${name}` and `$$` in `template` from each
 // match. The syntax is Rust's: write `${1}x`, not `$1x`.
-fn Regex.replace_template(text String, template String, max_bytes Int?) move String!: ...
+fn Regex.replace_template(
+	text String,
+	template String,
+	max_bytes Int?,
+) move String! { ... }
 
 // Returns the byte range of each match in `find_all` order, without copying the
 // matched text. `max_matches` is a strict output budget: a negative value returns
 // `EINVAL` and more matches return `EOVERFLOW`.
-fn Regex.find_all_spans(text String, max_matches Int?) List[RegexSpan]!:
+fn Regex.find_all_spans(text String, max_matches Int?) List[RegexSpan]! {
 	raw := msstd_regex_find_all_spans(self, text, max_matches)?
 	var out = List[RegexSpan](reserve: raw.length() / 2)
-	for index in 0..(raw.length() / 2):
+	for index in 0..(raw.length() / 2) {
 		out.append(RegexSpan(raw[index * 2], raw[index * 2 + 1]))
+	}
 	return ok(out)
+}
 
 /*
 Returns the byte ranges of the first match as [whole, group1, ...], or an outer `null` when nothing matches.
@@ -80,11 +95,12 @@ A group that did not participate is an inner `null`; a participating empty group
 `max_captures` bounds the slots, counting the whole match and unmatched groups. A negative budget returns `EINVAL`
 and exceeding it returns `EOVERFLOW`. The budget bounds the output, not input scanning or engine scratch space.
 */
-fn Regex.capture_spans(text String, max_captures Int?) List[RegexSpan?]?!:
+fn Regex.capture_spans(text String, max_captures Int?) List[RegexSpan?]?! {
 	raw := msstd_regex_capture_spans(self, text, max_captures)?
-	if raw.is_empty(): return ok(null)
+	if raw.is_empty() { return ok(null) }
 
 	return ok(capture_slots(raw, 1, raw[0]))
+}
 
 /*
 Like `capture_spans`, for every match in `capture_all` order; no match gives an empty list.
@@ -95,44 +111,51 @@ fn Regex.capture_all_spans(
 	text String,
 	max_matches Int?,
 	max_captures Int?,
-) List[List[RegexSpan?]]!:
+) List[List[RegexSpan?]]! {
 	raw := msstd_regex_capture_all_spans(self, text, max_matches, max_captures)?
-	if raw.is_empty(): return ok(List[List[RegexSpan?]]())
+	if raw.is_empty() { return ok(List[List[RegexSpan?]]()) }
 
 	count := raw[0]
 	var out = List[List[RegexSpan?]](reserve: (raw.length() - 1) / (count * 2))
 	var at = 1
 
-	while at < raw.length():
+	while at < raw.length() {
 		out.append(capture_slots(raw, at, count))
 		at += count * 2
+	}
 
 	return ok(out)
+}
 
 /*
 A match or capture range in UTF-8 bytes, with an exclusive end; no normalization is applied.
 Example: a match of `é` in `aé` spans bytes 1 through 3, not scalar positions 1 through 2.
 Extract text with `data.decode_utf8_range(span.start, span.end)` on its original Bytes.
 */
-export type RegexSpan:
+export type RegexSpan {
 	// Zero-based inclusive UTF-8 byte offset in the input string.
 	start Int
 	// Exclusive UTF-8 byte offset; equal to start for a participating empty match.
 	end Int
+}
 
 // Compiles a regular expression. Invalid pattern syntax is returned as an error.
-export fn compile(pattern String) Regex!:
+export fn compile(pattern String) Regex! {
 	return msstd_regex_compile(pattern)
+}
 
-fn capture_slots(raw List[Int], start Int, count Int) List[RegexSpan?]:
+fn capture_slots(raw List[Int], start Int, count Int) List[RegexSpan?] {
 	var out = List[RegexSpan?](reserve: count)
 
-	for index in 0..count:
+	for index in 0..count {
 		at := start + index * 2
 
-		if raw[at] < 0:
+		if raw[at] < 0 {
 			out.append(null)
-		else:
+		} else {
 			out.append(RegexSpan(raw[at], raw[at + 1]))
+		}
+	}
 
 	return out
+}

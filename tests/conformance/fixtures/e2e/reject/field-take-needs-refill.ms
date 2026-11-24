@@ -5,15 +5,19 @@
 // `ReadStream.end`).
 import Closeable from "@std/core.ms"
 
-type Half:
+type Half {
 	id Int
+}
 
-fn move Half.close() Void!:
+fn move Half.close() Void! {
 	print(f"close {self.id}")
+}
 
-type Pair:
+type Pair {
 	first Half
 	second Half
+}
 
-fn end_first(var pair Pair) Void!:
+fn end_first(var pair Pair) Void! {
 	pair.first.close()?
+}

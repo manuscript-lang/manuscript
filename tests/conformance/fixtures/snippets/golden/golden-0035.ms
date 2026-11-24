@@ -5,7 +5,7 @@ Usage ms <command> [arguments] [options]
 
 Manuscript checks, builds, and runs .ms source and ms.toml projects.
 
-Commands:
+Commands {
   check          Parse and type-check without executing
   lint           Check source hygiene and semantic lint rules
   build          Build a native executable
@@ -28,19 +28,23 @@ Commands:
   guide          Print the language cheat sheet
   help           Show help for a command
   version        Print the compiler version
+}
 
-Options:
+Options {
   -h, --help  Show help
   --version   Print the compiler version
+}
 
-Native build levels:
+Native build levels {
   --build-type <Debug|Release|RelWithDebInfo|MinSizeRel>
   Default: Release; profile and profiled tests default to RelWithDebInfo; debug always uses Debug
+}
 
-Start with:
+Start with {
   ms init hello
   ms check ms.toml
   ms run ms.toml -- first second
+}
 
 Bare ms prints this help and exits successfully.
 Long options that take values also accept --flag=value.

@@ -6,10 +6,11 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-fn append_generic[T](var values List[T?], value T) Void:
+fn append_generic[T](var values List[T?], value T) Void {
 	values.append(value)
+}
 
-test "direct append preserves checked argument conversions":
+test "direct append preserves checked argument conversions" {
 	var values List[Int?] = []
 	values.append(7)
 	append_generic(values, 8)
@@ -63,8 +64,9 @@ test "direct append preserves checked argument conversions":
 	widened := results.get(0) or panic("called Optional.get() on null")
 	expect_false(widened.is_ok())?
 	expect_equal(widened.err().message, "failure")?
+}
 
-test "direct keyed calls preserve optional keys and values":
+test "direct keyed calls preserve optional keys and values" {
 	var values List[Int?] = []
 	values.append(7)
 	expect_false(not values.contains(7) or values.contains(8))?
@@ -86,18 +88,20 @@ test "direct keyed calls preserve optional keys and values":
 	expect_false(
 		(not keys.contains(7) or not keys.contains(null) or keys.length() != 2)
 	)?
+}
 
-test "direct calls capture receiver and arguments in written order":
+test "direct calls capture receiver and arguments in written order" {
 	first List[Int?] := []
 	second List[Int?] := []
 	var receiver = first.clone()
 	receiver.append(
 		(
-			match present(7):
-				value:
+			match present(7) {
+				value => {
 					receiver = second.clone()
 					value
-				null => 0
+				} null => 0
+			}
 		) + 0
 	)
 	expect_false(not first.is_empty() or not second.is_empty())?
@@ -107,11 +111,12 @@ test "direct calls capture receiver and arguments in written order":
 	entries.add(
 		key,
 		(
-			match present(7):
-				value:
+			match present(7) {
+				value => {
 					key = 2
 					value
-				null => 0
+				} null => 0
+			}
 		) + 0,
 	)
 	expect_false(
@@ -124,6 +129,8 @@ test "direct calls capture receiver and arguments in written order":
 			or key != 2
 		)
 	)?
+}
 
-fn present[T](value T) T?:
+fn present[T](value T) T? {
 	return value
+}

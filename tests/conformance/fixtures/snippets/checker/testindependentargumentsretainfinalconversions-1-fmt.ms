@@ -5,4 +5,8 @@ fn identity[T](value T) T => value
 
 fn consume[T](value T, cause Error, optional T?) Void => return
 
-fn first() Void => consume(value: 1, cause: identity(Error("two")), optional: identity(3))
+fn first() Void => consume(
+	value: 1,
+	cause: identity(Error("two")),
+	optional: identity(3),
+)

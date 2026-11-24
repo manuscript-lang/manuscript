@@ -1,2 +1,3 @@
-fn other() Int:
+fn other() Int {
 	return 1
+}

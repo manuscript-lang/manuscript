@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Growing[T]:\n\tchildren List[Growing[List[T]]]\n"
+    "fmt": "type Growing[T] {\n\tchildren List[Growing[List[T]]]\n}\n"
   }
 }

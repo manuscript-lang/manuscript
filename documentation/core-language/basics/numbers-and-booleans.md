@@ -46,14 +46,16 @@ Integer literals are `Int`, written in decimal, `0x` hexadecimal or `0b` binary.
 
 <!-- manuscript-example: {"mode":"error","contains":"expected Float","context":"import Decimal from \"@std/math/decimal.ms\"","given":[]} -->
 ```manuscript
-fn literals() Void:
+fn literals() Void {
     smallest Int := -9223372036854775808
     exponent Float := 1e3
     mask Int := 0xFF_00
     flags Int := 0b1010_0101
     precise Decimal := 1e3d
+
     // Rejected: an Int token does not become Float from context.
     mismatch Float := 1
+}
 ```
 
 ## Sized numbers
@@ -64,14 +66,17 @@ Arithmetic needs both operands to have the same type, so `Int8 + Int32` is rejec
 
 <!-- manuscript-example: {"mode":"error","contains":"same independently known type","given":[]} -->
 ```manuscript
-fn sized() Void:
+fn sized() Void {
     a Int8 := 100
     wide Int32 := 2000000000
     ratio Float32 := 0.1
+
     // Faults: 200 does not fit Int8.
     b := a + a
+
     // Rejected: operand types differ.
     c := a + wide
+}
 ```
 
 `Float32` operations round once to binary32, so `0.1 + 0.2` is `0.3` for `Float32` and `0.30000000000000004` for `Float`. Typed JSON supports sized integers and `Float32`, preserving their range checks. List indexes and literal `match` subjects still use `Int`; convert a sized integer at those boundaries. See [numeric conversion](#numeric-conversion), [list indexing](../types/collections.md), [matching literals](../control-flow/pattern-matching.md#matching-literals), and the [JSON API](../../standard-library/reference/data/json.ms.md).
@@ -182,19 +187,23 @@ Decimal imposes no currency policy; scaled Int cents also work. This example rou
 
 <!-- manuscript-example: {"mode":"test"} -->
 ```manuscript
-import Decimal from "@std/math/decimal.ms"
-import expect_equal from "@std/test/test.ms"
+import (
+    Decimal from "@std/math/decimal.ms",
+    expect_equal from "@std/test/test.ms",
+)
 
-fn amount_text() String!:
+fn amount_text() String! {
     subtotal := 19.99d * 3d
     tax := (subtotal * 0.0825d).round(places: 2)?
     tax_text := tax.to_fixed(digits: 2)?
     total_text := (subtotal + tax).to_fixed(digits: 2)?
     padded := 25.50d.to_fixed(digits: 2)?
     return ok(f"tax {tax_text} total {total_text} padded {padded}")
+}
 
-test "decimal amounts":
+test "decimal amounts" {
     amount_text()? | expect_equal("tax 4.95 total 64.92 padded 25.50")?
+}
 ```
 
 ## Booleans

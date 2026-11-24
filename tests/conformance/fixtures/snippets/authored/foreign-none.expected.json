@@ -14,20 +14,20 @@
           "file": "foreign-none.ms",
           "line": 5,
           "column": 10,
-          "offset": 138
+          "offset": 136
         },
         "fix": {
           "position": {
             "file": "foreign-none.ms",
             "line": 5,
             "column": 10,
-            "offset": 138
+            "offset": 136
           },
           "end": {
             "file": "foreign-none.ms",
             "line": 5,
             "column": 14,
-            "offset": 142
+            "offset": 140
           },
           "replacement": "null"
         }

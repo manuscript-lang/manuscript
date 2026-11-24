@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe() Int:\n\tvalues := [1, 2, 3]\n\tvar sum = 0\n\tfor item in values:\n\t\tsum += item\n\treturn sum + values.length()\n"
+    "fmt": "fn probe() Int {\n\tvalues := [1, 2, 3]\n\tvar sum = 0\n\tfor item in values {\n\t\tsum += item\n\t}\n\treturn sum + values.length()\n}\n"
   }
 }

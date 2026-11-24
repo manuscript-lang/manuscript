@@ -9,37 +9,58 @@ Order lines arrive as text such as `pen,2,150`. Some will be wrong: a missing fi
 
 <!-- manuscript-example: {"mode":"run","stdout":"good: 1199\nbad: quantity must be positive: ink,0,899\nbroken: quantity is not a number: pen,two,150\n"} -->
 ```manuscript {filename="lines.ms"}
-type Line:
+type Line {
     name String
     quantity Int
     cents Int
+}
 
-fn parse_line(text String) Line!:
+fn parse_line(text String) Line! {
     parts := text.split(",")
-    if parts.length() != 3:
+    if parts.length() != 3 {
         return error(Error(f"expected name,quantity,cents: {text}", kind: "EBADMSG"))
-    quantity := ok_or(parts[1].parse_int(), Error(f"quantity is not a number: {text}", kind: "EINVAL"))?
-    if quantity <= 0:
-        return error(Error(f"quantity must be positive: {text}", kind: "EINVAL"))
-    cents := ok_or(parts[2].parse_int(), Error(f"price is not a number: {text}", kind: "EINVAL"))?
-    return ok(Line(parts[0].clone(), quantity, cents))
+    }
 
-fn total(lines List[String]) Int!:
+    quantity := ok_or(
+        parts[1].parse_int(),
+        Error(f"quantity is not a number: {text}", kind: "EINVAL"),
+    )?
+    if quantity <= 0 {
+        return error(Error(f"quantity must be positive: {text}", kind: "EINVAL"))
+    }
+
+    cents := ok_or(
+        parts[2].parse_int(),
+        Error(f"price is not a number: {text}", kind: "EINVAL"),
+    )?
+    return ok(Line(parts[0].clone(), quantity, cents))
+}
+
+fn total(lines List[String]) Int! {
     var sum = 0
-    for text in lines:
+
+    for text in lines {
         line := parse_line(text)?
         sum += line.quantity * line.cents
-    return ok(sum)
+    }
 
-fn main() Void:
+    return ok(sum)
+}
+
+fn main() Void {
     good := total(["pen,2,150", "ink,1,899"])
     print(f"good: {good.get_or(0)}")
+
     bad := total(["pen,2,150", "ink,0,899"])
-    if bad.is_error():
+    if bad.is_error() {
         print(f"bad: {bad.err().message}")
+    }
+
     broken := total(["pen,two,150"])
-    if broken.is_error():
+    if broken.is_error() {
         print(f"broken: {broken.err().message}")
+    }
+}
 ```
 
 ```text
@@ -57,7 +78,7 @@ Nothing is thrown. `total` returned an error value, and `main` decided what to p
 - `?` unwraps a success. If the call failed, the function returns that error immediately. That is the whole error plumbing in `total`: one `?` per call that can fail.
 - `parse_int()` returns an optional, because the text might not be a number. `ok_or(value, error)` turns "nothing" into a specific error, so the message names the bad line.
 - `kind` is a short code a caller can branch on, such as `"EINVAL"`. The standard library uses the same codes, so you never import a per-module error type.
-- `good.get_or(0)` reads a result with a fallback. For a full branch use `if result.is_error():` as `main` does.
+- `good.get_or(0)` reads a result with a fallback. For a full branch use `if result.is_error() { ... }` as `main` does.
 
 ## Try it
 

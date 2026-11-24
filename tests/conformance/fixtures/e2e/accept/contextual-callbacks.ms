@@ -11,30 +11,32 @@ fn with_result[T](transform fn() T!Error) T!Error => transform()
 
 fn checked() Int!Error => ok(3)
 
-type Box[T]:
+type Box[T] {
 	value T
+}
 
-type Callback[T, U]:
+type Callback[T, U] {
 	transform fn(T) U
+}
 
-interface Read:
+interface Read {
 	fn get() Int
+}
 
 fn Box[Int].get() Int => self.value
 
-fn invoke(transform (fn(Int) Int)?) Int:
+fn invoke(transform (fn(Int) Int)?) Int {
 	callback := transform
-	if callback != null: return callback(4)
+	if callback != null { return callback(4) }
 
 	return 0
+}
 
-test "contextual callbacks and inline returns":
+test "contextual callbacks and inline returns" {
 	offset := 3
-	strings := (
-		[1, 2, 3]
-		.filter(item => item > 1)
-		.map(number => (number + offset).to_string())
-	)
+	strings := [1, 2, 3].filter(
+		item => item > 1
+	).map(number => (number + offset).to_string())
 	expect_equal(strings.join(","), "5,6")?
 
 	result := apply(transform: item => item + offset, value: 2)
@@ -51,9 +53,10 @@ test "contextual callbacks and inline returns":
 	functions List[fn(Int) Int] := [item => item + 4]
 	expect_equal(functions.get(0)(2), 6)?
 
-	nested := fn(value Int):
+	nested := fn(value Int) {
 		inner := () => "text"
 		return value + inner().scalar_length()
+	}
 
 	expect_equal(nested(2), 6)?
 
@@ -61,17 +64,18 @@ test "contextual callbacks and inline returns":
 	expect_equal(success, Result[Int, Error].ok(4))?
 
 	propagated := with_result(
-		fn:
+		() => {
 			value := checked()?
 			return ok(value + 2)
+		}
 	)
 
 	expect_equal(propagated, Result[Int, Error].ok(5))?
 
 	failed := with_result(
-		fn:
-			if true: return error(Error("expected"))
-			return ok(4)
+		() => {
+			if true { return error(Error("expected")) } return ok(4)
+		}
 	)
 
 	expect_equal(failed, Result[Int, Error].error(Error("expected")))?
@@ -82,6 +86,8 @@ test "contextual callbacks and inline returns":
 	defaulted fn(Int) Int := fn(item Int = 4) => item + 1
 	expect_equal(defaulted(8), 9)?
 
-	outer fn(Int) fn(Int) Int := fn base:
+	outer fn(Int) fn(Int) Int := base => {
 		return extra => base + extra
+	}
 	expect_equal(outer(3)(4), 7)?
+}

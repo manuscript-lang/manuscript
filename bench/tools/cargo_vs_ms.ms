@@ -7,13 +7,15 @@ import (
 	ms_binary, run_inherit, usage from "./lib.ms",
 )
 
-fn main() Int:
+fn main() Int {
 	args := arguments()
-	if args.length() != 1 or (args[0] != "toml" and args[0] != "csv"):
+	if args.length() != 1 or (args[0] != "toml" and args[0] != "csv") {
 		return usage("usage: cargo_vs_ms.ms -- <toml|csv>")
+	}
 
 	dir := f"bench/perf/{args[0]}"
 	first := run_inherit(f"{dir}/ms", ms_binary(), ["run", "src/main.ms"])
-	if first != 0: return first
+	if first != 0 { return first }
 
 	return run_inherit(f"{dir}/rust", "cargo", ["run", "--release", "--quiet"])
+}

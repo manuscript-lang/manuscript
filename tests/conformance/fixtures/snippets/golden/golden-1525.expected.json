@@ -9,18 +9,18 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?",
+        "message": "unknown standard module @std/bigint.ms",
         "position": {
           "file": "golden-1525.ms",
           "line": 4,
-          "column": 8,
-          "offset": 108
+          "column": 5,
+          "offset": 63
         },
         "end": {
           "file": "golden-1525.ms",
           "line": 4,
           "column": 13,
-          "offset": 113
+          "offset": 71
         }
       },
       {
@@ -29,39 +29,39 @@
         "message": "unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?",
         "position": {
           "file": "golden-1525.ms",
-          "line": 4,
-          "column": 15,
-          "offset": 115
+          "line": 6,
+          "column": 5,
+          "offset": 139
         },
         "end": {
           "file": "golden-1525.ms",
-          "line": 4,
-          "column": 28,
-          "offset": 128
+          "line": 6,
+          "column": 18,
+          "offset": 152
         }
       },
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown standard module @std/bigint.ms",
+        "message": "unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?",
         "position": {
           "file": "golden-1525.ms",
-          "line": 5,
-          "column": 8,
-          "offset": 158
+          "line": 6,
+          "column": 20,
+          "offset": 154
         },
         "end": {
           "file": "golden-1525.ms",
-          "line": 5,
-          "column": 16,
-          "offset": 166
+          "line": 6,
+          "column": 25,
+          "offset": 159
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1525.ms:4:8: resolution: unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?\n   |\n 4 | import Queue, PriorityQueue from \"@std/queues.ms\"\n   |        ^^^^^\n<DIR>/golden-1525.ms:4:15: resolution: unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?\n   |\n 4 | import Queue, PriorityQueue from \"@std/queues.ms\"\n   |               ^^^^^^^^^^^^^\n<DIR>/golden-1525.ms:5:8: resolution: unknown standard module @std/bigint.ms\n   |\n 5 | import from_int from \"@std/bigint.ms\"\n   |        ^^^^^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1525.ms:4:5: resolution: unknown standard module @std/bigint.ms\n   |\n 4 |     from_int from \"@std/bigint.ms\",\n   |     ^^^^^^^^\n<DIR>/golden-1525.ms:6:5: resolution: unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?\n   |\n 6 |     PriorityQueue, Queue from \"@std/queues.ms\",\n   |     ^^^^^^^^^^^^^\n<DIR>/golden-1525.ms:6:20: resolution: unknown standard module @std/queues.ms; did you mean '@std/collections/queue.ms'?\n   |\n 6 |     PriorityQueue, Queue from \"@std/queues.ms\",\n   |                    ^^^^^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

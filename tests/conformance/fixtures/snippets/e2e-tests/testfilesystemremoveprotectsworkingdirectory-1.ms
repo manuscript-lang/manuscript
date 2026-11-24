@@ -4,21 +4,24 @@
 import canonicalize, remove, rename from "@std/os/fs.ms"
 
 // The failure names the path after the status words, so only its kind is compared.
-fn refused(outcome Void!) Bool:
-    return outcome.is_error() and outcome.err().kind == "EINVAL"
+fn refused(outcome Void!) Bool {
+	return outcome.is_error() and outcome.err().kind == "EINVAL"
+}
 
-export fn main() Int:
-    if not refused(remove(path: "", recursive: true)): return 1
-    if not refused(remove(path: ".", recursive: true)): return 2
-    if not refused(remove(path: "child/..", recursive: true)): return 3
+export fn main() Int {
+	if not refused(remove(path: "", recursive: true)) { return 1 }
+	if not refused(remove(path: ".", recursive: true)) { return 2 }
+	if not refused(remove(path: "child/..", recursive: true)) { return 3 }
 
-    if base := canonicalize("."):
-        if not refused(remove(path: base, recursive: true)): return 4
-    else:
-        return 8
+	if base := canonicalize(".") {
+		if not refused(remove(path: base, recursive: true)) { return 4 }
+	} else {
+		return 8
+	}
 
-    if not refused(rename(source: "", destination: "moved")): return 5
-    if not refused(rename(source: "sentinel", destination: "")): return 6
-    if remove(path: "child", recursive: true).is_error(): return 7
+	if not refused(rename(source: "", destination: "moved")) { return 5 }
+	if not refused(rename(source: "sentinel", destination: "")) { return 6 }
+	if remove(path: "child", recursive: true).is_error() { return 7 }
 
-    return 0
+	return 0
+}

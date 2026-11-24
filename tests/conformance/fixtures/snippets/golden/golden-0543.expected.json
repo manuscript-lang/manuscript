@@ -7,43 +7,61 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
-        "position": {
-          "file": "golden-0543.ms",
-          "line": 4,
-          "column": 5,
-          "offset": 71
-        }
-      },
-      {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type",
         "position": {
           "file": "golden-0543.ms",
           "line": 5,
           "column": 5,
           "offset": 87
+        },
+        "end": {
+          "file": "golden-0543.ms",
+          "line": 5,
+          "column": 8,
+          "offset": 90
         }
       },
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "expected a module declaration or import, found 'while'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn",
         "position": {
           "file": "golden-0543.ms",
           "line": 6,
           "column": 5,
           "offset": 104
+        },
+        "end": {
+          "file": "golden-0543.ms",
+          "line": 6,
+          "column": 10,
+          "offset": 109
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "unmatched closing delimiter '}'; remove it or add the matching opener before it",
+        "position": {
+          "file": "golden-0543.ms",
+          "line": 10,
+          "column": 5,
+          "offset": 217
+        },
+        "end": {
+          "file": "golden-0543.ms",
+          "line": 10,
+          "column": 6,
+          "offset": 218
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0543.ms:4:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 4 |     peer := [2]\n   |     ^\n<DIR>/golden-0543.ms:5:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 5 |     var fill = 0\n   |     ^\n<DIR>/golden-0543.ms:6:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 6 |     while fill < 100:\n   |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0543.ms:5:5: parse: module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type\n   |\n 5 |     var fill = 0\n   |     ^^^\n<DIR>/golden-0543.ms:6:5: parse: expected a module declaration or import, found 'while'; top level holds only import, constants (NAME := value), fn, type, enum, interface, and test (optionally prefixed by export), so put statements inside a fn\n   |\n 6 |     while fill < 100 {\n   |     ^^^^^\n<DIR>/golden-0543.ms:10:5: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 10 |     }\n    |     ^\n3 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

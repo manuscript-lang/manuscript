@@ -2,10 +2,11 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type Named:
+type Named {
 	name String
+}
 
-test "optional string keys hash and compare":
+test "optional string keys hash and compare" {
 	var m = Map[String?, Int]()
 	m.add("x", 1)
 	m.add("x", 2)
@@ -16,8 +17,9 @@ test "optional string keys hash and compare":
 	expect_equal(m.get_or("x", 0), 2)?
 	expect_equal(m.get_or(null, 0), 4)?
 	expect_equal(m.get_or("", 0), 5)?
+}
 
-test "optional record keys in a set":
+test "optional record keys in a set" {
 	var s = Set[Named?]()
 	s.add(Named("a"))
 	s.add(Named("a"))
@@ -26,3 +28,4 @@ test "optional record keys in a set":
 	expect_equal(s.length(), 2)?
 	expect_equal(s.contains(Named("a")), true)?
 	expect_equal(s.contains(Named("b")), false)?
+}

@@ -12,13 +12,13 @@
           "file": "foreign-assert.ms",
           "line": 5,
           "column": 5,
-          "offset": 137
+          "offset": 138
         },
         "end": {
           "file": "foreign-assert.ms",
           "line": 5,
           "column": 11,
-          "offset": 143
+          "offset": 144
         }
       }
     ],

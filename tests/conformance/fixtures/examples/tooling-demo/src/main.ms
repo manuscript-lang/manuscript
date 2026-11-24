@@ -5,28 +5,31 @@ import (
 	compute, total from "@math",
 )
 
-type Package:
+type Package {
 	title String
 	count Int
+}
 
 // A real entry point: records, generics, a local queue, and a native workload.
-export fn main() Int:
+export fn main() Int {
 	package := Package("Manuscript", 42)
 	values := [10, 20, 30]
 	optional Int? := 5
 	value := optional
 
-	if value != null:
-		if value != 5: return 1
-	else:
+	if value != null {
+		if value != 5 { return 1 }
+	} else {
 		return 1
+	}
 
 	sum := total(values.length(), 20, 30)
 	var queue = Queue[Int](4)
-	if not queue.enqueue(package.count): return 1
+	if not queue.enqueue(package.count) { return 1 }
 
 	checksum := compute(3000000)
 	output := f"{package.title}: {sum}; checksum {checksum}\n"
-	if stdout().write(output).is_error(): return 1
+	if stdout().write(output).is_error() { return 1 }
 
 	return 0
+}

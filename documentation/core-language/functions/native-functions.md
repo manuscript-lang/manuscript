@@ -13,11 +13,13 @@ import expect_equal from "@std/test/test.ms"
 
 extern fn llabs(value Int) Int
 
-fn magnitude(value Int) Int:
+fn magnitude(value Int) Int {
     return llabs(value)
+}
 
-test "an extern calls the native symbol":
+test "an extern calls the native symbol" {
     expect_equal(magnitude(-7), 7)?
+}
 ```
 
 An extern has no body and no trailing `:`. It may be exported. It cannot be generic, take defaults or `var` parameters, or be a method.
@@ -56,9 +58,10 @@ A `Result[T, E]` return names its error type `E`, an enum whose cases carry noth
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
 // A failed call, with the library's code and description.
-enum LibraryError:
+enum LibraryError {
     Failed(code Int, message String)
     Busy
+}
 
 extern fn lib_count(path String) Int!LibraryError
 ```
@@ -95,10 +98,12 @@ import Closeable from "@std/core.ms"
 export extern type Connection
 
 extern fn lib_connect(address String) Connection
+
 extern fn lib_disconnect(connection Connection) Void
 
-fn move Connection.close() Void!:
+fn move Connection.close() Void! {
     lib_disconnect(self)
+}
 ```
 
 ## Calling back into Manuscript

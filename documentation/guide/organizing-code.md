@@ -9,43 +9,58 @@ Orders can hold books and subscriptions, and the total should add up either with
 
 <!-- manuscript-example: {"mode":"run","stdout":"Cart: 6140 cents\nLargest: 9\n"} -->
 ```manuscript {filename="catalog.ms"}
-interface Priced:
+interface Priced {
     fn cents() Int
+}
 
-type Book:
+type Book {
     title String
     pages Int
+}
 
-type Subscription:
+type Subscription {
     months Int
+}
 
-fn Book.cents() Int:
+fn Book.cents() Int {
     return 500 + self.pages * 2
+}
 
-fn Subscription.cents() Int:
+fn Subscription.cents() Int {
     return self.months * 900
+}
 
-fn total(items List[Priced]) Int:
+fn total(items List[Priced]) Int {
     var sum = 0
-    for item in items:
+    for item in items {
         sum += item.cents()
+    }
     return sum
+}
 
-fn largest[T Clonable](items List[T], score fn(T) Int) T?:
+fn largest[T Clonable](items List[T], score fn(T) Int) T? {
     var best T? = null
     var best_score = 0
-    for item in items:
+
+    for item in items {
         value := score(item)
-        if best == null or value > best_score:
+
+        if best == null or value > best_score {
             best_score = value
             best = item.clone()
-    return best
+        }
+    }
 
-fn main() Void:
+    return best
+}
+
+fn main() Void {
     items List[Priced] := [Book("Manuscript", 120), Subscription(6)]
     print(f"Cart: {total(items)} cents")
+
     top := largest([3, 9, 4], n => n)
     print(f"Largest: {top or 0}")
+}
 ```
 
 ```text

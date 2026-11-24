@@ -3,18 +3,21 @@
 // conform: origin=unsigned integer types stage 1
 import stdout from "@std/io/io.ms"
 
-type Pixel:
+type Pixel {
 	r UInt8
 	g UInt16
 	x UInt32
+}
 
-fn total(values List[UInt8]) UInt8:
+fn total(values List[UInt8]) UInt8 {
 	var sum UInt8 = 0
-	for v in values:
+	for v in values {
 		sum += v
+	}
 	return sum
+}
 
-fn main() Void:
+fn main() Void {
 	low UInt8 := 0
 	high UInt8 := 255
 	mid UInt16 := 65535
@@ -37,3 +40,4 @@ fn main() Void:
 		f"{high.to_int()} {mid.to_uint8()} {wide.to_hex()} {high.compare(low)}\n"
 	)
 	void stdout().write(f"{wide.to_float()} {high.to_float32()}\n")
+}

@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0934.ms:3:6: parse: expected a name, found 'interface'; 'interface' is a reserved word and cannot be used as a name\n   |\n 3 | type interface:\n   |      ^^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0934.ms:3:6: parse: expected a name, found 'interface'; 'interface' is a reserved word and cannot be used as a name\n   |\n 3 | type interface {\n   |      ^^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

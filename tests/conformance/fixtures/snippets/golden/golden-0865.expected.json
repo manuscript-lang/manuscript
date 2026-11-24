@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "Manuscript has no tuples; declare a type with 'type Pair:' and named fields to return several values, or use a List when the items share one type",
+        "message": "Manuscript has no tuples; declare a type with 'type Pair { ... }' and named fields to return several values, or use a List when the items share one type",
         "position": {
           "file": "golden-0865.ms",
           "line": 3,
@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0865.ms:3:7: parse: Manuscript has no tuples; declare a type with 'type Pair:' and named fields to return several values, or use a List when the items share one type\n   |\n 3 | let (a, b) = pair\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0865.ms:3:7: parse: Manuscript has no tuples; declare a type with 'type Pair { ... }' and named fields to return several values, or use a List when the items share one type\n   |\n 3 | let (a, b) = pair\n   |       ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

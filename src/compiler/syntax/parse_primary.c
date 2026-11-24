@@ -149,7 +149,7 @@ MS_NODISCARD bool parse_postfix(Parser *p, MsExpr *e, MsExpr **out) {
         parse_fail(
             p, parse_peek(p),
             ms_span_of_text(
-                "'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v:' or "
+                "'?\?' is not an operator and '?' cannot repeat: unwrap an Optional with 'if x := v { ... }' or "
                 "give it a default with 'v.get_or(default)', or bind a Result to a name before the next '?'"));
         return false;
       }
@@ -360,7 +360,7 @@ MS_NODISCARD static bool lambda_signature(Parser *p, MsParams *params, MsTypeRef
                    ms_span_of_text(""));
     return false;
   }
-  if (parse_kind(p) != MS_T_Colon && parse_kind(p) != MS_T_FatArrow) {
+  if (parse_kind(p) != MS_T_BlockOpen && parse_kind(p) != MS_T_FatArrow) {
     return parse_move_type(p, result, moves);
   }
   return true;
@@ -399,10 +399,13 @@ MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, LambdaForm form
                                  "x => x + 1, (a, b) => a + b or () => 1"));
       return false;
     }
-    if (untyped && parse_kind(p) == MS_T_Colon && parse_ahead(p, 1).kind != MS_T_Newline) {
+    if ((untyped && params.len != 0) || form == LAMBDA_FN_BARE) {
+      const bool one_line = parse_kind(p) == MS_T_Colon && parse_ahead(p, 1).kind != MS_T_Newline;
       parse_fail(p, parse_peek(p),
-                 ms_span_of_text("a one-line closure is written without 'fn': x => x + 1, (a, b) => a + b or "
-                                 "() => 1; a ':' body goes on the next lines"));
+                 ms_span_of_text(one_line ? "a one-line closure is written without 'fn': x => x + 1, (a, b) => "
+                                            "a + b or () => 1"
+                                          : "a closure without parameter types is written without 'fn': "
+                                            "x => { ... }, (a, b) => { ... } or () => { ... }"));
       return false;
     }
   }
@@ -431,8 +434,7 @@ MS_NODISCARD static bool lambda_expression(Parser *p, MsToken t, LambdaForm form
 /* What to say about a token that cannot start an expression; `before` is the token ahead of it. */
 static const char *expression_hint(MsToken t, MsTok before) {
   if (t.kind == MS_T_Else) {
-    return "'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', "
-           "directly after the if body";
+    return "'else' continues an 'if' block: write it on the line of the closing '}' as '} else {'";
   }
   if (t.kind == MS_T_Gt && before == MS_T_Lt) {
     return "'<>' is not an operator; write '!=' for inequality";
@@ -476,7 +478,7 @@ MS_NODISCARD static bool grouped_expression(Parser *p, MsToken t, MsExpr **out) 
     return false;
   if (parse_kind(p) == MS_T_Comma) {
     parse_fail(p, parse_peek(p),
-               ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair:' and named fields, "
+               ms_span_of_text("Manuscript has no tuples; declare a type with 'type Pair { ... }' and named fields, "
                                "or use a List when the items share one type"));
     return false;
   }

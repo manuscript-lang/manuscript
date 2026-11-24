@@ -2,5 +2,6 @@
 // conform: phase=check
 import Closeable from "@std/io/closeable.ms"
 
-export fn main() Int:
-    return 0
+export fn main() Int {
+	return 0
+}

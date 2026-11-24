@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type",
         "position": {
           "file": "golden-0821.ms",
           "line": 3,
           "column": 5,
           "offset": 57
+        },
+        "end": {
+          "file": "golden-0821.ms",
+          "line": 3,
+          "column": 8,
+          "offset": 60
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0821.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     var i = 0\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0821.ms:3:5: parse: module level holds only constants (NAME := value); keep mutable state in a 'var' inside a fn, or in a field of a type\n   |\n 3 |     var i = 0\n   |     ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

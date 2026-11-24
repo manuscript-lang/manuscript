@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn changed() Int:\n\treturn 7\n"
+    "fmt": "export fn changed() Int {\n\treturn 7\n}\n"
   }
 }

@@ -44,7 +44,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1133.ms:3:11: parse: parameter 'xInt' has no type; every parameter is written name Type, e.g. xInt Int\n   |\n 3 | fn double(xInt) Int =>return x*2\n   |           ^^^^\n<DIR>/golden-1133.ms:4:6: parse: parameter 'xInt' has no type; every parameter is written name Type, e.g. xInt Int\n   |\n 4 | fn f(xInt) Int:\n   |      ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1133.ms:3:11: parse: parameter 'xInt' has no type; every parameter is written name Type, e.g. xInt Int\n   |\n 3 | fn double(xInt) Int =>return x*2\n   |           ^^^^\n<DIR>/golden-1133.ms:4:6: parse: parameter 'xInt' has no type; every parameter is written name Type, e.g. xInt Int\n   |\n 4 | fn f(xInt) Int {\n   |      ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

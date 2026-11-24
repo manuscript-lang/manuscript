@@ -6,41 +6,46 @@ import (
 	Random, seeded from "../../lib/pyrandom.ms",
 )
 
-fn add(var cs Cases, name String, script String) Void:
+fn add(var cs Cases, name String, script String) Void {
 	cs.push(name, script)
+}
 
 // A registry of `n` packages p0..p{n-1}; package pI has `versions` releases and depends
 // on up to three lower-numbered packages with random constraints, so the search has to
 // backtrack. Ends with a `resolve` of the highest package.
-fn random_registry(seed Int, n Int, versions Int) String:
+fn random_registry(seed Int, n Int, versions Int) String {
 	var rng = seeded(seed)
 	ops := ["^", "~", ">=", "<=", "", "<", ">"]
 	var out = ""
 
-	for i in 0..n:
-		for v in 0..versions:
+	for i in 0..n {
+		for v in 0..versions {
 			var line = f"pkg p{i} {rng.randint(0, 2)}.{v}.{rng.randint(0, 3)}"
 			var used = List[Int]()
 
-			for _k in 0..rng.randint(0, 3):
-				if i == 0: break
+			for _k in 0..rng.randint(0, 3) {
+				if i == 0 { break }
 
 				j := rng.randint(0, i - 1)
-				if used.contains(j): continue
+				if used.contains(j) { continue }
 
 				used.append(j)
 
 				op := rng.choice(ops)
 				line += f" p{j}:{op}{rng.randint(0, 2)}.{rng.randint(0, versions)}.{rng.randint(0, 3)}"
+			}
 
 			out += line + "\n"
+		}
+	}
 
 	out += f"resolve p{n - 1} *\n"
 	out += f"resolve p{n / 2} ^0.1.0\n"
 	out += "list p0\n"
 	return out
+}
 
-export fn gen_c61() Void:
+export fn gen_c61() Void {
 	var cs = Cases(build_oracle("c61-dep-resolver"))
 	add(
 		cs,
@@ -114,3 +119,4 @@ export fn gen_c61() Void:
 		),
 	]
 	write_cases("c61-dep-resolver", examples, cs.list)
+}

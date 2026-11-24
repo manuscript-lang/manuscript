@@ -27,45 +27,50 @@ fixtures := "tests/conformance/fixtures/e2e/stdlib"
 
 // Whether `ms test` is the fixture's own phase: a file declaring another phase (parse,
 // check, run) is not meant to pass `ms test`.
-fn has_tests(source String) Bool:
-	if source.contains("// conform: phase="): return source.contains(
-		"// conform: phase=test\n"
-	)
+fn has_tests(source String) Bool {
+	if source.contains("// conform: phase=") {
+		return source.contains("// conform: phase=test\n")
+	}
 	return source.starts_with("test \"") or source.contains("\ntest \"")
+}
 
 // One `ms test` run of `file`: its exit status and the last lines of its output.
-fn test_run(ms String, file String, stress Bool) Int:
+fn test_run(ms String, file String, stress Bool) Int {
 	var settings = Map[String, String]()
-	if stress: settings["MS_SCHED_STRESS"] = "1"
+	if stress { settings["MS_SCHED_STRESS"] = "1" }
 
 	out := run(
 		ms,
 		["test", file.clone()],
 		RunOptions(timeout: seconds(300), env: settings),
 	).wait()
-	if done := out: return done.exit_code
+	if done := out { return done.exit_code }
 
 	return 1
+}
 
 // Runs each file under stress; answers one report line per failure.
-fn sweep(ms String, files List[String]) List[String]:
+fn sweep(ms String, files List[String]) List[String] {
 	var lines = List[String]()
 
-	for f in files:
+	for f in files {
 		lines.append("ran")
-		if test_run(ms.clone(), f.clone(), true) == 0: continue
+		if test_run(ms.clone(), f.clone(), true) == 0 { continue }
 
-		if test_run(ms.clone(), f.clone(), false) == 0:
+		if test_run(ms.clone(), f.clone(), false) == 0 {
 			lines.append(
 				f"stress: {f} fails under MS_SCHED_STRESS=1 and passes without it"
 			)
-		else:
+		} else {
 			lines.append(f"plain: {f} fails without stress too")
+		}
+	}
 
 	return lines
+}
 
 // The e2e stdlib test files changed since `since`.
-fn changed(since String) List[String]:
+fn changed(since String) List[String] {
 	var found = List[String]()
 	text := capture(
 		"git",
@@ -79,66 +84,82 @@ fn changed(since String) List[String]:
 		],
 	)
 
-	for line in text.split("\n"):
+	for line in text.split("\n") {
 		path := line.trim()
-		if path.ends_with(".ms"): found.append(path.clone())
+		if path.ends_with(".ms") { found.append(path.clone()) }
+	}
 
 	return found
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	var files = List[String]()
-	for f in arguments(): files.append(f.clone())
+	for f in arguments() { files.append(f.clone()) }
 
 	since := env("STRESS_CHANGED", "")
 
-	if files.is_empty() and since != "": files = changed(since)
-	else if files.is_empty():
-		for f in glob(fixtures, GlobOptions(patterns: ["*.ms"])).get_or([]):
+	if files.is_empty() and since != "" {
+		files = changed(since)
+	} else if files.is_empty() {
+		for f in glob(fixtures, GlobOptions(patterns: ["*.ms"])).get_or([]) {
 			files.append(f"{fixtures}/{f.path}")
+		}
+	}
 
 	var tests = List[String]()
 
-	for path in files:
+	for path in files {
 		source := read_file(path.clone()).wait().get().decode_utf8() or ""
-		if has_tests(source): tests.append(path.clone())
+		if has_tests(source) { tests.append(path.clone()) }
+	}
 
 	ms := tool_ms(root)
 	var jobs = system_info().cpu_count
 	n := env("STRESS_JOBS", "").parse_int()
-	if n != null: jobs = n
-	if jobs < 1: jobs = 1
+	if n != null { jobs = n }
+	if jobs < 1 { jobs = 1 }
 
 	var chunks = List[List[String]]()
 
-	for worker in 0..jobs:
+	for worker in 0..jobs {
 		var mine = List[String]()
-		for i in 0..tests.length():
-			if i % jobs == worker: mine.append(tests[i].clone())
+		for i in 0..tests.length() {
+			if i % jobs == worker {
+				mine.append(tests[i].clone())
+			}
+		}
 		chunks.append(mine)
+	}
 
 	var tasks = List[Promise[List[String]]]()
 
-	for worker in 0..jobs:
+	for worker in 0..jobs {
 		ms_copy := ms.clone()
 		chunk := chunks[worker].clone()
 		tasks.append(promise(() => ok(sweep(ms_copy, chunk))))
+	}
 
 	var ran = 0
 	var broken = 0
 
-	for task in tasks:
-		for line in task.wait().get_or(List[String]()):
-			if line == "ran": ran += 1
-			else:
-				if line.starts_with("stress: "): broken += 1
+	for task in tasks {
+		for line in task.wait().get_or(List[String]()) {
+			if line == "ran" {
+				ran += 1
+			} else {
+				if line.starts_with("stress: ") { broken += 1 }
 				print(f"{line}")
+			}
+		}
+	}
 
 	(
-		stdout().write(
-			f"stress-sched: {ran} files, {broken} fail only under stress\n"
-		).get()
+		stdout()
+		.write(f"stress-sched: {ran} files, {broken} fail only under stress\n")
+		.get()
 	)
-	if broken > 0: return 1
+	if broken > 0 { return 1 }
 
 	return 0
+}

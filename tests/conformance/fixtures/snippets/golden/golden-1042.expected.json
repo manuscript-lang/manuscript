@@ -14,7 +14,7 @@
           "file": "golden-1042.ms",
           "line": 4,
           "column": 5,
-          "offset": 73
+          "offset": 71
         },
         "fix": {
           "position": {
@@ -36,7 +36,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1042.ms:4:5: resolution: unknown binding expect_false; add: import expect_false from \"@std/test/test.ms\"\n   |\n 4 |     expect_false(parse(\"\\\"line\\r\\n\\r\\nbreak\\\"\\r\\n\\\"\\\"\\r\\n\", options)? != [[\"line\\n\\nbreak\"], [\"\"]])?\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1042.ms:4:5: resolution: unknown binding expect_false; add: import expect_false from \"@std/test/test.ms\"\n   |\n 4 |     expect_false(\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

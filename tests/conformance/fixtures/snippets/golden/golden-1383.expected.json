@@ -12,39 +12,22 @@
         "message": "expected an expression, found '%'; write a value, name, call, or literal here",
         "position": {
           "file": "golden-1383.ms",
-          "line": 23,
+          "line": 25,
           "column": 31,
-          "offset": 990
+          "offset": 1023
         },
         "end": {
           "file": "golden-1383.ms",
-          "line": 23,
+          "line": 25,
           "column": 32,
-          "offset": 991
-        }
-      },
-      {
-        "code": "MS1000",
-        "phase": "parse",
-        "message": "expected an expression, found 'else'; 'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body",
-        "position": {
-          "file": "golden-1383.ms",
-          "line": 25,
-          "column": 5,
-          "offset": 1129
-        },
-        "end": {
-          "file": "golden-1383.ms",
-          "line": 25,
-          "column": 9,
-          "offset": 1133
+          "offset": 1024
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1383.ms:23:31: parse: expected an expression, found '%'; write a value, name, call, or literal here\n    |\n 23 |     if output := run(program: %q, arguments: [\"--version\"]):\n    |                               ^\n<DIR>/golden-1383.ms:25:5: parse: expected an expression, found 'else'; 'else' continues an 'if' block: put it on its own line at the same indentation as that 'if', directly after the if body\n    |\n 25 |     else:\n    |     ^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1383.ms:25:31: parse: expected an expression, found '%'; write a value, name, call, or literal here\n    |\n 25 |     if output := run(program: %q, arguments: [\"--version\"]) {\n    |                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -2,13 +2,17 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_test.go:162 TestFormatMultilineFunctionParameters
 export fn render(
-    arguments List[String],  // arguments
-    output WriteStream,
-) Int:
-    message := f"Arguments: {arguments.join(",")}\n"
+	arguments List[String],  // arguments
+	output WriteStream,
+) Int {
+	message := f"Arguments: {arguments.join(",")}\n"
 
-    match output.write(data: message):
-        ok(_):
-            return 0
-        error(_):
-            return 1
+	match output.write(data: message) {
+		ok(_) => {
+			return 0
+		}
+		error(_) => {
+			return 1
+		}
+	}
+}

@@ -1,7 +1,7 @@
 RUN g_test.ms::division
 FAIL g_test.ms::division: division by zero; right must be nonzero, found 0
-  at g_test.ms:7 in divide
-  at g_test.ms:10 in level2
-  at g_test.ms:13 in level1
-  at g_test.ms:16 in test division
+  at g_test.ms:8 in divide
+  at g_test.ms:12 in level2
+  at g_test.ms:16 in level1
+  at g_test.ms:20 in test division
 1 tests, 1 failed

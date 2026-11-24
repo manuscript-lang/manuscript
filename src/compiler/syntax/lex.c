@@ -7,15 +7,6 @@
 
 /* ---- end of a line ---- */
 
-static bool function_open_at_depth(const Scanner *s) {
-  for (size_t i = 0; i < s->function_depths.len; i++) {
-    if (s->function_depths.ptr[i] == lex_open_delimiters(s)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /* The wrapper's closing parenthesis ends an interpolation's tokens. */
 static bool close_virtual_paren(Scanner *s) {
   if (!s->virtual_paren || s->offset != s->n) {
@@ -28,30 +19,17 @@ static bool close_virtual_paren(Scanner *s) {
   s->delimiters.len--;
   s->opened.len--;
   s->groups.len = 0;
-  s->function_depths.len = 0;
   lex_emit_layout(s, MS_T_RParen);
   return true;
 }
 
-/* Ends the line: it opens a suite (`:`), continues (`.` or `|` next), or ends its statement. */
-static void end_line(Scanner *s, LineLayout *layout, const LineInfo *info, size_t line_start,
-                     size_t leading) {
+/* Ends the line: it continues (`.` or `|` next) or ends its statement. */
+static void end_line(Scanner *s, size_t line_start) {
   if (lex_token_count(s) <= line_start) {
     return;
   }
-  if (lex_last_kind(s) == MS_T_Colon &&
-      (lex_open_delimiters(s) == info->top_depth || function_open_at_depth(s))) {
-    layout->pending = true;
-    layout->header_indent = leading;
-    layout->header_start = layout->statement_indent;
-    layout->pending_depth = lex_open_delimiters(s);
-    lex_emit_layout(s, MS_T_Newline);
-    s->function_depths.len = 0;
-  } else if (lex_open_delimiters(s) == info->top_depth) {
-    s->function_depths.len = 0;
-    if (lex_continues_next(s)) {
-      layout->continuing = true;
-    } else {
+  if (lex_statement_level(s)) {
+    if (lex_last_kind(s) != MS_T_BlockClose && !lex_continues_next(s)) {
       lex_emit_layout(s, MS_T_Newline);
     }
   } else if (s->groups.len != 0 && s->groups.ptr[s->groups.len - 1] == lex_open_delimiters(s)) {
@@ -62,7 +40,7 @@ static void end_line(Scanner *s, LineLayout *layout, const LineInfo *info, size_
 }
 
 static bool fail_unterminated_delimiter(Scanner *s) {
-  uint8_t open = s->delimiters.ptr[s->delimiters.len - 1];
+  uint8_t open = lex_open_char(s->delimiters.ptr[s->delimiters.len - 1]);
   MsPos opener = s->opened.ptr[s->opened.len - 1];
   MsSpan message = ms_message_format(
       s->arena,
@@ -72,17 +50,9 @@ static bool fail_unterminated_delimiter(Scanner *s) {
   return false;
 }
 
-static bool finish_input(Scanner *s, const LineLayout *layout) {
-  if (layout->pending) {
-    lex_emit_layout(s, MS_T_Indent);
-    lex_emit_layout(s, MS_T_Dedent);
-  }
+static bool finish_input(Scanner *s) {
   if (lex_open_delimiters(s) != 0) {
     return fail_unterminated_delimiter(s);
-  }
-  while (s->levels.len > 1) {
-    s->levels.len--;
-    lex_emit_layout(s, MS_T_Dedent);
   }
   lex_emit_layout(s, MS_T_Eof);
   return true;
@@ -90,7 +60,6 @@ static bool finish_input(Scanner *s, const LineLayout *layout) {
 
 /* Scans the whole source. Returns false with the diagnostic in s->diag on the first error. */
 MS_NODISCARD static bool run(Scanner *s) {
-  LineLayout layout = {0};
   while (s->offset < s->n) {
     size_t leading = 0;
     if (!lex_read_leading_space(s, &leading)) {
@@ -106,24 +75,16 @@ MS_NODISCARD static bool run(Scanner *s) {
     if (skipped) {
       continue;
     }
-    if (!lex_apply_layout(s, &layout, leading)) {
-      return false;
-    }
-    Level top = s->levels.ptr[s->levels.len - 1];
-    LineInfo info = {.leading = leading, .top_indent = top.indent, .top_depth = top.depth};
-    if (lex_token_count(s) != 0 && lex_last_kind(s) == MS_T_Dedent && lex_open_delimiters(s) == top.depth) {
-      lex_emit_layout(s, MS_T_Newline);
-    }
     size_t line_start = lex_token_count(s);
-    if (!lex_scan_line_tokens(s, &info) || !close_virtual_paren(s)) {
+    if (!lex_scan_line_tokens(s) || !close_virtual_paren(s)) {
       return false;
     }
-    end_line(s, &layout, &info, line_start, leading);
+    end_line(s, line_start);
     if (s->offset < s->n) {
       lex_advance(s);
     }
   }
-  return finish_input(s, &layout);
+  return finish_input(s);
 }
 
 /* ---- entry points ---- */
@@ -136,17 +97,14 @@ void lex_scanner_init(Scanner *s, MsArena *arena, MsSpan text, const uint32_t *l
                  .column = 1,
                  .line_offsets = line_offsets,
                  .diag = diag};
-  level_list_push(&s->levels, (Level){0, 0});
   token_list_reserve(&s->tokens, text.len / 4 + 8); /* about one token per four source bytes */
 }
 
 void lex_scanner_free(Scanner *s) {
   token_list_free(&s->tokens);
-  level_list_free(&s->levels);
   byte_list_free(&s->delimiters);
   size_list_free(&s->groups);
   pos_list_free(&s->opened);
-  size_list_free(&s->function_depths);
   pos_list_free(&s->interpolations);
   range_list_free(&s->strings);
   range_list_free(&s->interps);

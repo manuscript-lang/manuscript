@@ -75,7 +75,7 @@ Programs written for reference semantics change as follows:
 4. **Implicit parameter mutation.** A function that changes a parameter declares it `var` and every caller writes `var` at the argument.
 5. **`:=` is deeply immutable.** `xs := []; xs.append(1)` becomes `var xs`.
 6. **Closure capture is by borrow or move,** not by copying a shared reference; a closure that mutates its capture exclusively borrows it, an escaping one owns it.
-7. **Iteration while mutating** the iterable (`for v in xs: xs.fill(..)`) is rejected.
+7. **Iteration while mutating** the iterable (`for v in xs { xs.fill(..) }`) is rejected.
 8. **Accessor-then-mutate** (`first := xs[0]; xs.append(..); use(first)`, also through `Map.get`, `first`, `last` and any borrow-returning function) is rejected; `.clone()` the part or finish using it first.
 9. **Field assignment through calls/borrows** (`receiver(log, v).val = ...`, `alias := rec; alias.f = 1`) is rejected; assign through the owning `var`.
 

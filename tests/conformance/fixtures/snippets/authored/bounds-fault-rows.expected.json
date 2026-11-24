@@ -5,6 +5,6 @@
   "expected": {
     "exit_code": 134,
     "stdout": "",
-    "stderr": "index 1 out of range for length 1; use get_or(index, default) to avoid the fault\n  at bounds-fault-rows.ms:9 in rows\n  at bounds-fault-rows.ms:13 in main\n"
+    "stderr": "index 1 out of range for length 1; use get_or(index, default) to avoid the fault\n  at bounds-fault-rows.ms:9 in rows\n  at bounds-fault-rows.ms:15 in main\n"
   }
 }

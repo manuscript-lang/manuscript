@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Set[T]:\n\tvalue T\n"
+    "fmt": "type Set[T] {\n\tvalue T\n}\n"
   }
 }

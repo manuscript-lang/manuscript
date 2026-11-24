@@ -5,6 +5,7 @@ fn original(value Int = 7) Int => value + 1
 
 fn replacement(value Int) Int => value + 2
 
-export fn main() Int:
-    callbacks := [original, replacement]
-    return callbacks[1]()
+export fn main() Int {
+	callbacks := [original, replacement]
+	return callbacks[1]()
+}

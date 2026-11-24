@@ -88,8 +88,8 @@ static void group_unwrap_chain(Grouper *g, size_t start) {
     case MS_T_ColonAssign:
     case MS_T_Return:
     case MS_T_Newline:
-    case MS_T_Indent:
-    case MS_T_Dedent:
+    case MS_T_BlockOpen:
+    case MS_T_BlockClose:
       break;
     default:
       return;
@@ -98,7 +98,7 @@ static void group_unwrap_chain(Grouper *g, size_t start) {
   if (close + 1 < g->ntokens) {
     switch ((MsTok)tokens[close + 1].kind) {
     case MS_T_Newline:
-    case MS_T_Dedent:
+    case MS_T_BlockClose:
     case MS_T_Colon:
     case MS_T_Eof:
       break;
@@ -116,7 +116,7 @@ static void group_unwrap_chain(Grouper *g, size_t start) {
       depth--;
     } else if (k == MS_T_Dot && depth == 0) {
       dots++;
-    } else if (k == MS_T_Newline || k == MS_T_Indent || k == MS_T_Dedent || k == MS_T_Fn || k == MS_T_If ||
+    } else if (k == MS_T_Newline || k == MS_T_BlockOpen || k == MS_T_BlockClose || k == MS_T_Fn || k == MS_T_If ||
                k == MS_T_Else ||
                // an operator or flow step: the parentheses decide the grouping
                (depth == 0 && (k == MS_T_Pipe || k == MS_T_And || k == MS_T_Or || fmt_is_comparison(k) ||
@@ -266,7 +266,7 @@ static size_t group_value_start(const Grouper *g, const MsStmt *s, const MsExpr 
   case MS_S_IF:
     start += 1;
     if (s->u.branch.binding != NULL) {
-      // `if let name = value:` wraps only the value.
+      // `if let name = value { ... }` wraps only the value.
       while (tokens[start].kind != MS_T_Assign && tokens[start].kind != MS_T_ColonAssign) {
         start++;
       }

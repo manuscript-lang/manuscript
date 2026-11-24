@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"arithmetic\":\n\t2 + 3 | expect_equal(expected: 5)?\n"
+    "fmt": "import expect_equal from \"@std/test/test.ms\"\n\ntest \"arithmetic\" {\n\t2 + 3 | expect_equal(expected: 5)?\n}\n"
   }
 }

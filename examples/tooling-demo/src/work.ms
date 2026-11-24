@@ -1,15 +1,19 @@
-fn compute() Int:
+fn compute() Int {
 	var result = 0
-	for index in 0..3000000:
+	for index in 0..3000000 {
 		result += index % 7
+	}
 	return result
+}
 
-fn compare() Int:
+fn compare() Int {
 	left := compute()
 	right := compute()
-	if left != right: return 1
+	if left != right { return 1 }
 
 	return 0
+}
 
-fn main() Int:
+fn main() Int {
 	return compare()
+}

@@ -19,7 +19,7 @@ import (
 	expect_equal, expect_error, expect_ok from "@std/test/test.ms",
 )
 
-test "whole-file writes take text or bytes and complete through promises":
+test "whole-file writes take text or bytes and complete through promises" {
 	dir := temporary("manuscript-writable-") | expect_ok?
 	root := dir.path()
 	write_file(f"{root}/a.txt", "hello").wait() | expect_ok?
@@ -28,8 +28,9 @@ test "whole-file writes take text or bytes and complete through promises":
 
 	data := read_file(f"{root}/a.txt").wait() | expect_ok?
 	(data.decode_utf8() or "") | expect_equal("hello world")?
+}
 
-test "stat reports one closed kind and follows links by default":
+test "stat reports one closed kind and follows links by default" {
 	dir := temporary("manuscript-kinds-") | expect_ok?
 	root := dir.path()
 	write_file(f"{root}/a.txt", "abc").wait() | expect_ok?
@@ -43,8 +44,9 @@ test "stat reports one closed kind and follows links by default":
 	sub := stat(f"{root}/sub") | expect_ok?
 	sub.kind | expect_equal(FileKind.Directory)?
 	sub.is_directory() | expect_equal(true)?
+}
 
-test "a directory is a stream source of entries and seek takes an origin":
+test "a directory is a stream source of entries and seek takes an origin" {
 	dir := temporary("manuscript-source-") | expect_ok?
 	root := dir.path()
 	write_file(f"{root}/a.txt", "hello world").wait() | expect_ok?
@@ -61,8 +63,9 @@ test "a directory is a stream source of entries and seek takes an origin":
 		| expect_ok?
 	)
 	all.length() | expect_equal(2)?
+}
 
-test "opening a directory classifies invalid and missing paths":
+test "opening a directory classifies invalid and missing paths" {
 	dir := temporary("manuscript-directory-errors-") | expect_ok?
 	root := dir.path()
 	file := f"{root}/file.txt"
@@ -82,3 +85,4 @@ test "opening a directory classifies invalid and missing paths":
 
 	valid := open_directory(root) | expect_ok?
 	valid.path() | expect_equal(root)?
+}

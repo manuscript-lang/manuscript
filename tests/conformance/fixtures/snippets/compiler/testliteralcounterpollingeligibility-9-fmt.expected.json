@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe() Void:\n\tvar i = 137\n\twhile i > 0:\n\t\ti -= 1\n"
+    "fmt": "fn probe() Void {\n\tvar i = 137\n\twhile i > 0 {\n\t\ti -= 1\n\t}\n}\n"
   }
 }

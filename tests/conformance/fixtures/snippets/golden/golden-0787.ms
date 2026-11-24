@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn value() Float:
+fn value() Float {
     return 1e+
+}

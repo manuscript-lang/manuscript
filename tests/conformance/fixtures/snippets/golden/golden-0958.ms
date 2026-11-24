@@ -2,5 +2,6 @@
 // conform: phase=check
 fn later%d(
 value: Int,
-) Int:
+) Int {
     return 1
+}

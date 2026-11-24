@@ -27,7 +27,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0932.ms:3:1: parse: declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation\n   |\n 3 | interface Read:\n   | ^^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0932.ms:3:1: parse: declaration body cannot be empty; an interface needs at least one 'fn name(...) Type' operation\n   |\n 3 | interface Read {\n   | ^^^^^^^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

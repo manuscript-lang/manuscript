@@ -12,16 +12,16 @@
         "message": "unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)",
         "position": {
           "file": "golden-0459.ms",
-          "line": 5,
+          "line": 6,
           "column": 29,
-          "offset": 145
+          "offset": 144
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0459.ms:5:29: resolution: unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)\n   |\n 5 |     format := ArchiveFormat.TAR\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0459.ms:6:29: resolution: unknown or non-nullary alternative case TAR of ArchiveFormat; cases: Tar, Zip (cases with payloads need call syntax)\n   |\n 6 |     format := ArchiveFormat.TAR\n   |                             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

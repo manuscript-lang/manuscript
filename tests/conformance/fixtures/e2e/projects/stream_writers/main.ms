@@ -6,27 +6,33 @@ import (
 	compile, render_to, to_data from "@std/text/template.ms",
 )
 
-type Point:
+type Point {
 	x Int
 	label String
+}
 
 // Prints the bytes it is given, so the output shows what the format writers produced.
-type Echo:
+type Echo {
 	out WriteStream[String]
+}
 
-fn var Echo.write(move value Bytes) Void!:
+fn var Echo.write(move value Bytes) Void! {
 	return self.out.write(value.decode_utf8() or "")
+}
 
-fn var Echo.flush() Void!:
+fn var Echo.flush() Void! {
 	return self.out.flush()
+}
 
-fn move Echo.close() Void!:
+fn move Echo.close() Void! {
 	return ok()
+}
 
-fn echo() WriteStream[Bytes]:
+fn echo() WriteStream[Bytes] {
 	return WriteStream[Bytes](Echo(stdout()))
+}
 
-fn run() Void!:
+fn run() Void! {
 	var points = json_writer[Point](echo())
 	points.write(Point(1, "a \"quoted\" label"))?
 	points.write(Point(2, "é😀"))?
@@ -40,9 +46,11 @@ fn run() Void!:
 	data := to_data({"points": [Point(1, "one"), Point(2, "two")]})?
 	var out = stdout()
 	render_to(page, data, out)?
+}
 
-export fn main() Int:
+export fn main() Int {
 	result := run()
-	if result.is_error(): return 1
+	if result.is_error() { return 1 }
 
 	return 0
+}

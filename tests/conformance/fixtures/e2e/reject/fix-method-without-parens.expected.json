@@ -14,20 +14,20 @@
           "file": "fix-method-without-parens.ms",
           "line": 4,
           "column": 21,
-          "offset": 111
+          "offset": 112
         },
         "fix": {
           "position": {
             "file": "fix-method-without-parens.ms",
             "line": 4,
             "column": 8,
-            "offset": 98
+            "offset": 99
           },
           "end": {
             "file": "fix-method-without-parens.ms",
             "line": 4,
             "column": 20,
-            "offset": 110
+            "offset": 111
           },
           "replacement": "items.length()"
         }
@@ -40,20 +40,20 @@
           "file": "fix-method-without-parens.ms",
           "line": 5,
           "column": 22,
-          "offset": 131
+          "offset": 133
         },
         "fix": {
           "position": {
             "file": "fix-method-without-parens.ms",
             "line": 5,
             "column": 16,
-            "offset": 125
+            "offset": 127
           },
           "end": {
             "file": "fix-method-without-parens.ms",
             "line": 5,
             "column": 28,
-            "offset": 137
+            "offset": 139
           },
           "replacement": "items.length()"
         }
@@ -62,7 +62,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/fix-method-without-parens.ms:4:21: type: operator operands require the same independently known type, found fn() Int > Int; this is a method, not a property; call it with parentheses, as in `xs.length()`\n   |\n 4 |     if items.length > 0:\n   |                     ^\n<DIR>/fix-method-without-parens.ms:5:22: type: expected Int, found fn() Int (in the return value); this is a method, not a property; call it with parentheses to get its Int result, as in `xs.length()`\n   |\n 5 |         return items.length\n   |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/fix-method-without-parens.ms:4:21: type: operator operands require the same independently known type, found fn() Int > Int; this is a method, not a property; call it with parentheses, as in `xs.length()`\n   |\n 4 |     if items.length > 0 {\n   |                     ^\n<DIR>/fix-method-without-parens.ms:5:22: type: expected Int, found fn() Int (in the return value); this is a method, not a property; call it with parentheses to get its Int result, as in `xs.length()`\n   |\n 5 |         return items.length\n   |                      ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -20,7 +20,7 @@ file(REMOVE_RECURSE "${WORK}")
 file(MAKE_DIRECTORY "${WORK}/pkg/src" "${WORK}/proj")
 set(ENV{MANUSCRIPT_CACHE_DIR} "${WORK}/cache")
 file(WRITE "${WORK}/pkg/ms.toml" "[project]\nname = \"greet\"\nsource = \"src\"\n")
-file(WRITE "${WORK}/pkg/src/greet.ms" "export fn hello() String:\n    return \"hi\"\n")
+file(WRITE "${WORK}/pkg/src/greet.ms" "export fn hello() String {\n    return \"hi\"\n}\n")
 
 function(run directory)
   execute_process(COMMAND ${ARGN} WORKING_DIRECTORY "${directory}" RESULT_VARIABLE status OUTPUT_VARIABLE out

@@ -12,16 +12,16 @@
         "message": "unknown or ambiguous member append on Void; this type has no fields or operations",
         "position": {
           "file": "golden-1512.ms",
-          "line": 15,
+          "line": 23,
           "column": 12,
-          "offset": 337
+          "offset": 330
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1512.ms:15:12: resolution: unknown or ambiguous member append on Void; this type has no fields or operations\n    |\n 15 |     values.append(2)\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1512.ms:23:12: resolution: unknown or ambiguous member append on Void; this type has no fields or operations\n    |\n 23 |     values.append(2)\n    |            ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

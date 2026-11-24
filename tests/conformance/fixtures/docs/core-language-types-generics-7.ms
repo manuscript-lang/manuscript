@@ -1,8 +1,9 @@
 // conform: tags=diagnostics,generics,lists,tier-core
 // conform: phase=check
 // conform: origin=documentation/core-language/types/generics.md:115
-fn count[T](values List[T]) Int:
-    return 0
+fn count[T](values List[T]) Int {
+	return 0
+}
 
 known := count[Int]([])
 // Rejected: the empty list does not determine T.

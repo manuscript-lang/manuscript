@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "type Pair[T, U]:\n\tfirst T\n\tsecond U\n\ntype Config:\n\tvalue Pair[Int?, String??]\n"
+    "fmt": "type Pair[T, U] {\n\tfirst T\n\tsecond U\n}\n\ntype Config {\n\tvalue Pair[Int?, String??]\n}\n"
   }
 }

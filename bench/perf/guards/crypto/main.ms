@@ -13,7 +13,7 @@ import (
 	verify
 ) from "@std/crypto/crypto.ms"
 
-fn main() Void!:
+fn main() Void! {
 	seed := "0123456789abcdef0123456789abcdef".to_bytes()
 	msg := "hello".to_bytes()
 	key := public_key(seed)?
@@ -23,11 +23,13 @@ fn main() Void!:
 	esig := ecdsa_sign(priv, HashAlgorithm.Sha256, msg)?
 	var n = 0
 
-	for i in 0..20:
-		if verify(key, msg, sig): n += 1
+	for i in 0..20 {
+		if verify(key, msg, sig) { n += 1 }
 		n += (sign(seed, msg)?).length()
-		if ecdsa_verify(pubk, HashAlgorithm.Sha256, msg, esig): n += 1
+		if ecdsa_verify(pubk, HashAlgorithm.Sha256, msg, esig) { n += 1 }
 		n += (ecdsa_sign(priv, HashAlgorithm.Sha256, msg)?).length() / 100
 		n += (ecdh_shared_secret(priv, pubk)?).length()
+	}
 
 	print(f"{n}")
+}

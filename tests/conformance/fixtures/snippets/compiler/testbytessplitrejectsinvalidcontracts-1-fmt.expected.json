@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn wrong(data Bytes) List[Bytes]:\n\tsplit := data.split\n\treturn split(value: Bytes([]))\n"
+    "fmt": "fn wrong(data Bytes) List[Bytes] {\n\tsplit := data.split\n\treturn split(value: Bytes([]))\n}\n"
   }
 }

@@ -10,15 +10,15 @@
         "message": "expected a name, found text \"I/O: resource is closed\"",
         "position": {
           "file": "testclonedrecordretainsfilehandlelifetime-1-fmt.ms",
-          "line": 45,
+          "line": 54,
           "column": 15,
-          "offset": 1030
+          "offset": 1113
         },
         "end": {
           "file": "testclonedrecordretainsfilehandlelifetime-1-fmt.ms",
-          "line": 45,
+          "line": 54,
           "column": 40,
-          "offset": 1055
+          "offset": 1138
         }
       }
     ],

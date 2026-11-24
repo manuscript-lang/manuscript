@@ -1,4 +1,5 @@
 // conform: tags=diagnostics,tier-core
 // conform: phase=check
-fn show() Void:
+fn show() Void {
 	print("\{ \}")
+}

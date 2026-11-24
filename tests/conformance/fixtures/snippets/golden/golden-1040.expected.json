@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected ':', found number 1; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body",
+        "message": "expected '{', found number 1; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'",
         "position": {
           "file": "golden-1040.ms",
           "line": 3,
@@ -48,28 +48,39 @@
           "file": "golden-1040.ms",
           "line": 14,
           "column": 17,
-          "offset": 178
+          "offset": 179
         },
         "end": {
           "file": "golden-1040.ms",
           "line": 14,
           "column": 18,
-          "offset": 179
+          "offset": 180
         },
         "fix": {
           "position": {
             "file": "golden-1040.ms",
             "line": 14,
             "column": 17,
-            "offset": 178
+            "offset": 179
           },
           "end": {
             "file": "golden-1040.ms",
             "line": 14,
             "column": 18,
-            "offset": 179
+            "offset": 180
           },
           "replacement": ""
+        }
+      },
+      {
+        "code": "MS1000",
+        "phase": "parse",
+        "message": "mismatched closing delimiter '}'; the '(' opened at line 12:9 needs ')'",
+        "position": {
+          "file": "golden-1040.ms",
+          "line": 16,
+          "column": 9,
+          "offset": 225
         }
       },
       {
@@ -78,15 +89,15 @@
         "message": "argument labels use a colon; write c: value",
         "position": {
           "file": "golden-1040.ms",
-          "line": 18,
+          "line": 19,
           "column": 11,
-          "offset": 241
+          "offset": 253
         },
         "end": {
           "file": "golden-1040.ms",
-          "line": 18,
+          "line": 19,
           "column": 12,
-          "offset": 242
+          "offset": 254
         }
       },
       {
@@ -95,22 +106,22 @@
         "message": "argument labels use a colon; write d: value",
         "position": {
           "file": "golden-1040.ms",
-          "line": 19,
+          "line": 20,
           "column": 11,
-          "offset": 256
+          "offset": 268
         },
         "end": {
           "file": "golden-1040.ms",
-          "line": 19,
+          "line": 20,
           "column": 12,
-          "offset": 257
+          "offset": 269
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1040.ms:3:17: parse: expected ':', found number 1; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n   |\n 3 | fn helper() Int 1\n   |                 ^\n<DIR>/golden-1040.ms:5:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 5 | let (\n   | ^^^\n<DIR>/golden-1040.ms:14:17: parse: remove the ':' between 'x' and its type; write x Type\n    |\n 14 |         b = fn(x: Int) Int:\n    |                 ^\n<DIR>/golden-1040.ms:18:11: parse: argument labels use a colon; write c: value\n    |\n 18 |         c = 11\n    |           ^\n<DIR>/golden-1040.ms:19:11: parse: argument labels use a colon; write d: value\n    |\n 19 |         d = \"Hi\"\n    |           ^\n5 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1040.ms:3:17: parse: expected '{', found number 1; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'\n   |\n 3 | fn helper() Int 1\n   |                 ^\n<DIR>/golden-1040.ms:5:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 5 | let (\n   | ^^^\n<DIR>/golden-1040.ms:14:17: parse: remove the ':' between 'x' and its type; write x Type\n    |\n 14 |         b = fn(x: Int) Int {\n    |                 ^\n<DIR>/golden-1040.ms:16:9: parse: mismatched closing delimiter '}'; the '(' opened at line 12:9 needs ')'\n    |\n 16 |         }\n    |         ^\n<DIR>/golden-1040.ms:19:11: parse: argument labels use a colon; write c: value\n    |\n 19 |         c = 11\n    |           ^\n<DIR>/golden-1040.ms:20:11: parse: argument labels use a colon; write d: value\n    |\n 20 |         d = \"Hi\"\n    |           ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

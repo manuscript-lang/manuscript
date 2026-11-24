@@ -9,23 +9,28 @@ import (
 	stdout from "@std/io/io.ms",
 )
 
-type Door:
+type Door {
 	name String
+}
 
-fn move Door.close() Void!:
+fn move Door.close() Void! {
 	stdout().write(f"close {self.name}\n").get()
+}
 
-type Room:
+type Room {
 	first Door
 	second Door
+}
 
-fn faulting() Void:
+fn faulting() Void {
 	r := Room(Door("one"), Door("two"))
 	var xs List[Door] = []
 	xs.append(r.first)
 	panic("fault after the move")
+}
 
-fn main() Void:
+fn main() Void {
 	work := promise(() => ok(faulting()))
 	waited := work.wait()
 	stdout().write(f"waited: {waited.is_error()}\n").get()
+}

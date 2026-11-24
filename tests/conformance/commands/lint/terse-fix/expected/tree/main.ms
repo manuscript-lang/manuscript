@@ -3,70 +3,91 @@ import (
 	panic, print from "@std/core.ms",
 )
 
-fn empties(xs List[Int], m Map[String, Int], text String) Bool:
-	if xs.is_empty(): return true
-	if not m.is_empty(): return false
+fn empties(xs List[Int], m Map[String, Int], text String) Bool {
+	if xs.is_empty() { return true }
+	if not m.is_empty() { return false }
 
 	return text.is_empty()
+}
 
-fn first(xs List[Int]) Int:
+fn first(xs List[Int]) Int {
 	return xs[0]
+}
 
-fn counts(var m Map[String, Int], k String) Void:
+fn counts(var m Map[String, Int], k String) Void {
 	var total = 0
 	total = m.get(k) or 0
 	m[k.clone()] = (m.get(k) or panic("called Optional.get() on null")) + 1
 	print(total)
+}
 
-fn pick(flag Bool) Int:
-	return if flag: 2 else: 1
+fn pick(flag Bool) Int {
+	x := if flag: 2 else: 1
+	}
+	return x
+}
 
-fn done(n Int) Int:
+fn done(n Int) Int {
 	return n + 1
+}
 
-fn loop(xs List[Int]) Int:
+fn loop(xs List[Int]) Int {
+	var i = 0
 	var sum = 0
 
-	for i in 0..10:
+	while i < 10 {
 		sum += i
+		i += 1
+	}
 
-	for j in 0..xs.length():
+	for j in 0..xs.length() {
 		sum += xs[j]
+	}
 
 	var out List[Int] = []
-	for x in xs:
+	for x in xs {
 		out.append(x)
+	}
 	return sum
+}
 
-fn sorted(var xs List[Int]) Void:
+fn sorted(var xs List[Int]) Void {
 	ys := xs.sort()
 	print(xs.reverse())
 	print(ys)
+}
 
-fn nothing() Void!:
+fn nothing() Void! {
 	print("x")
 	return ok()
+}
 
-fn bytes_text(b Bytes) String:
+fn bytes_text(b Bytes) String {
 	return b.to_string()
+}
 
-fn parse(text String) Int!:
+fn parse(text String) Int! {
 	return ok(1)
+}
 
-fn unit() Void!:
+fn unit() Void! {
 	return ok()
+}
 
-fn slices(xs List[Int]) List[Int]:
+fn slices(xs List[Int]) List[Int] {
 	return xs.clone().slice(1, 3).get_or([])
+}
 
-fn run() Void!:
+fn run() Void! {
 	r := parse("1")
 	r.get()
 	void unit()
 	print(parse("2"))
 	print(parse("3").get())
 	return ok()
+}
 
-fn main() Void:
+fn main() Void {
 	print(empties([], {}, ""))
 	print(slices([1]))
+}

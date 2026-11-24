@@ -14,7 +14,7 @@ import (
 )
 
 // Writes a CRLF stream whose chunks split a line ending and a multi-byte scalar.
-fn stream_events(var exchange HttpExchange) Void!:
+fn stream_events(var exchange HttpExchange) Void! {
 	var sent = headers()
 	sent.append("Content-Type", "text/event-stream")?
 	exchange.send_headers(200, sent)?
@@ -22,8 +22,9 @@ fn stream_events(var exchange HttpExchange) Void!:
 	exchange.write_bytes("é".to_bytes().slice(0, 1).get()).get()
 	exchange.write_bytes("\u{e9}!\r".to_bytes().slice(1, 4).get()).get()
 	exchange.write("\n\r\n: keepalive\n\ndata: second\n\n").get()
+}
 
-test "HTTP response bodies decode as SSE and close with the reader":
+test "HTTP response bodies decode as SSE and close with the reader" {
 	server := serve("127.0.0.1:0", stream_events, HttpServerOptions())?
 	client := http_client(HttpClientOptions())?
 	response := client.request(
@@ -36,11 +37,12 @@ test "HTTP response bodies decode as SSE and close with the reader":
 	var events = sse_events(payload)
 	first := (events.next()?) or panic("called Optional.get() on null")
 	second := (events.next()?) or panic("called Optional.get() on null")
-	if first.event != "greet" or first.data != "h\u{e9}!": return fail(
-		f"first event {first.data}"
-	)
+	if first.event != "greet" or first.data != "h\u{e9}!" {
+		return fail(f"first event {first.data}")
+	}
 
 	expect_false(second.event != "message" or second.data != "second")?
 	expect_false((events.next()?) != null)?
 	events.close()?
 	expect_equal(status, 200)?
+}

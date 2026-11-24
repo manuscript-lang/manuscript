@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "expected ':', found name 'struct'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body",
+        "message": "expected '{', found name 'struct'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'",
         "position": {
           "file": "golden-0163.ms",
           "line": 5,
@@ -26,7 +26,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int:' with the result type after the parameters",
+        "message": "'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int { ... }' with the result type after the parameters",
         "position": {
           "file": "golden-0163.ms",
           "line": 10,
@@ -87,21 +87,6 @@
           "line": 31,
           "column": 2,
           "offset": 925
-        },
-        "fix": {
-          "position": {
-            "file": "golden-0163.ms",
-            "line": 31,
-            "column": 1,
-            "offset": 924
-          },
-          "end": {
-            "file": "golden-0163.ms",
-            "line": 31,
-            "column": 2,
-            "offset": 925
-          },
-          "replacement": ""
         }
       },
       {
@@ -136,28 +121,13 @@
           "line": 51,
           "column": 2,
           "offset": 1779
-        },
-        "fix": {
-          "position": {
-            "file": "golden-0163.ms",
-            "line": 51,
-            "column": 1,
-            "offset": 1778
-          },
-          "end": {
-            "file": "golden-0163.ms",
-            "line": 51,
-            "column": 2,
-            "offset": 1779
-          },
-          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0163.ms:5:23: parse: expected ':', found name 'struct'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with ':' before their indented body\n   |\n 5 | type pollProbeContext struct {\n   |                       ^^^^^^\n<DIR>/golden-0163.ms:10:1: parse: 'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int:' with the result type after the parameters\n    |\n 10 | func (c *pollProbeContext) Err() error {\n    | ^^^^\n<DIR>/golden-0163.ms:21:30: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 21 |             if p := recover(); p != nil {\n    |                              ^\n<DIR>/golden-0163.ms:31:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 31 | }\n    | ^\n<DIR>/golden-0163.ms:33:20: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 33 |     for repeat := 0; repeat < 2; repeat++ {\n    |                    ^\n<DIR>/golden-0163.ms:51:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 51 | }\n    | ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0163.ms:5:23: parse: expected '{', found name 'struct'; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'\n   |\n 5 | type pollProbeContext struct {\n   |                       ^^^^^^\n<DIR>/golden-0163.ms:10:1: parse: 'func' is not a Manuscript declaration keyword; declare a function as 'fn name(a Int) Int { ... }' with the result type after the parameters\n    |\n 10 | func (c *pollProbeContext) Err() error {\n    | ^^^^\n<DIR>/golden-0163.ms:21:30: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 21 |             if p := recover(); p != nil {\n    |                              ^\n<DIR>/golden-0163.ms:31:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 31 | }\n    | ^\n<DIR>/golden-0163.ms:33:20: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n    |\n 33 |     for repeat := 0; repeat < 2; repeat++ {\n    |                    ^\n<DIR>/golden-0163.ms:51:1: parse: unmatched closing delimiter '}'; remove it or add the matching opener before it\n    |\n 51 | }\n    | ^\n6 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

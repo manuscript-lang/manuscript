@@ -196,7 +196,7 @@ static MsTy name_expr(Body *body, const MsExpr *expr, MsTy expected) {
       ms_strbuild_append(&text, written);
       ms_strbuild_append_text(&text, " := ...' before use, define 'fn ");
       ms_strbuild_append(&text, written);
-      ms_strbuild_append_text(&text, "(...) T:', or import it from a module");
+      ms_strbuild_append_text(&text, "(...) T { ... }', or import it from a module");
       ms_check_report(body->program, body->module, expr->pos, MS_CHECK_RESOLUTION, ms_strbuild_finish(&text));
     }
     return MS_TY_NONE;

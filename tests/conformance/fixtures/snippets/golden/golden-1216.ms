@@ -1,6 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-type Item:
+type Item {
     value Int
-fn text(value Item) String:
+}
+fn text(value Item) String {
     return value.|
+}

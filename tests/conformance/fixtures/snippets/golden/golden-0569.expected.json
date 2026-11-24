@@ -7,21 +7,32 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "golden-0569.ms",
+          "line": 3,
+          "column": 17,
+          "offset": 69
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "golden-0569.ms",
           "line": 4,
-          "column": 5,
-          "offset": 83
+          "column": 15,
+          "offset": 93
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0569.ms:4:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 4 |     size := alias.length()\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0569.ms:3:17: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 3 | alias := values.add(1, 2)\n   |                 ^\n<DIR>/golden-0569.ms:4:15: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | size := alias.length()\n   |               ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

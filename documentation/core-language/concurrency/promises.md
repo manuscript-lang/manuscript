@@ -11,15 +11,18 @@ Save this complete program as `read-config.ms` and run `ms run read-config.ms` i
 
 <!-- manuscript-example: {"mode":"run","files":{"config.json":"{}"},"stdout":"2\n"} -->
 ```manuscript
-import read_file from "@std/os/fs.ms"
-import PromiseOptions from "@std/concurrency/promise.ms"
+import (
+    PromiseOptions from "@std/concurrency/promise.ms",
+    read_file from "@std/os/fs.ms",
+)
 
-fn main() Void!:
+fn main() Void! {
     pending := read_file("config.json").with(
         options: PromiseOptions(timeout: 5.seconds())
     )
     contents := pending.wait()?
     print(contents.length())
+}
 ```
 
 For a `config.json` containing exactly `{}` (two bytes), the program prints:

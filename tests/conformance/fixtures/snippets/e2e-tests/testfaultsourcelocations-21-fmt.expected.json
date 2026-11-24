@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "export fn main() Int:\n\tcrash := fn() Int:\n\t\treturn 1 / \"\".length()\n\treturn crash()\n"
+    "fmt": "export fn main() Int {\n\tcrash := fn() Int {\n\t\treturn 1 / \"\".length()\n\t}\n\treturn crash()\n}\n"
   }
 }

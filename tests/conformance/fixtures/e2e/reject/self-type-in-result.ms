@@ -1,7 +1,9 @@
 // conform: tags=testing,tier-core
 // conform: phase=check
-interface Copier:
+interface Copier {
 	fn copies() List[Self]
+}
 
-export fn main() Int:
+export fn main() Int {
 	return 0
+}

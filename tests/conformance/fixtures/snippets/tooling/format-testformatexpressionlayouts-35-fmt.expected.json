@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work() Int:\n\tvar total = 1\n\ttotal += 2\n\ttotal *= 3\n\tbox.count -= total\n\treturn total\n"
+    "fmt": "fn work() Int {\n\tvar total = 1\n\ttotal += 2\n\ttotal *= 3\n\tbox.count -= total\n\treturn total\n}\n"
   }
 }

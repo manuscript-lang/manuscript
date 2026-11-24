@@ -7,7 +7,7 @@ import (
 )
 
 // One dispatched event, with the `message` type used when no `event:` field was sent.
-export type SseEvent:
+export type SseEvent {
 	// The event type from the last `event:` field, or `message`.
 	event String
 	// Every `data:` line of the event joined with LF; a bare `data:` line gives an
@@ -19,18 +19,20 @@ export type SseEvent:
 	// The latest valid `retry:` reconnection time in milliseconds sent up to this
 	// event, or null if the stream sent null.
 	retry Int?
+}
 
 // Optional byte limits for one line and for one event. A supplied limit must be
 // positive.
-export type SseLimits:
+export type SseLimits {
 	// Largest line in bytes, excluding its line ending; null sets no limit.
 	max_line_bytes Int?
 	// Largest total of all field lines in one event, excluding line endings and
 	// comments; null sets no limit.
 	max_event_bytes Int?
+}
 
 // Internal transform state behind `sse_events`.
-type Decoder:
+type Decoder {
 	// Limits fixed when the decoder was created.
 	limits SseLimits
 	// Internal: bytes of the line being assembled.
@@ -59,12 +61,13 @@ type Decoder:
 	last_id String?
 	// Internal: the first failure, repeated by later calls.
 	failure Error?
+}
 
-fn var Decoder.step(move value Bytes, var out List[SseEvent]) Void!:
+fn var Decoder.step(move value Bytes, var out List[SseEvent]) Void! {
 	var events = List[SseEvent]()
 	failure := self.failure
-	if failure != null: return error(failure.clone())
-	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
+	if failure != null { return error(failure.clone()) }
+	if self.closed { return error(Error("SSE invalid input", kind: "EINVAL")) }
 
 	chunk := value
 	total := chunk.length()
@@ -72,92 +75,118 @@ fn var Decoder.step(move value Bytes, var out List[SseEvent]) Void!:
 	var lf = chunk.index_of_byte(10, 0) or total
 	var cr = chunk.index_of_byte(13, 0) or total
 
-	while start < total:
+	while start < total {
 		var end = lf
-		if cr < end: end = cr
-		if end == total: break
+		if cr < end { end = cr }
+		if end == total { break }
 
 		byte := chunk.get(end)
 
-		if byte == 10 and self.carriage and end == start:
+		if byte == 10 and self.carriage and end == start {
 			self.carriage = false
-		else:
+		} else {
 			step := complete(self, chunk, start, end, events)
 			self.carriage = byte == 13
 
-			if step.is_error():
+			if step.is_error() {
 				failure := step.err().clone()
 				self.failure = failure.clone()
 				return error(failure)
+			}
+		}
 
 		start = end + 1
-		if lf < start: lf = chunk.index_of_byte(10, start) or total
-		if cr < start: cr = chunk.index_of_byte(13, start) or total
+		if lf < start {
+			lf = chunk.index_of_byte(10, start) or total
+		}
+		if cr < start {
+			cr = chunk.index_of_byte(13, start) or total
+		}
+	}
 
-	if start < total:
+	if start < total {
 		self.carriage = false
 
 		step := self.hold(chunk.slice(start, total).get())
 
-		if step.is_error():
+		if step.is_error() {
 			failure := step.err().clone()
 			self.failure = failure.clone()
 			return error(failure)
+		}
+	}
 
-	for event in events: out.append(event.clone())
+	for event in events { out.append(event.clone()) }
+}
 
-fn var Decoder.finish(var out List[SseEvent]) Void!:
+fn var Decoder.finish(var out List[SseEvent]) Void! {
 	failure := self.failure
-	if failure != null: return error(failure.clone())
-	if self.closed: return error(Error("SSE invalid input", kind: "EINVAL"))
+	if failure != null { return error(failure.clone()) }
+	if self.closed { return error(Error("SSE invalid input", kind: "EINVAL")) }
 
 	self.closed = true
 
-	if self.line_bytes > 0 or self.open_block:
+	if self.line_bytes > 0 or self.open_block {
 		self.failure = Error("SSE stream ended inside an event", kind: "EBADMSG")
 		return error(Error("SSE stream ended inside an event", kind: "EBADMSG"))
+	}
+}
 
 // Buffers the unterminated tail of a chunk as part of the line being assembled.
-fn var Decoder.hold(segment Bytes) Void!:
+fn var Decoder.hold(segment Bytes) Void! {
 	self.line_bytes += segment.length()
-	if exceeds(self.line_bytes, self.limits.max_line_bytes): return error(
-		Error("SSE limit exceeded", kind: "EOVERFLOW")
-	)
+	if exceeds(self.line_bytes, self.limits.max_line_bytes) {
+		return error(Error("SSE limit exceeded", kind: "EOVERFLOW"))
+	}
 
 	self.line.append_bytes(segment)
+}
 
-fn var Decoder.apply(line String) Void:
-	if line.starts_with("data:"):
+fn var Decoder.apply(line String) Void {
+	if line.starts_with("data:") {
 		self.data.append(value_after(line, 5, line.starts_with("data: ")).clone())
-	else if line.starts_with("event:"):
+	} else if line.starts_with("event:") {
 		self.event_type = value_after(line, 6, line.starts_with("event: ")).clone()
-	else if line.starts_with("id:"):
+	} else if line.starts_with("id:") {
 		self.identify(value_after(line, 3, line.starts_with("id: ")))
-	else if line.starts_with("retry:"):
+	} else if line.starts_with("retry:") {
 		self.reconnect(value_after(line, 6, line.starts_with("retry: ")))
-	else: self.apply_other(line)
+	} else {
+		self.apply_other(line)
+	}
+}
 
 // Lines without a colon name a field with an empty value; other names are ignored.
-fn var Decoder.apply_other(line String) Void:
-	if line.index_of(":") != null: return
+fn var Decoder.apply_other(line String) Void {
+	if line.index_of(":") != null { return }
 
-	if line == "data": self.data.append("")
-	else if line == "event": self.event_type = ""
-	else if line == "id": self.identify("")
-	else if line == "retry": self.reconnect("")
+	if line == "data" {
+		self.data.append("")
+	} else if line == "event" {
+		self.event_type = ""
+	} else if line == "id" {
+		self.identify("")
+	} else if line == "retry" {
+		self.reconnect("")
+	}
+}
 
 // An ID containing NUL is ignored, so it neither replaces nor clears the last ID.
-fn var Decoder.identify(value String) Void:
-	if value.to_bytes().contains("\u{0}".to_bytes()): return
+fn var Decoder.identify(value String) Void {
+	if value.to_bytes().contains(
+		"\u{0}".to_bytes()
+	) { return }
 
 	self.last_id = value.clone()
+}
 
 // Only ASCII digits form a retry time; overflow and signs are ignored.
-fn var Decoder.reconnect(value String) Void:
-	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")): return
+fn var Decoder.reconnect(value String) Void {
+	if (value.is_empty() or value.starts_with("-") or value.starts_with("+")) { return }
 
 	milliseconds := value.parse_int()
-	if milliseconds != null: self.retry_ms = milliseconds
+	if milliseconds != null { self.retry_ms = milliseconds }
+}
 
 /*
 Decodes a Server-Sent Events byte stream into events, in order.
@@ -171,10 +200,11 @@ must be positive, otherwise the first read fails with `EINVAL`. Closing the resu
 export fn sse_events(
 	move input ReadStream[Bytes],
 	limits SseLimits = SseLimits(),
-) ReadStream[SseEvent]:
+) ReadStream[SseEvent] {
 	var failure Error? = null
-	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes):
+	if not positive(limits.max_line_bytes) or not positive(limits.max_event_bytes) {
 		failure = Error("SSE invalid input", kind: "EINVAL")
+	}
 	return through[Bytes, SseEvent](
 		input,
 		Decoder(
@@ -193,18 +223,21 @@ export fn sse_events(
 			closed: false,
 		),
 	)
+}
 
-fn positive(limit Int?) Bool:
+fn positive(limit Int?) Bool {
 	maximum := limit
-	if maximum != null: return maximum > 0
+	if maximum != null { return maximum > 0 }
 
 	return true
+}
 
-fn exceeds(value Int, limit Int?) Bool:
+fn exceeds(value Int, limit Int?) Bool {
 	maximum := limit
-	if maximum != null: return value > maximum
+	if maximum != null { return value > maximum }
 
 	return false
+}
 
 // Finishes the line `chunk[start, end)` that ends at a terminator, joining it with any
 // bytes held from earlier chunks.
@@ -214,18 +247,20 @@ fn complete(
 	start Int,
 	end Int,
 	var events List[SseEvent],
-) Void!:
-	if decoder.line_bytes == 0:
-		if exceeds(end - start, decoder.limits.max_line_bytes): return error(
-			Error("SSE limit exceeded", kind: "EOVERFLOW")
-		)
+) Void! {
+	if decoder.line_bytes == 0 {
+		if exceeds(end - start, decoder.limits.max_line_bytes) {
+			return error(Error("SSE limit exceeded", kind: "EOVERFLOW"))
+		}
 		return end_line(decoder, chunk, start, end, events)
+	}
 
 	decoder.hold(chunk.slice(start, end).get())?
 
 	joined := decoder.line.drain()
 	decoder.line_bytes = 0
 	return end_line(decoder, joined, 0, joined.length(), events)
+}
 
 fn end_line(
 	var decoder Decoder,
@@ -233,41 +268,47 @@ fn end_line(
 	start Int,
 	end Int,
 	var events List[SseEvent],
-) Void!:
+) Void! {
 	var from = start
 
-	if not decoder.started:
+	if not decoder.started {
 		decoder.started = true
-		if bytes.slice(start, end).get().starts_with("\u{feff}".to_bytes()): from += 3
+		if bytes.slice(start, end).get().starts_with(
+			"\u{feff}".to_bytes()
+		) { from += 3 }
+	}
 
-	if from == end:
+	if from == end {
 		dispatch(decoder, events)
 		return ok()
+	}
 
 	line := ok_or(
 		bytes.decode_utf8_range(from, end),
 		Error("SSE line is not valid UTF-8", kind: "EBADMSG"),
 	)?
-	if line.starts_with(":"): return ok()
+	if line.starts_with(":") { return ok() }
 
 	decoder.event_bytes += end - from
-	if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes): return error(
-		Error("SSE limit exceeded", kind: "EOVERFLOW")
-	)
+	if exceeds(decoder.event_bytes, decoder.limits.max_event_bytes) {
+		return error(Error("SSE limit exceeded", kind: "EOVERFLOW"))
+	}
 
 	decoder.open_block = true
 	decoder.apply(line)
 	return ok()
+}
 
 // The value after the colon, skipping one leading space when `spaced`.
-fn value_after(line String, colon_end Int, spaced Bool) String:
-	if spaced: return line.slice(colon_end + 1, line.length())
+fn value_after(line String, colon_end Int, spaced Bool) String {
+	if spaced { return line.slice(colon_end + 1, line.length()) }
 	return line.slice(colon_end, line.length())
+}
 
-fn dispatch(var decoder Decoder, var events List[SseEvent]) Void:
-	if not decoder.data.is_empty():
+fn dispatch(var decoder Decoder, var events List[SseEvent]) Void {
+	if not decoder.data.is_empty() {
 		var name = decoder.event_type.clone()
-		if name == "": name = "message"
+		if name == "" { name = "message" }
 		events.append(
 			SseEvent(
 				name,
@@ -276,8 +317,10 @@ fn dispatch(var decoder Decoder, var events List[SseEvent]) Void:
 				decoder.retry_ms,
 			)
 		)
+	}
 
 	decoder.event_type = ""
 	decoder.data = List[String]()
 	decoder.event_bytes = 0
 	decoder.open_block = false
+}

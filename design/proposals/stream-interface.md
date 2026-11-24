@@ -13,16 +13,19 @@ Proposal, 2026-11-06, checked against `a0dbdcb2`. Direction (Chinmay): no overhe
 
 ## Design
 ```manuscript
-export interface Source[T]:                  // implement to make a stream; wrap with stream(...)
+export interface Source[T] {                  // implement to make a stream; wrap with stream(...)
     var fn next() T?!                        // may wait inside; none at the end
     var fn close() Unit!
-export interface Sink[T]:                    // implement to make a writer; wrap with writer(...)
+}
+export interface Sink[T] {                    // implement to make a writer; wrap with writer(...)
     var fn write(value T) Unit!             // waits while the sink is full: back pressure
     var fn flush() Unit!                     // returns once everything written has drained
     var fn close() Unit!
+}
 
-for line in file.reader() | lines | map(parse):   // item is T; a failed next leaves with its error, as `try`
+for line in file.reader() | lines | map(parse) {   // item is T; a failed next leaves with its error, as `try`
     process(line)
+}
 ```
 - `ReadStream[T]` and `WriteStream[T]` are records that own their source or sink and implement `Closeable`; the checker recognises the standard `ReadStream` for `for`. `ReadStream` gains `next()`, a direct call (no cell, no promise); `read()`, `wait()` and `Waiting` go. `WriteStream.flush()` blocks. `close` closes the source or sink once and replaces it with an empty one, so a native handle held by the record is released at once.
 - `for x in s` over a `ReadStream` expands like `Iterator` (`check_iterator_for`) to `while true: if x := try s.next(): body else: break`; the enclosing function must return a `Result`. A variable advances in place; any other expression is held in a hidden `var` that closes at scope end.

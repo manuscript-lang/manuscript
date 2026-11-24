@@ -14,26 +14,26 @@
           "file": "golden-0760.ms",
           "line": 5,
           "column": 15,
-          "offset": 164
+          "offset": 165
         },
         "end": {
           "file": "golden-0760.ms",
           "line": 5,
           "column": 24,
-          "offset": 173
+          "offset": 174
         },
         "fix": {
           "position": {
             "file": "golden-0760.ms",
             "line": 5,
             "column": 15,
-            "offset": 164
+            "offset": 165
           },
           "end": {
             "file": "golden-0760.ms",
             "line": 5,
             "column": 24,
-            "offset": 173
+            "offset": 174
           },
           "replacement": "value?"
         }

@@ -4,7 +4,7 @@ import expect_equal, expect_true from "@std/test/test.ms"
 
 fn fallback() Int => 9
 
-test "optional members":
+test "optional members" {
 	present Int? := 3
 	absent Int? := null
 	expect_true(((present != null) and (present != null)))?
@@ -17,3 +17,4 @@ test "optional members":
 	expect_equal(items.get_or(index: 0, -1), -1)?
 	items.append(value: 5)
 	expect_true((items.get_or(index: 0, -1) == 5 and (items.first() or 0) == 5))?
+}

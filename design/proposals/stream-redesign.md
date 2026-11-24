@@ -32,25 +32,29 @@ A stream is anything that produces or accepts values over time and can wait. The
 
 ```manuscript
 export opaque type ReadStream[T]                 # one owner; dropping it closes it
-impl ReadStream[T]:
+impl ReadStream[T] {
     var fn read() Promise[T?]                    # one step; none at the end
     var fn wait() Waiting[T]                     # for x in s.wait(): each item is T!, so errors arrive in the loop
+}
 
 export opaque type WriteStream[T]
-impl WriteStream[T]:
+impl WriteStream[T] {
     var fn write(value: T) Unit!                 # moves value into the buffer; never waits; Closed once the reader is gone
     var fn flush() Promise[Unit]                 # waits until drained: the backpressure point
     fn buffered() Int                            # items or bytes not yet drained
+}
 
 # A new stream: next may wait.
-export interface Source[T]:
+export interface Source[T] {
     var fn next() T?!
+}
 export fn stream[T](source: Source[T]) ReadStream[T]
 
 # A changed stream: never waits; appends zero or more items per input, and what it held back at the end.
-export interface Transform[A, B]:
+export interface Transform[A, B] {
     var fn feed(value: A, var out: List[B]) Unit!
     var fn finish(var out: List[B]) Unit!
+}
 export fn through[A, B](input: ReadStream[A], transform: Transform[A, B]) ReadStream[B]
 export fn through_writer[A, B](output: WriteStream[B], transform: Transform[A, B]) WriteStream[A]
 
@@ -92,38 +96,45 @@ Format modules add their own steps, each a `Transform` inside: `json_reader[T]`/
 
 ```manuscript
 # A reusable pipeline: Bytes in, entries out.
-fn log_entries(input: ReadStream[Bytes]) ReadStream[LogEntry!]:
+fn log_entries(input: ReadStream[Bytes]) ReadStream[LogEntry!] {
     return input
         | decompress(Gzip, max_bytes: none)
         | lines
         | filter(fn line: line.contains("ERROR"))
         | map(parse_entry)
+}
 
-fn tail_errors(path: String, out: WriteStream[String]) Int!:
+fn tail_errors(path: String, out: WriteStream[String]) Int! {
     file := try open(path).wait()
     entries := file.reader() | log_entries
     var count = 0
-    for entry in entries.wait():
+    for entry in entries.wait() {
         e := try entry
         try out.write(f"{e.time} {e.message}\n")
         count += 1
+    }
     try out.flush().wait()
     return ok(count)
+}
 
 # A transform of your own: running totals.
-type Running:
+type Running {
     total: Int
-impl Transform[Int, Int] for Running:
-    var fn feed(value: Int, var out: List[Int]) Unit!:
+}
+impl Transform[Int, Int] for Running {
+    var fn feed(value: Int, var out: List[Int]) Unit! {
         self.total += value
         out.append(self.total)
         return ok(unit)
-    var fn finish(var out: List[Int]) Unit!:
+    }
+    var fn finish(var out: List[Int]) Unit! {
         return ok(unit)
+    }
+}
 
 sums := from_list([1, 2, 3]) | through(Running(0)) | collect(max_items: none)   # [1, 3, 6]
 
-fn proxy(var client: Connection, var upstream: Connection) Unit!:
+fn proxy(var client: Connection, var upstream: Connection) Unit! {
     {input: from_client, output: to_client} := client
     {input: from_upstream, output: to_upstream} := upstream
     _counts := try wait_all([
@@ -131,6 +142,7 @@ fn proxy(var client: Connection, var upstream: Connection) Unit!:
         promise(fn: copy(from_upstream, to_client))
     ])
     return ok(unit)
+}
 ```
 
 ## Closing

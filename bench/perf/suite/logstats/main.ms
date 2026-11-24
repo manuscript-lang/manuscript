@@ -3,15 +3,15 @@ import (
 	read_all from "@std/io/streams.ms",
 )
 
-fn main() Void:
+fn main() Void {
 	data := read_all(stdin(), null).get().decode_utf8() or ""
 	var rows = 0
 	var latency = 0
 	var classes = [0].repeated(4)
 	var paths = Map[String, Int]()
 
-	for line in data.split("\n"):
-		if line.is_empty(): continue
+	for line in data.split("\n") {
+		if line.is_empty() { continue }
 
 		f := line.split(" ")
 		rows += 1
@@ -20,6 +20,7 @@ fn main() Void:
 		cls := f[4].scalar_at(0) - 50
 		classes[cls] += 1
 		paths.update(f[3], 0, v => v + 1)
+	}
 
 	print(f"lines: {rows}")
 	print(
@@ -28,9 +29,12 @@ fn main() Void:
 	print(f"latency: {latency}")
 
 	ranked := paths.entries().sorted(
-		(a, b) => if a.value != b.value: b.value - a.value else: a.key.compare(
-			b.key
-		)
+		(
+			a,
+			b,
+		) => if a.value != b.value { b.value - a.value } else { a.key.compare(b.key) }
 	)
-	for e in ranked.slice(0, 5).get():
+	for e in ranked.slice(0, 5).get() {
 		print(f"{e.key} {e.value}")
+	}
+}

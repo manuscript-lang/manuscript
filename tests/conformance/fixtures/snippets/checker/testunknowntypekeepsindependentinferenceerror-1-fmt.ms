@@ -5,5 +5,6 @@ fn broken(value Missing) Void => return
 
 fn empty[T]() T? => null
 
-fn first() Void:
-    value := empty()
+fn first() Void {
+	value := empty()
+}

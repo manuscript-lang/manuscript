@@ -7,21 +7,32 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
         "position": {
           "file": "golden-1020.ms",
-          "line": 3,
-          "column": 5,
-          "offset": 57
+          "line": 4,
+          "column": 14,
+          "offset": 80
+        }
+      },
+      {
+        "code": "MS3070",
+        "phase": "type",
+        "message": "a constant takes literals, operators, collections, and other constants; compute this value in a function",
+        "position": {
+          "file": "golden-1020.ms",
+          "line": 5,
+          "column": 12,
+          "offset": 114
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1020.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     values := [0]\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1020.ms:4:14: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 4 | operation := () => values.append(1)\n   |              ^\n<DIR>/golden-1020.ms:5:12: type: a constant takes literals, operators, collections, and other constants; compute this value in a function\n   |\n 5 | _result := operation()\n   |            ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -33,22 +33,26 @@
 
 ```manuscript
 // @std/io/channels.ms
-interface Transport[In, Out]:
+interface Transport[In, Out] {
     var fn send(value In) Result[Unit, ChannelError]
     var fn receive() Result[Optional[Out], ChannelError]   // ok(none): closed and drained
     var fn close() Unit
+}
 
-type Channel[In, Out]:
+type Channel[In, Out] {
     transport: Transport[In, Out]
+}
 
-impl Channel[In, Out]:                           // thin delegation, same names
+impl Channel[In, Out] {                           // thin delegation, same names
     var fn send(value: In) Result[Unit, ChannelError]: self.transport.send(value)
     var fn receive() Result[Optional[Out], ChannelError]: self.transport.receive()
     var fn close() Unit: self.transport.close()
+}
 
-type ChannelError:
+type ChannelError {
     case Closed                                  // send after the other end closed
     case Broken(reason: String)                  // peer died, malformed or oversize frame, decode failure
+}
 ```
 
 Groups (one form for all three): the group carries the channel types, like it carries `T`, with `Unit` defaults.
@@ -62,31 +66,41 @@ fn spawn(entry: fn(Channel[Out, In]) T) Task[T, In, Out]   // handle.channel: Ch
 - Because the entry type is concrete, an untyped lambda infers: `group.spawn(lambda ch: fetch(url.clone()))` works for fan-out (built and run with `ms build`, 2026-10-24).
 
 ```manuscript
-fn square_all(ch Channel[Int, Int]) Result[Unit, ChannelError]:
+fn square_all(ch Channel[Int, Int]) Result[Unit, ChannelError] {
     var c = ch                       // issue #1191: a var parameter cannot be a Callable today
     var open = true
-    while open:
-        if n := try c.receive():
+    while open {
+        if n := try c.receive() {
             try c.send(n * n)
-        else:
+        } else {
             open = false
+        }
+    }
     return ok(unit)
+}
 
-fn fetch_all(urls: List[String]) Result[List[Int], TaskError]:
-    with group := TaskGroup[Int]():                 // no messages: Channel[Unit, Unit]
-        for url in urls:
+fn fetch_all(urls: List[String]) Result[List[Int], TaskError] {
+    with group := TaskGroup[Int]() {                 // no messages: Channel[Unit, Unit]
+        for url in urls {
             group.spawn(fn ch: fetch_size(url.clone()))
+        }
         return group.results()
+    }
+}
 
-fn main() Int:
-    with group := WorkerGroup[Result[Unit, ChannelError], Int, Int]():   // or TaskGroup / ProcessGroup
+fn main() Int {
+    with group := WorkerGroup[Result[Unit, ChannelError], Int, Int]() {   // or TaskGroup / ProcessGroup
         var worker = group.spawn(square_all)
-        if worker.channel.send(3).is_error():
+        if worker.channel.send(3).is_error() {
             return 1
-        if reply := worker.channel.receive():
+        }
+        if reply := worker.channel.receive() {
             ...
+        }
         worker.channel.close()       // child's receive() returns ok(none), child returns
+    }
     return 0
+}
 ```
 
 - Worker and process entries are named top-level `def`s; tasks also take lambdas.

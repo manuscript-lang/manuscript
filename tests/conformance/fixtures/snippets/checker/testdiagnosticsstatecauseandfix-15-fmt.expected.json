@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f(values List[Int]) Void:\n\tvalues.delete(0)\n"
+    "fmt": "fn f(values List[Int]) Void {\n\tvalues.delete(0)\n}\n"
   }
 }

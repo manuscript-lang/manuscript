@@ -9,42 +9,42 @@
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "module does not export network; did you mean 'Network'?",
+        "message": "unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"",
         "position": {
           "file": "golden-1023.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
+          "line": 4,
+          "column": 5,
+          "offset": 63
         },
         "end": {
           "file": "golden-1023.ms",
-          "line": 3,
-          "column": 15,
-          "offset": 67
+          "line": 4,
+          "column": 10,
+          "offset": 68
         }
       },
       {
         "code": "MS2002",
         "phase": "resolution",
-        "message": "unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"",
+        "message": "module does not export network; did you mean 'Network'?",
         "position": {
           "file": "golden-1023.ms",
-          "line": 5,
-          "column": 8,
-          "offset": 161
+          "line": 6,
+          "column": 5,
+          "offset": 151
         },
         "end": {
           "file": "golden-1023.ms",
-          "line": 5,
-          "column": 13,
-          "offset": 166
+          "line": 6,
+          "column": 12,
+          "offset": 158
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1023.ms:3:8: resolution: module does not export network; did you mean 'Network'?\n   |\n 3 | import network from \"@std/net/net.ms\"\n   |        ^^^^^^^\n<DIR>/golden-1023.ms:5:8: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 5 | import panic from \"@std/faults.ms\"\n   |        ^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1023.ms:4:5: resolution: unknown standard module @std/faults.ms; panic is exported by another standard module, so write: import panic from \"@std/core.ms\"\n   |\n 4 |     panic from \"@std/faults.ms\",\n   |     ^^^^^\n<DIR>/golden-1023.ms:6:5: resolution: module does not export network; did you mean 'Network'?\n   |\n 6 |     network from \"@std/net/net.ms\",\n   |     ^^^^^^^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

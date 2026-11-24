@@ -2,14 +2,16 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-type RoundingCase:
+type RoundingCase {
 	input Int
 	expected Float
+}
 
-fn convert(value Int) Float32:
+fn convert(value Int) Float32 {
 	return value.to_float32()
+}
 
-test "integer to Float32 rounds once at binary32 midpoints":
+test "integer to Float32 rounds once at binary32 midpoints" {
 	cases := [
 		RoundingCase(18014399583223807, 1.8014398509481984e+16),
 		RoundingCase(-18014399583223807, -1.8014398509481984e+16),
@@ -41,32 +43,38 @@ test "integer to Float32 rounds once at binary32 midpoints":
 		RoundingCase(-9223372036854775808, -9.223372036854776e+18),
 	]
 
-	for item in cases:
+	for item in cases {
 		expect_equal(convert(item.input).to_float(), item.expected)?
 
 		bound := item.input.to_float32
 		expect_equal(bound().to_float(), item.expected)?
+	}
+}
 
-test "constant integer to Float32 rounds directly":
+test "constant integer to Float32 rounds directly" {
 	expect_equal(4611686293305294849.to_float32().to_float(), 4611686568183201792.0)?
 	expect_equal((-4611686293305294849).to_float32().to_float(), -4611686568183201792.0)?
+}
 
-test "smaller integer conversions preserve their value":
+test "smaller integer conversions preserve their value" {
 	small Int8 := -128
 	medium Int16 := 32767
 	large Int32 := 2147483647
 	expect_equal(small.to_float32().to_float(), -128.0)?
 	expect_equal(medium.to_float32().to_float(), 32767.0)?
 	expect_equal(large.to_float32().to_float(), 2147483648.0)?
+}
 
-type UnsignedRoundingCase:
+type UnsignedRoundingCase {
 	input UInt64
 	expected Float
+}
 
-fn convert_unsigned(value UInt64) Float32:
+fn convert_unsigned(value UInt64) Float32 {
 	return value.to_float32()
+}
 
-test "unsigned integer to Float32 rounds once at binary32 midpoints":
+test "unsigned integer to Float32 rounds once at binary32 midpoints" {
 	cases := [
 		UnsignedRoundingCase(4611686293305294849, 4611686568183201792.0),
 		UnsignedRoundingCase(9223372586610589695, 9223372036854775808.0),
@@ -80,12 +88,15 @@ test "unsigned integer to Float32 rounds once at binary32 midpoints":
 		UnsignedRoundingCase(18446744073709551615, 18446744073709551616.0),
 	]
 
-	for item in cases:
+	for item in cases {
 		expect_equal(convert_unsigned(item.input).to_float(), item.expected)?
 
 		bound := item.input.to_float32
 		expect_equal(bound().to_float(), item.expected)?
+	}
+}
 
-test "constant unsigned integer to Float32 rounds directly":
+test "constant unsigned integer to Float32 rounds directly" {
 	input UInt64 := 9223372586610589697
 	expect_equal(input.to_float32().to_float(), 9223373136366403584.0)?
+}

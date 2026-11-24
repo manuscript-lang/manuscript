@@ -14,20 +14,20 @@
           "file": "foreign-vec-type.ms",
           "line": 5,
           "column": 8,
-          "offset": 138
+          "offset": 136
         },
         "fix": {
           "position": {
             "file": "foreign-vec-type.ms",
             "line": 5,
             "column": 8,
-            "offset": 138
+            "offset": 136
           },
           "end": {
             "file": "foreign-vec-type.ms",
             "line": 5,
             "column": 11,
-            "offset": 141
+            "offset": 139
           },
           "replacement": "List"
         }

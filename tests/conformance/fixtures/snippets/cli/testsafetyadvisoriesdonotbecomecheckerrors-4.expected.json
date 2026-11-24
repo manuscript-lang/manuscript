@@ -12,16 +12,16 @@
         "message": "cannot infer callback parameter request; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`",
         "position": {
           "file": "testsafetyadvisoriesdonotbecomecheckerrors-4.ms",
-          "line": 11,
+          "line": 13,
           "column": 18,
-          "offset": 414
+          "offset": 405
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testsafetyadvisoriesdonotbecomecheckerrors-4.ms:11:18: type: cannot infer callback parameter request; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`\n    |\n 11 |     handle := fn(request) HttpResponse:\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testsafetyadvisoriesdonotbecomecheckerrors-4.ms:13:18: type: cannot infer callback parameter request; provide a type or a known function context: a closure bound to a variable has none, so write the parameter types and result, as in `fn(n Int) Int => n * 2`\n    |\n 13 |     handle := fn(request) HttpResponse {\n    |                  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

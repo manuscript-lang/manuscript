@@ -9,7 +9,7 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding step; declare it with 'step := ...' before use, define 'fn step(...) T:', or import it from a module",
+        "message": "unknown binding step; declare it with 'step := ...' before use, define 'fn step(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0829.ms",
           "line": 3,
@@ -20,19 +20,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding d; declare it with 'd := ...' before use, define 'fn d(...) T:', or import it from a module",
+        "message": "unknown binding d; declare it with 'd := ...' before use, define 'fn d(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0829.ms",
           "line": 3,
-          "column": 30,
-          "offset": 82
+          "column": 32,
+          "offset": 84
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0829.ms:3:25: resolution: unknown binding step; declare it with 'step := ...' before use, define 'fn step(...) T:', or import it from a module\n   |\n 3 | fn work() Int => return step%d(1)\n   |                         ^\n<DIR>/golden-0829.ms:3:30: resolution: unknown binding d; declare it with 'd := ...' before use, define 'fn d(...) T:', or import it from a module\n   |\n 3 | fn work() Int => return step%d(1)\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0829.ms:3:25: resolution: unknown binding step; declare it with 'step := ...' before use, define 'fn step(...) T { ... }', or import it from a module\n   |\n 3 | fn work() Int => return step % d(1)\n   |                         ^\n<DIR>/golden-0829.ms:3:32: resolution: unknown binding d; declare it with 'd := ...' before use, define 'fn d(...) T { ... }', or import it from a module\n   |\n 3 | fn work() Int => return step % d(1)\n   |                                ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

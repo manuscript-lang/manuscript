@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn probe() Int:\n\tvar sum = 0\n\tvar i = -9223372036854775808\n\n\twhile i < -9223372036854775487:\n\t\tsum += i\n\t\ti += 1\n\n\treturn sum\n"
+    "fmt": "fn probe() Int {\n\tvar sum = 0\n\tvar i = -9223372036854775808\n\n\twhile i < -9223372036854775487 {\n\t\tsum += i\n\t\ti += 1\n\t}\n\n\treturn sum\n}\n"
   }
 }

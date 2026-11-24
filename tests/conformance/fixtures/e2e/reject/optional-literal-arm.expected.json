@@ -14,14 +14,14 @@
           "file": "optional-literal-arm.ms",
           "line": 6,
           "column": 9,
-          "offset": 193
+          "offset": 195
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/optional-literal-arm.ms:6:9: resolution: a literal pattern cannot match Optional; literals match only Int, String or Bool, so match one of the cases: null, some\n   |\n 6 |         5:\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/optional-literal-arm.ms:6:9: resolution: a literal pattern cannot match Optional; literals match only Int, String or Bool, so match one of the cases: null, some\n   |\n 6 |         5 => {\n   |         ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -7,21 +7,42 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it",
+        "message": "remove the ':' between 'o' and its type; write o Type",
         "position": {
           "file": "golden-1142.ms",
           "line": 3,
-          "column": 5,
-          "offset": 57
+          "column": 6,
+          "offset": 58
+        },
+        "end": {
+          "file": "golden-1142.ms",
+          "line": 3,
+          "column": 7,
+          "offset": 59
+        },
+        "fix": {
+          "position": {
+            "file": "golden-1142.ms",
+            "line": 3,
+            "column": 6,
+            "offset": 58
+          },
+          "end": {
+            "file": "golden-1142.ms",
+            "line": 3,
+            "column": 7,
+            "offset": 59
+          },
+          "replacement": ""
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1142.ms:3:5: parse: unexpected indentation, 4 spaces where 0 are expected; the previous line must end with ':' to open a block (fn, if, else, for, while, match, type, enum, interface headers), otherwise align this line with it\n   |\n 3 |     o: Int? = null\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1142.ms:3:6: parse: remove the ':' between 'o' and its type; write o Type\n   |\n 3 |     o: Int? = null\n   |      ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

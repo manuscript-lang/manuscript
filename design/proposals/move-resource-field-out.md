@@ -17,14 +17,16 @@ Implemented, 2026-10-30 (#2008), against `6a9ca18f`. Builds on [field-ownership-
 Verified on `6a9ca18f` with `ms check`:
 
 ```manuscript
-type Room:
+type Room {
     door Door
     tag String
+}
 
-fn take(r Room) List[Door]:
+fn take(r Room) List[Door] {
     var xs List[Door] = []
-    xs.append(r.door)    // error: cannot move the resource `r.door` out of `r`
+    xs.append(r.door)  // error: cannot move the resource `r.door` out of `r`
     return xs
+}
 ```
 
 - `walk.rs` `partial_move` returns false for `Class::Resource`, and the caller reports the error.
@@ -36,10 +38,11 @@ fn take(r Room) List[Door]:
 **Rule:** a field place `b.f` (or `b.f.g`) of `Class::Resource` moves out of an owned `let` binding or by-value parameter `b` at its last use (same per-place liveness as #1997), provided no record along the path declares `close` itself. Everything else about #1997 stays: later use of the place or of `b` is "moved here but used again", a closure capture of `b` is rejected, a loop that moves without leaving is rejected.
 
 ```manuscript
-fn take(r Room) List[Door]:
+fn take(r Room) List[Door] {
     var xs List[Door] = []
-    xs.append(r.door)    // accepted: r.door moves; r.tag still belongs to r
-    return xs            // r closes nothing: it holds no other resource
+    xs.append(r.door)  // accepted: r.door moves; r.tag still belongs to r
+    return xs  // r closes nothing: it holds no other resource
+}
 ```
 
 Semantics, one per bullet:

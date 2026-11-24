@@ -7,21 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 1; use 0 or 4",
+        "message": "unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon",
         "position": {
           "file": "golden-1433.ms",
-          "line": 4,
-          "column": 2,
-          "offset": 55
+          "line": 5,
+          "column": 63,
+          "offset": 165
+        },
+        "end": {
+          "file": "golden-1433.ms",
+          "line": 5,
+          "column": 64,
+          "offset": 166
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1433.ms:4:2: parse: indentation must be a multiple of four spaces, found 1; use 0 or 4\n   |\n 4 |  type queryFaultContext struct {context.Context}\n   |  ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1433.ms:5:63: parse: unexpected source character ';'; Manuscript ends a statement at the end of the line, so remove the semicolon\n   |\n 5 |  func (queryFaultContext) Err() error {rt.Raise(\"query fault\");return nil}\n   |                                                               ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

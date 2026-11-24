@@ -169,7 +169,7 @@ static bool compact_body_blocked(MsSpan body_text) {
   return fmt_contains(body_text, "\n") || fmt_contains(body_text, "//");
 }
 
-/* `if c:` over a single `return`, `break` or `continue` line becomes one line. */
+/* `if c { ... }` over a single `return`, `break` or `continue` line becomes one line. */
 static void compact_inline_if(Compact *c, const MsStmt *s, MsStmts body) {
   if (body.len != 1) {
     return;

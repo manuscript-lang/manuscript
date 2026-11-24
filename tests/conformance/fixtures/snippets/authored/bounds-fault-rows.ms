@@ -3,11 +3,14 @@
 // conform: origin=range pass: relational bounds proofs
 import stdout from "@std/io/io.ms"
 
-fn rows(g List[List[Int]]) Int:
-    var t = 0
-    for j in 0..g[0].length():
-        t = t + g[1][j]
-    return t
+fn rows(g List[List[Int]]) Int {
+	var t = 0
+	for j in 0..g[0].length() {
+		t += g[1][j]
+	}
+	return t
+}
 
-fn main() Void:
-    void stdout().write(f"{rows([[1, 2, 3], [4]])}\n")
+fn main() Void {
+	void stdout().write(f"{rows([[1, 2, 3], [4]])}\n")
+}

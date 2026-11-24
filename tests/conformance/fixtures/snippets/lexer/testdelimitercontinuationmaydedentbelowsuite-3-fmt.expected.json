@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn f() Int:\n\tif true:\n\t\t_x := [1]\n\t\treturn 0\n\n\treturn 1\n"
+    "fmt": "fn f() Int {\n\tif true {\n\t\t_x := [1]\n\t\treturn 0\n\t}\n\n\treturn 1\n}\n"
   }
 }

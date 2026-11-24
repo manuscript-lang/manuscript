@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn work(enabled Bool) Int:\n\tcount := 2\n\n\tif enabled:\n\t\trun(count)\n\telse if count > 0: run(1)\n\telse:\n\t\trun(0)\n\n\twhile enabled:\n\t\tif count == 0: break\n\n\t\trun(count)\n\t\tbreak\n\n\tfor item in [1, 2]:\n\t\tif item == 1: continue\n\n\t\trun(item)\n\n\tvar resource = acquire()\n\trun(resource)\n\tresource.close()\n\treturn count\n"
+    "fmt": "fn work(enabled Bool) Int {\n\tcount := 2\n\n\tif enabled {\n\t\trun(count)\n\t} else if count > 0 {\n\t\trun(1)\n\t} else {\n\t\trun(0)\n\t}\n\n\twhile enabled {\n\t\tif count == 0 { break }\n\n\t\trun(count)\n\t\tbreak\n\t}\n\n\tfor item in [1, 2] {\n\t\tif item == 1 { continue }\n\n\t\trun(item)\n\t}\n\n\tvar resource = acquire()\n\trun(resource)\n\tresource.close()\n\treturn count\n}\n"
   }
 }

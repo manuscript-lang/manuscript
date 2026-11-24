@@ -12,16 +12,16 @@
         "message": "this statement discards Result[Int, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose",
         "position": {
           "file": "discarded-result.ms",
-          "line": 8,
+          "line": 9,
           "column": 5,
-          "offset": 210
+          "offset": 214
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/discarded-result.ms:8:5: type: this statement discards Result[Int, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose\n   |\n 8 |     parse(\"1\")\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/discarded-result.ms:9:5: type: this statement discards Result[Int, Error], so a failure would be lost; write a trailing '?' to propagate it, 'if value := x' or 'match' to handle it, or 'void ...' to drop it on purpose\n   |\n 9 |     parse(\"1\")\n   |     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

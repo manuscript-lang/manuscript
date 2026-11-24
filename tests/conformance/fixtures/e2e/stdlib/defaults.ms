@@ -15,44 +15,51 @@ import (
 
 fn forward[T](item T) T => item
 
-type Capture:
+type Capture {
 	tag Bytes
+}
 
 fn Capture.run(
 	program String,
 	arguments List[String],
 	options RunOptions = RunOptions(),
-) CommandOutput!:
+) CommandOutput! {
 	return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
+}
 
 fn Capture.spawn(
 	program String,
 	arguments List[String],
 	options SpawnOptions,
-) Subprocess!:
+) Subprocess! {
 	return error(Error("process: service unavailable", kind: "EAGAIN"))
+}
 
-fn generic_run[T Commands](service T) Bytes!:
+fn generic_run[T Commands](service T) Bytes! {
 	return ok((service.run("fake", [])?).stdout)
+}
 
-type Override:
+type Override {
 	input Bytes
+}
 
 fn Override.run(
 	program String,
 	arguments List[String],
 	options RunOptions = RunOptions(input: self.input.clone()),
-) CommandOutput!:
+) CommandOutput! {
 	return ok(CommandOutput(0, options.input.clone(), "".to_bytes(), 0))
+}
 
 fn Override.spawn(
 	program String,
 	arguments List[String],
 	options SpawnOptions,
-) Subprocess!:
+) Subprocess! {
 	return error(Error("process: service unavailable", kind: "EAGAIN"))
+}
 
-test "concrete implementation defaults and interface defaults stay distinct":
+test "concrete implementation defaults and interface defaults stay distinct" {
 	service := Override("custom".to_bytes())
 	concrete := service.run
 	expect_equal((concrete("fake", [])?).stdout, service.input)?
@@ -66,8 +73,9 @@ test "concrete implementation defaults and interface defaults stay distinct":
 		(viewed("fake", [], RunOptions(input: explicit.clone()))?).stdout,
 		explicit,
 	)?
+}
 
-test "CSV defaults are fresh and explicit options retain their meaning":
+test "CSV defaults are fresh and explicit options retain their meaning" {
 	var first = CsvOptions()
 	first.delimiter = ";"
 	first.line_ending = "\r\n"
@@ -104,8 +112,9 @@ test "CSV defaults are fresh and explicit options retain their meaning":
 
 	invalid String! := error(Error("CSV: invalid input", kind: "EINVAL"))
 	expect_equal(stringify([["a"]], CsvOptions("")), invalid)?
+}
 
-test "Base64 defaults support stored functions and explicit alphabets":
+test "Base64 defaults support stored functions and explicit alphabets" {
 	bytes := Bytes([255])
 	expect_false(
 		(
@@ -136,8 +145,9 @@ test "Base64 defaults support stored functions and explicit alphabets":
 
 	limited Bytes! := error(Error("encoding: limit exceeded", kind: "EOVERFLOW"))
 	expect_equal(base64_decode("/w==", max_bytes: 0), limited)?
+}
 
-test "Commands defaults cross concrete bound view and generic boundaries":
+test "Commands defaults cross concrete bound view and generic boundaries" {
 	capture := Capture("x".to_bytes())
 	bound := capture.run
 	expect_equal((bound("fake", [])?).stdout.length(), 0)?
@@ -163,3 +173,4 @@ test "Commands defaults cross concrete bound view and generic boundaries":
 	invalid CommandOutput! := error(Error("process: invalid input", kind: "EINVAL"))
 	native := run
 	expect_equal(native("", []).wait(), invalid)?
+}

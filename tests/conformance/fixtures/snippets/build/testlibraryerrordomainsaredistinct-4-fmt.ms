@@ -3,6 +3,7 @@
 // conform: origin=pkg/build/library_test.go:54 TestLibraryErrorDomainsAreDistinct
 import hex_decode from "@std/data/encoding.ms"
 
-fn wrong() Void!:
-    bytes := hex_decode(text: "ff", max_bytes: 1)?
-    return ok(value: void)
+fn wrong() Void! {
+	bytes := hex_decode(text: "ff", max_bytes: 1)?
+	return ok(value: void)
+}

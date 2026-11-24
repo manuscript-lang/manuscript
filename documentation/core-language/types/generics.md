@@ -35,17 +35,21 @@ Bounds are checked at every application. `Hashable` implies `Equal`, and `Data` 
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-type Key:
+type Key {
     id Int
+}
 
-fn Key.equals(other Key) Bool:
+fn Key.equals(other Key) Bool {
     return self.id == other.id
+}
 
-fn same_key(left Equal, right Equal) Bool:
+fn same_key(left Equal, right Equal) Bool {
     return left.equals(right)
+}
 
-fn use_view() Bool:
+fn use_view() Bool {
     return same_key(Key(1), Key(1))
+}
 ```
 
 ### Clonable and Data
@@ -61,14 +65,17 @@ fn use_view() Bool:
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-type Box[T]:
+type Box[T] {
     value T
+}
 
-fn identity[T](value T) T:
+fn identity[T](value T) T {
     return value
+}
 
-fn same[T Equal](left T, right T) Bool:
+fn same[T Equal](left T, right T) Bool {
     return left == right
+}
 
 box := Box[Int](1)
 exact := identity[Int](1)
@@ -89,12 +96,14 @@ A parameter may declare `= Type` as a default. Later parameters then need defaul
 
 <!-- manuscript-example: {"mode":"fragment","given":[]} -->
 ```manuscript
-type Pair[A, B = A]:
+type Pair[A, B = A] {
     first A
     second B
+}
 
-fn parse[T = String](text String) T?:
+fn parse[T = String](text String) T? {
     return null
+}
 
 same Pair[Int] := Pair[Int](1, 2)    // Pair[Int, Int]
 mixed := Pair[Int, String](1, "x")
@@ -109,8 +118,9 @@ A call may omit type arguments when its arguments and expected result uniquely d
 
 <!-- manuscript-example: {"mode":"error","contains":"expected Int","given":[]} -->
 ```manuscript
-fn choose[T](first T, second T) T:
+fn choose[T](first T, second T) T {
     return first
+}
 
 value := choose(1, 2)  // T = Int
 // Rejected: conflicting evidence for T.
@@ -133,8 +143,9 @@ Empty lists, `null`, and similar expressions give no evidence of their own; once
 
 <!-- manuscript-example: {"mode":"error","contains":"cannot infer","given":[]} -->
 ```manuscript
-fn count[T](values List[T]) Int:
+fn count[T](values List[T]) Int {
     return 0
+}
 
 known := count[Int]([])
 // Rejected: the empty list does not determine T.
@@ -150,11 +161,13 @@ A generic body is checked once against its declared bounds, which expose only th
 <!-- manuscript-example: {"mode":"error","contains":"equality requires Equal","given":[]} -->
 ```manuscript
 // Rejected at declaration: missing Equal bound.
-fn unchecked_same[T](left T, right T) Bool:
+fn unchecked_same[T](left T, right T) Bool {
     return left == right
+}
 
-type Keys[T Hashable]:
+type Keys[T Hashable] {
     values Set[T]
+}
 ```
 
 Every nested application must satisfy its bounds under the enclosing assumptions; omitting them from `Keys` is rejected even if every use supplies `Int`.
@@ -171,11 +184,13 @@ Generic function calls and specialized function values follow the same rule acro
 
 <!-- manuscript-example: {"mode":"error","contains":"recursive generic"} -->
 ```manuscript
-fn repeat[T](value T) Never:
+fn repeat[T](value T) Never {
     return repeat[T](value)  // Regular specialization; allowed.
+}
 
-fn grow[T](value T) Never:
+fn grow[T](value T) Never {
     return grow[List[T]]([value])  // Rejected: expanding specialization.
+}
 ```
 
 The check also covers mutual recursion, function values such as `grow[List[T]]`, and generic implementation method calls.
@@ -192,15 +207,17 @@ The check also covers mutual recursion, function values such as `grow[List[T]]`,
 ```manuscript
 type Number = Int | Int8 | Float | Float32
 
-fn total[T Number](values List[T]) T:
+fn total[T Number](values List[T]) T {
     var sum T = 0
-    for v in values:
+    for v in values {
         sum += v
+    }
     return sum
+}
 ```
 
 - Members are concrete types, not type parameters or interfaces. A set may name another set; its members are flattened in.
 - Inside the body, `+`, `-`, `*`, `/` and comparisons work on a `T` whose members are all numeric, and the literal `0` is the zero of every member. Each instance keeps its own arithmetic: `Int8` overflow faults and `Float32` rounds to binary32.
 - A set cannot be the type of a value: `fn f(x Number)` is rejected with `Number is a type set, which constrains a type parameter and has no values`. A type outside the set is rejected where the argument is checked: `String is not a member of the type set Number`.
-- A method may be declared once on a type set declared in the same module. With `type Length = Meters | Feet`, `fn Length.double() Self:` gives `Meters` and `Feet` each the method, with `Self` the receiving member. As for any receiver, the module may declare methods only on types it owns, and the members must be concrete types.
+- A method may be declared once on a type set declared in the same module. With `type Length = Meters | Feet`, `fn Length.double() Self { ... }` gives `Meters` and `Feet` each the method, with `Self` the receiving member. As for any receiver, the module may declare methods only on types it owns, and the members must be concrete types.
 - `@std/collections/collections.ms` exports `Numeric`, the integer and float types `List.sum` adds.

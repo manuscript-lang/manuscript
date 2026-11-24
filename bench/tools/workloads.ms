@@ -35,35 +35,40 @@ import (
 	Measured, header, measure, row, versions from "./workloads_measure.ms",
 )
 
-type Case:
+type Case {
 	name String
 	stdin String
+}
 
-fn largest_input(path String) String!:
+fn largest_input(path String) String! {
 	cases := parse[List[Case]](read_text(path))
-	if cases.is_error(): return invalid(f"cannot read {path}")
+	if cases.is_error() { return invalid(f"cannot read {path}") }
 
 	var best = ""
-	for c in cases.get_or([]):
-		if c.stdin.length() > best.length(): best = c.stdin.clone()
+	for c in cases.get_or([]) {
+		if c.stdin.length() > best.length() { best = c.stdin.clone() }
+	}
 
-	size := if not best.is_empty(): best.length() else: 1
-	copies := if 3000000 / size > 1: 3000000 / size else: 1
+	size := if not best.is_empty() { best.length() } else { 1 }
+	copies := if 3000000 / size > 1 { 3000000 / size } else { 1 }
 	return ok(best.repeat(copies))
+}
 
-fn evidence(dir String, name String, n Int, input String, measured Measured) Void:
+fn evidence(dir String, name String, n Int, input String, measured Measured) Void {
 	var samples = List[JsonValue]()
 
-	for s in measured.samples:
+	for s in measured.samples {
 		var one = Map[String, JsonValue]()
 		one.add("trial", jint(s.trial))
 		one.add("version", jstr(s.version.clone()))
 		one.add("elapsed_ns", jint(s.elapsed_ns))
 		samples.append(jobject(one))
+	}
 
 	var binaries = Map[String, JsonValue]()
-	for v in versions():
+	for v in versions() {
 		binaries.add(v.clone(), jstr(file_sha256(f"{dir}/{v}/app")))
+	}
 
 	var doc = Map[String, JsonValue]()
 	doc.add("name", jstr(name.clone()))
@@ -73,22 +78,24 @@ fn evidence(dir String, name String, n Int, input String, measured Measured) Voi
 	doc.add("output_sha256", jstr(hex_encode(sha256(measured.expected.to_bytes()))))
 	doc.add("binaries_sha256", jobject(binaries))
 	write_text(f"{dir}/samples.json", dump(jobject(doc)))
+}
 
-fn run(work String, n Int) Result[String, Error]:
+fn run(work String, n Int) Result[String, Error] {
 	var rows = [header()]
 	root := "bench/agent/challenges"
 
-	for entry in list(root)?:
+	for entry in list(root)? {
 		if (
 			not entry.name.starts_with("c")
 			or not "01234".contains(entry.name.slice(1, 2))
-		): continue
+		) { continue }
 
 		name := entry.name.clone()
 		dir := f"{work}/{name}"
 		source := f"{root}/{name}"
-		for sub in ["ms/src", "go", "rs"]:
+		for sub in ["ms/src", "go", "rs"] {
 			create_directory(f"{dir}/{sub}", recursive: true)?
+		}
 		copy("bench/agent/templates/ms/ms.toml", f"{dir}/ms/ms.toml")?
 		copy(f"{source}/solutions/ms/main.ms.ref", f"{dir}/ms/src/main.ms")?
 		copy(f"{source}/solutions/go/main.go.ref", f"{dir}/go/main.go")?
@@ -125,26 +132,32 @@ fn run(work String, n Int) Result[String, Error]:
 		measured := measure(n, name, v => sample(f"{dir}/{v}/app", [], input))?
 		evidence(dir, name.clone(), n, input, measured)
 		rows.append(row(name, measured.samples))
+	}
 
 	// The table appears only once every workload has passed.
 	write_text(f"{work}/table.txt", rows.join("\n") + "\n")
 	return ok(rows.join("\n"))
+}
 
-fn main() Int:
+fn main() Int {
 	var n = 3
 	args := arguments()
 
-	if not args.is_empty():
-		if parsed := repeats(args[0]):
+	if not args.is_empty() {
+		if parsed := repeats(args[0]) {
 			n = parsed
-		else:
+		} else {
 			return usage("repeats must be a positive integer")
+		}
+	}
 
 	keep := env("BENCH_OUTPUT", "")
 
-	if keep != "":
+	if keep != "" {
 		ensure_directory(keep)
 		return finish(run(absolute(keep), n))
+	}
 
 	tmp := temporary("workloads-").get()
 	return finish(run(tmp.path(), n))
+}

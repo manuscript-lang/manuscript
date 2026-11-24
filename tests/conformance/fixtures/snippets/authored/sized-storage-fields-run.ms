@@ -3,29 +3,38 @@
 // conform: origin=sized numeric types stage 3
 import stdout from "@std/io/io.ms"
 
-type Pix:
+type Pix {
 	r Int8
 	g Int8
 	b Int8
 	w Int16
 	f Float32
 	n Int32
+}
 
-enum Shape:
+enum Shape {
 	Dot(x Int8)
 	Box(w Int16, h Float32, c Int32)
 	Big(v Int)
+}
 
-fn area(s Shape) Int:
-	match s:
+fn area(s Shape) Int {
+	match s {
 		Dot(x) => return x.to_int64()
-		Box(w, h, c) => return (w.to_int64() + c.to_int64() + (h.truncate_to_int() or 0))
+		Box(w, h, c) => return (
+			w.to_int64()
+			+ c.to_int64()
+			+ (h.truncate_to_int() or 0)
+		)
 		Big(v) => return v
+	}
+}
 
-fn main() Void:
+fn main() Void {
 	var l List[Int8] = []
-	for i in 0..10:
+	for i in 0..10 {
 		l.append((i * 3 - 12).to_int8() or 0)
+	}
 	void stdout().write(f"{l} {l.length()} {l.contains(-3)}\n")
 
 	s List[Float32] := [1.5, 0.1, -2.0]
@@ -49,3 +58,4 @@ fn main() Void:
 
 	ps := [p, q]
 	void stdout().write(f"{ps.length()} {ps[1].w}\n")
+}

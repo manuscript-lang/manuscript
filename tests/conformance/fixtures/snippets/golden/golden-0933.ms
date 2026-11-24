@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-interface Read:
-    fn get[T]() T
+interface Read {
+	fn get[T]() T
+}

@@ -12,13 +12,17 @@ fn transform[T, U](callback fn(T) U) fn(T) U => callback
 fn repeated[T]() Pair[T, T] => panic("not called")
 fn unused[T]() Int => 0
 fn constrained[T Equal]() T? => null
-type Pair[A, B]:
+type Pair[A, B] {
     first A
     second B
-type Holder:
+}
+type Holder {
     value Int?
-type Failure:
+}
+type Failure {
     detail String
-impl Error for Failure:
+}
+impl Error for Failure {
     fn message() String => self.detail
+}
 fn consume(value: Int?) Void => return

@@ -1,11 +1,13 @@
 // conform: tags=control-flow,formatter,generics,interfaces,parser,records,tier-core
 // conform: phase=parse
 // conform: origin=pkg/checker/interface_hints_test.go:22 TestInterfaceAndReceiverHints
-interface Read[T]:
-    fn get() T
+interface Read[T] {
+	fn get() T
+}
 
-type Box[T Clonable]:
-    item T
+type Box[T Clonable] {
+	item T
+}
 
 fn Box[T].get() T => self.item.clone()
 

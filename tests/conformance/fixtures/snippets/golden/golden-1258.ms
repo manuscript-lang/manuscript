@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-) Void:
+) Void {
     bound := receiver.
+}

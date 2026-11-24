@@ -14,26 +14,26 @@
           "file": "golden-0887.ms",
           "line": 4,
           "column": 13,
-          "offset": 77
+          "offset": 78
         },
         "end": {
           "file": "golden-0887.ms",
           "line": 4,
           "column": 14,
-          "offset": 78
+          "offset": 79
         },
         "fix": {
           "position": {
             "file": "golden-0887.ms",
             "line": 4,
             "column": 13,
-            "offset": 77
+            "offset": 78
           },
           "end": {
             "file": "golden-0887.ms",
             "line": 4,
             "column": 14,
-            "offset": 78
+            "offset": 79
           },
           "replacement": ":="
         }

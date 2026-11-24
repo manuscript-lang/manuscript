@@ -5,7 +5,7 @@
  *     B1: r = list.set.u l, k, x ; br J(r)   =>   M(v): r = list.set.u l, k, v ; br J(r)
  *     B2: r = list.set.u l, k, y ; br J(r)
  *
- * Arms that differ only in an operand (`if a < b: dst[k] = b; j += 1 else: dst[k] = a; i += 1`) stay
+ * Arms that differ only in an operand (`if a < b { dst[k] = b; j += 1 } else { dst[k] = a; i += 1 }`) stay
  * two branches even when each holds checked stores, so a data-dependent condition mispredicts where C
  * would use a conditional move. Two blocks are twins when they have the same parameters, operations,
  * terminator kind and successors. Each operand pair is the same value, the same position in each

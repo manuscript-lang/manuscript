@@ -6,14 +6,17 @@
 // 20 closures and 13 blocks of the runtime's tables).
 import promise from "@std/concurrency/promise.ms"
 
-fn double(value Int) Int!:
+fn double(value Int) Int! {
 	return ok(value * 2)
+}
 
-export fn main() Int:
+export fn main() Int {
 	var total = 0
 
-	for index in 0..20:
+	for index in 0..20 {
 		started := promise[Int](() => double(index))
 		total += started.wait().get()
+	}
 
 	return total - 380
+}

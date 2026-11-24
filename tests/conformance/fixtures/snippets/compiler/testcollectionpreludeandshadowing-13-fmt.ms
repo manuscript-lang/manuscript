@@ -3,5 +3,6 @@
 // conform: origin=pkg/compiler/prelude_test.go:75 TestCollectionPreludeAndShadowing
 import Map from "@std/collections/collections.ms"
 
-type Map[K, V]:
-    value V
+type Map[K, V] {
+	value V
+}

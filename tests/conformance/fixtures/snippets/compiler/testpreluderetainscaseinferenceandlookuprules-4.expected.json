@@ -14,20 +14,20 @@
           "file": "testpreluderetainscaseinferenceandlookuprules-4.ms",
           "line": 5,
           "column": 12,
-          "offset": 185
+          "offset": 183
         },
         "fix": {
           "position": {
             "file": "testpreluderetainscaseinferenceandlookuprules-4.ms",
             "line": 5,
             "column": 12,
-            "offset": 185
+            "offset": 183
           },
           "end": {
             "file": "testpreluderetainscaseinferenceandlookuprules-4.ms",
             "line": 5,
             "column": 20,
-            "offset": 193
+            "offset": 191
           },
           "replacement": "Error(\"failed\")"
         }

@@ -9,7 +9,7 @@
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "the 'fn' block header on line 3 does not end with ':'; add ':' at the end of that line so the indented lines below become its body",
+        "message": "expected '{', found end of line; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'",
         "position": {
           "file": "golden-0867.ms",
           "line": 3,
@@ -21,28 +21,13 @@
           "line": 3,
           "column": 11,
           "offset": 63
-        },
-        "fix": {
-          "position": {
-            "file": "golden-0867.ms",
-            "line": 3,
-            "column": 11,
-            "offset": 63
-          },
-          "end": {
-            "file": "golden-0867.ms",
-            "line": 3,
-            "column": 11,
-            "offset": 63
-          },
-          "replacement": ":"
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0867.ms:3:11: parse: the 'fn' block header on line 3 does not end with ':'; add ':' at the end of that line so the indented lines below become its body\n   |\n 3 | fn f() Int\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0867.ms:3:11: parse: expected '{', found end of line; block headers (fn, if, else, for, while, match, type, enum, interface, test) end with '{' on the same line, and the block closes with '}'\n   |\n 3 | fn f() Int\n   |           ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

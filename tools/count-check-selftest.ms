@@ -11,11 +11,12 @@ import (
 )
 
 // The exit status and combined output of the gate on `fixture`, run by `compiler`.
-type Gate:
+type Gate {
 	code Int
 	output String
+}
 
-fn gate(root String, compiler String, case_name String) Gate:
+fn gate(root String, compiler String, case_name String) Gate {
 	var settings = Map[String, String]()
 	settings["MS"] = compiler.clone()
 
@@ -28,28 +29,32 @@ fn gate(root String, compiler String, case_name String) Gate:
 		tool_ms(root.clone()),
 		arguments,
 		RunOptions(cwd: root.clone(), env: settings),
-	).wait():
+	).wait() {
 		text := (out.stdout.decode_utf8() or "" + (out.stderr.decode_utf8() or ""))
 		return Gate(out.exit_code, text)
+	}
 
 	return Gate(125, "cannot start the gate\n")
+}
 
-fn expect(var failures List[String], what String, held Bool, shown Gate) Void:
-	if not held: failures.append(f"{what}\n{shown.output}")
+fn expect(var failures List[String], what String, held Bool, shown Gate) Void {
+	if not held { failures.append(f"{what}\n{shown.output}") }
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	compiler := tool_ms(root.clone())
 	var failures = List[String]()
 	failed := gate(root.clone(), compiler.clone(), "nonzero.ms")
 	expect(failures, "a failing child must fail the gate", failed.code == 1, failed)
-	for profile in ["debug", "release"]:
+	for profile in ["debug", "release"] {
 		expect(
 			failures,
 			f"the {profile} run must report its exit status",
 			failed.output.contains(f"({profile}) exited 7"),
 			failed,
 		)
+	}
 
 	// The runtime is the real entry+stats one: complete cleanup must not hide the
 	// failure.
@@ -89,8 +94,9 @@ fn main() Int:
 		) and not unavailable.output.contains("leak:"),
 		unavailable,
 	)
-	for message in failures: note(f"FAIL {message}")
-	if not failures.is_empty(): return 1
+	for message in failures { note(f"FAIL {message}") }
+	if not failures.is_empty() { return 1 }
 
 	stdout().write("count-check-selftest: 4 cases passed\n").get()
 	return 0
+}

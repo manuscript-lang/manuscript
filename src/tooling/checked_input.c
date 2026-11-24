@@ -48,10 +48,10 @@ static MsSpan main_problem(MsArena *arena, const MsCheckProgram *program, const 
   const MsTyTable *types = &program->types;
   *pos = main->decl != NULL ? main->decl->pos : (MsPos){.line = 1, .column = 1};
   if (main->decl != NULL && main->decl->kind == MS_D_CONST) {
-    return ms_span_of_text("main is a constant, so rename it and declare 'fn main() Void:'");
+    return ms_span_of_text("main is a constant, so rename it and declare 'fn main() Void { ... }'");
   }
   if (main->kind != MS_SYMBOL_FN || (main->decl != NULL && main->decl->kind != MS_D_FN)) {
-    return ms_span_of_text("main is declared as a type, so rename it and declare 'fn main() Void:'");
+    return ms_span_of_text("main is declared as a type, so rename it and declare 'fn main() Void { ... }'");
   }
   if (main->var_count > 0) {
     return ms_span_of_text("main cannot be generic, so remove its type parameters");
@@ -87,7 +87,7 @@ void ms_require_main(MsArena *arena, const MsCheckProgram *program, uint32_t ent
     return;
   }
   MsPos pos = {.line = 1, .column = 1};
-  MsSpan problem = ms_span_of_text("no main function is declared, so add 'fn main() Void:' with an indented body");
+  MsSpan problem = ms_span_of_text("no main function is declared, so add 'fn main() Void { ... }' with an indented body");
   if (found != NULL) {
     problem = main_problem(arena, program, &program->symbols.ptr[*found], &pos);
     if (problem.len == 0) {

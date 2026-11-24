@@ -1,8 +1,9 @@
 // Native parse bounds; `parse` and `json_reader` build them from `JsonOptions`.
-export type JsonLimits:
+export type JsonLimits {
 	max_bytes Int?
 	max_depth Int?
 	max_values Int?
+}
 
 // The compiler passes each call the shape table of `T` (src/abi/shape.h) as a hidden
 // first argument; the natives are `msstd_json_decode` and `msstd_json_stringify` in

@@ -2,10 +2,11 @@
 // conform: phase=test
 import expect_equal, expect_false, expect_true from "@std/test/test.ms"
 
-fn pad(n Int) String:
+fn pad(n Int) String {
 	return "x".repeat(n)
+}
 
-test "string order agrees across inline, static and heap forms":
+test "string order agrees across inline, static and heap forms" {
 	expect_true("apple" < "banana")?
 	expect_false("banana" < "apple")?
 	expect_false("apple" < "apple")?
@@ -26,8 +27,9 @@ test "string order agrees across inline, static and heap forms":
 		["pear", "fig", "apple", pad(18), "fi"].sorted(),
 		["apple", "fi", "fig", "pear", pad(18)],
 	)?
+}
 
-test "inline strings of up to fifteen bytes order by their words":
+test "inline strings of up to fifteen bytes order by their words" {
 	a := pad(9) + "b"
 	expect_true(a < pad(9) + "c")?
 	expect_false(pad(9) + "c" < a)?
@@ -39,3 +41,4 @@ test "inline strings of up to fifteen bytes order by their words":
 	expect_true(pad(8) + "é" > pad(8) + "z")?
 	expect_true(pad(12) + "\u{1}" < pad(12) + "\u{2}" + "x")?
 	expect_true(pad(12) + "\u{0}" < pad(12) + "\u{0}\u{0}")?
+}

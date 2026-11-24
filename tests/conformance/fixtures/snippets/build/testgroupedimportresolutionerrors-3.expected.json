@@ -53,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/testgroupedimportresolutionerrors-3.ms:4:8: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 4 | import MapEntry from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^\n<DIR>/testgroupedimportresolutionerrors-3.ms:6:1: resolution: declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration\n   |\n 6 | type MapEntry:\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/testgroupedimportresolutionerrors-3.ms:4:8: resolution: redundant prelude import MapEntry; remove MapEntry from this import and use its prelude declaration directly\n   |\n 4 | import MapEntry from \"@std/collections/collections.ms\"\n   |        ^^^^^^^^\n<DIR>/testgroupedimportresolutionerrors-3.ms:6:1: resolution: declaration MapEntry reuses a prelude name; rename it, because MapEntry always refers to the standard declaration\n   |\n 6 | type MapEntry {\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -18,27 +18,27 @@
         }
       },
       {
-        "code": "MS1002",
+        "code": "MS1000",
         "phase": "parse",
-        "message": "suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration",
+        "message": "a block cannot be empty; add at least one statement, or write '...' inside the braces for a runtime-bound declaration",
         "position": {
           "file": "golden-1026.ms",
           "line": 5,
-          "column": 5,
-          "offset": 81
+          "column": 1,
+          "offset": 78
         },
         "end": {
           "file": "golden-1026.ms",
           "line": 5,
-          "column": 5,
-          "offset": 81
+          "column": 2,
+          "offset": 79
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1026.ms:3:4: parse: unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break\n   |\n 3 | .ms\"\n   |    ^\n<DIR>/golden-1026.ms:5:5: parse: suite cannot be empty; add at least one statement, or write '...' after the colon for a runtime-bound declaration\n   |\n 5 |     \n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1026.ms:3:4: parse: unterminated text literal; text must close with '\"' on the same line, so add the quote or write \\n for a line break\n   |\n 3 | .ms\"\n   |    ^\n<DIR>/golden-1026.ms:5:1: parse: a block cannot be empty; add at least one statement, or write '...' inside the braces for a runtime-bound declaration\n   |\n 5 | }\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

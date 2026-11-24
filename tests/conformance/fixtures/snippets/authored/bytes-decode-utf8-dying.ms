@@ -5,15 +5,17 @@
 // decode exactly as the copying call does.
 import Bytes from "@std/bytes.ms"
 
-fn decode_last(b Bytes) String?:
+fn decode_last(b Bytes) String? {
 	return b.decode_utf8()
+}
 
-fn decode_twice(b Bytes) Int:
+fn decode_twice(b Bytes) Int {
 	first := b.decode_utf8() or ""
 	second := b.decode_utf8() or ""
 	return first.length() + second.length()
+}
 
-export fn main() Int:
+export fn main() Int {
 	long := "plain ascii text that is longer than the inline size".to_bytes()
 	print(decode_last(long) or "?")
 	print(
@@ -37,12 +39,14 @@ export fn main() Int:
 	print(text + "!" + text)
 
 	var total = 0
-	for i in 0..1000:
+	for i in 0..1000 {
 		total += (
 			f"row {i} with enough text to leave the inline form"
 			.to_bytes()
 			.decode_utf8()
 			or ""
 		).length()
+	}
 	print(total)
 	return 0
+}

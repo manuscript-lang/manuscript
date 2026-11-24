@@ -2,12 +2,14 @@
 // conform: phase=test
 import expect_equal from "@std/test/test.ms"
 
-interface Reader[A Equal]:
+interface Reader[A Equal] {
 	fn read[B Equal = A]() List[B]
 	fn nested[B = List[A]]() List[B]
+}
 
-type Box[A Equal]:
+type Box[A Equal] {
 	value A
+}
 
 fn Box[A Equal].read[B Equal = A]() List[B] => return []
 
@@ -17,7 +19,7 @@ fn Box[A].own[B = A, C = B]() List[C] => return []
 
 fn Box[A].copies[B = Self]() List[B] => return []
 
-fn exercise() Int:
+fn exercise() Int {
 	box := Box(7)
 	read := box.read()
 	nested := box.nested()
@@ -28,46 +30,54 @@ fn exercise() Int:
 	more_ints List[Int] := own
 	boxes List[Box[Int]] := copies
 	return ints.length() + lists.length() + more_ints.length() + boxes.length()
+}
 
-test "method type defaults specialize receiver parameters and Self":
+test "method type defaults specialize receiver parameters and Self" {
 	exercise() | expect_equal(0)?
 
 	box := Box(7)
 	bound := box.own[String]
 	values List[String] := bound()
 	values.length() | expect_equal(0)?
+}
 
-interface Mark:
+interface Mark {
 	fn mark() Int
+}
 
-type Value:
+type Value {
 	number Int
+}
 
 fn read[T Mark = Value](value T) Int => return value.mark()
 
-type Holder[T Mark = Value]:
+type Holder[T Mark = Value] {
 	value T
+}
 
-interface Factory:
+interface Factory {
 	fn create[T Mark = Value](value T) Int
+}
 
 fn Value.mark() Int => return self.number
 
 fn Value.read[T Mark = Value](value T) Int => return value.mark()
 
-interface Relation[T]:
+interface Relation[T] {
 	fn relation(value T) Int
+}
 
 fn Value.relation(value Value) Int => return value.number
 
-fn related[T Relation[T] = Value](value T) Int:
+fn related[T Relation[T] = Value](value T) Int {
 	return value.relation(value)
+}
 
 fn default_value[T Mark = Value]() List[T] => return []
 
 fn recursive_default[T Relation[T] = Value]() List[T] => return []
 
-test "type defaults validate local and recursive interface implementations":
+test "type defaults validate local and recursive interface implementations" {
 	values := default_value()
 	typed List[Value] := values
 	typed.length() | expect_equal(0)?
@@ -76,13 +86,15 @@ test "type defaults validate local and recursive interface implementations":
 	recursive List[Value] := related
 	recursive.length() | expect_equal(0)?
 	read(Value(7)) | expect_equal(7)?
+}
 
-fn from_bound[S Reader[Int]](source S) Int:
+fn from_bound[S Reader[Int]](source S) Int {
 	values := source.read()
 	ints List[Int] := values
 	return ints.length()
+}
 
-fn alternate_receivers() Int:
+fn alternate_receivers() Int {
 	int_box := Box(7)
 	text_box := Box("value")
 	first := int_box.own()
@@ -92,20 +104,26 @@ fn alternate_receivers() Int:
 	strings List[String] := second
 	more_ints List[Int] := again
 	return ints.length() + strings.length() + more_ints.length() + from_bound(int_box)
+}
 
-test "receiver defaults stay independent and work through generic bounds":
+test "receiver defaults stay independent and work through generic bounds" {
 	alternate_receivers() | expect_equal(0)?
+}
 
-type ForwardFirst[T = ForwardMiddle]:
+type ForwardFirst[T = ForwardMiddle] {
 	value T
+}
 
-type ForwardMiddle[U = ForwardLast]:
+type ForwardMiddle[U = ForwardLast] {
 	value U
+}
 
-type ForwardLast[V = Int]:
+type ForwardLast[V = Int] {
 	value V
+}
 
 fn forward_read(value ForwardFirst) Int => value.value.value.value
 
-test "a default may name a type declared later, through several hops":
+test "a default may name a type declared later, through several hops" {
 	forward_read(ForwardFirst(ForwardMiddle(ForwardLast(5)))) | expect_equal(5)?
+}

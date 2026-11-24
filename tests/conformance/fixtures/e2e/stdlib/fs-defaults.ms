@@ -15,49 +15,61 @@ import (
 	expect_equal, expect_error, expect_ok, expect_true from "@std/test/test.ms",
 )
 
-fn expect_limit(outcome Void!) Void!:
+fn expect_limit(outcome Void!) Void! {
 	cause := expect_error(outcome)?
 	expect_equal(cause.kind, "EOVERFLOW")?
-	if not cause.message.starts_with("filesystem: limit exceeded"):
+	if not cause.message.starts_with("filesystem: limit exceeded") {
 		return error(Error(f"wrong limit message: {cause.message}"))
+	}
+}
 
-fn generic_write(path String, data String) Void!:
+fn generic_write(path String, data String) Void! {
 	return write_file(path, data).wait()
+}
 
-fn generic_copy(source String, destination String) Void!:
+fn generic_copy(source String, destination String) Void! {
 	return copy(source, destination)
+}
 
-fn generic_tree(source String, destination String) Void!:
+fn generic_tree(source String, destination String) Void! {
 	return copy(source, destination, CopyOptions(recursive: true))
+}
 
-fn generic_directory(path String) Void!:
+fn generic_directory(path String) Void! {
 	return create_directory(path)
+}
 
-fn generic_remove(path String) Void!:
+fn generic_remove(path String) Void! {
 	return remove(path)
+}
 
-fn rejected(result Void!) Void!:
-	match result:
+fn rejected(result Void!) Void! {
+	match result {
 		error(_) => return ok()
 		ok(_) => return error(Error("exclusive or nonrecursive operation succeeded"))
+	}
+}
 
-fn text(path String) String!:
+fn text(path String) String! {
 	return ok(
 		(
 			(read_file(path).wait() | expect_ok?).decode_utf8()
 			or panic("called Optional.get() on null")
 		)
 	)
+}
 
-fn argument(var log List[String], mark String, path String) String:
+fn argument(var log List[String], mark String, path String) String {
 	log.append(mark.clone())
 	return path
+}
 
-fn data_argument(var log List[String]) Bytes:
+fn data_argument(var log List[String]) Bytes {
 	log.append("data")
 	return "new".to_bytes()
+}
 
-test "filesystem writes default to exclusive creation through aliases and bounds":
+test "filesystem writes default to exclusive creation through aliases and bounds" {
 	temporary := temporary("manuscript-default-write-") | expect_ok?
 	path := f"{temporary.path()}/file"
 	write_file(path, "first").wait() | expect_ok?
@@ -72,8 +84,9 @@ test "filesystem writes default to exclusive creation through aliases and bounds
 	(text(path)?) | expect_equal("second")?
 	(generic_write(f"{temporary.path()}/generic", "generic") | expect_ok?)
 	(rejected(write_file("", "invalid").wait())?)
+}
 
-test "filesystem file copies default to no replacement and retain byte limits":
+test "filesystem file copies default to no replacement and retain byte limits" {
 	temporary := temporary("manuscript-default-copy-") | expect_ok?
 	source := f"{temporary.path()}/source"
 	destination := f"{temporary.path()}/destination"
@@ -104,8 +117,9 @@ test "filesystem file copies default to no replacement and retain byte limits":
 		) | expect_limit?
 	)
 	(copy(source, f"{temporary.path()}/exact", CopyOptions(max_bytes: 7)) | expect_ok?)
+}
 
-test "filesystem tree copies default to no replacement with distinct budgets":
+test "filesystem tree copies default to no replacement with distinct budgets" {
 	temporary := temporary("manuscript-default-tree-") | expect_ok?
 	source := f"{temporary.path()}/source"
 	destination := f"{temporary.path()}/destination"
@@ -159,8 +173,9 @@ test "filesystem tree copies default to no replacement with distinct budgets":
 			CopyOptions(recursive: true, max_entries: 2, max_bytes: 3),
 		) | expect_ok?
 	)
+}
 
-test "filesystem tree copies reject empty and disjoint existing directories":
+test "filesystem tree copies reject empty and disjoint existing directories" {
 	directory := temporary("manuscript-existing-tree-")?
 	source := f"{directory.path()}/source"
 	destination := f"{directory.path()}/destination"
@@ -189,8 +204,9 @@ test "filesystem tree copies reject empty and disjoint existing directories":
 	copy(source, destination, CopyOptions(recursive: true, replace: true))?
 	expect_equal(text(f"{destination}/new")?, "new")?
 	expect_equal(text(f"{destination}/keep")?, "keep")?
+}
 
-test "filesystem directory creation defaults to requiring an existing parent":
+test "filesystem directory creation defaults to requiring an existing parent" {
 	temporary := temporary("manuscript-default-directory-") | expect_ok?
 	create := create_directory
 	alias := create_directory
@@ -203,8 +219,9 @@ test "filesystem directory creation defaults to requiring an existing parent":
 	((stat(child, follow_links: false) | expect_ok?).is_directory()) | expect_true?
 	(generic_directory(f"{temporary.path()}/generic") | expect_ok?)
 	(rejected(create(""))?)
+}
 
-test "filesystem removal defaults to retaining nonempty trees":
+test "filesystem removal defaults to retaining nonempty trees" {
 	temporary := temporary("manuscript-default-remove-") | expect_ok?
 	directory := f"{temporary.path()}/nonempty"
 	path := f"{directory}/keep"
@@ -225,8 +242,9 @@ test "filesystem removal defaults to retaining nonempty trees":
 	write_file(f"{temporary.path()}/file", "file").wait() | expect_ok?
 	(generic_remove(f"{temporary.path()}/file") | expect_ok?)
 	(rejected(eraser(""))?)
+}
 
-test "filesystem default preparation retains written argument order":
+test "filesystem default preparation retains written argument order" {
 	temporary := temporary("manuscript-default-order-") | expect_ok?
 	var log List[String] = []
 	(
@@ -245,3 +263,4 @@ test "filesystem default preparation retains written argument order":
 		) | expect_ok?
 	)
 	log | expect_equal(["data", "path", "source", "destination"])?
+}

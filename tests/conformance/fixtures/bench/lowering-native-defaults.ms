@@ -1,26 +1,30 @@
 // conform: tags=closures,diagnostics,lists,modules,optional,stdlib-bytes,stdlib-csv,stdlib-encoding,stdlib-fs,stdlib-process,stdlib-time,strings,tier-io,try-result
 // conform: phase=check
 // conform: origin=bench/lowering/native-defaults.ms
-import Promise from "@std/concurrency/promise.ms"
-import base64_encode from "@std/data/encoding.ms"
-import CsvOptions from "@std/data/csv.ms"
-import Bytes from "@std/bytes.ms"
-import CommandOutput, RunOptions, run from "@std/os/process.ms"
-import Duration from "@std/time.ms"
-import Writable from "@std/core.ms"
-import write_file from "@std/os/fs.ms"
+import (
+	Bytes from "@std/bytes.ms",
+	Promise from "@std/concurrency/promise.ms",
+	Writable from "@std/core.ms",
+	CsvOptions from "@std/data/csv.ms",
+	base64_encode from "@std/data/encoding.ms",
+	write_file from "@std/os/fs.ms",
+	CommandOutput, RunOptions, run from "@std/os/process.ms",
+	Duration from "@std/time.ms",
+)
 
 fn direct_explicit(data Bytes) String => base64_encode(data, false)
 
 fn direct_omitted(data Bytes) String => base64_encode(data)
 
-fn bound_explicit(data Bytes) String:
-    encode := base64_encode
-    return encode(data, false)
+fn bound_explicit(data Bytes) String {
+	encode := base64_encode
+	return encode(data, false)
+}
 
-fn bound_omitted(data Bytes) String:
-    encode := base64_encode
-    return encode(data)
+fn bound_omitted(data Bytes) String {
+	encode := base64_encode
+	return encode(data)
+}
 
 fn encode_bind() fn(Bytes, Bool, Bool) String => base64_encode
 
@@ -28,20 +32,26 @@ fn csv_explicit() CsvOptions => CsvOptions(",", "\n")
 
 fn csv_omitted() CsvOptions => CsvOptions()
 
-fn command_explicit() Result[CommandOutput, Error]:
-    return run("", [], RunOptions(input: "".to_bytes())).wait()
+fn command_explicit() Result[CommandOutput, Error] {
+	return run("", [], RunOptions(input: "".to_bytes())).wait()
+}
 
-fn command_omitted() Result[CommandOutput, Error]:
-    return run("", []).wait()
+fn command_omitted() Result[CommandOutput, Error] {
+	return run("", []).wait()
+}
 
-fn command_bind() fn(String, List[String], RunOptions) Promise[CommandOutput]:
-    return run
+fn command_bind() fn(String, List[String], RunOptions) Promise[CommandOutput] {
+	return run
+}
 
-fn filesystem_explicit(data Bytes) Result[Void, Error]:
-    return write_file("", data, false).wait()
+fn filesystem_explicit(data Bytes) Result[Void, Error] {
+	return write_file("", data, false).wait()
+}
 
-fn filesystem_omitted(data Bytes) Result[Void, Error]:
-    return write_file("", data).wait()
+fn filesystem_omitted(data Bytes) Result[Void, Error] {
+	return write_file("", data).wait()
+}
 
-fn filesystem_bind() fn(String, Writable, Bool) Promise[Void]:
-    return write_file
+fn filesystem_bind() fn(String, Writable, Bool) Promise[Void] {
+	return write_file
+}

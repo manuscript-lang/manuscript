@@ -6,19 +6,24 @@ import (
 
 // A reader over `text` in chunks of `chunk` bytes, so line and scalar boundaries fall
 // inside reads.
-export fn memory(text String, chunk Int = 3) ReadStream[Bytes]:
+export fn memory(text String, chunk Int = 3) ReadStream[Bytes] {
 	return from_bytes(text.to_bytes(), chunk)
+}
 
 // A reader whose every read fails with `Closed`, like a stream that was closed under
 // its reader.
-type ClosedSource:
+type ClosedSource {
 	unused Int
+}
 
-fn var ClosedSource.next() Bytes?!:
+fn var ClosedSource.next() Bytes?! {
 	return error(Error("I/O: resource is closed", kind: "EBADF"))
+}
 
-fn move ClosedSource.close() Void!:
+fn move ClosedSource.close() Void! {
 	return ok()
+}
 
-export fn closed_reader() ReadStream[Bytes]:
+export fn closed_reader() ReadStream[Bytes] {
 	return ReadStream[Bytes](ClosedSource(0))
+}

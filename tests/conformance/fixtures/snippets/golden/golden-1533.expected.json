@@ -12,16 +12,16 @@
         "message": "unknown or ambiguous member hash on Node; available: next",
         "position": {
           "file": "golden-1533.ms",
-          "line": 8,
+          "line": 10,
           "column": 17,
-          "offset": 161
+          "offset": 154
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1533.ms:8:17: resolution: unknown or ambiguous member hash on Node; available: next\n   |\n 8 |     return node.hash()\n   |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1533.ms:10:17: resolution: unknown or ambiguous member hash on Node; available: next\n    |\n 10 |     return node.hash()\n    |                 ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

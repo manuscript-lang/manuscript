@@ -12,16 +12,16 @@
         "message": "`name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`",
         "position": {
           "file": "list-literal-from-borrowed-parameter.ms",
-          "line": 5,
+          "line": 6,
           "column": 13,
-          "offset": 201
+          "offset": 202
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/list-literal-from-borrowed-parameter.ms:5:13: type: `name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`\n   |\n 5 |     return [name]\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/list-literal-from-borrowed-parameter.ms:6:13: type: `name` is a view of another value, not an owner, and cannot be moved here; take the owner with `move`, or pass `name.clone()`\n   |\n 6 |     return [name]\n   |             ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

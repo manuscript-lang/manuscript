@@ -4,5 +4,6 @@ import (
 	greeting from "./src/lib.ms",
 )
 
-test "greeting":
+test "greeting" {
 	expect_equal(greeting("ms"), "Hello, ms")?
+}

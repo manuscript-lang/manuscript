@@ -11,26 +11,30 @@ fn optional[T](move value T?, fallback T) T => value or fallback
 
 fn describe[T](value T, cause Error) String => cause.message
 
-type Events:
+type Events {
 	values List[Int]
+}
 
-type Failure:
+type Failure {
 	detail String
+}
 
 fn failure_error(cause Failure) Error => Error(cause.detail.clone())
 
-type GenericFailure[T]:
+type GenericFailure[T] {
 	detail T
+}
 
 fn generic_failure_error[T](cause GenericFailure[T]) Error => Error(
 	cause.detail.to_string()
 )
 
-fn record(var events Events, value Int) Int:
+fn record(var events Events, value Int) Int {
 	events.values.append(value)
 	return value
+}
 
-test "reused inference preserves evaluation and argument conversions":
+test "reused inference preserves evaluation and argument conversions" {
 	var events = Events([])
 	selected := first(
 		right: identity(identity(record(events, value: 2))),
@@ -55,3 +59,4 @@ test "reused inference preserves evaluation and argument conversions":
 	offset := 7
 	callback := identity(identity(fn(value Int) => offset + value))
 	expect_equal(callback(3), 10)?
+}

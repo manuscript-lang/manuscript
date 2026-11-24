@@ -12,9 +12,9 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "golden-1528.ms",
-          "line": 20,
+          "line": 32,
           "column": 27,
-          "offset": 414
+          "offset": 406
         }
       },
       {
@@ -23,9 +23,9 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "golden-1528.ms",
-          "line": 22,
+          "line": 36,
           "column": 33,
-          "offset": 470
+          "offset": 463
         }
       },
       {
@@ -34,9 +34,9 @@
         "message": "too many positional arguments; every parameter is already supplied, so remove this argument",
         "position": {
           "file": "golden-1528.ms",
-          "line": 25,
+          "line": 41,
           "column": 21,
-          "offset": 547
+          "offset": 538
         }
       },
       {
@@ -45,16 +45,16 @@
         "message": "unknown or ambiguous member remove on Void; this type has no fields or operations",
         "position": {
           "file": "golden-1528.ms",
-          "line": 27,
+          "line": 45,
           "column": 29,
-          "offset": 597
+          "offset": 589
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1528.ms:20:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 20 |     \"a\".replace(\"a\", \"b\", -1)\n    |                           ^\n<DIR>/golden-1528.ms:22:33: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 22 |     \"a\".replace_first(\"a\", \"b\", -1)\n    |                                 ^\n<DIR>/golden-1528.ms:25:21: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 25 |     first(\"a\", \"b\", -1)\n    |                     ^\n<DIR>/golden-1528.ms:27:29: resolution: unknown or ambiguous member remove on Void; this type has no fields or operations\n    |\n 27 |     result := [1].set(0, 2).remove(0)\n    |                             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1528.ms:32:27: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 32 |     \"a\".replace(\"a\", \"b\", -1)\n    |                           ^\n<DIR>/golden-1528.ms:36:33: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 36 |     \"a\".replace_first(\"a\", \"b\", -1)\n    |                                 ^\n<DIR>/golden-1528.ms:41:21: type: too many positional arguments; every parameter is already supplied, so remove this argument\n    |\n 41 |     first(\"a\", \"b\", -1)\n    |                     ^\n<DIR>/golden-1528.ms:45:29: resolution: unknown or ambiguous member remove on Void; this type has no fields or operations\n    |\n 45 |     result := [1].set(0, 2).remove(0)\n    |                             ^\n4 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

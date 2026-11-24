@@ -6,23 +6,27 @@ import (
 	expect_contains, expect_equal, expect_fault, expect_ok from "@std/test/test.ms",
 )
 
-type Door:
+type Door {
 	id Int
 	log String
 	closed Bool = false
 	fail Bool = false
+}
 
-fn move Door.close() Void!:
-	if not self.closed:
+fn move Door.close() Void! {
+	if not self.closed {
 		self.closed = true
 		append_file(self.log, f"{self.id},").wait()?
-		if self.fail: return error(Error("close failed"))
+		if self.fail { return error(Error("close failed")) }
+	}
+}
 
-fn replace(move log String) Void:
+fn replace(move log String) Void {
 	var doors = [Door(1, log.clone(), fail: true)]
 	doors.set(0, Door(9, log))
+}
 
-test "replacement stays owned while the discarded entry closes":
+test "replacement stays owned while the discarded entry closes" {
 	tmp := temporary("replacement-close-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	message := expect_fault(() => replace(log.clone()))?
@@ -30,13 +34,15 @@ test "replacement stays owned while the discarded entry closes":
 
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,9,")?
+}
 
-fn replace_in_map(move log String) Void:
+fn replace_in_map(move log String) Void {
 	var doors Map[Int, Door] = {}
 	doors.add(0, Door(1, log.clone(), fail: true))
 	doors.add(0, Door(9, log))
+}
 
-test "map replacement keeps the incoming entry owned while the old one closes":
+test "map replacement keeps the incoming entry owned while the old one closes" {
 	tmp := temporary("replacement-close-map-") | expect_ok?
 	log := f"{tmp.path()}/log"
 	message := expect_fault(() => replace_in_map(log.clone()))?
@@ -44,3 +50,4 @@ test "map replacement keeps the incoming entry owned while the old one closes":
 
 	events := read_file(log).wait().get().decode_utf8() or ""
 	expect_equal(events, "1,9,")?
+}

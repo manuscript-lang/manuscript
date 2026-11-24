@@ -3,66 +3,80 @@
 // conform: origin=tests/e2e/testdata/accept/local-closures-keep-semantics.ms
 import expect_true from "@std/test/test.ms"
 
-fn bump(factor Int) Int:
-    var offset = 10
-    offset = 99
+fn bump(factor Int) Int {
+	var offset = 10
+	offset = 99
 
-    scale := fn(value Int) Int => value * factor + offset
-    return scale(value: 2)
+	scale := fn(value Int) Int => value * factor + offset
+	return scale(value: 2)
+}
 
-fn lookup(limit Int) Int:
-    find := fn(key Int) Int?:
-        if key < limit:
-            return (key * 2)
+fn lookup(limit Int) Int {
+	find := fn(key Int) Int? {
+		if key < limit {
+			return (key * 2)
+		}
+		return null
+	}
 
-        return null
+	var total = 0
+	var i = 0
 
-    var total = 0
-    var i = 0
+	while i < 5 {
+		match find(key: i) {
+			found => {
+				total += found
+			}
+			null => {
+				total += 100
+			}
+		}
 
-    while i < 5:
-        match find(key: i):
-            found:
-                total = total + found
-            null:
-                total = total + 100
+		i += 1
+	}
 
-        i = i + 1
+	return total
+}
 
-    return total
+fn parse(text String) Int!Error {
+	guard := fn(number Int) Int!Error {
+		if number < 0 {
+			return Result[Int, Error].error(Error("negative"))
+		}
+		return Result[Int, Error].ok(number)
+	}
 
-fn parse(text String) Int!Error:
-    guard := fn(number Int) Int!Error:
-        if number < 0:
-            return Result[Int, Error].error(Error("negative"))
+	checked := guard(number: text.length())?
+	return Result[Int, Error].ok(checked + 1)
+}
 
-        return Result[Int, Error].ok(number)
+fn labels(prefix String) String {
+	join := fn(left String, right String) String => f"{prefix}{left}-{right}"
+	return join(left: "a", right: "b")
+}
 
-    checked := guard(number: text.length())?
-    return Result[Int, Error].ok(checked + 1)
+fn reordered() Int {
+	subtract := fn(left Int, right Int) Int => left - right
+	return subtract(right: 2, left: 7)
+}
 
-fn labels(prefix String) String:
-    join := fn(left String, right String) String => f"{prefix}{left}-{right}"
-    return join(left: "a", right: "b")
+fn passed() List[Int] {
+	double := fn(value Int) Int => value * 2
+	return [1, 2, 3].map(double)
+}
 
-fn reordered() Int:
-    subtract := fn(left Int, right Int) Int => left - right
-    return subtract(right: 2, left: 7)
+fn nested(n Int) Int {
+	inner := fn(x Int) Int => x + 1
+	outer := fn(y Int) Int => inner(x: y) * 2
+	return outer(y: n)
+}
 
-fn passed() List[Int]:
-    double := fn(value Int) Int => value * 2
-    return [1, 2, 3].map(double)
-
-fn nested(n Int) Int:
-    inner := fn(x Int) Int => x + 1
-    outer := fn(y Int) Int => inner(x: y) * 2
-    return outer(y: n)
-
-test "local closures":
-    expect_true((bump(factor: 3) == 105))?
-    expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))?
-    expect_true((parse(text: "abc") == Result[Int, Error].ok(4)))?
-    expect_true((labels(prefix: ">") == ">a-b"))?
-    expect_true((reordered() == 5))?
-    expect_true((passed().length() == 3 and passed().get(index: 2) == 6))?
-    expect_true((nested(n: 4) == 10))?
+test "local closures" {
+	expect_true((bump(factor: 3) == 105))?
+	expect_true((lookup(limit: 3) == 0 + 2 + 4 + 100 + 100))?
+	expect_true((parse(text: "abc") == Result[Int, Error].ok(4)))?
+	expect_true((labels(prefix: ">") == ">a-b"))?
+	expect_true((reordered() == 5))?
+	expect_true((passed().length() == 3 and passed().get(index: 2) == 6))?
+	expect_true((nested(n: 4) == 10))?
+}

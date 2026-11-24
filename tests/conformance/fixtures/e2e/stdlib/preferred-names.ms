@@ -6,64 +6,81 @@ import (
 	expect_equal, expect_false from "@std/test/test.ms",
 )
 
-interface ListMutation:
+interface ListMutation {
 	var fn reverse() Void
 	fn reversed() List[Int]
 	var fn set(index Int, value Int) Void
 	var fn remove(index Int) Void
 	var fn append(value Int) Void
+}
 
-type ListAdapter:
+type ListAdapter {
 	items List[Int]
+}
 
-fn var ListAdapter.reverse() Void:
+fn var ListAdapter.reverse() Void {
 	self.items.reverse()
+}
 
-fn ListAdapter.reversed() List[Int]:
+fn ListAdapter.reversed() List[Int] {
 	return self.items.reversed()
+}
 
-fn var ListAdapter.set(index Int, value Int) Void:
+fn var ListAdapter.set(index Int, value Int) Void {
 	self.items.set(index, value)
+}
 
-fn var ListAdapter.remove(index Int) Void:
+fn var ListAdapter.remove(index Int) Void {
 	self.items.remove(index)
+}
 
-fn var ListAdapter.append(value Int) Void:
+fn var ListAdapter.append(value Int) Void {
 	self.items.append(value)
+}
 
-interface SetMutation:
+interface SetMutation {
 	var fn add(value Int) Void
 	var fn remove(value Int) Void
 	fn values() List[Int]
+}
 
-type SetAdapter:
+type SetAdapter {
 	items Set[Int]
+}
 
-fn var SetAdapter.add(value Int) Void:
+fn var SetAdapter.add(value Int) Void {
 	self.items.add(value)
+}
 
-fn var SetAdapter.remove(value Int) Void:
+fn var SetAdapter.remove(value Int) Void {
 	self.items.remove(value)
+}
 
-fn SetAdapter.values() List[Int]:
+fn SetAdapter.values() List[Int] {
 	return self.items.values()
+}
 
-interface RegexReplacement:
+interface RegexReplacement {
 	fn replace_all(text String, replacement String, max_bytes Int?) String!
+}
 
-type RegexAdapter:
+type RegexAdapter {
 	pattern Regex
+}
 
-fn RegexAdapter.replace_all(text String, replacement String, max_bytes Int?) String!:
+fn RegexAdapter.replace_all(text String, replacement String, max_bytes Int?) String! {
 	return self.pattern.replace_all(text, replacement, max_bytes)
+}
 
-fn add_generic[T Hashable](var items Set[T], value T) Void:
+fn add_generic[T Hashable](var items Set[T], value T) Void {
 	items.add(value)
+}
 
-fn remove_generic[T Hashable](var items Set[T], value T) Void:
+fn remove_generic[T Hashable](var items Set[T], value T) Void {
 	items.remove(value)
+}
 
-test "list names mutate in place and retain shallow copies":
+test "list names mutate in place and retain shallow copies" {
 	var items = [1, 2, 3]
 	copied := items.clone()
 	items.set(-1, 4)
@@ -83,8 +100,9 @@ test "list names mutate in place and retain shallow copies":
 	outer_copy := nested.clone()
 	nested.set(0, [2])
 	expect_false(nested != [[2]] or outer_copy != [[1]])?
+}
 
-test "set names mutate in place keep order and no-op membership":
+test "set names mutate in place keep order and no-op membership" {
 	var items = Set[Int]([3, 1, 2])
 	copied := items.clone()
 	items.add(1)
@@ -107,17 +125,21 @@ test "set names mutate in place keep order and no-op membership":
 
 	expected_values List[Int?] := [9]
 	expect_equal(optional.values(), expected_values)?
+}
 
-interface FirstReplacement:
+interface FirstReplacement {
 	fn replace_first(old String, new String) String
+}
 
-type TextAdapter:
+type TextAdapter {
 	text String
+}
 
-fn TextAdapter.replace_first(old String, new String) String:
+fn TextAdapter.replace_first(old String, new String) String {
 	return self.text.replace_first(old, new)
+}
 
-test "explicit views and bound views preserve native mutation":
+test "explicit views and bound views preserve native mutation" {
 	var items = [1, 2, 3]
 	var adapter = ListAdapter(items)
 	adapter.set(0, 8)
@@ -149,8 +171,9 @@ test "explicit views and bound views preserve native mutation":
 			"b",
 		) != "baaa"
 	)?
+}
 
-test "replace_first changes one match and scalar boundaries":
+test "replace_first changes one match and scalar boundaries" {
 	expect_equal("aaaa".replace_first("a", "b"), "baaa")?
 	expect_equal("é🙂".replace_first("", "x"), "xé🙂")?
 	expect_equal("".replace_first("", "x"), "x")?
@@ -159,8 +182,9 @@ test "replace_first changes one match and scalar boundaries":
 	first := "aaaa".replace_first
 	expect_false(first(new: "b", "a") != "baaa")?
 	expect_equal(first("a", "b"), "aaaa".replace_first("a", "b"))?
+}
 
-test "regex replace_all preserves literal text and exact output budgets":
+test "regex replace_all preserves literal text and exact output budgets" {
 	pattern := compile("(a)")?
 	all := pattern.replace_all
 	expect_equal((pattern.replace_all("aaa", "b")?), "bbb")?
@@ -170,9 +194,7 @@ test "regex replace_all preserves literal text and exact output budgets":
 	limited String! := error(
 		Error("regular expression: limit exceeded", kind: "EOVERFLOW")
 	)
-	invalid String! := error(
-		Error("regular expression: invalid input", kind: "EINVAL")
-	)
+	invalid String! := error(Error("regular expression: invalid input", kind: "EINVAL"))
 	expect_equal(pattern.replace_all("aa", "é", 3), limited)?
 	expect_equal(all("a", "", -1), invalid)?
 	expect_equal((all("a", "", 0)?), "")?
@@ -193,35 +215,43 @@ test "regex replace_all preserves literal text and exact output budgets":
 			or (view_all("aa", "b", 2)?) != "bb"
 		)
 	)?
+}
 
-test "new direct keyed calls evaluate arguments after the receiver is chosen":
+test "new direct keyed calls evaluate arguments after the receiver is chosen" {
 	var items = Set[Int]([1])
 	items.add(
-		match present(0):
+		match present(0) {
 			_value => 2
 			null => 3
+		}
 	)
 	expect_equal(items.values(), [1, 2])?
 	items.remove(
-		match present(0):
+		match present(0) {
 			_value => 1
 			null => 2
+		}
 	)
 	expect_equal(items.values(), [2])?
+}
 
-type Cell:
+type Cell {
 	value Int
+}
 
-interface ByteCopy:
+interface ByteCopy {
 	fn reversed() Bytes
+}
 
-type ByteAdapter:
+type ByteAdapter {
 	data Bytes
+}
 
-fn ByteAdapter.reversed() Bytes:
+fn ByteAdapter.reversed() Bytes {
 	return self.data.reversed()
+}
 
-test "list reversal names distinguish receiver mutation and shallow copies":
+test "list reversal names distinguish receiver mutation and shallow copies" {
 	var items = [1, 2, 3]
 	copied := items.reversed()
 	items.reverse()
@@ -267,8 +297,9 @@ test "list reversal names distinguish receiver mutation and shallow copies":
 	view_copy.set(0, 7)
 	view.reverse()
 	expect_equal(view.reversed(), [5, 4])?
+}
 
-test "byte reversal names copy across direct bound and view calls":
+test "byte reversal names copy across direct bound and view calls" {
 	data := Bytes([0, 1, 255])
 	reversed := data.reversed
 	view ByteCopy := ByteAdapter(data.clone())
@@ -292,6 +323,8 @@ test "byte reversal names copy across direct bound and view calls":
 			or Bytes([1]).reversed() != Bytes([1])
 		)
 	)?
+}
 
-fn present[T](value T) T?:
+fn present[T](value T) T? {
 	return value
+}

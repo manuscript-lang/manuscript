@@ -9,19 +9,19 @@
       {
         "code": "MS2001",
         "phase": "resolution",
-        "message": "unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T:', or import it from a module",
+        "message": "unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T { ... }', or import it from a module",
         "position": {
           "file": "golden-0747.ms",
-          "line": 7,
+          "line": 8,
           "column": 21,
-          "offset": 140
+          "offset": 128
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0747.ms:7:21: resolution: unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T:', or import it from a module\n   |\n 7 |         if found := affine(i):\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0747.ms:8:21: resolution: unknown binding affine; declare it with 'affine := ...' before use, define 'fn affine(...) T { ... }', or import it from a module\n   |\n 8 |         if found := affine(i) {\n   |                     ^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

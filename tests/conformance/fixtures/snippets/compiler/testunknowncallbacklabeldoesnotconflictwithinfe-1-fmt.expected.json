@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn example() Void:\n\tchoose(first: () => \"a\", second: () => \"b\", other: () => missing)\n"
+    "fmt": "fn example() Void {\n\tchoose(first: () => \"a\", second: () => \"b\", other: () => missing)\n}\n"
   }
 }

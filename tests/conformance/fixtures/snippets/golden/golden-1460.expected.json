@@ -14,7 +14,7 @@
           "file": "golden-1460.ms",
           "line": 4,
           "column": 14,
-          "offset": 82
+          "offset": 80
         }
       },
       {
@@ -23,16 +23,16 @@
         "message": "unknown or ambiguous member length on Void; this type has no fields or operations",
         "position": {
           "file": "golden-1460.ms",
-          "line": 7,
+          "line": 9,
           "column": 35,
-          "offset": 172
+          "offset": 168
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1460.ms:4:14: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 4 |     return 1 / 0\n   |              ^\n<DIR>/golden-1460.ms:7:35: resolution: unknown or ambiguous member length on Void; this type has no fields or operations\n   |\n 7 |     return values.add(crash(), 1).length()\n   |                                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1460.ms:4:14: type: division by zero always faults; guard the divisor or use a nonzero constant\n   |\n 4 |     return 1 / 0\n   |              ^\n<DIR>/golden-1460.ms:9:35: resolution: unknown or ambiguous member length on Void; this type has no fields or operations\n   |\n 9 |     return values.add(crash(), 1).length()\n   |                                   ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -12,15 +12,15 @@
         "message": "module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"",
         "position": {
           "file": "golden-0041.ms",
-          "line": 3,
-          "column": 8,
-          "offset": 60
+          "line": 5,
+          "column": 5,
+          "offset": 93
         },
         "end": {
           "file": "golden-0041.ms",
-          "line": 3,
-          "column": 17,
-          "offset": 69
+          "line": 5,
+          "column": 14,
+          "offset": 102
         }
       },
       {
@@ -29,9 +29,9 @@
         "message": "unknown binding arguments; add: import arguments from \"@std/os/env.ms\"",
         "position": {
           "file": "golden-0041.ms",
-          "line": 7,
+          "line": 9,
           "column": 30,
-          "offset": 178
+          "offset": 177
         },
         "fix": {
           "position": {
@@ -53,7 +53,7 @@
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0041.ms:3:8: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 3 | import arguments from \"@std/os/process.ms\"\n   |        ^^^^^^^^^\n<DIR>/golden-0041.ms:7:30: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n   |\n 7 |     message := f\"Arguments: {arguments().length()}\\n\"\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0041.ms:5:5: resolution: module does not export arguments; another standard module exports it, so replace this import with: import arguments from \"@std/os/env.ms\"\n   |\n 5 |     arguments from \"@std/os/process.ms\",\n   |     ^^^^^^^^^\n<DIR>/golden-0041.ms:9:30: resolution: unknown binding arguments; add: import arguments from \"@std/os/env.ms\"\n   |\n 9 |     message := f\"Arguments: {arguments().length()}\\n\"\n   |                              ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

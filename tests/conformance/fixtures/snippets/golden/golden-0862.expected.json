@@ -7,38 +7,27 @@
     "format": 1,
     "diagnostics": [
       {
-        "code": "MS1002",
-        "phase": "parse",
-        "message": "indentation must be a multiple of four spaces, found 2; use 0 or 4; a line inside brackets is indented by fours too, so do not align it with the opening bracket",
-        "position": {
-          "file": "golden-0862.ms",
-          "line": 4,
-          "column": 3,
-          "offset": 61
-        }
-      },
-      {
         "code": "MS1000",
         "phase": "parse",
-        "message": "unmatched closing delimiter ')'; remove it or add the matching opener before it",
+        "message": "'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant",
         "position": {
           "file": "golden-0862.ms",
-          "line": 5,
+          "line": 3,
           "column": 1,
-          "offset": 67
+          "offset": 53
         },
         "end": {
           "file": "golden-0862.ms",
-          "line": 5,
-          "column": 2,
-          "offset": 68
+          "line": 3,
+          "column": 4,
+          "offset": 56
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-0862.ms:4:3: parse: indentation must be a multiple of four spaces, found 2; use 0 or 4; a line inside brackets is indented by fours too, so do not align it with the opening bracket\n   |\n 4 |   a = 1\n   |   ^\n<DIR>/golden-0862.ms:5:1: parse: unmatched closing delimiter ')'; remove it or add the matching opener before it\n   |\n 5 | )\n   | ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-0862.ms:3:1: parse: 'let' is not a Manuscript declaration keyword; write 'NAME := value' (or 'NAME: Type := value') for a module constant\n   |\n 3 | let (\n   | ^^^\n1 error; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

@@ -5,7 +5,7 @@ import (
 	expect_equal, expect_false, expect_true from "@std/test/test.ms",
 )
 
-test "factorial and binomial are exact":
+test "factorial and binomial are exact" {
 	expect_equal((factorial(0)?).to_string(), "1")?
 	expect_equal((factorial(5)?).to_string(), "120")?
 	expect_equal((factorial(25)?).to_string(), "15511210043330985984000000")?
@@ -16,18 +16,22 @@ test "factorial and binomial are exact":
 	expect_equal((binomial(5, 0)?).to_string(), "1")?
 	expect_equal((binomial(5, 6)?).to_string(), "0")?
 	expect_equal((binomial(100, 50)?).to_string(), "100891344545564193334812497256")?
+}
 
-test "factorial and binomial reject negative inputs":
+test "factorial and binomial reject negative inputs" {
 	bad BigInt! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(factorial(-1), bad)?
 	expect_equal(binomial(-1, 0), bad)?
 	expect_equal(binomial(3, -1), bad)?
+}
 
-test "probable primes":
-	for p in [2, 3, 97, 101, 7919, 1000000007]:
+test "probable primes" {
+	for p in [2, 3, 97, 101, 7919, 1000000007] {
 		expect_true(big_int_of_int(p).is_probable_prime())?
-	for c in [-7, 0, 1, 4, 100, 561, 1105, 1000000007 * 3]:
+	}
+	for c in [-7, 0, 1, 4, 100, 561, 1105, 1000000007 * 3] {
 		expect_false(big_int_of_int(c).is_probable_prime())?
+	}
 
 	mersenne := (big_int_of_int(2).pow(127)?) - big_int_of_int(1)
 	expect_true(mersenne.is_probable_prime())?
@@ -45,8 +49,9 @@ test "probable primes":
 	// default thirteen are not.
 	expect_true(pseudoprime.is_probable_prime(9))?
 	expect_false(pseudoprime.is_probable_prime())?
+}
 
-test "modular square roots":
+test "modular square roots" {
 	p := big_int_of_int(13)
 	root := (big_int_of_int(10).mod_sqrt(p)?) or big_int_of_int(-1)
 	expect_equal((root * root % p).to_int(), 10)?
@@ -68,10 +73,11 @@ test "modular square roots":
 	invalid BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(2).mod_sqrt(big_int_of_int(8)), invalid)?
 	expect_equal(big_int_of_int(2).mod_sqrt(big_int_of_int(2)), invalid)?
+}
 
 // p = 79 * 8 * product(odd primes through 997) + 1. The complete p - 1
 // factorization below and Lucas witnesses certify primality without random tests.
-fn nonresidue_boundary_factors() List[Int]:
+fn nonresidue_boundary_factors() List[Int] {
 	return [
 		2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73,
 		79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163,
@@ -85,42 +91,50 @@ fn nonresidue_boundary_factors() List[Int]:
 		877, 881, 883, 887, 907, 911, 919, 929, 937, 941, 947, 953, 967, 971, 977, 983,
 		991, 997
 	]
+}
 
-fn nonresidue_boundary_prime() BigInt:
+fn nonresidue_boundary_prime() BigInt {
 	var product = big_int_of_int(79 * 4)
-	for factor in nonresidue_boundary_factors():
+	for factor in nonresidue_boundary_factors() {
 		product *= big_int_of_int(factor)
+	}
 	return product + big_int_of_int(1)
+}
 
-test "large nonresidue modulus has a complete primality certificate":
+test "large nonresidue modulus has a complete primality certificate" {
 	p := nonresidue_boundary_prime()
 	one := big_int_of_int(1)
 	minus_one := p - one
 
-	for factor in nonresidue_boundary_factors():
+	for factor in nonresidue_boundary_factors() {
 		var base = 2
-		if factor == 2: base = 1013
-		if factor == 3 or factor == 13 or factor == 37: base = 3
+		if factor == 2 { base = 1013 }
+		if factor == 3 or factor == 13 or factor == 37 { base = 3 }
 
 		a := big_int_of_int(base)
 		expect_equal(a.pow_mod(minus_one, p)?, one)?
 
 		witness := (a.pow_mod(minus_one / big_int_of_int(factor), p)?) - one
 		expect_equal(witness.gcd(p), one)?
+	}
+}
 
-test "modular square root searches beyond a thousand quadratic residues":
+test "modular square root searches beyond a thousand quadratic residues" {
 	p := nonresidue_boundary_prime()
 
-	for value in [4, -4]:
+	for value in [4, -4] {
 		a := big_int_of_int(value)
 		root := (a.mod_sqrt(p)?) or big_int_of_int(-1)
 		expect_true(root.sign() >= 0 and root.compare(p) < 0)?
 		expect_equal((root * root - a) % p, big_int_of_int(0))?
+	}
+}
 
-test "modular square root rejects a composite witnessed during search":
+test "modular square root rejects a composite witnessed during search" {
 	// For 1729, candidates 2 through 6 give +1, then its factor 7 gives 742.
 	// Moduli 9 and 25 give nonzero results outside +1 and -1 at candidate 2.
 	invalid BigInt?! := error(Error("big integer: invalid input", kind: "EINVAL"))
 	expect_equal(big_int_of_int(1).mod_sqrt(big_int_of_int(1729)), invalid)?
 	expect_equal(big_int_of_int(1).mod_sqrt(big_int_of_int(9)), invalid)?
 	expect_equal(big_int_of_int(1).mod_sqrt(big_int_of_int(25)), invalid)?
+}

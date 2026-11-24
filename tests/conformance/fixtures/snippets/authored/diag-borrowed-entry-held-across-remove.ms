@@ -1,10 +1,11 @@
 // conform: tags=diagnostics,mutation,maps,tier-core
 // conform: phase=check
 // conform: origin=issue 2181
-fn held() Int:
+fn held() Int {
 	var m = Map[String, List[Int]]()
 	m.add("a", [1, 2, 3])
 
 	x := m.get("a")
 	m.remove("a")
 	return (x.clone() or []).length()
+}

@@ -1,5 +1,8 @@
 // conform: tags=diagnostics
 // conform: phase=check
-import filesystem, FileSystemError from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+import (
+	Bytes from "@std/bytes.ms",
+	FileSystemError, filesystem from "@std/os/fs.ms",
+)
+
 fn forward[T](item T) T => item

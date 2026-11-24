@@ -8,17 +8,19 @@ import (
 	Instant, monotonic from "@std/time.ms",
 )
 
-fn lap(name String, t Instant) Void:
+fn lap(name String, t Instant) Void {
 	print(f"{name} {monotonic().difference(t).to_milliseconds()}")
+}
 
-fn main() Void!:
+fn main() Void! {
 	n := 64 * 1024 * 1024
 	var raw = List[UInt8](reserve: n)
 	var s = 12345
 
-	for i in 0..n:
+	for i in 0..n {
 		s = (s * 1103515245 + 12345) % 2147483648
 		raw.append(((s / 65536) % 256).to_uint8() or 0)
+	}
 
 	data := Bytes(raw)
 	var t = monotonic()
@@ -67,3 +69,4 @@ fn main() Void!:
 	print(
 		f"{a} {b} {c.length()} {d.length()} {e.length()} {f} {g} {i.length()} {k.length()}"
 	)
+}

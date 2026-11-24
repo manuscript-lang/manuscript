@@ -9,42 +9,52 @@ import (
 // Library failures are plain Error values: callers branch on `kind`, not on a domain
 // type.
 
-fn describe_error(cause Error) String:
-	if cause.kind == "EINVAL": return "bad limits"
-	if cause.kind == "EBADMSG": return "malformed input"
-	if cause.kind == "EOVERFLOW": return "bound exceeded"
+fn describe_error(cause Error) String {
+	if cause.kind == "EINVAL" { return "bad limits" }
+	if cause.kind == "EBADMSG" { return "malformed input" }
+	if cause.kind == "EOVERFLOW" { return "bound exceeded" }
 
 	return cause.message.clone()
+}
 
-fn decode_generically() Void!:
+fn decode_generically() Void! {
 	_bytes := hex_decode(text: "zz", max_bytes: 10)?
+}
 
-fn propagate_generic() Void!:
+fn propagate_generic() Void! {
 	_completed := decode_generically()?
+}
 
-test "library errors carry a kind callers can branch on":
+test "library errors carry a kind callers can branch on" {
 	limits := JsonOptions(max_bytes: 100, max_depth: 8, max_values: 32)
 
-	match parse(text: "[", options: limits):
-		ok(_):
+	match parse(text: "[", options: limits) {
+		ok(_) => {
 			return fail(message: "malformed JSON succeeded")
-		error(cause):
+		}
+		error(cause) => {
 			describe_error(cause) | expect_equal("malformed input")?
 			cause.message
 				| expect_equal(
 					"JSON: invalid data: line 1, column 2: unexpected end of input"
 				)?
+		}
+	}
+}
 
-test "propagation with try forwards the same Error":
-	cause := match propagate_generic():
-		ok(_):
+test "propagation with try forwards the same Error" {
+	cause := match propagate_generic() {
+		ok(_) => {
 			return fail(message: "invalid data succeeded")
+		}
 		error(cause) => cause
+	}
 
 	cause.kind | expect_equal("EBADMSG")?
 	cause.message | expect_equal("encoding: invalid data")?
+}
 
-test "an Error built by hand has a message, a kind and details":
+test "an Error built by hand has a message, a kind and details" {
 	read := Error(
 		"read failed",
 		kind: "EAGAIN",
@@ -54,24 +64,29 @@ test "an Error built by hand has a message, a kind and details":
 	read.kind | expect_equal("EAGAIN")?
 	read.details["path"] | expect_equal("settings.json")?
 	read.details["attempt"] | expect_equal("2")?
+}
 
-type ReadError:
+type ReadError {
 	path String
 	attempt Int
 	retryable Bool
+}
 
-fn failed_read() Void!ReadError:
+fn failed_read() Void!ReadError {
 	return error(ReadError(path: "settings.json", attempt: 2, retryable: true))
+}
 
-fn propagate_read() Void!ReadError:
+fn propagate_read() Void!ReadError {
 	_completed := failed_read()?
+}
 
-test "a domain record is still a legal error value":
-	cause := match propagate_read():
-		ok(_):
+test "a domain record is still a legal error value" {
+	cause := match propagate_read() {
+		ok(_) => {
 			return fail(message: "failed read succeeded")
+		}
 		error(cause) => cause
-
+	}
 	(
 		(
 			cause.path != "settings.json"
@@ -79,13 +94,15 @@ test "a domain record is still a legal error value":
 			or not cause.retryable
 		) | expect_false?
 	)
+}
 
-fn read_failure(move cause ReadError) Void!ReadError:
+fn read_failure(move cause ReadError) Void!ReadError {
 	return error(cause)
+}
 
-fn general_read(move cause ReadError) Void!:
+fn general_read(move cause ReadError) Void! {
 	failed := read_failure(cause)
-	if failed.is_error():
+	if failed.is_error() {
 		return error(
 			Error(
 				"read failed",
@@ -93,8 +110,11 @@ fn general_read(move cause ReadError) Void!:
 				details: {"path": failed.err().path.clone()},
 			)
 		)
+	}
+}
 
-test "a domain record converts to Error by an ordinary function":
+test "a domain record converts to Error by an ordinary function" {
 	outcome := general_read(ReadError("a.txt", 1, false))
 	outcome.err().kind | expect_equal("EIO")?
 	outcome.err().details["path"] | expect_equal("a.txt")?
+}

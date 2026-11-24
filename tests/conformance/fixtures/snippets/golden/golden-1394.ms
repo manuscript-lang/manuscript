@@ -1,4 +1,5 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn valid() Void:
+fn valid() Void {
+}
 var invalid = 3

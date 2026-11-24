@@ -12,12 +12,15 @@ This function reads a file and closes its handle on every exit:
 
 <!-- manuscript-example: {"mode":"check"} -->
 ```manuscript
-import open from "@std/os/fs.ms"
-import Bytes from "@std/bytes.ms"
+import (
+    Bytes from "@std/bytes.ms",
+    open from "@std/os/fs.ms",
+)
 
-fn read_head(path String) Bytes?!:
+fn read_head(path String) Bytes?! {
     file := open(path)?
     return file.read(max_bytes: 4096)
+}
 ```
 
 `open` returns an owned `FileHandle`; `read` returns bytes or `null` at end of file, with an error on failure.
@@ -42,7 +45,7 @@ A binding is closed unless something takes the resource from it. Returning it, p
 
 To close earlier than the end of the scope, call `close()`. `close` is a `move` method, so the call moves the binding: the scope end does not close it again, and a later use of the name is a use after move. Closing a file early is a common case; handle the `Result` with `?` or `void`.
 
-<!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head List[String]) Void:\n    return","given":["path String"]} -->
+<!-- manuscript-example: {"mode":"fragment","context":"import open from \"@std/os/fs.ms\"\n\nfn slow_work(head List[String]) Void {\n    return\n}","given":["path String"]} -->
 ```manuscript
 file := open(path)?
 head := file.read_lines(max_lines: 1)?
@@ -64,9 +67,10 @@ Flush before closing when you need the destination to catch up or need to handle
 ```manuscript
 import WriteStream from "@std/io/io.ms"
 
-fn finish(move output WriteStream[String]) Void!:
+fn finish(move output WriteStream[String]) Void! {
     output.flush()?
     return output.close()
+}
 ```
 
 `flush()` follows the destination's backpressure rule:
@@ -102,22 +106,27 @@ Save as `cleanup.ms` and run `ms run cleanup.ms`. The small resource below print
 ```manuscript
 import Closeable from "@std/core.ms"
 
-type Tracked:
+type Tracked {
     name String
     closed Bool = false
+}
 
-fn move Tracked.close() Void!:
-    if not self.closed:
+fn move Tracked.close() Void! {
+    if not self.closed {
         self.closed = true
         print(f"close {self.name}")
+    }
+}
 
-fn work() Void!:
+fn work() Void! {
     _first := Tracked("first")
     _second := Tracked("second")
     print("work")
+}
 
-fn main() Void!:
+fn main() Void! {
     return work()
+}
 ```
 
 ```text

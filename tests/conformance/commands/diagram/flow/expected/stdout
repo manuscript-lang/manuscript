@@ -1,6 +1,6 @@
 FLOW VIEW
-`- parse_total  [fn] src/shapes.ms:17
-   |- for item in items
+`- parse_total  [fn] src/shapes.ms:21
+   |- for item in items {
    |  |- call read_number
    |  `- native Result[Int, Failure].get_or
    |- call area

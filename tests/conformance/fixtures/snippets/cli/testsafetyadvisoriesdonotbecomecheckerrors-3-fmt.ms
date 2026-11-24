@@ -2,8 +2,10 @@
 // conform: phase=parse
 // conform: origin=internal/cli/advisory_lint_test.go:18 TestSafetyAdvisoriesDoNotBecomeCheckErrors
 
-fn fail() Int!Error:
-    return error(Error("boom"))
+fn fail() Int!Error {
+	return error(Error("boom"))
+}
 
-fn use() Void:
-    void fail()
+fn use() Void {
+	void fail()
+}

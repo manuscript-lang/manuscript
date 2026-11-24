@@ -24,7 +24,7 @@ body := retry(policy, fn attempt: fetch(url).wait())
 if body.is_error(): print("gave up")
 ```
 */
-export type RetryPolicy:
+export type RetryPolicy {
 	// Total tries, including the first; at least 1.
 	attempts Int = 3
 	// Wait before the second attempt.
@@ -33,23 +33,27 @@ export type RetryPolicy:
 	max_delay Duration = seconds(30)
 	// Whether each wait is a random share (0 to 1) of its computed length.
 	jitter Bool = true
+}
 
 // Internal: the wait after failed attempt number `attempt` (1 for the first), before
 // jitter.
-fn RetryPolicy.wait_after(attempt Int) Duration:
+fn RetryPolicy.wait_after(attempt Int) Duration {
 	var wait = Duration(nanos: self.delay.nanos)
 
-	for round in 1..attempt:
-		if wait.compare(self.max_delay) >= 0: break
+	for round in 1..attempt {
+		if wait.compare(self.max_delay) >= 0 { break }
 
 		// Doubling would reach the cap: stop before the product can overflow.
-		if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2:
+		if self.max_delay.nanos > 0 and wait.nanos > self.max_delay.nanos / 2 {
 			wait = Duration(nanos: self.max_delay.nanos)
 			break
+		}
 
 		wait = wait.multiply(2)
+	}
 
 	return Duration(nanos: wait.nanos.min(self.max_delay.nanos))
+}
 
 /*
 Runs `operation` until it succeeds, `retryable` rejects its error, or `policy.attempts` is used up, and returns the last result.
@@ -61,28 +65,33 @@ export fn retry[T, E Clonable](
 	policy RetryPolicy,
 	operation fn(Int) T!E,
 	retryable(fn(E) Bool)? = null
-) T!E:
+) T!E {
 	var attempt = 1
 
-	while true:
+	while true {
 		result := operation(attempt)
-		if attempt >= policy.attempts: return result
+		if attempt >= policy.attempts { return result }
 
-		if result.is_error():
+		if result.is_error() {
 			accepts := retryable
-			if accepts != null:
-				if not accepts(result.err()): return result
+			if accepts != null {
+				if not accepts(result.err()) { return result }
+			}
 			void sleep(jittered(policy, attempt)).wait()
 			attempt += 1
-		else:
+		} else {
 			return result
+		}
+	}
+}
 
-fn jittered(policy RetryPolicy, attempt Int) Duration:
+fn jittered(policy RetryPolicy, attempt Int) Duration {
 	wait := policy.wait_after(attempt)
-	if not policy.jitter: return wait
+	if not policy.jitter { return wait }
 
 	share := float().get_or(1.0)
 	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int() or 0)
+}
 
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
@@ -98,7 +107,7 @@ for url in urls:
     void fetch(url).wait()?
 ```
 */
-export type RateLimiter:
+export type RateLimiter {
 	// Most tokens held at once; at least 1.
 	burst Int
 	// Time to gain one token.
@@ -107,47 +116,54 @@ export type RateLimiter:
 	tokens Int
 	// Internal state: the reading up to which refills are counted.
 	stamp Instant
+}
 
 // Internal: adds the tokens earned since the last refill.
-fn var RateLimiter.refill() Void:
+fn var RateLimiter.refill() Void {
 	now := monotonic()
 	earned := now.difference(self.stamp).nanos / self.interval.nanos.max(1)
-	if earned <= 0: return
+	if earned <= 0 { return }
 
 	// Compare with remaining room before adding: a valid large burst can overflow
 	// the sum.
-	if earned >= self.burst - self.tokens:
+	if earned >= self.burst - self.tokens {
 		self.tokens = self.burst
 		self.stamp = now
-	else:
+	} else {
 		self.tokens += earned
 		self.stamp = self.stamp.shift(self.interval.multiply(earned))
+	}
+}
 
 // Takes a token if one is available and reports whether it did. It never waits.
-fn var RateLimiter.try_acquire() Bool:
+fn var RateLimiter.try_acquire() Bool {
 	self.refill()
-	if self.tokens < 1: return false
+	if self.tokens < 1 { return false }
 
 	self.tokens -= 1
 	return true
+}
 
 // Waits until a token is available, then takes it. Cancelling the task ends the
 // wait.
-fn var RateLimiter.acquire() Void:
-	while not self.try_acquire():
+fn var RateLimiter.acquire() Void {
+	while not self.try_acquire() {
 		ready := self.stamp.shift(self.interval)
 		void sleep(ready.difference(monotonic()).max(Duration(nanos: 1))).wait()
+	}
+}
 
 // Returns a rate limiter that allows `count` uses per second, with room for `burst`
 // uses at once. It starts full. A `count` or `burst` below 1 returns `EINVAL`.
-export fn rate_limiter(count Int, burst Int) RateLimiter!:
-	if count < 1 or burst < 1:
+export fn rate_limiter(count Int, burst Int) RateLimiter! {
+	if count < 1 or burst < 1 {
 		return error(
 			Error(
 				f"rate_limiter: count and burst must be at least 1, found {count} and {burst}",
 				kind: "EINVAL",
 			)
 		)
+	}
 	return ok(
 		RateLimiter(
 			burst: burst,
@@ -156,10 +172,11 @@ export fn rate_limiter(count Int, burst Int) RateLimiter!:
 			stamp: monotonic(),
 		)
 	)
+}
 
 // Why a circuit breaker call produced no result: the circuit was open, or the call
 // failed.
-export enum CircuitError[E]:
+export enum CircuitError[E] {
 	// The circuit is open: the call was not made.
 	Open
 	// The call ran and failed with this error.
@@ -167,6 +184,7 @@ export enum CircuitError[E]:
 		// The error the call returned.
 		error E
 	)
+}
 
 /*
 Stops calling something that keeps failing. After `threshold` failures in a row the circuit opens, and calls fail at once with `Open`.
@@ -183,7 +201,7 @@ reply := breaker.call(fn: fetch(request).wait())
 if reply.is_error(): print("circuit open or call failed")
 ```
 */
-export type CircuitBreaker:
+export type CircuitBreaker {
 	// Consecutive failures that open the circuit; at least 1.
 	threshold Int
 	// How long the circuit stays open before a trial call.
@@ -192,33 +210,42 @@ export type CircuitBreaker:
 	failures Int = 0
 	// Internal state: when the circuit opened, or `null` while closed.
 	opened Instant? = null
+}
 
 // Reports whether the circuit is open and still cooling down, so a call fails at
 // once. It is false while the circuit is closed, and once the cooldown has passed,
 // which lets the trial call through.
-fn CircuitBreaker.is_open() Bool:
+fn CircuitBreaker.is_open() Bool {
 	since := self.opened
-	if since != null: return monotonic().difference(since).compare(self.cooldown) < 0
+	if since != null {
+		return monotonic().difference(since).compare(self.cooldown) < 0
+	}
 
 	return false
+}
 
 // Runs `operation` unless the circuit is open, and records the outcome. An open
 // circuit returns `CircuitError.Open` without calling it; a failed call returns
 // `CircuitError.Failed` with the error.
-fn var CircuitBreaker.call[T Clonable, E Clonable](operation fn() T!E) T!CircuitError[E]:
-	if self.is_open(): return error(CircuitError.Open)
+fn var CircuitBreaker.call[T Clonable, E Clonable](
+	operation fn() T!E
+) T!CircuitError[E] {
+	if self.is_open() { return error(CircuitError.Open) }
 
 	result := operation()
 
-	if value := result:
+	if value := result {
 		self.failures = 0
 		self.opened = null
 		return ok(value.clone())
+	}
 
 	self.failures += 1
-	if self.failures >= self.threshold or (self.opened != null):
+	if self.failures >= self.threshold or (self.opened != null) {
 		self.opened = monotonic()
+	}
 	return error(CircuitError.Failed(result.err().clone()))
+}
 
 // Applies `work` to every item with at most `limit` running at once and returns the
 // results in the order of `items`. A failed worker promise cancels the others. If
@@ -237,19 +264,20 @@ export fn map_concurrent[T, U](
 	limit Int,
 	work fn(T) U,
 	site String = caller_frame()
-) List[U]!:
-	if limit < 1:
+) List[U]! {
+	if limit < 1 {
 		return error(
 			Error(
 				f"map_concurrent: limit must be at least 1, found {limit}",
 				kind: "EINVAL",
 			)
 		)
+	}
 
 	stripes := limit.min(items.length())
 	var running List[Promise[List[U]]] = []
 
-	for stripe in 0..stripes:
+	for stripe in 0..stripes {
 		mine := items.clone()
 		running.append(
 			promise(
@@ -257,32 +285,38 @@ export fn map_concurrent[T, U](
 				site: site,
 			)
 		)
+	}
 
 	var parts = wait_all(running)?
 	var results List[U] = []
 	var index = items.length()
 
-	while index > 0:
+	while index > 0 {
 		index -= 1
 
 		value := parts[index % stripes].pop()
-		if value != null:
+		if value != null {
 			results.append(value)
+		}
+	}
 
 	results.reverse()
 	return ok(results)
+}
 
 // Internal: the results of `work` for the items at `first`, `first + step`, and so
 // on.
-fn stripe_results[T, U](items List[T], first Int, step Int, work fn(T) U) List[U]!:
+fn stripe_results[T, U](items List[T], first Int, step Int, work fn(T) U) List[U]! {
 	var out List[U] = []
 	var index = first
 
-	while index < items.length():
+	while index < items.length() {
 		out.append(work(items[index]))
 		index += step
+	}
 
 	return ok(out)
+}
 
 /*
 A minimum spacing between actions: at most one per `interval`, the first one at once. Use it to throttle a stream of events.
@@ -298,29 +332,37 @@ for event in events:
         print(event)
 ```
 */
-export type Throttle:
+export type Throttle {
 	// The least time between two allowed actions.
 	interval Duration
 	// Internal state: when the last action was allowed, or `null` before the first.
 	last Instant? = null
+}
 
 // Reports whether an action may happen now, and if so counts it. It never waits.
-fn var Throttle.allow() Bool:
+fn var Throttle.allow() Bool {
 	now := monotonic()
 	previous := self.last
-	if previous != null:
-		if now.difference(previous).compare(self.interval) < 0: return false
+	if previous != null {
+		if now.difference(previous).compare(
+			self.interval
+		) < 0 { return false }
+	}
 	self.last = now
 	return true
+}
 
 // Waits until an action may happen, then counts it. Cancelling the task ends the
 // wait.
-fn var Throttle.wait() Void:
+fn var Throttle.wait() Void {
 	previous := self.last
 
-	if previous != null:
+	if previous != null {
 		remaining := self.interval.subtract(monotonic().difference(previous))
-		if remaining.nanos > 0:
+		if remaining.nanos > 0 {
 			void sleep(remaining).wait()
+		}
+	}
 
 	self.last = monotonic()
+}

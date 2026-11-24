@@ -3,31 +3,37 @@
 // Deterministic; run: ms run bench/agent/gen.ms -- c59
 import Cases, build_oracle, write_cases from "../../lib/gen.ms"
 
-fn add(var cs Cases, name String, script String) Void:
+fn add(var cs Cases, name String, script String) Void {
 	cs.push(name, strip_nl(script))
+}
 
-fn strip_nl(text String) String:
+fn strip_nl(text String) String {
 	var chars = text.chars().clone()
 	var start = 0
 	var end = chars.length()
-	while start < end and chars[start] == "\n":
+	while start < end and chars[start] == "\n" {
 		start += 1
-	while end > start and chars[end - 1] == "\n":
+	}
+	while end > start and chars[end - 1] == "\n" {
 		end -= 1
+	}
 	return chars.slice(start, end).get_or([]).join("") + "\n"
+}
 
 // `set KEY VALUE` lines for the flat list `pairs` of keys and values.
-fn sets(pairs List[String]) String:
+fn sets(pairs List[String]) String {
 	var out = ""
 	var k = 0
 
-	while k < pairs.length():
+	while k < pairs.length() {
 		out += "set " + pairs[k] + " " + pairs[k + 1] + "\n"
 		k += 2
+	}
 
 	return out
+}
 
-export fn gen_c59() Void:
+export fn gen_c59() Void {
 	var cs = Cases(build_oracle("c59-spreadsheet"))
 	add(
 		cs,
@@ -36,8 +42,9 @@ export fn gen_c59() Void:
 	)
 
 	var gets = ""
-	for i in 1..15:
+	for i in 1..15 {
 		gets += f"get A{i}\n"
+	}
 	add(
 		cs,
 		"number-formatting",
@@ -271,3 +278,4 @@ export fn gen_c59() Void:
 		),
 	]
 	write_cases("c59-spreadsheet", examples, cs.list)
+}

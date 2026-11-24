@@ -39,15 +39,18 @@ Commit `ms.lock`. Everyone who builds the project gets the same bytes: a changed
 
 <!-- manuscript-example: {"mode":"fragment"} -->
 ```manuscript
-import Config, open from "@pg/conn.ms"
-import Value from "@pg/value.ms"
+import (
+    Config, open from "@pg/conn.ms",
+    Value from "@pg/value.ms",
+)
 
-fn main() Void!:
+fn main() Void! {
     var conn = open(Config(password: "secret"))?
     rows := conn.query("select $1::int8 + 1", [Value.Int(41)])?
     print(f"{rows.rows[0][0]}")
     conn.close()?
     return ok()
+}
 ```
 
 Go to definition on `open` opens the package's file in the cache. The file is read-only.

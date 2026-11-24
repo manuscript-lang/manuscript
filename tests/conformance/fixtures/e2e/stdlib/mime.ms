@@ -14,7 +14,7 @@ import (
 	expect_equal, expect_true from "@std/test/test.ms",
 )
 
-test "media types parse and format":
+test "media types parse and format" {
 	media := parse_media_type("Text/HTML; Charset=\"utf-8\"; q=\"a\\\"b\"").get()
 	expect_equal(media.essence, "text/html")?
 	expect_equal(media.params.get_or("charset", ""), "utf-8")?
@@ -25,8 +25,9 @@ test "media types parse and format":
 	)?
 	expect_true(parse_media_type("text").is_error())?
 	expect_true(parse_media_type("a/b; x=\"open").is_error())?
+}
 
-test "an escaped closing quote does not end a quoted parameter":
+test "an escaped closing quote does not end a quoted parameter" {
 	// text/plain; name="x\"  (the last quote is a quoted pair)
 	expect_true(parse_media_type("text/plain; name=\"x\\\"").is_error())?
 	expect_true(parse_media_type("text/plain; name=\"x\\\\\\\"").is_error())?
@@ -38,14 +39,16 @@ test "an escaped closing quote does not end a quoted parameter":
 
 	slash := parse_media_type("text/plain; name=\"x\\\\\"").get()
 	expect_equal(slash.params.get_or("name", ""), "x\\")?
+}
 
-test "extension table maps both ways":
+test "extension table maps both ways" {
 	expect_equal(media_type_for_extension(".JSON") or "", "application/json")?
 	expect_equal(media_type_for_extension("png") or "", "image/png")?
 	expect_true(media_type_for_extension(".nope") == null)?
 	expect_equal(extension_for_media_type("image/svg+xml; x=y") or "", ".svg")?
+}
 
-test "headers fold and look up ignoring case":
+test "headers fold and look up ignoring case" {
 	headers := parse_headers(
 		"Subject: hello\r\n  world\r\nX-Tag: a\r\nx-tag: b\r\n\r\nbody: no"
 	).get()
@@ -54,8 +57,9 @@ test "headers fold and look up ignoring case":
 	expect_equal(headers.fields.length(), 3)?
 	expect_true(parse_headers("no colon").is_error())?
 	expect_true(parse_headers(" folded first").is_error())?
+}
 
-test "multipart round-trips fields and files":
+test "multipart round-trips fields and files" {
 	parts := [
 		form_part("title", "Hello".to_bytes()),
 		form_part(
@@ -73,27 +77,32 @@ test "multipart round-trips fields and files":
 	expect_equal(back[1].filename, "a b.txt")?
 	expect_equal(back[1].data.decode_utf8() or "", "line1\r\nline2")?
 	expect_equal(back[1].headers.get("content-type") or "", "text/plain")?
+}
 
-test "multipart rejects a missing closing delimiter":
+test "multipart rejects a missing closing delimiter" {
 	expect_true(parse_multipart("--b\r\n\r\nx".to_bytes(), "b").is_error())?
 	expect_true(parse_multipart("junk".to_bytes(), "b").is_error())?
 	expect_equal(multipart_boundary("multipart/form-data; boundary=abc") or "", "abc")?
 	expect_true(multipart_boundary("text/plain") == null)?
+}
 
-test "multipart accepts only transport padding before delimiter line endings":
-	for padding in ["", " ", "\t", " \t \t"]:
+test "multipart accepts only transport padding before delimiter line endings" {
+	for padding in ["", " ", "\t", " \t \t"] {
 		body := f"--b{padding}\r\nX-Label: first\r\n\r\n \tpayload \r\n--b{padding}\r\n\r\n\r\n--b--{padding}\r\nepilogue".to_bytes()
 		parts := parse_multipart(body, "b")?
 		expect_equal(parts.length(), 2)?
 		expect_equal(parts[0].headers.get("X-Label"), "first")?
 		expect_equal(parts[0].data, " \tpayload ".to_bytes())?
 		expect_equal(parts[1].data, "".to_bytes())?
+	}
 
-	for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"]:
+	for padding in ["x", "\n", "\u{b}", "\u{a0}", "\r"] {
 		body := f"--b{padding}\r\n\r\nx\r\n--b--\r\n".to_bytes()
 		expect_equal(parse_multipart(body, "b").err().kind, "EBADMSG")?
+	}
+}
 
-test "line breaks in field and file names cannot inject header lines":
+test "line breaks in field and file names cannot inject header lines" {
 	hostile := "a\r\nContent-Type: text/html"
 	part := form_part(hostile.clone(), "x".to_bytes(), hostile)
 	expect_equal(part.headers.fields.length(), 1)?
@@ -108,8 +117,9 @@ test "line breaks in field and file names cannot inject header lines":
 		format_media_type(MediaType(essence: "a/b", params: {"k": "v\nX: y"})),
 		"a/b; k=\"v%0AX: y\"",
 	)?
+}
 
-test "a part may be only headers or empty, as RFC 2046 allows":
+test "a part may be only headers or empty, as RFC 2046 allows" {
 	headers_only := parse_multipart("--b\r\nX-A: 1\r\n--b--\r\n".to_bytes(), "b")?
 	expect_equal(headers_only.length(), 1)?
 	expect_equal(headers_only[0].headers.get("x-a") or "", "1")?
@@ -134,3 +144,4 @@ test "a part may be only headers or empty, as RFC 2046 allows":
 			"b",
 		).is_error()
 	)?
+}

@@ -12,22 +12,26 @@ import (
 	Duration, monotonic, nanoseconds, sleep from "@std/time.ms",
 )
 
-fn within(var input ReadStream[Bytes], timeout Duration) Bytes?!:
+fn within(var input ReadStream[Bytes], timeout Duration) Bytes?! {
 	return promise(() => input.next()).with(
 		options: PromiseOptions(timeout: timeout.clone())
 	).wait()
+}
 
-fn send(var conn Connection, text String) Void!:
+fn send(var conn Connection, text String) Void! {
 	conn.output.write(text.to_bytes())?
 	return conn.output.flush()
+}
 
-fn handle(request HttpRequest) HttpResponse:
-	if request.path == "/slow":
+fn handle(request HttpRequest) HttpResponse {
+	if request.path == "/slow" {
 		void sleep(nanoseconds(200000000)).wait()
+	}
 	return HttpResponse(200, f"ok {request.path}\n".to_bytes())
+}
 
-fn exchange(address String) String:
-	if var conn = connect(address).wait():
+fn exchange(address String) String {
+	if var conn = connect(address).wait() {
 		_first := send(conn, "GET /slow HTTP/1.1\r\nHost: t\r\n\r\n")
 
 		// The slow handler is parked by now; the second request arrives while it waits.
@@ -39,23 +43,28 @@ fn exchange(address String) String:
 		)
 		var text = ""
 
-		while true:
-			if chunk := within(conn.input, nanoseconds(5000000000)):
+		while true {
+			if chunk := within(conn.input, nanoseconds(5000000000)) {
 				data := chunk
 
-				if data != null:
+				if data != null {
 					text = f"{text}{(data.decode_utf8() or "?")}"
 					continue
+				}
+			}
 
 			break
+		}
 
 		void conn.close()
 		return text
+	}
 
 	return "connect failed"
+}
 
-export fn main() Int:
-	if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)):
+export fn main() Int {
+	if acquired := serve(address: "127.0.0.1:0", handler: buffered(handle)) {
 		var server = acquired
 		start := monotonic()
 		text := exchange(server.address())
@@ -69,5 +78,7 @@ export fn main() Int:
 		_prompt := stdout().write(f"prompt: {elapsed_ms < 2000}\n")
 		void server.close()
 		return 0
+	}
 
 	return 1
+}

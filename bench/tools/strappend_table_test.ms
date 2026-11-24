@@ -4,19 +4,21 @@ import (
 	case_names, checksum, summarize from "./strappend_table.ms",
 )
 
-fn sample(trial Int, version String, elapsed Int) List[String]:
+fn sample(trial Int, version String, elapsed Int) List[String] {
 	return case_names().map(
 		name => f"{trial} {version} {name} {elapsed} # {checksum(name)}"
 	)
+}
 
-test "minima and reordered samples":
+test "minima and reordered samples" {
 	lines := sample(0, "ms", 200).concat(
 		sample(0, "rust", 100)
 	).concat(sample(1, "ms", 50)).concat(sample(1, "rust", 100))
 	result := expect_ok(summarize(lines.reversed(), 2))?
 	expect_equal(result.split("0.50x").length() - 1, case_names().length())?
+}
 
-test "invalid evidence":
+test "invalid evidence" {
 	valid := sample(0, "ms", 100).concat(sample(0, "rust", 100))
 	rest := valid.slice(1, valid.length()).get_or([])
 	cases := [
@@ -29,7 +31,9 @@ test "invalid evidence":
 		sample(0, "ms", -1).concat(sample(0, "rust", 100)),
 		[valid[0].replace("100 #", "nan #")].concat(rest),
 	]
-	for lines in cases:
+	for lines in cases {
 		_cause := expect_error(summarize(lines, 1))?
+	}
 
 	_short := expect_error(summarize(valid, 2))?
+}

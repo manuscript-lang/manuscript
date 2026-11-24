@@ -14,37 +14,31 @@
           "file": "golden-1065.ms",
           "line": 4,
           "column": 24,
-          "offset": 100
+          "offset": 101
         },
         "end": {
           "file": "golden-1065.ms",
           "line": 4,
           "column": 27,
-          "offset": 103
+          "offset": 104
         }
       },
       {
         "code": "MS1000",
         "phase": "parse",
-        "message": "unmatched closing delimiter ')'; remove it or add the matching opener before it",
+        "message": "mismatched closing delimiter ')'; the '{' opened at line 3:24 needs '}'",
         "position": {
           "file": "golden-1065.ms",
-          "line": 9,
+          "line": 11,
           "column": 5,
-          "offset": 187
-        },
-        "end": {
-          "file": "golden-1065.ms",
-          "line": 9,
-          "column": 6,
-          "offset": 188
+          "offset": 217
         }
       }
     ],
     "text": {
       "exit_code": 1,
       "stdout": "",
-      "stderr": "<DIR>/golden-1065.ms:4:24: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 4 |     result := subtract(try\n   |                        ^^^\n<DIR>/golden-1065.ms:9:5: parse: unmatched closing delimiter ')'; remove it or add the matching opener before it\n   |\n 9 |     )\n   |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
+      "stderr": "<DIR>/golden-1065.ms:4:24: parse: 'try' was replaced by a postfix '?': write f(x)? instead of try f(x), and x | step? instead of x | try step\n   |\n 4 |     result := subtract(try\n   |                        ^^^\n<DIR>/golden-1065.ms:11:5: parse: mismatched closing delimiter ')'; the '{' opened at line 3:24 needs '}'\n    |\n 11 |     )\n    |     ^\n2 errors; fix them and re-run (ms check <file> --json gives the same diagnostics as structured data)\n"
     }
   }
 }

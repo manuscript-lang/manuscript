@@ -20,37 +20,40 @@ import (
 )
 
 // The text after `// <key>: ` on a header line, or empty.
-fn header(source String, key String) String:
+fn header(source String, key String) String {
 	prefix := f"// {key}: "
-	for line in source.lines():
-		if line.starts_with(prefix): return line.slice(
-			prefix.length(),
-			line.length(),
-		).trim()
+	for line in source.lines() {
+		if line.starts_with(prefix) {
+			return line.slice(prefix.length(), line.length()).trim()
+		}
+	}
 	return ""
+}
 
 // The snippet without its header lines, so a header cannot satisfy a text check.
-fn body(source String) String:
+fn body(source String) String {
 	var kept = List[String]()
 
-	for line in source.lines():
+	for line in source.lines() {
 		if (
 			line.starts_with("// removed: ")
 			or line.starts_with("// use: ")
 			or line.starts_with("// fix: ")
-		): continue
+		) { continue }
 
 		kept.append(line.clone())
+	}
 
 	return kept.join("\n")
+}
 
-fn main() Int:
+fn main() Int {
 	root := working_directory().get()
 	ms := tool_ms(root.clone())
 	var failing = 0
 	var seen = 0
 
-	for f in glob("tests/checks/removed", GlobOptions(patterns: ["*.ms"])).get_or([]):
+	for f in glob("tests/checks/removed", GlobOptions(patterns: ["*.ms"])).get_or([]) {
 		path := f"{root}/tests/checks/removed/{f.path}"
 		source := read_file(path.clone()).wait().get().decode_utf8() or ""
 		old := header(source, "removed")
@@ -58,29 +61,30 @@ fn main() Int:
 		fixed := header(source, "fix")
 		seen += 1
 
-		if old == "" or want == "" or fixed == "":
+		if old == "" or want == "" or fixed == "" {
 			print(
 				f"{f.path}: needs '// removed:', '// use:' and '// fix:' header lines"
 			)
 			failing += 1
 			continue
+		}
 
 		out := run(ms.clone(), ["check", path], RunOptions(timeout: seconds(60))).wait().get()
 		text := out.stderr.decode_utf8() or ""
 
-		if out.exit_code == 0:
+		if out.exit_code == 0 {
 			print(f"{f.path}: '{old}' is accepted; a removed spelling must be an error")
 			failing += 1
-		else if (
+		} else if (
 			fixed.starts_with("none:")
 			and fixed.slice(5, fixed.length()).trim() == ""
-		):
+		) {
 			print(f"{f.path}: 'fix: none:' needs a reason")
 			failing += 1
-		else if not text.contains(want):
+		} else if not text.contains(want) {
 			print(f"{f.path}: the error for '{old}' does not name '{want}'")
 			failing += 1
-		else if not fixed.starts_with("none:"):
+		} else if not fixed.starts_with("none:") {
 			scratch := temporary("ms-removed-").get()
 			copy := f"{scratch.path()}/snippet.ms"
 			write_file(copy.clone(), body(source), replace: true).wait().get()
@@ -92,13 +96,17 @@ fn main() Int:
 			).wait().get()
 			result := read_file(copy).wait().get().decode_utf8() or ""
 
-			if applied.exit_code != 0 or not result.contains(fixed):
+			if applied.exit_code != 0 or not result.contains(fixed) {
 				print(
 					f"{f.path}: 'ms check --fix' does not rewrite '{old}' to '{fixed}'"
 				)
 				failing += 1
+			}
+		}
+	}
 
 	print(f"checked {seen} removed spellings, {failing} failing")
-	if seen == 0 or failing != 0: return 1
+	if seen == 0 or failing != 0 { return 1 }
 
 	return 0
+}

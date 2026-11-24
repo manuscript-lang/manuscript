@@ -9,27 +9,34 @@ Orders have a customer, an amount, and a status, and the status carries differen
 
 <!-- manuscript-example: {"mode":"run","stdout":"#1 Sam: waiting to ship\n#2 Ada: shipped, tracking ZX81\n#3 Sam: cancelled: out of stock\n#4 Lin: waiting to ship\n3 customers\nSam spent 4350 cents\n"} -->
 ```manuscript {filename="orders.ms"}
-type Order:
+type Order {
     id Int
     customer String
     cents Int
     status Status = Status.Open
+}
 
-enum Status:
+enum Status {
     Open
     Shipped(tracking String)
     Cancelled(reason String)
+}
 
-fn label(status Status) String:
-    match status:
-        Open:
+fn label(status Status) String {
+    match status {
+        Open => {
             return "waiting to ship"
-        Shipped(tracking):
+        }
+        Shipped(tracking) => {
             return f"shipped, tracking {tracking}"
-        Cancelled(reason):
+        }
+        Cancelled(reason) => {
             return f"cancelled: {reason}"
+        }
+    }
+}
 
-fn main() Void:
+fn main() Void {
     var orders = [
         Order(1, "Sam", 1250),
         Order(2, "Ada", 4000, status: Status.Shipped("ZX81")),
@@ -39,13 +46,18 @@ fn main() Void:
 
     var spent = Map[String, Int]()
     var customers = Set[String]()
-    for order in orders:
+
+    for order in orders {
         customers.add(order.customer.clone())
+
         total := spent.get_or(order.customer, 0) + order.cents
         spent.add(order.customer.clone(), total)
         print(f"#{order.id} {order.customer}: {label(order.status)}")
+    }
+
     print(f"{customers.length()} customers")
     print(f"Sam spent {spent.get_or("Sam", 0)} cents")
+}
 ```
 
 ```text

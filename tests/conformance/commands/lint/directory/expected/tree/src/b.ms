@@ -1,2 +1,3 @@
-fn b() Void:   
+fn b() Void {
 	print("b")
+}

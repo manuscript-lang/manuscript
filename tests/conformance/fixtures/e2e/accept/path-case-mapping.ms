@@ -5,7 +5,7 @@ import (
 	expect_equal from "@std/test/test.ms",
 )
 
-test "Windows relative paths retain scalar lowercase comparisons":
+test "Windows relative paths retain scalar lowercase comparisons" {
 	paths := win32()
 	expect_equal(paths.relative("C:/ΟΣ", "C:/οσ")?, "")?
 	expect_equal(paths.relative("C:/ΟΣ/a", "C:/οσ/b")?, "..\\b")?
@@ -14,8 +14,9 @@ test "Windows relative paths retain scalar lowercase comparisons":
 	expect_equal(paths.relative("C:/ΟΣ/a", "C:/ος/b")?, "..\\..\\ος\\b")?
 	expect_equal(paths.relative("C:/İ/a", "C:/i̇/b")?, "..\\b")?
 	expect_equal(paths.relative("C:/Alpha/a", "c:/alpha/b")?, "..\\b")?
+}
 
-test "Windows UNC roots retain scalar lowercase comparisons":
+test "Windows UNC roots retain scalar lowercase comparisons" {
 	paths := win32()
 	expect_equal(paths.relative("//ΟΣ/share/a", "//οσ/share/b")?, "..\\b")?
 	expect_equal(paths.relative("//host/ΟΣ/a", "//host/οσ/b")?, "..\\b")?
@@ -23,7 +24,9 @@ test "Windows UNC roots retain scalar lowercase comparisons":
 		paths.resolve("//ΟΣ/share/base", ["//οσ/share/child"])?,
 		"\\\\οσ\\share\\child",
 	)?
+}
 
-test "POSIX path comparison remains case sensitive":
+test "POSIX path comparison remains case sensitive" {
 	expect_equal(posix().relative("/ΟΣ", "/οσ")?, "../οσ")?
 	expect_equal(posix().relative("/ΟΣ", "/ος")?, "../ος")?
+}
