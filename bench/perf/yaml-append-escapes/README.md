@@ -16,8 +16,8 @@ Named escapes, other Unicode, keys, results and byte budgets retain their contra
 No parser logic or public API changed. Independent pretrial review checked this
 rationale and the helper's single caller.
 
-The [unapplied patch](variants/candidate.patch) reconstructs the candidate against
-the pinned base with git apply --unidiff-zero. [Build identities](variants/build-identities.json)
+The unapplied patch reconstructs the candidate against
+the pinned base with git apply --unidiff-zero. Build identities
 record source/binary hashes and normal build commands. Runtime and Release CLI
 builds ran in one worktree with the same pinned graph; after changing the embedded
 YAML source the CLI and both producers were rebuilt. The native archive itself
@@ -40,7 +40,7 @@ measured producers reject the change with status1 and no timing output.
 
 ## Complete primary and longer results
 
-[396 primary observations](results/2026-10-31/file-full/summary.json) cover11 cases,
+396 primary observations cover11 cases,
 including large ASCII, sparse and dense inputs. Nanoseconds per full cached-file
 operation; before/candidate >1 is a gain. Read costs are not subtracted.
 
@@ -58,7 +58,7 @@ operation; before/candidate >1 is a gain. Read costs are not subtracted.
 | sparse1m | 5756873.3 | 5941436.0 | 4942788.2 | 0.969x |
 | dense1m | 30323395.0 | 12044516.6 | 4607686.0 | 2.518x |
 
-One prespecified [long confirmation](results/2026-10-31/file-long/summary.json)
+One prespecified long confirmation
 covers common, sparse, sparse1m, ASCII1m and Unicode16k:180 observations over
 12 balanced A/A/candidate trials at about700ms per baseline process. Both baseline
 labels use the exact same binary.
@@ -76,7 +76,7 @@ pairs slower. Sparse1m has a repeatable cost too. Common is flat/improved; ASCII
 and Unicode controls remain retained. The production source was restored; no
 variant or placement search followed this result.
 
-The [guarded reused-value program](results/2026-10-31/guarded-full/summary.json)
+The guarded reused-value program
 retains288 exploratory observations over eight cases. It reuses invariant input;
 output guards/checksums alone do not source-prove repeated serialization. Its
 2.562x dense result and different sparse direction do not support isolated-writer
@@ -89,13 +89,13 @@ plain/Unicode; named/control escapes; exact C1 lowercase hex; exact/invalid budg
 and quoted keys with C0/C1 controls. Those five tests are archived in the harness,
 not added to the active suite. No output, error or limit-policy change is retained.
 
-[RSS](results/2026-10-31/memory/samples.json) has90 unique fresh processes: five cases,
+RSS has90 unique fresh processes: five cases,
 six balanced trials and three labels. It includes setup, validation, I/O and three
 complete primary operations. MS candidate medians differ by−4KiB across all five
 cases, with no material increase. Whole-process RSS is not allocation counts and
 does not identify a mechanism or overturn the timing rejection.
 
-The [harness bundle](variants/harness.json.gz) maps seven exact relative source/test
+The harness bundle maps seven exact relative source/test
 and Cargo filenames to UTF-8 and SHA256; the manifest hashes every entry and both
 packed/unpacked bundles. Raw timing/RSS records, commands, full output/input bundles,
 byte counts and hashes are retained, including unfavorable cases. All entries were

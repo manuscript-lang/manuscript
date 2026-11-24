@@ -8,7 +8,7 @@ The [current-main follow-up](current-main-2026-11-12/README.md) rebuilds baselin
 
 ## Historical 2026-11-12 comparison
 
-Baseline main: `0ff39fa82b0df7239b9ba8157c03d64ce165d541`. Actual public library calls compiled with Manuscript 0.1.0 LLVM Release on an AMD EPYC 9V74 Linux x86_64 VM. The proposed stdlib source hash and application executable identities are in [metadata](results-2026-11-12/metadata.json).
+Baseline main: `0ff39fa82b0df7239b9ba8157c03d64ce165d541`. Actual public library calls compiled with Manuscript 0.1.0 LLVM Release on an AMD EPYC 9V74 Linux x86_64 VM. The proposed stdlib source hash and application executable identities are in metadata.
 
 C is GCC 14.2.0, `-O3 -march=x86-64-v3 -mtune=generic`, no LTO, with separate operation/driver translation units. `C-exact` allocates the known output size; `C-grow` uses checked geometric output growth. Both allocate and free a fresh output per operation and perform the same complete output comparison as Manuscript. The exact-capacity C baseline is not silently compared as though it had the builder's growth costs. Empty immutable strings and C allocated empty buffers retain their implementation differences; empty-case results do not establish C parity.
 
@@ -50,9 +50,9 @@ The table reports median ns/call; the ratio is the median of **paired proposed/b
 | hex-boundary-16384 | 76155.23 | 31723.98 | 11850.84 | 15073.67 | 0.417 | 0.365–0.434 |
 | hex-boundary-16385 | 80964.90 | 31954.98 | 11656.98 | 15269.40 | 0.416 | 0.195–0.482 |
 
-Seven A/A pairs on four representative cases gave paired median B/A ratios 0.940–1.016; individual ratios ranged 0.572–1.531. Raw [A/A samples](results-2026-11-12/aa.json) and [main samples](results-2026-11-12/samples.json) retain the noise. The shortest actual main sample was 18.59ms after calibration. Hardware instruction counts were not measured.
+Seven A/A pairs on four representative cases gave paired median B/A ratios 0.940–1.016; individual ratios ranged 0.572–1.531. Raw A/A samples and main samples retain the noise. The shortest actual main sample was 18.59ms after calibration. Hardware instruction counts were not measured.
 
-Five alternating process-level peak-RSS pairs use Linux VmHWM only after `/proc/pid/exe` matches the tested binary; this avoids fork-inherited wait4 high-water values. Identical input, output-validation and iteration controls are used. These are process peaks, including startup and input/expected buffers, not isolated allocation counts. [Raw RSS samples](results-2026-11-12/rss.json):
+Five alternating process-level peak-RSS pairs use Linux VmHWM only after `/proc/pid/exe` matches the tested binary; this avoids fork-inherited wait4 high-water values. Identical input, output-validation and iteration controls are used. These are process peaks, including startup and input/expected buffers, not isolated allocation counts. Raw RSS samples:
 
 | Case | Baseline peak KiB | Proposed peak KiB |
 |---|---:|---:|

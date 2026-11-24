@@ -35,7 +35,7 @@ iterations in the baseline; they are intentionally not run by this bounded drive
 Reference source: main `37a14ba5797bed73a66d1350bee03d2238c63a20`.
 Linux x86_64, AMD EPYC 7763, Rust 1.99.1, release compiler and LLVM Release
 programs. Raw samples, binary SHA-256, selected CPU and environment are in
-[`results-2026-11-12`](results-2026-11-12/). The existing dated stdlib baseline
+`results-2026-11-12`. The existing dated stdlib baseline
 does not include these rotation cases; this is a new focused suite, not a claim
 about the overall stdlib benchmark. No hardware instruction counters were
 available. Shared-machine timing remains subject to scheduling and code-layout

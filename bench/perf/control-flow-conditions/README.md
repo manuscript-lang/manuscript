@@ -46,8 +46,8 @@ not prove zero checker overhead or an application speedup, and cannot exclude
 small changes obscured by startup and shared-machine variation. Retain the first
 run rather than replacing it with the favorable confirmation.
 
-Raw evidence: [initial](paired.json), [same binary](same-binary.json),
-[confirmation](paired-confirmation.json). Reproduce after building both revisions:
+Raw evidence: initial, same binary,
+confirmation. Reproduce after building both revisions:
 
 ```sh
 python3 bench/perf/control-flow-conditions/run.py /path/to/base/ms-check-dev /path/to/fixed/ms-check-dev --pairs 20 --output paired.json
@@ -75,8 +75,8 @@ the controls after compilation and other local test workloads completed.
 All latest paired medians lie between -0.48% and +0.63%; the previous ordinary-64
 3.7% loss again does not repeat. Same-binary median variation extends from -1.02%
 to +1.36%. These are still whole-process observations, not proof of zero cost.
-[Latest paired samples](latest-paired.json) and
-[latest same-binary samples](latest-same-binary.json) include all raw timings,
+Latest paired samples and
+latest same-binary samples include all raw timings,
 exact source and binary/output hashes. No earlier runs were removed.
 
 ## CPU-time follow-up
@@ -109,5 +109,5 @@ established explanation for the earlier wall-only observations.
 Independent review found no reproducible performance regression attributable to
 the change across the paired and identical-binary controls. Small effects and
 tail differences remain unresolved; zero overhead and unchanged tail latency
-are not claimed. Raw evidence: [CPU paired](latest-cpu-paired.json),
-[CPU same binary](latest-cpu-same-binary.json). Every earlier report remains.
+are not claimed. Raw evidence: CPU paired,
+CPU same binary. Every earlier report remains.

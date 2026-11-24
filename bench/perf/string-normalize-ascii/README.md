@@ -137,7 +137,7 @@ The unchanged runtime was compared using 30 selected cases and nine alternating
 pairs: all negative-budget and invalid-form controls, all zero/exact/exceeded
 budgets, the unfavorable Unicode/scaling medians and nearby counterparts, plus
 empty/one-ASCII controls. Shorts use 5M operations, mid-size/combining cases 1024,
-and large cases 64. The source and exact inventory are [focused-controls.ms](focused-controls.ms)
+and large cases 64. The source and exact inventory are focused-controls.ms
 and `focused-identities.json`.
 
 All checked warm-ups, producer exits, exact outputs/errors and identity guards

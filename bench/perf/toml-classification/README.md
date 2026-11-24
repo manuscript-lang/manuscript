@@ -65,6 +65,6 @@ python3 aa.py SCRATCH
 
 The retained binaries and baseline compiler are in
 `/workspace/scratch/structured-data-perf`. The measured source differs from the
-committed source only by formatter whitespace. [Metadata](results-2026-11-12/metadata.json)
-records executable and source identities; [samples](results-2026-11-12/samples.json)
-and [A/A controls](results-2026-11-12/aa.json) preserve every measurement.
+committed source only by formatter whitespace. Metadata
+records executable and source identities; samples
+and A/A controls preserve every measurement.

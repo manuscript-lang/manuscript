@@ -8,7 +8,7 @@ the [rejected integer-radix trials](../integer-parse-radix/README.md).
 
 ## Candidate and decision
 
-[`variants/rejected.patch`](variants/rejected.patch) preserves the unapplied
+`variants/rejected.patch` preserves the unapplied
 candidate and its focused tests. `float_syntax` consumes the entire input and
 accepts only ASCII, so successful validation proves the precondition for
 `from_utf8_unchecked`. Replacing the subsequent checked conversion removes a
@@ -35,17 +35,17 @@ All per-case times, Rust baselines, CPU ratios and paired counts are in
 The unchanged-control regression's exact cause is unestablished; no backend,
 disassembly, ownership, lifetime or parity investigation was performed.
 
-One [predeclared build-location control](matched-plan.json) rebuilt both baseline
+One predeclared build-location control rebuilt both baseline
 and the identical candidate sequentially in the same checkout, with the same
 frozen compiler, source and flags. All four resulting benchmark executables were
-**byte-identical** to the originals ([hashes](matched-result.json)). Build location
+**byte-identical** to the originals (hashes). Build location
 therefore does not explain these results. No additional timing, layout variants,
 rebuild selection or attempted exoneration followed. The checked conversion was
 restored, including rebuilding the default native archives and compiler.
 
 ## Equivalent workloads
 
-[`main.ms`](main.ms) and [`rust.rs`](rust.rs) cover signed decimal formatting,
+`main.ms` and [`rust.rs`](rust.rs) cover signed decimal formatting,
 ordinary signed parsing, Float plain/scientific/wide/subnormal/signed-zero inputs,
 4,096-zero underflow, exact special values, early/late malformed input, overflowing
 short/long text, and Unicode rejection. The 33 existing radix/Float-format controls
@@ -103,13 +103,13 @@ Float parsing. It reuses already output-validated executables.
 
 | Dataset | Successful producers | Tiny controls | Warmups | Measured |
 | --- | ---: | ---: | ---: | ---: |
-| [Final conversions](results/conversions.jsonl) | 768 | 192 | 64 | 512 |
-| [Final existing controls](results/controls.jsonl) | 1,584 | 396 | 132 | 1,056 |
-| [Long confirmation](results/confirmation.jsonl) | 272 | 0 | 16 | 256 |
+| Final conversions | 768 | 192 | 64 | 512 |
+| Final existing controls | 1,584 | 396 | 132 | 1,056 |
+| Long confirmation | 272 | 0 | 16 | 256 |
 
 All **2,624** invocations succeeded. Earlier exploratory sessions are retained
 locally but do not establish the final decision; this report uses the complete
-final sessions and the longer confirmation. [`artifacts.json`](artifacts.json)
+final sessions and the longer confirmation. `artifacts.json`
 records revision, compiler/archive/executable hashes and retained source/data hashes.
 Historical absolute paths in raw records and the matched-location plan identify
 measured artifacts; portable runners accept new executable paths.
@@ -119,7 +119,7 @@ measured artifacts; portable runners accept new executable paths.
 Three focused native tests passed for the final candidate, including exhaustive
 insertion/replacement of every non-ASCII byte in nine numeric/special-form seeds (14,720
 mutations) plus six Unicode lookalikes. The syntax assertion runs before conversion.
-The [two saved public source tests](source-tests.ms) passed in Debug and Release,
+The two saved public source tests passed in Debug and Release,
 covering ASCII signs/exponents/signed zero, Unicode/malformed rejection, exact range
 errors and 4,096-digit overflow/late invalid text. The four existing public
 `string-parse-float` tests also passed in Debug and Release. Scoped runtime Clippy
@@ -145,8 +145,8 @@ protocol. The numeric helper/declaration blobs were unchanged from the baseline.
 Independent review verified all **2,352** additional successful producers (588 tiny
 controls, 196 warmups, 1,568 measurements), outputs, counts, ordering, timings,
 summaries and executable hashes. Raw data are retained as
-[checkpoint conversions](results/checkpoint-conversions.jsonl) and
-[checkpoint controls](results/checkpoint-controls.jsonl); full tables follow the
+checkpoint conversions and
+checkpoint controls; full tables follow the
 rejected trial in `summary.md`.
 
 Paired current/baseline medians ranged **0.978–1.030**. The largest increase had
