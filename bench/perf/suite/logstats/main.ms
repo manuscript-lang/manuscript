@@ -19,7 +19,7 @@ fn main() Void:
 
 		cls := f[4].scalar_at(0) - 50
 		classes[cls] += 1
-		paths.update(f[3].clone(), 0, fn v: v + 1)
+		paths.update(f[3], 0, fn v: v + 1)
 
 	print(f"lines: {rows}")
 	print(

@@ -319,7 +319,7 @@ fn List[T: Clonable].group_by[K: Hashable](key: fn(T) K) move Map[K, List[T]]: .
 fn List[T: Hashable & Clonable].counts() Map[T, Int]:
 	var out = Map[T, Int]()
 	for x in self:
-		out.update(x.clone(), 0, fn n: n + 1)
+		out.update(x, 0, fn n: n + 1)
 	return out
 
 // Reports whether any element equals `value`, using the element type's `Equal`
@@ -741,11 +741,11 @@ fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 fn var Map[T: Hashable, U: Clonable].merge(other: Map[T, U]) Void: ...
 
 // Stores `change` applied to the value for `key`, or to `initial` when the key is
-// absent. The key is probed once, `initial` is always evaluated, and `change` runs
-// once and must not use this map. Example: `counts.update(word, 0, fn n: n + 1)`
-// counts occurrences.
+// absent. The key is probed once, `initial` is always evaluated, and `change` runs once
+// and must not use this map. The key is copied only when it is absent. Example:
+// `counts.update(word, 0, fn n: n + 1)` counts occurrences.
 fn var Map[T: Hashable & Clonable, U: Clonable].update(
-	move key: T,
+	key: T,
 	move initial: U,
 	change: fn(U) U
 ) Void: ...
