@@ -38,9 +38,7 @@ runs:
     - if: runner.os != 'Windows'
       shell: bash
       run: |
-        for tools in OFF ON; do
-          cmake "-DROOT=$PWD" "-DARCH=${{ runner.arch == 'ARM64' && 'arm64' || 'amd64' }}" "-DTOOLS=$tools" -P cmake/FetchLlvmLib.cmake
-        done
+        cmake "-DROOT=$PWD" "-DARCH=${{ runner.arch == 'ARM64' && 'arm64' || 'amd64' }}" -DTOOLS=OFF -P cmake/FetchLlvmLib.cmake
     # Windows builds the mingw-w64 ABI (what ms links programs with) inside MSYS2, which brings the perl and make
     # pair OpenSSL's Configure needs.
     - if: runner.os == 'Windows'
