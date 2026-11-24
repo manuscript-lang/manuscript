@@ -148,7 +148,9 @@ fn main() Int:
 	args := arguments()
 
 	if args.length() > 1:
-		if parsed := args[1].parse_int(): n = parsed
+		parsed := args[1].parse_int()
+
+		if parsed != null: n = parsed
 		else: return usage("usage: platform_io.ms [-- files]")
 
 	done := run_all(n)

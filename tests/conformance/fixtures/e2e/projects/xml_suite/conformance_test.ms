@@ -15,20 +15,20 @@ import (
 
 // Whether the parser agrees with the suite on one case.
 fn passes(tree: FileTree, kind: String, path: String) Bool:
-	bytes := tree.read(path, none).get_or("".to_bytes())
+	bytes := tree.read(path, null).get_or("".to_bytes())
 	text := bytes.decode_utf8()
 
 	// A String cannot hold input that is not UTF-8, so such a document cannot be
 	// accepted.
-	if text.is_none(): return kind == "not-wf"
+	if text == null: return kind == "not-wf"
 
-	parsed := parse(text.get_or(""))
+	parsed := parse(text)
 	if kind == "not-wf": return parsed.is_error()
 
 	return parsed.is_ok()
 
 fn read(tree: FileTree, path: String) String:
-	return tree.read(path, none).get_or("".to_bytes()).decode_utf8().get_or("")
+	return tree.read(path, null).get_or("".to_bytes()).decode_utf8() or ""
 
 test "the W3C XML suite agrees with the parser except for the listed cases":
 	tree := files()

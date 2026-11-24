@@ -6,5 +6,5 @@ Decision: the corpus expectations were first recorded from the Go `ms` and are n
 
 
 Apply when: a conformance case fails, or a deliberate semantic change alters recorded output.
-Evidence: [corpus README](../../../tests/conformance/README.md), [expected failures](../../../tests/conformance/expect-fail.txt), [runner](../../crates/ms-conform/src/runner.rs).
+Evidence: [corpus README](../../../tests/conformance/README.md), [expected failures](../../../tests/conformance/expect-fail.txt), runner.
 Verify: `make conform` reports a nonempty plan with no unexpected failures or unexpected passes.

@@ -58,7 +58,7 @@ test "bytes copy slice search and UTF8 validation":
 
 	copied := data.clone().with_value(0, 42)
 	expect_false(copied.get(0) != 42 or data.get(0) != 0)?
-	expect_false(Bytes([255]).decode_utf8().is_some())?
+	expect_false(Bytes([255]).decode_utf8() != null)?
 	expect_equal("é".to_bytes().decode_utf8(), "é")?
 
 test "Bytes values direct bound and free calls return independent lists":
@@ -209,16 +209,16 @@ test "builder appends variable text of every length across growth":
 
 test "search indexes are byte offsets for ascii, inline and unicode text":
 	long := "a".repeat(100).concat("!").concat("é").concat("!")
-	expect_equal(long.index_of("!").get_or(-1), 100)?
-	expect_equal(long.last_index_of("!").get_or(-1), 103)?
+	expect_equal(long.index_of("!") or (-1), 100)?
+	expect_equal(long.last_index_of("!") or (-1), 103)?
 
 	ascii := "a".repeat(100).concat("!")
-	expect_equal(ascii.index_of("!").get_or(-1), 100)?
-	expect_equal(ascii.last_index_of("!").get_or(-1), 100)?
-	expect_equal(ascii.last_index_of("a").get_or(-1), 99)?
-	expect_equal("ab!".last_index_of("!").get_or(-1), 2)?
-	expect_equal("é!".last_index_of("!").get_or(-1), 2)?
-	expect_equal(ascii.last_index_of("?").get_or(-1), -1)?
+	expect_equal(ascii.index_of("!") or (-1), 100)?
+	expect_equal(ascii.last_index_of("!") or (-1), 100)?
+	expect_equal(ascii.last_index_of("a") or (-1), 99)?
+	expect_equal("ab!".last_index_of("!") or (-1), 2)?
+	expect_equal("é!".last_index_of("!") or (-1), 2)?
+	expect_equal(ascii.last_index_of("?") or (-1), -1)?
 
 test "count matches split for nonempty parts and counts scalars plus one for an empty part":
 	expect_equal("word,".repeat(10000).count(","), 10000)?

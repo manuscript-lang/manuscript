@@ -70,10 +70,10 @@ type Scored:
 
 // Settings for `close_matches`.
 export type CloseMatchesOptions:
-	// Maximum candidates returned; zero or below returns none.
+	// Maximum candidates returned; zero or below returns null.
 	limit: Int = 3
 	// Minimum `similarity_ratio` from 0.0 to 1.0; at or below 0.0 keeps every candidate
-	// and above 1.0 keeps none.
+	// and above 1.0 keeps null.
 	cutoff: Float = 0.6
 
 /*

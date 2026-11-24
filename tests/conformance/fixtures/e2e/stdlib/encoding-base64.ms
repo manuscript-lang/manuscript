@@ -28,7 +28,7 @@ test "Base64 after empty retains alphabets and padding tails":
 test "Base64 encodes every byte and empty views":
 	var out = BytesBuilder()
 	for n in 0..256:
-		out.append(n.to_uint8().get_or(0))
+		out.append(n.to_uint8() or 0)
 
 	data := out.build()
 	expect_equal(
@@ -51,7 +51,7 @@ fn padded_input(length: Int) Bytes:
 
 	for i in 0..length:
 		byte := if i % 3 == 0: 251 else: (if i % 3 == 1: 255 else: 0)
-		out.append(byte.to_uint8().get_or(0))
+		out.append(byte.to_uint8() or 0)
 
 	out.append(42)
 	return out.build().slice(1, length + 1).get_or(Bytes([]))

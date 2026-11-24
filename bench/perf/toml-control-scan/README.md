@@ -46,7 +46,7 @@ Host: Linux x86_64 AMD EPYC 9V45, CPUs 0–4, shared host. Rust/Cargo 1.99.1
 flags. Rust controls use dynamic `toml::Value` string tables and natural owned
 strings. There is no custom target-cpu or placement tuning.
 
-The primary [file producer](file.ms) reads UTF-8 input **inside every measured
+The primary file producer reads UTF-8 input **inside every measured
 iteration**, parses and stringifies it, checks its complete output against setup,
 and prints a validated count/checksum. Rust does the matching read/parse/stringify
 and makes values observable with black_box. Input files, expected results and
@@ -55,7 +55,7 @@ are inside. Separate read-only and file-to-single-string-table writer controls
 expose unrelated-path shifts without subtracting their medians.
 
 An optional readiness marker is written after expected-output setup and before
-timing. The external [probe](probe.py) replaces the input atomically after that
+timing. The external probe replaces the input atomically after that
 marker. Both producers must reject the changed value with status 1 and no timing
 output. This verified the fresh-input dependency on the exact measured binaries.
 The marker is absent in normal trials and never executes inside their timers.

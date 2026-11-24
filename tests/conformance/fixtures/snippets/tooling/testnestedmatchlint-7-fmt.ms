@@ -4,8 +4,8 @@
 fn use(value: Int?) Int:
     present := match value:
         n: n
-        none: return 0
+        null: return 0
 
     return match value:
         n: present + n
-        none: 0
+        null: 0

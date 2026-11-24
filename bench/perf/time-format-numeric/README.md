@@ -11,7 +11,7 @@ Baseline: `a80431c01c2576747a105d1b28bc51762d72895b`, including the earlier
 [output-buffer improvement](../time-format/README.md). The latest whole-suite
 [dated baseline](../baseline-2026-10-28.md) has no identical pattern-format case;
 these comparisons use freshly built baseline/candidate programs on one machine.
-[Metadata](results-2026-11-12/metadata.json) records executable/source hashes,
+Metadata records executable/source hashes,
 compiler flags, LLVM Release sidecars and the host. Both native binaries and
 the baseline compiler are retained in `/workspace/scratch/numeric-format/` in
 the investigation workspace.
@@ -27,7 +27,7 @@ text once; paired outputs must match byte for byte.
 Each case has three warmup pairs then 25 measured pairs, alternating execution
 order. No builds or other benchmarks run during the timed series. The table is
 the median paired candidate/baseline ratio; lower is faster. Raw samples and
-P10–P90 variation are in [samples.json](results-2026-11-12/samples.json).
+P10–P90 variation are in samples.json.
 
 | Pattern | UTC | America/New_York | +05:30 |
 | --- | ---: | ---: | ---: |
@@ -47,7 +47,7 @@ via offset, and wide negative nanosecond ratios are 0.525, 0.663 and 0.824.
 Long repeated patterns are unchanged within noise. The initial +05:30 ratio
 1.017 was checked with five-times-longer batches: median A/B **0.9868**, A/A
 **0.9986**, across another 25 measured pairs each. See
-[long-confirm.json](results-2026-11-12/long-confirm.json). Ordinary A/A medians
+long-confirm.json. Ordinary A/A medians
 were 0.992 (empty), 0.994 (year) and 1.007 (date). Gains on empty patterns mean
 not every full-function difference can be attributed solely to digit arithmetic.
 

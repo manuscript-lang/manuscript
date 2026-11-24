@@ -11,4 +11,4 @@ Rules that cost time:
 - The checker appends a variable's bounds on every receiver resolution; dedupe them for display.
 - `main` is found by name; refuse renaming it, since no graph edge names it.
 
-Evidence: [index](../crates/ms-lsp/src/index.rs), [tests](../crates/ms-lsp/tests/type_parameters.rs).
+Evidence: index, tests.

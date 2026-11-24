@@ -268,6 +268,7 @@ typedef struct MirFunc {
   bool has_slot_close;
   MirTy slot_close;
   bool scoped, keeps_scoped; /* a closure into its maker's frame; a function that keeps such closures */
+  bool runs_once;            /* set by lowering: the body of a test block, which runs once, so a copy of a callee into it buys no speed */
   /* Set by the range pass: a bit set (`nexact` words) of the results of unchecked integer arithmetic it
    * proved cannot wrap. Values are never reused, so a bit stays true as the function is rewritten; the pass
    * replaces the array instead of editing it, so a copy of the function may share it. */

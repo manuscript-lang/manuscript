@@ -8,5 +8,5 @@ Decision: the user switched Pages to GitHub Actions and requested removal of obs
 
 
 Apply when: migrating or repairing Pages publishing.
-Evidence: [failed settings request](https://github.com/manuscript-lang/manuscript/actions/runs/38275457893/job/114902462365), [artifact deployment](../../.github/workflows/cicd.yml), and [publishing instructions](../../../documentation/contributing/development.md).
+Evidence: [failed settings request](https://github.com/manuscript-lang/manuscript/actions/runs/38275457893/job/114902462365), artifact deployment, and [publishing instructions](../../../documentation/contributing/development.md).
 Verify: inspect the actual deployment result, not just the book artifact or merged PR; confirm Pages source is GitHub Actions.

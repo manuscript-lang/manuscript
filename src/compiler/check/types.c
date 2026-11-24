@@ -108,6 +108,10 @@ static void add_row(MsTyTable *table, const MsTyDesc *desc) {
 }
 
 MsTy ms_ty_intern(MsTyTable *table, const MsTyDesc *desc) {
+  /* `T??` is `T?`: a nullable of a nullable is the same type. */
+  if (desc->builtin == MS_BUILTIN_Optional && desc->arg_count == 1 && ms_ty_row(table, desc->args[0])->builtin == (uint8_t)MS_BUILTIN_Optional) {
+    return desc->args[0];
+  }
   const MsName row = ms_names_intern(&table->keys, pack_key(table, desc));
   if (row == table->rows.len) {
     add_row(table, desc);

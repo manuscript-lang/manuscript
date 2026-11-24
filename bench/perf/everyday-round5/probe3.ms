@@ -154,10 +154,7 @@ fn y_matmul() Int:
 
 		c.append(rc)
 
-	return (
-		c[17][33].truncate_to_int().get_or(0)
-		+ c[199][199].truncate_to_int().get_or(0)
-	)
+	return (c[17][33].truncate_to_int() or 0 + (c[199][199].truncate_to_int() or 0))
 
 fn y_sieve() Int:
 	n := 20000000
@@ -226,14 +223,17 @@ fn y_optional_ints() Int:
 	var xs: List[Int?] = []
 
 	for i in 0..2000000:
-		if i % 3 == 0: xs.append(none)
+		if i % 3 == 0: xs.append(null)
 		else: xs.append(i)
 
 	var t = 0
+
 	for r in 0..10:
 		for v in xs:
-			if x := v:
+			x := v
+			if x != null:
 				t += x
+
 	return t
 
 fn y_stats() Int:
@@ -254,7 +254,7 @@ fn y_stats() Int:
 		)
 		t += sqrt(v)
 
-	return t.truncate_to_int().get_or(0)
+	return t.truncate_to_int() or 0
 
 fn run(name: String, f: fn() Int) Void:
 	t0 := monotonic().tick

@@ -106,7 +106,7 @@ fn var Screen.reset() Void:
 	self.cursor_row = 0
 
 	size := terminal_size()
-	if size.is_ok(): self.height = size.get_or(none).rows
+	if size.is_ok(): self.height = size.get_or(null).rows
 
 // Updates the terminal height after a `Resize` event.
 fn var Screen.resize(rows: Int) Void:
@@ -117,7 +117,7 @@ fn var Screen.resize(rows: Int) Void:
 // ms: effect std.console.read
 export fn new_screen() Screen:
 	size := terminal_size()
-	rows := if size.is_error(): 24 else: size.get_or(none).rows
+	rows := if size.is_error(): 24 else: size.get_or(null).rows
 	return Screen(previous: List[String](), cursor_row: 0, height: rows)
 
 fn first_difference(before: List[String], after: List[String]) Int:

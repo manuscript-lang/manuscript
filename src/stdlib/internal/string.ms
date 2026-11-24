@@ -4,7 +4,7 @@ export extern fn msrt_string_from_scalars(values: List[Int]) move String!
 
 export extern fn msrt_string_fields(text: String) move List[String]
 
-// Byte offset of the first scalar of `text` that occurs in `set`, or none.
+// Byte offset of the first scalar of `text` that occurs in `set`, or null.
 export extern fn msrt_string_index_any(text: String, set: String) Int?
 
 // Text without the scalars of `set` at the start and, as selected, the end.

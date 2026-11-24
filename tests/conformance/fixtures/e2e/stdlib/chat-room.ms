@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	forward from "@std/io/forward.ms",
 	ReadStream, WriteStream, pipe from "@std/io/io.ms",
 	HttpExchange, HttpServerOptions from "@std/net/http.ms",
@@ -73,9 +74,11 @@ test "a room owner pushes each line to every connected websocket":
 
 		while true:
 			message := input.next()?
+			m := message
 
-			if m := message:
-				if text := m.data.decode_utf8():
+			if m != null:
+				text := m.data.decode_utf8()
+				if text != null:
 					cmds.write(Command.Say(text))?
 			else:
 				break
@@ -88,7 +91,7 @@ test "a room owner pushes each line to every connected websocket":
 		options: HttpServerOptions(
 			timeout: 5.seconds(),
 			grace: 0.seconds(),
-			tls: none,
+			tls: null,
 		),
 	)?
 	client_options := WebSocketOptions(
@@ -133,5 +136,8 @@ test "a room owner pushes each line to every connected websocket":
 	owner.wait()?
 
 fn heard(var socket: WebSocket) String!:
-	message := (within(socket.input, 3.seconds())?).get()
-	return ok(message.data.decode_utf8().get_or(""))
+	message := (
+		(within(socket.input, 3.seconds())?)
+		or panic("called Optional.get() on null")
+	)
+	return ok(message.data.decode_utf8() or "")

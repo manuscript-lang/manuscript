@@ -25,9 +25,9 @@ test "ASCII85 unframed vectors cover tails zero shorthand and maximum words":
 
 test "ASCII85 ignores every ASCII control and space including after complete groups":
 	var out = BytesBuilder()
-	for byte in 0..33: out.append(byte.to_uint8().get_or(0))
+	for byte in 0..33: out.append(byte.to_uint8() or 0)
 
-	spaces := out.build().decode_utf8().get_or("")
+	spaces := out.build().decode_utf8() or ""
 	expect_equal(ascii85_decode(spaces, 0)?, Bytes([]))?
 	expect_equal(ascii85_decode("z" + spaces)?, Bytes([0, 0, 0, 0]))?
 	expect_equal(
@@ -43,7 +43,7 @@ test "ASCII85 rejects invalid characters delimiters and misplaced shorthand":
 	]:
 		expect_equal(ascii85_decode(text), invalid)?
 
-	non_ascii := Bytes([127]).decode_utf8().get_or("")
+	non_ascii := Bytes([127]).decode_utf8() or ""
 	expect_equal(ascii85_decode(non_ascii), invalid)?
 
 test "ASCII85 rejects overflowing complete and padded partial groups":
@@ -63,11 +63,11 @@ test "ASCII85 decoded byte limits count expansions and partial groups exactly":
 	expect_equal(ascii85_decode("zz", 8)?, Bytes([0, 0, 0, 0, 0, 0, 0, 0]))?
 	for text in ["", "?", "uuuuu"]:
 		expect_equal(ascii85_decode(text, -1), invalid)?
-	expect_equal(ascii85_decode("!!", none)?, Bytes([0]))?
+	expect_equal(ascii85_decode("!!", null)?, Bytes([0]))?
 
 test "ASCII85 round trips byte views across every block boundary":
 	var out = BytesBuilder()
-	for value in 0..256: out.append(value.to_uint8().get_or(0))
+	for value in 0..256: out.append(value.to_uint8() or 0)
 
 	bytes := out.build()
 

@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "import (\n\tstdin, stdout from \"@std/io/io.ms\",\n\tlines from \"@std/io/steps.ms\",\n)\n\nfn run() Result[Void, Error]:\n\tvar input = lines(stdin())\n\n\twhile true:\n\t\tline := input.next()?\n\n\t\tif text := line:\n\t\t\tstdout().write(f\"{text}\\n\")?\n\t\telse:\n\t\t\tbreak\n\n\treturn stdout().flush()\n\nfn main() Void!:\n\trun()?\n"
+    "fmt": "import (\n\tstdin, stdout from \"@std/io/io.ms\",\n\tlines from \"@std/io/steps.ms\",\n)\n\nfn run() Result[Void, Error]:\n\tvar input = lines(stdin())\n\n\twhile true:\n\t\tline := input.next()?\n\t\ttext := line\n\n\t\tif text != null:\n\t\t\tstdout().write(f\"{text}\\n\")?\n\t\telse:\n\t\t\tbreak\n\n\treturn stdout().flush()\n\nfn main() Void!:\n\trun()?\n"
   }
 }

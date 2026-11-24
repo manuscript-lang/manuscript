@@ -2,12 +2,13 @@
 // conform: phase=check
 // conform: origin=pkg/tooling/format/format_layout_test.go:147 TestFormatExpressionLayouts
 fn work() Int:
-    if value := (
+    value := (
         [2, 5, 3, (-6), (-9), 1, 2, 3, 4]
         .clone()
         .sorted(fn(l: Int, r: Int) Int: (l - r))
         .first()
-    ):
+    )
+    if value != null:
         return value
 
     return 0

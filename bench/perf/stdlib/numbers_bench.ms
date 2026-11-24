@@ -39,7 +39,7 @@ bench "decimal.add_round" per 20000:
 	var n = 0
 	for i in 0..20000:
 		if d := (i.to_decimal() + fixture.rate).round(2):
-			n += d.truncate_to_int().get_or(0)
+			n += d.truncate_to_int() or 0
 	n
 
 // The blob is 880000 bytes, which both benches report their time per byte of.
@@ -84,7 +84,7 @@ bench "queue.enqueue_dequeue" per 200000:
 
 	var n = 0
 	while not q.is_empty():
-		n += q.dequeue().get_or(0)
+		n += q.dequeue() or 0
 	n
 
 bench "priority_queue.enqueue_dequeue" per 100000:
@@ -94,5 +94,5 @@ bench "priority_queue.enqueue_dequeue" per 100000:
 
 	var n = 0
 	while not q.is_empty():
-		n += q.dequeue().get_or(0)
+		n += q.dequeue() or 0
 	n

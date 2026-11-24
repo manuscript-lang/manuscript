@@ -21,7 +21,7 @@ Allocator inlining measured and rejected (2026-11-13): with heap facts off, an a
 Range proofs are already in MIR (`ms-mir/src/opt/range.rs`: intervals, induction variables, `i < len`, bounded counters), so no new proof is the cheap win; what stays checked is an accumulation with no bound (`total += x[i]`). Vectorizing that needs a loop-versioning scheme (wrapping vector loop, scalar replay on overflow so the fault names the right iteration), which is a project of its own.
 
 Apply when: adding facts to the direct LLVM emitter.
-Evidence: [module and units](../../crates/ms-mir-llvm/src/llvm_ir.rs), [direct emitter](../../crates/ms-mir-llvm/src/mir_llvm/mod.rs), `make drift-check`.
+Evidence: module and units, direct emitter, `make drift-check`.
 Verify: `ms-conform diff --a target/release/ms --b target/release/ms --env-b MS_BACKEND=cranelift --phase run,test`.
 
 ## Direct MIR emission (stage 1, 2026-11-13)

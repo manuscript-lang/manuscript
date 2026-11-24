@@ -51,9 +51,9 @@ ordinary real-project controls. Time uncached end-to-end Release builds separate
 and run their native outputs. The generated main is intended to return status 0
 with empty stdout. A baseline Release native run of the size-1 probe passed.
 
-Verified effect-only output: `none` and
+Verified effect-only output: `null` and
 `direct` each have `2*N+1` MSL116 findings; `allowed` and `pure` have none.
-Every root in `none` should select
+Every root in `null` should select
 `root_N -> hub -> leaf_000000 -> sink`. Preserve all diagnostic positions,
 ordering, shortest paths, equal-label ties, declaration barriers, cycles and
 function/file permission intersection in any fix. Other lint families may also

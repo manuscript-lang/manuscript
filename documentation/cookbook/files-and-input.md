@@ -9,7 +9,7 @@ Read and write text files and process standard input line by line. Each program 
 
 ## Read a UTF-8 text file
 
-Save as `read.ms`. `decode_utf8()` returns `none` for invalid UTF-8.
+Save as `read.ms`. `decode_utf8()` returns `null` for invalid UTF-8.
 
 <!-- manuscript-example: {"mode":"run","args":["notes.txt"],"files":{"notes.txt":"hello from a file\n"},"stdout":"hello from a file\n","cases":[{"args":["missing.txt"],"exit_code":1},{"exit_code":1}]} -->
 ```manuscript
@@ -18,9 +18,10 @@ import read_file from "@std/os/fs.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
-    path := arguments().first().ok_or(Error("missing path", kind: "EINVAL"))?
+    path := ok_or(arguments().first(), Error("missing path", kind: "EINVAL"))?
     text := read_file(path, max_bytes: 1048576).wait()?
-        | .decode_utf8().ok_or(Error("not UTF-8", kind: "EBADMSG"))?
+        | .decode_utf8()
+        | ok_or(Error("not UTF-8", kind: "EBADMSG"))?
     stdout().write(text)?
     return stdout().flush()
 
@@ -49,7 +50,7 @@ import arguments from "@std/os/env.ms"
 import write_file from "@std/os/fs.ms"
 
 fn run() Result[Void, Error]:
-    path := arguments().first().ok_or(Error("missing path", kind: "EINVAL"))?
+    path := ok_or(arguments().first(), Error("missing path", kind: "EINVAL"))?
     return write_file(path, "saved notes\n", replace: false).wait()
 
 fn main() Void!:
@@ -69,7 +70,7 @@ The program succeeds silently; `cat` shows the saved content. Use `replace: true
 
 ## Read standard input line by line
 
-Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` returns the next line, or `none` at end of input.
+Save as `lines.ms`. `lines` wraps a byte stream as a stream of lines; `next()` returns the next line, or `null` at end of input.
 
 <!-- manuscript-example: {"mode":"run","stdin":"line one\n\nlast line","stdout":"line one\n\nlast line\n","cases":[{"stdout":""}]} -->
 ```manuscript

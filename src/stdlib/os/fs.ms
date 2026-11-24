@@ -27,6 +27,7 @@ import (
 	Closeable, Writable from "@std/core.ms",
 	ReadStream, Sink, Source, WriteStream from "@std/io/io.ms",
 	BigInt from "@std/math/math.ms",
+	normalize from "@std/os/path.ms",
 	Duration, Timestamp, milliseconds, monotonic, now, sleep from "@std/time.ms",
 
 	msstd_fs_access,
@@ -195,7 +196,7 @@ export type FileInfo:
 	uid: Int
 	// Numeric id of the owning group; 0 where unavailable.
 	gid: Int
-	// Birth time of the file, or none when the host or filesystem does not record it.
+	// Birth time of the file, or null when the host or filesystem does not record it.
 	created: Timestamp?
 
 // True for an ordinary file.
@@ -245,7 +246,7 @@ fn FileHandle.writer() WriteStream[Bytes]!:
 	own := self.clone()?
 	return ok(WriteStream[Bytes](FileSink(own)))
 
-// Returns the next chunk of at most `max_bytes` (and never more than 64 KiB), or none
+// Returns the next chunk of at most `max_bytes` (and never more than 64 KiB), or null
 // at the end of the file. A supplied size must be positive.
 fn FileHandle.read(max_bytes: Int?) Bytes?!:
 	return msstd_io_read(self.native, max_bytes)
@@ -319,7 +320,7 @@ fn FileHandle.try_lock(exclusive: Bool) Bool!:
 	return ok(taken == 1)
 
 // Takes an advisory lock like `try_lock`, retrying every few milliseconds for up to
-// `timeout`; none waits until it is granted. Returns False when the timeout passes
+// `timeout`; null waits until it is granted. Returns False when the timeout passes
 // first. The wait is a cancellable sleep, so task cancellation ends it.
 fn FileHandle.lock(exclusive: Bool, timeout: Duration?) Bool!:
 	started := monotonic()
@@ -327,13 +328,14 @@ fn FileHandle.lock(exclusive: Bool, timeout: Duration?) Bool!:
 	while true:
 		if self.try_lock(exclusive)?: return ok(true)
 
-		if limit := timeout:
+		limit := timeout
+		if limit != null:
 			if monotonic().difference(started).compare(limit) >= 0: return ok(false)
 		sleep(milliseconds(5)).wait()?
 
 	return ok(false)
 
-// Releases the advisory lock this handle holds; releasing when none is held
+// Releases the advisory lock this handle holds; releasing when null is held
 // succeeds.
 fn FileHandle.unlock() Void!:
 	return msstd_fs_file_unlock(self.native)
@@ -364,7 +366,7 @@ type FileSource:
 	file: FileHandle
 
 fn var FileSource.next() move Bytes?!:
-	return self.file.read(none)
+	return self.file.read(null)
 
 fn move FileSource.close() Void!:
 	return self.file.close()
@@ -405,14 +407,14 @@ fn move Directory.close() Void!:
 fn Directory.path() String:
 	return msstd_fs_directory_path(self.native)
 
-// Returns the next child in native directory order, or none after the last one.
+// Returns the next child in native directory order, or null after the last one.
 // The order is not sorted.
 fn Directory.read() DirectoryEntry?!:
 	return msstd_fs_directory_read(self.native)
 
 // A directory is a stream source: `ReadStream[DirectoryEntry](open_directory(path)?)`
 // yields its children in native order, so steps compose:
-// `... | filter(...) | collect(none)`. Closing the stream closes the directory.
+// `... | filter(...) | collect(null)`. Closing the stream closes the directory.
 fn var Directory.next() move DirectoryEntry?!:
 	return msstd_fs_directory_read(self.native)
 
@@ -430,22 +432,26 @@ type WatchSource:
 	watcher: RawWatcher
 	pending: List[FileEvent]
 
-// Waits for the next change. none once the watched path itself has been removed (its
-// removal event comes first). A stream closed by the caller ends (`none`); a native
+// Waits for the next change. null once the watched path itself has been removed (its
+// removal event comes first). A stream closed by the caller ends (`null`); a native
 // watcher that overflowed with policy `error` is `EOVERFLOW`.
 fn var WatchSource.next() move FileEvent?!:
 	while true:
-		if event := self.pending.pop(): return ok(event)
+		event := self.pending.pop()
+		if event != null: return ok(event)
 
 		next := msstd_fs_watch_next(self.watcher.native)?
-		if next.is_none(): return ok(none)
+		if next == null: return ok(null)
 
-		// An empty batch only means nothing changed yet; only none ends the stream.
-		var batch = next.get_or(List[FileEvent]())
+		// An empty batch only means nothing changed yet; only null ends the stream.
+		// Paths are spelled as `join` spells them on this host (Windows: backslashes).
+		var batch = List[FileEvent]()
+		for event in next:
+			batch.append(FileEvent(normalize(event.path), event.kind.clone()))
 		batch.reverse()
 		self.pending = batch
 
-	return ok(none)
+	return ok(null)
 
 // Stops the watcher and waits for its worker to stop.
 fn move WatchSource.close() Void!:
@@ -535,14 +541,14 @@ export type CopyOptions:
 	// Whether to clone file data natively instead of copying bytes.
 	clone: CloneMode = CloneMode.Off
 	// Most files, directories, and links visited, counting the root. Exceeding it
-	// returns EOVERFLOW. none sets no limit.
-	max_entries: Int? = none
-	// Most file bytes copied in total. Exceeding it returns EOVERFLOW. none sets no
+	// returns EOVERFLOW. null sets no limit.
+	max_entries: Int? = null
+	// Most file bytes copied in total. Exceeding it returns EOVERFLOW. null sets no
 	// limit.
-	max_bytes: Int? = none
+	max_bytes: Int? = null
 	// Called with each source and destination path; the entry is skipped when it
-	// returns False. none copies everything.
-	filter: (fn(String, String) Bool)? = none
+	// returns False. null copies everything.
+	filter: (fn(String, String) Bool)? = null
 
 /*
 How `watch` observes a path: with native OS events by default, or by polling snapshots when `interval` is set.
@@ -550,16 +556,16 @@ Every field has a default, so `WatchOptions()` watches natively with no limits a
 `max_events` and `overflow` apply only to native watching; combining them with `interval` returns `EINVAL`.
 */
 export type WatchOptions:
-	// Polling period, which must be positive. none watches with native OS events.
-	interval: Duration? = none
+	// Polling period, which must be positive. null watches with native OS events.
+	interval: Duration? = null
 	// Most paths under the root, counted when the watcher starts. Exceeding it returns
-	// EOVERFLOW. none sets no limit.
-	max_entries: Int? = none
-	// Most queued native events. Native watchers only. none sets no limit.
-	max_events: Int? = none
+	// EOVERFLOW. null sets no limit.
+	max_entries: Int? = null
+	// Most queued native events. Native watchers only. null sets no limit.
+	max_events: Int? = null
 	// What a native watcher does when its queue overflows: exactly `error` (default) or
 	// `ignore`. Native watchers only.
-	overflow: String? = none
+	overflow: String? = null
 
 // A matched path together with its filesystem entry metadata.
 export type PathEntry:
@@ -579,11 +585,11 @@ export type GlobOptions:
 	// when False, links are reported but not entered.
 	follow_links: Bool = false
 	// Most filesystem entries visited while searching. Exceeding it returns EOVERFLOW.
-	// none sets no limit.
-	max_entries: Int? = none
-	// Most distinct matches returned. Exceeding it returns EOVERFLOW. none sets no
+	// null sets no limit.
+	max_entries: Int? = null
+	// Most distinct matches returned. Exceeding it returns EOVERFLOW. null sets no
 	// limit.
-	max_results: Int? = none
+	max_results: Int? = null
 
 /*
 Returns entries matching the include patterns of `options`, sorted by path. `path` is the root; each result's
@@ -602,7 +608,7 @@ print(sources.length())
 export fn glob(
 	path: String,
 	options: GlobOptions,
-	move exclude: (fn(PathEntry) Bool)? = none,
+	move exclude: (fn(PathEntry) Bool)? = null,
 ) List[PathEntry]!:
 	return msstd_fs_glob_entries(
 		path,
@@ -617,7 +623,8 @@ export fn glob(
 // The native walk calls its filter with the fields of a `PathEntry`; this adapts the
 // caller's predicate.
 fn excluding(move exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool) Bool)?:
-	if keep := exclude:
+	keep := exclude
+	if keep != null:
 		return fn(path: String, name: String, directory: Bool, symlink: Bool) Bool:
 			return keep(
 				PathEntry(
@@ -629,7 +636,8 @@ fn excluding(move exclude: (fn(PathEntry) Bool)?) (fn(String, String, Bool, Bool
 					),
 				)
 			)
-	return none
+
+	return null
 
 // The bits of the native copy's flags: recursive 1, replace 2, error on an existing
 // destination 4, dereference 8, preserve timestamps 16, verbatim symlinks 32.
@@ -695,11 +703,11 @@ export fn create_symlink(path: String, target: String) Void!:
 
 // Lists a directory in native order. A directory with more than `max_entries` entries
 // returns EOVERFLOW rather than a shortened list, and a negative `max_entries` returns
-// EINVAL; none sets no limit. A name that is not valid UTF-8 is listed with U+FFFD in
+// EINVAL; null sets no limit. A name that is not valid UTF-8 is listed with U+FFFD in
 // place of each invalid byte, so it no longer addresses the entry. The same holds for
 // `glob`, `stat` names and directory cursors.
 // ms: effect std.fs.read
-export fn list(path: String, max_entries: Int? = none) List[DirectoryEntry]!:
+export fn list(path: String, max_entries: Int? = null) List[DirectoryEntry]!:
 	return msstd_fs_list(path, max_entries)
 
 // A slot among the few in-flight copies of large write payloads. The blocking pool has
@@ -722,7 +730,7 @@ fn invalid_input() Error:
 // Starts reading a file fully into memory and returns its promise. Supply `max_bytes`
 // for untrusted or large files.
 // ms: effect std.fs.read
-export fn read_file(path: String, max_bytes: Int? = none) Promise[Bytes]:
+export fn read_file(path: String, max_bytes: Int? = null) Promise[Bytes]:
 	owned := path.clone()
 	return promise_when_idle(fn: msstd_fs_read_file(owned, max_bytes))
 
@@ -928,8 +936,11 @@ fn through_links(path: String) String:
 // name is cut to 32 characters.
 fn temporary_name(path: String, stamp: String) String:
 	var split = 0
-	if slash := path.last_index_of("/"): split = slash + 1
-	if slash := path.last_index_of("\\"):
+	slash := path.last_index_of("/")
+	if slash != null: split = slash + 1
+
+	slash := path.last_index_of("\\")
+	if slash != null:
 		if slash + 1 > split: split = slash + 1
 
 	directory := path.slice(0, split)
@@ -976,7 +987,7 @@ fn replace_atomically(link: String, data: Bytes) Void!:
 					temporary,
 					path,
 					data,
-					if existing.is_ok(): mode else: none,
+					if existing.is_ok(): mode else: null,
 				)
 			error(cause):
 				if cause.kind != "EEXIST": return error(cause)
@@ -994,8 +1005,10 @@ fn finish_atomic(
 ) Void!:
 	var out = file
 	var prepared = out.write(data)
+
 	if prepared.is_ok():
-		if permissions := mode: prepared = out.chmod(permissions)
+		permissions := mode
+		if permissions != null: prepared = out.chmod(permissions)
 
 	synced := if prepared.is_error(): prepared.clone() else: out.sync()
 	closed := out.close()
@@ -1047,7 +1060,7 @@ fn move_by_copy(source: String, destination: String, cause: Error) Void!:
 
 /*
 Watches `path` for changes and returns the changes as a stream, one event per item. Dropping the stream stops the watcher.
-When `path` itself is removed or moved away, the stream delivers that event and then ends (`next` returns none).
+When `path` itself is removed or moved away, the stream delivers that event and then ends (`next` returns null).
 With `recursive`, a directory that appears is watched at once and its existing entries are reported as `rename` events.
 Without `options.interval` it uses native OS events (inotify on Linux, kqueue on macOS, ReadDirectoryChangesW on Windows).
 With an interval it compares snapshots of the tree every `interval`, which must be positive, and can miss transient changes;
@@ -1069,8 +1082,10 @@ export fn watch(
 	recursive: Bool = false,
 	options: WatchOptions = WatchOptions(),
 ) ReadStream[FileEvent]!:
-	if interval := options.interval:
-		if options.max_events.is_some() or options.overflow.is_some(): return error(
+	interval := options.interval
+
+	if interval != null:
+		if (options.max_events != null) or (options.overflow != null): return error(
 			invalid_input()
 		)
 		return ok(
@@ -1091,7 +1106,7 @@ export fn watch(
 				recursive,
 				options.max_entries,
 				options.max_events,
-				options.overflow.get_or("error"),
+				options.overflow or "error",
 			)?
 		)
 	)

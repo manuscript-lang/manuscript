@@ -18,7 +18,7 @@ type Payload:
 export fn emit(logger: Logger) Void!:
     child := logger.child_json("{\"request\":\"req-1\"}")?
     fields := Payload(
-        count: 9007199254740993, ok: true, nested: [none, false], service: "worker",
+        count: 9007199254740993, ok: true, nested: [null, false], service: "worker",
         level: 0, msg: "spoofed", time: 0
     )
     child.debug("filtered")?

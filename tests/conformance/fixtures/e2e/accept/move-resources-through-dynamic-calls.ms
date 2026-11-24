@@ -1,8 +1,9 @@
 // conform: tags=interfaces,scope-cleanup,tier-core
 // conform: phase=run
-// A `move` parameter of a function type or interface operation is handed over at run time:
-// a lambda, a named function, an implementation and a `move fn` receiver each own the resource they receive, close
-// it when they only read it, and keep it when they move it on. Nothing is copied.
+// A `move` parameter of a function type or interface operation is handed over at run
+// time: a lambda, a named function, an implementation and a `move fn` receiver each own
+// the resource they receive, close it when they only read it, and keep it when they
+// move it on. Nothing is copied.
 import Closeable, print from "@std/core.ms"
 
 type Door:
@@ -19,7 +20,7 @@ type Counter:
 
 // Only reads the door: it owns it, so it closes it at its end.
 fn var Counter.take(move door: Door) Int:
-	self.seen = self.seen + door.id
+	self.seen += door.id
 	return self.seen
 
 interface Finisher:
@@ -49,15 +50,22 @@ fn keep(move door: Door) Int:
 fn main() Void:
 	var kept: List[Door] = []
 	print(f"lambda reads {apply(fn move d: d.id, Door(1))}")
-	stored := apply(fn move d:
-		kept.append(d)
-		return kept.length()
-	, Door(2))
+
+	stored := apply(
+		fn move d:
+			kept.append(d)
+			return kept.length()
+		,
+		Door(2)
+	)
+
 	print(f"lambda keeps {stored}")
 	print(f"reader {apply(read, Door(3))}")
 	print(f"named keeps {apply(keep, Door(4))}")
+
 	maybe: Door? := Door(5)
-	print(f"map {maybe.map(fn d: d.id * 10).get_or(0)}")
+	if maybe != null: print(f"map {maybe.id * 10}")
+
 	var t: Taker = Counter(0)
 	print(f"interface {give(t, Door(6))}")
 	print(f"finished {finish(Door(7))}")

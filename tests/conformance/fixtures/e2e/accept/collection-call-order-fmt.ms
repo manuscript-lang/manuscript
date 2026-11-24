@@ -12,7 +12,7 @@ test "receiver before index":
             i:
                 calls += 1
                 i
-            none: 0
+            null: 0
     )
     expect_equal(result, 7)?
     expect_equal(calls, 1)?

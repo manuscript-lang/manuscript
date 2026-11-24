@@ -64,12 +64,12 @@ export enum Stdio:
 export type RunOptions:
 	// Bytes written to the child's standard input.
 	input: Bytes = "".to_bytes()
-	// Largest total output of both streams in bytes; none sets no cap. More returns
+	// Largest total output of both streams in bytes; null sets no cap. More returns
 	// EOVERFLOW.
 	max_output_bytes: Int?
-	// How long the child may run; none waits without limit. Expiry returns ETIMEDOUT.
+	// How long the child may run; null waits without limit. Expiry returns ETIMEDOUT.
 	timeout: Duration?
-	// The child's working directory; none inherits the caller's.
+	// The child's working directory; null inherits the caller's.
 	cwd: String?
 	// Variables added to or replaced in the inherited environment.
 	env: Map[String, String] = Map[String, String]()
@@ -83,7 +83,7 @@ export type SpawnOptions:
 	stdout: Stdio = Stdio.Pipe
 	// Where the child writes standard error.
 	stderr: Stdio = Stdio.Pipe
-	// The child's working directory; none inherits the caller's.
+	// The child's working directory; null inherits the caller's.
 	cwd: String?
 	// Variables added to or replaced in the inherited environment.
 	env: Map[String, String] = Map[String, String]()
@@ -95,7 +95,7 @@ export interface Commands:
 	/*
     Starts `program` directly, without a shell, searching the PATH, and waits for it to finish. `arguments` are passed after the program name, `options.input` is written to its standard input, and its output is captured.
     Output beyond `options.max_output_bytes` in total across both streams returns EOVERFLOW, `options.timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-    `options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+    `options.cwd` is the child's working directory (null inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
     */
 	fn run(
 		program: String,
@@ -122,7 +122,7 @@ export extern type NativeSubprocess
 /*
 A long-lived child process with live stdin, stdout, and stderr streams. Closing it
 kills the child's process group, joins it, and closes all three streams.
-A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so a read returns end of stream (`none`) and a write returns EBADF.
+A stream spawned as Stdio.Inherit or Stdio.Null has no pipe: it is already closed, so a read returns end of stream (`null`) and a write returns EBADF.
 */
 export opaque type Subprocess:
 	// The runtime handle; it is released by `close` and owned by this value.
@@ -157,7 +157,7 @@ fn Subprocess.stderr() ReadStream[Bytes]:
 // Waits for the child to exit and returns its exit status, or -1 for a child ended by a
 // signal on Unix. Returns ETIMEDOUT if `timeout` elapses first, leaving the child
 // running.
-fn Subprocess.wait(timeout: Duration? = none) Int!:
+fn Subprocess.wait(timeout: Duration? = null) Int!:
 	return msstd_process_subprocess_wait(self.native, timeout)
 
 // The child's peak resident set size in bytes, known once `wait` has returned its
@@ -283,7 +283,7 @@ fn run_command(
 /*
 Starts `program` directly, without a shell, searching the PATH, and returns a promise that finishes when it does. `arguments` are passed after the program name, `options.input` is written to its standard input, and its output is captured.
 Output beyond `options.max_output_bytes` in total across both streams returns EOVERFLOW, `options.timeout` returns ETIMEDOUT, and in both cases the child's process group is killed. Cancelling the calling task also kills it.
-`options.cwd` is the child's working directory (none inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
+`options.cwd` is the child's working directory (null inherits the caller's); `options.env` adds or replaces variables on top of the inherited environment, and a name that is empty or holds `=`, or a NUL byte anywhere, returns EINVAL. A `cwd` that does not exist returns ENOENT. Neither touches the caller's own directory or environment, so concurrent tasks can run children in different directories.
 */
 // ms: effect std.process.run
 export fn run(
@@ -327,7 +327,7 @@ export fn spawn(
 /*
 Observes the native signal numbers in `signals`: a nonempty list of numbers from 1 through 64, excluding SIGKILL and
 SIGSTOP. Other lists return EINVAL. `capacity` is how many signals are buffered while no read waits, from 1 through
-1048576; none uses 128. A number in range may still be unsupported by the OS. Observing a signal does not suppress
+1048576; null uses 128. A number in range may still be unsupported by the OS. Observing a signal does not suppress
 host cancellation.
 Each read yields the next signal number; the stream never ends on its own. Dropping it unregisters the observer.
 Use scope-owned `Closeable` resources for shutdown cleanup, since cancellation may prevent code after a read from running.

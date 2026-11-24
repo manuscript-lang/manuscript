@@ -22,16 +22,16 @@ type Entry:
 
 fn parse(line: String) Entry?:
 	f := line.split(" ")
-	if f.length() != 6: return none
-	if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return none
-	if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])): return none
-	if not digits(f[5]) or f[5].length() > 9: return none
+	if f.length() != 6: return null
+	if f[0].is_empty() or not LEVELS.contains(f[1]) or not METHODS.contains(f[2]): return null
+	if not f[3].starts_with("/") or not (f[4].length() == 3 and digits(f[4])): return null
+	if not digits(f[5]) or f[5].length() > 9: return null
 
 	return Entry(
 		f[1].clone(),
 		f[3].clone(),
-		f[4].parse_int().get_or(0),
-		f[5].parse_int().get_or(0),
+		f[4].parse_int() or 0,
+		f[5].parse_int() or 0,
 		f[2].clone(),
 		f[0].clone(),
 	)
@@ -41,7 +41,7 @@ fn solve(s: String) String:
 	var bad = 0
 	var classes = [0, 0, 0, 0, 0]
 	var lats = List[Int]()
-	var slow: Entry? = none
+	var slow: Entry? = null
 	var levels = Map[String, Int]()
 	var counts = Map[String, Int]()
 	var totals = Map[String, Int]()
@@ -51,11 +51,11 @@ fn solve(s: String) String:
 
 		r := parse(line)
 
-		if r.is_none():
+		if r == null:
 			bad += 1
 			continue
 
-		e := r.get_or(Entry("", "", 0, 0, "", ""))
+		e := r
 		valid += 1
 		levels[e.level.clone()] = levels.get_or(e.level, 0) + 1
 
@@ -63,7 +63,7 @@ fn solve(s: String) String:
 		class := if first == "2": 0 else: if first == "3": 1 else: if first == "4": 2 else: if first == "5": 3 else: 4
 		classes[class] += 1
 		lats.append(e.latency)
-		if slow.is_none() or e.latency > slow.clone().get_or(e.clone()).latency: slow = e.clone()
+		if (slow == null) or e.latency > (slow.clone() or e.clone()).latency: slow = e.clone()
 		counts[e.path.clone()] = counts.get_or(e.path, 0) + 1
 		totals[e.path.clone()] = totals.get_or(e.path, 0) + e.latency
 
@@ -77,7 +77,9 @@ fn solve(s: String) String:
 	out.append(
 		f"p95: {if lats.is_empty(): 0 else: sorted_lats[(95 * lats.length() + 99) / 100 - 1]}"
 	)
-	if e := slow: out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
+
+	e := slow
+	if e != null: out.append(f"slowest: {e.latency} {e.method} {e.path} {e.ts}")
 	out.append("top:")
 
 	order := counts.keys().sorted(

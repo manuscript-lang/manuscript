@@ -42,8 +42,8 @@ recommended keeping the scoped quadratic fix with these costs disclosed.
 
 ## Protocol and validation
 
-The [shared harness](../parser-suffix/bench.rs) and
-[runner](../parser-suffix/run.py) use ten balanced AB/BA fresh-process pairs per
+The shared harness and
+runner use ten balanced AB/BA fresh-process pairs per
 case, shuffled with seed 1729: 420 samples across 21 groups. Each process warms
 three passes and times at least 100 ms in batches of 16. Setup and validation are
 outside the timer; parsing, source retention and destruction are inside it.

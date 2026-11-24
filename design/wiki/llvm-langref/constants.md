@@ -310,7 +310,7 @@ With [Control-Flow Integrity (CFI)](https://clang.llvm.org/docs/ControlFlowInteg
 
 `ptrauth (ptr CST, i32 KEY[, i64 DISC[, ptr ADDRDISC[, ptr DS]?]?]?)`
 
-A ‘`ptrauth`’ constant represents a pointer with a cryptographic authentication signature embedded into some bits, as described in the [Pointer Authentication](PointerAuth.html) document.
+A ‘`ptrauth`’ constant represents a pointer with a cryptographic authentication signature embedded into some bits, as described in the Pointer Authentication document.
 
 A ‘`ptrauth`’ constant is simply a constant equivalent to the `llvm.ptrauth.sign` intrinsic, potentially fed by a discriminator `llvm.ptrauth.blend` if needed.
 

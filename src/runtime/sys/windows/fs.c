@@ -3,9 +3,13 @@
 #include <fcntl.h>
 #include <io.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <uv.h>
 #include <windows.h>
 
+#include "base/ostext.h"
+#include "base/strbuild.h"
 #include "runtime/sys/fs.h"
 
 static double seconds_of(int64_t seconds, int64_t nanos) { return (double)seconds + (double)nanos / 1e9; }
@@ -117,5 +121,41 @@ int ms_sys_fs_refine_error(int code, const char *path, size_t length) {
       return UV_ENAMETOOLONG;
     }
   }
+  return code;
+}
+
+/* Whether `target`, as a link at `path` would resolve it, is a directory. */
+static bool names_directory(const char *target, const char *path) {
+  const bool rooted = target[0] == '/' || target[0] == '\\' || (target[0] != '\0' && target[1] == ':');
+  const char *separator = NULL;
+  for (const char *at = path; *at != '\0'; at++) {
+    if (*at == '/' || *at == '\\') {
+      separator = at;
+    }
+  }
+  MsStrBuild joined = ms_strbuild_new();
+  MsOsText text = {0};
+  const char *resolved = target;
+  if (!rooted && separator != NULL) {
+    ms_strbuild_append(&joined, ms_span_of((const uint8_t *)path, (size_t)(separator - path) + 1));
+    ms_strbuild_append_text(&joined, target);
+    text = ms_os_text_new(ms_strbuild_span(&joined));
+    resolved = text.ptr;
+  }
+  uv_fs_t request;
+  const bool directory = uv_fs_stat(NULL, &request, resolved, NULL) == 0 && (request.statbuf.st_mode & 0170000u) == 0040000u;
+  uv_fs_req_cleanup(&request);
+  if (resolved != target) {
+    ms_os_text_free(&text);
+  }
+  ms_strbuild_free(&joined);
+  return directory;
+}
+
+int ms_sys_fs_symlink(const char *target, const char *path) {
+  uv_fs_t request;
+  const int flags = names_directory(target, path) ? UV_FS_SYMLINK_DIR : 0;
+  const int code = uv_fs_symlink(NULL, &request, target, path, flags, NULL);
+  uv_fs_req_cleanup(&request);
   return code;
 }

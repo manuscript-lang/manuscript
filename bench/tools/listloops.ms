@@ -53,7 +53,7 @@ fn run(work: String, n: Int) Result[String, Error]:
 				if f.length() < 2 or f[0] == "check": continue
 
 				key := f"{f[0]} {v}"
-				value := f[1].parse_float().get_or(0.0)
+				value := f[1].parse_float() or 0.0
 				if value > best.get_or(key, 0.0) or not best.contains(key): best.add(
 					key.clone(),
 					value,

@@ -13,7 +13,8 @@ type Pair:
 	back: List[FileHandle] = []
 
 fn shift(var from: List[FileHandle], var to: List[FileHandle]) Void:
-	if value := from.pop():
+	value := from.pop()
+	if value != null:
 		to.append(value)
 
 fn var Pair.rebalance() Void:
@@ -26,7 +27,8 @@ type Words:
 	c: List[String] = []
 
 fn move_word(var from: List[String], var to: List[String]) Void:
-	if value := from.pop():
+	value := from.pop()
+	if value != null:
 		to.append(value)
 
 fn tally(
@@ -36,7 +38,9 @@ fn tally(
 	seen: List[String],
 ) Void:
 	count += seen.length()
-	if value := from.pop():
+
+	value := from.pop()
+	if value != null:
 		to.append(value)
 
 fn var Words.step() Void:

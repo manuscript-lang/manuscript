@@ -28,5 +28,5 @@ test "big integer operators keep precision past 64 bits":
     var x = big_int_of_int(1)
     for i in 0..70:
         x = x * big_int_of_int(2)
-    expect_equal(x.to_int(), none)?
+    expect_equal(x.to_int(), null)?
     expect_equal(x.to_string(), "1180591620717411303424")?

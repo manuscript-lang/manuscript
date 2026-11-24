@@ -18,7 +18,7 @@ All **4,480 measured invocations** passed declared workload fingerprint/source-s
 
 Each LSP producer warms one query; the formatter producer performs two untimed formatting calls, including output-idempotence verification. Generation/checking/index setup is outside timing, except completion's request analysis. JSON workloads consume complete rendered JSON; hover consumes selected offset/text; index consumes selected ordered identity/name/file/range facts; formatter consumes complete output. Timer details are in each original suite's README. Linux child VmHWM includes setup and does not isolate query allocations; no allocator/instruction counters were available.
 
-Every raw sample and rounded summary is retained in the four CSV/summary pairs. [Provenance](provenance.json) records trees, reversal commits, binary/harness/data SHA-256 values and the CI blocker. All data CSV record endings are normalized to repository LF without changing records.
+Every raw sample and rounded summary is retained in the four CSV/summary pairs. Provenance records trees, reversal commits, binary/harness/data SHA-256 values and the CI blocker. All data CSV record endings are normalized to repository LF without changing records.
 
 | Workload | Before ms | Combined after ms |
 | --- | ---: | ---: |

@@ -73,14 +73,14 @@ test "secure_int covers wide and empty ranges":
 	_reversed := expect_error(secure_int(5, 2))?
 	expect_equal(secure_int(7, 8)?, 7)?
 
-	wide := secure_int(-9223372036854775807 - 1, none)?
+	wide := secure_int(-9223372036854775807 - 1, null)?
 	expect_true(wide <= 9223372036854775806)?
 
 	low := secure_int(-9223372036854775807 - 1, -9223372036854775807)?
 	expect_equal(low, -9223372036854775807 - 1)?
 
 	empty: List[Int] := []
-	expect_equal(choice(empty)?, none)?
+	expect_equal(choice(empty)?, null)?
 	expect_equal(shuffle([5])?, [5])?
 
 fn draw_wide(min: Int, max_exclusive: Int) Void:

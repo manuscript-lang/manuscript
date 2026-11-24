@@ -38,7 +38,7 @@ import (
 
 // Supplies the items of a stream; `next` may wait for an item to become available.
 export interface Source[T]:
-	// Returns the next item, waiting when needed. Returns `none` at the end of the
+	// Returns the next item, waiting when needed. Returns `null` at the end of the
 	// stream and an error when the source fails.
 	var fn next() T?!
 	// Releases what the source owns; the stream calls it once, when it closes.
@@ -69,13 +69,15 @@ export type ReadStream[T]:
 	// Whether `close` has run; a closed stream is at its end.
 	closed: Bool = false
 
-// Returns the next item, or `none` at the end or after `close`. A failed read returns
+// Returns the next item, or `null` at the end or after `close`. A failed read returns
 // its error. With `timeout`, a read that waits that long in total (a stalled socket)
 // fails with `ETIMEDOUT`. The source may be left mid-item, so close the stream
 // afterwards.
-fn var ReadStream[T].next(timeout: Duration? = none) move T?!:
-	if self.closed: return ok(none)
-	if bound := timeout: return read_bounded(self.source, bound)
+fn var ReadStream[T].next(timeout: Duration? = null) move T?!:
+	if self.closed: return ok(null)
+
+	bound := timeout
+	if bound != null: return read_bounded(self.source, bound)
 
 	return self.source.next()
 
@@ -88,7 +90,7 @@ fn move ReadStream[T].close() Void!:
 	return self.source.close()
 
 // Half-closes the stream: closes the source now and leaves the stream ended, so a
-// holder (a connection's input side) keeps its other parts. Later reads return `none`.
+// holder (a connection's input side) keeps its other parts. Later reads return `null`.
 fn var ReadStream[T].end() Void!:
 	self.closed = true
 
@@ -115,7 +117,7 @@ type EndedSource[T]:
 	done: Bool = true
 
 fn var EndedSource[T].next() move T?!:
-	return ok(none)
+	return ok(null)
 
 fn move EndedSource[T].close() Void!:
 	return ok()
@@ -172,7 +174,7 @@ export type DescriptorSource:
 	// Set by `close`, so a second close (the owner's scope end) releases nothing.
 	closed: Bool = false
 
-// Waits for the next chunk of the descriptor. Returns `none` at its end and `EIO`
+// Waits for the next chunk of the descriptor. Returns `null` at its end and `EIO`
 // when the descriptor failed. A wait that ends early, such as at the `timeout` of
 // `ReadStream.next`, returns `ETIMEDOUT`.
 fn var DescriptorSource.next() move Bytes?!:
@@ -185,12 +187,14 @@ fn var DescriptorSource.next() move Bytes?!:
 
 	chunk := msrt_promise_take[Bytes](p)
 	msrt_promise_drop(p)
-	if data := chunk: return ok(data)
+
+	data := chunk
+	if data != null: return ok(data)
 
 	message := msrt_streams_error(self.id)
 	if not message.is_empty(): return error(Error(message, kind: "EIO"))
 
-	return ok(none)
+	return ok(null)
 
 // Releases the descriptor without waiting.
 fn move DescriptorSource.close() Void!:
@@ -337,15 +341,17 @@ export fn stderr_bytes() WriteStream[Bytes]:
 
 // ---- Pipes ---------------------------------------------------------------------------------------------------------
 
-// Internal: the next value of pipe `id`, waiting when needed; `none` once every writer
+// Internal: the next value of pipe `id`, waiting when needed; `null` once every writer
 // has closed.
 fn pipe_next[T](id: Int) T?!:
 	// Fast path: a queued value or the end needs no promise.
-	if queued := msrt_pipe_try[T](id): return ok(queued)
-	if msrt_pipe_ended(id) == 1: return ok(none)
+	queued := msrt_pipe_try[T](id)
+	if queued != null: return ok(queued)
+	if msrt_pipe_ended(id) == 1: return ok(null)
 
 	if msrt_pipe_brief_wait(id) == 1:
-		if queued := msrt_pipe_try[T](id): return ok(queued)
+		queued := msrt_pipe_try[T](id)
+		if queued != null: return ok(queued)
 
 	p := msrt_pipe_read(id)
 	code := msrt_promise_wait(p, -1)
@@ -422,7 +428,7 @@ fn var Pipe[T].reader() ReadStream[T]:
 	self.taken = true
 	return ReadStream[T](PipeSource[T](self.id))
 
-// Waits for the next value; returns `none` once every writer has closed. Unlike
+// Waits for the next value; returns `null` once every writer has closed. Unlike
 // `reader()`, it takes no stream, so a consumer that only borrows the pipe, such as a
 // promise, can use it. Use it instead of `reader()`, never together with it.
 fn Pipe[T].receive() T?!:
@@ -449,7 +455,7 @@ export fn pipe[T](capacity: Int) Pipe[T]:
 // back at the end. A custom step may wait.
 export interface Transform[A, B]:
 	// Takes one input item and appends to `out` the output items it completes, possibly
-	// none.
+	// null.
 	var fn step(move value: A, var out: List[B]) Void!
 	// Called once at the end of the input; appends any held-back items to `out`.
 	var fn finish(var out: List[B]) Void!
@@ -464,13 +470,15 @@ type Through[A, B]:
 
 fn var Through[A, B].next() move B?!:
 	while true:
-		if item := self.out.pop(): return ok(item)
-		if self.finished: return ok(none)
+		item := self.out.pop()
+		if item != null: return ok(item)
+		if self.finished: return ok(null)
 
 		step := self.input.next()?
 		var wrote: Void! = ok()
+		value := step
 
-		if value := step:
+		if value != null:
 			wrote = self.transform.step(value, self.out)
 		else:
 			self.finished = true
@@ -484,7 +492,7 @@ fn var Through[A, B].next() move B?!:
 
 		if self.out.length() > 1: self.out.reverse()
 
-	return ok(none)
+	return ok(null)
 
 fn move Through[A, B].close() Void!:
 	return self.input.close()

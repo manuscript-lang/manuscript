@@ -15,7 +15,7 @@ Writer::quoted after an escape has been found: copy the preceding plain run,
 then escape consecutive nonzero entries of the existing escape table without
 repeating the general search. Plain strings, UTF-8 output, escape spelling,
 allocation reservation, error checks and byte budgets retain their contract.
-The [unapplied zero-context patch](variants/candidate.patch) reconstructs the exact
+The unapplied zero-context patch reconstructs the exact
 candidate with `git apply --unidiff-zero` on the pinned base.
 
 This is a native library component comparison, not compiled-Manuscript or generated
@@ -51,10 +51,10 @@ a writer comparison for equivalent values, not an assertion of identical layouts
 | decimals | 5768.56 | 5751.94 | 6793.95 | 1.003x |
 | hard-floats | 49439.66 | 50071.81 | 6847.72 | 0.987x |
 
-The [full matrix](results/2026-10-31/full/summary.json) and
-[float edges](results/2026-10-31/edges/summary.json) retain all distributions and
+The full matrix and
+float edges retain all distributions and
 parser controls, including unfavorable results. Small writes appeared slower, so
-one prespecified [long confirmation](results/2026-10-31/long-writes/summary.json)
+one prespecified long confirmation
 covered all eight writer cases with twelve balanced A/A/candidate trials at about
 700ms per baseline process: 288 complete observations. A/A uses one exact binary.
 
@@ -78,7 +78,7 @@ Independent skeptical review checked the source, test expectations and statistic
 
 ## Memory, correctness and provenance
 
-[RSS](results/2026-10-31/memory/samples.json) records six cases × six balanced trials
+RSS records six cases × six balanced trials
 × three labels =108 unique fresh processes. Whole-process peaks include setup,
 semantic checks and 1,000 writes, not allocation counts. Candidate median shifts
 include +64KiB empty, +122KiB Unicode, +68KiB dense and unchanged integer writing;
@@ -89,11 +89,11 @@ The additional archived `adjacent_escape_runs_keep_unicode_boundaries_and_exact_
 test also passes: runs at start/end, Unicode between runs, plain lengths
 0/1/7/15/16/17/31/32/33/127/128, exact bytes and one-byte-short budgets. Expected
 escapes are explicit, independent of the implementation. The added test is
-[archived](variants/adjacent-runs-test.rs.txt), not added to the active suite.
+archived, not added to the active suite.
 No lifetime test, full workspace suite, Windows, HTTP, Debug JSON or compiler/backend
 investigation was run under campaign exclusions. Required CI remains enabled.
 
-[Build identities](variants/build-identities.json) pin the base, before/after
+Build identities pin the base, before/after
 library/binary hashes, lockfile and source hashes. Sources are archived in variants:
 benchmark-main.rs.txt, float-edges.rs.txt, Cargo.toml.txt and Cargo.lock.txt.
 The complete outputs are losslessly bundled as payloads.json.gz keyed by original

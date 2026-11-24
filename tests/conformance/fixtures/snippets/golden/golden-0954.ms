@@ -5,4 +5,4 @@ fn f(x: Int?) Result[Void, Error]:
         n:
             g(n)?
             return ok()
-        none: return ok()
+        null: return ok()

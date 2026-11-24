@@ -7,7 +7,7 @@ type Node:
 	next: Node?
 
 fn parse(text: String) Int!:
-	return text.parse_int().ok_or(Error("not a number"))
+	return ok_or(text.parse_int(), Error("not a number"))
 
 fn parse_digits(text: String) String!:
 	return ok(parse(text)?.to_string())
@@ -19,7 +19,7 @@ fn second_of(n: Node?) Int?:
 	return n?.next?.value
 
 fn make() Node:
-	return Node(1, Node(2, none))
+	return Node(1, Node(2, null))
 
 fn first_value() Int?:
 	return make().next?.value
@@ -34,15 +34,16 @@ test "a member after ? on a Result reads the unwrapped value":
 
 test "? on an Optional gives the value, or leaves the function with none":
 	expect_equal(value_of(make()), 1)?
-	expect_equal(value_of(none), none)?
+	expect_equal(value_of(null), null)?
 	expect_equal(second_of(make()), 2)?
-	expect_equal(second_of(Node(1, none)), none)?
+	expect_equal(second_of(Node(1, null)), null)?
 	expect_equal(first_value(), 2)?
 
 test "? on an absent Optional returns early from a function returning nothing":
 	var present: List[Int] = []
 	mark(present, make())
 	expect_equal(present, [1, 99])?
+
 	var absent: List[Int] = []
-	mark(absent, none)
+	mark(absent, null)
 	expect_equal(absent, [])?

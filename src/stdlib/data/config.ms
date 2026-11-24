@@ -15,7 +15,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
 	// Split on LF alone: a CR before it stays until the parser knows it is outside a
 	// quoted value.
-	lines := text.cut_prefix("\u{feff}").get_or(text.clone()).split("\n")
+	lines := (text.cut_prefix("\u{feff}") or text.clone()).split("\n")
 	var index = 0
 
 	while index < lines.length():
@@ -27,11 +27,11 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 		index += 1
 		if entry.trim().is_empty() or entry.starts_with("#"): continue
 
-		assignment := entry.cut_prefix("export ").get_or(entry)
+		assignment := entry.cut_prefix("export ") or entry
 		found := assignment.index_of("=")
-		if found.is_none(): return error(config_error(number, "expected NAME=value"))
+		if found == null: return error(config_error(number, "expected NAME=value"))
 
-		at := found.get_or(0)
+		at := found
 		name := assignment.view(0, at).trim()
 		if not valid_name(name): return error(
 			config_error(number, "invalid variable name")
@@ -53,7 +53,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 		var parts = [value.view(1, value.length()).clone()]
 		var closing = parts[0].index_of(quote)
 
-		while closing.is_none():
+		while closing == null:
 			if index >= lines.length(): return error(
 				config_error(number, "unterminated quote")
 			)
@@ -64,7 +64,7 @@ export fn parse_dotenv(text: String) Map[String, String]!:
 
 		last := parts.length() - 1
 		body := parts.join("\n")
-		end := body.length() - parts[last].length() + closing.get_or(0)
+		end := body.length() - parts[last].length() + (closing or 0)
 		trailing := body.view(end + 1, body.length()).trim()
 		if not trailing.is_empty() and not trailing.starts_with("#"): return error(
 			config_error(number, "unexpected text after quoted value")
@@ -91,7 +91,7 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 	var current = ""
 	var number = 0
 
-	for raw in text.cut_prefix("\u{feff}").get_or(text.clone()).lines():
+	for raw in (text.cut_prefix("\u{feff}") or text.clone()).lines():
 		number += 1
 
 		entry := raw.trim()
@@ -107,9 +107,9 @@ export fn parse_ini(text: String) Map[String, Map[String, String]]!:
 			continue
 
 		split := first_assignment(entry)
-		if split.is_none(): return error(config_error(number, "expected key = value"))
+		if split == null: return error(config_error(number, "expected key = value"))
 
-		at := split.get_or(0)
+		at := split
 		key := entry.view(0, at).trim()
 		if key.is_empty(): return error(config_error(number, "empty key"))
 
@@ -150,10 +150,10 @@ fn valid_name(name: String) Bool:
 fn first_assignment(entry: String) Int?:
 	eq := entry.index_of("=")
 	colon := entry.index_of(":")
-	if eq.is_none(): return colon
-	if colon.is_none(): return eq
+	if eq == null: return colon
+	if colon == null: return eq
 
-	return eq.get_or(0).min(colon.get_or(0))
+	return (eq).min(colon)
 
 fn ini_value(value: String) String:
 	trimmed := value.trim()
@@ -167,10 +167,14 @@ fn ini_value(value: String) String:
 	// value; the comment may itself contain or end with the quote, so this precedes the
 	// whole-suffix rule.
 	if quoted:
-		if closing := trimmed.view(1, trimmed.length()).index_of(quote):
+		closing := trimmed.view(1, trimmed.length()).index_of(quote)
+
+		if closing != null:
 			tail := trimmed.view(closing + 2, trimmed.length())
+
 			for marker in [" #", " ;"]:
-				if at := tail.index_of(marker):
+				at := tail.index_of(marker)
+				if at != null:
 					if tail.view(0, at).trim().is_empty(): return trimmed.view(
 						1,
 						closing + 1,
@@ -180,9 +184,12 @@ fn ini_value(value: String) String:
 		return trimmed.view(1, trimmed.length() - 1).clone()
 
 	var cut = value.length()
+
 	for marker in [" #", " ;"]:
-		if at := value.index_of(marker):
+		at := value.index_of(marker)
+		if at != null:
 			cut = cut.min(at)
+
 	return value.view(0, cut).trim().clone()
 
 // Builds the error for a malformed line: `config: line <n>: <reason>`, with the line in

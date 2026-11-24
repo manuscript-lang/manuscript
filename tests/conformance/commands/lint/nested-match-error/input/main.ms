@@ -4,9 +4,9 @@ fn pick(a: Int?, b: Int?) Int:
 			match b:
 				y:
 					return x + y
-				none:
+				null:
 					return x
-		none:
+		null:
 			return 0
 
 fn main() Void:

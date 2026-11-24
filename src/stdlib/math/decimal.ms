@@ -56,16 +56,16 @@ fn Decimal.clamp(low: Decimal, high: Decimal) Decimal:
 	return self
 
 // Converts to the nearest Float, which can lose precision because binary floats
-// cannot represent most decimal fractions exactly. Returns none when the value is
+// cannot represent most decimal fractions exactly. Returns null when the value is
 // beyond the Float range.
 fn Decimal.to_float() Float?:
 	value := msstd_decimal_to_float(self)
 	if value.is_finite(): return value
 
-	return none
+	return null
 
 // Discards the fractional part toward zero and returns the integer, so -2.9 gives
-// -2. Returns none when the integer part does not fit in Int.
+// -2. Returns null when the integer part does not fit in Int.
 fn Decimal.truncate_to_int() Int?:
 	return msstd_decimal_truncate_to_int(self)
 
@@ -73,7 +73,7 @@ fn Decimal.truncate_to_int() Int?:
 Rounds exactly to a multiple of `10^-places`, without converting to Float.
 `places` ranges from -6144 through 6176; negative places round to tens, hundreds and so on.
 Invalid places return EINVAL; an unrepresentable result returns ERANGE.
-An omitted or `none` mode selects HalfEven. The result keeps no trailing zeros, so use `to_fixed` to format a fixed number of digits.
+An omitted or `null` mode selects HalfEven. The result keeps no trailing zeros, so use `to_fixed` to format a fixed number of digits.
 */
 fn Decimal.round(places: Int, mode: RoundingMode?) Decimal!:
 	return msstd_decimal_round(self, places, mode)
@@ -81,7 +81,7 @@ fn Decimal.round(places: Int, mode: RoundingMode?) Decimal!:
 /*
 Rounds exactly and formats in plain decimal notation with exactly `digits` fractional digits, keeping trailing zeros.
 `digits` ranges from 0 through 6176; any other value returns EINVAL.
-An omitted or `none` mode selects HalfEven. A result that rounds to zero has no minus sign.
+An omitted or `null` mode selects HalfEven. A result that rounds to zero has no minus sign.
 */
 fn Decimal.to_fixed(digits: Int, mode: RoundingMode?) String!:
 	return msstd_decimal_to_fixed(self, digits, mode)

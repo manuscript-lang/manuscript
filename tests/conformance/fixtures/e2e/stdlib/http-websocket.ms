@@ -3,6 +3,7 @@
 import (
 	Bytes from "@std/bytes.ms",
 	PromiseOptions, promise from "@std/concurrency/promise.ms",
+	panic from "@std/core.ms",
 	HttpClientOptions,
 	HttpExchange,
 	HttpMethod,
@@ -46,7 +47,10 @@ fn echo(var exchange: HttpExchange) Void!:
 				)
 			)?
 		)
-		message := (http_result(socket.input.next())?).get()
+		message := (
+			(http_result(socket.input.next())?)
+			or panic("called Optional.get() on null")
+		)
 		_sent := (
 			http_result(
 				socket.output.write(
@@ -72,7 +76,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 		max_requests: 4,
 		timeout: 3.seconds(),
 		grace: 0.seconds(),
-		tls: none,
+		tls: null,
 	)
 	server := (
 		serve(
@@ -118,8 +122,14 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 		| expect_ok?
 	)
 	body.metadata.status | expect_equal(201)?
-	(body.body.next() | expect_ok?).get() | expect_equal("hello".to_bytes())?
-	((body.body.next() | expect_ok?).is_none()) | expect_true?
+	(
+		(
+			(body.body.next() | expect_ok?)
+			or panic("called Optional.get() on null")
+		)
+		| expect_equal("hello".to_bytes())?
+	)
+	((body.body.next() | expect_ok?) == null) | expect_true?
 	client.close()?
 
 	_limited: Void! := error(Error("HTTP: limit exceeded", kind: "EOVERFLOW"))
@@ -138,7 +148,7 @@ test "HTTP buffered and streaming clients call a Manuscript handler":
 			expect_equal(cause, Error("network: limit exceeded", kind: "EOVERFLOW"))?
 
 test "WebSocket negotiates a protocol and echoes a text frame":
-	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -171,7 +181,10 @@ test "WebSocket negotiates a protocol and echoes a text frame":
 		)
 		| expect_ok?
 	)
-	message := (socket.input.next() | expect_ok?).get()
+	message := (
+		(socket.input.next() | expect_ok?)
+		or panic("called Optional.get() on null")
+	)
 	(
 		(
 			message.kind != WebSocketKind.Text
@@ -188,32 +201,52 @@ fn upgrade_status(address: String, version: String, extra: String) String!:
 	)
 	send(client, request)?
 
-	reply := (recv(client, 2.seconds())?).get_or(Bytes([]))
-	return ok(reply.decode_utf8().get_or("").split("\r\n").first().get_or(""))
+	reply := (recv(client, 2.seconds())?) or Bytes([])
+	return ok((reply.decode_utf8() or "").split("\r\n").first() or "")
 
 test "WebSocket client options bound messages and reject bad values":
-	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
-	server := serve(address: "127.0.0.1:0", handler: echo, options: options) | expect_ok?
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
+	server := (
+		serve(
+			address: "127.0.0.1:0",
+			handler: echo,
+			options: options,
+		) | expect_ok?
+	)
 	url := f"ws://{server.address()}/ws"
-
 	var limited = web_socket(url, WebSocketOptions(max_message_bytes: 10)) | expect_ok?
 	over := limited.output.write(
-		WebSocketMessage(data: "x".repeat(11).to_bytes(), kind: WebSocketKind.Binary)
+		WebSocketMessage(
+			data: "x".repeat(11).to_bytes(),
+			kind: WebSocketKind.Binary,
+		)
 	)
 	expect_equal(over.err().kind, "EOVERFLOW")?
-	exact := WebSocketMessage(data: "y".repeat(10).to_bytes(), kind: WebSocketKind.Binary)
+
+	exact := WebSocketMessage(
+		data: "y".repeat(10).to_bytes(),
+		kind: WebSocketKind.Binary,
+	)
 	limited.output.write(exact) | expect_ok?
-	echoed := (limited.input.next() | expect_ok?).get()
+
+	echoed := (
+		(limited.input.next() | expect_ok?)
+		or panic("called Optional.get() on null")
+	)
 	expect_equal(echoed.data.length(), 10)?
 	void limited.close()
 
 	zero := web_socket(url, WebSocketOptions(max_message_bytes: 0))
 	expect_equal(zero.err().kind, "EINVAL")?
-	negative := web_socket(url, WebSocketOptions(timeout: 0.seconds().subtract(1.seconds())))
+
+	negative := web_socket(
+		url,
+		WebSocketOptions(timeout: 0.seconds().subtract(1.seconds())),
+	)
 	expect_equal(negative.err().kind, "EINVAL")?
 
 test "WebSocket upgrades need HTTP/1.1 and one key":
-	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: none)
+	options := HttpServerOptions(timeout: 3.seconds(), grace: 0.seconds(), tls: null)
 	server := (
 		serve(
 			address: "127.0.0.1:0",
@@ -246,7 +279,7 @@ test "HTTP streaming handlers see the Host request header":
 		max_requests: 2,
 		timeout: 3.seconds(),
 		grace: 0.seconds(),
-		tls: none,
+		tls: null,
 	)
 	server := (
 		serve(
@@ -280,7 +313,8 @@ test "HTTP requests reject an empty method":
 		error(cause):
 			expect_equal(cause, Error("network: invalid input", kind: "EINVAL"))?
 
-// The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep instead of waiting it out.
+// The tests serve with `grace: 0.seconds()`, so dropping the server cancels this sleep
+// instead of waiting it out.
 fn silent(var exchange: HttpExchange) Void!:
 	var _socket = (
 		http_result(
@@ -288,7 +322,7 @@ fn silent(var exchange: HttpExchange) Void!:
 				exchange,
 				allowed_origins: [],
 				subprotocols: [],
-				max_message_bytes: none,
+				max_message_bytes: null,
 			)
 		)?
 	)
@@ -328,10 +362,13 @@ fn direct(var exchange: HttpExchange) Void!:
 		exchange.upgrade(
 			allowed_origins: [],
 			subprotocols: [],
-			max_message_bytes: none,
+			max_message_bytes: null,
 		)
 	)?
-	message := (http_result(socket.input.next())?).get()
+	message := (
+		(http_result(socket.input.next())?)
+		or panic("called Optional.get() on null")
+	)
 	_sent := http_result(socket.output.write(message))?
 
 test "HttpExchange.upgrade returns a WebSocket":
@@ -346,5 +383,8 @@ test "HttpExchange.upgrade returns a WebSocket":
 		)
 		| expect_ok?
 	)
-	message := (socket.input.next() | expect_ok?).get()
+	message := (
+		(socket.input.next() | expect_ok?)
+		or panic("called Optional.get() on null")
+	)
 	message.data | expect_equal("hi".to_bytes())?

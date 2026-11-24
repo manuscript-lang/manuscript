@@ -81,7 +81,8 @@ typedef enum MsConversionKind {
   MS_CONV_INTERFACE_VIEW, /* a value seen as an interface it implements */
   MS_CONV_INT_WIDEN,      /* an integer widened to a larger integer type */
   MS_CONV_OPTIONAL_WRAP,  /* `T` to `T?` */
-  MS_CONV_FUNCTION_VALUE  /* a function or lambda used as a function value */
+  MS_CONV_FUNCTION_VALUE, /* a function or lambda used as a function value */
+  MS_CONV_NARROW          /* a nullable local read as its payload where `v != null` holds: `T?` to `T` */
 } MsConversionKind;
 
 /* The conversion applied to the expression `node` to give it type `to` (its own type is `from`). */

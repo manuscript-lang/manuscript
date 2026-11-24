@@ -12,14 +12,14 @@ import (
 // and parsed values, and whether object members that are not fields of `T` are ignored.
 // Set the bounds when the input is untrusted.
 export type JsonOptions:
-	// Maximum UTF-8 input bytes before parsing; none adds no input-size budget.
-	max_bytes: Int? = none
+	// Maximum UTF-8 input bytes before parsing; null adds no input-size budget.
+	max_bytes: Int? = null
 	// Maximum container nesting; a root scalar has depth zero, and a root container
 	// depth one.
-	max_depth: Int? = none
-	// Maximum parsed containers and scalar values, excluding object keys; none adds no
+	max_depth: Int? = null
+	// Maximum parsed containers and scalar values, excluding object keys; null adds no
 	// count budget.
-	max_values: Int? = none
+	max_values: Int? = null
 	// True ignores object members that are not fields of `T`; false makes them return
 	// `EBADMSG`.
 	ignore_unknown_fields: Bool = true
@@ -27,10 +27,10 @@ export type JsonOptions:
 // Settings for `stringify`: an output byte budget, pretty-print indentation, and strict
 // rejection of values without a JSON form.
 export type StringifyOptions:
-	// Maximum encoded UTF-8 bytes; none adds no output budget.
-	max_bytes: Int? = none
-	// Spaces per indentation level; none writes compact JSON.
-	indent: Int? = none
+	// Maximum encoded UTF-8 bytes; null adds no output budget.
+	max_bytes: Int? = null
+	// Spaces per indentation level; null writes compact JSON.
+	indent: Int? = null
 	// True makes any value without a JSON form, anywhere in the document, return
 	// `EBADMSG`.
 	strict: Bool = false
@@ -39,7 +39,7 @@ export type StringifyOptions:
 A JSON value. Number text is retained to avoid losing precision during parsing.
 
 `get` and `get_index` read one level, and the `as_*` methods read a scalar or container.
-Each returns `none` on a mismatch. `get` and `get_index` borrow the selected part, so keep the
+Each returns `null` on a mismatch. `get` and `get_index` borrow the selected part, so keep the
 document alive and unchanged while you use it. `as_string`, `as_list` and `as_map` return clones.
 For nested reads, bind each level with `if value := ...`:
 
@@ -89,15 +89,15 @@ export enum JsonValue:
 		values: Map[String, JsonValue]
 	)
 
-// Returns the object member for `key`, or `none` for an absent key or a value that
+// Returns the object member for `key`, or `null` for an absent key or a value that
 // is not an object. The result borrows from the receiver.
 fn JsonValue.get(key: String) JsonValue?:
 	match self:
 		ObjectValue(values): return values.get(key)
-		_: return none
+		_: return null
 
 /*
-Returns the value reached by reading each object member of `keys` in turn, or `none` when a
+Returns the value reached by reading each object member of `keys` in turn, or `null` when a
 member is absent, a value on the way is not an object, or `keys` is empty. The result borrows
 from the receiver.
 */
@@ -105,55 +105,55 @@ fn JsonValue.get_in(keys: List[String]) JsonValue?:
 	return member_path(self, keys, 0)
 
 // Returns the array element at `index`, counting a negative index from the end. An
-// index out of range, or a value that is not an array, returns `none`. The result
+// index out of range, or a value that is not an array, returns `null`. The result
 // borrows from the receiver.
 fn JsonValue.get_index(index: Int) JsonValue?:
 	match self:
 		ArrayValue(values):
-			if index >= values.length() or index < 0 - values.length(): return none
+			if index >= values.length() or index < 0 - values.length(): return null
 			return values.get(index)
-		_: return none
+		_: return null
 
-// Returns the text of a string value, or `none` for any other value. The result is
+// Returns the text of a string value, or `null` for any other value. The result is
 // an owned copy.
 fn JsonValue.as_string() String?:
 	match self:
 		StringValue(value): return value.clone()
-		_: return none
+		_: return null
 
-// Returns a number value as an Int, or `none` when the value is not a number or its
+// Returns a number value as an Int, or `null` when the value is not a number or its
 // text has a fraction, an exponent, or digits that do not fit in Int.
 fn JsonValue.as_int() Int?:
 	match self:
 		NumberValue(text): return text.parse_int()
-		_: return none
+		_: return null
 
-// Returns a number value as a Float, or `none` when the value is not a number or
+// Returns a number value as a Float, or `null` when the value is not a number or
 // its text does not parse to a finite number.
 fn JsonValue.as_float() Float?:
 	match self:
 		NumberValue(text): return parse_float(text).to_optional()
-		_: return none
+		_: return null
 
-// Returns a boolean value, or `none` for any other value.
+// Returns a boolean value, or `null` for any other value.
 fn JsonValue.as_bool() Bool?:
 	match self:
 		BoolValue(value): return value
-		_: return none
+		_: return null
 
-// Returns the elements of an array value, or `none` for any other value. The result
+// Returns the elements of an array value, or `null` for any other value. The result
 // is an owned copy.
 fn JsonValue.as_list() List[JsonValue]?:
 	match self:
 		ArrayValue(values): return values.clone()
-		_: return none
+		_: return null
 
-// Returns the members of an object value, or `none` for any other value. The result
+// Returns the members of an object value, or `null` for any other value. The result
 // is an owned copy.
 fn JsonValue.as_map() Map[String, JsonValue]?:
 	match self:
 		ObjectValue(values): return values.clone()
-		_: return none
+		_: return null
 
 // Returns true only for the Null case; any other value returns false.
 fn JsonValue.is_null() Bool:
@@ -173,13 +173,13 @@ A value whose shape does not match `T` returns `EBADMSG`; a type that is not `Da
 at compile time. The input, depth and value limits apply to the document before decoding.
 
 - A record is an object. Members may appear in any order. An absent member takes the field's default,
-  else `none` for an `Optional` field. An absent `Void` field becomes `void`; any other absent
+  else `null` for an `Optional` field. An absent `Void` field becomes `void`; any other absent
   required field returns `EBADMSG`. A member that is not a field is ignored, unless
   `ignore_unknown_fields` is `false`, which makes it return `EBADMSG`.
 - An alternative case without payload is its name as a string; one with payload is externally tagged,
   `{"Circle":{"radius":2}}`, with the same member rules for the labeled fields. Standard alternatives such
   as `Result` follow the same rule, so `{"ok":{"value":5}}` reads as `ok(5)`.
-- `T?` reads `null` as `none`, so a present `none` (an `Int??` holding `none`), written as `null`, reads back as `none`.
+- `T?` reads `null` as `null`, so a present `null` (an `Int??` holding `null`), written as `null`, reads back as `null`.
 - `List` reads an array.
 - A sized integer accepts integer digits within its own range, and `Float32` any finite number that fits it.
 - `Int` accepts integer digits that fit in the platform's Int, `Float` any finite number, `BigInt` and `Decimal`
@@ -247,10 +247,10 @@ export interface JsonEncode:
 /*
 Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at compile time.
 
-- Record fields appear in declaration order. A field holding `none` is omitted; so is a field
+- Record fields appear in declaration order. A field holding `null` is omitted; so is a field
   holding a value with no JSON form (`Void`).
-- `none` elsewhere (a list element, the root) is `null`, as is a no-form list element.
-  `T??` is allowed: a present `none` is `null` and an absent value is omitted.
+- `null` elsewhere (a list element, the root) is `null`, as is a no-form list element.
+  `T??` is allowed: a present `null` is `null` and an absent value is omitted.
 - A root value with no JSON form returns `EBADMSG`.
 - An alternative case without payload is its name as a string, `"Dot"`. A case with payload is
   externally tagged: `{"Circle":{"radius":2}}`, an object keyed by the case name whose value holds
@@ -271,9 +271,9 @@ Encodes a `Data` value as JSON text; a type that is not `Data` is rejected at co
 
 `strict` makes any value without a JSON form, anywhere in the document, return `EBADMSG` instead
 of being omitted or written as `null`. This covers `Void`; functions, resources and interface values
-fail the `Data` bound at compile time. A field holding `none` is still omitted.
+fail the `Data` bound at compile time. A field holding `null` is still omitted.
 
-`indent` pretty-prints with that many spaces per level, at most 10; none or 0 is compact. Empty
+`indent` pretty-prints with that many spaces per level, at most 10; null or 0 is compact. Empty
 containers stay `{}` and `[]`, and a space follows each colon. `max_bytes` bounds the output,
 indentation included; exceeding it returns `EOVERFLOW`. A negative bound or indent returns
 `EINVAL`.
@@ -287,7 +287,7 @@ type Request:
     stream: Bool
     user: String?
 
-text := stringify(Request(model: "example", stream: true, user: none))?
+text := stringify(Request(model: "example", stream: true, user: null))?
 print(text)
 ```
 */
@@ -304,11 +304,13 @@ export fn stringify[T: Data](
 
 // The member of `value` at `keys[from:]`, read one object level at a time.
 fn member_path(value: JsonValue, keys: List[String], from: Int) JsonValue?:
-	if from >= keys.length(): return none
+	if from >= keys.length(): return null
 	if from == keys.length() - 1: return value.get(keys[from])
-	if next := value.get(keys[from]): return member_path(next, keys, from + 1)
 
-	return none
+	next := value.get(keys[from])
+	if next != null: return member_path(next, keys, from + 1)
+
+	return null
 
 // Incremental scanner state for `json_reader`. `mode` is 0 between values, 1 inside a
 // container, 2 inside a top-level string, and 3 inside a top-level scalar token.
@@ -341,7 +343,9 @@ fn var JsonReading[T].fail(cause: Error) Void!:
 fn var JsonReading[T].complete() move T!:
 	bytes := self.pending.drain()
 	self.reset()
-	if text := bytes.decode_utf8(): return parse[T](text, self.options)
+
+	text := bytes.decode_utf8()
+	if text != null: return parse[T](text, self.options)
 
 	return error(Error("JSON: invalid data", kind: "EBADMSG"))
 
@@ -360,7 +364,7 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 		else if byte == 34:
 			self.mode = 2
 
-	limit := self.options.max_bytes.get_or(-1)
+	limit := self.options.max_bytes or (-1)
 	if self.mode == 3 and is_space(byte): return ok(true)
 
 	self.size += 1
@@ -387,7 +391,7 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 
 	if byte == 123 or byte == 91:
 		self.depth += 1
-		if self.depth > self.options.max_depth.get_or(self.depth): return error(
+		if self.depth > (self.options.max_depth or self.depth): return error(
 			Error("JSON: limit exceeded", kind: "EOVERFLOW")
 		)
 
@@ -402,24 +406,29 @@ fn var JsonReading[T].scan(byte: UInt8) Bool!:
 // Consumes one byte and returns the value it completes, if any.
 fn var JsonReading[T].advance(byte: UInt8) move T?!:
 	done := self.scan(byte)?
-	if not done: return ok(none)
+	if not done: return ok(null)
 
 	value := self.complete()?
 	return ok(value)
 
 fn var JsonReading[T].step(move value: Bytes, var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
-	if failure := self.failure: return error(failure.clone())
+
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
 	for byte in value.values():
 		stepped := self.advance(byte)
 		if stepped.is_error(): return self.fail(stepped.err())
 
-		if found := stepped.get_or(none): out.append(found)
+		found := stepped.get_or(null)
+		if found != null: out.append(found)
 
 fn var JsonReading[T].finish(var out: List[T]) Void!:
 	if self.finished: return error(Error("JSON: invalid input", kind: "EINVAL"))
-	if failure := self.failure: return error(failure.clone())
+
+	failure := self.failure
+	if failure != null: return error(failure.clone())
 
 	self.finished = true
 	if self.mode == 0: return ok()
@@ -446,15 +455,15 @@ fn starts_value(byte: UInt8) Bool:
 		or byte == 110
 	)
 
-// The error a negative limit reports on the first read, or none.
+// The error a negative limit reports on the first read, or null.
 fn invalid_limits(options: JsonOptions) Error?:
 	if (
-		options.max_bytes.get_or(0) < 0
-		or options.max_depth.get_or(0) < 0
-		or options.max_values.get_or(0) < 0
+		(options.max_bytes or 0) < 0
+		or (options.max_depth or 0) < 0
+		or (options.max_values or 0) < 0
 	):
 		return Error("JSON: invalid options", kind: "EINVAL")
-	return none
+	return null
 
 /*
 Reads a sequence of JSON values of type `T` from a byte stream, such as JSON Lines or concatenated JSON.
@@ -512,6 +521,6 @@ single line, and ends with a line feed. `max_bytes` bounds one encoded value and
 */
 export fn json_writer[T: Data](
 	move output: WriteStream[Bytes],
-	max_bytes: Int? = none,
+	max_bytes: Int? = null,
 ) WriteStream[T]:
 	return WriteStream[T](JsonLines[T](output: output, max_bytes: max_bytes))

@@ -6,7 +6,7 @@ A list has one owner; `clone()` makes a deep copy, and accessors such as `get` b
 */
 export type List[T]:
 	// Constructor-only capacity hint in items: room for this many elements is allocated
-	// up front. The list starts empty. `none` or a negative value reserves nothing.
+	// up front. The list starts empty. `null` or a negative value reserves nothing.
 	reserve: Int?
 
 // Returns an element; negative indexes are relative to the end. An out-of-range
@@ -24,16 +24,16 @@ fn List[T].get_or(index: Int, default: T?) T:
 
 	match default:
 		value: return value
-		none: return self.get(index)
+		null: return self.get(index)
 
-// Returns the first element, or `none` when the list is empty.
+// Returns the first element, or `null` when the list is empty.
 fn List[T].first() T?:
-	if self.is_empty(): return none
+	if self.is_empty(): return null
 	return self.get(0)
 
-// Returns the last element, or `none` when the list is empty.
+// Returns the last element, or `null` when the list is empty.
 fn List[T].last() T?:
-	if self.is_empty(): return none
+	if self.is_empty(): return null
 	return self.get(-1)
 
 // Reports whether the list has no elements.
@@ -48,7 +48,7 @@ fn var List[T].prepend(move value: T) Void: ...
 // invalid index faults.
 fn var List[T].insert(index: Int, move value: T) Void: ...
 
-// Removes and returns the last element in place, or `none` for an empty list.
+// Removes and returns the last element in place, or `null` for an empty list.
 fn var List[T].pop() move T?: ...
 
 // Replaces an element in place; negative indexes count from the end.
@@ -79,13 +79,13 @@ fn var List[T].reverse() Void: ...
 fn var List[T].sort(compare: fn(T, T) Int) Void: ...
 
 // Returns the zero-based index of the first element for which `predicate` is true,
-// or `none`.
+// or `null`.
 fn List[T].find_index(predicate: fn(T) Bool) Int?:
 	for i in 0..self.length():
 		if predicate(self[i]): return i
-	return none
+	return null
 
-// Searches from the end and returns the last matching zero-based index, or `none`.
+// Searches from the end and returns the last matching zero-based index, or `null`.
 fn List[T].find_last_index(predicate: fn(T) Bool) Int?:
 	var i = self.length() - 1
 
@@ -94,7 +94,7 @@ fn List[T].find_last_index(predicate: fn(T) Bool) Int?:
 
 		i -= 1
 
-	return none
+	return null
 
 // Counts the values for which `predicate` is true, calling it once per element in
 // order.
@@ -205,13 +205,13 @@ fn List[T: Clonable].drop(count: Int) move List[T]: ...
 // Copies the leading elements for which `predicate` holds, stopping at the first one
 // that fails it. Example: `[1, 2, 5, 1].take_while(fn x: x < 3)` is `[1, 2]`.
 fn List[T: Clonable].take_while(predicate: fn(T) Bool) List[T]:
-	return self.take(self.find_index(fn x: not predicate(x)).get_or(self.length()))
+	return self.take(self.find_index(fn x: not predicate(x)) or self.length())
 
 // Copies the elements from the first one that fails `predicate` to the end, so it is
 // what `take_while` leaves. Example: `[1, 2, 5, 1].drop_while(fn x: x < 3)` is
 // `[5, 1]`.
 fn List[T: Clonable].drop_while(predicate: fn(T) Bool) List[T]:
-	return self.drop(self.find_index(fn x: not predicate(x)).get_or(self.length()))
+	return self.drop(self.find_index(fn x: not predicate(x)) or self.length())
 
 // Splits the list into consecutive chunks of `size` elements, as copies. The last
 // chunk may be shorter. An empty list, or a `size` of zero or less, gives an empty
@@ -258,15 +258,15 @@ fn List[T: Clonable].filter(predicate: fn(T) Bool) List[T]:
 		if predicate(item): out.append(item.clone())
 	return out
 
-// Returns a copy of the first element for which `predicate` is true, or `none`.
+// Returns a copy of the first element for which `predicate` is true, or `null`.
 // Later elements are not tested after a match.
 fn List[T: Clonable].find(predicate: fn(T) Bool) T?:
 	for item in self:
 		if predicate(item): return item.clone()
-	return none
+	return null
 
 // Searches from the end and returns a copy of the last element for which `predicate`
-// is true, or `none`.
+// is true, or `null`.
 fn List[T: Clonable].find_last(predicate: fn(T) Bool) T?:
 	var i = self.length() - 1
 
@@ -275,7 +275,7 @@ fn List[T: Clonable].find_last(predicate: fn(T) Bool) T?:
 
 		i -= 1
 
-	return none
+	return null
 
 // Sets the elements in [start, end) to copies of `value` in place. Bounds must
 // satisfy 0 <= start <= end <= length(); a negative or larger bound faults instead
@@ -327,14 +327,14 @@ fn List[T: Hashable & Clonable].counts() Map[T, Int]:
 fn List[T: Equal].contains(value: T) Bool:
 	return self.any(fn x: x.equals(value))
 
-// Returns the zero-based index of the first element equal to `value`, or `none`.
+// Returns the zero-based index of the first element equal to `value`, or `null`.
 // Elements must implement `Equal`.
 fn List[T: Equal].index_of(value: T) Int?:
 	for i in 0..self.length():
 		if self[i].equals(value): return i
-	return none
+	return null
 
-// Returns the zero-based index of the last element equal to `value`, or `none`.
+// Returns the zero-based index of the last element equal to `value`, or `null`.
 // Elements must implement `Equal`.
 fn List[T: Equal].last_index_of(value: T) Int?:
 	var i = self.length() - 1
@@ -344,7 +344,7 @@ fn List[T: Equal].last_index_of(value: T) Int?:
 
 		i -= 1
 
-	return none
+	return null
 
 // Returns a new list with a copy of the first of each group of equal elements, in
 // order. Elements must implement `Equal` and be Clonable.
@@ -411,11 +411,11 @@ fn List[T: Comparable].binary_search(value: T) SearchResult:
 
 	return SearchResult(base, base < count and self[base].compare(value) == 0)
 
-// Returns a copy of the least element, or `none` for an empty list. The first of
+// Returns a copy of the least element, or `null` for an empty list. The first of
 // equal elements wins. Example: `[3, 1, 2].min()` is `1`; `List[Int]().min()` is
-// `none`.
+// `null`.
 fn List[T: Comparable & Clonable].min() T?:
-	if self.is_empty(): return none
+	if self.is_empty(): return null
 
 	var at = 0
 	for i in 1..self.length():
@@ -423,10 +423,10 @@ fn List[T: Comparable & Clonable].min() T?:
 			at = i
 	return self[at].clone()
 
-// Returns a copy of the greatest element, or `none` for an empty list. The first of
+// Returns a copy of the greatest element, or `null` for an empty list. The first of
 // equal elements wins. Example: `[3, 1, 2].max()` is `3`.
 fn List[T: Comparable & Clonable].max() T?:
-	if self.is_empty(): return none
+	if self.is_empty(): return null
 
 	var at = 0
 	for i in 1..self.length():
@@ -435,12 +435,12 @@ fn List[T: Comparable & Clonable].max() T?:
 	return self[at].clone()
 
 /*
-Returns a copy of the element whose `key` is greatest, or `none` when the list is empty.
+Returns a copy of the element whose `key` is greatest, or `null` when the list is empty.
 `key` is called once per element in order, and ties keep the earlier element.
 Example: `["bb", "a", "ccc"].max_by(fn w: w.length())` is `"ccc"`.
 */
 fn List[T: Clonable].max_by[K: Comparable](key: fn(T) K) T?:
-	if self.is_empty(): return none
+	if self.is_empty(): return null
 
 	var at = 0
 	var best = key(self[0])
@@ -455,12 +455,12 @@ fn List[T: Clonable].max_by[K: Comparable](key: fn(T) K) T?:
 	return self[at].clone()
 
 /*
-Returns a copy of the element whose `key` is least, or `none` when the list is empty.
+Returns a copy of the element whose `key` is least, or `null` when the list is empty.
 `key` is called once per element in order, and ties keep the earlier element.
 Example: `["bb", "a", "ccc"].min_by(fn w: w.length())` is `"a"`.
 */
 fn List[T: Clonable].min_by[K: Comparable](key: fn(T) K) T?:
-	if self.is_empty(): return none
+	if self.is_empty(): return null
 
 	var at = 0
 	var best = key(self[0])
@@ -572,14 +572,14 @@ fn Map[T, U].is_empty() Bool:
 fn Map[T: Clonable, U].map[W](transform: fn(T, U) W) Map[T, W]:
 	var out = Map[T, W]()
 	for key in self.keys():
-		out.add(key.clone(), transform(key, self.get(key).get()))
+		out.add(key.clone(), transform(key, self[key]))
 	return out
 
 // Combines the entries in insertion order with `step`, starting with `initial`.
 fn Map[T, U].fold[A](initial: A, step: fn(A, T, U) A) A:
 	var acc = initial
 	for key in self.keys():
-		acc = step(acc, key, self.get(key).get())
+		acc = step(acc, key, self[key])
 	return acc
 
 // Combines the entries in reverse insertion order with `step`, starting with
@@ -590,7 +590,7 @@ fn Map[T, U].fold_right[A](initial: A, step: fn(A, T, U) A) A:
 	var i = keys.length() - 1
 
 	while i >= 0:
-		acc = step(acc, keys[i], self.get(keys[i]).get())
+		acc = step(acc, keys[i], self[keys[i]])
 		i -= 1
 
 	return acc
@@ -599,14 +599,14 @@ fn Map[T, U].fold_right[A](initial: A, step: fn(A, T, U) A) A:
 // empty map returns false.
 fn Map[T, U].any(predicate: fn(T, U) Bool) Bool:
 	for key in self.keys():
-		if predicate(key, self.get(key).get()): return true
+		if predicate(key, self[key]): return true
 	return false
 
 // Reports whether every entry satisfies `predicate`, stopping at the first entry
 // that does not. An empty map returns true.
 fn Map[T, U].all(predicate: fn(T, U) Bool) Bool:
 	for key in self.keys():
-		if not predicate(key, self.get(key).get()): return false
+		if not predicate(key, self[key]): return false
 	return true
 
 // Inserts `value` only when the key is absent. The argument is evaluated even when
@@ -638,7 +638,7 @@ fn Map[T: Hashable, U].for_each(operation: fn(T, var U) Void) Void:
 // implementation.
 fn Map[T, U].contains(key: T) Bool: ...
 
-// Returns the value stored for an equal key, or `none` when the key is absent.
+// Returns the value stored for an equal key, or `null` when the key is absent.
 fn Map[T, U].get(key: T) U?: ...
 
 // Returns the number of entries.
@@ -656,7 +656,7 @@ fn var Map[T, U].remove(move key: T) Void: ...
 fn Map[T: Hashable & Clonable, U: Clonable].clone() move Map[T, U]:
 	var out = Map[T, U]()
 	for key in self.keys():
-		out.add(key.clone(), self.get(key).get().clone())
+		out.add(key.clone(), self[key].clone())
 	return out
 
 // Returns a new map of copies of the entries for which `predicate` is true, in
@@ -666,7 +666,7 @@ fn Map[T: Hashable & Clonable, U: Clonable].filter(predicate: fn(T, U) Bool) Map
 	var out = Map[T, U]()
 
 	for key in self.keys():
-		value := self.get(key).get()
+		value := self[key]
 		if predicate(key, value): out.add(key.clone(), value)
 
 	return out
@@ -680,7 +680,7 @@ fn Map[T: Hashable & Clonable, U: Clonable].map_keys[W: Hashable](
 	var out = Map[W, U]()
 
 	for key in self.keys():
-		value := self.get(key).get()
+		value := self[key]
 		out.add(transform(key, value), value)
 
 	return out
@@ -690,18 +690,18 @@ fn Map[T: Hashable & Clonable, U: Clonable].map_keys[W: Hashable](
 fn Map[T: Hashable, U: Clonable].get_or(key: T, fallback: U) move U: ...
 
 // Returns the first entry for which `predicate` is true as a new `MapEntry` holding
-// copies of the key and value, or `none`.
+// copies of the key and value, or `null`.
 fn Map[T: Hashable & Clonable, U: Clonable].find(
 	predicate: fn(T, U) Bool
 ) MapEntry[T, U]?:
 	for key in self.keys():
-		value := self.get(key).get()
+		value := self[key]
 		if predicate(key, value): return MapEntry(key: key.clone(), value: value)
 
-	return none
+	return null
 
 // Searches from the end and returns the last entry for which `predicate` is true as
-// a new `MapEntry` holding copies of the key and value, or `none`.
+// a new `MapEntry` holding copies of the key and value, or `null`.
 fn Map[T: Hashable & Clonable, U: Clonable].find_last(
 	predicate: fn(T, U) Bool
 ) MapEntry[T, U]?:
@@ -709,7 +709,7 @@ fn Map[T: Hashable & Clonable, U: Clonable].find_last(
 	var i = keys.length() - 1
 
 	while i >= 0:
-		value := self.get(keys[i]).get()
+		value := self[keys[i]]
 		if predicate(keys[i], value): return MapEntry(
 			key: keys[i].clone(),
 			value: value,
@@ -717,7 +717,7 @@ fn Map[T: Hashable & Clonable, U: Clonable].find_last(
 
 		i -= 1
 
-	return none
+	return null
 
 // Returns a new list of the values in insertion order.
 fn Map[T: Hashable, U: Clonable].values() List[U]: ...
@@ -727,7 +727,7 @@ fn Map[T: Hashable, U: Clonable].values() List[U]: ...
 fn Map[T: Hashable & Clonable, U: Clonable].entries() List[MapEntry[T, U]]:
 	var out = List[MapEntry[T, U]]()
 	for key in self.keys():
-		out.append(MapEntry(key: key.clone(), value: self.get(key).get().clone()))
+		out.append(MapEntry(key: key.clone(), value: self[key].clone()))
 	return out
 
 // Copies every entry of `other` into this map in place. Existing keys keep their
@@ -753,7 +753,7 @@ Example: `cache.retain(fn key, hits: hits > 0)` evicts unused entries.
 fn var Map[T: Hashable & Clonable, U].retain(keep: fn(T, U) Bool) Void:
 	var doomed = List[T]()
 	for key in self.keys():
-		if not keep(key, self.get(key).get()):
+		if not keep(key, self[key]):
 			doomed.append(key.clone())
 	for key in doomed:
 		self.remove(key)
@@ -817,14 +817,14 @@ fn Set[T].fold_right[A](initial: A, step: fn(A, T) A) A:
 
 	return acc
 
-// Returns the first element for which `predicate` is true, or `none`.
+// Returns the first element for which `predicate` is true, or `null`.
 fn Set[T: Hashable & Clonable].find(predicate: fn(T) Bool) T?:
 	for value in self.values():
 		if predicate(value): return value.clone()
-	return none
+	return null
 
 // Searches from the end and returns the last element for which `predicate` is true,
-// or `none`.
+// or `null`.
 fn Set[T: Hashable & Clonable].find_last(predicate: fn(T) Bool) T?:
 	values := self.values()
 	var i = values.length() - 1
@@ -834,7 +834,7 @@ fn Set[T: Hashable & Clonable].find_last(predicate: fn(T) Bool) T?:
 
 		i -= 1
 
-	return none
+	return null
 
 // Reports whether any element satisfies `predicate`, stopping at the first match. An
 // empty set returns false.
@@ -948,7 +948,7 @@ export type SearchResult:
 // Clonable. A negative `count` or `max_items` returns `EINVAL`, and a `count` above
 // `max_items` or the allocation limit returns `EOVERFLOW`.
 export fn filled[T: Clonable](value: T, count: Int, max_items: Int?) List[T]!:
-	limit := max_items.get_or(9223372036854775807)
+	limit := max_items or 9223372036854775807
 	if count < 0 or limit < 0: return error(
 		Error("collection: invalid input", kind: "EINVAL")
 	)
@@ -978,8 +978,8 @@ fn range(start: Int, end: Int) List[Int]:
 
 // Settings for `range_by`: an optional cap on the number of items.
 export type RangeOptions:
-	// Maximum list length; `none` adds no cap beyond the allocation limit.
-	max_items: Int? = none
+	// Maximum list length; `null` adds no cap beyond the allocation limit.
+	max_items: Int? = null
 
 // Creates the integers from `start` up to but excluding `end`, counting by a nonzero
 // `step`; a negative step counts down. A zero step returns `EINVAL`, and a list that

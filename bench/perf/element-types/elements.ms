@@ -119,7 +119,7 @@ fn map_groups() Int:
 
 // 5. Optional[record]: return an optional record from a lookup, 10M times.
 fn find(xs: List[Event], i: Int) Event?:
-	if i % 4 == 0: return none
+	if i % 4 == 0: return null
 	return xs[i % xs.length()].clone()
 
 fn optional_records() Int:
@@ -131,7 +131,7 @@ fn optional_records() Int:
 
 	for i in 0..5000000:
 		e := find(xs, i)
-		if e.is_some(): t += e.get().score
+		if e != null: t += e.score
 
 	return t
 
@@ -145,7 +145,7 @@ fn deque_records() Int:
 
 		if i % 3 == 2:
 			j := q.pop_front()
-			if j.is_some(): t += j.get().pri
+			if j != null: t += j.pri
 
 	return t
 
@@ -161,7 +161,7 @@ fn pq_records() Int:
 
 		if i % 3 == 2:
 			j := pq.dequeue()
-			if j.is_some(): t += j.get().pri
+			if j != null: t += j.pri
 
 	return t
 
@@ -290,7 +290,7 @@ fn generic_stack() Int:
 
 		if i % 3 == 2:
 			e := s.pop()
-			if e.is_some(): t += e.get().score
+			if e != null: t += e.score
 
 	return t
 
@@ -311,8 +311,8 @@ fn map_enums() Int:
 		for i in 0..200000:
 			s := m.get(i)
 
-			if s.is_some():
-				match s.get():
+			if s != null:
+				match s:
 					Circle(rad): t += 3 * rad * rad
 					Rect(w, h): t += w * h
 					Dot: t += 1
@@ -337,7 +337,7 @@ fn string_chains() Int:
 				continue
 
 			key := parts[0].trim()
-			v := parts[1].trim().parse_int().get_or(0)
+			v := parts[1].trim().parse_int() or 0
 			m.update(key, 0, fn n: n + v)
 
 	var t = bad

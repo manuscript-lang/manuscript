@@ -10,7 +10,7 @@ type Counted:
 	log: String
 
 fn var Counted.next() Int?!:
-	return ok(none)
+	return ok(null)
 
 fn var Counted.write(move value: Int) Void!:
 	return ok()
@@ -22,7 +22,7 @@ fn move Counted.close() Void!:
 	void append_file(self.log, "x").wait()
 
 fn closes(log: String) String:
-	if bytes := read_file(log).wait(): return bytes.decode_utf8().get_or("")
+	if bytes := read_file(log).wait(): return bytes.decode_utf8() or ""
 	return ""
 
 test "read stream closes through the one close":

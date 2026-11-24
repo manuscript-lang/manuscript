@@ -156,7 +156,9 @@ fn tilde_key(n: Int) String:
 	names[21] = "f10"
 	names[23] = "f11"
 	names[24] = "f12"
-	if found := names.get(n): return found.clone()
+
+	found := names.get(n)
+	if found != null: return found.clone()
 
 	return ""
 
@@ -201,17 +203,17 @@ fn code_key(code: Int) TerminalEvent?:
 	if code == 27: return plain("escape")
 	if code == 127 or code == 8: return plain("backspace")
 	if code == 32: return plain("space")
-	if code < 32: return none
+	if code < 32: return null
 
 	// Printable ASCII only; other code points are not reported as keys.
-	if code > 126: return none
+	if code > 126: return null
 
 	return plain(ascii_at(ascii, code - 32, " "))
 
 // The first colon-separated sub-parameter of a CSI parameter, as a number.
 fn first_number(part: String) Int:
 	head := part.split(":")[0].clone()
-	return head.parse_int().get_or(0)
+	return head.parse_int() or 0
 
 // The key a CSI sequence with parameters `params` and final byte `last` reports, if
 // any.
@@ -224,7 +226,7 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 		bits := if modifier > 1: modifier - 1 else: 0
 		return key("tab", bits / 4 % 2 == 1, bits / 2 % 2 == 1, true)
 
-	var event: TerminalEvent? = none
+	var event: TerminalEvent? = null
 
 	if last == 117:
 		event = code_key(numbers[0])
@@ -237,12 +239,13 @@ fn csi_key(params: String, last: Int) TerminalEvent?:
 		name := letter_key(last)
 		if not name.is_empty(): event = plain(name)
 
-	if found := event: return with_modifiers(found, modifier)
+	found := event
+	if found != null: return with_modifiers(found, modifier)
 
-	return none
+	return null
 
 fn parsed(kind: Int, used: Int) Parsed:
-	return Parsed(kind: kind, event: none, used: used)
+	return Parsed(kind: kind, event: null, used: used)
 
 fn decoded(move event: TerminalEvent, used: Int) Parsed:
 	return Parsed(kind: 1, event: event, used: used)
@@ -284,7 +287,9 @@ fn csi_at(buf: List[String], at: Int) Parsed:
 		if c >= 64 and c <= 126:
 			params := concat_all(buf.slice(start, j).clone().get_or(List[String]()))
 			if c == 126 and params == "200": return parsed(4, j + 1 - at)
-			if event := csi_key(params, c): return decoded(event, j + 1 - at)
+
+			event := csi_key(params, c)
+			if event != null: return decoded(event, j + 1 - at)
 
 			return parsed(2, j + 1 - at)
 
@@ -448,7 +453,8 @@ fn var TerminalDecoder.decode(text: String) List[TerminalEvent]:
 			self.pasting = true
 			self.paste = List[String]()
 
-		if event := r.event: out.append(event.clone())
+		event := r.event
+		if event != null: out.append(event.clone())
 		i += r.used
 
 	if not run.is_empty(): out.append(TerminalEvent.Text(concat_all(run)))
@@ -464,14 +470,16 @@ export fn terminal_decoder() TerminalDecoder:
 	)
 
 fn read_size(handle: NativeRawTerminal) TerminalSize?:
-	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return none
+	if msstd_terminal_raw_terminal_size_status(handle).is_error(): return null
 	return TerminalSize(
 		columns: msstd_terminal_raw_terminal_size_columns(handle),
 		rows: msstd_terminal_raw_terminal_size_rows(handle),
 	)
 
 fn resized(now: TerminalSize, before: TerminalSize?) Bool:
-	if last := before: return last.columns != now.columns or last.rows != now.rows
+	last := before
+	if last != null: return last.columns != now.columns or last.rows != now.rows
+
 	return false
 
 // Reads text from a raw terminal's native handle and decodes it into events.
@@ -491,8 +499,9 @@ fn var TerminalEvents.next() move TerminalEvent?!:
 		// A resize wakes the read without input (SIGWINCH on Unix, a console record on
 		// Windows), so compare the size on every wake.
 		now := read_size(self.handle.native)
+		current := now
 
-		if current := now:
+		if current != null:
 			if resized(current, self.size):
 				self.size = current.clone()
 				return ok(TerminalEvent.Resize(current.columns, current.rows))
@@ -502,7 +511,7 @@ fn var TerminalEvents.next() move TerminalEvent?!:
 		waiting := self.decoder.partial()
 		ready := msstd_terminal_raw_terminal_read(self.handle.native, waiting)?
 
-		if ready.is_some():
+		if ready != null:
 			for event in self.decoder.decode(msstd_terminal_input_text()):
 				self.queue.append(event.clone())
 		else if waiting:
@@ -510,7 +519,7 @@ fn var TerminalEvents.next() move TerminalEvent?!:
 			for event in self.decoder.flush():
 				self.queue.append(event.clone())
 
-	return ok(none)
+	return ok(null)
 
 fn move TerminalEvents.close() Void!:
 	return ok()

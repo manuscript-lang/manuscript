@@ -32,7 +32,7 @@ test "zip_longest pads with none":
 	expect_equal(zipped[0].first, 1)?
 	expect_equal(zipped[0].second, "a")?
 	expect_equal(zipped[2].first, 3)?
-	expect_equal(zipped[2].second, none)?
+	expect_equal(zipped[2].second, null)?
 
 test "group_runs groups adjacent equal keys":
 	runs := group_runs([1, 1, 2, 1], fn n: n)
@@ -121,7 +121,7 @@ test "combinations distinguish equal positions and own nested copies":
 test "zero-size permutations preserve shape and out-of-range sizes are empty":
 	empty := List[Int]()
 	expect_equal(permutations(empty), [List[Int]()])?
-	expect_equal(permutations(empty, none), [List[Int]()])?
+	expect_equal(permutations(empty, null), [List[Int]()])?
 	expect_equal(permutations(empty, 0), [List[Int]()])?
 	expect_equal(permutations([[1], [2]], 0), [List[List[Int]]()])?
 
@@ -142,7 +142,7 @@ test "nonzero permutations retain position order and own their results":
 		permutations([1, 1, 2], 2),
 		[[1, 1], [1, 2], [1, 1], [1, 2], [2, 1], [2, 1]],
 	)?
-	expect_equal(permutations([10, 20], none), [[10, 20], [20, 10]])?
+	expect_equal(permutations([10, 20], null), [[10, 20], [20, 10]])?
 
 	input := [[1], [2], [3]]
 	var result = permutations(input, 2)

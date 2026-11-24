@@ -56,7 +56,7 @@ fn main() Int:
 	var checked = 0
 
 	for f in files:
-		source := read_file(f"{root}/{f}").wait().get().decode_utf8().get_or("")
+		source := read_file(f"{root}/{f}").wait().get().decode_utf8() or ""
 		expected_out := after(source, "// expect-stdout: ")
 
 		for build in ["debug", "release"]:
@@ -80,8 +80,8 @@ fn main() Int:
 				continue
 
 			child := ran.get()
-			out := child.stdout.decode_utf8().get_or("")
-			err := child.stderr.decode_utf8().get_or("")
+			out := child.stdout.decode_utf8() or ""
+			err := child.stderr.decode_utf8() or ""
 
 			if child.exit_code != 0:
 				failures += 1

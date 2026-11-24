@@ -18,7 +18,9 @@ fn maybe(n: Int) Int?:
 	return n
 
 fn first_or(m: Int?) Int:
-	if v := m: return v
+	v := m
+	if v != null: return v
+
 	return 0
 
 test "if expression":

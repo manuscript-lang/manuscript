@@ -204,7 +204,7 @@ fn escape_pattern() Regex:
 	// CSI sequences, OSC sequences ending in BEL or ST, and two-byte escapes
 	// (the same three `wrap_text` reads).
 	pattern := f"{esc}\\[[0-?]*[ -/]*[@-~]|{esc}\\][^\u{7}{esc}]*(\u{7}|{esc}\\\\)|{esc}[0-Z\\\\^-~]"
-	return compile(pattern).get_or(none)
+	return compile(pattern).get_or(null)
 
 // Removes escape sequences from `text`.
 export fn strip_ansi(text: String) String:

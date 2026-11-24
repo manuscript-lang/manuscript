@@ -125,7 +125,7 @@ test "destructure each element":
 
 ## Iterators
 
-A type that implements `Iterator[T]` from `@std/core.ms` is iterable. `for item in source:` calls `source.next()` until it returns `none`, binding each `T` as the owned result of `next` (`var fn next() T?`). It behaves like `while true:` with `if item := source.next(): ... else: break`, so `break`, `continue` and `return` work as in any loop.
+A type that implements `Iterator[T]` from `@std/core.ms` is iterable. `for item in source:` calls `source.next()` until it returns `null`, binding each `T` as the owned result of `next` (`var fn next() T?`). It behaves like `while true:` with `if item := source.next(): ... else: break`, so `break`, `continue` and `return` work as in any loop.
 
 A variable or field path is advanced in place and must be declared `var`; any other expression (a call, say) is held by the loop alone. After the loop, an in-place iterator keeps its final state, which is how `LineReader.error()` reports why reading stopped.
 
@@ -138,7 +138,7 @@ type Countdown:
 
 fn var Countdown.next() Int?:
     if self.left == 0:
-        return none
+        return null
     self.left -= 1
     return self.left + 1
 
@@ -157,7 +157,7 @@ Output:
 
 ## Walking a Deque, Queue or PriorityQueue
 
-These containers are not iterable. Walk one by position with `length()` and `get(index)`, which returns an optional (`none` when out of range, negative indexes count from the end):
+These containers are not iterable. Walk one by position with `length()` and `get(index)`, which returns an optional (`null` when out of range, negative indexes count from the end):
 
 <!-- manuscript-example: {"mode":"run","stdout":"11\n12\n"} -->
 ```manuscript

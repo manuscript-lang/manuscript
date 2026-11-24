@@ -6,5 +6,5 @@ fn use(value: Int?) Int:
         _value:
             match value:
                 n: n
-                none: 0
-        none: 0
+                null: 0
+        null: 0

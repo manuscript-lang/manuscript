@@ -18,7 +18,7 @@ fn main() Void!:
 
 	for i in 0..n:
 		s = (s * 1103515245 + 12345) % 2147483648
-		raw.append(((s / 65536) % 256).to_uint8().get_or(0))
+		raw.append(((s / 65536) % 256).to_uint8() or 0)
 
 	data := Bytes(raw)
 	var t = monotonic()
@@ -54,7 +54,7 @@ fn main() Void!:
 	lap("b64enc", t)
 	t = monotonic()
 
-	i := base64_decode(h, max_bytes: none)?
+	i := base64_decode(h, max_bytes: null)?
 	lap("b64dec", t)
 	t = monotonic()
 
@@ -62,7 +62,7 @@ fn main() Void!:
 	lap("hexenc", t)
 	t = monotonic()
 
-	k := hex_decode(j, max_bytes: none)?
+	k := hex_decode(j, max_bytes: null)?
 	lap("hexdec", t)
 	print(
 		f"{a} {b} {c.length()} {d.length()} {e.length()} {f} {g} {i.length()} {k.length()}"

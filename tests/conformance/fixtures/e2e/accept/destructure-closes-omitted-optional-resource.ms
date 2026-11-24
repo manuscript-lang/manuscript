@@ -30,7 +30,7 @@ export fn main() Int:
 	{input} := local
 	out.append(input)
 	print("none")
-	empty := Job(label: "b", input: Handle(4), spare: none, more: [])
+	empty := Job(label: "b", input: Handle(4), spare: null, more: [])
 	{input: kept} := empty
 	out.append(kept)
 	print("param")

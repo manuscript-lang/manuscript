@@ -54,7 +54,7 @@ test "the copy outlives the value it came from":
 	var out: List[String] = []
 
 	for i in 0..3:
-		pet := Pet(f"p{i}", [], none)
+		pet := Pet(f"p{i}", [], null)
 		out.append(text_of(pet))
 
 	expect_equal(out, ["p0", "p1", "p2"])?

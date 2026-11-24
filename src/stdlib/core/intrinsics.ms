@@ -26,7 +26,7 @@ Each integer type's own `<Type>Operations` interface adds only its conversions t
 */
 interface IntegerOperations[T: IntegerTypes]:
 	// Formats the integer in a radix from 2 through 36 using lowercase digits and a
-	// leading `-` for negatives, or none when the radix is outside 2 through 36.
+	// leading `-` for negatives, or null when the radix is outside 2 through 36.
 	fn to_string_radix(radix: Int) move String?
 	// Formats the integer in base 16 using lowercase digits and a leading `-` for
 	// negatives, as `to_string_radix(16)` does; it cannot fail.
@@ -46,7 +46,7 @@ interface IntegerOperations[T: IntegerTypes]:
 
 // Operations shared by the signed integer types (`Int`, `Int8`, `Int16`, `Int32`).
 interface SignedIntegerOperations[T: SignedIntegerTypes]:
-	// Returns the absolute value; the most negative value has none and faults like any
+	// Returns the absolute value; the most negative value has null and faults like any
 	// overflow.
 	fn abs() move T
 	// Returns -1, 0 or 1 as this value is negative, zero or positive.
@@ -121,10 +121,10 @@ interface StringOperations:
 	fn scalar_at(offset: Int, default: Int?) Int
 	// Counts non-overlapping occurrences; an empty part counts the scalars plus one.
 	fn count(part: String) Int
-	// Returns the byte offset of the first match, or `none`. An empty `value` matches
+	// Returns the byte offset of the first match, or `null`. An empty `value` matches
 	// at zero.
 	fn index_of(value: String) Int?
-	// Returns the byte offset of the last match, or `none`. An empty `value` matches at
+	// Returns the byte offset of the last match, or `null`. An empty `value` matches at
 	// `length()`.
 	fn last_index_of(value: String) Int?
 	fn trim_start() move String  // Removes Unicode whitespace at the start.
@@ -155,10 +155,10 @@ interface StringOperations:
 	fn view_bytes() Bytes
 	// Encodes the string as UTF-8 bytes.
 	fn to_bytes() move Bytes
-	// Parses signed ASCII decimal digits; invalid text or Int overflow returns none.
+	// Parses signed ASCII decimal digits; invalid text or Int overflow returns null.
 	fn parse_int() Int?
 	// Parses a decimal floating-point number with the syntax of `math.parse_float`;
-	// invalid or out-of-range text returns none.
+	// invalid or out-of-range text returns null.
 	fn parse_float() Float?
 
 // Conversion operations for machine-sized integers.
@@ -177,19 +177,19 @@ interface IntOperations:
 	fn to_int64() Int64
 	// Converts to Int; every value fits, so no check is needed.
 	fn to_int() Int
-	// Converts to Int8, or returns none when the value is outside Int8's range.
+	// Converts to Int8, or returns null when the value is outside Int8's range.
 	fn to_int8() Int8?
-	// Converts to Int16, or returns none when the value is outside Int16's range.
+	// Converts to Int16, or returns null when the value is outside Int16's range.
 	fn to_int16() Int16?
-	// Converts to Int32, or returns none when the value is outside Int32's range.
+	// Converts to Int32, or returns null when the value is outside Int32's range.
 	fn to_int32() Int32?
-	// Converts to UInt8, or returns none when the value is outside UInt8's range.
+	// Converts to UInt8, or returns null when the value is outside UInt8's range.
 	fn to_uint8() UInt8?
-	// Converts to UInt16, or returns none when the value is outside UInt16's range.
+	// Converts to UInt16, or returns null when the value is outside UInt16's range.
 	fn to_uint16() UInt16?
-	// Converts to UInt32, or returns none when the value is outside UInt32's range.
+	// Converts to UInt32, or returns null when the value is outside UInt32's range.
 	fn to_uint32() UInt32?
-	// Converts to UInt64, or returns none when the value is negative.
+	// Converts to UInt64, or returns null when the value is negative.
 	fn to_uint64() UInt64?
 
 // Formatting and classification operations for floating-point values.
@@ -219,10 +219,10 @@ interface FloatOperations:
 	fn abs() Float
 	// Returns -1.0 or 1.0 by sign; zeros and NaN are returned unchanged.
 	fn sign() Float
-	// Truncates toward zero, or returns none for nonfinite values or Int overflow.
+	// Truncates toward zero, or returns null for nonfinite values or Int overflow.
 	fn truncate_to_int() Int?
 	// Converts to Float32, rounding to the nearest binary32 value. A finite value too
-	// large for Float32 returns none instead of becoming infinity; NaN and infinities
+	// large for Float32 returns null instead of becoming infinity; NaN and infinities
 	// convert unchanged.
 	fn to_float32() Float32?
 
@@ -239,7 +239,7 @@ interface Int8Operations:
 
 // Conversion operations for Int16, a signed 16-bit integer.
 interface Int16Operations:
-	// Converts to Int8, or returns none when the value is outside Int8's range.
+	// Converts to Int8, or returns null when the value is outside Int8's range.
 	fn to_int8() Int8?
 	// Converts to Int64; every value fits, so no check is needed.
 	fn to_int64() Int64
@@ -248,9 +248,9 @@ interface Int16Operations:
 
 // Conversion operations for Int32, a signed 32-bit integer.
 interface Int32Operations:
-	// Converts to Int8, or returns none when the value is outside Int8's range.
+	// Converts to Int8, or returns null when the value is outside Int8's range.
 	fn to_int8() Int8?
-	// Converts to Int16, or returns none when the value is outside Int16's range.
+	// Converts to Int16, or returns null when the value is outside Int16's range.
 	fn to_int16() Int16?
 	// Converts to Int64; every value fits, so no check is needed.
 	fn to_int64() Int64
@@ -266,12 +266,12 @@ interface UInt8Operations:
 interface UInt16Operations:
 	// Converts to Int; every value fits, so no check is needed.
 	fn to_int() Int
-	// Converts to UInt8, or returns none when the value is outside UInt8's range.
+	// Converts to UInt8, or returns null when the value is outside UInt8's range.
 	fn to_uint8() UInt8?
 
 // Conversion operations for UInt32, an unsigned 32-bit integer.
 interface UInt32Operations:
-	// Converts to Int32, or returns none when the value is outside Int32's range.
+	// Converts to Int32, or returns null when the value is outside Int32's range.
 	fn to_int32() Int32?
 	// Converts to Int64; every value fits, so no check is needed.
 	fn to_int64() Int64
@@ -280,11 +280,11 @@ interface UInt32Operations:
 
 // Conversion operations for UInt64, an unsigned 64-bit integer.
 interface UInt64Operations:
-	// Converts to Int, or returns none when the value is above Int's maximum.
+	// Converts to Int, or returns null when the value is above Int's maximum.
 	fn to_int() Int?
-	// Converts to UInt8, or returns none when the value is outside UInt8's range.
+	// Converts to UInt8, or returns null when the value is outside UInt8's range.
 	fn to_uint8() UInt8?
-	// Converts to UInt32, or returns none when the value is outside UInt32's range.
+	// Converts to UInt32, or returns null when the value is outside UInt32's range.
 	fn to_uint32() UInt32?
 
 // Classification and conversion operations for Float32, a binary32 floating-point
@@ -301,7 +301,7 @@ interface Float32Operations:
 	fn abs() Float32
 	// Returns -1.0 or 1.0 by sign; zeros and NaN are returned unchanged.
 	fn sign() Float32
-	// Truncates toward zero, or returns none for nonfinite values or Int overflow.
+	// Truncates toward zero, or returns null for nonfinite values or Int overflow.
 	fn truncate_to_int() Int?
 	fn to_float() move Float  // Converts to Float; every Float32 converts exactly.
 	fn to_float64() move Float64  // Converts to Float64; every Float32 converts exactly.

@@ -1,10 +1,11 @@
 // conform: tags=stdlib-http,stdlib-net,tier-io
 // conform: phase=run
 // conform: timeout=30
-// The same over TLS: a session moves to another thread with its connection. While one handler computes without a wait, requests on the other connections of its
-// thread are served by another thread. Each round holds a different thread; the client
-// itself runs on one of them, so a round may freeze the client too, and one that does
-// not must pass.
+// The same over TLS: a session moves to another thread with its connection. While one
+// handler computes without a wait, requests on the other connections of its thread are
+// served by another thread. Each round holds a different thread; the client itself runs
+// on one of them, so a round may freeze the client too, and one that does not must
+// pass.
 import (
 	stdout from "@std/io/io.ms",
 	HttpRequest,
@@ -56,8 +57,10 @@ fn answer(var conn: Connection) Bool:
 
 	while not text.ends_with("done\n"):
 		if chunk := recv(conn, nanoseconds(10000000000)):
-			if data := chunk:
-				text = f"{text}{data.decode_utf8().get_or("?")}"
+			data := chunk
+
+			if data != null:
+				text = f"{text}{(data.decode_utf8() or "?")}"
 				continue
 
 		return false

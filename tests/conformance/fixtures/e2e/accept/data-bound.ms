@@ -25,7 +25,7 @@ fn text[T: Data](value: T) String:
 	return stringify(value).get_or("")
 
 test "Data accepts plain records, lists, codecs, and JSON documents":
-	plain := Plain("a", ["x"], none)
+	plain := Plain("a", ["x"], null)
 	expect_equal(text(plain), "{\"name\":\"a\",\"tags\":[\"x\"]}")?
 	expect_equal(text(Money(5)), "\"usd:5\"")?
 	expect_equal(text(Mode.Fast), "\"Fast\"")?

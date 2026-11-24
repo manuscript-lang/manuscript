@@ -127,8 +127,9 @@ test "stat_filesystem describes the filesystem under a path":
 fn saw(var events: ReadStream[FileEvent], path: String, kind: String, tries: Int) Bool!:
 	for attempt in 0..tries:
 		next := within(events, 2.seconds())?
+		event := next
 
-		if event := next:
+		if event != null:
 			if event.path == path and event.kind == kind: return ok(true)
 		else:
 			return ok(false)
@@ -206,8 +207,11 @@ test "recursive native watch sees a file in a new subdirectory":
 	write_file(path: f"{r}/d/f", data: "1", replace: false).wait()?
 
 	var seen = false
+
 	for i in 0..8:
 		if not seen:
-			if e := within(w, 2.seconds())?:
+			e := within(w, 2.seconds())?
+			if e != null:
 				if e.path == join([r.clone(), "d", "f"]): seen = true
+
 	expect_true(seen)?

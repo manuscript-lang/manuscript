@@ -12,10 +12,10 @@ static const Habit HABITS[] = {
      "there is no range function: write start..end for the integers from start up to but excluding end, or "
      "range_by from \"@std/collections/collections.ms\" for a stepped list",
      NULL},
-    {{"nil", "null", "None", "undefined"},
-     "Manuscript has no null: absence is an Optional, written none, and a present value is just the value, "
-     "which converts where an Optional is expected",
-     "none"},
+    {{"nil", "none", "None", "undefined"},
+     "Manuscript writes absence as null: a nullable `T?` is a `T` or null, and a present value is just the value, "
+     "which converts where a nullable is expected",
+     "null"},
     {{"Some"},
      "there is no Some: a plain value converts where an Optional is expected, so pass it directly", NULL},
     {{"Ok"}, "write the lowercase ok(value) for a successful Result", "ok"},

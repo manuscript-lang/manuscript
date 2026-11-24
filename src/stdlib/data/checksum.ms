@@ -1,5 +1,6 @@
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	ReadStream from "@std/io/io.ms",
 
 	msstd_checksum_adler32_update,
@@ -15,7 +16,10 @@ Reads the input without copying it. Detects accidental corruption only; it does 
 `crc32("123456789".to_bytes())` returns 3421780262 (0xCBF43926).
 */
 export fn crc32(data: Bytes) UInt32:
-	return msstd_checksum_crc32(data).to_uint32().get()
+	return (
+		msstd_checksum_crc32(data).to_uint32()
+		or panic("called Optional.get() on null")
+	)
 
 /*
 Computes the RFC 1950 Adler-32 checksum used by zlib. Empty input returns one.
@@ -24,7 +28,10 @@ the result is b * 65536 + a. Reads the input without copying it.
 `adler32("Wikipedia".to_bytes())` returns 300286872 (0x11E60398).
 */
 export fn adler32(data: Bytes) UInt32:
-	return msstd_checksum_adler32_update(1, data).to_uint32().get()
+	return (
+		msstd_checksum_adler32_update(1, data).to_uint32()
+		or panic("called Optional.get() on null")
+	)
 
 /*
 An IEEE CRC-32 checksum built from ordered chunks, retaining no input bytes.
@@ -37,7 +44,10 @@ export type Crc32:
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
 fn var Crc32.update(data: Bytes) Void:
-	self.state = msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32().get()
+	self.state = (
+		msstd_checksum_crc32_update(self.state.to_int(), data).to_uint32()
+		or panic("called Optional.get() on null")
+	)
 
 // Returns the current checksum without resetting or otherwise changing it.
 fn Crc32.value() UInt32:
@@ -54,7 +64,10 @@ export type Adler32:
 
 // Appends these bytes to the checksum; an empty chunk leaves it unchanged.
 fn var Adler32.update(data: Bytes) Void:
-	self.state = msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32().get()
+	self.state = (
+		msstd_checksum_adler32_update(self.state.to_int(), data).to_uint32()
+		or panic("called Optional.get() on null")
+	)
 
 // Returns the current checksum without resetting or otherwise changing it.
 fn Adler32.value() UInt32:

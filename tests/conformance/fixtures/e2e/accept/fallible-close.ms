@@ -48,8 +48,8 @@ test "the later binding closes first and its error is the one returned":
 	outer_only := expect_error(nested(true, false))?
 	expect_equal(outer_only.message, "close first")?
 
-	none := nested(false, false)?
-	expect_equal(none, 1)?
+	null := nested(false, false)?
+	expect_equal(null, 1)?
 
 test "an explicit close consumes the binding":
 	ok_value := explicit(false)?

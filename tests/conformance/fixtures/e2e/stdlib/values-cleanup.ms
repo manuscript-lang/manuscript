@@ -2,12 +2,13 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
-	Closeable from "@std/core.ms",
+	Closeable, panic from "@std/core.ms",
 	read_file, temporary, write_file from "@std/os/fs.ms",
 	expect_equal,
 	expect_false,
 	expect_not_equal,
 	expect_ok,
+	expect_true,
 	fail from "@std/test/test.ms",
 )
 
@@ -42,12 +43,12 @@ fn propagate(result: Int!) Int!:
 test "Optional lazy fallbacks preserve nested absence and payload identity":
 	create := fn() Int?: 42
 	present: Int? := 0
-	missing: Int? := none
-	expect_equal(present.or_else(create).get(), 0)?
-	expect_equal(missing.or_else(create).get(), 42)?
+	missing: Int? := null
+	expect_equal((present or create()) or panic("called Optional.get() on null"), 0)?
+	expect_equal((missing or create()) or panic("called Optional.get() on null"), 42)?
 
 	nested: Int?? := missing
-	expect_false(nested.is_none() or nested.get().is_some())?
+	expect_true(nested == null)?
 
 test "Result propagation and Error views preserve concrete causes":
 	failed: Int! := error(Error("JSON: invalid data", kind: "EBADMSG"))

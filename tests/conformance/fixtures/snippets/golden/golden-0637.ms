@@ -2,6 +2,6 @@
 // conform: phase=check
 enum Optional[T]:
     T
-    none
+    null
 fn f(value: Int?) Void: return
 fn call() Void: f(4)

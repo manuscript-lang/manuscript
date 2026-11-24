@@ -15,5 +15,5 @@ Lent slots (2026-11-23): a `var` call takes a value out of its slot, lends it to
 Rules that keep it sound: a window closes at a scope open or close (`CleanupPush`, `CleanupRun`), at a loop-exit `discard`, and inside a moved-out hole; an exit instruction with no live owners still pops what the window holds, so a consumed value is never left registered across a call that can fault.
 
 Apply when: changing `analyze` or the window materializer in `unwind.rs`, or adding an instruction that consumes an owner.
-Evidence: [`unwind.rs`](../../crates/ms-mir/src/unwind.rs), tests `registrations_grow_linearly_with_the_owners_a_function_holds` and `registrations_cross_branches_instead_of_repeating_per_block` in `crates/ms-mir/tests/unwind.rs`.
+Evidence: `unwind.rs`, tests `registrations_grow_linearly_with_the_owners_a_function_holds` and `registrations_cross_branches_instead_of_repeating_per_block` in `crates/ms-mir/tests/unwind.rs`.
 Verify: `cargo test -p ms-mir --test it unwind::`; `ms test` on a body of 200 `xs: List[Int] := [...]` locals each captured by a closure passed to a function passes in Debug and Release.

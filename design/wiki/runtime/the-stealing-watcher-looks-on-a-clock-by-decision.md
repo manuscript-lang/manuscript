@@ -26,5 +26,5 @@ It looks every 2 ms while any thread is busy, every 100 µs for 0.1 s after a ho
 A form with the two-mode latencies and no periodic look: for example a deadline armed by the event that makes a thread stuck (a handler start), which needs a cheap start announcement, since the measured costs above are all per request. Measure it with `bench/perf/http-tail` (`sweep.sh`, fast and slow mixes, closed loop) and the idle fixture against the dated results before proposing it, and expect Chinmay's call.
 
 Apply when: touching `ms_rt::watch`, the steal hooks or the scheduler's rest states.
-Evidence: [stealing page](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md), [proposal](../../proposals/event-driven-waits.md), [results](../../../bench/perf/http-tail/README.md), [watch.rs](../../crates/ms-rt/src/watch.rs).
+Evidence: [stealing page](a-computing-handler-holds-its-thread-so-idle-connections-are-taken.md), [proposal](../../proposals/event-driven-waits.md), [results](../../../bench/perf/http-tail/README.md), watch.rs.
 Verify: fixture `http-idle-server-stays-asleep`; `bench/perf/http-tail` against the latest dated baseline.

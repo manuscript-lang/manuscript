@@ -60,7 +60,7 @@ Waiting uses `sleep`, so cancelling the task ends the wait. The operation always
 export fn retry[T, E: Clonable](
 	policy: RetryPolicy,
 	operation: fn(Int) T!E,
-	retryable: (fn(E) Bool)? = none
+	retryable: (fn(E) Bool)? = null
 ) T!E:
 	var attempt = 1
 
@@ -69,7 +69,8 @@ export fn retry[T, E: Clonable](
 		if attempt >= policy.attempts: return result
 
 		if result.is_error():
-			if accepts := retryable:
+			accepts := retryable
+			if accepts != null:
 				if not accepts(result.err()): return result
 			void sleep(jittered(policy, attempt)).wait()
 			attempt += 1
@@ -81,7 +82,7 @@ fn jittered(policy: RetryPolicy, attempt: Int) Duration:
 	if not policy.jitter: return wait
 
 	share := float().get_or(1.0)
-	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int().get_or(0))
+	return Duration(nanos: (wait.nanos.to_float() * share).truncate_to_int() or 0)
 
 /*
 A token bucket: holds up to `burst` tokens and gains one every `interval`. Each use of the limited resource takes a token.
@@ -189,15 +190,16 @@ export type CircuitBreaker:
 	cooldown: Duration
 	// Internal state: the current run of failures.
 	failures: Int = 0
-	// Internal state: when the circuit opened, or `none` while closed.
-	opened: Instant? = none
+	// Internal state: when the circuit opened, or `null` while closed.
+	opened: Instant? = null
 
 // Reports whether the circuit is open and still cooling down, so a call fails at
 // once. It is false while the circuit is closed, and once the cooldown has passed,
 // which lets the trial call through.
 fn CircuitBreaker.is_open() Bool:
-	if since := self.opened:
-		return monotonic().difference(since).compare(self.cooldown) < 0
+	since := self.opened
+	if since != null: return monotonic().difference(since).compare(self.cooldown) < 0
+
 	return false
 
 // Runs `operation` unless the circuit is open, and records the outcome. An open
@@ -212,11 +214,11 @@ fn var CircuitBreaker.call[T: Clonable, E: Clonable](
 
 	if value := result:
 		self.failures = 0
-		self.opened = none
+		self.opened = null
 		return ok(value.clone())
 
 	self.failures += 1
-	if self.failures >= self.threshold or self.opened.is_some():
+	if self.failures >= self.threshold or (self.opened != null):
 		self.opened = monotonic()
 	return error(CircuitError.Failed(result.err().clone()))
 
@@ -264,7 +266,9 @@ export fn map_concurrent[T, U](
 
 	while index > 0:
 		index -= 1
-		if value := parts[index % stripes].pop():
+
+		value := parts[index % stripes].pop()
+		if value != null:
 			results.append(value)
 
 	results.reverse()
@@ -299,13 +303,14 @@ for event in events:
 export type Throttle:
 	// The least time between two allowed actions.
 	interval: Duration
-	// Internal state: when the last action was allowed, or `none` before the first.
-	last: Instant? = none
+	// Internal state: when the last action was allowed, or `null` before the first.
+	last: Instant? = null
 
 // Reports whether an action may happen now, and if so counts it. It never waits.
 fn var Throttle.allow() Bool:
 	now := monotonic()
-	if previous := self.last:
+	previous := self.last
+	if previous != null:
 		if now.difference(previous).compare(self.interval) < 0: return false
 	self.last = now
 	return true
@@ -313,7 +318,9 @@ fn var Throttle.allow() Bool:
 // Waits until an action may happen, then counts it. Cancelling the task ends the
 // wait.
 fn var Throttle.wait() Void:
-	if previous := self.last:
+	previous := self.last
+
+	if previous != null:
 		remaining := self.interval.subtract(monotonic().difference(previous))
 		if remaining.nanos > 0:
 			void sleep(remaining).wait()

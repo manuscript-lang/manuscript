@@ -97,7 +97,7 @@ fn read_identities(path: String) Map[String, Identity]!:
 	doc := parse[JsonValue](read_text(path))
 	if doc.is_error(): return invalid("identity file is not JSON")
 
-	members := doc.get_or(JsonValue.Null).as_map().get_or(Map[String, JsonValue]())
+	members := doc.get_or(JsonValue.Null).as_map() or Map[String, JsonValue]()
 	if members.is_empty(): return invalid(
 		"identity file must contain a nonempty object"
 	)
@@ -105,7 +105,7 @@ fn read_identities(path: String) Map[String, Identity]!:
 	var out = Map[String, Identity]()
 
 	for entry in members.entries():
-		items := entry.value.as_list().get_or([])
+		items := entry.value.as_list() or []
 		if entry.key == "" or items.length() != 3: return invalid(
 			"each identity must have a name and three integers"
 		)
@@ -114,11 +114,11 @@ fn read_identities(path: String) Map[String, Identity]!:
 
 		for item in items:
 			v := item.as_int()
-			if v.is_none() or v.get_or(-1) < 0: return invalid(
+			if (v == null) or (v) < 0: return invalid(
 				"identities must have nonnegative integers and positive iterations"
 			)
 
-			n.append(v.get_or(0))
+			n.append(v)
 
 		if n[1] == 0: return invalid(
 			"identities must have nonnegative integers and positive iterations"
@@ -185,12 +185,13 @@ fn main() Int:
 	if parsed.is_error(): return fail(parsed.err().message)
 
 	opts := parsed.get_or(Map[String, String]())
-	pairs := opts.get_or("pairs", "7").parse_int().get_or(0)
+	pairs := opts.get_or("pairs", "7").parse_int() or 0
 	if pairs < 1: return fail("--pairs must be positive")
 
 	var expected = builtin_identities()
+	file := opts.get("identity-file")
 
-	if file := opts.get("identity-file"):
+	if file != null:
 		loaded := read_identities(file)
 		if loaded.is_error(): return fail(loaded.err().message)
 

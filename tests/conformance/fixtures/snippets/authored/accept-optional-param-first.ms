@@ -6,4 +6,4 @@ type Node:
 	left: Node?
 
 fn find(node: Node?, key: Int) Bool:
-	return node.is_some() and key > 0
+	return (node != null) and key > 0

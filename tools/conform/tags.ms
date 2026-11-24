@@ -37,7 +37,7 @@ export fn imports_of(text: String) List[String]:
 	var rest = text.clone()
 
 	while true:
-		at := rest.index_of("\"@std/").get_or(-1)
+		at := rest.index_of("\"@std/") or (-1)
 		if at < 0: break
 
 		rest = rest.slice(at + 6, rest.length()).clone()
@@ -52,7 +52,7 @@ export fn imports_of(text: String) List[String]:
 
 		path := rest.slice(0, end)
 		var name = path.clone()
-		slash := path.last_index_of("/").get_or(-1)
+		slash := path.last_index_of("/") or (-1)
 		if slash >= 0: name = path.slice(slash + 1, path.length()).clone()
 
 		var valid = name != ""
@@ -92,7 +92,7 @@ export fn aliasing_dependent(text: String) Bool:
 
 	for line in text.split("\n"):
 		trimmed := line.trim_start()
-		at := trimmed.index_of(" = ").get_or(-1)
+		at := trimmed.index_of(" = ") or (-1)
 		if at < 0: continue
 
 		left := trimmed.slice(0, at)
@@ -105,12 +105,12 @@ export fn aliasing_dependent(text: String) Bool:
 		var right = ""
 
 		if trimmed.starts_with("var "):
-			at := trimmed.index_of(" = ").get_or(-1)
+			at := trimmed.index_of(" = ") or (-1)
 			if at < 0: continue
 
 			right = trimmed.slice(at + 3, trimmed.length()).trim().clone()
 		else:
-			at := trimmed.index_of(" := ").get_or(-1)
+			at := trimmed.index_of(" := ") or (-1)
 			if at < 0: continue
 
 			right = trimmed.slice(at + 4, trimmed.length()).trim().clone()
@@ -169,7 +169,7 @@ export fn tags_for(text: String, phase: String) List[String]:
 	if text.contains("] :=") or text.contains("} :="): tags.append("destructuring")
 
 	for line in text.split("\n"):
-		quote := line.index_of("\"").get_or(-1)
+		quote := line.index_of("\"") or (-1)
 
 		if quote >= 0 and line.slice(quote, line.length()).contains("{"):
 			tags.append("interpolation")

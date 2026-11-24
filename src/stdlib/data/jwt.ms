@@ -43,14 +43,14 @@ export type JwtCheck:
 	// with kind `EBADMSG`.
 	algorithm: JwtAlgorithm = JwtAlgorithm.Hs256
 	// When set, the `iss` claim must equal it.
-	issuer: String? = none
+	issuer: String? = null
 	// When set, the `aud` claim, a string or a list of strings, must include it.
-	audience: String? = none
+	audience: String? = null
 	// Seconds of clock skew tolerated when checking `exp` and `nbf`.
 	leeway: Int = 0
-	// The Unix time in seconds to judge `exp` and `nbf` against; none uses the current
+	// The Unix time in seconds to judge `exp` and `nbf` against; null uses the current
 	// time.
-	at: Int? = none
+	at: Int? = null
 	// The largest token in bytes accepted before any decoding; larger tokens return an
 	// Error with kind `EBADMSG`.
 	max_bytes: Int = 16384
@@ -63,7 +63,7 @@ type JwtHeader:
 Creates a signed token from `claims`, a record or `JsonValue` object such as `Session(sub: "42", exp: 1900000000)`.
 The result is the compact `header.claims.signature` form, ready for an `Authorization: Bearer` header or a cookie.
 `key` is the secret for the HMAC algorithms and the private key for the others, in the form `JwtAlgorithm` describes.
-Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library adds none, so set `exp` yourself.
+Registered claims (`exp`, `iat`, `iss`, `aud`) are ordinary fields; the library adds null, so set `exp` yourself.
 A key that does not suit the algorithm, or claims that cannot be encoded as JSON (a `NumberValue` whose text is not a JSON number, say), return an `Error` with kind `EINVAL`; the message says which.
 
 <!-- manuscript-example: {"mode":"fragment","given":["secret: Bytes"]} -->
@@ -102,7 +102,7 @@ export fn sign_token[T: Data](
 
 /*
 Checks a token's signature and claims, and returns its claims decoded as `T` (a record, or `JsonValue` for the raw object).
-The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `none`.
+The signature is verified before the claims are read. `check.algorithm` is the only algorithm accepted, so a token cannot choose a weaker one or `null`.
 The payload must be a JSON object; any other JSON value returns `EBADMSG`.
 Critical header extensions and unencoded payloads are unsupported and rejected.
 When present, `exp` and `nbf` (seconds since the Unix epoch, fractions allowed) are compared exactly, allowing `check.leeway` whole seconds of clock skew.
@@ -124,17 +124,18 @@ export fn verify_token[T: Data = JsonValue](
 
 	header := decode_json[JsonValue](parts[0], check.max_bytes)?
 	if not header_algorithm_matches(
-		header.get("alg").clone().get_or(JsonValue.Null),
+		header.get("alg").clone() or JsonValue.Null,
 		check.algorithm,
 	): return error(Error("jwt: wrong algorithm", kind: "EBADMSG"))
 
 	// No critical header extension is supported by this verifier.
-	if header.get("crit").is_some(): return error(
+	if header.get("crit") != null: return error(
 		Error("jwt: unsupported critical header", kind: "EBADMSG")
 	)
 
-	if encoded := header.get("b64"):
-		if not encoded.as_bool().get_or(false): return error(
+	encoded := header.get("b64")
+	if encoded != null:
+		if not (encoded.as_bool() or (false)): return error(
 			Error("jwt: unsupported payload encoding", kind: "EBADMSG")
 		)
 
@@ -180,9 +181,9 @@ fn decode_json[T: Data](part: String, limit: Int) T!:
 	if raw.is_error(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
 	text := raw.get_or("".to_bytes()).decode_utf8()
-	if text.is_none(): return error(Error("jwt: malformed token", kind: "EBADMSG"))
+	if text == null: return error(Error("jwt: malformed token", kind: "EBADMSG"))
 
-	value := parse[T](text.get_or(""))
+	value := parse[T](text)
 	if decoded := value: return ok(decoded)
 
 	return error(Error("jwt: malformed token", kind: "EBADMSG"))
@@ -192,10 +193,12 @@ fn hmac_hash(algorithm: JwtAlgorithm) HashAlgorithm?:
 		Hs256: return HashAlgorithm.Sha256
 		Hs384: return HashAlgorithm.Sha384
 		Hs512: return HashAlgorithm.Sha512
-		_: return none
+		_: return null
 
 fn sign_bytes(algorithm: JwtAlgorithm, key: Bytes, data: Bytes) Bytes!:
-	if hash := hmac_hash(algorithm):
+	hash := hmac_hash(algorithm)
+
+	if hash != null:
 		mac := hash.hmac(key, data)
 		if bytes := mac: return ok(bytes)
 
@@ -224,7 +227,9 @@ fn verify_bytes(
 	data: Bytes,
 	signature: Bytes,
 ) Bool!:
-	if hash := hmac_hash(algorithm):
+	hash := hmac_hash(algorithm)
+
+	if hash != null:
 		mac := hash.hmac(key, data)
 		if bytes := mac: return ok(constant_time_equal(bytes, signature))
 
@@ -247,36 +252,47 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 		_: return error(Error("jwt: claims must be an object", kind: "EBADMSG"))
 
 	var moment = 0
+	given := check.at
 
-	if given := check.at:
+	if given != null:
 		moment = given
 	else:
 		moment = now().seconds
 
-	if exp := claims.get("exp"):
+	exp := claims.get("exp")
+
+	if exp != null:
 		limit := numeric_date(exp, "exp")?
 		boundary := (big_int_of_int(moment) - big_int_of_int(check.leeway)).to_string()
 		if date_compare(limit, boundary) <= 0: return error(
 			Error("jwt: token expired", kind: "EBADMSG")
 		)
 
-	if nbf := claims.get("nbf"):
+	nbf := claims.get("nbf")
+
+	if nbf != null:
 		start := numeric_date(nbf, "nbf")?
 		boundary := (big_int_of_int(moment) + big_int_of_int(check.leeway)).to_string()
 		if date_compare(start, boundary) > 0: return error(
 			Error("jwt: token not yet valid", kind: "EBADMSG")
 		)
 
-	if issuer := check.issuer:
-		actual := claims.get("iss").clone().get_or(JsonValue.Null).as_string()
-		if actual.is_none() or actual.get_or("") != issuer: return error(
+	issuer := check.issuer
+
+	if issuer != null:
+		actual := (claims.get("iss").clone() or JsonValue.Null).as_string()
+		if (actual == null) or (actual) != issuer: return error(
 			Error("jwt: wrong issuer", kind: "EBADMSG")
 		)
 
-	if aud := claims.get("aud"):
-		if aud.as_string().is_none():
-			if many := aud.as_list():
-				if many.any(fn item: item.as_string().is_none()): return error(
+	aud := claims.get("aud")
+
+	if aud != null:
+		if aud.as_string() == null:
+			many := aud.as_list()
+
+			if many != null:
+				if many.any(fn item: item.as_string() == null): return error(
 					Error(
 						"jwt: aud must hold only strings",
 						kind: "EBADMSG",
@@ -290,11 +306,11 @@ fn check_claims(claims: JsonValue, check: JwtCheck) Void!:
 					)
 				)
 
-	if audience := check.audience:
-		if not includes_audience(
-			claims.get("aud").clone().get_or(JsonValue.Null),
-			audience,
-		): return error(Error("jwt: wrong audience", kind: "EBADMSG"))
+	audience := check.audience
+	if audience != null:
+		if not includes_audience(claims.get("aud").clone() or JsonValue.Null, audience): return error(
+			Error("jwt: wrong audience", kind: "EBADMSG")
+		)
 
 // A present `exp` or `nbf` is a JSON number (RFC 7519 NumericDate); anything else is
 // malformed.
@@ -394,9 +410,11 @@ fn date_compare(text: String, boundary: String) Int:
 	return if negative: -comparison else: comparison
 
 fn includes_audience(claim: JsonValue, audience: String) Bool:
-	if single := claim.as_string(): return single == audience
-	if many := claim.as_list():
-		return many.any(fn item: item.as_string().get_or("") == audience)
+	single := claim.as_string()
+	if single != null: return single == audience
+
+	many := claim.as_list()
+	if many != null: return many.any(fn item: (item.as_string() or "") == audience)
 
 	return false
 
@@ -446,7 +464,7 @@ fn raw_to_der(raw: Bytes) Bytes:
 		pad := raw.get(start).to_int() >= 128
 		if pad: size += 1
 		body.append(2)
-		body.append(size.to_uint8().get_or(0))
+		body.append(size.to_uint8() or 0)
 		if pad: body.append(0)
 		for place in start..((piece + 1) * half):
 			body.append(raw.get(place))
@@ -455,7 +473,7 @@ fn raw_to_der(raw: Bytes) Bytes:
 	var out = BytesBuilder()
 	out.append(48)
 	if inner.length() >= 128: out.append(129)
-	out.append(inner.length().to_uint8().get_or(0))
+	out.append(inner.length().to_uint8() or 0)
 	out.append_bytes(inner)
 	return out.build()
 

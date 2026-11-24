@@ -11,7 +11,7 @@ fn maybe(value: Int, extra: Int?) Int:
     match extra:
         number:
             return value + number
-        none:
+        null:
             return value
 
 fn countdown(n: Int, step: Int = 1) Int:

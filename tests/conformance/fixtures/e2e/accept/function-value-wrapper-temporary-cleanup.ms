@@ -22,10 +22,10 @@ fn log_text(path: String) String!:
 	bytes := read_file(path).wait()?
 	return ok(expect_some(bytes.decode_utf8())?)
 
-fn observed(value: Resource?) Bool: value.is_some()
+fn observed(value: Resource?) Bool: value != null
 
 fn observed_default(value: Resource?, tail: Int = 0) Bool:
-	return value.is_some() or tail > 0
+	return (value != null) or tail > 0
 
 fn rejected() Int!: error(Error("expected"))
 
@@ -44,7 +44,7 @@ fn later_fault(reader: fn(Resource?, Resource?, Int) Bool, path: String) Void:
 
 fn new_owner_fault(path: String) Void:
 	create := fn(value: Resource?, target: String) Resource:
-		if value.is_some(): return Resource(50, target.clone())
+		if value != null: return Resource(50, target.clone())
 		return Resource(51, target.clone())
 
 	owner := create(present(path, 49), path)
@@ -52,7 +52,7 @@ fn new_owner_fault(path: String) Void:
 
 fn failed_close(path: String) Void:
 	owner := Resource(99, path.clone())
-	reader := fn(value: Resource?) Bool: value.is_some()
+	reader := fn(value: Resource?) Bool: value != null
 	_used := reader(present(path, 98))
 	_id := owner.id
 
@@ -61,7 +61,7 @@ test "lambda and source function aliases close temporary wrappers once":
 	path := f"{directory.path()}/log"
 	write_file(path, "").wait()?
 
-	reader := fn(value: Resource?) Bool: value.is_some()
+	reader := fn(value: Resource?) Bool: value != null
 	expect_equal(reader(present(path, 1)), true)?
 
 	source := observed
@@ -79,7 +79,7 @@ test "function arguments remain protected through later try and faults":
 	write_file(path, "").wait()?
 
 	reader := fn(first: Resource?, second: Resource?, tail: Int) Bool:
-		return first.is_some() or second.is_some() or tail > 0
+		return (first != null) or (second != null) or tail > 0
 	expect_equal(later_error(reader, path).is_error(), true)?
 	later_success(reader, path)?
 
@@ -92,11 +92,11 @@ test "function dispatch errors and faults retain temporary cleanup":
 	write_file(path, "").wait()?
 
 	reject := fn(value: Resource?) Void!:
-		if value.is_some(): return error(Error("expected"))
+		if value != null: return error(Error("expected"))
 		return ok()
 
 	broken := fn(value: Resource?) Void:
-		if value.is_some(): _bad := [1].get(3)
+		if value != null: _bad := [1].get(3)
 	expect_equal(reject(present(path, 20)).is_error(), true)?
 
 	_fault := expect_fault(fn: broken(present(path, 21)))?
@@ -137,7 +137,7 @@ test "function Result and loop condition temporaries close each time":
 	expect_equal(result(wrapped_result(path)), true)?
 	expect_equal(result(error("absent")), false)?
 
-	reader := fn(value: Resource?) Bool: value.is_some()
+	reader := fn(value: Resource?) Bool: value != null
 	var count = 0
 
 	while count < 3 and reader(present(path, 80)):
@@ -149,7 +149,7 @@ test "function Result and loop condition temporaries close each time":
 
 fn named_conversion_calls(path: String) Void!:
 	named := Resource(110, path.clone())
-	lambda := fn(value: Resource?) Bool: value.is_some()
+	lambda := fn(value: Resource?) Bool: value != null
 	source := observed_default
 	expect_equal(lambda(named), true)?
 	expect_equal(lambda(named), true)?

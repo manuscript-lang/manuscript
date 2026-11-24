@@ -2,6 +2,7 @@
 // conform: phase=test
 import (
 	Bytes from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	ReadStream from "@std/io/io.ms",
 	from_bytes, read_all from "@std/io/streams.ms",
 	OpenMode, OpenOptions, open, read_file, temporary, write_file from "@std/os/fs.ms",
@@ -28,7 +29,7 @@ test "a wrong expectation fails the reader check":
 test "one_byte returns single bytes":
 	var input = one_byte(source())
 	chunk := input.next()?
-	expect_equal(chunk.get().length(), 1)?
+	expect_equal((chunk or panic("called Optional.get() on null")).length(), 1)?
 
 test "fail_after delivers a prefix and then fails":
 	var input = fail_after(
@@ -36,7 +37,7 @@ test "fail_after delivers a prefix and then fails":
 		4,
 		Error("I/O: service unavailable", kind: "EAGAIN"),
 	)
-	all := read_all(input, none)
+	all := read_all(input, null)
 	expect_true(all.is_error())?
 
 test "fail_writer_after writes the prefix that fits and then fails":
@@ -52,7 +53,7 @@ test "fail_writer_after writes the prefix that fits and then fails":
 	expect_true(out.write("cdef".to_bytes()).is_error())?
 	expect_true(out.write("g".to_bytes()).is_error())?
 	expect_ok(out.close())?
-	expect_equal(expect_ok(read_file(path, none).wait())?, "abc".to_bytes())?
+	expect_equal(expect_ok(read_file(path, null).wait())?, "abc".to_bytes())?
 
 test "golden comparison passes and names the first differing line":
 	dir := expect_ok(temporary("golden-"))?

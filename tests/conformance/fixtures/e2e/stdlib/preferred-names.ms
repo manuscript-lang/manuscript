@@ -178,8 +178,8 @@ test "regex replace_all preserves literal text and exact output budgets":
 	expect_equal((all("a", "", 0)?), "")?
 	expect_equal(pattern.replace_all("z", "b", 0), limited)?
 	expect_equal(
-		pattern.replace_all("aa", "b", none),
-		pattern.replace_all("aa", "b", none),
+		pattern.replace_all("aa", "b", null),
+		pattern.replace_all("aa", "b", null),
 	)?
 
 	empty := compile("")?
@@ -189,7 +189,7 @@ test "regex replace_all preserves literal text and exact output budgets":
 	view_all := view.replace_all
 	expect_false(
 		(
-			(view.replace_all("aaa", "b", none)?) != "bbb"
+			(view.replace_all("aaa", "b", null)?) != "bbb"
 			or (view_all("aa", "b", 2)?) != "bb"
 		)
 	)?
@@ -199,13 +199,13 @@ test "new direct keyed calls evaluate arguments after the receiver is chosen":
 	items.add(
 		match present(0):
 			_value: 2
-			none: 3
+			null: 3
 	)
 	expect_equal(items.values(), [1, 2])?
 	items.remove(
 		match present(0):
 			_value: 1
-			none: 2
+			null: 2
 	)
 	expect_equal(items.values(), [2])?
 

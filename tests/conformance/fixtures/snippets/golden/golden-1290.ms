@@ -1,3 +1,6 @@
 // conform: tags=diagnostics
 // conform: phase=check
-fn first(values: List[Int]) Result[Int, MissingValue]: values.first().ok_or(Error("missing"))
+fn first(values: List[Int]) Result[Int, MissingValue]: ok_or(
+	values.first(),
+	Error("missing"),
+)

@@ -22,7 +22,7 @@ fn counts_entries(path: String) Int!:
 
 	while true:
 		next := cursor.read()?
-		if next.is_none(): break
+		if next == null: break
 
 		seen += 1
 

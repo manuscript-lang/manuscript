@@ -13,7 +13,7 @@ test "a stalled read times out and a ready one does not":
 	out.write(7)?
 
 	first := input.next(timeout: milliseconds(200))?
-	expect_equal(first.get_or(0), 7)?
+	expect_equal(first or 0, 7)?
 
 	stalled := input.next(timeout: milliseconds(50))
 	expect_equal(stalled.is_error(), true)?

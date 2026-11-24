@@ -3,7 +3,7 @@
 // conform: origin=pkg/compiler/optional_test.go:53 TestOptionalArgumentBoundaries
 enum Optional[T]:
     T
-    none
+    null
 
 fn f(value: Int?) Void: return
 

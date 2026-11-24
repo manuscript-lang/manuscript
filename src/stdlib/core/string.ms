@@ -14,23 +14,23 @@ import (
 fn String.as_bytes() Bytes:
 	return self.to_bytes()
 
-// Returns the text without `prefix`, or `none` when the text does not start with it.
+// Returns the text without `prefix`, or `null` when the text does not start with it.
 // An empty prefix succeeds and returns the text unchanged.
 fn String.cut_prefix(prefix: String) String?:
 	if self.starts_with(prefix): return self.view(
 		prefix.length(),
 		self.length(),
 	).clone()
-	return none
+	return null
 
-// Returns the text without `suffix`, or `none` when the text does not end with it.
+// Returns the text without `suffix`, or `null` when the text does not end with it.
 // An empty suffix succeeds and returns the text unchanged.
 fn String.cut_suffix(suffix: String) String?:
 	if self.ends_with(suffix): return self.view(
 		0,
 		self.length() - suffix.length(),
 	).clone()
-	return none
+	return null
 
 // The text before and after the first (or last) separator, as returned by
 // `split_once` and `rsplit_once`.
@@ -40,31 +40,31 @@ export type SplitParts:
 	// The text after the separator.
 	after: String
 
-// Splits at the first exact separator. Returns `none` when the separator is empty or
+// Splits at the first exact separator. Returns `null` when the separator is empty or
 // does not occur.
 // Example: `"key=a=b".split_once("=")` is `before: "key"`, `after: "a=b"`.
 fn String.split_once(separator: String) SplitParts?:
-	if separator.is_empty(): return none
+	if separator.is_empty(): return null
 
 	at := self.index_of(separator)
-	if at.is_none(): return none
+	if at == null: return null
 
-	cut := at.get_or(0)
+	cut := at
 	return SplitParts(
 		before: self.view(0, cut).clone(),
 		after: self.view(cut + separator.length(), self.length()).clone(),
 	)
 
-// Splits at the last exact separator. Returns `none` when the separator is empty or
+// Splits at the last exact separator. Returns `null` when the separator is empty or
 // does not occur.
 // Example: `"a/b/c".rsplit_once("/")` is `before: "a/b"`, `after: "c"`.
 fn String.rsplit_once(separator: String) SplitParts?:
-	if separator.is_empty(): return none
+	if separator.is_empty(): return null
 
 	at := self.last_index_of(separator)
-	if at.is_none(): return none
+	if at == null: return null
 
-	cut := at.get_or(0)
+	cut := at
 	return SplitParts(
 		before: self.view(0, cut).clone(),
 		after: self.view(cut + separator.length(), self.length()).clone(),
@@ -85,7 +85,7 @@ export enum NormalizationForm:
 	Nfkd
 
 // Normalizes `text` to this form, with the same budget and errors as
-// `String.normalize`. When `max_bytes` is omitted or `none` the output is not
+// `String.normalize`. When `max_bytes` is omitted or `null` the output is not
 // bounded; a supplied bound counts UTF-8 bytes.
 fn NormalizationForm.normalize(text: String, max_bytes: Int?) String!:
 	name := match self:
@@ -215,9 +215,9 @@ fn String.trim_end_chars(set: String) String:
 
 // Reports whether any scalar of `set` occurs in the text.
 fn String.contains_any(set: String) Bool:
-	return self.index_any(set).is_some()
+	return self.index_any(set) != null
 
-// Returns the byte offset of the first scalar that occurs in `set`, or `none`.
+// Returns the byte offset of the first scalar that occurs in `set`, or `null`.
 fn String.index_any(set: String) Int?:
 	return msrt_string_index_any(self, set)
 
@@ -405,7 +405,7 @@ fn String.map_chars(transform: fn(String) String) String:
 	return out
 
 // Returns the byte offset of the first scalar (passed as a one-scalar string) for
-// which `predicate` returns true, or `none`.
+// which `predicate` returns true, or `null`.
 fn String.find_char(predicate: fn(String) Bool) Int?:
 	var at = 0
 	n := self.length()
@@ -416,7 +416,7 @@ fn String.find_char(predicate: fn(String) Bool) Int?:
 
 		at += width
 
-	return none
+	return null
 
 // Replaces many patterns in one pass. At each position the first pair, in map
 // order, whose key matches wins, and its replacement is not rescanned. Empty keys
@@ -445,7 +445,7 @@ fn String.replace_each(pairs: Map[String, String]) String:
 
 		for j in 0..count:
 			if nexts[j] < i:
-				nexts[j] = bytes.index_of_byte(keys[j].get(0), i).get_or(n)
+				nexts[j] = bytes.index_of_byte(keys[j].get(0), i) or n
 
 			if nexts[j] < at:
 				at = nexts[j]

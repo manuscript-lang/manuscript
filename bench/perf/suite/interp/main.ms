@@ -69,30 +69,30 @@ fn run(code: List[Op]) Int:
 				stack.append(vars[slot])
 				pc += 1
 			Store(slot):
-				vars[slot] = stack.pop().get_or(0)
+				vars[slot] = stack.pop() or 0
 				pc += 1
 			Add:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(a + b)
 				pc += 1
 			Mul:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(a * b)
 				pc += 1
 			Mod:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(a % b)
 				pc += 1
 			Lt:
-				b := stack.pop().get_or(0)
-				a := stack.pop().get_or(0)
+				b := stack.pop() or 0
+				a := stack.pop() or 0
 				stack.append(if a < b: 1 else: 0)
 				pc += 1
 			Jz(to):
-				c := stack.pop().get_or(0)
+				c := stack.pop() or 0
 				pc = if c == 0: to else: pc + 1
 			Jmp(to):
 				pc = to

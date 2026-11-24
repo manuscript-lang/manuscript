@@ -16,7 +16,7 @@ fn preserve_key[K: Hashable](value: K) K:
 test "derived value equality":
     present: Int? := 1
     same: Int? := 1
-    missing: Int? := none
+    missing: Int? := null
     expect_equal(present, same)?
     expect_not_equal(present, missing)?
     expect_equal(1.00d, 1d)?

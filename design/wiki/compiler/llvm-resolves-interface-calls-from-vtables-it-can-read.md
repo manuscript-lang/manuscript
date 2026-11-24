@@ -10,5 +10,5 @@ Measured 2026-11-06: a MIR devirtualization pass (a `call.method` on a receiver 
 See [bench/perf/iface](../../../bench/perf/iface/README.md).
 
 Apply when: changing how vtables or other data objects reach LLVM, or chasing the cost of an interface call in a release build.
-Evidence: [vtable emission](../../crates/ms-mir-llvm/src/state.rs), [unit text](../../crates/ms-mir-llvm/src/llvm_ir.rs), [streams suite](../../../bench/perf/streams/README.md).
+Evidence: vtable emission, unit text, [streams suite](../../../bench/perf/streams/README.md).
 Verify: `make conform`; `bench/perf/streams`.

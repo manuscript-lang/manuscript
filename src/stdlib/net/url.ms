@@ -24,7 +24,7 @@ export type QueryEntry:
 	// Decoded query value; a bare key has an empty value and plus decodes as a space.
 	value: String
 
-// Parsed URL components. A missing port is represented by `none`.
+// Parsed URL components. A missing port is represented by `null`.
 export type Url:
 	// URL scheme, lowercased during parsing; native parse rejects missing schemes and
 	// opaque URLs.
@@ -37,11 +37,11 @@ export type Url:
 	path: String
 	// Decoded fragment contents without the leading hash mark.
 	fragment: String
-	// Encoded query contents without the leading question mark, or none when the URL
+	// Encoded query contents without the leading question mark, or null when the URL
 	// has no query; `http://a/b?` has an empty one. parse_query decodes individual
 	// entries.
 	query: String?
-	// Explicit numeric port in 0..65535, or none when the input has no port.
+	// Explicit numeric port in 0..65535, or null when the input has no port.
 	port: Int?
 	// True when the URL was written without `//`, as in `mailto:?subject=hi`; format
 	// then omits the empty authority, so the text round-trips.

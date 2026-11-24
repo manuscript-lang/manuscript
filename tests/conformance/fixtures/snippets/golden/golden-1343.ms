@@ -6,4 +6,4 @@ fn use(value: Int?) Int:
     Flag := 2
     match value:
         ready: return Ready
-        none: return 0
+        null: return 0

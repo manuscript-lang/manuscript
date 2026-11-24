@@ -25,7 +25,7 @@ fn bad() Int!:
 	return error(Error("bad"))
 
 fn nothing() String?:
-	return none
+	return null
 
 fn wrapped(actual: Bool, site: String = caller_site()) Void!:
 	return expect_true(actual, site)

@@ -10,8 +10,8 @@ fn caller_site() Int:
 fn site(value: Int = caller_site()) Int:
 	return value
 
-fn absent(value: Int? = none) Bool:
-	return value.is_none()
+fn absent(value: Int? = null) Bool:
+	return value == null
 
 test "a default named caller_site calls the program's function":
 	site() | expect_equal(5)?

@@ -35,22 +35,24 @@ export fn parse_sample(output: String, expected: Map[String, Int]?) Sample!:
 	var medians = Map[String, Float]()
 
 	for c in cases:
-		stats := c.stats.get_or(
-			Stats(
+		stats := (
+			c.stats
+			or Stats(
 				operations: 0,
-				iterations: none,
-				samples: none,
+				iterations: null,
+				samples: null,
 				median_ns: 0.0,
-				min_ns: none,
-				max_ns: none,
-				mean_ns: none,
-				stddev_ns: none,
+				min_ns: null,
+				max_ns: null,
+				mean_ns: null,
+				stddev_ns: null,
 			)
 		)
 		operations.add(c.name.clone(), stats.operations)
 		medians.add(c.name.clone(), stats.median_ns)
 
-	if want := expected:
+	want := expected
+	if want != null:
 		if want != operations: return invalid("cases or operation counts changed")
 	return ok(Sample(operations, medians))
 
@@ -65,7 +67,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		raw.add(name.clone(), List[String]())
 		values.add(name.clone(), Map[String, List[Float]]())
 
-	var expected: Map[String, Int]? = none
+	var expected: Map[String, Int]? = null
 	var names = List[String]()
 
 	for i in 0..repeats:
@@ -73,7 +75,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 			output := stdlib_bench(binaries.get_or(version, ""), samples, filter)?
 			parsed := parse_sample(output, expected)?
 
-			if expected.is_none():
+			if expected == null:
 				expected = parsed.operations.clone()
 				names = parsed.operations.keys().clone()
 
@@ -90,7 +92,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 
 			values.add(version.clone(), per)
 
-	want := expected.get_or(Map[String, Int]())
+	want := expected or Map[String, Int]()
 	labels := case_labels(names)
 	var table = [
 		f"Median of {repeats} alternating runs of {samples} samples; all {want.length()} cases and operation counts verified.",
@@ -112,7 +114,7 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 				[],
 			)
 		)
-		var ratio: Float? = none
+		var ratio: Float? = null
 		if before != 0.0: ratio = after / before
 
 		label := labels.get_or(name, name)
@@ -121,16 +123,12 @@ fn run(opts: Map[String, String], repeats: Int, samples: Int) Result[String, Err
 		entry.add("ops", jint(ops))
 		entry.add("before", jfloat(before))
 		entry.add("after", jfloat(after))
-		entry.add(
-			"ratio",
-			if ratio.is_some(): jfloat(
-				ratio.get_or(0.0)
-			) else: JsonValue.Null,
-		)
+		entry.add("ratio", if ratio != null: jfloat(ratio or 0.0) else: JsonValue.Null)
 		summary.add(label.clone(), jobject(entry))
 
 		var shown = "—"
-		if r := ratio: shown = r.to_fixed(3) + "x"
+		r := ratio
+		if r != null: shown = r.to_fixed(3) + "x"
 		table.append(
 			f"| {label} | {ops} | {before.to_precision(4)} | {after.to_precision(4)} | {shown} |"
 		)
@@ -169,8 +167,8 @@ fn main() Int:
 	if parsed.is_error(): return fail(parsed.err().message)
 
 	opts := parsed.get_or(Map[String, String]())
-	repeats := opts.get_or("repeats", "5").parse_int().get_or(0)
-	samples := opts.get_or("samples", "5").parse_int().get_or(0)
+	repeats := opts.get_or("repeats", "5").parse_int() or 0
+	samples := opts.get_or("samples", "5").parse_int() or 0
 	if repeats < 1 or samples < 1: return fail("repeats and samples must be positive")
 
 	return finish(run(opts, repeats, samples))

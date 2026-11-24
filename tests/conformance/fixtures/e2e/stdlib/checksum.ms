@@ -20,7 +20,7 @@ fn reference(data: Bytes) UInt32:
 			if low == 1:
 				crc = bit_xor(crc, 3988292384)
 
-	return bit_xor(crc, 4294967295).to_uint32().get_or(0)
+	return bit_xor(crc, 4294967295).to_uint32() or 0
 
 test "IEEE CRC32 known text vectors retain unsigned results":
 	expect_equal(crc32(Bytes([])).to_int(), 0)?
@@ -38,7 +38,7 @@ test "IEEE CRC32 known text vectors retain unsigned results":
 test "IEEE CRC32 covers every binary byte and sliced inputs":
 	var builder = BytesBuilder()
 	for byte in 0..256:
-		builder.append(byte.to_uint8().get_or(0))
+		builder.append(byte.to_uint8() or 0)
 
 	data := builder.build()
 	expect_equal(crc32(data).to_int(), 688229491)?
@@ -56,7 +56,7 @@ test "IEEE CRC32 covers every binary byte and sliced inputs":
 test "IEEE CRC32 matches bit oracle across byte and length boundaries":
 	var builder = BytesBuilder()
 	for index in 0..513:
-		builder.append(((index * 73 + index / 7) % 256).to_uint8().get_or(0))
+		builder.append(((index * 73 + index / 7) % 256).to_uint8() or 0)
 
 	data := builder.build()
 
@@ -78,7 +78,7 @@ test "IEEE CRC32 appending its little endian checksum gives the standard residue
 test "IEEE CRC32 large binary vector":
 	var builder = BytesBuilder()
 	for index in 0..1048576:
-		builder.append(((index * 73 + index / 7) % 256).to_uint8().get_or(0))
+		builder.append(((index * 73 + index / 7) % 256).to_uint8() or 0)
 
 	data := builder.build()
 	expect_equal(crc32(data).to_int(), 9350483)?
@@ -91,7 +91,7 @@ test "IEEE CRC32 large binary vector":
 test "IEEE CRC32 preserves larger unaligned views and tails":
 	var builder = BytesBuilder()
 	for index in 0..16400:
-		builder.append(((index * 73 + index / 7) % 256).to_uint8().get_or(0))
+		builder.append(((index * 73 + index / 7) % 256).to_uint8() or 0)
 
 	data := builder.build()
 

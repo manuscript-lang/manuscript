@@ -2,4 +2,4 @@
 // conform: phase=parse
 // conform: origin=documentation/core-language/types/optionals.md:70
 fn display_name(create: fn() String, name: String?) String:
-    return name.get_or_else(create)
+	return name or create()

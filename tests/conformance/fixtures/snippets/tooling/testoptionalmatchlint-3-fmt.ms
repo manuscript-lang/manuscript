@@ -2,7 +2,7 @@
 // conform: phase=parse
 // conform: origin=pkg/tooling/optional_match_lint_test.go:16 TestOptionalMatchLint
 fn use(value: Int?) Int:
-    if n := value:
-        return n
+	n := value
+	if n != null: return n
 
-    return 0
+	return 0

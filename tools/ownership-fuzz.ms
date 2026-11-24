@@ -293,12 +293,12 @@ fn program(seed: Int) String:
 // Whether `line` has the shape every value prints with.
 fn well_formed(line: String) Bool:
 	if line == "": return true
-	if line.parse_int().is_some(): return true
+	if line.parse_int() != null: return true
 
 	dash := line.index_of("-")
-	if dash.is_none(): return false
+	if dash == null: return false
 
-	for c in line.slice(dash.get() + 1, line.length()).chars():
+	for c in line.slice(dash + 1, line.length()).chars():
 		if c < "a" or c > "j": return false
 	return true
 
@@ -312,8 +312,8 @@ fn main() Int:
 	var seed = 1
 	var count = 200
 	args := arguments()
-	if args.length() > 0: seed = args[0].parse_int().get_or(1)
-	if args.length() > 1: count = args[1].parse_int().get_or(200)
+	if args.length() > 0: seed = args[0].parse_int() or 1
+	if args.length() > 1: count = args[1].parse_int() or 200
 
 	var ran = 0
 	var rejected = 0
@@ -329,7 +329,7 @@ fn main() Int:
 		if verdict.is_error() or verdict.get().exit_code != 0:
 			rejected += 1
 
-			why := verdict.get().stderr.decode_utf8().get_or("")
+			why := verdict.get().stderr.decode_utf8() or ""
 
 			if why.contains(": parse:") or why.contains("internal"):
 				failures += 1
@@ -346,8 +346,8 @@ fn main() Int:
 				ms.clone(),
 				["run", file.clone(), "--build-type", build.clone()],
 			).wait().get()
-			text := child.stdout.decode_utf8().get_or("")
-			err := child.stderr.decode_utf8().get_or("")
+			text := child.stdout.decode_utf8() or ""
+			err := child.stderr.decode_utf8() or ""
 			var problem = ""
 			if child.exit_code != 0: problem = f"exit {child.exit_code}"
 			for line in text.split("\n"):

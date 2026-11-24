@@ -10,7 +10,7 @@ interface Picker[T]:
 	fn mapped[U](transform: fn(T) U) List[U]
 
 fn Bag.pick[K: Comparable](key: fn(Int) K) Int?:
-	if self.items.is_empty(): return none
+	if self.items.is_empty(): return null
 
 	var at = 0
 	var best = key(self.items[0])

@@ -6,7 +6,7 @@ fn chain[T, U](first: fn() T, second: fn(T) U) U: second(first())
 fn result[T](transform: fn() Result[T, TextError]) Result[T, TextError]: transform()
 fn checked() Result[Int, TextError]: ok(3)
 fn choose[T](first: fn() T, second: fn() T) T: second()
-fn optional(transform: (fn(Int) Int)? = none) Void: return
+fn optional(transform: (fn(Int) Int)? = null) Void: return
 type Box[T]:
     value: T
 type Callback[T, U]:

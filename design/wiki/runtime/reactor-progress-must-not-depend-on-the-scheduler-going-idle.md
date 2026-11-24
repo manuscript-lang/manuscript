@@ -10,5 +10,5 @@ are no corresponding waits.
 
 
 Apply when: changing task wake paths, reactor servicing, or deadline checks.
-Evidence: [scheduler regressions](../../crates/ms-rt/src/task.rs) (`timers_progress_while_tasks_stay_ready`, `io_progresses_while_tasks_stay_ready`, `remote_posts_progress_while_tasks_stay_ready`).
+Evidence: scheduler regressions (`timers_progress_while_tasks_stay_ready`, `io_progresses_while_tasks_stay_ready`, `remote_posts_progress_while_tasks_stay_ready`).
 Verify: ready events finish before a bounded busy task finishes yielding; retain shielded cleanup tests.

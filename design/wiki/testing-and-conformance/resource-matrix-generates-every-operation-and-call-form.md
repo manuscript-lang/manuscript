@@ -9,7 +9,7 @@ Passthrough is read from the declaration, not a name list: `wrapper_passthrough`
 Coverage (2026-11-08): the tool also reads `ms search_symbol prelude.<Type> --json` for List, Map, Set, Optional and Result and fails when an operation that changes the receiver or mentions a type parameter outside a callback has neither a row nor a reason in `exempt()`. A new stdlib operation therefore cannot ship unclassified. Rows added for it found a bound `Map.get` that double-closed its entry (a method value now requires a clonable element) and `List.get(i, default)` over resources, which copied an element out of the list (now rejected: a collection cannot hand one over). Sets are an open gap: the matrix has no Hashable resource.
 
 Apply when: adding or changing a standard operation that takes, returns or discards a `T`, or a call form (method value, interface, function value).
-Evidence: [tools/resource-matrix.ms](../../../tools/resource-matrix.ms), [wrapper_passthrough tests](../../crates/ms-check/tests/wrapper_passthrough.rs).
+Evidence: [tools/resource-matrix.ms](../../../tools/resource-matrix.ms), wrapper_passthrough tests.
 Verify: add a row to `operations()` and run `make resource-matrix`; a combination that must not be accepted is rejected by the checker, never skipped in the tool.
 
 Native discard classifications apply only to native collection methods, not arbitrary source methods named `remove`, `clear`, `set`, `add`, or `splice`. A generic source receiver may hold a resource while such a method only updates a counter (#3106); retain a same-name acceptance control alongside native rejection cases.

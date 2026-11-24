@@ -37,8 +37,10 @@ export fn default_timeout(phase: String) Int:
 	if phase == "check": return 60
 	if phase == "run": return 120
 
-	// The slowest test fixture takes about 15 s (many-tasks); twice that is a hang.
-	return 30
+	// A hang detector, not a speed budget: the slowest test fixtures take 15 to 20 s on
+	// Linux (yaml, many-tasks) and three times that on a loaded Windows runner, so the
+	// limit matches the run phase.
+	return 120
 
 export fn invoke(
 	ms: String,
@@ -68,7 +70,7 @@ export fn invoke(
 		)
 
 	cause := result.err()
-	timed := cause.kind.get_or("") == "ETIMEDOUT"
+	timed := (cause.kind or "") == "ETIMEDOUT"
 	return Process(
 		code: if timed: 137 else: 127,
 		stdout: "",
@@ -102,13 +104,13 @@ fn mask_stdlib_lines(text: String) String:
 	var rest = text.clone()
 
 	while true:
-		at := rest.index_of("@std/").get_or(-1)
+		at := rest.index_of("@std/") or (-1)
 		if at < 0: break
 
 		out += rest.slice(0, at)
 
 		tail := rest.slice(at, rest.length())
-		dot := tail.index_of(".ms:").get_or(-1)
+		dot := tail.index_of(".ms:") or (-1)
 
 		if dot < 0:
 			out += tail
@@ -211,13 +213,14 @@ fn parse_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	)
 	report := read_report(checked, work)
 	var diagnostics = List[JsonValue]()
-	if listed := report.get("diagnostics"):
-		for item in listed.as_list().get_or([]):
+	listed := report.get("diagnostics")
+	if listed != null:
+		for item in (listed.as_list() or []):
 			if string_member(item, "phase") == "parse": diagnostics.append(item.clone())
 
 	var fields = Map[String, JsonValue]()
 	fields.add("diagnostics", JsonValue.ArrayValue(diagnostics))
-	if report.get("unparsable_json").is_some(): fields.add("raw", report)
+	if report.get("unparsable_json") != null: fields.add("raw", report)
 
 	formatted := invoke(ms, fx, ["fmt", fx.entry.clone()], work, "".to_bytes())
 
@@ -245,8 +248,9 @@ fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
 	var text_code = json_run.code
 	var stdout = ""
 	var stderr = ""
+	text := report.get("text")
 
-	if text := report.get("text"):
+	if text != null:
 		stdout = string_member(text, "stdout")
 		stderr = string_member(text, "stderr")
 	else:
@@ -257,12 +261,16 @@ fn check_phase(ms: String, fx: Fixture, work: String) JsonValue:
 
 	var fields = Map[String, JsonValue]()
 	process_fields(fields, json_run)
-	if format := report.get("format"): fields.add("format", format.clone())
 
-	if listed := report.get("diagnostics"): fields.add("diagnostics", listed.clone())
+	format := report.get("format")
+	if format != null: fields.add("format", format.clone())
+
+	listed := report.get("diagnostics")
+
+	if listed != null: fields.add("diagnostics", listed.clone())
 	else: fields.add("diagnostics", JsonValue.ArrayValue([]))
 
-	if report.get("unparsable_json").is_some(): fields.add("raw", report)
+	if report.get("unparsable_json") != null: fields.add("raw", report)
 
 	var text = Map[String, JsonValue]()
 	text.add("exit_code", number(text_code))

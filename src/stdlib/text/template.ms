@@ -220,7 +220,9 @@ export fn render_to(
 	return output.write(text)
 
 fn root_names(data: JsonValue) Map[String, JsonValue]:
-	if members := data.as_map(): return members
+	members := data.as_map()
+	if members != null: return members
+
 	return Map[String, JsonValue]()
 
 // ---- lexing -------------------------------------------------------------------------------
@@ -255,9 +257,9 @@ fn tokenize(source: String) List[Token]!Error:
 
 			close := piece.index_of("}}")
 
-			if close.is_some():
-				chunks.append(piece.view(0, close.get_or(0)).clone())
-				tail = piece.view(close.get_or(0) + 2, piece.length()).clone()
+			if close != null:
+				chunks.append(piece.view(0, close).clone())
+				tail = piece.view((close) + 2, piece.length()).clone()
 				closed = true
 				break
 
@@ -626,11 +628,11 @@ fn var Builder.conditional(cond: String, line: Int, depth: Int) TemplateNode!Err
 
 fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Error:
 	at := header.index_of(" in ")
-	if at.is_none(): return error(
+	if at == null: return error(
 		syntax_error(line: line, reason: "for needs `name in value`")
 	)
 
-	names := header.view(0, at.get_or(0)).split(",")
+	names := header.view(0, at).split(",")
 	if names.length() > 2: return error(
 		syntax_error(line: line, reason: "for takes one or two names")
 	)
@@ -649,7 +651,7 @@ fn var Builder.for_block(header: String, line: Int, depth: Int) TemplateNode!Err
 	):
 		return error(syntax_error(line: line, reason: "bad loop name"))
 
-	source := parse_expr(header.view(at.get_or(0) + 4, header.length()), line)?
+	source := parse_expr(header.view((at) + 4, header.length()), line)?
 	body := self.block(depth + 1)?
 	var otherwise = List[TemplateNode]()
 
@@ -704,13 +706,15 @@ fn Run.lookup(parts: List[String]) JsonValue?:
 	var i = self.frames.length() - 1
 
 	while i >= 0:
-		if found := self.frames[i].get(parts[0]):
+		found := self.frames[i].get(parts[0])
+
+		if found != null:
 			if parts.length() == 1: return found.clone()
 			return descend(found, parts)
 
 		i -= 1
 
-	return none
+	return null
 
 fn Run.eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
 	match expr:
@@ -720,7 +724,8 @@ fn Run.eval(expr: TemplateExpr, strict: Bool) JsonValue!Error:
 		Op(op, args): return self.operator(op, args)
 
 fn Run.path_value(parts: List[String], strict: Bool) JsonValue!Error:
-	if found := self.lookup(parts): return ok(found)
+	found := self.lookup(parts)
+	if found != null: return ok(found)
 	if strict: return error(missing_value_error(path: parts.join(".")))
 
 	return ok(JsonValue.Null)
@@ -830,14 +835,9 @@ fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 	if depth > MAX_DEPTH: return error(partial_depth_error(name: key))
 
 	partial := self.partials.get(key).clone()
-	if partial.is_none(): return error(unknown_partial_error(name: key))
+	if partial == null: return error(unknown_partial_error(name: key))
 
-	return self.nodes(
-		partial.get_or(
-			Template(nodes: List[TemplateNode](), html: false)
-		).nodes.clone(),
-		depth + 1,
-	)
+	return self.nodes((partial).nodes.clone(), depth + 1)
 
 // ---- values --------------------------------------------------------------------------------
 
@@ -845,23 +845,26 @@ fn var Run.include(name: TemplateExpr, depth: Int) Void!Error:
 // unused siblings.
 fn descend(root: JsonValue, parts: List[String]) JsonValue?:
 	first := member(root, parts[1])
-	if first.is_none(): return none
+	if first == null: return null
 
-	var value = first.get_or(JsonValue.Null)
+	var value = first
 
 	for k in 2..parts.length():
 		next := member(value, parts[k]).clone()
-		if next.is_none(): return none
+		if next == null: return null
 
-		value = next.get_or(JsonValue.Null)
+		value = next
 
 	return value
 
 fn member(value: JsonValue, key: String) JsonValue?:
-	if found := value.get(key): return found
-	if index := key.parse_int(): return value.get_index(index).clone()
+	found := value.get(key)
+	if found != null: return found
 
-	return none
+	index := key.parse_int()
+	if index != null: return value.get_index(index).clone()
+
+	return null
 
 fn loop_info(index: Int, length: Int) JsonValue:
 	var fields = Map[String, JsonValue]()
@@ -874,12 +877,15 @@ fn loop_info(index: Int, length: Int) JsonValue:
 // The items of a list loop, last first so each can be moved out with `pop` instead of
 // copied; for an object loop `keys` receives its keys in order and the result is empty.
 fn collection_items(collection: JsonValue, var keys: List[String]) List[JsonValue]:
-	if found := collection.as_list():
+	found := collection.as_list()
+
+	if found != null:
 		var items = found
 		items.reverse()
 		return items
 
-	if members := collection.as_map():
+	members := collection.as_map()
+	if members != null:
 		for entry in members.entries(): keys.append(entry.key.clone())
 	return List[JsonValue]()
 
@@ -895,7 +901,7 @@ fn bind_row(
 	i: Int,
 ) Void:
 	if keys.is_empty():
-		item := items.pop().get_or(JsonValue.Null)
+		item := items.pop() or JsonValue.Null
 
 		if second.is_empty():
 			frame.add(first.clone(), item)
@@ -903,7 +909,7 @@ fn bind_row(
 			frame.add(first.clone(), JsonValue.NumberValue(f"{i}"))
 			frame.add(second.clone(), item)
 	else:
-		value := collection.get(keys[i]).clone().get_or(JsonValue.Null).clone()
+		value := (collection.get(keys[i]).clone() or JsonValue.Null).clone()
 
 		if second.is_empty():
 			var pair = Map[String, JsonValue]()
@@ -944,8 +950,8 @@ fn magnitude_sum(a: String, b: String, subtract: Bool) String:
 	var out = ""
 
 	while i >= 0 or j >= 0:
-		x := if i >= 0: left[i].parse_int().get_or(0) else: 0
-		y := if j >= 0: right[j].parse_int().get_or(0) else: 0
+		x := if i >= 0: (left[i].parse_int() or 0) else: 0
+		y := if j >= 0: (right[j].parse_int() or 0) else: 0
 		var digit = x + (if subtract: -y else: y) + carry
 		carry = 0
 
@@ -1006,18 +1012,18 @@ fn exact_number(text: String) ExactNumber?:
 	// Validate a JSON number while locating its coefficient and exponent. Raw
 	// NumberValue constructors need not have passed through the JSON parser.
 	chars := text.to_bytes()
-	if chars.is_empty(): return none
+	if chars.is_empty(): return null
 
 	negative := chars.get(0) == 45
 	var at = if negative: 1 else: 0
-	if at == chars.length(): return none
+	if at == chars.length(): return null
 
 	start := at
 
 	if chars.get(at) == 48:
 		at += 1
 	else:
-		if chars.get(at) < 49 or chars.get(at) > 57: return none
+		if chars.get(at) < 49 or chars.get(at) > 57: return null
 
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
 
@@ -1028,13 +1034,13 @@ fn exact_number(text: String) ExactNumber?:
 
 		fraction_start := at
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
-		if at == fraction_start: return none
+		if at == fraction_start: return null
 
 	coefficient_end := at
 	var exponent = "0"
 
 	if at < chars.length():
-		if chars.get(at) != 101 and chars.get(at) != 69: return none
+		if chars.get(at) != 101 and chars.get(at) != 69: return null
 
 		at += 1
 
@@ -1043,7 +1049,7 @@ fn exact_number(text: String) ExactNumber?:
 
 		digits_start := at
 		while at < chars.length() and number_digit(chars.get(at)): at += 1
-		if at == digits_start or at != chars.length(): return none
+		if at == digits_start or at != chars.length(): return null
 
 		exponent = text.view(exponent_start, text.length()).clone()
 
@@ -1105,7 +1111,7 @@ fn coefficient_text(number: ExactNumber) String:
 		end -= 1
 
 	// The lexical scan already validated ASCII; these byte ranges are UTF-8.
-	return number.coefficient.decode_utf8_range(number.first, end).get_or("").replace(
+	return (number.coefficient.decode_utf8_range(number.first, end) or "").replace(
 		".",
 		"",
 	)
@@ -1113,72 +1119,105 @@ fn coefficient_text(number: ExactNumber) String:
 // Common integer tokens compare directly without losing precision. Noncanonical
 // or out-of-range text continues through the general exact-number path.
 fn exact_integer(text: String) Int?:
-	if integer := text.parse_int():
+	integer := text.parse_int()
+	if integer != null:
 		if text == f"{integer}" or text == "-0": return integer
-	return none
+	return null
 
 fn truthy(value: JsonValue) Bool:
 	if value.is_null(): return false
-	if flag := value.as_bool(): return flag
-	if list := value.as_list(): return not list.is_empty()
-	if members := value.as_map(): return not members.is_empty()
-	if text := value.as_string(): return not text.is_empty()
 
-	if text := number_text(value):
-		if integer := exact_integer(text): return integer != 0
-		if number := exact_number(text): return number.first != number.end
+	flag := value.as_bool()
+	if flag != null: return flag
+
+	list := value.as_list()
+	if list != null: return not list.is_empty()
+
+	members := value.as_map()
+	if members != null: return not members.is_empty()
+
+	text := value.as_string()
+	if text != null: return not text.is_empty()
+
+	text := number_text(value)
+
+	if text != null:
+		integer := exact_integer(text)
+		if integer != null: return integer != 0
+
+		number := exact_number(text)
+		if number != null: return number.first != number.end
 
 	return true
 
 fn to_text(value: JsonValue) String:
 	if value.is_null(): return ""
-	if text := value.as_string(): return text
-	if flag := value.as_bool(): return if flag: "true" else: "false"
-	if found := number_text(value): return found.clone()
+
+	text := value.as_string()
+	if text != null: return text
+
+	flag := value.as_bool()
+	if flag != null: return if flag: "true" else: "false"
+
+	found := number_text(value)
+	if found != null: return found.clone()
 
 	return stringify(value: value).get_or("")
 
 fn number_text(value: JsonValue) String?:
 	match value:
 		NumberValue(text): return text
-		_: return none
+		_: return null
 
 // 0 null, 1 bool, 2 number, 3 string, 4 list, 5 object: values of different kinds are
 // never equal.
 fn kind_of(value: JsonValue) Int:
 	if value.is_null(): return 0
-	if value.as_bool().is_some(): return 1
-	if number_text(value).is_some(): return 2
-	if value.as_string().is_some(): return 3
-	if value.as_list().is_some(): return 4
+	if value.as_bool() != null: return 1
+	if number_text(value) != null: return 2
+	if value.as_string() != null: return 3
+	if value.as_list() != null: return 4
 
 	return 5
 
 fn equal(left: JsonValue, right: JsonValue) Bool:
 	if kind_of(left) != kind_of(right): return false
-	if number_text(left).is_some(): return compare_values(left, right) == 0
+	if number_text(left) != null: return compare_values(left, right) == 0
 
 	return to_text(left) == to_text(right) and left.is_null() == right.is_null()
 
 // -1, 0, 1 for numbers or strings of the same kind; 2 when the values cannot be ordered.
 fn compare_values(left: JsonValue, right: JsonValue) Int:
-	if text := number_text(left):
-		other := number_text(right)
-		if other.is_none(): return 2
+	text := number_text(left)
 
-		right_text := other.get_or("")
-		if integer := exact_integer(text):
-			if other_integer := exact_integer(right_text):
+	if text != null:
+		other := number_text(right)
+		if other == null: return 2
+
+		right_text := other
+		integer := exact_integer(text)
+
+		if integer != null:
+			other_integer := exact_integer(right_text)
+			if other_integer != null:
 				return if integer < other_integer: -1 else if integer > other_integer: 1 else: 0
 
 		a := exact_number(text)
 		b := exact_number(right_text)
-		if x := a:
-			if y := b: return number_compare(x, y)
+		x := a
+
+		if x != null:
+			y := b
+			if y != null: return number_compare(x, y)
+
 		return 2
 
-	if a := left.as_string():
-		if b := right.as_string(): return a.compare(b)
+	a := left.as_string()
+
+	if a != null:
+		b := right.as_string()
+		if b != null: return a.compare(b)
+
 	return 2
 
 fn text_value(text: String) JsonValue:
@@ -1220,11 +1259,11 @@ fn apply_filter(name: String, input: JsonValue, args: List[JsonValue]) JsonValue
 	if name == "truncate":
 		count := arg_text(name.clone(), args, 0)?
 		limit := count.parse_int()
-		if limit.is_none() or limit.get_or(0) < 0: return error(
+		if (limit == null) or (limit) < 0: return error(
 			invalid(name.clone(), "needs a count")
 		)
 
-		return ok(text_value(truncated(text, limit.get_or(0))))
+		return ok(text_value(truncated(text, limit)))
 
 	// `raw` and any other registered name pass through; unknown names fail at compile time.
 	return ok(input.clone())
@@ -1241,17 +1280,24 @@ fn truncated(text: String, limit: Int) String:
 	return f"{text.view(0, end)}..."
 
 fn length_of(value: JsonValue) Int:
-	if list := value.as_list(): return list.length()
-	if members := value.as_map(): return members.length()
+	list := value.as_list()
+	if list != null: return list.length()
+
+	members := value.as_map()
+	if members != null: return members.length()
 
 	return to_text(value).length()
 
 fn reverse_value(value: JsonValue) JsonValue!Error:
-	if list := value.as_list(): return ok(JsonValue.ArrayValue(list.reversed().clone()))
+	list := value.as_list()
+	if list != null: return ok(JsonValue.ArrayValue(list.reversed().clone()))
+
 	return ok(text_value(to_text(value).reverse()))
 
 fn end_of(value: JsonValue, first: Bool) JsonValue:
-	if list := value.as_list():
+	list := value.as_list()
+
+	if list != null:
 		if list.is_empty(): return JsonValue.Null
 		return list[if first: 0 else: list.length() - 1].clone()
 
@@ -1259,15 +1305,17 @@ fn end_of(value: JsonValue, first: Bool) JsonValue:
 
 fn keys_of(value: JsonValue) JsonValue:
 	var keys = List[JsonValue]()
-	if members := value.as_map():
+	members := value.as_map()
+	if members != null:
 		for key in members.keys():
 			keys.append(JsonValue.StringValue(key.clone()))
 	return JsonValue.ArrayValue(keys)
 
 fn join_values(value: JsonValue, sep: String) String:
 	var parts = List[String]()
+	list := value.as_list()
 
-	if list := value.as_list():
+	if list != null:
 		for item in list:
 			parts.append(to_text(item))
 		return parts.join(sep)
@@ -1275,12 +1323,15 @@ fn join_values(value: JsonValue, sep: String) String:
 	return to_text(value)
 
 fn contains_value(haystack: JsonValue, needle: JsonValue) Bool:
-	if list := haystack.as_list():
+	list := haystack.as_list()
+
+	if list != null:
 		for item in list:
 			if equal(item, needle): return true
 		return false
 
-	if members := haystack.as_map(): return members.contains(to_text(needle))
+	members := haystack.as_map()
+	if members != null: return members.contains(to_text(needle))
 
 	return to_text(haystack).contains(to_text(needle))
 

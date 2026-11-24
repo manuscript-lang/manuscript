@@ -18,7 +18,7 @@ import fetch, FetchOptions from "@std/net/fetch.ms"
 import stdout from "@std/io/io.ms"
 
 fn run() Result[Void, Error]:
-    url := arguments().first().ok_or(Error("missing URL", kind: "EINVAL"))?
+    url := ok_or(arguments().first(), Error("missing URL", kind: "EINVAL"))?
     response := fetch(url, FetchOptions(max_response_bytes: 1048576)).wait()?
     response.check_status()?
     text := response.text()?

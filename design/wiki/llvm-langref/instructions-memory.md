@@ -547,7 +547,7 @@ If `inbounds` is present on a `getelementptr` instruction, the `nusw` attribute 
 
 If the `inrange(Start, End)` attribute is present, loading from or storing to any pointer derived from the `getelementptr` has undefined behavior if the load or store would access memory outside the half-open range `[Start, End)` from the `getelementptr` expression result. The result of a pointer comparison or `ptrtoint` (including `ptrtoint`-like operations involving memory) involving a pointer derived from a `getelementptr` with the `inrange` keyword is undefined, with the exception of comparisons in the case where both operands are in the closed range `[Start, End]`. Note that the `inrange` keyword is currently only allowed in constant `getelementptr` expressions.
 
-The getelementptr instruction is often confusing. For some more insight into how it works, see [the getelementptr FAQ](GetElementPtr.html).
+The getelementptr instruction is often confusing. For some more insight into how it works, see the getelementptr FAQ.
 
 <a id="id238"></a>
 

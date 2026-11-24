@@ -9,7 +9,9 @@ fn area(shape: Shape) Int:
 	return shape.width * shape.height + 1
 
 fn read_number(text: String) Int!Failure:
-	if value := text.parse_int(): return ok(value)
+	value := text.parse_int()
+	if value != null: return ok(value)
+
 	return error(Failure.Bad(text.clone()))
 
 export fn parse_total(items: List[String]) Int:

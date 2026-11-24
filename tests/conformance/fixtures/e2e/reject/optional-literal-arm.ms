@@ -5,5 +5,5 @@ fn pick(x: Int?) Int:
 	match x:
 		5:
 			return 1
-		none:
+		null:
 			return 2

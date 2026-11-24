@@ -56,8 +56,8 @@ test "uuid_v5 accepts an uppercase namespace and rejects malformed ones":
 test "uuid_version reads the version of valid text only":
 	uuid_version("886313e1-3b8a-5372-9b90-0c9aee199e5d") | expect_equal(5)?
 	uuid_version("886313E1-3B8A-5372-9B90-0C9AEE199E5D") | expect_equal(5)?
-	uuid_version("886313e1-3b8a-5372-1b90-0c9aee199e5d") | expect_equal(none)?
-	uuid_version("not a uuid") | expect_equal(none)?
+	uuid_version("886313e1-3b8a-5372-1b90-0c9aee199e5d") | expect_equal(null)?
+	uuid_version("not a uuid") | expect_equal(null)?
 
 test "uuid_v7 is a version-7 uuid that sorts by creation time":
 	first := (uuid_v7() | expect_ok?)
@@ -70,9 +70,11 @@ test "uuid_v7 is a version-7 uuid that sorts by creation time":
 
 test "uuid_v7 ids made back to back sort in creation order":
 	var previous = (uuid_v7() | expect_ok?)
+
 	for round in 0..2000:
 		next := (uuid_v7() | expect_ok?)
 		if not (previous < next): return fail(f"{next} did not sort after {previous}")
+
 		previous = next
 
 test "ulid has 26 Crockford characters and sorts by creation time":
@@ -92,7 +94,7 @@ test "ulid starts with the current time in milliseconds":
 	id := (ulid() | expect_ok?)
 	var millis = 0
 	for ch in id.view(0, 10).chars():
-		millis = millis * 32 + alphabet.index_of(ch).get_or(0)
+		millis = millis * 32 + (alphabet.index_of(ch) or 0)
 
 	moment := now()
 	current := moment.seconds * 1000 + moment.nanos / 1000000

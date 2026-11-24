@@ -52,12 +52,12 @@ test "chars elements compared and kept":
 fn digits(text: String) Int:
 	var n = 0
 	for c in text.chars():
-		n = n * 10 + c.parse_int().get_or(0)
+		n = n * 10 + (c.parse_int() or 0)
 	return n
 
 fn both(text: String) Int:
 	c := text.chars()[0].clone()
-	if c == "7": return c.parse_int().get_or(-1) + c.length()
+	if c == "7": return (c.parse_int() or (-1)) + c.length()
 
 	return -1
 

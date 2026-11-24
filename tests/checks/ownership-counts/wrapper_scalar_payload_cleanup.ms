@@ -1,5 +1,4 @@
 // expect-stdout: close 1
-// expect-stdout: close 2
 // expect-stdout: close 3
 // expect-stdout: close 4
 // expect-stdout: close 5
@@ -24,10 +23,7 @@ fn success(id: Int) Marker!Int: ok(Marker(id))
 fn failure(id: Int) Int!Marker: error(Marker(id))
 
 fn optional_cause() Void:
-	_kept := present(1).ok_or(0)
-
-fn optional_callback() Void:
-	_kept := present(2).ok_or_else(fn: 0)
+	_kept := ok_or(present(1), 0)
 
 fn result_error_map() Void:
 	_kept := success(3).map_error(fn cause: cause + 1)
@@ -51,14 +47,13 @@ fn transformed_then() Void:
 	_mapped: Int!Int := success(9).and_then(fn item: ok(item.id))
 
 fn optional_or_else() Void:
-	_kept := present(13).or_else(fn: none)
+	_kept := present(13) or null
 
 fn result_or_else() Void:
 	_kept := success(14).or_else(fn cause: error(cause))
 
 fn main() Void:
 	optional_cause()
-	optional_callback()
 	result_error_map()
 	result_optional()
 	result_map()

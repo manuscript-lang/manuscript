@@ -6,8 +6,8 @@ import compress, CompressionFormat from "@std/io/archive.ms"
 fn explicit() Void:
     data := "".to_bytes()
     void compress(data, "gzip", 6)
-    void compress(data, "zlib", 0, max_bytes: none)
+    void compress(data, "zlib", 0, max_bytes: null)
     void compress(data, "deflate", 9, max_bytes: 100)
     void CompressionFormat.Gzip.compress(data, 6)
-    void CompressionFormat.Zlib.compress(data, 0, max_bytes: none)
+    void CompressionFormat.Zlib.compress(data, 0, max_bytes: null)
     void CompressionFormat.Deflate.compress(data, 9, max_bytes: 100)

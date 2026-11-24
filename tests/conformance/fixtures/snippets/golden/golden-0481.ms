@@ -4,14 +4,14 @@ import TextError from "@std/errors.ms"
 import panic from "@std/faults.ms"
 fn fail[T](message: String) Result[T, TextError]: error(TextError(message))
 fn fail_cause[T, E: Error](cause: E) Result[T, E]: error(cause)
-fn absent[T]() T?: none
+fn absent[T]() T?: null
 fn identity[T](value: T) T: value
-fn convert[T, U](value: T) U?: none
+fn convert[T, U](value: T) U?: null
 fn from_callback[T](factory: fn() T) T: factory()
 fn transform[T, U](callback: fn(T) U) fn(T) U: callback
 fn repeated[T]() Pair[T, T]: panic("not called")
 fn unused[T]() Int: 0
-fn constrained[T: Equal]() T?: none
+fn constrained[T: Equal]() T?: null
 type Pair[A, B]:
     first: A
     second: B

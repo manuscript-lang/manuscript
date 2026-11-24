@@ -44,7 +44,7 @@ test "UTF8 offsets count bytes and leave adjacent malformed bytes alone":
 	decode_first(data, 3) | expect_scalar(128578, 4)?
 	decode_last(data, 3) | expect_scalar(233, 2)?
 	decode_last(data, 7) | expect_scalar(128578, 4)?
-	decode_last(data, none) | expect_scalar(769, 2)?
+	decode_last(data, null) | expect_scalar(769, 2)?
 	decode_first(Bytes([97, 255])) | expect_scalar(97, 1)?
 	decode_first(Bytes([97, 226, 130])) | expect_scalar(97, 1)?
 	decode_first(Bytes([194, 162, 255])) | expect_scalar(162, 2)?
@@ -154,7 +154,7 @@ test "UTF8 supports forward and reverse walks without normalization":
 	first := decode_first
 	last := decode_last
 	first(data, 0) | expect_scalar(233, 2)?
-	last(data, none) | expect_scalar(0, 1)?
+	last(data, null) | expect_scalar(0, 1)?
 
 test "UTF8 selects a bounded prefix or suffix in large inputs":
 	fill := "x".repeat(262144)

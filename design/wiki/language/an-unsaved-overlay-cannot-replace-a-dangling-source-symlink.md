@@ -6,5 +6,5 @@ Decision: editor overlays may create a file beneath an existing confined directo
 
 
 Apply when: changing project resolution, filesystem identity, or editor overlays.
-Evidence: [overlay canonicalization](../../crates/ms-cli/src/project/overlay.rs), [symlink identity regression](../../crates/ms-cli/tests/project_project.rs).
+Evidence: overlay canonicalization, symlink identity regression.
 Verify: new confined overlay files compile without being written to disk; overlays for outside paths, dangling external links, or symlinked external parents are rejected.

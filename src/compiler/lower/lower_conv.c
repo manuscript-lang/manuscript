@@ -4,6 +4,7 @@
 #include "compiler/mir/mir_analysis.h"
 #include "compiler/mir/mir_layout.h"
 
+/* The first conversion recorded for `node`; a node can carry several, in the order they apply. */
 static const MsConversion *find_conversion(const MsFacts *facts, MsNode node) {
   size_t lo = 0;
   size_t hi = facts->conversions.len;
@@ -330,11 +331,7 @@ static MirValue view_as_interface(LowerFn *fn, const MsExpr *expr, const MsConve
   return view;
 }
 
-MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
-  const MsConversion *conversion = find_conversion(fn->facts, expr->id);
-  if (conversion == NULL || value == MIR_NONE) {
-    return value;
-  }
+static MirValue apply_conversion(LowerFn *fn, const MsExpr *expr, const MsConversion *conversion, MirValue value) {
   if (conversion->kind == MS_CONV_INTERFACE_VIEW) {
     return view_as_interface(fn, expr, conversion, value);
   }
@@ -342,6 +339,9 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     /* Wrapping a place in an Optional shows it as one: the Optional owns nothing, so dropping it must not close the place. */
     const MirImm none = {0};
     const MirTy to = fn_type(fn, conversion->to);
+    if (mir_b_ty(&fn->b, value) == to) { /* a generic `T` wrapped as `T?` where T is itself nullable: `T??` is `T?` */
+      return value;
+    }
     const MsTy payload = ms_ty_args(&fn->cx->program->types, conversion->to)[0];
     if (payload != conversion->from) { /* an implementor of the interface the optional holds: seen as it first */
       const MsConversion inner = {conversion->node, MS_CONV_INTERFACE_VIEW, conversion->from, payload};
@@ -370,9 +370,58 @@ MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
     }
     return mir_b_emit(&fn->b, MOP_OptView, &value, 1, none, to);
   }
+  if (conversion->kind == MS_CONV_NARROW) {
+    /* A nullable local read where `v != null` holds: the payload of the same value, a view while the binding keeps it. */
+    const MirTy payload = fn_type(fn, conversion->to);
+    const bool last_use = fn->read_moves && expr->kind == MS_E_NAME && fn->facts->last != NULL && fn->facts->last[expr->id] != 0;
+    /* A parameter taken by borrow is the caller's: its payload is only viewed. */
+    const MsRef *name_ref = expr->kind == MS_E_NAME ? ms_facts_ref(fn->facts, expr->id) : NULL;
+    const uint32_t param_at = name_ref != NULL ? name_ref->local + (fn->lambda != NULL ? 1u : 0u) : 0;
+    const bool borrowed_param = name_ref != NULL && name_ref->kind == MS_REF_PARAM && param_at < fn->b.func.nparams &&
+                                fn->b.func.params[param_at].mode != MM_MOVE;
+    if (!borrowed_param && (fn->narrow_take == expr || ((ms_facts_use(fn->facts, expr->id) == MS_USE_MOVE || last_use) && fn_fresh_owner(fn, value)))) {
+      MirTy taken = payload;
+      MirValue unboxed = value;
+      if (mir_b_ty(&fn->b, value) == payload) { /* `T??` is `T?`: the value is its own payload */
+        (void)mir_b_emit(&fn->b, MOP_ScopeDisown, &value, 1, (MirImm){0}, MIR_NONE);
+      } else {
+        unboxed = fn_take_payload(fn, value, &taken);
+      }
+      MirVar owner = 0;
+      if (expr->kind == MS_E_NAME && fn_owned_local(fn, expr, &owner) && fn->b.vars.ptr[owner].mode == MM_MOVE) {
+        /* The binding gave its payload up: it holds an empty optional, which the scope's end closes as nothing. */
+        mir_b_def_var(&fn->b, owner, mir_b_emit(&fn->b, MOP_OptNone, NULL, 0, (MirImm){0}, mir_b_ty(&fn->b, value)));
+      }
+      if (fn->narrow_take == expr || mir_needs_drop(fn->cx->module, mir_b_ty(&fn->b, unboxed))) { /* a fresh owner, as a call's result is */
+        fn_own(fn, fn_scope(fn), unboxed);
+      }
+      return unboxed;
+    }
+    return mir_b_ty(&fn->b, value) == payload ? value : mir_b_emit(&fn->b, MOP_OptGet, &value, 1, (MirImm){0}, payload);
+  }
   if (conversion->kind == MS_CONV_FUNCTION_VALUE) {
     return fn_adapt_function(fn, value, fn_type(fn, conversion->to), conversion->to);
   }
   (void)fn_fail(fn, "this conversion (kind %d) is not lowered yet", (int)conversion->kind);
   return MIR_NONE;
+}
+
+MirValue fn_convert(LowerFn *fn, const MsExpr *expr, MirValue value) {
+  const MsConversion *conversion = find_conversion(fn->facts, expr->id);
+  if (conversion == NULL || value == MIR_NONE) {
+    return value;
+  }
+  value = apply_conversion(fn, expr, conversion, value);
+  /* A narrowed read is then converted as the payload type it reads as: `return v` of a `T?` local narrowed to `T`. */
+  const MsConversion *next = conversion + 1;
+  const MsConversion *end = fn->facts->conversions.ptr + fn->facts->conversions.len;
+  if (conversion->kind == MS_CONV_NARROW && next < end && next->node == expr->id && value != MIR_NONE) {
+    value = apply_conversion(fn, expr, next, value);
+  }
+  return value;
+}
+
+MsTy fn_read_type(const LowerFn *fn, const MsExpr *expr) {
+  const MsConversion *conversion = find_conversion(fn->facts, expr->id);
+  return conversion != NULL && conversion->kind == MS_CONV_NARROW ? conversion->to : ms_facts_type(fn->facts, expr->id);
 }

@@ -94,7 +94,7 @@ fn Table.render() String:
 
 	return out
 
-// Spaces placed before a cell: all spare for Right, half for Center, none for Left.
+// Spaces placed before a cell: all spare for Right, half for Center, null for Left.
 fn Table.before(col: Int, spare: Int) Int:
 	match self.columns[col]:
 		Left: return 0

@@ -54,7 +54,7 @@ bench "regex find_all":
 		text += f"line {i} some filler text here\nfunc name{i}(a, b)\n"
 
 	re := compile("func\\s+\\w+\\(")?
-	(re.find_all(text, none)?).length()
+	(re.find_all(text, null)?).length()
 
 // JPEG and PNG encode and decode of one image (#4197).
 bench "image codecs":
@@ -65,9 +65,9 @@ bench "image codecs":
 	for y in 0..h:
 		for x in 0..w:
 			at := (y * w + x) * 3
-			img.pixels[at] = ((x * 3 + y * 5) % 256).to_uint8().get_or(0)
-			img.pixels[at + 1] = ((x + y * 2) % 256).to_uint8().get_or(0)
-			img.pixels[at + 2] = ((x * 7 + y) % 256).to_uint8().get_or(0)
+			img.pixels[at] = ((x * 3 + y * 5) % 256).to_uint8() or 0
+			img.pixels[at + 1] = ((x + y * 2) % 256).to_uint8() or 0
+			img.pixels[at + 2] = ((x * 7 + y) % 256).to_uint8() or 0
 
 	png := encode_image(img, ImageFormat.Png)?
 	jpg := encode_jpeg(img)?

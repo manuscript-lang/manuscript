@@ -73,10 +73,10 @@ export type Image:
 fn Image.channel_count() Int:
 	return color_channels(self.mode)
 
-// Returns the pixel at `(x, y)` as RGBA, or none outside the image. Gray modes repeat
+// Returns the pixel at `(x, y)` as RGBA, or null outside the image. Gray modes repeat
 // the luminance in red, green and blue, and modes without alpha report 255.
 fn Image.pixel(x: Int, y: Int) Rgba?:
-	if x < 0 or y < 0 or x >= self.width or y >= self.height: return none
+	if x < 0 or y < 0 or x >= self.width or y >= self.height: return null
 
 	n := color_channels(self.mode)
 	at := (y * self.width + x) * n
@@ -235,7 +235,7 @@ fn Image.convert(target: ColorMode) Image:
 	var out = List[UInt8](reserve: count * m)
 
 	for i in 0..count:
-		c := self.pixel(i % self.width, i / self.width).get_or(Rgba(0, 0, 0, 255))
+		c := self.pixel(i % self.width, i / self.width) or Rgba(0, 0, 0, 255)
 		luma := (c.red * 299 + c.green * 587 + c.blue * 114) / 1000
 
 		match target:
@@ -263,7 +263,7 @@ fn Image.resize(
 	width: Int,
 	height: Int,
 	method: Resampling = Resampling.Bilinear,
-	max_pixels: Int? = none,
+	max_pixels: Int? = null,
 ) Image!:
 	if width < 1 or height < 1:
 		return error(Error("image: dimensions must be positive", kind: "EINVAL"))
@@ -344,7 +344,7 @@ export type JpegOptions:
 	// Chroma resolution for color images; gray images ignore it.
 	chroma: Chroma = Chroma.Quarter
 	// MCUs (minimum coded units, the blocks the encoder processes together) between
-	// restart markers, 0 through 65535, or 0 for none. Markers let readers recover from
+	// restart markers, 0 through 65535, or 0 for null. Markers let readers recover from
 	// damage.
 	restart_interval: Int = 0
 
@@ -379,7 +379,7 @@ export fn new_image(
 	width: Int,
 	height: Int,
 	mode: ColorMode,
-	max_pixels: Int? = none,
+	max_pixels: Int? = null,
 ) Image!:
 	if width < 1 or height < 1: return error(
 		Error("image: dimensions must be positive", kind: "EINVAL")
@@ -395,7 +395,7 @@ export fn new_image(
 
 // ---- format detection ----
 
-// Names the format of `data` from its leading bytes, or none when it is not JPEG, PNG,
+// Names the format of `data` from its leading bytes, or null when it is not JPEG, PNG,
 // BMP or binary PPM/PGM (P5 or P6).
 export fn detect_image_format(data: Bytes) ImageFormat?:
 	if data.length() >= 2:
@@ -406,7 +406,7 @@ export fn detect_image_format(data: Bytes) ImageFormat?:
 		if a == 66 and b == 77: return ImageFormat.Bmp
 		if a == 80 and (b == 53 or b == 54): return ImageFormat.Ppm
 
-	return none
+	return null
 
 fn color_mode(channels: Int) ColorMode:
 	if channels == 1: return ColorMode.Gray
@@ -426,10 +426,11 @@ fn image_of(move raster: Raster) Image:
 // Decodes any supported format, detected from the leading bytes with
 // `detect_image_format`; an unrecognized format returns ENOTSUP. `max_pixels` rejects
 // larger images with EOVERFLOW before any allocation.
-export fn decode_image(data: Bytes, max_pixels: Int? = none) Image!:
+export fn decode_image(data: Bytes, max_pixels: Int? = null) Image!:
 	format := detect_image_format(data)
+	f := format
 
-	if f := format:
+	if f != null:
 		match f:
 			Jpeg: return decode_jpeg(data, max_pixels).map(image_of)
 			Png: return decode_png(data, max_pixels).map(image_of)

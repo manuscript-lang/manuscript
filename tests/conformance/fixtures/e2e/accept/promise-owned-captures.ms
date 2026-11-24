@@ -30,8 +30,8 @@ test "a promise that stays in its function reads the resource in place, and the 
 	log := dir + "/log"
 	expect_equal(run_with_door(log.clone())?, 5)?
 
-	data := read_file(log, none).wait()?
-	text := data.decode_utf8().get_or("")
+	data := read_file(log, null).wait()?
+	text := data.decode_utf8() or ""
 	expect_equal(text, "closed front;")?
 	remove(dir, true)?
 
@@ -43,7 +43,7 @@ test "a promise dropped before waiting leaves the resource to its scope":
 		door := Door(name: "back", log: log.clone())
 		_p := promise(fn: slow(door))
 
-	data := read_file(log, none).wait()?
-	text := data.decode_utf8().get_or("")
+	data := read_file(log, null).wait()?
+	text := data.decode_utf8() or ""
 	expect_equal(text, "closed back;")?
 	remove(dir, true)?

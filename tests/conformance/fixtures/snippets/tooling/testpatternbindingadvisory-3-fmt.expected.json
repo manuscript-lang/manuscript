@@ -4,6 +4,6 @@
   "oracle": "Manuscript 2026.11.0",
   "expected": {
     "diagnostics": [],
-    "fmt": "fn use(value: Int?) Int:\n\tmatch value:\n\t\tint: return Int\n\t\tnone: return 0\n"
+    "fmt": "fn use(value: Int?) Int:\n\tmatch value:\n\t\tint: return Int\n\t\tnull: return 0\n"
   }
 }

@@ -37,7 +37,7 @@ fn main() Void:
 	cases := parse[List[Case]](must_read(args[0])).get_or([])
 	build := args[1].clone()
 	run := args[2].clone()
-	timeout := args[3].parse_int().get_or(5)
+	timeout := args[3].parse_int() or 5
 	suffix := if args.length() > 4: args[4].clone() else: ""
 	app := env("MSBENCH_APP", "/app")
 	out_dir := env("MSBENCH_VERIFIER", "/logs/verifier")
@@ -48,11 +48,12 @@ fn main() Void:
 		rows.append(parse[LogRow](line).get_or(LogRow("", false, "", "", "")))
 
 	builds := rows.filter(fn r: r.phase == "build")
-	var tokens: Int? = none
+	var tokens: Int? = null
 	if suffix != "": tokens = count_workspace(app, suffix)
 
 	var first_ok = false
-	if first := builds.first(): first_ok = first.ok
+	first := builds.first()
+	if first != null: first_ok = first.ok
 
 	var detail = Detail(
 		built: false,
@@ -63,7 +64,7 @@ fn main() Void:
 		builds: builds.length(),
 		first_build_ok: first_ok,
 		checks: rows.count(fn r: (r.phase == "check")),
-		error: none,
+		error: null,
 	)
 	built := bash(build, app, 600, "")
 

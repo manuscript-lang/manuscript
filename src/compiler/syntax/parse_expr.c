@@ -486,12 +486,12 @@ MS_NODISCARD static bool variant_pattern(Parser *p, MsToken start, MsExpr **path
       parse_kind(p) == MS_T_LParen && p->speculative == 0) {
     parse_fail(p, parse_peek(p),
                ms_span_of_text(
-                   "there is no some pattern; write the payload name alone, e.g. 'value:' beside 'none:'"));
+                   "there is no some pattern; write the payload name alone, e.g. 'value:' beside 'null:'"));
     return false;
   }
   if (written->kind == MS_E_NAME && parse_kind(p) != MS_T_LParen) {
     MsSpan n = ms_names_span(p->names, written->u.sym);
-    if (!ms_span_is_text(n, "none") && is_lower_start(n)) {
+    if (!ms_span_is_text(n, "null") && is_lower_start(n)) {
       MsArmBinding single = {written->u.sym, start.pos};
       parse_push(p, &single, sizeof single);
       *bare = true;

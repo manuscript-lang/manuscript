@@ -22,7 +22,7 @@ Overloaded intrinsics will have the names of its overloaded argument types encod
 
 For target developers who are defining intrinsics for back-end code generation, any intrinsic overloads based solely the distinction between integer or floating point types should not be relied upon for correct code generation. In such cases, the recommended approach for target maintainers when defining intrinsics is to create separate integer and FP intrinsics rather than rely on overloading. For example, if different codegen is required for `llvm.target.foo(<4 x i32>)` and `llvm.target.foo(<4 x float>)` then these should be split into different intrinsics.
 
-To learn how to add an intrinsic function, please see the [Extending LLVM Guide](ExtendingLLVM.html).
+To learn how to add an intrinsic function, please see the Extending LLVM Guide.
 
 <a id="variable-argument-handling-intrinsics"></a>
 
@@ -166,11 +166,11 @@ On targets where `llvm.va_copy` is equivalent to `memcpy`, `memcpy` can be used 
 
 ### Accurate Garbage Collection Intrinsics
 
-LLVM’s support for [Accurate Garbage Collection](GarbageCollection.html) (GC) requires the frontend to generate code containing appropriate intrinsic calls and select an appropriate GC strategy which knows how to lower these intrinsics in a manner which is appropriate for the target collector.
+LLVM’s support for Accurate Garbage Collection (GC) requires the frontend to generate code containing appropriate intrinsic calls and select an appropriate GC strategy which knows how to lower these intrinsics in a manner which is appropriate for the target collector.
 
-These intrinsics allow identification of [GC roots on the stack](#int-gcroot), as well as garbage collector implementations that require [read](#int-gcread) and [write](#int-gcwrite) barriers. Frontends for type-safe garbage collected languages should generate these intrinsics to make use of the LLVM garbage collectors. For more details, see [Garbage Collection with LLVM](GarbageCollection.html).
+These intrinsics allow identification of [GC roots on the stack](#int-gcroot), as well as garbage collector implementations that require [read](#int-gcread) and [write](#int-gcwrite) barriers. Frontends for type-safe garbage collected languages should generate these intrinsics to make use of the LLVM garbage collectors. For more details, see Garbage Collection with LLVM.
 
-LLVM provides an second experimental set of intrinsics for describing garbage collection safepoints in compiled code. These intrinsics are an alternative to the `llvm.gcroot` intrinsics, but are compatible with the ones for [read](#int-gcread) and [write](#int-gcwrite) barriers. The differences in approach are covered in the [Garbage Collection with LLVM](GarbageCollection.html) documentation. The intrinsics themselves are described in [Garbage Collection Safepoints in LLVM](Statepoints.html).
+LLVM provides an second experimental set of intrinsics for describing garbage collection safepoints in compiled code. These intrinsics are an alternative to the `llvm.gcroot` intrinsics, but are compatible with the ones for [read](#int-gcread) and [write](#int-gcwrite) barriers. The differences in approach are covered in the Garbage Collection with LLVM documentation. The intrinsics themselves are described in Garbage Collection Safepoints in LLVM.
 
 <a id="llvm-gcroot-intrinsic"></a>
 
@@ -291,7 +291,7 @@ The statepoint intrinsic represents a call which is parse-able by the runtime.
 
 The ‘id’ operand is a constant integer that is reported as the ID field in the generated stackmap. LLVM does not interpret this parameter in any way and its meaning is up to the statepoint user to decide. Note that LLVM is free to duplicate code containing statepoint calls, and this may transform IR that had a unique ‘id’ per lexical call to statepoint to IR that does not.
 
-If ‘num patch bytes’ is non-zero then the call instruction corresponding to the statepoint is not emitted and LLVM emits ‘num patch bytes’ bytes of nops in its place. LLVM will emit code to prepare the function arguments and retrieve the function return value in accordance to the calling convention; the former before the nop sequence and the latter after the nop sequence. It is expected that the user will patch over the ‘num patch bytes’ bytes of nops with a calling sequence specific to their runtime before executing the generated machine code. There are no guarantees with respect to the alignment of the nop sequence. Unlike [Stack maps and patch points in LLVM](StackMaps.html) statepoints do not have a concept of shadow bytes. Note that semantically the statepoint still represents a call or invoke to ‘target’, and the nop sequence after patching is expected to represent an operation equivalent to a call or invoke to ‘target’.
+If ‘num patch bytes’ is non-zero then the call instruction corresponding to the statepoint is not emitted and LLVM emits ‘num patch bytes’ bytes of nops in its place. LLVM will emit code to prepare the function arguments and retrieve the function return value in accordance to the calling convention; the former before the nop sequence and the latter after the nop sequence. It is expected that the user will patch over the ‘num patch bytes’ bytes of nops with a calling sequence specific to their runtime before executing the generated machine code. There are no guarantees with respect to the alignment of the nop sequence. Unlike Stack maps and patch points in LLVM statepoints do not have a concept of shadow bytes. Note that semantically the statepoint still represents a call or invoke to ‘target’, and the nop sequence after patching is expected to represent an operation equivalent to a call or invoke to ‘target’.
 
 The ‘target’ operand is the function actually being called. The operand must have an [elementtype](high-level-structure.md#attr-elementtype) attribute specifying the function type of the target. The target can be specified as either a symbolic LLVM function, or as an arbitrary Value of pointer type. Note that the function type must match the signature of the callee and the types of the ‘call parameters’ arguments.
 
@@ -419,7 +419,7 @@ The only argument is a pointer which is based on some object with an unknown off
 
 This intrinsic is used in the abstract machine model for GC to represent the base pointer for an arbitrary derived pointer.
 
-This intrinsic is inlined by the [RewriteStatepointsForGC](Statepoints.html#rewritestatepointsforgc) pass by replacing all uses of this callsite with the offset of a derived pointer from its base pointer value. The replacement is done as part of the lowering to the explicit statepoint model.
+This intrinsic is inlined by the RewriteStatepointsForGC pass by replacing all uses of this callsite with the offset of a derived pointer from its base pointer value. The replacement is done as part of the lowering to the explicit statepoint model.
 
 The return pointer type must be the same as the type of the parameter.
 
@@ -454,9 +454,9 @@ The only argument is a pointer which is based on some object with an unknown off
 
 This intrinsic is used in the abstract machine model for GC to represent the offset of an arbitrary derived pointer from its base pointer.
 
-This intrinsic is inlined by the [RewriteStatepointsForGC](Statepoints.html#rewritestatepointsforgc) pass by replacing all uses of this callsite with the offset of a derived pointer from its base pointer value. The replacement is done as part of the lowering to the explicit statepoint model.
+This intrinsic is inlined by the RewriteStatepointsForGC pass by replacing all uses of this callsite with the offset of a derived pointer from its base pointer value. The replacement is done as part of the lowering to the explicit statepoint model.
 
-Basically this call calculates difference between the derived pointer and its base pointer (see [‘llvm.experimental.gc.get.pointer.base’ Intrinsic](#gc-get-pointer-base)) both ptrtoint casted. But this cast done outside the [RewriteStatepointsForGC](Statepoints.html#rewritestatepointsforgc) pass could result in the pointers lost for further lowering from the abstract model to the explicit physical one.
+Basically this call calculates difference between the derived pointer and its base pointer (see [‘llvm.experimental.gc.get.pointer.base’ Intrinsic](#gc-get-pointer-base)) both ptrtoint casted. But this cast done outside the RewriteStatepointsForGC pass could result in the pointers lost for further lowering from the abstract model to the explicit physical one.
 
 <a id="code-generator-intrinsics"></a>
 

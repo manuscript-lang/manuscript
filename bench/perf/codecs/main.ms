@@ -1,5 +1,6 @@
 import (
 	Bytes, BytesBuilder from "@std/bytes.ms",
+	panic from "@std/core.ms",
 	base64_encode from "@std/data/encoding.ms",
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
@@ -8,11 +9,13 @@ import (
 
 fn main() Int:
 	args := arguments()
-	length := args[0].parse_int().get()
-	count := args[1].parse_int().get()
-	rounds := args[2].parse_int().get()
+	length := args[0].parse_int() or panic("called Optional.get() on null")
+	count := args[1].parse_int() or panic("called Optional.get() on null")
+	rounds := args[2].parse_int() or panic("called Optional.get() on null")
 	var bytes = BytesBuilder()
-	for i in 0..length: bytes.append((i % 256).to_uint8().get())
+	for i in 0..length: bytes.append(
+		(i % 256).to_uint8() or panic("called Optional.get() on null")
+	)
 
 	expected := bytes.build()
 	encoded := base64_encode(expected)

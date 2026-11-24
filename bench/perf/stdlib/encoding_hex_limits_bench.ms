@@ -41,7 +41,7 @@ fn prep_decode(length: Int, limit: Int?, bad: Int = 0) Case:
 	if bad == 1: text = "z" + text.view(1, text.length())
 	if bad == 2: text = text.view(0, length - 1) + "z"
 
-	maximum := limit.get_or(9223372036854775807)
+	maximum := limit or 9223372036854775807
 	var expected: Bytes! = ok(Bytes([]))
 
 	if maximum < 0:
@@ -106,32 +106,32 @@ type BenchData:
 
 fn make_fixture() BenchData:
 	var cases: List[Case] = []
-	cases.append(prep_decode(0, none, 0))
+	cases.append(prep_decode(0, null, 0))
 	cases.append(prep_decode(0, 0, 0))
 	cases.append(prep_decode(0, -1, 0))
 	cases.append(prep_decode(1, 0, 0))
 	cases.append(prep_decode(2, 0, 0))
 	cases.append(prep_decode(2, 1, 0))
-	cases.append(prep_decode(2, none, 0))
+	cases.append(prep_decode(2, null, 0))
 	cases.append(prep_decode(3, 0, 0))
 	cases.append(prep_decode(2, 0, 1))
 	cases.append(prep_decode(2, 1, 1))
 	cases.append(prep_decode(8192, 0, 0))
 	cases.append(prep_decode(8192, 4095, 0))
 	cases.append(prep_decode(8192, 4096, 0))
-	cases.append(prep_decode(8192, none, 0))
+	cases.append(prep_decode(8192, null, 0))
 	cases.append(prep_decode(8192, -1, 0))
-	cases.append(prep_decode(8192, none, 1))
-	cases.append(prep_decode(8192, none, 2))
+	cases.append(prep_decode(8192, null, 1))
+	cases.append(prep_decode(8192, null, 2))
 	cases.append(prep_decode(8193, 4096, 0))
 	cases.append(prep_decode(8193, 4095, 0))
 	cases.append(prep_decode(1048576, 0, 0))
 	cases.append(prep_decode(1048576, 524287, 0))
 	cases.append(prep_decode(1048576, 524288, 0))
-	cases.append(prep_decode(1048576, none, 0))
+	cases.append(prep_decode(1048576, null, 0))
 	cases.append(prep_decode(1048576, -1, 0))
-	cases.append(prep_decode(1048576, none, 1))
-	cases.append(prep_decode(1048576, none, 2))
+	cases.append(prep_decode(1048576, null, 1))
+	cases.append(prep_decode(1048576, null, 2))
 	cases.append(prep_decode(1048577, 524288, 0))
 	cases.append(prep_decode(1048577, 524287, 0))
 	cases.append(prep_unicode(0))

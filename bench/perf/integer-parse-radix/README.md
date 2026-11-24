@@ -9,9 +9,9 @@ This is distinct from the rejected radix **formatting** experiments in #1959.
 
 ## Workloads and equivalence
 
-[`main.ms`](main.ms), [`rust.rs`](rust.rs), and [`repeat.py`](repeat.py) retain the
+`main.ms`, [`rust.rs`](rust.rs), and `repeat.py` retain the
 final producer and measurement protocol. `main.ms` is formatted for repository
-checks; [`measured-main.ms.txt`](measured-main.ms.txt) preserves the exact measured
+checks; `measured-main.ms.txt` preserves the exact measured
 Manuscript source bytes. Both producers set up equivalent inputs
 outside their internal monotonic timers, use checked arithmetic, consume every
 result, and validate output before successful exit. Rust uses input and output
@@ -39,15 +39,15 @@ lengths and final text, not every intermediate string's contents.
 
 ## Three rejected candidates
 
-1. [`sticky-native.patch`](variants/sticky-native.patch): decode once and use
+1. `sticky-native.patch`: decode once and use
    native-width wrapping arithmetic with sticky overflow. Valid parses improved
    about 24–32%, but arithmetic continued over the entire overflowing suffix.
    Long overflowing/late-invalid inputs regressed **2.4–3.4×**. Rejected.
-2. [`native-suffix.patch`](variants/native-suffix.patch): native-width checked
+2. `native-suffix.patch`: native-width checked
    accumulation, then syntax-only suffix validation using a shared digit decoder.
    Early-invalid inputs regressed **1.53×**, late-invalid decimal **1.58×**, and
    long overflowing decimal **1.066×**, against approximately flat A/A. Rejected.
-3. [`conservative-suffix.patch`](variants/conservative-suffix.patch): preserve
+3. `conservative-suffix.patch`: preserve
    the original `u128` arithmetic and direct digit handling; merge successful
    scans and validate the remaining suffix after overflow with the original-style
    validation loop. Wide valid parsing improved **6–20%**, but early-invalid
@@ -111,9 +111,9 @@ Whole-producer wall/CPU measurements include startup and setup. No outlier is re
 
 | Dataset | Producer rows | Tiny/output controls | Warmups | Measured |
 | --- | ---: | ---: | ---: | ---: |
-| [Sticky native](results/sticky-native.jsonl) | 1,488 | 372 | 124 | 992 |
-| [Native suffix](results/native-suffix.jsonl) | 1,584 | 396 | 132 | 1,056 |
-| [Conservative suffix](results/conservative-suffix.jsonl) | 1,584 | 396 | 132 | 1,056 |
+| Sticky native | 1,488 | 372 | 124 | 992 |
+| Native suffix | 1,584 | 396 | 132 | 1,056 |
+| Conservative suffix | 1,584 | 396 | 132 | 1,056 |
 
 All **4,656** retained producer invocations succeeded with required identities,
 checksums, final text, empty stderr, and bounded timings. The sticky-native Rust
@@ -124,7 +124,7 @@ results. Later sessions fix both issues. The corresponding older Rust/runner
 sources are retained as `.txt` snapshots. An earlier two-producer exploration had
 an ordering flaw and is excluded entirely from this report.
 
-[`artifacts.json`](artifacts.json) records compiler/archive/binary and retained-file
+`artifacts.json` records compiler/archive/binary and retained-file
 hashes. No allocator, RSS, or instruction-count measurement is claimed. The parser
 helpers themselves allocate no buffers before or after; setup-string allocations
 are outside the timer. The existing radix-formatting stop rule was respected;
@@ -137,7 +137,7 @@ all 35 bases, signs, uppercase digits, signed limits, `2^63`/`2^64` neighbors,
 long zeros/ones/maximal digits, late-invalid suffixes and invalid radix arguments,
 checked against an independent syntax-validation-plus-Rust-parser oracle.
 All nine focused numeric nextest tests passed for the final candidate (143 other
-runtime tests were deliberately excluded). Source tests in [`source-tests.ms`](source-tests.ms)
+runtime tests were deliberately excluded). Source tests in `source-tests.ms`
 passed in Debug and Release for the native-suffix candidate, covering every base
 and public range/error identities. The final conservative candidate did **not**
 receive a separate source-test execution before rejection; no such claim is made.

@@ -2,6 +2,7 @@
 // oracle/*.ref (built with the local Go toolchain); this file only supplies the inputs.
 // Deterministic; run: ms run bench/agent/gen.ms -- c58
 import (
+	panic from "@std/core.ms",
 	compile from "@std/regex.ms",
 
 	Cases, build_oracle, solve_with, write_cases from "../../lib/gen.ms",
@@ -13,11 +14,17 @@ fn resolve_hashes(oracle: String, script: String) String:
 	if not script.contains("{c"): return script.clone()
 
 	marker := compile("\\{c[0-9]+\\}").to_optional()
-	probe := marker.get().replace_all(script, "0000000").get_or("")
+	probe := (marker or panic("called Optional.get() on null")).replace_all(
+		script,
+		"0000000",
+	).get_or("")
 	out := solve_with(oracle, probe)
 	found := compile("(?m)^\\[[^\\]]* ([0-9a-f]{7})\\] ").to_optional()
 	var shorts = List[String]()
-	for groups in found.get().capture_all(out, 1000).get_or([]):
+	for groups in (found or panic("called Optional.get() on null")).capture_all(
+		out,
+		1000,
+	).get_or([]):
 		shorts.append(groups[1].clone())
 
 	var resolved = script.clone()

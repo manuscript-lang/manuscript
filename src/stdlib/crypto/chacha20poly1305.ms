@@ -178,7 +178,7 @@ export fn poly1305(key: Bytes, data: Bytes) Bytes!:
 				bit_and(
 					shift_right_unsigned(word, 8 * offset),
 					255,
-				).to_uint8().get_or(0)
+				).to_uint8() or 0
 			)
 	return ok(out.build())
 
@@ -193,7 +193,7 @@ fn put_le64(var out: BytesBuilder, value: Int) Void:
 			bit_and(
 				shift_right_unsigned(value, 8 * offset),
 				255,
-			).to_uint8().get_or(0)
+			).to_uint8() or 0
 		)
 
 fn tag_for(key: Bytes, nonce: Bytes, associated_data: Bytes, ciphertext: Bytes) Bytes!:
@@ -325,7 +325,7 @@ fn block(key: Bytes, counter: Int, nonce: Bytes) Bytes:
 				bit_and(
 					shift_right_unsigned(word, 8 * offset),
 					255,
-				).to_uint8().get_or(0)
+				).to_uint8() or 0
 			)
 	return out.build()
 
@@ -354,7 +354,7 @@ fn xor_stream(key: Bytes, counter: Int, nonce: Bytes, data: Bytes) Bytes:
 						bit_xor(
 							data.get(position).to_int(),
 							pad,
-						).to_uint8().get_or(0)
+						).to_uint8() or 0
 					)
 					position += 1
 

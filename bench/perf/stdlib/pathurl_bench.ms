@@ -37,4 +37,4 @@ bench "math.sqrt_sin" per 1000000:
 	var acc = 0.0
 	for i in 0..1000000:
 		acc += sqrt(2.0) + sin(1.0)
-	acc.truncate_to_int().get_or(0)
+	acc.truncate_to_int() or 0

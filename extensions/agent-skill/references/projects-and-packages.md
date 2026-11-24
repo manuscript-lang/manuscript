@@ -55,7 +55,7 @@ entry = "./src/main.ms"
 "@assets" = "./assets"
 ```
 
-`import files from "@assets"`, then `files().read("message.txt", none)` reads from the tree (see `@std/os/tree.ms`). Write the name alone: `"@assets/x.ms"` is an error. A name cannot also be an alias.
+`import files from "@assets"`, then `files().read("message.txt", null)` reads from the tree (see `@std/os/tree.ms`). Write the name alone: `"@assets/x.ms"` is an error. A name cannot also be an alias.
 
 ## Packages
 

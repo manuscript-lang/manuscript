@@ -1,11 +1,17 @@
 // conform: tags=testing,tier-stdlib
 // conform: phase=test
-import ColorMode, Image, new_image from "@std/image/image.ms"
+import (
+	panic from "@std/core.ms",
+	ColorMode, Image, new_image from "@std/image/image.ms",
+)
 
 fn sample(width: Int, height: Int, mode: ColorMode) Image:
 	var image = new_image(width, height, mode).get()
 	for i in 0..image.pixels.length():
-		image.pixels[i] = ((i * 73 + i / 7) % 256).to_uint8().get()
+		image.pixels[i] = (
+			((i * 73 + i / 7) % 256).to_uint8()
+			or panic("called Optional.get() on null")
+		)
 	return image
 
 fn check_equal(a: Image, b: Image) Void!:
@@ -32,11 +38,23 @@ test "rotations preserve every channel and their inverse":
 				check_equal(image.rotate270().rotate90(), image)?
 
 				var turned = image.rotate180()
-				turned.pixels[0] = ((turned.pixels[0].to_int() + 1) % 256).to_uint8().get()
+				turned.pixels[0] = (
+					(
+						(turned.pixels[0].to_int() + 1)
+						% 256
+					).to_uint8()
+					or panic("called Optional.get() on null")
+				)
 				check_equal(image, sample(width, height, mode))?
 
 				var other = image.rotate270()
-				other.pixels[0] = ((other.pixels[0].to_int() + 1) % 256).to_uint8().get()
+				other.pixels[0] = (
+					(
+						(other.pixels[0].to_int() + 1)
+						% 256
+					).to_uint8()
+					or panic("called Optional.get() on null")
+				)
 				check_equal(image, sample(width, height, mode))?
 
 test "rotations retain empty and extra-buffer behavior":
@@ -45,7 +63,14 @@ test "rotations retain empty and extra-buffer behavior":
 		Image(0, 3, ColorMode.Rgba, []),
 		Image(-1, 2, ColorMode.Rgba, []),
 		Image(2, -1, ColorMode.Rgba, []),
-		Image(2, 2, ColorMode.Rgba, [1.to_uint8().get()].repeated(17)),
+		Image(
+			2,
+			2,
+			ColorMode.Rgba,
+			[
+				(1.to_uint8() or panic("called Optional.get() on null"))
+			].repeated(17),
+		),
 	]:
 		check_equal(image.rotate180(), image.flip_horizontal().flip_vertical())?
 		check_equal(

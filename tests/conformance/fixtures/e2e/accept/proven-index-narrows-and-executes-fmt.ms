@@ -23,12 +23,12 @@ fn nested(values: List[Int?], index: Int) Int?:
     if index >= 0 and index < values.length():
         return values[index]
 
-    return none
+    return null
 
 test "guarded and looped lookups":
     expect_equal(read([1, 2, 3], 1), 2)?
     expect_equal(read([1, 2, 3], 3), -1)?
     expect_equal(read([1, 2, 3], -1), -1)?
     expect_equal(total([1, 2, 3]), 6)?
-    expect_equal(nested([1, none], 1), none)?
-    expect_equal(nested([1, none], 0), 1)?
+    expect_equal(nested([1, null], 1), null)?
+    expect_equal(nested([1, null], 0), 1)?

@@ -25,6 +25,6 @@ fn h[T](r: Result[T, Error]) T:
         error(_): return panic("unused")
 fn pair[T](first: Result[T, Error], second: Result[T, Error]) Void: return
 fn optional[T](r: Result[T, Error]?) Void: return
-fn convert[T, U](r: Result[T, Error]) U?: none
+fn convert[T, U](r: Result[T, Error]) U?: null
 fn apply[T, U](r: Result[T, Error], callback: fn(T) U) U: callback(h(r))
 fn exact[T, E: Error](r: Result[T, E]) Result[T, E]: r

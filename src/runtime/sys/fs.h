@@ -16,6 +16,11 @@ int ms_sys_fs_set_times(const char *path, int64_t accessed_seconds, int64_t acce
  * component past its 255-unit limit as UV_ENOENT, and this turns it back into UV_ENAMETOOLONG. */
 int ms_sys_fs_refine_error(int code, const char *path, size_t length);
 
+/* Makes the symbolic link `path` name `target`. Windows has file and directory links and libuv does not choose: a
+ * target that is a directory (found relative to the link's folder) makes a directory link, which a file link cannot
+ * be traversed as. */
+int ms_sys_fs_symlink(const char *target, const char *path);
+
 /* Changes the permission bits of a symbolic link itself: UV_ENOTSUP where the host cannot. */
 int ms_sys_fs_chmod_link(const char *path, uint32_t mode);
 

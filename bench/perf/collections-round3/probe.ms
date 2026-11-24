@@ -1,5 +1,6 @@
 import (
 	Deque from "@std/collections/deque.ms",
+	panic from "@std/core.ms",
 	monotonic from "@std/time.ms",
 )
 
@@ -100,7 +101,7 @@ fn m_bfs_grid() Int:
 	q.push_back(0)
 
 	while q.length() > 0:
-		cur := q.pop_front().get()
+		cur := q.pop_front() or panic("called Optional.get() on null")
 		x := cur % n
 		y := cur / n
 		d := dist[cur]

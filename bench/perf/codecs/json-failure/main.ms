@@ -1,4 +1,5 @@
 import (
+	panic from "@std/core.ms",
 	parse from "@std/data/json.ms",
 	arguments from "@std/os/env.ms",
 	monotonic from "@std/time.ms",
@@ -8,8 +9,8 @@ extern fn codec_bench_cpu_ns() Int
 
 fn main() Int:
 	args := arguments()
-	size := args[0].parse_int().get()
-	rounds := args[1].parse_int().get()
+	size := args[0].parse_int() or panic("called Optional.get() on null")
+	rounds := args[1].parse_int() or panic("called Optional.get() on null")
 	shape := args[2]
 	valid := shape.ends_with("valid")
 	typed := shape.starts_with("typed")
@@ -52,8 +53,8 @@ fn main() Int:
 				if result.is_error(): return 2
 
 				parsed := result.get()
-				if not parsed.as_string().is_some(): return 7
-				if parsed.as_string().get_or("") != wanted: return 8
+				if not (parsed.as_string() != null): return 7
+				if (parsed.as_string() or "") != wanted: return 8
 			else:
 				if result.is_ok(): return 3
 				if result.err().kind != "EBADMSG": return 5
