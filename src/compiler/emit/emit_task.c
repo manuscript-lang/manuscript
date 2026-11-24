@@ -1,8 +1,11 @@
 /* Owns `undef`. */
 #include "compiler/emit/emit_cx.h"
 
-/* `undef`: any value of the type, one frozen `undef` per leaf. */
+/* `undef`: any value of the type, one frozen `undef` per leaf, or a zeroed cell for a held value. */
 static void undef(EmitCx *cx, const MirInst *inst) {
+  if (emit_wide_zero(cx, inst->res)) {
+    return;
+  }
   MsSpan leaves = emit_value_leaves(cx, inst->res);
   for (uint32_t leaf = 0; leaf < leaves.len; leaf++) {
     ms_strbuild_append_text(cx->out, "  ");

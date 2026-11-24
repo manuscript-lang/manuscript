@@ -197,6 +197,21 @@ void emit_wide_store(EmitCx *cx, MirValue value) {
   plan->moved = MIR_NONE;
 }
 
+/* A held value that may be any value (`undef`): its cell is zeroed by one memset and no leaf is stored after. False
+ * when the value is not held here. */
+bool emit_wide_zero(EmitCx *cx, MirValue value) {
+  EmitWide *plan = cx->wide;
+  if (plan == NULL || value == MIR_NONE || !plan->held[value] || plan->incoming[value] || plan->stored[value]) {
+    return false;
+  }
+  char cell[24];
+  cell_name(cx, value, cell, sizeof cell);
+  ms_strbuild_printf(cx->out, "  call void @llvm.memset.p0.i64(ptr %s, i8 0, i64 %u, i1 false)\n", cell,
+                     mir_mem_layout(emit_value_leaves(cx, value), NULL).size);
+  plan->stored[value] = true;
+  return true;
+}
+
 /* A held value made by loading its leaves from memory at `from`: its cell is that memory's layout, so one copy fills
  * it and nothing is stored after. False when the value is not held here. */
 bool emit_wide_fill(EmitCx *cx, MirValue value, const char *from, const uint32_t *at) {
